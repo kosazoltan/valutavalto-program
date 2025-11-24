@@ -1,0 +1,105 @@
+version: '3.3'
+
+services:
+  puzzleir-api:
+    container_name: puzzleir-live-api
+    build:
+      context: deploy/puzzleir-api
+    restart: unless-stopped
+    environment:
+      DATASOURCE_URL: ${DATASOURCE_URL}
+      DATASOURCE_USERNAME: ${DATASOURCE_USERNAME}
+      DATASOURCE_PASSWORD: ${DATASOURCE_PASSWORD}
+    ports:
+      - "${PUZZLEIR_API_PORT}:8081"
+    volumes:
+      - ${PUZZLEIR_API_LOG}:/opt/app/logs
+    networks:
+      - pgnetwork
+    depends_on:
+      - puzzleir-postgres
+  puzzleir-ngx:
+    container_name: puzzleir-live-ngx
+    build:
+      context: deploy/puzzleir-ngx
+    restart: unless-stopped
+    ports:
+      - ${PUZZLEIR_NGX_PORT}:8081
+    networks:
+      - pgnetwork
+    depends_on:
+      - puzzleir-api
+
+  puzzleir-postgres:
+    container_name: puzzleir-postgres
+    image: ivanlonel/postgis-with-extensions:16-3.5
+    build:
+      context: ./deploy/postgres # Use image from Dockerfile in current dir
+      args:
+        - BASE_IMAGE_TAG=16-3.5
+        - LOCALE=hu_HU
+        - ENCODING=UTF-8
+    command:
+      - postgres
+      - -c
+      - logging_collector=on
+      - -c
+      - log_filename=postgresql-%a.log
+      - -c
+      - log_rotation_age=1440
+      - -c
+      - log_truncate_on_rotation=on
+      - -c
+      - "datestyle=ISO, DMY"
+      - -c
+      - effective_cache_size=2048MB
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - work_mem=8MB
+      - -c
+      - maintenance_work_mem=256MB
+      - -c
+      - track_counts=on
+      - -c
+      - autovacuum=on
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    shm_size: 2gb
+    stop_grace_period: 2m30s
+    environment:
+      # LC_COLLATE=C makes strings comparison (and decurring operations like sorting) faster,
+      #   because it's just byte-to-byte comparison (no complex locale rules)
+      # LC_CTYPE=C would make Postgres features that use ctype.h
+      #   (e.g. upper(), lower(), initcap(), ILIKE, citext) work as expected only for
+      #   characters in the US-ASCII range (up to codepoint 0x7F in Unicode).
+      - LANG=hu_HU.utf8
+      # - LC_COLLATE=C
+      - LC_COLLATE=hu_HU.utf8
+      - LC_CTYPEhu_HU.utf8
+      - LC_MESSAGES=hu_HU.utf8
+      - LC_MONETARY=hu_HU.utf8
+      - LC_NUMERIC=hu_HU.utf8
+      - LC_TIME=hu_HU.utf8
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-passwd
+      - TZ=Europe/Budapest
+    volumes:
+      - ${PGSQL_DATA}:/var/lib/postgresql/data
+    networks:
+      - pgnetwork
+    secrets:
+      - postgres-passwd
+
+secrets:
+  postgres-passwd:
+    file: ./deploy/postgres/secrets/postgres-passwd.txt
+
+networks:
+  pgnetwork:
+    driver: bridge
+    ipam:
+      # defining static IP range for network, so it can be referenced in pg_hba.conf
+      driver: default
+      config:
+        - subnet: 172.24.240.0/24
