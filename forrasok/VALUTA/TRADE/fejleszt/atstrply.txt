@@ -1,0 +1,18 @@
+<Message>
+<MessageType>TEST AAK</MessageType>
+<TerminalId>1620</TerminalId>
+<OperatorId></OperatorId>
+<ProductId></ProductId>
+<ProductName>D1 heti</ProductName>
+<Amount>0000002975</Amount>
+<RegistrationNumber>MZB005</RegistrationNumber>
+<CountryName>H - Magyarország</CountryName>
+<VFD>20150328000000</VFD>
+<TransactionId>0033584249</TransactionId>
+<TransactionDate>20150328095938</TransactionDate>
+<OutletName>Exclusive Pannon Change Kft. (Pécs-PLAZA)</OutletName>
+<OutletAddress>7632 Pécs, Megyeri u. 76.</OutletAddress>
+<ReceiptNumber>2015.03.28/2</ReceiptNumber>
+<StatusId>00OK</StatusId>
+<StatusDescription></StatusDescription>
+</Message>

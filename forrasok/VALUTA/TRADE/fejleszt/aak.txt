@@ -1,0 +1,26 @@
+
+    D1 díjkategória: motorkerékpár, valamint a legfeljebb 3,5 tonna megengedett legnagyobb össztömegû gépjármû bármilyen vontatmánnyal is,
+
+ 
+
+    D2 díjkategória: a 3,5 tonnát meghaladó, legfeljebb 7,5 tonna megengedett legnagyobb össztömegû gépjármû, valamint jármûszerelvény (gépjármû és vontatmány),
+
+ 
+
+    D3 díjkategória: a 7,5 tonnát meghaladó, legfeljebb 12,0 tonna megengedett legnagyobb össztömegû gépjármû, valamint jármûszerelvény (gépjármû és vontatmány),
+
+ 
+
+    D4 díjkategória: a 12,0 tonnát meghaladó megengedett legnagyobb össztömegû gépjármû, valamint jármûszerelvény (gépjármû és vontatmány).
+
+ 
+
+    B2 díjkategória: a 3,5 tonnát meghaladó megengedett legnagyobb össztömegû autóbuszok és lakóautók bármilyen vontatmánnyal is.
+
+ 
+
+A 7,5 tonnát meghaladó össztömegû autóbuszt, ide értve a bármilyen vontatmánnyal ellátottat is, az autóbusz össztömegének megfelelõ díjkategóriánál eggyel alacsonyabb díjkategóriába kell besorolni.
+
+ 
+
+A gépjármû és a vontatmány megengedett legnagyobb össztömegének értékét a forgalmi engedélyben szereplõ hatósági bejegyzés alapján kell meghatározni.”

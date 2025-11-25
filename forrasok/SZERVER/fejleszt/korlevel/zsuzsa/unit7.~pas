@@ -1,0 +1,197 @@
+unit Unit7;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, IBDatabase, DB, IBQuery, IBCustomDataSet, IBTable, Grids,WININET,
+  DBGrids, StdCtrls, Buttons, ExtCtrls;
+
+type
+  TLASTYEARFORM = class(TForm)
+    ARCQUERY: TIBQuery;
+    ARCDBASE: TIBDatabase;
+    ARCTRANZ: TIBTransaction;
+    ARCSOURCE: TDataSource;
+    ARCRACS: TDBGrid;
+    INFOCSIK: TPanel;
+    ARCREADGOMB: TBitBtn;
+    ARCBACKGOMB: TBitBtn;
+    FOCIMPANEL: TPanel;
+
+    procedure ARCBACKGOMBClick(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
+    procedure FiletValasztott;
+    procedure ARCREADGOMBClick(Sender: TObject);
+    function Arcletoltes(_remoteFile: string): boolean;
+    procedure ARCRACSDblClick(Sender: TObject);
+    procedure ARCRACSKeyUp(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
+
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  LASTYEARFORM: TLASTYEARFORM;
+   _arcdir,_arcfilenev,_alkonyvtar: string;
+
+   
+implementation
+
+uses Unit1;
+
+{$R *.dfm}
+
+
+procedure TLastYearForm.ARCBACKGOMBClick(Sender: TObject);
+begin
+  Arcquery.close;
+  Arcdbase.close;
+  mODALRESULT := 1;
+end;
+
+procedure TLastYearForm.FormActivate(Sender: TObject);
+begin
+  TOP := 155;
+  lEFT := 220;
+  Height := 366;
+  Width := 836;
+  Infocsik.Visible := false;
+
+  if _tipus='N' then
+    begin
+      _dirnev := '';
+      _remotenev := 'LASTYEAR';
+      FocimPanel.caption := 'MÚLT ÉVI (exclusive change) KÖRLEVELEK';
+    end;
+
+  if _tipus='V' then
+    begin
+      _dirnev := 'VIP';
+      _remotenev := 'V_LASTYEAR';
+      FocimPanel.caption := 'MÚLT ÉVI(középvezetöi) KÖRLEVELEK';
+    end;
+
+  if _tipus='Z' then
+    begin
+      _dirnev := 'ZALOG';
+      _remotenev := 'Z_LASTYEAR';
+      FocimPanel.caption := 'MÚLT ÉVI (Expressz) KÖRLEVELEK';
+    end;
+
+  FocimPanel.Repaint;
+
+  ArcDbase.close;
+  ArcDbase.DatabaseName := _serverKordbasePath;
+  ArcDbase.Connected := true;
+
+  _pcs := 'SELECT * FROM '+_remotenev + _sorveg;
+  _pcs := _pcs + 'WHERE STORNO<2' + _sorveg;
+  _pcs := _pcs + 'ORDER BY SORREND DESC';
+
+  with ArcQuery do
+    begin
+      Close;
+      sql.clear;
+      sql.add(_pcs);
+      Open;
+      First;
+    end;
+
+  _arcDir := 'C:\KORLEVEL\LASTYEAR';
+  If not DirectoryExists(_arcdir) then CreateDir(_arcdir);
+
+  If _dirnev<>'' then _arcdir := _arcdir + '\' + _dirnev;
+  If not DirectoryExists(_arcdir) then CreateDir(_arcdir);
+  Activecontrol := Arcracs;
+end;
+
+
+procedure TLastYearForm.ARCREADGOMBClick(Sender: TObject);
+begin
+  FiletValasztott;
+end;
+
+
+procedure TLastYearForm.FiletValasztott;
+
+begin
+  Infocsik.Visible := true;
+  Infocsik.Repaint;
+
+  _arcfilenev := TRIM(ArcQuery.FieldByNAme('FILENEV').asString);
+  _localpath := _arcdir + '\' + _arcfilenev;
+  if not FileExists(_localpath) then
+    begin
+      _loaded := Arcletoltes(_arcfilenev);
+      if not _Loaded then
+        begin
+          ArcBackGombClick(Nil);
+          exit;
+        end;
+    end;
+  Form1.SofficeLeallitas;
+  _pcs := _sOffPath + ' ' + _localPath;
+  _pacs := pchar(_pcs);
+  Form1.WinexecandWait32(_pacs,sw_normal);
+  Infocsik.Visible := false;
+  ArcBackGombClick(Nil);
+end;
+
+function TLastYearForm.Arcletoltes(_remoteFile: string): boolean;
+
+begin
+   result := False;
+  if not Form1.Vaninternet then
+    begin
+      ShowMessage('NINCS INTERNET !');
+      exit;
+    end;
+
+  _hNet := InternetOpen('Szerverbe',INTERNET_OPEN_TYPE_PRECONFIG,nil,nil,0);
+  if _hNet=nil then
+    begin
+      ShowMessage('Nem találom a WININET.DLL könyvtárt !');
+      Exit;
+    end;
+
+  _hFtp := Nil;
+  _hFTP := InternetConnect(_hNet,Pchar(_host),_ftpPort,pchar(_userId),
+            Pchar(_ftpPassword),INTERNET_SERVICE_FTP,INTERNET_FLAG_PASSIVE,0);
+
+  if _hFtp=Nil then
+    begin
+      InternetCloseHandle(_hnet);
+      ShowMessage('Központi szerver nem érhetõ el !');
+      exit;
+    end;
+
+  _alKonyvtar := '\KORLEVEL\'+_remoteNev;
+  _sikeres :=  FTPSetCurrentDirectory(_hFTP,pchar(_alkonyvtar));
+  if _sikeres then
+      result := FTPGetFile(_hFtp,pchar(_remotefile),pchar(_localpath),False,0,
+                           FTP_TRANSFER_TYPE_BINARY,0);
+
+  InternetCLosehandle(_hFTP);
+  InternetCloseHandle(_hnet);
+end;
+
+
+
+procedure TLASTYEARFORM.ARCRACSDblClick(Sender: TObject);
+begin
+  FiletValasztott;
+end;
+
+procedure TLASTYEARFORM.ARCRACSKeyUp(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if ord(Key)<>13 then exit;
+  FiletValasztott;
+end;
+
+end.

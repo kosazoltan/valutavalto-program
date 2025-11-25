@@ -1,0 +1,489 @@
+unit Unit2;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, Buttons, unit1, ComObj, ExtCtrls;
+
+type
+  TEXCELKESZITES = class(TForm)
+    Memo: TMemo;
+    Label1: TLabel;
+    KILEPO: TTimer;
+    EXCELQUITGOMB: TBitBtn;
+    INFOTABLA: TPanel;
+    Label2: TLabel;
+    XLSNEVTABLA: TPanel;
+    Label3: TLabel;
+
+    procedure BitBtn1Click(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
+    procedure Munkamenet;
+    procedure VastagKeret(_sh: byte;_rs: string);
+    procedure VekonyKeret(_sh: byte;_rs: string);
+    procedure KilepoTimer(Sender: TObject);
+    procedure KFTfejlec;
+    procedure EgykftAdatai;
+    procedure EgypenztarExcel(_apt: byte);
+    procedure EXCELQUITGOMBClick(Sender: TObject);
+
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  EXCELKESZITES: TEXCELKESZITES;
+
+  _kftnevek: array[1..2] of string = ('Best Change','Expressz');
+  _dat: array[1..23] of integer;
+
+  _haviExcelNev,_haviExcelPath,_aktkftnev,_focim,_rangestr,_aktkorzetnev: string;
+  _owb,_oxl,_range: OleVariant;
+  _kftIndex,_kzIndex,_korzdb,_korzirodaIndex: byte;
+  _Priosz: byte;
+  _prisor,_endsor: word;
+  _ujkorzet: boolean;
+
+  _eTop,_eLeft: word;
+
+  implementation
+
+{$R *.dfm}
+
+// =============================================================================
+             procedure TEXCELKESZITES.FormActivate(Sender: TObject);
+// =============================================================================
+
+begin
+  _eTop := Form1.Top;
+  _eLeft := Form1.Left;
+
+  Top := _eTop;
+  Left := _eLeft;
+  repaint;
+
+  _haviexcelnev := 'HAVITAB' + _farok + '.XLS';
+  _haviexcelPath := 'c:\RECEPTOR\MAIL\POSTA\HAVITABLO\' + _haviexcelnev;
+  XlsNevTabla.Caption := 'POSTA\HAVITABLO\'+_haviExcelNev;
+
+  // --------------------------------------------
+
+  _vanExcel := False;
+  Munkamenet;
+
+  if fileExists(_haviexcelPath) then Sysutils.DeleteFile(_haviexcelPath);
+  _owb.Saveas(_haviexcelPath);
+
+  Infotabla.Visible := True;
+  Infotabla.repaint;
+  excelQuitGomb.Visible := true;
+  Activecontrol := ExcelquitGomb;
+end;
+
+// =============================================================================
+                 procedure TExcelKeszites.KilepoTimer(Sender: TObject);
+// =============================================================================
+
+begin
+  Kilepo.Enabled := False;
+
+  if _vanexcel then
+    begin
+      _OWB := unassigned;
+      _oxl.quit;
+      _oxl := unassigned;
+    end;
+  Modalresult := 1;
+end;
+
+
+// =============================================================================
+                       procedure TExcelKeszites.Munkamenet;
+// =============================================================================
+
+begin
+  _oxl := CreateOleObject('Excel.Application');
+  _owb := _oxl.workbooks.add(1);
+  _oxl.workbookS[1].sheets.add(,,2);
+
+  _vanexcel := True;
+
+//  Csik2.Max := 8;
+  _kftindex := 1;
+  while _kftindex<=2 do
+    begin
+//      Csik2.Position := _kftindex;
+      _aktkftnev := _kftnevek[_kftindex];
+
+      _oxl.workbooks[1].worksheets[_kftindex].name := _aktkftnev;
+
+      Kftfejlec;
+      EgykftAdatai;
+      inc(_kftindex);
+    end;
+end;
+
+// =============================================================================
+                 procedure TExcelkeszites.Egykftadatai;
+// =============================================================================
+
+begin
+  if _kftindex=1 then
+    begin
+      _kzIndex := 1;
+      while _kzindex<=8 do
+        begin
+          _ujKorzet := True;
+          _korzdb := _korzetirodadb[_kzIndex];
+          _korzIrodaIndex := 1;
+          while _korzIrodaIndex<=_korzdb do
+            begin
+              _aktpenztarszam := _korzetirodasor[_kzIndex,_korzIrodaIndex];
+              _xx := Form1.scanPenztar(_aktpenztarszam);
+              if not _urespenztar[_xx] then EgyPenztarExcel(_aktpenztarszam);
+              inc(_korzIrodaIndex);
+            end;
+          inc(_kzIndex);
+        end;
+    end else
+    begin
+      _kzIndex := 9;
+      _ujKorzet := true;
+      _korzdb := _korzetirodadb[9];
+      _korzirodaindex := 1;
+      while _korzirodaindex<=_Korzdb do
+        begin
+          _aktpenztarszam := _korzetIrodasor[9,_korzIrodaIndex];
+          EgypenztarExcel(_aktpenztarszam);
+          inc(_korzirodaIndex);
+        end;
+    end;
+end;    
+
+
+// =============================================================================
+                procedure TexcelKeszites.KFTFejlec;
+// =============================================================================
+
+var _k: byte;
+
+begin
+  Form1.Logiro('Excel fejléc megirása');
+  if _kftindex=1 then _Focim := 'EXCLUSIVE BEST CHANGE KFT '
+  else _focim := 'EXPRESSZ ÉKSZERHÁZ ';
+  _focim := _focim + inttostr(_kertev)+' '+_honev[_kertho]+' EGYÉB HAVI ADATAI';
+  _rangestr := 'C2:N2';
+  _oxl.worksheets[_kftindex].range[_rangestr].Mergecells := True;
+   _oxl.worksheets[_kftindex].range[_rangestr].HorizontalAlignment := -4108;
+   _oxl.worksheets[_kftindex].range[_rangestr].Font.Name := 'Calibri';
+   _oxl.worksheets[_kftindex].range[_rangestr].Font.Size := 14;
+   _oxl.worksheets[_kftindex].range[_rangestr].Font.Italic := True;
+
+  _oxl.worksheets[_kftindex].Cells[2,3] := _FOCIM;
+
+
+  // AZ OSZLOP SZÉLESSÉGÉT ÁLLITJA MEG:
+
+  _oxl.worksheets[_kftindex].range['A1:A1'].columnWidth  := 1;
+
+
+  _priosz := 1;
+  while _priosz<=23 do
+    begin
+      _rangestr := chr(65+_priosz)+'1:'+chr(_priosz+65)+'1';
+      _oxl.worksheets[_kftindex].range[_rangestr].columnWidth  := 12;
+      inc(_priosz);
+    end;
+
+   _rangestr := 'B4:X6';
+   _oxl.worksheets[_kftindex].range[_rangestr].HorizontalAlignment := -4108;
+   _oxl.worksheets[_kftindex].range[_rangestr].Font.Name := 'Calibri';
+   _oxl.worksheets[_kftindex].range[_rangestr].Font.Size := 10;
+   _oxl.worksheets[_kftindex].range[_rangestr].Font.Italic := True;
+
+   _rangestr := 'B7:X7';
+   _oxl.worksheets[_kftindex].range[_rangestr].HorizontalAlignment := -4108;
+   _oxl.worksheets[_kftindex].range[_rangestr].Font.Bold := True;
+
+   _rangestr := 'B4:B6';
+   _oxl.worksheets[_kftindex].range[_rangestr].Mergecells := True;
+   _oxl.worksheets[_kftindex].range[_rangestr].VerticalAlignment := -4108;
+   _oxl.worksheets[_kftindex].Cells[4,2] := 'DÁTUM';
+
+   _rangestr := 'C4:J4';
+   _oxl.worksheets[_kftindex].range[_rangestr].Mergecells := True;
+   _oxl.worksheets[_kftindex].Cells[4,3] := 'WESTERN UNION';
+
+   _rangestr := 'C5:D5';
+   _oxl.worksheets[_kftindex].range[_rangestr].Mergecells := True;
+   _oxl.worksheets[_kftindex].Cells[5,3] := 'NYITÓ';
+
+   _rangestr := 'E5:F5';
+   _oxl.worksheets[_kftindex].range[_rangestr].Mergecells := True;
+   _oxl.worksheets[_kftindex].Cells[5,5] := 'BEVÉTEL';
+
+   _rangestr := 'G5:H5';
+   _oxl.worksheets[_kftindex].range[_rangestr].Mergecells := True;
+   _oxl.worksheets[_kftindex].Cells[5,7] := 'KIADÁS';
+
+   _rangestr := 'I5:J5';
+   _oxl.worksheets[_kftindex].range[_rangestr].Mergecells := True;
+   _oxl.worksheets[_kftindex].Cells[5,9] := 'ZÁRÓ';
+
+   _rangestr := 'K4:M4';
+   _oxl.worksheets[_kftindex].range[_rangestr].Mergecells := True;
+   _oxl.worksheets[_kftindex].Cells[4,11] := 'KEZELÉSI KÖLTSÉG';
+
+   _rangestr := 'K5:K6';
+   _oxl.worksheets[_kftindex].range[_rangestr].Mergecells := True;
+   _oxl.worksheets[_kftindex].range[_rangestr].VerticalAlignment := -4108;
+   _oxl.worksheets[_kftindex].range[_rangestr].Wraptext := True;
+   _oxl.worksheets[_kftindex].Cells[5,11] := 'BEFIZETÉS ÉRTÉKTÁRNAK';
+
+   _rangestr := 'L5:L6';
+   _oxl.worksheets[_kftindex].range[_rangestr].Mergecells := True;
+   _oxl.worksheets[_kftindex].range[_rangestr].VerticalAlignment := -4108;
+   _oxl.worksheets[_kftindex].range[_rangestr].Wraptext := True;
+   _oxl.worksheets[_kftindex].Cells[5,12] := 'BEVÉTEL ÜGYFÉLTÕL';
+
+   _rangestr := 'M5:M6';
+   _oxl.worksheets[_kftindex].range[_rangestr].Mergecells := True;
+   _oxl.worksheets[_kftindex].range[_rangestr].VerticalAlignment := -4108;
+   _oxl.worksheets[_kftindex].range[_rangestr].Wraptext := True;
+   _oxl.worksheets[_kftindex].Cells[5,13] := 'ÁTVÉTEL PÉNZTÁRTÓL';
+
+   _rangestr := 'N4:S5';
+   _oxl.worksheets[_kftindex].range[_rangestr].Mergecells := True;
+   _oxl.worksheets[_kftindex].range[_rangestr].VerticalAlignment := -4108;
+   _oxl.worksheets[_kftindex].Cells[4,14] := 'ELEKTROMOS KERESKEDÉS';
+
+   _rangestr := 'T4:X4';
+   _oxl.worksheets[_kftindex].range[_rangestr].Mergecells := True;
+   _oxl.worksheets[_kftindex].Cells[4,20] := 'AFA VISSZATÉRÍTÉS';
+
+   _rangestr := 'T5:T6';
+   _oxl.worksheets[_kftindex].range[_rangestr].Mergecells := True;
+   _oxl.worksheets[_kftindex].range[_rangestr].VerticalAlignment := -4108;
+   _oxl.worksheets[_kftindex].Cells[5,20] := 'NYITO';
+
+   _rangestr := 'U5:U6';
+   _oxl.worksheets[_kftindex].range[_rangestr].Mergecells := True;
+   _oxl.worksheets[_kftindex].range[_rangestr].VerticalAlignment := -4108;
+   _oxl.worksheets[_kftindex].range[_rangestr].Wraptext := True;
+   _oxl.worksheets[_kftindex].Cells[5,21] := 'BEVÉTEL BANKTÓL';
+
+   _rangestr := 'V5:V6';
+   _oxl.worksheets[_kftindex].range[_rangestr].Mergecells := True;
+   _oxl.worksheets[_kftindex].range[_rangestr].VerticalAlignment := -4108;
+   _oxl.worksheets[_kftindex].range[_rangestr].Wraptext := True;
+   _oxl.worksheets[_kftindex].Cells[5,22] := 'KIADÁS PÉNZTÁRNAK';
+
+   _rangestr := 'W5:W6';
+   _oxl.worksheets[_kftindex].range[_rangestr].Mergecells := True;
+   _oxl.worksheets[_kftindex].range[_rangestr].VerticalAlignment := -4108;
+   _oxl.worksheets[_kftindex].range[_rangestr].Wraptext := True;
+   _oxl.worksheets[_kftindex].Cells[5,23] := 'VISSZA TÉRITÉS';
+
+   _rangestr := 'X5:X6';
+   _oxl.worksheets[_kftindex].range[_rangestr].Mergecells := True;
+   _oxl.worksheets[_kftindex].range[_rangestr].VerticalAlignment := -4108;
+   _oxl.worksheets[_kftindex].Cells[5,24] := 'ZÁRÓ';
+
+    _oxl.worksheets[_kftindex].Cells[6,3] := 'USD';
+    _oxl.worksheets[_kftindex].Cells[6,4] := 'HUF';
+    _oxl.worksheets[_kftindex].Cells[6,5] := 'USD';
+    _oxl.worksheets[_kftindex].Cells[6,6] := 'HUF';
+    _oxl.worksheets[_kftindex].Cells[6,7] := 'USD';
+    _oxl.worksheets[_kftindex].Cells[6,8] := 'HUF';
+    _oxl.worksheets[_kftindex].Cells[6,9] := 'USD';
+    _oxl.worksheets[_kftindex].Cells[6,10]:= 'HUF';
+
+    _oxl.worksheets[_kftindex].Cells[6,14] := 'NYITÓ';
+    _oxl.worksheets[_kftindex].Cells[6,15] := 'MATRICA';
+    _oxl.worksheets[_kftindex].Cells[6,16] := 'TELEFON';
+    _oxl.worksheets[_kftindex].Cells[6,17] := 'ÁTADÁS';
+    _oxl.worksheets[_kftindex].Cells[6,18] := 'ÁTVÉTEL';
+    _oxl.worksheets[_kftindex].Cells[6,19] := 'ZÁRÓ';
+
+    _k := 1;
+    while _k<=23 do
+      begin
+         _oxl.worksheets[_kftindex].Cells[7,_k+1] := inttostr(_k)+'.';
+         inc(_k);
+      end;
+
+   // -----------------------------------------
+
+    Vekonykeret(_kftindex,'B4:B6');
+    Vekonykeret(_kftindex,'C4:J4');
+    Vekonykeret(_kftindex,'K4:M4');
+    Vekonykeret(_kftindex,'N4:S5');
+    Vekonykeret(_kftindex,'T4:X4');
+    Vekonykeret(_kftindex,'B7:B7');
+    Vekonykeret(_kftindex,'C5:D5');
+    Vekonykeret(_kftindex,'E5:F5');
+    Vekonykeret(_kftindex,'G5:H5');
+    Vekonykeret(_kftindex,'I5:J5');
+    Vekonykeret(_kftindex,'K5:K6');
+    Vekonykeret(_kftindex,'L5:L6');
+    Vekonykeret(_kftindex,'C6:C6');
+    Vekonykeret(_kftindex,'D6:D6');
+    Vekonykeret(_kftindex,'E6:E6');
+    Vekonykeret(_kftindex,'F6:F6');
+    Vekonykeret(_kftindex,'G6:G6');
+    Vekonykeret(_kftindex,'H6:H6');
+    Vekonykeret(_kftindex,'I6:I6');
+    Vekonykeret(_kftindex,'J6:J6');
+
+    Vekonykeret(_kftindex,'T5:T6');
+    Vekonykeret(_kftindex,'V5:V6');
+    Vekonykeret(_kftindex,'X5:X6');
+    Vekonykeret(_kftindex,'D7:D7');
+    Vekonykeret(_kftindex,'F7:F7');
+    Vekonykeret(_kftindex,'H7:H7');
+    Vekonykeret(_kftindex,'J7:J7');
+    Vekonykeret(_kftindex,'K7:K7');
+    Vekonykeret(_kftindex,'M7:M7');
+
+    Vekonykeret(_kftindex,'O7:O7');
+    Vekonykeret(_kftindex,'Q7:Q7');
+    Vekonykeret(_kftindex,'S7:S7');
+    Vekonykeret(_kftindex,'N6:N6');
+    Vekonykeret(_kftindex,'P6:P6');
+    Vekonykeret(_kftindex,'R6:R6');
+    Vekonykeret(_kftindex,'U7:U7');
+    Vekonykeret(_kftindex,'W7:W7');
+
+    Vastagkeret(_kftindex,'B4:B7');
+    Vastagkeret(_kftindex,'B4:J7');
+    Vastagkeret(_kftindex,'N4:S7');
+    Vastagkeret(_kftindex,'B4:X7');
+
+    _oxl.range['C8:C8'].Select;
+    _oxl.ActiveWindow.FreezePanes := True;
+    _prisor := 8;
+end;
+
+// =============================================================================
+        procedure TExcelKeszites.VastagKeret(_sh: byte; _rs: string);
+// =============================================================================
+
+begin
+  _oxl.worksheets[_sh].range[_rs].BorderAround(1,4);
+end;
+
+// =============================================================================
+          procedure TExcelkeszites.Vekonykeret(_sh: byte; _rs: string);
+// =============================================================================
+
+begin
+  _oxl.worksheets[_sh].range[_rs].BorderAround(1,2);
+end;
+
+// =============================================================================
+           procedure Texcelkeszites.EgypenztarExcel(_apt: byte);
+// =============================================================================
+
+var _apn: string;
+    _w: byte;
+
+begin
+  _apn := Form1.GetPenztarnev(_apt);
+  Memo.Lines.Add(_apn + ' exceltáblája');
+  Form1.Logiro(_apn+' exceltábla elkészitésa');
+
+  _xx := Form1.ScanPenztar(_apt);
+
+  inc(_prisor);
+  if _ujkorzet then
+    begin
+      _ujkorzet := False;
+      _aktkorzetnev := _korzetnev[_kzIndex];
+      _rangestr := 'B'+inttostr(_prisor)+':X'+inttostr(_prisor);
+      _oxl.worksheets[_kftindex].range[_rangestr].Mergecells := True;
+      _oxl.worksheets[_kftindex].range[_rangestr].Font.Name := 'Impact';
+      _oxl.worksheets[_kftindex].range[_rangestr].Font.Size := 18;
+      _oxl.worksheets[_kftindex].range[_rangestr].Interior.color := $40FFB0;
+      _oxl.worksheets[_kftindex].cells[_prisor,2] := _aktkorzetnev+' KÖRZET';
+      _prisor := _prisor + 2;
+    end;
+
+
+  _rangestr := 'B'+inttostr(_prisor)+':F'+inttostr(_prisor);
+  _oxl.worksheets[_kftindex].range[_rangestr].Mergecells := true;
+  _oxl.worksheets[_kftindex].range[_rangestr].Font.size := 14;
+  _oxl.worksheets[_kftindex].range[_rangestr].Font.Bold := true;
+  _oxl.worksheets[_kftindex].range[_rangestr].Font.Italic := True;
+  _oxl.worksheets[_kftindex].range[_rangestr].interior.color := clyellow;
+  _oxl.worksheets[_kftindex].cells[_prisor,2] := inttostr(_apt)+'. '+_apn;
+
+  inc(_prisor);
+  inc(_prisor);
+
+  _endsor := _prisor-1+_havinap;
+  _rangestr := 'B'+inttostr(_prisor)+':B'+inttostr(_endsor);
+   _oxl.worksheets[_kftindex].range[_rangestr].HorizontalAlignment := -4108;
+
+  _rangestr := 'B'+inttostr(_prisor)+':X'+inttostr(_endsor);
+  _oxl.worksheets[_kftindex].range[_rangestr].numberFormat := '### ### ###';
+  _oxl.worksheets[_kftindex].range[_rangestr].HorizontalAlignment := -4108;
+
+
+  _nap := 1;
+  while _nap<=_havinap do
+    begin
+      _datum := _datumelo + form1.Nulele(_nap);
+      _dat[2] := _xUsdNyito[_xx,_nap];
+      _dat[3] := _xHufNyito[_xx,_nap];
+      _dat[4] := _xUsdBe[_xx,_nap];
+      _dat[5] := _xHufBe[_xx,_nap];
+      _dat[6] := _xUsdKi[_xx,_nap];
+      _dat[7] := _xHufKi[_xx,_nap];
+      _dat[8] := _xUsdZaro[_xx,_nap];
+      _dat[9] := _xHufZaro[_xx,_nap];
+      _dat[10]:= _xKdBevet[_xx,_nap];
+      _dat[11]:= _xKdBefiz[_xx,_nap];
+      _dat[12]:= _xKdAtvet[_xx,_nap];
+      _dat[13]:= _xEtradeNyito[_xx,_nap];
+      _dat[14]:= _xMatrica[_xx,_nap];
+      _dat[15]:= _xTelefon[_xx,_nap];
+      _dat[16]:= _xEtradeAtadas[_xx,_nap];
+      _dat[17]:= _xEtradeAtvetel[_xx,_nap];
+      _dat[18]:= _xEtradeZaro[_xx,_nap];
+      _dat[19]:= _xAfaNyito[_xx,_nap];
+      _dat[20]:= _xAfaBanktolBe[_xx,_nap];
+      _dat[21]:= _xAfaKiadas[_xx,_nap];
+      _dat[22]:= _xAfaVissza[_xx,_nap];
+      _dat[23]:= _xAfaZaro[_xx,_nap];
+
+      _oxl.worksheets[_kftindex].Cells[_prisor,2] := _datum;
+      _w := 2;
+      While _w<=23 do
+        begin
+          _oxl.worksheets[_kftindex].Cells[_prisor,_w+1] := _dat[_w];
+          inc(_w);
+        end;
+      inc(_prisor);
+      inc(_nap);
+    end;
+end;
+
+// =============================================================================
+           procedure TEXCELKESZITES.BitBtn1Click(Sender: TObject);
+// =============================================================================
+
+begin
+  Kilepo.Enabled := True;
+end;
+
+
+procedure TEXCELKESZITES.EXCELQUITGOMBClick(Sender: TObject);
+begin
+  Kilepo.Enabled := True;
+end;
+
+end.

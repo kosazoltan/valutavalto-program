@@ -1,0 +1,773 @@
+unit Unit1;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, Buttons, IBDatabase, DB, IBCustomDataSet, IBQuery,
+  StrUtils, ExtCtrls, IBTable, ComCtrls, dateutils, jpeg;
+
+type
+  TForm1 = class(TForm)
+    BLOKKTETELQUERY: TIBQuery;
+    BLOKKTETELDBASE: TIBDatabase;
+    BLOKKTETELTRANZ: TIBTransaction;
+    DAYBOOKQUERY: TIBQuery;
+    DAYBOOKDBASE: TIBDatabase;
+    DAYBOOKTRANZ: TIBTransaction;
+    GYUJTOQUERY: TIBQuery;
+    GYUJTODBASE: TIBDatabase;
+    GYUJTOTRANZ: TIBTransaction;
+    PENZTARPANEL: TPanel;
+    blokkteteltabla: TIBTable;
+    CSIKPANEL: TPanel;
+    CSIK: TProgressBar;
+    Image1: TImage;
+    Shape1: TShape;
+    Shape3: TShape;
+    Shape4: TShape;
+    PENZTARSZAMPANEL: TPanel;
+    Label3: TLabel;
+    Panel1: TPanel;
+    Shape5: TShape;
+    LEGYUJTESPANEL: TPanel;
+    Shape2: TShape;
+    Label1: TLabel;
+    TOLPANEL: TPanel;
+    IGPANEL: TPanel;
+    Label2: TLabel;
+    Label4: TLabel;
+    MNBQUERY: TIBQuery;
+    MNBTRANZ: TIBTransaction;
+    MNBDBASE: TIBDatabase;
+    Shape6: TShape;
+    Label5: TLabel;
+    ARFEQUERY: TIBQuery;
+    ARFEDBASE: TIBDatabase;
+    ARFETRANZ: TIBTransaction;
+    ARFETABLA: TIBTable;
+
+    function Nulele(_num: integer): string;
+    function Scanetar(_pt: integer): integer;
+    function Scandnem(_dn: string): integer;
+    procedure FormActivate(Sender: TObject);
+    procedure HaszonSzamitas;
+    procedure SzamitasProcess;
+    function Kedvezmenyseek(_biz: string): boolean;
+
+    procedure MNBBetoltes;
+   
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form1: TForm1;
+  _sorveg: string = chr(13)+chr(10);
+  _aktPenztar,_yy,_qq,_knap,_vnap,_utolsonap,_tag: integer;
+  _volt: boolean;
+  _mezo,_fdbpath,_farok,_jel,_pcs,_btetnev,_tipus: string;
+  _kev,_kho,_bankjegy,_storno,_xx,_aktkorzet,_ertektar: integer;
+  _adatums,_kdatums,_idoszaks,_vDatums: string;
+  _bizonylat,_valutanem,_arfenev,_rangestr,_kznev: string;
+  _arfolyam,_elszarf,_profit,_arfdiff,_sprofit: integer;
+  _datumOke,_utnap,_mprofit,_xforgalom,_bizonylatdarab,_cc: integer;
+
+  _biztomb: array[0..4096] of string;
+
+  _vanexcel : boolean;
+
+
+  _daybnev,_startnaps,_endnaps: string;
+
+  _tprofit,_wprofit,_SFORG,_kprofit,_kforg,_nyersProfit: array[1..150] of integer;
+  
+  _tmnbprofit,_tsprofit: array[1..150] of integer;
+  _tVatlagArf: array[1..150,1..26] of integer;
+  _tEatlagArf: array[1..150,1..26] of integer;
+
+  _tVatlagElszarf: array[1..150,1..26] of integer;
+  _teatlagElszarf: array[1..150,1..26] of integer;
+
+
+  _korzetszam: array[1..8] of integer = (10,20,40,50,63,75,120,145);
+  _korzetnev: array[1..8] of string = ('SZEKSZÁRD','SZEGED','KECSKEMÉT',
+           'DEBRECEN','NYÍREGYHÁZA','BÉKÉSCSABA','PÉCS','KAPOSVÁR');
+
+  _korzetIrodaDarab : array[1..8] of integer;
+  _korzetIrodak: array[1..8,1..30] of integer;
+
+  _dnem: array[1..26] of string = ('AUD','BAM','BGN','BRL','CAD','CHF','CNY',
+           'CZK','DKK','EUR','GBP','HRK','ILS','JPY','MXN','NOK','NZD','PLN',
+           'RON','RSD','RUB','SEK','THB','TRY','UAH','USD');
+
+  _mnbelsz: array[1..26] of integer;
+
+  _svarf,_searf,_svelszarf,_seelszarf: array[1..26] of integer;
+  _svBankjegy,_sebankjegy: array[1..26] of integer;
+  _svoszto,_seoszto: array[1..26] of integer;
+  _aktvoszto,_akteoszto,_maxPtar,_maxprofit,_ftErtek,_code: integer;
+  _aktev,_aktho,_aktnap,_kertev,_kertho,_kerttolnap,_kertignap: integer;
+
+  _aktnyersprofit,_xkprofit,_xsprofit,_xkforgalom,_xsforgalom: integer;
+  _xsminiforg,_xsmidiforg,_xsmaxiforg: integer;
+
+  _sumvarf,_sumearf,_sumelszarf: integer;
+  _sumvelszarf,_sumeelszarf: integer;
+  _atlagvarf,_atlagearf,_atlagvelszarf,_atlageelszarf,_recno: integer;
+  _avarf,_aearf: array[1..26] of integer;
+  _top,_left,_height,_width,_prisor: word;
+
+  _honev: array[1..12] of string = ('január','február','március','április','május',
+          'junius','július','augusztus','szeptember','október','november',
+          'december');
+
+  _evindex,_hoindex,_tolindex,_igindex,_tolnap,_ignap,_uzlet: integer;
+
+  _uzletnev : string;
+  _irodanev : array[1..150] of string;
+  _hErtekTar: array[1..150] of integer;
+  _pHaszon : array[1..8] of Integer;
+  _pErtektar: array[1..8] of integer;
+  _korzarany: array[1..8] of real;
+
+  _xpsprofit,_xpsforgalom,_xpkprofit,_xpkforgalom: array[1..150] of integer;
+  _xpsminiforg,_xpsmidiforg,_xpsmaxiforg: array[1..150] of integer;
+
+  _fullMonth,_voltkedvezmeny: boolean;
+
+implementation
+
+
+
+uses Unit2, Unit3;
+
+{$R *.dfm}
+
+// =============================================================================
+               procedure TForm1.FormActivate(Sender: TObject);
+// =============================================================================
+
+var i: integer;
+
+begin
+  _height := Screen.Monitors[0].Height;
+  _width  := Screen.Monitors[0].Width;
+
+  _top    := round((_height-768)/2);
+  _left   := round((_width-1024)/2);
+
+  Top     := _top;
+  Left    := _left;
+  Height  := 768;
+  Width   := 1024;
+
+  PenztarPanel.Visible   := False;
+  LegyujtesPanel.Visible := False;
+  Csikpanel.visible      := False;
+  _vanExcel := False;
+
+  Form1.Repaint;
+
+  for i := 1 to 150 do
+    begin
+      _irodanev[i] := '';
+      _hertektar[i] := 0;
+    end;
+
+  _pcs := 'SELECT * FROM IRODAK' + _sorveg;
+  _pcs := _pcs + 'ORDER BY UZLET';
+
+  Gyujtodbase.Connected := true;
+  with GyujtoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Add(_pcs);
+      Open;
+    end;
+
+  while not Gyujtoquery.Eof do
+    begin
+
+      _uzlet    := Gyujtoquery.FieldByName('UZLET').asInteger;
+      if _uzlet>150 then break;
+
+      _uzletnev := GyujtoQuery.FieldByName('KESZLETNEV').asString;
+      _ertektar := gyujtoQuery.FieldByName('ERTEKTAR').asInteger;
+
+      _irodanev[_uzlet] := trim(_uzletnev);
+      _hErtektar[_uzlet]:= _ertekTar;
+
+      gyujtoQuery.Next;
+    end;
+
+  GyujtoQuery.close;
+  Gyujtodbase.close;
+
+  // ---------------------------------------------------------------------------
+
+  HaszonSzamitas;
+end;
+
+
+// =============================================================================
+                    procedure Tform1.Haszonszamitas;
+// =============================================================================
+
+begin
+
+  // VÉGTELEN CIKLUS:
+
+  while True do
+    begin
+      LegyujtesPanel.visible := False;
+
+      _datumOke := IdoszakKeroForm.ShowModal;
+      if _datumoke=2 then break;
+
+      TolPanel.Caption := _kDatums;
+      Igpanel.Caption  := _vDatums;
+
+      LegyujtesPanel.Visible := true;
+      LegyujtesPanel.Repaint;
+
+      if _fullMonth then MNBBetoltes;
+
+      SzamitasProcess;
+      Kijelzes.excelgomb.Visible := True;
+      Kijelzes.ShowModal;
+      Form1.OnActivate := Nil;
+    end;
+
+  Application.Terminate;
+end;
+
+
+// =============================================================================
+                       procedure TForm1.SzamitasProcess;
+// =============================================================================
+
+var i,j: integer;
+    _elojel,_biz: string;
+    _haszon,_vprofit,_eprofit,_svprofit,_seprofit: real;
+
+begin
+  for i := 1 to 150 do
+    begin
+      _tProfit[i]:= 0;
+      _tmnbProfit[i] := 0;
+      _nyersProfit[i] := 0;
+      _sforg[i]:= 0;
+
+      _xpkprofit[i] := 0;
+      _xpkforgalom[i] := 0;
+
+      _xpsprofit[i] := 0;
+      _xpsforgalom[i] := 0;
+      _xpsminiforg[i] := 0;
+      _xpsmidiforg[i] := 0;
+      _xpsmaxiforg[i] := 0;
+
+      for j := 1 to 26 do
+        begin
+          _tVAtlagArf[i,j]:= 0;
+          _tEAtlagArf[i,j]:= 0;
+        end;
+    end;
+
+  // --------------------------------------------------------------------------
+
+  _daybnev := 'dayb'+_farok;
+  _pcs     := 'SELECT * FROM '+_daybnev+_sorveg;
+  _pcs     := _pcs + 'ORDER BY PENZTAR';
+
+  DaybookDbase.Connected := true;
+  with DayBookQuery do
+    begin
+      Close;
+      sql.Clear;
+      Sql.Add(_pcs);
+      Open;
+    end;
+
+  Csik.Position := 0;
+  CsikPanel.Visible := True;
+
+  Penztarszampanel.Caption := '';
+
+  PenztarPanel.Visible := True;
+  PenztarPanel.Repaint;
+
+
+  // ===========================================================================
+
+  while not DaybookQuery.eof do
+    begin
+       _aktpenztar := Daybookquery.FieldByname('PENZTAR').asInteger;
+
+       Csik.Position := _aktpenztar;
+       _yy := ScanEtar(_aktpenztar);
+
+       Penztarszampanel.Caption := inttostr(_aktpenztar);
+       PenztarszamPanel.Repaint;
+
+       for i := 1 to 26 do
+         begin
+           _svarf[i]      := 0;
+           _searf[i]      := 0;
+           _svelszarf[i]  := 0;
+           _seelszarf[i]  := 0;
+           _svoszto[i]    := 0;
+           _seoszto[i]    := 0;
+           _svBankjegy[i] := 0;
+           _seBankjegy[i] := 0;
+
+         end;
+
+       PenztarPanel.Caption := inttostr(_aktpenztar);
+       PenztarPanel.Repaint;
+
+       if _yy>0 then
+         begin
+           DayBookQuery.Next;
+           Continue;
+         end;
+
+       _qq   := _tolnap;
+       _volt := false;
+
+       while _qq<=_ignap do
+         begin
+           _mezo := 'N'+ inttostr(_qq);
+           _jel := DayBookQuery.FieldByName(_mezo).asString;
+           if _jel= 'B' then
+             begin
+               _volt := true;
+               break;
+             end;
+           inc(_qq);
+         end;
+
+       if not _volt then
+         begin
+           DayBookquery.Next;
+           Continue;
+         end;
+
+       _fdbPath := 'c:\receptor\database\v'+inttostr(_aktpenztar)+'.fdb';
+       with BlokkTetelDbase do
+         begin
+           Close;
+           DatabaseName := _fdbpath;
+           Connected := True;
+         end;
+
+       _btetNev := 'BT'+_farok;
+
+       BlokktetelTabla.close;
+       BlokktetelTabla.Tablename := _btetnev;
+
+       if not BlokktetelTabla.exists then
+         begin
+           BlokktetelDbase.close;
+           DaybookQuery.next;
+           Continue;
+         end;
+
+      _arfenev := 'ARFE' + _farok;
+       with ArfeDbase do
+         begin
+           Close;
+           DatabaseName := _fdbpath;
+           Connected := True;
+         end;
+
+      _bizonylatdarab := 0;
+      arfetabla.close;
+      arfetabla.TableName := _arfenev;
+      if Arfetabla.Exists then
+        begin
+          _pcs := 'SELECT * FROM ' + _arfenev + _sorveg;
+          _pcs := _pcs + 'WHERE ENGEDMENYTIPUS>7';
+
+          with arfeQuery do
+            begin
+              Close;
+              Sql.clear;
+              sql.Add(_pcs);
+              Open;
+              First;
+            end;
+
+          _cc := 0;
+          while not ArfeQuery.Eof do
+            begin
+              _biz := trim(Arfequery.FieldByNAme('BIZONYLATSZAM').asString);
+              _biztomb[_cc] := _biz;
+              inc(_cc);
+              Arfequery.next;
+            end;
+          _bizonylatdarab := _cc;
+          ArfeQuery.close;
+        end;
+      Arfedbase.close;
+
+      _xkprofit := 0;
+      _xsProfit := 0;
+
+      _xkforgalom := 0;
+      _xsForgalom := 0;
+      _xsminiforg := 0;
+      _xsmidiforg := 0;
+      _xsmaxiforg := 0;
+
+      _aktnyersProfit := 0;
+
+       _idoszaks := '(DATUM>=' + chr(39) + _kDatums + chr(39) + ') AND (';
+       _idoszaks := _idoszaks + 'DATUM<=' + chr(39) + _vDatums + chr(39) + ')';
+
+       _pcs := 'SELECT * FROM '+ _btetNev + _sorveg;
+       _pcs := _pcs + 'WHERE '+ _idoszaks;
+
+       with BlokktetelQuery do
+         begin
+           Close;
+           Sql.Clear;
+           Sql.Add(_pcs);
+           Open;
+         end;
+
+       while not BlokktetelQuery.eof do
+         begin
+
+           with BlokktetelQuery do
+             begin
+               _bizonylat := FieldBYName('BIZONYLATSZAM').asString;
+               _valutanem := FieldByName('VALUTANEM').asString;
+               _bankjegy  := FieldByName('BANKJEGY').asInteger;
+               _arfolyam  := FieldByName('ARFOLYAM').asInteger;
+               _elszarf   := FieldByName('ELSZAMOLASIARFOLYAM').asInteger;
+               _elojel    := FieldByName('ELOJEL').asString;
+               _ftertek   := FieldByName('FORINTERTEK').asInteger;
+               _storno    := FieldByName('STORNO').asInteger;
+             end;
+
+           _xx := ScanDnem(_valutanem);
+           _tipus := leftstr(_bizonylat,1);
+
+           if (_tipus='F') or (_tipus='U') then
+             begin
+               BlokktetelQuery.next;
+               Continue;
+             end;
+
+           if _storno=1 then
+             begin
+               _voltkedvezmeny := False;
+               if _bizonylatdarab>0 then
+                           _voltkedvezmeny := KedvezmenySeek(_bizonylat);
+               _Xforgalom := _ftertek;
+
+               if _tipus='V' then
+                 begin
+                   _arfdiff        := _elszarf-_arfolyam;
+                   _profit         := round(_bankjegy*_arfdiff/100);
+
+                   if _valutanem='JPY' then _profit := trunc(_profit*100);
+
+                   _svarf[_xx]     := _svarf[_xx] + _arfolyam;
+                   _svelszarf[_xx] := _svelszarf[_xx] + _elszarf;
+                   _svoszto[_xx]   := _svoszto[_xx]+ 1;
+                   _svbankjegy[_xx]:= _svBankjegy[_xx] + _bankjegy;
+
+                 end;
+
+               if _tipus='E' then
+                 begin
+                   _arfdiff         := _arfolyam-_elszarf;
+                   _profit          := round(_bankjegy*_arfdiff/100);
+
+                   if _valutanem='JPY' then _profit := round(_profit*100);
+
+                   _searf[_xx]      := _searf[_xx] + _arfolyam;
+                   _seelszarf[_xx]  := _seelszarf[_xx] + _elszarf;
+                   _seoszto[_xx]    := _seoszto[_xx]+ 1;
+                   _seBankjegy[_xx] := _seBankjegy[_xx] + _bankjegy;
+
+                 end;
+
+               if (_tipus='K') and (_elojel='+') then
+                 begin
+                   _arfdiff         := _elszarf-_arfolyam;
+                   _profit          := round(_bankjegy*_arfdiff/100);
+
+                   if _valutanem='JPY' then _profit := round(_profit*100);
+
+                    _svarf[_xx]     := _svarf[_xx] + _arfolyam;
+                    _svelszarf[_xx] := _svelszarf[_xx] + _elszarf;
+                   _svoszto[_xx]    := _svoszto[_xx]+ 1;
+                   _svBankjegy[_xx] := _svBankjegy[_xx] + _bankjegy;
+
+                 end;
+
+
+               if (_tipus='K') and (_elojel='-') AND (_valutanem<>'HUF') then
+                 begin
+                   _arfdiff      := _arfolyam-_elszarf;
+                   _profit       := round(_bankjegy*_arfdiff/100);
+
+                   if _valutanem='JPY' then _profit := round(_profit*100);
+
+                   _searf[_xx]   := _searf[_xx] + _arfolyam;
+                   _seelszarf[_xx]  := _seelszarf[_xx] + _elszarf;
+                   _seoszto[_xx] := _seoszto[_xx]+ 1;
+                   _seBankjegy[_xx] := _seBankjegy[_xx] + _bankjegy;
+
+                 end;
+
+               _aktnyersprofit := _aktnyersProfit + _profit;
+               if _voltkedvezmeny then
+                 begin
+                   _xkprofit   := _xkprofit + _profit;
+                   _xkforgalom := _xkforgalom + _Xforgalom;
+                 end else
+                 begin
+                   _xsProfit   := _xsProfit + _profit;
+                   _xsForgalom := _xsforgalom + _Xforgalom;
+                   if _xforgalom<=50000 then _xsminiforg := _xsMiniforg + _xforgalom;
+                   if (_xforgalom>50000) and (_xforgalom<=300000) then
+                     begin
+                       _xsmidiforg := _xsmidiforg + _xforgalom;
+                     end;
+                   if _xforgalom>300000 then _xsmaxiforg := _xsmaxiforg + _xforgalom;
+                 end;
+             end;
+
+           BlokkTetelQuery.next;
+         end;
+
+       BlokktetelQuery.close;
+       BlokktetelDbase.close;
+
+       _nyersProfit[_aktpenztar] := _aktnyersProfit;
+
+       _xpsProfit[_aktpenztar] := _xsprofit;      // kedvmentes profit
+       _xpkprofit[_aktpenztar] := _xkprofit;      // kedvezményes profit
+
+       _xpsforgalom[_aktpenztar] := _xsForgalom;  //kedv.mentes forgalom
+       _xpsminiforg[_aktpenztar] := _xsminiforg;
+       _xpsmidiforg[_aktpenztar] := _xsmidiforg;
+       _xpsmaxiforg[_aktpenztar] := _xsmaxiforg;
+       _xpkforgalom[_aktpenztar] := _xkforgalom;  // kedvezményes forgalom
+
+       // ------------ itt rögzithetjuk a penztar adatait
+
+       _qq := 1;
+       while _qq<=26 do
+         begin
+           _aktvoszto   := _svoszto[_qq];
+           _sumvarf     := _svarf[_qq];
+           _sumvelszarf := _svelszarf[_qq];
+           _akteOszto   := _seoszto[_qq];
+           _sumearf     := _searf[_qq];
+           _sumeelszarf := _seelszarf[_qq];
+
+
+           _atlagvarf := 0;
+           if _aktvoszto>0 then _atlagvarf := round(_sumvarf/_aktvoszto);
+
+           _atlagearf := 0;
+           if _akteOszto>0 then _atlagearf := round(_sumearf/_akteoszto);
+
+           _atlagvelszarf := 0;
+           if _aktvoszto>0 then _atlagvelszarf := round(_sumvelszarf/_aktvoszto);
+
+           _atlageelszarf := 0;
+           if _akteoszto>0 then _atlageelszarf := round(_sumeelszarf/_akteoszto);
+
+
+           _tVatlagarf[_aktpenztar,_qq] := _atlagvarf;
+           _tEatlagarf[_aktpenztar,_qq] := _atlagearf;
+
+           _tvatlagelszarf[_aktpenztar,_qq] := _atlagvelszarf;
+           _teatlagelszarf[_aktpenztar,_qq] := _atlageelszarf;
+
+           inc(_qq);
+         end;
+
+       if _fullMonth then
+         begin
+           _qq := 1;
+           _mprofit := 0;
+           _sProfit := 0;
+           while _qq<=26 do
+             begin
+               _arfdiff := _mnbelsz[_qq] - _Tvatlagarf[_aktpenztar,_qq];
+               _vprofit := _svBankjegy[_qq] * _arfdiff/100;
+               if _qq=14 then _vprofit := 100*_vProfit;
+
+               _arfdiff := _Teatlagarf[_aktpenztar,_qq]-_mnbelsz[_qq];
+               _eprofit := _seBankjegy[_qq] * _arfdiff/100;
+               if _qq=14 then _eprofit := 100*_eProfit;
+               _mprofit := _mprofit + round(_vprofit+_eprofit);
+
+               _arfdiff := _tvatlagelszarf[_aktpenztar,_qq]-_tvatlagarf[_aktpenztar,_qq];
+               _svprofit := _svBankjegy[_qq] * _arfdiff/100;
+               if _qq=14 then _svprofit := 100*_svProfit;
+
+               _arfdiff := _Teatlagarf[_aktpenztar,_qq]-_teatlagelszarf[_aktpenztar,_qq];
+               _seprofit := _seBankjegy[_qq] * _arfdiff/100;
+               if _qq=14 then _seprofit := 100*_seProfit;
+               _sProfit := _sProfit + round(_svProfit+_seProfit);
+
+               inc(_qq);
+             end;
+           _tmnbprofit[_aktpenztar] := _mProfit;
+           _tsprofit[_aktpenztar] := _sProfit;
+         end;
+
+       _tProfit[_aktpenztar] := _sProfit;
+       DayBookquery.next;
+    end;
+
+  DayBookQuery.close;
+  Daybookdbase.close;
+
+  CsikPanel.visible := false;
+  PenztarPanel.Visible := False;
+end;
+
+
+// =============================================================================
+                function Tform1.Nulele(_num: integer): string;
+// =============================================================================
+
+
+begin
+  result := inttostr(_num);
+  if _num<10 then result := '0' + result;
+end;
+
+// =============================================================================
+             function TForm1.Scanetar(_pt: integer): integer;
+// =============================================================================
+
+
+var _y: integer;
+
+begin
+  _y := 1;
+  result := 0;
+  while _y<=8 do
+    begin
+      if _korzetszam[_y]=_pt then
+        begin
+          result := _y;
+          break;
+        end;
+      inc(_y);
+    end;
+end;
+
+// =============================================================================
+                function TForm1.Scandnem(_dn: string): integer;
+// =============================================================================
+
+
+var _y: integer;
+
+begin
+  _y := 1;
+  result := 0;
+  while _y<=26 do
+    begin
+      if _dnem[_y]=_dn then
+        begin
+          result := _y;
+          break;
+        end;
+      inc(_y);
+    end;
+end;
+
+
+// =============================================================================
+                procedure TForm1.MNBbetoltes;
+// =============================================================================
+
+
+var _tnev,_lastDatums,_vnem: string;
+    i: integer;
+    _helsz: integer;
+
+begin
+
+  _tnev   := 'NARF' + _farok;
+  MnbDbase.Connected := True;
+
+  _pcs := 'SELECT * FROM '+_tnev + _sorveg;
+  _pcs := _pcs + 'ORDER BY DATUM';
+
+  with MNBQuery do
+    begin
+      Close;
+      Sql.clear;
+      Sql.Add(_pcs);
+      Open;
+      Last;
+      _lastDatums := FieldByNAme('DATUM').asstring;
+    end;
+
+  _pcs := 'SELECT * FROM ' + _tNev + _sorveg;
+  _pcs := _pcs + 'WHERE DATUM='+chr(39)+_lastDatums+chr(39);
+
+  with MNBQuery do
+    begin
+      Close;
+      Sql.clear;
+      Sql.Add(_pcs);
+      Open;
+    end;
+
+  for i := 1 to 26 do _mnbelsz[i] := 0;
+
+  while not MNBquery.Eof do
+    begin
+      _vnem  := MNBQuery.FieldByName('VALUTANEM').asstring;
+      _helsz := MNBQuery.FieldByName('ELSZAMOLASIARFOLYAM').asInteger;
+      _xx    := ScanDnem(_vnem);
+      if _xx>0 then _mnbelsz[_xx] := _helsz;
+
+      MNBQuery.next;
+    end;
+
+  MnbQuery.Close;
+  MNBdbase.close;
+end;
+
+function TForm1.Kedvezmenyseek(_biz: string): boolean;
+
+var _z: integer;
+
+begin
+  result := false;
+  _z := 0;
+  while _z<_bizonylatdarab do
+    begin
+      if _biztomb[_z]=_biz then
+        begin
+          result := true;
+          exit;
+        end;
+      inc(_z);
+    end;
+end;
+
+
+
+
+end.

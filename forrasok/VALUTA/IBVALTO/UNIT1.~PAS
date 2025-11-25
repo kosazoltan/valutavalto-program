@@ -1,0 +1,2223 @@
+
+unit Unit1;
+
+interface
+
+uses
+  ActiveX, Buttons, Classes, ComCtrls, Comobj, Controls, DateUtils, DB,
+  DbTables,Dialogs, ExtCtrls, Forms, Graphics, IBCustomDataSet, IBDatabase,
+  IBTable, IBQuery, IdBaseComponent, IdComponent, IdGlobal, IdHTTP, IdTCPClient,
+  IdTCPConnection, Jpeg, Messages, Printers, Registry, ShlObj, StdCtrls,
+  StrUtils, SysUtils, TlHelp32, Variants, Windows, WinInet, Psock, NMFtp;
+
+type
+  TForm1 = class(TForm)
+
+  ChangeEmblemaPanel  : TPanel;
+  DatumPanel          : TPanel;
+  EKDPanel            : TPanel;
+  EtradePanel         : tpanel;
+  ExpEmblemaPanel     : TPanel;
+  Fopanel             : TPanel;
+  GepfunkcioPanel     : TPanel;
+  IdoPanel            : TPanel;
+    NOSZERVERPANEL: TPanel;
+  Panel1              : TPanel;
+  Panel3              : TPanel;
+  Panel5              : TPanel;
+  Panel7              : TPanel;
+  Panel9              : TPanel;
+  Panel10             : TPanel;
+  Panel15             : TPanel;
+  Panel17             : TPanel;
+  Panel19             : TPanel;
+  Panel20             : TPanel;
+  Panel21             : TPanel;
+  Panel25             : TPanel;
+  PenztarCimPanel     : TPanel;
+  PenztarNevPanel     : TPanel;
+  PenztarSzamPanel    : TPanel;
+  PenztarosNevPanel   : TPanel;
+  PenztarTelefonPanel : TPanel;
+  SHKPanel            : TPanel;
+  StornoDarabPanel    : TPanel;
+  SzunetGomb          : TPanel;
+  VerzioFrissitoGomb  : TPanel;
+  VerzioPanel         : TPanel;
+    IDOTIMER: TTimer;
+  InditoTimer         : TTimer;
+  MenuInditoTimer     : TTimer;
+
+  NaploQuery          : TIBQuery;
+  NaploDbase          : TIBDatabase;
+  NaploTranz          : TIBTransaction;
+
+  TempDbase           : TIBDatabase;
+  TempQuery           : TIBQuery;
+  TempTranz           : TIBTransaction;
+
+  TradeQuery          : TIBQuery;
+  TradeDbase          : TIBDatabase;
+  TradeTranz          : TIBTransaction;
+  TradeTabla          : TIBTable;
+
+  ValDataTabla        : TIBTable;
+  ValdataDbase        : TIBDatabase;
+  ValdataQuery        : TIBQuery;
+  ValdataTranz        : TIBTransaction;
+
+  ValutaTabla         : TIBTable;
+  ValutaDbase         : TIBDatabase;
+  ValutaQuery         : TIBQuery;
+  ValutaTranz         : TIBTransaction;
+
+  Valuta2Dbase        : TIBDatabase;
+  Valuta2Query        : TIBQuery;
+  Valuta2Tranz        : TIBTransaction;
+
+  Valuta3Query        : TIBQuery;
+  Valuta3Dbase        : TIBDatabase;
+  Valuta3Tranz        : TIBTransaction;
+
+  Shape1              : TShape;
+  Shape15             : TShape;
+
+  CegNevLabel         : TLabel;
+  Dsoftlabel          : TLabel;
+  Label2              : TLabel;
+  Label14             : TLabel;
+  Label16             : TLabel;
+  Label20             : TLabel;
+  Label22             : TLabel;
+  Label23             : TLabel;
+  Label25             : TLabel;
+  Label26             : TLabel;
+  Label27             : TLabel;
+  Label28             : TLabel;
+  Label29             : TLabel;
+  Label30             : TLabel;
+  Label31             : TLabel;
+  Label32             : TLabel;
+  Label33             : TLabel;
+  Label34             : TLabel;
+  Label35             : TLabel;
+
+  ConfidGomb          : TBitbtn;
+  EscapeGomb          : TBitBtn;
+  F1HistoryGomb       : TBitBtn;
+  F2ElolegGomb        : TBitBtn;
+  F3TerminalGomb      : TBitBtn;
+  F4AfaTablaGomb      : TBitBtn;
+  F5MaiForgalomGomb   : TBitBtn;
+  F6TescoAfaGomb      : TBitBtn;
+  F7SupervisorGomb    : TBitBtn;
+  F9KeszletGomb       : TBitBtn;
+  F10AtadolapGomb     : TBitBtn;
+  F11AfaGomb          : TBitBtn;
+  F12WUGomb           : TBitBtn;
+  FomenuGomb          : TBitBtn;
+  FutofenyGomb        : TBitBtn;
+  KorlevelGomb        : TBitbtn;
+  ReprintGomb         : TBitBtn;
+
+  eTradeProg          : TImage;
+  Image1              : TImage;
+  Image2              : TImage;
+  Image3              : TImage;
+    Label1: TLabel;
+    PHONEMODEPANEL: TPanel;
+    Label8: TLabel;
+    NEWPHONEEDIT: TEdit;
+    NEWPHONEOKEGOMB: TBitBtn;
+    NONEWPHONEGOMB: TBitBtn;
+    Shape3: TShape;
+    IRQPANEL: TPanel;
+    NEXTIRQPANEL: TPanel;
+    Label9: TLabel;
+    FTPTRY: TNMFTP;
+    SERVERCTRLPANEL: TPanel;
+
+// --------------------------- procedures ------------------------------------
+
+  procedure AfaGombClick(Sender: TObject);
+  procedure AlapQrHivas(_ty: byte);
+  procedure CimletCfgControl;
+  procedure ConfidGombClick(Sender: TObject);
+  procedure DisplayMaradtDarabok;
+  procedure DsoftlabelClick(Sender: TObject);
+  procedure ElolegGombClick(Sender: TObject);
+  procedure ETradeProgClick(Sender: TObject);
+  procedure F3TerminalGombClick(Sender: TObject);
+  procedure F4AFATablaGombClick(Sender: TObject);
+  procedure F7supervisorGombClick(Sender: TObject);
+  procedure F10AtadoLapGombClick(Sender: TObject);
+  procedure FomenuGombClick(Sender: TObject);
+  procedure FomenuGombEnter(Sender: TObject);
+  procedure FomenuGombExit(Sender: TObject);
+  procedure FormCreate(Sender: TObject);
+  procedure FutofenyGombClick(Sender: TObject);
+  procedure GetHardwareAdatok;
+  procedure Getprosadatok;
+  procedure HistoryGombClick(Sender: TObject);
+  procedure IRQRutin;
+  procedure ValutaParancs(_ukaz: string);
+  procedure IDOTIMERTimer(Sender: TObject);
+  procedure InditoTimerTimer(Sender: TObject);
+  procedure InnovaGombClick(Sender: TObject);
+  procedure KeszletGombClick(Sender: TObject);
+  procedure KilepoGombClick(Sender: TObject);
+  procedure KorlevelgombClick(Sender: TObject);
+  procedure MaiForgalomGombClick(Sender: TObject);
+  procedure MakeTradeTabla(_tnev: string);
+  procedure MenuInditoTimerTimer(Sender: TObject);
+  procedure NewPhoneEditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+  procedure NewPhoneEditEnter(Sender: TObject);
+  procedure NewPhoneEditExit(Sender: TObject);
+  procedure NewPhoneOkeGombClick(Sender: TObject);
+  procedure NoNewPhoneGombClick(Sender: TObject);
+  procedure QrNapnyitas;
+  procedure PenztarTelefonPanelClick(Sender: TObject);
+  procedure PtarosBelepOtpbe;
+  procedure ReprintGombClick(Sender: TObject);
+  procedure SetserverAccess;
+  procedure SzunetgombClick(Sender: TObject);
+  procedure TextKiiro;
+  procedure UjnapKezdes;
+  procedure VerzioFrissitoGombClick(Sender: TObject);
+  procedure Vtempelokeszites(_konverzio: byte);
+  procedure WesternUnionGombClick(Sender: TObject);
+
+// ------------------------- functions ---------------------------
+
+  function DatumstringbolString(_dst: string):string;
+  function DekadControl: integer;
+  function EgyReginapZarasa: integer;
+  function ForintForm(_osszeg:integer):string;
+  function Getidos: string;
+  function Havizarascontrol: boolean;
+  function Hundatetostr(_caldat: Tdatetime): string;
+  function LeZaratlanNapRendezes: boolean;
+  function GetnextTimes:string;
+  function Nulele(_szam:integer; _hossz: integer): string;
+  function OtpBeleptetes: integer;
+  function PenztarBeolvasas:boolean;
+  function StrtoHundate(_dstr: String): TdateTime;
+  function TimesMaker(_o,_p: byte): string;
+  function Vaninternet: boolean;
+  function WinExecAndWait32(Path: Pchar; Visibility: Word): integer;
+  function ZarasControl: byte;
+    procedure NOSZERVERPANELClick(Sender: TObject);
+
+// =================================================================
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+// ============================================================================
+
+var
+  Form1: TForm1;
+
+  _aktVerzio   : string  = '35.20';
+  _korleveldir : string = 'C:\KORLEVEL';
+  _logdir      : string = 'c:\valuta\log';
+  _messPath    : string  = 'c:\valuta\mess.txt';
+  _sorveg      : String  = chr(13)+chr(10);
+  _verzio      : string; // A rögzitett verziószám
+  _waitPath    : string  = 'c:\valuta\wait.txt';
+  _cPath       : string;
+  _pacs        : pchar;
+
+  _srec        : TSearchrec;
+
+  // ----------- ARRAYS OF STRING ------------------------------------------
+
+  _honapnev: array[1..12] of string = ('JANUÁR','FEBRUÁR','MÁRCIUS','ÁPRILIS',
+             'MÁJUS','JUNIUS','JULIUS','AUGUSZTUS','SZEPTEMBER','OKTÓBER',
+             'NOVEMBER','DECEMBER');
+
+  _napnev: array[1..7] of string = ('HÉTFÖ','KEDD','SZERDA','CSÜTÖRTÖK',
+             'PÉNTEK','SZOMBAT','VASÁRNAP');
+
+  _textiras: textFile;
+
+  _aktev,_aktho,_left,_height,_top,_width,_megnyitottev: word;
+
+  _gepfunkcio,_homepenztarszam,_kellmatrica,_kellmetro,_serveraccess: byte;
+  _kelltesco,_kellwestern,_mekd,_mshk,_otp,_otpopen,_printer: byte;
+
+  _aktIdos,_aktPenztarosNev,_aktProsId,_cegnev,_datumText,_erts,_host: string;
+  _farok,_fMezo,_gepFunkcionev,_homePenztarCim,_homePenztarNev: string;
+  _homePenztarKod,_homePenztarTelefon,_lezartNap,_mamas,_megnyitottnap: string;
+  _mondat,_nextirqs,_pcs,_tablaNev,_kftnev: string;
+
+  _bill,_code,_dek,_egyenleg,_ertektar,_fomenuPont,_futofeny,_aktualisev: integer;
+  _irqPerc,_konvertin,_konvertout,_maistornodarab,_oke,_openoke: integer;
+  _pp,_recno,_spk,_zOke,_vanlista,_otpoke: integer;
+
+  _ezkonverzio,_goodjob,_kellirq,_freeIrq,_szunetvan: boolean;
+  _voltHavizaras: boolean;
+
+  {
+   proc : PROCESSENTRY32;
+  _handle : HWND;
+  _Looper : BOOL;
+
+     KEDVEZMÉNY TIPUSOK:
+      -------------------
+               4   -> VIP
+               20  -> F1 GOMBBAL BEHOZOTT TÁBLÁVAL
+               32  -> FÕÉRTÉKTÁROS ENGEDÉLLYEL
+               33  -> ÉRTÉKTÁROS ENGDÉLLYEL
+               34  -> JUTALÉKMENTES ÜGYVEZETÕI
+  }
+
+function afatablarutin: integer; stdcall; external 'c:\valuta\bin\afatab.dll';
+function arfolyamletoltes(_para: integer): integer;stdcall; external 'c:\valuta\bin\getarf.dll';
+function arfolyamregiszter(_para: integer):integer;stdcall;external 'c:\valuta\bin\arfreg.dll';
+function arfolyamtmkrutin: integer; stdcall; external 'c:\valuta\bin\arftmk.dll';
+function atadatvetrutin: integer; stdcall; external 'c:\valuta\bin\atadvet.dll';
+function atadolaprutin: integer; stdcall; external 'c:\valuta\bin\atadolap.dll';
+function bizonylattallozo: integer; stdcall; external 'c:\valuta\bin\bizodisp.dll';
+function cimletmenurutin: integer; stdcall; external 'c:\valuta\bin\cimlmenu.dll';
+function confidentreport: integer; stdcall; external 'c:\valuta\bin\confi.dll';
+function eladasrutin: integer; stdcall; external 'c:\valuta\bin\eladas.dll';
+function fenyujsagfrissito: integer; stdcall; external 'c:\valuta\bin\fnyujsag.dll';
+function firstcontrol: integer; stdcall; external 'c:\valuta\bin\firstctrl.dll';
+function foglalorutinok:integer; stdcall; external 'c:\valuta\bin\foglalo.dll';
+function forgosszrutin: integer; stdcall; external 'c:\valuta\bin\forgossz.dll';
+function korlevelrutin(_para: integer): integer; stdcall; external 'c:\valuta\bin\korlev.dll';
+function kulonfelelistak: integer; stdcall; external 'c:\valuta\bin\listak.dll';
+Function logirorutin(_para: pchar): integer; stdcall; external 'c:\valuta\bin\logiro.dll';
+function metrorutin: integer; stdcall; external 'c:\valuta\bin\metro.dll';
+function makeibtablak: integer;stdcall;external 'c:\valuta\bin\maktabla.dll';
+function matricaregeneralo: integer; stdcall; external 'c:\valuta\bin\Matregen.dll';
+function napzarrutin: integer; stdcall; external 'c:\valuta\bin\napzar.dll';
+function othertaskrutin: integer; stdcall; external 'c:\valuta\bin\othertsk.dll';
+function napiforgalomrutin: integer; stdcall; external 'c:\valuta\bin\napiforg.dll';
+function maiforgalomrutin: integer; stdcall; external 'c:\valuta\bin\maiforg.dll';
+function otpterminal: integer; stdcall; external 'c:\valuta\bin\otp.dll';
+function penztarikeszletek: integer; stdcall; external 'c:\valuta\bin\aktkesz.dll';
+function penztarosbeleptetes: integer; stdcall; external 'c:\valuta\bin\prosbe.dll';
+function penztaroskarbantartas: integer; stdcall; external 'c:\valuta\bin\prostmk.dll';
+function penztaroskileptetes: integer; stdcall; external 'c:\valuta\bin\proski.dll';
+function penztartmkrutin: integer; stdcall; external 'c:\valuta\bin\ptartmk.dll';
+function pillallasrutin: integer; stdcall; external 'c:\valuta\bin\pillall.dll';
+function qrdisplayrutin: integer; stdcall; external 'c:\valuta\bin\qrgener.dll';
+function quitrutin: integer; stdcall; external 'c:\valuta\bin\quitform.dll';
+function pillkeszletbekuldo:integer;stdcall;external 'c:\valuta\bin\keszup.dll';
+function regeneralorutin(_para: integer): integer; stdcall; external 'c:\valuta\bin\regen.dll';
+function regizarasrutin: integer; stdcall; external 'c:\valuta\bin\regizaro.dll';
+function stornorutin: integer; stdcall; external 'c:\valuta\bin\storno.dll';
+function supervisorjelszo(_para: integer): integer;stdcall; external 'c:\valuta\bin\super.dll';
+function supervisorrutin: integer; stdcall; external 'c:\valuta\bin\supertsk.dll';
+function szunetkijelzorutin: integer; stdcall; external 'c:\valuta\bin\pausdisp.dll';
+function terminalrutin: integer; stdcall; external 'c:\valuta\bin\terminal.dll';
+/////function terrorlista(_para: string): integer; stdcall; external 'c:\valuta\bin\terrlist.dll';
+function tescorutin: integer; stdcall; external 'c:\valuta\bin\tesco.dll';
+function vasarlasrutin: integer; stdcall; external 'c:\valuta\bin\vasarlas.dll';
+function verziofrissitorutin: integer; stdcall; external 'c:\valuta\bin\verzfris.dll';
+function westernunionrutin: integer; stdcall; external 'c:\valuta\bin\wunion.dll';
+function newyearsletter: integer; stdcall; external 'c:\valuta\bin\newyear.dll';
+
+// ---------------------------- Implementation  --------------------------------
+// =============================================================================
+
+implementation
+
+uses Unit2, Unit3, Unit18, Unit47, Unit5;
+
+{$R *.dfm}
+
+// =============================================================================
+                procedure TForm1.FormCreate(Sender: TObject);
+// =============================================================================
+
+begin
+  InditoTimer.Enabled  := False;    // Ez inditja a programtörzset
+
+// --------------------- Képernyö kontrolja ------------------------------------
+
+  _height := Screen.Monitors[0].Height;
+  _width  := Screen.Monitors[0].Width;
+
+  if _height<768 then
+    begin
+      ShowMessage('A KÉPERNYÖ FELBONTÁSÁT ÁLLÍTSA 1024x768-RA !');
+      Application.Terminate;
+      Exit;
+    end;
+
+  _top  := 0;
+  _left := 0;
+
+  if (_height>768) or (_width>1024) then
+    begin
+      _top  := trunc((_height-768)/2);
+      _left := trunc((_width-1024)/2);
+    end;
+
+  Top    := _top;
+  Left   := _Left;
+  Height := 768;
+  Width  := 1024;
+
+  // A kezdõlap fõ tapétája:
+
+  Image1.Repaint;
+
+  // ------------- DIRECTORY ÉS ADATCONTROL ------------------------------------
+
+  if fileexists('c:\valuta\notfree') then Sysutils.DeleteFile('c:\valuta\notfree');
+
+  if not Directoryexists(_korleveldir) then CreateDir(_korleveldir);
+  if not Directoryexists(_logdir) then CreateDir(_logdir);
+
+  // Szünet-kijelzés törölve:
+
+  if fileExists(_messpath) then Sysutils.DeleteFile(_messpath);
+  if fileExists(_waitpath) then Sysutils.DeleteFile(_waitpath);
+
+  CimletCfgControl;
+  makeibtablak;
+
+  VerzioFrissitoGomb.Visible := False;
+
+  // ------------------- A tényleges dátum feldolgozása: -----------------------
+
+  _mamas   := Hundatetostr(now);
+  _aktualisev := yearof(date);
+  logirorutin(pchar(dupestring('=',79)));
+  logirorutin(pchar('Beindul a program '+_mamas+'-n'));
+
+  _datumtext  := datumstringbolstring(_mamas); // A dátum szövegesen;
+  DatumPanel.Caption := _datumText;
+
+  // A pillanatnyi naptár adatai és a hozzá tartozó adatbázis farok:
+
+  _aktev  := Yearof(now);
+  _aktho  := Monthof(now);
+  _farok  := inttostr(_aktev-2000)+nulele(_aktho,2);
+
+  // -------------------- Változók alapra állítása: ----------------------------
+
+  _voltHavizaras := False;    // Jelzi, hogy a mult hónap le van-e zárva
+  _szunetvan     := False;    // Jelzi, hogy ebédszünet kijelzés van
+  _ezkonverzio   := False;    // Jelzi, hogy konverzios tranzakció van
+
+  // Program inditása:
+
+  InditoTimer.enabled := True;
+end;
+
+// $$$$$$$$$$$$$$$$$$$$$   START $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+// =============================================================================
+              procedure TForm1.InditoTimerTimer(Sender: TObject);
+// =============================================================================
+
+
+begin
+  // InditoTimer kikapcsolása :
+
+  InditoTimer.Enabled := False;
+  GetHardwareAdatok;
+
+// --------------------- INTERNET ELLENÕRZÉSE ----------------------------------
+
+  SetserverAccess;
+// ----------------------TÁRSPÉNZTÁRAK BEOLVASÁSA ------------------------------
+
+  if not PenztarBeolvasas then
+    begin
+      ShowMessage('NINCSENEK MEGADVA A PÉNZTÁR ADATAI !');
+      Application.Terminate;
+      Exit;
+    end;
+    
+// -----------------------  A SAJÁT PÉNZTÁR ADATAINAK KIJELZÉSE ----------------
+
+  PenztarSzamPanel.Caption    := _HomePenztarKod;
+  PenztarNevPanel.Caption     := _HomePenztarNev;
+  PenztarCimPanel.Caption     := _HomePenztarCim;
+  PenztarTelefonPanel.Caption := _homePenztarTelefon;
+
+  // -------------- A PROGRAM PARAMÁTEREINEK BEOLVASÁSA ------------------------
+
+  if _homePenztarSzam<151 then
+    begin
+      _kftnev := 'BEST';
+      _cegNev := 'Exclusive Best Change ZRT.';
+
+      FoPanel.Caption       := _cegnev;
+      CegnevLabel.Left      := 403;
+      cegnevlabel.caption   := _cegnev;
+
+      with ChangeEmblemaPanel do
+        begin
+          Top     := 80;
+          Left    := 360;
+          Visible := True;
+          Repaint;
+        end;
+    end else
+    begin
+      _cegnev               := 'Expressz Ékszerház';
+      Fopanel.Caption       := _cegnev;
+
+      CegnevLabel.Left := 467;
+      CegNevLabel.Caption := _cegnev;
+      with ExpEmblemaPanel do
+        begin
+          Top     := 80;
+          Left    := 360;
+          Visible := true;
+          Repaint;
+        end;
+      logirorutin(pchar('Ez expressz zálog iroda'));
+    end;
+
+  FoPanel.Repaint;
+  CegNevLabel.Repaint;
+
+// ----------------------------------------------------------------
+
+  if _kellMatrica=1 then eTradePanel.Visible := True;
+
+  VerzioPanel.Caption := _verzio;
+  VerzioPanel.Repaint;
+
+  {
+  // ---------------- Terrorlista ellenõrzése ----- ----------------------------
+
+  _vanlista := terrorlista('1');
+  if _vanlista<>1 then
+    begin
+      logirorutin(pchar('Nem talált terrorlistát - Kilép'));
+      ShowMessage('NINCS TERRORLISTA !');
+      Application.terminate;
+      exit;
+    end;
+  }
+
+  // ------------------------ A futófény ellenõrzése ---------------------------
+
+  FutoFenyGomb.Visible := False;
+  if _futofeny>0 then Futofenygomb.Visible := true;
+
+// ====================== Itt jelentkezik be a pénztáros =======================
+
+  _oke := penztarosbeleptetes;
+  Image1.Repaint;
+
+  if _oke = -1 then
+    begin
+
+      // Nem sikerült a pénztáros bejelentkezése ....
+
+      Application.Terminate;
+      Exit;
+    end;
+
+  GetprosAdatok;  // Beolvassa pénztáros nevét,ID-jét, amit a belép dll irt be
+  logirorutin(pchar(_aktpenztarosnev+' belép a programba'));
+  PenztarosNevPanel.Caption := _aktprosid+'-'+_aktPenztarosnev;
+  PenztarosnevPanel.repaint;
+
+
+  // Ha egy pénztári gépen nincs értéktárszám, akkor bekéri azt !
+
+  if (_ertektar<1) then
+    begin
+      while true do
+        begin
+          _erts := Inputbox('Értéktárszám bekérése','Kérem az értéktára számát:','0');
+
+          val(_erts,_ertektar,_code);
+          if _code<>0 then _ertektar := 0;
+          if _ertekTar>0 then
+            begin
+              _pcs := 'UPDATE HARDWARE SET ERTEKTAR='+inttostr(_ertektar);
+              ValutaParancs(_pcs);
+              Break;
+            end;
+        end;
+    end;
+
+  Case _gepFunkcio of
+    1: _gepfunkcionev := 'PÉNZTÁRI GÉP';
+    3: _gepfunkcioNev := 'ÁFÁS GÉP';
+  end;
+
+  GepFunkcioPanel.Caption := _gepFunkcioNev;
+
+// -------------------- Volt-e zárás ??? ---------------------------------------
+
+  _zOke := Zarascontrol;
+
+{
+  1 = Normál szünet utáni újrabelépés a programba
+  2 = Normál új nap nyitása
+  3 = Lezáratlan nap után új map nyitásának kisérlete
+  4 = Lezárt nap után újrabelép ugyanabba a napba
+  5 = Ismeretlen hiba
+}
+
+  case _zOke of
+    2: begin
+         logirorutin(pchar('Ez egy új nap nyitása'));
+         QrNapnyitas;
+         Ujnapkezdes;
+       end;
+
+    3: begin
+         _goodjob := Lezaratlannaprendezes;
+         if _goodjob then
+           begin
+             Qrnapnyitas;
+             Ujnapkezdes;
+           end else
+           begin
+             ShowMessage('Lezáratlan napot észleltem. Rendezze le a zárását');
+             Showmessage('A lezáratlan  nap: ' + _megnyitottnap);
+             logirorutin(pchar('Lezáratlan napot észleltem'));
+             Application.Terminate;
+             exit;
+           end;
+       end;
+
+    4: Begin
+         _pcs := 'UPDATE HARDWARE SET LEZARTNAP='+chr(39)+chr(39);
+         ValutaParancs(_pcs);
+         logirorutin(pchar('A nap le van zárva újra belépek'));
+         ShowMessage('A nap már le van zárva, de újra beléphet');
+       end;
+
+    5: begin
+         ShowMessage('Valami hiba van a napnyitásnál - nem lehet nyitni');
+         logirorutin(pchar('Ismeretlen hiba - program vége'));
+         Application.Terminate;
+         exit;
+       end;
+
+  end;
+
+  _voltHaviZaras := HaviZarasControl;
+  logirorutin(pchar('Havi zárás ellenörzése'));
+
+  if not _voltHaviZaras then
+    begin
+      logirorutin(pchar('Nincs havi zárás !'));
+      ShowMessage('A MULT HÓNAP MÉG NINCS LEZÁRVA. KÉREM A ZÁRÁST ELVÉGEZNI !');
+      _foMenupont := 10;
+    end;
+
+   // Ahol van OTP terminál, ott beléptetjük a pénztárost  (vagy nem)
+   if _otp=1 then PtarosBelepOTPbe;
+
+   // ------------- FUNKCIÓ GOMBOK VALIDÁLÁSA ----------------------------------
+
+  F12wugomb.Enabled := False;
+  if (_kellwestern=1) then F12wugomb.Enabled := True;
+
+  F11Afagomb.Enabled := False;
+  if (_kellMetro=1) then F11AfaGomb.Enabled := true;
+
+  F6TescoAfaGomb.Enabled := false;
+  if (_kelltesco=1) then F6TescoAfagomb.Enabled := true;
+
+  // ---------------------------------------------------------------------------
+
+  logirorutin(pchar('A megmaradt adatok beolvasása'));
+  DisplayMaradtDarabok;
+
+  // -------------------  ADATOK ALAPRA ----------------------------------------
+
+  ValutaParancs('DELETE FROM VTEMP');
+
+  regeneralorutin(0);
+  Image1.repaint;
+  Repaint;
+
+  _aktidos  := Getidos;
+  _kellIrq  := False;
+  _freeirq  := false;
+  _nextIrqs := _aktidos;
+  logirorutin(pchar('Az idõszakos készletbeküldés beállitása, ha kell'));
+
+  if (_irqPerc>0) then
+    begin
+      _kellIrq := True;
+      _freeIrq := True;
+      IrqPanel.visible := True;
+    end;
+   IdotimerTimer(Nil);
+
+  Form1.repaint;
+
+  if (_verzio<>_aktverzio) then
+    begin
+      logirorutin(pchar('A verziót frissiteni kell, '+_aktverzio+'-ra'));
+      VerzioFrissitoGomb.caption := 'VERZIÓ FRISSITÉS  ('+_aktverzio+')';
+      VerzioFrissitoGomb.repaint;
+      VerzioFrissitogomb.Visible := True;
+      VerzioFrissitoGomb.repaint;
+    end;
+
+  // ----------- DEKÁD-NYOMTATVÁNYOK ELLENÕRZÉSE -------------------------------
+
+
+  _dek := dekadControl;
+  logirorutin(pchar('A dekád kinyomtatás ellenõrzése: '+inttostr(_dek)));
+  sleep(100);
+  Image1.Repaint;
+  repaint;
+
+  if _dek>0 then
+    begin
+      case _dek of
+        1: ShowMessage('Dekád (napi könyvelés) nincs nyomtatva !');
+        2: ShowMessage('Kezelési díj nincs kinyomtatva !');
+        3: ShowMessage('Se dekád (napi könyvelés), se kezelési díj nincs kinyomtatva !');
+      end;
+    end;
+  Image1.repaint;
+  Repaint;
+
+  // ---------------------------------------------------------------------------
+
+  Image1.repaint;
+
+  logirorutin(pchar('A fõmenü beinditása. Kezdödhet a munka'));
+  MenuInditoTimer.Enabled := True;
+end;
+
+
+// =============================================================================
+// $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+// *=*=*=*=**=*=*=*=*=*=*= STARTING TASKS *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
+// =============================================================================
+                   function TForm1.PenztarBeolvasas:boolean;
+// =============================================================================
+
+begin
+  Result := false;
+  Valutadbase.Connected := true;
+  with ValutaQuery do
+    begin
+      Close;
+      sql.clear;
+      sql.add('SELECT * FROM PENZTAR');
+      Open;
+      First;
+      _recno := recno;
+    end;
+
+  if _recno=0 then
+    begin
+      ValutaQuery.close;
+      Valutadbase.close;
+      exit;
+    end;
+
+  with ValutaQuery do
+    begin
+      _HomePenztarKod     := trim(FieldByname('PENZTARKOD').asString);
+      _homePenztarnev     := trim(FieldByNAme('PENZTARNEV').AsString);
+      _HomePenztarcim     := trim(FieldByName('PENZTARCIM').asString);
+      _HomePenztarTelefon := trim(FieldByName('TELEFONSZAM').AsString);
+
+      Close;
+    end;
+  Valutadbase.close;
+
+  val(_homePenztarKod,_homepenztarszam,_code);
+  if _code<>0 then _homepenztarszam := 0;
+
+  logirorutin(pchar('Penztar adatait beolvastam: '+_homePenztarkod));
+
+  Result := True;
+end;
+
+// =============================================================================
+            procedure TForm1.MenuInditoTimerTimer(Sender: TObject);
+// =============================================================================
+
+begin
+
+  MenuInditoTimer.Enabled :=False;
+
+  _FreeIrq := False;
+
+  case _FomenuPont of
+    1: begin
+         vtempelokeszites(0);
+         vasarlasrutin;
+       end;
+
+    2: begin
+         vtempelokeszites(0);
+         eladasrutin;
+       end;
+
+    3: Ujkonverzio.Showmodal; // KonvertForm.Showmodal;
+    4: atadatvetrutin;
+    6: stornorutin;
+    7: arfolyamtmkrutin;
+    8: pillallasrutin;
+    9: forgosszrutin;
+   10: ZarasForm.ShowModal;
+   11: bizonylattallozo;
+   12: penztartmkrutin;
+   13: kulonfelelistak;
+   14: penztaroskarbantartas;
+   15: napiforgalomrutin;
+   16: regizarasrutin;
+   17: regeneralorutin(0);
+   18: begin
+         othertaskrutin;
+         Application.terminate;
+         exit;
+       end;
+  end;
+
+  DisplayMaradtDarabok;
+
+  SetServerAccess;
+
+  _freeIrq := True;
+
+  FomenuForm.Show;
+
+end;
+
+
+
+
+// =============================================================================
+             procedure Tform1.VtempElokeszites(_konverzio: byte);
+// =============================================================================
+
+begin
+  _pcs := 'DELETE FROM VTEMP';
+  ValutaParancs(_pcs);
+
+  _pcs := 'INSERT INTO VTEMP (KONVERZIO) VALUES ('+inttostr(_konverzio)+')';
+  ValutaParancs(_pcs);
+end;
+
+
+// =============================================================================
+                       procedure TForm1.UjnapKezdes;
+// =============================================================================
+
+
+begin
+  _megnyitottnap := _mamas;
+
+  _pcs := 'UPDATE HARDWARE SET MEGNYITOTTNAP='+chr(39)+_mamas+chr(39)+',';
+  _pcs := _pcs + 'LEZARTNAP='+chr(39)+chr(39)+',';
+  _pcs := _pcs + 'MAILSORSZAM=0,SAJATHATASKORU=0,NAPISTORNO=0,';
+  _pcs := _pcs + 'NAPIEGYEDIKEZDIJ=0';
+  ValutaParancs(_pcs);
+
+  _PCS := 'DELETE FROM JELENLET WHERE DATUM<>'+chr(39)+_megnyitottnap+chr(39);
+  valutaParancs(_pcs);
+
+  logirorutin(pchar('Átadólap lerendezése'));
+  atadolaprutin;
+
+  firstcontrol;
+
+end;
+
+// ************************* PUBLIC ROUTINES ***********************************
+// =============================================================================
+           function TForm1.DatumStringbolString(_dst: string):string;
+// =============================================================================
+
+var _xdatum: TDateTime;
+    _xhonap,_xnap,_xhnap: word;
+
+begin
+   _xDatum := StrToHunDate(_dst);
+   _xHnap  := dayOfTheWeek(_xDatum);
+   _xHonap := strToInt(midStr(_dst,6,2));
+   _xNap   := strToInt(midStr(_dst,9,2));
+   Result  := leftStr(_dst,4)+' '+_honapnev[_xHonap]+' '+inttoStr(_xNap)+' '+_napnev[_xHnap];
+end;
+
+// =============================================================================
+             function TForm1.ForintForm(_osszeg:integer):string;
+// =============================================================================
+
+var _slen,_pp: integer;
+    _ejel : string;
+
+begin
+  Result := '-';
+
+  if _osszeg=0 then exit;
+
+  _ejel := '';
+
+  if _osszeg<0 then
+    begin
+      _ejel := '-';
+      _osszeg := abs(_osszeg);
+    end;
+
+  Result := intTostr(_osszeg);
+
+  if _osszeg<1000 then
+    begin
+      Result := _ejel + Result;
+      Exit;
+    end;
+
+  _sLen := length(Result);
+  if _osszeg>999999 then
+    begin
+      _pp := _sLen-5;
+      Result := _ejel + midStr(Result,1,_pp-1)+','+midStr(Result,_pp,3)+','+midStr(Result,_pp+3,3);
+      Exit;
+    end;
+
+  _pp := _sLen-2;
+  Result := _ejel + midStr(result,1,_pp-1)+','+midStr(result,_pp,3);
+
+end;
+
+// =============================================================================
+        function TForm1.Nulele(_szam: integer; _hossz: integer): string;
+// =============================================================================
+
+var _sh: integer;
+
+begin
+  Result := '0000000000' + inttostr(_szam);
+  _sh := length(Result);
+  Result := midStr(Result,(1+_sh-_hossz),_hossz);
+end;
+
+
+// =============================================================================
+             procedure TForm1.ValutaParancs(_ukaz: string);
+// =============================================================================
+
+begin
+  ValutaDbase.Close;
+  ValutaDbase.Connected := True;
+  if ValutaTranz.InTransaction then ValutaTranz.Commit;
+  ValutaTranz.StartTransaction;
+  with Valutaquery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Add(_ukaz);
+      ExecSql;
+    end;
+  ValutaTranz.Commit;
+  ValutaDbase.close;
+end;
+
+// **************************** BUTTONCLICK PROCEDURES *************************
+// =============================================================================
+                procedure TForm1.FomenuGombClick(Sender: TObject);
+// =============================================================================
+
+begin
+  FomenuForm.Show;
+end;
+
+// =============================================================================
+                 procedure TForm1.KilepoGombClick(Sender: TObject);
+// =============================================================================
+
+var _quitOke: integer;
+
+begin
+  logirorutin(pchar('Kilépögombra klikkelt'));
+  _quitOke := quitrutin;
+  if _quitOke<>1 then exit;
+
+  logirorutin(pchar('Pénztáros kilép'));
+  penztaroskileptetes;
+  Application.terminate;
+end;
+
+// =============================================================================
+               procedure TForm1.HistoryGombClick(Sender: TObject);
+// =============================================================================
+
+begin
+   _freeIrq := False;
+   logirorutin(pchar(dupestring('-',79)));
+   logirorutin(pchar('Árfolyam változások menüre klikkelt'));
+  arfolyamregiszter(1);
+  _freeIrq := True;
+end;
+
+// =============================================================================
+                 procedure TForm1.ElolegGombClick(Sender: TObject);
+// =============================================================================
+
+begin
+  _FreeIrq := False;
+   logirorutin(pchar(dupestring('-',79)));
+   logirorutin(pchar('Foglaló menüre klikkelt'));
+  foglalorutinok;
+  _FreeIrq := True;
+end;
+
+
+// ===================================================================
+         procedure TForm1.MaiForgalomGombClick(Sender: TObject);
+// ===================================================================
+
+begin
+   _FreeIrq := False;
+   logirorutin(pchar(dupestring('-',79)));
+   logirorutin(pchar('Mai forgalom menüre klikkelt'));
+  maiforgalomrutin;
+  _FreeIrq := True;
+end;
+
+// =============================================================================
+               procedure TForm1.InnovaGombClick(Sender: TObject);
+// =============================================================================
+
+begin
+  _FreeIrq := False;
+  logirorutin(pchar(dupestring('-',79)));
+  logirorutin(pchar('Tesco Afa menüre klikkelt'));
+  tescorutin;
+  _FreeIrq := True;
+end;
+
+// =============================================================================
+            procedure TForm1.KeszletGombClick(Sender: TObject);
+// =============================================================================
+
+begin
+   _FreeIrq := False;
+   logirorutin(pchar(dupestring('-',79)));
+   logirorutin(pchar('Megnézi a pénztár készleteit'));
+   penztarikeszletek;
+   _FreeIrq := True;
+end;
+
+// =============================================================================
+        procedure TForm1.WesternUnionGombClick(Sender: TObject);
+// =============================================================================
+
+begin
+  _FreeIrq := False;
+  logirorutin(pchar(dupestring('-',79)));
+  logirorutin(pchar('WESTERN UNIONBA LÉP BE'));
+  westernunionrutin;
+  _FreeIrq := True;
+end;
+
+// =============================================================================
+               procedure TForm1.AfaGombClick(Sender: TObject);
+// =============================================================================
+
+begin
+  _FreeIrq := False;
+  logirorutin(pchar(dupestring('-',79)));
+  logirorutin(pchar('METRO afa menüre klikkelt'));
+  metrorutin;
+  _FreeIrq := True;
+end;
+
+
+// =============================================================================
+              procedure TForm1.F7SupervisorGombClick(Sender: TObject);
+// =============================================================================
+
+begin
+   logirorutin(pchar(dupestring('-',79)));
+   logirorutin(pchar('Supervisori menüre klikkelt'));
+   _spk := supervisorjelszo(0);
+   if _spk<>1 then exit;
+   _FreeIrq := False;
+   logirorutin(pchar('Jelszó rendben'));
+   supervisorrutin;
+   _FreeIrq := True;
+end;
+
+// =============================================================================
+                      procedure TForm1.CimletCfgControl;
+// =============================================================================
+
+var _cimletcfg: string;
+    _cfg :textfile;
+begin
+  _cimletcfg := 'c:\valuta\cimlet.cfg';
+  if fileExists(_cimletCfg) then exit;
+
+  AssignFile(_cfg,_cimletcfg);
+  Rewrite(_cfg);
+  writeLN(_cfg,'AUDFIJKLM');
+  writeLN(_cfg,'BGNHIJKLMNO');
+  writeLN(_cfg,'BAMIHIJKLMNO');
+  writeLN(_cfg,'CADFIJKLM');
+  writeLN(_cfg,'CHFHFGHIJKL');
+  writeLn(_cfg,'CNYCIO');
+  writeLN(_cfg,'CZKIDEFGHIJK');
+  writeLN(_cfg,'DKKFFGHIJ');
+  writeLN(_cfg,'EURJGHIJKLMNO');
+  writeLN(_cfg,'GBPEJKLM');
+  writeLN(_cfg,'HRKIFGHIJKLM');
+  writeLN(_cfg,'HUFMBCDEFGHIJKLM');
+  writeLN(_cfg,'ILSEHIJK');
+  writeLN(_cfg,'JPYECDEF');
+  writeLN(_cfg,'MXNFGHIJK');
+  writeLN(_cfg,'NOKFFGHIJ');
+  writeLN(_cfg,'NZDFIJKLM');
+  writeLN(_cfg,'PLNFHIJKL');
+  writeLN(_cfg,'RONHGHIJLMO');
+  writeLN(_cfg,'RSDJDEFGHIJKL');
+  writeLN(_cfg,'RUBHDFGIJLM');
+  writeLN(_cfg,'SEKHFGHIJKL');
+  writeLn(_cfg,'TRYHBHIJKLM');
+  writeLN(_cfg,'UAHJGHIJKLMNO');
+  writeLN(_cfg,'USDHIJKLMNO');
+  WriteLn(_cfg,'HUFMBCDEFGHUJKLM');
+  CloseFile(_cfg);
+
+  ShowMessage('A CIMLET KONFIGURÁCIÓS ÁLLOMÁNYÁT BEÁLLITOTTAM');
+end;
+
+// =============================================================================
+            procedure TForm1.F3TerminalGombClick(Sender: TObject);
+// =============================================================================
+
+begin
+   _FreeIrq := false;
+   logirorutin(pchar(dupestring('-',79)));
+   logirorutin(pchar('Napzárás újra küldését szeretné'));
+  terminalrutin;
+  _FreeIrq := true;
+end;
+
+// =============================================================================
+                            procedure TForm1.TextKiiro;
+// =============================================================================
+
+var _mondat: string;
+    _nyomtat,_olvas: textFile;
+
+begin
+
+  if _printer<>1 then AssignFile(_nyomtat,'LPT1')
+  else AssignPrn(_nyomtat);
+
+  Rewrite(_nyomtat);
+  AssignFile(_olvas,'c:\valuta\aktlst.txt');
+  Reset(_olvas);
+
+  while not eof(_olvas) do
+    begin
+      readln(_olvas,_mondat);
+      writeln(_nyomtat,_mondat);
+    end;
+  System.closeFile(_nyomtat);
+  System.CloseFile(_olvas);
+end;
+
+
+// =============================================================================
+                  function TForm1.HavizarasControl: boolean;
+// =============================================================================
+
+var _hztablanev,_elofarok: string;
+    _eloev,_eloho: word;
+
+begin
+  _eloev := _aktev;
+  _eloho := _aktho-1;
+  if _eloho=0 then
+    begin
+      _eloho := 12;
+      dec(_eloev);
+    end;
+
+  _elofarok   := nulele(_eloev-2000,2)+nulele(_eloho,2);
+  _HZTablanev := 'HZ'+ _elofarok;
+
+  Valdatadbase.close;
+  ValdataTabla.close;
+  ValdataTabla.TableName := _hzTablanev;
+  ValdataDbase.Connected := true;
+  result := ValdataTabla.Exists;
+  Valdatadbase.close;
+end;
+
+
+
+// =============================================================================
+                procedure TForm1.FomenuGombEnter(Sender: TObject);
+// =============================================================================
+
+begin
+  Fomenugomb.Font.Color := clred;
+end;
+
+// =============================================================================
+               procedure TForm1.FomenuGombExit(Sender: TObject);
+// =============================================================================
+
+begin
+  Fomenugomb.Font.Color := clTeal;
+  Fomenugomb.Repaint;
+end;
+
+// $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+// =============================================================================
+            procedure TForm1.REPrintGombClick(Sender: TObject);
+// =============================================================================
+
+var _oke: integer;
+
+begin
+  logirorutin(pchar('Utolsó blokk újranyomtatását kéri'));
+  _Oke := supervisorjelszo(0);
+  if _Oke=1 then TextKiiro;
+end;
+
+
+// =============================================================================
+                 procedure TForm1.MakeTradeTabla(_tnev: string);
+// =============================================================================
+
+var _tradefdbPath: string;
+
+begin
+
+  _tradefdbPath := 'c:\valuta\database\trade.fdb';
+
+  {
+  if FileExists(_tradefdbPath) then
+    begin
+      Tradedbase.close;
+      Tradedbase.DatabaseName := _tradeFdbPath;
+      exit;
+    end;
+
+  }
+  with TradeDbase do
+    begin
+      close;
+      DatabaseName := _tradeFdbPath;
+      Connected := true;
+    end;
+
+  TradeTabla.close;
+  tradeTabla.TableName := _tnev;
+  if Tradetabla.Exists then
+    begin
+      TradeDbase.close;
+      exit;
+    end;
+
+
+  _pcs := 'CREATE TABLE ' + _tnev + ' (' + _sorveg;
+  _pcs := _pcs + 'TIPUS CHAR (1) CHARACTER SET WIN1250 COLLATE WIN1250,' + _sorveg;
+  _pcs := _pcs + 'BIZONYLATSZAM CHAR (8) CHARACTER SET WIN1250 COLLATE WIN1250,' + _sorveg;
+  _pcs := _pcs + 'KATEGORIA CHAR (33) CHARACTER SET WIN1250 COLLATE WIN1250,' + _sorveg;
+  _pcs := _pcs + 'STARTDATUM CHAR (10) CHARACTER SET WIN1250 COLLATE WIN1250,' + _sorveg;
+  _pcs := _pcs + 'ENDDATUM CHAR (10) CHARACTER SET WIN1250 COLLATE WIN1250,' + _sorveg;
+  _pcs := _pcs + 'TELEFONSZAM CHAR (12) CHARACTER SET WIN1250 COLLATE WIN1250,' + _sorveg;
+  _pcs := _pcs + 'RENDSZAM CHAR (10) CHARACTER SET WIN1250 COLLATE PXW_HUN,' + _sorveg;
+  _pcs := _pcs + 'COUNTRYNAME CHAR (30) CHARACTER SET WIN1250 COLLATE PXW_HUN,' + _sorveg;
+  _pcs := _pcs + 'REFERENCEID CHAR (25) CHARACTER SET WIN1250 COLLATE WIN1250,' + _sorveg;
+  _pcs := _pcs + 'TRANZAKCIO CHAR (12) CHARACTER SET WIN1250 COLLATE WIN1250,' + _sorveg;
+  _pcs := _pcs + 'FIZETENDO INTEGER,' + _sorveg;
+  _pcs := _pcs + 'PENZTAROSNEV CHAR (25) CHARACTER SET WIN1250 COLLATE PXW_HUN,' + _sorveg;
+  _pcs := _pcs + 'DATUM CHAR (10) CHARACTER SET WIN1250 COLLATE WIN1250,' + _sorveg;
+  _pcs := _pcs + 'IDO CHAR (8) CHARACTER SET WIN1250 COLLATE WIN1250,' + _sorveg;
+  _pcs := _pcs + 'SZOLGALTATO CHAR (10) CHARACTER SET WIN1250 COLLATE WIN1250,' + _sorveg;
+  _pcs := _pcs + 'SZOLGALTATAS CHAR (30) CHARACTER SET WIN1250 COLLATE PXW_HUN,' + _sorveg;
+  _pcs := _pcs + 'UGYFELSZAM INTEGER,' + _sorveg;
+  _pcs := _pcs + 'UGYFELNEV CHAR (25) CHARACTER SET WIN1250 COLLATE PXW_HUN,' + _sorveg;
+  _pcs := _pcs + 'UGYFELCIM CHAR (40) CHARACTER SET WIN1250 COLLATE PXW_HUN,' + _sorveg;
+  _pcs := _pcs + 'TARSPENZTAR CHAR (4) CHARACTER SET WIN1250 COLLATE PXW_HUN,' + _sorveg;
+  _pcs := _pcs + 'STORNO SMALLINT,' + _sorveg;
+  _pcs := _pcs + 'ELKULDVE SMALLINT)';
+
+
+  if TradeTranz.Intransaction then TradeTranz.Commit;
+  TradeTranz.StartTransaction;
+  with TradeQuery do
+    begin
+      Close;
+      sql.clear;
+      sql.Add(_pcs);
+      ExecSql;
+    end;
+  TradeTranz.Commit;
+  TradeDbase.close;
+  aPPLICATION.TERMINATE;
+end;
+
+
+// =============================================================================
+              procedure TFORM1.FUTOFENYGOMBClick(Sender: TObject);
+// =============================================================================
+
+begin
+  fenyujsagfrissito;
+end;
+
+// =============================================================================
+                     procedure TForm1.GetHardwareAdatok;
+// =============================================================================
+
+begin
+  _pcs := 'SELECT * FROM HARDWARE';
+
+  ValutaDbase.Connected := true;
+  with ValutaQuery do
+    begin
+      close;
+      sql.clear;
+      sql.add(_pcs);
+      Open;
+
+      _ertektar          := FieldByName('ERTEKTAR').asInteger;
+      _gepFunkcio        := FieldByNAme('GEPFUNKCIO').AsInteger;
+      _kftnev            := trim(FieldByName('KFTNEV').asString);
+      _host              := FieldByName('HOST').asString;
+
+      _irqPerc           := FieldByName('KESZLETPERC').asInteger;
+      _kellMatrica       := FieldByName('KELLMATRICA').asInteger;
+      _futofeny          := FieldByName('FUTOFENY').asInteger;
+      _megnyitottnap     := FieldByName('MEGNYITOTTNAP').asString;
+      _megnyitottev      := FieldByName('MEGNYITOTTEV').asInteger;
+      _lezartnap         := FieldByName('LEZARTNAP').asString;
+      _otp               := FieldByName('POSTTERM').asInteger;
+      _otpopen           := FieldByName('OTPOPEN').asInteger;
+
+      _kellMetro         := FieldByName('KELLMETROAFA').asInteger;
+      _kellTesco         := FieldByName('KELLTESCOAFA').asInteger;
+      _kellWestern       := FieldByName('KELLWESTERN').asInteger;
+      _printer           := FieldByName('PRINTER').asInteger;
+      _verzio            := trim(FieldByName('VERZIO').AsString);
+      Close;
+    end;
+  ValutaDbase.close;
+
+  logirorutin(pchar('Hardware adatok beolvasása'));
+
+  if _kellMatrica=1 then
+    begin
+      logirorutin(pchar('Itt van E-kereskedelem. Adatbázis ellenõrzése'));
+      _tablanev := 'TRAD' + _farok;
+      _freeirq := False;
+      MakeTradeTabla(_tablanev);
+      matricaregeneralo;
+      _freeIrq := True;
+    end;
+
+
+end;
+
+
+// =============================================================================
+                      procedure TForm1.GetprosAdatok;
+// =============================================================================
+
+begin
+  ValutaDbase.connected := true;
+  with ValutaQuery do
+    begin
+      Close;
+      sql.Clear;
+      sql.Add('SELECT * FROM HARDWARE');
+      Open;
+      _aktprosid := FieldByName('IDKOD').asString;
+      _aktPenztarosNev := trim(FieldByName('PENZTAROSNEV').asstring);
+      Close;
+    end;
+ Valutadbase.close;
+end;
+
+// =============================================================================
+       function TForm1.WinExecAndWait32(Path: PChar; Visibility: Word): integer;
+// =============================================================================
+
+var Msg: TMsg;
+    lpExitCode: cardinal;
+    StartupInfo: TStartupInfo;
+    ProcessInfo: TProcessInformation;
+
+begin
+  FillChar(StartupInfo, SizeOf(TStartupInfo), 0);
+  with StartupInfo do
+    begin
+      cb := SizeOf(TStartupInfo);
+      dwFlags := STARTF_USESHOWWINDOW or STARTF_FORCEONFEEDBACK;
+      wShowWindow := visibility; {you could pass sw_show or sw_hide as parameter}
+    end;
+
+  if CreateProcess(nil, path, nil, nil, False, NORMAL_PRIORITY_CLASS,
+                                      nil, nil, StartupInfo,ProcessInfo) then
+
+    begin
+      repeat
+        while PeekMessage(Msg, 0, 0, 0, pm_Remove) do
+          begin
+            if Msg.Message = wm_Quit then Halt(Msg.WParam);
+            TranslateMessage(Msg);
+            DispatchMessage(Msg);
+          end;
+
+        GetExitCodeProcess(ProcessInfo.hProcess,lpExitCode);
+      until lpExitCode <> Still_Active;
+
+    with ProcessInfo do {not sure this is necessary but seen in in some code elsewhere}
+      begin
+        CloseHandle(hThread);
+        CloseHandle(hProcess);
+      end;
+
+    Result := 0; {success}
+  end else Result := GetLastError;
+end;
+
+// =============================================================================
+                    function TForm1.DekadControl: integer;
+// =============================================================================
+
+var _datumdekads,_qevs,_qhos,_qdeks,_kelldekads: string;
+    _kezdijp,_dekadp: integer;
+    _manap,_maho,_maev,_kellev,_kellho,_kelldekad: word;
+
+begin
+  // result : 0=nyomtatva, 1=dekad hianyzik, 2=kezdij hiányzik, 3= egyiksincs
+  result := 0;
+  IF not fileexists('c:\valuta\database\ujnaplo.fdb') then exit;
+
+  naplodbase.DatabaseName := 'C:\VALUTA\DATABASE\UJNAPLO.FDB';
+  Naplodbase.Connected := true;
+  _pcs := 'SELECT * FROM PRINTCONTROL' + _sorveg;
+  _pcs := _pcs + 'ORDER BY DATUMDEKAD';
+  with NaploQuery do
+    begin
+      Close;
+      sql.clear;
+      sql.add(_pcs);
+      Open;
+      Last;
+      _datumdekads := trim(FieldByName('DATUMDEKAD').asString);
+      _kezdijp := FieldByName('KEZDIJPRINT').asInteger;
+      _dekadp:= FieldByName('DEKADPRINT').asInteger;
+      Close;
+    end;
+  Naplodbase.close;
+
+  // ---------------------------------------------------------------------------
+
+
+  _qevs := leftstr(_datumdekads,4);
+  _qhos := midstr(_datumdekads,5,2);
+  _qdeks:= midstr(_datumdekads,7,2);
+
+  _manap := dayof(date);
+  _maho  := monthof(date);
+  _maev  := yearof(Date);
+
+  _kellev := _maev;
+  _kellho := _maho;
+  _kelldekad := 1;
+
+  if _manap<11 then
+    begin
+      _kelldekad := 3;
+      _kellho := _maho-1;
+      _kellev := _maev;
+      if _kellho=0 then
+        begin
+          _kellho := 12;
+          dec(_kellev);
+        end;
+    end;
+
+  if _manap>20 then _kelldekad := 2;
+
+  _kelldekads := inttostr(_kellev)+nulele(_kellho,2)+nulele(_kelldekad,2);
+  if (_datumdekads<_kelldekads) then
+    begin
+      result := 3;
+      exit;
+    end;
+
+  if _kezdijp=0 then
+    begin
+      if _dekadp=0 then result := 3 else result := 2;
+    end else if _dekadp=0 then result := 1;
+
+end;
+
+// =============================================================================
+              procedure TFORM1.szunetgombClick(Sender: TObject);
+// =============================================================================
+
+var _pauseOke: integer;
+
+begin
+
+  // Ha szünet van: és rákattintott erre a gombra, akkor vége a szünetnek:
+  // Elöször is törli a 'WAIT' - file-t, hogy ezzel jelezze a kijelzõnek
+  // hogy véget ért a szünet, és tüntesse el az üzenõ-panelt az árfolyam-
+  // ckijelzõrõl. Utána átirja a nyomógomb feliratát 'PÉNZTÁR SZÜNET'-re,
+  // hogy jelezhesse a küvetkezõ pénztári szünetet.
+
+  // Ha nincs szünet: Akkor szünetet akar kijelezni a pénztáros:
+  // Meghívja a SZUNETKIJELZO subrutint. Ha subrutin 2-vel tér vissza, akkor
+  // mégsem lesz pénztári szünet:
+  // Ha a visszatérés=1, akkor a subrutin felirt egy 'C:\VALUTA\MESS.TXT'
+  // nevü file-t, melynek strukturája: három mondat mindegyik végén CR+LF
+  // 1. mondat = szöveg indexxe: 0 .. szovegdarab-1
+  // 2. mondat = _tolstring = '08:30' (azt jelenti: 8 óra 30 perctõl)
+  // 3. mondat = _igstring  = '15:40' (azt jelenti: 15 óra 40 percig)
+  //  A szünet gomb feliratát átirja: 'SZÜNET VÉGE' szövegre
+  // És a _szunetvan logikai változót TRUE-ra állitja
+  // Kreál egy WAIT.TXT nevü file a valutakönyvtárban, jelzi, hogy
+  // szünet még tart ...
+
+  if _szunetvan then
+    begin
+      if fileExists(_waitPath) then sysutils.DeleteFile(_waitPath);
+      if fileExists(_messPath) then Sysutils.DeleteFile(_messPath);
+
+      with SzunetGomb do
+        begin
+          color := clBtnface;
+          Font.Color := clBlack;
+          Caption := 'PÉNZTÁR SZÜNET';
+          Repaint;
+        end;
+
+      _szunetvan := False;
+      exit;
+    end;
+
+  _pauseOke := szunetkijelzorutin;
+
+  if _pauseOke=1 then
+    begin
+      Assignfile(_textiras,_waitpath);
+      rewrite(_textiras);
+      writeLn(_textiras,'WAIT');
+      CloseFile(_textiras);
+
+      with SzunetGomb do
+        begin
+          color := clRed;
+          Font.Color := clWhite;
+          Caption := 'SZÜNET VÉGE';
+          Repaint;
+
+          _szunetvan := True;
+          exit;
+        end;
+    end;
+end;
+
+// =============================================================================
+            procedure TFORM1.verziofrissitogombClick(Sender: TObject);
+// =============================================================================
+
+begin
+  verziofrissitorutin;
+  Application.Terminate;
+end;
+
+
+// =============================================================================
+              procedure TFORM1.korlevelgombClick(Sender: TObject);
+// =============================================================================
+
+begin
+  korlevelrutin(2);
+end;
+
+// =============================================================================
+               function TForm1.Hundatetostr(_caldat: Tdatetime): string;
+// =============================================================================
+
+var _h_ev,_h_ho,_h_nap: word;
+
+begin
+  _h_ev  := yearof(_caldat);
+  _h_ho  := monthof(_caldat);
+  _h_nap := dayof(_caldat);
+
+  result := inttostr(_h_ev)+'.'+nulele(_h_ho,2)+'.'+nulele(_h_nap,2);
+end;
+
+// =============================================================================
+            function TForm1.strtoHundate(_dstr: string): TdateTime;
+// =============================================================================
+
+var _c_evs,_c_hos,_c_naps: string;
+    _c_ev,_c_ho,_c_nap: word;
+    _ckod: integer;
+
+begin
+  _c_evs := leftstr(_dstr,4);
+  _c_hos := midstr(_dstr,6,2);
+  _c_naps := midstr(_dstr,9,2);
+
+  Val(_c_evs,_c_ev,_ckod);
+  Val(_c_hos,_c_ho,_ckod);
+  Val(_c_naps,_c_nap,_ckod);
+
+  result := encodedate(_c_ev,_c_ho,_c_nap);
+end;
+
+
+// =============================================================================
+                  procedure TForm1.DisplayMaradtDarabok;
+// =============================================================================
+
+var _sh,_ne: byte;
+
+begin
+
+  _pcs := 'SELECT * FROM HARDWARE';
+
+  ValutaDbase.Connected := true;
+  with ValutaQuery do
+    begin
+      close;
+      sql.clear;
+      sql.add(_pcs);
+      Open;
+
+      _maistornoDarab := FieldByName('NAPISTORNO').asInteger;
+      _sh := FieldByNAme('SAJATHATASKORU').asInteger;
+      _ne := FieldByNAme('NAPIEGYEDIKEZDIJ').asInteger;
+      Close;
+    end;
+
+  Valutadbase.close;
+
+  _mshk := 5-_sh;
+  _mekd := 3-_ne;
+
+  SHKPanel.caption := inttostr(_mshk);
+  EKDPanel.Caption := inttostr(_mekd);
+  StornoDarabPanel.Caption := inttostr(_maistornodarab);
+
+  ShkPanel.Repaint;
+  EkdPanel.Repaint;
+  StornoDarabPanel.Repaint;
+end;
+
+// =============================================================================
+          procedure TFORM1.F10ATADOLAPGOMBClick(Sender: TObject);
+// =============================================================================
+
+begin
+  _FreeIrq := False;
+  atadolaprutin;
+  _FreeIrq := true;
+end;
+
+// =============================================================================
+                         function TForm1.getidos: string;
+// =============================================================================
+
+var _idos: string;
+
+begin
+  _idos := timetostr(Time);
+  if midstr(_idos,2,1)=':' then _idos := '0' + _idos;
+  result := leftstr(_idos,5);
+end;
+
+// =============================================================================
+              procedure TFORM1.ETradeProgClick(Sender: TObject);
+// =============================================================================
+
+begin
+  Form1.WindowState := wsMinimized;
+  _pacs := pchar('c:\valuta\bin\trade.exe');
+  winExecAndWait32(_pacs,sw_hide);
+  Form1.WindowState := wsNormal;
+end;
+
+
+// =============================================================================
+                    procedure TForm1.QrNapnyitas;
+// =============================================================================
+
+begin
+  while true do
+    begin
+      AlapQrHivas(4);
+      _openoke := OpenKerdoForm.Showmodal;
+
+      // Sikeres beolvasás:
+      if _openOke=1 then  break;
+    end;
+end;
+
+// =============================================================================
+                   procedure TForm1.AlapQrHivas(_ty: byte);
+// =============================================================================
+
+begin
+  _pcs := 'DELETE FROM QRPARAMS';
+  ValutaParancs(_pcs);
+
+  _pcs := 'INSERT INTO QRPARAMS (NUMBER)' + _sorveg;
+  _pcs := _pcs + 'VALUES ('+inttostr(_ty)+')';
+  ValutaParancs(_pcs);
+  qrdisplayrutin;
+end;
+
+// =============================================================================
+                function TForm1.ZarasControl: byte;
+// =============================================================================
+
+{
+
+  1 = Normál szünet utáni újrabelépés a programba
+  2 = Normál új nap nyitása
+  3 = Lezáratlan nap után új map nyitásának kisérlete
+  4 = Lezárt nap után újrabelép ugyanabba a napba
+  5 = Ismeretlen hiba
+}
+
+begin
+
+  // Elöször beolvassa a két dátum adatot:
+
+  _pcs := 'SELECT * FROM HARDWARE';
+
+  ValutaDbase.Connected := true;
+  with Valutaquery do
+    begin
+      close;
+      sql.clear;
+      sql.add(_pcs);
+      Open;
+      _megnyitottnap := trim(FieldByName('MEGNYITOTTNAP').asString);
+      _lezartnap     := trim(FieldByName('LEZARTNAP').asString);
+      Close;
+    end;
+  ValutaDbase.close;
+
+  //  Normál napi programinditás szünet után:
+
+  if (_megnyitottnap=_mamas) AND (_lezartnap='') then
+    begin
+      logirorutin(pchar('újraindult a program'));
+      result := 1;
+      exit;
+    end;
+
+  // Egy lezárt nap után egy új nap megnyitása:
+
+  if (_megnyitottnap<_mamas) AND (_lezartnap=_megnyitottnap) then
+    begin
+      logirorutin(pchar('Ez egy új nap - Napot nyit'));
+      result := 2;
+      exit;
+    end;
+
+  // Egy lezáratlan nap után akarok nyitni:
+
+  if (_megnyitottnap<_mamas) AND (_lezartnap='') then
+    begin
+      logirorutin(pchar('Nincs lezárva '+_megnyitottnap));
+      result := 3;
+      exit;
+    end;
+
+  // Napközben lezárt nap után újranyitom a napot:
+
+  if (_megnyitottnap=_mamas) AND (_lezartnap=_mamas) then
+    begin
+      logirorutin(pchar('Lezárt napot ujranyitja'));
+      result := 4;
+      exit;
+    end;
+
+  // Bármi más az adatbázis hiba !!!
+
+  result := 5;
+
+end;
+
+// =============================================================================
+               function TForm1.EgyReginapZarasa: integer;
+// =============================================================================
+
+begin
+  logirorutin(pchar('Lezáratlan napot lezár'));
+  result := 1;
+  Valutadbase.connected := true;
+
+  with ValutaTabla do
+    begin
+      Close;
+      TableName := 'BLOKKFEJ';
+      Open;
+      _recno := Recno;
+      close;
+    end;
+
+  Valutadbase.close;
+
+  if _recno>0 then
+    begin
+      // Nem volt napzaras. le kell zárni a régi napot !
+
+      logirorutin(pchar('Nem üres a blokkfej - rendben zárja a napot'));
+
+      _pcs := 'DELETE FROM VTEMP';
+      ValutaParancs(_Pcs);
+
+      _pcs := 'INSERT INTO VTEMP (DATUM)' + _sorveg;
+      _pcs := _pcs + 'VALUES (' + chr(39) + _megnyitottnap + chr(39)+')';
+      ValutaParancs(_pcs);
+      result := napzarrutin;
+
+    end else
+    begin
+      // Le volt zárva, de nincs a zárás regisztrálva
+
+      logirorutin(pchar('Csak a napzárás regisztrálása hiányzott'));
+
+      _pcs := 'UPDATE HARDWARE SET LEZARTNAP='+chr(39)+_megnyitottnap+chr(39);
+      ValutaParancs(_pcs);
+    end;
+end;
+
+
+// =============================================================================
+              procedure TForm1.ConfidGombClick(Sender: TObject);
+// =============================================================================
+
+begin
+  confidentreport;
+end;
+
+// =============================================================================
+          procedure TForm1.F4AfaTablaGombClick(Sender: TObject);
+// =============================================================================
+
+begin
+  _freeIrq := False;
+  afatablarutin;
+  _freeIrq := True;
+end;
+
+
+// =============================================================================
+             function TForm1.LezaratlanNapRendezes: boolean;
+// =============================================================================
+
+begin
+  result := false;
+  _pcs := 'SELECT * FROM BLOKKFEJ';
+  Valutadbase.connected := true;
+  with ValutaQuery do
+    begin
+      Close;
+      sql.clear;
+      sql.add(_pcs);
+      Open;
+      _recno := recno;
+      close;
+    end;
+  Valutadbase.close;
+  if _recno>0 then exit;
+  result := true;
+end;
+
+
+
+
+// =============================================================================
+             procedure TForm1.dsoftlabelClick(Sender: TObject);
+// =============================================================================
+
+begin
+  firstcontrol;
+end;
+
+// =============================================================================
+          procedure TForm1.PenztarTelefonPanelClick(Sender: TObject);
+// =============================================================================
+
+begin
+  NewPhoneEdit.Text := _homePenztarTelefon;
+  with PhoneModePanel do
+    begin
+      top := 280;
+      left := 380;
+      Visible := true;
+      repaint;
+    end;
+  Activecontrol := NewPhoneedit;
+end;
+
+// =============================================================================
+          procedure TForm1.NEWPHONEOKEGOMBClick(Sender: TObject);
+// =============================================================================
+
+var _ujPhoneNums,_phonePath: string;
+    _textiras: textfile; 
+
+begin
+  _ujphoneNums := trim(NewPhoneEdit.Text);
+  if _ujPhoneNums='' then
+    begin
+      PhoneModePanel.Visible := False;
+      exit;
+    end;
+  _homePenztarTelefon := _ujPhoneNums;
+  _pcs := 'UPDATE PENZTAR SET TELEFONSZAM='+CHR(39)+_homePenztarTelefon+chr(39)+_sorveg;
+  _pcs := _pcs + 'WHERE PENZTARKOD='+chr(39)+_homepenztarkod+chr(39);
+  ValutaParancs(_pcs);
+
+  _phonePath := 'c:\valuta\phone.txt';
+  AssignFile(_textiras,_phonePath);
+  rewrite(_textiras);
+  writeln(_textIras,_homePenztarTelefon);
+  closeFile(_textiras);
+
+  PenztarTelefonPanel.Caption := _homePenztarTelefon;
+  PenztarTelefonPanel.repaint;
+
+  PhoneModePanel.Visible := False;
+
+
+end;
+
+// =============================================================================
+          procedure TForm1.NONEWPHONEGOMBClick(Sender: TObject);
+// =============================================================================
+
+begin
+  PhoneModePanel.visible := False;
+end;
+
+// =============================================================================
+     procedure TForm1.NEWPHONEEDITKeyDown(Sender: TObject; var Key: Word;
+                                                           Shift: TShiftState);
+// =============================================================================
+
+begin
+  if ord(key)<>13 then exit;
+  Activecontrol := NewPhoneOkeGomb;
+end;
+
+// =============================================================================
+             procedure TForm1.NEWPHONEEDITEnter(Sender: TObject);
+// =============================================================================
+
+begin
+  NewPhoneedit.Color := clyellow;
+end;
+
+// =============================================================================
+           procedure TForm1.NEWPHONEEDITExit(Sender: TObject);
+// =============================================================================
+
+begin
+  NewPhoneedit.Color := clwhite;
+end;
+
+// $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+// =============================================================================
+               procedure TForm1.IDOTIMERTimer(Sender: TObject);
+// =============================================================================
+
+begin
+  // A kiértékelés alatt az idõtimer szünetel:
+  IdoTimer.Enabled := False;
+
+  // Fõ tevékenysége, hogy kiolvassa ás kiirja a pontos idõt:
+  _aktIdos := Getidos;
+  Idopanel.Caption := _aktIdos;
+  Idopanel.Repaint;
+
+  // Ha kell negszakitás és szabad a megszakitás
+  // akkor megnézi hogy kell-e megszakitás, és ha kell -> megszakitás rutin lefut
+  if (_kellIrq) and (_freeIrq) then
+     begin
+       if _aktidos>=_nextirqs then Irqrutin;
+     end;
+
+  // A feladatok végén visszakapcsolja az idõ-timert
+  IdoTimer.Enabled := true;
+end;
+
+// =============================================================================
+                            procedure TForm1.Irqrutin;
+// =============================================================================
+
+//                 A MEGSZAKITÓ RUTIN VÉGREHAJTÁSA:
+
+begin
+  if _serverAccess=1 then exit;
+  
+  // A három megszakitási feladatot elvégzi a rutin:
+  arfolyamletoltes(1);
+  pillkeszletbekuldo;
+  korlevelrutin(1);
+
+  // Végül megállapitja a következõ megszakitás idejét:
+  _nextIrqs := GetnextTimes;
+
+  // Ki is jelzi a következõ megszakitás idejét:
+  NextirqPanel.caption := _nextirqs;
+  IrqPanel.repaint;
+end;
+
+// =============================================================================
+           function TForm1.GetnextTimes:string;
+// =============================================================================
+
+var _nowtimes,_noworas,_nowpercs: string;
+    _nowora,_nowperc,_newora,_newperc: byte;
+
+begin
+  // Elöször beolvassa az aktuális órát és percet:
+  _nowtimes := GetIdos;
+  _nowOras := leftstr(_nowtimes,2);
+  _nowPercs:= midstr(_nowtimes,4,2);
+
+  val(_nowOras,_nowOra,_code);
+  val(_nowPercs,_nowPerc,_code);
+
+  // Az aktuális órához és perchez hozzáadja az irq Percet
+  _newora  := _nowora;
+  _newPerc := _nowPerc+_irqPerc;
+  if _newPerc>59 then
+    begin
+      inc(_newora);
+      _newperc := _newperc-60;
+    end;
+   result := TimesMaker(_newora,_newperc);
+end;
+
+// =============================================================================
+              function TForm1.TimesMaker(_o,_p: byte): string;
+// =============================================================================
+
+var _os,_ps: string;
+
+begin
+  _os := inttostr(_o);
+  while length(_os)<2 do _os := '0' + _os;
+
+  _ps := inttostr(_p);
+  while length(_ps)<2 do _ps := '0' + _ps;
+
+  result := _os + ':' + _ps;
+end;
+
+// =============================================================================
+                   procedure TForm1.PtarosBelepOtpbe;
+// =============================================================================
+
+var _try: integer;
+
+begin
+
+  if _otpOpen=1 then exit;  // Már be van lépve ! Akkor ennyi
+
+  while true do    // ciklus amig be nem lép vagy nem akar belépni
+    begin
+      _otpoke := OtpBeleptetes;  // beléptetõ rutin
+
+      if _otpoke=1 then  // sikeresen belépett;
+        begin
+          // beirjuk az adatbázisba a belépés tényét:
+
+          _pcs := 'UPDATE HARDWARE SET OTPOPEN=1';
+          ValutaParancs(_pcs);
+          _otpopen := 1;
+          break;
+        end;
+
+      if _otpOke=2 then // nem sikerült belépni !!!!
+        begin
+          _try := TryAgainForm.showmodal;
+          if _try=-1 then break;
+          continue;
+        end;
+
+      if _otpoke=-1 then break;
+      // ha az OTPoke=3 (bennragadt) most megnyitja
+    end;
+end;
+
+// =============================================================================
+                    function TForm1.OtpBeleptetes: integer;
+// =============================================================================
+
+var _ooke: integer;
+
+begin
+  result := 2;  // default = nem tudott belépni
+  logirorutin(pchar('BELÉPTETÉS AZ OTP TERMINÁLBA'));
+
+  // Ha nincs internet, akkor nem is próbál belépni
+  if not VanInternet then
+    begin
+      logirorutin(pchar('NINCS INTERNET - NEM ISPROBÁLOK AZ OTP-BE LÉPNI'));
+      result := -1;
+      exit;
+    end;
+
+  _pcs := 'DELETE FROM VTEMP';
+  ValutaParancs(_pcs);
+
+  _pcs := 'INSERT INTO VTEMP (OTPFUNCTYPE)'+_sorveg;
+  _pcs := _pcs + 'VALUES (95)';  // 95=communication-control
+  ValutaParancs(_pcs);
+
+  _ooke := otpterminal;  // Communication control
+  logirorutin(pchar('A KOMMUNIKÁCIÓ KONTROL EREDMÉNYE: '+inttostr(_ooke)));
+
+  if _ooke=2 then exit;  // Nem sikerült belépni - nincs komunnikáció
+
+  if _ooke=1 then  // van kommunikáció - megpróbálok belépni
+    begin
+      _pcs := 'UPDATE VTEMP SET OTPFUNCTYPE=50';   // PÉNZTÁROS BELÉP kódja
+      ValutaParancs(_pcs);
+
+      result := otpterminal;  // 1= sikeres, 2= nem sikerült;
+      logirorutin(pchar('A PÉNTÁROS OTP BELÉPÉS EREDMÉNYE: '+inttostr(result)));
+
+      if result=1 then
+        begin
+          Showmessage('PÉNZTÁROS BELÉPTETVE AZ OTP TERMINÁLBA');
+          logirorutin(pchar('A PÉNZTÁROS BELÉPETT AZ OTP TERMINÁLBA'));
+          exit;
+        end;
+    end;
+
+  logirorutin(pchar('Nem sikerült belépni az OTP terminálba'));
+
+  // most megnézem, hogy nincs-e már belépve, és azértnem tud belépni
+
+
+  // Kiolvasom az F-mezõt a VTEMP-bõl:
+  Valutadbase.Connected := True;
+  with ValutaQuery do
+    begin
+      Close;
+      sql.clear;
+      sql.add('SELECT * FROM VTEMP');
+      Open;
+      _fmezo := trim(FieldByNAme('FMEZO').AsString);
+      Close;
+    end;
+  Valutadbase.close;
+
+  // Amennyiben az F-mezo= 'L32' - szt jelenti, hogy még nem lépett ki
+
+  if _fmezo='L32' then
+    begin
+      ShowMessage('Pénztáros nem lépett ki ! Most kiléptetem');
+      logirorutin(pchar('A pénztáros benn van a terminálban, most kiléptetem'));
+
+      _pcs := 'UPDATE VTEMP SET OTPFUNCTYPE=51';   // pénztáros kilép
+      ValutaParancs(_pcs);
+      otpterminal;
+
+      result := 3;
+    end;
+end;
+
+
+// =============================================================================
+                      procedure TForm1.SetserverAccess;
+// =============================================================================
+
+begin
+  with ServerCtrlPanel do
+    begin
+      top := 210;
+      left := 360;
+      Visible := True;
+      Repaint;
+    end;
+  _pcs := 'SELECT * FROM HARDWARE';
+
+  ValutaDbase.Connected := True;
+  with ValutaQuery do
+    begin
+      close;
+      sql.clear;
+      sql.add(_pcs);
+      Open;
+      _host := trim(FieldByName('HOST').asString);
+      Close;
+    end;
+  Valutadbase.close;
+
+  ftpTry.Host := _host;
+  _serveraccess := 0;
+  ftptry.Host := _host;
+  TRY
+    FTPtry.Connect;
+  EXCEPT
+    _serveraccess := 1;
+  END;
+  FtpTry.Disconnect;
+
+  IF _serverAccess=1 then
+    begin
+      Form1.NoszerverPanel.visible := True;
+      Form1.NoszerverPanel.repaint;
+    end else NoSzerverPanel.visible := False;
+
+  _pcs := 'UPDATE HARDWARE SET SERVERACCESS='+inttostr(_serveraccess);
+  ValutaParancs(_pcs);
+
+  sleep(100);
+  ServerctrlPanel.Visible := False;
+
+end;
+
+// =============================================================================
+                 function TForm1.Vaninternet: boolean;
+// =============================================================================
+
+var
+  _dwConnType: dword;
+
+begin
+   Result := False;
+   TRY
+     _dwConntype := 7;
+     if InternetGetConnectedState(@_dwConnType,0) then result := true;
+   except
+   end;
+end;
+
+
+
+procedure TForm1.NOSZERVERPANELClick(Sender: TObject);
+begin
+  SetserverAccess;
+end;
+
+end.
+
+
+

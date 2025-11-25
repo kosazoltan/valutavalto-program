@@ -1,0 +1,187 @@
+unit Unit1;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, Buttons, IBDatabase, DB, IBCustomDataSet, IBQuery,
+  IBTable, strutils;
+
+type
+  TForm1 = class(TForm)
+    BitBtn1: TBitBtn;
+    BitBtn2: TBitBtn;
+    UQUERY: TIBQuery;
+    UDBASE: TIBDatabase;
+    UTRANZ: TIBTransaction;
+    UTABLA: TIBTable;
+    TQUERY: TIBQuery;
+    TDBASE: TIBDatabase;
+    TTRANZ: TIBTransaction;
+    Memo1: TMemo;
+    IDBASE: TIBDatabase;
+    ITRANZ: TIBTransaction;
+    IQUERY: TIBQuery;
+    NTABLA: TIBTable;
+    NDBASE: TIBDatabase;
+    NTRANZ: TIBTransaction;
+    NQUERY: TIBQuery;
+    procedure BitBtn2Click(Sender: TObject);
+    procedure BitBtn1Click(Sender: TObject);
+    PROCEDURE Nparancs(_ukaz: string);
+    function Getiso(_allp: string): string;
+
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form1: TForm1;
+  _mbnev,_nevtabla,_pcs,_plums,_ap,_iso: string;
+  _sorveg: string = chr(13)+chr(10);
+  _recno,_ss: integer;
+  _betu: byte;
+
+implementation
+
+{$R *.dfm}
+
+procedure TForm1.BitBtn2Click(Sender: TObject);
+begin
+  Application.Terminate;
+end;
+
+procedure TForm1.BitBtn1Click(Sender: TObject);
+begin
+
+
+  {
+  utabla.Close;
+  utabla.filtered := False;
+  udbase.Connected := true;
+  if utranz.InTransaction then utranz.Commit;
+  utranz.StartTransaction;
+  uTabla.TableName := 'JOGI';
+  utabla.Filter := 'MBDATASORSZAM='+chr(39)+'0'+chr(39);
+  uTabla.Filtered := True;
+
+  uTabla.Open;
+  utabla.first;
+
+  while not uTabla.Eof do
+    begin
+      _mbnev := TRIM(Utabla.FieldByNAme('MEGBIZOTTNEVE').AsString);
+      Memo1.Lines.Add(_mbnev);
+      _nevtabla := leftstr(_mbNev,1)+'NEV';
+      _pcs := 'SELECT * FROM '+_nevtabla + _sorveg;
+      _pcs := _pcs + 'WHERE NEV='+chr(39)+_mbnev+chr(39);
+      tdbase.Connected := True;
+      with tQuery do
+        begin
+          Close;
+          sql.clear;
+          sql.add(_pcs);
+          Open;
+          _recno := recno;
+        end;
+
+      _ss := 0;
+      if _recno>0 then _ss := Tquery.fieldByNAme('SORSZAM').asInteger;
+      Tquery.Close;
+      tdbase.Close;
+
+      _plums := '-';
+      if _ss>0 then _plums := _nevtabla + inttostr(_ss);
+      UTabla.edit;
+      Utabla.FieldByName('MBDATASORSZAM').asString := _plums;
+      Utabla.Post;
+      Utabla.next;
+    end;
+  Utranz.Commit;
+  Udbase.close;
+   }
+  // ---------------------------------------------------------------------------
+
+  _betu := 65;
+  while _betu<=90 do
+    begin
+      Ntabla.close;
+      _nevtabla := chr(_betu)+'NEV';
+      _pcs := 'UPDATE ' + _NEVTABLA + ' SET ISO='+CHR(39)+'HU'+CHR(39)+_SORVEG;
+      _pcs := _pcs + 'WHERE KULFOLDI=0';
+      nPARANCS(_PCS);
+
+
+
+      Memo1.Lines.Add(_nevtabla);
+      Ndbase.Connected := true;
+      if ntranz.InTransaction then ntranz.Commit;
+      Ntranz.StartTransaction;
+
+      Ntabla.Tablename := _nevtabla;
+      Ntabla.Filter := 'KULFOLDI=1';
+      nTABLA.Filtered := True;
+      Ntabla.Open;
+      while not Ntabla.eof do
+        begin
+          _ap := trim(Ntabla.fieldByNAme('ALLAMPOLGAR').asString);
+          Memo1.Lines.add(_ap);
+          _iso := getiso(_ap);
+          if _iso<>'' then
+            begin
+              Ntabla.Edit;
+              Ntabla.FieldByName('ISO').asstring := _iso;
+              Ntabla.post;
+            end;
+          Ntabla.next;
+        end;
+      Ntranz.commit;
+      Ndbase.close;
+      inc(_betu);
+    end;
+
+  Memo1.Lines.add('    ');
+  Memo1.Lines.add('KÉSZEN VAGYOK');
+  Memo1.Lines.add('    ');
+end;
+
+
+function TForm1.Getiso(_allp: string): string;
+
+begin
+  result := '';
+  _pcs := 'SELECT * FROM CITIZENS WHERE CITIZEN='+chr(39)+_allp+chr(39);
+  idbase.connected := true;
+  with iquery do
+    begin
+      Close;
+      sql.clear;
+      sql.add(_pcs);
+      Open;
+      _recno := recno;
+    end;
+  if _recno>0 then result := iquery.fieldbyname('ISO').asString;
+  iquery.close;
+  idbase.close;
+end;
+
+PROCEDURE tForm1.Nparancs(_ukaz: string);
+
+begin
+  ndbase.connected := true;
+  if ntranz.InTransaction then ntranz.commit;
+  ntranz.StartTransaction;
+  with Nquery do
+    begin
+      Close;
+      sql.clear;
+      sql.add(_ukaz);
+      Execsql;
+    end;
+  Ntranz.commit;
+  ndbase.close;
+end;
+end.

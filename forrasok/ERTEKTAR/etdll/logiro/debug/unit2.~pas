@@ -1,0 +1,142 @@
+unit Unit2;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, ExtCtrls, strutils, dateutils;
+
+type
+  TForm2 = class(TForm)
+    KILEPO: TTimer;
+
+    procedure FormActivate(Sender: TObject);
+    procedure KILEPOTimer(Sender: TObject);
+    function Getdatums: string;
+    function Nulele(_b: byte): string;
+    procedure FormCreate(Sender: TObject);
+
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form2: TForm2;
+  _datum,_logfile,_logpath,_idos,_paramess: string;
+  _logdir : string = 'c:\valuta\log';
+  _iras: File of byte;
+  _ppara: pchar;
+  _ora,_perc,_sec: word;
+  _bytetomb: array[1..4096] of byte;
+
+
+function logirorutin(_para: pchar): integer; stdcall;
+
+implementation
+
+{$R *.dfm}
+
+
+function logirorutin(_para: pchar): integer; stdcall;
+begin
+  Form2 := Tform2.Create(Nil);
+  _ppara := _para;
+  result := Form2.showmodal;
+  Form2.free;
+end;
+
+
+
+procedure TForm2.FormActivate(Sender: TObject);
+
+var _plen,_asc,_pp,_p: byte;
+
+begin
+  top  := 0;
+  Left := -500;
+  Height := 2;
+  width :=2;
+
+  _datum := Getdatums;
+  if not directoryexists(_logdir) then Createdir(_logdir);
+  _logfile := 'L' + _datum+'.LOG';
+  _logPath := _logdir + '\' + _logfile;
+
+  Assignfile(_iras,_logpath);
+  if FileExists(_logpath) then
+    begin
+       reset(_iras);
+       seek(_iras,filesize(_iras));
+    end else rewrite(_iras);
+    
+  _ora := hourof(time);
+  _perc:= minuteof(Time);
+  _sec := secondof(Time);
+
+  _bytetomb[1] := _ora;
+  _bytetomb[2] := _perc;
+  _bytetomb[3] := _sec;
+
+  _paramess := trim(strpas(_ppara));
+  _plen := length(_paramess);
+
+  _bytetomb[4] := _plen+1;
+  _p := 1;
+  if _plen>0 then
+    begin
+      while _p<=_plen do
+        begin
+          _asc := ord(_paramess[_p]);
+          _bytetomb[_p+4] := 255-_asc;
+          inc(_p);
+        end;
+    end;
+
+  _pp := _p+4;
+  _bytetomb[_pp] := 255;
+
+  blockwrite(_iras,_bytetomb,_pp);
+  Closefile(_iras);
+
+  kilepo.enabled := True;
+end;
+
+
+procedure TForm2.KILEPOTimer(Sender: TObject);
+begin
+  Kilepo.Enabled := False;
+  ModalResult := 1;
+end;
+
+function Tform2.Getdatums: string;
+
+var _ev,_ho,_np: word;
+
+begin
+  _ev := yearof(date);
+  _ho := monthof(date);
+  _np := dayof(date);
+  result := inttostr(_ev-2000)+nulele(_ho)+nulele(_np);
+end;
+
+function TForm2.Nulele(_b: byte): string;
+
+begin
+  result := inttostr(_b);
+  if _b<10 then result := '0' + result;
+end;
+
+
+procedure TForm2.FormCreate(Sender: TObject);
+begin
+  Top := 0;
+  Left :=-500;
+  Height := 2;
+  width := 2;
+
+end;
+
+end.

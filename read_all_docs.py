@@ -20,16 +20,13 @@ def extract_text_from_docx(docx_path):
         doc = Document(docx_path)
         full_text = []
         
-        for paragraph in doc.paragraphs:
-            if paragraph.text.strip():
-                full_text.append(paragraph.text)
+        # Bekezdések gyűjtése
+        full_text.extend(p.text for p in doc.paragraphs if p.text.strip())
         
         # Táblázatok kezelése
         for table in doc.tables:
             for row in table.rows:
-                for cell in row.cells:
-                    if cell.text.strip():
-                        full_text.append(cell.text)
+                full_text.extend(cell.text for cell in row.cells if cell.text.strip())
         
         return '\n'.join(full_text)
     except Exception as e:
@@ -86,7 +83,7 @@ def process_all_docx_files(base_dir):
     print("FELDOLGOZÁS KÉSZ")
     print("="*60)
     
-    success_count = sum(1 for r in results if r['status'] == '✓')
+    success_count = len([r for r in results if r['status'] == '✓'])
     total_chars = sum(r['chars'] for r in results)
     
     print(f"✓ Sikeres: {success_count}/{len(results)}")

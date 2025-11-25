@@ -1,0 +1,4 @@
+<Message>
+<MessageType>CANCEL AAK</MessageType>
+<TransactionId>0026443535</TransactionId)
+</Message>

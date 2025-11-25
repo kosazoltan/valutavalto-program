@@ -1,0 +1,124 @@
+6,"T-MOBILE MOBIL-FELTOLTES","T-MOBILE",3000,1
+7,"T-MOBILE MOBIL-FELTOLTES","T-MOBILE",3500,1
+8,"T-MOBILE MOBIL-FELTOLTES","T-MOBILE",5000,1
+9,"T-MOBILE MOBIL-FELTOLTES","T-MOBILE",10000,1
+10,"VODAFONE MOBIL-FELTOLTES","VODAFONE",3000,1
+11,"VODAFONE MOBIL-FELTOLTES","VODAFONE",7000,1
+12,"VODAFONE MOBIL-FELTOLTES","VODAFONE",12000,1
+13,"VODAFONE MOBIL-FELTOLTES","VODAFONE",1500,1
+14,"VODAFONE MOBIL-FELTOLTES","VODAFONE",5000,1
+18,"TELENOR MOBIL-FELTOLTES","TELENOR",10000,1
+19,"TELENOR MOBIL-FELTOLTES","TELENOR",15000,1
+24,"D1 - HETI MATRICA","AAK",2975,1
+25,"D1 - HAVI MATRICA","AAK",4780,1
+26,"D1 - EVES MATRICA","AAK",42980,1
+34,"D1 - MOTOROS HETI","AAK",1470,1
+57,"B2 HETI BUSZ MATRICA","AAK",13385,1
+58,"B2 HAVI BUSZ MATRICA","AAK",21975,1
+59,"B2 EVES BUSZ MATRICA","AAK",199975,1
+67,"T-MOBILE MOBIL-FELTOLTES","T-MOBILE",15000,1
+70,"30 NAPOS KONTROL-KARTYA","T-COM",2500,1
+71,"60 NAPOS KONTROL-KARTYA","T-COM",7400,1
+72,"90 NAPOS KONTROL-KARTYA","T-COM",10500,1
+73,"120 NAPOS KONTROL-KARTYA","T-COM",19500,1
+74,"T-COM BARANGOLO-KARTYA","T-COM",1000,1
+75,"T-COM BARANGOLO-KARTYA","T-COM",2000,1
+76,"T-COM BARANGOLO-KARTYA","T-COM",5000,1
+78,"VODAFONE MOBILFELTOLTES","VODAFONE",2000,1
+80,"NEOPHONE - 1.000","NEOPHONE",1000,1
+81,"NEOPHONE - 2.000","NEOPHONE",2000,1
+82,"NEOPHONE - 5.000","NEOPHONE",5000,1
+83,"NEOPHONE - 10.000","NEOPHONE",10000,1
+84,"T-MOBILE MOBILFELTOLTES","T-MOBILE",1500,1
+86,"TELENOR FELTOLTES","TELENOR",1700,1
+87,"TELENOR FELTOLTES","TELENOR",3300,1
+88,"TELENOR FELTOLTES","TELENOR",5500,1
+89,"TESCO-MOBILE FELTOLTES","TESCO",2000,1
+91,"TESCO-MOBILE FELTOLTES","TESCO",5000,1
+92,"TESCO-MOBILE FELTOLTES","TESCO",7000,1
+93,"TESCO-MOBILE FELTOLTES","TESCO",12000,1
+267,"TELENOR FELTOLTES","TELENOR",1200,1
+268,"TESCO-MOBILE FELTOLTES","TESCO",3500,1
+501,"U Bacs-Kiskun megye","AAK",5000,1
+502,"U Baranya megye","AAK",5000,1
+503,"U Bekes megye","AAK",5000,1
+504,"U Borsod-Abauj-Zemplen megye","AAK",5000,1
+505,"U Csongrad megye","AAK",5000,1
+506,"U Fejer megye","AAK",5000,1
+507,"U Gyor-Moson-Sopron megye","AAK",5000,1
+508,"U Hajdu-Bihar megye","AAK",5000,1
+509,"U Heves megye","AAK",5000,1
+510,"U Jasz-Nagykun-Szolnok megye","AAK",5000,1
+511,"U Komarom-Esztergom megye","AAK",5000,1
+512,"U Nograd megye","AAK",5000,1
+513,"U Pest megye","AAK",5000,1
+514,"U Somogy megye","AAK",5000,1
+515,"U Szabolcs-Szatmar-Bereg megye","AAK",5000,1
+516,"U Tolna megye","AAK",5000,1
+517,"U Vas megye","AAK",5000,1
+518,"U Veszprem megye","AAK",5000,1
+519,"U Zala megye","AAK",5000,1
+521,"D1 Bacs-Kiskun megye","AAK",5000,1
+522,"D1 Baranya megye","AAK",5000,1
+523,"D1 Bekes megye","AAK",5000,1
+524,"D1 Borsod-Abauj-Zemplen megye","AAK",5000,1
+525,"D1 Csongrad megye","AAK",5000,1
+526,"D1 Fejer megye","AAK",5000,1
+527,"D1 Gyor-Moson-Sopron megye","AAK",5000,1
+528,"D1 Hajdu-Bihar megye","AAK",5000,1
+529,"D1 Heves megye","AAK",5000,1
+530,"D1 Jasz-Nagykun-Szolnok megye","AAK",5000,1
+531,"D1 Komarom-Esztergom megye","AAK",5000,1
+532,"D1 Nograd megye","AAK",5000,1
+533,"D1 Pest megye","AAK",5000,1
+534,"D1 Somogy megye","AAK",5000,1
+535,"D1 Szabolcs-Szatmar-Bereg megye","AAK",5000,1
+536,"D1 Tolna megye","AAK",5000,1
+537,"D1 Vas megye","AAK",5000,1
+538,"D1 Veszprem megye","AAK",5000,1
+539,"D1 Zala megye","AAK",5000,1
+541,"D2 Bacs-Kiskun megye","AAK",10000,1
+542,"D2 Baranya megye","AAK",10000,1
+543,"D2 Bekes megye","AAK",10000,1
+544,"D2 Borsod-Abauj-Zemplen megye","AAK",10000,1
+545,"D2 Csongrad megye","AAK",10000,1
+546,"D2 Fejer megye","AAK",10000,1
+547,"D2 Gyor-Moson-Sopron megye","AAK",10000,1
+548,"D2 Hajdu-Bihar megye","AAK",10000,1
+549,"D2 Heves megye","AAK",10000,1
+550,"D2 Jasz-Nagykun-Szolnok megye","AAK",10000,1
+551,"D2 Komarom-Esztergom megye","AAK",10000,1
+552,"D2 Nograd megye","AAK",10000,1
+553,"D2 Pest megye","AAK",10000,1
+554,"D2 Somogy megye","AAK",10000,1
+555,"D2 Szabolcs-Szatmar-Bereg megye","AAK",10000,1
+556,"D2 Tolna megye","AAK",10000,1
+557,"D2 Vas megye","AAK",10000,1
+558,"D2 Veszprem megye","AAK",10000,1
+559,"D2 Zala megye","AAK",10000,1
+561,"B Bacs-Kiskun megye","AAK",20000,1
+562,"B Baranya megye","AAK",20000,1
+563,"B Bekes megye","AAK",20000,1
+564,"B Borsod-Abauj-Zemplen megye","AAK",20000,1
+565,"B Csongrad megye","AAK",20000,1
+566,"B Fejer megye","AAK",20000,1
+567,"B Gyor-Moson-Sopron megye","AAK",20000,1
+568,"B Hajdu-Bihar megye","AAK",20000,1
+569,"B Heves megye","AAK",20000,1
+570,"B Jasz-Nagykun-Szolnok megye","AAK",20000,1
+571,"B Komarom-Esztergom megye","AAK",20000,1
+572,"B Nograd megye","AAK",20000,1
+573,"B Pest megye","AAK",20000,1
+574,"B Somogy megye","AAK",20000,1
+575,"B Szabolcs-Szatmar-Bereg megye","AAK",20000,1
+576,"B Tolna megye","AAK",20000,1
+577,"B Vas megye","AAK",20000,1
+578,"B Veszprem megye","AAK",20000,1
+579,"B Zala megye","AAK",20000,1
+604,"U heti e-matrica","AAK",2975,1
+605,"U havi e-matrica","AAK",4780,1
+606,"U éves e-matrica","AAK",42980,1
+644,"D2 heti e-matrica","AAK",5950,1
+645,"D2 havi e-matrica","AAK",9560,1
+646,"D2 éves e-matrica","AAK",42980,1
+

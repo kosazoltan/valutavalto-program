@@ -1,0 +1,295 @@
+unit Unit1;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, IBDatabase, DB, IBCustomDataSet, IBQuery, IBTable,strutils,
+  ExtCtrls, ComCtrls;
+
+type
+  TForm1 = class(TForm)
+    Button1: TButton;
+    Button2: TButton;
+    UQUERY: TIBQuery;
+    UDBASE: TIBDatabase;
+    UTRANZ: TIBTransaction;
+    UTABLA: TIBTable;
+    Panel1: TPanel;
+    Panel2: TPanel;
+    Panel3: TPanel;
+    Panel4: TPanel;
+    Panel5: TPanel;
+    Panel6: TPanel;
+    BNPANEL: TPanel;
+    BJPANEL: TPanel;
+    KNPANEL: TPanel;
+    KJPANEL: TPanel;
+    Shape1: TShape;
+    CSIK: TProgressBar;
+    PQUERY: TIBQuery;
+    PDBASE: TIBDatabase;
+    PTRANZ: TIBTransaction;
+    hpanel: TPanel;
+    Label1: TLabel;
+    ptpanel: TPanel;
+
+    procedure Button2Click(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
+    procedure AdatDisplay;
+
+    function Nulele(_b: byte): string;
+    function EzertekTar(_pp: byte): boolean;
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form1: TForm1;
+  _H: INTEGER;
+  _NB,_NK: INTEGER;
+  _JB,_JK: INTEGER;
+  _recno: integer;
+  _pt,_kulfoldi,_ho,_ww: word;
+  _pcs,_bf,_farok,_ugyfeltipus,_aktfdbpath,_plombaszam,_nevtabla,_sss: string;
+  _mbdata: string;
+  _sorveg: string = chr(13)+chr(10);
+
+implementation
+
+{$R *.dfm}
+
+procedure TForm1.Button2Click(Sender: TObject);
+begin
+  Application.Terminate;
+end;
+
+procedure TForm1.Button1Click(Sender: TObject);
+begin
+  _h  := 0;
+  _nb := 0;
+  _nk := 0;
+  _jb := 0;
+  _jk := 0;
+
+  PDBASE.Connected := TRUE;
+
+  _pt := 1;
+  while _pt<=150 do
+    begin
+      csik.Position := _pt;
+      ptpanel.Caption := inttostr(_pt)+'. IRODA';
+      ptpanel.repaint;
+
+      //  értéktárban nincs ügyfél
+      if ezertekTar(_pt) then
+        begin
+          inc(_pt);
+          COntinue;
+        end;
+
+      // a pénztár adatbázis ellenörzése:
+
+      _aktfdbPath := 'c:\receptor\database\v' + inttostr(_pt) + '.fdb';
+      if not FileExists(_aktfdbPath) then
+        begin
+          // Ez a pénztar nem létezik
+          inc(_pt);
+          Continue;
+        end;
+
+     // Itt egy létezõ pénztár:
+
+      _ho :=1;
+      while _ho<=12 do
+        begin
+
+          // Havonkénti táblanyitás:
+
+          _farok := '22' + nulele(_ho);
+          _bf := 'BF' + _farok;
+
+          // Van ilyen havi tábla ?
+
+          UDbase.Connected := True;
+          UTabla.close;
+          Utabla.TableName := _bf;
+          if not utabla.Exists then
+            begin
+              inc(_ho);
+              continue;
+            end;
+
+          // Létezik a havi tábla:
+
+          _pcs := 'SELECT * FROM ' + _bf + _sorveg;
+          _pcs := _pcs + 'WHERE ((TIPUS=' + chr(39) + 'V' + chr(39) + ') OR (';
+          _pcs := _pcs + 'TIPUS=' + chr(39) + 'E' + chr(39) + ')) AND (';
+          _pcs := _pcs + 'STORNO=1)';
+
+          //  Megnyitja a havi táblát:
+
+          with Uquery do
+            begin
+              Close;
+              sql.clear;
+              sql.add(_pcs);
+              Open;
+            end;
+
+          // Végigmegy a havi táblán:
+
+          while not uquery.Eof do
+            begin
+              _plombaszam  := trim(Uquery.FieldByName('PLOMBASZAM').asString);
+              _ugyfeltipus := trim(UQuery.FieldByName('UGYFELTIPUS').asString);
+
+              //  Ha nincs ugyfeltipus vagy kisugyfel - akkor inc(_H)
+              if (_ugyfeltipus='') or (_ugyfeltipus='K') then
+                begin
+                  inc(_h);
+                  uQuery.next;
+                  continue;
+                end;
+
+              // Természetes személy váltása:
+
+              if _ugyfeltipus='N' then
+                begin
+                  if _plombaszam = '' then
+                    begin
+                      inc(_nb);
+                      uQuery.next;
+                      Continue;
+                    end;
+
+                  // van natur plombaszám:
+
+                  _ww := length(_plombaszam);
+                  _nevtabla := leftstr(_plombaszam,4);
+                  _sss := midstr(_plombaszam,5,_ww-4);
+                  _pcs := 'SELECT * FROM ' + _nevtabla + _sorveg;
+                  _pcs := _pcs + 'WHERE SORSZAM=' + _sss;
+                  with Pquery do
+                    begin
+                      Close;
+                      sql.clear;
+                      sql.add(_pcs);
+                      Open;
+                      _recno := recno;
+                    end;
+                  _kulfoldi := 0;
+
+                  if _recno>0 then _kulfoldi := Pquery.fieldbyname('KULFOLDI').asInteger;
+                  Pquery.close;
+
+                  if _kulfoldi=1 then inc(_NK) else inc(_NB);
+                end;
+
+              // =============================
+              //  jogi személy megszámolása:
+
+              if _ugyfeltipus='J' then
+                begin
+                  //  Ha nincs plombaszám - akkor belföldi jogi személy
+
+                  if _plombaszam = '' then
+                    begin
+                      inc(_jb);
+                      uQuery.next;
+                      Continue;
+                    end;
+
+                  // van jogi plombaszám:
+
+                  _ww := length(_plombaszam);
+                  _sss := midstr(_plombaszam,5,_ww-4);
+                  _pcs := 'SELECT * FROM JOGI' + _sorveg;
+                  _pcs := _pcs + 'WHERE SORSZAM=' + _sss;
+                  with Pquery do
+                    begin
+                      Close;
+                      sql.clear;
+                      sql.add(_pcs);
+                      Open;
+                      _recno := recno;
+                    end;
+
+                  // DEFAULT = belföldi
+
+                  _kulfoldi := 0;
+
+                  // Ha megvan a jogi személy:
+
+                  If _recno>0 then
+                    begin
+                      // Kiolvassa a megbizo adatait:
+
+                      _mbdata := trim(Pquery.fieldbyname('MBDATASORSZAM').AsString);
+                      if _mbdata<>'' then
+                        begin
+                          _ww := length(_mbData);
+                          _nevtabla := leftstr(_mbdata,4);
+                          _sss := midstr(_mbdata,5,_ww-4);
+                          _pcs := 'SELECT * FROM ' + _nevtabla + _sorveg;
+                          _pcs := _pcs + 'WHERE SORSZAM=' + _sss;
+                          with Pquery do
+                            begin
+                              Close;
+                              sql.clear;
+                              sql.add(_pcs);
+                              Open;
+                              _recno := recno;
+                            end;
+
+                          if _recno>0 then _kulfoldi := Pquery.FieldByName('KULFOLDI').asInteger;
+                        end;
+                    end;
+                  Pquery.close;
+                  if _kulfoldi=1 then inc(_JK) else inc(_JB);
+                end;
+              Uquery.next;
+            end;
+          inc(_ho);
+        end;
+      inc(_pt);
+    end;
+  csik.visible :=False;
+  AdatDisplay;
+end;
+
+procedure TForm1.AdatDisplay;
+
+begin
+  bnpanel.Caption := inttostr(_NB);
+  bnpanel.repaint;
+  bJpanel.Caption := inttostr(_JB);
+  bJpanel.repaint;
+  Knpanel.Caption := inttostr(_NK);
+  bnpanel.repaint;
+  KJpanel.Caption := inttostr(_JK);
+  bnpanel.repaint;
+  HPanel.Caption := inttostr(_h);
+  Hpanel.Repaint;
+end;
+
+function tform1.nulele(_b: byte): string;
+
+begin
+  result := inttostr(_b);
+  if _b<10 then result := '0' + result;
+end;
+
+function TForm1.EzertekTar(_pp: byte): boolean;
+
+begin
+  result := true;
+  if (_pp=10) or (_pp=20) or (_pp=40) or (_pp=50) or (_pp=63) then exit;
+  if (_pp=75) or (_pp=120) or (_pp=145) THEN EXIT;
+
+  Result := False;
+end;
+end.

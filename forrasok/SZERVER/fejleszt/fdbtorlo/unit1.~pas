@@ -1,0 +1,215 @@
+unit Unit1;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, Buttons, IBTable, IBDatabase, DB, IBCustomDataSet,
+  IBQuery, ExtCtrls;
+
+type
+  TForm1 = class(TForm)
+    KILEPGOMB: TBitBtn;
+    STARTGOMB: TBitBtn;
+    VQUERY: TIBQuery;
+    VDBASE: TIBDatabase;
+    VTRANZ: TIBTransaction;
+    VTABLA: TIBTable;
+    infopanel: TPanel;
+    Label1: TLabel;
+    EVPANEL: TPanel;
+    Label2: TLabel;
+    HOPANEL: TPanel;
+    Label3: TLabel;
+    FAROKPANEL: TPanel;
+    Label4: TLabel;
+    Label5: TLabel;
+    PENZTARPANEL: TPanel;
+    FILEPANEL: TPanel;
+    Label6: TLabel;
+    PARANCSPANEL: TPanel;
+    Label7: TLabel;
+
+    procedure KILEPGOMBClick(Sender: TObject);
+    procedure STARTGOMBClick(Sender: TObject);
+    procedure vparancs(_ukaz: string);
+
+    function Nulele(_b: byte): string;
+   
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form1: TForm1;
+  _PT,_ev,_ho,_tss: word;
+  _fdbpath,_farok,_akttabla,_pcs: string;
+  _tablak: array[1..12] of string = ('ARFE','BF','BT','CIMT','EFEJ','ETET',
+                            'KEZD','NARF','TRAD','WUNI','WZAR','XKEZ');
+
+
+implementation
+
+{$R *.dfm}
+
+procedure TForm1.KILEPGOMBClick(Sender: TObject);
+begin
+  application.Terminate;
+end;
+
+procedure TForm1.STARTGOMBClick(Sender: TObject);
+begin
+  _PT := 1;
+  WHILE _PT<=168 DO
+    begin
+      PenztarPanel.Caption := inttostr(_pt);
+      _fdbPath := 'c:\receptor\database\v'+inttostr(_pt)+'.fdb';
+      if not fileExists(_fdbPath) then
+        begin
+          Parancspanel.caption := '';
+          FilePanel.Caption := '';
+          Infopanel.Repaint;
+          inc(_pt);
+          continue;
+        end;
+      Vdbase.close;
+      vdbase.databasename := _fdbPath;
+      _ev := 20;
+      _ho := 12;
+      _farok := '2012';
+      while _farok<='2111' do
+        begin
+          Evpanel.Caption := inttostr(_ev);
+          Hopanel.Caption := inttostr(_ho);
+          Farokpanel.Caption := _farok;
+          _tss := 1;
+          while _tss<=12 do
+            begin
+              _akttabla := _tablak[_tss] + _farok;
+              vtabla.close;
+              vtabla.TableName := _akttabla;
+              vdbase.Connected := true;
+              if not vtabla.Exists then
+                begin
+                  FilePanel.Caption := '';
+                  Infopanel.Repaint;
+                  vdbase.close;
+                  inc(_tss);
+                  continue;
+                end;
+              FilePanel.Caption := _akttabla;
+              vdbase.close;
+              _pcs := 'DROP TABLE ' + _akttabla;
+              ParancsPanel.Caption := _pcs;
+              Infopanel.Repaint;
+
+              Vparancs(_pcs);
+              inc(_tss);
+            end;
+          inc(_ho);
+          if _ho>12 then
+            begin
+              _ho := 1;
+              inc(_ev);
+            end;
+          _farok := inttostr(_ev)+nulele(_ho);
+        end;
+      inc(_pt);
+    end;
+
+  // -------------------------------------------------
+
+  _PT := 151;
+  WHILE _PT<=168 DO
+    begin
+      PenztarPanel.Caption := inttostr(_pt);
+      _fdbPath := 'c:\cartcash\database\v'+inttostr(_pt)+'.fdb';
+      if not fileExists(_fdbPath) then
+        begin
+          Parancspanel.caption := '';
+          FilePanel.Caption := '';
+          Infopanel.Repaint;
+          inc(_pt);
+          continue;
+        end;
+      Vdbase.close;
+      vdbase.databasename := _fdbPath;
+      _ev := 20;
+      _ho := 12;
+      _farok := '2012';
+      while _farok<='2111' do
+        begin
+          Evpanel.Caption := inttostr(_ev);
+          Hopanel.Caption := inttostr(_ho);
+          Farokpanel.Caption := _farok;
+          _tss := 1;
+          while _tss<=12 do
+            begin
+              _akttabla := _tablak[_tss] + _farok;
+              vtabla.close;
+              vtabla.TableName := _akttabla;
+              vdbase.Connected := true;
+              if not vtabla.Exists then
+                begin
+                  FilePanel.Caption := '';
+                  Infopanel.Repaint;
+                  vdbase.close;
+                  inc(_tss);
+                  continue;
+                end;
+              FilePanel.Caption := _akttabla;
+              vdbase.close;
+              _pcs := 'DROP TABLE ' + _akttabla;
+              ParancsPanel.Caption := _pcs;
+              Infopanel.Repaint;
+
+              Vparancs(_pcs);
+              inc(_tss);
+            end;
+          inc(_ho);
+          if _ho>12 then
+            begin
+              _ho := 1;
+              inc(_ev);
+            end;
+          _farok := inttostr(_ev)+nulele(_ho);
+        end;
+      inc(_pt);
+    end;
+
+
+
+end;
+
+function TForm1.Nulele(_b: byte): string;
+
+begin
+  result := inttostr(_b);
+  if _b<10 then result := '0' + result;
+end;
+
+procedure TForm1.vparancs(_ukaz: string);
+
+begin
+  vdbase.connected := True;
+  if vtranz.InTransaction then vtranz.Commit;
+  vtranz.StartTransaction;
+
+  with vquery do
+    begin
+      Close;
+      sql.clear;
+      sql.add(_ukaz);
+      Execsql;
+    end;
+  VTranz.commit;
+  Vdbase.close;
+end;
+
+
+
+
+end.

@@ -1,0 +1,117 @@
+object Form2: TForm2
+  Left = 192
+  Top = 125
+  Width = 870
+  Height = 640
+  Caption = 'Form2'
+  Color = clBtnFace
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'MS Sans Serif'
+  Font.Style = []
+  OldCreateOrder = False
+  OnActivate = FormActivate
+  PixelsPerInch = 96
+  TextHeight = 13
+  object CONFILISTPANEL: TPanel
+    Left = 144
+    Top = 64
+    Width = 553
+    Height = 289
+    Color = clYellow
+    TabOrder = 0
+    Visible = False
+    object Label1: TLabel
+      Left = 24
+      Top = 24
+      Width = 222
+      Height = 23
+      Caption = 'A K'#214'VETKEZ'#336' BEJELENT'#201'SEK'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -19
+      Font.Name = 'Calibri'
+      Font.Style = [fsBold, fsItalic]
+      ParentFont = False
+    end
+    object Label2: TLabel
+      Left = 96
+      Top = 56
+      Width = 76
+      Height = 23
+      Caption = #201'RKEZTEK'
+      Font.Charset = EASTEUROPE_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -19
+      Font.Name = 'Calibri'
+      Font.Style = [fsBold, fsItalic]
+      ParentFont = False
+    end
+    object Label3: TLabel
+      Left = 208
+      Top = 64
+      Width = 336
+      Height = 19
+      Caption = 'A V'#193'LASZTOTT BEJELENT'#201'S DEKODOLT TARTALMA'
+      Font.Charset = EASTEUROPE_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -16
+      Font.Name = 'Calibri'
+      Font.Style = [fsBold, fsItalic]
+      ParentFont = False
+    end
+    object BEJELENTESLISTA: TListBox
+      Left = 64
+      Top = 88
+      Width = 145
+      Height = 137
+      Cursor = crHandPoint
+      Color = clWhite
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -16
+      Font.Name = 'Calibri'
+      Font.Style = [fsItalic]
+      ItemHeight = 19
+      ParentFont = False
+      TabOrder = 0
+      OnDblClick = BEJELENTESLISTADblClick
+    end
+    object BitBtn1: TBitBtn
+      Left = 64
+      Top = 248
+      Width = 137
+      Height = 25
+      Caption = 'VISSZA A F'#336'MEN'#220'RE'
+      TabOrder = 1
+      OnClick = BitBtn1Click
+    end
+    object Memo1: TMemo
+      Left = 224
+      Top = 88
+      Width = 305
+      Height = 137
+      Lines.Strings = (
+        '')
+      TabOrder = 2
+    end
+    object BitBtn2: TBitBtn
+      Left = 232
+      Top = 248
+      Width = 297
+      Height = 25
+      Cursor = crHandPoint
+      Caption = 'BEJELENTES ARCHIV'#193'L'#193'SA '#201'S T'#214'V'#193'BB'
+      TabOrder = 3
+      OnClick = BitBtn2Click
+    end
+  end
+  object KILEPO: TTimer
+    Enabled = False
+    Interval = 100
+    OnTimer = KILEPOTimer
+    Left = 424
+    Top = 16
+  end
+end

@@ -1,0 +1,1057 @@
+unit Unit2;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, IBDatabase, IBTable, DB,  strutils,
+  IBCustomDataSet, IBQuery, ExtCtrls, Grids, DBGrids;
+
+type
+  TUNPACKER = class(TForm)
+
+    VQuery   : TIBQuery;
+    VDbase   : TIBDatabase;
+    VTabla   : TIBTable;
+    VTranz   : TIBTransaction;
+
+    Kilepo   : TTimer;
+    Panel1   : TPanel;
+    Memo1    : TMemo;
+    TempQuery: TIBQuery;
+    TempDbase: TIBDatabase;
+    TempTranz: TIBTransaction;
+    RPTABLA: TIBTable;
+    RPQUERY: TIBQuery;
+    RPDBASE: TIBDatabase;
+    RPTRANZ: TIBTransaction;
+    RECQUERY: TIBQuery;
+    RECDBASE: TIBDatabase;
+    RECTRANZ: TIBTransaction;
+
+    procedure FormActivate(Sender: TObject);
+
+    procedure CsomagParaBeolvasas;
+    procedure FoglaloDekodolas;
+    procedure HaviDekodolas;
+    procedure JogiBedolgozas;
+    procedure KilepoTimer(Sender: TObject);
+    procedure ReceptParaBeolvasas;
+    procedure TablaKontrol;
+    procedure TempParancs(_ukaz: string);
+    procedure UgyfelBedolgozas;
+    procedure Vparancs(_ukaz: string);
+
+    function Angolra(_huName: string): string;
+    function DekodDatum(_kdatkod: string): string;
+    function DekodPenztar(_szams: string):integer;
+    function GetByte: byte;
+    function Getword: word;
+    function Getchar: string;
+    function Getstring: string;
+    function Getinteger: integer;
+    function GetPenztarNev(_irsz: byte):string;
+    function HutoGb(_kod: byte): byte;
+    function Nulele(_nn: byte): string;
+    function Tomorit(_be: string): string;
+    function Ujtablafeldolgozas(_tss: byte): boolean;
+    function DataToVFDB(_fpath: string): integer;
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  UNPACKER: TUNPACKER;
+
+  _binolvas: file of byte;
+  _maxTablaSorszam: byte = 21;
+  _zByte: byte = 255;
+
+  _tablanevek     : array[1..21] of string;
+  _vanTablafarok  : array[1..21] of byte;
+  _xMezo          : array[1..171] of string;
+  _xmTip          : array[1..171] of byte;
+
+  _mezoSors       : array[0..30] of byte;
+  _byteTomb       : array[1..1024] of byte;
+
+  _sPenztarNev    : array[0..150] of string;
+  _rPenztarnev    : array[0..50]  of string;
+
+  _sPenztarszam   : array[0..150] of byte;
+  _sPenztarEtar   : array[0..150] of byte;
+  _sPenztarCeg    : array[0..150] of string;
+  _rPenztarszam   : array[0..50]  of byte;
+
+
+  _sPenztarDarab  : byte;
+  _rPenztarDarab  : byte;
+  _vers1,_vers2   : byte;
+
+  _mResult,_aktnum,_iIndex,_aktugyfelszam,_dwriteOke: integer;
+
+  _datapath,_csomagpath,_mess,_cspkit,_csomagDatum,_cspnev,_aktfarok: string;
+  _pcs,_aktfdbpath,_versid,_aktpenztarnev,_aktTablanev,_mezosequ: string;
+  _aktmezonev,_datasequ,_aktstring,_csomagnev: string;
+  _sorveg: string = chr(13) + chr(10);
+
+  _Penztartipus,_aktpenztarszam,_tabladarab,_tss,_tablasorszam,_kellfarok: byte;
+  _mezodarab,_mm,_mss,_aktMezoTip: byte;
+
+  _rekordDarab,_rss: word;
+
+  _dekoke,_oke,_ezugyfel: boolean;
+
+function maketablesrutin: integer; stdcall; external 'c:\receptor\maktab.dll' name 'maketablesrutin';
+function unpackerrutin: integer; stdcall;
+
+implementation
+
+{$R *.dfm}
+
+
+// =============================================================================
+                 function unpackerrutin: integer; stdcall;
+// =============================================================================
+
+begin
+  unpacker := TUnpacker.Create(Nil);
+  result := unpacker.showmodal;
+  unpacker.free;
+end;
+
+
+// =============================================================================
+           procedure TUNPACKER.FormActivate(Sender: TObject);
+// =============================================================================
+
+
+begin
+  Top    := 90;
+  Left   := 0;
+  Height := 160;
+  Width  := 1280;
+
+  _csomagPath := '';
+
+  ReceptParaBeolvasas;
+  CsomagParaBeolvasas;
+
+  if not FileExists(_csomagpath) then
+    begin
+      _mess := 'Nem találom a napzáró csomagot !';
+      Memo1.Lines.add(_mess);
+      _mResult := -1;
+      Kilepo.Enabled := True;
+      exit;
+    end;
+
+  _aktfarok := midstr(_csomagDatum,3,2)+midstr(_csomagDatum,6,2);
+  _aktfdbPath := 'C:\receptor\database\v' + inttostr(_aktpenztarszam)+'.fdb';
+
+  _dwriteOke := DataToVfdb(_aktfdbPath);
+  if _dwriteOke=-1 then
+    begin
+      _mResult := -1;
+      Kilepo.Enabled := True;
+      exit;
+    end;
+
+   _mResult := 1;
+   if _aktpenztarszam>150 then
+     begin
+       _aktFdbPath := 'c:\cartcash\database\v' + inttostr(_aktpenztarszam)+'.fdb';
+       _mess := 'A ZÁRÁST AZ ECPRESSZ ADATBÁZISBA IS BEIROM';
+       Memo1.Lines.add(_mess);
+       _mResult := DataToVfdb(_aktfdbPath);
+     end;
+   if _mResult=1 then Memo1.Lines.Add('A NAPI ZÁRÁS ADATAIT RENDBEN BEDOLGOZTAM');
+   if _mResult=-1 then Memo1.Lines.Add('SIKERTELEN ZÁRÁS BEDOLGOZÁS EXPRESSZBE');
+   Kilepo.Enabled := True;
+end;
+
+
+// =============================================================================
+        function TUNPACKER.UjTablaFeldolgozas(_tss: byte): boolean;
+// =============================================================================
+
+begin
+  result  := False;
+  _dekOke := False;
+
+  case _tablaSorszam of
+      1..16: HaviDekodolas;
+      18   : ugyfelBedolgozas;
+      19   : jogiBedolgozas;
+      20   : FoglaloDekodolas;
+  end;
+
+  if _dekOke then result := True;
+end;
+
+
+// =============================================================================
+                    procedure TUNPACKER.FoglaloDekodolas;
+// =============================================================================
+
+begin
+  _rekordDarab := GetWord;   // mindig 1
+
+  _mezoDarab := GetByte;
+
+  _mm := 0;
+  _mezoSequ := 'DATUM,';
+  while _mm<_mezoDarab do
+    begin
+      _mss := GetByte;
+      _mezoSors[_mm] := _mss;
+      _aktMezoNev := _xMezo[_mss];
+      _mezoSequ := _mezoSequ + _aktMezoNev;
+      inc(_mm);
+      if _mm<_mezoDarab then _mezoSequ := _mezoSequ + ',';
+    end;
+
+  _zByte := getByte;  // fejléc záró
+  if _zByte<255 then exit;
+
+  _dataSequ := chr(39)+ _csomagDatum +chr(39) + ',';
+  _mm := 0;
+  while _mm<_mezoDarab do
+    begin
+      _mss := _mezoSors[_mm];
+
+      _aktMezoNev := _xMezo[_mss];
+      _aktMezoTip := _xmtip[_mss];
+
+      _aktNum := 0;
+      _aktString := '';
+
+      case _aktMezoTip of
+        1: _aktNum    := getByte;
+        2: _aktNum    := getWord;
+        3: _aktNum    := getInteger;
+        4: _aktString := getString;
+        5: _aktString := getChar;
+      end;
+
+      if _aktMezoTip<4 then _dataSequ := _dataSequ + inttostr(_aktNum)
+      else _dataSequ := _dataSequ + chr(39) + _aktString + chr(39);
+
+      inc(_mm);
+
+      if _mm<_mezoDarab then _dataSequ := _dataSequ + ',';
+    end;
+
+  _zByte := getByte;  //  rekordzáró byte
+
+  _pcs := 'DELETE FROM FOGLALO' + _sorveg;
+  _pcs := _pcs + 'WHERE DATUM='+CHR(39)+_csomagDatum+chr(39);
+  Vparancs(_pcs);
+
+  _pcs := 'INSERT INTO ' + _aktTablaNev + ' (' + _mezoSequ + ')' + _sorveg;
+  _pcs := _pcs + 'VALUES (' + _dataSequ + ')';
+  VParancs(_pcs);
+
+
+  _zByte := GetByte; // tablazaró byte
+
+  if _zByte<>255 then exit;
+  _dekOke := True;
+end;
+
+
+// =============================================================================
+                     procedure TUNPACKER.HaviDekodolas;
+// =============================================================================
+
+begin
+  _rekordDarab := GetWord;
+  if _rekordDarab=0 then
+    begin
+      _dekOke := True;
+      exit;
+    end;
+
+  _mezoDarab := GetByte;
+  _mm := 0;
+  _mezoSequ := '';
+  while _mm<_mezoDarab do
+    begin
+      _mss := GetByte;
+      _mezoSors[_mm] := _mss;
+      _aktMezoNev    := _xMezo[_mss];
+      _mezoSequ      := _mezoSequ + _aktMezoNev;
+      inc(_mm);
+      if _mm<_mezoDarab then _mezoSequ := _mezoSequ + ',';
+    end;
+
+  _zByte := GetByte;  // fejléc záró byte
+
+  if _zByte<255 then exit;
+
+  _rss := 0;
+  while _rss<_rekordDarab do
+    begin
+      _dataSequ := '';
+      _mm := 0;
+      while _mm<_mezoDarab do
+        begin
+          _mss := _mezoSors[_mm];
+
+          _aktMezoNev := _xMezo[_mss];
+          _aktMezoTip := _xmTip[_mss];
+
+          _aktNum := 0;
+          _aktString := '';
+
+          case _aktMezoTip of
+            1: _aktNum    := getByte;
+            2: _aktNum    := getWord;
+            3: _aktNum    := getInteger;
+            4: begin
+                 _aktString := getString;
+                 _aktstring := Angolra(_aktstring);
+               end;  
+
+
+            5: _aktString := getChar;
+          end;
+
+          if _aktMezoTip<4 then _dataSequ := _dataSequ + inttostr(_aktNum)
+          else _dataSequ := _dataSequ + chr(39) + _aktString + chr(39);
+
+
+          inc(_mm);
+
+          if _mm<_mezoDarab then _dataSequ := _dataSequ + ',';
+        end;
+
+      _zByte := getByte;  //  rekordzáró byte
+
+      _pcs := 'INSERT INTO ' + _aktTablaNev + ' (' + _mezoSequ + ')' + _sorveg;
+      _pcs := _pcs + 'VALUES (' + _dataSequ + ')';
+
+      VParancs(_pcs);
+      inc(_rss);
+   end;
+
+  _zByte := GetByte; // tablazaró byte
+  if  (_zByte<>255) and (_tablaSorszam<21) then exit;
+
+  _dekoke := True;
+
+end;
+
+
+
+// =============================================================================
+               procedure TUNPACKER.Vparancs(_ukaz: string);
+// =============================================================================
+
+begin
+  with Vdbase do
+    begin
+      Close;
+      DatabaseName := _aktFdbPath;
+      Connected := True;
+    end;
+
+  if vTranz.Intransaction then vTranz.Commit;
+  vTranz.StartTransaction;
+  with vQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Add(_ukaz);
+      ExecSql;
+    end;
+  vTranz.Commit;
+  vDbase.Close;
+end;
+
+// =============================================================================
+                     function TUNPACKER.Getchar: string;
+// =============================================================================
+
+var _byte: byte;
+
+begin
+  result := '';
+  BlockRead(_binOlvas,_byteTomb,1);
+  _byte := _byteTomb[1];
+  if _byte=0 then exit;
+
+  result := Chr(_byte);
+end;
+
+// =============================================================================
+                      function TUNPACKER.Getbyte: byte;
+// =============================================================================
+
+begin
+  BlockRead(_binOlvas,_byteTomb,1);
+  result := _byteTomb[1];
+end;
+
+// =============================================================================
+                  function TUNPACKER.GetWord: word;
+// =============================================================================
+
+begin
+  BlockRead(_binOlvas,_byteTomb,2);
+  Result := _byteTomb[1] + trunc(256*_byteTomb[2]);
+end;
+
+// =============================================================================
+                  function TUNPACKER.GetInteger: integer;
+// =============================================================================
+
+var _lo,_hi,_hlo,_hhi: byte;
+    _res,_code: integer;
+    _ress,_elojel: string;
+
+begin
+  BlockRead(_binOlvas,_byteTomb,4);
+  _eloJel := '';
+  _lo  := _byteTomb[1];   // *1
+  _hi  := _byteTomb[2];   // *256
+  _hlo := _byteTomb[3];   // *65536
+  _hhi := _byteTomb[4];   // *16777216
+
+  if _hhi>127 then
+    begin
+      _hhi := (_hhi and 127);
+      _eloJel := '-';
+    end;
+
+  _res  := trunc((_hhi*16777216)+(65536*_hlo)+(256*_hi)+_lo);
+  _ress := _elojel + inttostr(_res);
+  val(_ress,result,_code);
+
+  if _code<>0 then result := 0;
+end;
+
+// =============================================================================
+                function TUNPACKER.Getstring: string;
+// =============================================================================
+
+var i,_txtlen: integer;
+    _kod: byte;
+
+begin
+  Result := '';
+
+  Blockread(_binOlvas,_byteTomb,1);
+  _txtLen := _byteTomb[1];
+  if _txtLen=0 then exit;
+
+  BlockRead(_binOlvas,_byteTomb,_txtLen);
+  i := 1;
+  while i<=_txtLen do
+    begin
+      _kod := 255 - _byteTomb[i];
+      result := result + chr(_kod);
+      inc(i);
+    end;
+end;
+
+// =============================================================================
+           procedure TUNPACKER.KilepoTimer(Sender: TObject);
+// =============================================================================
+
+begin
+  Kilepo.Enabled := False;
+  ModalResult := _mResult;
+end;
+
+// =============================================================================
+             function TUNPACKER.GetPenztarNev(_irsz: byte):string;
+// =============================================================================
+
+var _y: byte;
+
+begin
+
+  Result := '';
+  if _irsz>150 then
+    begin
+      _iIndex := _irsz-150;
+      Result  := _rPenztarNev[_iIndex];
+      exit;
+    end;
+
+  _y := 0;
+  while _y<_sPenztarDarab do
+    begin
+      if _sPenztarszam[_y]=_irsz then
+        begin
+          result := trim(_sPenztarnev[_y]);
+          exit;
+        end;
+      inc(_y);
+    end;
+end;
+
+// =============================================================================
+         function TUNPACKER.DekodDatum(_kdatkod: string): string;
+// =============================================================================
+
+(* Három betüs file-kiterjesztésböl egy dátumot generál *)
+
+var _nap,_ev,_honap: word;
+
+begin
+  Result := '';
+  if _kDatKod = '' then exit;
+
+  _nap   := ord(_kDatKod[1]);
+  _ev    := ord(_kDatKod[2]);
+  _honap := ord(_kDatKod[3]);
+  _ev    := _ev + 2000 - 64;
+  _honap := trunc((_honap-64)/2);
+
+  if _nap>64 then _nap := _nap - 55
+  else _nap := _nap - 48;
+
+  Result := inttostr(_ev) + '.' + nulele(_honap) + '.' + nulele(_nap);
+end;
+
+// =============================================================================
+            function TUNPACKER.DekodPenztar(_szams: string):integer;
+// =============================================================================
+
+  (* 8 nagybetübõl álló stringbõl 1-999 közötti irodaszámot dekodol *)
+var i,_plusz,_b1,_b2,_egy,_tiz,_kodb,_szor,_betu: integer;
+
+   _ss  : array[1..4] of string;
+   _par : string;
+
+begin
+   Result := 0;
+   if length(_szams)<>8 then exit;
+
+   _szams := uppercase(_szams);
+   _ss[1] := midstr(_szams,3,2);
+   _ss[2] := midstr(_szams,7,2);
+   _ss[3] := leftstr(_szams,2);
+   _ss[4] := midstr(_szams,5,2);
+   _szams := '';
+
+   for i:= 1 to 4 do
+     begin
+       _par   := _ss[i];
+       _b1    := ord(_par[1]);
+       _b2    := ord(_par[2]);
+       _egy   := trunc((_b2-72)/2);
+       _tiz   := _b1 - 64;
+       _kodb  := (10*_tiz) + _egy;
+       _plusz := i + 1;
+       _szor  := 10 -i;
+       _betu  := trunc(_kodb/_szor) - _plusz;
+       _szams := _szams + chr(_betu + 48);
+     end;
+   Result := strtoint(_szams);
+end;
+
+// =============================================================================
+             function TUNPACKER.Nulele(_nn: byte): string;
+// =============================================================================
+
+begin
+  Result := inttostr(_nn);
+  if _nn<10 then Result := '0' + result;
+end;
+
+
+// =============================================================================
+                 function TUNPACKER.Angolra(_huName: string): string;
+// =============================================================================
+
+var _whn,_z,_asc: byte;
+
+begin
+  result  := '';
+
+  _huName := uppercase(trim(_huName));
+  _whn    := length(_huName);
+
+  if _whn=0 then exit;
+
+  _z := 1;
+  while _z<=_whn do
+    begin
+      _asc := ord(_huName[_z]);
+      _asc := HutoGb(_asc);
+
+      result := result + chr(_asc);
+      inc(_z);
+    end;
+end;
+
+// =============================================================================
+                   function TUNPACKER.HutoGb(_kod: byte): byte;
+// =============================================================================
+
+var _r: byte;
+
+begin
+  _r := _kod;
+  case _kod of
+    186: _r := 69;  // E
+    187: _r := 79;  // O
+    193: _r := 65;  // A
+    201: _r := 69;  // E
+    211: _r := 79;  // O
+    213: _r := 79;  // O
+    214: _r := 79;  // O
+    218: _r := 85;  // U
+    219: _r := 85;  // U
+    220: _r := 85;  // U
+    222: _r := 65;  // A
+    226: _r := 73;  // I
+    205: _r := 73;  // I
+
+    225: _r := 97;  // a
+    233: _r := 101; // e
+    237: _r := 105; // i
+    243: _r := 111; // o
+    246: _r := 111; // o
+    245: _r := 111; // o
+    250: _r := 117; // u
+    252: _r := 117; // u
+    251: _r := 117; // u
+  end;
+  result := _r;
+end;
+
+// =============================================================================
+               function TUNPACKER.Tomorit(_be: string): string;
+// =============================================================================
+
+var _bw,_pp,_asc: byte;
+
+begin
+  result := '';
+
+  _be := uppercase(trim(_be));
+  _bw := length(_be);
+
+  if _bw=0 then exit;
+
+  _pp := 1;
+  while _pp<=_bw do
+    begin
+      _asc := ord(_be[_pp]);
+      if _asc<>32 then result := result + chr(_asc);
+      inc(_pp);
+    end;
+end;
+
+
+// =============================================================================
+                    procedure TUNPACKER.TablaKontrol;
+// =============================================================================
+
+begin
+  if _tablaSorszam=18 then  // ügyfél átadó
+    begin
+      _aktTablaNev := 'U' + inttostr(_aktPenztarSzam);
+      _aktFdbPath  := 'c:\receptor\database\allugyfel.fdb';
+    end;
+
+  if _tablaSorszam=19 then  // jogiügyfél átadó
+    begin
+      _aktTablaNev := 'J' + inttostr(_aktpenztarszam);
+      _aktFdbPath  := 'c:\receptor\database\alljogi.fdb';
+    end;
+
+  _pcs := ' DELETE FROM VTEMP';
+  TempParancs(_pcs);
+
+  _pcs := 'INSERT INTO VTEMP (FDBPATH,TABLASORSZAM,TABLANEV,DATUM)'+_sorveg;
+  _pcs := _pcs + 'VALUES ('+chr(39)+_aktfdbpath+chr(39)+',';
+
+  _pcs := _pcs + inttostr(_tablaSorszam)+',';
+  _pcs := _pcs + chr(39) + _aktTablaNev + chr(39) + ',';
+  _pcs := _pcs + chr(39) + _csomagDatum + chr(39) + ')';
+  TempParancs(_pcs);
+
+  maketablesrutin;
+end;
+
+// =============================================================================
+             procedure TUNPACKER.TempParancs(_ukaz: string);
+// =============================================================================
+
+begin
+  TempDbase.Connected := true;
+  if TempTranz.InTransaction then TempTranz.commit;
+  TempTranz.StartTransaction;
+
+  with TempQuery do
+    begin
+      Close;
+      Sql.clear;
+      Sql.add(_ukaz);
+      ExecSql;
+    end;
+  TempTranz.commit;
+  Tempdbase.close;
+end;
+
+
+// =============================================================================
+                   procedure TUNPACKER.Ugyfelbedolgozas;
+// =============================================================================
+
+begin
+  _rekordDarab := GetWord;
+
+  if _rekordDarab=0 then
+    begin
+      _dekOke := true;
+      exit;
+    end;
+
+  _mezoDarab := GetByte;
+  _mm        := 0;
+  _mezoSequ  := '';
+
+  while _mm<_mezoDarab do
+    begin
+      _mss := GetByte;
+      _mezoSors[_mm] := _mss;
+      _aktMezoNev    := _xMezo[_mss];
+      _mezoSequ      := _mezoSequ + _aktMezoNev;
+      inc(_mm);
+
+      if _mm<_mezoDarab then _mezoSequ := _mezoSequ + ',';
+    end;
+
+  _zByte := GetByte;  // fejléc záró byte
+
+  if _zByte<255 then exit;
+
+  _rss := 0;
+  while _rss<_rekordDarab do
+    begin
+      _dataSequ :='';
+      _mm := 0;
+
+      while _mm<_mezoDarab do
+        begin
+          _ezugyfel := False;
+          _mss := _mezoSors[_mm];
+
+          _aktMezoNev := _xMezo[_mss];
+          _aktMezoTip := _xMtip[_mss];
+
+          if _aktmezonev='UGYFELSZAM' then _ezUgyfel := true;
+
+          _aktNum := 0;
+          _aktString := '';
+
+          case _aktMezoTip of
+            1: _aktNum    := getByte;
+            2: _aktNum    := getWord;
+            3: _aktNum    := getInteger;
+            4: _aktString := getString;
+            5: _aktString := getChar;
+          end;
+
+          if _ezugyfel then
+            begin
+              _aktugyfelszam := _aktnum;
+              _ezugyfel := false;
+            end;
+
+
+          if _aktMezoTip<4 then _dataSequ := _dataSequ + inttostr(_aktNum)
+          else _dataSequ := _dataSequ + chr(39) + _aktString + chr(39);
+
+
+          inc(_mm);
+
+          if _mm<_mezoDarab then _dataSequ := _dataSequ + ',';
+        end;
+
+      _zByte := getByte;  //  rekordzáró byte
+
+      _pcs := 'DELETE FROM '+ _akttablanev + _sorveg;
+      _pcs := _pcs + 'WHERE UGYFELSZAM=' + inttostr(_aktugyfelszam);
+      VParancs(_pcs);
+
+      _pcs := 'INSERT INTO ' + _akttablanev + ' (' + _mezoSequ + ')' + _sorveg;
+      _pcs := _pcs + 'VALUES (' + _dataSequ + ')';
+
+      VParancs(_pcs);
+      inc(_rss);
+   end;
+
+  _zByte := GetByte; // tablazaró byte
+  if  (_zByte<>255) and (_tablaSorszam<21) then exit;
+  _dekOke := true;
+
+end;
+
+// =============================================================================
+                  procedure TUNPACKER.JogiBedolgozas;
+// =============================================================================
+
+begin
+
+ _rekordDarab := Getword;
+ if (_rekordDarab=0) or (_rekordDarab>999) then
+    begin
+      _dekOke := true;
+      exit;
+    end;
+
+  _mezoDarab := GetByte;
+  _mm        := 0;
+  _mezoSequ  := '';
+
+  while _mm<_mezoDarab do
+    begin
+      _mss := GetByte;
+      _mezoSors[_mm] := _mss;
+      _aktMezoNev    := _xMezo[_mss];
+      _mezoSequ := _mezoSequ + _aktMezoNev;
+
+      inc(_mm);
+
+      if _mm<_mezoDarab then _mezoSequ := _mezoSequ + ',';
+    end;
+
+  _zByte := GetByte;  // fejléc záró byte
+
+  if _zByte<255 then exit;
+
+  _rss := 0;
+  while _rss<_rekordDarab do
+    begin
+      _dataSequ := '';
+      _mm       := 0;
+      while _mm<_mezoDarab do
+        begin
+          _ezugyfel := False;
+          _mss := _mezoSors[_mm];
+
+          _aktMezoNev := _xMezo[_mss];
+          _aktMezoTip := _xMtip[_mss];
+
+          if _aktmezoNev='UGYFELSZAM' then _ezUgyfel := True;
+
+          _aktNum     := 0;
+          _aktString  := '';
+
+          case _aktMezoTip of
+            1: _aktNum    := getByte;
+            2: _aktNum    := getWord;
+            3: _aktNum    := getInteger;
+            
+            4: begin
+                 _aktString := getString;
+                 _aktstring := angolra(_aktstring);
+                end;
+
+            5: _aktString := getChar;
+          end;
+
+          if _ezUgyfel then
+            begin
+              _aktugyfelszam := _aktnum;
+              _ezugyfel := False;
+            end;
+
+          if _aktMezoTip<4 then _dataSequ := _dataSequ + inttostr(_aktNum)
+          else _dataSequ := _dataSequ + chr(39) + _aktString + chr(39);
+
+          inc(_mm);
+
+          if _mm<_mezoDarab then _dataSequ := _dataSequ + ',';
+        end;
+      _zByte := getByte;  //  rekordzáró byte
+
+      _pcs := 'DELETE FROM ' + _akttablanev + _sorveg;
+      _pcs := _pcs + 'WHERE UGYFELSZAM=' + inttostr(_aktugyfelszam);
+
+      VParancs(_pcs);
+
+      _pcs := 'INSERT INTO ' + _akttablanev + ' (' + _mezoSequ + ')' + _sorveg;
+      _pcs := _pcs + 'VALUES (' + _dataSequ + ')';
+
+      VParancs(_pcs);
+      inc(_rss);
+   end;
+
+  _zByte := GetByte; // tablazáró byte
+  if  (_zByte<>255) and (_tablasorszam<21) then exit;
+  _dekOke := true;
+end;
+
+// =============================================================================
+                procedure TUnPacker.ReceptParaBeolvasas;
+// =============================================================================
+
+var _ss,_mt,_vf: byte;
+    _mn,_tn: string;
+
+begin
+  _pcs := 'SELECT * FROM MEZOADATOK';
+
+  Rpdbase.connected := True;
+  with RpQuery do
+    begin
+      Close;
+      sql.clear;
+      Sql.Add(_pcs);
+      Open;
+    end;
+
+  while not RPquery.eof do
+    begin
+      _ss := RpQuery.FieldByName('SORSZAM').asInteger;
+      _mn := trim(RpQuery.FieldByName('MEZONEV').asString);
+      _mt := RpQuery.fieldByName('MEZOTIPUS').asInteger;
+      _xmezo[_ss] := _mn;
+      _xmTip[_ss] := _mt;
+      rpquery.next;
+    end;
+
+  with RpQuery do
+    begin
+      Close;
+      sql.clear;
+      Sql.Add('SELECT * FROM TABLANEVEK');
+      Open;
+    end;
+
+  while not Rpquery.eof do
+    begin
+      _tn := trim(RpQuery.FieldByName('TABLANEV').asstring);
+      _ss := Rpquery.FieldByNAme('SORSZAM').asInteger;
+      _vf := Rpquery.FieldByNAme('VANFAROK').asInteger;
+
+      _tablanevek[_ss] := _tn;
+      _vantablafarok[_ss] := _vf;
+      RpQuery.next;
+    end;
+  RpQuery.close;
+  rpdbase.close;
+end;
+
+// =============================================================================
+             procedure TUnpacker.CsomagParaBeolvasas;
+// =============================================================================
+
+begin
+  recdbase.connected := true;
+  with Recquery do
+    begin
+      Close;
+      sql.clear;
+      Sql.add('SELECT * FROM VTEMP');
+      Open;
+      _csomagdatum     := FieldByName('DATUM').asString;
+      _csomagnev       := trim(FieldByNAme('CSOMAGNEV').asString);
+      _aktpenztarszam  := FieldByName('PENZTAR').asInteger;
+      Close;
+    end;
+  recdbase.close;
+  _csomagPath := 'C:\RECEPTOR\MAIL\IN\' + _csomagnev;
+
+end;
+
+// =============================================================================
+                function TUnPacker.DataToVFDB(_fpath: string): integer;
+// =============================================================================
+
+begin
+
+  with Vdbase do
+    begin
+      Close;
+      DatabaseName := _fPath;
+      Connected := True;
+    end;
+
+  Assignfile(_binolvas,_csomagpath);
+  Reset(_binolvas);
+
+  _vers1 := getbyte;
+  _vers2 := getbyte;
+  _versid := chr(_vers1)+chr(_vers2);
+
+  if (_versid<>'NX') then
+    begin
+      _mess := 'Nem megfelelõ program-id='+_versid;
+      Memo1.Lines.add(_mess);
+      Closefile(_binolvas);
+      result := -1;
+      exit;
+    end;
+
+  _tablaDarab := GetByte;
+  if _tablaDarab=0 then
+    begin
+      _mess := 'Nincs egyetlen tábla sem a zárócsomagban';
+      Memo1.Lines.add(_mess);
+      Closefile(_binolvas);
+      Result := -1;
+      Exit;
+    end;
+
+  _tss := 0;
+  while _tss<_tablaDarab do
+    begin
+      _tablaSorszam := GetByte;
+      if (_tablaSorszam<1) or (_tablaSorszam>_maxTablaSorszam) then
+        begin
+           _mess := 'Érvénytelen táblasorszám !';
+           Memo1.Lines.Add(_mess);
+           CloseFile(_binolvas);
+           Result := -1;
+           exit;
+         end;
+
+      _aktTablaNev := _tablaNevek[_tablaSorszam];
+      _kellFarok   := _vanTablaFarok[_tablaSorszam];
+
+      if _kellFarok=1 then _aktTablaNev := _aktTablaNev + _aktFarok;
+
+      TablaKontrol;
+
+      if _kellFarok=1 then
+         begin
+           _pcs := 'DELETE FROM ' + _aktTablaNev + _sorveg;
+           _pcs := _pcs + 'WHERE DATUM=' + chr(39) + _csomagDatum + chr(39);
+           VParancs(_pcs);
+         end;
+
+       _mess := _aktTablaNev + ' adatainak bedolgozása ...';
+       Memo1.Lines.Add(_mess);
+
+      _oke := UjTablaFeldolgozas(_tablaSorszam);
+
+      if not _oke then
+        begin
+          _mess := 'Hiba a tábla-feldolgozás közben';
+          Memo1.Lines.Add(_mess);
+          CloseFile(_binolvas);
+          result := -1;
+          exit;
+        end;
+      inc(_tss);
+    end;
+  _zByte := GetByte;
+  CloseFile(_binolvas);
+  Result := 1;
+end;
+
+
+end.
+

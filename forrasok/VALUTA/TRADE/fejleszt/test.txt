@@ -1,0 +1,9 @@
+<Message>
+<MessageType>TEST TOPUP</MessageType>
+<TerminalId>1620</TerminalId>
+<UserName>ebcpplaz1</UserName>
+<UserPassword>ebcpplaz1</UserPassword>
+<ProductId>84</ProductId>
+<PhoneNumber>301111111</PhoneNumber>
+<LimitCheck>Y</LimitCheck>
+</Message>

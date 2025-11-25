@@ -1,0 +1,691 @@
+unit Unit2;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, ExtCtrls, Buttons, IBDatabase, DB, IBCustomDataSet,
+  IBQuery, dateutils, strutils, printers;
+
+type
+  TCIMLETNYOM = class(TForm)
+    KILEPO: TTimer;
+    Panel1: TPanel;
+    Label1: TLabel;
+    Label2: TLabel;
+    BX1: TCheckBox;
+    BX2: TCheckBox;
+    BX3: TCheckBox;
+    BX4: TCheckBox;
+    BX5: TCheckBox;
+    STARTGOMB: TBitBtn;
+    ALLMARKGOMB: TBitBtn;
+    EXITGOMB: TBitBtn;
+    VALQUERY: TIBQuery;
+    VALDBASE: TIBDatabase;
+    VALTRANZ: TIBTransaction;
+    LISTPANEL: TPanel;
+    Shape1: TShape;
+    DISPLAYBOX: TMemo;
+    ETDATAQUERY: TIBQuery;
+    ETDATADBASE: TIBDatabase;
+    ETDATATRANZ: TIBTransaction;
+    BitBtn1: TBitBtn;
+
+    procedure KILEPOTimer(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
+    procedure ALLMARKGOMBClick(Sender: TObject);
+    procedure STARTGOMBClick(Sender: TObject);
+    procedure AlapadatBeolvasas;
+
+    procedure AdatNullazas;
+    procedure DVonalHuzo;
+    procedure VonalHuzo;
+    procedure Kozepreir(_s: string);
+    procedure Ujsor;
+    procedure CimletTypeRegister;
+    procedure Adatbegyujtes;
+    procedure StartNyomtatas;
+    procedure EvvegiNyomtatas(Sender: TObject);
+
+    function Nulele(_b: byte): string;
+    function Getdnev(_dn: string): string;
+    function getcimletes(_c: integer): string;
+    function negyes(_n: integer): string;
+    function Otos(_n: integer): string;
+    function Tizenegy(_b: integer): string;
+
+    procedure EgyTemaCImletNyomtatasa(_tss: byte);
+    procedure EXITGOMBClick(Sender: TObject);
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  CIMLETNYOM: TCIMLETNYOM;
+  _box : array[1..5] of TCheckBox;
+
+  _tema: array[1..5] of string = ('Valuta váltás','Kezelési díj','Western Union',
+            'Afa','Elektromos kereskedés');
+
+  _bytetomb: array[1..1024] of byte;
+  _cimdb: array[1..14] of word;
+
+  _vdnem: array[1..27] of string;
+  _vkesz: array[1..27] of integer;
+
+  _cimlet: array[1..14] of word = (20000,10000,5000,2000,1000,500,200,100,50,20,10,5,2,1);
+
+  _fkeszlet,_aktkesz,_ssum,_aktkeszlet: integer;
+
+  _vcim: array[1..27,1..14] of word;
+  _sorveg: string = chr(13)+chr(10);
+
+  _temaSor: array[1..5] of byte;
+
+  _temadarab,_printer,_ok,_temass,_kk,_aktvdb,_vss: byte;
+  _bytess,_cimss,_cimletType: byte;
+  _aktcimini,_aktdnem,_temanev,_pcs,_mezo: string;
+  _datumstring,_asor: string;
+
+  _mostev,_mostho,_mostnap,_aktcdb,_aktcimlet,_height,_width,_top,_left: word;
+
+  _binolvas: file of byte;
+
+  _textFileNyitva: boolean;
+  _LFile: textFile;
+  _wideOn : string = #14;
+  _wideoff: string = #20;
+
+
+
+  _dnem: array[1..27] of string = ('AUD','BAM','BGN','BRL','CAD','CHF','CNY',
+                                   'CZK','DKK','EUR','GBP','HRK','HUF','ILS',
+                                   'JPY','MXN','NOK','NZD','PLN','RON','RSD',
+                                   'RUB','SEK','THB','TRY','UAH','USD');
+
+  _dnev: array[1..27] of string = ('AUSZTRÁL DOLLÁR','BOSNYÁK MÁRKA','BOLGÁR LEVA',
+              'BRAZIL REÁL','KANADAI DOLLÁR','SVÁJCI FRANK','KINAI JÜAN',
+              'CSEH KORONA','DÁN KORONA','EURÓ','ANGOL FONT','HORVÁT KUNA',
+              'MAGYAR FORINT','IZRAELI SHAKEL','JAPÁN YEN','MEXIKÓI PESO',
+              'NORVÉG KORONA','ÚJ-ZÉLANDI DOLLÁR','LENGYEL ZLOTY',
+              'ROMÁN LEI','SZERB DINÁR','OROSZ RUBEL','SVÉD KORONA',
+              'THAIFÖLDI BATH','TÖRÖK LÍRA','UKRÁN HRIVNYA','USA DOLLÁR');
+
+
+function regeneralorutin: integer; stdcall; external 'c:\ERTEKTAR\bin\regen.dll' name 'regeneralorutin';
+function cimletctrlrutin: integer; stdcall; external 'c:\ERTEKTAR\bin\cimlctrl.dll' name 'cimletctrlrutin';
+function cimletmenurutin: integer; stdcall; external 'c:\ERTEKTAR\bin\cimlmenu.dll' name 'cimletmenurutin';
+
+function cimletnyomtatorutin: integer; stdcall;
+
+
+implementation
+
+{$R *.dfm}
+
+// =============================================================================
+                function cimletnyomtatorutin: integer; stdcall;
+// =============================================================================
+
+begin
+  CimletNyom := TCimletNyom.Create(Nil);
+  result := CimletNyom.ShowModal;
+  Cimletnyom.Free;
+end;
+
+// =============================================================================
+                    procedure TCIMLETNYOM.FormActivate(Sender: TObject);
+// =============================================================================
+
+begin
+  _height := Screen.Monitors[0].Height;
+  _width  := Screen.Monitors[0].width;
+
+  _top := trunc((_height-420)/2);
+  _left := trunc((_width-500)/2);
+
+  Top := _top;
+  Left := _left;
+
+  _box[1] := BX1;
+  _box[2] := BX2;
+  _box[3] := BX3;
+  _box[4] := BX4;
+  _box[5] := BX5;
+
+
+  _mostev := yearof(date);
+  _mostho := monthof(date);
+  _mostnap:= dayof(date);
+
+  _datumstring := inttostr(_mostev)+'.'+nulele(_mostho)+'.'+nulele(_mostnap);
+
+  AlapAdatBeolvasas;
+
+  _textfileNyitva := False;
+  AdatNullazas;
+
+  AllMarkgombClick(Nil);
+  Activecontrol := startgomb;
+end;
+
+// =============================================================================
+                       procedure TCIMLETNYOM.Alapadatbeolvasas;
+// =============================================================================
+
+
+begin
+  valdbase.connected := true;
+  with Valquery do
+    begin
+      Close;
+      sql.clear;
+      sql.add('SELECT * FROM HARDWARE');
+      Open;
+      _printer     := FieldByName('PRINTER').ASiNTEGER;
+      Close;
+    end;
+  Valdbase.close;
+end;
+
+// =============================================================================
+               procedure TCIMLETNYOM.STARTGOMBClick(Sender: TObject);
+// =============================================================================
+
+var _y,_xx,_akttema: byte;
+    _coke : integer;
+
+begin
+  Startgomb.Enabled   := False;
+  AllMarkGomb.Enabled := False;
+
+  DisplayBox.Lines.clear;
+  with ListPanel do
+    begin
+      Top     := 96;
+      Left    := 16;
+      Visible := True;
+      Bringtofront;
+    end;
+
+  _xx := 1;
+  while _xx<=5 do
+    begin
+      if _box[_xx].Checked then
+        begin
+          inc(_temadarab);
+          _temasor[_temadarab] := _xx;
+        end;
+      inc(_xx);
+    end;
+
+  if _temadarab=0 then
+    begin
+      ShowMessage('NEM VOLT KIJELÖLT CIMLETEZÉS !');
+      Kilepo.Enabled := True;
+      exit;
+    end;
+
+  // ----------------------------------------------------
+
+  _y := 1;
+  while _y<=_temadarab do
+    begin
+      _akttema := _temasor[_y];
+      _temanev := _tema[_akttema];
+
+      Displaybox.Lines.Add(_temanev+' ellenörzése ...');
+
+      _cimlettype := _akttema;
+      CimletTypeRegister;
+      _ok := cimletctrlrutin;
+
+      if _ok=3 then
+        begin
+          inc(_y);
+          Continue;
+        end;
+
+      if _ok<>1 then
+        begin
+          _coke := cimletmenurutin;
+          if _coke=-1 then
+            begin
+              Application.Terminate;
+              exit;
+            end;
+          continue;
+        end;
+      inc(_y);
+    end;
+
+  // ----------------------------------------------------------------
+
+  _temass := 1;
+  while _temass<=_temadarab do
+    begin
+      _akttema := _temasor[_temass];
+      _cimletType := _akttema;
+
+      CimletTypeRegister;
+
+      AdatBegyujtes;
+
+      EgyTemaCimletNyomtatasa(_akttema);
+      inc(_temass);
+    end;
+
+  Writeln(_LFile,chr(13)+chr(10));
+  WriteLn(_LFile,chr(26));
+  CloseFile(_LFile);
+
+  StartNyomtatas;
+  DisplayBox.Lines.add('NYOMTATÁS ELKÉSZÜLT');
+  Sleep(2500);
+  ModalResult := 1;
+end;
+
+// =============================================================================
+              procedure TCIMLETNYOM.EgyTemaCImletNyomtatasa(_tss: byte);
+// =============================================================================
+
+var _y,_c: byte;
+    _aktdnev,_fsor,_cimletnev: string;
+    _keszlet: integer;
+
+begin
+
+  if not _TextFileNyitva then
+    begin
+      AssignFile(_LFile,'c:\ERTEKTAR\aktlst.txt');
+      rewrite(_LFile);
+      _textFileNyitva := true;
+    end;
+
+  _TEMANEV := _TEMA[_TSS];
+  DisplayBox.Lines.Add(_temanev+' cimletek nyomtatása');
+  Kozepreir(_temanev+ ' cimletezése');
+  Kozepreir(_datumstring);
+  DVonalHuzo;
+
+  _y := 1;
+  while _y<= _aktvdb do
+    begin
+      _aktdnem := _vdnem[_y];
+      _aktdnev := getdnev(_aktdnem);
+      _fsor := _aktdnem + ' - ' + _aktdnev;
+      writeln(_LFile,_fsor);
+      Ujsor;
+      _keszlet := _vkesz[_y];
+      _c :=1;
+      while _c<=14 do
+        begin
+          _aktcdb := _vcim[_y,_c];
+          if _aktcdb>0 then
+            begin
+              _aktcimlet := _cimlet[_c];
+              _cimletnev := getCimletes(_aktcimlet);
+              _asor := '  '+_cimletnev+'  '+otos(_aktcdb)+' db = ';
+              _ssum := trunc(_aktcdb*_aktcimlet);
+              _asor := _asor + tizenegy(_ssum);
+              writeLn(_LFile,_asor);
+            end;
+          inc(_c);
+        end;
+      Ujsor;
+      _fsor := _wideOn+' Összesen :'+_wideoff+' '+tizenegy(_keszlet);
+      writeLn(_LFile,_fsor);
+      VonalHuzo;
+      inc(_y);
+    end;
+end;
+
+
+// =============================================================================
+             function TCIMLETNYOM.getcimletes(_c: integer): string;
+// =============================================================================
+
+begin
+  result := '         ';
+  case _c of
+    1: result := '     1-es';
+    2: result := '     2-es';
+    5: result := '     5-ös';
+   10: result := '    10-es';
+   20: result := '    20-as';
+   50: result := '    50-es';
+  100: result := '   100-as';
+  200: result := '   200-as';
+  500: result := '   500-as';
+ 1000: result := ' 1.000-es';
+ 2000: result := ' 2.000-es';
+ 5000: result := ' 5.000-es';
+10000: result := '10.000-es';
+20000: result := '20.000-es';
+   end;
+end;
+
+// =============================================================================
+               function TCIMLETNYOM.negyes(_n: integer): string;
+// =============================================================================
+
+begin
+  result := inttostr(_n);
+  while length(result)<4 do result := ' '+result;
+end;
+
+// =============================================================================
+               function TCIMLETNYOM.Otos(_n: integer): string;
+// =============================================================================
+
+begin
+  result := inttostr(_n);
+  while length(result)<5 do result := ' '+result;
+end;
+
+
+// =============================================================================
+             function TCIMLETNYOM.Tizenegy(_b: integer): string;
+// =============================================================================
+
+var _r: string;
+    _w1,_p1: byte;
+
+begin
+  _r := inttostr(_b);
+  _w1 := length(_r);
+  if _b>999999 then
+    begin
+      _p1 := _w1-6;
+      _r := leftstr(_r,_p1)+'.'+midstr(_r,_p1+1,3)+'.'+midstr(_r,_p1+4,3);
+    end else
+    begin
+      if _b>999 then
+         begin
+            _p1 := _w1-3;
+            _r := leftstr(_r,_p1)+'.'+midstr(_r,_p1+1,3);
+          end;
+    end;
+  _w1 := length(_r);
+  while _w1<11 do
+    begin
+      _r := ' '+_r;
+      _w1 := length(_r);
+    end;
+
+  result := _r;
+end;
+
+
+// =============================================================================
+                procedure TCIMLETNYOM.KILEPOTimer(Sender: TObject);
+// =============================================================================
+
+begin
+  Kilepo.Enabled := False;
+  Modalresult := 1;
+end;
+
+
+// =============================================================================
+             procedure TCIMLETNYOM.AllMarkGombClick(Sender: TObject);
+// =============================================================================
+
+var _y: byte;
+    _aktbox: TCheckbox;
+
+begin
+  _y := 1;
+  while _y<=5 do
+    begin
+      _aktbox := _box[_y];
+      if _aktbox.enabled then _aktbox.Checked := true;
+      inc(_y);
+    end;
+end;
+
+
+// =============================================================================
+                          procedure TCIMLETNYOM.AdatNullazas;
+// =============================================================================
+
+var i: byte;
+
+begin
+  for i:= 1 to 5 do _temasor[i] := 0;
+  _temadarab := 0;
+end;
+
+// =============================================================================
+                         procedure TCIMLETNYOM.DvonalHuzo;
+// =============================================================================
+
+begin
+  WriteLn(_LFile,dupestring('=',34));
+end;
+
+// =============================================================================
+                          procedure TCIMLETNYOM.VonalHuzo;
+// =============================================================================
+
+begin
+  WriteLn(_LFile,dupestring('-',34));
+end;
+
+// =============================================================================
+                    procedure TCIMLETNYOM.Kozepreir(_s: string);
+// =============================================================================
+
+var _w,_oo: byte;
+
+begin
+  _s := trim(_s);
+  _w := length(_s);
+  if _w>34 then
+    begin
+      _s := leftstr(_s,34);
+      _w := 34;
+    end;
+
+  _oo := trunc((34-_w)/2);
+  if _oo>0 then _s := dupestring(' ',_oo)+_s;
+  writeLn(_LFile,_s);
+end;
+
+// =============================================================================
+                              procedure TCIMLETNYOM.Ujsor;
+// =============================================================================
+
+begin
+  writeln(_LFile,' ');
+end;
+
+// =============================================================================
+                    function TCIMLETNYOM.Nulele(_b: byte): string;
+// =============================================================================
+
+begin
+  result := inttostr(_b);
+  if _b<10 then result := '0' + result;
+end;
+
+// =============================================================================
+                  function TCIMLETNYOM.Getdnev(_dn: string): string;
+// =============================================================================
+
+var _z: byte;
+
+begin
+  result := '?';
+  _z := 1;
+  while _z<=27 do
+    begin
+      if _dnem[_z] = _dn then
+        begin
+          result := _dnev[_z];
+          exit;
+        end;
+      inc(_z);
+    end;
+end;
+
+// =============================================================================
+              procedure TCIMLETNYOM.EXITGOMBClick(Sender: TObject);
+// =============================================================================
+
+begin
+  Modalresult := 1;
+end;
+
+
+// =============================================================================
+                   procedure TCimletNyom.CimletTypeRegister;
+// =============================================================================
+
+begin
+  _pcs := 'UPDATE HARDWARE SET MENETSZAM=' + inttostr(_cimletType);
+  Valdbase.connected := true;
+  if valtranz.InTransaction then valtranz.Commit;
+  Valtranz.StartTransaction;
+  with ValQuery do
+    begin
+      Close;
+      sql.clear;
+      sql.add(_pcs);
+      Execsql;
+    end;
+  Valtranz.Commit;
+  valdbase.close;
+end;
+
+// =============================================================================
+                       procedure TCimletNyom.Adatbegyujtes;
+// =============================================================================
+
+var _y: byte;
+
+begin
+  _pcs := 'SELECT * FROM CIMINI' + _sorveg;
+  _pcs := _pcs + 'WHERE CIMLETTYPE=' + inttostr(_cimletType);
+
+  Valdbase.connected := true;
+  with Valquery do
+    begin
+      Close;
+      sql.clear;
+      sql.add(_pcs);
+      Open;
+      First;
+    end;
+
+  _aktvdb := 0;
+  while not ValQuery.eof do
+    begin
+      inc(_aktvdb);
+      _aktdnem := Valquery.fieldByNAme('VALUTANEM').asString;
+      _aktkeszlet := ValQuery.FieldByNAme('AKTKESZLET').asInteger;
+      _vdnem[_aktvdb] := _aktdnem;
+      _vkesz[_aktvdb] := _aktKeszlet;
+      _y := 1;
+      while _y<=14 do
+        begin
+          _mezo := 'CIMLET' + inttostr(_y);
+          _vcim[_aktvdb,_y] := Valquery.FieldByNAme(_mezo).asInteger;
+          inc(_y);
+        end;
+      Valquery.next;
+    end;
+  Valquery.close;
+  Valdbase.close;
+end;
+
+
+// =============================================================================
+                      procedure TCimletNyom.StartNyomtatas;
+// =============================================================================
+
+var _mondat: string;
+    _nyomtat,_olvas: textFile;
+
+begin
+
+  if _printer<>1 then AssignFile(_nyomtat,'LPT1:')
+  else AssignPrn(_nyomtat);
+  Rewrite(_nyomtat);
+  AssignFile(_olvas,'c:\ERTEKTAR\aktlst.txt');
+  Reset(_olvas);
+
+  while not eof(_olvas) do
+    begin
+      readln(_olvas,_mondat);
+      writeln(_nyomtat,_mondat);
+    end;
+  System.closeFile(_nyomtat);
+  System.CloseFile(_olvas);
+end;
+
+// =============================================================================
+            procedure TCIMLETNYOM.EvvegiNyomtatas(Sender: TObject);
+// =============================================================================
+
+var _tavalyev: word;
+    _cimtar: string;
+
+begin
+  with Takaro do
+    begin
+      top := 305;
+      left := 32;
+      Visible := True;
+      repaint;
+    end;
+  _tavalyev := _mostev-1;
+  _DATUMSTRING := inttostr(_tavalyev)+'.12.31';
+  _cimtar := 'CIMT' + midstr(_datumstring,3,2)+midstr(_datumstring,6,2);
+
+  _pcs := 'SELECT * FROM ' + _cimtar + _sorveg;
+  _pcs := _pcs + 'WHERE DATUM=' + chr(39)+_datumstring+chr(39)+_sorveg;
+  _pcs := _pcs + 'ORDER BY VALUTANEM';
+
+  EtDataDbase.Connected := true;
+  with EtdataQuery do
+    begin
+      Close;
+      sql.clear;
+      sql.add(_pcs);
+      Open;
+    end;
+   _kk := 0;
+   while not EtdataQuery.Eof do
+     begin
+       inc(_kk);
+       _vdnem[_kk] := EtdataQuery.FieldByName('VALUTANEM').asString;
+       _vkesz[_kk] := EtdataQuery.FieldByName('OSSZESFORINTERTEK').asInteger;
+       _vss := 1;
+       while _vss<=14 do
+         begin
+           _mezo := 'CIMLET' + inttostr(_vss);
+           _aktcimlet := EtdataQuery.FieldByNAme(_mezo).asInteger;
+           _vcim[_kk,_vss] := _aktcimlet;
+           inc(_vss);
+         end;
+       EtdataQuery.next;
+     end;
+   EtDataQuery.close;
+   EtDataDbase.close;
+
+   _aktvdb := _kk;
+
+   egytemacimletNyomtatasa(1);
+   SLEEP(3500);
+
+   Takaro.Visible := False;
+end;
+
+
+
+end.

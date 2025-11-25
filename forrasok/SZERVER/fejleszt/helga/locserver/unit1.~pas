@@ -1,0 +1,1155 @@
+unit Unit1;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, DBTables, DB, sTRuTILS, DBIProcs, Dbierrs, DBITypes,
+  ExtCtrls, idGlobal, Buttons,DateUtils, jpeg, ComCtrls, IBDatabase,
+  IBCustomDataSet, IBTable, IBQuery;
+
+type
+  TForm1 = class(TForm)
+
+    Label1: TLabel;
+
+    QuitGomb: TBitBtn;
+    Shape3: TShape;
+    Image1: TImage;
+    Image2: TImage;
+    MENUPANEL: TPanel;
+    FM1: TPanel;
+    FM2: TPanel;
+    FM4: TPanel;
+    FM11: TPanel;
+    FM6: TPanel;
+    FM3: TPanel;
+    FM5: TPanel;
+    FM10: TPanel;
+    FM7: TPanel;
+    FM8: TPanel;
+    FM9: TPanel;
+    Label2: TLabel;
+    KILEPOGOMB: TPanel;
+    Image3: TImage;
+    Shape1: TShape;
+    KILEPO: TTimer;
+    FM12: TPanel;
+    FM13: TPanel;
+
+    procedure FormCreate(Sender: TObject);
+    procedure FM1MouseMove(Sender: TObject; Shift: TShiftState; X,Y: Integer);
+    procedure MenupanelMouseMove(Sender: TObject; Shift: TShiftState; X,Y: Integer);
+
+
+    procedure FM1Click(Sender: TObject);
+    procedure FM2Click(Sender: TObject);
+    procedure FM4Click(Sender: TObject);
+    procedure FM6Click(Sender: TObject);
+    procedure FM10Click(Sender: TObject);
+    procedure FM3Click(Sender: TObject);
+    procedure FM5Click(Sender: TObject);
+    procedure FM7Click(Sender: TObject);
+    procedure KilepoTimer(Sender: TObject);
+    procedure KilepoGombClick(Sender: TObject);
+
+
+    procedure KilepGombClick(Sender: TObject);
+    procedure Shape3MouseMove(Sender: TObject; Shift: TShiftState; X,Y: Integer);
+
+    // -------------- functions -----------------------
+
+    function DecitoHexa(_deci: byte):string;
+    function Elokieg(_num: integer): string;
+    function ForintForm(_osszeg:integer):string;
+    function HexaToDec(_hexa: string): integer;
+    function Kieg(_mit:string;_hh:integer):string;
+    function Nulele(_szam: integer): string;
+    function PtarScan(_pt: integer):integer;
+    function SetLongDstring(_dstring: string):string;
+    function RealToStr(_rr: real): string;
+    function VesszobolPont(_vst: string): string;
+    function FtForm(_ft:real):string;
+    function GetCegbetuSorszam(_betu: string): integer;
+    function HDateToStr(_hdat: TDateTime): string;
+    function HstrToDate(_dst: string): TDateTime;
+    procedure FM12Click(Sender: TObject);
+    procedure FM13Click(Sender: TObject);
+
+
+
+
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form1: TForm1;
+
+  _aktpanel : TPanel;
+  _fm: array[1..13] of TPanel;
+
+
+
+  _valutaDarab : integer = 28;
+
+  // ---------------------- Tomb deklaraciok --------------------------------
+
+  _honapnev: array[1..12] of string = ('Január','Február','Március','Április',
+               'Május','Junius','Július','Augusztus','Szeptember','Október',
+               'November','December');
+
+  _napnev: array[1..7] of string = ('HÉTFÕ','KEDD','SZERDA','CSÜTÖRTÖK','PÉNTEK',
+               'SZOMBAT','VASÁRNAP');
+
+  _ertekTarDarab: byte = 9;
+
+  _dnem: array[1..27] of string = ('AUD','BAM','BGN','BRL','CAD','CHF','CNY','CZK',
+         'DKK','EUR','GBP','HRK','HUF','ILS','JPY','MXN','NOK','NZD','PLN','RON',
+         'RSD','RUB','SEK','THB','TRY','UAH','USD');
+
+  _dnev: array[1..27] of string = ('Ausztral dollar','Bosnyak marka','Bolgar leva',
+         'Brazil real','Kanadai dollar','Svajci frank','Kinai juan','Cseh korona',
+         'Dan korona','Euro','Angol font','Horvat kuna','Magyar forint','Izraeli shakel',
+         'Japan jen','Mexikoi peso','Norveg korona','Ujzelandi dollar',
+         'Lengyel zloty','Roman lei','Szerb dinar','Orosz rubel','Sved korona',
+         'Thai bath','Torok lira','Ukran hrivnya','Usa dollar');
+
+
+  _kvett,_keladott,_kvettertek,_keladottertek: array[1..9,1..27] of integer;
+  _kkvett,_kkeladott,_kkvettertek,_kkeladottertek: array[1..4,1..27] of integer;
+  _kelszarf,_sumvett,_sumeladott,_sumvettertek,_sumeladottertek: array[1..27] of integer;
+
+  _kockaszin: array[1..5] of TColor = (clBlack,clGray,clBlue,clYellow,clRed);
+  _betuszin : array[1..5] of TColor = (clGray,clBlack,clWhite,clBlue,clYellow);
+  _statuzen : array[1..5] of String = ('NINCS VÁLTÓ','ZÁRVA','KÉZI BEVITEL',
+                                         'ADAT BEJÖTT','NEMJÖTT BE');
+      _bankJel: array[1..9] of string;
+  _missPenztar: array[1..180] of integer;
+
+  _korzetnev : array[1..9] of string = ('Szekszárd','Szeged','Kecskemét','Debrecen',
+                         'Nyíregyháza','Békéscsaba','Pécs','Kaposvár','Expressz');
+
+  _korzetszam: array[1..9] of integer = (10,20,40,50,63,75,120,145,180);
+  _cegbetuk  : array[1..4] of string = ('B','P','E','Z');
+  _azonosito : array[1..4] of string;
+  _valtonev  : array[1..4] of string;
+  _impid     : array[1..4] of string;
+
+   _cimlet: array[1..14] of integer = (20000,10000,5000,2000,1000,500,200,
+                                       100,50,20,10,5,2,1);
+
+   _LFile,_olvas,_nyomtat: TextFile;
+
+   _varf,_earf,_elszarf: array[1..27] of integer;
+   _korzet: array[1..180] of byte;
+   _boltnev,_irodanev,_city,_bankkod,_cegbetutomb: array[1..180] of string;
+   _etarbetutomb,_nstatus,_vasarnap,_bezarva,_vTipus: array[1..180] of string;
+
+    _subdir: array[1..4] of string = ('BEST','PANNON','EAST','ZALOG');
+    _irodaszam: array of integer;
+    _cim: array[1..14] of integer;
+    _sorveg: string = chr(13)+chr(10);
+    _prosnevsor: array[1..500] of string;
+    _evtomb,_jmentes: array[1..500] of integer;
+
+    _userOke: integer;
+
+  // ------------------- STRING DEKLARACIOK ----------------------------
+
+   _aktBfej,
+   _aktBlokkNum,
+   _aktBTet,
+   _aktCegbetu,
+   _aktCegnev,
+   _aktDatums,
+   _aktDir,
+   _aktDnem,
+   _aktDNev,
+   _aktFej,
+   _aktFdbPath,
+   _aktKorzetnev,
+   _aktPenztarnev,
+   _aktStatus,
+   _aktSunday,
+   _aktTarsPenztar,
+   _aktTet,
+   _aktTipus,
+   _bankForg,
+   _bf,
+   _bkTipus,
+   _bt,
+   _cegbetu,
+   _closed,
+   _datum,
+   _datumigs,
+   _datumtols,
+   _fbkFile,
+   _dbMezo,
+   _displayfocim,
+   _elofarok,
+   _elojel,
+   _farok,
+   _fark,
+   _hianyString,
+   _holnaps,
+   _ido,
+   _idoszakLabel,
+   _idoszakSzuro,
+   _igs,
+   _igString,
+   _irodadnem,
+   _jelszo,
+   _kbJelzo,
+   _keres,
+   _MONDAT,
+   _mainSzuro,
+   _mamas,
+   _megnev,
+   _mezo,
+   _napmezo,
+   _napstatus,
+   _narfName,
+   _narfPath,
+   _pcs,
+   _penztar,
+   _prosnev,
+   _sttipus,
+   _sunday,
+   _szuro,
+   _tegnaps,
+   _telefon,
+   _tema,
+   _tFarok,
+   _tipus,
+   _tolfarok,
+   _tols,
+   _tolString,
+   _trbptars,
+   _utstatus,
+   _uzDnem,
+   _valutanem,
+   _valutanev: string;
+
+   // ------------- Date deklarációk ------------------------------------
+
+   _elsoDatum,
+   _nDatum,
+   _nyDatum,
+   _tDatum,
+   _uDatum: TDateTime;
+
+  
+  _bankiAtad,
+  _bankiAtvet,
+  _bankJegy,
+  _bevetel,
+  _eddig,
+  _eladas,
+  _eladasiArfolyam,
+  _eladott,
+  _eladottErtek,
+  _elszamolasiArfolyam,
+  _elszarfolyam,
+  _elteres,
+  _ertek,
+  _hiany,
+  _keszlet,
+  _kiadas,
+  _osszesen,
+  _nyito,
+  _ptarAtvesz,
+  _ptarKiad,
+  _sftErtek,
+  _skeszlet,
+  _szamZaro,
+  _tobblet,
+  _ujBankjegy,
+  _vetel,
+  _veteliArfolyam,
+  _vett,
+  _vettErtek,
+  _visszaMinusz,
+  _visszaPlusz: integer;
+
+  // ------------------------- WORD DECLARATION ------------------------
+
+   _aktev,
+   _aktho,
+   _aktnap,
+   _hnap,
+   _kertev,
+   _kertho,
+   _kellCtrl,
+   _tegnapev,
+   _tegnapho,
+   _tegnapnap,
+   _tolev,
+   _tolho,
+   _tolnap,
+   _tnap,
+   _trbPtar,
+   _xEv,
+   _xHonap,
+   _xNap: word;
+
+  // ---------------------- INTEGER DECLARATIONS -----------------------
+
+   _aktCimlet,
+   _aktErtek,
+   _aktErtekTar,
+   _aktKorzet,
+   _aktMenuRud,
+   _aktPenztar,
+   _aktPenztarszam,
+   _aktPt,
+   _aktTarsPenztarSzam,
+   _bJegy,
+   _bq,
+   _cbsors,
+   _cc,
+   _cegSs,
+   _code,
+   _darab,
+   _displayTipus,
+   _dnemDarab,
+   _eladasDb,
+   _eloEv,
+   _eloHo,
+   _ertektar,
+   _fogado,
+   _height,
+   _hetnap,
+   _houtnap,
+   _iroda,
+   _irodaDarab,
+   _irszam,
+   _kft,
+   _kuldo,
+   _left,
+   _lastPenztar,
+   _pausePerc,
+   _penztardarab,
+   _prisor,
+   _qq,
+   _stip,
+   _storno,
+   _top,
+   _utsorszam,
+   _vasarnapDb,
+   _veteldb,
+   _width,
+   _xx: integer;
+   _zaro,
+   _zhiany: integer;
+
+  // --------------------- DATUM DEKLARACIOK  --------------------------
+
+   _aktDatum,
+   _datumtol,
+   _datumig,
+   _ig,
+   _mama,
+   _tegnap,
+   _tol,
+   _zNap: TDateTime;
+
+  // ------------------------- LOGIKAI DEKLARACIOK ----------------------
+
+   _eof,
+   _found,
+   _hibas,
+   _megvan,
+   _oke,
+   _sajat,
+   _torolt,
+   _voltadat,
+   _ezTegnap,
+   _ezegynap,
+   _vancimtar,
+   _kellExcel,
+   _vanHiany: Boolean;
+
+  // ------------------------- EGYEB DEKLARACIOK ------------------------
+
+
+    _betu: char;
+    _dataFile: File of Char;
+
+
+function arfolyamkarbantarto: integer; stdcall; external 'c:\receptor\newdll\arftmk.dll';
+function beerkezettadatok: integer; stdcall; external 'c:\locserver\bin\beerk.dll';
+function mnblistarutin: integer; stdcall; external 'c:\receptor\newdll\mnbhibak.dll' name 'mnblistarutin';
+function jutalekszorzo: integer; stdcall; external 'c:\receptor\newdll\jszorzo.dll' name 'jutalekszorzo';
+function tranzakciojelentes: integer;stdcall;external 'c:\receptor\newdll\tranzdij.dll' name 'tranzakciojelentes';
+function dolgozokarbantarto: integer;stdcall;external 'c:\receptor\newdll\dolgozok.dll' name 'dolgozokarbantarto';
+function importfelirorutin: integer; stdcall; external 'c:\receptor\newdll\import.dll' name 'importfelirorutin';
+function zarasbeerkezesek: integer; stdcall; external 'c:\LOCSERVER\bin\zarasctrl.dll';
+function irodakarbantarto: integer; stdcall; external 'c:\LOCSERVER\bin\irtmk.dll';
+function westernforgalom: integer; stdcall; external 'c:\receptor\newdll\westforg.dll';
+
+function jutalekszamitorutin: integer; stdcall; external 'c:\receptor\newdll\dolgjutalek.dll' name 'jutalekszamitorutin';
+
+
+implementation
+
+uses Unit7,Unit10,Unit11,Unit20,Unit33,Unit34,Unit37;
+
+{$R *.dfm}
+
+
+// =============================================================================
+                 procedure TForm1.FormCreate(Sender: TObject);
+// =============================================================================
+
+begin
+     top := 150;
+    left := 200;
+  Height := 700;
+   width := 880;
+
+  Label1.Visible := true;
+
+  _tegnaps := leftstr(hdatetostr(now-1),10);
+  _mamas   := leftstr(hdatetostr(now),10);
+  _holnaps := leftstr(hdatetostr(now+1),10);
+
+  Form1.Repaint;
+
+  _fm[1] := FM1;
+  _fm[2] := FM2;
+  _fm[3] := FM3;
+  _fm[4] := FM4;
+  _fm[5] := FM5;
+  _fm[6] := FM6;
+  _fm[7] := FM7;
+  _fm[8] := FM8;
+  _fm[9] := FM9;
+  _fm[10]:= FM10;
+  _fm[11]:= FM11;
+  _fm[12]:= FM12;
+  _fm[13]:= FM13;
+
+  {
+    _userOke := userbelepes;
+
+  if _useroke<>1 then
+    begin
+      Kilepo.enabled := true;
+      exit;
+    end;
+  }
+
+  with MenuPanel do
+    begin
+      top  := 288;
+      left := 144;
+      Visible := True;
+      Repaint;
+    end;
+  Activecontrol := FM1;
+end;
+
+
+// =============================================================================
+              procedure TForm1.KilepGombClick(Sender: TObject);
+// =============================================================================
+
+
+begin
+  Application.Terminate;
+end;
+
+
+// =============================================================================
+              function TForm1.HexaToDec(_hexa: string): integer;
+// =============================================================================
+
+var _tizes,_egyes: byte;
+begin
+  _tizes := ord(_hexa[1]);
+  _egyes := ord(_hexa[2]);
+  _tizes := _tizes - 48;
+  _egyes := _egyes - 48;
+  if _tizes>9 then _tizes := _tizes-7;
+  if _egyes>9 then _egyes := _egyes - 7;
+  result := trunc((16*_tizes)+_egyes);
+end;
+
+
+// =============================================================================
+            function TForm1.SetLongDstring(_dstring: string):string;
+// =============================================================================
+
+var _ddatum: TdateTime;
+    _dho,_dnap,_hnap: word;
+begin
+  result := leftstr(_dstring,4);
+  _ddatum := hstrtodate(_dstring);
+  _dho := strtoint(midstr(_dstring,6,2));
+  _dnap := strtoint(midstr(_dstring,9,2));
+  _hnap := dayoftheweek(_ddatum);
+  result := result + ' '+ _honapnev[_dho]+' '+inttostr(_dnap)+' '+_napnev[_hnap];
+end;
+
+
+// =============================================================================
+              function TForm1.Elokieg(_num: integer): string;
+// =============================================================================
+
+begin
+  Result := inttostr(_num);
+  while length(Result)<3 do Result := chr(32)+Result;
+end;
+
+
+// =============================================================================
+            function Tform1.ForintForm(_osszeg:integer):string;
+// =============================================================================
+
+var _slen,_pp: integer;
+    _ejel : string;
+
+begin
+  result := '-';
+
+  if _osszeg=0 then exit;
+
+  _ejel := '';
+
+  if _osszeg<0 then
+    begin
+      _ejel := '-';
+      _osszeg := abs(_osszeg);
+    end;
+
+  result := inttostr(_osszeg);
+
+  if _osszeg<1000 then
+    begin
+      result := _ejel + result;
+      exit;
+    end;
+
+  _slen := length(result);
+  if _osszeg>999999 then
+    begin
+      _pp := _slen-5;
+      result := _ejel + midstr(result,1,_pp-1)+' '+midstr(result,_pp,3)+' '+midstr(result,_pp+3,3);
+      exit;
+    end;
+  _pp := _slen-2;
+  result := _ejel + midstr(result,1,_pp-1)+' '+midstr(result,_pp,3);
+
+end;
+
+// =============================================================================
+             function TForm1.PtarScan(_pt: integer):integer;
+// =============================================================================
+
+
+var j: integer;
+begin
+   result := -1;
+   for j:= 0 to (_IrodaDarab-1) do
+     begin
+       if _irodaszam[j] = _pt then
+         begin
+           result := j;
+           exit;
+         end;
+     end;
+end;
+
+
+{
+// =*==***=**==**==**==**==**==**==**==**==**==**==**==**==**===**==**=
+// ===========================================================================
+        function TForm1.TegnapControl(_datums:string):boolean;
+// ==========================================================================
+
+// Vizsgálja, hogy bejött-e minden tegnapi adat
+
+var
+     i: integer;
+     _dayBookName,_napstatus: string;
+begin
+
+  // Defaultadatok beállitása:
+
+  Result := True;
+
+  _vanHiany := False;
+  _zHiany := 0;
+
+  // Tegnapi napot vizsgálja:
+
+  _farok := midstr(_datums,3,2)+midstr(_datums,6,2);
+  _aktnap := strtoint(midstr(_datums,9,2));
+  _aktfdbPath := 'c:\receptor\database\daybook.fdb';
+ // A naplófile es a mezö meghatározása:
+
+  _daybookname := 'DAYB'+ _farok;
+  _napmezo := 'N' + inttostr(_aktnap);
+
+  // A napló-adatbázis megnyitása:
+
+  DayBookDbase.Connected := False;
+  DayBookDbase.DataBaseName := _aktfdbPath;
+  DayBookDbase.Connected := True;
+
+  with DayBookTabla do
+    begin
+      Close;
+      TableName := _dayBookName;
+      IndexFieldNames := 'PENZTAR';
+      Open;
+      Refresh;
+      First;
+    end;
+
+  _vanHiany := False;
+  _zHiany := 0;
+
+  // Végigmegyünk az összes pénztáron:
+  while not DayBookTabla.eof do
+    begin
+      _aktPenztar := DayBookTabla.FieldByname('PENZTAR').asInteger;
+      _napstatus  := DayBookTabla.FieldByname(_napMezo).asString;
+      _nstatus[_aktpenztar] := _napstatus;
+
+end;
+
+
+// ===============================================
+    procedure TForm1.AdatControl(_napstr:string);
+// ===============================================
+
+// Nem hiányzik egy zárás sem - tehát vizsgáljuk az adatokat:
+
+var _megjegyzes,_uzletnev: string;
+    _uzlet: integer;
+
+begin
+
+  _datumtols := _napstr;
+  _datumigs := _napstr;
+  _tolstring := _napstr;
+  _igstring := _napstr;
+  _eztegnap := True;
+
+  MNBLegyujto.Showmodal; //;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+  _hibas := False;   // Default ertek
+
+  // A hibakat leiro tabla elokeszitese:
+
+  ReceptorDbase.Connected := true;
+  if ReceptorTranz.InTransaction then ReceptorTranz.Commit;
+  ReceptorTranz.StartTransaction;
+  with ReceptorQuery do
+    begin
+      close;
+      sql.Clear;
+      sql.Add('DELETE FROM HIBAK');
+      Execsql;
+    end;
+  Receptortranz.Commit;
+  ReceptorDbase.close;
+
+  // MnbTabla megnyitasa es vegigolvasasa:
+
+  MnbDbase.CLose;
+  MNBDbase.Connected := true;
+
+  MnbTabla.Open;
+  MnbTabla.First;
+  while not MNBtabla.eof do
+    begin
+      _megjegyzes := MnbTabla.FieldByName('MEGJEGYZES').asString;
+      _uzlet := MNBtabla.FieldByName('IRODASZAM').asInteger;
+
+      if (_megjegyzes<>'OK') AND (_uzlet>0) then
+        begin
+          _aktstatus  := _nStatus[_uzlet];
+          if _aktstatus = 'X' then
+            begin
+              MNBTabla.Next;
+              Continue;
+            end;
+
+          _hibas := True;
+          _aktdnem := MNBtabla.FieldByName('VALUTANEM').asString;
+          _uzletnev := _irodanev[_uzlet];
+          _zaro := MNBTabla.FieldByName('ZARO').asInteger;
+          _szamzaro := MNBtabla.FieldByName('SZAMITOTTZARO').asInteger;
+          _elteres := _zaro - _szamzaro;
+
+          receptorDbase.Connected := true;
+          if receptorTranz.InTransaction then ReceptorTranz.Commit;
+          ReceptorTranz.StartTransaction;
+          _pcs := 'INSERT INTO HIBAK (IRODA,IRODANEV,VALUTANEM,ELTERES)'+_sorveg;
+          _pcs := _pcs + 'VALUES (' + inttostr(_uzlet) + ',';
+          _pcs := _pcs + chr(39) + _uzletnev + chr(39) + ',';
+          _pcs := _pcs + chr(39) + _aktdnem + chr(39) + ',';
+          _pcs := _pcs + inttostr(_elteres) + ')';
+
+          with Receptorquery do
+            begin
+              Close;
+              sql.Clear;
+              sql.Add(_pcs);
+              Execsql;
+            end;
+          ReceptorTranz.Commit;
+          ReceptorDbase.Close;
+        end;
+
+      MNBTabla.Next;
+    end;
+
+  MnbTabla.Close;
+
+  if not _hibas then
+    begin
+      ShowMessage('A BEÉRKEZETT ADATOK HIBÁTLANOK !');
+      exit;
+    end;
+
+  // A hibák kijelzése:
+
+  HibakDisplay.ShowModal;
+end;
+
+// ========================================================================
+       function TForm1.BennvanMindenzaras(_napstr: string):boolean;
+// ========================================================================
+
+var _vanTabla: Boolean;
+    _qnap: integer;
+
+begin
+  Result := False;
+  _farok := midstr(_napstr,3,2)+midstr(_napstr,6,2);
+  _fbkFile := 'DAYB'+_farok;
+  _vanTabla := TablaExists('C:\receptor\database\Daybook.fdb',_fbkFile);
+
+  // Ha egy üres új táblát kellett csinálni,akkor nincs mit nézni -> FALSE
+
+  if not _vanTabla then exit;
+
+  _farok := midstr(_napstr,3,2)+midstr(_napstr,6,2);
+  _fbkFile := 'DAYB' + _farok;
+  _qnap := strtoint(midstr(_napstr,9,2));
+  _napMezo := 'N' + inttostr(_qNap);
+
+  DayBookDbase.Close;
+  DayBookDbase.Connected := True;
+  with DayBookTabla do
+    begin
+      TableName := _fbkFile;
+      Open;
+      Refresh;
+      First;
+    end;
+
+  while not DayBookTabla.Eof do
+    begin
+      _aktstatus := DayBookTabla.FieldByName(_napMezo).asString;
+      if _aktstatus = '' then
+        begin
+          DaybookTabla.Close;
+          Exit;
+        end;
+      DayBookTabla.Next;
+    end;
+  DayBookTabla.Close;
+  Result := true;
+end;
+
+
+
+// ================================================================
+       function TForm1.DayBookReader(_napstr: string):boolean;
+// ================================================================
+
+var _dbkFarok: string;
+    _dbknap,z: integer;
+begin
+
+   Result := False;
+
+  _dbkFarok := midstr(_napstr,3,2)+midstr(_napstr,6,2);
+  _fbkFile := 'DAYB' + _dbkFarok;
+  _dbknap := strtoint(midstr(_napstr,9,2));
+  _napMezo := 'N' + inttostr(_dbkNap);
+
+  DayBookDbase.Close;
+  DayBookDbase.Connected := True;
+  DayBookTabla.TableName := _fbkFile;
+
+  if not DayBookTabla.Exists then exit;
+
+  for z := 1 to 180 do _nstatus[z] := 'E';
+
+  with DayBookTabla do
+    begin
+      Open;
+      Refresh;
+      First;
+    end;
+
+  while not DaybookTabla.Eof do
+    begin
+      _iroda := DayBookTabla.FieldByName('PENZTAR').asInteger;
+      _napstatus := DayBookTabla.FieldByName(_napmezo).asString;
+      _nStatus[_iroda] := _napStatus;
+      DayBookTabla.Next;
+    end;
+
+  Result := True;
+  DayBookTabla.close;
+end;
+
+// **--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+}
+
+// =============================================================
+      function TForm1.Kieg(_mit:string;_hh:integer):string;
+// =============================================================
+
+begin
+  while length(_mit)<_hh do _mit := _mit + chr(32);
+  result := _mit;
+end;
+
+// ========================================================
+      function TForm1.DecitoHexa(_deci: byte):string;
+// ========================================================
+
+var _dhi,_dlo: byte;
+
+begin
+  _dhi := trunc(_deci/16);
+  _dlo := _deci-trunc(16*_dhi);
+  if _dlo>9 then _dlo := _dlo + 7;
+  if _dhi>9 then _dhi := _dhi + 7;
+  result := chr(_dhi+48)+chr(_dlo+48);
+end;
+
+// ==========================================================
+         function TForm1.Nulele(_szam: integer): string;
+// ==========================================================
+
+begin
+  if _szam<10 then result := '0' + chr(48+_szam)
+  else result := inttostr(_szam);
+end;
+
+{
+
+// ==========================================================================
+     function TForm1.TablaExists(_fdbpath: string; _tnev: string): boolean;
+// ==========================================================================
+
+begin
+  Result := False;
+  Ibdbase.Connected := False;
+  IbDbase.DatabaseName := _fdbPath;
+  IbDbase.Connected := True;
+  IbTabla.Close;
+  IbTabla.TableName := _tnev;
+  if IBTabla.Exists then Result := True;
+end;
+
+
+function TForm1.Vanilyeniroda(_irszam: integer): boolean;
+
+var j: integer;
+
+begin
+  result := false;
+  for j := 0 to _irodaDarab-1 do
+    begin
+      if _irszam=_irodaszam[j] then
+        begin
+          result := true;
+          Exit;
+        end;
+    end;
+end;
+
+function TForm1.DnemScan(_vn: string):integer;
+var _y: integer;
+begin
+  Result := -1;
+  for _y := 0 to 27 do
+    begin
+      if _vn = _dnem[_y] then
+        begin
+          Result := _y;
+          Break;
+        end;
+    end;
+end;
+
+//=============================================================
+      function TfORM1.ErtTarScan(_et: integer): integer;
+// ============================================================
+
+(* Visszaadja a paraméterben adott értéktár tömbbeli sorszámát *)
+
+var j: integer;
+
+begin
+  result := -1;
+
+  for j := 0 to 8 do
+    begin
+      if _korzetSzam[j] = _et then
+        begin
+          result := j;
+          break;
+        end;
+    end;
+end;
+
+
+}
+
+// =============================================================================
+           function Tform1.VesszobolPont(_vst: string): string;
+// =============================================================================
+
+var y,_kod: integer;
+
+begin
+  result := '';
+  if _vst='' then exit;
+  for y := 1 to length(_vst) do
+    begin
+      _kod := ord(_vst[y]);
+      if _kod=44 then _kod := 46;
+      result := Result + chr(_kod);
+    end;
+end;
+
+// =============================================================================
+                  function TForm1.FtForm(_ft:real):string;
+// =============================================================================
+
+begin
+  result := FormatFloat('### ### ###',_ft);
+  while length(result)<11 do result := ' '+result;
+end;
+
+
+// =============================================================================
+           function TForm1.GetCegbetuSorszam(_betu: string): integer;
+// =============================================================================
+
+
+begin
+  result := 0;
+  _betu := uppercase(_betu);
+  if _betu='B' then exit;
+  inc(result);
+  if _betu='P' then exit;
+  inc(result);
+  if _betu='E' then exit;
+  inc(result);
+end;
+
+
+// =============================================================================
+                  function TFORM1.RealToStr(_rr: real): string;
+// =============================================================================
+
+var _pos: integer;
+
+begin
+  Result := '0';
+  if _rr=0 then exit;
+
+  Result := Floattostr(_rr);
+  _pos := pos(chr(44),result);
+  if _pos>0 then result[_pos] := chr(46);
+end;
+
+// =============================================================================
+                function TForm1.HDateToStr(_hdat: TDateTime): string;
+// =============================================================================
+
+var _hev,_hho,_hnp: word;
+
+begin
+  _hev := yearof(_hdat);
+  _hho := monthof(_hdat);
+  _hnp := dayof(_hdat);
+
+  result := inttostr(_hev)+'.'+nulele(_hho)+'.'+nulele(_hnp);
+end;
+
+// =============================================================================
+             function TForm1.HstrToDate(_dst: string): TDateTime;
+// =============================================================================
+
+var _hevs,_hhos,_hnps: string;
+    _hev,_hho,_hnp: word;
+
+begin
+  _hevs := leftstr(_dst,4);
+  _hhos := midstr(_dst,6,2);
+  _hnps := midstr(_dst,9,2);
+
+  val(_hevs,_hev,_code);
+  val(_hhos,_hho,_code);
+  val(_hnps,_hnp,_code);
+
+  result := encodedate(_hev,_hho,_hnp);
+end;
+
+
+// =============================================================================
+    procedure TForm1.FM1MouseMove(Sender: TObject; Shift: TShiftState; X,Y: Integer);
+// =============================================================================
+
+begin
+  _aktpanel := TPanel(Sender);
+  _aktpanel.Font.style := [fsBold];
+  _aktpanel.Font.color := clYellow;
+  _aktpanel.color := clRed;
+end;
+
+// =============================================================================
+    procedure TForm1.MENUPANELMouseMove(Sender: TObject; Shift: TShiftState; X,
+                                                                    Y: Integer);
+// =============================================================================
+
+var i: byte;
+
+begin
+  for i := 1 to 13 do
+    begin
+      _aktpanel := _fm[i];
+      _aktpanel.Font.style := [];
+      _aktpanel.Font.Color := clBlack;
+      _aktPanel.color := clBtnFace;
+    end;
+end;
+
+// =============================================================================
+                procedure TForm1.KILEPOGOMBClick(Sender: TObject);
+// =============================================================================
+
+begin
+  Application.terminate;
+end;
+
+// =============================================================================
+                 procedure TForm1.FM1Click(Sender: TObject);
+// =============================================================================
+
+begin
+  zarasbeerkezesek;
+end;
+
+
+// =============================================================================
+                 procedure TForm1.FM2Click(Sender: TObject);
+// =============================================================================
+
+begin
+  irodakarbantarto;
+end;
+
+// =============================================================================
+               procedure TForm1.FM4Click(Sender: TObject);
+// =============================================================================
+
+begin
+  mnblistarutin;
+end;
+
+// =============================================================================
+     procedure TForm1.Shape3MouseMove(Sender: TObject; Shift: TShiftState; X,
+                                                                   Y: Integer);
+// =============================================================================
+
+begin
+  with KilepoGomb.Font do
+    begin
+      Color := clBlack;
+      Size  := 8;
+      Style := [];
+    end;
+  Kilepogomb.Color := clwhite;    
+end;
+// =============================================================================
+                 procedure TForm1.FM6Click(Sender: TObject);
+// =============================================================================
+
+begin
+  dolgozokarbantarto;
+end;
+
+// =============================================================================
+                 procedure TForm1.FM10Click(Sender: TObject);
+// =============================================================================
+
+begin
+  tranzakciojelentes;
+end;
+
+// =============================================================================
+                  procedure TForm1.FM3Click(Sender: TObject);
+// =============================================================================
+
+begin
+  importfelirorutin;
+end;
+
+// =============================================================================
+                procedure TForm1.KILEPOTimer(Sender: TObject);
+// =============================================================================
+
+begin
+  Kilepo.Enabled := False;
+  Application.terminate;
+end;
+
+// =============================================================================
+             procedure TForm1.FM5Click(Sender: TObject);
+// =============================================================================
+
+begin
+  beerkezettadatok;
+end;
+
+// =============================================================================
+              procedure TForm1.FM7Click(Sender: TObject);
+// =============================================================================
+
+begin
+   jutalekszamitorutin;
+end;
+
+procedure TForm1.FM12Click(Sender: TObject);
+begin
+  arfolyamkarbantarto;
+end;
+
+
+procedure TForm1.FM13Click(Sender: TObject);
+begin
+  westernforgalom; 
+end;
+
+end.
+
+
+
+

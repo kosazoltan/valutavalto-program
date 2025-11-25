@@ -1,0 +1,1 @@
+<Message><MessageType>CANCEL TOPUP</MessageType><TransactionId>0026443535</TransactionId><StatusId>00OK      </StatusId><StatusDescription>                                                                                                    </StatusDescription></Message>

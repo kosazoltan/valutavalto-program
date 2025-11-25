@@ -1,0 +1,427 @@
+unit Unit1;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, ExtCtrls, IBDatabase, DB, IBCustomDataSet, IBQuery, IBTable,
+  StrUtils, StdCtrls;
+
+type
+  TForm1 = class(TForm)
+    ETRADEQUERY: TIBQuery;
+    ETRADEDBASE: TIBDatabase;
+    ETRADETRANZ: TIBTransaction;
+    KILEPO: TTimer;
+    ETRADETABLA: TIBTable;
+    Label1: TLabel;
+    Label2: TLabel;
+    RECQUERY: TIBQuery;
+    RECDBASE: TIBDatabase;
+    RECTRANZ: TIBTransaction;
+    HZQUERY: TIBQuery;
+    HZTABLA: TIBTable;
+    HZDBASE: TIBDatabase;
+    HZTRANZ: TIBTransaction;
+
+    procedure FormActivate(Sender: TObject);
+    procedure KILEPOTimer(Sender: TObject);
+    procedure Beregiszt(_etradepath: string);
+    procedure Regisztralas;
+    procedure CreateEtabla;
+    procedure ErtektarBeolvasas;
+    procedure Hzelemzes(_fff: string);
+    procedure Havizaras(_evhos: string);
+    procedure HZTablaMake;
+
+    function Nulele(_int: integer): string;
+    function RealToStr(_rr: real): string;
+    function Dekodint: real;
+    function scanIroda(_irsz: integer): integer;
+    function ScanHzar(_mm: string): boolean;
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form1: TForm1;
+  _srec: TsearchRec;
+  _tfile,_eFarok,_eTablanev,_eDatumElo,_edatum,_eTipus: string;
+  _ffile,_fext,_tfilepath: string;
+  _flen,_ePenztar,_irodadarab,_xx,_eertektar: integer;
+  _eOlvas: file of Byte;
+  _bytetomb: array[1..8] of byte;
+  _eosszeg: real;
+  _pcs,_hzTablaNev: string;
+  _sorveg: string = chr(13)+chr(10);
+  _irszam,_etarszam: array[0..149] of integer;
+  _etdarab,_hzdarab: integer;
+  _etfile: array[0..700] of string;
+  _hzfile: array[0..8] of string;
+
+implementation
+
+{$R *.dfm}
+
+// =============================================================================
+                 procedure TForm1.FormActivate(Sender: TObject);
+// =============================================================================
+
+var _qq: integer;
+    _akthzfile: string;
+
+begin
+  if Findfirst('c:\receptor\mail\etrade\et*.*',faanyfile,_srec)<> 0 then
+    begin
+      Kilepo.Enabled := True;
+      exit;
+    end;
+  FindClose(_srec);
+
+  ErtektarBeolvasas;
+
+  if FindFirst ('c:\receptor\mail\etrade\et*.*',faanyfile,_srec)= 0 then
+    begin
+      _etdarab := 0;
+      repeat
+        _tfile := _srec.Name;
+        Hzelemzes(_tfile);
+        _etfile[_etdarab] := _tfile;
+        inc(_etDarab);
+      until Findnext(_srec)<>0;
+      FindClose(_srec);
+    end;
+
+  if _etDarab>0 then
+    begin
+      _qq := 0;
+      while _qq<_etdarab do
+        begin
+          _tfile := _etfile[_qq];
+          _tfilePath := 'c:\receptor\mail\etrade\' + _tFile;
+          Beregiszt(_tfilePath);
+          deletefile(_tfilePath);
+          inc(_qq);
+        end;
+    end;
+
+  if _hzDarab>0 then
+    begin
+      _qq := 1;
+      while _qq<_hzDarab do
+        begin
+          _akthzfile := _hzfile[_qq];
+          Havizaras(_akthzfile);
+          inc(_qq);
+        end;
+    end;
+  Kilepo.Enabled := true;
+end;
+
+// =============================================================================
+                 procedure TForm1.KILEPOTimer(Sender: TObject);
+// =============================================================================
+
+begin
+  Kilepo.Enabled := False;
+  Application.Terminate;
+end;
+
+// =============================================================================
+              procedure TForm1.Beregiszt(_etradepath: string);
+// =============================================================================
+
+begin
+  _ffile := extractfilename(_etradePath);
+  if uppercase(leftstr(_ffile,2))<>'ET' then exit;
+
+  _fext := extractfileext(_ffile);
+  _flen := length(_fext);
+  _Epenztar := strtoint(midstr(_fext,2,_flen-1));
+  _efarok := midstr(_ffile,3,6);
+  _etablanev := 'ET' + _efarok;
+  _edatumelo := leftstr(_efarok,4)+'.'+midstr(_efarok,5,2);
+
+  EtradeTabla.close;
+  Etradedbase.Connected := true;
+  EtradeTabla.TableName := _etablanev;
+  if not EtradeTabla.Exists then CreateETabla;
+
+  assignFile(_eolvas,_etradePath);
+  reset(_eolvas);
+
+  while not eof(_eolvas) do
+    begin
+      Blockread(_eolvas,_bytetomb,8);
+      _edatum := _edatumelo + '.' + nulele(_bytetomb[1]);
+      _etipus := chr(_bytetomb[2]);
+      _eosszeg := dekodint;
+      regisztralas;
+    end;
+  CloseFile(_eOlvas);
+end;
+
+// =============================================================================
+                       procedure TForm1.Regisztralas;
+// =============================================================================
+
+
+begin
+  _pcs := 'DELETE FROM ' + _eTablaNev + _sorveg;
+  _pcs := _pcs + 'WHERE (DATUM='+chr(39)+_edatum+chr(39)+') AND (PENZTAR='+inttostr(_ePenztar)+')';
+
+  etradedbase.connected := True;
+  if etradeTranz.InTransaction then etradetranz.Commit;
+  EtradeTranz.StartTransaction;
+  with EtradeQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Add(_pcs);
+      Execsql;
+    end;
+  EtradeTranz.Commit;
+  etradedbase.close;
+
+  _xx := scaniroda(_epenztar);
+  _eertektar := _etarszam[_xx];
+
+  // ---------------------------------------------------------------------------
+
+  _pcs := 'INSERT INTO '+ _etablanev + ' (PENZTAR,DATUM,TIPUS,OSSZEG,ERTEKTAR)'+_sorveg;
+  _pcs := _pcs + 'VALUES (' + inttostr(_epenztar) + ',';
+  _pcs := _pcs + chr(39) + _eDatum + chr(39) + ',';
+  _pcs := _pcs + chr(39) + _eTipus + chr(39) + ',';
+  _pcs := _pcs + realtostr(_eosszeg) + ',';
+  _pcs := _pcs + inttostr(_eertektar)+')';
+
+   etradedbase.connected := True;
+  if etradeTranz.InTransaction then etradetranz.Commit;
+  EtradeTranz.StartTransaction;
+  with EtradeQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Add(_pcs);
+      Execsql;
+    end;
+  EtradeTranz.Commit;
+  etradedbase.close;
+end;
+
+
+// =============================================================================
+                     function TForm1.Dekodint: real;
+// =============================================================================
+
+
+var _r2,_r3,_r4,_r5: real;
+
+begin
+  _r5 := 65536*_bytetomb[7];
+  _r5 := 65536*_r5;
+
+  _r4  := 65536*_bytetomb[6];
+  _r4  := _r4 * 256;
+
+  _r3  := 65536*_bytetomb[5];
+  _r2  := 256*_bytetomb[4];
+  result := _r5 + _r4 + _r3 +_r2 + _bytetomb[3];
+  if _bytetomb[8]=45 then result := (-1)*result;
+end;
+
+// =============================================================================
+                         procedure TForm1.CreateEtabla;
+// =============================================================================
+
+
+begin
+  _pcs := 'CREATE TABLE '+ _eTablaNev + ' (' + _sorveg;
+  _pcs := _pcs + 'PENZTAR SMALLINT,' + _sorveg;
+  _pcs := _pcs + 'ERTEKTAR SMALLINT,' + _sorveg;
+  _pcs := _pcs + 'DATUM CHAR (10) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'TIPUS CHAR (1) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'OSSZEG DOUBLE PRECISION)';
+
+    etradedbase.connected := True;
+  if etradeTranz.InTransaction then etradetranz.Commit;
+  EtradeTranz.StartTransaction;
+  with EtradeQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Add(_pcs);
+      Execsql;
+    end;
+  EtradeTranz.Commit;
+  etradedbase.close;
+END;
+
+
+// =============================================================================
+                function TForm1.Nulele(_int: integer): string;
+// =============================================================================
+
+
+begin
+  result := inttostr(_int);
+  if _int<10 then result := '0' + result;
+end;
+
+// =============================================================================
+                  function TFORM1.RealToStr(_rr: real): string;
+// =============================================================================
+
+var _pos: integer;
+
+begin
+  Result := '0';
+  if _rr=0 then exit;
+
+  Result := Floattostr(_rr);
+  _pos := pos(chr(44),result);
+  if _pos>0 then result[_pos] := chr(46);
+end;
+
+// =============================================================================
+                      procedure TForm1.ErtektarBeolvasas;
+// =============================================================================
+
+var _ss,_uzlet,_etar: integer;
+
+begin
+  recdbase.connected := true;
+  _pcs := 'SELECT * FROM IRODAK' + _sorveg;
+  _pcs := _pcs + 'ORDER BY UZLET';
+  with RecQuery do
+    begin
+      Close;
+      sql.Clear;
+      sql.Add(_pcs);
+      Open;
+      First;
+    end;
+  _ss := 0;
+  while not Recquery.eof do
+    begin
+      _uzlet := RecQuery.fieldByName('UZLET').asInteger;
+      _etar  := RecQuery.fieldbyname('ERTEKTAR').asInteger;
+      _irszam[_ss] := _uzlet;
+      _etarszam[_ss] := _etar;
+      inc(_ss);
+      RecQuery.next;
+    end;
+  RecQuery.close;
+  Recdbase.Close;
+  _irodadarab := _ss;
+end;
+
+// =============================================================================
+           function Tform1.scanIroda(_irsz: integer): integer;
+// =============================================================================
+
+var _y: integer;
+
+begin
+  _y := 0;
+  result := 0;
+  while _y<_irodadarab do
+    begin
+      if _irszam[_y]=_irsz then
+        begin
+          result := _y;
+          Break;
+        end;
+      inc(_y);
+    end;
+end;
+
+// =============================================================================
+           procedure TForm1.Hzelemzes(_fff: string); // et201012.145
+// =============================================================================
+
+var _minta: string;
+    _volt: boolean;
+
+begin
+  _minta := midstr(_fff,3,6);
+  if _hzdarab=0 then
+    begin
+      _hzfile[0] := _minta;
+      _hzdarab := 1;
+      exit;
+    end;
+  _volt := scanHzar(_minta);
+  if not _volt then
+    begin
+      _hzfile[_hzdarab] := _minta;
+      inc(_hzdarab);
+    end;
+end;
+
+// =============================================================================
+               function TForm1.ScanHzar(_mm: string): boolean;
+// =============================================================================
+
+
+var _y: integer;
+
+begin
+  _y := 0;
+  result := false;
+  while _y<_hzdarab do
+    begin
+      if _hzfile[_y]=_mm then
+        begin
+          result := True;
+          break;
+        end;
+      inc(_y);
+    end;
+end;
+
+// =============================================================================
+                 procedure TForm1.Havizaras(_evhos: string);
+// =============================================================================
+
+begin
+  _hztablanev := 'HZ'+_evhos;
+  Hzdbase.connected := True;
+  HzTabla.TableName := _hzTablanev;
+  if not HZtabla.Exists then HztablaMake;
+  Hzdbase.Connected := False;
+end;
+
+// =============================================================================
+                          procedure TForm1.HztablaMake;
+// =============================================================================
+
+begin
+  _pcs := 'CREATE TABLE '+_hztablanev+' (' + _sorveg;
+  _pcs := _pcs + 'ERTEKTAR SMALLINT,' + _sorveg;
+  _pcs := _pcs + 'PENZTAR SMALLINT,' + _sorveg;
+  _pcs := _pcs + 'NYITO DOUBLE PRECISION,' + _sorveg;
+  _pcs := _pcs + 'MATRICA DOUBLE PRECISION,' + _sorveg;
+  _pcs := _pcs + 'TELEFON DOUBLE PRECISION,' + _sorveg;
+  _pcs := _pcs + 'PENZTARIATADAS DOUBLE PRECISION,' + _sorveg;
+  _pcs := _pcs + 'ZARO DOUBLE PRECISION)';
+
+  Hzdbase.connected := True;
+  if HzTranz.InTransaction then HzTranz.Commit;
+  HzTranz.StartTransaction;
+  with Hzquery do
+    begin
+      Close;
+      sql.clear;
+      sql.Add(_pcs);
+      ExecSql;
+    end;
+  HzTranz.Commit;
+  Hzdbase.close;
+end;
+
+
+end.

@@ -1,0 +1,652 @@
+unit Unit1;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, ExtCtrls, COmObj, strutils, dateutils, ComCtrls,
+  wininet;
+
+type
+  TForm1 = class(TForm)
+    KILEPOTIMER: TTimer;
+    EVCOMBO: TComboBox;
+    HOCOMBO: TComboBox;
+    Label1: TLabel;
+    CSIK: TProgressBar;
+    Shape1: TShape;
+    STARTGOMB: TPanel;
+    QUITGOMB: TPanel;
+ 
+    function xForma(_operc: string): string;
+    procedure MakeexcelTabla;
+    function Adatbeolvasas: boolean;
+    function AdatAthozatal: boolean;
+    function GetOszlopstring(_ss: integer): string;
+    function Nulele(_b: byte): string;
+    function Scanidkod(_iid: string):integer;
+    procedure RangefontKeszlet(_rstr,_fnev: string;_fsize: byte;_bold,_italic: boolean);
+
+    procedure KILEPOTIMERTimer(Sender: TObject);
+    function GetMezo(_vegjel: string): string;
+    function ScanKorzet(_iid: string): integer;
+    function setido(_kezdes,_veges: string): string;
+    procedure FormActivate(Sender: TObject);
+    procedure STARTGOMBClick(Sender: TObject);
+    procedure QUITGOMBClick(Sender: TObject);
+    procedure EVCOMBOChange(Sender: TObject);
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form1: TForm1;
+  _korzetnums: array[1..8] of string = ('010','020','040','050','063','075',
+                                             '120','145');
+
+  _kertev: integer;
+  _jFile,_jPath,_mondat,_aktidKod,_aktprosnev,_bes,_kis,_naps,_midos: string;
+  _rangestr,_aktid,_predatums,_datums,_munkadir,_jletfile: string;
+  _remoteFile,_localpath: string;
+
+  _textOlvas: textfile;
+  _idTomb,_prostomb: array[1..400] of string;
+
+  _datum: TDatetime;
+  _height,_width,_AKTEV,_AKTHO,_kertho: word;
+
+  _mondatlen,_mmutato,_korzet,_kpdb,_xx,_idDarab,_korzetIndex,_nevdarab: integer;
+  _nn,_aktprosindex,_koszlop,_voszlop,_lastnap,_oo,_ov,_nap,_hnap: integer;
+  _personss,_oszlop,_sor,_evindex,_hoindex: integer;
+
+  _kbe,_kki,_kmido: array[1..400,1..31] of string;
+
+  _kpidss: array[1..8,1..400] of integer;
+
+  _korzetprosdb: array[1..8] of integer;
+  _hNet,_hFTP: HINTERNET;
+
+  _vanexcel: boolean;
+
+  _farok: string;
+  _korzetNevek: array[1..8] of string = ('SZEKSZÁRD','SZEGED','KECSKEMÉT',
+            'DEBRECEN','NYÍREGYHÁZA','BÉKÉSCSABA','PÉCS','KAPOSVÁR');
+
+  _napnev: array[1..7] of string = ('hétfõ','kedd','szerda','csütörtök',
+                                         'péntek','szombat','vasárnap');
+
+  _honev: array[1..12] of string = ('január','február','március','április',
+             'május','június','július','augusztus','szeptember','október',
+             'november','december');
+
+  _oxl,
+  _owb,
+  _range: OleVariant;
+
+  _host: string = '188.227.230.132';
+  _userid: string = 'ebc-10%';
+  _ftpPassword: string = 'klc+45%';
+  _ftpPort: integer = 21100;
+
+
+  _sikeres: boolean;
+
+implementation
+
+{$R *.dfm}
+
+
+// =============================================================================
+                  procedure TForm1.FormActivate(Sender: TObject);
+// =============================================================================
+
+var i: integer;
+
+begin
+  _height := Screen.Monitors[0].Height;
+  _width  := Screen.Monitors[0].Width;
+
+  _aktev := yearof(date);
+  _aktho := monthof(date);
+
+
+  top  := trunc((_height-309)/2);
+  Left := trunc((_width-371)/2);
+
+  _munkadir := getcurrentdir;
+
+  evcombo.Items.Clear;
+  hocombo.Items.Clear;
+
+  for i := -2 to 0 do evcombo.Items.add(' '+inttostr(i+_aktev));
+  for i := 1 to 12 do hocombo.Items.add(' '+_honev[i]);
+
+  evcombo.ItemIndex := 2;
+  hocombo.ItemIndex := _aktho-1;
+
+  _vanexcel := false;
+
+  Activecontrol := StartGomb;
+
+end;
+
+// =============================================================================
+             procedure TForm1.StartGombClick(Sender: TObject);
+// =============================================================================
+
+begin
+  _evindex := evcombo.itemindex;
+  _hoindex := hocombo.itemindex;
+  _kertev  := _aktev - 2 + _evindex;
+  _kertho  := _hoindex + 1;
+
+  _farok   := inttostr(_kertev-2000)+nulele(_kertho);
+  _remotefile := 'JLET' + _farok + '.txt';
+
+  Csik.Max := 24;
+  Csik.Position := 4;
+  if not Adatathozatal then
+     begin
+      Kilepotimer.Enabled := true;
+      exit;
+    end;
+
+  Csik.Position := 6;
+
+  if not Adatbeolvasas then
+    begin
+      Kilepotimer.Enabled := true;
+      exit;
+    end;
+  Csik.Position := 8;
+
+  MakeExcelTabla;
+
+end;
+
+// =============================================================================
+                       procedure TForm1.MakeExcelTabla;
+// =============================================================================
+
+
+var
+    i: integer;
+    _knev,_kztnev,_obetu: string;
+
+begin
+   // -------------- excel tábla létrehozása -----------------------------------
+
+   _oxl := CreateOleObject('Excel.Application');
+   _owb := _oxl.workbooks.add[1];
+
+   // ---  A 9 fül létrehozása és elnevezése, sor fagyasztása ------------------
+
+   _oxl.workbooks[1].sheets.add(,,8);
+
+   _korzetIndex := 1;
+   while _korzetIndex<=8 do
+     begin
+        Csik.Position := 8 + _korzetIndex;
+        _rangestr := 'A1:A1';
+        _oxl.worksheets[_korzetIndex].range[_rangestr].columnwidth := 14;
+
+        _rangestr := 'B1:B1';
+        _oxl.worksheets[_korzetIndex].range[_rangestr].columnwidth := 32;
+
+        for i := 3 to 95 do
+          begin
+             _obetu := getoszlopstring(i);
+             _rangestr := _obetu+'1:'+_obetu+'1';
+            _oxl.worksheets[_korzetIndex].range[_rangestr].columnwidth := 5;
+          end;
+
+       _kztnev := _korzetnevek[_korzetindex];
+       _kNev := _kztnev+'I KÖRZET';
+       _oxl.workbooks[1].worksheets[_korzetindex].name := _kNev;
+       _oxl.workbooks[1].worksheets[_korzetindex].select;
+       _range := _oxl.range['C8','C8'];
+       _range.select;
+       _oxl.Activewindow.FreezePanes := True;
+
+       _rangestr := 'A2:B3';
+       Rangefontkeszlet(_rangestr,'Times New Roman',18,True,True);
+       _oxl.worksheets[_korzetIndex].range[_rangestr].HorizontalAlignment := -4108;
+
+       _rangestr := 'A2:B2';
+       _oxl.worksheets[_korzetIndex].range[_rangestr].mergecells := true;
+       _oxl.worksheets[_korzetindex].Cells[2,1] := _kztnev;
+       _rangestr := 'A3:B3';
+       _oxl.worksheets[_korzetIndex].range[_rangestr].mergecells := true;
+       _oxl.worksheets[_korzetIndex].Cells[3,1] := 'KÖRZET';
+
+       _rangestr := 'A5:B7';
+       Rangefontkeszlet(_rangestr,'Times New Roman',16,True,True);
+
+       _rangestr := 'A5:A7';
+       _oxl.worksheets[_korzetIndex].range[_rangestr].mergecells := true;
+
+       _rangestr := 'B5:B7';
+       _oxl.worksheets[_korzetIndex].range[_rangestr].mergecells := true;
+
+       _oxl.worksheets[_korzetIndex].Cells[5,1] := 'ID-KÓD';
+       _oxl.worksheets[_korzetIndex].Cells[5,2] := 'DOLGOZÓ NEVE';
+
+       // ----------------------------------------------------------------------
+
+       _rangestr := 'C5:CQ5';
+       Rangefontkeszlet(_rangestr,'Arial Rounded MT Bold',11,False,False);
+       _oxl.worksheets[_korzetIndex].range[_rangestr].HorizontalAlignment := -4108;
+
+       _rangestr := 'C6:CQ6';
+       Rangefontkeszlet(_rangestr,'Times New Roman',14,False,True);
+       _oxl.worksheets[_korzetIndex].range[_rangestr].HorizontalAlignment := -4108;
+
+       _rangestr := 'C7:CQ7';
+       Rangefontkeszlet(_rangestr,'Arial',10,True,False);
+       _oxl.worksheets[_korzetIndex].range[_rangestr].HorizontalAlignment := -4108;
+
+       _oo := 3;
+       _ov := trunc(3*_lastnap);
+       while _oo<=_ov do
+         begin
+           _oxl.worksheets[_korzetIndex].Cells[7,_oo] := 'Belép';
+           _oxl.worksheets[_korzetIndex].Cells[7,_oo+1] := 'Kilép';
+           _oxl.worksheets[_korzetIndex].Cells[7,_oo+2] := 'Jelen';
+           _oo := _oo + 3;
+         end;
+
+       _nap := 1;
+       _predatums := inttostr(_kertev)+'.'+nulele(_kertho)+'.';
+       while _nap<=_lastNap do
+         begin
+           _datums   := _predatums + nulele(_nap);
+           _datum    := strtodate(_datums);
+           _hnap     := dayoftheweek(_datum);
+           _koszlop  := trunc(_nap*3);
+           _rangestr := getoszlopstring(_koszlop)+'5:'+getoszlopstring(_koszlop+2)+'5';
+
+           _oxl.worksheets[_korzetIndex].range[_rangestr].mergecells := true;
+           _oxl.worksheets[_korzetIndex].Cells[5,_koszlop] := _datums;
+
+           _rangestr := getoszlopstring(_koszlop)+'6:'+getoszlopstring(_koszlop+2)+'6';
+           _oxl.worksheets[_korzetIndex].range[_rangestr].mergecells := true;
+           _oxl.worksheets[_korzetIndex].Cells[6,_koszlop] := _napnev[_hnap];
+           inc(_nap);
+         end;
+       inc(_korzetIndex);
+     end;
+
+  // ---------------------------------------------------------------------------
+
+  _korzetIndex := 1;
+  while _korzetIndex<=8 do
+    begin
+      Csik.Position := 16 + _korzetIndex;
+      _nevdarab := _korzetProsDb[_korzetIndex];
+      _rangestr := 'A8:A' + inttostr(7+_nevdarab);
+      Rangefontkeszlet(_rangestr,'Arial Rounded MT Bold',20,False,False);
+      _oxl.worksheets[_korzetIndex].range[_rangestr].HorizontalAlignment := -4108;
+
+      _rangestr := 'B8:B' + inttostr(7+_nevdarab);
+      Rangefontkeszlet(_rangestr,'Arial',10,False,True);
+      _oxl.worksheets[_korzetIndex].range[_rangestr].HorizontalAlignment := -4108;
+
+      _rangestr := 'C8:'+ GETOSZLOPSTRING(_OV) + inttostr(7+_nevdarab);
+      Rangefontkeszlet(_rangestr,'Arial',10,False,false);
+      _oxl.worksheets[_korzetIndex].range[_rangestr].HorizontalAlignment := -4108;
+
+      _personss := 1;
+      while _personss<=_nevdarab do
+        begin
+          _xx := _kpidss[_korzetindex,_personss];
+          _sor := 7+_personss;
+          _oxl.worksheets[_korzetIndex].Cells[_sor,1] := _idTomb[_xx];
+          _oxl.worksheets[_korzetIndex].Cells[_sor,2] := _prosTomb[_xx];
+
+          _nap := 1;
+          while _nap<=_lastnap do
+            begin
+              _oszlop := trunc(3*_nap);
+              _oxl.worksheets[_korzetIndex].Cells[_sor,_oszlop]   := xforma(_kbe[_xx,_nap]);
+              _oxl.worksheets[_korzetIndex].Cells[_sor,_oszlop+1] := xForma(_kki[_xx,_nap]);
+              _oxl.worksheets[_korzetIndex].Cells[_sor,_oszlop+2] := xForma(_kmido[_xx,_nap]);
+              inc(_nap);
+            end;
+          inc(_personss);
+        end;
+      inc(_korzetIndex);
+    end;
+  _vanexcel := true;
+  _oxl.visible := true;
+end;
+
+
+// =============================================================================
+             function TForm1.xForma(_operc: string): string;
+// =============================================================================
+
+begin
+  result := chr(0);
+  if _operc='00:00' then exit;
+  result := chr(39)+_operc;
+end;
+
+// =============================================================================
+                  function TForm1.Adatbeolvasas: boolean;
+// =============================================================================
+
+var i,_nap: integer;
+
+begin
+  result := False;
+
+
+  for i := 1 to 8 do _korzetProsdb[i] := 0;
+
+  AssignFile(_textOlvas,_localpath);
+  Reset(_textOlvas);
+
+  _idDarab := 0;
+  while not eof(_textOlvas) do
+    begin
+      readLn(_textOlvas,_mondat);
+      _mondatlen := length(_mondat);
+      _mmutato := 1;
+      _aktidKod := getmezo(',');
+      _aktprosnev := getmezo('(');
+
+      _xx := ScanIdkod(_aktidkod);
+      if _xx=0 then
+        begin
+          inc(_idDarab);
+          _xx := _idDarab;
+          _idtomb[_xx]   := _aktidKod;
+          _prostomb[_xx] := _aktprosnev;
+        end;
+
+      _korzet := scanKorzet(_aktidkod);  // 1..8
+      _kpdb := _korzetprosdb[_korzet];
+      inc(_kpdb);
+      _korzetProsdb[_korzet] := _kpdb;
+      _kpidss[_korzet,_kpdb] := _xx;
+
+      while _mmutato<_mondatlen do
+        begin
+          _naps := getmezo('=');
+          inc(_mmutato);
+          _bes := getmezo('-');
+          if _bes='|' then break;
+          if midstr(_bes,2,1)=':' then
+            begin
+              _bes := '0' + _bes;
+              _bes := leftstr(_bes,5);
+            end;
+
+          _nap := strtoint(_naps);
+          _lastnap := _nap;
+          _kis := getmezo('|');
+          if leftstr(_kis,1)='x' then _midos := '00:00'
+          else
+            begin
+              if midstr(_kis,2,1)=':' then _kis := '0' + _kis;
+              _kis := leftstr(_kis,5);
+              _midos := setido(_bes,_kis);
+              _kbe[_xx,_nap] := _bes;
+              _kki[_xx,_nap] := _kis;
+             _kmido[_xx,_nap] := _midos;
+             if _midos='00:00' then
+               begin
+                 _kbe[_xx,_nap] := '00:00';
+                 _kki[_xx,_nap] := '00:00';
+               end;
+           end;
+        end;
+    end;
+  closefile(_textolvas);
+  if _kpdb>1 then result := True;
+end;
+
+// =============================================================================
+             function tForm1.Scanidkod(_iid: string):integer;
+// =============================================================================
+
+var _y: integer;
+
+begin
+  result := 0;
+  _y := 1;
+  if _iddarab=0 then exit;
+  while _y<=_iddarab do
+    begin
+      if (_idTomb[_y]=_iid) then
+        begin
+          result := _y;
+          exit;
+        end;
+      inc(_y);
+    end;
+end;
+
+
+// =============================================================================
+                function TForm1.GetMezo(_vegjel: string): string;
+// =============================================================================
+
+var _betu: string;
+
+begin
+  result := '';
+  while _mmutato<_mondatlen do
+    begin
+      _betu := _mondat[_mmutato];
+      inc(_mmutato);
+      if _betu=_vegjel then break;
+      result := result + _betu;
+    end;
+end;
+
+
+// =============================================================================
+            function TForm1.ScanKorzet(_iid: string): integer;
+// =============================================================================
+
+var _y: integer;
+    _kks: string;
+
+begin
+  result := 0;
+  _y := 1;
+  _kks := leftstr(_iid,3);
+  while _y<=8 do
+    begin
+      if _kks=_korzetnums[_y] then
+        begin
+          result := _y;
+          exit;
+        end;
+      inc(_y);
+    end;
+end;
+
+
+// =============================================================================
+            procedure TForm1.KILEPOTIMERTimer(Sender: TObject);
+// =============================================================================
+
+begin
+  KilepoTimer.Enabled := false;
+  if _vanexcel then
+    begin
+      _owb := unassigned;
+      _oxl.quit;
+      _oxl := unassigned;
+    end;  
+  application.Terminate;
+end;
+
+// =============================================================================
+                function TForm1.Nulele(_b: byte): string;
+// =============================================================================
+
+begin
+  result := inttostr(_b);
+  if _b<10 then result := '0' + result;
+end;
+
+
+// =============================================================================
+         function TForm1.setido(_kezdes,_veges: string): string;
+// =============================================================================
+
+var
+    _kora,_kperc,_vora,_vperc,_kpercek,_vpercek,_dpercek: word;
+    _mora,_mperc: word;
+
+begin
+   if (_kezdes='00:00') or (_veges='00:00') then
+     begin
+       result := '00:00';
+       exit;
+     end;
+
+  _kora := strtoint(leftstr(_kezdes,2));
+  _kperc := strtoint(midstr(_kezdes,4,2));
+
+  _vora := strtoint(leftstr(_veges,2));
+  _vperc := strtoint(midstr(_veges,4,2));
+
+  _kpercek := _kperc + trunc(60*_kora);
+  _vpercek := _vperc + trunc(60*_vora);
+
+  _dPercek := _vPercek - _kPercek;
+  _mora := trunc(_dpercek/60);
+  
+  _mperc := _dpercek - trunc(60*_mora);
+  result := nulele(_mora)+':'+nulele(_mperc);
+end;
+
+
+// =============================================================================
+procedure TForm1.RangefontKeszlet(_rstr,_fnev: string;_fsize: byte;_bold,_italic: boolean);
+// =============================================================================
+
+begin
+  _oxl.worksheets[_korzetIndex].Range[_rstr].Font.Name   := _fnev;
+  _oxl.worksheets[_korzetIndex].Range[_rstr].Font.Bold   := _bold;
+  _oxl.worksheets[_korzetIndex].Range[_rstr].Font.Italic := _italic;
+  _oxl.worksheets[_korzetIndex].Range[_rstr].Font.Size   := _fsize;
+end;
+
+
+// =============================================================================
+          function TForm1.GetOszlopstring(_ss: integer): string;
+// =============================================================================
+
+begin
+  result := '';
+  if _ss<27 then
+    begin
+      result := chr(64+_ss);
+      exit;
+    end;
+
+  if _ss<53 then
+    begin
+      result := 'A' + chr(_ss+38);   // ss =30
+      exit;
+    end;
+
+  if _ss<79 then
+    begin
+      result := 'B' + chr(_ss+12);
+      exit;
+    end;
+  if _ss<105 then
+    begin
+      result := 'C' + chr(_ss-14);
+    end;
+end;
+
+// =============================================================================
+                 procedure TForm1.QUITGOMBClick(Sender: TObject);
+// =============================================================================
+
+begin
+  Kilepotimer.Enabled := true;
+end;
+
+// =============================================================================
+               procedure TForm1.EVCOMBOChange(Sender: TObject);
+// =============================================================================
+
+begin
+  Activecontrol := StartGomb;
+end;
+
+
+// =============================================================================
+                        function Tform1.AdatAthozatal: boolean;
+// =============================================================================
+
+begin
+  Result := False;
+
+  _hnet := InternetOpen('LoadFormServer',INTERNET_OPEN_TYPE_PRECONFIG,nil,nil,0);
+  if _hNet = nil then
+    begin
+      Showmessage('Nem tudtam fellépni az internetre ...');
+      exit;
+    end;
+
+  // -------------------  connect to the server  -------------------------------
+
+  _hFTP := InternetConnect(_hNet,Pchar(_Host),_ftpPort,Pchar(_userId),
+                           PChar(_ftpPassword),INTERNET_SERVICE_FTP,
+                           INTERNET_FLAG_PASSIVE,
+                           0);
+
+  // ---------------------------------------------------------------------------
+
+  IF _hFTP = nil then
+    begin
+      ShowMessage('Nem sikerült csatlakozni a szerverhez !');
+      InternetCloseHandle(_hNet);
+      Exit;
+    end;
+
+  // ----------------------- Change directory PILLKESZ -------------------------
+
+  // Belép a PILLKESZ köbnyvtárba a szerveren
+
+  _sikeres :=  FTPSetCurrentDirectory(_hFTP,pchar('\JELENLET'));
+  if not _sikeres then
+    begin
+      ShowMessage('Nem sikerült belépni a JELENLET-könyvtárába !');
+      InternetCloseHandle(_hFTP);
+      InternetCloseHandle(_hNet);
+      Exit;
+    end;
+
+
+  _localpath := _munkadir + '\' + _remotefile;
+
+  if Fileexists(_localPath) then DeleteFile(_localpath);
+  _sikeres := FTPGetFile(_hFTP,pchar(_remoteFile),pchar(_localpath),
+                                  False,0,FTP_TRANSFER_TYPE_BINARY,0);
+
+  InternetCloseHandle(_hFTP);
+  InternetCloseHandle(_hNet);
+
+  // Ha egyet sem töltött le, akkor result=FALSE
+
+  if fileExists(_localPath) then Result := true;
+
+end;
+
+
+
+
+end.

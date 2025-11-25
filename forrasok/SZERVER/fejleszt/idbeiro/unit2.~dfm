@@ -1,0 +1,53 @@
+object SELECTPENZTAROS: TSELECTPENZTAROS
+  Left = 192
+  Top = 114
+  Width = 553
+  Height = 640
+  Caption = 'SELECTPENZTAROS'
+  Color = clBtnFace
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'MS Sans Serif'
+  Font.Style = []
+  OldCreateOrder = False
+  OnActivate = FormActivate
+  OnCreate = FormCreate
+  PixelsPerInch = 96
+  TextHeight = 13
+  object PROSBOX: TListBox
+    Left = 32
+    Top = 72
+    Width = 425
+    Height = 385
+    ItemHeight = 13
+    TabOrder = 0
+    OnKeyDown = PROSBOXKeyDown
+  end
+  object KERNEVPANEL: TPanel
+    Left = 24
+    Top = 24
+    Width = 433
+    Height = 41
+    Caption = 'KERNEVPANEL'
+    TabOrder = 1
+  end
+  object EZAJOKODGOMB: TBitBtn
+    Left = 64
+    Top = 480
+    Width = 185
+    Height = 25
+    Caption = 'EZAJOKODGOMB'
+    TabOrder = 2
+    OnClick = EZAJOKODGOMBClick
+  end
+  object LESZAMOLTGOMB: TBitBtn
+    Left = 296
+    Top = 480
+    Width = 185
+    Height = 25
+    Caption = 'LESZAMOLTGOMB'
+    TabOrder = 3
+    OnClick = LESZAMOLTGOMBClick
+  end
+end

@@ -1,0 +1,31 @@
+program LocServer;
+
+uses
+  Forms,
+  Unit1 in 'UNIT1.PAS' {Form1},
+  Unit7 in 'Unit7.pas' {HIBAKDISPLAY},
+  Unit10 in 'Unit10.pas' {FOMENUFORM},
+  Unit11 in 'Unit11.pas' {HIANYZOZARASOKFORM},
+  Unit20 in 'Unit20.pas' {KELLTEGNAP},
+  Unit33 in 'Unit33.pas' {ATLAGARFOLYAM},
+  Unit34 in 'Unit34.pas' {ARFOLYAMELTERITES},
+  Unit35 in 'Unit35.pas' {KEDVEZMENYLISTA},
+  Unit36 in 'Unit36.pas' {ATLAGDISPLAY},
+  Unit37 in 'Unit37.pas' {WUNIWAFACONTROL};
+
+{$R *.res}
+
+begin
+  Application.Initialize;
+  Application.CreateForm(TForm1, Form1);
+  Application.CreateForm(THIBAKDISPLAY, HIBAKDISPLAY);
+  Application.CreateForm(TFOMENUFORM, FOMENUFORM);
+  Application.CreateForm(THIANYZOZARASOKFORM, HIANYZOZARASOKFORM);
+  Application.CreateForm(TKELLTEGNAP, KELLTEGNAP);
+  Application.CreateForm(TATLAGARFOLYAM, ATLAGARFOLYAM);
+  Application.CreateForm(TARFOLYAMELTERITES, ARFOLYAMELTERITES);
+  Application.CreateForm(TKEDVEZMENYLISTA, KEDVEZMENYLISTA);
+  Application.CreateForm(TATLAGDISPLAY, ATLAGDISPLAY);
+  Application.CreateForm(TWUNIWAFACONTROL, WUNIWAFACONTROL);
+  Application.Run;
+end.

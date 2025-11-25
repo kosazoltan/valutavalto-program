@@ -1,0 +1,9 @@
+> Összeszedtem pár mondtatban a Vodafone új számlázási rendszerévek kapcsolatos dolgokat.
+>
+> A feltöltés menete nem változott, viszont amikor végez a végpont a fejlesztéssel nem ad a végpont róla nyugtát,
+vagy áfás számlát, hanem egy számviteli bizonylatot nyomtat a pénzátvételrõl (mellékeltem egy mintát) és az ügyfélnek kell 
+a Vodafonehoz fordulni áfás számla témában.Fontos, hogy csak a lebeszélt összegrõl kap számlát, nem a feltöltöttrõl és csak 
+arra állítja ki a vodafone a számlát akinek a nevén van az adott prepaid kártya. Ez nálatok azt jelenti, hogy ennél a számlázásnál
+ a fekete doboz kikerülésre kerül. A SlipType node értékei : Normál esetben: 'NORMAL MOBILE ' (SPACE A VÉGÉN!!!) 
+új Vodás: 'VODAFONE UNTSZ'
+>

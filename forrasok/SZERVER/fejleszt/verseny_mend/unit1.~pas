@@ -1,0 +1,196 @@
+unit Unit1;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, Buttons, ExtCtrls, IBTable, IBDatabase, DB, strutils,
+  IBCustomDataSet, IBQuery;
+
+type
+  TForm1 = class(TForm)
+    BitBtn1: TBitBtn;
+    BitBtn2: TBitBtn;
+    KILEPO: TTimer;
+    RECQUERY: TIBQuery;
+    RECDBASE: TIBDatabase;
+    RECTRANZ: TIBTransaction;
+    VQUERY: TIBQuery;
+    VDBASE: TIBDatabase;
+    VTRANZ: TIBTransaction;
+    VTABLA: TIBTable;
+    PROSTRANZ: TIBTransaction;
+    PROSQUERY: TIBQuery;
+    PROSDBASE: TIBDatabase;
+    Panel1: TPanel;
+
+    procedure BitBtn2Click(Sender: TObject);
+    procedure BitBtn1Click(Sender: TObject);
+    procedure KILEPOTimer(Sender: TObject);
+
+    function Scanid(_si: string):word;
+
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form1: TForm1;
+
+  _prosnev,_prosid: array[1..4024] of string;
+  _hoOke,_mResult: integer;
+  _farok,_tolstring,_bf,_wuni,_fdbPath,_pnev,_pid,_tombnev,_tombid: string;
+  _prss,_pt,_xx,_prosdarab,_y: word;
+
+
+function hovalasztorutin: integer; stdcall; external 'c:\receptor\newdll\hovalasz.dll';
+
+
+implementation
+
+{$R *.dfm}
+
+procedure TForm1.BitBtn2Click(Sender: TObject);
+
+BEGIN
+  Application.Terminate;
+end;
+
+procedure TForm1.BitBtn1Click(Sender: TObject);
+begin
+  _hoOke := hovalasztorutin;
+  if _hoOke=-1 then
+    begin
+      _mResult := -1;
+      Kilepo.enabled := true;
+      exit;
+    end;
+
+  recdbase.connected := true;
+  with recquery do
+    begin
+      close;
+      sql.clear;
+      sql.add('SELECT * FROM IDOSZAK');
+      Open;
+      _tolstring := FieldByNAme('STARTDATE').asString;
+      Close;
+    end;
+  Recdbase.close;
+
+  _farok := MIDSTR(_tolstring,3,2)+midstr(_tolstring,6,2);
+
+  prosdbase.connected := true;
+  with prosquery do
+    begin
+      Close;
+      sql.clear;
+      sql.add('SELECT * FROM PENZTAROSOK');
+      Open;
+    end;
+
+  _prss := 0;
+  while not prosquery.eof do
+    begin
+      inc(_prss);
+      _prosnev[_prss] := trim(Prosquery.FieldByname('PENZTAROSNEV').asstring);
+      _prosid[_prss] := ProsQuery.FieldByName('IDKOD').asString;
+      prosquery.next;
+    end;
+  Prosquery.close;
+  Prosdbase.close;
+  _prosdarab := _prss;
+
+  _bf := 'BF' + _farok;
+  _wuni := 'WUNI' + _farok;
+
+  _pt :=151;
+  while _pt<=168 do
+    begin
+      _fdbpath := 'c:\cartcash\database\v' + inttostr(_pt)+'.fdb';
+
+      Panel1.Caption := _fdbPath;
+      Panel1.repaint;
+
+      vdbase.close;
+      vdbase.databasename := _fdbPath;
+      vdbase.connected := true;
+      if vtranz.intransaction then vTranz.commit;
+      Vtranz.startTransAction;
+      vtabla.close;
+      vtabla.tablename := _bf;
+      if vtabla.exists then
+        begin
+          Vtabla.Open;
+          while not vtabla.eof do
+            begin
+              _pNev := trim(vTabla.fieldByname('PENZTAROSNEV').asString);
+              _pId  := Vtabla.FieldByNAme('IDKOD').asString;
+
+              _xx := scanId(_pid);
+              _tombnev := _prosnev[_xx];
+              _tombid  := _prosid[_xx];
+              if _tombNev<>_pNev then
+                begin
+                  Vtabla.edit;
+                  vtabla.fieldByNAme('PENZTAROSNEV').asString := _tombNev;
+                  vtabla.Post;
+                end;
+              Vtabla.next;
+            end;
+          Vtabla.close;
+        end;
+
+      vtabla.tablename := _WUNI;
+      if vtabla.exists then
+        begin
+          Vtabla.Open;
+          while not vtabla.eof do
+            begin
+              _pNev := trim(vTabla.fieldByname('PENZTAROSNEV').asString);
+              _pId  := Vtabla.FieldByNAme('IDKOD').asString;
+
+              _xx := scanId(_pid);
+              _tombnev := _prosnev[_xx];
+              _tombid  := _prosid[_xx];
+              if _tombNev<>_pNev then
+                begin
+                  Vtabla.edit;
+                  vtabla.fieldByNAme('PENZTAROSNEV').asString := _tombNev;
+                  vtabla.Post;
+                end;
+              Vtabla.next;
+            end;
+          Vtabla.close;
+        end;
+      vtranz.commit;
+      vdbase.close;
+
+      inc(_PT);
+    end;
+end;
+
+procedure TForm1.KILEPOTimer(Sender: TObject);
+begin
+  Kilepo.Enabled := False;
+  Modalresult := _mResult;
+end;
+
+function TForm1.Scanid(_si: string):word;
+begin
+  result := 0;
+  _y := 1;
+  while _y<= _prosdarab do
+    begin
+      if _prosid[_y]= _si then
+        begin
+          result := _y;
+          exit;
+        end;
+      inc(_y);
+    end;
+end;
+end.

@@ -1,0 +1,1719 @@
+unit Unit2;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, ExtCtrls, ComCtrls, DB, DBTables,StrUtils, StdCtrls, Buttons,
+  IBDatabase, IBCustomDataSet, IBTable, IBQuery;
+
+type
+  TMNBLeGyujto = class(TForm)
+    INFOPanel    : TPanel;
+    MESSPanel    : TPanel;
+    TOLIGPanel   : TPanel;
+    uzletpanel   : TPanel;
+
+    ArtQuery     : TIBQuery;
+    ArtDbase     : TIBDatabase;
+    ArtTranz     : TIBTransaction;
+
+    MNBTabla     : TIBTable;
+    MNBDbase     : TIBDatabase;
+    MNBTranz     : TIBTransaction;
+
+    MNBTempTabla : TIBTable;
+    MNBQuery     : TIBQuery;
+    MNBTempDbase : TIBDatabase;
+    MNBTempTranz : TIBTransaction;
+
+    BlokkTabla   : TIBTable;
+    BlokkQuery   : TibQuery;
+    BlokkDbase   : TIBDatabase;
+    BlokkTranz   : TIBTransaction;
+
+    CimtarQuery  : Tibquery;
+    CimtarTabla  : TIBTable;
+    CimtarDbase  : TIBDatabase;
+    CimtarTranz  : TIBTransaction;
+
+    ReceptorQuery: TIBQuery;
+    ReceptorDbase: TIBDatabase;
+    ReceptorTranz: TIBTransaction;
+
+    Kilepo       : TTimer;
+
+    Shape1       : TShape;
+
+    FCsik        : TProgressBar;
+    MNBCsik      : TProgressBar;
+
+
+    procedure AdatKiertekeles;
+    procedure FormActivate(Sender: TObject);
+    procedure GetZarok;
+    procedure ForgalomGyujtes;
+    procedure KorzetSumma;
+    procedure KorzetNullazo;
+    procedure KftSumma;
+    procedure KftNullazo;
+    procedure CegSumma;
+    procedure CegNullazo;
+    procedure EgyPenztarFeliras;
+    procedure KorzetFeliras;
+    procedure KFTFeliras;
+    procedure CegFeliras;
+    procedure IrodaBetolto;
+    procedure MNBParancs(_ukaz: string);
+    procedure IrodaTombNullazo;
+    procedure KilepoTimer(Sender: TObject);
+    procedure ForgalomNullazo;
+    procedure NyitoNullazo;
+    procedure ZaroNullazo;
+    procedure FBizonylatFeldolgozo;
+    procedure UBizonylatFeldolgozo;
+
+    function GetNyitok: boolean;
+    function ToligBetoltes: integer;
+    function Nulele(_b: byte): string;
+    function DnemScan(_ad: string): byte;
+    function RealToStr(_r: real): string;
+    function GetFarok: string;
+    function KeszletCtrl: boolean;
+    function Kerekito(_int: integer): integer;
+    function KorzetScan(_k: byte): byte;
+    function DateCtrl(_ds: string): boolean;
+
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  MNBLEGYUJTO: TMNBLEGYUJTO;
+
+  _mResult : integer;
+
+ _valutaDarab: byte = 27;
+ _fDnem: array[1..27] of string = ('AUD','BAM','BGN','BRL','CAD','CHF','CNY','CZK',
+         'DKK','EUR','GBP','HRK','HUF','ILS','JPY','MXN','NOK','NZD','PLN','RON',
+         'RSD','RUB','SEK','THB','TRY','UAH','USD');
+
+  _hufIndex: byte = 13;
+
+ _honapNev: array[1..12] of string = ('Január','Február','Március','Április',
+               'Május','Junius','Július','Augusztus','Szeptember','Október',
+               'November','December');
+
+  _napNev: array[1..7] of string = ('HÉTFÕ','KEDD','SZERDA','CSÜTÖRTÖK','PÉNTEK',
+               'SZOMBAT','VASÁRNAP');
+
+  _irodaDarab: byte;
+  _iras: textfile;
+
+  _irodaSzamTomb,_korzetSzamTomb: array[1..180] of byte;
+  _irodaNevTomb: array[1..180] of string;
+  _vanAdat: array[1..180] of boolean;
+
+  _mNyito,_mZaro: array[1..27] of real;
+
+  _pVetel,_pEladas,_pPtarbol,_pPtarba,_pBankbol,_pBankba: array[1..27] of real;
+  _pTobblet,_pHiany,_pVisszaPlusz,_pVisszaMinusz: array[1..27] of real;
+
+  _ertektardarab: byte = 9;
+  _korzetek: array[1..9] of byte = (10,20,40,50,63,75,120,145,180);
+
+  _etNyito,_etZaro,_etVetel,_etEladas,_etBankba,_etBankbol: array[1..9,1..27] of real;
+  _etPtarba,_etPtarbol,_etTobblet,_etHiany: array[1..9,1..27] of real;
+  _etVisszaPlusz,_etVisszaMinusz: array[1..9,1..27] of real;
+  _etUtalas: array[1..9] of integer;
+
+  _kftDarab : byte = 2;
+
+  _kftNyito,_kftZaro,_kftVetel,_kftEladas,_kftBankba: array[1..2,1..27] of real;
+  _kftBankbol,_kftPtarba,_kftPtarbol,_kftTobblet,_kftHiany: array[1..2,1..27] of real;
+  _kftVisszaPlusz,_kftVisszaMinusz: array[1..2,1..27] of real;
+  _kftUtalas: array[1..2] of integer;
+
+  _cegNyito,_cegZaro,_cegVetel,_cegEladas,_cegBankba: array[1..27] of real;
+  _cegBankbol,_cegPtarba,_cegPtarbol,_cegTobblet,_cegHiany: array[1..27] of real;
+  _cegVisszaPlusz,_cegVisszaMinusz: array[1..27] of real;
+  _cegUtalas,_idszOke: integer;
+
+  _aktPt,_aktIrodaSzam,_aktKorzet,_valSs,_fizEszk,_ptNum,_uzlet,_korzet: byte;
+  _etarSs,_kftSs: byte;
+
+  _kertEv,_kertHo,_ptSs,_y,_apt,_csikMax,_cx,_eloEv,_eloHo: word;
+  _artIrodaDarab: word;
+
+  _nyito,_zaro,_vetel,_eladas,_bankbol,_bankba,_ptarba,_ptarbol: real;
+  _bevetel,_kiadas,_tobblet,_hiany,szamZaro,_aktKesz,_visszaPlusz,_visszaMinusz: real;
+  _fNyito,_fZaro,_fVetel,_fEladas,_fTobblet,_fHiany,_fPtarba,_fPtarbol: real;
+  _fBankba,_fBankbol,_fBevetel,_fKiadas,_fSzamZaro,_fDiff: real;
+  _fVisszaPlusz,_fVisszaMinusz: real;
+
+  _diff,_kerekites,_aktUtalas: integer;
+  _code,_recno,_bankJegy,_ftErtek,_pUtalas: integer;
+
+  _fejtablaNev,_tetTablanev,_cimtarNev,_eloCimtarNev,_aktIrodaNev,_cegBetu: string;
+  _tCim,_tCim2,_datumTols,_datumIgs,_pcs,_farok,_eloFarok,_bizonylat: string;
+  _aktFdbPath,_aktDnem,_utDates,_filter,_tipus,_penztar,_mj,_utBiz: string;
+
+  _sorVeg: string = chr(13)+chr(10);
+
+  _voltForgalom,_vanKeszlet,_dc: boolean;
+
+
+function adatlegyujtorutin: integer; stdcall;
+
+implementation
+
+//uses Unit1, Unit6;
+
+{$R *.dfm}
+
+
+// =============================================================================
+          function adatlegyujtorutin: integer; stdcall;
+// =============================================================================
+
+
+begin
+  MNBLegyujto := TMNBLegyujto.Create(Nil);
+  Result := MNBLegyujto.ShowModal;
+  MNBLegyujto.Free;
+end;
+
+// =============================================================================
+            procedure TMNBLEGYUJTO.FormActivate(Sender: TObject);
+// =============================================================================
+
+// Forgalmi adatokat gyüjt le datumtols - datumigs
+
+begin
+  Top    := 425;
+  Left   := 340;
+
+  _idszOke := ToligBetoltes;  // Idoszak tábla -> datumtols, datumigs
+  if _idszOke<>1 then
+    begin
+      ShowMessage('HIBÁS IDÕSZAK MEGADÁSA');
+      _mResult := 2;
+      Kilepo.Enabled := True;
+      Exit;
+    end;
+
+  UzletPanel.Caption := '';
+
+  // Információk kiirása vagy idöszaki, vagy csak a tegnapi ellenörzés:
+
+  _tCim  := intToStr(_kertEv)+' '+_honapNev[_kertHo]+' '+midStr(_DatumTols,9,2)+' - '+midstr(_datumIgs,9,2);
+  _tCim2 := 'KÖZÖTTI ADATOK LETÖLTÉSE';
+
+  ToligPanel.Caption := _tCim;
+  ToligPanel.Repaint;
+
+  InfoPanel.Caption := _tCim2;
+  InfoPanel.Repaint;
+  Fcsik.Visible := True;
+
+  // Betölti: irodaszamtomb[1.._irodaDarab],_irodanevtomb[1..180],korzetszamtomb[1..180]
+  IrodaBetolto;
+
+  // --------- MNB-tábla KIÜRITÉSE --------------------------
+
+  _pcs := 'DELETE FROM MNB';
+  MnbParancs(_pcs);
+
+  // A három valutaváltó forgalmi-és készlet adatbázisai:
+
+  _farok := GetFarok;
+
+  _fejTablaNev  := 'BF'   + _farok;
+  _tetTablaNev  := 'BT'   + _farok;
+  _cimTarNev    := 'CIMT' + _farok;
+  _eloCimTarNev := 'CIMT' + _eloFarok;
+
+// ----------Ciklus indul az összes váltópénztáron keresztül ----------------
+
+  MnbCsik.Max := _irodaDarab;
+  Messpanel.Caption := 'Az idõszak adatainak beolvasása és rögzitése';
+  Messpanel.repaint;
+
+  _ptss := 1;
+  while _ptss<=_IrodaDarab do
+    begin
+
+      MNBcsik.Position:= _ptss;
+      _vanadat[_ptss] := False;
+
+      _aktPt          := _irodaszamTomb[_ptss];
+      _aktIrodaNev    := _irodaNevTomb[_aktPt];
+      _aktKorzet      := _korzetSzamTomb[_aktPt];
+
+      _aktFdbPath := 'C:\receptor';
+  //    if _aktPt>150 then _aktFdbPath := 'C:\Cartcash';
+      _aktFdbPath := _aktFdbPath + '\DATABASE\V'+intToStr(_aktPt)+'.FDB';
+
+      if not FileExists(_aktFdbPath) then
+        begin
+          inc(_ptSs);
+          Continue;
+        end;
+
+      BlokkDbase.close;
+      Blokkdbase.DatabaseName := _aktFdbPath;
+
+      if not GetNyitok then
+        begin
+          inc(_ptSs);
+          Continue;
+        end;
+
+      // Kiirja:
+
+      UzletPanel.Caption := intToStr(_aktPt)+'. '+_aktIrodaNev;
+      UzletPanel.Repaint;
+
+      // A zárókészletek betöltése az MNB táblába
+      GetZarok;
+
+      with BlokkDbase do
+        begin
+          Close;
+          DatabaseName := _aktFdbPath;
+          Connected    := True;
+        end;
+
+      BlokkTabla.Close;
+      BlokkTabla.TableName := _fejTablaNev;
+
+      if not BlokkTabla.Exists then
+        begin
+          BlokkDbase.close;
+          inc(_ptSs);
+          Continue;
+        end;
+
+      _voltForgalom := False;
+
+      ForgalomGyujtes;
+
+      if not _voltforgalom then
+        begin
+          Blokkdbase.close;
+          _vanKeszlet := KeszletCtrl;
+          if not _vanKeszlet then
+            begin
+              inc(_ptSs);
+              COntinue;
+            end;
+        end;
+
+      EgyPenztarFeliras;
+
+      _vanAdat[_ptSs] := True;
+      inc(_ptSs);
+    end;
+
+  MNBCsik.Position := 0;
+  Fcsik.Visible := False;
+
+  MessPanel.Caption := 'A körzetek adatainak megállapítása';
+  MessPanel.Repaint;
+
+  KorzetSumma;
+  KorzetFeliras;
+
+  MessPanel.Caption := 'A 3 KFT adatainak megállapítása';
+  MessPanel.Repaint;
+
+  KftSumma;
+  KftFeliras;
+
+  {
+  Messpanel.Caption := 'A teljes cég adatainak összegezése';
+  Messpanel.Repaint;
+
+  CegSumma;
+  CegFeliras;
+  }
+
+  MessPanel.Caption := 'Az  összes adat kiértékelése';
+  MessPanel.repaint;
+
+  Mnbcsik.Position := 0;
+
+  AdatKiertekeles;
+  _mResult := 1;
+  Kilepo.Enabled := True;
+
+end;
+
+// =============================================================================
+                 procedure TMNBLegyujto.ForgalomGyujtes;
+// =============================================================================
+
+
+begin
+  ForgalomNullazo;
+  FCsik.Position :=0;
+
+  If (_datumtols=_datumigs) then _filter := '(FEJ.DATUM='+chr(39)+_datumtols+chr(39)+')'
+  else _filter := '(FEJ.DATUM>='+chr(39)+_datumtols+chr(39)+') AND (FEJ.DATUM<='+chr(39)+_datumigs+chr(39)+')';
+
+  _filter := _filter + ' AND (FEJ.STORNO=1)';
+
+  _pcs := 'SELECT FEJ.*, TET.*' + _sorveg;
+  _pcs := _pcs +'FROM '+_fejtablanev+' FEJ JOIN '+_tettablanev+' TET'+_sorveg;
+  _pcs := _pcs + 'ON FEJ.BIZONYLATSZAM=TET.BIZONYLATSZAM'+_sorveg;
+  _pcs := _pcs + 'WHERE ' + _filter;
+
+  with Blokkquery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Add(_pcs);
+      Open;
+      Last;
+      _csikmax := Recno;
+      First;
+    end;
+
+  if _csikMax=0 then
+    begin
+      BlokkQuery.Close;
+      BlokkDbase.Close;
+      Exit;
+    end;
+
+  fCsik.Max := _csikMax;
+  _cx := 0;
+  _utBiz := 'XXXXXXXX';
+
+  while not Blokkquery.Eof do
+    begin
+      inc(_cx);
+      Fcsik.Position := _cx;
+
+      with BlokkQuery do
+        begin
+          _bizonylat:= FieldByNAme('BIZONYLATSZAM').asString;
+          _tipus    := FieldByName('TIPUS').asString;
+          _bankjegy := FieldByName('BANKJEGY').asInteger;
+          _ftErtek  := FieldByName('FORINTERTEK').asInteger;
+          _aktDnem  := FieldByNAme('VALUTANEM').asString;
+          _penztar  := trim(FieldByName('PENZTAR').asstring);
+          _fizEszk  := FieldByNAme('FIZETOESZKOZ').asInteger;
+          _kerekites:= Fieldbyname('KEREKITES').asInteger;
+        end;
+
+      if _utBiz<>_bizonylat then _ftErtek := _ftErtek + _kerekites;
+      _utBiz := _bizonylat;
+
+      val(_penztar,_ptNum,_code);
+      if _code<>0 then _ptNum := 0;
+
+      _valSs := DnemScan(_aktDnem);
+      if _valSs<1 then
+        begin
+          BlokkQuery.Next;
+          Continue;
+        end;
+
+      // Ez egy vásárlás volt:
+
+      if _tipus='V' then
+        begin
+          // 'valss' valutából vásároltunk 'bankjegy'-nyi darabot:
+          _pvetel[_valss]     := _pvetel[_valss] + _bankjegy;
+
+          // Ezért 'ftertek' forintot fizettünk ki:
+          _peladas[_hufindex] := _peladas[_hufindex] + _ftertek;
+        end;
+
+      // Ez egy eladás volt:
+
+      if _tipus='E' then
+        begin
+          // A 'valss' valutából 'bankjegy'-nyi valutát adtunk el:
+          _peladas[_valss] := _peladas[_valss] + _bankjegy;
+
+          // Ha készpénzzel fizettek, akkor 'ftertek' forintot kaptunk:
+          if _fizeszk=1 then _pvetel[_hufindex] := _pvetel[_hufindex] + _ftertek
+
+          // Ha bankártyával fizettek, akkor '_putalás'-unk ftertekkel nött:
+          else _pUtalas := _putalas + _ftertek;
+        end;
+
+      // Bankjegy átvétel történt:
+      if _tipus='U' then UBizonylatFeldolgozo;
+
+      // Bankjegy átutalás történt:
+      if _tipus='F' then FBizonylatFeldolgozo;
+
+      BlokkQuery.next;
+    end;
+  BlokkQuery.Close;
+  BlokkDbase.Close;
+
+  _voltForgalom := True;
+end;
+
+// =============================================================================
+                procedure TMNBLegyujto.AdatKiertekeles;
+// =============================================================================
+
+begin
+  MNBdbase.connected := true;
+  if mnbtranz.InTransaction then MNBTranz.commit;
+  MNBTranz.StartTransaction;
+
+  MNBTabla.close;
+  MNBTabla.Filtered := False;
+  MNBTabla.TableName := 'MNB';
+  MNBTabla.Open;
+  MNBTabla.last;
+
+  UzletPanel.Caption := '';
+  Uzletpanel.repaint;
+
+  _csikmax := MNBTabla.recno;
+  mnbcsik.Max := _csikmax;
+
+  FCSIK.Position := 0;
+  MNBTabla.First;
+
+  _cx := 0;
+  while not MNBTabla.Eof do
+    begin
+      inc(_cx);
+      mnbcsik.Position := _cx;
+      with MNBTabla do
+        begin
+          _uzlet    := FieldByNAme('IRODASZAM').asInteger;
+          _aktdnem  := FieldByName('VALUTANEM').asString;
+          _fnyito   := FieldByNAme('NYITO').asFloat;
+          _fzaro    := FieldByNAme('ZARO').asFloat;
+          _fvetel   := FieldByNAme('VETEL').asFloat;
+          _feladas  := FieldByNAme('ELADAS').AsFloat;
+          _ftobblet := FieldByName('TOBBLET').asfloat;
+          _fhiany   := FieldByName('HIANY').asFloat;
+          _fptarba  := FieldByName('PENZTARIKIADAS').asFloat;
+          _fptarbol := FieldByNAme('PENZTARIATVETEL').asFloat;
+          _fbankba  := FieldByNAme('BANKIATADAS').asFloat;
+          _fbankbol := FieldByNAme('BANKIATVETEL').asFloat;
+          _fvisszaplusz := FieldByName('VISSZAPLUSZ').asFloat;
+          _fvisszaminusz := FieldByName('VISSZAMINUSZ').asFloat;
+        end;
+
+      _fbevetel  := _fnyito+_fvetel+_ftobblet+_fptarbol+_fbankbol+_fvisszaplusz;
+      _fkiadas   := _feladas+_fhiany+_fptarba+_fbankba+_fvisszaminusz;
+      _fszamzaro := _fbevetel-_fkiadas;
+      _fdiff     := abs(_fzaro-_fszamzaro);
+
+      MNBtabla.edit;
+      MNBTabla.FieldByName('SZAMITOTTZARO').AsFloat := _fszamzaro;
+
+      If _Fdiff=0 then _mj := 'OK' else _mj := '?';
+      MNBTabla.FieldByName('MEGJEGYZES').asString := _mj;
+      MNBTabla.Post;
+      MNBTabla.Next;
+    end;
+  MNBTranz.commit;
+  MNBdbase.close;
+end;
+
+
+// =============================================================================
+//////////////////////// NULLÁZÁSOK ////////////////////////////////////////////
+// =============================================================================
+// =============================================================================
+                     procedure TMNBLegyujto.ForgalomNullazo;
+// =============================================================================
+
+begin
+  _y := 1;
+  while _y<=_valutadarab do
+    begin
+      _pVetel[_y]        := 0;
+      _pEladas[_y]       := 0;
+      _pPtarbol[_y]      := 0;
+      _pPtarba[_y]       := 0;
+      _pPtarba[_y]       := 0;
+      _pBankbol[_y]      := 0;
+      _pBankba[_y]       := 0;
+      _pTobblet[_y]      := 0;
+      _PHiany[_y]        := 0;
+      _pvisszaplusz[_y]  := 0;
+      _pvisszaminusz[_y] := 0;
+      inc(_y);
+    end;
+  _pUtalas := 0;
+end;
+
+
+// =============================================================================
+                procedure TMNBLegyujto.KorzetNullazo;
+// =============================================================================
+
+begin
+  _etarss := 1;
+  while _etarss<= _ertektarDarab do
+    begin
+      _valss := 1;
+
+      while _valss<=_valutaDarab do
+        begin
+          _etNyito[_etarss,_valss]        := 0;
+          _etZaro[_etarss,_valss]         := 0;
+          _etVetel[_etarss,_valss]        := 0;
+          _etEladas[_etarss,_valss]       := 0;
+          _etPtarba[_etarss,_valss]       := 0;
+          _etPtarbol[_etarss,_valss]      := 0;
+          _etBankba[_etarss,_valss]       := 0;
+          _etBankbol[_etarss,_valss]      := 0;
+          _etTobblet[_etarss,_valss]      := 0;
+          _etHiany[_etarss,_valss]        := 0;
+          _etVisszaPlusz[_etarss,_valss]  := 0;
+          _etVisszaMinusz[_etarss,_valss] := 0;
+
+          inc(_valss);
+        end;
+
+      inc(_etarss);
+    end;
+end;
+
+// =============================================================================
+                procedure TMNBLegyujto.KftNullazo;
+// =============================================================================
+
+begin
+  _kftss := 1;
+  while _kftss<=2 do
+    begin
+      _valss := 1;
+      while _valss<=_valutadarab do
+        begin
+          _kftNyito[_kftss,_valss]        := 0;
+          _kftZaro[_kftss,_valss]         := 0;
+          _kftVetel[_kftss,_valss]        := 0;
+          _kftEladas[_kftss,_valss]       := 0;
+          _kftPtarba[_kftss,_valss]       := 0;
+          _kftPtarbol[_kftss,_valss]      := 0;
+          _kftBankba[_kftss,_valss]       := 0;
+          _kftBankbol[_kftss,_valss]      := 0;
+          _kftTobblet[_kftss,_valss]      := 0;
+          _kftHiany[_kftss,_valss]        := 0;
+          _kftVisszaPlusz[_kftss,_valss]  := 0;
+          _kftVisszaMinusz[_kftss,_valss] := 0;
+          inc(_valss);
+        end;
+      inc(_kftss);
+    end;
+end;
+
+// =============================================================================
+                procedure TMNBLegyujto.CegNullazo;
+// =============================================================================
+
+begin
+  _valss := 1;
+
+  while _valss<=_valutaDarab do
+    begin
+      _cegNyito[_valss]        := 0;
+      _cegZaro[_valss]         := 0;
+      _cegVetel[_valss]        := 0;
+      _cegEladas[_valss]       := 0;
+      _cegPtarba[_valss]       := 0;
+      _cegPtarbol[_valss]      := 0;
+      _cegBankba[_valss]       := 0;
+      _cegBankbol[_valss]      := 0;
+      _cegTobblet[_valss]      := 0;
+      _cegHiany[_valss]        := 0;
+      _cegVisszaPlusz[_valss]  := 0;
+      _cegVisszaMinusz[_valss] := 0;
+
+      inc(_valss);
+    end;
+end;
+
+// =============================================================================
+                procedure TMNBLegyujto.NyitoNullazo;
+// =============================================================================
+
+begin
+  _y := 1;
+  while _y<=_valutaDarab do
+    begin
+      _mnyito[_y] := 0;
+      inc(_y);
+    end;
+end;
+
+// =============================================================================
+                 procedure TMNBLegyujto.IrodaTombNullazo;
+//==============================================================================
+
+begin
+  _y := 0;
+  while _y<=180 do
+    begin
+      _irodaSzamTomb[_y] := 0;
+      _irodaNevTomb[_y]  := '';
+      _korzetSzamTomb[_y]:= 0;
+      inc(_y);
+    end;
+end;
+
+
+// =============================================================================
+                procedure TMNBLegyujto.ZaroNullazo;
+// =============================================================================
+
+begin
+  _y := 1;
+  while _y<=_valutaDarab do
+    begin
+      _mZaro[_y] := 0;
+      inc(_y);
+    end;
+end;
+
+// =============================================================================
+//////////////////////// ADATOK BEIRÁSA ////////////////////////////////////////
+// =============================================================================
+// =============================================================================
+            procedure TMNBLegyujto.Egypenztarfeliras;
+// =============================================================================
+
+begin
+  MNBdbase.Connected := true;
+  if MNBTranz.InTransaction then MNBTranz.commit;
+  MNBTranz.StartTransaction;
+
+  _valss := 1;
+  while _valss<=_valutadarab do
+    begin
+      _Nyito         := _mNyito[_valSs];
+      _Zaro          := _mZaro[_valSs];
+      _aktdnem       := _fDnem[_valSs];
+      _vetel         := _pVetel[_valSs];
+      _eladas        := _pEladas[_valSs];
+      _bankbol       := _pBankbol[_valSs];
+      _bankba        := _pBankba[_valSs];
+      _ptarba        := _pPtarba[_valSs];
+      _ptarbol       := _pPtarbol[_valSs];
+      _tobblet       := _pTobblet[_valSs];
+      _hiany         := _pHiany[_valSs];
+      _visszaPlusz   := _pVisszaPlusz[_valSs];
+      _visszaMinusz  := _pVisszaMinusz[_valSs];
+
+      if _aktpt<151 then _cegbetu:='B' else _cegbetu:='Z';
+
+
+      _pcs := 'INSERT INTO MNB (ERTEKTAR,IRODASZAM,VALUTANEM,NYITO,';
+      _pcs := _pcs + 'VETEL,ELADAS,BANKIATVETEL,BANKIATADAS,PENZTARIKIADAS,';
+      _pcs := _pcs + 'PENZTARIATVETEL,ZARO,TOBBLET,HIANY,VISSZAPLUSZ,VISSZAMINUSZ,';
+      _pcs := _pcs + 'CEGBETU,BANKKARTYA)'+_sorVeg;
+
+      _pcs := _pcs + 'VALUES (' + inttostr(_aktKorzet) + ',';
+      _pcs := _pcs + inttostr(_aktPt) + ',';
+      _pcs := _pcs + chr(39) + _aktDnem + chr(39) + ',';
+      _pcs := _pcs + RealToStr(_nyito) + ',';
+      _pcs := _pcs + RealToStr(_vetel) + ',';
+      _pcs := _pcs + RealToStr(_eladas) + ',';
+      _pcs := _pcs + RealToStr(_bankbol) + ',';
+      _pcs := _pcs + RealToStr(_bankba) + ',';
+      _pcs := _pcs + RealToStr(_ptarba) + ',';
+      _pcs := _pcs + RealToStr(_ptarbol) + ',';
+      _pcs := _pcs + RealToStr(_zaro) + ',';
+      _pcs := _pcs + RealToStr(_tobblet) + ',';
+      _pcs := _pcs + RealToStr(_hiany) + ',';
+      _pcs := _pcs + RealToStr(_visszaPlusz) + ',';
+      _pcs := _pcs + RealToStr(_visszaMinusz) + ',';
+      _pcs := _pcs + chr(39) + _cegbetu + chr(39) + ',';
+
+      if _aktDnem='HUF' then _pcs := _pcs + intToStr(_pUtalas) +')'
+      else _pcs := _pcs + '0)';
+
+      with MNBQuery do
+        begin
+          Close;
+          Sql.Clear;
+          Sql.Add(_pcs);
+          Execsql;
+        end;
+      inc(_valSs);
+    end;
+
+  MNBtranz.Commit;
+  MNBDbase.Close;
+end;
+
+
+// =============================================================================
+                    procedure TMNBLegyujto.Korzetfeliras;
+// =============================================================================
+
+begin
+  MNBDbase.Connected := True;
+  if MNBTranz.InTransaction then MNBTranz.Commit;
+  MNBTranz.StartTransaction;
+
+  _etarSs := 1;
+  while _etarSs<=_ertektarDarab do
+    begin
+      _aktKorzet  := _korzetek[_etarSs];
+      _aktUtalas  := _etUtalas[_etarSs];
+      _valSs := 1;
+
+      if _etarss<9 then _cegbetu := 'B' else _cegbetu := 'Z';
+
+      while _valSs<=_valutaDarab do
+        begin
+          _aktDnem       := _fDnem[_valss];
+          _fNyito        := _etNyito[_etarss,_valss];
+          _fZaro         := _etZaro[_etarss,_valss];
+          _fVetel        := _etVetel[_etarss,_valss];
+          _fEladas       := _etEladas[_etarss,_valss];
+          _fTobblet      := _etTobblet[_etarss,_valss];
+          _fHiany        := _etHiany[_etarss,_valss];
+          _fPtarba       := _etPtarba[_etarss,_valss];
+          _fPtarbol      := _etPtarbol[_etarss,_valss];
+          _fBankba       := _etBankba[_etarss,_valss];
+          _fBankbol      := _etBankbol[_etarss,_valss];
+          _fVisszaPlusz  := _etVisszaPlusz[_etarss,_valss];
+          _fVisszaMinusz := _etVisszaMinusz[_etarss,_valss];
+
+
+          _pcs := 'INSERT INTO MNB (ERTEKTAR,IRODASZAM,VALUTANEM,NYITO,';
+          _pcs := _pcs + 'VETEL,ELADAS,BANKIATVETEL,BANKIATADAS,PENZTARIKIADAS,';
+          _pcs := _pcs + 'PENZTARIATVETEL,ZARO,TOBBLET,HIANY,VISSZAPLUSZ,VISSZAMINUSZ,';
+          _PCS := _PCS + 'CEGBETU,BANKKARTYA)'+_sorveg;
+
+          _pcs := _pcs + 'VALUES (' + inttostr(_aktkorzet) + ',';
+          _pcs := _pcs + '0,';
+          _pcs := _pcs + chr(39) + _aktdnem + chr(39) + ',';
+          _pcs := _pcs + realtostr(_fnyito) + ',';
+          _pcs := _pcs + realtostr(_fvetel) + ',';
+          _pcs := _pcs + realtostr(_feladas) + ',';
+          _pcs := _pcs + realtostr(_fbankbol) + ',';
+          _pcs := _pcs + realtostr(_fbankba) + ',';
+          _pcs := _pcs + realtostr(_fptarba) + ',';
+          _pcs := _pcs + realtostr(_fptarbol) + ',';
+          _pcs := _pcs + realtostr(_fzaro) + ',';
+          _pcs := _pcs + realtostr(_ftobblet) + ',';
+          _pcs := _pcs + realtostr(_fhiany) + ',';
+          _pcs := _pcs + realtostr(_fvisszaplusz) + ',';
+          _pcs := _pcs + realtostr(_fvisszaminusz) + ',';
+          _pcs := _pcs + chr(39) + _cegbetu + chr(39) + ',';
+
+          if _aktdnem='HUF' then _pcs := _pcs + inttostr(_aktutalas) +')'
+          else _pcs := _pcs + '0)';
+
+          with MNBQuery do
+            begin
+              Close;
+              sql.clear;
+              sql.add(_pcs);
+              Execsql;
+            end;
+          inc(_valss);
+        end;
+      inc(_etarss);
+    end;
+  MNBTranz.commit;
+  MNBdbase.close;
+end;
+
+// =============================================================================
+                     procedure TMNBLegyujto.KftFeliras;
+// =============================================================================
+
+begin
+  MNBDbase.Connected := True;
+  if MNBTranz.InTransaction then MNBTranz.Commit;
+  MNBTranz.StartTransaction;
+
+  _kftSs := 1;
+  while _kftSs<=2 do
+    begin
+      _aktUtalas  := _kftUtalas[_kftSs];
+      _valSs := 1;
+
+      while _valSs<=_valutaDarab do
+        begin
+          _aktDnem       := _fDnem[_valSs];
+          _fNyito        := _kftNyito[_kftSs,_valSs];
+          _fZaro         := _kftZaro[_kftSs,_valSs];
+          _fVetel        := _kftVetel[_kftSs,_valSs];
+          _fEladas       := _kftEladas[_kftSs,_valSs];
+          _fTobblet      := _kftTobblet[_kftSs,_valSs];
+          _fHiany        := _kftHiany[_kftSs,_valSs];
+          _fPtarba       := _kftPtarba[_kftSs,_valSs];
+          _fPtarbol      := _kftPtarbol[_kftSs,_valSs];
+          _fBankba       := _kftBankba[_kftSs,_valSs];
+          _fBankbol      := _kftBankbol[_kftSs,_valSs];
+          _fVisszaPlusz  := _kftVisszaPlusz[_kftSs,_valSs];
+          _fVisszaMinusz := _kftVisszaMinusz[_kftSs,_valSs];
+
+          if _kftss=1 then _cegBetu := 'B' else _cegbetu := 'Z';
+
+          _pcs := 'INSERT INTO MNB (ERTEKTAR,IRODASZAM,VALUTANEM,NYITO,';
+          _pcs := _pcs + 'VETEL,ELADAS,BANKIATVETEL,BANKIATADAS,PENZTARIKIADAS,';
+          _pcs := _pcs + 'PENZTARIATVETEL,ZARO,TOBBLET,HIANY,VISSZAPLUSZ,VISSZAMINUSZ,';
+          _pcs := _pcs + 'CEGBETU,BANKKARTYA)'+_sorveg;
+          _pcs := _pcs + 'VALUES (' + '0,';
+          _pcs := _pcs + '0,';
+          _pcs := _pcs + chr(39) + _aktDnem + chr(39) + ',';
+          _pcs := _pcs + RealToStr(_fNyito) + ',';
+          _pcs := _pcs + RealToStr(_fVetel) + ',';
+          _pcs := _pcs + RealToStr(_fEladas) + ',';
+          _pcs := _pcs + RealToStr(_fBankbol) + ',';
+          _pcs := _pcs + RealToStr(_fBankba) + ',';
+          _pcs := _pcs + RealToStr(_fPtarba) + ',';
+          _pcs := _pcs + RealToStr(_fPtarbol) + ',';
+          _pcs := _pcs + RealToStr(_fZaro) + ',';
+          _pcs := _pcs + RealToStr(_fTobblet) + ',';
+          _pcs := _pcs + RealToStr(_fHiany) + ',';
+          _pcs := _pcs + RealToStr(_fVisszaPlusz) + ',';
+          _pcs := _pcs + RealToStr(_fVisszaMinusz) + ',';
+          _pcs := _pcs + chr(39) + _cegBetu + chr(39) + ',';
+
+          if _aktDnem='HUF' then _pcs := _pcs + intToStr(_aktUtalas) +')'
+          else _pcs := _pcs + '0)';
+
+          with MNBQuery do
+            begin
+              Close;
+              Sql.Clear;
+              Sql.Add(_pcs);
+              ExecSql;
+            end;
+          inc(_valSs);
+        end;
+      inc(_kftSs);
+    end;
+  MNBTranz.Commit;
+  MNBDbase.Close;
+end;
+
+// =============================================================================
+                   procedure  TMNBLegyujto.CegFeliras;
+// =============================================================================
+
+begin
+  MNBDbase.connected := true;
+  if MNBTranz.InTransaction then MNBTranz.Commit;
+  MNBTranz.StartTransaction;
+
+
+  _aktutalas  := _cegUtalas;
+  _valss := 1;
+
+  while _valss<=_valutaDarab do
+    begin
+      _aktDnem  := _fDnem[_valSs];
+      _fNyito   := _cegNyito[_valSs];
+      _fZaro    := _cegZaro[_valSs];
+      _fVetel   := _cegVetel[_valSs];
+      _fEladas  := _cegEladas[_valSs];
+      _fTobblet := _cegTobblet[_valSs];
+      _fHiany   := _cegHiany[_valSs];
+      _fPtarba  := _cegPtarba[_valSs];
+      _fPtarbol := _cegPtarbol[_valSs];
+      _fBankba  := _cegBankba[_valSs];
+      _fBankbol := _cegBankbol[_valSs];
+      _fVisszaPlusz := _cegVisszaPlusz[_valSs];
+      _fVisszaMinusz := _cegVisszaMinusz[_valSs];
+
+      _pcs := 'INSERT INTO MNB (ERTEKTAR,IRODASZAM,VALUTANEM,NYITO,';
+      _pcs := _pcs + 'VETEL,ELADAS,BANKIATVETEL,BANKIATADAS,PENZTARIKIADAS,';
+      _pcs := _pcs + 'PENZTARIATVETEL,ZARO,TOBBLET,HIANY,VISSZAPLUSZ,VISSZAMINUSZ,';
+      _pcs := _pcs + 'BANKKARTYA)'+_sorveg;
+      _pcs := _pcs + 'VALUES (' + '-1,';
+      _pcs := _pcs + '0,';
+      _pcs := _pcs + chr(39) + _aktDnem + chr(39) + ',';
+      _pcs := _pcs + RealToStr(_fNyito) + ',';
+      _pcs := _pcs + RealToStr(_fVetel) + ',';
+      _pcs := _pcs + RealToStr(_fEladas) + ',';
+      _pcs := _pcs + RealToStr(_fBankbol) + ',';
+      _pcs := _pcs + RealToStr(_fBankba) + ',';
+      _pcs := _pcs + RealToStr(_fPtarba) + ',';
+      _pcs := _pcs + RealToStr(_fPtarbol) + ',';
+      _pcs := _pcs + RealToStr(_fZaro) + ',';
+      _pcs := _pcs + RealToStr(_fTobblet) + ',';
+      _pcs := _pcs + RealToStr(_fHiany) + ',';
+      _pcs := _pcs + RealToStr(_fVisszaPlusz) + ',';
+      _pcs := _pcs + RealToStr(_fVisszaMinusz) + ',';
+
+      if _aktDnem='HUF' then _pcs := _pcs + intToStr(_aktUtalas) +')'
+      else _pcs := _pcs + '0)';
+
+      with MNBQuery do
+        begin
+          Close;
+          Sql.Clear;
+          Sql.Add(_pcs);
+          Execsql;
+        end;
+      inc(_valSs);
+    end;
+
+  MNBTranz.Commit;
+  MNBDbase.Close;
+end;
+
+
+// =============================================================================
+//////////////////////// ADATOK SUMMÁZÁSA //////////////////////////////////////
+// =============================================================================
+// =============================================================================
+                procedure TMNBLegyujto.KorzetSumma;
+// =============================================================================
+
+begin
+  KorzetNullazo;
+
+  MNBdbase.Connected := True;
+
+  with MNBTabla do
+    begin
+      Filtered  := False;
+      Close;
+      TableName := 'MNB';
+      Open;
+      Last;
+    end;
+
+  UzletPanel.Caption := '';
+  UzletPanel.Repaint;
+
+  _csikMax := MNBTabla.Recno;
+  MnbCsik.Max := _csikMax;
+
+  FCsik.Position := 0;
+  MNBTabla.First;
+
+  _cx := 0;
+  while not MNBTabla.Eof do
+    begin
+      inc(_cx);
+      mnbCsik.Position := _cx;
+
+      with MNBTabla do
+        begin
+          _korzet        := FieldByNAme('ERTEKTAR').asInteger;
+          _aktDnem       := FieldByName('VALUTANEM').asString;
+          _fNyito        := FieldByNAme('NYITO').asFloat;
+          _fZaro         := FieldByNAme('ZARO').asFloat;
+          _fVetel        := FieldByNAme('VETEL').asFloat;
+          _fEladas       := FieldByNAme('ELADAS').AsFloat;
+          _fTobblet      := FieldByName('TOBBLET').asfloat;
+          _fHiany        := FieldByName('HIANY').asFloat;
+          _fPtarba       := FieldByName('PENZTARIKIADAS').asFloat;
+          _fPtarbol      := FieldByNAme('PENZTARIATVETEL').asFloat;
+          _fBankba       := FieldByNAme('BANKIATADAS').asFloat;
+          _fBankbol      := FieldByNAme('BANKIATVETEL').asFloat;
+          _pUtalas       := FieldByname('BANKKARTYA').asInteger;
+          _fVisszaPlusz  := FieldByNAme('VISSZAPLUSZ').asfloat;
+          _fVisszaMinusz := FieldByNAme('VISSZAMINUSZ').asfloat;
+
+        end;
+
+      _valSs  := DnemScan(_aktDnem);
+      _etarSs := KorzetScan(_korzet);
+
+      _etNyito[_etarSs,_valSs]        := _etNyito[_etarSs,_valSs] + _fNyito;
+      _etZaro[_etarSs,_valSs]         := _etZaro[_etarSs,_valSs] + _fZaro;
+      _etVetel[_etarSs,_valSs]        := _etVetel[_etarSs,_valSs] + _fVetel;
+      _etEladas[_etarSs,_valSs]       := _etEladas[_etarSs,_valSs] + _fEladas;
+      _etTobblet[_etarSs,_valSs]      := _etTobblet[_etarSs,_valSs] + _fTobblet;
+      _etHiany[_etarSs,_valSs]        := _etHiany[_etarSs,_valSs] + _fHiany;
+      _etPtarba[_etarSs,_valSs]       := _etPtarba[_etarSs,_valSs] + _fPtarba;
+      _etPtarbol[_etarSs,_valSs]      := _etPtarbol[_etarSs,_valSs] + _fPtarbol;
+      _etBankba[_etarSs,_valSs]       := _etBankba[_etarSs,_valSs] + _fBankba;
+      _etBankbol[_etarSs,_valSs]      := _etBankbol[_etarSs,_valSs] + _fBankbol;
+      _etUtalas[_etarSs]              := _etUtalas[_etarSs] + _pUtalas;
+      _etVisszaPlusz[_etarss,_valss]  := _etVisszaPlusz[_etarss,_valss] + _fVisszaPlusz;
+      _etVisszaMinusz[_etarss,_valss] := _etVisszaMinusz[_etarss,_valss] + _fVisszaMinusz;
+      MNBTabla.Next;
+    end;
+
+  MNBTabla.Close;
+  MNBDbase.Close;
+end;
+
+// =============================================================================
+                procedure TMNBLegyujto.KftSumma;
+// =============================================================================
+
+begin
+  KftNullazo;
+
+  MNBdbase.Connected := True;
+  _filter := 'IRODASZAM=0';
+
+  with MNBTabla do
+    begin
+      Close;
+      Filtered := False;
+      TableName := 'MNB';
+      Open;
+      Filter := _filter;
+      Filtered := True;
+      Last;
+    end;
+
+  UzletPanel.Caption := '';
+  UzletPanel.repaint;
+
+  _csikMax    := MNBTabla.Recno;
+  mnbCsik.Max := _csikMax;
+
+  FCsik.Position := 0;
+  MNBTabla.First;
+
+  _cx := 0;
+  while not MNBTabla.Eof do
+    begin
+      inc(_cx);
+      MnbCsik.Position := _cx;
+
+      with MNBTabla do
+        begin
+          _aktIrodaszam  := FieldByNAme('IRODASZAM').asInteger;
+          _aktDnem       := FieldByName('VALUTANEM').asString;
+          _fNyito        := int(FieldByNAme('NYITO').asFloat);
+          _fZaro         := int(FieldByNAme('ZARO').asFloat);
+          _fVetel        := FieldByNAme('VETEL').asFloat;
+          _fEladas       := FieldByNAme('ELADAS').AsFloat;
+          _fTobblet      := FieldByName('TOBBLET').asfloat;
+          _fHiany        := FieldByName('HIANY').asFloat;
+          _fPtarba       := FieldByName('PENZTARIKIADAS').asFloat;
+          _fPtarbol      := FieldByNAme('PENZTARIATVETEL').asFloat;
+          _fBankba       := FieldByNAme('BANKIATADAS').asFloat;
+          _fBankbol      := FieldByNAme('BANKIATVETEL').asFloat;
+          _pUtalas       := FieldByname('BANKKARTYA').asInteger;
+          _fVisszaPlusz  := FieldByNAme('VISSZAPLUSZ').asfloat;
+          _fVisszaMinusz := FieldByNAme('VISSZAMINUSZ').asfloat;
+        end;
+
+      _valss  := DnemScan(_aktdnem);
+      if _aktIrodaszam<151 then _kftSs :=1 else _kftSs := 2;
+
+      _KftNyito[_kftSs,_valSs]        := _kftNyito[_kftSs,_valSs] + _fNyito;
+      _KftZaro[_kftSs,_valSs]         := _kftZaro[_kftSs,_valSs] + _fZaro;
+      _KftVetel[_kftSs,_valSs]        := _kftVetel[_kftSs,_valSs] + _fVetel;
+      _KftEladas[_kftSs,_valSs]       := _kftEladas[_kftSs,_valSs] + _fEladas;
+      _KftTobblet[_kftSs,_valSs]      := _kftTobblet[_kftSs,_valSs] + _fTobblet;
+      _KftHiany[_kftSs,_valSs]        := _kftHiany[_kftSs,_valSs] + _fHiany;
+      _KftPtarba[_kftSs,_valSs]       := _kftPtarba[_kftSs,_valSs] + _fPtarba;
+      _KftPtarbol[_kftSs,_valSs]      := _kftPtarbol[_kftSs,_valSs] + _fPtarbol;
+      _KftBankba[_kftSs,_valSs]       := _kftBankba[_kftSs,_valSs] + _fBankba;
+      _KftBankbol[_kftSs,_valSs]      := _kftBankbol[_kftSs,_valSs] + _fBankbol;
+      _KftUtalas[_kftSs]              := _kftUtalas[_kftSs] + _pUtalas;
+      _kftVisszaPlusz[_kftSs,_valSs]  := _kftVisszaPlusz[_kftSs,_valSs] + _fVisszaPlusz;
+      _kftVisszaMinusz[_kftSs,_valSs] := _kftVisszaMinusz[_kftSs,_valSs] + _fVisszaMinusz;
+      MNBTabla.Next;
+    end;
+
+  MNBTabla.close;
+  MNBDbase.close;
+end;
+
+// =============================================================================
+                procedure TMNBLegyujto.CegSumma;
+// =============================================================================
+
+begin
+  CegNullazo;
+  MNBDbase.Connected := True;
+  _filter := '(IRODASZAM=0) AND (ERTEKTAR=0)';
+
+  with MNBTabla do
+    begin
+      Close;
+      Filtered := False;
+      TableName := 'MNB';
+      Open;
+      Filter := _filter;
+      Filtered := True;
+      Last;
+    end;
+
+  UzletPanel.Caption := '';
+  UzletPanel.Repaint;
+
+  _csikMax := MNBTabla.Recno;
+  MnbCsik.Max := _csikMax;
+
+  FCsik.Position := 0;
+  MNBTabla.First;
+
+  _cx := 0;
+  while not MNBTabla.Eof do
+    begin
+      inc(_cx);
+      MnbCsik.Position := _cx;
+
+      with MNBTabla do
+        begin
+          _aktDnem       := FieldByName('VALUTANEM').asString;
+          _fNyito        := FieldByNAme('NYITO').asFloat;
+          _fZaro         := FieldByNAme('ZARO').asFloat;
+          _fVetel        := FieldByNAme('VETEL').asFloat;
+          _fEladas       := FieldByNAme('ELADAS').AsFloat;
+          _fTobblet      := FieldByName('TOBBLET').asfloat;
+          _fHiany        := FieldByName('HIANY').asFloat;
+          _fPtarba       := FieldByName('PENZTARIKIADAS').asFloat;
+          _fPtarbol      := FieldByNAme('PENZTARIATVETEL').asFloat;
+          _fBankba       := FieldByNAme('BANKIATADAS').asFloat;
+          _fBankbol      := FieldByNAme('BANKIATVETEL').asFloat;
+          _fVisszaPlusz  := FieldByName('VISSZAPLUSZ').asFloat;
+          _fVisszaMinusz := FieldByName('VISSZAMINUSZ').asFloat;
+          _pUtalas       := FieldByname('BANKKARTYA').asInteger
+        end;
+
+      _valSs  := DnemScan(_aktDnem);
+
+      _cegNyito[_valss]        := _cegNyito[_valSs] + _fNyito;
+      _cegZaro[_valss]         := _cegZaro[_valSs] + _fZaro;
+      _cegVetel[_valss]        := _cegVetel[_valSs] + _fVetel;
+      _cegEladas[_valss]       := _cegEladas[_valSs] + _fEladas;
+      _cegTobblet[_valss]      := _cegTobblet[_valSs] + _fTobblet;
+      _cegHiany[_valss]        := _cegHiany[_valSs] + _fHiany;
+      _cegPtarba[_valss]       := _cegPtarba[_valSs] + _fPtarba;
+      _cegPtarbol[_valss]      := _cegPtarbol[_valSs] + _fPtarbol;
+      _cegBankba[_valss]       := _cegBankba[_valSs] + _fBankba;
+      _cegBankbol[_valss]      := _cegBankbol[_valSs] + _fBankbol;
+      _cegVisszaPlusz[_valss]  := _cegVisszaPlusz[_valSs] + _fVisszaPlusz;
+      _cegVisszaMinusz[_valss] := _cegVisszaMinusz[_valSs] + _fVisszaMinusz;
+      _cegUtalas               := _cegUtalas + _putalas;
+      MNBTabla.Next;
+    end;
+
+  MNBTabla.Close;
+  MNBDbase.Close;
+end;
+
+// =============================================================================
+//////////////////////// SEGÉD PROGRAMOK  //////////////////////////////////////
+// =============================================================================
+// =============================================================================
+             function TMNBLegyujto.Nulele(_b: byte): string;
+// =============================================================================
+
+begin
+  Result := inttostr(_b);
+  if _b<10 then Result := '0' + Result;
+end;
+
+// =============================================================================
+            function TMNBLegyujto.DnemScan(_ad: string): byte;
+// =============================================================================
+
+var _y: byte;
+
+begin
+  Result := 0;
+  _y := 1;
+  while _y<=_valutaDarab do
+    begin
+      if _fDnem[_y]=_ad then
+        begin
+          Result := _y;
+          Exit;
+        end;
+      inc(_y);
+     end;
+end;
+
+// =============================================================================
+           function TMNBLegyujto.Kerekito(_int: integer): integer;
+// =============================================================================
+
+var _nums: string;
+    _utdig,_wnums: Byte;
+
+begin
+  Result := _int;
+  _nums  := inttostr(_int);
+  _wNums := length(_nums);
+  _utDig := ord(_nums[_wNums])-48;
+
+  if (_utDig<>0) and (_utDig<>5) then
+    begin
+      if (_utDig=1) or (_utDig=2) then Result := _int-_utDig;
+      if (_utDig=6) or (_utDig=7) then Result := _int-(_utDig-5);
+      if (_utDig=3) or (_utDig=4) then Result := _int+(5-_utDig);
+      if (_utDig=8) or (_utDig=9) then Result := _int+10-_utDig;
+    end;
+end;
+
+// =============================================================================
+               function TMNBLegyujto.KorzetScan(_k: byte): byte;
+// =============================================================================
+
+begin
+  Result := 0;
+  _y := 1;
+
+  while _y<=_ertektarDarab do
+    begin
+      if _korzetek[_y]=_k then
+        begin
+          Result := _y;
+          Exit;
+        end;
+      inc(_y);
+    end;
+end;
+
+// =============================================================================
+           procedure TMNBLegyujto.KilepoTimer(Sender: TObject);
+// =============================================================================
+
+begin
+  Kilepo.Enabled := False;
+  ModalResult := _mResult;
+end;
+
+// =============================================================================
+            function TMNBLegyujto.RealToStr(_r: real): string;
+// =============================================================================
+
+begin
+  _r := int(_r);
+  Result := floatToStr(_r);
+end;
+
+// =============================================================================
+                      procedure TMNBLegyujto.IrodaBetolto;
+// =============================================================================
+
+var _vv: byte;
+
+begin
+  IrodatombNullazo;
+
+  _pcs := 'SELECT * FROM IRODAK' + _sorveg;
+  _pcs := _pcs + 'ORDER BY UZLET';
+
+  ReceptorDbase.Connected := true;
+  with ReceptorQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Add(_pcs);
+      Open;
+      First;
+    end;
+
+  _y := 0;
+  while not ReceptorQuery.Eof do
+    begin
+      inc(_y);
+
+      _uzlet := ReceptorQuery.FieldByNAme('UZLET').asInteger;
+      _irodaSzamTomb[_y]     := _uzlet;
+      _irodanevTomb[_uzlet]  := trim(ReceptorQuery.FieldByname('KESZLETNEV').AsString);
+      _korzetszamtomb[_uzlet]:= ReceptorQuery.FieldByName('ERTEKTAR').asInteger;
+      ReceptorQuery.Next;
+    end;
+  ReceptorQuery.Close;
+  ReceptorDbase.Close;
+  _irodaDarab := _y;
+
+  // ---------------------------------------------------------------------------
+
+  _pcs := 'SELECT * FROM IRODAK' + _sorveg;
+  _pcs := _pcs + 'ORDER BY UZLET';
+
+  ArtDbase.Connected := True;
+  with ArtQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Add(_pcs);
+      Open;
+      First;
+    end;
+
+  while not ArtQuery.Eof do
+    begin
+      _vv := ArtQuery.FieldByname('VALUTAVALTAS').asInteger;
+      if _vv=0 then
+        begin
+          Artquery.Next;
+          Continue;
+        end;
+
+      inc(_y);
+
+      _uzlet := ArtQuery.FieldByNAme('UZLET').asInteger;
+      _irodaSzamTomb[_y]     := _uzlet;
+      _irodaNevTomb[_uzlet]  := trim(ArtQuery.FieldByname('KESZLETNEV').AsString);
+      _korzetSzamTomb[_uzlet]:= 180;
+
+      ArtQuery.Next;
+    end;
+
+  ArtQuery.Close;
+  ArtDbase.Close;
+  _irodaDarab := _y;
+end;
+
+// =============================================================================
+               function TMNBLegyujto.KeszletCtrl: boolean;
+// =============================================================================
+
+begin
+  result := true;
+
+  _y := 1;
+  while _y<=_valutaDarab do
+    begin
+      if (_mNyito[_y]>0) OR (_mZaro[_y]>0) then exit;
+      inc(_y);
+    end;
+  result := false;
+end;
+
+
+// =============================================================================
+                 function TMNBLegyujto.Getfarok: string;
+// =============================================================================
+
+begin
+  result := midstr(_datumtols,3,2)+midstr(_datumtols,6,2);
+
+  _eloev := _kertev;
+  _eloho := _kertho-1;
+
+  if _eloho=0 then
+    begin
+      _eloho := 12;
+      dec(_eloev);
+    end;
+
+  _elofarok := Nulele(_eloev-2000)+Nulele(_eloho);
+end;
+// =============================================================================
+                 function TMNBlegyujto.ToligBetoltes: integer;
+// =============================================================================
+
+var _kertevs,_kerthos: string;
+
+begin
+  result := 2;
+
+  MnbDbase.Connected := true;
+  with MNBQuery do
+    begin
+      Close;
+      Sql.clear;
+      Sql.add('SELECT * FROM IDOSZAK');
+      Open;
+      _datumtols := fieldByNAme('STARTDATE').asString;
+      _datumigs  := FieldByNAme('ENDDATE').asString;
+      Close;
+    end;
+  MNBDbase.close;
+
+  _dc := dateCtrl(_datumtols);
+  if not _dc then exit;
+
+  _dc := datectrl(_datumigs);
+  if not _dc then exit;
+
+  if _datumigs<_datumtols then exit;
+
+  // --------------------------------
+
+  _kertevs := leftstr(_datumtols,4);
+  _kerthos := midstr(_datumtols,6,2);
+
+  val(_kertevs,_kertev,_code);
+  if _code<> 0 then exit;
+  val(_kerthos,_kertho,_code);
+  if _code<>0 then exit;
+
+  Result := 1;
+
+end;
+
+// =============================================================================
+          function TMNBLegyujto.Datectrl(_ds: string): boolean;
+// =============================================================================
+
+var _hos,_naps: string;
+
+begin
+  result := False;
+  if leftstr(_ds,2)<>'20' then exit;
+  _hos := midstr(_ds,6,2);
+  if (_hos<'01') OR (_hos>'12') then exit;
+  _naps := midstr(_ds,9,2);
+  if (_naps<'01') OR (_naps>'31') then exit;
+
+  result := True;
+end;
+
+
+// =============================================================================
+                function TMNBLegyujto.Getnyitok: boolean;
+// =============================================================================
+
+
+begin
+  NyitoNullazo;
+
+  Result := False;
+  with CimtarDbase do
+    begin
+      Close;
+      DatabaseName := _aktFdbPath;
+      Connected := True;
+    end;
+
+  CimtarTabla.Close;
+  CimtarTabla.TableName := _cimtarNev;
+
+  if not CimtarTabla.Exists then
+    begin
+      CimtarQuery.Close;
+      Cimtardbase.Close;
+      Exit;
+    end;
+
+  _pcs := 'SELECT * FROM ' + _cimtarNev + _sorVeg;
+  _pcs := _pcs + 'WHERE DATUM<'+chr(39)+_datumTols+chr(39)+_sorveg;
+  _pcs := _pcs + 'ORDER BY DATUM';
+
+  with CimtarQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Add(_pcs);
+      Open;
+      Last;
+      _recno := Recno;
+    end;
+
+  if _recno=0 then
+    begin
+      CimtarQuery.Close;
+      CimtarTabla.Close;
+
+      CimtarTabla.TableName := _eloCimtarNev;
+      if not CimtarTabla.Exists then
+        begin
+          CimtarDbase.Close;
+          Exit;
+        end;
+
+      _pcs := 'SELECT * FROM ' + _eloCimtarNev + _sorVeg;
+      _pcs := _pcs + 'ORDER BY DATUM';
+
+      with CimtarQuery do
+        begin
+          Close;
+          Sql.Clear;
+          Sql.Add(_pcs);
+          Open;
+          Last;
+          _recno := Recno;
+        end;
+
+      if _recno=0 then
+        begin
+          CimtarQuery.Close;
+          CimtarDbase.Close;
+          Exit;
+        end;
+
+      _utDates := CimtarQuery.FieldByName('DATUM').asString;
+      _pcs     := 'SELECT * FROM ' + _eloCimtarNev + _sorVeg;
+      _pcs     := _pcs + 'WHERE DATUM=' + chr(39) + _utDates + chr(39);
+
+      with CimtarQuery do
+        begin
+          Close;
+          Sql.Clear;
+          Sql.Add(_pcs);
+          Open;
+        end;
+    end else
+    begin
+      _utDates := CimtarQuery.FieldByName('DATUM').asString;
+
+      _pcs     := 'SELECT * FROM ' + _cimtarNev + _sorVeg;
+      _pcs     := _pcs + 'WHERE DATUM=' + chr(39) + _utDates + chr(39);
+
+      with CimtarQuery do
+        begin
+          Close;
+          Sql.Clear;
+          Sql.Add(_pcs);
+          Open;
+        end;
+    end;
+
+  while not CimtarQuery.Eof do
+    begin
+      _aktDnem := CimtarQuery.FieldByNAme('VALUTANEM').asString;
+      _aktKesz := CimtarQuery.FieldByName('OSSZESEN').asFloat;
+      _valSs := DnemScan(_aktDnem);
+      _mNyito[_valSs] := _aktKesz;
+       CimtarQuery.Next;
+    end;
+
+  CimtarQuery.close;
+  CimtarDbase.close;
+  Result := True;
+end;
+
+// =============================================================================
+                procedure TMNBLegyujto.GetZarok;
+// =============================================================================
+
+
+begin
+  ZaroNullazo;
+
+  _pcs := 'SELECT * FROM ' + _cimtarNev + _sorVeg;
+  _pcs := _pcs + 'WHERE DATUM<='+chr(39)+_datumIgs+chr(39)+_sorVeg;
+  _pcs := _pcs + 'ORDER BY DATUM';
+
+  CimtarDbase.Connected := True;
+  with CimtarQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Add(_pcs);
+      Open;
+      Last;
+      _recno := Recno;
+    end;
+
+  if _recno=0 then
+    begin
+      CimtarQuery.Close;
+      CimtarTabla.Close;
+
+      CimtarQuery.Close;
+      CimtarDbase.Close;
+      Exit;
+    end;
+
+  _utDates := CimtarQuery.FieldByName('DATUM').asString;
+
+  _pcs := 'SELECT * FROM ' + _cimtarNev + _sorVeg;
+  _pcs := _pcs + 'WHERE DATUM=' + chr(39) + _utDates + chr(39);
+  with cimtarQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Add(_pcs);
+      Open;
+    end;
+
+  while not CimtarQuery.Eof do
+    begin
+      _aktDnem := CimtarQuery.FieldByNAme('VALUTANEM').asString;
+      _aktKesz := CimtarQuery.FieldByName('OSSZESEN').asFloat;
+      _valSs := DnemScan(_aktDnem);
+      _mZaro[_valSs] := _aktKesz;
+       CimtarQuery.Next;
+    end;
+  cimtarQuery.Close;
+  CimtarDbase.Close;
+end;
+
+
+// =============================================================================
+                 procedure TMNBLegyujto.MNBParancs(_ukaz: string);
+//==============================================================================
+
+begin
+  MNBDbase.connected := True;
+  if MNBTranz.intransaction then MNBtranz.commit;
+  MNBtranz.StartTransaction;
+  with MNBQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Add(_ukaz);
+      ExecSql;
+    end;
+  MNBTranz.Commit;
+  MNBDbase.Close;
+end;
+
+// =============================================================================
+               procedure TMNBLegyujto.Ubizonylatfeldolgozo;
+// =============================================================================
+
+begin
+  if _ptNum>1 then
+    begin
+      _pPtarbol[_valSs] := _pPtarbol[_valSs] + _bankJegy;
+      Exit;
+    end;
+
+  if _ptNum=1 then
+    begin
+      _pVisszaPlusz[_valSs] := _pVisszaPlusz[_valSs] + _bankJegy;
+      Exit;
+    end;
+
+  if _penztar='TH' then
+    begin
+      _pTobblet[_valSs] := _pTobblet[_valSs] + _bankJegy;
+      Exit;
+    end;
+
+  if _ptNum=0 then
+    begin
+      _pBankbol[_valSs] := _pBankbol[_valSs] + _bankJegy;
+    end;
+end;
+
+// =============================================================================
+             procedure TMNBLegyujto.Fbizonylatfeldolgozo;
+// =============================================================================
+
+begin
+  if _ptNum>1 then
+    begin
+      _pPtarba[_valss] := _pPtarba[_valSs] + _bankJegy;
+      Exit;
+    end;
+
+  if _ptNum=1 then
+    begin
+      _pVisszaMinusz[_valSs] := _pVisszaMinusz[_valss] + _bankJegy;
+      Exit;
+    end;
+
+  if _penztar='TH' then
+    begin
+      _pHiany[_valSs] := _pHiany[_valSs] + _bankJegy;
+      Exit;
+    end;
+
+  if _ptNum=0 then
+    begin
+      _pBankba[_valSs] := _pBankba[_valss] + _bankJegy;
+    end;
+end;
+
+
+
+end.

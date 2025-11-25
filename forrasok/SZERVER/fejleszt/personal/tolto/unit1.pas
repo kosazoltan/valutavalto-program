@@ -1,0 +1,321 @@
+unit Unit1;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, IBDatabase, DB, IBCustomDataSet, IBQuery, StdCtrls, Buttons,
+  IBTable, ExtCtrls, ComCtrls, strutils;
+
+type
+  TForm1 = class(TForm)
+    BitBtn1: TBitBtn;
+    SOURCEQUERY: TIBQuery;
+    SOURCEDBASE: TIBDatabase;
+    SOURCETRANZ: TIBTransaction;
+    TARGETDBASE: TIBDatabase;
+    TARGETTRANZ: TIBTransaction;
+    TARGETQUERY: TIBQuery;
+    RECEPTQUERY: TIBQuery;
+    RECEPTDBASE: TIBDatabase;
+    RECEPTTRANZ: TIBTransaction;
+    sourcetabla: TIBTable;
+    Panel1: TPanel;
+    Panel2: TPanel;
+    CSIK: TProgressBar;
+    Panel3: TPanel;
+    Label1: TLabel;
+    Panel4: TPanel;
+    BitBtn2: TBitBtn;
+
+    procedure BitBtn1Click(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
+    procedure TParancs(_ukaz: string);
+  
+    function Nulele(_b: byte): string;
+    procedure BitBtn2Click(Sender: TObject);
+    procedure IrodaBeolvaso;
+    procedure Dirbeolvaso;
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form1: TForm1;
+
+  _ptnev,_ceg: array[1..150] of string;
+  _ptet: array[1..150] of byte;
+  _kezdobetukod: byte;
+
+  _adir: array[0..149] of string;
+  _dirdb: byte;
+
+  _pt,_aktetar,_penztar,_aktertektar: byte;
+  _pcs,_fdbPath,_aktptnev,_aktceg,_nev,_elozonev,_anyjaneve,_leanykori: string;
+  _szulhely,_szulido,_allampolg,_lakcim,_okmtip,_azonosito,_tarthely: string;
+  _lcimcard,_telefon,_emailcim,_tnev,_mamas,_ugyfeltipus,_ugyfelnev,_datum: string;
+  _recno,_ugyfelszam,_usz,_dirss,_code: integer;
+  _minta,_aktdir,_aktcegbetu,_pn,_aktpenztarnev: string;
+  _srec: Tsearchrec;
+
+  _sorveg: string = chr(13)+chr(10);
+
+  _ertektar: array[1..150] of byte;
+  _cegbetu,_penztarnev:  array[1..150] of string;
+
+implementation
+
+{$R *.dfm}
+
+procedure TForm1.BitBtn1Click(Sender: TObject);
+
+var _cc: integer;
+
+begin
+  _PCS := 'DELETE FROM ADUGYFEL';
+  TParancs(_pcs);
+
+  _PCS := 'DELETE FROM EHUGYFEL';
+  TParancs(_pcs);
+  _PCS := 'DELETE FROM ILUGYFEL';
+  TParancs(_pcs);
+  _PCS := 'DELETE FROM MPUGYFEL';
+  TParancs(_pcs);
+  _PCS := 'DELETE FROM QTUGYFEL';
+  TParancs(_pcs);
+  _PCS := 'DELETE FROM UZUGYFEL';
+  TParancs(_pcs);
+
+  IrodaBeolvaso;
+  DirBeolvaso;
+
+  _dirss := 0;
+  while _dirss<_dirdb do
+    begin
+
+      Form1.repaint;
+      _aktdir := _adir[_dirss];
+      _fdbpath := 'c:\_ugyfelek\'+_aktdir+'\valuta.fdb';
+
+      val(_aktdir,_penztar,_code);
+      _aktertektar := _ertektar[_penztar];
+      _aktcegbetu  := _cegbetu[_penztar];
+      _aktpenztarnev := _penztarnev[_penztar];
+
+      Panel1.Caption := _aktdir+'. '+_aktpenztarnev;
+      Panel1.Repaint;
+
+      Sourcedbase.close;
+      Sourcedbase.DatabaseName := _fdbpath;
+      Sourcedbase.Connected := true;
+
+      _pcs := 'SELECT * FROM UGYFEL';
+      with SourceQuery do
+        begin
+          Close;
+          sql.clear;
+          sql.add(_pcs);
+          Open;
+          lAST;
+          _recno := recno;
+          First;
+        end;
+
+     fORM1.Repaint;
+     Csik.max := _recno;
+     _cc := 0;
+
+      while not SourceQuery.eof do
+        begin
+          inc(_cc);
+          Csik.Position := _cc;
+
+          _usz := SourceQuery.FieldByName('UGYFELSZAM').asInteger;
+          _nev := trim(SourceQuery.FieldByName('NEV').asstring);
+          _nev := uppercase(_nev);
+
+          Panel2.Caption := _nev;
+          Panel2.repaint;
+
+          if (_usz=0) or (length(_nev)<5) then
+            begin
+              SourceQuery.next;
+              Continue;
+            end;
+
+          _kezdobetukod := ord(_nev[1]);
+          _elozonev := trim(SourceQuery.FieldByNAme('ELOZONEV').AsString);
+          _anyjaneve:= trim(SourceQuery.FieldByName('ANYJANEVE').asString);
+          _leanykori:= trim(SourceQuery.FieldByName('LEANYKORI').AsString);
+          _szulhely := trim(SourceQuery.FieldByName('SZULETESIHELY').AsString);
+          _szulido  := trim(SourceQuery.FieldByName('SZULETESIIDO').AsString);
+          _allampolg:= trim(SourceQuery.FieldByName('ALLAMPOLGAR').AsString);
+          _lakcim   := trim(SourceQuery.FieldByName('LAKCIM').AsString);
+          _okmtip   := trim(Sourcequery.fieldByNAme('OKMANYTIPUS').AsString);
+          _azonosito:= trim(SourceQuery.FieldByName('AZONOSITO').asString);
+          _tarthely := trim(SourceQuery.FieldByName('TARTOZKODASIHELY').AsString);
+          _lcimcard := trim(SourceQuery.FieldByName('LAKCIMKARTYA').AsString);
+          _telefon  := trim(SourceQuery.FieldByName('TELEFONSZAM').AsString);
+          _emailcim := trim(SourceQuery.FieldByName('EMAILCIM').asstring);
+          _RECNO := SourceQuery.RECNO;
+
+          _tnev := 'UZUGYFEL';
+          case _kezdobetukod of
+             65..68: _tnev := 'ADUGYFEL';
+             69..72: _tnev := 'EHUGYFEL';
+             73..76: _tNev := 'ILUGYFEL';
+             77..80: _tnev := 'MPUGYFEL';
+             81..84: _tNev := 'QTUGYFEL';
+          end;
+
+          _pcs := 'INSERT INTO ' + _tNev + ' (UGYFELSZAM,NEV,ELOZONEV,ANYJANEVE,';
+          _pcs := _pcs + 'LEANYKORI,SZULETESIHELY,SZULETESIIDO,ALLAMPOLGAR,';
+          _pcs := _pcs + 'LAKCIM,OKMANYTIPUS,AZONOSITO,TARTOZKODASIHELY,';
+          _pcs := _pcs + 'LAKCIMKARTYA,TELEFONSZAM,EMAILCIM,DATUM,PENZTAR,';
+          _pcs := _pcs + 'ERTEKTAR,KFT)' + _sorveg;
+
+          _pcs := _pcs + 'VALUES (' + inttostr(_usz)+',';
+          _pcs := _pcs + chr(39) + _nev + chr(39) + ',';
+          _pcs := _pcs + chr(39) + _elozonev + chr(39) + ',';
+          _pcs := _pcs + chr(39) + _anyjaneve + chr(39) + ',';
+          _pcs := _pcs + chr(39) + _leanykori + chr(39) + ',';
+          _pcs := _pcs + chr(39) + _szulhely + chr(39) + ',';
+          _pcs := _pcs + chr(39) + _szulido + chr(39) + ',';
+          _pcs := _pcs + chr(39) + _allampolg + chr(39) + ',';
+          _pcs := _pcs + chr(39) + _lakcim + chr(39) + ',';
+          _pcs := _pcs + chr(39) + _okmTip + chr(39) + ',';
+          _pcs := _pcs + chr(39) + _azonosito + chr(39) + ',';
+          _pcs := _pcs + chr(39) + _tarthely + chr(39) + ',';
+          _pcs := _pcs + chr(39) + _lcimcard + chr(39) + ',';
+          _pcs := _pcs + chr(39) + _telefon + chr(39) + ',';
+          _pcs := _pcs + chr(39) + _emailcim + chr(39) + ',';
+          _pcs := _pcs + chr(39) + _mamas + chr(39) + ',';
+          _pcs := _pcs + inttostr(_penztar) + ',';
+          _pcs := _pcs + inttostr(_aktertektar) + ',';
+          _pcs := _pcs + chr(39) + _aktcegbetu + chr(39) + ')';
+
+          Tparancs(_pcs);
+
+          SourceQuery.next;
+        end;
+
+      SourceQuery.close;
+      Sourcedbase.close;
+
+
+      inc(_dirss);
+    end;
+end;
+
+
+procedure TForm1.TParancs(_ukaz: string);
+
+begin
+  Targetdbase.connected := true;
+  if Targettranz.InTransaction then targettranz.commit;
+  Targettranz.StartTransaction;
+  with targetquery do
+    begin
+      Close;
+      sql.clear;
+      sql.add(_ukaz);
+      ExecSql;
+    end;
+  Targettranz.Commit;
+  Targetdbase.close;
+end;
+
+procedure TForm1.FormActivate(Sender: TObject);
+
+
+begin
+ 
+  _mamas := leftstr(datetostr(date),10);
+
+ 
+end;
+
+
+
+function TForm1.Nulele(_b: byte): string;
+
+begin
+  result := inttostr(_b);
+  if _b<10 then result := '0' + result;
+end;
+
+
+procedure TForm1.BitBtn2Click(Sender: TObject);
+begin
+  Application.Terminate;
+end;
+
+
+
+procedure TForm1.IrodaBeolvaso;
+
+var i,_uz,_et: byte;
+    _cg: string;
+
+begin
+  for i := 1 to 150 do
+    begin
+      _ertektar[i]:= 0;
+      _cegBetu[i] := 'X';
+      _penztarnev[i]  := '?';
+    end;
+
+  _pcs := 'SELECT * FROM IRODAK WHERE CLOSED='+chr(39)+'N'+chr(39);
+  Receptdbase.Connected := true;
+  with ReceptQuery do
+    begin
+      Close;
+      sql.clear;
+      sql.add(_pcs);
+      Open;
+      First;
+    end;
+
+  while not ReceptQuery.eof do
+    begin
+      _uz := ReceptQuery.FieldByName('UZLET').asInteger;
+      _cg := ReceptQuery.FieldByNAme('CEGBETU').asString;
+      _et := ReceptQuery.FieldByNAme('ERTEKTAR').asInteger;
+      _pn := trim(Receptquery.FieldByName('KESZLETNEV').asString);
+
+      _ertektar[_uz] := _et;
+      _cegbetu[_uz]  := _cg;
+      _penztarnev[_uz]   := _pn;
+      Receptquery.next;
+    end;
+  ReceptQuery.close;
+  ReceptDbase.close;
+end;
+
+
+procedure TForm1.Dirbeolvaso;
+
+
+var _dirnev: string;
+
+begin
+  _minta := 'C:\_UGYFELEK\*.*';
+
+  _dirdb := 0;
+  if FindFirst(_MINTA, FAdIRECTORY, _srec) = 0 then
+    begin
+      repeat
+        _dirnev := _srec.Name;
+        if leftstr(_dirnev,1)<>'.' then
+          begin
+            _adir[_dirdb] := _srec.Name;
+            inc(_dirdb);
+          end;  
+      until FindNext(_srec) <> 0;
+      FindClose(_srec);
+    end;
+end;
+end.

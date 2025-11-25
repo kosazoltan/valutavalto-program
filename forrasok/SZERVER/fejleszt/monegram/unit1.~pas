@@ -1,0 +1,479 @@
+unit Unit1;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, Buttons, strutils, IBDatabase, DB, IBCustomDataSet,
+  IBQuery, IBTable, Grids, DBGrids, ExtCtrls, dateutils, jpeg,TlHelp32;
+
+type
+  TForm1 = class(TForm)
+    BitBtn1: TBitBtn;
+    MGQUERY: TIBQuery;
+    MGDBASE: TIBDatabase;
+    MGTRANZ: TIBTransaction;
+    MGTABLA: TIBTable;
+    DQUERY: TIBQuery;
+    DDBASE: TIBDatabase;
+    DTRANZ: TIBTransaction;
+    HUFSOURCE: TDataSource;
+    Label1: TLabel;
+    HUFPANEL: TPanel;
+    HUFRACS: TDBGrid;
+    EURPANEL: TPanel;
+    USDPANEL: TPanel;
+    EURRACS: TDBGrid;
+    DQUERYPENZTAR: TSmallintField;
+    DQUERYDATUM: TIBStringField;
+    DQUERYHUFNYITO: TIntegerField;
+    DQUERYHUFBANKBOL: TIntegerField;
+    DQUERYHUFBANKBA: TIntegerField;
+    DQUERYHUFUGYFELNEK: TIntegerField;
+    DQUERYHUFUGYFELTOL: TIntegerField;
+    DQUERYHUFZARO: TIntegerField;
+    DQUERYEURNYITO: TIntegerField;
+    DQUERYEURBANKBOL: TIntegerField;
+    DQUERYEURBANKBA: TIntegerField;
+    DQUERYEURUGYFELNEK: TIntegerField;
+    DQUERYEURUGYFELTOL: TIntegerField;
+    DQUERYEURZARO: TIntegerField;
+    DQUERYUSDNYITO: TIntegerField;
+    DQUERYUSDBANKBOL: TIntegerField;
+    DQUERYUSDBANKBA: TIntegerField;
+    DQUERYUSDUGYFELTOL: TIntegerField;
+    DQUERYUSDUGYFELNEK: TIntegerField;
+    DQUERYUSDZARO: TIntegerField;
+    USDRACS: TDBGrid;
+    USDSOURCE: TDataSource;
+    EURSOURCE: TDataSource;
+    HOCOMBO: TComboBox;
+    EVCOMBO: TComboBox;
+    DNEMCOMBO: TComboBox;
+    DTABLA: TIBTable;
+    HOOKEGOMB: TButton;
+    Shape1: TShape;
+    Image1: TImage;
+    Shape2: TShape;
+    Label2: TLabel;
+    EXCELGOMB: TBitBtn;
+
+    procedure BitBtn1Click(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
+    function Bedolgozatlan: integer;
+    procedure CreateMg(_tn: string);
+
+    function DwordRead(_b: byte): integer;
+    procedure EgyfileBedolgozas(_mp: string);
+    procedure Bedolgozas;
+    procedure MgParancs(_ukaz: string);
+    procedure HOOKEGOMBClick(Sender: TObject);
+    procedure AlapAllas;
+    function Nulele(_b: byte): string;
+    procedure EVCOMBOChange(Sender: TObject);
+    procedure EXCELGOMBClick(Sender: TObject);
+
+
+
+
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form1: TForm1;
+
+  _honev: array[1..12] of string = ('január','február','március','április',
+            'május','június','július','augusztus','szeptember','október',
+            'november','december');
+
+  _dnem: array[0..2] of string = ('EUR','HUF','USD');          
+  _mgFile: array[1..400] of string;
+  _mgdarab,_code,_aktpenztar,_cc: integer;
+  _moneyfile,_moneyPath: string;
+
+  _olvas: File of byte;
+  _bytetomb: array[1..255] of byte;
+
+  _hufnyito,_hufuk,_hufub,_hufbk,_hufbb,_hufzaro: integer;
+  _eurnyito,_euruk,_eurub,_eurbk,_eurbb,_eurzaro: integer;
+  _usdnyito,_usduk,_usdub,_usdbk,_usdbb,_usdzaro: integer;
+
+  _aktdatum,_farok,_tablanev,_pcs,_aktdnem: string;
+  _sorveg: string = chr(13)+chr(10);
+  _control : integer;
+
+  _lo,_hi,_hlo,_hhi,_xx: byte;
+  _maiev,_maiho,_kertev,_kertho: word;
+
+  _aktpanel: TPanel;
+  _aktracs : TDbGrid;
+  _aktsource: TdataSource;
+
+  proc   : PROCESSENTRY32;
+  _handle : HWND;
+  _Looper : BOOL;
+
+
+implementation
+
+uses Unit2;
+
+{$R *.dfm}
+
+procedure TForm1.BitBtn1Click(Sender: TObject);
+begin
+  Dquery.close;
+  Ddbase.close;
+  Application.Terminate;
+end;
+
+procedure TForm1.FormActivate(Sender: TObject);
+begin
+  Top  := 50;
+  Left := 150;
+
+  AlapAllas;
+
+  _maiev := yearof(date);
+  _maiho := monthof(date);
+  evcombo.clear;
+  evcombo.items.add(inttostr(_maiev-1));
+  evcombo.items.add(inttostr(_maiev));
+  evcombo.itemindex := 1;
+  Hocombo.ItemIndex := _maiho-1;
+  DnemCOmbo.ItemIndex := 0;
+
+  _mgdarab := Bedolgozatlan;
+  if _mgdarab>0 then Bedolgozas;
+  Activecontrol := Hookegomb;
+end;
+
+
+function TForm1.Bedolgozatlan: integer;
+
+var _cc: integer;
+    _srec: TSearchRec;
+    _minta: string;
+
+begin
+  _cc := 0;
+  _minta := 'C:\RECEPTOR\MAIL\MONEGRAM\MG*.*';
+  if FindFirst(_minta,faAnyfile, _srec) = 0 then
+    begin
+      repeat
+        inc(_cc);
+        _mgfile[_cc] := _srec.Name;
+      until FindNext(_srec) <> 0;
+      FindClose(_srec);
+    end;
+  result := _cc;
+end;
+
+procedure TForm1.Bedolgozas;
+
+begin
+  if _mgdarab<1 then exit;
+
+  _cc := 1;
+  while _cc<=_mgDarab do
+    begin
+      _moneyFile := _mgFile[_cc];
+      _moneyPath := 'c:\receptor\mail\monegram\' + _moneyFile;
+      EgyfileBedolgozas(_moneyPath);
+      inc(_cc);
+    end;
+end;
+
+
+procedure TForm1.EgyfileBedolgozas(_mp: string);
+
+var _fhossz: byte;
+    _mFile,_pts: string;
+
+begin
+  assignFile(_olvas,_mp);
+  reset(_olvas);
+  _fhossz := filesize(_olvas);
+  if _fHossz<>81 then
+    begin
+      Sysutils.DeleteFile(_mp);
+      exit;
+    end;
+  Blockread(_olvas,_bytetomb,81);
+  Closefile(_olvas);
+
+  // ------------------------------
+
+  _mFile := extractfileName(_mp);
+  _pts := extractfileext(_mp);
+  _pts := midstr(_pts,2,3);
+  val(_pts,_aktpenztar,_code);
+  if _code<>0 then _aktpenztar := 0;
+
+  _aktdatum := '20' + midstr(_mFile,3,2)+'.'+midstr(_mfile,5,2)+'.'+midstr(_mfile,7,2);
+
+  _hufnyito := Dwordread(3);
+  _hufuk    := Dwordread(7);
+  _hufub    := Dwordread(11);
+  _hufbk    := Dwordread(15);
+  _hufbb    := Dwordread(19);
+  _hufzaro  := Dwordread(23);
+
+  _eurnyito := Dwordread(29);
+  _euruk    := Dwordread(33);
+  _eurub    := Dwordread(37);
+  _eurbk    := Dwordread(41);
+  _eurbb    := Dwordread(45);
+  _eurzaro  := Dwordread(49);
+
+  _usdnyito := Dwordread(55);
+  _usduk    := Dwordread(59);
+  _usdub    := Dwordread(63);
+  _usdbk    := Dwordread(67);
+  _usdbb    := Dwordread(71);
+  _usdzaro  := Dwordread(75);
+
+  _control := _bytetomb[79]+_bytetomb[80]+_bytetomb[81];
+
+  if _control<>765 then
+    begin
+      Sysutils.DeleteFile(_mp);
+      exit;
+    end;
+
+  // ---------------------------------------------------------------------------
+  // FDB-be irás:
+
+  _farok := midstr(_aktdatum,3,2)+midstr(_aktdatum,6,2);
+  _tablanev := 'MG' + _farok;
+  Mgtabla.close;
+  MgTabla.TableName := _tablanev;
+  Mgdbase.Connected := true;
+  if not Mgtabla.exists then CreateMg(_tablanev);
+
+  _pcs := 'DELETE FROM ' + _tablanev + _sorveg;
+  _pcs := _pcs + 'WHERE (PENZTAR=' + inttostr(_aktpenztar)+')';
+  _PCS := _PCS + ' AND (DATUM=' + chr(39)+_aktdatum+chr(39)+')';
+
+  MgParancs(_pcs);
+
+  _pcs := 'INSERT INTO ' + _tablanev + ' (PENZTAR,DATUM,HUFNYITO,HUFBANKBOL,';
+  _pcs := _pcs + 'HUFBANKBA,HUFUGYFELNEK,HUFUGYFELTOL,HUFZARO,EURNYITO,';
+  _pcs := _pcs + 'EURBANKBOL,EURBANKBA,EURUGYFELNEK,EURUGYFELTOL,EURZARO,';
+  _pcs := _pcs + 'USDNYITO,USDBANKBOL,USDBANKBA,USDUGYFELNEK,USDUGYFELTOL,';
+  _pcs := _pcs + 'USDZARO)'+_sorveg;
+
+  _pcs := _pcs + 'VALUES (' + inttostr(_aktpenztar)+',';
+  _pcs := _pcs + chr(39) + _aktdatum + chr(39) + ',';
+
+  // ---------------------------------------
+
+  _pcs := _pcs + inttostr(_hufnyito) + ',';
+  _pcs := _pcs + inttostr(_hufbb) + ',';
+  _pcs := _pcs + inttostr(_hufbk) + ',';
+  _pcs := _pcs + inttostr(_hufuk) + ',';
+  _pcs := _pcs + inttostr(_hufub) + ',';
+  _pcs := _pcs + inttostr(_hufzaro) + ',';
+
+  // ---------------------------------------
+
+  _pcs := _pcs + inttostr(_eurnyito) + ',';
+  _pcs := _pcs + inttostr(_eurbb) + ',';
+  _pcs := _pcs + inttostr(_eurbk) + ',';
+  _pcs := _pcs + inttostr(_euruk) + ',';
+  _pcs := _pcs + inttostr(_eurub) + ',';
+  _pcs := _pcs + inttostr(_eurzaro) + ',';
+
+  // ---------------------------------------
+
+  _pcs := _pcs + inttostr(_usdnyito) + ',';
+  _pcs := _pcs + inttostr(_usdbb) + ',';
+  _pcs := _pcs + inttostr(_usdbk) + ',';
+  _pcs := _pcs + inttostr(_usduk) + ',';
+  _pcs := _pcs + inttostr(_usdub) + ',';
+  _pcs := _pcs + inttostr(_usdzaro) + ')';
+
+  // ---------------------------------------
+
+   MgParancs(_pcs);
+
+   Sysutils.DeleteFile(_mp);
+end;
+
+function TForm1.DwordRead(_b: byte): integer;
+
+begin
+  _lo := _bytetomb[_b];
+  _hi := _bytetomb[_b+1];
+  _hlo:= _bytetomb[_b+2];
+  _hhi:= _bytetomb[_b+3];
+
+  result := trunc((16777216*_hhi)+(65536*_hlo)+(256*_hi)+_lo);
+end;
+
+procedure TForm1.CreateMg(_tn: string);
+
+begin
+  Mgdbase.close;
+
+  _pcs := 'CREATE TABLE ' + _tn + ' (' + _sorveg;
+  _pcs := _pcs + 'PENZTAR SMALLINT,' + _sorveg;
+  _pcs := _pcs + 'DATUM CHAR (10) CHARACTER SET WIN1250 COLLATE WIN1250,' + _sorveg;
+  _pcs := _pcs + 'HUFNYITO INTEGER,' + _sorveg;
+  _pcs := _pcs + 'HUFBANKBOL INTEGER,' + _sorveg;
+  _pcs := _pcs + 'HUFBANKBA INTEGER,' + _sorveg;
+  _pcs := _pcs + 'HUFUGYFELNEK INTEGER,' + _sorveg;
+  _pcs := _pcs + 'HUFUGYFELTOL INTEGER,' + _sorveg;
+  _pcs := _pcs + 'HUFZARO INTEGER,' + _sorveg;
+  _pcs := _pcs + 'EURNYITO INTEGER,' + _sorveg;
+  _pcs := _pcs + 'EURBANKBOL INTEGER,' + _sorveg;
+  _pcs := _pcs + 'EURBANKBA INTEGER,' + _sorveg;
+  _pcs := _pcs + 'EURUGYFELNEK INTEGER,' + _sorveg;
+  _pcs := _pcs + 'EURUGYFELTOL INTEGER,' + _sorveg;
+  _pcs := _pcs + 'EURZARO INTEGER,' + _sorveg;
+  _pcs := _pcs + 'USDNYITO INTEGER,' + _sorveg;
+  _pcs := _pcs + 'USDBANKBOL INTEGER,' + _sorveg;
+  _pcs := _pcs + 'USDBANKBA INTEGER,' + _sorveg;
+  _pcs := _pcs + 'USDUGYFELTOL INTEGER,' + _sorveg;
+  _pcs := _pcs + 'USDUGYFELNEK INTEGER,' + _sorveg;
+  _pcs := _pcs + 'USDZARO INTEGER)';
+
+  Mgparancs(_pcs);
+
+  _pcs := 'CREATE INDEX IDX_' + _tn + _sorveg;
+  _pcs := _pcs + 'ON ' + _tn + ' (PENZTAR,DATUM)';
+
+  MgParancs(_pcs);
+end;
+
+procedure TForm1.MgParancs(_ukaz: string);
+
+begin
+  Mgdbase.connected := true;
+  if mgtranz.InTransaction then mgtranz.Commit;
+  Mgtranz.StartTransaction;
+  with MgQuery do
+    begin
+      Close;
+      sql.clear;
+      sql.add(_ukaz);
+      Execsql;
+    end;
+  MgTranz.Commit;
+  Mgdbase.close;
+end;
+
+// =============================================================================
+               procedure TForm1.HOOKEGOMBClick(Sender: TObject);
+// =============================================================================
+
+begin
+  _kertev := _maiev - 1 + evcombo.itemindex;
+  _kertho := 1 + hocombo.itemindex;
+
+  _farok := inttostr(_kertev-2000)+nulele(_kertho);
+  _tablaNev := 'MG' + _farok;
+
+  DDbase.Connected := true;
+  dtabla.close;
+  dtabla.TableName := _tablanev;
+  if not Dtabla.exists then
+    begin
+      showMessage('A KÉRT HÓNAPRÓL NINCSENEK ADATAIM');
+      exit;
+    end;
+
+  _xx := Dnemcombo.itemindex;
+
+  _aktdnem := _dnem[_xx];
+
+  _pcs := 'SELECT * FROM ' + _tablanev + _sorveg;
+  _pcs := _pcs + 'ORDER BY PENZTAR,DATUM';
+
+  with Dquery do
+    begin
+      Close;
+      sql.clear;
+      sql.add(_pcs);
+      Open;
+      First;
+    end;
+  case _xx of
+    0: begin
+         _aktpanel := eurpanel;
+         _aktsource := eursource;
+         _aktracs := eurRacs;
+       end;
+
+     1: begin
+         _aktpanel := hufpanel;
+         _aktsource := hufsource;
+         _aktracs := Hufracs;
+       end;
+
+      2: begin
+         _aktpanel := usdpanel;
+         _aktsource := usdsource;
+         _aktracs := usdRacs;
+       end;
+   end;
+
+  with _aktpanel do
+    begin
+      Left := 24;
+      top := 110;
+      Visible := true;
+    end;
+  _aktsource.enabled := true;
+  Activecontrol := _aktracs;
+end;
+
+
+function TForm1.Nulele(_b: byte): string;
+
+begin
+  result := inttostr(_b);
+  if _b<10 then result := '0' + result;
+end;
+
+
+
+procedure TForm1.AlapAllas;
+begin
+  Dquery.close;
+  Ddbase.close;
+  
+  HufPanel.Visible := False;
+  UsdPanel.Visible := False;
+  EurPanel.Visible := False;
+
+  Hufsource.enabled := False;
+  Eursource.enabled := False;
+  Usdsource.enabled := False;
+end;
+
+
+procedure TForm1.EVCOMBOChange(Sender: TObject);
+begin
+  Alapallas;
+  Activecontrol := Hookegomb;
+
+end;
+
+procedure TForm1.EXCELGOMBClick(Sender: TObject);
+
+
+
+begin
+  Nyulexcel.showmodal;
+
+end;
+
+
+
+
+end.

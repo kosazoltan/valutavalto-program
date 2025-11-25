@@ -1,0 +1,244 @@
+object Form1: TForm1
+  Left = 192
+  Top = 125
+  Width = 870
+  Height = 640
+  Caption = 'Form1'
+  Color = clBlack
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'MS Sans Serif'
+  Font.Style = []
+  OldCreateOrder = False
+  PixelsPerInch = 96
+  TextHeight = 13
+  object Panel1: TPanel
+    Tag = 8
+    Left = 16
+    Top = 16
+    Width = 420
+    Height = 350
+    BevelOuter = bvNone
+    TabOrder = 0
+    object Shape1: TShape
+      Left = 0
+      Top = 0
+      Width = 420
+      Height = 350
+      Align = alClient
+      Brush.Color = clRed
+      Pen.Color = clWhite
+      Pen.Width = 5
+    end
+    object Label1: TLabel
+      Left = 56
+      Top = 16
+      Width = 311
+      Height = 32
+      Caption = '143. P'#201'NZT'#193'R K'#201'R'#201'SE'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clYellow
+      Font.Height = -27
+      Font.Name = 'Arial'
+      Font.Style = [fsBold]
+      ParentFont = False
+      Transparent = True
+    end
+    object Label2: TLabel
+      Left = 64
+      Top = 56
+      Width = 298
+      Height = 18
+      Caption = 'V'#201'TELI '#193'RFOLYAM KEDVEZM'#201'NYEK:'
+      Font.Charset = EASTEUROPE_CHARSET
+      Font.Color = clWhite
+      Font.Height = -16
+      Font.Name = 'Arial'
+      Font.Style = [fsBold, fsItalic]
+      ParentFont = False
+      Transparent = True
+    end
+    object Label3: TLabel
+      Left = 24
+      Top = 240
+      Width = 379
+      Height = 18
+      Caption = 'KEZEL'#201'SI DIJJAL KAPCSOLATOS ENGEDM'#201'NY'
+      Font.Charset = EASTEUROPE_CHARSET
+      Font.Color = clWhite
+      Font.Height = -16
+      Font.Name = 'Arial'
+      Font.Style = [fsBold, fsItalic]
+      ParentFont = False
+      Transparent = True
+    end
+    object Panel2: TPanel
+      Left = 136
+      Top = 88
+      Width = 65
+      Height = 17
+      Caption = 'VALUTA'
+      Color = clYellow
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Name = 'MS Sans Serif'
+      Font.Style = [fsBold]
+      ParentFont = False
+      TabOrder = 0
+    end
+    object Panel3: TPanel
+      Left = 48
+      Top = 88
+      Width = 81
+      Height = 17
+      Caption = 'BANKJEGY'
+      Color = clYellow
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Name = 'MS Sans Serif'
+      Font.Style = [fsBold]
+      ParentFont = False
+      TabOrder = 1
+    end
+    object Panel4: TPanel
+      Left = 48
+      Top = 112
+      Width = 81
+      Height = 17
+      Caption = '999 999 999'
+      Font.Charset = EASTEUROPE_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -12
+      Font.Name = 'Arial'
+      Font.Style = [fsBold]
+      ParentFont = False
+      TabOrder = 2
+    end
+    object Panel5: TPanel
+      Left = 208
+      Top = 88
+      Width = 161
+      Height = 17
+      Caption = #193'RFOLYAMOK'
+      Color = clYellow
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Name = 'MS Sans Serif'
+      Font.Style = [fsBold]
+      ParentFont = False
+      TabOrder = 3
+    end
+    object Panel6: TPanel
+      Left = 136
+      Top = 112
+      Width = 65
+      Height = 17
+      Caption = 'USD'
+      Color = clYellow
+      Font.Charset = EASTEUROPE_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -15
+      Font.Name = 'Arial'
+      Font.Style = [fsBold]
+      ParentFont = False
+      TabOrder = 4
+    end
+    object Panel7: TPanel
+      Left = 208
+      Top = 112
+      Width = 49
+      Height = 17
+      Caption = '265.10'
+      Font.Charset = EASTEUROPE_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -12
+      Font.Name = 'Arial'
+      Font.Style = [fsBold]
+      ParentFont = False
+      TabOrder = 5
+    end
+    object Panel8: TPanel
+      Left = 264
+      Top = 112
+      Width = 49
+      Height = 17
+      Caption = '266.10'
+      Font.Charset = EASTEUROPE_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -12
+      Font.Name = 'Arial'
+      Font.Style = [fsBold]
+      ParentFont = False
+      TabOrder = 6
+    end
+    object Panel9: TPanel
+      Left = 320
+      Top = 112
+      Width = 49
+      Height = 17
+      Caption = '168.45'
+      Color = clYellow
+      Font.Charset = EASTEUROPE_CHARSET
+      Font.Color = clRed
+      Font.Height = -12
+      Font.Name = 'Arial'
+      Font.Style = [fsBold]
+      ParentFont = False
+      TabOrder = 7
+    end
+    object Panel10: TPanel
+      Left = 48
+      Top = 136
+      Width = 81
+      Height = 17
+      Caption = 'Panel10'
+      TabOrder = 8
+    end
+    object Panel11: TPanel
+      Left = 48
+      Top = 208
+      Width = 81
+      Height = 17
+      Caption = 'Panel11'
+      TabOrder = 9
+    end
+    object Panel12: TPanel
+      Left = 48
+      Top = 160
+      Width = 81
+      Height = 17
+      Caption = 'Panel12'
+      TabOrder = 10
+    end
+    object Panel13: TPanel
+      Left = 48
+      Top = 184
+      Width = 81
+      Height = 17
+      Caption = 'Panel13'
+      TabOrder = 11
+    end
+    object BitBtn1: TBitBtn
+      Left = 16
+      Top = 312
+      Width = 193
+      Height = 25
+      Cursor = crHandPoint
+      Caption = 'ENGED'#201'LYEZEM'
+      TabOrder = 12
+    end
+    object BitBtn2: TBitBtn
+      Left = 216
+      Top = 312
+      Width = 193
+      Height = 25
+      Cursor = crHandPoint
+      Caption = 'NEM ENGED'#201'LYEZEMN'
+      TabOrder = 13
+    end
+  end
+end

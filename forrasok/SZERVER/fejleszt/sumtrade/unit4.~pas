@@ -1,0 +1,364 @@
+unit Unit4;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, ExtCtrls, IBTable, IBDatabase, DB, IBCustomDataSet, IBQuery, unit1,
+  StdCtrls;
+
+type
+  TUJADATGYUJTO = class(TForm)
+    INDITO: TTimer;
+    SQUERY: TIBQuery;
+    SDBASE: TIBDatabase;
+    STRANZ: TIBTransaction;
+    VTABLA: TIBTable;
+    VQUERY: TIBQuery;
+    VDBASE: TIBDatabase;
+    VTRANZ: TIBTransaction;
+    STABLA: TIBTable;
+    Label1: TLabel;
+
+    procedure FormActivate(Sender: TObject);
+    procedure INDITOTimer(Sender: TObject);
+    procedure Sparancs(_ukaz: string);
+
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  UJADATGYUJTO: TUJADATGYUJTO;
+  _aktpenztarnum,_aktertektar: byte;
+  _aktFdbPath,_status: string;
+  _tnyito,_tzaro,_tmat,_ttel,_tvod,_tnor,_tpay,_tad,_tvesz: integer;
+  _mat,_tel,_vod,_nor,_pay,_ad,_vesz: integer;
+  _enyito,_ezaro,_emat,_etel,_eVod,_eNor,_ePay,_ead,_evesz,_nyit,_zar: integer;
+  _sNyito,_sZaro,_sMat,_sTel,_sVod,_sNor,_spay,_sAd,_sVesz: integer;
+  _szamitott: integer;
+
+implementation
+
+{$R *.dfm}
+
+procedure TUJADATGYUJTO.FormActivate(Sender: TObject);
+begin           
+  top  := 360;
+  Left := 410;
+  Indito.enabled := true;
+end;
+
+procedure TUJADATGYUJTO.INDITOTimer(Sender: TObject);
+begin
+  Indito.Enabled := False;
+  _pcs := 'DELETE FROM SUMTRADE';
+  sParancs(_pcs);
+
+  _qq := 0;
+  while _qq<_irodaDarab do
+    begin
+      _aktPenztarnum := _ptarnum[_qq];
+      _aktertektar   := _pertekTar[_qq];
+      IF _aktpenztarnum<151 then
+        _aktfdbPath := 'c:\receptor\database\v' + inttostr(_aktpenztarnum)+'.FDB'
+      else
+        _aktfdbPath := 'c:\cartcash\database\v' + inttostr(_aktpenztarnum)+'.FDB';
+
+      if not FileExists(_aktfdbPath) then
+        begin
+          inc(_qq);
+          continue;
+        end;
+
+      vDbase.close;
+      vdbase.databasename := _aktfdbPath;
+      vtabla.Tablename := _etablanev;
+      vdbase.connected := true;
+      if not vtabla.exists then
+        begin
+          vdbase.close;
+          inc(_qq);
+          Continue;
+        end;
+
+      _pcs := 'SELECT * FROM ' + _eTablaNev + _sorveg;
+      _pcs := _pcs + 'WHERE (DATUM>='+chr(39)+_kezdonaps+chr(39)+')';
+      _pcs := _pcs + ' AND (DATUM<='+chr(39)+_vegsonaps+chr(39)+')'+_sorveg;
+      _pcs := _pcs + 'ORDER BY DATUM';
+
+      with vQuery do
+        begin
+          Close;
+          sql.clear;
+          sql.add(_pcs);
+          Open;
+          First;
+          _tnyito := Fieldbyname('NYITO').asInteger;
+          Last;
+          _tzaro := FieldByNAme('ZARO').asInteger;
+          First;
+        end;
+
+      _tmat  := 0;
+      _ttel  := 0;
+      _tvod  := 0;
+      _tnor  := 0;
+      _tpay  := 0;
+      _tad   := 0;
+      _tvesz := 0;
+
+      while not vQuery.eof do
+        begin
+          with Vquery do
+            begin
+              _mat  := FieldByNAme('MATRICA').asInteger;
+              _tel  := FieldByNAme('TELEFON').ASiNTEGER;
+              _vod  := FieldByName('VODAFON').asInteger;
+              _nor  := FieldByName('TELENOR').asInteger;
+              _pay  := FieldByName('PAYSAFECARD').asInteger;
+              _ad   := FieldByName('ATADAS').asInteger;
+              _vesz := FieldByNAme('ATVETEL').asInteger;
+            end;
+
+          _tmat  := _tmat  + _mat;
+          _ttel  := _ttel  + _tel;
+          _tnor  := _tnor  + _nor;
+          _tvod  := _tvod  + _vod;
+          _tpay  := _tpay  + _pay;
+          _tad   := _tad   + _ad;
+          _tvesz := _tvesz + _vesz;
+
+          vQuery.next;
+        end;
+      Vquery.close;
+      vdbase.close;
+
+      // -----------------------------------------------------------------------
+
+      _pcs := 'INSERT INTO SUMTRADE (ERTEKTAR,IRODASZAM,NYITO,MATRICA,TELEFON,';
+      _pcs := _pcs + 'VODAFON,TELENOR,PAYSAFECARD,ATADAS,ATVETEL,ZARO)' + _sorveg;
+      _pcs := _pcs + 'VALUES (' + inttostr(_aktertektar) + ',';
+      _pcs := _pcs +  inttostr(_aktpenztarnum) + ',';
+      _pcs := _pcs + inttostr(_tnyito) + ',';
+      _pcs := _pcs + inttostr(_tmat) + ',';
+      _pcs := _pcs + inttostr(_ttel) + ',';
+      _pcs := _pcs + inttostr(_tvod) + ',';
+      _pcs := _pcs + inttostr(_tnor) + ',';
+      _pcs := _pcs + inttostr(_tpay) + ',';
+      _pcs := _pcs + inttostr(_tad) + ',';
+      _pcs := _pcs + inttostr(_tvesz) + ',';
+      _pcs := _pcs + inttostr(_tzaro)+')';
+
+      Sparancs(_pcs);
+
+      inc(_qq);
+    end;
+
+  // ---------------------------------------------------------------------------
+
+  _qq := 1;
+  while _qq<=9 do
+    begin
+      _aktertektar := _etarszamok[_qq];
+      _pcs := 'SELECT * FROM SUMTRADE' + _sorveg;
+      _pcs := _pcs + 'WHERE ERTEKTAR='+inttostr(_aktertektar);
+
+      sDbase.connected := true;
+      with Squery do
+        begin
+          Close;
+          sql.clear;
+          sql.add(_pcs);
+          Open;
+          First;
+        end;
+
+      _enyito := 0;
+      _ezaro  := 0;
+      _emat   := 0;
+      _etel   := 0;
+      _evod   := 0;
+      _enor   := 0;
+      _epay   := 0;
+      _ead    := 0;
+      _evesz  := 0;
+
+      while not Squery.eof do
+        begin
+          with Squery do
+            begin
+              _nyit := FieldByNAme('NYITO').asInteger;
+              _mat  := FieldByNAme('MATRICA').asInteger;
+              _tel  := FieldByNAme('TELEFON').ASiNTEGER;
+              _vod  := FieldByName('VODAFON').asInteger;
+              _nor  := FieldByName('TELENOR').asInteger;
+              _pay  := FieldByName('PAYSAFECARD').asInteger;
+              _ad   := FieldByName('ATADAS').asInteger;
+              _vesz := FieldByNAme('ATVETEL').asInteger;
+              _zar  := FieldByNAme('ZARO').asInteger;
+            end;
+
+          _enyito := _enyito + _nyit;
+          _ezaro  := _ezaro + _zar;
+          _emat   := _eMat + _mat;
+          _eTel   := _etel + _tel;
+          _enOr   := _enor + _nor;
+          _evod   := _evod + _vod;
+          _epay   := _epay + _pay;
+          _ead    := _ead + _ad;
+          _evesz  := _evesz + _vesz;
+
+          Squery.next;
+        end;
+
+      Squery.close;
+      Sdbase.close;
+
+      _pcs := 'INSERT INTO SUMTRADE (ERTEKTAR,IRODASZAM,NYITO,MATRICA,TELEFON,';
+      _pcs := _pcs + 'VODAFON,TELENOR,PAYSAFECARD,ATADAS,ATVETEL,ZARO)' + _sorveg;
+      _pcs := _pcs + 'VALUES (' + inttostr(_aktertektar) + ',';
+      _pcs := _pcs +  '0,';
+      _pcs := _pcs + inttostr(_enyito) + ',';
+      _pcs := _pcs + inttostr(_emat) + ',';
+      _pcs := _pcs + inttostr(_etel) + ',';
+      _pcs := _pcs + inttostr(_evod) + ',';
+      _pcs := _pcs + inttostr(_enor) + ',';
+      _pcs := _pcs + inttostr(_epay) + ',';
+      _pcs := _pcs + inttostr(_ead) + ',';
+      _pcs := _pcs + inttostr(_evesz) + ',';
+      _pcs := _pcs + inttostr(_ezaro)+')';
+
+      Sparancs(_pcs);
+      inc(_qq);
+    end;
+
+  // ---------------------------------------------------------------------------
+
+   _pcs := 'SELECT * FROM SUMTRADE';
+   sDbase.connected := true;
+   with Squery do
+     begin
+       Close;
+       sql.clear;
+       sql.add(_pcs);
+       Open;
+       First;
+     end;
+
+   _snyito := 0;
+   _szaro  := 0;
+   _smat   := 0;
+   _stel   := 0;
+   _sVod   := 0;
+   _sPay   := 0;
+   _sad    := 0;
+   _svesz  := 0;
+
+   while not Squery.eof do
+     begin
+       with Squery do
+         begin
+           _nyit := FieldByNAme('NYITO').asInteger;
+           _mat  := FieldByNAme('MATRICA').asInteger;
+           _tel  := FieldByNAme('TELEFON').ASiNTEGER;
+           _vod  := FieldByName('VODAFON').asInteger;
+           _nor  := FieldByName('TELENOR').asInteger;
+           _pay  := FieldByname('PAYSAFECARD').asInteger;
+           _ad   := FieldByName('ATADAS').asInteger;
+           _vesz := FieldByNAme('ATVETEL').asInteger;
+           _zar  := FieldByNAme('ZARO').asInteger;
+         end;
+
+       _snyito := _snyito + _nyit;
+       _szaro  := _szaro + _zar;
+       _smat   := _sMat + _mat;
+       _sTel   := _stel + _tel;
+       _sNor   := _sNor + _nor;
+       _sVod   := _sVod + _vod;
+       _sPay   := _sPay + _pay;
+       _sad    := _sad + _ad;
+       _svesz  := _svesz + _vesz;
+
+       Squery.next;
+     end;
+
+   Squery.close;
+   Sdbase.close;
+
+   _pcs := 'INSERT INTO SUMTRADE (ERTEKTAR,IRODASZAM,NYITO,MATRICA,TELEFON,';
+   _pcs := _pcs + 'VODAFON,TELENOR,PAYSAFECARD,ATADAS,ATVETEL,ZARO)' + _sorveg;
+   _pcs := _pcs + 'VALUES (0,';
+   _pcs := _pcs + '0,';
+   _pcs := _pcs + inttostr(_snyito) + ',';
+   _pcs := _pcs + inttostr(_smat) + ',';
+   _pcs := _pcs + inttostr(_stel) + ',';
+   _pcs := _pcs + inttostr(_svod) + ',';
+   _pcs := _pcs + inttostr(_sNor) + ',';
+   _pcs := _pcs + inttostr(_spay) + ',';
+   _pcs := _pcs + inttostr(_sad) + ',';
+   _pcs := _pcs + inttostr(_svesz) + ',';
+   _pcs := _pcs + inttostr(_szaro)+')';
+
+   Sparancs(_pcs);
+
+   // --------------------------------------------------------------------------
+
+   Sdbase.connected := true;
+   stabla.close;
+   stabla.TableName := 'SUMTRADE';
+   if stranz.InTransaction then stranz.Commit;
+   stranz.StartTransaction;
+
+   sTabla.open;
+   stabla.first;
+   while not stabla.Eof do
+     begin
+       _sNyito := Stabla.fieldByName('NYITO').asInteger;
+       _sZaro  := Stabla.FieldByNAme('ZARO').asInteger;
+       _sMat   := Stabla.FieldByNAme('MATRICA').AsInteger;
+       _sTel   := Stabla.FieldByNAme('TELEFON').asInteger;
+       _sVod   := Stabla.FieldByName('VODAFON').asInteger;
+       _sNor   := Stabla.FieldByName('TELENOR').asInteger;
+       _sPay   := Stabla.FieldByName('PAYSAFECARD').asInteger;
+       _sAd    := Stabla.FieldByNAme('ATADAS').asInteger;
+       _sVesz  := Stabla.FieldByNAme('ATVETEL').asInteger;
+       _szamitott := _sNyito+_sMat+_sTel+_sNor+_sVod+_spay+_svesz-_sad;
+       _status := 'OK';
+       if _szamitott<>_sZaro then _status := '?';
+       Stabla.edit;
+       Stabla.FieldByName('SZAMZARO').AsInteger := _szamitott;
+       Stabla.FieldByName('STATUS').ASSTRING := _status;
+       Stabla.Post;
+       stabla.Next;
+     end;
+
+   stranz.commit;
+   Stabla.close;
+   Sdbase.close;
+
+   ModalResult := 1;
+end;
+
+
+procedure TUJadatGyujto.Sparancs(_ukaz: string);
+
+begin
+  sdbase.Connected := true;
+  if stranz.InTransaction then stranz.Commit;
+  stranz.StartTransaction;
+  with squery do
+    begin
+      Close;
+      sql.clear;
+      sql.add(_ukaz);
+      ExecSql;
+    end;
+  stranz.commit;
+  sdbase.close;
+
+end;
+end.

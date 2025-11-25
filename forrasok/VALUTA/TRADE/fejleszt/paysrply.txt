@@ -1,0 +1,76 @@
+<Message><MessageType>PAYSAFECARD</MessageType><TransactionId>0037696691</TransactionId><StatusId>00OK      </StatusId><StatusDescription>                                                                                                    </StatusDescription><Print1>
+Eladó Példánya
+
+paysafecard fizetés
+
+Exclusive East Change Kft. (Debrecen PLAZA)       
+Debrecen 4026 Péterfia u. 18.                     
+
+Terminal id: 1611
+Tranzakció id: 37696691
+Dátum: 2016.03.29 09:23:18
+
+paysafecard CLASSIC
+
+Összeg:    2000 HUF
+
+Sorozatszám: 1553728024
+
+-------------------
+*PRINT2*
+Vevõ Példánya
+
+paysafecard fizetés
+Exclusive East Change Kft. (Debrecen PLAZA)       
+Debrecen 4026 Péterfia u. 18.                     
+
+Terminal id: 1611
+Tranzakció id: 37696691
+Dátum: 2016.03.29 09:23:18
+
+paysafecard CLASSIC
+
+Összeg:    2000 HUF
+
+Sorozatszám: 1553728024
+
+PIN-CODE: 0634 4701 5792 6088
+
+
+FIGYELEM!
+A PIN-Kód készpénz is egyben,
+ezért tilos telefonon keresztül
+bárkinek is megadni!
+A paysafecard kupon kizárólag
+a paysafecard szerzõdéses
+partnereinél használható fel
+online fizetési eszközként.
+A paysafecard kupont soha nem
+szabad idegeneknek átadni,
+vagy a paysafecard által
+elfogadott szerzõdéses
+partnereken kívül más
+kifizetésekre használni.
+A PIN-kód megadására vonatkozó
+telefonos vagy e-mailes
+felszólításnak soha nem
+szabad eleget tenni.
+
+Help: www.paysafecard.com/help
+HÉ-PÉ: 09:30 - 15:30 óráig
+E-Mail:
+info.hu@paysafecard.com
+
+A paysafecard kereskedelemben
+történõ továbbértékesítése
+tilos.
+Az általános üzleti
+feltételek a 
+www.paysafecard.com 
+weboldalon találhatók.
+
+
+A paysafecard fizetõ eszköz,
+melynek kibocsájtója a Prepaid
+Services Company Ltd. UK
+</Print1></Message>

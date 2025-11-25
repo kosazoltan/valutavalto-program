@@ -1,0 +1,294 @@
+unit Unit2;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, Buttons, ExtCtrls, IBDatabase, DB, IBCustomDataSet,
+  IBQuery;
+
+type
+  TForm2 = class(TForm)
+    KontrollPanel: TPanel;
+
+    Label1    : TLabel;
+    Label2    : TLabel;
+    Label3    : TLabel;
+    Label4    : TLabel;
+    Label5    : TLabel;
+    Label6    : TLabel;
+    Label7    : TLabel;
+
+    ValQuery  : TIBQuery;
+    ValDbase  : TIBDatabase;
+    ValTranz  : TIBTransaction;
+
+    vvIgen    : TBitBtn;
+    vvNem     : TBitBtn;
+    kkIgen    : TBitBtn;
+    kkNem     : TBitBtn;
+    wuIgen    : TBitBtn;
+    wuNem     : TBitBtn;
+    afaIgen   : TBitBtn;
+    afaNem    : TBitBtn;
+    FoglIgen  : TBitBtn;
+    FoglNem   : TBitBtn;
+    TovabbGomb: TBitBtn;
+
+    Shape1    : TShape;
+
+    procedure FormActivate(Sender: TObject);
+    procedure AlapAdatBeolvasas;
+    procedure vvIgenClick(Sender: TObject);
+    procedure GombAllitas;
+    procedure Flagcontrol;
+    procedure GombokTombbe;
+    procedure TovabbGOMBClick(Sender: TObject);
+    procedure vvNemClick(Sender: TObject);
+    procedure vParancs(_ukaz: string);
+
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form2: TForm2;
+
+  _kVari: string;
+  _kf,_kta,_kma,_kw,_kellctrl,_kellcimlet,_ctrloke,_tag,_valdb,_y: byte;
+  _top,_left,_height,_width: word;
+  _flag: array[1..5] of byte;
+  _foglkesz,_fk: integer;
+  _pcs: string;
+
+  _ig,_in: array[1..5] of TBitbtn;
+
+
+function cimletctrlrutin: integer; stdcall; external 'c:\valuta\bin\cimlctrl.dll';
+function cimletezorutin: integer; stdcall; external 'c:\valuta\bin\cimlet.dll';
+
+function firstcontrol: integer; stdcall;
+
+implementation
+
+{$R *.dfm}
+
+
+// =============================================================================
+               function firstcontrol: integer; stdcall;
+// =============================================================================
+
+begin
+  form2 := TForm2.Create(Nil);
+  result := Form2.showmodal;
+  Form2.free;
+end;
+
+// =============================================================================
+               procedure TForm2.FormActivate(Sender: TObject);
+// =============================================================================
+
+begin
+  _height := Screen.Monitors[0].Height;
+  _width  := screen.Monitors[0].width;
+
+  _top   := round((_height-315)/2);
+  _left  := round((_width-435)/2);
+
+  Top    := _Top;
+  Left   := _left;
+  width  := 435;
+  Height := 315;
+
+  Gomboktombbe;
+  AlapadatBeolvasas;
+  GombAllitas;
+end;
+
+
+// =============================================================================
+                   procedure TForm2.Alapadatbeolvasas;
+// =============================================================================
+
+
+begin
+
+  valDbase.Connected := true;
+  with valquery do
+    begin
+      Close;
+      sql.clear;
+      sql.add('SELECT * FROM HARDWARE');
+      Open;
+
+      _kf  := Fieldbyname('KELLFORGALOM').asInteger;
+      _kta := FieldByNAme('KELLTESCOAFA').asInteger;
+      _kma := FieldByName('KELLMETROAFA').asInteger;
+      _kw  := FieldByNAme('KELLWESTERN').asInteger;
+
+      close;
+      sql.clear;
+      sql.Add('SELECT * FROM FOGLALOKESZLET');
+      Open;
+
+      _foglKesz := 0;
+      _valdb := Valquery.fieldByName('VALDARAB').asInteger;
+      if _valdb=0 then
+        begin
+          ValQuery.close;
+          Break;
+        end;
+      _y := 0;
+      while _y<_valdb do
+        begin
+          _kvari := 'K'+inttostr(_y);
+          _fk := Valquery.FieldByNAme(_kvari).asInteger;
+          _foglkesz := _foglkesz + _fk;
+          inc(_y);
+        end;
+      ValQuery.close;
+      CLose;
+    end;
+  Valdbase.close;
+end;
+
+// =============================================================================
+                    procedure TForm2.GombAllitas;
+// =============================================================================
+
+var i: byte;
+
+begin
+  for i := 1 to 5 do _flag[i] := 0;
+
+  if _kf>0 then
+    begin
+      vvIgen.Enabled := True;
+      vvNem.Enabled  := True;
+      kkIgen.Enabled := True;
+      kkNem.Enabled  := True;
+    end else
+    begin
+      _flag[1] := 1;
+      _flag[2] := 1;
+    end;
+
+  if (_kta>0) OR (_kma>0) then
+    begin
+      Afaigen.Enabled := True;
+      Afanem.Enabled := True;
+    end else _flag[4] := 1;
+
+  if _kw>0 then
+    begin
+      wuIgen.Enabled := true;
+      wuNem.Enabled := True;
+    end else _flag[3] := 1;
+
+   if _foglkesz>0 then
+     begin
+       foglIgen.Enabled := True;
+       foglNem.Enabled := True;
+     end else _flag[5] := 1;
+end;
+
+// =============================================================================
+               procedure TForm2.VVIGENClick(Sender: TObject);
+// =============================================================================
+
+begin
+  _tag := TBitbtn(Sender).Tag;
+  _flag[_tag] := 1;
+
+  _ig[_tag].Enabled := False;
+  _in[_tag].Enabled := False;
+
+  Flagcontrol;
+end;
+
+// =============================================================================
+                       procedure TForm2.Flagcontrol;
+// =============================================================================
+
+var _y: byte;
+
+begin
+  _y := 1;
+  while _y<=5 do
+    begin
+      if _flag[_y]=0 then exit;
+      inc(_y);
+    end;
+  TovabbGomb.enabled := true;
+  Activecontrol := TovabbGomb;
+end;
+
+// =============================================================================
+                         procedure TForm2.GombokTombbe;
+// =============================================================================
+
+begin
+  _ig[1] := VVigen;
+  _ig[2] := kkIgen;
+  _ig[3] := wuIgen;
+  _ig[4] := afaigen;
+  _ig[5] := foglIgen;
+
+  _in[1] := VVnem;
+  _in[2] := kkNem;
+  _in[3] := wuNem;
+  _in[4] := afaNem;
+  _in[5] := foglNem;
+end;
+
+// =============================================================================
+                procedure TForm2.TOVABBGOMBClick(Sender: TObject);
+// =============================================================================
+
+begin
+  ModalResult := 1;
+end;
+
+// =============================================================================
+                procedure TForm2.VVNEMClick(Sender: TObject);
+// =============================================================================
+
+begin
+  _tag := TBitBtn(sender).Tag;
+
+  _pcs := 'UPDATE HARDWARE SET MENETSZAM=' + inttostr(_tag);
+  vParancs(_pcs);
+  _kellctrl := cimletctrlrutin;
+  if _kellcTRL<3 then
+    begin
+      _ctrloke := cimletezorutin;
+      if _ctrloke>1 then exit;
+    end;
+   _flag[_tag] := 1;
+   _ig[_tag].Enabled := False;
+   _in[_tag].Enabled := False;
+   Flagcontrol;
+end;
+
+// =============================================================================
+                   procedure TForm2.vParancs(_ukaz: string);
+// =============================================================================
+
+begin
+  Valdbase.connected := true;
+  if valtranz.InTransaction then valtranz.commit;
+  Valtranz.StartTransaction;
+  with VAlQuery do
+    begin
+      Close;
+      sql.clear;
+      sql.add(_ukaz);
+      Execsql;
+    end;
+  Valtranz.commit;
+  Valdbase.close;
+end;
+end.

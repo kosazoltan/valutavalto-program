@@ -1,0 +1,1164 @@
+unit Unit1;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, Buttons, ExtCtrls, StrUtils, DB, DBTables, DateUtils,
+  Grids, DBGrids, ComCtrls, IBDatabase, IBCustomDataSet, IBTable, IBQuery,
+  jpeg;
+
+type
+  TForm1 = class(TForm)
+    Label4: TLabel;
+    HOVAMENTSEM: TSaveDialog;
+    Label6: TLabel;
+    INTERVALLUMPANEL: TPanel;
+    TOLEVKOMBO: TComboBox;
+    TOLHONAPKOMBO: TComboBox;
+    TOLNAPKOMBO: TComboBox;
+    Label7: TLabel;
+    IGNAPKOMBO: TComboBox;
+    Label8: TLabel;
+    IDOSZAKOKEGOMB: TBitBtn;
+    Label9: TLabel;
+    IGEVKOMBO: TComboBox;
+    IGHONAPKOMBO: TComboBox;
+    PROGRESSPANEL: TPanel;
+    CSIK: TProgressBar;
+    EVPANEL: TPanel;
+    HONAPPANEL: TPanel;
+    Animate1: TAnimate;
+    DISPLAYGOMB: TBitBtn;
+    SAVEGOMB: TBitBtn;
+    KILEPOGOMB: TBitBtn;
+    Label1: TLabel;
+    Label2: TLabel;
+    KESZLABEL: TLabel;
+    DATUMMEMO: TMemo;
+    DNEMMEMO: TMemo;
+    BLOKKTABLA: TIBTable;
+    BLOKKDBASE: TIBDatabase;
+    blokkTRANZ: TIBTransaction;
+    ARFELTERTABLA: TIBTable;
+    ARFELTERDBASE: TIBDatabase;
+    ARFELTERTRANZ: TIBTransaction;
+    LEMENTOTABLA: TIBTable;
+    LEMENTODBASE: TIBDatabase;
+    LEMENTOTRANZ: TIBTransaction;
+    LEMENTOQUERY: TIBQuery;
+    UGYFELQUERY: TIBQuery;
+    UGYFELDBASE: TIBDatabase;
+    UGYFELTRANZ: TIBTransaction;
+    BLOKKQUERY: TIBQuery;
+    ARFELTERQUERY: TIBQuery;
+    Label5: TLabel;
+    ESCAPEGOMB: TBitBtn;
+    Image10: TImage;
+    Shape1: TShape;
+    TOLPANEL: TPanel;
+    IGPANEL: TPanel;
+    Label11: TLabel;
+    Label12: TLabel;
+    penztarcombo: TComboBox;
+    Label13: TLabel;
+    PENZTARQUERY: TIBQuery;
+    PENZTARDBASE: TIBDatabase;
+    penztarTRANZ: TIBTransaction;
+    KILEPO: TTimer;
+    PENZTARPANEL: TPanel;
+
+
+
+    procedure TOLEVKOMBOChange(Sender: TObject);
+    procedure TOLNAPKOMBOChange(Sender: TObject);
+    procedure IgevKomboChange(Sender: TObject);
+    procedure PenztartValasztott;
+
+    procedure IDOSZAKOKEGOMBClick(Sender: TObject);
+
+    function Nulele(_szam: integer):string;
+    procedure EgyHonapIro;
+    procedure DBFZarasok;
+    procedure EgyteteltListaz;
+    function penztarcombotolto: boolean;
+    function Trinul(_b: byte): string;
+
+    function FtForm(_szam:real):string;
+    function KedvezmenySeek(_blokkszam: string;_valutanem: string):boolean;
+    function Elokieg(_nums:string; _shossz: integer):string;
+    function ArfKepzo(_egyarf: real):string;
+    function Nullaz(_db:integer): string;
+
+    procedure LementoParancs(_ukaz: string);
+
+    procedure CreateLementoFdb;
+    procedure CreateListaTabla;
+
+    procedure CANCELGOMBClick(Sender: TObject);
+
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+
+    function Space(_hany:integer):string;
+    procedure DISPLAYGOMBClick(Sender: TObject);
+    procedure KILEPOGOMBClick(Sender: TObject);
+    procedure SAVEGOMBClick(Sender: TObject);
+    function VesszobolPont(_arfstr: string): string;
+    procedure ESCAPEGOMBClick(Sender: TObject);
+  
+    procedure FormActivate(Sender: TObject);
+    procedure KILEPOTimer(Sender: TObject);
+    procedure penztarcomboDblClick(Sender: TObject);
+    procedure penztarcomboKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
+ 
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form1: TForm1;
+  _kedvarfs,_elszarfs,_ptnev: string;
+  _zev,_zhonap,_znap,_aktev,_akthonap,_aktnap: word;
+  _tolev,_tolhonap,_tolnap,_igev,_ighonap,_ignap: word;
+  _lastDay: word;
+
+  _firstHonap,_lastHonap,_securlevel: boolean;
+
+  _farok ,_nev,_azonosito,_ugyftipus: string;
+  _aktstorno,_osszesforint,_ugyfszam,_blokkrekord: integer;
+  _siker: boolean;
+  _sorveg : string = chr(13)+chr(10);
+
+  _irodanums,_aktfdbpath,_lementopath: string;
+
+  _toltext,_igtext,_pcs: string;
+  _toldatum,_igdatum: TdateTime;
+  _btNum: string;
+  _tolDatumString,_igDatumString: string;
+
+  _tolevs,_tolhos,_aktfark,_aktBf,_aktBt: string;
+  _aktBfPath,_aktBtPath,_bnumline,_target: string;
+  _aktDatum,_aktIdo,_aktDnem,_aktBlokkNum: string;
+
+  _iras: TextFile;
+
+  _megvan,_voltKedvezmeny: boolean;
+  _bankJegy,_forint,_elszarf,_kedvarf,_origArf,_tenyArf: integer;
+
+  _honapnev: array[1..12] of string = ('JANUÁR','FEBRUÁR','MÁRCIUS','ÁPRILIS',
+           'MÁJUS','JUNIUS','JÚLIUS','AUGUSZTUS','SZEPTEMBER','OKTÓBER',
+           'NOVEMBER','DECEMBER');
+   _bankJegyString,_forintString,_elszarfString,_kedvarfString: string;
+
+   _HOST : STRING = '185.43.207.99';
+   _workdir : string;
+
+   _top,_left,_width,_height: word;
+
+implementation
+
+uses Unit2;
+
+{$R *.dfm}
+
+// =============================================================================
+                procedure TForm1.FormActivate(Sender: TObject);
+// =============================================================================
+
+
+begin
+  _height := Screen.Monitors[0].Height;
+  _width  := screen.Monitors[0].Width;
+
+  _top    := round((_height-485)/2);
+  _left   := round((_width-535)/2);
+
+  Top     := _top;
+  Left    := _left;
+  Height  := 485;
+  Width   := 535;
+
+  Penztarcombo.Visible := false;
+  PenztarPanel.Visible := False;
+
+  IntervallumPanel.Visible := false;
+  ProgressPanel.Visible := False;
+
+  _workdir := getcurrentdir;
+
+  if not PenztarComboTolto then
+    begin
+      Kilepo.Enabled := true;
+      exit;
+    end;
+
+  with PenztarCombo do
+    begin
+      Top := 162;
+      Left := 40;
+      ItemIndex := 0;
+      Visible := True;
+      Setfocus;
+    end;
+end;
+
+procedure TForm1.penztarcomboDblClick(Sender: TObject);
+begin
+  PenztartValasztott;
+end;
+
+  procedure TForm1.PenztarCOmboKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
+begin
+  if ord(key)<>13 then exit;
+  PenztartValasztott;
+end;
+
+// =============================================================================
+                   procedure TForm1.PenztartValasztott;
+// =============================================================================
+
+
+var _index,i: integer;
+    _cikk,_ptszams: string;
+
+begin
+   {
+   if ord(key)<>13 then exit;
+   _irodanums := trim(iroda.Text);
+   if _irodanums='' then exit;
+   }
+
+   _index := Penztarcombo.itemindex;
+   _cikk  := Penztarcombo.items[_index];
+   _ptszams := trim(leftstr(_cikk,3));
+   _ptnev := trim(midstr(_cikk,5,length(_cikk)-4));
+
+   PenztarPanel.Caption := _cikk;
+   with PenztarPanel do
+     begin
+       top := 160;
+       Left := 24;
+       Visible := true;
+       Repaint;
+     end;
+
+   _aktfdbpath := _host + ':c:\receptor\database\v'+_ptszams+'.fdb';
+
+   Arfelterdbase.close;
+   Ugyfeldbase.close;
+   Blokkdbase.close;
+
+   _siker := True;
+   Blokkdbase.DatabaseName := _aktfdbpath;
+   try
+     Blokkdbase.Connected := true;
+   except
+     _siker := False;
+   end;
+   if not _siker then exit;
+   blokkdbase.close;
+
+   Arfelterdbase.DatabaseName := _aktfdbpath;
+   Ugyfeldbase.DatabaseName   := _aktfdbPath;
+
+  KeszLabel.Visible := False;
+  Csik.Visible := true;
+
+  _lementoPath := _workdir + '\lemento.fdb';
+  if not FileExists(_lementoPath) then CreateLementoFdb;
+
+  with LementoDbase do
+    begin
+      Close;
+      databasename := _lementoPath;
+      Connected := TRUE;
+    end;
+
+   LementoTabla.close;
+   LementoTabla.TableName := 'LISTA';
+   if not LementoTabla.Exists then CreateListaTabla;
+
+   LementoParancs('DELETE FROM LISTA');
+
+  // A mostani év, hónap, nap Z*
+  DecodeDate(now,_zev,_zhonap,_znap);
+  _aktev := _zev;
+
+  // Kombók üritése:
+
+  TolEvKombo.Clear;
+  TolHonapKombo.Clear;
+  TolNapKombo.clear;
+
+  IgEvKombo.Clear;
+  IgHonapKombo.Clear;
+  IgNapKombo.Clear;
+
+  // Az év-kombók feltöltése:
+
+  TolEvKombo.Items.Add(inttostr(_zev-1));
+  TolEvKombo.Items.Add(inttostr(_zev));
+  IgEvKombo.Items.Add(inttostr(_zev-1));
+  IgEvKombo.Items.Add(inttostr(_zev));
+
+  // Hónap-kombók feltöltése:
+
+  for i := 1 to 12 do
+    begin
+      TolHonapKombo.Items.Add(_honapnev[i]);
+      IgHonapKombo.Items.Add(_honapNev[i]);
+    end;
+
+  // A mostani hónap utolsó napja:
+
+  _lastDay := DaysInAMonth(_zEv,_zHonap);
+
+  // Az e-hónapi napokkal (mai napig) a napkombók feltöltve:
+
+  for i := 1 to _lastDay do
+    begin
+      TolNapKombo.Items.Add(intToStr(i));
+      IgNapKombo.Items.Add(intToStr(i));
+    end;
+
+  // A default évek az idei év:
+
+  TolEvKombo.ItemIndex := 1;
+  IgEvKombo.ItemIndex := 1;
+
+  // A default hónap a mostani hó:
+
+  TolHonapKombo.ItemIndex := _zHonap - 1;
+  IgHonapKombo.ItemIndex := _zHonap - 1;
+
+  // A default nap a mai nap:
+
+  Tolnapkombo.ItemIndex := _zNap - 1;
+  IgNapKombo.ItemIndex := _zNap - 1;
+
+  // Várom, hogy az idõszakot konfirmálja:
+
+  with IntervallumPanel do
+    begin
+      Top  := 200;
+      Left := 50;
+      Visible := true;
+    end;
+
+  ActiveControl := IdoszakOkeGomb;
+end;
+
+// =============================================================================
+             procedure TForm1.TolevKomboChange(Sender: TObject);
+// =============================================================================
+
+var i:integer;
+
+begin
+
+   _tolEv := (_zEv-1)+ TolEvKombo.ItemIndex;
+   _tolHonap := 1+(TolHonapKombo.ItemIndex);
+   _lastDay := DaysInAMonth(_tolEv,_tolHonap);
+
+   TolNapKombo.Clear;
+   for i := 1 to _lastDay do
+       TolNapKombo.Items.Add(intToStr(i));
+
+   TolNapKombo.ItemIndex := 0;
+   ActiveControl := IdoszakOkeGomb;
+end;
+
+// =============================================================================
+              procedure TForm1.IgevKomboChange(Sender: TObject);
+// =============================================================================
+
+var i: integer;
+
+begin
+   _igEv := (_zEv-1)+ IgEvKombo.ItemIndex;
+   _igHonap := 1+(IgHonapKombo.ItemIndex);
+   _lastDay := DaysInAMonth(_igEv,_igHonap);
+
+   IgNapKombo.Clear;
+
+   for i := 1 to _lastDay do
+       IgNapKombo.Items.Add(intToStr(i));
+
+   IgNapKombo.ItemIndex := 0;
+   ActiveControl := IdoszakOkeGomb;
+
+end;
+
+// =============================================================================
+              procedure TForm1.TolNapKomboChange(Sender: TObject);
+// =============================================================================
+
+begin
+  ActiveControl := IdoszakOkeGomb;
+end;
+
+
+// =============================================================================
+             procedure TForm1.IdoszakOkeGombClick(Sender: TObject);
+// =============================================================================
+
+
+begin
+  // Idõszak rendben !
+
+  _tolEv := (_zEv-1) + TolEvKombo.ItemIndex;
+  _igEv  := (_zEv-1) + IgEvKombo.ItemIndex;
+
+  _tolHonap := 1 + (TolHonapKombo.ItemIndex);
+  _igHonap  := 1 + (IgHonapKombo.ItemIndex);
+
+  _TolNap := 1+(TolNapKombo.ItemIndex);
+  _IgNap  := 1 + (IgnapKombo.ItemIndex);
+
+  // A tól- és az ig- string összeállitása:
+
+  _toldatumstring := inttostr(_tolev)+'.'+nulele(_tolHonap)+'.'+nulele(_tolnap);
+  _igDatumString  := IntTostr(_igEv)+'.'+nulele(_igHonap)+'.'+nulele(_ignap);
+
+  // Csak az a rossz ha a TOL nagyobb mint az IG
+
+  if (_tolDatumstring>_igDatumString) then
+    begin
+      ShowMessage('A KEZDÕ DÁTUM NAGYOBB A VÉGSÕ DÁTUMNÁL');
+      exit;
+    end;
+
+  InterVallumPanel.Visible := False;
+  EscapeGomb.Visible := False;
+  TOLPANEL.Caption := _toldatumstring;
+  IGPANEL.Caption  := _igdatumstring;
+
+  with Progresspanel do
+    begin
+      Left    := 2;
+      Top     := 156;
+      Visible := true;
+      Repaint;
+    end;
+
+  // Animáció indulhat:
+
+  Animate1.Visible := True;
+  Animate1.Active  := True;
+  Animate1.Repaint;
+
+  _aktev    := _tolev;
+  _aktHonap := _tolHonap;
+
+  // Végtelen ciklus:
+
+  while True do
+    begin
+
+      // Kijelezzük az aktuális évet és hónapot:
+
+      Evpanel.Caption    := inttostr(_aktev);
+      HonapPanel.Caption := _honapnev[_akthonap];
+
+      EvPanel.Repaint;
+      HonapPanel.Repaint;
+
+      // Felirjuk az elsõ havi adatokat:
+
+      EgyHonapIro;
+      // Jöhet a következõ hónap:
+
+      inc(_aktHonap);
+
+      // Ha átléptünk egy új évre, akkor azt le kell kezelni:
+
+      if _akthonap>12 then
+        begin
+          inc(_aktev);
+          _akthonap := 1;
+        end;
+
+       if (_aktev>_igev) then break;
+       if (_aktev=_igev) AND (_akthonap>_ighonap) then break;
+    end;
+
+  // Kijelzõk leállitása:
+
+  DatumMemo.Visible := False;
+  Dnemmemo.Visible := False;
+
+  // Animációk leállitása:
+
+  Animate1.Enabled := False;
+  Animate1.Visible := False;
+
+  // Panelok eltüntetése:
+
+  EvPanel.Visible := False;
+  HonapPanel.Visible := False;
+
+  Csik.Visible := false;
+  DisplayGomb.Enabled := True;
+  SaveGomb.Enabled := True;
+  KilepoGomb.Enabled := true;
+
+  // Adatbázisok lezárása:
+
+  dbfZarasok;
+
+  KeszLabel.Visible := True;
+
+  // lehet megnyomni a display gombot például:
+
+  ActiveControl := DisplayGomb;
+end;
+
+
+// =============================================================================
+                           procedure TForm1.Egyhonapiro;
+// =============================================================================
+
+var 
+    _cc: integer;
+
+begin
+  Lementodbase.Connected := true;
+  if lementoTranz.InTransaction then lementoTranz.Commit;
+  Lementotranz.StartTransaction;
+
+  // Paraméterek: _Aktev, _aktHonap (amely hónap adatait kell gyüjteni)
+
+  // A blokktáblák meghatározása az aktuális hónap alapján:
+
+  _farok := nulele(_aktev-2000)+nulele(_akthonap);
+  _aktBf := 'BF'+_farok;
+  _aktBt := 'BT'+_farok;
+
+  _siker := true;
+  Try
+    Blokkdbase.Connected := true;
+  except
+    _siker := false;
+  end;
+
+  if not _siker then exit;
+
+  BlokkTabla.Close;
+  Blokktabla.TableName := _aktbf;
+
+  // Ha nincs ebben a hónapban blokkfejtábla, akkor vége !
+
+  if not Blokktabla.Exists then exit;
+  if BlokkTranz.InTransaction then Blokktranz.Commit;
+
+  _pcs := 'SELECT FEJ.*, TET.*' + _sorveg;
+  _pcs := _pcs +'FROM ' + _aktbf + ' FEJ JOIN ' + _aktbt + ' TET' + _sorveg;
+  _pcs := _pcs + 'ON FEJ.BIZONYLATSZAM=TET.BIZONYLATSZAM'+_sorveg;
+  _pcs := _pcs + 'WHERE (FEJ.DATUM BETWEEN '+chr(39)+_toldatumstring+chr(39);
+  _pcs := _pcs + ' AND '+chr(39)+_igdatumstring+chr(39)+')';
+  _pcs := _pcs + ' AND (FEJ.TIPUS<>'+CHR(39)+'F'+chr(39)+')';
+  _pcs := _pcs + ' AND (FEJ.TIPUS<>'+CHR(39)+'U'+chr(39)+')';
+
+  with BlokkQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Add(_pcs);
+      Open;
+      Last;
+    end;
+
+  _blokkrekord := Blokkquery.Recno;
+  if _blokkrekord=0 then
+    begin
+      BlokkQuery.close;
+      BlokkDbase.close;
+      Exit;
+    end;
+
+  DatumMemo.Clear;
+  DnemMemo.Clear;
+
+
+  // Indul a blokkfejek ciklusa:
+
+  BlokkQuery.First;
+  Csik.Max := _blokkRekord;
+  Csik.Position := 0;
+  _cc := 0;
+
+  // -----------------------BLOKKok CIKLUSA --------------------------------
+
+  while not BlokkQuery.Eof do
+    begin
+      inc(_cc);
+      Csik.Position := _cc;
+
+      // A dátum kiolvasása és áttanulmányozása:
+
+      _aktDatum := BlokkQuery.FieldByNAme('DATUM').asString;
+      _aktDatum := LeftStr(_aktDatum,10);
+    
+      // Beolvassa a fejbõl az idõt, a bizonylatszámot,és stornó mezõt:
+
+      _azonosito := '-';
+
+      with BlokkQuery do
+        begin
+          _aktIdo       := FieldByName('IDO').asString;
+          _aktBlokknum  := FieldByName('BIZONYLATSZAM').asString;
+          _osszesForint := FieldbyNAme('OSSZESEN').asInteger;
+          _aktStorno    := FieldByNAme('STORNO').asInteger;
+          _nev          := FieldByName('UGYFELNEV').asString;
+          _ugyftipus    := FieldByName('UGYFELTIPUS').asstring;
+          _ugyfszam     := FieldByName('UGYFELSZAM').asInteger;
+          _bankjegy     := FieldByName('BANKJEGY').asInteger;
+          _forint       := FieldByName('FORINTERTEK').asInteger;
+          _aktdnem      := FieldByName('VALUTANEM').asString;
+          _Tenyarf      := FieldByName('ARFOLYAM').asInteger; // TÉNY ÁRFOLYAM
+        end;
+
+      // AZ idõ feldolgozása:
+
+      if _aktido = '' then _aktido := '00:00';
+      _aktIdo := leftStr(_aktido,5);
+      if midstr(_aktido,2,1)=':' then _aktido := '0'+_aktido;
+
+      // --------------------------------------------
+
+      _securlevel := False;
+      if _osszesforint>499999 then _securlevel := true;
+
+      EgyTeteltListaz;
+      
+      BlokkQuery.Next;
+    end;
+  BlokkQuery.Close;
+  BlokkDbase.close;
+
+  LementoTranz.Commit;
+  LementoDbase.close;
+end;
+
+
+// =============================================================================
+                     procedure TForm1.EgyTeteltListaz;
+// =============================================================================
+
+begin
+
+  DatumMemo.Lines.Add(_aktDatum+'-'+_aktido+'-'+_aktBlokknum);
+  if _aktStorno>1 then _aktblokknum := '#' + mids(_aktblokknum,4,6) +'#'
+  else _aktblokknum := ' ' + _aktBlokkNum + ' ';
+
+  // A bizonylathoz tartozó blokktételek kiolvasása:
+
+  _elszArf := _tenyArf;
+  _kedvarf := 0;
+  _voltKedvezmeny := KedvezmenySeek(_btNum,_aktdnem);  // Origin arfolyam
+  _elszarfs := arfKepzo(_elszarf);
+
+  _pcs := 'INSERT INTO LISTA (DATUM,IDO,BIZONYLATSZAM,BANKJEGY,FORINTERTEK,';
+  _pcs := _pcs + 'VALUTANEM,ELSZAMOLASIARFOLYAM';
+
+  IF _securLevel then _pcs := _pcs + ',NEV,AZONOSITO';
+  _pcs := _pcs + ',STORNO';
+
+  if _voltkedvezmeny then _pcs := _pcs + ',KEDVEZOARFOLYAM';
+  _pcs := _pcs + ')'+_sorveg;
+
+  _pcs := _pcs + 'VALUES ('+chr(39)+_aktdatum+chr(39)+',';
+  _pcs := _pcs + chr(39)+ _aktido+chr(39)+',';
+  _pcs := _pcs + chr(39)+ trim(_aktblokknum)+chr(39)+',';
+
+  _pcs := _pcs + floattostr(_bankJegy)+ ',';
+  _pcs := _pcs + floattostr(_forint)+ ',';
+
+  _pcs := _pcs + chr(39)+ _aktdnem + chr(39)+',';
+  _pcs := _pcs + vesszobolpont(floattostr(_elszarf))+ ',';
+
+  if _securlevel then
+    begin
+      _pcs := _pcs + chr(39)+leftstr(_nev,25)+chr(39)+',';
+      _pcs := _pcs + chr(39)+_azonosito+chr(39)+',';
+    end;
+
+  if _aktstorno>1 then _pcs := _pcs + '2' else _pcs := _pcs + '1';
+  if _voltkedvezmeny then
+    begin
+      _kedvarfs := ArfKepzo(_kedvArf);
+      _pcs := _pcs + ',' + vesszobolpont(floattostr(_kedvarf));
+    end;
+
+  _pcs := _pcs + ')';
+  with LementoQuery do
+    begin
+      Close;
+      sql.clear;
+      sql.add(_pcs);
+      Execsql;
+    end;
+
+  DnemMemo.Lines.Add(_aktdnem+' - '+inttostr(_bankjegy));
+end;
+
+
+// =============================================================================
+           function TForm1.VesszobolPont(_arfstr: string): string;
+// =============================================================================
+
+var _kod,y: byte;
+
+begin
+  Result := '';
+  _arfstr := trim(_arfstr);
+  for y := 1 to length(_arfstr) do
+    begin
+      _kod := ord(_arfstr[y]);
+      if _kod = 44 then _kod := 46;
+      Result := Result + chr(_kod);
+    end;
+end;
+
+// =================================================================================
+     function TFOrm1.KedvezmenySeek(_blokkszam: string;_valutanem: string):boolean;
+// =================================================================================
+
+begin
+
+
+  ArfelterDbase.Connected := true;
+
+  _pcs := 'SELECT * FROM ARFE'+ _farok + _sorveg;
+  _pcs := _pcs + 'WHERE (BIZONYLATSZAM='+chr(39)+_blokkszam+chr(39);
+  _pcs := _pcs + ') AND (VALUTANEM=' + chr(39) + _valutanem + chr(39) + ')';
+
+  with ArfelterQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Add(_pcs);
+      Open;
+      First;
+    end;
+
+  Result := True;
+  if arfelterQuery.Eof then Result := false;
+
+  if result= true then
+    begin
+      _elszArf := ArfelterQuery.FieldByName('ARFOLYAM').asInteger;
+      _kedvArf := _TenyArf;
+    end;
+   ArfelterQuery.Close;
+   ArfelterDbase.close;
+
+end;
+
+
+// =============================================================================
+             function TFOrm1.ArfKepzo(_egyarf: real):string;
+// =============================================================================
+
+begin
+  result := formatfloat('### ###',int(_egyarf));
+end;
+
+
+// =============================================================================
+       function TForm1.Elokieg(_nums:string; _shossz: integer):string;
+// =============================================================================
+
+begin
+  while length(_nums)<_shossz do _nums := chr(32) + _nums;
+  result := _nums;
+end;
+
+
+// =============================================================================
+          procedure TForm1.CANCELGOMBClick(Sender: TObject);
+// =============================================================================
+
+begin
+  Application.Terminate;
+end;
+
+// ========================================================================
+            function TForm1.Nulele(_szam: integer):string;
+// ========================================================================
+
+begin
+  result := inttostr(_szam);
+  if _szam<10 then
+      result := '0' + chr(_szam+48);
+
+end;
+
+
+// =============================================================================
+                        procedure TForm1.CreateListaTabla;
+// =============================================================================
+
+var _sorveg,_pcs:string;
+
+begin
+
+
+  _pcs := 'CREATE TABLE LISTA ('+ _sorveg;
+  _pcs := _pcs + 'DATUM CHAR (10) CHARACTER SET WIN1250 COLLATE WIN1250,'+ _sorveg;
+  _pcs := _pcs + 'IDO CHAR (5) CHARACTER SET WIN1250 COLLATE WIN1250,'+ _sorveg;
+  _pcs := _pcs + 'BIZONYLATSZAM CHAR (10) CHARACTER SET WIN1250 COLLATE WIN1250,'+ _sorveg;
+  _pcs := _pcs + 'BANKJEGY DOUBLE PRECISION,'+ _sorveg;
+  _pcs := _pcs + 'VALUTANEM CHAR (3) CHARACTER SET WIN1250 COLLATE WIN1250,'+ _sorveg;
+  _pcs := _pcs + 'FORINTERTEK DOUBLE PRECISION,'+ _sorveg;
+  _pcs := _pcs + 'KEDVEZOARFOLYAM DOUBLE PRECISION,'+ _sorveg;
+  _pcs := _pcs + 'ELSZAMOLASIARFOLYAM DOUBLE PRECISION,'+ _sorveg;
+  _pcs := _pcs + 'NEV CHAR (40) CHARACTER SET WIN1250 COLLATE PXW_HUNDC,'+_sorveg;
+  _pcs := _pcs + 'AZONOSITO CHAR (20) CHARACTER SET WIN1250 COLLATE PXW_HUNDC,'+_sorveg;
+  _pcs := _pcs + 'STORNO SMALLINT)';
+  LementoParancs(_pcs);
+
+  _pcs := 'CREATE INDEX IDX_LEMENTO ON LEMENTO (DATUM,IDO)';
+  LementoParancs(_pcs);
+end;
+
+
+// ====================================================
+       function TFOrm1.Nullaz(_db:integer): string;
+// ====================================================
+
+begin
+   result := dupestring(chr(0),_db)
+end;
+
+
+// ============================================================
+           function TForm1.FtForm(_szam:real):string;
+// ============================================================
+
+var _szams,_elojel,_back: string;
+    _ecs,_szamslen : integer;
+
+begin
+  _elojel := '+';
+  if _szam<0 then
+    begin
+      _elojel := '-';
+      _szam := abs(_szam);
+    end;
+  _szams := floattostr(_szam);
+  _szamsLen := length(_szams);
+  if _szam<1000 then _back := _szams;
+  if _szam>999999 then
+    begin
+      _ecs := _szamslen-6;
+      _back := leftstr(_szams,_ecs)+'.'+midstr(_szams,_ecs+1,3)+'.'+rightstr(_szams,3);
+    end;
+  if (_szam<1000000) and (_szam>999) then
+    begin
+      _ecs := _szamslen-3;
+      _back := leftstr(_szams,_ecs)+'.'+rightstr(_szams,3)
+    end;
+  if _elojel='-' then _szams := '-'+_szams;
+  while length(_back)<11 do
+    _back := ' '+_back;
+  result := _back
+end;
+
+
+
+// ===========================================================================
+     procedure TForm1.FormClose(Sender: TObject; var Action: TCloseAction);
+// ===========================================================================
+
+
+begin
+  DBFZarasok;
+end;
+
+// ======================================
+       procedure TForm1.DbfZarasok;
+// ======================================
+
+begin
+  if lementoTranz.InTransaction then LementoTranz.Commit;
+  Blokkdbase.Connected := False;
+ 
+  ArfelterDbase.Connected := False;
+  LementoDbase.Connected := False;
+end;
+
+
+// ===============================================================
+            function TForm1.Space(_hany:integer):string;
+// ===============================================================
+
+begin
+  result := dupestring(chr(32),_hany);
+end;
+
+
+procedure TForm1.DISPLAYGOMBClick(Sender: TObject);
+begin
+  GyujtesDisplay.ShowModal;
+  SaveGomb.Enabled := True;
+end;
+
+procedure TForm1.KILEPOGOMBClick(Sender: TObject);
+begin
+  Application.Terminate;
+end;
+
+// ================================================================
+         procedure TForm1.SAVEGOMBClick(Sender: TObject);
+// ================================================================
+
+var _ssor,_bjs: string;
+
+begin
+  if not HovaMentsem.Execute then exit;
+
+  _target := HovaMentsem.FileName;
+
+  AssignFile(_iras,_target);
+  rewrite(_iras);
+  write(_iras,Space(17)+'A '+_tolDatumstring+' es '+_igdatumstring);
+  writeLn(_iras,' kozotti bizonylatok.');
+  writeLn(_iras,chr(10));
+
+  writeln(_iras,dupestring('-',79));
+  writeLn(_iras,'    Datum    Ido     Blokk   Valuta osszege    Ft. osszege   Kedv.arf  Arfolyam');
+  writeln(_iras,dupestring('-',79));
+
+  LementoDbase.Connected := true;
+  if lementotranz.InTransaction then lementoTranz.Commit;
+
+  _pcs := 'SELECT * FROM LISTA' + _sorveg;
+  _pcs := _pcs + 'ORDER BY DATUM,IDO';
+
+   with LementoQuery do
+     begin
+       Close;
+       Sql.Clear;
+       Sql.Add(_pcs);
+       Open;
+       First;
+     end;
+
+   while not LementoQuery.eof do
+     begin
+       with lementoQuery do
+         begin
+           _aktDatum    := FieldByName('DATUM').asstring;
+           _aktIdo      := FieldByName('IDO').asString;
+           _aktBlokkNum := FieldByName('BIZONYLATSZAM').asString;
+           _bankJegy    := FieldByName('BANKJEGY').asInteger;
+           _forint      := FieldByName('FORINTERTEK').asInteger;
+           _aktDnem     := FieldByName('VALUTANEM').asString;
+           _elszarf     := FieldByName('ELSZAMOLASIARFOLYAM').asInteger;
+           _kedvArf     := FieldByName('KEDVEZOARFOLYAM').asInteger;
+           _aktStorno   := FieldByName('STORNO').asiNTEGER;
+           _nev         := FieldByName('NEV').asstring;
+           _azonosito   := Fieldbyname('AZONOSITO').asString;
+         end;
+
+       _bjs := inttostr(_bankjegy);
+       _bankJegyString := elokieg(_bjs,7);
+       _bjs := inttostr(_forint);
+       _forintString := elokieg(_bjs,11);
+
+
+       if _aktstorno>1 then _ssor := '#' else _ssor := ' ';
+
+       _ssor := _ssor + _aktDatum +' ' + _aktido + '  ';
+       _ssor := _ssor + _aktBlokknum + '    ' + _aktdnem +' '+ _bankJegystring;
+       _ssor := _ssor + '    '+_forintString+'    ';
+
+       if _kedvArf =0 then _kedvarfString := '      '
+       else begin
+          _bjs := trim(formatfloat('### ###',_kedvarf));
+          _kedvarfstring := elokieg(_bjs,6);
+       end;
+
+       _bjs := trim(formatFloat('### ###',_elszarf));
+       _elszarfstring := elokieg(_Bjs,6);
+
+       _ssor := _ssor + _kedvArfString + '     ' + _elszArfString;
+       writeLn(_iras,_ssor);
+
+       if _nev<>'' then
+         begin
+           _ssor := '             (' + leftstr(_nev,25) + ', azonosito: ' + _azonosito + ')';
+           writeLn(_iras,_ssor);
+         end;
+       LementoQuery.Next;
+    end;
+
+  writeLn(_iras,dupestring('-',79));
+  closeFile(_iras);
+
+  LementoQuery.Close;
+  SaveGomb.Enabled := False;
+
+end;
+
+procedure TForm1.ESCAPEGOMBClick(Sender: TObject);
+begin
+  aPPLICATION.TERMINATE;
+end;
+
+
+// =============================================================================
+                        procedure TForm1.CreateLementoFdb;
+// =============================================================================
+
+
+var _mentoFdb: TIbDatabase;
+
+begin
+
+  _mentoFdb := TIbDatabase.Create(Nil);
+  with _mentoFdb do
+    begin
+      Connected := False;
+      DatabaseName := _lementoPath;
+      Params.Add('USER ''SYSDBA''PASSWORD ''dek@nySo''');
+      Params.Add('DEFAULT CHARACTER SET WIN1250');
+      SqlDialect := 3;
+      LoginPrompt := False;
+      CreateDatabase;
+    end;
+  _mentoFdb.Free;
+end;
+
+
+
+procedure TForm1.LementoParancs(_ukaz: string);
+
+begin
+  LementoDbase.Connected := True;
+  if lementoTranz.InTransaction then LementoTranz.Commit;
+  LementoTranz.StartTransaction;
+  with LementoQuery do
+    begin
+      Close;
+      sql.clear;
+      sql.add(_ukaz);
+      Execsql;
+    end;
+  LementoTranz.commit;
+  LementoDbase.close;
+end;
+
+function TForm1.Trinul(_b: byte): string;
+
+begin
+  result := inttostr(_b);
+  while length(result)<3 do Result := ' ' + result;
+end;
+
+
+// =============================================================================
+                  function TForm1.penztarcombotolto: boolean;
+// =============================================================================
+
+var _uzlet: integer;
+    _irnev: string;
+
+begin
+  result := false;
+  penztarcombo.items.Clear;
+  penztardbase.Close;
+
+  penztardbase.DatabaseName := _host + ':C:\RECEPTOR\DATABASE\RECEPTOR.FDB';
+
+  _siker := True;
+  try
+    Penztardbase.Connected := true;
+  except
+    _siker := false;
+  end;
+
+  if not _siker then
+    begin
+      ShowMessage('NEM TUDOM ELÉRNI A SZERVERT !');
+      exit;
+    end;
+
+  _pcs := 'SELECT * FROM IRODAK'+_sorveg;
+  _pcs := _pcs + 'ORDER BY UZLET';
+
+  with PenztarQuery do
+    begin
+      Close;
+      sql.clear;
+      Sql.add(_pcs);
+      Open;
+      First;
+    end;
+
+  while not PenztarQuery.Eof do
+    begin
+      _uzlet := PenztarQuery.FieldByname('UZLET').asInteger;
+      _irnev := trim(PenztarQuery.FieldByName('KESZLETNEV').AsString);
+      Penztarcombo.Items.add(trinul(_uzlet)+'. '+_irnev);
+      PenztarQuery.next;
+    end;
+  PenztarQuery.close;
+  PenztarDbase.close;
+  result := True;
+END;
+
+procedure TForm1.KILEPOTimer(Sender: TObject);
+begin
+  Kilepo.Enabled := False;
+  Application.Terminate;
+end;
+
+
+
+
+
+
+
+
+end.
+
+(*
+
+  _pcs := 'SELECT FEJ.*, TET.*' + _sorveg;
+  _pcs := _pcs +'FROM '+_fejtablanev+' FEJ JOIN '+_tettablanev+' TET'+_sorveg;
+  _pcs := _pcs + 'ON FEJ.BIZONYLATSZAM=TET.BIZONYLATSZAM'+_sorveg;
+
+  if _ezegynap then
+      _pcs := _pcs + 'WHERE FEJ.DATUM=' + chr(39) + _tolstring + chr(39)
+  else
+     _pcs := _pcs + 'WHERE FEJ.DATUM BETWEEN '+chr(39)+_tolstring+chr(39)+' AND '+chr(39)+_igstring+chr(39);
+
+
+
+
+
+
+/
+                 A 2006.06.10 es 2006.06.15 kozotti bizonylatok.
+
+ -----------------------------------------------------------------------------
+   Datum     Ido  Blokkszam  Valuta osszege   Ft. osszege  Kedv.arf Elsz.arf
+ -----------------------------------------------------------------------------
+ 2006.06.10 07:58 #V119277# 123.456.000 SEK 123.197.400 Ft 12345.78 12345.78
+ 2006.06.10 08:00  V119278           35 EUR       9.013 Ft
+ 2006.06.10 08:06  E036704          430 USD      90.618 Ft
+ 2006.06.10 08:09  V119279          180 SKK       1.206 Ft
+
+
+
+
+
+
+*)
+

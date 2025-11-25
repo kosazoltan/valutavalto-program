@@ -1,0 +1,112 @@
+object Form1: TForm1
+  Left = 192
+  Top = 124
+  Width = 870
+  Height = 630
+  Caption = 'Form1'
+  Color = clBtnFace
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'MS Sans Serif'
+  Font.Style = []
+  OldCreateOrder = False
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  PixelsPerInch = 96
+  TextHeight = 13
+  object PaintBox1: TPaintBox
+    Left = 16
+    Top = 40
+    Width = 457
+    Height = 457
+    OnPaint = PaintBox1Paint
+  end
+  object Label3: TLabel
+    Left = 504
+    Top = 112
+    Width = 162
+    Height = 25
+    Caption = 'A SZ'#214'VEG HOSSZA'
+    Font.Charset = EASTEUROPE_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -21
+    Font.Name = 'Arial Narrow'
+    Font.Style = [fsBold]
+    ParentFont = False
+  end
+  object Label4: TLabel
+    Left = 505
+    Top = 40
+    Width = 158
+    Height = 25
+    Caption = 'SK'#193'LA FOKOZATA'
+    Font.Charset = EASTEUROPE_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -21
+    Font.Name = 'Arial Narrow'
+    Font.Style = [fsBold, fsItalic]
+    ParentFont = False
+  end
+  object edtText: TEdit
+    Left = 16
+    Top = 8
+    Width = 817
+    Height = 21
+    TabOrder = 0
+    Text = 'http://www.fiscat.com/AEE|DC|0|0|1|1'
+    OnChange = edtTextChange
+  end
+  object CSUSZO: TTrackBar
+    Left = 8
+    Top = 512
+    Width = 817
+    Height = 33
+    Max = 30
+    Min = 3
+    Orientation = trHorizontal
+    Frequency = 1
+    Position = 3
+    SelEnd = 0
+    SelStart = 0
+    TabOrder = 1
+    TickMarks = tmBottomRight
+    TickStyle = tsAuto
+    OnChange = edtTextChange
+  end
+  object SKALAPANEL: TPanel
+    Left = 488
+    Top = 64
+    Width = 185
+    Height = 41
+    Font.Charset = EASTEUROPE_CHARSET
+    Font.Color = clRed
+    Font.Height = -27
+    Font.Name = 'Arial'
+    Font.Style = [fsBold, fsItalic]
+    ParentFont = False
+    TabOrder = 2
+  end
+  object HOSSZPANEL: TPanel
+    Left = 496
+    Top = 144
+    Width = 185
+    Height = 41
+    Font.Charset = EASTEUROPE_CHARSET
+    Font.Color = clFuchsia
+    Font.Height = -24
+    Font.Name = 'Arial'
+    Font.Style = [fsBold, fsItalic]
+    ParentFont = False
+    TabOrder = 3
+  end
+  object BitBtn1: TBitBtn
+    Left = 496
+    Top = 200
+    Width = 193
+    Height = 25
+    Caption = 'KIL'#201'P'#201'S'
+    TabOrder = 4
+    OnClick = BitBtn1Click
+  end
+end

@@ -1,0 +1,343 @@
+object GYUJTESDISPLAY: TGYUJTESDISPLAY
+  Left = 220
+  Top = 122
+  BorderIcons = []
+  BorderStyle = bsNone
+  Caption = 'GYUJTESDISPLAY'
+  ClientHeight = 483
+  ClientWidth = 534
+  Color = clBlue
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'MS Sans Serif'
+  Font.Style = []
+  OldCreateOrder = False
+  WindowState = wsMaximized
+  OnActivate = FormCreate
+  OnClose = FormClose
+  PixelsPerInch = 96
+  TextHeight = 13
+  object Panel1: TPanel
+    Left = 0
+    Top = 0
+    Width = 535
+    Height = 485
+    Color = clSkyBlue
+    TabOrder = 0
+    object Label2: TLabel
+      Left = 200
+      Top = 60
+      Width = 48
+      Height = 24
+      Caption = '-T'#211'L'
+      Font.Charset = EASTEUROPE_CHARSET
+      Font.Color = clNavy
+      Font.Height = -21
+      Font.Name = 'Times New Roman'
+      Font.Style = [fsBold, fsItalic]
+      ParentFont = False
+    end
+    object Label3: TLabel
+      Left = 400
+      Top = 60
+      Width = 30
+      Height = 24
+      Caption = '-IG'
+      Font.Charset = EASTEUROPE_CHARSET
+      Font.Color = clNavy
+      Font.Height = -21
+      Font.Name = 'Times New Roman'
+      Font.Style = [fsBold, fsItalic]
+      ParentFont = False
+    end
+    object Shape1: TShape
+      Left = 1
+      Top = 1
+      Width = 533
+      Height = 483
+      Align = alClient
+      Brush.Color = clSkyBlue
+      Pen.Color = clNavy
+      Pen.Width = 5
+    end
+    object TOLPANEL: TPanel
+      Left = 80
+      Top = 56
+      Width = 121
+      Height = 33
+      BevelOuter = bvNone
+      Caption = '2007.12.31'
+      Color = clSkyBlue
+      Font.Charset = EASTEUROPE_CHARSET
+      Font.Color = clNavy
+      Font.Height = -24
+      Font.Name = 'Times New Roman'
+      Font.Style = [fsBold, fsItalic]
+      ParentFont = False
+      TabOrder = 0
+    end
+    object IGPANEL: TPanel
+      Left = 280
+      Top = 56
+      Width = 113
+      Height = 33
+      BevelOuter = bvNone
+      Caption = '2008.03.05'
+      Color = clSkyBlue
+      Font.Charset = EASTEUROPE_CHARSET
+      Font.Color = clNavy
+      Font.Height = -24
+      Font.Name = 'Times New Roman'
+      Font.Style = [fsBold, fsItalic]
+      ParentFont = False
+      TabOrder = 1
+    end
+    object racs: TDBGrid
+      Left = 8
+      Top = 96
+      Width = 513
+      Height = 337
+      DataSource = FORRAS
+      FixedColor = clHighlight
+      Options = [dgTitles, dgColumnResize, dgColLines, dgRowLines, dgTabs, dgRowSelect, dgConfirmDelete, dgCancelOnExit]
+      TabOrder = 2
+      TitleFont.Charset = DEFAULT_CHARSET
+      TitleFont.Color = clWindowText
+      TitleFont.Height = -11
+      TitleFont.Name = 'MS Sans Serif'
+      TitleFont.Style = []
+      Visible = False
+      Columns = <
+        item
+          Alignment = taCenter
+          Color = clLime
+          Expanded = False
+          FieldName = 'DATUM'
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clBlue
+          Font.Height = -11
+          Font.Name = 'MS Sans Serif'
+          Font.Style = []
+          Title.Alignment = taCenter
+          Title.Caption = 'D'#193'TUM'
+          Title.Font.Charset = DEFAULT_CHARSET
+          Title.Font.Color = clWhite
+          Title.Font.Height = -13
+          Title.Font.Name = 'MS Sans Serif'
+          Title.Font.Style = [fsBold]
+          Width = 83
+          Visible = True
+        end
+        item
+          Alignment = taCenter
+          Expanded = False
+          FieldName = 'IDO'
+          Title.Alignment = taCenter
+          Title.Caption = 'ID'#336
+          Title.Font.Charset = DEFAULT_CHARSET
+          Title.Font.Color = clWhite
+          Title.Font.Height = -13
+          Title.Font.Name = 'MS Sans Serif'
+          Title.Font.Style = [fsBold]
+          Width = 58
+          Visible = True
+        end
+        item
+          Alignment = taCenter
+          Expanded = False
+          FieldName = 'BIZONYLATSZAM'
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clMaroon
+          Font.Height = -11
+          Font.Name = 'MS Sans Serif'
+          Font.Style = []
+          Title.Alignment = taCenter
+          Title.Caption = 'BLOKK'
+          Title.Font.Charset = DEFAULT_CHARSET
+          Title.Font.Color = clWhite
+          Title.Font.Height = -13
+          Title.Font.Name = 'MS Sans Serif'
+          Title.Font.Style = [fsBold]
+          Width = 90
+          Visible = True
+        end
+        item
+          Alignment = taCenter
+          Color = 8454143
+          Expanded = False
+          FieldName = 'BANKJEGY'
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clBlue
+          Font.Height = -11
+          Font.Name = 'MS Sans Serif'
+          Font.Style = [fsBold]
+          Title.Alignment = taCenter
+          Title.Font.Charset = DEFAULT_CHARSET
+          Title.Font.Color = clWhite
+          Title.Font.Height = -13
+          Title.Font.Name = 'MS Sans Serif'
+          Title.Font.Style = [fsBold]
+          Width = 110
+          Visible = True
+        end
+        item
+          Alignment = taCenter
+          Color = clYellow
+          Expanded = False
+          FieldName = 'VALUTANEM'
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clMaroon
+          Font.Height = -11
+          Font.Name = 'MS Sans Serif'
+          Font.Style = [fsBold]
+          Title.Alignment = taCenter
+          Title.Caption = 'VALUTA'
+          Title.Font.Charset = DEFAULT_CHARSET
+          Title.Font.Color = clWhite
+          Title.Font.Height = -13
+          Title.Font.Name = 'MS Sans Serif'
+          Title.Font.Style = [fsBold]
+          Visible = True
+        end
+        item
+          Alignment = taCenter
+          Color = 5308415
+          Expanded = False
+          FieldName = 'FORINTERTEK'
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clNavy
+          Font.Height = -11
+          Font.Name = 'MS Sans Serif'
+          Font.Style = [fsBold]
+          Title.Alignment = taCenter
+          Title.Caption = #201'RT'#201'K'
+          Title.Font.Charset = DEFAULT_CHARSET
+          Title.Font.Color = clWhite
+          Title.Font.Height = -13
+          Title.Font.Name = 'MS Sans Serif'
+          Title.Font.Style = [fsBold]
+          Width = 98
+          Visible = True
+        end>
+    end
+    object BitBtn1: TBitBtn
+      Left = 136
+      Top = 448
+      Width = 249
+      Height = 25
+      Cursor = crHandPoint
+      Cancel = True
+      Caption = 'VISSZA A MEN'#220'RE'
+      Font.Charset = EASTEUROPE_CHARSET
+      Font.Color = clNavy
+      Font.Height = -19
+      Font.Name = 'Times New Roman'
+      Font.Style = [fsItalic]
+      ParentFont = False
+      TabOrder = 3
+      OnClick = BitBtn1Click
+    end
+    object Panel2: TPanel
+      Left = 16
+      Top = 8
+      Width = 497
+      Height = 41
+      BevelOuter = bvNone
+      Caption = 'KECSKEM'#201'TI TESCO'
+      Color = clSkyBlue
+      Font.Charset = EASTEUROPE_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -29
+      Font.Name = 'Times New Roman'
+      Font.Style = [fsBold, fsItalic]
+      ParentFont = False
+      TabOrder = 4
+    end
+  end
+  object FORRAS: TDataSource
+    DataSet = LEMENTOTABLA
+    Enabled = False
+    Left = 8
+    Top = 56
+  end
+  object LEMENTOTABLA: TIBTable
+    Database = LEMENTODBASE
+    Transaction = LEMENTOTRANZ
+    BufferChunks = 1000
+    CachedUpdates = False
+    TableName = 'LISTA'
+    Left = 32
+    Top = 16
+    object LEMENTOTABLADATUM: TIBStringField
+      FieldName = 'DATUM'
+      Size = 10
+    end
+    object LEMENTOTABLAIDO: TIBStringField
+      FieldName = 'IDO'
+      Size = 5
+    end
+    object LEMENTOTABLABIZONYLATSZAM: TIBStringField
+      DisplayWidth = 10
+      FieldName = 'BIZONYLATSZAM'
+      Size = 9
+    end
+    object LEMENTOTABLABANKJEGY: TFloatField
+      FieldName = 'BANKJEGY'
+      DisplayFormat = '###,###,###'
+    end
+    object LEMENTOTABLAVALUTANEM: TIBStringField
+      FieldName = 'VALUTANEM'
+      Size = 3
+    end
+    object LEMENTOTABLAFORINTERTEK: TFloatField
+      FieldName = 'FORINTERTEK'
+      DisplayFormat = '###,###,###'
+    end
+    object LEMENTOTABLAKEDVEZOARFOLYAM: TFloatField
+      FieldName = 'KEDVEZOARFOLYAM'
+      DisplayFormat = '###,###,###'
+    end
+    object LEMENTOTABLAELSZAMOLASIARFOLYAM: TFloatField
+      FieldName = 'ELSZAMOLASIARFOLYAM'
+      DisplayFormat = '###,###,###'
+    end
+    object LEMENTOTABLANEV: TIBStringField
+      FieldName = 'NEV'
+      Size = 25
+    end
+    object LEMENTOTABLAAZONOSITO: TIBStringField
+      FieldName = 'AZONOSITO'
+    end
+    object LEMENTOTABLASTORNO: TSmallintField
+      FieldName = 'STORNO'
+    end
+  end
+  object LEMENTODBASE: TIBDatabase
+    Params.Strings = (
+      'user_name=SYSDBA'
+      'lc_ctype=WIN1250'
+      'password=dek@nySo')
+    LoginPrompt = False
+    DefaultTransaction = LEMENTOTRANZ
+    IdleTimer = 0
+    SQLDialect = 3
+    TraceFlags = []
+    Left = 64
+    Top = 16
+  end
+  object LEMENTOTRANZ: TIBTransaction
+    Active = False
+    DefaultDatabase = LEMENTODBASE
+    AutoStopAction = saNone
+    Left = 96
+    Top = 16
+  end
+  object indito: TTimer
+    Enabled = False
+    Interval = 200
+    OnTimer = ListaGombClick
+    Left = 24
+    Top = 152
+  end
+end

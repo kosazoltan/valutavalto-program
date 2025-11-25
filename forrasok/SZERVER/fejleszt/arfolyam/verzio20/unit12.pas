@@ -1,0 +1,873 @@
+unit Unit12;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, ExtCtrls, StdCtrls, unit1, wininet, strutils, Buttons,idGlobal;
+
+type
+  TAdatBetoltes = class(TForm)
+
+    Indito      : TTimer;
+    TimeoutTimer: TTimer;
+
+    ListBox1    : TListBox;
+
+    BiztosanGomb: TBitBtn;
+    MegsemGomb  : TBitBtn;
+
+    BiztosPanel : TPanel;
+    Label3      : TLabel;
+    KERDOPANEL: TPanel;
+    Label1: TLabel;
+    negomb: TBitBtn;
+    igengomb: TBitBtn;
+    Label2: TLabel;
+    Shape1: TShape;
+    KILEPOTIMER: TTimer;
+    SIKERESPANEL: TPanel;
+    alappanel: TPanel;
+    Label4: TLabel;
+
+    procedure AdatNullazo;
+    procedure BiztosanGombClick(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
+    procedure IgenGombClick(Sender: TObject);
+    procedure InditoTimer(Sender: TObject);
+    procedure MegsemGombClick(Sender: TObject);
+    procedure NeGombClick(Sender: TObject);
+    procedure RendbenGombClick(Sender: TObject);
+    procedure TimeoutTimerTimer(Sender: TObject);
+    
+//    function GetDnemDarab(_adpath: string): integer;
+
+    procedure AdatBedolgozo;
+    function AdatLetoltes: boolean;
+    function Getbyte: byte;
+    function Getstring: string;
+    function GetSzin: Tcolor;
+    function Getword: word;
+    function VanInternet: boolean;
+    procedure KILEPOTIMERTimer(Sender: TObject);
+
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  AdatBetoltes: TAdatBetoltes;
+
+  _olvas,_tmpolvas: file of byte;
+
+  _hFtp,
+  _hSearch,
+  _hNet: Hinternet;
+
+
+  _localPath,
+  _remoteFile: string;
+
+  _sikeres: boolean;
+  _fileLen,_mResult: integer;
+
+function InternetGetConnectedState(lpdwFlags: LPDWORD;
+                     dwReserved: DWORD): BOOL; stdcall; external 'WININET.DLL';
+
+implementation
+
+{$R *.dfm}
+
+
+ {
+    Megpróbálja letölteni az ARFDAT.DAT nevú file-t
+    - ha nem sikerül valamiért az Internetrõl, akkor megkérdezi, hogy
+      töltse le  a mentett adatokat.
+      Amennyiben ezt kéri, akkor le is tölti
+
+    - Ha sikeresen letöltötte az adatokat, akkor visszatér 1-el
+
+    - Ha semmilyen adatot sem tudott letölteni, akkor result = 2;
+
+  }
+
+// =============================================================================
+            procedure TAdatBetoltes.FormActivate(Sender: TObject);
+// =============================================================================
+
+begin
+
+  Top    := 250;
+  Left   := 50;
+  Height := 425;
+  Width  := 360;
+
+  KerdoPanel.Visible   := False;
+  BiztosPanel.Visible  := False;
+  SikeresPanel.Visible := False;
+
+  _remoteFile := 'ARFDATA.DAT';
+  _localPath  := _workdir + '\TEMPDATA.TMP';
+
+  Indito.Enabled := True;
+end;
+
+// =============================================================================
+                 procedure TAdatBetoltes.InditoTimer(Sender: TObject);
+// =============================================================================
+
+begin
+  Indito.Enabled := False;
+
+  if not AdatLetoltes then
+    begin
+      with KerdoPanel do
+        begin
+          Top := 8;
+          Left := 8;
+          Visible := true;
+        end;
+          
+      ActiveControl := neGomb;
+      exit;
+    end;
+
+  AdatNullazo;
+  AdatBedolgozo;
+
+end;
+
+
+// =============================================================================
+                  function TAdatBetoltes.AdatLetoltes: boolean;
+// =============================================================================
+
+
+begin
+  Result := False;
+
+  if not VanInternet then
+    begin
+      ShowMessage('NINCS INTERNET !');
+      exit;
+    end;
+
+  Listbox1.Items.add('Fellépés az Internetre');
+  _hnet := InternetOpen(pchar('LoadFormServer'),INTERNET_OPEN_TYPE_DIRECT,nil,nil,0);
+
+  if _hNet = nil then
+    begin
+      Listbox1.Items.Add('Nem tudtam fellépni az internetre ...');
+      exit;
+    end;
+
+  // -------------------  connect to the server  -------------------------------
+
+  ListBox1.Items.Add('Csatlakozási kisérlet a békéscsabai szerverhez ...');
+  _hFTP := InternetConnect(_hNet,Pchar(_BcsabaHost),_bcsabaPort,Pchar(_userId),
+                           PChar(_ftpPassword),INTERNET_SERVICE_FTP,
+                           INTERNET_FLAG_PASSIVE,
+                           0);
+
+  // ---------------------------------------------------------------------------
+
+   IF _hFTP = nil then
+    begin
+       ListBox1.Items.add('Itt sem sikerült csatlakozni a szerverhez !');
+      InternetCloseHandle(_hNet);
+      Exit;
+    end;
+
+  // ----------------------- Change directory ---*****************--------------
+
+  ListBox1.Items.Add('Belépési kisérlet az árfolyam könyvtárba ...');
+  _sikeres :=  FTPSetCurrentDirectory(_hFTP,pchar(_ARFOLYAMDIR));
+
+  if not _sikeres then
+    begin
+      ListBox1.Items.add('Nem sikerült belépni az árfolyamkönyvtárba !');
+      InternetCloseHandle(_hFTP);
+      InternetCloseHandle(_hNet);
+      Exit;
+    end;
+
+  // --------ENDNEWPRG ---------------------------------------------------------
+
+  _remoteFile := 'ARFDATA.DAT';
+  _localPath  := _workdir + '\ARFDATA.TMP';
+
+  if Fileexists(_localpath) then DeleteFile(_localpath);
+
+  ListBox1.Items.Add(_remoteFile+' letöltése a szerverrõl ...');
+  Result := FtpGetfile(_hFTP,pchar(_remoteFile),pchar(_localPath),
+                                           False,0,FTP_TRANSFER_TYPE_BINARY,0);
+
+  if not Result then ListBox1.Items.Add('Hiba történt a letöltés közben');
+
+  // --------------------------------------------------------------------------
+
+  InternetCloseHandle(_hFTP);
+  InternetCloseHandle(_hNet);
+  if Result then
+    begin
+      AssignFile(_tmpOlvas,_localpath);
+      Reset(_tmpolvas);
+      seek(_tmpolvas,filesize(_tmpolvas)-3);
+
+      Blockread(_tmpolvas,_bytetomb,3);
+      CloseFile(_tmpolvas);
+
+      _sbyte := _bytetomb[1]+_bytetomb[2]+_bytetomb[3];
+      if _sByte=765 then
+        begin
+          _arfPath := _workdir + '\arfdata.dat';
+          if FileExists(_arfPath) then deletefile(_arfPath);
+          result := copyFileTo(_localPath,_arfPath);
+        end else result := false;
+    end;
+
+//  if result then _dnemDarab := GetDnemDarab(_arfPath);
+
+end;
+
+// =============================================================================
+             procedure TAdatBetoltes.AdatBedolgozo;
+// =============================================================================
+
+(*
+   Bedolgozza:
+
+     - az irodak darabszámát;
+     - az irodák számait;
+     - az irodák neveit;
+
+     - az irodák munkacsoportszámát (hogy melyik csoportba van besorolva);
+     - az irodak státuszát: 0 -> nincs, 1 -> be van sorolva
+     - az URL cimek darabszámát;
+     - az URL címek sorszámát;
+     - a rögzitett URL cimeket;
+
+     - az alaplap árfolyamait: 28 valutanem, 9 oszlopának 4 propertyjét
+
+     - az aktiv munkacsoport darabszámát;
+     - az aktiv munkacsoportok megnevezését.
+
+     - a munkacsoportok 28 valutanemre szóló 8 oszlopának 4 propertyjét
+
+     - munkacsoportok 3 kedvezménylimitjét.
+
+
+   // --------------------------------------------------------------------------
+
+    ARFDATA.DAT strukturája:
+
+      byte = Az árfolyamadatok verziószáma
+
+
+      byte = Pénztárok darabszáma (ennyi iroda van)
+
+         (CIKLUS: 1 To pénztárdarabszam:)
+
+             byte    = 1. pénztár száma
+             xstring = 1. pénztár kódolt neve (xor 255) (elsõ byte= hossz)
+             byte: Az iroda munkacsoportszáma
+             byte: Az iroda státusza (0=nincs besorolva, 1=be van sorolva)
+
+         (CIKLUS - LÁBA)
+
+    // Url - adatai:
+
+     byte = URL DARAB
+
+       byte   = URL sorszáma
+       XTRING = url kódolt neve (xor 255)(elsõ byte= hossz)
+       .........
+
+    // Alaptábla adatai:
+
+          27 valutanem, 9 oszlopának  (#4 oszlop: dnem) 4 propertije:
+                   ertekstring
+                   fuggvenysting
+                   betuszin
+                   hatterszin
+
+
+    // Munkacsoportok adatai:
+
+       byte = Aktiv munkacsoportok száma = KONSTANS = 54
+
+            byte    = Munkacsoport sorszáma.
+            XSTRING = munkacsoport kódolt neve
+
+       Az összes munkacsoport, 28 valutájának 7 oszlopának 4 propertyje:
+
+                 (#2 oszlop = dnem)
+
+                   ertekstring
+                   fuggvenysting
+                   betuszin
+                   hatterszin
+                  Valutánként
+
+               Három darab Limit érték/1000
+               $255, $255, $255
+
+*)
+
+var i,_ctrlflag,_yy,_darab: integer;
+    _status: byte;
+
+begin
+
+  // A letöltött ARFDATA.DAT feldolgozása:
+
+  Listbox1.Items.Add('Az árfolyam adatok bedolgozása ...');
+  _localPath := _workdir + '\ARFDATA.DAT';
+
+  Assignfile(_olvas,_localPath);
+  Reset(_olvas);
+
+  // ---------------------------------------------------------------------------
+  // Az iroda adatainak beolvasása:
+
+  _adatverzio := Getbyte;       // Ez a verziószám   15 VAGY 16
+
+  {
+
+  if _adatverzio<>_verzioszam then
+    begin
+      Closefile(_olvas);
+      ShowMessage('AZ ÁRFOLYAM ADATOK VERZIÓJA ELTÉR A PROGRAMÉTÓL');
+      Application.Terminate;
+      exit;
+    end;
+  }
+
+
+  _IrodaDarab := Getbyte;       // Ennyi iroda van
+
+  Listbox1.Items.add('A váltóirodák adatainak betöltése ..');
+  Listbox1.Repaint;
+
+  _qq := 1;
+  while _qq<=_irodadarab do
+    begin
+      // Az iroda száma
+      _ptarSzam[_qq] := GetByte;
+
+      // Az iroda
+      _ptarnev[_qq] := Getstring;
+
+      // A pénztár csoportja:
+
+      _ptarcsop[_qq]:= Getbyte;
+
+      // Az iroda státusza:
+
+      ListBox1.Items.add(inttostr(_ptarszam[_qq])+'. '+_ptarnev[_qq]+'/'+_ptarcim[_qq]);
+      inc(_qq);
+    end;
+
+
+   // ----------------- INTERNET CIMEK ------------------------------
+
+   // Az internetcimek beolvasása:
+  Listbox1.Items.add('Az internetcímek beolvasása ...');
+  Listbox1.Repaint;
+
+  _urlDarab := GetByte;    // internetcimek darabszáma
+
+  // Az internet cimek beolvasása _URLNevek tömbbe:
+
+  _qq := 1;
+  while _qq<=_urldarab do
+    begin
+      _pp := getbyte;
+      _urlgombszam[_qq] := _pp;
+      _urlGombNevek[_qq] := Getstring;
+      _urlNevek[_qq] := GetString;
+      ListBox1.Items.Add(inttostr(_pp)+'. '+ _urlnevek[_qq]);
+      inc(_qq);
+    end;
+
+  // ---------------- AZ ALAPTÁBLA ADATAI --------------------------------------
+
+  Listbox1.Items.add('AZ ALAPTÁBLA CELLAADATAI');
+  Listbox1.Repaint;
+
+  _qq := 1;
+  _darab := 28;
+  IF _adatverzio=15 then _darab := 27;
+
+  while _qq<=_Darab do
+    begin
+      _oszlop := 1;
+      while _oszlop<=9 do
+        begin
+          _aktertekstring    := Getstring;
+          _aktfuggvenystring := getstring;
+          _aktbetuszin       := getszin;
+          _akthatterszin     := Getszin;
+
+          if (_aktfuggvenystring<>'') and (_aktbetuszin=clBlack) then _aktbetuszin :=clBlue;
+
+          _wErtek[_qq,_oszlop]      := _aktertekstring;
+          _wFuggveny[_qq,_oszlop]   := _aktfuggvenyString;
+          _wBetuszin[_qq,_oszlop]   := _aktBetuszin;
+          _wHatterszin[_qq,_oszlop] := _akthatterszin;
+
+          Listbox1.Items.Add(_wertek[_qq,_oszlop] + ',' +_aktfuggveny);
+          inc(_oszlop);
+          if _oszlop=4 then inc(_oszlop);
+        end;
+      inc(_qq);
+    end;
+
+  // --------- A csoportok ADATAI ----------------------------------------------
+
+  // az aktiv csoportok darabszáma:
+
+  Listbox1.Items.Add('A csoportok adatainak beolvasása ...');
+  ListBox1.Repaint;
+
+  _aktivcsoportDarab := getByte;
+//  _aktivcsoportDarab := 54;
+  // A csoportNevek beolvasása
+
+  _qq := 1;
+  while _qq<=_aktivcsoportDarab do
+    begin
+      _aktCsoport := Getbyte;
+      if _aktcsoport>100 then
+        begin
+          _aktcsoport := _aktcsoport-100;
+          _ccontrol[_aktcsoport] := False;
+        end else _ccontrol[_aktcsoport] := true;
+
+      _csoportszamok[_qq] := _aktcsoport;
+      _csoportNevek[_qq]:= GetString;
+      Listbox1.Items.Add(_csoportnevek[_aktcsoport]);
+
+      _pp := 1;
+
+
+      while _pp<=_darab do
+        begin
+          _jErtek[_aktcsoport,_pp]:= GetString;
+          _aktfuggvenystring      := Getstring;
+          _aktbetuszin            := Getszin;
+
+          if (_aktfuggvenystring<>'') and (_aktbetuszin=clBlack) then _aktbetuszin :=clBlue;
+
+          _jFuggveny[_aktcsoport,_pp]  := _aktfuggvenyString;
+          _jBetuszin[_aktcsoport,_pp]  := _aktbetuszin;
+          _jHatterSzin[_aktcsoport,_pp]:= GetSzin;
+
+          // -------------------------------------------------------------------
+
+          _lErtek[_aktcsoport,_pp] := GetString;
+          _aktfuggvenystring       := Getstring;
+          _aktbetuszin             := Getszin;
+
+          if (_aktfuggvenystring<>'') and (_aktbetuszin=clBlack) then _aktbetuszin :=clBlue;
+
+          _lFuggveny[_aktcsoport,_pp]  := _aktfuggvenystring;
+          _lBetuszin[_aktcsoport,_pp]  := _aktbetuszin;
+          _lHatterSzin[_aktcsoport,_pp]:= GetSzin;
+
+          // -------------------------------------------------------------------
+
+          _mErtek[_aktcsoport,_pp] := GetString;
+          _aktfuggvenystring       := Getstring;
+          _aktbetuszin             := Getszin;
+
+          if (_aktfuggvenystring<>'') and (_aktbetuszin=clBlack) then _aktbetuszin :=clBlue;
+
+          _mFuggveny[_aktcsoport,_pp]  := _aktfuggvenystring;
+          _mBetuszin[_aktcsoport,_pp]  := _aktbetuszin;
+          _mHatterSzin[_aktcsoport,_pp]:= GetSzin;
+
+          // -------------------------------------------------------------------
+
+          _nErtek[_aktcsoport,_pp] := GetString;
+          _aktfuggvenystring       := Getstring;
+          _aktbetuszin             := Getszin;
+
+          if (_aktfuggvenystring<>'') and (_aktbetuszin=clBlack) then _aktbetuszin :=clBlue;
+
+          _nFuggveny[_aktcsoport,_pp]  := _aktfuggvenystring;
+          _nBetuszin[_aktcsoport,_pp]  := _aktbetuszin;
+          _nHatterSzin[_aktcsoport,_pp]:= GetSzin;
+
+          // -------------------------------------------------------------------
+
+          _oErtek[_aktcsoport,_pp] := GetString;
+          _aktfuggvenystring       := Getstring;
+          _aktbetuszin             := Getszin;
+
+          if (_aktfuggvenystring<>'') and (_aktbetuszin=clBlack) then _aktbetuszin :=clBlue;
+
+          _oFuggveny[_aktcsoport,_pp]  := _aktfuggvenystring;
+          _oBetuszin[_aktcsoport,_pp]  := _aktbetuszin;
+          _oHatterSzin[_aktcsoport,_pp]:= GetSzin;
+
+          // -------------------------------------------------------------------
+
+          _pErtek[_aktcsoport,_pp] := GetString;
+          _aktfuggvenystring       := Getstring;
+          _aktbetuszin             := Getszin;
+
+          if (_aktfuggvenystring<>'') and (_aktbetuszin=clBlack) then _aktbetuszin :=clBlue;
+
+          _pFuggveny[_aktcsoport,_pp]  := _aktfuggvenystring;
+          _pBetuszin[_aktcsoport,_pp]  := _aktbetuszin;
+          _pHatterSzin[_aktcsoport,_pp]:= GetSzin;
+
+          // -------------------------------------------------------------------
+
+          _qErtek[_aktcsoport,_pp]:= GetString;
+          _aktfuggvenystring      := Getstring;
+          _aktbetuszin            := Getszin;
+
+          if (_aktfuggvenystring<>'') and (_aktbetuszin=clBlack) then _aktbetuszin :=clBlue;
+
+          _qFuggveny[_aktcsoport,_pp]  := _aktfuggvenystring;
+          _qBetuszin[_aktcsoport,_pp]  := _aktbetuszin;
+          _qHatterSzin[_aktcsoport,_pp]:= GetSzin;
+
+           // -------------------------------------------------------------------
+
+
+           _rErtek[_aktcsoport,_pp]:= GetString;
+           _aktfuggvenystring      := Getstring;
+           _aktbetuszin            := Getszin;
+
+           if (_aktfuggvenystring<>'') and (_aktbetuszin=clBlack) then _aktbetuszin :=clBlue;
+
+           _rFuggveny[_aktcsoport,_pp]  := _aktfuggvenystring;
+           _rBetuszin[_aktcsoport,_pp]  := _aktbetuszin;
+           _rHatterSzin[_aktcsoport,_pp]:= GetSzin;
+
+          // -------------------------------------------------------------------
+
+           _sErtek[_aktcsoport,_pp]:= GetString;
+           _aktfuggvenystring      := Getstring;
+           _aktbetuszin            := Getszin;
+
+           if (_aktfuggvenystring<>'') and (_aktbetuszin=clBlack) then _aktbetuszin :=clBlue;
+
+           _sFuggveny[_aktcsoport,_pp]  := _aktfuggvenystring;
+           _sBetuszin[_aktcsoport,_pp]  := _aktbetuszin;
+           _sHatterSzin[_aktcsoport,_pp]:= GetSzin;
+
+          inc(_pp);
+        end;
+
+      _klimit[_aktcsoport,1] := GetWord;
+      _klimit[_aktcsoport,2] := GetWord;
+      _klimit[_aktcsoport,3] := GetWord;
+      inc(_qq);
+      Listbox1.Repaint;
+    end;
+
+  BlockRead(_olvas,_bytetomb,3);
+  closeFile(_olvas);
+
+  // --------------------- aDATok bedolgozva  ------------------------
+
+  Listbox1.Items.Add('AZ ÁRFOLYAM ADATOK BEDOLGOZVA');
+  Listbox1.Items.Add('===============================');
+  Listbox1.Repaint;
+  sikerespanel.Visible := true;
+  SikeresPanel.Repaint;
+  sleep(300);
+
+  _mResult := 1;
+  KilepoTimer.enabled := true;
+end;
+
+
+// =============================================================================
+                 function TAdatBetoltes.VanInternet: boolean;
+// =============================================================================
+
+var
+
+    _dwConnType: integer;
+
+begin
+
+   Result := False;
+   TRY
+     _dwConntype := 7;
+     if InternetGetConnectedState(@_dwConnType,0) then result := true;
+   except
+   end;
+
+end;
+
+// =============================================================================
+                    procedure TadatBetoltes.AdatNullazo;
+// =============================================================================
+
+
+var i,j: integer;
+
+begin
+  for i := 1 to 200 do
+    begin
+      _ptarszam[i] := 0;
+      _ptarnev[i]  := '';
+      _ptarcim[i]  := '';
+      _ptarcsop[i] := 0;
+      _ptarstat[i] := 0;
+    end;
+
+  for i := 1 to 28 do
+    begin
+      for j := 1 to 9 do
+        begin
+          _wertek[i,j]      := '';
+          _wfuggveny[i,j]   := '';
+          _wBetuszin[i,j]   := 0;
+          _wHatterszin[i,j] := 16777215;
+        end;
+    end;
+
+  for i := 1 to 28 do
+    begin
+      _wertek[i,4] := _dnem[i];
+      _wBetuszin[i,4] := clBlue;
+      _whatterszin[i,4] := $B0FFFF;
+    end;
+
+  for i := 1 to 54 do
+    begin
+      _csoportnevek[i] := 'X';
+      _csoportszamok[i]:= i;
+      for j := 1 to 28 do
+        begin
+          _jertek[i,j]    := '';
+          _jfuggveny[i,j] := '';
+          _jBetuszin[i,j] := 0;
+          _jHatterszin[i,j] := 16777215;
+
+          _kertek[i,j] := _dnem[j];
+          _kfuggveny[i,j] := '';
+          _kBetuszin[i,j] := clBlue;
+          _kHatterszin[i,j] := $B0FFFF;
+
+          _lertek[i,j] := '';
+          _lfuggveny[i,j] := '';
+          _lBetuszin[i,j] := 0;
+          _lHatterszin[i,j] := 16777215;
+
+          _mertek[i,j] := '';
+          _mfuggveny[i,j] := '';
+          _mBetuszin[i,j] := 0;
+          _mHatterszin[i,j] := 16777215;
+
+          _nertek[i,j] := '';
+          _nfuggveny[i,j] := '';
+          _nBetuszin[i,j] := 0;
+          _nHatterszin[i,j] := 16777215;
+
+          _oertek[i,j] := '';
+          _ofuggveny[i,j] := '';
+          _oBetuszin[i,j] := 0;
+          _oHatterszin[i,j] := 16777215;
+
+          _pertek[i,j] := '';
+          _pfuggveny[i,j] := '';
+          _pBetuszin[i,j] := 0;
+          _pHatterszin[i,j] := 16777215;
+
+          _qertek[i,j] := '';
+          _qfuggveny[i,j] := '';
+          _qBetuszin[i,j] := 0;
+          _qHatterszin[i,j] := 16777215;
+
+          _rertek[i,j] := '';
+          _rfuggveny[i,j] := 'L';
+          _rBetuszin[i,j] := 0;
+          _rHatterszin[i,j] := 16777215;
+
+          _sertek[i,j] := '';
+          _sfuggveny[i,j] := 'M';
+          _sBetuszin[i,j] := 0;
+          _sHatterszin[i,j] := 16777215;
+        end;
+        
+      _kLimit[i,1] := 50;
+      _kLimit[i,2] := 300;
+      _kLimit[i,3] := 1000;
+    end;
+end;
+
+// =============================================================================
+                    function Tadatbetoltes.GetByte: byte;
+// =============================================================================
+
+
+begin
+  Blockread(_olvas,_bytetomb,1);
+  result := _Bytetomb[1];
+end;
+
+// =============================================================================
+                  function TAdatbetoltes.Getword: word;
+// =============================================================================
+
+var _lo,_hi: byte;
+
+begin
+  Blockread(_olvas,_bytetomb,2);
+  _lo := _bytetomb[1];
+  _hi := _bytetomb[2];
+  result := _lo + trunc(256*_hi);
+end;
+
+// =============================================================================
+               function TAdatbetoltes.GetSzin: Tcolor;
+// =============================================================================
+
+var _tmp: real;
+    _b1,_b2,_b3,_b4,_b5: byte;
+
+begin
+  Blockread(_olvas,_bytetomb,5);
+  _b1 := _bytetomb[1];
+  _b2 := _bytetomb[2];
+  _b3 := _bytetomb[3];
+  _b4 := _bytetomb[4];
+  _b5 := _bytetomb[5];
+  _tmp := _b5*sqr(65536);
+  _tmp := _tmp + (256*(_b4*65536));
+  _tmp := _tmp + (65536*_b3);
+  _tmp := _tmp + (256*_b2);
+  result := _b1 + trunc(_tmp);
+end;
+
+
+// =============================================================================
+                 function TAdatBetoltes.Getstring: string;
+// =============================================================================
+
+var _shossz,_y: integer;
+
+begin
+  result := '';
+  Blockread(_olvas,_bytetomb,1);
+  _sHossz := _bytetomb[1];
+  if _shossz=0 then exit;
+
+  Blockread(_olvas,_bytetomb,_sHossz);
+  _y := 1;
+  while _y<=_sHossz do
+    begin
+      _kod := 255-_bytetomb[_y];
+      result := result + chr(_kod);
+      inc(_y);
+    end;
+end;
+
+// =============================================================================
+           procedure TADATBETOLTES.RENDBENGOMBClick(Sender: TObject);
+// =============================================================================
+
+begin
+  ModalResult := 1;
+end;
+
+procedure TADATBETOLTES.TIMEOUTTIMERTimer(Sender: TObject);
+begin
+  TimeoutTimer.Enabled := False;
+  ShowMessage('SZERVER NEM VÁLASZOL');
+  ModalResult := 2;
+end;
+
+
+
+procedure TADATBETOLTES.NEGOMBClick(Sender: TObject);
+begin
+ // KerdoPanel.Visible := False;
+  if not AdatLetoltes then
+    begin
+      ShowMessage('NEM TUDTAM LETÖLTENI AZ ARFDATA.DAT ÁRFOLYAM-FILE-T !');
+      ModalResult := 2;
+      exit;
+    end;
+end;
+
+(*
+  AdatNullazo;
+  if not AdatBedolgozo then // Arfdata.dat tömbökbe dolgozása
+    begin
+      showMessage('AZ ÁRFOLYAMFILE-T NEM TUDTAM FELDOLGOZNI');
+      ModalResult := 2;
+      exit;
+    end;
+  RendbenGomb.Visible := true;
+end;
+*)
+
+
+procedure TADATBETOLTES.IGENGOMBClick(Sender: TObject);
+begin
+  with Biztospanel do
+    begin
+      Top := 8;
+      Left := 8;
+      Visible := True;
+    end;
+  ActiveControl := Megsemgomb;
+end;
+
+// =============================================================================
+             procedure TADATBETOLTES.BIZTOSANGOMBClick(Sender: TObject);
+// =============================================================================
+
+
+var _arfdataPath: string;
+begin
+  KerdoPanel.Visible := false;
+  Biztospanel.Visible := false;
+  Alappanel.Repaint;
+
+  Listbox1.Clear;
+  Listbox1.visible := True;
+
+  _arfdataPath := _workdir + '\arfdata.dat';
+  if not fileExists(_arfDataPath) then
+    begin
+      ShowMessage('NEM TALÁLOM ' + _arfdatapath + ' ARFOLYAM FILE-T !');
+      ModalResult := 2;
+      exit;
+    end;
+
+//  _dnemDarab := GetDnemdarab(_arfDataPath);
+
+  AdatNullazo;
+
+  AdatBedolgozo;  // Arfdata.dat tömbökbe dolgozása
+end;
+
+procedure TADATBETOLTES.MEGSEMGOMBClick(Sender: TObject);
+begin
+  _mResult := 2;
+  Kilepotimer.enabled := True;
+end;
+
+
+
+procedure TAdatBetoltes.KILEPOTIMERTimer(Sender: TObject);
+begin
+  KilepoTimer.Enabled := False;
+  ModalResult := _mResult;
+end;
+
+end.
+

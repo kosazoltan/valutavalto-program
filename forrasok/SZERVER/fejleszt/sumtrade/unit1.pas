@@ -1,0 +1,158 @@
+unit Unit1;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, Buttons, ExtCtrls, Dateutils, IBDatabase, DB,
+  IBCustomDataSet, IBQuery, ComCtrls;
+
+type
+  TForm1 = class(TForm)
+    Label1: TLabel;
+    Shape1: TShape;
+    IRODAQUERY: TIBQuery;
+    IRODADBASE: TIBDatabase;
+    IRODATRANZ: TIBTransaction;
+    ACQUERY: TIBQuery;
+    ACDBASE: TIBDatabase;
+    ACTRANZ: TIBTransaction;
+
+    procedure FormActivate(Sender: TObject);
+    procedure IrodaBetoltes;
+    function Nulele(_int:integer): string;
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form1: TForm1;
+  _honev: array[1..12] of string = ('Január','Február','Március','Április',
+                      'Május','Junius','Július','Augusztus','Szeptember',
+                      'Október','November','December');
+
+
+ _kertev,_kertho,_tolnap,_ignap,_maiev,_maiho: word;
+ _havinap,_pp: word;
+ _farok,_toldatum,_igdatum,_pcs: string;
+ _fdbPath: string;
+ _sorveg: string = chr(13)+chr(10);
+
+ _qq,_penztar,_nyito,_zaro,_atadas,_atvetel,_ertektar: integer;
+ _matrica,_telefon,_smatrica,_sTelefon,_sAtvetel,_sAtadas: integer;
+
+ _irodaDarab: byte;
+ _ptarnev: array[0..169] of string;
+ _ptarnum,_pertektar: array[0..169] of integer;
+
+ _uzlet: integer;
+ _boltnev: string;
+
+ _etarszamok: array[1..9] of integer = (10,20,40,50,63,75,120,145,250);
+ _top,_left,_yy: integer;
+ _evindex,_hoindex,_tolindex,_igindex: integer;
+ _etablanev,_kezdonaps,_vegsonaps: string;
+ _oke,_aoke: integer;
+
+implementation
+
+uses Unit2, Unit5, Unit4;
+
+{$R *.dfm}
+
+
+// =============================================================================
+               procedure TForm1.FormActivate(Sender: TObject);
+// =============================================================================
+
+begin
+
+  Top   := 50;
+  Left  := 160;
+
+  Label1.Repaint;
+
+  _maiev := yearof(date);
+  _maiho := monthof(date);
+  _evindex := 1;
+  _hoindex := _maiho-1;
+
+  IrodaBetoltes;
+
+  // ---------------------------------------------------------------------------
+
+  while TRUE DO
+    begin
+      _oke := Getidoszak.showmodal;
+
+      if _oke=2 then
+        begin
+          Application.Terminate;
+          Exit;
+        end;
+
+      _Aoke := UjAdatgyujto.showmodal;
+      if _aoke=1 then EredmenyKijelzes.ShowModal;
+    end;
+end;
+
+
+
+// =============================================================================
+                function TForm1.Nulele(_int:integer): string;
+// =============================================================================
+
+begin
+  result := inttostr(_int);
+  if _int<10 then result := '0' + result;
+end;
+
+
+procedure TForm1.Irodabetoltes;
+
+begin
+  _pcs   := 'SELECT * FROM IRODAK'+_sorveg;
+  _pcs   := _pcs + 'WHERE (EKERESKEDELEM=' + chr(39)+'X'+chr(39)+') ';
+  _pcs   := _pcs + 'AND (CLOSED=' + chr(39)+'N'+chr(39) + ')' + _sorveg;
+  _pcs   := _pcs + 'ORDER BY UZLET';
+
+  IrodaDbase.Connected := true;
+  with IrodaQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Add(_PCS);
+      Open;
+      First;
+    end;
+
+  _pp := 0;
+
+  while not IrodaQuery.eof do
+    begin
+      _uzlet    := IrodaQuery.FieldByName('UZLET').asInteger;
+      _boltnev  := TRIM(IrodaQuery.FieldByName('KESZLETNEV').asstring);
+      _ertektar := IrodaQuery.FieldByName('ERTEKTAR').asInteger;
+
+      if _uzlet>150 then _ertektar := 250;
+
+      _ptarnum[_pp]   := _uzlet;
+      _ptarnev[_pp]   := trim(_boltnev);
+      _pertektar[_pp] := _ertektar;
+      inc(_pp);
+
+      IrodaQuery.Next;
+    end;
+  IrodaQuery.close;
+  IrodaDbase.close;
+
+  _IrodaDarab := _pp;
+end;
+
+
+
+
+end.

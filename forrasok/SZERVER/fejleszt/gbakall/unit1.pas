@@ -1,0 +1,170 @@
+unit Unit1;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, Buttons, strutils, ExtCtrls;
+
+type
+  TForm1 = class(TForm)
+    BitBtn1: TBitBtn;
+    BitBtn2: TBitBtn;
+    Panel1: TPanel;
+
+    procedure BitBtn2Click(Sender: TObject);
+    procedure BitBtn1Click(Sender: TObject);
+
+    function WinExecAndWait32(Path: PChar; Visibility: Word): integer;
+
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form1: TForm1;
+  _tn: array[1..160] of string;
+  _PP,_tabladb,_tt,_len: byte;
+  _back: integer;
+  _minta,_akttnev,_trunk,_source,_target,_pcs,_aktpath: string;
+  _pacs: pchar;
+  _srec: TSearchrec;
+
+implementation
+
+{$R *.dfm}
+
+procedure TForm1.BitBtn2Click(Sender: TObject);
+begin
+  aPPLICATION.Terminate;
+end;
+
+procedure TForm1.BitBtn1Click(Sender: TObject);
+begin
+  _pp := 0;
+  _minta := 'c:\receptor\database\*.fdb';
+  if FindFirst(_minta,faAnyfile,_srec)=0 then
+    begin
+      repeat
+        inc(_pp);
+        _tn[_pp] := _srec.Name;
+      until findnext(_srec)<>0;
+      Findclose(_srec);
+    end;
+  _tabladb := _pp;
+
+  _tt := 1;
+  while _tt<=_tabladb do
+    begin
+      _akttnev := _tn[_tt];
+      _len := length(_akttnev);
+      _trunk := leftstr(_akttnev,_len-4);
+      _source := 'c:\receptor\database\' + _akttnev;
+      _target := 'c:\receptor\database\' + _trunk + '.dbk';
+      _pcs := 'c:\receptor\database\gbak.exe -v -t -user SYSDBA -password dek@nySo '+_source+' '+_target;
+
+      panel1.Caption := _PCS;
+      PANEL1.Repaint;
+
+      _pacs := pchar(_pcs);
+      _BACK := WinExecAndWait32(_pacs,sw_NORMAL);
+      inc(_tt);
+    end;
+
+  _tt := 1;
+  while _tt<=_tabladb do
+    begin
+      _akttnev := _tn[_tt];
+      _aktpath := 'c:\receptor\database\'+_akttnev;
+
+      panel1.Caption := _aktpath;
+      panel1.Repaint;
+
+      SYSUTILS.DeleteFile(_AKTPATH);
+      inc(_tt);
+    end;
+
+  _tt := 1;
+  while _tt<=_tabladb do
+    begin
+      _akttnev := _tn[_tt];
+      _len := length(_akttnev);
+      _trunk := leftstr(_akttnev,_len-4);
+      _target := 'c:\receptor\database\' + _akttnev;
+      _source := 'c:\receptor\database\' + _trunk + '.dbk';
+      _pcs := 'c:\receptor\database\gbak.exe -c -v -user SYSDBA -password dek@nySo '+_source+' '+_target;
+
+      panel1.Caption := _PCS;
+      PANEL1.Repaint;
+
+      _pacs := pchar(_pcs);
+      WinExecAndWait32(_pacs,sw_normal);
+      inc(_tt);
+    end;
+
+  _tt := 1;
+  while _tt<=_tabladb do
+    begin
+      _akttnev := _tn[_tt];
+      _len := length(_akttnev);
+      _trunk := leftstr(_akttnev,_len-4);
+      _aktpath := 'c:\receptor\database\'+_trunk+'.dbk';
+
+      panel1.Caption := _aktpath;
+      PANEL1.Repaint;
+
+      SYSUTILS.DeleteFile(_AKTPATH);
+      inc(_tt);
+    end;
+
+  ShowMessage('KÉSZEN VAGYOK,RAGYOGOK');
+end;
+
+// =============================================================================
+   function TForm1.WinExecAndWait32(Path: PChar; Visibility: Word): integer;
+// =============================================================================
+
+var Msg: TMsg;
+    lpExitCode: cardinal;
+    StartupInfo: TStartupInfo;
+    ProcessInfo: TProcessInformation;
+
+begin
+  FillChar(StartupInfo, SizeOf(TStartupInfo), 0);
+  with StartupInfo do
+    begin
+      cb := SizeOf(TStartupInfo);
+      dwFlags := STARTF_USESHOWWINDOW or STARTF_FORCEONFEEDBACK;
+      wShowWindow := visibility; {you could pass sw_show or sw_hide as parameter}
+    end;
+
+  if CreateProcess(nil, path, nil, nil, False, NORMAL_PRIORITY_CLASS,
+                                      nil, nil, StartupInfo,ProcessInfo) then
+
+    begin
+      repeat
+        while PeekMessage(Msg, 0, 0, 0, pm_Remove) do
+          begin
+            if Msg.Message = wm_Quit then Halt(Msg.WParam);
+            TranslateMessage(Msg);
+            DispatchMessage(Msg);
+          end;
+
+        GetExitCodeProcess(ProcessInfo.hProcess,lpExitCode);
+      until lpExitCode <> Still_Active;
+
+    with ProcessInfo do {not sure this is necessary but seen in in some code elsewhere}
+      begin
+        CloseHandle(hThread);
+        CloseHandle(hProcess);
+      end;
+
+    Result := 0; {success}
+  end else Result := GetLastError;
+end;
+
+
+end.

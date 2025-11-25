@@ -1,0 +1,3932 @@
+unit Unit1;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, ExtCtrls, StrUtils, IBQuery, IBDatabase, DB, IBCustomDataSet,
+  IBTable, StdCtrls, DateUtils, Buttons, ComCtrls, idGlobal,MAPI,
+  IdBaseComponent, IdComponent, IdTCPConnection, IdTCPClient, IdHTTP;
+
+type
+  TForm1 = class(TForm)
+
+         FIGYELO: TTimer;
+   KILEPOIDOZITO: TTimer;
+
+         IBTABLA: TIBTable;
+         IBDBASE: TIBDatabase;
+         IBTRANZ: TIBTransaction;
+         IBQUERY: TIBQuery;
+
+        IBTABLA2: TIBTable;
+        IBDBASE2: TIBDatabase;
+        IBTRANZ2: TIBTransaction;
+        IBQuery2: TIBQuery;
+
+     CimtarTabla: TIBTable;
+     CimtarQuery: TIBQuery;
+     CimtarDbase: TIBDatabase;
+     CimtarTranz: TIBTransaction;
+
+      EMAILTabla: TIBTable;
+      EMAILDbase: TIBDatabase;
+      EMAILTranz: TIBTransaction;
+
+     IRODAKTabla: TIBTable;
+     IRODAKDbase: TIBDatabase;
+     IRODAKTranz: TIBTransaction;
+
+   BLOKKFEJTabla: TIBTable;
+   BLOKKFEJDbase: TIBDatabase;
+   BLOKKFEJTranz: TIBTransaction;
+
+    DaybookTabla: TIBTable;
+    DaybookDbase: TIBDatabase;
+    DaybookTranz: TIBTransaction;
+    DaybookQuery: TIBQuery;
+
+   RENDSZERTABLA: TIBTable;
+   RENDSZERDBASE: TIBDatabase;
+   RENDSZERTRANZ: TIBTransaction;
+   RENDSZERQUERY: TIBQuery;
+
+      DatumPanel: TPanel;
+
+       WzarTabla: TIBTable;
+       WzarQuery: TIBQuery;
+       WzarDbase: TIBDatabase;
+       WzarTranz: TIBTransaction;
+
+          Shape1: TShape;
+              K1: TShape;
+              K2: TShape;
+              K3: TShape;
+              K4: TShape;
+    k6: TShape;
+    k7: TShape;
+    k8: TShape;
+    k9: TShape;
+    k10: TShape;
+    k11: TShape;
+    k12: TShape;
+    k13: TShape;
+    k14: TShape;
+    k15: TShape;
+    k16: TShape;
+    k17: TShape;
+    k18: TShape;
+    k19: TShape;
+    k20: TShape;
+    k21: TShape;
+    k22: TShape;
+    k23: TShape;
+    k24: TShape;
+    k25: TShape;
+    k26: TShape;
+    k27: TShape;
+    k28: TShape;
+    k29: TShape;
+    k30: TShape;
+    k31: TShape;
+    k32: TShape;
+    k33: TShape;
+    k34: TShape;
+    k35: TShape;
+    k36: TShape;
+    k37: TShape;
+    k38: TShape;
+    k39: TShape;
+    k41: TShape;
+    k40: TShape;
+    k42: TShape;
+    k43: TShape;
+    K44: TShape;
+    Shape2: TShape;
+    k5: TShape;
+    Shape6: TShape;
+    KILEPOGOMB: TBitBtn;
+    Shape7: TShape;
+    Shape8: TShape;
+    BitBtn2: TBitBtn;
+    Shape9: TShape;
+    MERETGOMB: TBitBtn;
+    Shape10: TShape;
+    UZENOPANEL: TPanel;
+    MEMOTABLA: TMemo;
+    k45: TShape;
+    k46: TShape;
+    k47: TShape;
+    k48: TShape;
+    k49: TShape;
+    k51: TShape;
+    k50: TShape;
+    k53: TShape;
+    k52: TShape;
+    k55: TShape;
+    k54: TShape;
+    irodakQuery: TIBQuery;
+    EMAILQUERY: TIBQuery;
+    KISKEPTIMER: TTimer;
+    Shape3: TShape;
+    TILTOPANEL: TPanel;
+    REMOTEQUERY: TIBQuery;
+    REMOTEDBASE: TIBDatabase;
+    REMOTETRANZ: TIBTransaction;
+    UKSERVER: TIdHTTP;
+
+   // ----------------------------------------------------
+
+
+    procedure ClearDirectory(_pathMinta: string);
+    procedure ColorKor;
+    procedure Datumkijelzes;
+    procedure DayRegister(_kelt: string;_ptsz: integer);
+    procedure Dirempty(_aktdir: string);
+    procedure EgytablaDekoder(_tabla: integer);
+//    procedure EmailElkuldes;
+    procedure FigyeloTimer(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
+    procedure GetIrodaAdatok;
+    procedure KeszletRegisztralas(_qDatum: string;_qiroda: integer);
+    procedure KilepoGombClick(Sender: TObject);
+    procedure KilepoIdozitoTimer(Sender: TObject);
+    procedure KorClear;
+    procedure KortombBetolto;
+    procedure MakeArfe(_dnev: string);
+    procedure MakeBf(_dNev: string);
+    procedure MakeBt(_dnev: string);
+    procedure MakeCimtar(_dNev: string);
+    procedure MakeDayBook(_dbkN: string);
+    procedure MakeGDBFile(_gdbPath: string);
+    procedure MakeIbTabla(_tss: integer; _tnev: string);
+    procedure MakeNarf(_dNev: string);
+    procedure MakeTesc(_dnev: string);
+    procedure MakeTrade(_dNev: string);
+    procedure MakeWafa(_dNev: string);
+    procedure MakeWuni(_dnev: string);
+    procedure MakeWZar(_dnev: string);
+    procedure MarkSundays(_naptnev: string);
+    procedure MFileDetected(_mFile: string);
+    procedure Napimentes;
+    procedure OldestDelete;
+    procedure Futomegszakitas;
+    procedure PermitKapcsol(_kibe: integer);
+    procedure SetByteTombWrite(_n: string; _k: string);
+    procedure SetUnnep(_unap: integer);
+    procedure StatusBeiro(_st: integer);
+    procedure StatusBeolvaso;
+    procedure StatusNullazo;
+    procedure TegnapMentese;
+    procedure TradeBedolgozas;
+    procedure UKNUllazas;
+
+
+    procedure ZarasControl;
+
+    function BnumDekod(_3betu: string):string;
+    function DataControl(): boolean;
+    function Dataread(_kod: byte):variant;
+    function DatumbolString(_dstring: string): string;
+    function DatumDekod(_datumkod: string): string;
+    function Dekbyte(_bss: integer): integer;
+    function DnemDekod(_dkod:string):string;
+    function DnemKod(_dnem: string): string;
+    function Feldolgozas(_apath: string):boolean;
+    function FelirtRekord(_tnev:string):integer;
+    function GetCimletDarab(_aDatum: string): integer;
+    function GetHowManyIdents(_betupar: string): integer;
+    function GEtOldest(): string;
+    function GetWesternTetel(_aDatum:string): integer;
+    function IdoDekod(_kodido: string):string;
+    function IntegDek(_5betu:string): real;
+    function Keszletkod(_sVal: integer): string;
+    function KitDekod(_kdatkod: string): string;
+    function Nulele(_nn: integer): string;
+    function PenztarDekod(_szams: string):integer;
+    function RealToStr(_rr: real): string;
+    function ScanEtar(_etnum: integer): integer;
+    function ScanIroda(_uznum: integer): integer;
+//    function SendMailMAPI:Integer;
+    function TextDekod(_szo: string):string;
+    function Turner(_szorend: string): string;
+    function Ukserverelerheto: boolean;
+    function VanIroda(_ptsz:integer):boolean;
+    function WinExecAndWait32(Path: PChar; Visibility: Word): integer;
+    procedure BitBtn2Click(Sender: TObject);
+    procedure FormClick(Sender: TObject);
+    procedure MERETGOMBClick(Sender: TObject);
+    procedure EmailBejegyzes;
+    procedure KISKEPTIMERTimer(Sender: TObject);
+    procedure NagyKepernyo;
+    procedure TILTOPANELClick(Sender: TObject);
+    procedure IbParancs(_ukaz: string);
+    
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form1: TForm1;
+  _tablaJelzo: byte;
+
+  // ======================= STRING ARRAYS =====================================
+
+  _angNapNev  : array[1..7] of string = ('MONDAY','TUESDAY','WEDNESDY','THURSDAY','FRIDAY',
+                                        'SATURDAY','SUNDAY');
+
+  _honev      : array[1..12] of string = ('január','február','március','április','május','junius',
+                    'július','augusztus','szeptember','október','november','december');
+
+  _iFile      : array[0..3] of string;
+  _mezosor    : array[1..9] of string;
+  _napnev     : array[1..7] of string = ('hétfõ','kedd','szerda','csütörtök','péntek',
+                     'szombat','vasárnap');
+
+ _eertektarNev: array[0..7] of string;
+
+  _uSdayClose : array[1..150] of string;
+  _cimsor     : array[1..150,1..22] of string;   //
+
+  _dnem       : array[1..22] of string = ('AUD','BGN','CAD','CHF','CNY','CZK','DKK','EUR','GBP',
+                'HRK','HUF','ILS','JPY','NOK','PLN','RON','RSD','RUB','SEK','TRY','UAH','USD');
+
+  xNevek      : array[1..10] of string = ('CIMT','NARF','ARFE','WAFA','WUNI','WZAR','TESC',
+                          'BF','BT','TRAD');
+
+  xTipusok    : array[1..11] of string = ('I','I','S','S','S','S','F','S','F','S','I');
+  xIBTip      : array[1..10] of integer = (2,2,2,2,2,2,2,2,2,2);
+
+  xUjmezo     : array[1..109] of string = ('AFA','AFA5','AFA','ALLAMPOLGAR','ANYJANEVE',
+                'ARFOLYAM','AZONOSITO','BANKJEGY','BIZONYLATSZAM','TIPUS',
+
+               'BRUTTO','CIMLET1','CIMLET2','CIMLET3','CIMLET4','CIMLET5','CIMLET6',
+               'CIMLET7','CIMLET8','CIMLET9',
+
+               'CIMLET10','CIMLET11','CIMLET12','CIMLET13','CIMLET14','COIN','DATUM','ELADASIARFOLYAM',
+               'ELLATMANY','ELOJEL',
+
+               'ELOZONEV','ELSZAMOLASIARFOLYAM','ENGEDMENYTIPUS','FOEGYSEG','FORINTERTEK',
+               'FOTEVEKENYSEG','HUFBE','HUFKI','HUFNYITO','HUFZARO',
+
+               'IDO','JOGISZEMELYNEV','KEPVISBEO','KEPVISELONEV','KIFIZETVE','LAKCIM',
+               'LAKCIMKARTYA','LEANYKORI','MEGBIZOSZAM','MEGBIZOTT',
+
+                'MEGBIZOTTBEOSZTASA','MEGBIZOTTNEVE','MEGBIZOTTSZAMA','METROBE','METROKI',
+               'METRONYITO','METROVISSZA','METROZARO','MTCNSZAM','NEV',
+
+               'NYITO','OKIRATSZAM','OKMANYTIPUS','OSSZESEN','OSSZESEN','OSSZESEN',
+               'PENZTAR','PENZTAROSNEV','PENZTARSZAM','PLOMBASZAM',
+
+               'SORSZAM','STORNO','STORNOBIZONYLAT','STORNOZOTTBIZONYLAT','SZALLITONEV',
+               'BRUTTO','SZAMLASZAM','SZULETESIHELY','SZULETESIIDO','PENZTAR',
+
+               'TARTOZKODASIHELY','TELEFONSZAM','TELEPHELYCIM','TESCOBE','TESCOKI',
+               'TESCONYITO','TESCOVISSZA','TESCOZARO','TETEL','TIPUS',
+
+               'TRANZAKCIOTIPUS','TRBPENZTAR','STORNOBIZONYLAT','UGYFELNEV','UGYFELSZAM',
+               'UGYFELTIPUS','UGYKEZELESIDIJ','UJARFOLYAM','USDBE','USDKI',
+
+               'USDNYITO','USDZARO','VALUTANEM','VETELIARFOLYAM','UGYFELNEV',
+               'UGYFELSZAM','ZARO','ELSZAMARFOLYAM','PENTAROSIMAX');
+
+  _prosnev   : array[1..150,1..8] of string;
+  _scimsor   : array[1..8,1..22] of string;
+  _uVarosnev,_uBoltnev,_uirodanev: array[1..150] of string;
+
+  // ======================= INTEGER ARRAYS ====================================
+
+  _eertektarszam  : array[1..8] of integer;
+  _etLiveShop     : array[1..8] of integer;
+  _unnep          : array[1..9] of integer;
+  XuJkOD          : array[1..109] of integer = (11,11,11,4,4,9,4,11,5,10,
+                                      11,2,2,2,2,2,2,2,2,2,
+                                      2,2,2,2,2,1,3,9,11,10,
+                                      4,9,1,1,11,4,11,11,11,11,
+                                      8,4,4,4,11,4,4,4,11,11,
+                                      4,4,11,11,11,11,11,11,4,4,
+                                      11,4,4,11,11,11,4,4,2,4,
+                                      4,1,5,5,4,11,4,4,4,4,
+                                      4,4,4,11,11,11,11,11,1,10,
+                                      4,4,4,4,11,10,11,9,11,11,
+                                      11,11,6,9,4,11,11,9,9);
+
+  _korzetIrodak      : array[1..8,1..25] of integer;
+  _korzetIrodaDb     : array[1..8] of integer;
+
+  _nvdb,_nedb,_npros : array[1..150,1..31] of integer;
+
+  _prosdb,_ehnapok,_ehVdb,_ehedb : array[1..150] of integer;
+  _sehnapok,_sehvdb,_sehedb      : array[1..8] of integer;
+  _snVdb,_snEdb                  : array[1..8,1..31] of integer;
+  _uzletszam                     : array[1..150] of integer;
+  _uErtekTar                     : array[1..150] of integer;
+
+  // ==================== REÁL ARRAYS ==========================================
+
+  _ehVasar,_ehEladas     : array[1..150] of real;
+  _nvetel,_neladas       : array[1..150,1..31] of real;
+  _snvetel,_snEladas     : array[1..8,1..31] of real;
+  _svKeszlet,_senkeszlet : array[1..9,1..22] of real;
+  _sehvasar,_seheladas   : array[1..8] of real;
+  _vkeszlet,_enKeszlet   : array[1..150,1..22] of real;
+
+  // =================== EGYÉB ARRAY VÁLTOZÓK ==================================
+
+  _byteTomb       : array[1..1024] of byte;
+  _kor            : array[1..55] of TShape;
+  _openshop       : array[1..150] of boolean;
+  _szinek         : array[1..6] of Tcolor = (clRed,clYellow,clBlue,clwhite,clLime,clAqua);
+
+  // ----------------- FILE VÁLTOZÓK -------------------------------------------
+
+  _olvas          : File of Byte;
+  _biras          : File of Byte;
+  _Tablo          : File of Byte;
+  _textiras       : TextFile;
+  _textolvas      : TextFile;
+
+
+  // ----------- REAL VÁLTOZÓK -------------------------------------------------
+
+  _arfolyam,
+
+
+  _sumvetel,
+  _sumeladas  : real;
+
+  // ---------------- BOOLEAN VÁLTOZÓK -----------------------------------------
+
+  _feldOke,
+  _flipflop,
+  _megVan,
+  _munkanapiCimlet,
+  _tabloOke,
+  _vanLetter,
+  _vankeszlet : boolean;
+
+  // --------------- EGYÉB VÁLTOZÓK --------------------------------------------
+
+  _aktszin    : TColor;
+
+  _mAdat      : variant;
+
+  _ido,
+  _munkaDatum,
+  _tablonapja,
+  _tegnap      : TDateTime;
+
+  _srec,
+  _srec2      : TSearchRec;
+  _aktshape   : TShape;
+
+
+  // ------------- STRING VÁLTOZÓK ---------------------------------------------
+
+  _inputdirectory : string = 'C:\RECEPTOR\MAIL\IN\';
+  _outputdirectory: string = 'c:\RECEPTOR\MAIL\OUT\';
+  _sorveg         : string = chr(13)+chr(10);
+
+  _adatFile,
+  _adatFileSample,
+  _adatPath,
+  _aktCimsor,
+  _aktCimzett,
+  _aktDatum,
+  _aktDbfFile,
+  _aktemailCim,
+  _aktfilenev,
+  _aktfilePath,
+  _aktGdbPath,
+  _aktido,
+  _aktIrodaNev,
+  _aktMezoSor,
+  _aktTargy,
+  _aktUzenet,
+  _aktvalutanem,
+  _archivePath,
+  _bizonylatSzam,
+  _bizSzam,
+  _blokkFejNev,
+  _blokkNum,
+  _blokktetNev,
+  _cimzettcime,
+  _cimzettneve,
+  _csatPath,
+  _dataLeiro,
+  _dataNev,
+  _dataType,
+  _datum,
+  _datumCim,
+  _datumString,
+  _delFile,
+  _eloFarok,
+  _elojel,
+  _evs,
+  _farok,
+  _fileTorzs,
+  _hos,
+  _idKod,
+  _jelszo,
+  _keres,
+  _kiterjesztes,
+  _kodjelszo,
+  _mamas,
+  _mBody,
+  _meret,
+  _mezo,
+  _mezoNev,
+  _mezoTip,
+  _mFileNev,
+  _mPath,
+  _munkaNap,
+  _napMezo,
+  _napStat,
+  _nff,
+  _okeFile,
+  _okePath,
+  _pcs,
+  _pathSample,
+  _penztarkod,
+  _penztarosNev,
+  _tablaNev,
+  _tablaNev2,
+  _tablonapstring,
+  _targetdir,
+  _tbkNev,
+  _tenynaps,
+  _times,
+  _tipus,
+  _tomorDatum,
+  _ugyfelnev,
+  _urCimsor,
+  _utBlokkNum,
+  _utDatum,
+  _utMentes,
+  _utolsoUkdatums,
+  _uzenet,
+  _valutanem,
+  _HOLNAP: STRING;
+
+
+  // ------------- INTEGER VÁLTOZÓK --------------------------------------------
+
+  _valutaDarab: integer = 22;
+
+  _address,
+  _afazaro,
+  _aktcimlet,
+  _aktErtektar,
+  _aktErtektarNev,
+  _aktev,
+  _aktho,
+  _aktIrodaszam,
+  _aktMezoDb,
+  _aktnap,
+  _aktpenztar,
+  _aktpenztarszam,
+  _aNapok,
+  _bizonylatStorno,
+  _bjegy,
+  _count,
+  _counter,
+  _dataCode,
+  _dnemDarab,
+  _eloev,
+  _eloho,
+  _ertek,
+  _ertekTarDarab,
+  _etsorszam,
+  _ev,
+  _evtized,
+  _hNap,
+  _ho,
+  _honap,
+  _hufzaro,
+  _identCount,
+  _irodaDarab,
+  _metrozaro,
+  _mezoKod,
+  _mezoss,
+  _mResult,
+  _nap,
+  _qq,
+  _paradb,
+  _permit,
+  _pointer,
+  _rateType,
+  _recno,
+  _rekordSzam,
+  _tescozaro,
+  _status,
+  _storno,
+  _sumeudb,
+  _sumvudb,
+  _sumeUgyfDb,
+  _sumvUgyfdb,
+  _szinPointer,
+  _tabla,
+  _tabloev,
+  _tabloho,
+  _tablonap,
+  _tetel,
+  _unnepdb,
+  _usdZaro,
+  _uzlet,
+  _uzletdb,
+  _vss,
+  _xTip: integer;
+
+  function stornodll: integer;stdcall; external 'c:\receptor\storno.dll' name 'stornodll';
+  function havikedvezmenyiro: integer;stdcall; external 'c:\receptor\kedviro.dll' name 'havikedvezmenyiro';
+  function makehavitablo(_para: string): integer; stdcall; external 'c:\receptor\maktablo.dll' name 'makehavitablo';
+
+implementation
+
+uses Unit2, Unit6, Unit5, Unit4, Unit3;
+
+{$R *.dfm}
+
+// =============================================================================
+                  procedure TForm1.FormActivate(Sender: TObject);
+// =============================================================================
+
+begin
+
+  Top    := 10;
+  Left   := 5;
+  Height := 90;
+
+  _meret := 'KICSI';
+  _flipflop := True;
+
+  UzenoPanel.Caption := '';
+  PermitKapcsol(1);
+
+  KortombBetolto;             // a jelzõ körök tömbbe irása
+  Korclear;                   // A körök színe: fehér
+
+  _szinPointer := 1;
+  _aktszin     := _szinek[1]; // Kezdõ kör színe: piros
+
+  _count := 0;  // a figyelö számlálói
+
+  GetIrodaAdatok;
+
+  // ===========================================================================
+
+  // _mamas = A naptár szerinti tényleges dátum:
+
+  _mamas := leftstr(datetostr(date),10);
+  _utolsoUkdatums := _mamas;
+
+  // Ami nem kell azt kikapcsolja
+
+  KilepoIdozito.Enabled := False;  // ez lép ki a receptorból
+  Figyelo.Enabled       := False;  // a tényleges figyelõ szolgálat
+
+  // Beolvassa az utolsó munkanapot (ami még nincs betablózva)
+  //  - jelszót  és Status-t  STATUS: 0 = még nincs benn minden zárás
+  //                                  1 = a zárások benn vannak
+  //                                  2 = Tablók össze vannak állítva
+  //                                  3 = Árfeltérités táblák készen vannak
+  //                                  4 = Az összes email ki van küldve
+  // ---------------------------------------------------------------------
+  // Beolvassa a rendszeradatokat
+  StatusBeolvaso;
+
+  // Ha nincs munkanap bejegyzés, akkor a munkanap a mai nap
+  if _munkaNap='' then
+    begin
+      _munkaNap := _mamas;
+      StatusNullazo;
+    end;
+
+  // ---------------------------------------------------------------------------
+
+  //  AZ UTOLSÓ TÁBLÁZATLAN (LEZÁRATLAN) NAP LÁTSZIK A KÉPERNYÕN
+
+  DatumKijelzes;   // a munkanap dátumát irja ki
+
+
+  // Ha ma még nem volt mentés, akkor rajta
+ //  if _utmentes<_mamas then TegnapMentese;
+
+
+  // ---------------------------------------------------------------------------
+
+  // Tömbökbe olvassa az irodák számát és nevét:
+  //  IRODADARAB ÉS ERTEKTARDARAB meghatározása
+
+  //     _uzletszam[0..idb-1] = 3,4,9,10 ....
+  //     _uvarosnev[0..idb-1] = 'Pécs','Pécs', ....
+  //     _uBoltnev[0..idb-1] = 'Metro','TESCO-2',..
+  //     _uErtektar[0..idb-1] = 120,120,10 ....
+  //     _uIrodanev[0..idb-1] = 'Pécs Metro','Pécs TESCO', ...
+
+  //     _eertektarszam[0..etdb-1] = 10,20,40,50,63,75...
+  //     _eertektarnev[0.. etdb-1] = 'szekszárd','szeged',....
+
+  //     _korzetirodak[0.. etdb-1, 0..24] = 10,11,12,13 ...
+  //     _korzetirodadb[0.. etdb-1] = 7,14,8, ...
+  //
+  // ------------------------------------------------------------
+
+  // %%%%%%%%%%%%%%%%%%%%%%%%%%%  FIGYELÖ INDUL  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  // Beinditjuk a figyelöórát
+
+  Figyelo.Enabled := True;
+
+
+end;
+
+//$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+// %%%%%%%%%%%%%%%%%%%%%%%% ITT INDUL A FIGYELÖ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+//  ============================================================================
+             procedure TForm1.FIGYELOTimer(Sender: TObject);
+// =============================================================================
+
+begin
+
+  ColorKor;
+  inc(_count);
+  if _count<4 then exit;
+
+
+  // ----------------------------------------------
+  // Minden 3-ik colorkör után érünk ide
+
+  // A figyelést leállitja:
+
+  Figyelo.Enabled := False;
+  _count := 0;
+
+  StatusBeolvaso;
+  if _permit=0 then exit;
+
+
+  // Az 'M' kiterjesztésü file-kat keresi:
+  // ==================== ELÖSZÖR KERESSÜK A MARKERFILET =======================
+
+  if FindFirst(_inputdirectory+'*.m', faAnyFile,_srec) = 0 then
+    begin
+      if _meret='KICSI' then Nagykepernyo;
+      REPEAT
+        // A megtalált Marker file : _mFilenev
+        _mFileNev := _sRec.Name;
+        _uzenet := 'Markerfile-t detektáltam !';
+        Memotabla.Lines.Add(_uzenet);
+        Uzenopanel.caption := _uzenet;
+        Uzenopanel.Repaint;
+
+      // A talált markerfile kiértékelése ás a csomag feldolgozása:
+
+      // ++++++++++++++++++++++++++++++++++++++++
+
+         MfileDetected(_mFileNev);  // CSOMAGFELDOLGOZÁS
+
+      // ++++++++++++++++++++++++++++++++++++++++
+
+
+      UNTIL FindNext(_sRec) <> 0;
+      FindClose(_srec);
+      if _meret='NAGY' then KiskepTimer.enabled := True;
+    end;
+
+
+   // --------------------------------------------------------------------------
+
+   Figyelo.Enabled := False;
+   Futomegszakitas;     // EGYÉB MEGSZAKITÁS ALATTI FELADATOK
+   Figyelo.Enabled := true;
+end;
+
+// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+//
+//                     CSOMAGFELDOLGOZÁS !!
+//
+// =============================================================================
+               procedure TForm1.MFileDetected(_mFile: string);
+// =============================================================================
+     // Találtam egy Markerfile-t : _MFile = 'CRAXDXBP.M'
+
+var _penztarOke: boolean;
+
+begin
+
+  Form1.Repaint;
+
+  // mpath = 'c:\receptor\mail\in\CRAXDXBP.M'
+
+  _mPath := _inputdirectory + _mfile;
+
+  // ----------------------------------------------
+  // _FILETORZS = 'CRAXDXBP'
+
+  _fileTorzs := leftstr(_mFile,length(_mFile)-2);
+
+  // ----------------------------------------------
+  // _AKTIRODASZAM = 13
+
+  _aktirodaSzam := PenztarDekod(_fileTorzs);
+
+
+  // ----------------------------------------------
+  // A marker file tartalm-t kiolvassa, majd ezek után már törölhetö:
+
+  Assignfile(_textolvas,_mPath);
+  reset(_textOlvas);
+  readln(_textOlvas,_mbody);
+  closeFile(_textOlvas);
+
+  DeleteFile(_mPath);
+
+  // ----------------------------------------------
+  // Létezik ez a pénztár ?
+
+  _penztaroke := VanIroda(_aktIrodaSzam); // pénztár nevet is megadja -> aktirodanev
+
+  // -----------------------------------------------------------------------
+  // Ha nem létezö iroda, akkor a markerfile-t törölni kell, és ennyi !
+
+   if not _penztarOke then
+     begin
+       MemoTabla.Lines.Add('NEM LÉTEZÕ PÉNZTÁRSZÁM !');
+       UzenoPanel.Caption := 'NEM LÉTEZÕ PÉNZTÁRSZÁM !';
+       Uzenopanel.Repaint;
+       exit;
+     end;
+
+  // ----------------------------------------------------------------------
+  // _AKTGDBPATH = 'c:\receptor\database\v13'
+
+  _aktGdbPath := 'C:\RECEPTOR\DATABASE\V'+inttostr(_aktIrodaSzam)+'.gdb';
+
+  // Ha a GDB file nem létezne ?? akkor létrehozza
+  MakeGDBFile(_aktgdbPath);
+
+
+  // -----------------------------------------------------
+  // Az IB DATABÁZIST RÁKAPCSOLJA A PÉNZTÁR GDB-JÉRE
+
+  IBDbase.connected := False;
+  IBDbase.Databasename := _aktGdbPath;
+
+  // ========== A MARKERFILE ALAPJÁN MEG KELL KERESNI A CSOMAGFILE-T
+
+  // _ADATFILESAMPLE = 'CRAXDXBP.*'
+  _adatFileSample := _fileTorzs + '.*';
+
+  // _PATHSAMPLE = 'C:\RECEPTOR\MAIL\IN\CRAXDXBP.*'
+  _pathSample := _inputdirectory + _adatFileSample;
+
+  // Ha nincs csomadfile ->  ennyi
+  if Findfirst(_pathSample,faAnyFile,_srec2)<>0 then
+    begin
+      FindClose(_srec2);
+      Memotabla.Lines.Add('Nem jött meg az adatállomány !');
+      UzenoPanel.Caption := 'Nem jött meg az adatállomány !';
+      UzenoPanel.Repaint;
+      Exit;
+    end;
+
+  // ------------- MEG VAN A CSOMAGFILE  ---------------------------
+
+  // Ezt az adatfile-t találta: 'CRAXDXBP.2IB'
+  _adatFile := _srec2.Name;
+
+  // Adatpath = 'c:\receptor\mail\in\CRAXDXBP.2IB'
+  _adatPath := _inputDirectory + _adatfile;
+  FindClose(_srec2);
+
+  // A CSOMAGFILE KITERJESZTÉSÉBÕL KIDERÜL A CSOMAG DÁTUMA
+
+  // Az adatfile Kiterjesztése: '2IB'
+  _kiterjesztes := midstr(_adatFile,length(_adatFile)-2,3);
+
+  // Aktdatum : '2009.01.02'
+  _aktDatum := KitDekod(_kiterjesztes);
+
+  // Datumstring = '2009 január 02 péntek'
+  _datumstring := datumbolString(_aktdatum);
+  if _datumString='' then
+    begin
+      DeleteFile(_mPath);
+      DeleteFile(_adatpath);
+      Exit;
+    end;
+
+  // ---------------------------------------------------------------------------
+  // A DÁTUM ALAPJÁN ADOTT A HAVI FILE-OK FARKA:
+
+  _uzenet := _aktirodaNev +' ' + _datumstring+'i zárását megkezdtem ...';
+  Memotabla.Lines.Add(_uzenet);
+  Uzenopanel.Caption := _uzenet;
+  Uzenopanel.Repaint;
+  
+  _farok := midstr(_aktdatum,3,2)+midstr(_aktdatum,6,2);
+
+  // %%%%%%%%%%%%%%%%%% CSOMAGBONTÁS INDITÁSA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  // Az adatfile feldolgozása
+
+  // ++++++++++++++++++++++++++++++++++++++++++++++
+
+     _feldOke := Feldolgozas(_adatPath);
+
+  // ++++++++++++++++++++++++++++++++++++++++++++++
+
+
+  // Mielött törölnénk a csomagfilet, elöbb archiváljuk azt, ha nem copy:
+
+  if _mBody<>'COPY' then
+    begin
+      _archivePath := 'c:\receptor\mail\archive\' + _adatFile;
+      if FileExists(_archivePath) then DeleteFile(_archivePath);
+      copyfileto(_adatpath,_archivePath);
+    end;
+
+
+  // -------------------------------------------------------
+  // MOST MAR TÖRÖLHETÖ A CSOMAGFILE
+
+  DeleteFile(_adatPath);
+
+  // -------------------------------------------------------------------
+  // HA A FELDOLGOZÁS SIKERTELEN VOLT NINCS MIT TENNI AZUTÁN
+
+  if not _feldoke then
+    begin
+      _uzenet := _aktirodanev+' SIKERTELEN NAPIZÁRÁS';
+      Memotabla.Lines.Add(_uzenet);
+      UzenoPanel.Caption := _uzenet;
+      UzenoPanel.Repaint;
+      exit;
+    end;
+
+
+  // ================= SIKERES FELDOLGOZÁS !! =================================
+  //  --------- visszajelezzük az irodának a csomag feldolgozásást ------------
+
+  // _okefile = 'OK13.OK'
+  _okefile := 'OK'+inttostr(_aktIrodaSzam)+'.OK';
+
+  // _okepath = 'c:\receptor\mail\out\_okefile
+  _okePath := _outputDirectory + _okeFile;
+
+   // Visszaigazolás felirása !!!
+
+  if not FileExists(_okePath) then
+    begin
+      AssignFile(_textiras,_okepath);
+      rewrite(_textiras);
+      write(_textiras,'OKE');
+      closeFile(_textiras);
+    end;
+
+
+  // A BEÉRKEZETT CSOMAG REGISZTRÁLÁSA A DAYBOOK TÁBLÁBAN :
+
+  DayRegister(_aktdatum,_aktirodaszam);
+  KeszletRegisztralas(_aktDatum,_aktIrodaSzam);
+
+  // Értesités a sikeres feldolgozásról
+  _uzenet := _aktIrodaNev+' '+ _datumstring+'-i zárása feldolgozva';
+  MemoTabla.Lines.Add(_uzenet);
+  Uzenopanel.Caption := _uzenet;
+  UzenoPanel.Repaint;
+  Memotabla.Lines.Add(dupestring('-',72));
+  _count := 8;
+end;
+
+// %%%%%%%%%%%%%%%%%%%%%% CSOMAGFELDOLGOZÁS KÉSZ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+// %%%%%%%%%%%%%%%%%%%%%%%%% ITT A CSOMAG TÉNYLEGES FELDOLGOZÁSA %%%%%%%%%%%%%%%
+// =============================================================================
+           function TForm1.Feldolgozas(_apath: string):boolean;
+// =============================================================================
+
+//                    APATH -- A CSOMAGFILE PATH-JA
+
+begin
+  // Default => sikertelenség
+  Result := false;
+  UzenoPanel.Caption := '';
+  Uzenopanel.Repaint;
+
+  // Megnyitja az adatfile-t: ------ OPEN PACKFILE -----------------
+
+
+  AssignFile(_olvas,_apath);
+  Reset(_olvas);
+
+  // ------------------- CSOMAG IDENTITÁS ----------------------------
+
+  // Az kódolás jele: 'N1'
+  Blockread(_olvas,_bytetomb,2);
+  _idKod := chr(_bytetomb[1])+chr(_bytetomb[2]);
+
+
+  // Ha az IDkód hibás -> adatfilet lezárja és ennyi
+
+  if (_idKod<>'N1') then
+    begin
+      CloseFile(_olvas);
+      exit;
+    end;
+
+  // =================== AZ 'N1' IDENTITÁSÚ CSOMAG =================
+
+  // Mehet az adatfile folyamatos beolvasása
+  while not eof(_olvas) do
+    begin
+
+      // ================ IBTÁBLA SORSZÁMA: ARFE,BF,BT,CIMT.. ETC ==============
+      // Elsö byte = Az aktuális tábla sorszáma (1-10 között)
+      BlockRead(_olvas,_bytetomb,1);
+      _tablaJelzo := _bytetomb[1];
+
+      // Ha nincs több tábla -> 255
+      If _tablaJelzo=255 then break;
+
+      if _tablaJelzo>100 then
+        begin
+          PersonalBedolgozas.showmodal;
+          Break;
+        end else
+        begin
+           // A 255 jelzi, hogy nincs több tábla:
+           if _tablajelzo=255 then break;
+        end;
+
+      // Egy tábla adatainak bedolgozása, paraméter a sorszáma 1-11 között:
+      EgytablaDekoder(_tablaJelzo);
+    end;
+
+  // Végül zárja az adatfile-t !
+  CloseFile(_olvas);
+
+  Result := DataControl();
+end;
+
+
+
+// %%%%%%%%%%%%%%%%%%%%%% EGY ÚJ KÓDOLÁSÚ TÁBLA FELDOLGOZÁSA %%%%%%%%%%%%%%%%%%%
+// ===================================================== =======================
+                procedure TForm1.EgytablaDekoder(_tabla: integer);
+// =============================================================================
+
+
+// Egy tábla bedolgozása (Paraméter: a tábla sorszáma 1-11 között)
+
+
+
+begin
+
+  // CSAK ÉRVÉNYES TÁBLASZÁMÚ ADATTÁBLÁT TUD BEDOLGOZNI
+  if (_tabla<1) or (_tabla>10) then exit;
+
+  // ---------------------------- REKORDSZÁM  ----------------------------------
+
+  // Beolvassa a táblába beirandó rekordok számát HI-LO
+  Blockread(_olvas,_bytetomb,2);
+  _rekordszam := _byteTomb[2]+trunc(256*_bytetomb[1]);
+  if _rekordszam=0 then exit;
+  if _tabla=10 then
+    begin
+      TradeBedolgozas;
+      exit;
+    end;
+
+  // A bedolgozandó tábla neve:
+  _tablanev := Xnevek[_tabla];
+  _uzenet := _tablanev+' adatainak bedolgozása ...';
+
+  MemoTabla.Lines.Add(_uzenet);
+  UzenoPanel.Caption := _uzenet;
+  UzenoPanel.Repaint;
+
+  // ----------- GYÜJTÖTÁBLA NEVEKHEZ KELL FAROK ------------------------------
+
+  _xtip := XIBTIP[_tabla];
+  if _xtip=2 then _tablanev := _tablanev + _farok;
+
+  // Az aktuális tábla elökészitése és megnyitása:
+
+  // ------------- HA NINCS ILYEN HAVI TÁBLA A GDB-BEN AKKOR CSINÁL BELE -----------
+
+  MakeIBtabla(_tabla,_tablanev);
+  IBTabla.Close;
+  ibTabla.Tablename := _tablanev;
+  IBDbase.Close;
+
+  IBDbase.connected := True;
+  if ibTranz.Intransaction then ibTranz.commit;
+  ibTranz.StartTransaction;
+
+  // Ha 2-es tipusu tábla, akkor az aktnapi adatokat törölni kell !!
+
+  if _xTip=2 then
+    begin
+      _pcs := 'DELETE FROM '+_tablanev+' WHERE DATUM='+chr(39)+_aktdatum+chr(39);
+      with ibQuery do
+        begin
+          Close;
+          Sql.Clear;
+          Sql.Add(_pcs);
+          ExecSql;
+        end;
+    end;
+
+  ibTabla.Open;
+  ibTabla.Refresh;
+
+  // Az összes rekordot bedolgozza a gdb táblába:
+  _qq := 1;
+  while _qq<=_rekordszam do
+    begin
+
+       ibTabla.Append;
+       ibTabla.Edit;
+
+       // Ciklus fej a beérkezett mezöadatokhoz:
+       while true do
+          begin
+
+            // --------- MEZÖ SORSZÁM -----------------
+
+            Blockread(_olvas,_byteTomb,1);
+
+            // Az adatmezö sorszámát beolvassa a tömbböl:
+            _mezoSs := _byteTomb[1];
+
+            // A 255 mutatja, hogy nincs több mezö
+            if _mezoss=255 then break;
+
+            // Mezönév = a tábla aktuális mezõ neve
+            _mezonev := xUjmezo[_mezoss];
+
+            // Mezökod = Az aktuális mezõ kódolása: 1-11 között
+            _mezokod := xUjkod[_mezoss];
+
+            // Mezõtip = Az aktuális mezõ tipusa: Integer, Float, String
+            _mezotip := Xtipusok[_mezokod];
+
+            // A kód függvényében beolvassa az aktuális adatot:
+            _mAdat := Dataread(_mezokod);
+
+            // A mezõtipustól függöen beirja a táblába az aktuélis adatot
+            if _mezotip='I' then
+                 ibTabla.FieldbyName(_mezonev).asInteger := _mAdat;
+
+            if _mezotip='F' then
+                 ibTabla.FieldbyName(_mezonev).asFloat := _mAdat;
+
+            if _mezotip='S' then
+                 ibTabla.FieldbyName(_mezonev).asString := _mAdat;
+          end;
+        IbTabla.Post;
+        inc(_qq);
+    end;
+  ibTranz.commit;
+  ibTabla.close;
+end;
+
+// %%%%%%%%%%%%%%%%%%%%%%% ÚJ KÓDOLÁSÚ DEKODER VÉGE %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+// =============================================================================
+              function TForm1.VanIroda(_ptsz:integer):boolean;
+// =============================================================================
+
+// MEGNÉZI, HOGY VAN-E ILYEN SZÁMÚ PÉNZTÁR
+
+var i: integer;
+
+begin
+  Result := false;
+  for i := 0 to _irodadarab do
+    begin
+      if _uzletszam[i]=_ptsz then
+        begin
+          _aktIrodaNev := _uirodanev[i];
+          Result := True;
+          Break;
+        end;
+    end;
+end;
+
+// =============================================================================
+              function Tform1.Dataread(_kod: byte):variant;
+// =============================================================================
+
+
+var _kodszo,_text: string;
+    _th,j: integer;
+    _float: real;
+
+begin
+  case _kod of
+     1: begin
+          BlockRead(_olvas,_byteTomb,1);
+          J := _byteTomb[1];
+          result := J;
+        end;
+
+     2: begin
+          Blockread(_olvas,_byteTomb,2);
+          result := _bytetomb[2]+trunc((256*_byteTomb[1]));
+        end;
+
+     3: begin
+         (* Kódolt dátum dekódolása *)
+         BlockRead(_olvas,_bytetomb,3);
+         _kodszo := chr(_bytetomb[1]) + chr(_bytetomb[2]) + chr(_bytetomb[3]);
+         result := Datumdekod(_kodszo);
+       end;
+
+     4: begin
+          (* Kódolt szöveg kifejtése *)
+          BlockRead(_olvas,_bytetomb,1);
+
+          (* Th = a kódolt szöveg hossza *)
+          _th := _bytetomb[1];
+          result := '';
+          if _th>0 then
+            begin
+              BlockRead(_olvas,_byteTomb,_th);
+              _kodszo := '';
+              for j := 1 to _th do
+                begin
+                   _kodszo := _kodszo + chr(_bytetomb[j]);
+                end;
+              result := TextDekod(_kodszo);
+            end;
+        end;
+
+     5: begin
+          (* kódolt blokkszám kibontása *)
+          BlockRead(_olvas,_bytetomb,3);
+          _kodszo := chr(_bytetomb[1]) + chr(_bytetomb[2]) + chr(_bytetomb[3]);
+          _text := Bnumdekod(_kodszo);
+          result := _text;
+        end;
+
+     6: begin
+          (* Kódolt valutanem kibontása *)
+          BlockRead(_olvas,_bytetomb,2);
+          _kodszo := chr(_bytetomb[1]) + chr(_bytetomb[2]);
+          _text := DnemDekod(_kodszo);
+          result := _text;
+        end;
+
+     7: begin
+          (* 5 byte-on kódolt lebegõpontos szám *)
+          BlockRead(_olvas,_bytetomb,5);
+          _kodszo := chr(_bytetomb[1]) + chr(_bytetomb[2]) + chr(_bytetomb[3]);
+          _kodszo := _kodszo + chr(_bytetomb[4])+chr(_bytetomb[5]);
+          _float := IntegDek(_kodszo);
+          result := _float;
+        end;
+
+     8: begin
+          (* Kódolt idõstring *)
+          BlockRead(_olvas,_bytetomb,3);
+          _kodszo := chr(_bytetomb[1]) + chr(_bytetomb[2]) + chr(_bytetomb[3]);
+          result := Idodekod(_kodszo);
+        end;
+
+     9: begin
+          (* Árfolyam érték dekodolása *)
+          BlockRead(_olvas,_bytetomb,5);
+          _kodszo := chr(_bytetomb[1])+chr(_bytetomb[2])+chr(_bytetomb[3]);
+          _kodszo := _kodszo + chr(_bytetomb[4])+chr(_bytetomb[5]);
+          _float := IntegDek(_kodszo);
+          result := _float/10000;
+        end;
+
+    10: begin
+          Blockread(_olvas,_bytetomb,1);
+          result := chr(_bytetomb[1]);
+        end;
+
+    11: begin
+          (* 5 byte-on kódolt lebegõpontos szám egesz resze *)
+          BlockRead(_olvas,_bytetomb,5);
+          _kodszo := chr(_bytetomb[1]) + chr(_bytetomb[2]) + chr(_bytetomb[3]);
+          _kodszo := _kodszo + chr(_bytetomb[4])+chr(_bytetomb[5]);
+          _float := IntegDek(_kodszo);
+          result := trunc(_float);
+        end;
+  end;
+end;
+
+
+// SSSSSSSSSSSSSS    DEKODER FUNKCIOK   SSSSSSSSSSSSSSSSSSSSSSSS
+// =============================================================================
+            function Tform1.PenztarDekod(_szams: string):integer;
+// =============================================================================
+
+  (* 8 nagybetübõl álló stringbõl 1-999 közötti irodaszámot dekodol *)
+var i,_plusz,_b1,_b2,_egy,_tiz,_kodb,_szor,_betu: integer;
+     _ss: array[1..4] of string;
+     _par : string;
+
+begin
+   result := 0;
+   if length(_szams)<>8 then exit;
+   _szams := uppercase(_szams);
+   _ss[1] := midstr(_szams,3,2);
+   _ss[2] := midstr(_szams,7,2);
+   _ss[3] := leftstr(_szams,2);
+   _ss[4] := midstr(_szams,5,2);
+   _szams := '';
+   for i:= 1 to 4 do
+     begin
+       _par := _ss[i];
+       _b1 := ord(_par[1]);
+       _b2 := ord(_par[2]);
+       _egy := trunc((_b2-72)/2);
+       _tiz := _b1 - 64;
+       _kodb := (10*_tiz) + _egy;
+       _plusz := i + 1;
+       _szor := 10 -i;
+       _betu := trunc(_kodb/_szor) - _plusz;
+       _szams := _szams + chr(_betu + 48);
+     end;
+   result := strtoint(_szams);
+end;
+
+
+// =============================================================================
+             function TForm1.BnumDekod(_3betu: string):string;
+// =============================================================================
+
+(* Három karakterbõl álló stringbõl egy Blokkszámot dekódol *)
+var _a1,_hi,_lo,_jelzo,_le,_hhi,_num,_flag,_lenTail: integer;
+    _vekfu,_nums,_betu,_0minta,_tail: string;
+
+begin
+   result := '';
+   _0minta := chr(0)+chr(0)+chr(0);
+   if _3betu=_0minta then exit;
+   _a1 := ord(_3betu[1]);
+
+   _hi := ord(_3betu[2]);
+   _lo := ord(_3betu[3]);
+   _jelzo := trunc(_a1/16);
+   _le := trunc(16*_jelzo);
+   _hhi := _a1 - _le;
+   _num := (65536*_hhi)+(256*_hi)+_lo;
+   _nums := floattostr(_num);
+   _vekfu := 'VEKFU';
+   _flag := 0;
+   if _jelzo>5 then
+     begin
+       _flag := 1;
+       _jelzo := _jelzo - 2;
+     end;
+   _betu := midstr(_vekFu,_jelzo,1);
+
+   if _flag=0 then
+     begin
+       _tail := '00000' + _nums;
+       _lentail := length(_tail);
+       if _lentail>6 then _tail := midstr(_tail,_lenTail-5,6);
+       result := _betu + _tail;
+     end else
+     begin
+       _tail := '000000' + _nums;
+       _lentail := length(_tail);
+       if _lentail>5 then _tail := midstr(_tail,_lenTail-4,5);
+       result := _betu + 'F' +_tail;
+     end;
+end;
+
+// =============================================================================
+                function TForm1.DnemDekod(_dkod:string):string;
+// =============================================================================
+
+(* Két karakterbõl álló stringbõl 3 betüs valutanevet generál *)
+var _a1,_a2,_x1,_x2,_x3: integer;
+
+begin
+  result := '';
+  if _dkod='' then exit;
+  _a1 := ord(_dkod[1]);    //  2
+  _a2 := ord(_dkod[2]);    //  131
+
+  if (_a1+_a2)= 510 then
+    begin
+      result := 'END';
+      exit;
+    end;
+
+  _x1 := trunc(_a1/4);
+  _x2 := trunc((_a1 and 3) * 8) + trunc(_a2/32);
+  _x3 := (_a2 and 31);
+
+  result := chr(_x1+65)+chr(_x2+65)+chr(_x3+65);
+end;
+
+// =============================================================================
+               function TForm1.IntegDek(_5betu:string): real;
+// =============================================================================
+
+(* Öt karakteres stringbõl lebegõpontos számot generál *)
+var _a1,_a2,_a3,_a4,_a5,_negativ: integer;
+    _r0,_r1,_r2,_r3,_r4,_big: real;
+begin
+  result := 0;
+  if _5betu='' then exit;
+  _a1 := ord(_5betu[1]);
+  _a2 := ord(_5betu[2]);
+  _a3 := ord(_5betu[3]);
+  _a4 := ord(_5betu[4]);
+  _a5 := ord(_5betu[5]);
+  _negativ := 0;
+  if _a1>127 then
+    begin
+      _a1 := _a1 - 128;
+      _negativ := 1;
+    end;
+  _big := sqr(65536);
+  _r0 := (1.00*_a5);
+  _r1 := 256*_a4;
+  _r2 := 65536*_a3;
+  _r3 := 256*65536*_a2;
+  _r4 := _big*_a1;
+
+  result := _r0+_r1+_r2+_r3+_r4;
+
+  if _negativ>0 then result := result*(-1);
+end;
+
+
+// =============================================================================
+              function TForm1.IdoDekod(_kodido: string):string;
+// =============================================================================
+
+(* Három karakteres stringbõl idöstringet generál *)
+var _a1,_a2,_a3: integer;
+begin
+  result := '00:00:00';
+  if _kodido='' then exit;
+  _a1 := ord(_kodido[1]);
+  _a2 := ord(_kodido[2]);
+  _a3 := ord(_kodido[3]);
+  result := nulele(_a1)+':'+nulele(_a2)+':'+nulele(_a3);
+end;
+
+// =============================================================================
+           function TForm1.DatumDekod(_datumkod: string): string;
+// =============================================================================
+
+(* Három karakteres stringbõl egy dátumot dekódol *)
+
+var _a1,_a2,_a3,_a3t,_a3e: byte;
+     _a1s,_a2s,_a3s,_a4s: string;
+
+begin
+  result := '';
+  if _datumkod='' then exit;
+  _a1 := ord(_datumkod[1]);    // 194
+  _a2 := ord(_datumkod[2]);    // 62
+  _a3 := ord(_datumkod[3]);    // 98
+  _a1s := inttostr(_a1);
+  _a2s := inttostr(_a2);
+  if length(_a2s)=2 then _a2s := '0' + _a2s;
+
+  _a3t := trunc(_a3/10);
+  _a3s := chr(_a3t+48);
+  _a3e := _a3 - trunc(_a3t*10);
+  _a4s := chr(48+_a3e);
+
+  result := _a1s + _a3s + '.' + leftstr(_a2s,2)+'.'+midstr(_a2s,3,1)+ _a4s;
+
+end;
+
+// =============================================================================
+             function TForm1.TextDekod(_szo: string):string;
+// =============================================================================
+
+(* szöveg dekodolása *)
+var _len,_aa,i: integer;
+    _betu: string;
+
+begin
+   result := '';
+   _len := length(_szo);
+   for i:= 1 to _len do
+     begin
+       _betu := midstr(_szo,i,1);
+       _aa := ord(_betu[1]);
+       if _aa>127 then inc(_aa)
+       else if _aa>63 then _aa := _aa -32
+            else _aa := _aa + 32;
+       result := result + chr(_aa);
+     end;
+   result := turner(result);
+end;
+
+// =============================================================================
+             function TForm1.Turner(_szorend: string): string;
+// =============================================================================
+
+(* A szövegdekóder forditó rutinja *)
+var _hossz,_aa: integer;
+    _betu : string;
+
+begin
+  result := '';
+  if _szorend = '' then exit;
+  _hossz := length(_szorend);
+  while _hossz>0 do
+    begin
+      _betu := midstr(_szorend,_hossz,1);
+      _aa := ord(_betu[1]);
+      result := result + chr(_aa);
+      dec(_hossz);
+    end;
+end;
+
+
+// =============================================================================
+         function TForm1.KitDekod(_kdatkod: string): string;
+// =============================================================================
+
+(* Három betüs file-kiterjesztésböl egy dátumot generál *)
+
+var _nap,_ev: word;
+
+begin
+  result := '';
+  if _kdatkod='' then exit;
+  _nap := ord(_kdatkod[1]);
+  _ev := ord(_kdatkod[2]);
+  _honap := ord(_kdatkod[3]);
+  _ev := _ev + 2000 - 64;
+  _honap := trunc((_honap-64)/2);
+  if _nap>64 then _nap := _nap - 55
+  else _nap := _nap - 48;
+  result := inttostr(_ev)+'.'+nulele(_honap)+'.'+nulele(_nap);
+end;
+
+// =============================================================================
+          function TForm1.DatumbolString(_dstring: string): string;
+// =============================================================================
+
+
+var _sDatum: TDateTime;
+    _naps,_honapnev,_hnapnev: string;
+    _ho,_napss: integer;
+
+begin
+  Result := '';
+  Try
+    _sdatum := strtodate(_dstring);
+  except
+     exit;
+  end;
+  _evs := leftstr(_dstring,4);
+  _ho  := monthof(_sDatum);
+  _naps := midstr(_dstring,9,2);
+  _honapnev := _honev[_ho];
+  _napss := dayoftheweek(_sDatum);
+  _hnapnev := _napnev[_napss];
+  Result := _evs+' '+_honapnev+' '+ _naps + ' '+_hnapnev;
+end;
+
+// =============================================================================
+                       procedure TForm1.GetIrodaAdatok;
+// =============================================================================
+
+var _uu,_ee,i,j: integer;
+    _iStatus,_varos,_boltnev,_sdclose: string;
+    _erttar: integer;
+    
+begin
+  // Az IRODAK adatbázis megnyitása:
+
+  IrodakDbase.Connected := true;
+  _pcs := 'SELECT * FROM IRODAK' + _sorveg;
+  _pcs := _pcs + 'ORDER BY UZLET';
+
+  with IrodakQuery do
+    begin
+      Close;
+      Sql.clear;
+      sql.Add(_pcs);
+      Open;
+      First;
+    end;
+
+  _ertekTarDarab := 0;
+  _irodaDarab    := 0;
+
+  // Az értéktárak és irodák darabszámának meghatározása:
+
+  while not IrodakQuery.eof do
+    begin
+      _istatus := IrodakQuery.FieldByName('STATUS').asString;
+      if _istatus='E' then inc(_ertekTarDarab);
+      inc(_irodaDarab);
+      IrodakQuery.next;
+    end;
+
+  for i := 1 to _ertektardarab do
+    begin
+      _korzetIrodaDb[i] := 0;
+      for j := 1 to 25 do _korzetIrodak[i,j] := 0;
+    end;
+
+  // Az adatok tömbökbe olvasása:
+
+  IrodakQuery.First;
+
+  _uu := 1;  // pénztárak mutatói
+  _ee := 1;  // értéktárak mutatói
+
+  while not IrodakQuery.eof do
+    begin
+      with IrodakQuery do
+        begin
+          _uzlet   := FieldByName('UZLET').asinteger;
+          _varos   := FieldByname('VAROS').asString;
+          _boltnev := FieldByNAme('BOLTNEV').asString;
+          _istatus := FieldByName('STATUS').asString;
+          _erttar  := FieldByName('ERTEKTAR').asInteger;
+          _sdclose := FieldByName('SUNDAYCLOSE').asstring;
+        end;
+
+      _uzletszam[_uu] := _uzlet;
+      _uvarosnev[_uu] := trim(_varos);
+      _uboltnev[_uu]  := trim(_boltnev);
+      _uertektar[_uu] := _erttar;
+      _uirodanev[_uu] := trim(_varos)+' '+trim(_boltnev);
+      _uSdayClose[_uu]:= '';
+
+      if upperCase(_sdclose)='X' then _USdayClose[_uu] := 'X';
+
+      if _istatus='E' then
+        begin
+          _eertektarszam[_ee] := _erttar;
+          _eertektarnev[_ee]  := trim(_varos);
+          inc(_ee);
+        end;
+
+      inc(_uu);
+      IrodakQuery.Next;
+    end;
+
+  _uu := 1;
+  while _uu<=_irodaDarab do
+    begin
+      _aktirodaszam := _uzletszam[_uu];
+      _aktertektar  := _uertektar[_uu];
+      _eTsorszam    := Scanetar(_aktertektar);
+      _pointer      := 1+_korzetIrodaDb[_etsorszam];
+      _korzetIrodak[_etsorszam,_pointer] := _aktirodaszam;
+      _korzetIrodadb[_etsorszam] := _pointer;
+      inc(_uu);
+    end;
+
+  IrodakQuery.Close;
+  IrodakDbase.close;
+end;
+
+
+// =============================================================================
+               function TForm1.Nulele(_nn: integer): string;
+// =============================================================================
+
+
+begin
+  Result := inttostr(_nn);
+  if _nn<10 then result := '0' + result;
+end;
+
+
+procedure TForm1.KILEPOGOMBClick(Sender: TObject);
+begin
+  Figyelo.Enabled := False;
+  KilepoIdozito.Enabled := true;
+end;
+
+
+// =============================================================================
+           procedure TForm1.DayRegister(_kelt: string;_ptsz: integer);
+// =============================================================================
+
+
+//         A CSOMAG BEÉRKEZÉSÉNEK REGISZTRÁLÁSA A DAYBOOK-BAN
+
+
+var _naps,_dbknev: string;
+     _knap: integer;
+     _megvan: boolean;
+
+begin
+  _evs  := midstr(_kelt,3,2);
+  _hos  := midstr(_kelt,6,2);
+  _naps := midstr(_kelt,9,2);
+
+  _knap := strtoint(_naps);
+  _farok := _evs + _hos;
+  _dbkNev := 'DAYB' + _farok;
+
+  Daybooktabla.close;
+  DaybookDbase.close;
+  Daybookdbase.Connected := True;
+  DayBookTabla.TableName := _dbkNev;
+  if not Daybooktabla.Exists then MakeDayBook(_dbknev);
+
+  DayBookdbase.Connected := true;
+  if DaybookTranz.InTransaction then DayBookTranz.Commit;
+  DaybookTranz.StartTransaction;
+  DayBookTabla.TableName := _dbkNev;
+  DaybookTabla.Open;
+  DaybookTabla.Refresh;
+  DayBookTabla.First;
+  _napmezo := 'N'+inttostr(_knap);
+
+  _megvan := DayBooktabla.Locate('PENZTAR',_ptsz,[]);
+  if not _Megvan then
+    begin
+      daybookTranz.commit;
+      dayBookTabla.close;
+      exit;
+    end;
+
+  with DayBookTabla do
+    begin
+      edit;
+      FieldByName(_napmezo).AsString := 'B';
+      Post;
+    end;
+
+  DayBookTranz.Commit;
+  DayBookTabla.Close;
+end;
+
+
+// %%%%%%%%%%% HA A PÉNZTÁRNAK NINCS ILYEN GDB-JE AKKOR CSINÁL %%%%%%%%%%%%%%%%
+// =============================================================================
+              procedure TForm1.MakeGDBFile(_gdbPath: string);
+// =============================================================================
+
+var Valutagdb: TIBdatabase;
+
+begin
+  if FileExistS(_gdbpATH) then exit;
+  ValutaGdb := TIbDatabase.Create(nil);
+  with ValutaGdb do
+    begin
+      Connected := False;
+      DatabaseName := _gdbPath;
+
+      Params.Add('USER ''SYSDBA''PASSWORD ''masterkey''');
+      Params.Add('DEFAULT CHARACTER SET WIN1250');
+
+      SqlDialect := 3;
+      LoginPrompt := False;
+      CreateDatabase;
+    end;
+  valutaGDb.Free;
+end;
+
+
+// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++3++
+//     HA NINCS A GDB-BAN ILYEN HAVI TÁBLA, AKKOR CSINÁL BELE
+// =============================================================================
+      procedure TForm1.MakeIbTabla(_tss: integer; _tnev: string);
+// =============================================================================
+
+begin
+  Ibtabla.close;
+  Ibtabla.Tablename := _tnev;
+  IbDbase.Connected := true;
+  if IBtabla.Exists then exit;
+
+  case _tss of
+    1: MakeCimtar(_tnev);
+    2: MakeNarf(_tnev);
+    3: MakeArfe(_tnev);
+    4: Makewafa(_tnev);
+    5: MakeWuni(_tnev);
+    6: MakeWzar(_tnev);
+    7: Maketesc(_tnev);
+    8: MakeBf(_tnev);
+    9: MakeBT(_tnev);
+   10: MakeTrade(_tnev);
+  end;
+end;
+
+
+// =============================================================================
+//                     CIMTYYMM CIMÜ TÁBLA LÉTREHOZÁSA
+// =============================================================================
+                  procedure TForm1.MakeCimtar(_dNev: string);
+// =============================================================================
+
+
+begin
+//  ibdbase.connected := false;
+//  ibdbase.DatabaseName := _aktgdbPath;
+//  ibdbase.Connected := true;
+//
+//  if Ibtranz.intransaction then IbTranz.commit;
+//  IbTranz.StartTransAction;
+
+
+  _pcs := 'CREATE TABLE ' + _dNev + ' ('+_sorveg;
+  _pcs := _pcs + 'DATUM CHAR (10) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'VALUTANEM CHAR (3) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'OSSZESEN INTEGER,'+_sorveg;
+  _pcs := _pcs + 'CIMLET1 INTEGER,'+_sorveg;
+  _pcs := _pcs + 'CIMLET2 INTEGER,'+_sorveg;
+  _pcs := _pcs + 'CIMLET3 INTEGER,'+_sorveg;
+  _pcs := _pcs + 'CIMLET4 INTEGER,'+_sorveg;
+  _pcs := _pcs + 'CIMLET5 INTEGER,'+_sorveg;
+  _pcs := _pcs + 'CIMLET6 INTEGER,'+_sorveg;
+  _pcs := _pcs + 'CIMLET7 INTEGER,'+_sorveg;
+  _pcs := _pcs + 'CIMLET8 INTEGER,'+_sorveg;
+  _pcs := _pcs + 'CIMLET9 INTEGER,'+_sorveg;
+  _pcs := _pcs + 'CIMLET10 INTEGER,'+_sorveg;
+  _pcs := _pcs + 'CIMLET11 INTEGER,'+_sorveg;
+  _pcs := _pcs + 'CIMLET12 INTEGER,'+_sorveg;
+  _pcs := _pcs + 'CIMLET13 INTEGER,'+_sorveg;
+  _pcs := _pcs + 'CIMLET14 INTEGER)';
+
+  ibParancs(_pcs);
+
+//  with IBquery do
+//    begin
+//      Close;
+//      Sql.Clear;
+//      Sql.Add(_pcs);
+//      ExecSql;
+//    end;
+
+
+
+  _pcs := 'CREATE INDEX IDX_'+_dnev+' ON '+_dnev+' (VALUTANEM)';
+  ibParancs(_pcs);
+
+//  with IBquery do
+//    begin
+//      Close;
+//      Sql.Clear;
+//      Sql.Add(_pcs);
+//      ExecSql;
+//    end;
+//
+//  IbTranz.commit;
+//  Ibquery.Close;
+end;
+
+
+// =============================================================================
+//                    ARFEYYMM NEVÜ TÁBLA LÉTREHOZÁSA
+// =============================================================================
+                procedure TForm1.MakeArfe(_dnev: string);
+// =============================================================================
+
+
+begin
+//  ibdbase.connected := false;
+//  ibdbase.DatabaseName := _aktgdbPath;
+//  ibdbase.Connected := true;
+//  if Ibtranz.intransaction then IbTranz.commit;
+//  IbTranz.StartTransAction;
+
+  _pcs := 'CREATE TABLE '+ _dNev + ' ('+_sorveg;
+  _pcs := _pcs + 'DATUM CHAR (10) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'VALUTANEM CHAR (3) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'ARFOLYAM DOUBLE PRECISION,'+_sorveg;
+  _pcs := _pcs + 'UJARFOLYAM DOUBLE PRECISION,'+_sorveg;
+  _pcs := _pcs + 'PENZTAROSNEV CHAR (25) CHARACTER SET WIN1250 COLLATE PXW_HUNDC,'+_sorveg;
+  _pcs := _pcs + 'BIZONYLATSZAM CHAR (7) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'BANKJEGY INTEGER,'+_sorveg;
+  _pcs := _pcs + 'ENGEDMENYTIPUS SMALLINT)';
+  ibParancs(_pcs);
+
+
+//  with IBquery do
+//    begin
+//      Close;
+//      Sql.Clear;
+//      Sql.Add(_pcs);
+//      ExecSql;
+//    end;
+
+  _pcs := 'CREATE INDEX IDX_'+_dnev+' ON  '+_dnev + ' (VALUTANEM)';
+  ibparancs(_pcs);
+
+//  with IBquery do
+//    begin
+//      Close;
+//      Sql.Clear;
+//      Sql.Add(_pcs);
+//      ExecSql;
+//    end;
+//
+//  IbTranz.commit;
+//  Ibquery.Close;
+end;
+
+
+// =============================================================================
+//                             BFYYMM TÁBLA KÉSZITÉSE
+// =============================================================================
+                       procedure TForm1.MakeBf(_dNev: string);
+// =============================================================================
+
+begin
+//  ibdbase.connected := false;
+//  ibdbase.DatabaseName := _aktgdbPath;
+//  ibdbase.Connected := true;
+//
+//  if Ibtranz.intransaction then IbTranz.commit;
+//  IbTranz.StartTransAction;
+
+  _pcs := 'CREATE TABLE '+_dnev+' ('+_sorveg;
+  _pcs := _pcs + 'DATUM CHAR (10) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'IDO CHAR (8) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'BIZONYLATSZAM CHAR (7) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'TIPUS CHAR (1) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'OSSZESEN INTEGER,'+_sorveg;
+  _pcs := _pcs + 'UGYFELTIPUS CHAR (1) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'UGYFELSZAM INTEGER,'+_sorveg;
+  _pcs := _pcs + 'UGYFELNEV CHAR (25) CHARACTER SET WIN1250 COLLATE PXW_HUN,'+_sorveg;
+  _pcs := _pcs + 'TETEL INTEGER,'+_sorveg;
+  _pcs := _pcs + 'PENZTAROSNEV CHAR (25) CHARACTER SET WIN1250 COLLATE PXW_HUN,'+_sorveg;
+  _pcs := _pcs + 'PENZTAR CHAR (4) CHARACTER SET WIN1250 COLLATE PXW_HUN,'+_sorveg;
+  _pcs := _pcs + 'TRBPENZTAR CHAR (4) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'PLOMBASZAM CHAR (10) CHARACTER SET WIN1250 COLLATE WIN1250,' + _sorveg;
+  _pcs := _pcs + 'SZALLITONEV CHAR (20) CHARACTER SET WIN1250 COLLATE PXW_HUNDC,'+_sorveg;
+  _pcs := _pcs + 'STORNO SMALLINT,'+_sorveg;
+  _pcs := _pcs + 'STORNOBIZONYLAT CHAR (7) CHARACTER SET WIN1250 COLLATE WIN1250)';
+  ibparancs(_pcs);
+
+//  with IBquery do
+//    begin
+//      Close;
+//      Sql.Clear;
+//      Sql.Add(_pcs);
+//      ExecSql;
+//    end;
+//  IbTranz.commit;
+//  Ibquery.Close;
+
+end;
+
+
+// =============================================================================
+//                           BTYYMM TÁBLA KÉSZITÉSE
+// =============================================================================
+                      procedure TForm1.MakeBt(_dnev: string);
+// =============================================================================
+
+
+begin
+//  ibdbase.connected := false;
+//  ibdbase.DatabaseName := _aktgdbPath;
+//  ibdbase.Connected := true;
+//
+//  if Ibtranz.intransaction then IbTranz.commit;
+//  IbTranz.StartTransAction;
+
+  _pcs := 'CREATE TABLE ' + _dNev + ' ('+_sorveg;
+  _pcs := _pcs + 'BIZONYLATSZAM CHAR (7) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'DATUM CHAR (10) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'VALUTANEM CHAR (3) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'BANKJEGY INTEGER,'+_sorveg;
+  _pcs := _pcs + 'ARFOLYAM DOUBLE PRECISION,'+_sorveg;
+  _pcs := _pcs + 'ELSZAMOLASIARFOLYAM DOUBLE PRECISION,'+_sorveg;
+  _pcs := _pcs + 'FORINTERTEK INTEGER,'+_sorveg;
+  _pcs := _pcs + 'ELOJEL CHAR (1) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'COIN SMALLINT,'+_sorveg;
+  _pcs := _pcs + 'STORNO SMALLINT)';
+  ibparancs(_pcs);
+
+
+//   with IBquery do
+//    begin
+//      Close;
+//      Sql.Clear;
+//      Sql.Add(_pcs);
+//      ExecSql;
+//    end;
+
+
+  _pcs := 'CREATE INDEX  IDX_'+_dnev+' ON '+_dnev+' (BIZONYLATSZAM)';
+  ibParancs(_pcs);
+
+
+//  with IBquery do
+//    begin
+//      Close;
+//      Sql.Clear;
+//      Sql.Add(_pcs);
+//      ExecSql;
+//    end;
+//
+//  IbTranz.commit;
+//  Ibquery.Close;
+
+end;
+
+
+// =============================================================================
+//                           NARFYYMM TÁBLA KÉSZITÉSE
+// =============================================================================
+                     procedure TForm1.MakeNarf(_dNev: string);
+// =============================================================================
+
+
+begin
+//  ibdbase.connected := false;
+//  ibdbase.DatabaseName := _aktgdbPath;
+//  ibdbase.Connected := true;
+//
+//  if Ibtranz.intransaction then IbTranz.commit;
+//  IbTranz.StartTransAction;
+
+  _pcs := 'CREATE TABLE ' + _dNev + ' ('+_sorveg;
+  _pcs := _pcs + 'DATUM CHAR (10) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'VALUTANEM CHAR (3) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'VETELIARFOLYAM DOUBLE PRECISION,'+_sorveg;
+  _pcs := _pcs + 'ELADASIARFOLYAM DOUBLE PRECISION,'+_sorveg;
+  _pcs := _pcs + 'ELSZAMOLASIARFOLYAM DOUBLE PRECISION,'+_sorveg;
+  _pcs := _pcs + 'NYITO INTEGER,'+_sorveg;
+  _pcs := _pcs + 'ZARO INTEGER)';
+  ibparancs(_pcs);
+
+//   with IBquery do
+//    begin
+//      Close;
+//      Sql.Clear;
+//      Sql.Add(_pcs);
+//      ExecSql;
+//    end;
+
+  _pcs := 'CREATE INDEX IDX_'+_dnev+' ON '+_dnev+' (VALUTANEM)';
+  ibParancs(_pcs);
+
+
+//  with IBquery do
+//    begin
+//      Close;
+//      Sql.Clear;
+//      Sql.Add(_pcs);
+//      ExecSql;
+//    end;
+//
+//  IbTranz.commit;
+//  Ibquery.Close;
+
+end;
+
+
+// =============================================================================
+//                           TESCYYMM TÁBLA KÉSZITÉSE
+// =============================================================================
+                     procedure TForm1.MakeTesc(_dnev: string);
+// =============================================================================
+
+
+begin
+//  ibdbase.connected := false;
+//  ibdbase.DatabaseName := _aktgdbPath;
+//  ibdbase.Connected := true;
+//
+//  if Ibtranz.intransaction then IbTranz.commit;
+//  IbTranz.StartTransAction;
+
+  _pcs := 'CREATE TABLE ' + _dNev + ' ('+_sorveg;
+  _pcs := _pcs + 'DATUM CHAR (10) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'BIZONYLATSZAM CHAR (7) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'TIPUS CHAR (1) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'UGYFELSZAM INTEGER,'+_sorveg;
+  _pcs := _pcs + 'UGYFELNEV CHAR (25) CHARACTER SET WIN1250 COLLATE PXW_HUN,'+_sorveg;
+  _pcs := _pcs + 'SZAMLASZAM CHAR (15) CHARACTER SET WIN1250 COLLATE PXW_HUN,'+_sorveg;
+  _pcs := _pcs + 'BRUTTO INTEGER,'+_sorveg;
+  _pcs := _pcs + 'AFA5 INTEGER,'+_sorveg;
+  _pcs := _pcs + 'AFA INTEGER,'+_sorveg;
+  _pcs := _pcs + 'OSSZESEN INTEGER)';
+  ibParancs(_pcs);
+
+
+//   with IBquery do
+//    begin
+//      Close;
+//      Sql.Clear;
+//      Sql.Add(_pcs);
+//      ExecSql;
+//    end;
+//  IbTranz.commit;
+//  Ibquery.Close;
+
+end;
+
+
+// =============================================================================
+//                           WAFAYYMM TÁBLA KÉSZITÉSE
+// =============================================================================
+                    procedure TForm1.MakeWafa(_dNev: string);
+// =============================================================================
+
+begin
+//  ibdbase.connected := false;
+//  ibdbase.DatabaseName := _aktgdbPath;
+//  ibdbase.Connected := true;
+//
+//  if Ibtranz.intransaction then IbTranz.commit;
+//  IbTranz.StartTransAction;
+
+  _pcs := 'CREATE TABLE ' + _dNev + ' ('+_sorveg;
+  _pcs := _pcs + 'FOEGYSEG SMALLINT,'+_sorveg;
+  _pcs := _pcs + 'PENZTARSZAM INTEGER,'+_sorveg;
+  _pcs := _pcs + 'UGYFELSZAM INTEGER,'+_sorveg;
+  _pcs := _pcs + 'DATUM CHAR (10) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'SORSZAM CHAR (9) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'SZAMLASZAM CHAR (15) CHARACTER SET WIN1250 COLLATE PXW_HUN,'+_sorveg;
+  _pcs := _pcs + 'BRUTTO INTEGER,'+_sorveg;
+  _pcs := _pcs + 'AFA INTEGER,'+_sorveg;
+  _pcs := _pcs + 'KEZELESISZAZALEK DOUBLE PRECISION,'+_sorveg;
+  _pcs := _pcs + 'UGYKEZELESIDIJ INTEGER,'+_sorveg;
+  _pcs := _pcs + 'KIFIZETVE INTEGER,'+_sorveg;
+  _pcs := _pcs + 'ELLATMANY INTEGER,'+_sorveg;
+  _pcs := _pcs + 'TRANZAKCIOTIPUS CHAR (2) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'STORNO SMALLINT,'+_sorveg;
+  _pcs := _pcs + 'STORNOBIZONYLAT CHAR (7) CHARACTER SET WIN1250 COLLATE WIN1250)';
+  ibParancs(_pcs);
+
+
+//  with IBquery do
+//    begin
+//      Close;
+//      Sql.Clear;
+//      Sql.Add(_pcs);
+//      ExecSql;
+//    end;
+//  IbTranz.commit;
+//  Ibquery.Close;
+
+end;
+
+
+// =============================================================================
+//                           WUNIYYMM TÁBLA KÉSZITÉSE
+// =============================================================================
+                    procedure TForm1.MakeWuni(_dnev: string);
+// =============================================================================
+
+
+begin
+//  ibdbase.connected := false;
+//  ibdbase.DatabaseName := _aktgdbPath;
+//  ibdbase.Connected := true;
+//
+//  if Ibtranz.intransaction then IbTranz.commit;
+//  IbTranz.StartTransAction;
+
+  _pcs := 'CREATE TABLE ' + _dNev + ' (' + _sorveg;
+  _pcs := _pcs + 'FOEGYSEG SMALLINT,' + _sorveg;
+  _pcs := _pcs + 'PENZTARSZAM INTEGER,' + _sorveg;
+  _pcs := _pcs + 'UGYFELSZAM INTEGER,' + _sorveg;
+  _pcs := _pcs + 'DATUM CHAR (10) CHARACTER SET WIN1250 COLLATE WIN1250,' + _sorveg;
+  _pcs := _pcs + 'SORSZAM CHAR (9) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'VALUTANEM CHAR (3) CHARACTER SET WIN1250 COLLATE WIN1250,' + _sorveg;
+  _pcs := _pcs + 'BANKJEGY INTEGER,' + _sorveg;
+  _pcs := _pcs + 'TRANZAKCIOTIPUS CHAR (2) CHARACTER SET WIN1250 COLLATE WIN1250,' + _sorveg;
+  _pcs := _pcs + 'UGYFELTIPUS CHAR (1) CHARACTER SET WIN1250 COLLATE WIN1250,' + _sorveg;
+  _pcs := _pcs + 'MTCNSZAM CHAR (10) CHARACTER SET WIN1250 COLLATE WIN1250,' + _sorveg;
+  _pcs := _pcs + 'PENZTAROSNEV CHAR (25) CHARACTER SET WIN1250 COLLATE PXW_HUN,' + _sorveg;
+  _pcs := _pcs + 'STORNO SMALLINT,' + _sorveg;
+  _pcs := _pcs + 'STORNOBIZONYLAT CHAR (7) CHARACTER SET WIN1250 COLLATE WIN1250)';
+  ibParancs(_pcs);
+
+//  with IBquery do
+//    begin
+//      Close;
+//      Sql.Clear;
+//      Sql.Add(_pcs);
+//      ExecSql;
+//    end;
+//  IbTranz.commit;
+//  Ibquery.Close;
+end;
+
+
+// =============================================================================
+//                             WZARYYMM TÁBLA KÉSZITÉSE
+// =============================================================================
+                       procedure TForm1.MakeWZar(_dnev: string);
+// =============================================================================
+
+
+begin
+//  ibdbase.connected := false;
+//  ibdbase.DatabaseName := _aktgdbPath;
+//  ibdbase.Connected := true;
+//
+//  if Ibtranz.intransaction then IbTranz.commit;
+//  IbTranz.StartTransAction;
+
+  _pcs := 'CREATE TABLE ' + _dNev + ' ('+_sorveg;
+  _pcs := _pcs + 'DATUM CHAR (10) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'USDNYITO INTEGER,'+_sorveg;
+  _pcs := _pcs + 'HUFNYITO INTEGER,'+_sorveg;
+  _pcs := _pcs + 'METRONYITO INTEGER,'+_sorveg;
+  _pcs := _pcs + 'TESCONYITO INTEGER,'+_sorveg;
+  _pcs := _pcs + 'USDBE INTEGER,'+_sorveg;
+  _pcs := _pcs + 'HUFBE INTEGER,'+_sorveg;
+  _pcs := _pcs + 'METROBE INTEGER,'+_sorveg;
+  _pcs := _pcs + 'TESCOBE INTEGER,'+_sorveg;
+  _pcs := _pcs + 'USDKI INTEGER,'+_sorveg;
+  _pcs := _pcs + 'HUFKI INTEGER,'+_sorveg;
+  _pcs := _pcs + 'METROKI INTEGER,'+_sorveg;
+  _pcs := _pcs + 'TESCOKI INTEGER,'+_sorveg;
+  _pcs := _pcs + 'USDZARO INTEGER,'+_sorveg;
+  _pcs := _pcs + 'HUFZARO INTEGER,'+_sorveg;
+  _pcs := _pcs + 'METROZARO INTEGER,'+_sorveg;
+  _pcs := _pcs + 'TESCOZARO INTEGER,'+_sorveg;
+  _pcs := _pcs + 'METROVISSZA INTEGER,'+_sorveg;
+  _pcs := _pcs + 'TESCOVISSZA INTEGER,'+_sorveg;
+  _pcs := _pcs + 'UGYKEZELESIDIJ INTEGER)';
+  ibParancs(_pcs);
+
+//   with IBquery do
+//    begin
+//      Close;
+//      Sql.Clear;
+//      Sql.Add(_pcs);
+//      ExecSql;
+//    end;
+
+
+  _pcs := 'CREATE INDEX IDX_'+_dnev+' ON '+_dnev+' (DATUM)';
+  ibParancs(_pcs);
+
+//  with IBquery do
+//    begin
+//      Close;
+//      Sql.Clear;
+//      Sql.Add(_pcs);
+//      ExecSql;
+//    end;
+//  IbTranz.commit;
+//  Ibquery.Close;
+
+end;
+
+
+// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+// ############################  RECEPTOR MEGSZAKITÁSA #########################
+// =============================================================================
+                  procedure TForm1.FutoMegszakitas;
+// =============================================================================
+
+var _munkad: TdateTime;
+
+begin
+
+  // Ha munkanap=_mamas ÉS time<23, akkor nincs mit tenni -> exit
+  //
+  // A ZARAS-CONTROL minden futómegszakítás elején lefut amennyiben a
+  // a STATUS=0;
+
+  // - amennyiben az összes pénztár státusza be van töltve (B, K, X), akkor
+  // a STATUS-t 1-re állítja:
+
+  // Ha A STATUS=1, akkor a tablókészítõ lefut és a statust 2-re állitja;
+  // Ha A STATUS=2, akkor az árfolyam eltérítésjelentö lefut és STATUS=3
+  // Ha a STATUS=3, akkor a Nagymenõ jelentés elkészül, és STATUS=4;
+  // Ha a STATUS=4, akkor a StornoBizonylatok gyüjtöje lefut, STATUS=5
+  // ha a STATUS=5, akkor a nap Kész, STATUS=0 és a munkanapot
+  //                a következõ !! napra állítja.
+  // Ha van elküldetlen levél, akkor probálja elküldeni
+  // ---------------------------------------------------------------------------
+
+  _vanLetter := False;
+  if Findfirst('c:\receptor\mail\mailstor\*.m',faAnyfile,_srec)=0 then
+    begin
+      _vanletter := true;
+      Findclose(_srec);
+    end;
+
+  if _vanLetter then GetLetter.Showmodal;
+
+
+  _mamas := leftstr(datetostr(date),10);
+  _ido := Time;
+  _times := Timetostr(_ido);
+
+  if midstr(_times,2,1)=':' then _times := '0' + _times;
+  _times := Leftstr(_times,5);
+
+  // Új nap virradt ránk ........
+  if _mamas>_utolsoUkDatums then
+    begin
+      if _utmentes<_mamas then TegnapMentese;
+      Uknullazas;
+      _utolsoUkdatums := _mamas;
+      sleep(2800);
+      Uzenopanel.Caption := '';
+      Uzenopanel.Repaint;
+    end;
+
+  StatusBeolvaso;  //   STATUS, JELSZO, MUNKANAP beolvasása
+
+  // Ha a tegnap már le van zárva, akkor nincs mit tenni:
+  if (_mamas=_munkaNap) AND (_times<'22:30') then exit;
+
+  ZarasControl; // Minden Zárás bejött ? Ha igen -> STATUS=1
+
+  // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  // a STATUS=1 jelzi, hogy mindem zárás bejött
+
+  if _Status=0 then exit;
+  _meret := 'KICSI';
+  MeretGombClick(Nil);
+  if _Status=1 then
+    begin
+      makehavitablo(_munkanap);
+      Statusbeiro(2);
+    end;
+      
+  if _Status=2 then
+    begin
+      havikedvezmenyiro;
+      Statusbeiro(3);
+    end;
+
+  if _Status=3 then Bigsum.Showmodal;
+  if _Status=4 then StornoBizonylatok.ShowModal;
+  if _status=5 then
+    begin
+      _munkad := strtodate(_munkanap);
+      _munkad := 1 + _munkad;
+      _holnap := leftstr(datetostr(_munkad),10);
+      _Munkanap := _holnap;
+      DatumKijelzes;
+      _flipflop := True;
+      _meret := 'NAGY';
+      MeretGombClick(Nil);
+      StatusBeiro(0);
+    end;
+
+  // HA NEM VOLT MENTES - AKKOR MENTSE LE AZ ADATBÁZISOKAT ÉS TAKARITSON
+
+ 
+//  EmailElkuldes;
+end;
+
+
+
+
+// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+// =============================================================================
+                      procedure TForm1.ZarasControl;
+// =============================================================================
+
+//     A MUNKANAP BEJEGYZÉSEIT VIZSGÁLJA A DAYBOOKBAN
+//    Ha egyiksem üres akkor a STATUST 1-RE állitja
+
+var _workDay: integer;
+
+begin
+  _tbknev  := 'DAYB'+midstr(_munkanap,3,2)+midstr(_munkanap,6,2);
+  _workday := strtoint(midstr(_munkanap,9,2));
+  _napMezo := 'N' + inttostr(_workday);
+
+  DayBookDbase.connected := True;
+  _pcs := 'SELECT * FROM '+ _tbknev;
+
+  with DayBookQuery do
+    begin
+      Close;
+      sql.Clear;
+      sql.Add(_pcs);
+      Open;
+      First;
+    end;
+
+  while not DayBookQuery.eof do
+    begin
+      _napstat := DayBookQuery.FieldByName(_napMezo).asstring;
+      _napstat := UpperCase(_napStat);
+
+      // Ha a pénztár nem zárt, kézzel se, zárva se volt, akkor tovább
+      // nem is vizsgálom, mert még nincs mindenki lezárva:
+
+      if (_napstat<>'B') and (_napStat<>'K') and (_napstat<>'X') then
+        begin
+          DayBookTabla.Close;
+          DayBookQuery.close;
+          dayBookDbase.close;
+          Exit;
+        end;
+      DayBookQuery.Next;
+    end;
+
+  DayBookQuery.Close;
+  DaybookDbase.close;
+  StatusBeiro(1);
+end;
+
+
+// =============================================================================
+                        procedure TForm1.StatusBeolvaso;
+// =============================================================================
+
+(*
+  Beolvassa a RENDSZER - tábla 5 adatát:
+
+             _munkanap =
+             _utmentes =
+               _status =
+               _jelszo =
+*)
+
+
+begin
+  RendszerDbase.close;
+  RendszerDbase.Connected := True;
+
+  with RendszerQuery do
+    begin
+      close;
+      Sql.Clear;
+      Sql.Add('SELECT * FROM RENDSZER');
+      Open;
+      _munkanap  := FieldByName('MUNKANAP').asString;
+      _utMentes  := FieldByname('UTMENTES').asString;
+      _status    := FieldByName('STATUS').asInteger;
+      _jelszo    := trim(FieldByName('JELSZO').asstring);
+      _kodJelszo := FieldByName('CURRPWORD').asstring;
+      _permit    := FieldByName('RECEPTORPERMIT').asInteger;
+
+      Close;
+    end;
+  RendszerDbase.close;
+  IF _permit=0 then tiltoPanel.Caption := 'LETILTVA'
+  else TiltoPanel.Caption := 'MEHET';
+  TiltoPanel.Repaint;
+end;
+
+// =============================================================================
+                           procedure TForm1.StatusNullazo;
+// =============================================================================
+
+begin
+  _pcs := 'UPDATE RENDSZER SET MUNKANAP=' +chr(39)+_mamas+chr(39)+',';
+  _pcs := _pcs + 'STATUS=0';
+
+  RendszerDbase.Connected := true;
+  if RendszerTranz.InTransaction then RendszerTranz.Commit;
+  RendszerTranz.StartTransaction;
+  with RendszerQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Add(_pcs)
+    end;
+  RendszerTranz.commit;
+  RendszerDbase.Close;
+end;
+
+
+// =============================================================================
+             function TForm1.ScanEtar(_etnum: integer): integer;
+// =============================================================================
+
+var z: integer;
+
+begin
+  Result := 0;
+  for z := 1 to _ertektardarab do
+    begin
+      if _etnum=_eertektarszam[z] then
+        begin
+          Result := z;
+          Break;
+        end;
+    end;
+end;
+
+
+
+// =============================================================================
+             procedure TForm1.KILEPOIDOZITOTimer(Sender: TObject);
+// =============================================================================
+
+begin
+  KilepoIdozito.Enabled := False;
+  Application.Terminate;
+end;
+
+
+// =============================================================================
+                        procedure TForm1.DatumKijelzes;
+// =============================================================================
+
+begin
+  _munkadatum := strtodate(_munkanap);
+  _ev := yearof(_munkaDatum);
+  _ho := monthof(_munkaDatum);
+  _nap := dayof(_munkaDatum);
+  _hnap := dayoftheweek(_munkadatum);
+
+  _datumcim := inttostr(_ev)+' '+ _honev[_ho]+' '+inttostr(_nap)+' '+ _napnev[_hnap];
+  DatumPanel.Caption := _datumCim;
+  DatumPanel.Repaint;
+end;
+
+// =============================================================================
+                  procedure TForm1.MakeDayBook(_dbkN: string);
+// =============================================================================
+
+var
+    z: integer;
+    _aktsunday: string;
+begin
+  Ibdbase.Close;
+  Ibdbase.DatabaseName := 'c:\receptor\database\daybook.gdb';
+  IbDbase.Connected := True;
+  if ibTranz.inTransaction then ibTranz.Commit;
+  ibTranz.StartTransaction;
+  _pcs := 'CREATE TABLE '+_dbkN+' ('+_sorveg;
+  _pcs := _pcs + 'PENZTAR INTEGER,'+_sorveg;
+
+  for z := 1 to 30 do
+      _pcs := _pcs + 'N' + inttostr(z)+' CHAR (1) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+
+  _pcs := _pcs + 'N31 CHAR (1) CHARACTER SET WIN1250 COLLATE WIN1250)';
+
+  with ibQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Add(_pcs);
+      ExecSql;
+    end;
+
+  _pcs := 'CREATE INDEX IDX_' +_dbkN + ' ON ' + _dbkn + ' (PENZTAR)';
+  with ibQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Add(_pcs);
+      ExecSql;
+    end;
+
+  ibTranz.commit;
+
+  ibTranz.StartTransaction;
+  _qq := 0;
+  while _qq<_irodadarab do
+    begin
+      _aktpenztar := _uzletszam[_qq];
+      _aktsunday := _uSdayClose[_qq];
+      _pcs := 'INSERT INTO ' + _dbkn + ' (PENZTAR) VALUES ('+inttostr(_aktpenztar)+')';
+      with ibQuery do
+        begin
+          Close;
+          Sql.Clear;
+          Sql.Add(_pcs);
+          ExecSql;
+        end;
+      if _aktsunday = 'X' then
+        begin
+          MarkSundays(_dbkn);
+          _pcs := 'UPDATE '+_dbkn+_sorveg+_pcs;
+          with IbQuery do
+            begin
+              Close;
+              Sql.Clear;
+              Sql.Add(_pcs);
+              ExecSql;
+            end;
+        end;
+      inc(_qq);
+    end;
+  ibTranz.Commit;
+  ibQuery.Close;
+end;
+
+
+// =============================================================================
+                 procedure TForm1.MarkSundays(_naptnev: string);
+// =============================================================================
+
+
+var i,_mev,_mho,_utolsonap,_mnap,_hetnap,_aktunnep: integer;
+    _evhos,_das,_dastr,_tema: string;
+    _mDatum: TdateTime;
+
+begin
+  _unnepdb := 0;
+  for i := 1 to 9 do _unnep[i] := 0;
+  _evhos := midstr(_naptnev,5,4);
+
+  _mev := 2000 + strtoint(leftstr(_evhos,2));
+  _mho := strtoint(midstr(_evhos,3,2));
+  _das := '20'+ leftstr(_evhos,2)+'.'+midstr(_evhos,3,2)+'.';
+  _utolsonap := daysinamonth(_mev,_mho);
+  _mnap := 1;
+  while _mnap<=_utolsoNap do
+    begin
+      _dastr := _das + nulele(_mNap);
+      _mDatum := strtodate(_dastr);
+      _hetnap := Dayoftheweek(_mDatum);
+      if _hetnap=7 then
+        begin
+          inc(_unnepdb);
+          _unnep[_unnepdb] := _mNap;
+        end;
+      inc(_mNap);
+    end;
+
+  case _mho of
+    1: setUnnep(1);
+    3: setunnep(15);
+    5: setUnnep(1);
+    8: setUnnep(20);
+   10: setunnep(23);
+   12: begin
+         setunnep(25);
+         setunnep(26);
+       end;
+  end;
+
+  _pcs := 'UPDATE ' + _naptnev + _sorveg;
+  _pcs := 'SET ';
+
+  for i := 1 to _unnepdb do
+    begin
+      _aktunnep := _unnep[i];
+      _tema := 'N'+inttostr(_aktunnep);
+      _pcs := _pcs + _tema+'='+chr(39)+'X'+chr(39)+', ';
+    end;
+
+  _pcs := leftstr(_pcs,length(_pcs)-2);
+  _pcs := _pcs + _sorveg + 'WHERE PENZTAR='+inttostr(_aktpenztar);
+
+end;
+
+// =============================================================================
+                    procedure TForm1.SetUnnep(_unap: integer);
+// =============================================================================
+
+var _qz: integer;
+
+begin
+  _qz := 1;
+  while _qz<=_unnepdb do
+    begin
+      if _unnep[_qz]=_unap then exit;
+      inc(_qz);
+    end;
+  inc(_unnepdb);
+  _unnep[_unnepdb] := _unap;
+end;
+
+
+// =============================================================================
+                          procedure TForm1.NapiMentes;
+// =============================================================================
+
+
+var _hetnap: integer;
+
+begin
+  _hetnap := dayoftheweek(now);
+  _targetdir := 'C:\RECEPTOR\MENTES\'+_angNapNev[_hetnap];
+  DirEmpty(_targetdir);
+  Mentes.showModal;
+end;
+
+// =============================================================================
+            procedure TForm1.Dirempty(_aktdir: string);
+// =============================================================================
+
+var _kerFile,_aktfile: string;
+    _fileker : TSearchRec;
+
+begin
+
+   if not DirectoryExists(_aktDir) then
+     begin
+       CreateDir(_aktDir);
+       exit;
+     end;
+
+  _kerFile := _aktdir + '\*.*';
+  if FindFirst(_kerFile, faAnyfile, _fileker) = 0 then
+    begin
+      repeat
+        _aktfile := _FileKer.Name;
+        if leftStr(_aktfile,1)<>'.' then DeleteFile(_aktdir+'\'+_aktfile);
+      until FindNext(_fileKer) <> 0;
+      FindClose(_fileKer);
+    end;
+end;
+
+
+// =============================================================================
+                           procedure TForm1.TegnapMentese;
+// =============================================================================
+
+(*
+   - Kitörli a mail\out könyvtárat
+   - Beolvassa a munkanapot
+   - Ha a mentés régebbi a munkanapnál, akkor backup
+*)
+
+begin
+  ClearDirectory('c:\receptor\mail\out\*.ok');
+  StatusBeolvaso;
+
+  if _utmentes = _mamas then exit;
+
+  Napimentes;
+
+  RendszerDbase.close;
+  RendszerDbase.Connected := True;
+  if RendszerTranz.inTransaction then RendszerTranz.Commit;
+  RendszerTranz.StartTransaction;
+
+  _pcs := 'UPDATE RENDSZER SET UTMENTES='+chr(39)+_mamas+chr(39);
+
+  with RendszerQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Add(_pcs);
+      ExecSql;
+    end;
+  RendszerTranz.Commit;
+  RendszerDbase.Close;
+  _utmentes := _mamas;
+end;
+
+// =============================================================================
+       function TForm1.WinExecAndWait32(Path: PChar; Visibility: Word): integer;
+// =============================================================================
+
+var Msg: TMsg;
+    lpExitCode: cardinal;
+    StartupInfo: TStartupInfo;
+    ProcessInfo: TProcessInformation;
+
+begin
+  FillChar(StartupInfo, SizeOf(TStartupInfo), 0);
+  with StartupInfo do
+    begin
+      cb := SizeOf(TStartupInfo);
+      dwFlags := STARTF_USESHOWWINDOW or STARTF_FORCEONFEEDBACK;
+      wShowWindow := visibility; {you could pass sw_show or sw_hide as parameter}
+    end;
+
+  if CreateProcess(nil, path, nil, nil, False, NORMAL_PRIORITY_CLASS,
+                                      nil, nil, StartupInfo,ProcessInfo) then
+
+    begin
+      repeat
+        while PeekMessage(Msg, 0, 0, 0, pm_Remove) do
+          begin
+            if Msg.Message = wm_Quit then Halt(Msg.WParam);
+            TranslateMessage(Msg);
+            DispatchMessage(Msg);
+          end;
+
+        GetExitCodeProcess(ProcessInfo.hProcess,lpExitCode);
+      until lpExitCode <> Still_Active;
+
+    with ProcessInfo do {not sure this is necessary but seen in in some code elsewhere}
+      begin
+        CloseHandle(hThread);
+        CloseHandle(hProcess);
+      end;
+
+    Result := 0; {success}
+  end else Result := GetLastError;
+end;
+
+
+// =============================================================================
+                  function TForm1.DataControl(): boolean;
+// =============================================================================
+
+
+var _rdb : integer;
+
+begin
+
+  result := False;
+  if _aktirodaszam=34 then
+    begin
+      Result := True;
+      Exit;
+    end;
+
+  _tablanev := 'CIMT' + _farok;
+  _rdb := FelirtRekord(_tablanev);
+
+  if _rdb=0 then
+    begin
+      Uzenopanel.Font.Color := clRed;
+      UzenoPanel.Caption := 'VALUTAKÉSZLETEK NEM JÖTTEK BE !';
+      UzenoPanel.Repaint;
+      exit;
+    end;
+
+  _tablanev := 'BF' + _farok;
+  _rdb := FelirtRekord(_tablanev);
+
+  if _rdb=0 then
+    begin
+      Uzenopanel.Font.Color := clRed;
+      UzenoPanel.Caption := 'A BLOKKFEJEK NEM JÖTTEK BE !';
+      UzenoPanel.Repaint;
+      exit;
+    end;
+
+  _tablanev := 'BT' + _farok;
+  _rdb := FelirtRekord(_tablanev);
+
+  if _rdb=0 then
+    begin
+      Uzenopanel.Font.Color := clRed;
+      UzenoPanel.Caption := 'BLOKKTETELEK NEM JÖTTEK BE !';
+      UzenoPanel.Repaint;
+      exit;
+    end;
+
+  Uzenopanel.Font.Color := clNavy;
+  UzenoPanel.caption := 'NAPI ZÁRÁSADATOK RENDBEN BEÉRKEZTEK';
+  Uzenopanel.Repaint;
+  mEMOtABLA.Lines.Add('Napi zárás rendben beérkezett');
+  Result := True;
+end;
+
+// =============================================================================
+            function TForm1.FelirtRekord(_tnev:string):integer;
+// =============================================================================
+
+begin
+  result := 0;
+  ibTabla.Close;
+  ibDbase.close;
+  ibDbase.DatabaseName := _aktGdbPath;
+  ibDbase.connected := True;
+
+  ibtabla.tablename := _tnev;
+
+  if not ibTabla.Exists then exit;
+  _pcs := 'SELECT * FROM ' + _tablanev+_sorveg;
+  _pcs := _pcs + 'WHERE DATUM='+chr(39)+_aktdatum+chr(39);
+
+  with IbQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Add(_pcs);
+      Open;
+      First;
+    end;
+
+  Result := ibQuery.recno;
+  ibQuery.Close;
+  ibdbase.close;
+end;
+
+// $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+// =============================================================================
+     procedure TForm1.KeszletRegisztralas(_qDatum: string;_qiroda: integer);
+// =============================================================================
+// $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+var _qhi,_qlo: byte;
+    _identis,_datfile,_kdnem,_kkeszstr,_qtempPath: string;
+    _aktertektar,_kkeszlet: integer;
+
+begin
+
+  _tomorDatum := midstr(_qdatum,3,2)+midstr(_qdatum,6,2)+midstr(_qdatum,9,2);
+  _qhi := 65+trunc(_qIroda/16);
+  _qLo := 65+(_qIroda AND 15);
+  _identis := chr(_qlo)+chr(_qhi);
+
+  _qTempPath := 'c:\receptor\temp\klet.dat';
+
+  // Ennek a váltónak, hány napja van rögzitve ?
+
+  _identCount := getHowManyIdents(_identis);
+
+  // Ha már kettõ napja van, akkor a régebbit törölni kell:
+
+  if _identCount=3 then OldestDelete;
+
+  // Itt lehet felirni a mai napi készletét:
+
+  // Melyik értéktárhoz tartozik ez az iroda -> ez lesz  a kiterjesztés
+  _aktertektar := ScanIroda(_qiroda);
+  _datfile := 'c:\receptor\mail\keszlet\' + _identis + _tomordatum + '.' + inttostr(_aktertektar);
+
+  // Hol találom a cimletezést és a wzaro adatbázist ?
+  _aktgdbPath := 'c:\receptor\database\V' + inttostr(_qiroda)+'.GDB';
+  _farok := leftstr(_tomordatum,4);
+
+  // ------------------------------------
+
+  _tetel := GetWesternTetel(_qDatum);
+
+  // --------------------------------------
+
+  _dnemDarab := GetCimleTdarab(_qDatum);
+  _tetel := _tetel + _dnemDarab;
+  if _tetel=0 then exit;
+
+  // ---------------------------------------
+
+  AssignFile(_biras,_qTempPath);  // c:\receptor\mail\keszlet\xyYYMMDD.ert
+  Rewrite(_biras);
+
+  _bytetomb[1] := _tetel;
+  Blockwrite(_biras,_byteTomb,1);   // ennyi tétel van a file-ban
+
+  // Ha van cimlet, akkor tételeit fel kell irni
+
+  if _dnemdarab>0 then
+    begin
+      CimtarDbase.Connected := true;
+      if CimtarTranz.InTransaction then CimtarTranz.Commit;
+
+      _pcs := 'SELECT * FROM CIMT'+ _farok + _sorveg;
+      _pcs := _pcs + 'WHERE DATUM=' + CHR(39) + _qDatum + chr(39);
+
+      with CimtarQuery do
+        begin
+          Close;
+          Sql.Clear;
+          Sql.Add(_pcs);
+          Open;
+          First;
+        end;
+
+      while not CimtarQuery.Eof do
+        begin
+          with CimtarQuery do
+            begin
+              _aktvalutanem := FieldByName('VALUTANEM').asString;
+              _kkeszlet := FieldByName('OSSZESEN').asInteger;
+            end;
+
+          _kdnem := dnemKod(_aktvalutanem);
+          _kkeszstr := keszletKod(_kkeszlet);
+
+          SetByteTombWrite(_kdnem,_kkeszstr);
+          Cimtarquery.Next;
+        end;
+      CimtarQuery.Close;
+      CimtarDbase.close;
+    end;
+
+  if _usdZaro>0 then
+    begin
+      _kdnem := dnemKod('WUD');
+      _kkeszstr := keszletkod(_usdZaro);
+      SetByteTombWrite(_kdnem,_kkeszstr);
+    end;
+
+   if _hufZaro>0 then
+    begin
+      _kdnem := dnemKod('WHF');
+      _kkeszstr := keszletkod(_hufZaro);
+      SetByteTombWrite(_kdnem,_kkeszstr);
+    end;
+
+   if _afaZaro>0 then
+    begin
+      _kdnem := dnemKod('AFA');
+      _kkeszstr := keszletkod(_AFAZaro);
+      SetByteTombWrite(_kdnem,_kkeszstr);
+    end;
+  CloseFile(_biras);
+  if FileExists(_datfile) then DeleteFile(_datFile);
+  CopyFileto(_qtempPath,_datFile);
+end;
+
+
+// =============================================================================
+          function TForm1.GetHowManyIdents(_betupar: string): integer;
+// =============================================================================
+
+begin
+  Result := 0;
+  if findFirst('c:\receptor\mail\keszlet\'+_betupar+'*.*',faAnyfile,_srec)=0 then
+    begin
+      repeat
+        _iFile[result] := _srec.Name;
+        inc(result);
+      until FindNext(_srec)<>0;
+      FindClose(_srec);
+    end;
+end;
+
+
+// =============================================================================
+                         procedure TForm1.OldestDelete;
+// =============================================================================
+
+var _delFile,_oldestFile: string;
+
+begin
+
+  _oldestFile := Getoldest();
+  _delFile := 'c:\receptor\mail\keszlet\' +_oldestFile;
+  DeleteFile(_delFile);
+end;
+
+
+// =============================================================================
+                       function Tform1.GEtOldest(): string;
+// =============================================================================
+
+begin
+  result := _iFile[0];
+  if (result<_iFile[1]) and (result<_iFile[2]) then exit;
+  result := _iFile[1];
+  if (result<_iFile[2]) then exit;
+  Result := _iFile[2];
+end;
+
+
+
+// =============================================================================
+          function TForm1.GetWesternTetel(_adatum: string): integer;
+// =============================================================================
+
+var _wzDb: integer;
+
+begin
+  result     := 0;
+  _usdzaro   := 0;
+  _hufZaro   := 0;
+  _tescoZaro := 0;
+  _metrozaro := 0;
+
+  WzarTabla.close;
+  with WzarDbase do
+    begin
+      Close;
+      Databasename := _aktgdbPath;
+      Connected := True;
+    end;
+
+  Wzartabla.TableName := 'WZAR'+ _farok;
+  if wzartabla.Exists then
+    begin
+      if wzarTranz.InTransaction then wzartranz.commit;
+      _pcs := 'SELECT * FROM WZAR'+_farok+_sorveg;
+      _pcs := _pcs + 'WHERE DATUM='+chr(39)+_aDatum+chr(39);
+
+      with WzarQuery do
+        begin
+          Close;
+          Sql.Clear;
+          Sql.Add(_pcs);
+          Open;
+          First;
+          _wzdb := recno;
+        end;
+
+      if _wzdb>0 then
+        begin
+          with WzarQuery do
+            begin
+              _usdZaro := FieldByName('USDZARO').asInteger;
+              _hufZaro := FieldByname('HUFZARO').asInteger;
+              _metroZaro := FieldByname('METROZARO').asInteger;
+              _tescoZaro := FieldByName('TESCOZARO').asInteger;
+            end;
+        end;
+    end;
+
+  WzarQuery.Close;
+  WzarDbase.close;
+
+  // -------------------------------------
+
+  _afaZaro := _metrozaro + _tescoZaro;
+  if _usdzaro>0 then inc(Result);
+  if _hufZaro>0 then inc(Result);
+  if _afaZaro>0 then inc(Result);
+
+end;
+
+
+// =============================================================================
+           function TForm1.GetCimletDarab(_adatum: string): integer;
+// =============================================================================
+
+
+begin
+  Result := 0;
+
+  CimtarTabla.Close;
+  with CimtarDbase do
+    begin
+      Close;
+      DatabaseName := _aktGdbPath;
+      Connected := True;
+    end;
+
+  CimtarTabla.TableName := 'CIMT'+_farok;
+  if not CimtarTabla.Exists then
+    begin
+      Cimtardbase.close;
+      Exit;
+    end;
+
+  if CimtarTranz.InTransaction then CimtarTranz.Commit;
+
+  _pcs := 'SELECT * FROM CIMT'+ _farok + _sorveg;
+  _pcs := _pcs + 'WHERE DATUM=' + CHR(39) + _aDatum + chr(39);
+
+  with CimtarQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Add(_pcs);
+      Open;
+      Last;
+      Result := Recno;
+      First;
+    end;
+
+  CimtarQuery.Close;
+  CimtarDbase.close;
+end;
+
+
+
+
+// =============================================================================
+          procedure TForm1.SetByteTombWrite(_n: string; _k: string);
+// =============================================================================
+
+
+begin
+  _bytetomb[1] := ord(_n[1]);
+  _bytetomb[2] := ord(_n[2]);
+  _bytetomb[3] := ord(_k[1]);
+  _bytetomb[4] := ord(_k[2]);
+  _bytetomb[5] := ord(_k[3]);
+  _bytetomb[6] := ord(_k[4]);
+  Blockwrite(_biras,_byteTomb,6);
+end;
+
+
+
+// =============================================================================
+             function TForm1.ScanIroda(_uznum: integer): integer;
+// =============================================================================
+
+var z: integer;
+
+begin
+  Result := 0;
+  for z := 1 to _irodadarab do
+    begin
+      if _uznum=_uzletszam[z] then
+        begin
+          Result := _uertektar[z];
+          Break;
+        end;
+    end;
+end;
+
+// =============================================================================
+                function TForm1.DnemKod(_dnem: string): string;
+// =============================================================================
+
+var _a,_b,_c,_1,_1a,_2: integer;
+
+begin
+  result := chr(0)+chr(0);
+  if _dnem='' then exit;
+  _a := ord(_dnem[1]) - 65;
+  _b := ord(_dnem[2]) - 65;
+  _c := ord(_dnem[3]) - 65;
+  _1 := 4*_a;
+  _1a := trunc(_b/8);
+  _1 := _1 + _1a;
+  _2 := 32*_b;
+  while _2>255 do _2 := _2 - 256;
+  _2 := _2 + _c;
+  result := chr(_1) + chr(_2)
+end;
+
+// =============================================================================
+             function TForm1.Keszletkod(_sVal: integer): string;
+// =============================================================================
+
+
+var _big3: integer;
+    _hhi,_hlo,_hi,_lo: byte;
+
+begin
+  _big3 := trunc(65536*256);
+  _hhi := trunc(_sVal/_big3);
+  _sVal := _sval - trunc(_big3*_hhi);
+  _hlo := trunc(_sval/65536);
+  _sval := _sval - trunc(65536*_hlo);
+  _hi := trunc(_sval/256);
+  _lo := _sval - trunc(256*_hi);
+  result := chr(_lo)+chr(_hi)+chr(_hlo)+chr(_hhi);
+end;
+
+
+// =============================================================================
+           procedure TForm1.ClearDirectory(_pathMinta: string);
+// =============================================================================
+
+
+var _cleardir: string;
+
+begin
+  _cleardir := extractfiledir(_pathminta);
+  if FindFirst(_pathminta,faAnyFile,_srec)=0 then
+    begin
+      repeat
+         deletefile(_cleardir+'\'+_srec.Name);
+      until FindNext(_srec)<>0;
+      FindClose(_srec);
+    end;
+end;
+
+// =============================================================================
+                     procedure TForm1.MakeTrade(_dNev: string);
+// =============================================================================
+
+
+begin
+//  ibdbase.connected := false;
+//  ibdbase.DatabaseName := _aktgdbPath;
+//  ibdbase.Connected := true;
+//
+//  if Ibtranz.intransaction then IbTranz.commit;
+//  IbTranz.StartTransAction;
+
+  _pcs := 'CREATE TABLE ' + _dNev + ' ('+_sorveg;
+  _pcs := _pcs + 'DATUM CHAR (10) CHARACTER SET WIN1250 COLLATE WIN1250,'+_sorveg;
+  _pcs := _pcs + 'NYITO INTEGER,'+_sorveg;
+  _pcs := _pcs + 'TELEFON INTEGER,'+_sorveg;
+  _pcs := _pcs + 'MATRICA INTEGER,'+_sorveg;
+  _pcs := _pcs + 'ATADAS INTEGER,'+_sorveg;
+  _pcs := _pcs + 'ATVETEL INTEGER,'+_sorveg;
+  _pcs := _pcs + 'ZARO INTEGER,'+_sorveg;
+  _pcs := _pcs + 'ZAROKESZLET INTEGER,'+_sorveg;
+  _pcs := _pcs + 'PENZTAR INTEGER)';
+  ibParancs(_pcs);
+
+//   with IBquery do
+//    begin
+//      Close;
+//      Sql.Clear;
+//      Sql.Add(_pcs);
+//      ExecSql;
+//    end;
+//  ibtranz.commit;
+//  ibdbase.close;
+
+
+//  ibdbase.connected := true;
+//  ibtranz.startTransaction;
+
+  _pcs := 'CREATE UNIQUE INDEX IDX_'+_dnev+' ON '+_dnev+' (DATUM)';
+  ibParancs(_pcs);
+
+//  with IBquery do
+//    begin
+//      Close;
+//      Sql.Clear;
+//      Sql.Add(_pcs);
+//      ExecSql;
+//    end;
+//
+//  IbTranz.commit;
+//  Ibquery.Close;
+
+end;
+
+// =============================================================================
+                        procedure TForm1.TradeBedolgozas;
+// =============================================================================
+
+var _aktrekord,_xev,_xho,_xnap,_matrica,_telefon,_atadas,_atvetel: integer;
+    _xdec,_nyito,_zaro,_zarokeszlet,_penztar: integer;
+
+begin
+  _aktrekord := 0;
+  while _aktrekord<_rekordszam do
+    begin
+      Blockread(_olvas,_bytetomb,32);
+      _xdec := _bytetomb[1];
+      _xev := 2000+_xdec;
+      _xho := _bytetomb[2];
+      _xnap := _bytetomb[3];
+      _datum := inttostr(_xev)+'.'+nulele(_xho)+'.'+nulele(_xnap);
+      _tablanev := 'TRAD'+ nulele(_xdec)+nulele(_xho);
+      _nyito := dekbyte(4);
+      _matrica := dekbyte(8);
+      _telefon := dekbyte(12);
+      _atadas := dekbyte(16);
+      _atvetel := dekbyte(20);
+      _zaro := dekbyte(24);
+      _zarokeszlet := dekbyte(28);
+      _penztar := _bytetomb[32];
+
+      MakeIBtabla(10,_tablanev);
+
+      _pcs := 'DELETE FROM '+_tablanev+' WHERE DATUM=' + chr(39) + _datum + chr(39);
+      ibdbase.connected := True;
+      if ibtranz.InTransaction then Ibtranz.Commit;
+      ibtranz.StartTransaction;
+      with ibquery do
+        begin
+          Close;
+          sql.Clear;
+          sql.Add(_pcs);
+          ExecSql;
+        end;
+      ibtranz.Commit;
+      ibdbase.close;
+
+
+      _pcs := 'INSERT INTO ' + _tablanev + ' (DATUM,NYITO,MATRICA,TELEFON,ATADAS,ATVETEL,';
+      _pcs := _pcs + 'ZARO,ZAROKESZLET,PENZTAR)' + _sorveg;
+      _pcs := _pcs + 'VALUES (' + chr(39) + _datum + chr(39) + ',';
+      _pcs := _pcs + inttostr(_nyito) + ',';
+      _pcs := _pcs + inttostr(_matrica) + ',';
+      _pcs := _pcs + inttostr(_telefon) + ',';
+      _pcs := _pcs + inttostr(_atadas) + ',';
+      _pcs := _pcs + inttostr(_atvetel) + ',';
+      _pcs := _pcs + inttostr(_zaro) + ',';
+      _pcs := _pcs + inttostr(_zarokeszlet)+',';
+      _pcs := _pcs + inttostr(_penztar)+')';
+
+      ibdbase.connected := True;
+      if ibtranz.InTransaction then Ibtranz.Commit;
+      ibtranz.StartTransaction;
+      with ibquery do
+        begin
+          Close;
+          sql.Clear;
+          sql.Add(_pcs);
+          ExecSql;
+        end;
+      ibtranz.Commit;
+      ibdbase.close;
+      inc(_aktrekord);
+    end;
+end;
+// =============================================================================
+                function TForm1.Dekbyte(_bss: integer): integer;
+// =============================================================================
+
+var _b1,_b2,_b3,_b4: byte;
+    _hhi,_hlo,_hi,_lo: real;
+
+begin
+
+  _b1 := _bytetomb[_bss];
+  _b2 := _bytetomb[_bss+1];
+  _b3 := _bytetomb[_bss+2];
+  _b4 := _bytetomb[_bss+3];
+
+  _hhi := 256*65536*_b1;
+  _hlo := 65536*_b2;
+  _hi  := 256*_b3;
+  _lo  := _b4;
+  result := trunc(_hhi+_hlo+_hi+_lo);
+end;
+
+// =============================================================================
+                             procedure TForm1.Korclear;
+// =============================================================================
+
+var i: integer;
+
+begin
+  for i := 1 to 55 do
+    begin
+      _aktShape := _kor[i];
+      _aktshape.Brush.Color := clWhite;
+    end;
+end;
+
+// =============================================================================
+                           procedure TForm1.ColorKor;
+// =============================================================================
+
+var _y: integer;
+
+begin
+  _y := 1;
+  while _y<=55 do
+    begin
+      _aktShape := _kor[_y];
+      _aktshape.Brush.Color := _aktszin;
+      _aktshape.Repaint;
+      sleep(30);
+      inc(_y);
+    end;
+  inc(_szinPointer);
+  if _szinPointer>6 then _szinpointer :=1;
+  _aktszin := _szinek[_szinPointer];
+end;
+
+// =============================================================================
+                       procedure TForm1.KortombBetolto;
+// =============================================================================
+
+begin
+  _kor[1]  := k1;
+  _kor[2]  := k2;
+  _kor[3]  := k3;
+  _kor[4]  := k4;
+  _kor[5]  := k5;
+  _kor[6]  := k6;
+  _kor[7]  := k7;
+  _kor[8]  := k8;
+  _kor[9]  := k9;
+  _kor[10] := k10;
+  _kor[11] := k11;
+  _kor[12] := k12;
+  _kor[13] := k13;
+  _kor[14] := k14;
+  _kor[15] := k15;
+  _kor[16] := k16;
+  _kor[17] := k17;
+  _kor[18] := k18;
+  _kor[19] := k19;
+  _kor[20] := k20;
+  _kor[21] := k21;
+  _kor[22] := k22;
+  _kor[23] := k23;
+  _kor[24] := k24;
+  _kor[25] := k25;
+  _kor[26] := k26;
+  _kor[27] := k27;
+  _kor[28] := k28;
+  _kor[29] := k29;
+  _kor[30] := k30;
+  _kor[31] := k31;
+  _kor[32] := k32;
+  _kor[33] := k33;
+  _kor[34] := k34;
+  _kor[35] := k35;
+  _kor[36] := k36;
+  _kor[37] := k37;
+  _kor[38] := k38;
+  _kor[39] := k39;
+  _kor[40] := k40;
+  _kor[41] := k41;
+  _kor[42] := k42;
+  _kor[43] := k43;
+  _kor[44] := k44;
+  _kor[45] := k45;
+  _kor[46] := k46;
+  _kor[47] := k47;
+  _kor[48] := k48;
+  _kor[49] := k49;
+  _kor[50] := k50;
+  _kor[51] := k51;
+  _kor[52] := k52;
+  _kor[53] := k53;
+  _kor[54] := k54;
+  _kor[55] := k55;
+
+
+end;
+
+// =============================================================================
+                  function TFORM1.RealToStr(_rr: real): string;
+// =============================================================================
+
+var _pos: integer;
+
+begin
+  Result := '0';
+  if _rr=0 then exit;
+
+  Result := Floattostr(_rr);
+  _pos := pos(chr(44),result);
+  if _pos>0 then result[_pos] := chr(46);
+end;
+
+
+
+  (*
+   1. kód: Byte   Result: 1 byte (numerikus);
+   2. kód: Word   Result: 1 word (numerikus)
+   3. Kód: Dátum  Result: char (10) [DATUMDEKOD]
+   4. kód: Szöveg Result: string [TEXTDEKOD]
+   5. kód: Bizonylatszám  Result: Bizonylatszám char(7) [DNEMDEKOD]
+   6. Kód: Valutanem Result: Char (3) [DNEMDEKOD]
+   7. Kód: DoublePrecision szám  [INTEGDEKOD] float
+   8. kód: Idõ  char(8) [IDODEKOD]
+   9. kód: Árfolyam  1000*Float [INTEGDEKOD/1000]
+  10. kód: Character (1)
+  11. kod: Nagy Integer
+
+  MEZÖK:
+
+    1. AFA                11
+    2. AFA5               11
+    3. ALLAMPOLGAR         4
+    4. ANYJANEVE           4
+    5. ARFOLYAM            9
+    6. AZONOSITO           4
+    7. BANKJEGY           11
+    8. BIZONYLATSZAM       5
+    9. BRUTTO             11
+   10. CIMLET1             2
+   11. CIMLET2             2
+   12. CIMLET3             2
+   13. CIMLET4             2
+   14. CIMLET5             2
+   15. CIMLET6             2
+   16. CIMLET7             2
+   17. CIMLET8             2
+   18. CIMLET9             2
+   19. CIMLET10            2
+   20. CIMLET11            2
+   21. CIMLET12            2
+   22. CIMLET13            2
+   23. CIMLET14            2
+   24. COIN                1
+   25. DATUM               3
+   26. ELADASIARFOLYAM     9
+   27. ELLATMANY          11
+   28. ELOJEL             10
+   29. ELOZONEV            4
+   30. ELSZAMOLASIARFOLYAM 9
+   31. ENGEDMENYTIPUS      1
+   32. FOEGYSEG            1
+   33. FORINTERTEK        11
+   34. FOTEVEKENYSEG       4
+   35. HUFBE              11
+   36. HUFKI              11
+   37. HUFNYITO           11
+   38. HUFZARO            11
+   39. IDO                 8
+   40. JOGISZEMELYNEV      4
+   41. KEPVISBEO           4
+   42. KEPVISELONEV        4
+   43. KEZELESISZAZALEK    7
+   44. KIFIZETVE          11
+   45. LAKCIM              4
+   46. LAKCIMKARTYA        4
+   47. LEANYKORI           4
+   48. MEGBIZOTTBEOSZTASA  4
+   49. MEGBIZOTTNEVE       4
+   50. MEGBIZOTTSZAMA     11
+
+   51. METROBE            11
+   52. METROKI            11
+   53. METRONYITO         11
+   54. METROVISSZA        11
+   55. METROZARO          11
+   56. MTCNSZAM            4
+   57. NEV                 4
+   58. NYITO              11
+   59. OKIRATSZAM          4
+   60. OKMANYTIPUS         4
+
+   61. OSSZESEN           11
+   62. PENZTAR             4
+   63. PENZTAROSNEV        4
+   64. PENZTARSZAM         2
+   65. PLOMBASZAM          4
+   66. SORSZAM             4
+   67. STORNO              1
+   68. STORNOBIZONYLAT     4
+   69. SZALLITONEV         4
+   70. SZAMLASZAM          4
+   71. SZULETESIHELY       4
+   72. SZULETESIIDO        4
+   73. TARTOZKODASIHELY    4
+   74. TELEFON             4
+   75. TELEPHELYCIM        4
+   76. TESCOBE            11
+   77. TESCOKI            11
+   78. TESCONYITO         11
+   79. TESCOVISSZA        11
+   80. TESCOZARO          11
+   81. TETEL               1
+   82. TIPUS              10
+   83. TRANZAKCIOTIPUS     4
+   84. TRBPENZTAR          4
+   85. UGYFELNEV           4
+   86. UGYFELSZAM         11
+   87. UGYFELTIPUS        10
+   88. UGYKEZELESIDIJ     11
+   89. UJARFOLYAM          9
+   90. USDBE              11
+   91. USDKI              11
+   92. USDNYITO           11
+   93. USDZARO            11
+   94. VALUTANEM           6
+   95. VETELIARFOLYAM      9
+   96. ZARO               11
+
+
+
+  - 8 mpercenként figyeli, hogy van-e '*.m' file az
+    inputDirectoryban. Ha nincs megszakitást futtat
+    majd visszatér
+
+  Ciklusfej:
+    - Ha nincs több '*.M' file -> kilép a ciklusból
+
+    - Ha nem érvényes a filenév kódolt pénztárszáma
+      akkor törli M-file-t és Alapfile-t is (ha van)
+      Ciklus-loop
+
+    - Ha az M-hez nem tartozik megfelelö alapfile,akkor
+      törli az M-et és LOOP
+
+    - Feldolgozás
+    - Visszajelzés !!
+
+  CiklusLáb.
+   *)
+
+
+
+
+procedure TForm1.BitBtn2Click(Sender: TObject);
+begin
+  Form1.WindowState := wsminimized;
+end;
+
+procedure TForm1.FormClick(Sender: TObject);
+begin
+  Form1.WindowState := wsNormal;
+end;
+
+procedure TForm1.MERETGOMBClick(Sender: TObject);
+begin
+  if _meret = 'KICSI' then
+    begin
+      Height := 450;
+      _meret := 'NAGY';
+      MeretGomb.Caption := 'KESKENY KÉPERNYÕ';
+    end else
+    begin
+      if _flipflop then
+        begin
+          Height := 90;
+          _meret := 'KICSI';
+          MeretGomb.Caption := 'TELJES KÉPERNYÕ';
+          _flipflop := true;
+        end;
+    end;
+  Form1.Repaint;  
+end;
+
+// ==================================================
+     procedure TForm1.StatusBeiro(_st: integer);
+// ==================================================
+
+begin
+  RendszerDbase.close;
+  RendszerDbase.Connected := True;
+  if RendszerTranz.IntransAction then RendszerTranz.commit;
+  RendszerTranz.StartTransAction;
+  _pcs := 'UPDATE RENDSZER SET STATUS='+ inttostr(_st);
+  if _st=0 then _pcs := _pcs+','+'MUNKANAP='+chr(39)+_holnap+chr(39);
+
+  with RendszerQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Add(_pcs);
+      Execsql;
+    end;
+  RendszerTranz.commit;
+  RendszerDbase.close;
+  _status := _st;
+end;
+
+// =============================================================================
+                          procedure TForm1.EmailBejegyzes;
+// =============================================================================
+
+
+begin
+  EmailDbase.Connected := true;
+  if EmailTranz.InTransaction then emailtranz.Commit;
+  Emailtranz.StartTransaction;
+  _pcs := 'DELETE FROM EMAIL' + _sorveg;
+  _pcs := _pcs + 'WHERE (EMAILCIM='+CHR(39)+_aktemailcim+chr(39)+')';
+  _pcs := _pcs + ' AND (TARGY=' + chr(39) + _aktTargy + chr(39) + ')';
+
+   with EmailQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Add(_Pcs);
+      ExecSql;
+    end;
+
+  EmailTranz.commit;
+  EmailDbase.Close;
+
+  EmailDbase.Connected := true;
+  Emailtranz.StartTransaction;
+
+  _pcs := 'INSERT INTO EMAIL (EMAILCIM,CIMZETT,CSATOLMANY,TARGY,UZENET,FELADVA)'+_sorveg;
+  _pcs := _pcs + 'VALUES (' + chr(39) + _aktemailcim +chr(39)+',';
+  _pcs := _pcs + chr(39) + _aktcimzett + chr(39) + ',';
+  _pcs := _pcs + chr(39) + _aktfilePath + chr(39) + ',';
+  _pcs := _pcs + chr(39) + _aktTargy + chr(39) + ',';
+  _pcs := _pcs + chr(39) + _aktuzenet + chr(39) + ',';
+  _pcs := _pcs + '0)';
+
+  with EmailQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Add(_Pcs);
+      ExecSql;
+    end;
+
+  EmailTranz.commit;
+  EmailDbase.Close;
+end;
+
+
+(*
+procedure TForm1.Emailelkuldes;
+
+var _recno,_sendoke: integer;
+    _idos: string;
+    _ido: TDateTime;
+begin
+  _ido := time;
+  _idos := timetostr(_ido);
+  EmailDbase.connected := true;
+  _pcs := 'SELECT * FROM EMAIL' + _sorveg;
+  _pcs := _pcs + 'WHERE FELADVA=0';
+  if EmailTranz.InTransaction then EmailTranz.Commit;
+  EmailTranz.StartTransaction;
+  with EmailQuery do
+    begin
+      CLose;
+      Sql.Clear;
+      Sql.Add(_pcs);
+      Open;
+      First;
+      _recno := recno;
+    end;
+
+  if _recno=0 then
+    begin
+      EmailQuery .close;
+      EmailDbase.Close;
+      exit;
+    end;
+  while not EmailQuery.eof do
+    begin
+      _cimzettNeve := EmailQuery.FieldByName('EMAILCIM').asString;
+      _cimzettCime := EmailQuery.FieldByName('CIMZETT').asString;
+      _akttargy := EmailQuery.FieldByName('TARGY').asString;
+      _csatpath := EmailQuery.FieldByNAme('CSATOLMANY').asString;
+      _sendoke := SendMailMapi;
+      EmailQuery.Next;
+    end;
+  _pcs := 'UPDATE EMAIL SET FELADVA=1,FELADASNAPJA='+chr(39)+_mamas+chr(39)+',';
+  _pcs := _pcs + 'FELADASIDEJE='+chr(39) + _idos + chr(39);
+
+  with EmailQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Add(_pcs);
+      ExecSql;
+    end;
+  EmailQuery.CLose;
+  Emaildbase.close;
+end;
+
+
+
+// =============================================================================
+                       function TForm1.SendMailMAPI:Integer;
+// =============================================================================
+
+var
+
+               Message: TMapiMessage;
+  lpSender,lpRecepient: TMapiRecipDesc;
+            FileAttach: TMapiFileDesc;
+                    SM: TFNMapiSendMail;
+            MAPIModule: HModule;
+
+begin
+
+  FillChar(message, SizeOf(message), 0);
+
+  with message do
+    begin
+      result :=0;
+      lpszSubject := PChar(_akttargy);
+      lpszNoteText := PChar('Jelszavas exceltabla csatolva');
+
+      lpSender.ulRecipClass := MAPI_ORIG;
+      lpSender.lpszName := PChar('dekanysoft');
+
+      lpSender.lpszAddress := PChar('SMTP:dekanysoft@gmail.com');
+      lpSender.ulReserved := 0;
+      lpSender.ulEIDSize := 0;
+      lpSender.lpEntryID := nil;
+      lpOriginator := @lpSender;
+
+      lpRecepient.ulRecipClass := MAPI_TO;
+      lpRecepient.lpszName := PChar(_cimzettNeve);
+      lpRecepient.lpszAddress := PChar(_cimzettCime);
+      lpRecepient.ulReserved := 0;
+      lpRecepient.ulEIDSize := 0;
+      lpRecepient.lpEntryID := nil;
+      nRecipCount := 1;
+      lpRecips := @lpRecepient;
+
+      FillChar(FileAttach, SizeOf(FileAttach), 0);
+      FileAttach.nPosition := Cardinal($FFFFFFFF);
+      FileAttach.lpszPathName := PChar(_csatpath);
+                   nFileCount := 1;
+                      lpFiles := @FileAttach;
+    end;
+
+  MAPIModule := LoadLibrary(PChar(MAPIDLL));
+  if MAPIModule=0 then
+    begin
+      Result := -1
+    end
+    else
+    begin
+      try
+        @SM := GetProcAddress(MAPIModule, 'MAPISendMail');
+        if @SM<>nil then Result := SM(0, Application.Handle, message, MAPI_LOGON_UI, 0)
+        else Result := 1
+
+      finally
+        FreeLibrary(MAPIModule);
+      end;
+    end;
+end;
+*)
+
+
+procedure TForm1.Nagykepernyo;
+
+begin
+  Height := 470;
+  _meret := 'NAGY';
+  MeretGomb.Caption := 'KESKENY KÉPERNYÕ';
+end;
+
+
+procedure TForm1.KISKEPTIMERTimer(Sender: TObject);
+begin
+  KiskepTimer.Enabled := False;
+  if not _flipflop then exit;
+
+  Height := 90;
+  _meret := 'KICSI';
+  MeretGomb.Caption := 'TELJES KÉPERNYÕ';
+end;
+
+procedure TForm1.PermitKapcsol(_kibe: integer);
+
+begin
+  RendszerDbase.connected := True;
+  if rendszerTranz.InTransaction then RendszerTranz.Commit;
+  RendszerTranz.StartTransaction;
+  _pcs := 'UPDATE RENDSZER SET RECEPTORPERMIT='+inttostr(_kibe);
+  with RendszerQuery do
+    begin
+      Close;
+      Sql.Clear;
+      sql.Add(_pcs);
+      ExecSql;
+    end;
+  RendszerTranz.Commit;
+  Rendszerdbase.close;
+end;
+
+// =============================================================================
+                      procedure TForm1.UkNullazas;
+// =============================================================================
+
+// Napváltás - éjfélkor
+
+var _delfile: array[0..200] of string;
+    _deldb,_qq: integer;
+    _deldir,_fPath: string;
+
+begin
+
+  // A mailstor kiüritése ....
+
+  _DELDIR := 'C:\receptor\mail\mailstor';
+  _deldb := 0;
+  if FindFirst(_deldir +'\*.*', faAnyfile, _srec) = 0 then
+    begin
+      repeat
+        _delfile[_deldb] := _srec.name;
+        inc(_deldb);
+      until FindNext(_srec) <> 0;
+      FindClose(_srec);
+    end;
+
+  if _deldb>0 then
+    begin
+      _qq := 0;
+      while _qq<_deldb do
+        begin
+          _fpath := _deldir + '\' + _delfile[_qq];
+          deletefile(_fpath);
+          inc(_qq);
+        end;
+    end;
+
+  _pcs := 'DELETE FROM DAILYMAIL' +_sorveg;
+  _pcs := _pcs + 'WHERE DATUM<'+CHR(39)+_mamas+chr(39);
+
+  if not Ukserverelerheto then exit;
+
+  remotedbase.Connected := True;
+  if remotetranz.InTransaction then remotetranz.Commit;
+  Remotetranz.StartTransaction;
+  with RemoteQuery do
+    begin
+      Close;
+      sql.Clear;
+      sql.Add(_pcs);
+      EXECSQL;
+    end;
+  Remotetranz.commit;
+  Remotedbase.close;
+
+end;
+
+procedure TForm1.TILTOPANELClick(Sender: TObject);
+begin
+  Uknullazas;
+end;
+
+procedure TForm1.IbParancs(_ukaz: string);
+
+begin
+   ibdbase.close;
+   ibdbase.DatabaseName := _aktgdbPath;
+   ibdbase.Connected := true;
+   if ibtranz.InTransaction then ibtranz.Commit;
+   ibtranz.StartTransaction;
+   with ibquery do
+     begin
+       Close;
+       sql.clear;
+       Sql.Add(_ukaz);
+       execSql;
+     end;
+   ibTranz.Commit;
+   ibdbase.close;
+end;
+
+function TForm1.Ukserverelerheto: boolean;
+
+begin
+  result := true;
+  try
+    ukserver.Connect;
+  except
+    result := False;
+  end;
+  if Ukserver.Connected then Ukserver.Disconnect;
+end;     
+
+end.
+

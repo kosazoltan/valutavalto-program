@@ -1,0 +1,253 @@
+unit Unit3;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, ExtCtrls, Buttons, IBDatabase, DB, IBCustomDataSet,
+  IBQuery, strutils, dateutils;
+
+type
+  TReadTimeForm = class(TForm)
+
+    Panel1        : TPanel;
+    DolgozoLista  : TListBox;
+    TartalomLista : TListBox;
+    VisszaGomb    : TBitBtn;
+    SignQuery     : TIBQuery;
+    SignDbase     : TIBDatabase;
+    SignTranz     : TIBTransaction;
+    Label1        : TLabel;
+    Label2        : TLabel;
+    Label3        : TLabel;
+    ReadEdit      : TEdit;
+
+    procedure AdatValtozas;
+    procedure FormActivate(Sender: TObject);
+    procedure DolgozoListaClick(Sender: TObject);
+    procedure DolgozoListaKeyDown(Sender: TObject; var Key: Word;Shift: TShiftState);
+    procedure Readtimedisplay;
+    procedure VisszaGombClick(Sender: TObject);
+    procedure VezetokListaja;
+    procedure VipAdatValtozas;
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  ReadTimeForm: TReadTimeForm;
+
+  _aktdolgozosorszam,_aktTartalomSorszam: word;
+  _dIndex,_tIndex: word;
+
+  _lett: array[0..1000] of word;
+  _when: array[0..1000] of string;
+
+implementation
+
+uses Unit1, Unit4;
+
+{$R *.dfm}
+
+// ============================================================================
+          procedure TReadTimeForm.visszagombClick(Sender: TObject);
+// ============================================================================
+
+begin
+  SignQuery.close;
+  Signdbase.close;
+  ModalResult := 1;
+end;
+
+// ============================================================================
+         procedure TREADTIMEFORM.FormActivate(Sender: TObject);
+// ============================================================================
+
+var _y: word;
+
+begin
+  {
+  _dt := GetvipForm.ShowModal;
+  if _dt<0 then
+    begin
+      Modalresult := 2;
+      exit;
+    end;
+
+  case _dt of
+    1: _destiny := 'EBC';
+    2: _destiny := 'ZALOG';
+    3: _destiny := 'VIP';
+  end;
+  }
+
+  Form1.DolgozokTombbe;
+  Form1.TartalomTombbe;
+
+  SignDbase.close;
+  SignDbase.DatabaseName := _serverKordbasePath;
+  SignDbase.Connected := true;
+
+  Dolgozolista.Items.Clear;
+  DolgozoLista.Clear;
+
+  {
+  if _DESTINY = 'VIP' then
+    begin
+      vezetokListaja;
+      Activecontrol := DolgozoLista;
+      Dolgozolista.setfocus;
+      exit;
+    end;
+   }
+
+  _y := 1;
+  while _y<=_dolgozoDarab do
+    begin
+      DolgozoLista.Items.add(_pnev[_y]);
+      inc(_y);
+    end;
+  DolgozoLista.ItemIndex := 0;
+  _aktdolgozoSorszam := _psor[1];
+
+  //--------------------------------------------------
+
+  Tartalomlista.clear;
+  Tartalomlista.Items.clear;
+  _y := 0;
+  while _y<_tartalomdarab do
+    begin
+      Tartalomlista.Items.add(_kltart[_y]);
+      inc(_y);
+    end;
+  Tartalomlista.ItemIndex := 0;
+  _aktTartalomsorszam := _klsors[0];
+
+  ReadTimeDisplay;
+
+  Activecontrol := Dolgozolista;
+  Dolgozolista.SetFocus;
+
+end;
+
+procedure TReadTimeForm.VezetokListaja;
+
+var _y: word;
+
+begin
+  _y := 1;
+  while _y<=_vezetoDarab do
+    begin
+      DolgozoLista.Items.add(_vnev[_y]);
+      inc(_y);
+    end;
+  DolgozoLista.ItemIndex := 0;
+  _aktdolgozoSorszam := _vkod[1];
+
+  Tartalomlista.clear;
+  Tartalomlista.Items.clear;
+  _y := 0;
+
+  while _y<_viptartalomdarab do
+    begin
+      Tartalomlista.Items.add(_vipltart[_y]);
+      inc(_y);
+    end;
+
+  Tartalomlista.ItemIndex := 0;
+  _aktTartalomsorszam := _viplsors[0];
+  ReadTimeDisplay;
+end;
+
+
+// ============================================================================
+            procedure TReadTimeForm.Readtimedisplay;
+// ============================================================================
+
+var _readstring,_whenstring,_signTablaNev: string;
+
+begin
+  _aktev := yearof(Date);
+  _readstring := 'NEM OLVASTA';
+  _signTablanev := 'SIGNAL';
+ // if _vip then _signTablanev := 'VIPSIGNAL';
+
+  _pcs := 'SELECT * FROM ' +  _signTablanev  + _sorveg;
+  _pcs := _pcs + 'WHERE (DOLGSORSZAM=' + inttostr(_aktDolgozoSorszam)+')';
+  _pcs := _pcs + ' AND (LETTERNUM=' + inttostr(_aktTartalomsorszam)+')';
+
+  with SignQuery do
+    begin
+      Close;
+      sql.clear;
+      sql.add(_pcs);
+      Open;
+      _recno := recno;
+    end;
+  if _recno>0 then
+    begin
+      _whenstring := trim(Signquery.fieldbyname('MIKOR').asstring);
+      _readstring := inttostr(_aktev)+'.'+leftstr(_whenstring,2)+'.'+midstr(_whenstring,3,2)+'-n ';
+      _readstring := _readstring + midstr(_whenstring,5,2)+' óra '+midstr(_whenstring,7,2)+' perckor';
+    end;
+  Signquery.close;
+  Readedit.text := _readstring;
+  readEdit.repaint;
+end;
+
+// ============================================================================
+        procedure TREADTIMEFORM.DOLGOZOLISTAClick(Sender: TObject);
+// ============================================================================
+
+begin
+ // if _vip then Vipadatvaltozas else Adatvaltozas;
+
+  Adatvaltozas;
+end;
+
+// ============================================================================
+   procedure TREADTIMEFORM.DOLGOZOLISTAKeyDown(Sender: TObject; var Key: Word;
+                                                    Shift: TShiftState);
+// ============================================================================
+
+begin
+  // if _vip then Vipadatvaltozas else Adatvaltozas;
+
+  Adatvaltozas;
+end;
+
+// ============================================================================
+                     procedure TReadTimeForm.AdatValtozas;
+// ============================================================================
+
+begin
+  _dIndex := 1+DolgozoLista.itemindex;
+  _aktdolgozosorszam := _psor[_dIndex];
+
+  _tIndex := TartalomLista.itemindex;
+  _aktTartalomsorszam := _klSors[_tIndex];
+
+  ReadTimeDisplay;
+end;
+
+// ============================================================================
+                     procedure TReadTimeForm.VipAdatValtozas;
+// ============================================================================
+
+begin
+  _dIndex := 1+DolgozoLista.itemindex;
+  _aktdolgozosorszam := _vkod[_dIndex];
+
+  _tIndex := TartalomLista.itemindex;
+  _aktTartalomsorszam := _viplSors[_tIndex];
+
+  ReadTimeDisplay;
+end;
+
+
+
+end.
+

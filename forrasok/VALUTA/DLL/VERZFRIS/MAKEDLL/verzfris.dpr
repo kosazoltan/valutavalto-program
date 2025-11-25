@@ -1,0 +1,14 @@
+
+library verzfris;
+
+uses
+  Sysutils, Classes,
+  Unit2 in 'Unit2.pas' {VFRISS};
+
+exports
+  verziofrissitorutin;
+
+begin
+end.
+
+

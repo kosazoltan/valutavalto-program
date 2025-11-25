@@ -1,0 +1,7 @@
+<Message>
+<MessageType>PAYSAFECARD</MessageType>
+<TerminalId>2037</TerminalId>
+<UserName>excarkad</UserName>
+<UserPassword>123456</UserPassword>
+<ProductId>304</ProductId>
+</Message>

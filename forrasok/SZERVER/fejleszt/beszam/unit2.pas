@@ -1,0 +1,1240 @@
+unit Unit2;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, Comobj, unit1, ExtCtrls, jpeg, ComCtrls;
+
+type
+  TMAKEEXCEL = class(TForm)
+    Button1: TButton;
+    TAKARO: TPanel;
+    Shape1: TShape;
+    Image1: TImage;
+    csik: TProgressBar;
+    Label1: TLabel;
+    Shape2: TShape;
+    
+    procedure Button1Click(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
+    procedure KorzetPenztarTablak;
+    procedure MegnevezesSor(_ss: byte; _mn: string);
+    procedure ErtekTarsor;
+    procedure Elemzessor;
+    procedure TervezSor;
+    procedure Kozosjavaslat;
+    procedure Adatsorfeltoltes;
+    procedure KorzetSumNullazo;
+    procedure Extrafocim;
+    procedure Barnacsik;
+    procedure OsszesenSorFeltoltes;
+    procedure TerVezExtraPoints;
+    procedure PercentDisp(_ah,_eh: real;_prios: integer);
+    procedure Vastagkeret(_rs: string);
+    procedure Vekonykeret(_rs: string);
+    procedure TenColorLine;
+    procedure AdatsorKeret;
+    procedure EgypenztarKeretei;
+
+
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  MAKEEXCEL: TMAKEEXCEL;
+  _oxl,_owb,_range: variant;
+  _ps: word;
+  _aktkorzetnev,_evhotext,_ks,_xs,_ys,_text: string;
+  _y,_aktkorzetdb,_aktkonkdb,_konkss: byte;
+  _prisor,_k,_ptss: integer;
+  _s1,_s2: string;
+  _szaz: real;
+
+  // ---------------- Adat dump ------------------------------------------------
+
+  _aktvugyfel,_akteugyfel,_aktwuugyfel: integer;
+  _saktvugyfel,_sakteugyfel,_saktwuugyfel: integer;
+
+  _aktvetel,_akteladas,_aktwuhuf,_aktwuusd: real;
+  _saktvetel,_sakteladas,_saktwuhuf,_saktwuusd: real;
+
+  _akthaszon,_aktkezdij,_akttranzado: real;
+  _sakthaszon,_saktkezdij,_sakttranzado: real;
+
+  _akteevvugyfel,_akteeveugyfel,_akteevwuugyfel: integer;
+  _sakteevvugyfel,_sakteeveugyfel,_sakteevwuugyfel: integer;
+
+  _akteevvetel,_akteeveladas,_akteevwuhuf,_akteevwuusd: real;
+  _sakteevvetel,_sakteeveladas,_sakteevwuhuf,_sakteevwuusd: real;
+
+  _akteevhaszon,_akteevkezdij,_akteevtranzado: real;
+  _sakteevhaszon,_sakteevkezdij,_sakteevtranzado: real;
+
+
+implementation
+
+{$R *.dfm}
+
+// =============================================================================
+             procedure TMAKEEXCEL.Button1Click(Sender: TObject);
+// =============================================================================
+
+begin
+  Form1.ExcelKill;
+  Application.Terminate;
+end;
+
+// =============================================================================
+                procedure TMAKEEXCEL.FormActivate(Sender: TObject);
+// =============================================================================
+
+var i: byte;
+
+begin
+   Top  := _top+5;
+   Left := _left +5;
+   Makeexcel.Repaint;
+
+   _oxl := CreateOleObject('Excel.Application');
+   _owb := _oxl.workbooks.add[1];
+
+   // ---  A 8 fül létrehozása és elnevezése, sor fagyasztása ------------------
+
+   _oxl.workbooks[1].sheets.add(,,8);
+
+   for i := 1 to 8 do
+     begin
+       _aktkorzetNev := _korzetnevek[i]+'I KÖRZET';
+       _oxl.workbooks[1].worksheets[i].name := _aktkorzetNev;
+       _oxl.workbooks[1].worksheets[I].select;
+       _range := _oxl.range['A3','A3'];
+       _range.select;
+       _oxl.Activewindow.FreezePanes := True;
+     end;
+
+  _oxl.workbooks[1].worksheets[9].select;
+  _range := _oxl.range['A3','A3'];
+  _range.select;
+  _oxl.Activewindow.FreezePanes := True;
+
+
+   _korzetindex := 1;
+   while _korzetindex<=8 do
+     begin
+       KorzetSumNullazo;
+       Csik.Position := _korzetindex;
+       _aktkorzetnev := _korzetnevek[_korzetindex];
+       _aktKorzetDarab := _korzetPtdb[_korzetindex];
+
+       KorzetPenztarTablak;
+
+       inc(_korzetindex);
+     end;
+
+   _oxl.visible := true;
+   Takaro.Visible := False;
+
+end;
+
+// =============================================================================
+                 procedure TMakeExcel.KorzetSumNullazo;
+// =============================================================================
+
+begin
+  _sAktvugyfel := 0;
+  _sAkteugyfel := 0;
+  _sAktwuugyfel := 0;
+
+  _sAktvetel  := 0;
+  _sAkteladas := 0;
+  _sAktwuHuf  := 0;
+  _sAktwuUsd  := 0;
+
+  _sAktkezdij := 0;
+  _sAktHaszon := 0;
+  _sAktTranzado := 0;
+
+  // --------------------------
+
+  _sAkteevvugyfel := 0;
+  _sAkteeveugyfel := 0;
+  _sAkteevwuugyfel := 0;
+
+  _sAkteevvetel  := 0;
+  _sAkteeveladas := 0;
+  _sAkteevwuHuf  := 0;
+  _sAkteevwuUsd  := 0;
+
+  _sAkteevkezdij := 0;
+  _sAkteevHaszon := 0;
+  _sAkteevTranzado := 0;
+end;
+
+
+// =============================================================================
+                    procedure TMakeExcel.KorzetPenztarTablak;
+// =============================================================================
+
+
+begin
+  _oxl.worksheets[_korzetindex].range['A1:A1'].Columnwidth := 3;
+  _oxl.worksheets[_korzetindex].range['B1:B1'].Columnwidth := 10;
+  _oxl.worksheets[_korzetindex].range['C1:C1'].Columnwidth := 15;
+  _oxl.worksheets[_korzetindex].range['D1:D1'].Columnwidth := 11;
+  _oxl.worksheets[_korzetindex].range['E1:E1'].Columnwidth := 13;
+  _oxl.worksheets[_korzetindex].range['F1:F1'].Columnwidth := 11;
+  _oxl.worksheets[_korzetindex].range['G1:G1'].Columnwidth := 13;
+  _oxl.worksheets[_korzetindex].range['H1:H1'].Columnwidth := 11;
+  _oxl.worksheets[_korzetindex].range['I1:I1'].Columnwidth := 13;
+  _oxl.worksheets[_korzetindex].range['J1:J1'].Columnwidth := 11;
+  _oxl.worksheets[_korzetindex].range['K1:K1'].Columnwidth := 13;
+  _oxl.worksheets[_korzetindex].range['L1:L1'].Columnwidth := 21;
+  _oxl.worksheets[_korzetindex].range['M1:M1'].Columnwidth := 21;
+
+  // KÖRZET NEVÉNEK SÁRGA KERETBEN VALÓ KIJELZÉSE:
+
+  _rangestr := 'B2:D2';
+  _oxl.worksheets[_korzetindex].range[_rangestr].Mergecells := True;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Bold := true;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.italic := True;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Size := 14;
+  _oxl.worksheets[_korzetindex].range[_rangestr].HorizontalAlignment := -4108;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.Color := clYellow;
+  Vastagkeret(_rangestr);
+  _oxl.worksheets[_korzetindex].cells[2,2] := _aktkorzetnev+' KÖRZET';
+
+  // ---------------------------------------------------------------------------
+
+  _aktPenztar := _korzetPtszamSor[_korzetindex,1];
+  _aktpenztarNev := _penztarnev[_aktpenztar];
+
+  _prisor := 4;
+  _ptss := 1;
+  while _ptss<=_aktkorzetdarab do
+    begin
+      EgyPenztarKeretei;  // 4-ik sorban kezdödik
+      _aktPenztar := _korzetPtszamSor[_korzetindex,_ptss];
+      _aktpenztarNev := _penztarnev[_aktpenztar];
+      AdatsorFeltoltes;
+
+      TencolorLine;
+      inc(_ptss);
+    end;
+
+  EgypenztarKeretei;
+  OsszesenSorFeltoltes;
+
+
+  // ========================================================================
+
+  MegnevezesSor(1,'Értéktár összefoglaló elemzés');
+  ertektarsor;
+
+  // ------------------------------------------------------------------------
+
+  _text := 'A közelben található konkurens valutaváltókkal kapcsolatos tényadatok ';
+  _text := _text + '(ügyfélszám, árfolyam, bizonylatolási módszerek, próbaváltások ';
+  _text := _text + 'tapasztalatai) szerepeltetése,';
+  MegnevezesSor(2,_text);
+  _text := 'valamint a kapcsolódó javaslatok megfogalmazása itt kell hogy megtörténjen.';
+  MegnevezesSor(0,_text);
+
+  _aktKonkdb := _konkdb[_korzetindex];
+  _y := 1;
+  while _y<=_aktkonkdb do
+    begin
+      inc(_prisor);
+      _rangestr := 'B'+inttostr(_prisor)+':C'+inttostr(_prisor);
+      _oxl.worksheets[_korzetindex].range[_rangestr].Mergecells := True;
+
+      _rangestr := 'B'+inttostr(_prisor)+':M'+inttostr(_prisor);
+      _oxl.worksheets[_korzetindex].range[_rangestr].Font.size := 12;
+      _oxl.worksheets[_korzetindex].range[_rangestr].Font.Bold := False;
+      _oxl.worksheets[_korzetindex].range[_rangestr].Interior.colorindex := 19;
+
+      _rangestr := 'D'+inttostr(_prisor)+':M'+inttostr(_prisor);
+      _oxl.worksheets[_korzetindex].range[_rangestr].Mergecells := True;
+      _konkss := _kkonk[_korzetindex,_y];
+      _oxl.worksheets[_korzetindex].cells[_prisor,2] := _konk[_konkss];
+      inc(_y);
+    end;
+
+  Megnevezessor(3,'Az adott hónapra vonatkozó árfolyam-stratégiával kapcsolatos tapasztalatokat, ügyfél-visszajelzéseket valamint javaslatok');
+  ErtektarSor;
+  TervezSor;
+
+  MegnevezesSor(4,'Valuta programmal kapcsolatos javaslatok');
+  ErtektarSor;
+  TervezSor;
+
+  MegnevezesSor(5,'A területen dolgozó pénztárosok, valamint a szállítók munkájának értékelése, különös tekintettel a hozzállásra. Pozitívumokat, illetve az esetleges hibákat is. ');
+  ErtektarSor;
+  TervezSor;
+
+  Megnevezessor(6,'Eseti jutalmak, büntetések (minden esetben indoklással )');
+  ErtektarSor;
+  TervezSor;
+
+  MegnevezesSor(7,'Fiók nyitási vagy zárási javaslatok,indokkal');
+  ErtektarSor;
+  TervezSor;
+
+  MegnevezesSor(8,'Mûködést javító ötletek,fejlesztési - vagy költség-takarékossági ötletek');
+  ErtektarSor;
+  TervezSor;
+
+  _text := 'Iroda – értéktár – területi vezetõi együttmûködés: A központi irányítás (iroda), az értéktár és a területi vezetõk együttmûködésével kapcsolatos rövid beszámoló';
+  Megnevezessor(9,_text);
+  Megnevezessor(0,'az adott hónap vonatkozásában.');
+  ErtektarSor;
+  TervezSor;
+
+  MegnevezesSor(10,'Fõértéktárral való együttmûködés: Ebben a pontban szükséges részletezni a fõértéktárosokkal kapcsolatos együttmûködés adott hónapra vonatkozó rövid értékelését');
+  ErtektarSor;
+  TervezSor;
+
+  MegnevezesSor(11,'Egyéb');
+  Kozosjavaslat;
+
+  TerVezExtraPoints;
+
+
+end;
+
+// =============================================================================
+         procedure TmakeExcel.MegnevezesSor(_ss: byte; _mn: string);
+// =============================================================================
+
+begin
+  inc(_prisor);
+
+  _rangestr := 'B' + inttostr(_prisor)+':M' +inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;
+
+  _rangestr := 'A' + inttostr(_prisor)+':M' +inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.size := 11;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Bold := True;
+  _oxl.worksheets[_korzetindex].cells[_prisor,1].HorizontalAlignment := -4108;
+  if _ss>0 then _oxl.worksheets[_korzetindex].cells[_prisor,1] := inttostr(_ss)+'.';
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := _mn;
+end;
+
+// =============================================================================
+                        procedure TmakeExcel.Ertektarsor;
+// =============================================================================
+
+begin
+  inc(_prisor);
+  _rangestr := 'B' + inttostr(_prisor)+':C' +inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.size := 12;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Bold := False;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.Colorindex := 19;
+
+  _rangestr := 'D' + inttostr(_prisor)+':M' +inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.Colorindex := 19;
+
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'ÉRTÉKTÁR';
+end;
+
+// =============================================================================
+                         procedure TmakeExcel.ElemzesSor;
+// =============================================================================
+
+
+begin
+  inc(_prisor);
+  _rangestr := 'B' + inttostr(_prisor)+':M' +inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.size := 12;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Bold := False;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.Colorindex := 34;
+
+  _rangestr := 'C' + inttostr(_prisor)+':M' +inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;
+
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'elemzés TV';
+end;
+
+
+// =============================================================================
+                          procedure TmakeExcel.TervezSor;
+// =============================================================================
+
+begin
+  inc(_prisor);
+
+  _rangestr := 'B' + inttostr(_prisor)+':C' +inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.size := 12;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.Colorindex := 34;
+
+
+  _rangestr := 'D' + inttostr(_prisor)+':M' +inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.size := 12;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Bold := False;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.Colorindex := 34;
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;
+
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'Területi vezetés';
+end;
+
+
+// =============================================================================
+                       procedure TmakeExcel.KozosJavaslat;
+// =============================================================================
+
+begin
+  inc(_prisor);
+  _rangestr := 'B' + inttostr(_prisor)+':C' +inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.size := 12;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.Colorindex := 34;
+
+  _rangestr := 'D' + inttostr(_prisor)+':M' +inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.size := 12;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Bold := False;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.Colorindex := 34;
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;
+
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'Közös javaslat';
+end;
+
+
+{
+// =============================================================================
+                       procedure TMakeExcel.FiveAnalyLine;
+// =============================================================================
+
+begin
+  inc(_prisor);
+  _rangestr := 'A' + inttostr(_prisor)+':A'+ inttostr(_prisor+4);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;
+
+  _rangestr := 'C' + inttostr(_prisor)+':AE'+ inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;
+
+  _rangestr := 'B' + inttostr(_prisor)+':AE'+ inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.colorIndex := 19; // sárga
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'Elemzés ÉT';
+
+  inc(_prisor);
+
+  _rangestr := 'C' + inttostr(_prisor)+':AE'+ inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;
+
+  _rangestr := 'B' + inttostr(_prisor)+':AE'+ inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.colorIndex := 34; // vilkék
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'Elemzés TV';
+
+  inc(_prisor);
+
+  _rangestr := 'C' + inttostr(_prisor)+':AE'+ inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;
+
+  _rangestr := 'B' + inttostr(_prisor)+':AE'+ inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.colorIndex := 37; // sötkék
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'Közös javaslat';
+
+  inc(_prisor);
+
+  _rangestr := 'C' + inttostr(_prisor)+':AE'+ inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;
+
+  _rangestr := 'B' + inttostr(_prisor)+':AE'+ inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.colorIndex := 38; // vilpir
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'Ellenörzések eredménye FZS';
+
+  inc(_prisor);
+
+  _rangestr := 'C' + inttostr(_prisor)+':AE'+ inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;
+
+  _rangestr := 'B' + inttostr(_prisor)+':AE'+ inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.colorIndex := 22; // sötpir
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'Ügyvezetõi hozzáfûzés';
+end;
+
+
+
+// =============================================================================
+              procedure TmakeExcel.Sorkikockazas(_start: byte);
+// =============================================================================
+
+var _z: byte;
+
+begin
+  _z := _start;
+  while _z<=31 do
+    begin
+      _oxl.worksheets[_korzetindex].cells[_prisor,_z].BorderAround(1,2);
+      inc(_z);
+    end;
+end;
+}
+
+// =============================================================================
+                      procedure TMakeExcel.Adatsorfeltoltes;
+// =============================================================================
+
+
+begin
+   //  _P = A LEGFELSÕ SOR
+
+  // _aktpenztar, _prisor
+
+  // Három ügyfél tipus summa a fülön:
+
+  _aktvugyfel := _vUgyfel[_aktpenztar];
+  _akteugyfel := _eUgyfel[_aktpenztar];
+  _aktwuugyfel:= _wuugyfel[_aktpenztar];
+
+  _sAktvugyfel := _sAktvugyfel + _aktvUgyfel;
+  _sAkteugyfel := _sAkteugyfel + _akteUgyfel;
+  _sAktwuugyfel:= _sAktwuugyfel + _aktwuugyfel;
+
+  // Vétel, eladas, wu huf és wu usd summa a fülön:
+
+  _aktvetel  := _vetel[_aktpenztar];
+  _akteladas := _eladas[_aktpenztar];
+  _aktwuhuf  := _wuhuf[_aktpenztar];
+  _aktwuusd  := _wuusd[_aktpenztar];
+
+  _sAktVetel  := _sAktvetel + _aktvetel;
+  _sAkteladas := _sAktEladas + _aktEladas;
+  _sAktWuHuf  := _sAktWuHuf + _aktwuHuf;
+  _sAktWuUsd  := _sAktWuUsd + _aktWuUsd;
+
+  // A haszon, kezdij és tranzdij summa a fülön:
+
+  _akthaszon := _haszon[_aktpenztar];
+  _aktkezdij := _kezdij[_aktpenztar];
+  _akttranzado := _tranzado[_aktpenztar];
+
+  _sAkthaszon := _sAkthaszon + _akthaszon;
+  _sAktKezdij := _sAktKezdij + _aktkezdij;
+  _sAktTranzado := _sAktTranzado + _aktTranzado;
+
+   // --------- egy évvel ezelötti adatok summája:
+
+
+  // A három  - egy évvel ezelötti ügyfél summája:
+
+  _akteevvugyfel := _eevvUgyfel[_aktpenztar];
+  _akteeveugyfel := _eeveUgyfel[_aktpenztar];
+  _akteevwuugyfel:= _eevwuugyfel[_aktpenztar];
+
+  _sakteevvugyfel := _sakteevvugyfel + _akteevvugyfel;
+  _sakteeveugyfel := _sakteeveugyfel + _akteeveugyfel;
+  _sakteevwuugyfel:= _sakteevwuugyfel+ _akteevwuugyfel;
+
+  // Vétel, eladás és western union
+
+  _akteevvetel  := _eevvetel[_aktpenztar];
+  _akteeveladas := _eeveladas[_aktpenztar];
+  _akteevwuhuf  := _eevwuhuf[_aktpenztar];
+  _akteevwuusd  := _eevwuusd[_aktpenztar];
+
+  _sakteevvetel := _sakteevvetel  + _akteevvetel;
+  _sakteeveladas:= _sakteeveladas + _akteeveladas;
+  _sakteevwuhuf := _sakteevwuhuf  + _akteevwuhuf;
+  _sakteevwuusd := _sakteevwuusd  + _akteevwuusd;
+
+  // Summa Haszon kezdij tranzado egy évvel ezelött:
+
+  _akteevhaszon := _eevhaszon[_aktpenztar];
+  _akteevkezdij := _eevkezdij[_aktpenztar];
+  _akteevtranzado := _eevtranzado[_aktpenztar];
+
+  _sakteevHaszon := _sakteevHaszon + _akteevhaszon;
+  _sakteevKezdij := _sakteevKezdij + _akteevkezdij;
+  _sakteevTranzado := _sakteevTranzado + _akteevTranzado;
+
+   // ------------------------------------------------------------
+
+
+//  _rangestr := 'B' + inttostr(_prisor)+':C'+inttostr(_prisor+1);
+//  _oxl.worksheets[_korzetindex].range[_rangestr].interior.color := clwhite;
+
+
+  _oxl.worksheets[_korzetindex].cells[_prisor+6,2] := _aktPenztar;
+//  _oxl.worksheets[_korzetindex].cells[_prisor,2].Font.color := clRed;
+
+  _oxl.worksheets[_korzetindex].cells[_prisor+6,3] := _aktPenztarnev;
+
+  _rangestr := 'D' + inttostr(_prisor+3)+':M' + inttostr(_prisor+3);
+  _oxl.worksheets[_korzetindex].range[_rangestr].numberformat := '### ### ###';
+  _oxl.worksheets[_korzetindex].range[_rangestr].interior.colorindex := 36;
+
+  _ps := _prisor+3;
+   _oxl.worksheets[_korzetindex].cells[_ps,4] := _aktvugyfel;
+   _oxl.worksheets[_korzetindex].cells[_ps,5] := _aktvetel;
+   _oxl.worksheets[_korzetindex].cells[_ps,6] := _akteugyfel;
+   _oxl.worksheets[_korzetindex].cells[_ps,7] := _akteladas;
+
+   Percentdisp(_aktvugyfel,_akteevvugyfel,8);
+   Percentdisp(_aktvetel,_akteevvetel,9);
+   Percentdisp(_akteugyfel,_akteeveugyfel,10);
+   Percentdisp(_akteladas,_akteeveladas,11);
+
+   _oxl.worksheets[_korzetindex].cells[_ps,12]:= _akthaszon;
+   PercentDisp(_akthaszon,_akteevhaszon,13);
+
+  _ps := _prisor+7;
+
+   _rangestr := 'D' + inttostr(_ps)+':M' + inttostr(_ps);
+  _oxl.worksheets[_korzetindex].range[_rangestr].numberformat := '### ### ###';
+  _oxl.worksheets[_korzetindex].range[_rangestr].interior.colorindex := 35;
+
+   _oxl.worksheets[_korzetindex].cells[_ps,4] := _aktwuugyfel;
+   _oxl.worksheets[_korzetindex].cells[_ps,5] := _aktwuhuf;
+   _oxl.worksheets[_korzetindex].cells[_ps,6] := _aktwuusd;
+
+   PercentDisp(_aktwuugyfel,_akteevwuugyfel,7);
+   PercentDisp(_aktwuhuf,_akteevwuhuf,8);
+   PercentDisp(_aktwuusd,_akteevwuusd,9);
+
+   _oxl.worksheets[_korzetindex].cells[_ps,10] := _aktkezdij;
+   PercentDisp(_aktkezdij,_akteevkezdij,11);
+
+   _oxl.worksheets[_korzetindex].cells[_ps,12] := _aktTranzado;
+   PercentDisp(_aktTranzado,_akteevTranzado,13);
+   _prisor := _ps +1;
+end;
+
+// =============================================================================
+         procedure TMakeexcel.PercentDisp(_ah,_eh: real;_prios: integer);
+// =============================================================================
+
+begin
+  if _eh=0 then
+    begin
+      _oxl.worksheets[_korzetindex].cells[_ps,_prios] := '-';
+      exit;
+    end;
+
+  _szaz := _ah/_eh;
+
+  _oxl.worksheets[_korzetindex].cells[_ps,_prios].NumberFormat:='0%';
+  _oxl.worksheets[_korzetindex].cells[_ps,_prios] := _szaz;
+
+
+end;
+
+
+// =============================================================================
+                 procedure TMakeExcel.OsszesenSorfeltoltes;
+// =============================================================================
+
+begin
+  // _aktpenztar, _prisor
+
+   _oxl.worksheets[_korzetindex].cells[_prisor+6,3] := 'ÖSSZESEN';
+
+  _rangestr := 'D' + inttostr(_prisor+3)+':M' + inttostr(_prisor+3);
+  _oxl.worksheets[_korzetindex].range[_rangestr].numberformat := '### ### ###';
+  _oxl.worksheets[_korzetindex].range[_rangestr].interior.colorindex := 36;
+
+  _ps := _prisor+3;
+  _oxl.worksheets[_korzetindex].cells[_ps,4] := _Saktvugyfel;
+  _oxl.worksheets[_korzetindex].cells[_ps,5] := _Saktvetel;
+  _oxl.worksheets[_korzetindex].cells[_ps,6] := _Sakteugyfel;
+  _oxl.worksheets[_korzetindex].cells[_ps,7] := _Sakteladas;
+
+  PercentDisp(_saktvugyfel,_Sakteevvugyfel,8);
+  PercentDisp(_saktvetel,_Sakteevvetel,9);
+  PercentDisp(_sakteugyfel,_Sakteeveugyfel,10);
+  PercentDisp(_sakteladas,_Sakteeveladas,11);
+
+  _oxl.worksheets[_korzetindex].cells[_ps,12]:= _Sakthaszon;
+  PercentDisp(_Sakthaszon,_Sakteevhaszon,13);
+
+  _PS := _prisor+7;
+
+   _rangestr := 'D' + inttostr(_ps)+':M' + inttostr(_ps);
+  _oxl.worksheets[_korzetindex].range[_rangestr].numberformat := '### ### ###';
+  _oxl.worksheets[_korzetindex].range[_rangestr].interior.colorindex := 35;
+
+   _oxl.worksheets[_korzetindex].cells[_ps,4] := _saktwuugyfel;
+   _oxl.worksheets[_korzetindex].cells[_ps,5] := _saktwuhuf;
+   _oxl.worksheets[_korzetindex].cells[_ps,6] := _saktwuusd;
+
+   PercentDisp(_saktwuugyfel,_sakteevwuugyfel,7);
+   PercentDisp(_saktwuhuf,_sakteevwuhuf,8);
+   PercentDisp(_saktwuusd,_sakteevwuusd,9);
+
+   _oxl.worksheets[_korzetindex].cells[_ps,10] := _saktkezdij;
+   PercentDisp(_saktkezdij,_sakteevkezdij,11);
+
+   _oxl.worksheets[_korzetindex].cells[_ps,12] := _saktTranzado;
+   PercentDisp(_saktTranzado,_sakteevTranzado,13);
+   _prisor := _ps +1;
+end;
+
+// =============================================================================
+                   procedure TMakeExcel.TerVezExtraPoints;
+// =============================================================================
+
+begin
+  inc(_prisor);
+  _rangestr := 'A' + inttostr(_prisor)+':M' +inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.color := clwhite;
+  inc(_prisor);
+  _rangestr := 'A' + inttostr(_prisor)+':M' +inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.color := clwhite;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.color := clRed;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Size := 14;
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'Területi vezetõ külön pontjai:';
+  inc(_prisor);
+  _rangestr := 'A' + inttostr(_prisor)+':M' +inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.color := clwhite;
+
+  // ================================================
+
+  Extrafocim;
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'Területen történt személyi változások, javaslatok';
+
+  inc(_prisor);
+  _rangestr := 'A' + inttostr(_prisor)+':M' +inttostr(_prisor+1);
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.color := clwhite;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Size := 12;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Bold := False;
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'Az adott hónapban megtörtént személyi változások bemutatása (távozók esetén az okok szerepeltetésével), valamint a kapcsolódó javaslatok bemutatása.';
+
+  inc(_prisor);
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'Itt szükséges jelezni azt is, ha létszám-problémák vannak, és ennek megoldására központi segítség szükséges.';
+  Barnacsik;
+
+   // ====================================================
+
+
+  Extrafocim;
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'Eszközök állapota, kérések';
+
+  inc(_prisor);
+  _rangestr := 'A' + inttostr(_prisor)+':M' +inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.color := clwhite;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Size := 12;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Bold := False;
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'A területen található eszközök (számítógépek kivételével, ide tartoznak a nyomtatók, futófények, klíma) állapotával kapcsolatos rövid összefoglaló. A munkavégzéshez szükséges eszközök igénylését is itt szükséges szerepeltetni, indoklással együtt.';
+
+  Barnacsik;
+
+   // ====================================================
+
+  Extrafocim;
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'Ellenõrzések eredménye';
+
+  inc(_prisor);
+  _rangestr := 'A' + inttostr(_prisor)+':M' +inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.color := clwhite;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Size := 12;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Bold := False;
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'A területi vezetõ által végzett havi ellenõrzések tapasztalatai, a leggyakrabban elõforduló hibák leírásával, valamint a jó gyakorlatok bemutatása.';
+
+  Barnacsik;
+
+   // ====================================================
+
+  Extrafocim;
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'Létszámelemzés, túlórák okai';
+
+  inc(_prisor);
+  _rangestr := 'A' + inttostr(_prisor)+':M' +inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.color := clwhite;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Size := 12;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Bold := False;
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'A területre vonatkozó létszám-helyzet bemutatása, külön kiemelve az esetleges túlórák okait, és az azok csökkentésére megfogalmazott javaslatokat.';
+
+  Barnacsik;
+
+   // ====================================================
+
+  Extrafocim;
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'Versenyek nyertesei';
+
+   inc(_prisor);
+  _rangestr := 'A' + inttostr(_prisor)+':M' +inttostr(_prisor+1);
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.color := clwhite;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Size := 12;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Bold := False;
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'Az adott hónapban lezárult versenyek nyerteseinek felsorolása, valamint részletes javaslat területi versenyek kiírására.';
+
+  inc(_prisor);
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := '(pontosan megfogalmazva hogy melyik terméket vagy szolgáltatást érinti a verseny, valamint mi a javasolt díjazás, külön bemutatva hogy a kiírni tervezett verseny miként járul majd hozzá a terület eredményességének növekedéséhez.';
+
+  Barnacsik;
+
+  // ====================================================
+
+  Extrafocim;
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'Eseti feladatok végrehajtása, állapota';
+   inc(_prisor);
+  _rangestr := 'A' + inttostr(_prisor)+':M' +inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.color := clwhite;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Size := 12;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Bold := False;
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'Minden – nem rendszeresen, a szokásos munkamenet részét képezõ – eseti feladat végrehajtásának felsorolása (befejezett feladatok esetében) illetve a folyamatban lévõ feladatok esetében annak állapota.';
+
+  Barnacsik;
+
+   // ====================================================
+
+   Extrafocim;
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'Autók állapota';
+   inc(_prisor);
+  _rangestr := 'A' + inttostr(_prisor)+':M' +inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.color := clwhite;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Size := 12;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Bold := False;
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'A területhez tartozó gépjármûvek állapotának rövid bemutatása, különös tekintettel a szervízek, illetve az esetleges sérülésekre.';
+  Barnacsik;
+
+   // ====================================================
+
+   Extrafocim;
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'Dekorok, táblák, hirdetések állapota, javaslatok';
+   inc(_prisor);
+  _rangestr := 'A' + inttostr(_prisor)+':M' +inttostr(_prisor+1);
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.color := clwhite;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Size := 12;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Bold := False;
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'A területen található marketing anyagok (fióki dekorációk, kültéri táblák, futófények, óriásplakátok, egyéb hirdetések) állapotát itt szükséges szerepeltetni.';
+  inc(_prisor);
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'Külön jelzés csak akkor szükséges, ha olyan probléma merült fel, amit nem sikerült azonnal megoldani.';
+  inc(_prisor);
+  _oxl.worksheets[_korzetindex].cells[_prisor,2] := 'Itt szükséges szerepeltetni minden olyan javaslatot, ami új tábla, dekor, hirdetés, vagy bármilyen egyéb megjelenéshez kapcsolódik.';
+
+  Barnacsik;
+end;
+
+// =============================================================================
+                      procedure TMakeExcel.Extrafocim;
+// =============================================================================
+
+begin
+  inc(_prisor);
+  _rangestr := 'A' + inttostr(_prisor)+':AU' +inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.color := clwhite;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.color := clBlack;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Size := 12;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Bold := true;
+end;
+
+// =============================================================================
+                          procedure TMakeExcel.Barnacsik;
+// =============================================================================
+
+begin
+  inc(_prisor);
+  _rangestr := 'B' + inttostr(_prisor)+':AU' +inttostr(_prisor);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := True;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.size := 12;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Bold := False;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.Colorindex := 19;
+end;
+
+// =============================================================================
+              procedure TMakeExcel.Vastagkeret(_rs: string);
+// =============================================================================
+
+begin
+  _oxl.worksheets[_korzetindex].range[_rs].BorderAround(1,4);
+end;
+
+// =============================================================================
+               procedure TMakeExcel.Vekonykeret(_rs: string);
+// =============================================================================
+
+begin
+  _oxl.worksheets[_korzetindex].range[_rs].BorderAround(1,2);
+end;
+
+
+// =============================================================================
+                procedure TMakeExcel.TenColorLine;
+// =============================================================================
+
+var _rs: string;
+
+begin
+  _k := _prisor;
+
+  _rs := 'B'+inttostr(_k)+':M'+inttostr(_k+3);
+  _oxl.worksheets[_korzetindex].range[_rs].Interior.Color := $B0FFFF;
+
+  _rs := 'B' + inttostr(_k)+':C' + inttostr(_k);
+  _oxl.worksheets[_korzetindex].range[_rs].MergeCells := True;
+  _rs := 'D' + inttostr(_k)+':M' + inttostr(_k);
+  _oxl.worksheets[_korzetindex].range[_rs].MergeCells := True;
+  _oxl.worksheets[_korzetindex].cells[_k,2] := 'ELEMZÉS ÉT';
+
+  _rs := 'B' + inttostr(_k+1)+':C' + inttostr(_k+1);
+  _oxl.worksheets[_korzetindex].range[_rs].MergeCells := True;
+  _rs := 'D' + inttostr(_k+1)+':M' + inttostr(_k+1);
+  _oxl.worksheets[_korzetindex].range[_rs].MergeCells := True;
+  _oxl.worksheets[_korzetindex].cells[_k+1,2] := 'KONKURENCIA';
+
+  _rs := 'B' + inttostr(_k+2)+':C' + inttostr(_k+2);
+  _oxl.worksheets[_korzetindex].range[_rs].MergeCells := True;
+  _rs := 'D' + inttostr(_k+2)+':M' + inttostr(_k+2);
+  _oxl.worksheets[_korzetindex].range[_rs].MergeCells := True;
+  _oxl.worksheets[_korzetindex].cells[_k+2,2] := 'KONKURENCIA KK';
+
+  _rs := 'B' + inttostr(_k+3)+':C' + inttostr(_k+3);
+  _oxl.worksheets[_korzetindex].range[_rs].MergeCells := True;
+  _rs := 'D' + inttostr(_k+3)+':M' + inttostr(_k+3);
+  _oxl.worksheets[_korzetindex].range[_rs].MergeCells := True;
+  _oxl.worksheets[_korzetindex].cells[_k+3,2] := 'EXC KK';
+
+ 
+  _rs := 'B'+inttostr(_k+4)+':M'+inttostr(_k+4);
+  _oxl.worksheets[_korzetindex].range[_rs].Interior.ColorIndex := 34;
+
+  _rs := 'B' + inttostr(_k+4)+':C' + inttostr(_k+4);
+  _oxl.worksheets[_korzetindex].range[_rs].MergeCells := True;
+  _rs := 'D' + inttostr(_k+4)+':M' + inttostr(_k+4);
+  _oxl.worksheets[_korzetindex].range[_rs].MergeCells := True;
+  _oxl.worksheets[_korzetindex].cells[_k+4,2] := 'ELEMZÉS TV';
+
+   _rs := 'B'+inttostr(_k+5)+':M'+inttostr(_k+5);
+  _oxl.worksheets[_korzetindex].range[_rs].Interior.Colorindex := 37;
+
+  _rs := 'B' + inttostr(_k+5)+':C' + inttostr(_k+5);
+  _oxl.worksheets[_korzetindex].range[_rs].MergeCells := True;
+  _rs := 'D' + inttostr(_k+5)+':M' + inttostr(_k+5);
+  _oxl.worksheets[_korzetindex].range[_rs].MergeCells := True;
+  _oxl.worksheets[_korzetindex].cells[_k+5,2] := 'KÖZÖS JAVASLAT';
+
+
+
+   _rs := 'B'+inttostr(_k+6)+':M'+inttostr(_k+7);
+  _oxl.worksheets[_korzetindex].range[_rs].Interior.Colorindex := 8;
+
+  _rs := 'B' + inttostr(_k+6)+':C' + inttostr(_k+9);
+  _oxl.worksheets[_korzetindex].range[_rs].wraptext := true;
+  _oxl.worksheets[_korzetindex].range[_rs].VerticalAlignment := -4108;
+
+   _rs := 'B'+inttostr(_k+6)+':M'+inttostr(_k+7);
+  _oxl.worksheets[_korzetindex].range[_rs].Interior.Colorindex := 38;
+
+  _rs := 'B' + inttostr(_k+6)+':C' + inttostr(_k+7);
+  _oxl.worksheets[_korzetindex].range[_rs].MergeCells := True;
+
+  _rs := 'D' + inttostr(_k+6)+':M' + inttostr(_k+7);
+  _oxl.worksheets[_korzetindex].range[_rs].MergeCells := True;
+  _oxl.worksheets[_korzetindex].cells[_k+6,2] := 'ELLENÖRZÉSEK EREDMÉNYE FZS';
+
+   _rs := 'B'+inttostr(_k+8)+':M'+inttostr(_k+9);
+  _oxl.worksheets[_korzetindex].range[_rs].Interior.Colorindex := 26;
+
+  _rs := 'B' + inttostr(_k+8)+':C' + inttostr(_k+9);
+  _oxl.worksheets[_korzetindex].range[_rs].MergeCells := True;
+  _oxl.worksheets[_korzetindex].cells[_k+8,2] := 'ÜGYVEZETÕI HOZZÁFÛZÉS';
+
+  // --------------- színezés kész *------------------------
+
+  _prisor := _k + 10;
+
+end;
+
+// =============================================================================
+                    procedure TMakeExcel.AdatsorKeret;
+// =============================================================================
+
+
+
+
+begin
+  _s1 := inttostr(_prisor);
+  _s2 := inttostr(_prisor+1);
+
+  _rangestr := 'B'+_s1+':B'+_s2;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Mergecells := True;
+  _oxl.worksheets[_korzetindex].range[_rangestr].VerticalAlignment := -4108;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Color := clRed;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Bold := True;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Size := 16;
+  Vekonykeret(_rangestr);
+
+  _rangestr := 'C'+_s1+':C'+_s2;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Mergecells := True;
+  _oxl.worksheets[_korzetindex].range[_rangestr].VerticalAlignment := -4108;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.Size := 11;
+  _oxl.worksheets[_korzetindex].range[_rangestr].WrapText := True;
+
+  _rangestr := 'B'+_s1+':M'+_s2;
+  _oxl.worksheets[_korzetindex].range[_rangestr].HorizontalAlignment := -4108;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Numberformat := '### ### ###';
+
+  _rangestr := 'D'+_s1+':D'+_s2;
+  VeKonyKeret(_rangestr);
+
+  _rangestr := 'E'+_s1+':E'+_s2;
+  VeKonyKeret(_rangestr);
+
+  _rangestr := 'F'+_s1+':F'+_s2;
+  VeKonyKeret(_rangestr);
+
+  _rangestr := 'G'+_s1+':G'+_s2;
+  VeKonyKeret(_rangestr);
+
+  _rangestr := 'H'+_s1+':H'+_s2;
+  VeKonyKeret(_rangestr);
+
+  VastagKeret('B'+_s1+':M'+_s2);
+  VastagKeret('D'+_s1+':G'+_s1);
+  VastagKeret('K'+_s1+':K'+_s1);
+  VastagKeret('M'+_s1+':M'+_s1);
+  VastagKeret('M'+_s1+':M'+_s2);
+  VastagKeret('H'+_s1+':I'+_s1);
+
+  VastagKeret('D'+_s2+':F'+_s2);
+  VastagKeret('J'+_s1+':J'+_s1);
+  VastagKeret('J'+_s1+':J'+_s2);
+  VastagKeret('L'+_s1+':L'+_s1);
+  VastagKeret('L'+_s1+':L'+_s2);
+end;
+
+
+// =============================================================================
+                 procedure TMakeExcel.Egypenztarkeretei;
+// =============================================================================
+
+
+var _p: word;
+
+begin
+  _p := _prisor;
+
+  _rangestr := 'B'+inttostr(_p)+':M'+inttostr(_p+7);
+  _oxl.worksheets[_korzetindex].range[_rangestr].Font.size := 10;
+
+  //  Elsõ 4 kocka: ÖSSZENYITÁS:
+
+  _rangestr := 'B' + inttostr(_p)+':B'+ inttostr(_p+5);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;
+
+  _rangestr := 'C' + inttostr(_p)+':C'+ inttostr(_p+5);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;
+
+  _rangestr := 'B' + inttostr(_p+6)+':B'+ inttostr(_p+7);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;
+
+  _rangestr := 'C' + inttostr(_p+6)+':C'+ inttostr(_p+7);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;
+
+  // --------- AZ ELSÕ NÉGY KOCKA:
+
+  _rangestr := 'B' + inttostr(_p)+':M'+ inttostr(_p+7);
+  _oxl.worksheets[_korzetindex].range[_rangestr].wraptext := true;
+  _oxl.worksheets[_korzetindex].range[_rangestr].HorizontalAlignment := -4108;
+  _oxl.worksheets[_korzetindex].range[_rangestr].VerticalAlignment := -4108;
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.Colorindex := 20;
+
+  // Ptár száma és neve felirata: világos kék
+
+  _rangestr := 'B' + inttostr(_p)+':C'+ inttostr(_p+5);
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.Colorindex := 20;
+  _oxl.worksheets[_korzetindex].cells[_p,2] := 'PÉNZTÁR SZÁMA';
+  _oxl.worksheets[_korzetindex].cells[_p,3] := 'PÉNZTÁR NEVE';
+
+
+  // Pénztár száma és neve: ALSÓ 2 KOCKA
+
+  _rangestr := 'B' + inttostr(_p+6)+':C'+ inttostr(_p+7);
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.Color := clWhite;
+  _oxl.worksheets[_korzetindex].Cells[_p+6,2].font.color := clRed;
+  _oxl.worksheets[_korzetindex].Cells[_p+6,2].font.Size := 16;
+  _oxl.worksheets[_korzetindex].Cells[_p+6,2].font.Bold := True;
+
+
+
+
+
+
+  //----------------------------------------------------------------------------
+
+  _rangestr := 'D' + inttostr(_p) + ':M' + inttostr(_p+3);
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.Color := $B0FFFF;
+
+  _rangestr := 'D' + inttostr(_p) + ':G' + inttostr(_p);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;
+
+  _rangestr := 'H' + inttostr(_p) + ':K' + inttostr(_p);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;
+
+  _rangestr := 'D' + inttostr(_p+1) + ':E' + inttostr(_p+1);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;
+
+  _rangestr := 'F' + inttostr(_p+1) + ':G' + inttostr(_p+1);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;
+
+  _rangestr := 'H' + inttostr(_p+1) + ':I' + inttostr(_p+1);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;
+
+  _rangestr := 'J' + inttostr(_p+1) + ':K' + inttostr(_p+1);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;
+
+  _rangestr := 'L' + inttostr(_p) + ':L' + inttostr(_p+2);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;
+
+  _rangestr := 'M' + inttostr(_p) + ':M' + inttostr(_p+2);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;
+
+  // ------------------- eddig jó -------------
+
+  _rangestr := 'D' + inttostr(_p+4) + ':F' + inttostr(_p+5);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;  // ok
+
+  _rangestr := 'G' + inttostr(_p+4) + ':I' + inttostr(_p+5);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true; // ok
+
+  _rangestr := 'J' + inttostr(_p+4) + ':J' + inttostr(_p+6);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;  // ok
+
+  _rangestr := 'K' + inttostr(_p+4) + ':K' + inttostr(_p+6);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true;  // ok
+
+  _rangestr := 'L' + inttostr(_p+4) + ':L' + inttostr(_p+6);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true; // ok
+
+   _rangestr := 'M' + inttostr(_p+4) + ':M' + inttostr(_p+6);
+  _oxl.worksheets[_korzetindex].range[_rangestr].MergeCells := true; // ok
+
+  // -----------------------------eddig jó -----------------
+
+  _rangestr := 'D' + inttostr(_p+4) + ':M' + inttostr(_p+7);
+  _oxl.worksheets[_korzetindex].range[_rangestr].Interior.Colorindex := 35;
+
+  // ----------------- FELIRATOK --------------------------------------
+
+
+  _oxl.worksheets[_korzetindex].Cells[_p,4] := inttostr(_kertev)+ ' '+_honev[_kertho]+' HAVI VALUTAVÁLTÁS';
+  _oxl.worksheets[_korzetindex].Cells[_p,8] := 'VALUTAVÁLTÁS ELÖZÕ ÉVHEZ KÉPEST';
+  _oxl.worksheets[_korzetindex].Cells[_p,12] := inttostr(_kertev)+ ' '+_honev[_kertho]+' HAVI BRUTTÓ HASZON';
+  _oxl.worksheets[_korzetindex].Cells[_p,13] := 'BRUTTÓ HASZON ALAKULÁSA ELÖZÕ ÉVHEZ KÉPEST';
+
+  _oxl.worksheets[_korzetindex].Cells[_p+1,4] := 'VÉTEL';
+  _oxl.worksheets[_korzetindex].Cells[_p+1,6] := 'ELADÁS';
+
+  _oxl.worksheets[_korzetindex].Cells[_p+1,8] := 'VÉTEL';
+  _oxl.worksheets[_korzetindex].Cells[_p+1,10]:= 'ELADÁS';
+
+  _oxl.worksheets[_korzetindex].Cells[_p+2,4] := 'ÜGYFÉL';
+  _oxl.worksheets[_korzetindex].Cells[_p+2,5] := 'FORINT';
+
+  _oxl.worksheets[_korzetindex].Cells[_p+2,6] := 'ÜGYFÉL';
+  _oxl.worksheets[_korzetindex].Cells[_p+2,7] := 'FORINT';
+
+  _oxl.worksheets[_korzetindex].Cells[_p+2,8] := 'ÜGYFÉL';
+  _oxl.worksheets[_korzetindex].Cells[_p+2,9] := 'FORINT';
+
+  _oxl.worksheets[_korzetindex].Cells[_p+2,10] := 'ÜGYFÉL';
+  _oxl.worksheets[_korzetindex].Cells[_p+2,11] := 'FORINT';
+
+  // --------------------
+
+  _oxl.worksheets[_korzetindex].Cells[_p+4,4] := inttostr(_kertev)+ ' '+_honev[_kertho]+'I WESTERN UNION';
+  _oxl.worksheets[_korzetindex].Cells[_p+4,10]:= inttostr(_kertev)+ ' '+ inttostr(_kertho)+' HAVI KEZ-I DÍJ';
+  _oxl.worksheets[_korzetindex].Cells[_p+4,12]:= inttostr(_kertev)+ ' '+ inttostr(_kertho)+' HAVI TRANZAKCIÓ ADÓ';
+
+
+
+  _oxl.worksheets[_korzetindex].Cells[_p+6,4] := 'ÜGYFÉL';
+  _oxl.worksheets[_korzetindex].Cells[_p+6,5] := 'HUF';
+  _oxl.worksheets[_korzetindex].Cells[_p+6,6] := 'USD';
+
+  _oxl.worksheets[_korzetindex].Cells[_p+6,7] := 'ÜGYFÉL';
+  _oxl.worksheets[_korzetindex].Cells[_p+6,8] := 'HUF';
+  _oxl.worksheets[_korzetindex].Cells[_p+6,9] := 'USD';
+
+  //- --------------------------------------------------------------
+
+  _oxl.worksheets[_korzetindex].Cells[_p+4,7] := 'WESTERN UNION ALAKULÁSA ELÖZÕ ÉVHEZ KÉPEST';
+  _oxl.worksheets[_korzetindex].Cells[_p+4,11] := 'KEZELÉSI DÍJ ELÖZÕ ÉVHEZ KÉPEST';
+  _oxl.worksheets[_korzetindex].Cells[_p+4,13] := 'TRANZ ADÓ ALAKULÁSA AZ ELÖZÕ ÉVHEZ KÉPEST';
+
+  //-----------------------------------
+
+  Vekonykeret('B'+inttostr(_p)+':C'+inttostr(_p+5));
+  Vekonykeret('D'+inttostr(_p)+':G'+inttostr(_p));
+  Vekonykeret('H'+inttostr(_p)+':K'+inttostr(_p));
+//
+  Vekonykeret('D'+inttostr(_p+1)+':E'+inttostr(_p+1));
+  Vekonykeret('F'+inttostr(_p+1)+':G'+inttostr(_p+1));
+  Vekonykeret('H'+inttostr(_p+1)+':I'+inttostr(_p+1));
+  Vekonykeret('J'+inttostr(_p+1)+':K'+inttostr(_p+1));
+//
+  Vekonykeret('D'+inttostr(_p+2)+':D'+inttostr(_p+3));
+  Vekonykeret('E'+inttostr(_p+2)+':E'+inttostr(_p+3));
+  Vekonykeret('F'+inttostr(_p+2)+':F'+inttostr(_p+3));
+  Vekonykeret('G'+inttostr(_p+2)+':G'+inttostr(_p+3));
+  Vekonykeret('H'+inttostr(_p+2)+':H'+inttostr(_p+3));
+  Vekonykeret('I'+inttostr(_p+2)+':I'+inttostr(_p+3));
+  Vekonykeret('J'+inttostr(_p+2)+':J'+inttostr(_p+3));
+  Vekonykeret('K'+inttostr(_p+2)+':K'+inttostr(_p+3));
+//
+//
+  Vekonykeret('D'+inttostr(_p+6)+':I'+inttostr(_p+6));
+  Vekonykeret('E'+inttostr(_p+6)+':E'+inttostr(_p+7));
+  Vekonykeret('F'+inttostr(_p+6)+':F'+inttostr(_p+7));
+  Vekonykeret('G'+inttostr(_p+6)+':G'+inttostr(_p+7));
+  Vekonykeret('H'+inttostr(_p+6)+':H'+inttostr(_p+7));
+  Vekonykeret('I'+inttostr(_p+6)+':I'+inttostr(_p+7));
+//
+  Vekonykeret('D'+inttostr(_p+3)+':D'+inttostr(_p+3));
+  Vekonykeret('E'+inttostr(_p+3)+':E'+inttostr(_p+3));
+  Vekonykeret('F'+inttostr(_p+3)+':F'+inttostr(_p+3));
+  Vekonykeret('G'+inttostr(_p+3)+':G'+inttostr(_p+3));
+  Vekonykeret('H'+inttostr(_p+3)+':H'+inttostr(_p+3));
+  Vekonykeret('I'+inttostr(_p+3)+':I'+inttostr(_p+3));
+  Vekonykeret('J'+inttostr(_p+3)+':J'+inttostr(_p+3));
+  Vekonykeret('L'+inttostr(_p+3)+':L'+inttostr(_p+3));
+  Vekonykeret('K'+inttostr(_p+3)+':K'+inttostr(_p+3));
+  Vekonykeret('M'+inttostr(_p+3)+':M'+inttostr(_p+3));
+
+  Vekonykeret('J'+inttostr(_p+7)+':J'+inttostr(_p+7));
+  Vekonykeret('K'+inttostr(_p+7)+':K'+inttostr(_p+7));
+  Vekonykeret('L'+inttostr(_p+7)+':L'+inttostr(_p+7));
+  Vekonykeret('M'+inttostr(_p+7)+':M'+inttostr(_p+7));
+
+  // -------------------------------------------------------------
+
+  VastagKeret('B'+inttostr(_p)+':M'+inttostr(_p+7));
+  VastagKeret('C'+inttostr(_p)+':C'+inttostr(_p+7));
+
+  VastagKeret('D'+inttostr(_p)+':G'+inttostr(_p+3));
+  VastagKeret('H'+inttostr(_p)+':K'+inttostr(_p+3));
+
+  VastagKeret('L'+inttostr(_p)+':L'+inttostr(_p+3));
+  VastagKeret('M'+inttostr(_p)+':M'+inttostr(_p+3));
+
+  VastagKeret('D'+inttostr(_p+4)+':F'+inttostr(_p+5));
+  VastagKeret('G'+inttostr(_p+4)+':I'+inttostr(_p+5));
+
+  VastagKeret('J'+inttostr(_p+4)+':J'+inttostr(_p+7));
+  VastagKeret('K'+inttostr(_p+4)+':K'+inttostr(_p+7));
+  VastagKeret('L'+inttostr(_p+4)+':L'+inttostr(_p+7));
+  VastagKeret('M'+inttostr(_p+4)+':M'+inttostr(_p+7));
+end;
+
+
+
+end.
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,823 @@
+unit Unit1;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, Buttons, IBDatabase, DB, IBCustomDataSet, IBQuery,
+  strutils, ExtCtrls, IBTable;
+
+type
+  TForm1 = class(TForm)
+    BitBtn1: TBitBtn;
+    BitBtn2: TBitBtn;
+    BANKQUERY: TIBQuery;
+    BANKDBASE: TIBDatabase;
+    BANKTRANZ: TIBTransaction;
+    UTQUERY: TIBQuery;
+    UTDBASE: TIBDatabase;
+    UTTRANZ: TIBTransaction;
+    UF18QUERY: TIBQuery;
+    UF19QUERY: TIBQuery;
+    UF18DBASE: TIBDatabase;
+    UF19DBASE: TIBDatabase;
+    UF18TRANZ: TIBTransaction;
+    UF19TRANZ: TIBTransaction;
+    BTQUERY: TIBQuery;
+    BTDBASE: TIBDatabase;
+    BTTRANZ: TIBTransaction;
+    RECQUERY: TIBQuery;
+    RECDBASE: TIBDatabase;
+    RECTRANZ: TIBTransaction;
+    CASHQUERY: TIBQuery;
+    CASHDBASE: TIBDatabase;
+    CASHTRANZ: TIBTransaction;
+    Panel1: TPanel;
+    Panel2: TPanel;
+    Panel3: TPanel;
+    Panel4: TPanel;
+    Panel5: TPanel;
+    Panel6: TPanel;
+    Panel7: TPanel;
+    BTTABLA: TIBTable;
+    procedure BitBtn2Click(Sender: TObject);
+    procedure BitBtn1Click(Sender: TObject);
+    procedure BankParancs(_ukaz: string);
+    procedure BankDataTorles;
+    procedure Menet(_fdb: string);
+    procedure JMenet(_fdb: string);
+    procedure VFileRead;
+    procedure Regisztralas;
+    procedure IrodanevBeolvasas;
+
+    procedure JogiRegisztralas;
+    procedure JogiFileread;
+
+
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form1: TForm1;
+
+  _irodacim: array[1..180] of string;
+
+  _pcs,_apcs,_aktcsaladi,_aktszulido,_aktazonosito,_kbetu:string;
+  _nevtabla,_biztabla,_aktokmtip,_aktutonev,_aktdnem,_aktcegnev: string;
+  _aktdatum,_aktbizonylat,_kftBetu,_kftnev,_aktirodacim: string;
+  _banktabla,_aktallampolg,_btfdbPath,_btnev,_aktthcim: string;
+  _aktmegbizottneve,_fdbpath,_varos,_boltnev,_uzcim: string;
+  _sorveg: string = chr(13)+chr(10);
+  _recno,_sss,_aktPenztar,_aktosszeg: integer;
+
+implementation
+
+{$R *.dfm}
+
+procedure TForm1.BitBtn2Click(Sender: TObject);
+begin
+  Application.Terminate;
+end;
+
+procedure TForm1.BitBtn1Click(Sender: TObject);
+begin
+
+  Irodanevbeolvasas;
+  BankDataTorles;
+
+  Menet('MBEST.FDB');
+  Menet('MEAST.FDB');
+  Menet('MPANN.FDB');
+  Menet('MZALOG.FDB');
+
+  JMenet('JBEST.FDB');
+  JMenet('JEAST.FDB');
+  JMenet('JPANN.FDB');
+  JMenet('JZALOG.FDB');
+
+  ShowMessage('KÉSZEN VAGYOK');
+
+end;
+
+
+procedure TForm1.BankDataTorles;
+
+begin
+  BankParancs('DELETE FROM TERMBEST');
+  BankParancs('DELETE FROM TERMEAST');
+  BankParancs('DELETE FROM TERMPANN');
+  BankParancs('DELETE FROM TERMZLOG');
+
+  BankParancs('DELETE FROM JOGIBEST');
+  BankParancs('DELETE FROM JOGIEAST');
+  BankParancs('DELETE FROM JOGIPANN');
+  BankParancs('DELETE FROM JOGIZLOG');
+end;
+
+
+procedure TForm1.BankParancs(_ukaz: string);
+
+begin
+
+  Bankdbase.connected := True;
+  if BankTranz.InTransaction then BankTranz.Commit;
+  Banktranz.StartTransaction;
+
+  with Bankquery do
+    begin
+      Close;
+      Sql.clear;
+      Sql.add(_ukaz);
+      Execsql;
+    end;
+  BankTranz.Commit;
+  Bankdbase.close;
+
+end;
+
+procedure TForm1.Menet(_fdb: string);
+
+begin
+
+
+  // Mbest.fdb, meast.fdb,_mpann.fdb,_mzalog.fdb a paraméter
+
+  _kftBetu := midstr(_fdb,2,1);
+  _kftnev := midstr(_fdb,2,4);
+  if _kftBETU='Z' then _kftnev := 'ZLOG';
+
+  _banktabla := 'TERM' + _kftnev;
+
+  _fdbpath := 'c:\receptor\database\' + _FDB;
+  Panel2.caption := _fdbPath;
+  Panel2.repaint;
+
+  utdbase.close;
+  utdbase.databasename := _fdbPath;
+  utdbase.connected := True;
+
+  _pcs := 'SELECT * FROM MAGAN';
+  with Utquery do
+    begin
+      Close;
+      sql.clear;
+      sql.add(_pcs);
+      Open;            // megnyitja az elözöleg beküldött exceltáblát
+    end;
+
+  // végigmegy az aktuális utolsó exceltáblán:
+
+  while not utquery.eof do
+    begin
+      // 3 fontos adatot beolvas az excel-táblából
+
+      _aktcsaladi := TRIM(Utquery.FieldByNAme('CSALADI').asString);
+      _aktutonev := trim(UtQuery.FieldByNAme('UTONEV').AsString);
+
+      Panel1.caption := _aktcsaladi+' '+_aktutonev;
+      Panel1.repaint;
+
+      _aktszulido := trim(Utquery.fieldByNAme('SZULETESIIDO').asString);
+      _aktazonosito := trim(utquery.fieldByNAme('AZONOSITO').asString);
+      _aktpenztar := Utquery.FieldByNAme('PENZTAR').asInteger;
+
+      _aktirodacim := _irodacim[_aktpenztar];
+
+      // Az ügyfél név alapján kijelöli a név- és biz-tábla nevét:
+
+      _kbetu    := leftstr(_aktcsaladi,1);
+      _nevtabla := _kbetu + 'NEV';
+      _biztabla := _kbetu + 'BIZ';
+
+      // A névtáblában rápozicionál a tárolt ügyfélre a 3 adat alapján:
+
+      _apcs := 'SELECT * FROM ' + _nevtabla + _sorveg;
+      _apcs := _apcs + 'WHERE (SZULETESIIDO LIKE ' + chr(39)+ _aktszulido + '%' + chr(39) + ')' + _sorveg;
+      _apcs := _apcs + ' AND (AZONOSITO LIKE '+CHR(39)+_aktazonosito+'%'+chr(39)+')';
+      _apcs := _apcs + ' AND (NEV LIKE ' + chr(39)+ _aktcsaladi +'%'+chr(39)+')';
+
+      // Elöször a 2018 évi bizonylatait vizsgálja az ügyfélnek;
+
+      Panel3.caption := 'UGYFEL - 2018';
+      Panel3.repaint;
+
+      Uf18Dbase.connected := True;
+
+      with Uf18Query do
+        begin
+          close;
+          sql.clear;
+          sql.add(_apcs);
+          Open;
+          _recno := recno;
+        end;
+
+      // Ha volt 2018-ban tranzakciója ....
+
+      if _recno>0 then
+        begin
+
+          // ... akkor kiolvassa a sorszámot:
+
+          _sss := Uf18Query.fieldByName('SORSZAM').asinteger;
+          _aktokmtip := trim(Uf18Query.FieldByNAme('OKMANYTIP').AsString);
+
+          Panel4.caption := 'Sorszám a biztáblában: '+inttostr(_sss);
+          Panel4.repaint;
+
+          // A sorszám tudatában leválogatja az évi összes
+          // második félévi váltásait:
+
+          _pcs := 'SELECT * FROM ' + _biztabla + _sorveg;
+          _pcs := _pcs + 'WHERE (SORSZAM='+inttostr(_sss)+')';
+          _pcs := _pcs + ' AND (DATUM>'+chr(39)+'2018.06.30'+chr(39)+')';
+
+          with Uf18query do
+            begin
+              Close;
+              sql.clear;
+              Sql.Add(_pcs);
+              Open;
+              _recno := recno;
+            end;
+
+          // Ha volt a második félévben tranzakciója
+
+          if _recno>0 then
+            begin
+               Panel5.caption := 'Van bizonylat 2018-ban';
+               Panel5.repaint;
+
+              // Sorbaveszi a 2 félévi tranzakcióit az ügyfélnek:
+
+              while not Uf18query.eof do
+                begin
+                  // Kiolvassa a megfelelõ bizonylatszámot:
+
+                  _aktdatum := Uf18Query.FieldByName('DATUM').asString;
+                  _aktbizonylat := Uf18query.FieldByNAme('BIZONYLATSZAM').asstring;
+
+
+                  // Ha sikerült az aktuális bizonylatszámnak megfelelõ
+                  // bizonylat-tételeket -> a rekordot regisztráljuk
+
+                  VfileRead;
+
+                  // Jöhet a következõ bizonyílatszám:
+
+                  uf18query.next;
+                end;
+            end else
+            begin
+              Panel5.Caption := 'Nincs Bizonylat 2018-ban';
+              Panel5.repaint;
+            end;
+        end else
+        begin
+          Panel5.Caption := 'Nincs Bizonylat 2018-ban';
+          Panel5.repaint;
+        end;
+
+      uf18query.close;
+      uf18dbase.close;
+
+      // ---------- Most megvizsgálja 2019 elsö részenek bizonylatait:
+
+
+      // Elöször keresi a nevet a 3 azonositó adataival:
+
+      Uf19Dbase.connected := True;
+      with Uf19Query do
+        begin
+          close;
+          sql.clear;
+          sql.add(_apcs);
+          Open;
+          _recno := recno;
+        end;
+
+      // Ha váltott 2019-ben az aktuális ügyfél ....
+
+      if _recno>0 then
+        begin
+          // kiolvassuk a 2019-es sorszámát az ügyfélnek  .....
+
+          _sss := Uf19Query.fieldByName('SORSZAM').asinteger;
+          _aktokmtip := trim(Uf19Query.FieldByNAme('OKMANYTIP').AsString);
+
+          Panel4.caption := 'Sorszám a biztáblában: '+inttostr(_sss);
+          Panel4.repaint;
+
+          // Megnézi volt-e az ügyfélnek 2019 elején tranzakciója:
+
+          _pcs := 'SELECT * FROM ' + _biztabla + _sorveg;
+          _pcs := _pcs + 'WHERE (SORSZAM='+inttostr(_sss)+')';
+          _pcs := _pcs + ' AND (DATUM<'+chr(39)+'2019.04.01'+chr(39)+')';
+
+          with Uf19query do
+            begin
+              Close;
+              sql.clear;
+              Sql.Add(_pcs);
+              Open;
+              _recno := recno;
+            end;
+
+          // Ha volt 2019-elején váltása ....
+
+          if _recno>0 then
+            begin
+              Panel5.caption := 'Van bizonylat 2019-ben';
+              Panel5.repaint;
+
+              while not Uf19query.eof do
+                begin
+
+                  _aktdatum := Uf19Query.FieldByName('DATUM').asString;
+                  _aktbizonylat := Uf19query.FieldByNAme('BIZONYLATSZAM').asstring;
+
+                  // Ha megtalálja a blokkot --> akkor regisztrálja azt
+
+                  VfileRead;
+
+                  // Jöhet a következõ 2019-es váltás:
+
+                  uf19query.next;
+                end;
+            end else
+            begin
+              Panel5.Caption := 'Nincs Bizonylat 2018-ban';
+              Panel5.repaint;
+            end;
+        end else
+        begin
+          Panel5.Caption := 'Nincs Bizonylat 2019-ben';
+          Panel5.repaint;
+        end;
+
+      uf19query.close;
+      uf19dbase.close;
+
+      // Jöhet a következõ név az exceltáblából:
+
+      utquery.next;
+    end;
+
+  utquery.close;
+  Utdbase.close;
+end;
+
+
+procedure TForm1.regisztralas;
+
+begin
+  panel6.caption := 'REGISZTRÁLÁS';
+  pANEL6.repaint;
+
+  if _aktallampolg='' THEN _aktallampolg := 'MAGYAR';
+
+  _pcs := 'INSERT INTO '+_banktabla+' (DATUM,OSSZEG,VALUTANEM,BIZONYLATSZAM,';
+  _pcs := _pcs + 'IRODACIM,CSALADINEV,UTONEV,ALLAMPOLGAR,SZULETESIIDO,';
+  _pcs := _pcs + 'OKMANYTIPUS,AZONOSITO)' + _sorveg;
+
+  _pcs := _pcs + 'VALUES (' + chr(39) + _aktdatum + chr(39) + ',';
+  _pcs := _pcs + inttostr(_aktOsszeg) + ',';
+  _pcs := _pcs + chr(39) + _aktdnem + chr(39) + ',';
+  _pcs := _pcs + chr(39) + _aktbizonylat + chr(39) + ',';
+  _pcs := _pcs + chr(39) + _aktirodacim + chr(39) + ',';
+  _pcs := _pcs + chr(39) + _aktcsaladi + chr(39) + ',';
+  _pcs := _pcs + chr(39) + _aktutonev + chr(39) + ',';
+  _pcs := _pcs + chr(39) + _aktallampolg + chr(39) + ',';
+  _pcs := _pcs + chr(39) + leftstr(_aktszulido,8) + chr(39) + ',';
+  _pcs := _pcs + chr(39) + _aktokmtip +  chr(39) + ',';
+  _pcs := _pcs + chr(39) + _aktazonosito + chr(39) + ')';
+  BankParancs(_pcs);
+end;
+
+
+procedure  TForm1.VFileRead;
+
+begin
+  panel6.caption := 'Blokktétel kiolvasás';
+  pANEL6.repaint;
+
+  _btfdbPath := 'c:\receptor\database\v'+inttostr(_aktpenztar)+'.fdb';
+
+
+  _btnev := 'BT' + midstr(_aktdatum,3,2)+midstr(_aktdatum,6,2);
+
+  _pcs:= 'SELECT * FROM ' + _btnev + _sorveg;
+  _pcs := _pcs + 'WHERE BIZONYLATSZAM='+chr(39)+_aktbizonylat+chr(39);
+
+  Btdbase.close;
+  Btdbase.DatabaseName := _btfdbPath;
+  Btdbase.connected := true;
+  BTTABLA.CLOSE;
+  bttabla.TableName := _btnev;
+
+  if not bttabla.Exists then
+    begin
+      Btquery.close;
+      Btdbase.close;
+      exit;
+    end;
+
+  with Btquery do
+    begin
+      Close;
+      sql.clear;
+      sql.add(_pcs);
+      Open;
+      _recno := Recno;
+    end;
+
+  if _recno=0 then
+    begin
+      Btquery.close;
+      Btdbase.close;
+      exit;
+    end;
+
+  while not BtQuery.Eof do
+    begin
+      _aktdnem := Btquery.FieldByNAme('VALUTANEM').asString;
+      _aktOsszeg := BTquery.FieldByNAme('BANKJEGY').asInteger;
+
+      Panel7.Caption := inttostr(_aktOsszeg)+' ' + _aktdnem;
+      Panel7.repaint;
+
+      Regisztralas;
+
+      BtQuery.next;
+    end;
+  Btquery.close;
+  Btdbase.close;
+end;
+
+procedure TForm1.IrodanevBeolvasas;
+
+var _uzlet: byte;
+    _uznev: string;
+
+begin
+  recdbase.connected := True;
+  with recquery do
+    begin
+      Close;
+      sql.clear;
+      sql.add('SELECT * FROM IRODAK');
+      Open;
+    end;
+  while not recquery.eof do
+    begin
+      _uzlet := recquery.fieldByNAme('UZLET').asInteger;
+      _varos := trim(recquery.FieldBynAme('VAROS').asString);
+      _boltnev := trim(recquery.FieldByName('BOLTNEV').assTRING);
+      _uzcim := trim(recquery.FieldByNAme('PENZTARCIM').AsString);
+      _irodacim[_uzlet] := inttostr(_uzlet)+'. '+_varos+' '+_boltnev+' '+_uzcim;
+      recquery.next;
+    end;
+  recquery.close;
+  recdbase.close;
+
+  Cashdbase.connected := True;
+  with CashQuery do
+      begin
+      Close;
+      sql.clear;
+      sql.add('SELECT * FROM IRODAK');
+      Open;
+    end;
+
+  while not Cashquery.eof do
+    begin
+      _uzlet := Cashquery.fieldByNAme('UZLET').asInteger;
+      _uznev := trim(Cashquery.FieldByName('KESZLETNEV').assTRING);
+      _irodacim[_uzlet] := _uznev;
+      Cashquery.next;
+    end;
+  Cashquery.close;
+  Cashdbase.close;
+end;
+
+// $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+procedure TForm1.JMenet(_fdb: string);
+
+begin
+
+  // Jbest.fdb, jeast.fdb,_jpann.fdb,_jzalog.fdb a paraméter
+
+  _kftBetu := midstr(_fdb,2,1);
+  _kftnev := midstr(_fdb,2,4);
+  if _kftBETU='Z' then _kftnev := 'ZLOG';
+
+  _banktabla := 'JOGI' + _kftnev;
+  _FDBPATH := 'c:\receptor\database\' + _fdb;
+
+    Panel2.caption := _fdbPath;
+  Panel2.repaint;
+
+
+  utdbase.close;
+  utdbase.databasename := _fdbPath;
+  utdbase.connected := True;
+
+  _pcs := 'SELECT * FROM JOGI';
+  with Utquery do
+    begin
+      Close;
+      sql.clear;
+      sql.add(_pcs);
+      Open;            // megnyitja az elözöleg beküldött exceltáblát
+    end;
+
+
+  // végigmegy az aktuális utolsó exceltáblán:
+
+  while not utquery.eof do
+    begin
+      // 3 fontos adatot beolvas az excel-táblából
+
+      _aktcEGNEV := TRIM(Utquery.FieldByNAme('CEGNEV').asString);
+      _aktTHCIM := trim(UtQuery.FieldByNAme('TELEPHELYCIM').AsString);
+
+        Panel1.caption := _aktcegnev+' '+_aktthcim;
+      Panel1.repaint;
+
+
+      _aktpenztar := Utquery.FieldByNAme('PENZTAR').asInteger;
+      _aktirodacim := _irodacim[_aktpenztar];
+
+      _nevtabla := 'JOGI';
+      _biztabla := 'JOGIBIZ';
+
+      // A névtáblában rápozicionál a tárolt ügyfélre a 3 adat alapján:
+
+      _apcs := 'SELECT * FROM JOGI' + _sorveg;
+      _apcs := _apcs + 'WHERE (JOGISZEMELYNEV LIKE ' + chr(39)+ _aktcegnev + '%' + chr(39) + ')' + _sorveg;
+      _apcs := _apcs + ' AND (TELEPHELYCIM LIKE '+CHR(39)+_aktTHCIM+'%'+chr(39)+')';
+
+      // Elöször a 2018 évi bizonylatait vizsgálja az ügyfélnek;
+
+      Panel3.caption := 'JOGISZEMÉLY - 2018';
+      Panel3.repaint;
+
+
+      Uf18Dbase.connected := True;
+
+      with Uf18Query do
+        begin
+          close;
+          sql.clear;
+          sql.add(_apcs);
+          Open;
+          _recno := recno;
+        end;
+
+      // Ha volt 2018-ban tranzakciója ....
+
+      if _recno>0 then
+        begin
+
+          // ... akkor kiolvassa a sorszámot:
+
+          _sss := Uf18Query.fieldByName('SORSZAM').asinteger;
+          _aktmegbizottneve := trim(Uf18Query.FieldByName('MEGBIZOTTNEVE').AsString);
+
+          Panel4.caption := 'Sorszám a biztáblában: '+inttostr(_sss);
+          Panel4.repaint;
+
+
+          // A sorszám tudatában leválogatja az évi összes
+          // második félévi váltásait:
+
+          _pcs := 'SELECT * FROM ' + _biztabla + _sorveg;
+          _pcs := _pcs + 'WHERE (SORSZAM='+inttostr(_sss)+')';
+          _pcs := _pcs + ' AND (DATUM>'+chr(39)+'2018.06.30'+chr(39)+')';
+
+          with Uf18query do
+            begin
+              Close;
+              sql.clear;
+              Sql.Add(_pcs);
+              Open;
+              _recno := recno;
+            end;
+
+          // Ha volt a második félévben tranzakciója
+
+          if _recno>0 then
+            begin
+
+               Panel5.caption := 'Van bizonylat 2018-ban';
+               Panel5.repaint;
+
+
+              // Sorbaveszi a 2 félévi tranzakcióit az ügyfélnek:
+
+              while not Uf18query.eof do
+                begin
+                  // Kiolvassa a megfelelõ bizonylatszámot:
+
+                  _aktdatum := Uf18Query.FieldByName('DATUM').asString;
+                  _aktbizonylat := Uf18query.FieldByNAme('BIZONYLATSZAM').asstring;
+
+
+                  // Ha sikerült az aktuális bizonylatszámnak megfelelõ
+                  // bizonylat-tételeket -> a rekordot regisztráljuk
+
+                  jOGIfileRead;
+
+                  // Jöhet a következõ bizonyílatszám:
+
+                  uf18query.next;
+                end;
+            end else
+            begin
+               Panel5.Caption := 'Nincs Bizonylat 2018-ban';
+               Panel5.repaint;
+            end;
+        end else
+        begin
+          Panel5.Caption := 'Nincs Bizonylat 2018-ban';
+          Panel5.repaint;
+        end;
+
+      uf18query.close;
+      uf18dbase.close;
+
+      // ---------- Most megvizsgálja 2019 elsö részenek bizonylatait:
+
+
+      // Elöször keresi a nevet a 3 azonositó adataival:
+
+      Uf19Dbase.connected := True;
+      with Uf19Query do
+        begin
+          close;
+          sql.clear;
+          sql.add(_apcs);
+          Open;
+          _recno := recno;
+        end;
+
+      // Ha váltott 2019-ben az aktuális ügyfél ....
+
+      if _recno>0 then
+        begin
+          // kiolvassuk a 2019-es sorszámát az ügyfélnek  .....
+
+          _sss := Uf19Query.fieldByName('SORSZAM').asinteger;
+          _aktmegbizottneve := trim(Uf19Query.FieldByName('MEGBIZOTTNEVE').asString);
+
+          Panel4.caption := 'Sorszám a biztáblában: '+inttostr(_sss);
+          Panel4.repaint;
+
+
+          // Megnézi volt-e az ügyfélnek 2019 elején tranzakciója:
+
+          _pcs := 'SELECT * FROM ' + _biztabla + _sorveg;
+          _pcs := _pcs + 'WHERE (SORSZAM='+inttostr(_sss)+')';
+          _pcs := _pcs + ' AND (DATUM<'+chr(39)+'2019.04.01'+chr(39)+')';
+
+          with Uf19query do
+            begin
+              Close;
+              sql.clear;
+              Sql.Add(_pcs);
+              Open;
+              _recno := recno;
+            end;
+
+          // Ha volt 2019-elején váltása ....
+
+          if _recno>0 then
+            begin
+              Panel5.caption := 'Van bizonylat 2019-ben';
+              Panel5.repaint;
+
+              while not Uf19query.eof do
+                begin
+
+                  _aktdatum := Uf19Query.FieldByName('DATUM').asString;
+                  _aktbizonylat := Uf19query.FieldByNAme('BIZONYLATSZAM').asstring;
+
+                  // Ha megtalálja a blokkot --> akkor regisztrálja azt
+
+                  jOGIfileRead;
+
+                  // Jöhet a következõ 2019-es váltás:
+
+                  uf19query.next;
+                end;
+            end else
+            begin
+              Panel5.Caption := 'Nincs Bizonylat 2018-ban';
+              Panel5.repaint;
+            end;
+        end else
+        begin
+          Panel5.Caption := 'Nincs Bizonylat 2018-ban';
+          Panel5.repaint;
+        end;
+
+      uf19query.close;
+      uf19dbase.close;
+
+      // Jöhet a következõ név az exceltáblából:
+
+      utquery.next;
+    end;
+
+  utquery.close;
+  Utdbase.close;
+end;
+
+
+
+procedure  TForm1.JogiFileRead;
+
+begin
+
+  _btfdbPath := 'c:\receptor\database\v'+inttostr(_aktpenztar)+'.fdb';
+
+
+  _btnev := 'BT' + midstr(_aktdatum,3,2)+midstr(_aktdatum,6,2);
+
+  _pcs:= 'SELECT * FROM ' + _btnev + _sorveg;
+  _pcs := _pcs + 'WHERE BIZONYLATSZAM='+chr(39)+_aktbizonylat+chr(39);
+
+  Btdbase.close;
+  Btdbase.DatabaseName := _btfdbPath;
+
+  Btdbase.connected := true;
+    BTTABLA.CLOSE;
+  bttabla.TableName := _btnev;
+
+  if not bttabla.Exists then
+    begin
+      Btquery.close;
+      Btdbase.close;
+      exit;
+    end;
+
+
+
+
+  with Btquery do
+    begin
+      Close;
+      sql.clear;
+      sql.add(_pcs);
+      Open;
+      _recno := Recno;
+    end;
+
+  if _recno=0 then
+    begin
+      Btquery.close;
+      Btdbase.close;
+      exit;
+    end;
+
+  while not BtQuery.Eof do
+    begin
+      _aktdnem := Btquery.FieldByNAme('VALUTANEM').asString;
+      _aktOsszeg := BTquery.FieldByNAme('BANKJEGY').asInteger;
+
+      JogiRegisztralas;
+
+      BtQuery.next;
+    end;
+  Btquery.close;
+  Btdbase.close;
+end;
+
+
+procedure TForm1.Jogiregisztralas;
+
+begin
+  _pcs := 'INSERT INTO '+_banktabla+' (DATUM,OSSZEG,VALUTANEM,BIZONYLATSZAM,';
+  _pcs := _pcs + 'IRODACIM,JOGISZEMELYNEV,ORSZAG,MEGBIZOTTNEVE,MBALLAMPOLGAR)'+_SORVEG;
+
+  _pcs := _pcs + 'VALUES (' + chr(39) + _aktdatum + chr(39) + ',';
+  _pcs := _pcs + inttostr(_aktOsszeg) + ',';
+  _pcs := _pcs + chr(39) + _aktdnem + chr(39) + ',';
+  _pcs := _pcs + chr(39) + _aktbizonylat + chr(39) + ',';
+  _pcs := _pcs + chr(39) + _aktirodacim + chr(39) + ',';
+  _pcs := _pcs + chr(39) + _aktCegnev + chr(39) + ',';
+  _pcs := _pcs + chr(39) + 'MAGYARORSZÁG' + chr(39) + ',';
+  _pcs := _pcs + chr(39) + _aktmegbizottneve + chr(39) + ',';
+  _pcs := _pcs + chr(39) + 'MAGYAR' + chr(39) + ')';
+  BankParancs(_pcs);
+end;
+
+
+
+end.

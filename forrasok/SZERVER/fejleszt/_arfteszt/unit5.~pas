@@ -1,0 +1,472 @@
+unit Unit5;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, ExtCtrls, unit1, StdCtrls, wininet, Buttons;
+
+type
+  TARFDATAIRAS = class(TForm)
+    INDITO: TTimer;
+    Label1: TLabel;
+    Memo1: TMemo;
+    procedure INDITOTimer(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
+    procedure ByteIras(_bb: byte);
+    procedure WordIras(_ww: word);
+    procedure Stringiras(_ss: string);
+    procedure SzinIras(_ii: integer);
+    procedure Helyimentes;
+
+    function ArfDataToServer: boolean;
+    function Safetysave: boolean;
+    function VanInternet: boolean;
+    function GetSorszam: integer;
+
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  ARFDATAIRAS: TARFDATAIRAS;
+  _arfDatapath: string;
+  _iras: file of byte;
+  _mResult : integer;
+  _olvas: Textfile;
+  
+
+implementation
+
+uses Unit12;
+
+{$R *.dfm}
+
+// =============================================================================
+            procedure TARFDATAIRAS.FormActivate(Sender: TObject);
+// =============================================================================
+
+begin
+  Top  := _top + 233;
+  Left := _left + 210;
+
+  Memo1.Lines.clear;
+  Memo1.clear;
+
+  Memo1.Lines.add('A TESZTDATA.DAT file rögzítése a lokális számítógépen');
+  Indito.Enabled := true;
+end;
+
+
+// =============================================================================
+               procedure TARFDATAIRAS.INDITOTimer(Sender: TObject);
+// =============================================================================
+
+begin
+  Indito.Enabled := False;
+
+  // A helyimentés késziti el az ARFDAT.DAT árfolyam adat file-t, és azt
+  // a workdir-be menti:
+
+  Helyimentes;
+
+
+  // A szervere is ke kell menteni az árfolyam adatokat:
+
+  if not ArfDataToServer then
+    begin
+       Memo1.Lines.add('A szerverre nem sikerült kitenni az adatokat');
+       Sleep(2500);
+       Modalresult := 2;
+       exit;
+    end;
+  Sleep(2500);
+  ModalResult := 1;
+end;
+
+// =============================================================================
+                        procedure TArfdatairas.HelyiMentes;
+// =============================================================================
+
+var _idb,_aktcs: byte;
+
+begin
+  Memo1.Lines.Add('Az árfolyamok mentése a saját gépre');
+
+  _arfdatapath := _workdir + '\TESZTdata.dat';
+  _qq  := 1;
+  _idb := _irodaDarab;
+
+  while _qq<=_irodaDarab do
+    begin
+      if _ptarcsop[_qq]=0 then dec(_idb);
+      inc(_qq);
+    end;
+
+  Assignfile(_iras,_arfdataPath);
+  Rewrite(_iras);
+  Memo1.Lines.Add('Az irodák adatainak rögzitése');
+
+  Byteiras(16);   // AZ AKTUÁLIS VERZIÓ SZÁM:
+  Byteiras(_irodadarab);
+
+  _qq := 1;
+  while _qq<=_irodaDarab do
+    begin
+      ByteIras(_ptarszam[_qq]);
+      Stringiras(_ptarnev[_qq]);
+      Byteiras(_ptarcsop[_qq]);
+
+      inc(_qq);
+    end;
+
+  Memo1.Lines.add('Az internet cimek rögzitése');
+  Byteiras(_urlDarab);
+  _qq := 1;
+  while _qq<=_urldarab do
+    begin
+      ByteIras(_urlgombszam[_qq]);
+      Stringiras(_urlGombNevek[_qq]);
+      StringIras(_urlNevek[_qq]);
+      inc(_qq);
+    end;
+
+  Memo1.Lines.add('Az alapárfolyamok rögzitése');
+  _qq := 1;
+  while _qq<=_dnemdarab do
+    begin
+      _oszlop := 1;
+      while _oszlop<=9 do
+        begin
+          Stringiras(_wertek[_qq,_oszlop]);
+          stringiras(_wfuggveny[_qq,_oszlop]);
+          Sziniras(_wBetuszin[_qq,_oszlop]);
+          Sziniras(_wHatterszin[_qq,_oszlop]);
+          inc(_oszlop);
+          if _oszlop=4 then inc(_oszlop);
+        end;
+      inc(_qq);
+    end;
+
+  Memo1.Lines.add('A munkacsoportok rögzitése');
+  ByteIras(54);
+  _qq := 1;
+  while _qq<=54 do
+    begin
+      _aktcsoport := _csoportszamok[_qq];
+      _aktcs := _aktcsoport;
+
+      if not _ccontrol[_aktcs] then _aktcs := _aktcs + 100;
+
+      ByteIras(_aktcs);
+      StringIras(_csoportnevek[_aktcsoport]);
+      _pp := 1;
+      while _pp<=_dnemdarab do
+        begin
+          StringIras(_jErtek[_aktcsoport,_pp]);
+          Stringiras(_jFuggveny[_aktcsoport,_pp]);
+          SzinIras(_jBetuszin[_aktcsoport,_pp]);
+          Sziniras(_jHatterszin[_aktcsoport,_pp]);
+
+          StringIras(_lErtek[_aktcsoport,_pp]);
+          Stringiras(_lFuggveny[_aktcsoport,_pp]);
+          SzinIras(_lBetuszin[_aktcsoport,_pp]);
+          Sziniras(_lHatterszin[_aktcsoport,_pp]);
+
+          StringIras(_mErtek[_aktcsoport,_pp]);
+          Stringiras(_mFuggveny[_aktcsoport,_pp]);
+          SzinIras(_mBetuszin[_aktcsoport,_pp]);
+          Sziniras(_mHatterszin[_aktcsoport,_pp]);
+
+          StringIras(_nErtek[_aktcsoport,_pp]);
+          Stringiras(_nFuggveny[_aktcsoport,_pp]);
+          SzinIras(_nBetuszin[_aktcsoport,_pp]);
+          Sziniras(_nHatterszin[_aktcsoport,_pp]);
+
+          StringIras(_oErtek[_aktcsoport,_pp]);
+          Stringiras(_oFuggveny[_aktcsoport,_pp]);
+          SzinIras(_oBetuszin[_aktcsoport,_pp]);
+          Sziniras(_oHatterszin[_aktcsoport,_pp]);
+
+          StringIras(_pErtek[_aktcsoport,_pp]);
+          Stringiras(_pFuggveny[_aktcsoport,_pp]);
+          SzinIras(_pBetuszin[_aktcsoport,_pp]);
+          Sziniras(_pHatterszin[_aktcsoport,_pp]);
+
+          StringIras(_qErtek[_aktcsoport,_pp]);
+          Stringiras(_qFuggveny[_aktcsoport,_pp]);
+          SzinIras(_qBetuszin[_aktcsoport,_pp]);
+          Sziniras(_qHatterszin[_aktcsoport,_pp]);
+
+          StringIras(_rErtek[_aktcsoport,_pp]);
+          Stringiras(_rFuggveny[_aktcsoport,_pp]);
+          SzinIras(_rBetuszin[_aktcsoport,_pp]);
+          Sziniras(_rHatterszin[_aktcsoport,_pp]);
+
+          StringIras(_sErtek[_aktcsoport,_pp]);
+          Stringiras(_sFuggveny[_aktcsoport,_pp]);
+          SzinIras(_sBetuszin[_aktcsoport,_pp]);
+          Sziniras(_sHatterszin[_aktcsoport,_pp]);
+
+          inc(_pp);
+        end;
+       Wordiras(_klimit[_aktcsoport,1]);
+       Wordiras(_klimit[_aktcsoport,2]);
+       Wordiras(_klimit[_aktcsoport,3]);
+       inc(_qq);
+     end;
+   ByteIras(255);
+   ByteIras(255);
+   ByteIras(255);
+   System.CloseFile(_iras);
+   Memo1.Lines.add('A saját gépemre sikeresen lementettem az adatokat');
+end;
+
+// =============================================================================
+                procedure TarfdataIras.Stringiras(_ss:string);
+// =============================================================================
+
+
+var _y,_lenss: integer;
+
+begin
+  _ss := trim(_ss);
+  _lenss := length(_ss);
+  _bytetomb[1] := _lenss;
+
+  Blockwrite(_iras,_bytetomb,1);
+  if _lenss=0 then exit;
+  _y := 1;
+  while _y<=_lenss do
+    begin
+      _kod := 255 - ord(_ss[_y]);
+      _bytetomb[_y] := _kod;
+      inc(_y);
+    end;
+  Blockwrite(_iras,_bytetomb,_lenss);
+end;
+
+// =============================================================================
+                procedure TArfdataIras.ByteIras(_bb: byte);
+// =============================================================================
+
+begin
+  _bytetomb[1] := _bb;
+  BlockWrite(_iras,_bytetomb,1);
+end;
+
+// =============================================================================
+                    procedure TArfdatairas.WordIras(_ww: word);
+// =============================================================================
+
+var _hi,_lo: byte;
+
+begin
+  _hi := trunc(_ww/256);
+  _lo := _ww - trunc(256*_hi);
+  _bytetomb[1] := _lo;
+  _bytetomb[2] := _hi;
+  Blockwrite(_iras,_bytetomb,2);
+end;
+
+// =============================================================================
+            procedure TarfdataIras.SzinIras(_ii: Integer);
+// =============================================================================
+
+var _b1,_b2,_b3,_b4,_b5: byte;
+    _tmp: real;
+
+begin
+  _tmp := _ii/65536;
+  _b5 := trunc(_tmp/65536);
+  _ii := _ii - trunc(_b5*(sqr(65536)));
+
+  _tmp := _ii/65536;
+  _b4 := trunc(_tmp/256);
+  _ii := _ii - trunc(_b4*256*65536);
+
+  _b3 := trunc(_ii/65536);
+  _ii := _ii - trunc(_b3*65536);
+
+  _b2 := trunc(_ii/256);
+  _b1 := _ii - trunc(256*_b2);
+  _bytetomb[1] := _b1;
+  _bytetomb[2] := _b2;
+  _bytetomb[3] := _b3;
+  _bytetomb[4] := _b4;
+  _bytetomb[5] := _b5;
+  Blockwrite(_iras,_bytetomb,5);
+end;
+
+// $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+// =============================================================================
+                    function TArfDataIras.ArfDataToServer: boolean;
+// =============================================================================
+
+begin
+  
+  result := False;
+
+  // A rögzitéshez kell az internet !
+
+  if not VanInternet then
+    begin
+      Memo1.Lines.add('Nincs internetkapcsolat !');
+      exit;
+    end;
+
+  _hnet := InternetOpen('SaveToServer',INTERNET_OPEN_TYPE_PRECONFIG,nil,nil,0);
+  if _hNet = nil then exit;
+
+  // Belépés az FTP serverre (_port, és _host alapján)
+
+  _hFTP := InternetConnect(_hNet,Pchar(_BcsabaHost),_BcsabaPort,Pchar(_userId),
+                           PChar(_ftpPassword),INTERNET_SERVICE_FTP,
+                           INTERNET_FLAG_PASSIVE,
+                           0);
+
+  if _hFTP=Nil then
+    begin
+      InternetCloseHandle(_hNet);
+      exit;
+    end;
+
+   // Belépés az árfolyam könyvtárba
+
+  _sikeres :=  FTPSetCurrentDirectory(_hFTP,pchar(_ARFOLYAMDIR));
+  if not _sikeres then
+    begin
+      Memo1.Lines.Add('Nem tudtam belépni az árfolyam könyvtárba');
+      InternetCloseHandle(_hFTP);
+      InternetCloseHandle(_hNet);
+      Exit;
+    end;
+
+   // Az árfdata.dat-ot kell beküldeni
+
+  _remoteFile := 'tesztDATA.DAT';
+  _localPath := _workdir + '\' + _remoteFile;
+
+
+  Result := FtpPutfile(_hFTP,pchar(_localpath),pchar(_remotefile),
+                                           FTP_TRANSFER_TYPE_BINARY,0);
+  if not Result then
+    begin
+      Memo1.Lines.Add('Hiba történt a feltöltés közben');
+      InternetCloseHandle(_hFTP);
+      InternetCloseHandle(_hNet);
+      exit;
+    end;
+
+  Result := SafetySave;
+  InternetCloseHandle(_hFTP);
+  InternetCloseHandle(_hNet);
+
+end;
+
+
+
+// =============================================================================
+                   function Tarfdatairas.Safetysave: boolean;
+// =============================================================================
+
+var _sors: string;
+    _ujsorszam: integer;
+
+begin
+  Memo1.Lines.Add('BIZTONSÁGI MENTÉS KÉSZÍTÉSE A BÉKÉSCSABAI SZERVERRE');
+  Result := false;
+  _ujsorszam := Getsorszam;
+  if _ujsorszam=0 then
+    begin
+      Memo1.Lines.add('A BIZTONSÁGI MENTÉS SIKERTELEN VOLT !');
+      exit;
+    end;
+
+  _sors := inttostr(_ujsorszam);
+  while length(_sors)<7 do _sors := '0' + _sors;
+  _remotefile := _mentesdir +'\A' + _sors + '.DAT';
+  _localPath  := _workdir + '\TESZTDATA.DAT';
+  _sikeres := FTPPutFile(_hFTP,pchar(_localPath),pchar(_remoteFile),
+                               FTP_TRANSFER_TYPE_ASCII,0);
+  if not _sikeres then
+    begin
+      Memo1.Lines.add('A BIZTONSÁGI MENTÉS SIKERTELEN VOLT !');
+      exit;
+    end;
+  Memo1.Lines.add('SIKERES BIZTONSÁGI MENTÉS');
+  result := True;
+
+end;
+
+// =============================================================================
+                function Tarfdatairas.GetSorszam: integer;
+// =============================================================================
+
+var _sorszams: string;
+
+begin
+  result := 0;
+  _sikeres :=  FTPSetCurrentDirectory(_hFTP,pchar(_mentesDir));
+  if not _sikeres then exit;
+
+  _Remotefile := 'SORSZAM.DAT';
+  _localpath := _workdir + '\' + _remoteFile;
+  if Fileexists(_localPath) then DeleteFile(_localpath);
+
+  _sikeres := FTPgetfile(_hFTP,pchar(_remotefile),pchar(_localPath),False,0,
+                             FTP_TRANSFER_TYPE_ASCII,0);
+
+  if not _sikeres then exit;
+
+  Assignfile(_olvas,_localpath);
+  Reset(_olvas);
+  readLn(_olvas,_sorszams);
+  val(_sorszams,result,_code);
+  if _code<>0 then result := 0;
+  CLoseFile(_olvas);
+  if result=0 then exit;
+  inc(result);
+
+  Assignfile(_olvas,_localpath);
+  Rewrite(_olvas);
+  WriteLn(_olvas,inttostr(result));
+  Closefile(_olvas);
+
+  _remotefile := 'SORSZAM.DAT';
+  _sikeres := FTPPutFile(_hFTP,pchar(_localPath),pchar(_remoteFile),
+                               FTP_TRANSFER_TYPE_ASCII,0);
+  if not _sikeres then result :=0;
+
+end;
+
+
+
+
+
+// =============================================================================
+                   function TarfDatairas.VanInternet: boolean;
+// =============================================================================
+
+var
+
+    _dwConnType: integer;
+
+begin
+
+   Result := False;
+   TRY
+     _dwConntype := 7;
+     if InternetGetConnectedState(@_dwConnType,0) then result := true;
+   except
+   end;
+
+end;
+
+
+
+
+end.

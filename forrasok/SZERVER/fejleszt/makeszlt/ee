@@ -1,0 +1,106 @@
+
+
+// ====================================================
+        procedure TForm1.IrodaDatBeolvasas;
+// ====================================================
+
+var i: integer;
+    _ERTS: STRING;
+
+begin
+  // Az Irodak.dat adatainak beolvasása a konstans tömbökbe:
+
+  if not IrodaFileBedolgozas() then IrodakFrissites;
+  _hirodadarab := 0;
+
+  for i := 0 to _sIrodaDarab-1 do
+    begin
+      _ertektar := _sIrodaESzam[i];
+      _erts := inttostr(_ertektar);
+      if _erts=_homePenztarSzam then inc(_hIrodaDarab);
+    end;
+
+  SetLength(_uzletszamTomb,_hirodaDarab);
+  Setlength(_varosNevTomb,_hirodaDarab);
+  Setlength(_boltnevtomb,_hirodaDarab);
+
+  _cc := 0;
+  for i := 0 to _sIrodaDarab-1 do
+    begin
+      _ertektar := _SIrodaESzam[i];
+      _erts     := inttostr(_ertektar);
+      if _erts= _homePenztarszam then
+        begin
+          _uzletszamTomb[_cc] := _sIrodaszam[i];
+          _varosnevtomb[_cc]  := _sVarosnev[i];
+          _boltnevTomb[_cc]   := _sBoltnev[i];
+          inc(_cc);
+        end;
+    end;
+  _irodaDarab := _hIrodaDarab;
+end;
+
+
+// =============================================================================
+                          procedure TFORM1.IrodaKFrissites;
+// =============================================================================
+
+
+begin
+  _hNet := InternetOpen('Irodak',
+                         INTERNET_OPEN_TYPE_PRECONFIG,
+                         nil,
+                         nil,
+                         0);
+
+  if _hNet=nil then
+    begin
+      ShowMessage('NEM TALÁLOM A WININET.DLL KÖNYVTÁRAT');
+      Exit;
+    end;
+
+  FTPSzerverbeBelep;
+  if _hftp=Nil then exit;
+
+  // ---------------------------------------------------------------------------
+
+  _remoteFile := '\irodak\irodak.dat';
+  _localFile  := 'c:\valuta\irodak\irodak.dat';
+
+  _hFile := FTPOpenFile(_hFTP,
+                        pchar(_remotefile),
+                        GENERIC_READ,
+                        FTP_TRANSFER_TYPE_BINARY,
+                        0);
+
+  if _hFile <> nil then
+    begin
+      _fileMeret := FTPGetFileSize(_hFile,_hiWord);
+      assignFile(_iras, _localfile);
+      rewrite(_iras);
+
+      if IOResult<>0 then
+        begin
+          InternetCloseHandle(_hFile);
+          InternetCloseHandle(_hFTP);
+          InternetCloseHandle(_hNet);
+          Exit;
+        end;
+
+      while (_fileMeret>0) do
+        begin
+          if _filemeret>=4096 then _puffermeret := 4096 else _puffermeret := _filemeret;
+          if not InternetReadFile(_hFile,@_puffer,_puffermeret,_beolvasva) then break;
+
+          BlockWrite(_iras,_puffer,_beolvasva);
+          _fileMeret := _filemeret - _beolvasva;
+
+        end;
+
+      CLoseFile(_iras);
+      InternetCloseHandle(_hFile);
+    end;
+  InternetCloseHandle(_hFTP);
+  InternetCloseHandle(_hNet);
+end;
+

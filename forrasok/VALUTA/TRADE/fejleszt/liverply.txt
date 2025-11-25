@@ -1,0 +1,18 @@
+<Message>
+<MessageType>LIVE AAK</MessageType>
+<OutletName>Exclusive Pannon Change Kft. (Pécs-PLAZA)</OutletName>
+<OutletAddress>7632 Pécs, Megyeri u. 76.</OutletAddress>
+<OutletTaxNo>23009017-1-41</OutletTaxNo>
+<ProductName>D1 heti</ProductName>
+<Amount>0000002975</Amount>
+<RegistrationNumber>MZB005</RegistrationNumber>
+<CountryName>H - Magyarország</CountryName>
+<VFD>20150328095957</VFD>
+<VTD>20150406235959</VTD>
+<TransactionId>0033584249</TransactionId>
+<ReferenceId>211503280959571496379</ReferenceId>
+<TerminalId>0000001620</TerminalId>
+<TransactionDate>20150328095938</TransactionDate>
+<StatusId>00OK</StatusId>
+<StatusDescription></StatusDescription>
+</Message>

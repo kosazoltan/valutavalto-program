@@ -1,8 +1,9 @@
 -- Fix valuta_data.sql UUID issues
 -- Replace uuid_generate_v7() with gen_random_uuid()
-
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
+-- 
+-- MEGJEGYZÉS: Ez egy dokumentációs fájl, nem futtatandó SQL script.
+-- A pgcrypto extension már telepítve van a Render PostgreSQL adatbázisban.
+--
 -- Minden uuid_generate_v7() hívást cseréljünk gen_random_uuid()-re
 -- Ez egy egyszerű sed/PowerShell cserével megoldható
 

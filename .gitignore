@@ -8,6 +8,17 @@
 *.dump
 database/backups/*.sql
 
+# Nagy fájlok / Tananyagok / Archívumok
+Tananyagok/
+Igenyfelmeres/
+Szervezes/
+forrasok/
+forrasok.7z
+extracted/
+*.zip
+*-20251124T*.zip
+drive-download-*.zip
+
 # USB backup privát kulcsok
 scripts/backup-keys/*.key
 scripts/backup-keys/*.gpg

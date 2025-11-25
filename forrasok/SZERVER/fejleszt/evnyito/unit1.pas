@@ -1,0 +1,266 @@
+unit Unit1;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, Buttons, IBDatabase, DB, IBCustomDataSet, IBQuery,
+  IBTable, ExtCtrls;
+
+type
+  TForm1 = class(TForm)
+    BitBtn1: TBitBtn;
+    BitBtn2: TBitBtn;
+    IBQUERY: TIBQuery;
+    IBDBASE: TIBDatabase;
+    IBTRANZ: TIBTransaction;
+    IBTABLA: TIBTable;
+    PQUERY: TIBQuery;
+    PDBASE: TIBDatabase;
+    PTRANZ: TIBTransaction;
+    Panel1: TPanel;
+    Panel2: TPanel;
+
+    procedure BitBtn2Click(Sender: TObject);
+    procedure BitBtn1Click(Sender: TObject);
+    procedure PParancs(_ukaz: string);
+
+    function Nulele(_b: byte): string;
+
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form1: TForm1;
+  _delnev : array[1..16] of string = ('ARFE','AXA','BF','BT','CIMT','COIN',
+      'CSIM','EFEJ','ETET','FAXA','KEZD','NARF','TRADE','WUNI','WZAR','XKEZ');
+
+  _pt,_ev,_ho,_delpp: byte;
+  _dPath,_pcs,_farok,_akttnev,_tnev: string;
+  _sorveg : string = chr(13)+chr(10);   
+
+
+implementation
+
+{$R *.dfm}
+
+procedure TForm1.BitBtn2Click(Sender: TObject);
+begin
+  application.Terminate;
+end;
+
+procedure TForm1.BitBtn1Click(Sender: TObject);
+begin
+  _pt := 4;
+  while _pt<=150 do
+    begin
+      _dPath := 'c:\receptor\mail\1\V' + inttostr(_pt) + '.FDB';
+      IF not fileExists(_dPath) then
+        begin
+          inc(_pt);
+          Continue;
+        end;
+
+      ibdbase.close;
+      ibdbase.DatabaseName := _dPath;
+      ibdbase.Connected := true;
+
+      panel1.Caption := _dPath;
+      panel1.Repaint;
+
+      _EV := 18;
+      _HO := 12;
+      _FAROK := '1812';
+      while _farok<='1911' do
+        begin
+          _DELPP :=1;
+          while _delpp<=16 do
+            begin
+
+              _akttnev := _delnev[_delpp];
+              _tnev := _akttnev + _farok;
+
+              ibtabla.close;
+              ibtabla.TableName := _tnev;
+              if ibtabla.Exists then
+                begin
+                  _pcs := 'DROP TABLE ' + _tnev;
+                  PParancs(_pcs);
+                end;
+              inc(_delpp);
+            end;
+          inc(_ho);
+          if _ho>12 then
+            begin
+              _ho := 1;
+              inc(_ev);
+            end;
+          _farok := inttostr(_ev)+nulele(_ho);
+        end;
+      ibdbase.close;
+
+      _Pcs := 'DELETE FROM ELOHAVI'+_SORVEG;
+      _pcs := _pcs + 'WHERE EVHOSTRING<'+chr(39)+'202001'+chr(39);
+      Pparancs(_pcs);
+
+      _Pcs := 'DELETE FROM ELONAPI'+_sorveg;
+      _pcs := _pcs + 'WHERE DATUM<'+chr(39)+'2020.01.01'+chr(39);
+      Pparancs(_pcs);
+
+      _Pcs := 'DELETE FROM MAINCURR'+_sorveg;
+      _pcs := _pcs + 'WHERE EV<2020';
+      Pparancs(_pcs);
+
+      ibtabla.close;
+      ibdbase.connected := true;
+      ibtabla.TableName := 'FOGLALO';
+      IF IBTABLA.Exists THEN
+        BEGIN
+          ibdbase.close;
+          _Pcs := 'DELETE FROM FOGLALO'+_sorveg;
+          _pcs := _pcs + 'WHERE DATUM<'+chr(39)+'2020.01.01'+chr(39);
+          Pparancs(_pcs);
+        end;
+
+      ibdbase.close;  
+
+      INC(_PT);
+    end;
+
+  // ---------------------------------------------------------------------
+
+  _dpath := 'c:\receptor\mail\1\beszamolo.fdb';
+
+  IBDBASE.CLOSE;
+  ibdbase.DatabaseName := _dpath;
+  ibdbase.Connected := true;
+
+  _ev := 18;
+  _ho := 12;
+  _farok := '1812';
+  while _farok<'1912' do
+    begin
+      _tnev := 'BESZ' + _FAROK;
+      ibtabla.close;
+      ibtabla.TableName := _tNev;
+      if ibtabla.Exists then
+        begin
+          _pcs := 'DROP TABLE ' + _TNEV;
+          PParancs(_pcs);
+        end;
+      inc(_ho);
+      if _ho>12 THEN
+        begin
+          _ho := 1;
+          inc(_ev);
+        end;
+      _farok := inttostr(_ev)+nulele(_ho);
+    end;
+  ibdbase.Close;
+
+  //-----------------------------------------------------
+
+  // ---------------------------------------------------------------------
+
+  _dpath := 'c:\receptor\mail\1\daybook.fdb';
+
+  IBDBASE.CLOSE;
+  ibdbase.DatabaseName := _dpath;
+  ibdbase.Connected := true;
+
+  _ev := 18;
+  _ho := 12;
+  _farok := '1812';
+  while _farok<'1912' do
+    begin
+      _tnev := 'DAYB' + _FAROK;
+      ibtabla.close;
+      ibtabla.TableName := _tNev;
+      if ibtabla.Exists then
+        begin
+          _pcs := 'DROP TABLE ' + _TNEV;
+          PParancs(_pcs);
+        end;
+      inc(_ho);
+      if _ho>12 THEN
+        begin
+          _ho := 1;
+          inc(_ev);
+        end;
+      _farok := inttostr(_ev)+nulele(_ho);
+    end;
+  ibdbase.Close;
+  // ---------------------------------------------------------------------
+
+  _dpath := 'c:\receptor\mail\1\ENGEDELY.fdb';
+
+  IBDBASE.CLOSE;
+  ibdbase.DatabaseName := _dpath;
+  ibdbase.Connected := true;
+
+  _ev := 18;
+  _ho := 12;
+  _farok := '1812';
+  while _farok<'1912' do
+    begin
+      _tnev := 'ENG' + _FAROK;
+      ibtabla.close;
+      ibtabla.TableName := _tNev;
+      if ibtabla.Exists then
+        begin
+          _pcs := 'DROP TABLE ' + _TNEV;
+          PParancs(_pcs);
+        end;
+      inc(_ho);
+      if _ho>12 THEN
+        begin
+          _ho := 1;
+          inc(_ev);
+        end;
+      _farok := inttostr(_ev)+nulele(_ho);
+    end;
+  ibdbase.Close;
+
+
+
+  Showmessage('KÉSZEN VAGYOK');
+END;
+
+procedure TForm1.PParancs(_ukaz: string);
+
+begin
+  panel2.caption := _ukaz;
+  panel2.Repaint;
+
+  pdbase.close;
+  pdbase.databasename := _dpath;
+  pdbase.connected := true;
+
+  if ptranz.InTransaction then Ptranz.Commit;
+  ptranz.StartTransaction;
+
+  with pquery do
+    begin
+      Close;
+      sql.Clear;
+      sql.add(_pcs);
+      Execsql;
+    end;
+  Ptranz.commit;
+  Pdbase.close;
+end;
+
+
+function TForm1.Nulele(_b: byte): string;
+
+begin
+  result := inttostr(_b);
+  if _b<10 then result := '0' + result;
+end;
+
+
+end.

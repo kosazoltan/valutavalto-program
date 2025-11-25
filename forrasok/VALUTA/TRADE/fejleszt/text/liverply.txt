@@ -1,0 +1,15 @@
+<Message>
+<MessageType>LIVE TOPUP</MessageType>
+<OutletName>izishop</OutletName>
+<OutletAddress>Pécs Fagyöngy u 40</OutletAddress>
+<OutletTaxNo>123456-7-89</OutletTaxNo>
+<ProductName>TMobil feltoltes</ProductName>
+<Amount>0000001949</Amount>
+<PhoneNumber>301111111</PhoneNumber>
+<TransactionId>0002240876</TransactionId>
+<TransactionDate>20140630115855</TransactionDate>
+<StatusId>00OK</StatusId>
+<StatusDescription>Sikeres tranzakcio</StatusDescription>
+<PrintReceipt>Y</PrintReceipt>
+</Message>
+

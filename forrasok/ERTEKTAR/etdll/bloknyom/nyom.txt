@@ -1,0 +1,626 @@
+// =============================================================================
+                      procedure TForm1.StartNyomtatas;
+// =============================================================================
+
+begin
+  Writeln(_LFile,_LF5);
+  WriteLn(_LFile,chr(26));
+  CloseFile(_LFile);
+  TextKiiro;
+
+end;
+
+// =============================================================================
+                    procedure TForm1.VetelBlokkNyomtatas;
+// =============================================================================
+
+var _knyit: boolean;
+
+begin
+
+  _kNyit := True;
+
+   if _voltRateMode then
+     begin
+       ArfModNyomtatas;
+       _kNyit := False;
+     end;
+
+  BlokkFocimIro(_knyit);
+
+  if _copyBlokk then
+    begin
+      WriteLn(_Lfile,_widon+'M  A  S  O  L  A  T' + _widOff);
+      if _reprintIndok<>'' then
+               KozepreIr('(Indoka: '+ trim(_reprintIndok)+')');
+      _reprintIndok := '';
+    end;
+
+  writeLn(_LFile,'           Valuta v e t e l');
+        writeLN(_LFile,'          EXCHANGE(PURCHASE)');
+
+  BlokkFejlecIro;
+
+  // ---------------------------------------------------------------------------
+
+  BlokkTetelIro;
+  BlokkLablecIro;
+
+  _copyBlokk       := False;
+  _stornoBlokk     := False;
+  _stornozottBlokk := False;
+  _voltRateMode    := False;
+end;
+
+// =============================================================================
+                     procedure TForm1.EladasBlokkNyomtatas;
+// =============================================================================
+
+var _knyit: boolean;
+begin
+  _kNyit := True;
+   if _voltRateMode then
+     begin
+       ArfModNyomtatas;
+       _knyit := False;
+     end;
+
+  BlokkFocimIro(_knyit);
+  if _copyBlokk then WriteLn(_Lfile,_widon+'M  A  S  O  L  A  T'+_widOff);
+
+  WriteLn(_LFile,'          Valuta    e l a d a s');
+  WriteLN(_LFile,'          S E L L I N G');
+
+  BlokkFejlecIro;
+  BlokkTetelIro;
+  BlokkLablecIro;
+
+  _copyBlokk       := False;
+  _stornoBlokk     := False;
+  _stornozottBlokk := False;
+  _voltRateMode    := False;
+end;
+
+// =============================================================================
+                 procedure TForm1.KonvertBlokkNyomtatas;
+// =============================================================================
+
+var _kNyit: boolean;
+
+begin
+   _ttipus := 'K';
+   _kNyit := True;
+   if _voltRateMode then
+     begin
+       ArfModNyomtatas;
+       _kNyit := False;
+     end;
+
+   BlokkFocimIro(_knyit);
+   if _copyBlokk then WriteLn(_Lfile,_widon+'M  A  S  O  L  A  T'+_widOff);
+   writeLn(_LFile,'       Valuta    k o n v e r z i o');
+   writeLn(_LFile,'          C O N V E R S I O N');
+
+   _sumkonv := 0;
+
+   BlokkFejlecIro;
+   BlokkTetelIro;
+
+   Write(_LFile,'Vetel osszes:(PURCHASE SUM:) ');
+   writeLn(_LFile,eloKieg(forintForm(_sumkonv),11));
+   writeLn(_LFile,dupestring('-',40));
+   writeLn(_LFile,'Eladas  (SELLING)');
+   writeLN(_LFile,dupestring('-',40));
+   writeLN(_Lfile,'V.nem    Arf.          B.jegy     Forint');
+   writeLN(_LFile,'CURR.    RATE          CASH        VALUE');
+   writeLn(_LFile,dupestring('-',40));
+
+   _pcs := 'SELECT * FROM VTEMP' + _sorveg;
+   _pcs := _pcs + 'WHERE (BANKJEGY>0) AND (ELOJEL='+chr(39)+'-'+chr(39)+')';
+
+   tempdbase.Connected := True;
+   with TempQuery do
+     begin
+       Close;
+       sql.Clear;
+       Sql.Add(_pcs);
+       Open;
+       First;
+     end;
+
+   _kapforint := 0;
+   while not Tempquery.Eof do
+     begin
+       _aktdnem := TempQuery.FieldByNAme('VALUTANEM').asString;
+       if _aktdnem='HUF' then
+         begin
+           _kapforint := Tempquery.Fieldbyname('BANKJEGY').asInteger;
+         end else
+         begin
+           _konvarfolyam := TempQuery.FieldByName('ARFOLYAM').asFloat;
+           _konvdnem := _aktdnem;
+           _kapbankjegy := TempQuery.FieldByName('BANKJEGY').asInteger;
+           _kapertek := TempQuery.FieldByName('FORINTERTEK').asInteger;
+         end;
+       TempQuery.Next;
+     end;
+   TempQuery.Close;
+   TempDbase.close;
+
+   write(_Lfile,_konvdnem+' '+ArfolyamForm(_konvarfolyam)+' ');
+   write(_LFile,elokieg(forintForm(_kapbankjegy),11)+'  ');
+   writeLN(_LFile,eloKieg(forintForm(_kapertek),11));
+   if _kapforint>0 then
+     begin
+       write(_LFile,'HUF ' + arfolyamform(100)+' ');
+       write(_LFile,elokieg(forintForm(_kapForint),11)+'  ');
+       writeLN(_LFile,eloKieg(forintForm(_kapforint),11));
+     end;
+   writeLn(_Lfile,dupestring('-',40));
+
+   BlokkLabLeciro;
+
+  _copyBlokk       := False;
+  _stornoBlokk     := False;
+  _stornozottBlokk := False;
+  _voltRateMode    := False;
+  _ttipus          := '';
+end;
+
+// =============================================================================
+             procedure TForm1.AtveszBlokkNyomtatas(_kell: boolean);
+// =============================================================================
+
+begin
+  BlokkFocimiro(_kell);
+
+  if _copyBlokk then WriteLn(_Lfile,_widon+'M  A  S  O  L  A  T'+_widOff);
+
+  writeLn(_LFile,_widon+'  Penztari atvetel' + _widoff + _sorveg);
+  writeLn(_LFile,'Atado: '+ _aktPenztarSzam + ' - ' +_aktPenztarNev);
+
+  BlokkFejlecIro;
+  BlokkTetelIro;
+  writeLn(_LFile,'SZALLITO NEVE: ' + _szallitoNev);
+  writeLn(_LFile,'PLOMBA SZAMA : ' + _plombaSzam);
+  if _megjegyzes<>'' then writeLN(_LFile,'Megjegyzes: '+_megjegyzes);
+
+  writeLN(_LFile,_sorveg);
+  writeLn(_LFile,dupeString('.',18)+'     '+ dupeString('.',18));
+  writeLn(_Lfile,'       atado'+space(15)+'atvevo');
+  writeLn(_Lfile,_LF5);
+
+        _copyBlokk := False;
+      _stornoBlokk := False;
+  _stornozottBlokk := False;
+end;
+
+// =============================================================================
+               procedure TFORM1.AtadBlokkNyomtatas(_kell: boolean);
+// =============================================================================
+
+begin
+
+  BlokkFocimiro(_kell);
+
+  if _copyBlokk then WriteLn(_Lfile,_widon+'M  A  S  O  L  A  T'+_widOff);
+
+  writeLn(_LFile,_widon + '  Penztari atadas' + _widoff + _sorveg);
+  writeLn(_LFile,'Atvevo: ' +  _aktPenztarSzam + ' - ' + _aktPenztarNev);
+  BlokkFejlecIro;
+
+  BlokkTetelIro;
+  writeLn(_LFile,'SZALLITO NEVE: ' + _szallitoNev);
+  writeLn(_LFile,'PLOMBA SZAMA : ' + _plombaSzam);
+
+  if _megjegyzes<>'' then writeLN(_LFile,'Megjegyzes: '+_megjegyzes);
+
+  writeLN(_LFile,_sorveg);
+  writeLn(_LFile,dupestring('.',18)+'     '+ dupestring('.',18));
+  writeLn(_Lfile,'       atado'+space(15)+'atvevo');
+  writeLn(_Lfile,_Lf5);
+
+        _copyBlokk := False;
+      _stornoBlokk := False;
+  _stornozottBlokk := False;
+end;
+
+// =============================================================================
+               procedure TFORM1.BlokkFocimIro(_kellnyitni: boolean);
+// =============================================================================
+
+begin
+  if _kellNyitni then
+    begin
+      assignFile(_LFile,_munkaDir + '\Aktlst.txt');
+      Rewrite(_LFile);
+      write(_LFile,_inic);
+    end;
+
+  writeLn(_Lfile,_exclusive);
+  writeLn(_LFile,_cegNev2);
+  write(_LFile,_homePenztarNev);
+  writeLN(_LFile,_homePenztarszam);
+  writeLn(_LFile,_homePenztarCim);
+  writeLN(_Lfile,'Tel: '+ _homePenztarTelefon);
+end;
+
+// =============================================================================
+                       procedure TForm1.BlokkFejlecIro;
+// =============================================================================
+
+begin
+  Vonalhuzo;
+  writeLn(_LFile,'Sorszam   (INVOICE NR)    :      '+_bizonylatSzam);
+  writeLN(_LFile,'Datum     (DATE)          :   ' +  _aktmamas);
+  writeLn(_Lfile,'Ido       (TIME)          :     ' + _aktIDOs);
+  vonalhuzo;
+
+  if _stornozottblokk then
+      writeLn(_LFile,'      S T O R N O Z O T T   B L O K K');
+
+  if _stornoBlokk then
+    begin
+      writeLn(_LFile,'           S T O R N O   B L O K K');
+      if _stornoIndok<>'' then KozepreIr('Storno indoka: '+trim(_stornoIndok)+')');
+    end;
+  _stornoIndok := '';
+
+  writeLn(_LFile,'Adomentes               Szj - 67.13.10.0');
+
+  _stornozottBlokk := False;
+      _stornoBlokk := False;
+
+  VonalHuzo;
+  writeLn(_LFile,'V.nem    Arf.       B.jegy       Forint');
+  writeLn(_LFile,'CURR.    RATE        CASH        VALUE');
+  VonalHuzo;
+end;
+
+// =============================================================================
+                          procedure TForm1.BlokkTetelIro;
+// =============================================================================
+
+begin
+  TempDbase.Connected := true;
+
+  _pcs := 'SELECT * FROM VTEMP' + _sorveg;
+  _pcs := _pcs + 'WHERE (BANKJEGY>0)';
+
+  if _ttipus='K' then _pcs := _pcs + ' AND (ELOJEL='+chr(39)+'+'+chr(39)+')';
+
+  with TempQuery do
+    begin
+      Close;
+      sql.Clear;
+      sql.Add(_pcs);
+      Open;
+      First;
+    end;
+
+  while not TempQuery.Eof do
+    begin
+      _aktDnem := TempQuery.FieldByName('VALUTANEM').asString;
+      if _aktDnem='' then
+        begin
+          TempQuery.Next;
+          Continue;
+        end;
+
+      with TempQuery do
+        begin
+          _aktArfolyam := FieldByName('ARFOLYAM').asFloat;
+          _aktBankjegy := FieldByNAme('BANKJEGY').asInteger;
+          _ertek := FieldByNAme('FORINTERTEK').asInteger;
+        end;
+      if _ttipus='K' then _sumkonv := _sumkonv + _ertek;
+
+      write(_LFile,_aktDnem + ' ');
+      write(_LFile,arfolyamForm(_aktArfolyam)+' ');
+      write(_LFile,eloKieg(forintForm(_aktBankjegy),11)+'  ');
+      writeLN(_LFile,eloKieg(forintForm(_ertek),11));
+
+      TempQuery.Next;
+    end;
+
+  TempQuery.close;
+  Tempdbase.close;
+
+  // ---------------------------------------------------------------------------
+
+  VonalHuzo;
+  if _ttipus<>'K' then
+    begin
+      if _tranzdij<>0 then
+        begin
+          Write(_LFile,'Netto  Ft  (SUM TOTAL)     : ');
+          writeLn(_LFile,elokieg(forintform(_NETTO),11));
+          write(_LFile,'Kez. kltsg (HANDLING FEE)  : ');
+          writeln(_LFile,elokieg(forintform(_tranzdij),11));
+        end;
+      Write(_LFile,'Fizetett Ft (PAID VALUE)   : ');
+      WriteLN(_LFile,elokieg(forintForm(_fizetendo),11));
+      VonalHuzo;
+    end;
+
+end;
+
+// =============================================================================
+                      procedure TFORM1.BlokkLablecIro;
+// =============================================================================
+
+begin
+
+  if _jogiNev<>'' then
+    begin
+      writeLn(_LFile,'Jogi szemely neve:');
+      KozepreIr(trim(_joginev));
+      writeLn(_LFile,'Jogi szemely szekhelye:');
+      KozepreIr(trim(_jogihely));
+      if _okiratSzam<>'' then writeln(_LFile,'Okiratszam: ' + _okiratSzam);
+    end;
+
+  if _ugyfelNev<>'' then
+    begin
+      if _jogiNev<>'' then write(_LFile,'Megbizott nev: ')
+      else write(_LFile,'Nev (NAME) :');
+      writeLn(_Lfile,_ugyfelNev);
+    end;
+   if _lakcim<>'' then
+     begin
+       writelN(_LFile,'Lakcim:(ADDRESS):');
+       KozepreIr(trim(_lakCim));
+     end;
+
+   if _tarthely<>'' then
+       writeLn(_LFile,'Tarthely: ' +_tarthely);
+
+   if _azonosito<>'' then
+     begin
+       writeLn(_Lfile,'DOC TYPE: '+ _okmanyTipus);
+       writeLn(_LFile,'     NR.: '+ _azonosito);
+     end;
+
+   writeLN(_LFile,' ');
+   writeLn(_lFile,'(dekanySoft)');
+
+   if _joginev<>'' then TulajNyomtatas;
+
+   writeLn(_LFile,_sorveg + '  Az ugyletet keszpenzben teljesitjuk');
+
+   if not _copyBlokk  then
+     begin
+       // Pénzmosási ellenörzést végez:
+
+       PenzMoso;
+
+       if (_SECURLEVEL) and (_kulfoldi=1)  then KozszereploPrint(_kulfoldistatusz);
+
+       If (_securLevel=True) then
+         begin
+           writeLN(_LFile,_sorveg + _sorveg);
+           writeLn(_Lfile,dupeString('.',39));
+           writeLn(_Lfile,'             ugyfel alairasa');
+           writeLN(_Lfile,_sorveg);
+         end;
+
+       writeLn(_LFile,_widOn+'Raiffeisen Bank Zrt.');
+       writeLn(_LFile,_widOn+'      ugynoke'+_widOff);
+
+       VonalHuzo;
+
+       writeLn(_Lfile,_widOn+'  EXCLUSIVE CHANGE');
+       writeLn(_LFile,_widOn+'     KEDVEZOBB,');
+       writeLn(_LFile,_widOn+'     GYORSABB,');
+       writeLn(_Lfile,_widOn+'  BIZTONSAGOSABB !'+_widoff);
+     end;
+
+   writeLN(_Lfile,_sorveg + _sorveg);
+
+   _stornoBlokk := False;
+   _stornozottBlokk := False;
+   _copyBlokk := False;
+end;
+
+// =============================================================================
+                           procedure TFORM1.ArfModNyomtatas;
+// =============================================================================
+
+
+var _arfolyReal: real;
+
+begin
+  AssignFile(_LFile,_munkaDir+'\Aktlst.txt');
+  Rewrite(_LFile);
+  Write(_LFile,_inic);
+  WriteLn(_LFile,_mamas+' '+_idos);
+  writeLN(_Lfile,_widon+'Egyedi arfolyamok'+_widOff);
+  writeLn(_Lfile,dupeString('-',40));
+  writeLn(_Lfile,'Valuta      Lista            Egyedi');
+  writeLn(_LFile,'            arfolyam        arfolyam');
+  writeLN(_Lfile,dupeString('-',40));
+
+  // ---------------------------------------------------------------------------
+
+  TempDbase.Connected := true;
+
+  _pcs := 'SELECT * FROM VTEMP' + _sorveg;
+  _pcs := _pcs + 'WHERE KEDVEZMENYESARFOLYAM>0';
+
+  with Tempquery do
+    begin
+      CLose;
+      Sql.Clear;
+      Sql.Add(_pcs);
+      Open;
+      First;
+    end;
+
+  while not TempQuery.Eof do
+    begin
+      _arfolyReal := TempQuery.FieldByName('EREDETIARFOLYAM').asFloat;
+      _arfolyam   := TempQuery.FieldByNAme('KEDVEZMENYESARFOLYAM').asFloat;
+      if _arfolyReal<>_arfolyam then
+        begin
+          _aktDnem := TempQuery.FieldByName('VALUTANEM').asString;
+          write(_LFile,_aktdnem+'         ');
+          write(_LFile,arfolyamForm(_arfolyreal)+'    ');
+          writeLn(_Lfile,arfolyamForm(_arfolyam));
+        end;
+      TempQuery.Next;
+    end;
+
+  if _rateType=10 then
+    begin
+      Writeln(_LFile,_sorveg);
+      if _kartyatbeadta then
+        begin
+          Kozepreir('Az ugyfelkartya beadasra kerult !');
+        end else
+        begin
+          Kozepreir('Ugyfelkartyaval rendelkezem');
+          Kozepreir('A kedvezmeny jogosan jar nekem');
+          WriteLn(_LFile,_sorveg);
+          Kozepreir('..................................');
+          Kozepreir('ugyfel');
+        end;
+    end;
+
+  WriteLn(_Lfile,_sorveg+_sorveg);
+
+  TempQuery.CLose;
+  TempDbase.close;
+
+end;
+
+// =============================================================================
+                             procedure TFORM1.TulajNyomtatas;
+// =============================================================================
+
+
+var _tnev,_tcim,_tap: string;
+
+begin
+  if (_tulajDarab>0) then
+    begin
+      VonalHuzo;
+      writeLN(_LFile,'    Tenyleges tulajdonosok adatai:');
+      VonalHuzo;
+      _qq := 1;
+
+      while _qq<5 do
+        begin
+          _tNev := TRIM(_TulajData[_qq,1]);
+          _tCim := TRIM(_Tulajdata[_qq,2]);
+          _tap  := TRIM(_TulajDAta[_qq,3]);
+
+          if _tnev='' then break;
+
+          writeLn(_LFile,_tnev);
+          writeLn(_Lfile,_tcim);
+          writeLn(_Lfile,_tap + _sorveg);
+
+          inc(_qq);
+        end;
+      VonalHuzo;
+    end;
+end;
+
+// =============================================================================
+                             procedure TFORM1.Penzmoso;
+// =============================================================================
+
+
+begin
+
+   if not _securLevel then exit;
+
+   WriteLn(_Lfile,_sorveg);
+   WriteLn(_LFile,_widon+'JOGCIM NYILATKOZAT'+_widoff);
+   WriteLn(_Lfile,_sorveg + 'Buntetojogi felelossegem tudataban nyi-');
+   WriteLn(_lfile,'latkozom,   hogy  a  fenti  tranzakciot');
+
+   if _megbizonev='' then
+     begin
+       writeLn(_LFile,'termeszetes  szemelyenkent,  '+'sajat magam');
+       writeLN(_LFile,'         neveben vegzem !');
+     end else
+     begin
+       KozepreIr(trim(_megbizonev));
+       KozepreIr(trim(_megbizoCim));
+       KozepreIr('neveben bonyolitom');
+       WriteLn(_LFile,' ');
+     end;
+   writeLn(_LFile,' Amennyiben adataimban valtozas all be,');
+   writeLn(_Lfile,'   azt 5 napon belul koteles vagyok');
+   writeLn(_LFile,'             bejelenteni.' + _sorveg);
+end;
+
+// =============================================================================
+               procedure TFORM1.KozszereploPrint(_ksznum: integer);
+// =============================================================================
+
+begin
+
+  writeLn(_Lfile,' ');
+  if _ksznum=0 then
+    begin
+      writeLn(_LFile,'   NEM VAGYOK POLITIKAI KOZSZEREPLO');
+      exit;
+    end;
+
+  writeLn(_Lfile,'  POLITIKAI KOZSZEREPLO VAGYOK, MINT:'+ _sorveg);
+  case _ksznum of
+    1: begin
+         writeLn(_Lfile,'   Allamfo, kormanyfo, miniszter vagy');
+         writeLn(_Lfile,'              allamtitkar');
+       end;
+
+    2: writeLn(_LFile,'         Orszaggyulesi kepviselo');
+
+    3: begin
+         writeLn(_LFile,'Legfelso birosag, alkotmanybirosag vagy');
+         writeLn(_Lfile,'olyan biroi testulet tagja melynek ite-');
+         writeLN(_lfile,'lete ellen fellebbezesnek helye nincsen');
+       end;
+
+    4: begin
+         writeLn(_Lfile,'Szamvevoszek elnoke,testuletenek tagja,');
+         writeLn(_Lfile,' vagy kozponti bank igazgatosagi tagja');
+       end;
+
+    5: begin
+         writeLn(_Lfile,'Nagykovet, ugyvivo, vagy fegyveres erok');
+         writeLn(_Lfile,'hivatasos allomanyu fotiszti vagy tabor-');
+         writeLN(_Lfile,'        noki rendfokozatu tagja');
+       end;
+
+    6: begin
+         writeLn(_LFile,'Kiemelt kozszereplo kozeli hozzatarto-');
+         writeLn(_Lfile,'           zoja, elettarsa');
+       end;
+
+    7: begin
+         writeLn(_Lfile,'Kiemelt kozszereplovel kozosen ugyana-');
+         writeLn(_LFile,'zon jogi szemely, vagy jogi szemelyi-');
+         writeLn(_LFile,'seggel nem rendelkezo szervezet tenyle-');
+         writeLn(_LFile,'ges tulajdonosa, vagy vele szoros uz-');
+         writeLN(_lFile,'    leti kacsolatban allo szemely');
+       end;
+
+    8: begin
+         writeLn(_Lfile,'Egyszemelyes tulajdonosa olyan jogi sze-');
+         writeLN(_Lfile,'melynek,  vagy  jogi  szemelyiseggel nem');
+         writeLN(_Lfile,'rendelkezo szervezetnek, amelyet kiemelt');
+         writeLn(_LFile,'   kozszereplo javara hoztak letre');
+       end;
+     end;
+end;
+
+// =============================================================================
+                          procedure TFORM1.VonalHuzo;
+// =============================================================================
+
+begin
+  writeLn(_Lfile,dupeString('-',40));
+end;

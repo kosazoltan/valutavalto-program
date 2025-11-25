@@ -1,0 +1,3405 @@
+object ATADOLAPFORM: TATADOLAPFORM
+  Left = 212
+  Top = 102
+  BorderStyle = bsNone
+  Caption = 'ATADOLAPFORM'
+  ClientHeight = 849
+  ClientWidth = 1016
+  Color = clSilver
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'MS Sans Serif'
+  Font.Style = []
+  OldCreateOrder = False
+  OnActivate = FormActivate
+  PixelsPerInch = 96
+  TextHeight = 13
+  object Label32: TLabel
+    Left = 274
+    Top = 82
+    Width = 635
+    Height = 108
+    Caption = #193'TAD'#211'LAPOK'
+    Font.Charset = EASTEUROPE_CHARSET
+    Font.Color = clGray
+    Font.Height = -96
+    Font.Name = 'Times New Roman'
+    Font.Style = [fsBold, fsItalic]
+    ParentFont = False
+    Transparent = True
+  end
+  object Label31: TLabel
+    Left = 256
+    Top = 88
+    Width = 635
+    Height = 108
+    Caption = #193'TAD'#211'LAPOK'
+    Font.Charset = EASTEUROPE_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -96
+    Font.Name = 'Times New Roman'
+    Font.Style = [fsBold, fsItalic]
+    ParentFont = False
+    Transparent = True
+  end
+  object FUGGONY: TPanel
+    Left = 0
+    Top = 0
+    Width = 1024
+    Height = 768
+    Color = clSilver
+    TabOrder = 3
+    object GYUJTOPANEL: TPanel
+      Left = 10
+      Top = 14
+      Width = 585
+      Height = 441
+      TabOrder = 0
+      object Label33: TLabel
+        Left = 80
+        Top = 16
+        Width = 445
+        Height = 24
+        Caption = 'V'#193'LASSZA KI A  KINYOMAND'#211' '#193'TAD'#211'LAPOT'
+        Font.Charset = EASTEUROPE_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -21
+        Font.Name = 'Times New Roman'
+        Font.Style = [fsBold, fsItalic]
+        ParentFont = False
+      end
+      object GYUJTOLIST: TListBox
+        Left = 32
+        Top = 48
+        Width = 521
+        Height = 345
+        Color = 13697023
+        Font.Charset = EASTEUROPE_CHARSET
+        Font.Color = clGray
+        Font.Height = -19
+        Font.Name = 'Times New Roman'
+        Font.Style = [fsBold, fsItalic]
+        ItemHeight = 22
+        ParentFont = False
+        TabOrder = 0
+        OnDblClick = GYUJTOLISTDblClick
+      end
+      object KINYOMTATOGOMB: TBitBtn
+        Left = 200
+        Top = 408
+        Width = 129
+        Height = 25
+        Cursor = crHandPoint
+        Caption = 'NYOMTAT'#193'S'
+        TabOrder = 1
+        OnClick = KINYOMTATOGOMBClick
+      end
+      object BitBtn2: TBitBtn
+        Left = 352
+        Top = 408
+        Width = 129
+        Height = 25
+        Cursor = crHandPoint
+        Caption = 'VISSZA A MEN'#220'RE'
+        TabOrder = 2
+        OnClick = PTMEGSEMGOMBClick
+      end
+    end
+    object MEMOPANEL: TPanel
+      Left = 392
+      Top = 248
+      Width = 401
+      Height = 369
+      TabOrder = 1
+      object Label34: TLabel
+        Left = 40
+        Top = 16
+        Width = 331
+        Height = 24
+        Caption = 'ADATFORGALOM A SZERVERREL'
+        Font.Charset = EASTEUROPE_CHARSET
+        Font.Color = clNavy
+        Font.Height = -21
+        Font.Name = 'Times New Roman'
+        Font.Style = [fsBold, fsItalic]
+        ParentFont = False
+      end
+      object MemoTabla: TMemo
+        Left = 24
+        Top = 48
+        Width = 353
+        Height = 297
+        Color = 16311512
+        Font.Charset = EASTEUROPE_CHARSET
+        Font.Color = clBlue
+        Font.Height = -16
+        Font.Name = 'Times New Roman'
+        Font.Style = [fsBold, fsItalic]
+        Lines.Strings = (
+          '')
+        ParentFont = False
+        TabOrder = 0
+      end
+    end
+  end
+  object ERTEKTARPANEL: TPanel
+    Left = 804
+    Top = 640
+    Width = 809
+    Height = 768
+    BevelOuter = bvNone
+    TabOrder = 1
+    object Label16: TLabel
+      Left = 248
+      Top = 32
+      Width = 3
+      Height = 13
+    end
+    object Label17: TLabel
+      Left = 256
+      Top = 8
+      Width = 319
+      Height = 33
+      Caption = #201'RT'#201'KT'#193'RI '#193'TAD'#211'LAP'
+      Font.Charset = EASTEUROPE_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -29
+      Font.Name = 'Times New Roman'
+      Font.Style = [fsBold, fsItalic]
+      ParentFont = False
+    end
+    object Bevel17: TBevel
+      Left = 600
+      Top = 672
+      Width = 161
+      Height = 73
+    end
+    object Bevel18: TBevel
+      Left = 408
+      Top = 320
+      Width = 90
+      Height = 161
+    end
+    object ETOKEGOMB: TBitBtn
+      Left = 608
+      Top = 680
+      Width = 145
+      Height = 25
+      Cursor = crHandPoint
+      Caption = #193'TAD'#211'LAP RENDBEN'
+      TabOrder = 10
+      OnClick = ETOKEGOMBClick
+    end
+    object ETMEGSEMGOMB: TBitBtn
+      Left = 608
+      Top = 710
+      Width = 145
+      Height = 25
+      Cursor = crHandPoint
+      Caption = 'M'#201'GSEM'
+      TabOrder = 11
+      OnClick = PTMEGSEMGOMBClick
+    end
+    object ETATADPANEL: TPanel
+      Tag = 1
+      Left = 56
+      Top = 56
+      Width = 289
+      Height = 97
+      BevelInner = bvLowered
+      BevelOuter = bvLowered
+      TabOrder = 12
+      OnEnter = ETATADPANELEnter
+      object Label8: TLabel
+        Left = 64
+        Top = 20
+        Width = 69
+        Height = 13
+        Caption = 'sz'#225'm'#250' '#233'rt'#233'kt'#225'r'
+      end
+      object TLabel
+        Left = 160
+        Top = 16
+        Width = 34
+        Height = 13
+        Caption = 'D'#225'tum:'
+      end
+      object Label9: TLabel
+        Left = 20
+        Top = 44
+        Width = 81
+        Height = 13
+        Caption = #193'tad'#243' '#233'rt'#233'kt'#225'ros:'
+      end
+      object Label10: TLabel
+        Left = 14
+        Top = 64
+        Width = 87
+        Height = 13
+        Caption = #193'tvev'#337' '#233'rt'#233'kt'#225'ros:'
+      end
+      object ETSZAMEDIT: TEdit
+        Tag = 1
+        Left = 24
+        Top = 16
+        Width = 33
+        Height = 21
+        MaxLength = 3
+        TabOrder = 0
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object ETADVETDATUMEDIT: TEdit
+        Tag = 2
+        Left = 200
+        Top = 16
+        Width = 73
+        Height = 21
+        MaxLength = 10
+        TabOrder = 1
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object ETATADOEDIT: TEdit
+        Tag = 3
+        Left = 104
+        Top = 40
+        Width = 169
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 20
+        TabOrder = 2
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object ETATVEVOEDIT: TEdit
+        Tag = 4
+        Left = 104
+        Top = 64
+        Width = 169
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 20
+        TabOrder = 3
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+    end
+    object Panel19: TPanel
+      Left = 136
+      Top = 48
+      Width = 129
+      Height = 17
+      Caption = #193'TAD'#193'S/'#193'TV'#201'TEL'
+      Color = clWhite
+      TabOrder = 0
+    end
+    object PENZKESZLETPANEL: TPanel
+      Tag = 2
+      Left = 360
+      Top = 56
+      Width = 409
+      Height = 97
+      BevelInner = bvLowered
+      BevelOuter = bvLowered
+      TabOrder = 13
+      OnEnter = ETATADPANELEnter
+      object Panel9: TPanel
+        Left = 8
+        Top = 16
+        Width = 136
+        Height = 25
+        Caption = 'EGYEZIK'
+        Color = clWhite
+        TabOrder = 0
+      end
+      object Panel10: TPanel
+        Left = 144
+        Top = 16
+        Width = 127
+        Height = 25
+        Caption = 'NEM EGYEZIK'
+        Color = clWhite
+        TabOrder = 1
+      end
+      object Panel11: TPanel
+        Left = 272
+        Top = 16
+        Width = 123
+        Height = 25
+        Caption = 'ELT'#201'R'#201'S'
+        Color = clWhite
+        TabOrder = 2
+      end
+      object EGYEZIKEDIT: TEdit
+        Tag = 5
+        Left = 8
+        Top = 56
+        Width = 129
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 15
+        TabOrder = 3
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object NEMEGYEZIKEDIT: TEdit
+        Tag = 6
+        Left = 144
+        Top = 56
+        Width = 121
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 15
+        TabOrder = 4
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object ELTERESEDIT: TEdit
+        Tag = 7
+        Left = 272
+        Top = 56
+        Width = 121
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 15
+        TabOrder = 5
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+    end
+    object Panel20: TPanel
+      Left = 464
+      Top = 48
+      Width = 185
+      Height = 17
+      Caption = 'P'#201'NZK'#201'SZLET'
+      Color = clWhite
+      TabOrder = 1
+    end
+    object TARTOZASOKPANEL: TPanel
+      Tag = 3
+      Left = 56
+      Top = 168
+      Width = 193
+      Height = 137
+      BevelInner = bvLowered
+      BevelOuter = bvLowered
+      TabOrder = 14
+      OnEnter = ETATADPANELEnter
+      object Panel14: TPanel
+        Left = 8
+        Top = 12
+        Width = 45
+        Height = 41
+        Color = clWhite
+        TabOrder = 0
+        object Label11: TLabel
+          Left = 8
+          Top = 8
+          Width = 29
+          Height = 13
+          Caption = #201'T'#193'R'
+        end
+        object Label12: TLabel
+          Left = 8
+          Top = 24
+          Width = 30
+          Height = 13
+          Caption = 'SZ'#193'M'
+        end
+      end
+      object Panel15: TPanel
+        Left = 53
+        Top = 12
+        Width = 52
+        Height = 41
+        Color = clWhite
+        TabOrder = 1
+        object Label13: TLabel
+          Left = 3
+          Top = 8
+          Width = 42
+          Height = 13
+          Caption = 'VALUTA'
+        end
+        object Label14: TLabel
+          Left = 14
+          Top = 24
+          Width = 24
+          Height = 13
+          Caption = 'NEM'
+        end
+      end
+      object Panel21: TPanel
+        Left = 105
+        Top = 12
+        Width = 78
+        Height = 41
+        Caption = #214'SSZEG'
+        Color = clWhite
+        TabOrder = 2
+      end
+      object TARTETSZAM1EDIT: TEdit
+        Tag = 8
+        Left = 8
+        Top = 60
+        Width = 33
+        Height = 21
+        MaxLength = 3
+        TabOrder = 3
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object TARTETSZAM2EDIT: TEdit
+        Tag = 11
+        Left = 8
+        Top = 84
+        Width = 33
+        Height = 21
+        MaxLength = 3
+        TabOrder = 4
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object TARTETSZAM3EDIT: TEdit
+        Tag = 14
+        Left = 8
+        Top = 108
+        Width = 33
+        Height = 21
+        MaxLength = 3
+        TabOrder = 5
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object TARTDNEM1EDIT: TEdit
+        Tag = 9
+        Left = 56
+        Top = 60
+        Width = 41
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 6
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object TARTDNEM2EDIT: TEdit
+        Tag = 12
+        Left = 56
+        Top = 84
+        Width = 41
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 7
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object TARTDNEM3EDIT: TEdit
+        Tag = 15
+        Left = 56
+        Top = 108
+        Width = 41
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 8
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object TARTSUM1EDIT: TEdit
+        Tag = 10
+        Left = 112
+        Top = 60
+        Width = 73
+        Height = 21
+        MaxLength = 9
+        TabOrder = 9
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object TARTSUM2EDIT: TEdit
+        Tag = 13
+        Left = 112
+        Top = 84
+        Width = 73
+        Height = 21
+        MaxLength = 9
+        TabOrder = 10
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object TARTSUM3EDIT: TEdit
+        Tag = 16
+        Left = 112
+        Top = 108
+        Width = 73
+        Height = 21
+        MaxLength = 9
+        TabOrder = 11
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+    end
+    object Panel27: TPanel
+      Left = 112
+      Top = 160
+      Width = 97
+      Height = 17
+      Caption = 'TARTOZ'#193'SOK'
+      Color = clWhite
+      TabOrder = 2
+    end
+    object KOVETELESPANEL: TPanel
+      Tag = 4
+      Left = 296
+      Top = 168
+      Width = 201
+      Height = 137
+      BevelInner = bvLowered
+      BevelOuter = bvLowered
+      TabOrder = 15
+      OnEnter = ETATADPANELEnter
+      object Panel13: TPanel
+        Left = 8
+        Top = 16
+        Width = 44
+        Height = 41
+        Color = clWhite
+        TabOrder = 0
+        object Label15: TLabel
+          Left = 3
+          Top = 8
+          Width = 29
+          Height = 13
+          Caption = #201'T'#193'R'
+        end
+        object Label18: TLabel
+          Left = 3
+          Top = 24
+          Width = 30
+          Height = 13
+          Caption = 'SZ'#193'M'
+        end
+      end
+      object Panel22: TPanel
+        Left = 52
+        Top = 16
+        Width = 53
+        Height = 41
+        Color = clWhite
+        TabOrder = 1
+        object Label19: TLabel
+          Left = 3
+          Top = 8
+          Width = 42
+          Height = 13
+          Caption = 'VALUTA'
+        end
+        object Label20: TLabel
+          Left = 10
+          Top = 24
+          Width = 24
+          Height = 13
+          Caption = 'NEM'
+        end
+      end
+      object Panel23: TPanel
+        Left = 106
+        Top = 16
+        Width = 80
+        Height = 41
+        Caption = #214'SSZEG'
+        Color = clWhite
+        TabOrder = 2
+      end
+      object KOVERTSZAM1EDIT: TEdit
+        Tag = 17
+        Left = 12
+        Top = 64
+        Width = 33
+        Height = 21
+        MaxLength = 3
+        TabOrder = 3
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object KOVERTSZAM2EDIT: TEdit
+        Tag = 20
+        Left = 12
+        Top = 88
+        Width = 33
+        Height = 21
+        MaxLength = 3
+        TabOrder = 4
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object KOVERTSZAM3EDIT: TEdit
+        Tag = 23
+        Left = 12
+        Top = 108
+        Width = 33
+        Height = 21
+        MaxLength = 3
+        TabOrder = 5
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object KOVDNEM1EDIT: TEdit
+        Tag = 18
+        Left = 56
+        Top = 64
+        Width = 41
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 6
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object KOVDNEM2EDIT: TEdit
+        Tag = 21
+        Left = 56
+        Top = 88
+        Width = 41
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 7
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object KOVDNEM3EDIT: TEdit
+        Tag = 24
+        Left = 56
+        Top = 108
+        Width = 41
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 8
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object KOVSUM1EDIT: TEdit
+        Tag = 19
+        Left = 112
+        Top = 64
+        Width = 73
+        Height = 21
+        MaxLength = 9
+        TabOrder = 9
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object KOVSUM2EDIT: TEdit
+        Tag = 22
+        Left = 112
+        Top = 88
+        Width = 73
+        Height = 21
+        MaxLength = 9
+        TabOrder = 10
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object KOVSUM3EDIT: TEdit
+        Tag = 25
+        Left = 112
+        Top = 108
+        Width = 73
+        Height = 21
+        MaxLength = 9
+        TabOrder = 11
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+    end
+    object Panel31: TPanel
+      Left = 352
+      Top = 160
+      Width = 97
+      Height = 17
+      Caption = 'K'#214'VETEL'#201'S'
+      Color = clWhite
+      TabOrder = 3
+    end
+    object WUAFAPANEL: TPanel
+      Tag = 5
+      Left = 536
+      Top = 168
+      Width = 233
+      Height = 137
+      BevelInner = bvLowered
+      BevelOuter = bvLowered
+      TabOrder = 16
+      OnEnter = ETATADPANELEnter
+      object Panel25: TPanel
+        Left = 8
+        Top = 24
+        Width = 87
+        Height = 41
+        Caption = 'D'#193'TUM'
+        Color = clWhite
+        TabOrder = 0
+      end
+      object Panel26: TPanel
+        Left = 95
+        Top = 24
+        Width = 49
+        Height = 41
+        Color = clWhite
+        TabOrder = 1
+        object Label21: TLabel
+          Left = 2
+          Top = 8
+          Width = 42
+          Height = 13
+          Caption = 'VALUTA'
+        end
+        object Label22: TLabel
+          Left = 8
+          Top = 24
+          Width = 24
+          Height = 13
+          Caption = 'NEM'
+        end
+      end
+      object Panel28: TPanel
+        Left = 144
+        Top = 24
+        Width = 75
+        Height = 41
+        Caption = #214'SSZEG'
+        Color = clWhite
+        TabOrder = 2
+      end
+      object WUDATUM1EDIT: TEdit
+        Tag = 26
+        Left = 8
+        Top = 72
+        Width = 81
+        Height = 21
+        MaxLength = 10
+        TabOrder = 3
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object WUDATUM2EDIT: TEdit
+        Tag = 29
+        Left = 8
+        Top = 96
+        Width = 81
+        Height = 21
+        MaxLength = 10
+        TabOrder = 4
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object WUDNEM1EDIT: TEdit
+        Tag = 27
+        Left = 96
+        Top = 72
+        Width = 41
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 5
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object WUSUM1EDIT: TEdit
+        Tag = 28
+        Left = 144
+        Top = 72
+        Width = 73
+        Height = 21
+        MaxLength = 9
+        TabOrder = 6
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object WUDNEM2EDIT: TEdit
+        Tag = 30
+        Left = 96
+        Top = 96
+        Width = 41
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 7
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object WUSUM2EDIT: TEdit
+        Tag = 31
+        Left = 144
+        Top = 96
+        Width = 73
+        Height = 21
+        MaxLength = 9
+        TabOrder = 8
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+    end
+    object Panel35: TPanel
+      Left = 584
+      Top = 160
+      Width = 137
+      Height = 17
+      Caption = 'WU/AFA RENDEL'#201'S'
+      Color = clWhite
+      TabOrder = 4
+    end
+    object BANKIBEPANEL: TPanel
+      Tag = 6
+      Left = 56
+      Top = 320
+      Width = 337
+      Height = 161
+      BevelInner = bvLowered
+      BevelOuter = bvLowered
+      TabOrder = 17
+      OnEnter = ETATADPANELEnter
+      object Panel24: TPanel
+        Left = 16
+        Top = 13
+        Width = 89
+        Height = 41
+        Caption = 'D'#193'TUM'
+        Color = clWhite
+        TabOrder = 0
+      end
+      object Panel29: TPanel
+        Left = 106
+        Top = 13
+        Width = 49
+        Height = 41
+        Color = clWhite
+        TabOrder = 1
+        object Label23: TLabel
+          Left = 3
+          Top = 8
+          Width = 42
+          Height = 13
+          Caption = 'VALUTA'
+        end
+        object Label24: TLabel
+          Left = 12
+          Top = 24
+          Width = 24
+          Height = 13
+          Caption = 'NEM'
+        end
+      end
+      object Panel30: TPanel
+        Left = 155
+        Top = 13
+        Width = 87
+        Height = 41
+        Caption = #214'SSZEG'
+        Color = clWhite
+        TabOrder = 2
+      end
+      object Panel32: TPanel
+        Left = 242
+        Top = 13
+        Width = 87
+        Height = 41
+        Caption = #193'RFOLYAM'
+        Color = clWhite
+        TabOrder = 3
+      end
+      object BBEDATUM1EDIT: TEdit
+        Tag = 32
+        Left = 16
+        Top = 60
+        Width = 81
+        Height = 21
+        MaxLength = 10
+        TabOrder = 4
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object BBEDATUM2EDIT: TEdit
+        Tag = 36
+        Left = 16
+        Top = 84
+        Width = 81
+        Height = 21
+        MaxLength = 10
+        TabOrder = 5
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object BBEDATUM3EDIT: TEdit
+        Tag = 40
+        Left = 16
+        Top = 108
+        Width = 81
+        Height = 21
+        MaxLength = 10
+        TabOrder = 6
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object BBEDATUM4EDIT: TEdit
+        Tag = 44
+        Left = 16
+        Top = 132
+        Width = 81
+        Height = 21
+        MaxLength = 10
+        TabOrder = 7
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object BBEDNEM1EDIT: TEdit
+        Tag = 33
+        Left = 104
+        Top = 60
+        Width = 49
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 8
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object BBESUM1EDIT: TEdit
+        Tag = 34
+        Left = 160
+        Top = 60
+        Width = 81
+        Height = 21
+        MaxLength = 9
+        TabOrder = 9
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object BBEARF1EDIT: TEdit
+        Tag = 35
+        Left = 248
+        Top = 60
+        Width = 81
+        Height = 21
+        MaxLength = 8
+        TabOrder = 10
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object BBEDNEM2EDIT: TEdit
+        Tag = 37
+        Left = 104
+        Top = 84
+        Width = 49
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 11
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object BBEDNEM3EDIT: TEdit
+        Tag = 41
+        Left = 104
+        Top = 108
+        Width = 49
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 12
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object BBEDNEM4EDIT: TEdit
+        Tag = 45
+        Left = 104
+        Top = 132
+        Width = 49
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 13
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object BBESUM2EDIT: TEdit
+        Tag = 38
+        Left = 160
+        Top = 84
+        Width = 81
+        Height = 21
+        MaxLength = 9
+        TabOrder = 14
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object BBESUM3EDIT: TEdit
+        Tag = 42
+        Left = 160
+        Top = 108
+        Width = 81
+        Height = 21
+        MaxLength = 9
+        TabOrder = 15
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object BBESUM4EDIT: TEdit
+        Tag = 46
+        Left = 160
+        Top = 132
+        Width = 81
+        Height = 21
+        MaxLength = 9
+        TabOrder = 16
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object BBEARF2EDIT: TEdit
+        Tag = 39
+        Left = 248
+        Top = 84
+        Width = 81
+        Height = 21
+        MaxLength = 8
+        TabOrder = 17
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object BBEARF3EDIT: TEdit
+        Tag = 43
+        Left = 248
+        Top = 108
+        Width = 81
+        Height = 21
+        MaxLength = 8
+        TabOrder = 18
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object BBEARF4EDIT: TEdit
+        Tag = 47
+        Left = 248
+        Top = 132
+        Width = 81
+        Height = 21
+        MaxLength = 8
+        TabOrder = 19
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+    end
+    object Panel39: TPanel
+      Left = 176
+      Top = 312
+      Width = 129
+      Height = 17
+      Caption = 'BANKI BESZ'#193'LL'#205'T'#193'S'
+      Color = clWhite
+      TabOrder = 5
+    end
+    object BANKIKIPANEL: TPanel
+      Tag = 7
+      Left = 536
+      Top = 320
+      Width = 233
+      Height = 161
+      BevelInner = bvLowered
+      BevelOuter = bvLowered
+      TabOrder = 18
+      OnEnter = ETATADPANELEnter
+      object Panel33: TPanel
+        Left = 8
+        Top = 12
+        Width = 87
+        Height = 41
+        Caption = 'D'#193'TUM'
+        Color = clWhite
+        TabOrder = 0
+      end
+      object Panel34: TPanel
+        Left = 96
+        Top = 12
+        Width = 46
+        Height = 41
+        Color = clWhite
+        TabOrder = 1
+        object Label25: TLabel
+          Left = 2
+          Top = 3
+          Width = 42
+          Height = 13
+          Caption = 'VALUTA'
+        end
+        object Label26: TLabel
+          Left = 8
+          Top = 20
+          Width = 24
+          Height = 13
+          Caption = 'NEM'
+        end
+      end
+      object Panel36: TPanel
+        Left = 142
+        Top = 12
+        Width = 83
+        Height = 41
+        Caption = #214'SSZEG'
+        Color = clWhite
+        TabOrder = 2
+      end
+      object BKIDATUM1EDIT: TEdit
+        Tag = 48
+        Left = 8
+        Top = 56
+        Width = 81
+        Height = 21
+        MaxLength = 10
+        TabOrder = 3
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object BKIDNEM1EDIT: TEdit
+        Tag = 49
+        Left = 96
+        Top = 56
+        Width = 41
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 4
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object BKISUM1EDIT: TEdit
+        Tag = 50
+        Left = 144
+        Top = 56
+        Width = 81
+        Height = 21
+        MaxLength = 9
+        TabOrder = 5
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object BKIDATUM2EDIT: TEdit
+        Tag = 51
+        Left = 8
+        Top = 80
+        Width = 81
+        Height = 21
+        MaxLength = 10
+        TabOrder = 6
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object BKIDATUM3EDIT: TEdit
+        Tag = 54
+        Left = 8
+        Top = 104
+        Width = 81
+        Height = 21
+        MaxLength = 10
+        TabOrder = 7
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object BKIDATUM4EDIT: TEdit
+        Tag = 57
+        Left = 8
+        Top = 128
+        Width = 79
+        Height = 21
+        MaxLength = 10
+        TabOrder = 8
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object BKIDNEM2EDIT: TEdit
+        Tag = 52
+        Left = 96
+        Top = 80
+        Width = 41
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 9
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object BKIDNEM3EDIT: TEdit
+        Tag = 55
+        Left = 96
+        Top = 104
+        Width = 41
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 10
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object BKIDNEM4EDIT: TEdit
+        Tag = 58
+        Left = 96
+        Top = 128
+        Width = 41
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 11
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object BKISUM2EDIT: TEdit
+        Tag = 53
+        Left = 144
+        Top = 80
+        Width = 81
+        Height = 21
+        MaxLength = 9
+        TabOrder = 12
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object BKISUM3EDIT: TEdit
+        Tag = 56
+        Left = 144
+        Top = 104
+        Width = 81
+        Height = 21
+        MaxLength = 9
+        TabOrder = 13
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object BKISUM4EDIT: TEdit
+        Tag = 59
+        Left = 144
+        Top = 128
+        Width = 79
+        Height = 21
+        MaxLength = 9
+        TabOrder = 14
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+    end
+    object Panel43: TPanel
+      Left = 584
+      Top = 312
+      Width = 129
+      Height = 17
+      Caption = 'BANKI KISZ'#193'LL'#205'T'#193'S'
+      Color = clWhite
+      TabOrder = 6
+    end
+    object PENZTARIRENDELESPANEL: TPanel
+      Tag = 8
+      Left = 56
+      Top = 496
+      Width = 369
+      Height = 161
+      BevelInner = bvLowered
+      BevelOuter = bvLowered
+      TabOrder = 19
+      OnEnter = ETATADPANELEnter
+      object Panel38: TPanel
+        Left = 16
+        Top = 14
+        Width = 81
+        Height = 41
+        Caption = 'D'#193'TUM'
+        Color = clWhite
+        TabOrder = 0
+      end
+      object RENDDATUM1EDIT: TEdit
+        Tag = 60
+        Left = 16
+        Top = 62
+        Width = 81
+        Height = 21
+        MaxLength = 10
+        TabOrder = 1
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object RENDDATUM2EDIT: TEdit
+        Tag = 65
+        Left = 16
+        Top = 86
+        Width = 81
+        Height = 21
+        MaxLength = 10
+        TabOrder = 2
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object RENDDATUM3EDIT: TEdit
+        Tag = 70
+        Left = 16
+        Top = 110
+        Width = 81
+        Height = 21
+        MaxLength = 10
+        TabOrder = 3
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object RENDDATUM4EDIT: TEdit
+        Tag = 75
+        Left = 16
+        Top = 134
+        Width = 81
+        Height = 21
+        MaxLength = 10
+        TabOrder = 4
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object Panel40: TPanel
+        Left = 98
+        Top = 14
+        Width = 41
+        Height = 41
+        Color = clWhite
+        TabOrder = 5
+        object Label27: TLabel
+          Left = 3
+          Top = 8
+          Width = 36
+          Height = 13
+          Caption = 'P'#201'NZT'
+        end
+        object Label28: TLabel
+          Left = 4
+          Top = 24
+          Width = 30
+          Height = 13
+          Caption = 'SZ'#193'M'
+        end
+      end
+      object Panel41: TPanel
+        Left = 140
+        Top = 14
+        Width = 46
+        Height = 41
+        Color = clWhite
+        TabOrder = 6
+        object Label29: TLabel
+          Left = 2
+          Top = 8
+          Width = 42
+          Height = 13
+          Caption = 'VALUTA'
+        end
+        object Label30: TLabel
+          Left = 8
+          Top = 24
+          Width = 24
+          Height = 13
+          Caption = 'NEM'
+        end
+      end
+      object Panel42: TPanel
+        Left = 188
+        Top = 14
+        Width = 79
+        Height = 41
+        Caption = #214'SSZEG'
+        Color = clWhite
+        TabOrder = 7
+      end
+      object Panel44: TPanel
+        Left = 272
+        Top = 14
+        Width = 81
+        Height = 41
+        Caption = #193'RFOLYAM'
+        Color = clWhite
+        TabOrder = 8
+      end
+      object RENDPT1EDIT: TEdit
+        Tag = 61
+        Left = 104
+        Top = 62
+        Width = 33
+        Height = 21
+        MaxLength = 3
+        TabOrder = 9
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object RENDPT2EDIT: TEdit
+        Tag = 66
+        Left = 104
+        Top = 86
+        Width = 33
+        Height = 21
+        MaxLength = 3
+        TabOrder = 10
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object RENDPT3EDIT: TEdit
+        Tag = 71
+        Left = 104
+        Top = 110
+        Width = 33
+        Height = 21
+        MaxLength = 3
+        TabOrder = 11
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object RENDPT4EDIT: TEdit
+        Tag = 76
+        Left = 104
+        Top = 134
+        Width = 33
+        Height = 21
+        MaxLength = 3
+        TabOrder = 12
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object RENDDNEM1EDIT: TEdit
+        Tag = 62
+        Left = 142
+        Top = 62
+        Width = 41
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 13
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object RENDDNEM2EDIT: TEdit
+        Tag = 67
+        Left = 144
+        Top = 86
+        Width = 41
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 14
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object RENDDNEM3EDIT: TEdit
+        Tag = 72
+        Left = 144
+        Top = 110
+        Width = 41
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 15
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object RENDDNEM4EDIT: TEdit
+        Tag = 77
+        Left = 144
+        Top = 134
+        Width = 41
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 16
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object RENDSUM1EDIT: TEdit
+        Tag = 63
+        Left = 186
+        Top = 62
+        Width = 81
+        Height = 21
+        MaxLength = 9
+        TabOrder = 17
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object RENDSUM2EDIT: TEdit
+        Tag = 68
+        Left = 186
+        Top = 86
+        Width = 81
+        Height = 21
+        MaxLength = 9
+        TabOrder = 18
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object RENDSUM3EDIT: TEdit
+        Tag = 73
+        Left = 186
+        Top = 110
+        Width = 81
+        Height = 21
+        MaxLength = 9
+        TabOrder = 19
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object RENDSUM4EDIT: TEdit
+        Tag = 78
+        Left = 186
+        Top = 134
+        Width = 81
+        Height = 21
+        MaxLength = 9
+        TabOrder = 20
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object RENDARF1EDIT: TEdit
+        Tag = 64
+        Left = 272
+        Top = 62
+        Width = 81
+        Height = 21
+        MaxLength = 8
+        TabOrder = 21
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object RENDARF2EDIT: TEdit
+        Tag = 69
+        Left = 272
+        Top = 86
+        Width = 81
+        Height = 21
+        MaxLength = 8
+        TabOrder = 22
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object RENDARF3EDIT: TEdit
+        Tag = 74
+        Left = 272
+        Top = 110
+        Width = 81
+        Height = 21
+        MaxLength = 8
+        TabOrder = 23
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object RENDARF4EDIT: TEdit
+        Tag = 79
+        Left = 272
+        Top = 134
+        Width = 81
+        Height = 21
+        MaxLength = 8
+        TabOrder = 24
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+    end
+    object Panel50: TPanel
+      Left = 144
+      Top = 488
+      Width = 185
+      Height = 17
+      Caption = 'P'#201'NZT'#193'RI RENDEL'#201'SEK'
+      Color = clWhite
+      TabOrder = 7
+    end
+    object ETKORLEVELPANEL: TPanel
+      Tag = 9
+      Left = 440
+      Top = 496
+      Width = 321
+      Height = 161
+      BevelInner = bvLowered
+      BevelOuter = bvLowered
+      TabOrder = 20
+      OnEnter = ETATADPANELEnter
+      object Panel45: TPanel
+        Left = 9
+        Top = 13
+        Width = 86
+        Height = 41
+        Caption = 'D'#193'TUM'
+        Color = clWhite
+        TabOrder = 0
+      end
+      object Panel46: TPanel
+        Left = 96
+        Top = 13
+        Width = 94
+        Height = 41
+        Caption = 'IKTAT'#211'SZ'#193'M'
+        Color = clWhite
+        TabOrder = 1
+      end
+      object Panel47: TPanel
+        Left = 190
+        Top = 13
+        Width = 121
+        Height = 41
+        Caption = 'T'#193'RGY'
+        Color = clWhite
+        TabOrder = 2
+      end
+      object KORDATUM1EDIT: TEdit
+        Tag = 80
+        Left = 8
+        Top = 62
+        Width = 81
+        Height = 21
+        MaxLength = 10
+        TabOrder = 3
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object KORDATUM2EDIT: TEdit
+        Tag = 83
+        Left = 8
+        Top = 86
+        Width = 81
+        Height = 21
+        MaxLength = 10
+        TabOrder = 4
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object KORDATUM3EDIT: TEdit
+        Tag = 86
+        Left = 8
+        Top = 110
+        Width = 81
+        Height = 21
+        MaxLength = 10
+        TabOrder = 5
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object KORDATUM4EDIT: TEdit
+        Tag = 89
+        Left = 8
+        Top = 134
+        Width = 81
+        Height = 21
+        MaxLength = 10
+        TabOrder = 6
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object IKTATO1EDIT: TEdit
+        Tag = 81
+        Left = 96
+        Top = 62
+        Width = 89
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 15
+        TabOrder = 7
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object IKTATO2EDIT: TEdit
+        Tag = 84
+        Left = 96
+        Top = 86
+        Width = 89
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 15
+        TabOrder = 8
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object IKTATO3EDIT: TEdit
+        Tag = 87
+        Left = 96
+        Top = 110
+        Width = 89
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 15
+        TabOrder = 9
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object IKTATO4EDIT: TEdit
+        Tag = 90
+        Left = 96
+        Top = 134
+        Width = 89
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 15
+        TabOrder = 10
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object TARGY1EDIT: TEdit
+        Tag = 82
+        Left = 192
+        Top = 62
+        Width = 121
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 15
+        TabOrder = 11
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object TARGY2EDIT: TEdit
+        Tag = 85
+        Left = 192
+        Top = 86
+        Width = 121
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 15
+        TabOrder = 12
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object TARGY3EDIT: TEdit
+        Tag = 88
+        Left = 192
+        Top = 110
+        Width = 121
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 15
+        TabOrder = 13
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object TARGY4EDIT: TEdit
+        Tag = 91
+        Left = 192
+        Top = 134
+        Width = 121
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 15
+        TabOrder = 14
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+    end
+    object Panel54: TPanel
+      Left = 520
+      Top = 488
+      Width = 121
+      Height = 17
+      Caption = 'K'#214'RLEVELEK'
+      Color = clWhite
+      TabOrder = 8
+    end
+    object EGYEBINFOPANEL: TPanel
+      Tag = 10
+      Left = 56
+      Top = 672
+      Width = 521
+      Height = 73
+      BevelInner = bvLowered
+      BevelOuter = bvLowered
+      TabOrder = 21
+      OnEnter = ETATADPANELEnter
+      object ETINFO1EDIT: TEdit
+        Tag = 92
+        Left = 16
+        Top = 16
+        Width = 497
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 78
+        TabOrder = 0
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+      object ETINFO2EDIT: TEdit
+        Tag = 93
+        Left = 16
+        Top = 40
+        Width = 497
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 78
+        TabOrder = 1
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = ETSZAMEDITKeyDown
+      end
+    end
+    object Panel55: TPanel
+      Left = 224
+      Top = 664
+      Width = 185
+      Height = 17
+      Caption = 'EGY'#201'B FONTOS INFORM'#193'CI'#211'K'
+      Color = clWhite
+      TabOrder = 9
+    end
+  end
+  object PENZTARPANEL: TPanel
+    Left = 48
+    Top = 80
+    Width = 809
+    Height = 753
+    BevelOuter = bvNone
+    TabOrder = 0
+    object Label1: TLabel
+      Left = 304
+      Top = 16
+      Width = 246
+      Height = 24
+      Caption = 'P'#201'NZT'#193'ROSI '#193'TAD'#211'LAP'
+      Font.Charset = EASTEUROPE_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -21
+      Font.Name = 'Times New Roman'
+      Font.Style = [fsBold, fsItalic]
+      ParentFont = False
+    end
+    object atadpanel: TPanel
+      Tag = 1
+      Left = 80
+      Top = 64
+      Width = 281
+      Height = 169
+      BevelInner = bvLowered
+      BevelOuter = bvLowered
+      TabOrder = 0
+      OnEnter = PanelEnter
+      object Label2: TLabel
+        Left = 56
+        Top = 24
+        Width = 86
+        Height = 16
+        Caption = 'sz'#225'mu p'#233'nzt'#225'r'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -13
+        Font.Name = 'MS Sans Serif'
+        Font.Style = []
+        ParentFont = False
+      end
+      object Label5: TLabel
+        Left = 144
+        Top = 56
+        Width = 34
+        Height = 13
+        Caption = 'D'#225'tum:'
+      end
+      object Label3: TLabel
+        Left = 16
+        Top = 96
+        Width = 77
+        Height = 13
+        Caption = #193'tad'#243' p'#233'nzt'#225'ros'
+      end
+      object Label4: TLabel
+        Left = 8
+        Top = 136
+        Width = 83
+        Height = 13
+        Caption = #193'tvev'#337' p'#233'nzt'#225'ros'
+      end
+      object PTSZAMEDIT: TEdit
+        Tag = 1
+        Left = 16
+        Top = 24
+        Width = 33
+        Height = 21
+        MaxLength = 3
+        TabOrder = 0
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTADVETDATUMEDIT: TEdit
+        Tag = 2
+        Left = 192
+        Top = 56
+        Width = 73
+        Height = 21
+        MaxLength = 10
+        TabOrder = 3
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTATADOEDIT: TEdit
+        Tag = 3
+        Left = 96
+        Top = 88
+        Width = 169
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 20
+        TabOrder = 1
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTATVEVOEDIT: TEdit
+        Tag = 4
+        Left = 96
+        Top = 128
+        Width = 169
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 20
+        TabOrder = 2
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+    end
+    object Panel5: TPanel
+      Left = 104
+      Top = 56
+      Width = 185
+      Height = 17
+      Caption = #193'TAD'#193'S/'#193'TV'#201'TEL'
+      Color = clWhite
+      TabOrder = 2
+    end
+    object KORLEVELPANEL: TPanel
+      Tag = 2
+      Left = 352
+      Top = 64
+      Width = 409
+      Height = 169
+      BevelInner = bvLowered
+      BevelOuter = bvLowered
+      TabOrder = 9
+      OnEnter = PanelEnter
+      object Panel57: TPanel
+        Left = 16
+        Top = 16
+        Width = 79
+        Height = 17
+        Caption = 'D'#193'TUM'
+        Color = clSilver
+        TabOrder = 0
+      end
+      object Panel58: TPanel
+        Left = 96
+        Top = 16
+        Width = 134
+        Height = 17
+        Caption = 'IKTAT'#211'SZ'#193'M'
+        Color = clSilver
+        TabOrder = 1
+      end
+      object Panel59: TPanel
+        Left = 232
+        Top = 16
+        Width = 169
+        Height = 17
+        Caption = 'T'#193'RGY'
+        Color = clSilver
+        TabOrder = 2
+      end
+      object PTKORDATUM1EDIT: TEdit
+        Tag = 5
+        Left = 16
+        Top = 40
+        Width = 73
+        Height = 21
+        MaxLength = 10
+        TabOrder = 3
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTKORDATUM2EDIT: TEdit
+        Tag = 8
+        Left = 16
+        Top = 64
+        Width = 73
+        Height = 21
+        MaxLength = 10
+        TabOrder = 4
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTKORDATUM3EDIT: TEdit
+        Tag = 11
+        Left = 16
+        Top = 88
+        Width = 73
+        Height = 21
+        MaxLength = 10
+        TabOrder = 5
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTKORDATUM4EDIT: TEdit
+        Tag = 14
+        Left = 16
+        Top = 112
+        Width = 73
+        Height = 21
+        MaxLength = 10
+        TabOrder = 6
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTKORDATUM5EDIT: TEdit
+        Tag = 17
+        Left = 16
+        Top = 136
+        Width = 73
+        Height = 21
+        MaxLength = 10
+        TabOrder = 7
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTIKTATO1EDIT: TEdit
+        Tag = 6
+        Left = 96
+        Top = 40
+        Width = 129
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 16
+        TabOrder = 8
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTIKTATO2EDIT: TEdit
+        Tag = 9
+        Left = 96
+        Top = 64
+        Width = 129
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 16
+        TabOrder = 9
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTIKTATO3EDIT: TEdit
+        Tag = 12
+        Left = 96
+        Top = 88
+        Width = 129
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 16
+        TabOrder = 10
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTIKTATO4EDIT: TEdit
+        Tag = 15
+        Left = 96
+        Top = 112
+        Width = 129
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 16
+        TabOrder = 11
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTIKTATO5EDIT: TEdit
+        Tag = 18
+        Left = 96
+        Top = 136
+        Width = 129
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 16
+        TabOrder = 12
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTTARGY1EDIT: TEdit
+        Tag = 7
+        Left = 232
+        Top = 40
+        Width = 169
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 20
+        TabOrder = 13
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTTARGY2EDIT: TEdit
+        Tag = 10
+        Left = 232
+        Top = 64
+        Width = 169
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 20
+        TabOrder = 14
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTTARGY3EDIT: TEdit
+        Tag = 13
+        Left = 232
+        Top = 88
+        Width = 169
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 20
+        TabOrder = 15
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTTARGY4EDIT: TEdit
+        Tag = 16
+        Left = 232
+        Top = 112
+        Width = 169
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 20
+        TabOrder = 16
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTTARGY5EDIT: TEdit
+        Tag = 19
+        Left = 232
+        Top = 136
+        Width = 169
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 20
+        TabOrder = 17
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+    end
+    object Panel4: TPanel
+      Left = 472
+      Top = 56
+      Width = 185
+      Height = 17
+      Caption = 'K'#214'RLEVELEK'
+      Color = clWhite
+      TabOrder = 1
+    end
+    object UGYFRENDPANEL: TPanel
+      Tag = 3
+      Left = 48
+      Top = 248
+      Width = 713
+      Height = 225
+      BevelInner = bvLowered
+      BevelOuter = bvLowered
+      TabOrder = 10
+      OnEnter = PanelEnter
+      object Panel1: TPanel
+        Left = 20
+        Top = 16
+        Width = 77
+        Height = 41
+        Color = clSilver
+        TabOrder = 0
+        object Label41: TLabel
+          Left = 10
+          Top = 8
+          Width = 63
+          Height = 13
+          Caption = 'TELJES'#205'T'#201'S'
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clBlack
+          Font.Height = -11
+          Font.Name = 'MS Sans Serif'
+          Font.Style = []
+          ParentFont = False
+        end
+        object Label42: TLabel
+          Left = 20
+          Top = 24
+          Width = 46
+          Height = 13
+          Caption = 'D'#193'TUMA'
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clBlack
+          Font.Height = -11
+          Font.Name = 'MS Sans Serif'
+          Font.Style = []
+          ParentFont = False
+        end
+      end
+      object Panel2: TPanel
+        Left = 98
+        Top = 16
+        Width = 128
+        Height = 41
+        Color = clSilver
+        TabOrder = 1
+        object Label43: TLabel
+          Left = 32
+          Top = 5
+          Width = 80
+          Height = 13
+          Caption = 'ENGED'#201'LYEZ'#336
+        end
+        object Label44: TLabel
+          Left = 32
+          Top = 24
+          Width = 73
+          Height = 13
+          Caption = #201'RT'#201'KT'#193'ROS'
+        end
+      end
+      object Panel3: TPanel
+        Left = 226
+        Top = 16
+        Width = 47
+        Height = 41
+        Color = clSilver
+        TabOrder = 2
+        object Label45: TLabel
+          Left = 2
+          Top = 5
+          Width = 42
+          Height = 13
+          Caption = 'VALUTA'
+        end
+        object Label46: TLabel
+          Left = 12
+          Top = 24
+          Width = 24
+          Height = 13
+          Caption = 'NEM'
+        end
+      end
+      object Panel56: TPanel
+        Left = 273
+        Top = 16
+        Width = 79
+        Height = 41
+        Caption = #214'SSZEG'
+        Color = clSilver
+        TabOrder = 3
+      end
+      object Panel60: TPanel
+        Left = 352
+        Top = 16
+        Width = 213
+        Height = 41
+        Caption = #220'GYF'#201'L NEVE'
+        Color = clSilver
+        TabOrder = 4
+      end
+      object Panel61: TPanel
+        Left = 566
+        Top = 16
+        Width = 125
+        Height = 41
+        Color = clSilver
+        TabOrder = 5
+        object Label47: TLabel
+          Left = 40
+          Top = 5
+          Width = 42
+          Height = 13
+          Caption = #220'GYF'#201'L'
+        end
+        object Label48: TLabel
+          Left = 16
+          Top = 24
+          Width = 86
+          Height = 13
+          Caption = 'TELEFONSZ'#193'MA'
+        end
+      end
+      object PTRENDDATUM1EDIT: TEdit
+        Tag = 20
+        Left = 24
+        Top = 64
+        Width = 73
+        Height = 21
+        MaxLength = 10
+        TabOrder = 6
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTRENDDATUM2EDIT: TEdit
+        Tag = 26
+        Left = 24
+        Top = 88
+        Width = 73
+        Height = 21
+        MaxLength = 10
+        TabOrder = 7
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTRENDDATUM3EDIT: TEdit
+        Tag = 32
+        Left = 24
+        Top = 112
+        Width = 73
+        Height = 21
+        MaxLength = 10
+        TabOrder = 8
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTRENDDATUM4EDIT: TEdit
+        Tag = 38
+        Left = 24
+        Top = 136
+        Width = 73
+        Height = 21
+        MaxLength = 10
+        TabOrder = 9
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTRENDDATUM5EDIT: TEdit
+        Tag = 44
+        Left = 24
+        Top = 160
+        Width = 73
+        Height = 21
+        MaxLength = 10
+        TabOrder = 10
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTRENDDATUM6EDIT: TEdit
+        Tag = 50
+        Left = 24
+        Top = 184
+        Width = 73
+        Height = 21
+        MaxLength = 10
+        TabOrder = 11
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTETROS1EDIT: TEdit
+        Tag = 21
+        Left = 104
+        Top = 64
+        Width = 121
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 15
+        TabOrder = 12
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTETROS2EDIT: TEdit
+        Tag = 27
+        Left = 104
+        Top = 88
+        Width = 121
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 15
+        TabOrder = 13
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTETROS3EDIT: TEdit
+        Tag = 33
+        Left = 104
+        Top = 112
+        Width = 121
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 15
+        TabOrder = 14
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTETROS4EDIT: TEdit
+        Tag = 39
+        Left = 104
+        Top = 136
+        Width = 121
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 15
+        TabOrder = 15
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTETROS5EDIT: TEdit
+        Tag = 45
+        Left = 104
+        Top = 160
+        Width = 121
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 15
+        TabOrder = 16
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTETROS6EDIT: TEdit
+        Tag = 51
+        Left = 104
+        Top = 184
+        Width = 121
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 15
+        TabOrder = 17
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTRENDDNEM1EDIT: TEdit
+        Tag = 22
+        Left = 232
+        Top = 64
+        Width = 41
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 18
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTRENDDNEM2EDIT: TEdit
+        Tag = 28
+        Left = 232
+        Top = 88
+        Width = 41
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 19
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTRENDDNEM3EDIT: TEdit
+        Tag = 34
+        Left = 232
+        Top = 112
+        Width = 41
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 20
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTRENDDNEM4EDIT: TEdit
+        Tag = 40
+        Left = 232
+        Top = 136
+        Width = 41
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 21
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTRENDDNEM5EDIT: TEdit
+        Tag = 46
+        Left = 232
+        Top = 160
+        Width = 41
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 22
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTRENDDNEM6EDIT: TEdit
+        Tag = 52
+        Left = 232
+        Top = 184
+        Width = 41
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 23
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTRENDSUM1EDIT: TEdit
+        Tag = 23
+        Left = 280
+        Top = 64
+        Width = 73
+        Height = 21
+        MaxLength = 9
+        TabOrder = 24
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTRENDSUM2EDIT: TEdit
+        Tag = 29
+        Left = 280
+        Top = 88
+        Width = 73
+        Height = 21
+        MaxLength = 9
+        TabOrder = 25
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTRENDSUM3EDIT: TEdit
+        Tag = 35
+        Left = 280
+        Top = 112
+        Width = 73
+        Height = 21
+        MaxLength = 9
+        TabOrder = 26
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTRENDSUM4EDIT: TEdit
+        Tag = 41
+        Left = 280
+        Top = 136
+        Width = 73
+        Height = 21
+        MaxLength = 9
+        TabOrder = 27
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTRENDSUM5EDIT: TEdit
+        Tag = 47
+        Left = 280
+        Top = 160
+        Width = 73
+        Height = 21
+        MaxLength = 9
+        TabOrder = 28
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTRENDSUM6EDIT: TEdit
+        Tag = 53
+        Left = 280
+        Top = 184
+        Width = 73
+        Height = 21
+        MaxLength = 9
+        TabOrder = 29
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTRENDUGYF1EDIT: TEdit
+        Tag = 24
+        Left = 360
+        Top = 64
+        Width = 201
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 25
+        TabOrder = 30
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTRENDUGYF2EDIT: TEdit
+        Tag = 30
+        Left = 360
+        Top = 88
+        Width = 201
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 25
+        TabOrder = 31
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTRENDUGYF3EDIT: TEdit
+        Tag = 36
+        Left = 360
+        Top = 112
+        Width = 201
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 25
+        TabOrder = 32
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTRENDUGYF4EDIT: TEdit
+        Tag = 42
+        Left = 360
+        Top = 136
+        Width = 201
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 25
+        TabOrder = 33
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTRENDUGYF5EDIT: TEdit
+        Tag = 48
+        Left = 360
+        Top = 160
+        Width = 201
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 25
+        TabOrder = 34
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTRENDUGYF6EDIT: TEdit
+        Tag = 54
+        Left = 360
+        Top = 184
+        Width = 201
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 25
+        TabOrder = 35
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTFON1EDIT: TEdit
+        Tag = 25
+        Left = 568
+        Top = 64
+        Width = 121
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 16
+        TabOrder = 36
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTFON2EDIT: TEdit
+        Tag = 31
+        Left = 568
+        Top = 88
+        Width = 121
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 16
+        TabOrder = 37
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTFON3EDIT: TEdit
+        Tag = 37
+        Left = 568
+        Top = 112
+        Width = 121
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 16
+        TabOrder = 38
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTFON4EDIT: TEdit
+        Tag = 43
+        Left = 568
+        Top = 136
+        Width = 121
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 16
+        TabOrder = 39
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTFON5EDIT: TEdit
+        Tag = 49
+        Left = 568
+        Top = 160
+        Width = 121
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 16
+        TabOrder = 40
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object PTFON6EDIT: TEdit
+        Tag = 55
+        Left = 568
+        Top = 184
+        Width = 121
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 16
+        TabOrder = 41
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+    end
+    object Panel12: TPanel
+      Left = 288
+      Top = 240
+      Width = 185
+      Height = 17
+      Caption = #220'GYFELEK RENDEL'#201'SE'
+      Color = clWhite
+      TabOrder = 3
+    end
+    object KESZRENDPANEL: TPanel
+      Tag = 4
+      Left = 48
+      Top = 496
+      Width = 241
+      Height = 217
+      BevelInner = bvLowered
+      BevelOuter = bvLowered
+      TabOrder = 11
+      OnEnter = PanelEnter
+      object Panel6: TPanel
+        Left = 8
+        Top = 16
+        Width = 81
+        Height = 41
+        Caption = 'D'#193'TUM'
+        Color = clSilver
+        TabOrder = 0
+      end
+      object Panel7: TPanel
+        Left = 89
+        Top = 16
+        Width = 50
+        Height = 41
+        Color = clSilver
+        TabOrder = 1
+        object Label6: TLabel
+          Left = 5
+          Top = 8
+          Width = 42
+          Height = 13
+          Caption = 'VALUTA'
+        end
+        object Label7: TLabel
+          Left = 16
+          Top = 24
+          Width = 24
+          Height = 13
+          Caption = 'NEM'
+        end
+      end
+      object Panel8: TPanel
+        Left = 139
+        Top = 16
+        Width = 86
+        Height = 41
+        Caption = #214'SSZEG'
+        Color = clSilver
+        TabOrder = 2
+      end
+      object KRENDDATUM1EDIT: TEdit
+        Tag = 56
+        Left = 8
+        Top = 64
+        Width = 73
+        Height = 21
+        MaxLength = 10
+        TabOrder = 3
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object KRENDDATUM2EDIT: TEdit
+        Tag = 59
+        Left = 8
+        Top = 88
+        Width = 73
+        Height = 21
+        MaxLength = 10
+        TabOrder = 4
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object KRENDDATUM3EDIT: TEdit
+        Tag = 62
+        Left = 8
+        Top = 112
+        Width = 73
+        Height = 21
+        MaxLength = 10
+        TabOrder = 5
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object KRENDDATUM4EDIT: TEdit
+        Tag = 65
+        Left = 8
+        Top = 136
+        Width = 73
+        Height = 21
+        MaxLength = 10
+        TabOrder = 6
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object KRENDDATUM5EDIT: TEdit
+        Tag = 68
+        Left = 8
+        Top = 160
+        Width = 73
+        Height = 21
+        MaxLength = 10
+        TabOrder = 7
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object KRENDDATUM6EDIT: TEdit
+        Tag = 71
+        Left = 8
+        Top = 184
+        Width = 73
+        Height = 21
+        MaxLength = 10
+        TabOrder = 8
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object KRENDDNEM1EDIT: TEdit
+        Tag = 57
+        Left = 88
+        Top = 64
+        Width = 49
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 9
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object KRENDDNEM2EDIT: TEdit
+        Tag = 60
+        Left = 88
+        Top = 88
+        Width = 49
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 10
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object KRENDDNEM3EDIT: TEdit
+        Tag = 63
+        Left = 88
+        Top = 112
+        Width = 49
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 11
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object KRENDDNEM4EDIT: TEdit
+        Tag = 66
+        Left = 88
+        Top = 136
+        Width = 49
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 12
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object KRENDDNEM5EDIT: TEdit
+        Tag = 69
+        Left = 88
+        Top = 160
+        Width = 49
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 13
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object KRENDDNEM6EDIT: TEdit
+        Tag = 72
+        Left = 88
+        Top = 184
+        Width = 49
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 3
+        TabOrder = 14
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object KRENDSUM1EDIT: TEdit
+        Tag = 58
+        Left = 144
+        Top = 64
+        Width = 81
+        Height = 21
+        MaxLength = 9
+        TabOrder = 15
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object KRENDSUM2EDIT: TEdit
+        Tag = 61
+        Left = 144
+        Top = 88
+        Width = 81
+        Height = 21
+        MaxLength = 9
+        TabOrder = 16
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object KRENDSUM3EDIT: TEdit
+        Tag = 64
+        Left = 144
+        Top = 112
+        Width = 81
+        Height = 21
+        MaxLength = 9
+        TabOrder = 17
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object KRENDSUM4EDIT: TEdit
+        Tag = 67
+        Left = 144
+        Top = 136
+        Width = 81
+        Height = 21
+        MaxLength = 9
+        TabOrder = 18
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object KRENDSUM5EDIT: TEdit
+        Tag = 70
+        Left = 144
+        Top = 160
+        Width = 81
+        Height = 21
+        MaxLength = 9
+        TabOrder = 19
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object KRENDSUM6EDIT: TEdit
+        Tag = 73
+        Left = 144
+        Top = 184
+        Width = 81
+        Height = 21
+        MaxLength = 9
+        TabOrder = 20
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+    end
+    object Panel16: TPanel
+      Left = 56
+      Top = 488
+      Width = 225
+      Height = 17
+      Caption = 'K'#201'SZLET RENDEL'#201'SE '#201'RT'#201'KT'#193'R FEL'#201
+      Color = clWhite
+      TabOrder = 4
+    end
+    object KONKURPANEL: TPanel
+      Tag = 5
+      Left = 304
+      Top = 496
+      Width = 457
+      Height = 89
+      BevelInner = bvLowered
+      BevelOuter = bvLowered
+      TabOrder = 12
+      OnEnter = PanelEnter
+      object KONK1EDIT: TEdit
+        Tag = 74
+        Left = 16
+        Top = 24
+        Width = 425
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 50
+        TabOrder = 0
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object KONK2EDIT: TEdit
+        Tag = 75
+        Left = 16
+        Top = 48
+        Width = 425
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 50
+        TabOrder = 1
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+    end
+    object Panel17: TPanel
+      Left = 392
+      Top = 488
+      Width = 297
+      Height = 17
+      Caption = 'KONKURENCI'#193'VAL KAPCSOLATOS TUDNIVAL'#211'K'
+      Color = clWhite
+      TabOrder = 5
+    end
+    object EGYEBPANEL: TPanel
+      Tag = 6
+      Left = 304
+      Top = 608
+      Width = 457
+      Height = 105
+      BevelInner = bvLowered
+      BevelOuter = bvLowered
+      TabOrder = 13
+      OnEnter = PanelEnter
+      object EGYEB1EDIT: TEdit
+        Tag = 76
+        Left = 16
+        Top = 32
+        Width = 425
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 50
+        TabOrder = 0
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+      object EGYEB2EDIT: TEdit
+        Tag = 77
+        Left = 16
+        Top = 56
+        Width = 425
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 50
+        TabOrder = 1
+        OnEnter = PTSZAMEDITEnter
+        OnExit = PTSZAMEDITExit
+        OnKeyDown = PTEDITKeyDown
+      end
+    end
+    object Panel18: TPanel
+      Left = 448
+      Top = 600
+      Width = 185
+      Height = 17
+      Caption = 'EGY'#201'B TUDNIVAL'#211'K'
+      Color = clWhite
+      TabOrder = 7
+    end
+    object PTOKEGOMB: TBitBtn
+      Left = 376
+      Top = 704
+      Width = 153
+      Height = 25
+      Cursor = crHandPoint
+      Caption = #193'TAD'#211'LAP RENDBEN'
+      TabOrder = 6
+      OnClick = PTOKEGOMBClick
+    end
+    object PTMEGSEMGOMB: TBitBtn
+      Left = 536
+      Top = 704
+      Width = 153
+      Height = 25
+      Cursor = crHandPoint
+      Caption = 'M'#201'GSEM'
+      TabOrder = 8
+      OnClick = PTMEGSEMGOMBClick
+    end
+  end
+  object MENUPANEL: TPanel
+    Left = 16
+    Top = 616
+    Width = 345
+    Height = 161
+    BevelOuter = bvNone
+    Color = clSilver
+    TabOrder = 2
+    object Shape2: TShape
+      Left = 8
+      Top = 0
+      Width = 329
+      Height = 153
+      Shape = stRoundRect
+    end
+    object KITOLTOGOMB: TBitBtn
+      Left = 16
+      Top = 16
+      Width = 313
+      Height = 25
+      Cursor = crHandPoint
+      Caption = #193'TAD'#211'LAP KIT'#214'LT'#201'SE'
+      TabOrder = 0
+      OnClick = KITOLTOGOMBClick
+    end
+    object NYOMTATOGOMB: TBitBtn
+      Left = 16
+      Top = 48
+      Width = 313
+      Height = 25
+      Cursor = crHandPoint
+      Caption = #193'TAD'#211'LAP KINYOMTAT'#193'SA'
+      TabOrder = 1
+      OnClick = NYOMTATOGOMBClick
+    end
+    object LETOLTOGOMB: TBitBtn
+      Left = 16
+      Top = 80
+      Width = 313
+      Height = 25
+      Cursor = crHandPoint
+      Caption = #193'TAD'#211'LAPOK LET'#214'LT'#201'SE'
+      TabOrder = 2
+      OnClick = LETOLTOGOMBClick
+    end
+    object KILEPESGOMB: TBitBtn
+      Left = 16
+      Top = 112
+      Width = 313
+      Height = 25
+      Cursor = crHandPoint
+      Caption = 'VISSZA A F'#336'MEN'#220'RE'
+      TabOrder = 3
+      OnClick = KILEPESGOMBClick
+    end
+  end
+  object SKICCPANEL: TPanel
+    Left = 416
+    Top = 184
+    Width = 273
+    Height = 41
+    Caption = 'NYOMTAT'#193'S ...'
+    Color = clWhite
+    Font.Charset = EASTEUROPE_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -29
+    Font.Name = 'Times New Roman'
+    Font.Style = [fsBold, fsItalic]
+    ParentFont = False
+    TabOrder = 4
+  end
+  object PrintDialog1: TPrintDialog
+    Left = 32
+    Top = 32
+  end
+  object INDITO: TTimer
+    Enabled = False
+    Interval = 40
+    OnTimer = INDITOTimer
+    Left = 24
+    Top = 64
+  end
+  object VALQUERY: TIBQuery
+    Database = VALDBASE
+    Transaction = VALTRANZ
+    BufferChunks = 1000
+    CachedUpdates = False
+    Left = 632
+    Top = 16
+  end
+  object VALDBASE: TIBDatabase
+    DatabaseName = 'C:\VALUTA\DATABASE\valuta.FDB'
+    Params.Strings = (
+      'user_name=SYSDBA'
+      'password=dek@nySo'
+      'lc_ctype=WIN1250')
+    LoginPrompt = False
+    DefaultTransaction = VALTRANZ
+    IdleTimer = 0
+    SQLDialect = 3
+    TraceFlags = []
+    Left = 664
+    Top = 16
+  end
+  object VALTRANZ: TIBTransaction
+    Active = False
+    DefaultDatabase = VALDBASE
+    AutoStopAction = saNone
+    Left = 696
+    Top = 16
+  end
+end
