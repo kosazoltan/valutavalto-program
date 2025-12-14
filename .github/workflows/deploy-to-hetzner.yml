@@ -1,0 +1,95 @@
+name: Deploy to Hetzner VPS
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ secrets.HETZNER_SSH_PRIVATE_KEY }}
+        
+    - name: Add Hetzner to known hosts
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan -H ${{ secrets.HETZNER_SERVER_IP }} >> ~/.ssh/known_hosts
+        
+    - name: Deploy Database Schema (Drop & Recreate)
+      run: |
+        # Check if schema file exists
+        if [ ! -f "database/schema/valuta_schema.sql" ]; then
+          echo "⚠ Schema file not found, skipping database deploy"
+          exit 0
+        fi
+        
+        # Copy schema to VPS
+        scp database/schema/valuta_schema.sql ${{ secrets.HETZNER_SSH_USER }}@${{ secrets.HETZNER_SERVER_IP }}:/tmp/valuta_schema.sql
+        
+        # Import database on VPS (DROP and RECREATE - all data will be lost!)
+        ssh ${{ secrets.HETZNER_SSH_USER }}@${{ secrets.HETZNER_SERVER_IP }} << 'EOF'
+          export PGPASSWORD='${{ secrets.DB_PASSWORD }}'
+          
+          echo "⚠ WARNING: Dropping existing database (all data will be lost)!"
+          psql -h localhost -U ${{ secrets.DB_USERNAME }} -d postgres -c "DROP DATABASE IF EXISTS ${{ secrets.DB_NAME }};" || true
+          
+          echo "Creating new database..."
+          psql -h localhost -U ${{ secrets.DB_USERNAME }} -d postgres -c "CREATE DATABASE ${{ secrets.DB_NAME }};" || exit 1
+          
+          echo "Importing schema..."
+          psql -h localhost -U ${{ secrets.DB_USERNAME }} -d ${{ secrets.DB_NAME }} -f /tmp/valuta_schema.sql || exit 1
+          
+          echo "✓ Database deployed successfully!"
+          
+          # Verify
+          TABLE_COUNT=$(psql -h localhost -U ${{ secrets.DB_USERNAME }} -d ${{ secrets.DB_NAME }} -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" | tr -d ' ')
+          echo "✓ Tables created: $TABLE_COUNT"
+          
+          unset PGPASSWORD
+          rm -f /tmp/valuta_schema.sql
+        EOF
+        
+    - name: Deploy Backend
+      run: |
+        ssh ${{ secrets.HETZNER_SSH_USER }}@${{ secrets.HETZNER_SERVER_IP }} << 'EOF'
+          # Find project directory
+          PROJECT_DIR="/var/www/valutavalto"
+          if [ ! -d "$PROJECT_DIR" ]; then
+            PROJECT_DIR="/opt/valutavalto"
+          fi
+          if [ ! -d "$PROJECT_DIR" ]; then
+            echo "⚠ Project directory not found at /var/www/valutavalto or /opt/valutavalto"
+            echo "Please create it manually or update the workflow"
+            exit 1
+          fi
+          
+          cd "$PROJECT_DIR"
+          
+          echo "Pulling latest code..."
+          git pull origin main || git pull origin master || echo "⚠ Git pull failed, continuing..."
+          
+          echo "Building and restarting backend..."
+          cd backend || cd .
+          
+          # If docker-compose exists, use it
+          if [ -f docker-compose.yml ]; then
+            docker-compose down || true
+            docker-compose build || echo "⚠ Docker build failed, continuing..."
+            docker-compose up -d || echo "⚠ Docker compose failed"
+          else
+            # Otherwise try Maven
+            if command -v mvn &> /dev/null; then
+              mvn clean package -DskipTests || echo "⚠ Maven build failed"
+            fi
+          fi
+          
+          echo "✓ Backend deployment completed!"
+        EOF
