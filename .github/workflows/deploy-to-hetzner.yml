@@ -93,3 +93,46 @@ jobs:
           
           echo "✓ Backend deployment completed!"
         EOF
+        
+    - name: Setup Node.js for Frontend Build
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Build Frontend
+      run: |
+        cd frontend-react
+        npm ci
+        npm run build
+        echo "✓ Frontend build completed!"
+        
+    - name: Deploy Frontend
+      run: |
+        # Copy built frontend to VPS
+        ssh ${{ secrets.HETZNER_SSH_USER }}@${{ secrets.HETZNER_SERVER_IP }} << 'EOF'
+          PROJECT_DIR="/var/www/valutavalto"
+          if [ ! -d "$PROJECT_DIR" ]; then
+            PROJECT_DIR="/opt/valutavalto"
+          fi
+          if [ ! -d "$PROJECT_DIR" ]; then
+            echo "⚠ Project directory not found"
+            exit 1
+          fi
+          
+          # Create frontend directory if it doesn't exist
+          mkdir -p "$PROJECT_DIR/frontend-react/dist"
+          
+          echo "✓ Frontend directory ready"
+        EOF
+        
+        # Copy dist folder to VPS (using variable substitution)
+        scp -r frontend-react/dist/* ${{ secrets.HETZNER_SSH_USER }}@${{ secrets.HETZNER_SERVER_IP }}:/var/www/valutavalto/frontend-react/dist/ || \
+        scp -r frontend-react/dist/* ${{ secrets.HETZNER_SSH_USER }}@${{ secrets.HETZNER_SERVER_IP }}:/opt/valutavalto/frontend-react/dist/
+        
+        # Restart Nginx to serve new frontend
+        ssh ${{ secrets.HETZNER_SSH_USER }}@${{ secrets.HETZNER_SERVER_IP }} << 'EOF'
+          echo "Restarting Nginx..."
+          systemctl reload nginx || service nginx reload || echo "⚠ Nginx reload failed, continuing..."
+          
+          echo "✓ Frontend deployment completed!"
+        EOF
