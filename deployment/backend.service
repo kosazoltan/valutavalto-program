@@ -1,0 +1,35 @@
+[Unit]
+Description=Valuta Váltó Backend Service
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/valutavalto/backend
+Environment="JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64"
+Environment="DATABASE_URL=jdbc:postgresql://localhost:5432/valuta"
+Environment="DB_USERNAME=valuta_user"
+Environment="DB_PASSWORD=valuta_pass"
+Environment="DB_SSL=false"
+Environment="SERVER_PORT=8080"
+Environment="JWT_SECRET=DefaultSecretKeyForDevelopmentOnlyChangeInProduction123456"
+Environment="JWT_EXPIRATION=86400000"
+
+# Ha .env fájl van, használd ezt:
+# EnvironmentFile=/var/www/valutavalto/.env
+
+ExecStart=/usr/bin/java -jar /var/www/valutavalto/backend/target/valutavalto-backend-1.0.0.jar
+ExecStop=/bin/kill -15 $MAINPID
+
+# Restart policy
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=valutavalto-backend
+
+[Install]
+WantedBy=multi-user.target
+
