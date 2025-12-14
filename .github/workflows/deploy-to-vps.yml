@@ -1,4 +1,4 @@
-name: Deploy to Hetzner VPS
+name: Deploy to VPS
 
 on:
   push:
@@ -16,12 +16,12 @@ jobs:
     - name: Setup SSH
       uses: webfactory/ssh-agent@v0.9.0
       with:
-        ssh-private-key: ${{ secrets.HETZNER_SSH_PRIVATE_KEY }}
+        ssh-private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
         
-    - name: Add Hetzner to known hosts
+    - name: Add VPS to known hosts
       run: |
         mkdir -p ~/.ssh
-        ssh-keyscan -H ${{ secrets.HETZNER_SERVER_IP }} >> ~/.ssh/known_hosts
+        ssh-keyscan -H ${{ secrets.VPS_SERVER_IP }} >> ~/.ssh/known_hosts
         
     - name: Deploy Database Schema (Drop & Recreate)
       run: |
@@ -32,10 +32,10 @@ jobs:
         fi
         
         # Copy schema to VPS
-        scp database/schema/valuta_schema.sql ${{ secrets.HETZNER_SSH_USER }}@${{ secrets.HETZNER_SERVER_IP }}:/tmp/valuta_schema.sql
+        scp database/schema/valuta_schema.sql ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}:/tmp/valuta_schema.sql
         
         # Import database on VPS (DROP and RECREATE - all data will be lost!)
-        ssh ${{ secrets.HETZNER_SSH_USER }}@${{ secrets.HETZNER_SERVER_IP }} << 'EOF'
+        ssh ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }} << 'EOF'
           export PGPASSWORD='${{ secrets.DB_PASSWORD }}'
           
           echo "⚠ WARNING: Dropping existing database (all data will be lost)!"
@@ -59,7 +59,7 @@ jobs:
         
     - name: Deploy Backend
       run: |
-        ssh ${{ secrets.HETZNER_SSH_USER }}@${{ secrets.HETZNER_SERVER_IP }} << 'EOF'
+        ssh ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }} << 'EOF'
           # Find project directory
           PROJECT_DIR="/var/www/valutavalto"
           if [ ! -d "$PROJECT_DIR" ]; then
@@ -88,6 +88,10 @@ jobs:
             # Otherwise try Maven
             if command -v mvn &> /dev/null; then
               mvn clean package -DskipTests || echo "⚠ Maven build failed"
+              # Restart systemd service if exists
+              if systemctl is-active --quiet valutavalto-backend; then
+                systemctl restart valutavalto-backend || echo "⚠ Service restart failed"
+              fi
             fi
           fi
           
@@ -109,7 +113,7 @@ jobs:
     - name: Deploy Frontend
       run: |
         # Copy built frontend to VPS
-        ssh ${{ secrets.HETZNER_SSH_USER }}@${{ secrets.HETZNER_SERVER_IP }} << 'EOF'
+        ssh ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }} << 'EOF'
           PROJECT_DIR="/var/www/valutavalto"
           if [ ! -d "$PROJECT_DIR" ]; then
             PROJECT_DIR="/opt/valutavalto"
@@ -125,14 +129,15 @@ jobs:
           echo "✓ Frontend directory ready"
         EOF
         
-        # Copy dist folder to VPS (using variable substitution)
-        scp -r frontend-react/dist/* ${{ secrets.HETZNER_SSH_USER }}@${{ secrets.HETZNER_SERVER_IP }}:/var/www/valutavalto/frontend-react/dist/ || \
-        scp -r frontend-react/dist/* ${{ secrets.HETZNER_SSH_USER }}@${{ secrets.HETZNER_SERVER_IP }}:/opt/valutavalto/frontend-react/dist/
+        # Copy dist folder to VPS (trying both possible locations)
+        scp -r frontend-react/dist/* ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}:/var/www/valutavalto/frontend-react/dist/ 2>/dev/null || \
+        scp -r frontend-react/dist/* ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}:/opt/valutavalto/frontend-react/dist/
         
         # Restart Nginx to serve new frontend
-        ssh ${{ secrets.HETZNER_SSH_USER }}@${{ secrets.HETZNER_SERVER_IP }} << 'EOF'
+        ssh ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }} << 'EOF'
           echo "Restarting Nginx..."
           systemctl reload nginx || service nginx reload || echo "⚠ Nginx reload failed, continuing..."
           
           echo "✓ Frontend deployment completed!"
         EOF
+
