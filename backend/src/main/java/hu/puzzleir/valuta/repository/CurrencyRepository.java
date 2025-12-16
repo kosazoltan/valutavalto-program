@@ -40,4 +40,11 @@ public interface CurrencyRepository extends JpaRepository<Currency, Long> {
     @Query("SELECT c FROM Currency c WHERE LOWER(c.code) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%'))")
     List<Currency> searchByCodeOrName(String search);
+
+    /**
+     * Összes aktív valuta rendezve (alias)
+     */
+    default List<Currency> findAllActiveOrdered() {
+        return findByActiveTrueOrderByDisplayOrderAsc();
+    }
 }

@@ -83,4 +83,15 @@ public class SecurityUtils {
     public static boolean isAdmin() {
         return "ADMIN".equals(getCurrentRole());
     }
+
+    /**
+     * Van-e legalább MANAGER jog?
+     */
+    public static boolean isManagerOrAbove() {
+        String role = getCurrentRole();
+        return role != null && (
+            role.equals("MANAGER") ||
+            role.equals("ADMIN")
+        );
+    }
 }

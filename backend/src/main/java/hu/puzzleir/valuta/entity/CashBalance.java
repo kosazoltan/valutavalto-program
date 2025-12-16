@@ -147,4 +147,17 @@ public class CashBalance {
     public BigDecimal getDailyChange() {
         return currentBalance.subtract(openingBalance);
     }
+
+    /**
+     * Egyenleg frissítése (bejövő vagy kimenő)
+     * @param amount az összeg (pozitív)
+     * @param isIncoming true = beérkező, false = kimenő
+     */
+    public void updateBalance(BigDecimal amount, boolean isIncoming) {
+        if (isIncoming) {
+            addBalance(amount);
+        } else {
+            subtractBalance(amount);
+        }
+    }
 }
