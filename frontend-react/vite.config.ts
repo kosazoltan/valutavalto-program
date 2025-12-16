@@ -22,9 +22,9 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
-    // API URL beállítása build időben
-    envPrefix: 'VITE_',
   },
+  // API URL beállítása build időben
+  envPrefix: 'VITE_',
   // Disable Vite error overlay (hide vite-error-overlay element)
   clearScreen: false,
 })
