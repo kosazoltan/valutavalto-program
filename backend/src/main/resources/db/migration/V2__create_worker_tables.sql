@@ -6,12 +6,12 @@
 -- Worker table
 CREATE TABLE worker (
     id BIGSERIAL PRIMARY KEY,
-    company_id BIGINT NOT NULL REFERENCES company(id) ON DELETE CASCADE,
+    company_id UUID NOT NULL REFERENCES company(id) ON DELETE CASCADE,
     code VARCHAR(10) NOT NULL,
     name VARCHAR(100) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(20) NOT NULL CHECK (role IN ('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')),
-    branch_id BIGINT NOT NULL REFERENCES branch(id) ON DELETE RESTRICT,
+    branch_id UUID NOT NULL REFERENCES branch(id) ON DELETE RESTRICT,
     active BOOLEAN NOT NULL DEFAULT true,
     phone VARCHAR(20),
     email VARCHAR(100),
@@ -37,9 +37,9 @@ CREATE INDEX idx_worker_code ON worker(code);
 -- Worker session table (login/logout tracking)
 CREATE TABLE worker_session (
     id BIGSERIAL PRIMARY KEY,
-    company_id BIGINT NOT NULL REFERENCES company(id) ON DELETE CASCADE,
+    company_id UUID NOT NULL REFERENCES company(id) ON DELETE CASCADE,
     worker_id BIGINT NOT NULL REFERENCES worker(id) ON DELETE CASCADE,
-    branch_id BIGINT NOT NULL REFERENCES branch(id) ON DELETE RESTRICT,
+    branch_id UUID NOT NULL REFERENCES branch(id) ON DELETE RESTRICT,
     login_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     logout_at TIMESTAMP,
     ip_address VARCHAR(45), -- IPv6 support

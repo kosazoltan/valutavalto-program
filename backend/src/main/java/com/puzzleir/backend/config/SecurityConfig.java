@@ -13,11 +13,16 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 import java.util.List;
 
-@Configuration
-@EnableWebSecurity
+/**
+ * DEPRECATED: Régi SecurityConfig - kikapcsolva.
+ * Az új konfiguráció: hu.puzzleir.valuta.config.SecurityConfig
+ * (JWT authentication + multi-tenant support)
+ */
+// @Configuration - kikapcsolva, az új hu.puzzleir.valuta.config.SecurityConfig-ot használjuk
+// @EnableWebSecurity - kikapcsolva
 public class SecurityConfig {
 
-    @Bean
+    // @Bean - kikapcsolva
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -30,7 +35,7 @@ public class SecurityConfig {
         return http.build();
     }
 
-    @Bean
+    // @Bean - kikapcsolva
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "http://localhost:3000"));

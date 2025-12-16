@@ -49,19 +49,22 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // Public endpoints (login)
                 .requestMatchers("/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
-                
+
                 // Health check
                 .requestMatchers("/actuator/**").permitAll()
-                
+
                 // Branch endpoints - minden bejelentkezett user
                 .requestMatchers("/api/v1/branches/**").authenticated()
-                
-                // Worker management - csak SUPERVISOR és feljebb
+
+                // Worker self-profile - minden bejelentkezett user
+                .requestMatchers("/api/v1/workers/me").authenticated()
+
+                // Worker management - csak SUPERVISOR és feljebb (a többi endpoint)
                 .requestMatchers("/api/v1/workers/**").hasAnyRole("SUPERVISOR", "MANAGER", "ADMIN")
-                
+
                 // Company endpoints - csak ADMIN
                 .requestMatchers("/api/v1/companies/**").hasRole("ADMIN")
-                
+
                 // Minden más endpoint - autentikáció szükséges
                 .anyRequest().authenticated()
             )
