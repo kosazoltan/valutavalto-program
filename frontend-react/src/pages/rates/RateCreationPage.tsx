@@ -77,7 +77,7 @@ export default function RateCreationPage() {
 
   const handleRefresh = () => {
     if (selectedCurrencyId) {
-      void loadRateCreation(selectedCurrencyId)
+      void loadRateCreation(String(selectedCurrencyId))
     }
   }
 
@@ -142,7 +142,8 @@ export default function RateCreationPage() {
           Árfolyamkészítés
         </h1>
         <div className="flex gap-2">
-          <button 
+          <button
+            type="button"
             onClick={handleRefresh}
             className="form-button-primary flex items-center gap-1"
             disabled={loading}
@@ -155,10 +156,12 @@ export default function RateCreationPage() {
 
       {/* Currency Selector */}
       <div className="form-panel">
-        <label className="form-label">Valuta kiválasztása</label>
+        <label htmlFor="rate-currency-select" className="form-label">Valuta kiválasztása</label>
         <select
-          value={selectedCurrencyId}
-          onChange={(e) => setSelectedCurrencyId(e.target.value)}
+          id="rate-currency-select"
+          title="Válassz valutát"
+          value={selectedCurrencyId ?? ''}
+          onChange={(e) => setSelectedCurrencyId(e.target.value ? Number(e.target.value) : null)}
           className="form-input"
         >
           <option value="">-- Válassz valutát --</option>
@@ -236,6 +239,8 @@ export default function RateCreationPage() {
 
             <div className="mt-4 flex gap-2">
               <select
+                id="group-select"
+                title="Válassz csoportot"
                 value={selectedGroupId}
                 onChange={(e) => setSelectedGroupId(e.target.value)}
                 className="form-input flex-1"
@@ -248,6 +253,7 @@ export default function RateCreationPage() {
                 ))}
               </select>
               <button
+                type="button"
                 onClick={handlePublish}
                 disabled={!selectedGroupId}
                 className="form-button-primary flex items-center gap-2"

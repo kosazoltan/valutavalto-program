@@ -5,23 +5,25 @@ import {
   DenominationBalanceDTO,
   denominationApi,
   currencyApi,
-  Denomination as ApiDenomination,
-  Currency as ApiCurrency
+  Denomination,
+  Currency
 } from '../../services/api'
 import { NumberInput } from '../../components/NumberInput'
 import { formatInteger, formatDecimal } from '../../utils/numberFormat'
 
-// Local types that map to API types
-type Denomination = ApiDenomination
-type Currency = ApiCurrency
+interface DenominationQuantityUpdateRequest {
+  denominationId: string
+  quantity: number
+}
 
 export default function DenominationPage() {
   const [selectedCashDeskId] = useState<string>('') // TODO: Get from context/params
   const [currencies, setCurrencies] = useState<Currency[]>([])
   const [selectedCurrencyId, setSelectedCurrencyId] = useState<number | null>(null)
   const [denominations, setDenominations] = useState<Denomination[]>([])
-  const [denominationBalances, setDenominationBalances] = useState<DenominationBalanceDTO[]>([])
-  const [editingQuantities, setEditingQuantities] = useState<Record<string, number>>({})
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_denominationBalances, setDenominationBalances] = useState<DenominationBalanceDTO[]>([])
+  const [editingQuantities, setEditingQuantities] = useState<Record<number, number>>({})
   const [loading, setLoading] = useState(false)
   const [calculatedTotal, setCalculatedTotal] = useState<number>(0)
 
@@ -30,10 +32,10 @@ export default function DenominationPage() {
     try {
       const data = await denominationApi.getByCurrencyId(selectedCurrencyId)
       setDenominations(data)
-      
+
       // Initialize editing quantities
-      const initialQuantities: Record<string, number> = {}
-      data.forEach(d => {
+      const initialQuantities: Record<number, number> = {}
+      data.forEach((d: Denomination) => {
         initialQuantities[d.id] = 0
       })
       setEditingQuantities(initialQuantities)
@@ -46,23 +48,23 @@ export default function DenominationPage() {
     if (!selectedCashDeskId || !selectedCurrencyId) return
     setLoading(true)
     try {
-      const data = await denominationBalanceApi.getCashDeskDenominationsByCurrency(selectedCashDeskId, selectedCurrencyId)
+      const data = await denominationBalanceApi.getCashDeskDenominationsByCurrency(selectedCashDeskId, String(selectedCurrencyId))
       setDenominationBalances(data)
-      
+
       // Load existing quantities into editing state
-      const quantities: Record<string, number> = {}
+      const quantities: Record<number, number> = {}
       data.forEach(balance => {
-        quantities[balance.denominationId] = balance.quantity
+        quantities[Number(balance.denominationId)] = balance.quantity
       })
-      
+
       // Also set quantities for denominations that don't have balances yet
       denominations.forEach(denom => {
-        if (!quantities[denom.id]) {
+        if (quantities[denom.id] === undefined) {
           quantities[denom.id] = 0
         }
       })
       setEditingQuantities(quantities)
-      
+
       // Calculate total
       const total = data.reduce((sum, b) => sum + b.totalValue, 0)
       setCalculatedTotal(total)
@@ -96,22 +98,22 @@ export default function DenominationPage() {
     }
   }
 
-  const handleQuantityChange = (denominationId: string, quantityStr: string) => {
+  const handleQuantityChange = (denominationId: number, quantityStr: string) => {
     const quantity = Math.max(0, parseFloat(quantityStr.replace(/\s/g, '').replace(',', '.')) || 0)
     setEditingQuantities({
       ...editingQuantities,
       [denominationId]: quantity
     })
-    
+
     // Recalculate total
     const denom = denominations.find(d => d.id === denominationId)
     if (denom) {
       const newTotal = Object.entries(editingQuantities)
-        .filter(([id]) => denominations.find(d => d.id === id)?.currencyId === selectedCurrencyId)
-        .reduce((sum, [id, qty]: [string, number]) => {
-          const d = denominations.find(d => d.id === id)
+        .filter(([id]) => denominations.find(d => d.id === Number(id))?.currencyId === selectedCurrencyId)
+        .reduce((sum, [id, qty]) => {
+          const d = denominations.find(d => d.id === Number(id))
           const qtyValue = typeof qty === 'string' ? parseFloat(String(qty).replace(/\s/g, '').replace(',', '.')) || 0 : qty
-          return sum + (d ? d.value * (id === denominationId ? quantity : qtyValue) : 0)
+          return sum + (d ? d.faceValue * (Number(id) === denominationId ? quantity : qtyValue) : 0)
         }, 0)
       setCalculatedTotal(newTotal)
     }
@@ -122,15 +124,15 @@ export default function DenominationPage() {
       alert('Válassz pénztárat!')
       return
     }
-    
+
     try {
       const updates: DenominationQuantityUpdateRequest[] = Object.entries(editingQuantities)
-        .filter(([, qty]) => qty > 0 || denominationBalances.find(b => b.denominationId === Object.keys(editingQuantities)[0])?.quantity !== qty)
+        .filter(([, qty]) => qty > 0)
         .map(([denominationId, quantity]) => ({
           denominationId,
           quantity
         }))
-      
+
       await denominationBalanceApi.setDenominationQuantities(selectedCashDeskId, updates)
       alert('Címletezés sikeresen mentve!')
       void loadDenominationBalances()
@@ -152,6 +154,7 @@ export default function DenominationPage() {
         </h1>
         <div className="flex gap-2">
           <button
+            type="button"
             onClick={loadDenominationBalances}
             className="form-button flex items-center gap-1"
             disabled={loading}
@@ -160,6 +163,7 @@ export default function DenominationPage() {
             Frissítés
           </button>
           <button
+            type="button"
             onClick={handleSave}
             className="form-button-primary flex items-center gap-1"
             disabled={!selectedCashDeskId}
@@ -172,10 +176,12 @@ export default function DenominationPage() {
 
       {/* Currency Selector */}
       <div className="form-panel">
-        <label className="form-label">Valuta kiválasztása</label>
+        <label htmlFor="currency-select" className="form-label">Valuta kiválasztása</label>
         <select
-          value={selectedCurrencyId}
-          onChange={(e) => setSelectedCurrencyId(e.target.value)}
+          id="currency-select"
+          title="Válassz valutát"
+          value={selectedCurrencyId ?? ''}
+          onChange={(e) => setSelectedCurrencyId(e.target.value ? Number(e.target.value) : null)}
           className="form-input"
         >
           <option value="">-- Válassz valutát --</option>
@@ -225,17 +231,17 @@ export default function DenominationPage() {
               </thead>
               <tbody>
                 {denominations
-                  .filter(d => d.currencyId === selectedCurrencyId && d.isActive)
-                  .sort((a, b) => b.value - a.value)
+                  .filter(d => d.currencyId === selectedCurrencyId && d.active)
+                  .sort((a, b) => b.faceValue - a.faceValue)
                   .map((denomination) => {
                     const quantity = editingQuantities[denomination.id] || 0
-                    const total = denomination.value * quantity
-                    
+                    const total = denomination.faceValue * quantity
+
                     return (
                       <tr key={denomination.id}>
                         <td>
                           <span className="font-mono font-bold text-lg">
-                            {formatInteger(denomination.value)} {selectedCurrency?.code}
+                            {formatInteger(denomination.faceValue)} {selectedCurrency?.code}
                           </span>
                         </td>
                         <td>
@@ -291,4 +297,3 @@ export default function DenominationPage() {
     </div>
   )
 }
-
