@@ -193,7 +193,7 @@ jobs:
           tee /etc/nginx/sites-available/valutavalto > /dev/null << 'NGINXCONF'
         server {
             listen 80;
-            server_name _;
+            server_name excbesttest.com www.excbesttest.com _;
 
             root /var/www/valutavalto/frontend-react/dist;
             index index.html;
