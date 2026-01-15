@@ -140,10 +140,9 @@ jobs:
 
     - name: Create Backend Service
       run: |
-        ssh ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }} 'bash -s' << 'EOF'
-          if [ ! -f /etc/systemd/system/valutavalto-backend.service ]; then
-            echo "Creating systemd service..."
-            tee /etc/systemd/system/valutavalto-backend.service > /dev/null << 'SERVICEFILE'
+        ssh ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }} "bash -s" << EOF
+          echo "Creating systemd service with environment variables..."
+          tee /etc/systemd/system/valutavalto-backend.service > /dev/null << 'SERVICEFILE'
         [Unit]
         Description=Valutavalto Backend Service
         After=network.target postgresql.service
@@ -152,6 +151,10 @@ jobs:
         Type=simple
         User=root
         WorkingDirectory=/var/www/valutavalto/backend
+        Environment="DATABASE_URL=jdbc:postgresql://localhost:5432/${{ secrets.DB_NAME }}"
+        Environment="DATABASE_USERNAME=${{ secrets.DB_USERNAME }}"
+        Environment="DATABASE_PASSWORD=${{ secrets.DB_PASSWORD }}"
+        Environment="JWT_SECRET=valuta-production-secret-key-change-this-in-production-256bits"
         ExecStart=/usr/bin/java -jar target/valuta-0.0.1-SNAPSHOT.jar
         Restart=always
         RestartSec=10
@@ -159,12 +162,11 @@ jobs:
         [Install]
         WantedBy=multi-user.target
         SERVICEFILE
-            systemctl daemon-reload
-            systemctl enable valutavalto-backend
-          fi
 
+          systemctl daemon-reload
+          systemctl enable valutavalto-backend
           systemctl restart valutavalto-backend || systemctl start valutavalto-backend
-          echo "Backend service started"
+          echo "Backend service started with database config"
         EOF
 
     - name: Setup Node.js for Frontend Build
