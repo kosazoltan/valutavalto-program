@@ -987,6 +987,113 @@ export const shipmentRequestApi = {
   }
 }
 
+// ================== TRANSFER API ==================
+
+export interface Transfer {
+  id: number
+  transferNumber: string
+  fromBranchId: string
+  fromBranchCode: string
+  fromBranchName: string
+  toBranchId: string
+  toBranchCode: string
+  toBranchName: string
+  fromWorkerId: number
+  fromWorkerName: string
+  toWorkerId?: number
+  toWorkerName?: string
+  transferType: 'CURRENCY' | 'CASH' | 'HANDLING_FEE' | 'VAULT_DEPOSIT' | 'VAULT_WITHDRAW' | 'CORRECTION' | 'OTHER'
+  transferTypeDisplay: string
+  status: 'PENDING' | 'IN_TRANSIT' | 'RECEIVED' | 'COMPLETED' | 'REJECTED' | 'CANCELLED'
+  statusDisplay: string
+  transferDate: string
+  transferTime: string
+  receivedDate?: string
+  receivedTime?: string
+  currencyId: number
+  currencyCode: string
+  currencyName: string
+  amount: number
+  hufValue?: number
+  receivedAmount?: number
+  difference?: number
+  notes?: string
+  handoverPrinted: boolean
+  receiptPrinted: boolean
+  createdAt: string
+  hasDifference: boolean
+  isCompleted: boolean
+  isPending: boolean
+}
+
+export interface CreateTransferRequest {
+  toBranchId: string
+  currencyId: number
+  amount: number
+  hufValue?: number
+  transferType: 'CURRENCY' | 'CASH' | 'HANDLING_FEE' | 'VAULT_DEPOSIT' | 'VAULT_WITHDRAW' | 'CORRECTION' | 'OTHER'
+  notes?: string
+}
+
+export interface ReceiveTransferRequest {
+  receivedAmount: number
+  notes?: string
+}
+
+export const transferApi = {
+  create: async (request: CreateTransferRequest): Promise<Transfer> => {
+    const response = await api.post<Transfer>('/transfers', request)
+    return response.data
+  },
+  receive: async (id: number, request: ReceiveTransferRequest): Promise<Transfer> => {
+    const response = await api.post<Transfer>(`/transfers/${id}/receive`, request)
+    return response.data
+  },
+  reject: async (id: number, reason: string): Promise<Transfer> => {
+    const response = await api.post<Transfer>(`/transfers/${id}/reject`, null, { params: { reason } })
+    return response.data
+  },
+  cancel: async (id: number): Promise<void> => {
+    await api.post(`/transfers/${id}/cancel`)
+  },
+  getById: async (id: number): Promise<Transfer> => {
+    const response = await api.get<Transfer>(`/transfers/${id}`)
+    return response.data
+  },
+  getByTransferNumber: async (transferNumber: string): Promise<Transfer> => {
+    const response = await api.get<Transfer>(`/transfers/number/${transferNumber}`)
+    return response.data
+  },
+  getPending: async (): Promise<Transfer[]> => {
+    const response = await api.get<Transfer[]>('/transfers/pending')
+    return response.data
+  },
+  getOutgoing: async (): Promise<Transfer[]> => {
+    const response = await api.get<Transfer[]>('/transfers/outgoing')
+    return response.data
+  },
+  getIncoming: async (): Promise<Transfer[]> => {
+    const response = await api.get<Transfer[]>('/transfers/incoming')
+    return response.data
+  },
+  search: async (params?: {
+    branchId?: string
+    startDate?: string
+    endDate?: string
+    status?: string
+    type?: string
+    page?: number
+    size?: number
+  }): Promise<PagedResponse<Transfer>> => {
+    const response = await api.get<PagedResponse<Transfer>>('/transfers', { params })
+    return response.data
+  },
+  countPending: async (): Promise<number> => {
+    const response = await api.get<number>('/transfers/pending/count')
+    return response.data
+  }
+}
+
 // ================== REPORTS API ==================
 
 export interface CurrencyTurnover {

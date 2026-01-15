@@ -1,0 +1,226 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 210 100% 40%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 210 100% 40%;
+    --radius: 0.25rem;
+  }
+
+  /* Removed border-border apply - causes PostCSS error */
+  /* Border colors are applied individually where needed */
+
+  body {
+    @apply bg-form-bg text-foreground font-sans text-base;
+  }
+}
+
+@layer components {
+  /* Windows Forms style input */
+  .form-input {
+    @apply h-[22px] px-1 py-0 border border-form-border bg-white text-sm;
+    @apply focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary;
+  }
+
+  /* Windows Forms style button */
+  .form-button {
+    @apply h-[23px] px-3 py-0 border border-form-border bg-gradient-to-b from-white to-gray-100;
+    @apply hover:from-gray-50 hover:to-gray-200 active:from-gray-100 active:to-gray-200;
+    @apply text-sm font-normal cursor-pointer;
+  }
+
+  .form-button-primary {
+    @apply form-button bg-gradient-to-b from-primary-400 to-primary-600 text-white border-primary-700;
+    @apply hover:from-primary-500 hover:to-primary-700;
+  }
+
+  /* Windows Forms style label */
+  .form-label {
+    @apply text-sm font-normal text-gray-700;
+  }
+
+  /* Windows Forms style panel/group box */
+  .form-panel {
+    @apply border border-form-border bg-white p-2;
+  }
+
+  .form-group-box {
+    @apply border border-form-border bg-form-bg p-2 relative;
+  }
+
+  .form-group-box-title {
+    @apply absolute -top-2.5 left-2 px-1 bg-form-bg text-sm text-gray-600;
+  }
+
+  /* Data grid styles */
+  .data-grid {
+    @apply border border-form-border bg-white text-sm;
+  }
+
+  .data-grid th {
+    @apply bg-gray-100 border-b border-r border-form-border px-2 py-1 text-left font-semibold;
+  }
+
+  .data-grid td {
+    @apply border-b border-r border-form-border px-2 py-1;
+  }
+
+  .data-grid tr:hover td {
+    @apply bg-blue-50;
+  }
+
+  .data-grid tr.selected td {
+    @apply bg-primary text-white;
+  }
+
+  /* Header bar */
+  .header-bar {
+    @apply bg-form-header text-form-headerText px-3 py-1 font-semibold;
+  }
+
+  /* Status bar */
+  .status-bar {
+    @apply bg-form-bg border-t border-form-border px-2 py-0.5 text-xs text-gray-600;
+  }
+
+  /* Menu bar */
+  .menu-bar {
+    @apply bg-form-bg border-b border-form-border flex gap-1 px-1 py-0.5;
+  }
+
+  .menu-item {
+    @apply px-2 py-0.5 text-sm hover:bg-primary hover:text-white cursor-pointer;
+  }
+
+  /* Toolbar */
+  .toolbar {
+    @apply bg-gradient-to-b from-gray-50 to-gray-100 border-b border-form-border flex gap-1 p-1;
+  }
+
+  .toolbar-button {
+    @apply w-[24px] h-[24px] flex items-center justify-center border border-transparent;
+    @apply hover:border-form-border hover:bg-white cursor-pointer;
+  }
+
+  /* Tab control */
+  .tab-header {
+    @apply flex gap-0.5 bg-form-bg px-1 pt-1;
+  }
+
+  .tab-item {
+    @apply px-3 py-1 text-sm border border-form-border border-b-0 bg-gray-100 cursor-pointer;
+    @apply hover:bg-gray-50;
+  }
+
+  .tab-item.active {
+    @apply bg-white border-b-white -mb-px relative z-10;
+  }
+
+  .tab-content {
+    @apply border border-form-border bg-white p-2;
+  }
+
+  /* Currency display */
+  .currency-huf { @apply text-currency-huf font-semibold; }
+  .currency-eur { @apply text-currency-eur font-semibold; }
+  .currency-usd { @apply text-currency-usd font-semibold; }
+  .currency-gbp { @apply text-currency-gbp font-semibold; }
+  .currency-chf { @apply text-currency-chf font-semibold; }
+
+  /* Amount display */
+  .amount {
+    @apply font-mono text-right;
+  }
+
+  .amount-positive {
+    @apply amount text-green-700;
+  }
+
+  .amount-negative {
+    @apply amount text-red-700;
+  }
+
+  /* Badge styles */
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium;
+  }
+
+  .badge-green {
+    @apply badge bg-green-100 text-green-800 border border-green-200;
+  }
+
+  .badge-red {
+    @apply badge bg-red-100 text-red-800 border border-red-200;
+  }
+
+  .badge-yellow {
+    @apply badge bg-yellow-100 text-yellow-800 border border-yellow-200;
+  }
+
+  .badge-blue {
+    @apply badge bg-blue-100 text-blue-800 border border-blue-200;
+  }
+
+  .badge-gray {
+    @apply badge bg-gray-100 text-gray-800 border border-gray-200;
+  }
+
+  .badge-orange {
+    @apply badge bg-orange-100 text-orange-800 border border-orange-200;
+  }
+
+  /* Section title */
+  .section-title {
+    @apply text-lg font-bold text-gray-800;
+  }
+
+  /* Animations */
+  @keyframes slide-in {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  .animate-slide-in {
+    animation: slide-in 0.3s ease-out;
+  }
+}
+
+/* Hide Vite error overlay - it will still log errors to console */
+/* Must be outside @layer because vite-error-overlay is a custom element */
+vite-error-overlay {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  position: fixed !important;
+  top: -9999px !important;
+  left: -9999px !important;
+  width: 0 !important;
+  height: 0 !important;
+  z-index: -9999 !important;
+}

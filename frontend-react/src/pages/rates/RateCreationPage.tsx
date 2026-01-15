@@ -20,6 +20,7 @@ export default function RateCreationPage() {
   const [editingBuyRate, setEditingBuyRate] = useState<number>(0)
   const [editingSellRate, setEditingSellRate] = useState<number>(0)
   const [selectedGroupId, setSelectedGroupId] = useState<string>('')
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     void loadCurrencies()
@@ -34,14 +35,15 @@ export default function RateCreationPage() {
 
   const loadCurrencies = async () => {
     try {
+      setError(null)
       const data = await currencyApi.getActive()
       setCurrencies(data)
       if (data.length > 0) {
         setSelectedCurrencyId(data[0]?.id ?? null)
       }
-    } catch {
-      // Valúták betöltése sikertelen
-      // Ha nincs válasz, üres tömböt állítunk be, hogy ne legyen hiba
+    } catch (err) {
+      console.error('Valúták betöltési hiba:', err)
+      setError('Hiba a valúták betöltésekor')
       setCurrencies([])
     }
   }
@@ -50,25 +52,26 @@ export default function RateCreationPage() {
     try {
       const data = await currencyGroupApi.list()
       setCurrencyGroups(data)
-    } catch {
-      // Csoportok betöltése sikertelen
-      // Ha nincs válasz, üres tömböt állítunk be
+    } catch (err) {
+      console.error('Csoportok betöltési hiba:', err)
+      setError('Hiba a valutacsoportok betöltésekor')
       setCurrencyGroups([])
     }
   }
 
   const loadRateCreation = async (currencyId: string) => {
     if (!currencyId) return
-    
+
     setLoading(true)
+    setError(null)
     try {
       const data = await rateCreationApi.prepareRateCreation(currencyId)
       setRateData(data)
       setEditingBuyRate(data.recommendedBuyRate || 0)
       setEditingSellRate(data.recommendedSellRate || 0)
-    } catch {
-      // Árfolyamkészítés adatok betöltése sikertelen
-      // Ha hiba van, töröljük a rateData-t
+    } catch (err) {
+      console.error('Árfolyamkészítés adatok betöltési hiba:', err)
+      setError('Hiba az árfolyam adatok betöltésekor')
       setRateData(null)
     } finally {
       setLoading(false)
@@ -135,6 +138,13 @@ export default function RateCreationPage() {
 
   return (
     <div className="space-y-4">
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
