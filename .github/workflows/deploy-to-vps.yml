@@ -8,136 +8,180 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Setup SSH
       uses: webfactory/ssh-agent@v0.9.0
       with:
         ssh-private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
-        
+
     - name: Add VPS to known hosts
       run: |
         mkdir -p ~/.ssh
         ssh-keyscan -H ${{ secrets.VPS_SERVER_IP }} >> ~/.ssh/known_hosts
-        
-    - name: Deploy Database Schema (Drop & Recreate)
+
+    - name: Setup VPS Environment
       run: |
-        # Check if schema file exists
+        ssh ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }} 'bash -s' << 'SETUP_EOF'
+          set -e
+          echo "=== Setting up VPS Environment ==="
+
+          if ! command -v psql &> /dev/null; then
+            echo "Installing PostgreSQL..."
+            apt-get update
+            apt-get install -y postgresql postgresql-contrib
+            systemctl start postgresql
+            systemctl enable postgresql
+            echo "PostgreSQL installed"
+          else
+            echo "PostgreSQL already installed"
+          fi
+
+          if ! command -v java &> /dev/null; then
+            echo "Installing Java 17..."
+            apt-get install -y openjdk-17-jdk
+            echo "Java installed"
+          else
+            echo "Java already installed"
+          fi
+
+          if ! command -v mvn &> /dev/null; then
+            echo "Installing Maven..."
+            apt-get install -y maven
+            echo "Maven installed"
+          else
+            echo "Maven already installed"
+          fi
+
+          if ! command -v nginx &> /dev/null; then
+            echo "Installing Nginx..."
+            apt-get install -y nginx
+            systemctl start nginx
+            systemctl enable nginx
+            echo "Nginx installed"
+          else
+            echo "Nginx already installed"
+          fi
+
+          if ! command -v git &> /dev/null; then
+            echo "Installing Git..."
+            apt-get install -y git
+            echo "Git installed"
+          else
+            echo "Git already installed"
+          fi
+
+          mkdir -p /var/www/valutavalto
+          echo "=== VPS Environment Ready ==="
+        SETUP_EOF
+
+    - name: Setup PostgreSQL Database User
+      run: |
+        ssh ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }} 'bash -s' << 'EOF'
+          sudo -u postgres psql -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '"'"'${{ secrets.DB_USERNAME }}'"'"') THEN CREATE USER ${{ secrets.DB_USERNAME }} WITH PASSWORD '"'"'${{ secrets.DB_PASSWORD }}'"'"'; END IF; END \$\$;"
+          sudo -u postgres psql -c "ALTER USER ${{ secrets.DB_USERNAME }} WITH PASSWORD '${{ secrets.DB_PASSWORD }}';"
+          sudo -u postgres psql -c "ALTER USER ${{ secrets.DB_USERNAME }} CREATEDB;"
+          echo "PostgreSQL user configured"
+        EOF
+
+    - name: Deploy Database Schema
+      run: |
         if [ ! -f "database/schema/valuta_schema.sql" ]; then
-          echo "⚠ Schema file not found, skipping database deploy"
+          echo "Schema file not found, skipping database deploy"
           exit 0
         fi
-        
-        # Copy schema to VPS
+
         scp database/schema/valuta_schema.sql ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}:/tmp/valuta_schema.sql
-        
-        # Import database on VPS (DROP and RECREATE - all data will be lost!)
-        ssh ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }} << 'EOF'
+
+        ssh ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }} 'bash -s' << 'EOF'
           export PGPASSWORD='${{ secrets.DB_PASSWORD }}'
-          
-          echo "⚠ WARNING: Dropping existing database (all data will be lost)!"
+
+          echo "Dropping existing database..."
           psql -h localhost -U ${{ secrets.DB_USERNAME }} -d postgres -c "DROP DATABASE IF EXISTS ${{ secrets.DB_NAME }};" || true
-          
+
           echo "Creating new database..."
           psql -h localhost -U ${{ secrets.DB_USERNAME }} -d postgres -c "CREATE DATABASE ${{ secrets.DB_NAME }};" || exit 1
-          
+
           echo "Importing schema..."
           psql -h localhost -U ${{ secrets.DB_USERNAME }} -d ${{ secrets.DB_NAME }} -f /tmp/valuta_schema.sql || exit 1
-          
-          echo "✓ Database deployed successfully!"
-          
-          # Verify
-          TABLE_COUNT=$(psql -h localhost -U ${{ secrets.DB_USERNAME }} -d ${{ secrets.DB_NAME }} -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" | tr -d ' ')
-          echo "✓ Tables created: $TABLE_COUNT"
-          
-          unset PGPASSWORD
+
+          echo "Database deployed successfully!"
           rm -f /tmp/valuta_schema.sql
+          unset PGPASSWORD
         EOF
-        
+
     - name: Deploy Backend
       run: |
-        ssh ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }} << 'EOF'
-          # Find project directory
-          PROJECT_DIR="/var/www/valutavalto"
-          if [ ! -d "$PROJECT_DIR" ]; then
-            PROJECT_DIR="/opt/valutavalto"
-          fi
-          if [ ! -d "$PROJECT_DIR" ]; then
-            echo "⚠ Project directory not found at /var/www/valutavalto or /opt/valutavalto"
-            echo "Please create it manually or update the workflow"
-            exit 1
-          fi
-          
-          cd "$PROJECT_DIR"
-          
-          echo "Pulling latest code..."
-          git pull origin main || git pull origin master || echo "⚠ Git pull failed, continuing..."
-          
-          echo "Building and restarting backend..."
-          cd backend || cd .
-          
-          # If docker-compose exists, use it
-          if [ -f docker-compose.yml ]; then
-            docker-compose down || true
-            docker-compose build || echo "⚠ Docker build failed, continuing..."
-            docker-compose up -d || echo "⚠ Docker compose failed"
+        ssh ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }} 'bash -s' << 'EOF'
+          cd /var/www/valutavalto
+
+          if [ ! -d ".git" ]; then
+            echo "Cloning repository..."
+            cd /var/www
+            rm -rf valutavalto
+            git clone https://github.com/kosazoltan/valutavalto-program.git valutavalto
+            cd valutavalto
           else
-            # Otherwise try Maven
-            if command -v mvn &> /dev/null; then
-              mvn clean package -DskipTests || echo "⚠ Maven build failed"
-              # Restart systemd service if exists
-              if systemctl is-active --quiet valutavalto-backend; then
-                systemctl restart valutavalto-backend || echo "⚠ Service restart failed"
-              fi
-            fi
+            echo "Pulling latest code..."
+            git fetch origin
+            git reset --hard origin/main || git reset --hard origin/master
           fi
-          
-          echo "✓ Backend deployment completed!"
+
+          echo "Building backend..."
+          cd backend
+          mvn clean package -DskipTests
+          echo "Maven build completed"
+
+          echo "Backend deployment completed!"
         EOF
-        
+
+    - name: Create Backend Service
+      run: |
+        ssh ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }} 'bash -s' << 'EOF'
+          if [ ! -f /etc/systemd/system/valutavalto-backend.service ]; then
+            echo "Creating systemd service..."
+            tee /etc/systemd/system/valutavalto-backend.service > /dev/null << 'SERVICEFILE'
+        [Unit]
+        Description=Valutavalto Backend Service
+        After=network.target postgresql.service
+
+        [Service]
+        Type=simple
+        User=root
+        WorkingDirectory=/var/www/valutavalto/backend
+        ExecStart=/usr/bin/java -jar target/valuta-0.0.1-SNAPSHOT.jar
+        Restart=always
+        RestartSec=10
+
+        [Install]
+        WantedBy=multi-user.target
+        SERVICEFILE
+            systemctl daemon-reload
+            systemctl enable valutavalto-backend
+          fi
+
+          systemctl restart valutavalto-backend || systemctl start valutavalto-backend
+          echo "Backend service started"
+        EOF
+
     - name: Setup Node.js for Frontend Build
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        
+
     - name: Build Frontend
       run: |
         cd frontend-react
         npm ci
         npm run build
-        echo "✓ Frontend build completed!"
-        
+        echo "Frontend build completed!"
+
     - name: Deploy Frontend
       run: |
-        # Copy built frontend to VPS
-        ssh ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }} << 'EOF'
-          PROJECT_DIR="/var/www/valutavalto"
-          if [ ! -d "$PROJECT_DIR" ]; then
-            PROJECT_DIR="/opt/valutavalto"
-          fi
-          if [ ! -d "$PROJECT_DIR" ]; then
-            echo "⚠ Project directory not found"
-            exit 1
-          fi
-          
-          # Create frontend directory if it doesn't exist
-          mkdir -p "$PROJECT_DIR/frontend-react/dist"
-          
-          echo "✓ Frontend directory ready"
-        EOF
-        
-        # Copy dist folder to VPS (trying both possible locations)
-        scp -r frontend-react/dist/* ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}:/var/www/valutavalto/frontend-react/dist/ 2>/dev/null || \
-        scp -r frontend-react/dist/* ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}:/opt/valutavalto/frontend-react/dist/
-        
-        # Restart Nginx to serve new frontend
-        ssh ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }} << 'EOF'
-          echo "Restarting Nginx..."
-          systemctl reload nginx || service nginx reload || echo "⚠ Nginx reload failed, continuing..."
-          
-          echo "✓ Frontend deployment completed!"
-        EOF
-
+        ssh ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }} 'mkdir -p /var/www/valutavalto/frontend-react/dist'
+        scp -r frontend-react/dist/* ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}:/var/www/valutavalto/frontend-react/dist/
+        ssh ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }} 'systemctl reload nginx || service nginx reload || true'
+        echo "Frontend deployment completed!"
