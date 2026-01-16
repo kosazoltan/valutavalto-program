@@ -1,0 +1,1213 @@
+openapi: 3.0.3
+info:
+  title: Valutavalto API
+  description: Currency Exchange Application Backend API
+  version: 1.0.0
+  contact:
+    name: PuzzleIR
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development
+  - url: https://excbesttest.com/api/v1
+    description: Production
+
+tags:
+  - name: Auth
+    description: Authentication endpoints
+  - name: Workers
+    description: Worker management
+  - name: Transactions
+    description: Currency transactions
+  - name: Exchange Rates
+    description: Exchange rate management
+  - name: Currencies
+    description: Currency management
+  - name: Customers
+    description: Customer management
+  - name: Cash Balance
+    description: Cash balance operations
+  - name: Reports
+    description: Reporting endpoints
+  - name: Transfers
+    description: Internal transfers
+  - name: Daily Sessions
+    description: Daily session management
+  - name: Backups
+    description: Backup management
+  - name: Exports
+    description: Data export endpoints
+
+paths:
+  # ==================== AUTH ====================
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: User login
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: User logout
+      operationId: logout
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successfully logged out
+
+  # ==================== WORKERS ====================
+  /workers:
+    get:
+      tags: [Workers]
+      summary: Get all workers
+      operationId: getAllWorkers
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of workers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Worker'
+    post:
+      tags: [Workers]
+      summary: Create new worker
+      operationId: createWorker
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkerRequest'
+      responses:
+        '201':
+          description: Worker created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Worker'
+
+  /workers/{id}:
+    get:
+      tags: [Workers]
+      summary: Get worker by ID
+      operationId: getWorkerById
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Worker details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Worker'
+        '404':
+          description: Worker not found
+    put:
+      tags: [Workers]
+      summary: Update worker
+      operationId: updateWorker
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkerRequest'
+      responses:
+        '200':
+          description: Worker updated
+
+  /workers/me:
+    get:
+      tags: [Workers]
+      summary: Get current worker profile
+      operationId: getCurrentWorker
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current worker profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Worker'
+
+  # ==================== TRANSACTIONS ====================
+  /transactions/buy:
+    post:
+      tags: [Transactions]
+      summary: Execute buy transaction (customer sells currency)
+      operationId: buyTransaction
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionRequest'
+      responses:
+        '200':
+          description: Transaction completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponse'
+
+  /transactions/sell:
+    post:
+      tags: [Transactions]
+      summary: Execute sell transaction (customer buys currency)
+      operationId: sellTransaction
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionRequest'
+      responses:
+        '200':
+          description: Transaction completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponse'
+
+  /transactions/daily:
+    get:
+      tags: [Transactions]
+      summary: Get daily transactions
+      operationId: getDailyTransactions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Daily transactions list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
+
+  /transactions:
+    get:
+      tags: [Transactions]
+      summary: Search transactions with filters
+      operationId: searchTransactions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: currencyId
+          in: query
+          schema:
+            type: integer
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [BUY, SELL, CONVERSION, REVERSAL]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Paginated transaction list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageTransaction'
+
+  # ==================== EXCHANGE RATES ====================
+  /exchange-rates:
+    get:
+      tags: [Exchange Rates]
+      summary: Get all current exchange rates
+      operationId: getAllRates
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current exchange rates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExchangeRate'
+    post:
+      tags: [Exchange Rates]
+      summary: Create new exchange rate
+      operationId: createRate
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExchangeRateRequest'
+      responses:
+        '201':
+          description: Rate created
+
+  /exchange-rates/code/{currencyCode}:
+    get:
+      tags: [Exchange Rates]
+      summary: Get rate by currency code
+      operationId: getRateByCode
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: currencyCode
+          in: path
+          required: true
+          schema:
+            type: string
+          example: EUR
+      responses:
+        '200':
+          description: Exchange rate
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExchangeRate'
+
+  # ==================== CURRENCIES ====================
+  /currencies:
+    get:
+      tags: [Currencies]
+      summary: Get all active currencies
+      operationId: getActiveCurrencies
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Active currencies list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Currency'
+
+  /currencies/code/{code}:
+    get:
+      tags: [Currencies]
+      summary: Get currency by code
+      operationId: getCurrencyByCode
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+          example: EUR
+      responses:
+        '200':
+          description: Currency details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Currency'
+
+  # ==================== CUSTOMERS ====================
+  /customers:
+    post:
+      tags: [Customers]
+      summary: Create new customer
+      operationId: createCustomer
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerRequest'
+      responses:
+        '201':
+          description: Customer created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+
+  /customers/{id}:
+    get:
+      tags: [Customers]
+      summary: Get customer by ID
+      operationId: getCustomerById
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Customer details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+
+  /customers/search:
+    get:
+      tags: [Customers]
+      summary: Search customers by name
+      operationId: searchCustomers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Matching customers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Customer'
+
+  # ==================== CASH BALANCE ====================
+  /cash-balances:
+    get:
+      tags: [Cash Balance]
+      summary: Get current branch balances
+      operationId: getBranchBalances
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Branch cash balances
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CashBalance'
+
+  /cash-balances/summary:
+    get:
+      tags: [Cash Balance]
+      summary: Get branch balance summary
+      operationId: getBalanceSummary
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Balance summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalanceSummary'
+
+  # ==================== DAILY SESSIONS ====================
+  /daily-sessions/open:
+    post:
+      tags: [Daily Sessions]
+      summary: Open daily session
+      operationId: openSession
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Session opened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailySession'
+
+  /daily-sessions/close:
+    post:
+      tags: [Daily Sessions]
+      summary: Close daily session
+      operationId: closeSession
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Session closed
+
+  /daily-sessions/current:
+    get:
+      tags: [Daily Sessions]
+      summary: Get current session
+      operationId: getCurrentSession
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailySession'
+
+  /daily-sessions/is-open:
+    get:
+      tags: [Daily Sessions]
+      summary: Check if session is open
+      operationId: isSessionOpen
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Session status
+          content:
+            application/json:
+              schema:
+                type: boolean
+
+  # ==================== REPORTS ====================
+  /reports/daily-closing:
+    get:
+      tags: [Reports]
+      summary: Get daily closing report
+      operationId: getDailyClosingReport
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Daily closing report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyClosingReport'
+
+  /reports/today-summary:
+    get:
+      tags: [Reports]
+      summary: Get today's summary
+      operationId: getTodaySummary
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Today's summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailySummary'
+
+  /reports/cash-status:
+    get:
+      tags: [Reports]
+      summary: Get cash status report
+      operationId: getCashStatus
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Cash status report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CashStatusReport'
+
+  # ==================== TRANSFERS ====================
+  /transfers:
+    get:
+      tags: [Transfers]
+      summary: Search transfers
+      operationId: searchTransfers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, IN_TRANSIT, RECEIVED, REJECTED, CANCELLED]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Transfer list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageTransfer'
+    post:
+      tags: [Transfers]
+      summary: Create transfer
+      operationId: createTransfer
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferRequest'
+      responses:
+        '201':
+          description: Transfer created
+
+  /transfers/pending:
+    get:
+      tags: [Transfers]
+      summary: Get pending transfers
+      operationId: getPendingTransfers
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Pending transfers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transfer'
+
+  # ==================== EXPORTS ====================
+  /exports/transactions:
+    get:
+      tags: [Exports]
+      summary: Export transactions to CSV
+      operationId: exportTransactions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+
+  /exports/daily-closing:
+    get:
+      tags: [Exports]
+      summary: Export daily closing report
+      operationId: exportDailyClosing
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: PDF/CSV file
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  # ==================== BACKUPS ====================
+  /backups:
+    get:
+      tags: [Backups]
+      summary: List backups
+      operationId: listBackups
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Backup list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Backup'
+    post:
+      tags: [Backups]
+      summary: Create backup
+      operationId: createBackup
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Backup created
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # ==================== AUTH ====================
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        expiresIn:
+          type: integer
+        worker:
+          $ref: '#/components/schemas/Worker'
+
+    # ==================== WORKER ====================
+    Worker:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        username:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [CASHIER, SUPERVISOR, MANAGER, ADMIN]
+        branchId:
+          type: integer
+          format: int64
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    WorkerRequest:
+      type: object
+      required:
+        - username
+        - firstName
+        - lastName
+        - role
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [CASHIER, SUPERVISOR, MANAGER, ADMIN]
+        branchId:
+          type: integer
+          format: int64
+
+    # ==================== TRANSACTION ====================
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        receiptNumber:
+          type: string
+        type:
+          type: string
+          enum: [BUY, SELL, CONVERSION, REVERSAL]
+        currencyCode:
+          type: string
+        amount:
+          type: number
+          format: decimal
+        rate:
+          type: number
+          format: decimal
+        hufAmount:
+          type: number
+          format: decimal
+        fee:
+          type: number
+          format: decimal
+        customerId:
+          type: integer
+          format: int64
+        workerId:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+
+    TransactionRequest:
+      type: object
+      required:
+        - currencyId
+        - amount
+      properties:
+        currencyId:
+          type: integer
+          format: int64
+        amount:
+          type: number
+          format: decimal
+        customerId:
+          type: integer
+          format: int64
+        rate:
+          type: number
+          format: decimal
+          description: Optional custom rate
+
+    TransactionResponse:
+      type: object
+      properties:
+        transaction:
+          $ref: '#/components/schemas/Transaction'
+        receiptNumber:
+          type: string
+        success:
+          type: boolean
+
+    PageTransaction:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transaction'
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+        page:
+          type: integer
+        size:
+          type: integer
+
+    # ==================== EXCHANGE RATE ====================
+    ExchangeRate:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        currencyId:
+          type: integer
+          format: int64
+        currencyCode:
+          type: string
+        buyRate:
+          type: number
+          format: decimal
+        sellRate:
+          type: number
+          format: decimal
+        midRate:
+          type: number
+          format: decimal
+        validFrom:
+          type: string
+          format: date-time
+        validTo:
+          type: string
+          format: date-time
+        createdBy:
+          type: integer
+          format: int64
+
+    ExchangeRateRequest:
+      type: object
+      required:
+        - currencyId
+        - buyRate
+        - sellRate
+      properties:
+        currencyId:
+          type: integer
+          format: int64
+        buyRate:
+          type: number
+          format: decimal
+        sellRate:
+          type: number
+          format: decimal
+
+    # ==================== CURRENCY ====================
+    Currency:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        code:
+          type: string
+          example: EUR
+        name:
+          type: string
+          example: Euro
+        symbol:
+          type: string
+          example: "€"
+        decimals:
+          type: integer
+        active:
+          type: boolean
+
+    # ==================== CUSTOMER ====================
+    Customer:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        customerCode:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        documentType:
+          type: string
+        documentNumber:
+          type: string
+        nationality:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        isVip:
+          type: boolean
+        active:
+          type: boolean
+
+    CustomerRequest:
+      type: object
+      required:
+        - firstName
+        - lastName
+        - documentType
+        - documentNumber
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        documentType:
+          type: string
+        documentNumber:
+          type: string
+        nationality:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+
+    # ==================== CASH BALANCE ====================
+    CashBalance:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        currencyId:
+          type: integer
+          format: int64
+        currencyCode:
+          type: string
+        balance:
+          type: number
+          format: decimal
+        hufValue:
+          type: number
+          format: decimal
+        lastUpdated:
+          type: string
+          format: date-time
+
+    BalanceSummary:
+      type: object
+      properties:
+        totalHufValue:
+          type: number
+          format: decimal
+        currencyCount:
+          type: integer
+        balances:
+          type: array
+          items:
+            $ref: '#/components/schemas/CashBalance'
+
+    # ==================== DAILY SESSION ====================
+    DailySession:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        sessionDate:
+          type: string
+          format: date
+        openedAt:
+          type: string
+          format: date-time
+        closedAt:
+          type: string
+          format: date-time
+        openedBy:
+          type: integer
+          format: int64
+        closedBy:
+          type: integer
+          format: int64
+        status:
+          type: string
+          enum: [OPEN, CLOSED]
+
+    # ==================== REPORTS ====================
+    DailyClosingReport:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        totalBuyTransactions:
+          type: integer
+        totalSellTransactions:
+          type: integer
+        totalBuyAmount:
+          type: number
+          format: decimal
+        totalSellAmount:
+          type: number
+          format: decimal
+        totalFees:
+          type: number
+          format: decimal
+        profit:
+          type: number
+          format: decimal
+
+    DailySummary:
+      type: object
+      properties:
+        transactionCount:
+          type: integer
+        buyCount:
+          type: integer
+        sellCount:
+          type: integer
+        totalTurnover:
+          type: number
+          format: decimal
+        totalFees:
+          type: number
+          format: decimal
+
+    CashStatusReport:
+      type: object
+      properties:
+        totalHufValue:
+          type: number
+          format: decimal
+        currencyBalances:
+          type: array
+          items:
+            $ref: '#/components/schemas/CashBalance'
+        lowStockAlerts:
+          type: array
+          items:
+            type: string
+        highStockAlerts:
+          type: array
+          items:
+            type: string
+
+    # ==================== TRANSFER ====================
+    Transfer:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        transferNumber:
+          type: string
+        fromBranchId:
+          type: integer
+          format: int64
+        toBranchId:
+          type: integer
+          format: int64
+        currencyId:
+          type: integer
+          format: int64
+        currencyCode:
+          type: string
+        amount:
+          type: number
+          format: decimal
+        status:
+          type: string
+          enum: [PENDING, IN_TRANSIT, RECEIVED, REJECTED, CANCELLED]
+        createdAt:
+          type: string
+          format: date-time
+
+    TransferRequest:
+      type: object
+      required:
+        - toBranchId
+        - currencyId
+        - amount
+      properties:
+        toBranchId:
+          type: integer
+          format: int64
+        currencyId:
+          type: integer
+          format: int64
+        amount:
+          type: number
+          format: decimal
+        note:
+          type: string
+
+    PageTransfer:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transfer'
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+        page:
+          type: integer
+        size:
+          type: integer
+
+    # ==================== BACKUP ====================
+    Backup:
+      type: object
+      properties:
+        fileName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        size:
+          type: integer
+          format: int64
+        type:
+          type: string
+          enum: [MANUAL, AUTOMATIC, PRE_UPDATE]
