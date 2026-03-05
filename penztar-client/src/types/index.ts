@@ -913,3 +913,161 @@ export type PageRouteBatch2B =
   | '/worker-management'
   | '/receipt-search'
   | '/stamps';
+
+// ============================================================
+// Batch 3 — Dekádjelentés, Kezelési díj, Forgalom, Verseny, Göngyöleg
+// ============================================================
+
+// --- Dekádjelentés ---
+export type DecadeReportStatus = 'DRAFT' | 'CLOSED';
+
+export interface DecadeReport {
+  id: string;
+  branchId: string;
+  year: number;
+  decade: number;
+  totalBuyHuf: number;
+  totalSellHuf: number;
+  totalHandlingFee: number;
+  transactionCount: number;
+  status: DecadeReportStatus;
+  closedAt: string | null;
+  closedBy: number | null;
+  createdAt: string;
+}
+
+export interface GenerateDecadeReportRequest {
+  branchId: string;
+  year: number;
+  decade: number;
+}
+
+// --- Kezelési díj részletes ---
+export type HandlingFeeType = 'FIXED' | 'PERCENT' | 'TIERED';
+
+export interface HandlingFeeTransactionItem {
+  id: string;
+  transactionId: number;
+  feeType: HandlingFeeType;
+  amount: number;
+  discountPercent: number;
+  discountReason: string | null;
+  netFee: number;
+  workerCommissionShare: number;
+  createdAt: string;
+}
+
+export interface HandlingFeeReport {
+  dateFrom: string;
+  dateTo: string;
+  totalGrossFee: number;
+  totalDiscount: number;
+  totalNetFee: number;
+  totalCommissionShare: number;
+  transactionCount: number;
+  items: HandlingFeeTransactionItem[];
+}
+
+// --- Forgalom összesítő ---
+export interface TurnoverReport {
+  period: string;
+  totalBuy: number;
+  totalSell: number;
+  spread: number;
+  fees: number;
+  netProfit: number;
+  byCurrency: TurnoverCurrency[];
+  byWorker: TurnoverWorker[];
+}
+
+export interface TurnoverCurrency {
+  currencyCode: string;
+  buyVolume: number;
+  sellVolume: number;
+  buyHuf: number;
+  sellHuf: number;
+  transactionCount: number;
+}
+
+export interface TurnoverWorker {
+  workerId: number;
+  workerName: string;
+  totalVolume: number;
+  transactionCount: number;
+}
+
+// --- Árfolyam kategória ---
+export type RateCategoryType = 'STANDARD' | 'SMALL' | 'LARGE';
+
+export interface RateCategoryData {
+  id: string;
+  branchId: string;
+  currencyCode: string;
+  category: RateCategoryType;
+  buyRate: number;
+  sellRate: number;
+  minAmount: number | null;
+  maxAmount: number | null;
+  validFrom: string;
+  validTo: string | null;
+}
+
+// --- Verseny ---
+export type CompetitionStatus = 'ACTIVE' | 'CLOSED';
+
+export interface Competition {
+  id: string;
+  competitionName: string;
+  startDate: string;
+  endDate: string;
+  status: CompetitionStatus;
+  rules: string | null;
+  createdAt: string;
+}
+
+export interface CompetitionEntry {
+  id: string;
+  competitionId: string;
+  workerId: number;
+  workerName: string;
+  totalVolume: number;
+  transactionCount: number;
+  score: number;
+  rank: number;
+}
+
+export interface CreateCompetitionRequest {
+  competitionName: string;
+  startDate: string;
+  endDate: string;
+  rules?: string;
+}
+
+// --- Göngyöleg ---
+export interface PackagingRecord {
+  id: string;
+  branchId: string;
+  currencyCode: string;
+  packagingDate: string;
+  bundleCount: number;
+  denomination: number;
+  bundleSize: number;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface CreatePackagingRequest {
+  branchId: string;
+  currencyCode: string;
+  packagingDate: string;
+  bundleCount: number;
+  denomination: number;
+  bundleSize?: number;
+  notes?: string;
+}
+
+// --- Navigáció kiegészítés (Batch 3) ---
+export type PageRouteBatch3 =
+  | PageRouteBatch2B
+  | '/decade-report'
+  | '/competition';

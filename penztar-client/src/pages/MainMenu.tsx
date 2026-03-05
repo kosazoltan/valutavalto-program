@@ -45,6 +45,12 @@ const BATCH2B_ITEMS: MenuItem[] = [
   { key: 'B4', label: 'Matrica pénztár', icon: '🏷️', route: '/stamps' as PageRoute, hotkey: 'Ctrl+T' },
 ];
 
+// Batch 3 funkciók
+const BATCH3_ITEMS: MenuItem[] = [
+  { key: 'C1', label: 'Dekádjelentés', icon: '📅', route: '/decade-report' as PageRoute, hotkey: 'Ctrl+G' },
+  { key: 'C2', label: 'Pénztáros verseny', icon: '🏆', route: '/competition' as PageRoute, hotkey: 'Ctrl+K' },
+];
+
 // Értéktár extra menüpontok
 const ERTEKTAR_ITEMS: MenuItem[] = [
   { key: 'ET1', label: 'Értéktár áttekintő', icon: '🏦', route: '/ertektar', hotkey: 'Ctrl+1' },
@@ -135,6 +141,12 @@ export default function MainMenu() {
         } else if (keyLower === 't') {
           e.preventDefault();
           handleNavigate('/stamps' as PageRoute);
+        } else if (keyLower === 'g') {
+          e.preventDefault();
+          handleNavigate('/decade-report' as PageRoute);
+        } else if (keyLower === 'k') {
+          e.preventDefault();
+          handleNavigate('/competition' as PageRoute);
         }
       }
 
@@ -295,6 +307,24 @@ export default function MainMenu() {
                 <span className="menu-btn-icon">{item.icon}</span>
                 <span className="menu-btn-label text-emerald-800">{item.label}</span>
                 <span className="menu-btn-hotkey text-emerald-500">{item.hotkey}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Batch 3 — Dekádjelentés + Verseny */}
+        <div className="mx-auto mt-6 max-w-4xl">
+          <h2 className="mb-3 text-lg font-semibold text-gray-600">🏆 Kiegészítő funkciók</h2>
+          <div className="grid grid-cols-4 gap-4">
+            {BATCH3_ITEMS.map((item) => (
+              <button
+                key={item.key}
+                onClick={() => handleNavigate(item.route)}
+                className="menu-btn h-28 border-2 border-cyan-200 bg-cyan-50 hover:bg-cyan-100"
+              >
+                <span className="menu-btn-icon">{item.icon}</span>
+                <span className="menu-btn-label text-cyan-800">{item.label}</span>
+                <span className="menu-btn-hotkey text-cyan-500">{item.hotkey}</span>
               </button>
             ))}
           </div>

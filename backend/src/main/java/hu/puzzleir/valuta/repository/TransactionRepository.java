@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -403,4 +404,103 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
      */
     @Query("SELECT t FROM Transaction t WHERE t.branch.id = :branchId ORDER BY t.transactionDate")
     List<Transaction> findByBranchId(@Param("branchId") UUID branchId);
+
+    // ============ BATCH 3: DEKÁD + TURNOVER + COMPETITION QUERY-K ============
+
+    /**
+     * Batch 3: HUF összeg branch + típus + időszak (DateTime) alapján.
+     * Dekádjelentés és turnover szolgáltatáshoz.
+     */
+    @Query("SELECT COALESCE(SUM(t.hufAmount), 0) FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND CAST(t.transactionType AS string) = :txType " +
+           "AND t.createdAt BETWEEN :from AND :to " +
+           "AND t.status = 'COMPLETED'")
+    BigDecimal sumHufAmountByBranchAndTypeAndPeriod(
+        @Param("branchId") UUID branchId,
+        @Param("txType") String txType,
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to
+    );
+
+    /**
+     * Batch 3: Kezelési díj összeg branch + időszak (DateTime).
+     */
+    @Query("SELECT COALESCE(SUM(t.handlingFee), 0) FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.createdAt BETWEEN :from AND :to " +
+           "AND t.status = 'COMPLETED'")
+    BigDecimal sumFeeByBranchAndPeriod(
+        @Param("branchId") UUID branchId,
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to
+    );
+
+    /**
+     * Batch 3: Tranzakció szám branch + időszak (DateTime).
+     */
+    @Query("SELECT COUNT(t) FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.createdAt BETWEEN :from AND :to " +
+           "AND t.status = 'COMPLETED'")
+    long countByBranchAndPeriod(
+        @Param("branchId") UUID branchId,
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to
+    );
+
+    /**
+     * Batch 3: HUF összeg company + típus + időszak (DateTime).
+     * Cégszintű turnover riporthoz.
+     */
+    @Query("SELECT COALESCE(SUM(t.hufAmount), 0) FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND CAST(t.transactionType AS string) = :txType " +
+           "AND t.createdAt BETWEEN :from AND :to " +
+           "AND t.status = 'COMPLETED'")
+    BigDecimal sumHufAmountByCompanyAndTypeAndPeriod(
+        @Param("companyId") UUID companyId,
+        @Param("txType") String txType,
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to
+    );
+
+    /**
+     * Batch 3: Kezelési díj összeg company + időszak (DateTime).
+     */
+    @Query("SELECT COALESCE(SUM(t.handlingFee), 0) FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.createdAt BETWEEN :from AND :to " +
+           "AND t.status = 'COMPLETED'")
+    BigDecimal sumFeeByCompanyAndPeriod(
+        @Param("companyId") UUID companyId,
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to
+    );
+
+    /**
+     * Batch 3: HUF összeg worker + időszak (Competition).
+     */
+    @Query("SELECT COALESCE(SUM(t.hufAmount), 0) FROM Transaction t " +
+           "WHERE t.worker.id = :workerId " +
+           "AND t.createdAt BETWEEN :from AND :to " +
+           "AND t.status = 'COMPLETED'")
+    BigDecimal sumHufAmountByWorkerAndPeriod(
+        @Param("workerId") Long workerId,
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to
+    );
+
+    /**
+     * Batch 3: Tranzakció szám worker + időszak (Competition).
+     */
+    @Query("SELECT COUNT(t) FROM Transaction t " +
+           "WHERE t.worker.id = :workerId " +
+           "AND t.createdAt BETWEEN :from AND :to " +
+           "AND t.status = 'COMPLETED'")
+    long countByWorkerAndPeriod(
+        @Param("workerId") Long workerId,
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to
+    );
 }

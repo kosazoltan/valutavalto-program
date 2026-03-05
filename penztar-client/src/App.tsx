@@ -40,6 +40,9 @@ import MonthlyClosingPage from '@/pages/MonthlyClosingPage';
 import CommissionPage from '@/pages/CommissionPage';
 import BookingPage from '@/pages/BookingPage';
 import ProfitPage from '@/pages/ProfitPage';
+// Batch 3 — Dekádjelentés + Verseny
+import DecadeReportPage from '@/pages/DecadeReportPage';
+import CompetitionPage from '@/pages/CompetitionPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -348,6 +351,24 @@ export default function App() {
         element={
           <ProtectedRoute>
             <StampPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Batch 3 route-ok */}
+      <Route
+        path="/decade-report"
+        element={
+          <ProtectedRoute>
+            <DecadeReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/competition"
+        element={
+          <ProtectedRoute>
+            <CompetitionPage />
           </ProtectedRoute>
         }
       />
