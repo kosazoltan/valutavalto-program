@@ -18,6 +18,7 @@ import {
   User,
   Building2,
   LayoutDashboard,
+  Shield,
 } from 'lucide-react'
 
 // Menüpontok csoportosítva (professzionális sidebar struktúra)
@@ -57,8 +58,9 @@ const menuGroups = [
     ]
   },
   {
-    label: 'Beállítások',
+    label: 'Adminisztráció',
     items: [
+      { path: '/audit-log', label: 'Audit Log', icon: Shield },
       { path: '/settings', label: 'Rendszer beállítások', icon: Settings },
     ]
   }

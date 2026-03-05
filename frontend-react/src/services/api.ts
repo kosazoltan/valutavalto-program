@@ -2316,6 +2316,9 @@ export interface AuditLog {
   changes?: string
   ipAddress?: string
   userAgent?: string
+  oldValue?: string
+  newValue?: string
+  reason?: string
   createdAt: string
 }
 
@@ -2348,6 +2351,43 @@ export const loggingApi = {
     const response = await api.get('/logs/export', { params, responseType: 'blob' })
     return response.data
   }
+}
+
+// ================== AUDIT LOG API (érzékeny műveletek) ==================
+
+export const auditLogApi = {
+  getByEntity: async (entityId: string): Promise<AuditLog[]> => {
+    const response = await api.get<AuditLog[]>('/audit-log', { params: { entityId } })
+    return response.data
+  },
+  getByWorker: async (workerId: string, from?: string, to?: string, page = 0, size = 50): Promise<{ content: AuditLog[]; totalElements: number }> => {
+    const params: Record<string, string | number> = { page, size }
+    if (from) params.from = from
+    if (to) params.to = to
+    const response = await api.get(`/audit-log/worker/${workerId}`, { params })
+    return response.data
+  },
+  getByBranch: async (branchId: string, from?: string, to?: string, page = 0, size = 50): Promise<{ content: AuditLog[]; totalElements: number }> => {
+    const params: Record<string, string | number> = { page, size }
+    if (from) params.from = from
+    if (to) params.to = to
+    const response = await api.get(`/audit-log/branch/${branchId}`, { params })
+    return response.data
+  },
+  getByAction: async (action: string, from?: string, to?: string, page = 0, size = 50): Promise<{ content: AuditLog[]; totalElements: number }> => {
+    const params: Record<string, string | number> = { page, size }
+    if (from) params.from = from
+    if (to) params.to = to
+    const response = await api.get(`/audit-log/action/${action}`, { params })
+    return response.data
+  },
+  getAll: async (from?: string, to?: string, page = 0, size = 50): Promise<{ content: AuditLog[]; totalElements: number }> => {
+    const params: Record<string, string | number> = { page, size }
+    if (from) params.from = from
+    if (to) params.to = to
+    const response = await api.get('/logs/system', { params })
+    return response.data
+  },
 }
 
 // ================== BRANCH GROUP API ==================

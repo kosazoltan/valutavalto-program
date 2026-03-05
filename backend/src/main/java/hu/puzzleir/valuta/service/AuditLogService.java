@@ -38,6 +38,46 @@ public class AuditLogService {
         auditLogRepository.save(entry);
     }
 
+    /**
+     * Bővített audit log — oldValue/newValue JSON + reason mező.
+     */
+    @Transactional
+    public void logWithDetails(String action, String entityType, String entityId,
+                               String userId, String userName, String branchId, String branchName,
+                               String oldValue, String newValue, String reason,
+                               String ipAddress) {
+        AuditLog entry = AuditLog.builder()
+                .action(action)
+                .entityType(entityType)
+                .entityId(entityId)
+                .userId(userId)
+                .userName(userName)
+                .branchId(branchId)
+                .branchName(branchName)
+                .oldValue(oldValue)
+                .newValue(newValue)
+                .reason(reason)
+                .ipAddress(ipAddress)
+                .build();
+        auditLogRepository.save(entry);
+    }
+
+    public List<AuditLog> getByEntity(String entityId) {
+        return auditLogRepository.findByEntityIdOrderByCreatedAtDesc(entityId);
+    }
+
+    public Page<AuditLog> getByWorker(String workerId, LocalDateTime from, LocalDateTime to, Pageable pageable) {
+        return auditLogRepository.findByWorker(workerId, from, to, pageable);
+    }
+
+    public Page<AuditLog> getByBranch(String branchId, LocalDateTime from, LocalDateTime to, Pageable pageable) {
+        return auditLogRepository.findByBranch(branchId, from, to, pageable);
+    }
+
+    public Page<AuditLog> getByAction(String action, LocalDateTime from, LocalDateTime to, Pageable pageable) {
+        return auditLogRepository.findByAction(action, from, to, pageable);
+    }
+
     public Page<AuditLog> getSystemLogs(LocalDateTime from, LocalDateTime to, Pageable pageable) {
         return auditLogRepository.findByDateRange(from, to, pageable);
     }

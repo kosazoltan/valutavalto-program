@@ -51,6 +51,7 @@ import DocumentStoragePage from './pages/documents/DocumentStoragePage'
 import NotificationPage from './pages/notifications/NotificationPage'
 import OrganizationalSystemParameterPage from './pages/organizations/OrganizationalSystemParameterPage'
 import BranchGroupPage from './pages/branches/BranchGroupPage'
+import AuditLogPage from './pages/audit/AuditLogPage'
 
 // === Moduláris Feature Pages (v2) ===
 import { ReportsV2Page } from './features/reporting/ReportsV2Page'
@@ -203,6 +204,9 @@ export default function App() {
           
           {/* Branch Groups */}
           <Route path="/branch-groups" element={<BranchGroupPage />} />
+
+          {/* Audit Log */}
+          <Route path="/audit-log" element={<AuditLogPage />} />
 
           {/* === Treasury (Értéktári) Routes === */}
           <Route path="/treasury" element={<TreasuryLayout />}>

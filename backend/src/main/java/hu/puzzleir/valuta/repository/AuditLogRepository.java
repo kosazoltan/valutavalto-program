@@ -31,4 +31,36 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
     List<AuditLog> findAllByDateRange(
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to);
+
+    List<AuditLog> findByEntityIdOrderByCreatedAtDesc(String entityId);
+
+    @Query("SELECT a FROM AuditLog a WHERE a.userId = :userId " +
+           "AND (:from IS NULL OR a.createdAt >= :from) " +
+           "AND (:to IS NULL OR a.createdAt <= :to) " +
+           "ORDER BY a.createdAt DESC")
+    Page<AuditLog> findByWorker(
+            @Param("userId") String userId,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to,
+            Pageable pageable);
+
+    @Query("SELECT a FROM AuditLog a WHERE a.branchId = :branchId " +
+           "AND (:from IS NULL OR a.createdAt >= :from) " +
+           "AND (:to IS NULL OR a.createdAt <= :to) " +
+           "ORDER BY a.createdAt DESC")
+    Page<AuditLog> findByBranch(
+            @Param("branchId") String branchId,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to,
+            Pageable pageable);
+
+    @Query("SELECT a FROM AuditLog a WHERE a.action = :action " +
+           "AND (:from IS NULL OR a.createdAt >= :from) " +
+           "AND (:to IS NULL OR a.createdAt <= :to) " +
+           "ORDER BY a.createdAt DESC")
+    Page<AuditLog> findByAction(
+            @Param("action") String action,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to,
+            Pageable pageable);
 }

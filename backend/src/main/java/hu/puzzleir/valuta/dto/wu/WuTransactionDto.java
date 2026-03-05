@@ -28,7 +28,7 @@ public class WuTransactionDto {
     private String destinationCountry;
     private String receiptNumber;
     private String status;
-    private UUID workerId;
+    private Long workerId;
     private LocalDateTime transactionDate;
     private LocalDateTime createdAt;
 }

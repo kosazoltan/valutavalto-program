@@ -48,6 +48,15 @@ public class AuditLog {
     @Column(name = "user_agent", length = 500)
     private String userAgent;
 
+    @Column(name = "old_value", columnDefinition = "TEXT")
+    private String oldValue;
+
+    @Column(name = "new_value", columnDefinition = "TEXT")
+    private String newValue;
+
+    @Column(name = "reason", length = 1000)
+    private String reason;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
