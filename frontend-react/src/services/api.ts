@@ -653,7 +653,7 @@ export const stornoApi = {
     return response.data
   },
   requestApproval: async (transactionId: string, workerId: string, reason: string): Promise<StornoApproval> => {
-    const response = await api.post<StornoApproval>('/v1/stornos/request-approval', null, {
+    const response = await api.post<StornoApproval>('/stornos/request-approval', null, {
       params: { transactionId, workerId, reason }
     })
     return response.data
@@ -665,13 +665,13 @@ export const stornoApi = {
     return response.data
   },
   execute: async (request: StornoRequest, workerId: string): Promise<Transaction> => {
-    const response = await api.post<Transaction>('/v1/stornos/execute', request, {
+    const response = await api.post<Transaction>('/stornos/execute', request, {
       params: { workerId }
     })
     return response.data
   },
   executePos: async (posTransactionId: string, workerId: string, reason: string): Promise<Transaction> => {
-    const response = await api.post<Transaction>('/v1/stornos/pos', null, {
+    const response = await api.post<Transaction>('/stornos/pos', null, {
       params: { posTransactionId, workerId, reason }
     })
     return response.data
@@ -712,7 +712,7 @@ export interface ClosingWizardStep {
 
 export const closingWizardApi = {
   start: async (branchId: string, cashDeskId: string | undefined, closingType: string, workerId: string): Promise<ClosingWizard> => {
-    const response = await api.post<ClosingWizard>('/v1/closing-wizard/start', null, {
+    const response = await api.post<ClosingWizard>('/closing-wizard/start', null, {
       params: { branchId, cashDeskId, closingType, workerId }
     })
     return response.data
@@ -856,14 +856,14 @@ export const authorizedRepresentativeApi = {
   },
   verifyForTransaction: async (documentNumber: string, operationDid: string, amount?: number): Promise<{ authorized: boolean; representativeId?: string; authorizationId?: string }> => {
     const response = await api.post(
-      '/v1/authorized-representatives/verify-for-transaction',
+      '/authorized-representatives/verify-for-transaction',
       null,
       { params: { documentNumber, operationDid, amount } }
     )
     return response.data
   },
   recordTransaction: async (representativeId: string, authorizationId: string, transactionId: string, workerId: string, branchId: string): Promise<void> => {
-    await api.post('/v1/authorized-representatives/record-transaction', null, {
+    await api.post('/authorized-representatives/record-transaction', null, {
       params: { representativeId, authorizationId, transactionId, workerId, branchId }
     })
   },
@@ -1328,7 +1328,7 @@ export const rateCreationApi = {
     return response.data
   },
   prepareAllCurrencies: async (): Promise<RateCreationDTO[]> => {
-    const response = await api.get<RateCreationDTO[]>('/v1/rate-creation/prepare/all')
+    const response = await api.get<RateCreationDTO[]>('/rate-creation/prepare/all')
     return response.data
   },
   recordCompetitorRate: async (data: {
@@ -1338,7 +1338,7 @@ export const rateCreationApi = {
     sellRate: number
     source?: string
   }): Promise<CompetitorRateDTO> => {
-    const response = await api.post<CompetitorRateDTO>('/v1/rate-creation/competitor-rates', data)
+    const response = await api.post<CompetitorRateDTO>('/rate-creation/competitor-rates', data)
     return response.data
   },
   recordBankRate: async (data: {
@@ -1349,7 +1349,7 @@ export const rateCreationApi = {
     middleRate?: number
     source?: string
   }): Promise<BankRateDTO> => {
-    const response = await api.post<BankRateDTO>('/v1/rate-creation/bank-rates', data)
+    const response = await api.post<BankRateDTO>('/rate-creation/bank-rates', data)
     return response.data
   },
   publishGroupRate: async (data: {
@@ -1358,7 +1358,7 @@ export const rateCreationApi = {
     buyRate: number
     sellRate: number
   }): Promise<GroupRateDTO> => {
-    const response = await api.post<GroupRateDTO>('/v1/rate-creation/publish-group-rate', data)
+    const response = await api.post<GroupRateDTO>('/rate-creation/publish-group-rate', data)
     return response.data
   }
 }
@@ -1376,7 +1376,7 @@ export interface CurrencyGroupDTO {
 
 export const currencyGroupApi = {
   list: async (): Promise<CurrencyGroupDTO[]> => {
-    const response = await api.get<CurrencyGroupDTO[]>('/v1/currency-groups')
+    const response = await api.get<CurrencyGroupDTO[]>('/currency-groups')
     return response.data
   },
   getById: async (id: string): Promise<CurrencyGroupDTO> => {
@@ -1402,7 +1402,7 @@ export interface CompetitorDTO {
 
 export const competitorApi = {
   list: async (): Promise<CompetitorDTO[]> => {
-    const response = await api.get<CompetitorDTO[]>('/v1/competitors')
+    const response = await api.get<CompetitorDTO[]>('/competitors')
     return response.data
   },
   getById: async (id: string): Promise<CompetitorDTO> => {
@@ -1651,11 +1651,11 @@ export interface SystemParameterCreateRequest {
 
 export const systemParameterApi = {
   list: async (): Promise<SystemParameter[]> => {
-    const response = await api.get<SystemParameter[]>('/v1/system-parameters')
+    const response = await api.get<SystemParameter[]>('/system-parameters')
     return response.data
   },
   getActive: async (): Promise<SystemParameter[]> => {
-    const response = await api.get<SystemParameter[]>('/v1/system-parameters/active')
+    const response = await api.get<SystemParameter[]>('/system-parameters/active')
     return response.data
   },
   getByCategory: async (category: string): Promise<SystemParameter[]> => {
@@ -1671,7 +1671,7 @@ export const systemParameterApi = {
     return response.data
   },
   create: async (data: SystemParameterCreateRequest): Promise<SystemParameter> => {
-    const response = await api.post<SystemParameter>('/v1/system-parameters', data)
+    const response = await api.post<SystemParameter>('/system-parameters', data)
     return response.data
   },
   update: async (id: string, data: Partial<SystemParameterCreateRequest>): Promise<SystemParameter> => {
@@ -1711,11 +1711,11 @@ export interface PermissionCreateRequest {
 
 export const permissionApi = {
   list: async (): Promise<Permission[]> => {
-    const response = await api.get<Permission[]>('/v1/permissions')
+    const response = await api.get<Permission[]>('/permissions')
     return response.data
   },
   getActive: async (): Promise<Permission[]> => {
-    const response = await api.get<Permission[]>('/v1/permissions/active')
+    const response = await api.get<Permission[]>('/permissions/active')
     return response.data
   },
   getByModule: async (module: string): Promise<Permission[]> => {
@@ -1727,7 +1727,7 @@ export const permissionApi = {
     return response.data
   },
   create: async (data: PermissionCreateRequest): Promise<Permission> => {
-    const response = await api.post<Permission>('/v1/permissions', data)
+    const response = await api.post<Permission>('/permissions', data)
     return response.data
   },
   update: async (id: string, data: Partial<PermissionCreateRequest>): Promise<Permission> => {
@@ -1834,7 +1834,7 @@ export interface WorkerCommission {
 
 export const workerCommissionApi = {
   list: async (): Promise<WorkerCommission[]> => {
-    const response = await api.get<WorkerCommission[]>('/v1/worker-commissions')
+    const response = await api.get<WorkerCommission[]>('/worker-commissions')
     return response.data
   },
   getByWorker: async (workerId: string): Promise<WorkerCommission[]> => {
@@ -1842,7 +1842,7 @@ export const workerCommissionApi = {
     return response.data
   },
   getByPeriod: async (startDate: string, endDate: string): Promise<WorkerCommission[]> => {
-    const response = await api.get<WorkerCommission[]>('/v1/worker-commissions/period', {
+    const response = await api.get<WorkerCommission[]>('/worker-commissions/period', {
       params: { startDate, endDate }
     })
     return response.data
@@ -1854,7 +1854,7 @@ export const workerCommissionApi = {
     periodEnd: string,
     branchId?: string
   ): Promise<WorkerCommission> => {
-    const response = await api.post<WorkerCommission>('/v1/worker-commissions/calculate', null, {
+    const response = await api.post<WorkerCommission>('/worker-commissions/calculate', null, {
       params: { workerId, calculatedByWorkerId, periodStart, periodEnd, branchId }
     })
     return response.data
@@ -1866,7 +1866,7 @@ export const workerCommissionApi = {
     return response.data
   },
   getAccountingList: async (periodStart: string, periodEnd: string): Promise<WorkerCommission[]> => {
-    const response = await api.get<WorkerCommission[]>('/v1/worker-commissions/accounting-list', {
+    const response = await api.get<WorkerCommission[]>('/worker-commissions/accounting-list', {
       params: { periodStart, periodEnd }
     })
     return response.data
@@ -1905,11 +1905,11 @@ export interface WorkstationCreateRequest {
 
 export const workstationApi = {
   list: async (): Promise<Workstation[]> => {
-    const response = await api.get<Workstation[]>('/v1/workstations')
+    const response = await api.get<Workstation[]>('/workstations')
     return response.data
   },
   getActive: async (): Promise<Workstation[]> => {
-    const response = await api.get<Workstation[]>('/v1/workstations/active')
+    const response = await api.get<Workstation[]>('/workstations/active')
     return response.data
   },
   getByBranch: async (branchId: string): Promise<Workstation[]> => {
@@ -1921,7 +1921,7 @@ export const workstationApi = {
     return response.data
   },
   create: async (data: WorkstationCreateRequest): Promise<Workstation> => {
-    const response = await api.post<Workstation>('/v1/workstations', data)
+    const response = await api.post<Workstation>('/workstations', data)
     return response.data
   },
   update: async (id: string, data: Partial<WorkstationCreateRequest>): Promise<Workstation> => {
@@ -1967,7 +1967,7 @@ export interface Contribution {
 
 export const contributionApi = {
   list: async (): Promise<Contribution[]> => {
-    const response = await api.get<Contribution[]>('/v1/contributions')
+    const response = await api.get<Contribution[]>('/contributions')
     return response.data
   },
   getById: async (id: string): Promise<Contribution> => {
@@ -1979,7 +1979,7 @@ export const contributionApi = {
     return response.data
   },
   getByPeriod: async (startDate: string, endDate: string): Promise<Contribution[]> => {
-    const response = await api.get<Contribution[]>('/v1/contributions/period', {
+    const response = await api.get<Contribution[]>('/contributions/period', {
       params: { startDate, endDate }
     })
     return response.data
@@ -1991,7 +1991,7 @@ export const contributionApi = {
     calculatedByWorkerId: string,
     branchId?: string
   ): Promise<Contribution> => {
-    const response = await api.post<Contribution>('/v1/contributions/calculate', null, {
+    const response = await api.post<Contribution>('/contributions/calculate', null, {
       params: { workerId, periodStart, periodEnd, calculatedByWorkerId, branchId }
     })
     return response.data
@@ -2029,15 +2029,15 @@ export interface Organization {
 
 export const organizationApi = {
   list: async (): Promise<Organization[]> => {
-    const response = await api.get<Organization[]>('/v1/organizations')
+    const response = await api.get<Organization[]>('/organizations')
     return response.data
   },
   getActive: async (): Promise<Organization[]> => {
-    const response = await api.get<Organization[]>('/v1/organizations/active')
+    const response = await api.get<Organization[]>('/organizations/active')
     return response.data
   },
   getRoots: async (): Promise<Organization[]> => {
-    const response = await api.get<Organization[]>('/v1/organizations/root')
+    const response = await api.get<Organization[]>('/organizations/root')
     return response.data
   },
   getById: async (id: string): Promise<Organization> => {
@@ -2045,7 +2045,7 @@ export const organizationApi = {
     return response.data
   },
   create: async (data: Partial<Organization>, workerId: string): Promise<Organization> => {
-    const response = await api.post<Organization>('/v1/organizations', data, {
+    const response = await api.post<Organization>('/organizations', data, {
       params: { workerId }
     })
     return response.data
@@ -2081,11 +2081,11 @@ export interface OwnCompany {
 
 export const ownCompanyApi = {
   list: async (): Promise<OwnCompany[]> => {
-    const response = await api.get<OwnCompany[]>('/v1/own-companies')
+    const response = await api.get<OwnCompany[]>('/own-companies')
     return response.data
   },
   getActive: async (): Promise<OwnCompany[]> => {
-    const response = await api.get<OwnCompany[]>('/v1/own-companies/active')
+    const response = await api.get<OwnCompany[]>('/own-companies/active')
     return response.data
   },
   getById: async (id: string): Promise<OwnCompany> => {
@@ -2093,7 +2093,7 @@ export const ownCompanyApi = {
     return response.data
   },
   create: async (data: Partial<OwnCompany>): Promise<OwnCompany> => {
-    const response = await api.post<OwnCompany>('/v1/own-companies', data)
+    const response = await api.post<OwnCompany>('/own-companies', data)
     return response.data
   },
   update: async (id: string, data: Partial<OwnCompany>): Promise<OwnCompany> => {
@@ -2122,7 +2122,7 @@ export interface Receipt {
 export const receiptApi = {
   list: async (transactionId?: string): Promise<Receipt[]> => {
     const params = transactionId ? { transactionId } : {}
-    const response = await api.get<Receipt[]>('/v1/receipts', { params })
+    const response = await api.get<Receipt[]>('/receipts', { params })
     return response.data
   },
   getById: async (id: string): Promise<Receipt> => {
@@ -2157,7 +2157,7 @@ export interface HandoverSheet {
 
 export const handoverSheetApi = {
   list: async (): Promise<HandoverSheet[]> => {
-    const response = await api.get<HandoverSheet[]>('/v1/handover-sheets')
+    const response = await api.get<HandoverSheet[]>('/handover-sheets')
     return response.data
   },
   getById: async (id: string): Promise<HandoverSheet> => {
@@ -2165,7 +2165,7 @@ export const handoverSheetApi = {
     return response.data
   },
   generate: async (fromCashDeskId: string, toCashDeskId: string, transferDate: string, amounts: CurrencyAmounts): Promise<HandoverSheet> => {
-    const response = await api.post<HandoverSheet>('/v1/handover-sheets/generate', {
+    const response = await api.post<HandoverSheet>('/handover-sheets/generate', {
       fromCashDeskId, toCashDeskId, transferDate, amounts
     })
     return response.data
@@ -2202,53 +2202,53 @@ export const reportExtendedApi = {
   getTransactionList: async (branchId: string | undefined, startDate: string, endDate: string): Promise<TransactionListReport> => {
     const params: Record<string, string> = { startDate, endDate }
     if (branchId) params.branchId = branchId
-    const response = await api.get<TransactionListReport>('/v1/reports-extended/transaction-list', { params })
+    const response = await api.get<TransactionListReport>('/reports-extended/transaction-list', { params })
     return response.data
   },
   getReceiptList: async (branchId: string | undefined, startDate: string, endDate: string): Promise<ReceiptListReport> => {
     const params: Record<string, string> = { startDate, endDate }
     if (branchId) params.branchId = branchId
-    const response = await api.get<ReceiptListReport>('/v1/reports-extended/receipt-list', { params })
+    const response = await api.get<ReceiptListReport>('/reports-extended/receipt-list', { params })
     return response.data
   },
   getFeeSummary: async (branchId: string | undefined, startDate: string, endDate: string): Promise<unknown> => {
     const params: Record<string, string> = { startDate, endDate }
     if (branchId) params.branchId = branchId
-    const response = await api.get('/v1/reports-extended/fee-summary', { params })
+    const response = await api.get('/reports-extended/fee-summary', { params })
     return response.data
   },
   getMonthlyInventory: async (branchId: string | undefined, year: number, month: number): Promise<unknown> => {
     const params: Record<string, string | number> = { year, month }
     if (branchId) params.branchId = branchId
-    const response = await api.get('/v1/reports-extended/monthly-inventory', { params })
+    const response = await api.get('/reports-extended/monthly-inventory', { params })
     return response.data
   },
   getMonthlyTurnover: async (branchId: string | undefined, year: number, month: number): Promise<unknown> => {
     const params: Record<string, string | number> = { year, month }
     if (branchId) params.branchId = branchId
-    const response = await api.get('/v1/reports-extended/monthly-turnover', { params })
+    const response = await api.get('/reports-extended/monthly-turnover', { params })
     return response.data
   },
   getMonthlyTransfers: async (branchId: string | undefined, year: number, month: number): Promise<unknown> => {
     const params: Record<string, string | number> = { year, month }
     if (branchId) params.branchId = branchId
-    const response = await api.get('/v1/reports-extended/monthly-transfers', { params })
+    const response = await api.get('/reports-extended/monthly-transfers', { params })
     return response.data
   },
   getHandlingCost: async (branchId: string | undefined, startDate: string, endDate: string): Promise<unknown> => {
     const params: Record<string, string> = { startDate, endDate }
     if (branchId) params.branchId = branchId
-    const response = await api.get('/v1/reports-extended/handling-cost', { params })
+    const response = await api.get('/reports-extended/handling-cost', { params })
     return response.data
   },
   getDailyCashDesk: async (cashDeskId: string, date: string): Promise<unknown> => {
-    const response = await api.get('/v1/reports-extended/daily-cash-desk', {
+    const response = await api.get('/reports-extended/daily-cash-desk', {
       params: { cashDeskId, date }
     })
     return response.data
   },
   getCurrentCashDeskStatus: async (cashDeskId: string): Promise<unknown> => {
-    const response = await api.get('/v1/reports-extended/current-cash-desk-status', {
+    const response = await api.get('/reports-extended/current-cash-desk-status', {
       params: { cashDeskId }
     })
     return response.data
@@ -2256,13 +2256,13 @@ export const reportExtendedApi = {
   getSuspiciousTransactions: async (branchId: string | undefined, startDate: string, endDate: string): Promise<unknown> => {
     const params: Record<string, string> = { startDate, endDate }
     if (branchId) params.branchId = branchId
-    const response = await api.get('/v1/reports-extended/suspicious-transactions', { params })
+    const response = await api.get('/reports-extended/suspicious-transactions', { params })
     return response.data
   },
   getCardTransactionFees: async (branchId: string | undefined, startDate: string, endDate: string): Promise<unknown> => {
     const params: Record<string, string> = { startDate, endDate }
     if (branchId) params.branchId = branchId
-    const response = await api.get('/v1/reports-extended/card-transaction-fees', { params })
+    const response = await api.get('/reports-extended/card-transaction-fees', { params })
     return response.data
   }
 }
@@ -2283,7 +2283,7 @@ export interface CashDeskBreak {
 export const cashDeskBreakApi = {
   list: async (cashDeskId?: string): Promise<CashDeskBreak[]> => {
     const params = cashDeskId ? { cashDeskId } : {}
-    const response = await api.get<CashDeskBreak[]>('/v1/cash-desk-breaks', { params })
+    const response = await api.get<CashDeskBreak[]>('/cash-desk-breaks', { params })
     return response.data
   },
   getActive: async (cashDeskId: string): Promise<CashDeskBreak | null> => {
@@ -2291,7 +2291,7 @@ export const cashDeskBreakApi = {
     return response.data
   },
   start: async (cashDeskId: string, breakType: string, reason?: string): Promise<CashDeskBreak> => {
-    const response = await api.post<CashDeskBreak>('/v1/cash-desk-breaks/start', null, {
+    const response = await api.post<CashDeskBreak>('/cash-desk-breaks/start', null, {
       params: { cashDeskId, breakType, reason }
     })
     return response.data
@@ -2324,28 +2324,28 @@ export const loggingApi = {
     const params: Record<string, string | number> = { page, size }
     if (from) params.from = from
     if (to) params.to = to
-    const response = await api.get('/v1/logs/system', { params })
+    const response = await api.get('/logs/system', { params })
     return response.data
   },
   getPosLogs: async (from?: string, to?: string, page = 0, size = 50): Promise<{ content: AuditLog[]; totalElements: number }> => {
     const params: Record<string, string | number> = { page, size }
     if (from) params.from = from
     if (to) params.to = to
-    const response = await api.get('/v1/logs/pos', { params })
+    const response = await api.get('/logs/pos', { params })
     return response.data
   },
   getNavLogs: async (from?: string, to?: string, page = 0, size = 50): Promise<{ content: AuditLog[]; totalElements: number }> => {
     const params: Record<string, string | number> = { page, size }
     if (from) params.from = from
     if (to) params.to = to
-    const response = await api.get('/v1/logs/nav', { params })
+    const response = await api.get('/logs/nav', { params })
     return response.data
   },
   exportToCsv: async (from?: string, to?: string): Promise<Blob> => {
     const params: Record<string, string> = {}
     if (from) params.from = from
     if (to) params.to = to
-    const response = await api.get('/v1/logs/export', { params, responseType: 'blob' })
+    const response = await api.get('/logs/export', { params, responseType: 'blob' })
     return response.data
   }
 }
@@ -2369,15 +2369,15 @@ export interface BranchGroup {
 
 export const branchGroupApi = {
   list: async (): Promise<BranchGroup[]> => {
-    const response = await api.get<BranchGroup[]>('/v1/branch-groups')
+    const response = await api.get<BranchGroup[]>('/branch-groups')
     return response.data
   },
   getActive: async (): Promise<BranchGroup[]> => {
-    const response = await api.get<BranchGroup[]>('/v1/branch-groups/active')
+    const response = await api.get<BranchGroup[]>('/branch-groups/active')
     return response.data
   },
   getRoots: async (): Promise<BranchGroup[]> => {
-    const response = await api.get<BranchGroup[]>('/v1/branch-groups/roots')
+    const response = await api.get<BranchGroup[]>('/branch-groups/roots')
     return response.data
   },
   getById: async (id: string): Promise<BranchGroup> => {
@@ -2385,7 +2385,7 @@ export const branchGroupApi = {
     return response.data
   },
   create: async (data: Partial<BranchGroup>, workerId: string): Promise<BranchGroup> => {
-    const response = await api.post<BranchGroup>('/v1/branch-groups', data, {
+    const response = await api.post<BranchGroup>('/branch-groups', data, {
       params: { workerId }
     })
     return response.data
@@ -2441,11 +2441,11 @@ export interface FeeDiscount {
 
 export const feeApi = {
   getTypes: async (): Promise<FeeType[]> => {
-    const response = await api.get<FeeType[]>('/v1/fees/types')
+    const response = await api.get<FeeType[]>('/fees/types')
     return response.data
   },
   createType: async (data: Partial<FeeType>): Promise<FeeType> => {
-    const response = await api.post<FeeType>('/v1/fees/types', data)
+    const response = await api.post<FeeType>('/fees/types', data)
     return response.data
   },
   updateType: async (id: string, data: Partial<FeeType>): Promise<FeeType> => {
@@ -2456,11 +2456,11 @@ export const feeApi = {
     await api.delete(`/v1/fees/types/${id}`)
   },
   getRates: async (): Promise<FeeRate[]> => {
-    const response = await api.get<FeeRate[]>('/v1/fees/rates')
+    const response = await api.get<FeeRate[]>('/fees/rates')
     return response.data
   },
   createRate: async (data: Partial<FeeRate>): Promise<FeeRate> => {
-    const response = await api.post<FeeRate>('/v1/fees/rates', data)
+    const response = await api.post<FeeRate>('/fees/rates', data)
     return response.data
   },
   updateRate: async (id: string, data: Partial<FeeRate>): Promise<FeeRate> => {
@@ -2471,11 +2471,11 @@ export const feeApi = {
     await api.delete(`/v1/fees/rates/${id}`)
   },
   getDiscounts: async (): Promise<FeeDiscount[]> => {
-    const response = await api.get<FeeDiscount[]>('/v1/fees/discounts')
+    const response = await api.get<FeeDiscount[]>('/fees/discounts')
     return response.data
   },
   createDiscount: async (data: Partial<FeeDiscount>): Promise<FeeDiscount> => {
-    const response = await api.post<FeeDiscount>('/v1/fees/discounts', data)
+    const response = await api.post<FeeDiscount>('/fees/discounts', data)
     return response.data
   },
   updateDiscount: async (id: string, data: Partial<FeeDiscount>): Promise<FeeDiscount> => {
@@ -2516,11 +2516,11 @@ export interface ProhibitedCompany {
 
 export const blacklistApi = {
   getPersons: async (): Promise<ProhibitedPerson[]> => {
-    const response = await api.get<ProhibitedPerson[]>('/v1/blacklist/persons')
+    const response = await api.get<ProhibitedPerson[]>('/blacklist/persons')
     return response.data
   },
   createPerson: async (data: Partial<ProhibitedPerson>): Promise<ProhibitedPerson> => {
-    const response = await api.post<ProhibitedPerson>('/v1/blacklist/persons', data)
+    const response = await api.post<ProhibitedPerson>('/blacklist/persons', data)
     return response.data
   },
   updatePerson: async (id: string, data: Partial<ProhibitedPerson>): Promise<ProhibitedPerson> => {
@@ -2531,11 +2531,11 @@ export const blacklistApi = {
     await api.delete(`/v1/blacklist/persons/${id}`)
   },
   getCompanies: async (): Promise<ProhibitedCompany[]> => {
-    const response = await api.get<ProhibitedCompany[]>('/v1/blacklist/companies')
+    const response = await api.get<ProhibitedCompany[]>('/blacklist/companies')
     return response.data
   },
   createCompany: async (data: Partial<ProhibitedCompany>): Promise<ProhibitedCompany> => {
-    const response = await api.post<ProhibitedCompany>('/v1/blacklist/companies', data)
+    const response = await api.post<ProhibitedCompany>('/blacklist/companies', data)
     return response.data
   },
   updateCompany: async (id: string, data: Partial<ProhibitedCompany>): Promise<ProhibitedCompany> => {
@@ -2548,14 +2548,14 @@ export const blacklistApi = {
   importPersons: async (file: File): Promise<void> => {
     const formData = new FormData()
     formData.append('file', file)
-    await api.post('/v1/blacklist/persons/import', formData, {
+    await api.post('/blacklist/persons/import', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
   },
   importCompanies: async (file: File): Promise<void> => {
     const formData = new FormData()
     formData.append('file', file)
-    await api.post('/v1/blacklist/companies/import', formData, {
+    await api.post('/blacklist/companies/import', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
   }
@@ -2577,7 +2577,7 @@ export interface AnonymousReport {
 
 export const anonymousReportApi = {
   list: async (): Promise<AnonymousReport[]> => {
-    const response = await api.get<AnonymousReport[]>('/v1/anonymous-reports')
+    const response = await api.get<AnonymousReport[]>('/anonymous-reports')
     return response.data
   },
   getById: async (id: string): Promise<AnonymousReport> => {
@@ -2585,7 +2585,7 @@ export const anonymousReportApi = {
     return response.data
   },
   create: async (data: Partial<AnonymousReport>): Promise<AnonymousReport> => {
-    const response = await api.post<AnonymousReport>('/v1/anonymous-reports', data)
+    const response = await api.post<AnonymousReport>('/anonymous-reports', data)
     return response.data
   },
   assign: async (id: string, assignedToId: string): Promise<AnonymousReport> => {
@@ -2619,7 +2619,7 @@ export interface CommissionRate {
 
 export const commissionRateApi = {
   list: async (): Promise<CommissionRate[]> => {
-    const response = await api.get<CommissionRate[]>('/v1/commission-rates')
+    const response = await api.get<CommissionRate[]>('/commission-rates')
     return response.data
   },
   getById: async (id: string): Promise<CommissionRate> => {
@@ -2627,7 +2627,7 @@ export const commissionRateApi = {
     return response.data
   },
   create: async (data: Partial<CommissionRate>): Promise<CommissionRate> => {
-    const response = await api.post<CommissionRate>('/v1/commission-rates', data)
+    const response = await api.post<CommissionRate>('/commission-rates', data)
     return response.data
   },
   update: async (id: string, data: Partial<CommissionRate>): Promise<CommissionRate> => {
@@ -2654,11 +2654,11 @@ export interface ArchiveTask {
 
 export const archivingApi = {
   listTasks: async (): Promise<ArchiveTask[]> => {
-    const response = await api.get<ArchiveTask[]>('/v1/archiving/tasks')
+    const response = await api.get<ArchiveTask[]>('/archiving/tasks')
     return response.data
   },
   createTask: async (data: Partial<ArchiveTask>): Promise<ArchiveTask> => {
-    const response = await api.post<ArchiveTask>('/v1/archiving/tasks', data)
+    const response = await api.post<ArchiveTask>('/archiving/tasks', data)
     return response.data
   },
   executeTask: async (id: string): Promise<ArchiveTask> => {
@@ -2679,7 +2679,7 @@ export interface ExchangeRateDisplay {
 
 export const exchangeRateDisplayApi = {
   list: async (): Promise<ExchangeRateDisplay[]> => {
-    const response = await api.get<ExchangeRateDisplay[]>('/v1/exchange-rate-display')
+    const response = await api.get<ExchangeRateDisplay[]>('/exchange-rate-display')
     return response.data
   },
   getCurrentRates: async (displayId: string): Promise<Record<string, unknown>> => {
@@ -2701,13 +2701,13 @@ export interface SynchronizationResult {
 
 export const synchronizationApi = {
   synchronize: async (branchId: string, workerId: string): Promise<SynchronizationResult> => {
-    const response = await api.post<SynchronizationResult>('/v1/synchronization/sync', null, {
+    const response = await api.post<SynchronizationResult>('/synchronization/sync', null, {
       params: { branchId, workerId }
     })
     return response.data
   },
   shouldAutoSync: async (branchId: string): Promise<boolean> => {
-    const response = await api.get<boolean>('/v1/synchronization/should-sync', {
+    const response = await api.get<boolean>('/synchronization/should-sync', {
       params: { branchId }
     })
     return response.data
@@ -2728,7 +2728,7 @@ export interface PosTerminal {
 
 export const posTerminalApi = {
   list: async (): Promise<PosTerminal[]> => {
-    const response = await api.get<PosTerminal[]>('/v1/pos-terminal')
+    const response = await api.get<PosTerminal[]>('/pos-terminal')
     return response.data
   },
   getById: async (id: string): Promise<PosTerminal> => {
@@ -2736,7 +2736,7 @@ export const posTerminalApi = {
     return response.data
   },
   processTransaction: async (terminalId: string, amount: number, currency: string): Promise<Record<string, unknown>> => {
-    const response = await api.post('/v1/pos-terminal/process-transaction', null, {
+    const response = await api.post('/pos-terminal/process-transaction', null, {
       params: { terminalId, amount, currency }
     })
     return response.data
@@ -2753,19 +2753,19 @@ export interface NavSendResult {
 
 export const navIntegrationApi = {
   sendTransaction: async (transactionId: string, comPort: string): Promise<NavSendResult> => {
-    const response = await api.post<NavSendResult>('/v1/nav-integration/send-transaction', null, {
+    const response = await api.post<NavSendResult>('/nav-integration/send-transaction', null, {
       params: { transactionId, comPort }
     })
     return response.data
   },
   receiveReceiptNumber: async (comPort: string): Promise<string> => {
-    const response = await api.get<string>('/v1/nav-integration/receive-receipt-number', {
+    const response = await api.get<string>('/nav-integration/receive-receipt-number', {
       params: { comPort }
     })
     return response.data
   },
   sendQrCode: async (qrCode: string, comPort: string): Promise<boolean> => {
-    const response = await api.post<boolean>('/v1/nav-integration/send-qr-code', null, {
+    const response = await api.post<boolean>('/nav-integration/send-qr-code', null, {
       params: { qrCode, comPort }
     })
     return response.data
@@ -2791,7 +2791,7 @@ export const documentStorageApi = {
     const params: Record<string, string> = {}
     if (entityType) params.entityType = entityType
     if (entityId) params.entityId = entityId
-    const response = await api.get<Document[]>('/v1/documents', { params })
+    const response = await api.get<Document[]>('/documents', { params })
     return response.data
   },
   upload: async (file: File, entityType?: string, entityId?: string): Promise<Document> => {
@@ -2799,7 +2799,7 @@ export const documentStorageApi = {
     formData.append('file', file)
     if (entityType) formData.append('entityType', entityType)
     if (entityId) formData.append('entityId', entityId)
-    const response = await api.post<Document>('/v1/documents', formData, {
+    const response = await api.post<Document>('/documents', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
     return response.data
@@ -2829,21 +2829,21 @@ export interface Notification {
 
 export const notificationApi = {
   list: async (): Promise<Notification[]> => {
-    const response = await api.get<Notification[]>('/v1/notifications')
+    const response = await api.get<Notification[]>('/notifications')
     return response.data
   },
   getUnread: async (): Promise<Notification[]> => {
-    const response = await api.get<Notification[]>('/v1/notifications/unread')
+    const response = await api.get<Notification[]>('/notifications/unread')
     return response.data
   },
   markAsRead: async (id: string): Promise<void> => {
     await api.post(`/v1/notifications/${id}/mark-read`)
   },
   markAllAsRead: async (): Promise<void> => {
-    await api.post('/v1/notifications/mark-all-read')
+    await api.post('/notifications/mark-all-read')
   },
   send: async (userId: string, title: string, message: string, type: string): Promise<Notification> => {
-    const response = await api.post<Notification>('/v1/notifications', {
+    const response = await api.post<Notification>('/notifications', {
       userId, title, message, type
     })
     return response.data
@@ -2868,7 +2868,7 @@ export interface OrganizationalSystemParameter {
 export const organizationalSystemParameterApi = {
   list: async (organizationId?: string): Promise<OrganizationalSystemParameter[]> => {
     const params = organizationId ? { organizationId } : {}
-    const response = await api.get<OrganizationalSystemParameter[]>('/v1/organizational-system-parameters', { params })
+    const response = await api.get<OrganizationalSystemParameter[]>('/organizational-system-parameters', { params })
     return response.data
   },
   getById: async (id: string): Promise<OrganizationalSystemParameter> => {
@@ -2876,7 +2876,7 @@ export const organizationalSystemParameterApi = {
     return response.data
   },
   create: async (data: Partial<OrganizationalSystemParameter>): Promise<OrganizationalSystemParameter> => {
-    const response = await api.post<OrganizationalSystemParameter>('/v1/organizational-system-parameters', data)
+    const response = await api.post<OrganizationalSystemParameter>('/organizational-system-parameters', data)
     return response.data
   },
   update: async (id: string, data: Partial<OrganizationalSystemParameter>): Promise<OrganizationalSystemParameter> => {
