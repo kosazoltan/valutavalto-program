@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import apiClient from '@/api/client';
 import DocumentScanner from '@/components/DocumentScanner';
-import type { CustomerDetail, CustomerCreateRequest, TransactionListItem } from '@/types';
+import type { CustomerDetail, CustomerCreateRequest, TransactionListItem, CustomerStats, CustomerRanking } from '@/types';
 
-type TabView = 'search' | 'detail' | 'create' | 'edit';
+type TabView = 'search' | 'detail' | 'create' | 'edit' | 'stats' | 'vip';
 
 export default function CustomerPage() {
   const navigate = useNavigate();
@@ -23,6 +23,10 @@ export default function CustomerPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showScanner, setShowScanner] = useState(false);
+  const [customerStats, setCustomerStats] = useState<CustomerStats | null>(null);
+  const [vipList, setVipList] = useState<CustomerRanking[]>([]);
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
+  const [isLoadingVip, setIsLoadingVip] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState<CustomerCreateRequest>({
@@ -141,6 +145,36 @@ export default function CustomerPage() {
     setTab('create');
   }, []);
 
+  const loadCustomerStats = useCallback(async (customerId: number) => {
+    setIsLoadingStats(true);
+    try {
+      const response = await apiClient.get<CustomerStats>(`/customers/${customerId}/stats`);
+      setCustomerStats(response.data);
+      setTab('stats');
+    } catch (err) {
+      console.error('[CustomerPage] Statisztika hiba:', err);
+      setError('Statisztika betöltés sikertelen.');
+    } finally {
+      setIsLoadingStats(false);
+    }
+  }, []);
+
+  const loadVipList = useCallback(async () => {
+    setIsLoadingVip(true);
+    try {
+      const response = await apiClient.get<CustomerRanking[]>('/customers/top', {
+        params: { limit: 20 },
+      });
+      setVipList(response.data);
+      setTab('vip');
+    } catch (err) {
+      console.error('[CustomerPage] VIP lista hiba:', err);
+      setError('VIP lista betöltés sikertelen.');
+    } finally {
+      setIsLoadingVip(false);
+    }
+  }, []);
+
   const updateField = useCallback(<K extends keyof CustomerCreateRequest>(
     field: K,
     value: CustomerCreateRequest[K],
@@ -152,7 +186,7 @@ export default function CustomerPage() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (tab === 'detail' || tab === 'create' || tab === 'edit') {
+        if (tab === 'detail' || tab === 'create' || tab === 'edit' || tab === 'stats' || tab === 'vip') {
           setTab('search');
           setError('');
           setSuccess('');
@@ -338,6 +372,13 @@ export default function CustomerPage() {
               >
                 ➕ Új ügyfél
               </button>
+              <button
+                onClick={() => void loadVipList()}
+                disabled={isLoadingVip}
+                className="rounded-lg border bg-purple-50 px-4 py-2 text-purple-700 hover:bg-purple-100"
+              >
+                {isLoadingVip ? '⏳' : '⭐'} VIP Top
+              </button>
             </div>
 
             {error && (
@@ -380,12 +421,21 @@ export default function CustomerPage() {
             <div className="rounded-xl border bg-white p-6">
               <div className="flex items-start justify-between">
                 <h2 className="text-xl font-bold text-gray-800">{selectedCustomer.name}</h2>
-                <button
-                  onClick={startEdit}
-                  className="rounded-lg bg-blue-100 px-3 py-1 text-sm text-blue-700 hover:bg-blue-200"
-                >
-                  ✏️ Módosítás
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => void loadCustomerStats(selectedCustomer.id)}
+                    disabled={isLoadingStats}
+                    className="rounded-lg bg-purple-100 px-3 py-1 text-sm text-purple-700 hover:bg-purple-200"
+                  >
+                    {isLoadingStats ? '⏳' : '📊'} Statisztika
+                  </button>
+                  <button
+                    onClick={startEdit}
+                    className="rounded-lg bg-blue-100 px-3 py-1 text-sm text-blue-700 hover:bg-blue-200"
+                  >
+                    ✏️ Módosítás
+                  </button>
+                </div>
               </div>
               <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                 <div>
@@ -478,6 +528,99 @@ export default function CustomerPage() {
 
         {tab === 'create' && renderForm('create')}
         {tab === 'edit' && renderForm('edit')}
+
+        {tab === 'stats' && customerStats && (
+          <div className="mx-auto max-w-2xl space-y-4">
+            <div className="rounded-xl border bg-white p-6">
+              <h2 className="mb-4 text-lg font-bold text-gray-800">📊 Ügyfél statisztika</h2>
+              <h3 className="mb-3 text-base font-semibold text-gray-700">{customerStats.customerName}</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="rounded-lg bg-blue-50 p-3">
+                  <span className="text-gray-500">Összes tranzakció</span>
+                  <p className="text-xl font-bold text-blue-700">{customerStats.totalTransactions}</p>
+                </div>
+                <div className="rounded-lg bg-green-50 p-3">
+                  <span className="text-gray-500">Összes forgalom (HUF)</span>
+                  <p className="text-xl font-bold text-green-700">
+                    {customerStats.totalVolumeHuf?.toLocaleString('hu-HU')} Ft
+                  </p>
+                </div>
+                <div className="rounded-lg bg-purple-50 p-3">
+                  <span className="text-gray-500">Átlag összeg</span>
+                  <p className="text-xl font-bold text-purple-700">
+                    {customerStats.averageAmount?.toLocaleString('hu-HU')} Ft
+                  </p>
+                </div>
+                <div className="rounded-lg bg-orange-50 p-3">
+                  <span className="text-gray-500">Preferált valuta</span>
+                  <p className="text-xl font-bold text-orange-700">{customerStats.preferredCurrency ?? '-'}</p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Első látogatás:</span>
+                  <p className="font-medium">{customerStats.firstVisit ? new Date(customerStats.firstVisit).toLocaleDateString('hu-HU') : '-'}</p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Utolsó látogatás:</span>
+                  <p className="font-medium">{customerStats.lastVisit ? new Date(customerStats.lastVisit).toLocaleDateString('hu-HU') : '-'}</p>
+                </div>
+              </div>
+              <div className="mt-4">
+                <button
+                  onClick={() => setTab('detail')}
+                  className="rounded-lg border px-4 py-2 text-gray-700 hover:bg-gray-50"
+                >
+                  ← Vissza az ügyfélhez
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === 'vip' && (
+          <div className="mx-auto max-w-3xl space-y-4">
+            <div className="rounded-xl border bg-white p-6">
+              <h2 className="mb-4 text-lg font-bold text-gray-800">⭐ Top ügyfelek</h2>
+              {vipList.length > 0 ? (
+                <div className="max-h-96 overflow-auto">
+                  <table className="w-full text-sm">
+                    <thead className="border-b text-left text-gray-500">
+                      <tr>
+                        <th className="pb-2">#</th>
+                        <th className="pb-2">Név</th>
+                        <th className="pb-2 text-right">Tranzakciók</th>
+                        <th className="pb-2 text-right">Forgalom (HUF)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {vipList.map((item) => (
+                        <tr key={item.rank} className="border-b last:border-0">
+                          <td className="py-2">
+                            {item.rank <= 3 ? ['🥇', '🥈', '🥉'][item.rank - 1] : item.rank}
+                          </td>
+                          <td className="py-2 font-medium">{item.customerName}</td>
+                          <td className="py-2 text-right font-mono">{item.transactionCount}</td>
+                          <td className="py-2 text-right font-mono">
+                            {item.totalVolumeHuf?.toLocaleString('hu-HU')} Ft
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400">Nincs adat.</p>
+              )}
+              <div className="mt-4">
+                <button
+                  onClick={() => setTab('search')}
+                  className="rounded-lg border px-4 py-2 text-gray-700 hover:bg-gray-50"
+                >
+                  ← Vissza a kereséshez
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Okmány szkenner modal */}

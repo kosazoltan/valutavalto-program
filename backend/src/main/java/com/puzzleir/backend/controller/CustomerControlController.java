@@ -4,6 +4,7 @@ import com.puzzleir.backend.dto.CreateRestrictionDto;
 import com.puzzleir.backend.dto.CustomerRestrictionDto;
 import com.puzzleir.backend.dto.CustomerScreeningLogDto;
 import com.puzzleir.backend.service.CustomerControlService;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,9 +25,6 @@ public class CustomerControlController {
 
     private final CustomerControlService customerControlService;
 
-    // TODO: workerId a JWT-ből
-    private static final Long TEMP_WORKER_ID = 1L;
-
     /**
      * GET /api/v1/customer-control/{id}/restrictions — Ügyfél korlátozásai
      */
@@ -45,7 +43,8 @@ public class CustomerControlController {
             @PathVariable Long id,
             @Valid @RequestBody CreateRestrictionDto dto) {
         log.info("POST /api/v1/customer-control/{}/restrict - típus: {}", id, dto.getRestrictionType());
-        CustomerRestrictionDto result = customerControlService.addRestriction(id, TEMP_WORKER_ID, dto);
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+        CustomerRestrictionDto result = customerControlService.addRestriction(id, workerId, dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 

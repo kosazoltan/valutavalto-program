@@ -1,0 +1,358 @@
+package hu.puzzleir.valuta.service;
+
+import com.puzzleir.backend.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.dto.receipt.ReceiptData;
+import hu.puzzleir.valuta.entity.Transaction;
+import hu.puzzleir.valuta.entity.Transfer;
+import hu.puzzleir.valuta.entity.TransactionType;
+import hu.puzzleir.valuta.repository.TransactionRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+
+/**
+ * Bizonylat generátor szolgáltatás.
+ *
+ * Bizonylat típusok:
+ * - E-YYMMDD-XXXX: Eladási bizonylat (valuta eladás)
+ * - V-YYMMDD-XXXX: Vételi bizonylat (valuta vétel)
+ * - A-YYMMDD-XXXX: Átvezetési bizonylat (irodák közti)
+ * - S-YYMMDD-XXXX: Sztornó bizonylat
+ */
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class ReceiptGeneratorService {
+
+    private final TransactionRepository transactionRepository;
+
+    private static final DateTimeFormatter RECEIPT_DATE_FORMAT = DateTimeFormatter.ofPattern("yyMMdd");
+    private static final AtomicLong SEQUENCE = new AtomicLong(1);
+
+    /**
+     * Eladási bizonylat generálása (ügyfélnek eladunk valutát)
+     * Prefix: E
+     */
+    @Transactional(readOnly = true)
+    public ReceiptData generateSellReceipt(Transaction tx) {
+        return generateTransactionReceipt(tx, "E", "SELL");
+    }
+
+    /**
+     * Vételi bizonylat generálása (ügyféltől veszünk valutát)
+     * Prefix: V
+     */
+    @Transactional(readOnly = true)
+    public ReceiptData generateBuyReceipt(Transaction tx) {
+        return generateTransactionReceipt(tx, "V", "BUY");
+    }
+
+    /**
+     * Átvezetési bizonylat generálása (irodák közti szállítás)
+     * Prefix: A
+     */
+    public ReceiptData generateTransferReceipt(Transfer transfer) {
+        String receiptNumber = generateReceiptNumber("A");
+
+        List<ReceiptData.ReceiptLineData> lines = new ArrayList<>();
+        lines.add(ReceiptData.ReceiptLineData.builder()
+                .label("Forrás iroda").value(transfer.getFromBranch().getName()).build());
+        lines.add(ReceiptData.ReceiptLineData.builder()
+                .label("Cél iroda").value(transfer.getToBranch().getName()).build());
+        lines.add(ReceiptData.ReceiptLineData.builder()
+                .label("Szállítólevél szám").value(transfer.getTransferNumber()).build());
+
+        return ReceiptData.builder()
+                .receiptNumber(receiptNumber)
+                .receiptType("TRANSFER")
+                .companyName("") // kitöltendő context alapján
+                .branchName(transfer.getFromBranch().getName())
+                .workerName(transfer.getFromWorker().getName())
+                .date(LocalDateTime.now())
+                .currencyCode(transfer.getCurrency().getCode())
+                .foreignAmount(transfer.getAmount())
+                .rate(BigDecimal.ZERO)
+                .hufAmount(transfer.getHufValue() != null ? transfer.getHufValue() : BigDecimal.ZERO)
+                .lines(lines)
+                .qrCode(receiptNumber)
+                .build();
+    }
+
+    /**
+     * Sztornó bizonylat generálása
+     * Prefix: S
+     */
+    @Transactional(readOnly = true)
+    public ReceiptData generateStornoReceipt(Transaction stornoTx) {
+        String receiptNumber = generateReceiptNumber("S");
+
+        List<ReceiptData.ReceiptLineData> lines = new ArrayList<>();
+        lines.add(ReceiptData.ReceiptLineData.builder()
+                .label("Sztornó bizonylat szám").value(receiptNumber).build());
+        if (stornoTx.getOriginalTransaction() != null) {
+            lines.add(ReceiptData.ReceiptLineData.builder()
+                    .label("Eredeti bizonylat").value(stornoTx.getOriginalTransaction().getReceiptNumber()).build());
+        }
+        lines.add(ReceiptData.ReceiptLineData.builder()
+                .label("Sztornó ok").value(stornoTx.getReversalReason() != null ? stornoTx.getReversalReason() : "").build());
+
+        return ReceiptData.builder()
+                .receiptNumber(receiptNumber)
+                .receiptType("STORNO")
+                .companyName(stornoTx.getCompany() != null ? stornoTx.getCompany().getName() : "")
+                .branchName(stornoTx.getBranch() != null ? stornoTx.getBranch().getName() : "")
+                .workerName(stornoTx.getWorker() != null ? stornoTx.getWorker().getName() : "")
+                .date(LocalDateTime.now())
+                .currencyCode(stornoTx.getCurrency() != null ? stornoTx.getCurrency().getCode() : "")
+                .foreignAmount(stornoTx.getCurrencyAmount())
+                .rate(stornoTx.getExchangeRate())
+                .hufAmount(stornoTx.getHufAmount())
+                .customerName(stornoTx.getCustomerName())
+                .customerIdNumber(stornoTx.getCustomerDocumentNumber())
+                .lines(lines)
+                .qrCode(receiptNumber)
+                .build();
+    }
+
+    /**
+     * Zárási bizonylat generálása
+     */
+    public ReceiptData generateClosingReceipt(ClosingData data) {
+        String receiptNumber = generateReceiptNumber("Z");
+
+        List<ReceiptData.ReceiptLineData> lines = new ArrayList<>();
+        lines.add(ReceiptData.ReceiptLineData.builder()
+                .label("Zárás dátuma").value(data.getClosingDate().toString()).build());
+        lines.add(ReceiptData.ReceiptLineData.builder()
+                .label("Tranzakciók száma").value(String.valueOf(data.getTransactionCount())).build());
+        lines.add(ReceiptData.ReceiptLineData.builder()
+                .label("Napi forgalom (HUF)").value(data.getTotalHufTurnover().toPlainString()).build());
+
+        return ReceiptData.builder()
+                .receiptNumber(receiptNumber)
+                .receiptType("CLOSING")
+                .companyName(data.getCompanyName())
+                .branchName(data.getBranchName())
+                .workerName(data.getWorkerName())
+                .date(LocalDateTime.now())
+                .hufAmount(data.getTotalHufTurnover())
+                .lines(lines)
+                .qrCode(receiptNumber)
+                .build();
+    }
+
+    /**
+     * ESC/POS nyomtató formátum
+     */
+    public byte[] formatForEscPos(ReceiptData data) {
+        StringBuilder sb = new StringBuilder();
+
+        // ESC/POS init
+        sb.append("\u001B@"); // Initialize printer
+        sb.append("\u001Ba\u0001"); // Center alignment
+
+        // Fejléc
+        sb.append("\u001B!\u0010"); // Double-height
+        sb.append(data.getCompanyName() != null ? data.getCompanyName() : "").append("\n");
+        sb.append("\u001B!\u0000"); // Normal
+        sb.append(data.getBranchName() != null ? data.getBranchName() : "").append("\n");
+        sb.append("================================\n");
+
+        sb.append("\u001Ba\u0000"); // Left alignment
+
+        // Bizonylat adatok
+        sb.append("Bizonylat: ").append(data.getReceiptNumber()).append("\n");
+        sb.append("Típus:     ").append(data.getReceiptType()).append("\n");
+        sb.append("Dátum:     ").append(data.getDate() != null ?
+                data.getDate().format(DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm")) : "").append("\n");
+        sb.append("Pénztáros: ").append(data.getWorkerName() != null ? data.getWorkerName() : "").append("\n");
+        sb.append("--------------------------------\n");
+
+        // Valuta adatok
+        if (data.getCurrencyCode() != null) {
+            sb.append("Valuta:    ").append(data.getCurrencyCode()).append("\n");
+            sb.append("Összeg:    ").append(data.getForeignAmount() != null ? data.getForeignAmount().toPlainString() : "").append("\n");
+            sb.append("Árfolyam:  ").append(data.getRate() != null ? data.getRate().toPlainString() : "").append("\n");
+            sb.append("HUF:       ").append(data.getHufAmount() != null ? data.getHufAmount().toPlainString() : "").append(" Ft\n");
+        }
+
+        if (data.getHandlingFee() != null && data.getHandlingFee().compareTo(BigDecimal.ZERO) > 0) {
+            sb.append("Kezelési díj: ").append(data.getHandlingFee().toPlainString()).append(" Ft\n");
+        }
+
+        sb.append("--------------------------------\n");
+
+        // Ügyfél
+        if (data.getCustomerName() != null && !data.getCustomerName().isBlank()) {
+            sb.append("Ügyfél:    ").append(data.getCustomerName()).append("\n");
+        }
+        if (data.getCustomerIdNumber() != null && !data.getCustomerIdNumber().isBlank()) {
+            sb.append("Okmány:    ").append(data.getCustomerIdNumber()).append("\n");
+        }
+
+        // Extra sorok
+        for (ReceiptData.ReceiptLineData line : data.getLines()) {
+            sb.append(line.getLabel()).append(": ").append(line.getValue()).append("\n");
+        }
+
+        sb.append("================================\n");
+        sb.append(data.getSignatureLine()).append("\n\n\n");
+
+        // Paper cut
+        sb.append("\u001DVA\u0003"); // Partial cut
+
+        return sb.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    /**
+     * PDF formátum generálása (egyszerűsített text-based)
+     */
+    public byte[] formatForPdf(ReceiptData data) {
+        // Egyszerűsített: szöveges PDF tartalom generálása
+        // Éles környezetben iText/OpenPDF/Apache PDFBox lenne
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("=== BIZONYLAT ===\n\n");
+        sb.append(data.getCompanyName() != null ? data.getCompanyName() : "").append("\n");
+        sb.append(data.getBranchName() != null ? data.getBranchName() : "").append("\n\n");
+
+        sb.append("Bizonylat szám: ").append(data.getReceiptNumber()).append("\n");
+        sb.append("Típus: ").append(data.getReceiptType()).append("\n");
+        sb.append("Dátum: ").append(data.getDate() != null ?
+                data.getDate().format(DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm:ss")) : "").append("\n");
+        sb.append("Pénztáros: ").append(data.getWorkerName() != null ? data.getWorkerName() : "").append("\n\n");
+
+        if (data.getCurrencyCode() != null) {
+            sb.append("Valuta: ").append(data.getCurrencyCode()).append("\n");
+            sb.append("Összeg: ").append(data.getForeignAmount() != null ? data.getForeignAmount().toPlainString() : "0").append("\n");
+            sb.append("Árfolyam: ").append(data.getRate() != null ? data.getRate().toPlainString() : "0").append("\n");
+            sb.append("HUF összeg: ").append(data.getHufAmount() != null ? data.getHufAmount().toPlainString() : "0").append(" Ft\n\n");
+        }
+
+        if (data.getCustomerName() != null) {
+            sb.append("Ügyfél: ").append(data.getCustomerName()).append("\n");
+        }
+        if (data.getCustomerIdNumber() != null) {
+            sb.append("Okmányszám: ").append(data.getCustomerIdNumber()).append("\n");
+        }
+
+        sb.append("\n");
+        for (ReceiptData.ReceiptLineData line : data.getLines()) {
+            sb.append(line.getLabel()).append(": ").append(line.getValue()).append("\n");
+        }
+
+        sb.append("\n").append(data.getSignatureLine()).append("\n");
+
+        return sb.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    // ============ Tranzakció ID → Receipt ============
+
+    /**
+     * Tranzakció ID alapján PDF bizonylat generálása
+     */
+    @Transactional(readOnly = true)
+    public byte[] generatePdfForTransaction(Long transactionId) {
+        Transaction tx = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tranzakció nem található: " + transactionId));
+
+        ReceiptData data;
+        if (tx.isReversal()) {
+            data = generateStornoReceipt(tx);
+        } else if (tx.getTransactionType() == TransactionType.SELL) {
+            data = generateSellReceipt(tx);
+        } else {
+            data = generateBuyReceipt(tx);
+        }
+
+        return formatForPdf(data);
+    }
+
+    /**
+     * Tranzakció ID alapján ESC/POS bizonylat generálása
+     */
+    @Transactional(readOnly = true)
+    public byte[] generateEscPosForTransaction(Long transactionId) {
+        Transaction tx = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tranzakció nem található: " + transactionId));
+
+        ReceiptData data;
+        if (tx.isReversal()) {
+            data = generateStornoReceipt(tx);
+        } else if (tx.getTransactionType() == TransactionType.SELL) {
+            data = generateSellReceipt(tx);
+        } else {
+            data = generateBuyReceipt(tx);
+        }
+
+        return formatForEscPos(data);
+    }
+
+    // ============ HELPERS ============
+
+    private ReceiptData generateTransactionReceipt(Transaction tx, String prefix, String type) {
+        String receiptNumber = generateReceiptNumber(prefix);
+
+        List<ReceiptData.ReceiptLineData> lines = new ArrayList<>();
+        lines.add(ReceiptData.ReceiptLineData.builder()
+                .label("Eredeti bizonylat szám").value(tx.getReceiptNumber()).build());
+
+        if (tx.getHandlingFee() != null && tx.getHandlingFee().compareTo(BigDecimal.ZERO) > 0) {
+            lines.add(ReceiptData.ReceiptLineData.builder()
+                    .label("Kezelési díj").value(tx.getHandlingFee().toPlainString() + " Ft").build());
+        }
+
+        return ReceiptData.builder()
+                .receiptNumber(receiptNumber)
+                .receiptType(type)
+                .companyName(tx.getCompany() != null ? tx.getCompany().getName() : "")
+                .branchName(tx.getBranch() != null ? tx.getBranch().getName() : "")
+                .workerName(tx.getWorker() != null ? tx.getWorker().getName() : "")
+                .date(LocalDateTime.now())
+                .currencyCode(tx.getCurrency() != null ? tx.getCurrency().getCode() : "")
+                .foreignAmount(tx.getCurrencyAmount())
+                .rate(tx.getExchangeRate())
+                .hufAmount(tx.getHufAmount())
+                .handlingFee(tx.getHandlingFee())
+                .customerName(tx.getCustomerName())
+                .customerIdNumber(tx.getCustomerDocumentNumber())
+                .lines(lines)
+                .qrCode(receiptNumber)
+                .build();
+    }
+
+    /**
+     * Bizonylat szám generálása: PREFIX-YYMMDD-XXXX
+     */
+    private String generateReceiptNumber(String prefix) {
+        String datePart = LocalDate.now().format(RECEIPT_DATE_FORMAT);
+        long seq = SEQUENCE.getAndIncrement();
+        return String.format("%s-%s-%04d", prefix, datePart, seq);
+    }
+
+    /**
+     * Zárási adat DTO (belső)
+     */
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class ClosingData {
+        private String companyName;
+        private String branchName;
+        private String workerName;
+        private LocalDate closingDate;
+        private int transactionCount;
+        private BigDecimal totalHufTurnover;
+    }
+}

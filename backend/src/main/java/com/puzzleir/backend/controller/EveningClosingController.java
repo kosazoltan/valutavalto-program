@@ -2,6 +2,7 @@ package com.puzzleir.backend.controller;
 
 import com.puzzleir.backend.dto.EveningClosingDto;
 import com.puzzleir.backend.service.EveningClosingService;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -21,9 +22,6 @@ public class EveningClosingController {
 
     private final EveningClosingService eveningClosingService;
 
-    // TODO: companyId a JWT-ből
-    private static final UUID TEMP_COMPANY_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
-
     /**
      * POST /api/v1/evening-closing/prepare — Esti zárás előkészítése
      */
@@ -32,8 +30,9 @@ public class EveningClosingController {
             @RequestHeader(value = "X-Branch-Id") UUID branchId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         log.info("POST /api/v1/evening-closing/prepare - branch: {}", branchId);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         LocalDate closingDate = date != null ? date : LocalDate.now();
-        EveningClosingDto result = eveningClosingService.prepareEvening(TEMP_COMPANY_ID, branchId, closingDate);
+        EveningClosingDto result = eveningClosingService.prepareEvening(companyId, branchId, closingDate);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 

@@ -41,4 +41,46 @@ describe('API modulok importálhatóság', () => {
     const mod = await import('@/api/dailyReport');
     expect(mod).toBeDefined();
   });
+
+  it('trades API modul importálható', async () => {
+    const mod = await import('@/api/trades');
+    expect(mod).toBeDefined();
+    expect(mod.proposeTrade).toBeDefined();
+    expect(typeof mod.proposeTrade).toBe('function');
+  });
+
+  it('sync API modul importálható', async () => {
+    const mod = await import('@/api/sync');
+    expect(mod).toBeDefined();
+    expect(mod.syncRates).toBeDefined();
+    expect(typeof mod.syncRates).toBe('function');
+  });
+
+  it('dashboard API modul importálható', async () => {
+    const mod = await import('@/api/dashboard');
+    expect(mod).toBeDefined();
+    expect(mod.getDashboardSummary).toBeDefined();
+    expect(typeof mod.getDashboardSummary).toBe('function');
+  });
+
+  it('monitoring API modul importálható', async () => {
+    const mod = await import('@/api/monitoring');
+    expect(mod).toBeDefined();
+    expect(mod.sendHeartbeat).toBeDefined();
+    expect(typeof mod.sendHeartbeat).toBe('function');
+  });
+
+  it('backup API modul importálható', async () => {
+    const mod = await import('@/api/backup');
+    expect(mod).toBeDefined();
+    expect(mod.createBackup).toBeDefined();
+    expect(typeof mod.createBackup).toBe('function');
+  });
+
+  it('license API modul importálható', async () => {
+    const mod = await import('@/api/license');
+    expect(mod).toBeDefined();
+    expect(mod.getLicenseStatus).toBeDefined();
+    expect(typeof mod.getLicenseStatus).toBe('function');
+  });
 });

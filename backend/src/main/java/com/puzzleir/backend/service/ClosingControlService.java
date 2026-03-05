@@ -4,6 +4,7 @@ import com.puzzleir.backend.dto.ClosingControlDto;
 import com.puzzleir.backend.entity.ClosingControl;
 import com.puzzleir.backend.exception.ResourceNotFoundException;
 import com.puzzleir.backend.repository.ClosingControlRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -56,7 +57,7 @@ public class ClosingControlService {
                 .orElseGet(() -> {
                     ClosingControl newControl = ClosingControl.builder()
                             .branchId(branchId)
-                            .companyId(UUID.randomUUID()) // TODO: company ID from context
+                            .companyId(SecurityUtils.getCurrentCompanyId())
                             .controlDate(today)
                             .dailyClosingDone(false)
                             .eveningClosingDone(false)

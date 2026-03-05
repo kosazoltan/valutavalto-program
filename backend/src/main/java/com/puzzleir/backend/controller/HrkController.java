@@ -3,6 +3,7 @@ package com.puzzleir.backend.controller;
 import com.puzzleir.backend.dto.CreateHrkTransactionDto;
 import com.puzzleir.backend.dto.HrkTransactionDto;
 import com.puzzleir.backend.service.HrkService;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,10 +25,6 @@ public class HrkController {
 
     private final HrkService hrkService;
 
-    // TODO: companyId és workerId a JWT-ből — egyelőre header-ből
-    private static final UUID TEMP_COMPANY_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
-    private static final Long TEMP_WORKER_ID = 1L;
-
     /**
      * POST /api/v1/hrk/handover — Pénztár → Bank átadás
      */
@@ -36,7 +33,9 @@ public class HrkController {
             @RequestHeader(value = "X-Branch-Id") UUID branchId,
             @Valid @RequestBody CreateHrkTransactionDto dto) {
         log.info("POST /api/v1/hrk/handover - branch: {}", branchId);
-        HrkTransactionDto result = hrkService.handover(TEMP_COMPANY_ID, branchId, TEMP_WORKER_ID, dto);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+        HrkTransactionDto result = hrkService.handover(companyId, branchId, workerId, dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
@@ -48,7 +47,9 @@ public class HrkController {
             @RequestHeader(value = "X-Branch-Id") UUID branchId,
             @Valid @RequestBody CreateHrkTransactionDto dto) {
         log.info("POST /api/v1/hrk/receive - branch: {}", branchId);
-        HrkTransactionDto result = hrkService.receive(TEMP_COMPANY_ID, branchId, TEMP_WORKER_ID, dto);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+        HrkTransactionDto result = hrkService.receive(companyId, branchId, workerId, dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 

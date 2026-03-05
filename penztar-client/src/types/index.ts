@@ -1252,3 +1252,101 @@ export type PageRouteBatch4B =
   | PageRouteBatch3
   | '/backup'
   | '/print-templates';
+
+// ============================================================
+// Batch 5A — Árfolyam motor + Készlet + Bizonylat + Ügyfélkezelés
+// ============================================================
+
+// --- Árfolyam történet ---
+export interface RateHistoryData {
+  id: number;
+  currencyCode: string;
+  buyRate: number;
+  sellRate: number;
+  mnbRate: number | null;
+  spread: number | null;
+  category: RateCategoryType;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  setBy: number | null;
+  approvedBy: number | null;
+  branchId: string | null;
+  companyId: string;
+  createdAt: string;
+}
+
+// --- Készlet mozgás napló ---
+export type InventoryMovementType =
+  | 'BUY' | 'SELL' | 'TRANSFER_IN' | 'TRANSFER_OUT'
+  | 'ADJUSTMENT' | 'OPENING' | 'CLOSING';
+
+export interface InventoryMovementLogItem {
+  id: number;
+  branchId: string;
+  currencyCode: string;
+  amount: number;
+  movementType: string;
+  transactionId: number | null;
+  workerId: number | null;
+  balanceBefore: number | null;
+  balanceAfter: number | null;
+  createdAt: string;
+  notes: string | null;
+}
+
+export interface InventoryBalanceData {
+  branchId: string;
+  currencyCode: string;
+  openingBalance: number;
+  closingBalance: number;
+  totalIn: number;
+  totalOut: number;
+  date: string;
+}
+
+// --- Bizonylat (Receipt) ---
+export type ReceiptType = 'SELL' | 'BUY' | 'TRANSFER' | 'STORNO' | 'CLOSING';
+
+export interface ReceiptDataFull {
+  receiptNumber: string;
+  receiptType: ReceiptType;
+  companyName: string;
+  branchName: string;
+  workerName: string;
+  date: string;
+  currencyCode: string | null;
+  foreignAmount: number | null;
+  rate: number | null;
+  hufAmount: number | null;
+  handlingFee: number;
+  customerName: string | null;
+  customerIdNumber: string | null;
+  lines: Array<{ label: string; value: string }>;
+  qrCode: string | null;
+  signatureLine: string;
+}
+
+// --- Ügyfél statisztika ---
+export interface CustomerStats {
+  customerId: number;
+  customerName: string;
+  totalTransactions: number;
+  totalVolumeHuf: number;
+  averageAmount: number;
+  firstVisit: string | null;
+  lastVisit: string | null;
+  preferredCurrency: string | null;
+}
+
+export interface CustomerRanking {
+  customerId: number | null;
+  customerName: string;
+  transactionCount: number;
+  totalVolumeHuf: number;
+  rank: number;
+}
+
+// --- Navigáció kiegészítés (Batch 5A) ---
+export type PageRouteBatch5A =
+  | PageRouteBatch4B
+  | '/rate-history';
