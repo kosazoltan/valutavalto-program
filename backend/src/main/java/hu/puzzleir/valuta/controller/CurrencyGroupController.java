@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.entity.CurrencyGroup;
 import hu.puzzleir.valuta.service.CurrencyGroupService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,12 +32,12 @@ public class CurrencyGroupController {
     }
 
     @PostMapping
-    public ResponseEntity<CurrencyGroup> create(@RequestBody CurrencyGroup entity) {
+    public ResponseEntity<CurrencyGroup> create(@Valid @RequestBody CurrencyGroup entity) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(entity));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<CurrencyGroup> update(@PathVariable UUID id, @RequestBody CurrencyGroup entity) {
+    public ResponseEntity<CurrencyGroup> update(@PathVariable UUID id, @Valid @RequestBody CurrencyGroup entity) {
         return ResponseEntity.ok(service.update(id, entity));
     }
 

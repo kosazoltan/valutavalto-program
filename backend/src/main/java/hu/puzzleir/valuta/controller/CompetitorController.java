@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.entity.Competitor;
 import hu.puzzleir.valuta.service.CompetitorService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,12 +32,12 @@ public class CompetitorController {
     }
 
     @PostMapping
-    public ResponseEntity<Competitor> create(@RequestBody Competitor entity) {
+    public ResponseEntity<Competitor> create(@Valid @RequestBody Competitor entity) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(entity));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Competitor> update(@PathVariable UUID id, @RequestBody Competitor entity) {
+    public ResponseEntity<Competitor> update(@PathVariable UUID id, @Valid @RequestBody Competitor entity) {
         return ResponseEntity.ok(service.update(id, entity));
     }
 

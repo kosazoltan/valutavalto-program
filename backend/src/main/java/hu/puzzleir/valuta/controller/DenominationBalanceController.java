@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.dto.denomination.DenominationBalanceDto;
 import hu.puzzleir.valuta.dto.denomination.DenominationQuantityUpdateRequestDto;
 import hu.puzzleir.valuta.service.DenominationBalanceService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -75,7 +76,7 @@ public class DenominationBalanceController {
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<DenominationBalanceDto>> batchUpdate(
             @PathVariable UUID cashDeskId,
-            @RequestBody List<DenominationQuantityUpdateRequestDto> updates) {
+            @Valid @RequestBody List<DenominationQuantityUpdateRequestDto> updates) {
         List<DenominationBalanceDto> result = denominationBalanceService.batchUpdate(cashDeskId, updates);
         return ResponseEntity.ok(result);
     }

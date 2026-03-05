@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.entity.CommissionRate;
 import hu.puzzleir.valuta.service.CommissionRateService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,12 +32,12 @@ public class CommissionRateController {
     }
 
     @PostMapping
-    public ResponseEntity<CommissionRate> create(@RequestBody CommissionRate entity) {
+    public ResponseEntity<CommissionRate> create(@Valid @RequestBody CommissionRate entity) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(entity));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<CommissionRate> update(@PathVariable UUID id, @RequestBody CommissionRate entity) {
+    public ResponseEntity<CommissionRate> update(@PathVariable UUID id, @Valid @RequestBody CommissionRate entity) {
         return ResponseEntity.ok(service.update(id, entity));
     }
 

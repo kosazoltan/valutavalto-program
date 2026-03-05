@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -30,6 +29,28 @@ public class ReportExtendedService {
     private final TransferRepository transferRepository;
     private final DenominationRepository denominationRepository;
 
+    // ============ NULL-SAFE HELPER METHODS ============
+
+    private static BigDecimal safeAmount(BigDecimal value) {
+        return value != null ? value : BigDecimal.ZERO;
+    }
+
+    private static String safeCurrencyCode(Transaction t) {
+        return t.getCurrency() != null ? t.getCurrency().getCode() : "N/A";
+    }
+
+    private static String safeCurrencyCode(CashBalance cb) {
+        return cb.getCurrency() != null ? cb.getCurrency().getCode() : "N/A";
+    }
+
+    private static String safeCurrencyName(CashBalance cb) {
+        return cb.getCurrency() != null ? cb.getCurrency().getName() : "N/A";
+    }
+
+    private static String safeEnumName(Enum<?> value) {
+        return value != null ? value.name() : "UNKNOWN";
+    }
+
     // ============ TRANSACTION LIST ============
 
     public Map<String, Object> getTransactionList(UUID branchId, LocalDate startDate, LocalDate endDate) {
@@ -47,12 +68,12 @@ public class ReportExtendedService {
 
         BigDecimal totalHuf = transactions.stream()
                 .filter(Transaction::isActive)
-                .map(Transaction::getHufAmount)
+                .map(t -> safeAmount(t.getHufAmount()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal totalFees = transactions.stream()
                 .filter(Transaction::isActive)
-                .map(Transaction::getHandlingFee)
+                .map(t -> safeAmount(t.getHandlingFee()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Map<String, Object> summary = new LinkedHashMap<>();
@@ -66,15 +87,15 @@ public class ReportExtendedService {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("id", t.getId());
             m.put("receiptNumber", t.getReceiptNumber());
-            m.put("transactionType", t.getTransactionType().name());
+            m.put("transactionType", safeEnumName(t.getTransactionType()));
             m.put("transactionDate", t.getTransactionDate());
             m.put("transactionTime", t.getTransactionTime());
-            m.put("currencyCode", t.getCurrency().getCode());
-            m.put("currencyAmount", t.getCurrencyAmount());
-            m.put("exchangeRate", t.getExchangeRate());
-            m.put("hufAmount", t.getHufAmount());
-            m.put("handlingFee", t.getHandlingFee());
-            m.put("status", t.getStatus().name());
+            m.put("currencyCode", safeCurrencyCode(t));
+            m.put("currencyAmount", safeAmount(t.getCurrencyAmount()));
+            m.put("exchangeRate", safeAmount(t.getExchangeRate()));
+            m.put("hufAmount", safeAmount(t.getHufAmount()));
+            m.put("handlingFee", safeAmount(t.getHandlingFee()));
+            m.put("status", safeEnumName(t.getStatus()));
             m.put("customerName", t.getCustomerName());
             return m;
         }).collect(Collectors.toList());
@@ -103,20 +124,20 @@ public class ReportExtendedService {
         List<Map<String, Object>> receipts = transactions.stream().map(t -> {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("receiptNumber", t.getReceiptNumber());
-            m.put("transactionType", t.getTransactionType().name());
+            m.put("transactionType", safeEnumName(t.getTransactionType()));
             m.put("date", t.getTransactionDate());
             m.put("time", t.getTransactionTime());
-            m.put("currencyCode", t.getCurrency().getCode());
-            m.put("currencyAmount", t.getCurrencyAmount());
-            m.put("hufAmount", t.getHufAmount());
-            m.put("handlingFee", t.getHandlingFee());
+            m.put("currencyCode", safeCurrencyCode(t));
+            m.put("currencyAmount", safeAmount(t.getCurrencyAmount()));
+            m.put("hufAmount", safeAmount(t.getHufAmount()));
+            m.put("handlingFee", safeAmount(t.getHandlingFee()));
             m.put("customerName", t.getCustomerName());
             m.put("printed", t.getPrinted());
             return m;
         }).collect(Collectors.toList());
 
         BigDecimal totalHuf = transactions.stream()
-                .map(Transaction::getHufAmount)
+                .map(t -> safeAmount(t.getHufAmount()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Map<String, Object> summary = new LinkedHashMap<>();
@@ -145,19 +166,19 @@ public class ReportExtendedService {
         }
 
         BigDecimal totalHandlingFees = transactions.stream()
-                .map(Transaction::getHandlingFee)
+                .map(t -> safeAmount(t.getHandlingFee()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal totalInitialFees = transactions.stream()
-                .map(Transaction::getInitialFee)
+                .map(t -> safeAmount(t.getInitialFee()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal totalDiscounts = transactions.stream()
-                .map(Transaction::getDiscountAmount)
+                .map(t -> safeAmount(t.getDiscountAmount()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         long feeTransactionCount = transactions.stream()
-                .filter(t -> t.getHandlingFee().compareTo(BigDecimal.ZERO) > 0)
+                .filter(t -> safeAmount(t.getHandlingFee()).compareTo(BigDecimal.ZERO) > 0)
                 .count();
 
         Map<String, Object> result = new LinkedHashMap<>();
@@ -183,15 +204,15 @@ public class ReportExtendedService {
 
         List<Map<String, Object>> balanceList = balances.stream().map(cb -> {
             Map<String, Object> m = new LinkedHashMap<>();
-            m.put("currencyCode", cb.getCurrency().getCode());
-            m.put("currencyName", cb.getCurrency().getName());
-            m.put("currentBalance", cb.getCurrentBalance());
-            m.put("openingBalance", cb.getOpeningBalance());
+            m.put("currencyCode", safeCurrencyCode(cb));
+            m.put("currencyName", safeCurrencyName(cb));
+            m.put("currentBalance", safeAmount(cb.getCurrentBalance()));
+            m.put("openingBalance", safeAmount(cb.getOpeningBalance()));
             return m;
         }).collect(Collectors.toList());
 
         BigDecimal totalDenominationValue = denominations.stream()
-                .map(Denomination::getTotalValue)
+                .map(d -> safeAmount(d.getTotalValue()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Map<String, Object> result = new LinkedHashMap<>();
@@ -220,16 +241,16 @@ public class ReportExtendedService {
 
         BigDecimal totalBuy = transactions.stream()
                 .filter(t -> t.getTransactionType() == TransactionType.BUY)
-                .map(Transaction::getHufAmount)
+                .map(t -> safeAmount(t.getHufAmount()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal totalSell = transactions.stream()
                 .filter(t -> t.getTransactionType() == TransactionType.SELL)
-                .map(Transaction::getHufAmount)
+                .map(t -> safeAmount(t.getHufAmount()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal totalFees = transactions.stream()
-                .map(Transaction::getHandlingFee)
+                .map(t -> safeAmount(t.getHandlingFee()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         long buyCount = transactions.stream()
@@ -267,19 +288,23 @@ public class ReportExtendedService {
         LocalDate end = start.withDayOfMonth(start.lengthOfMonth());
 
         List<Transfer> monthlyOutgoing = outgoing.stream()
-                .filter(t -> !t.getTransferDate().isBefore(start) && !t.getTransferDate().isAfter(end))
+                .filter(t -> t.getTransferDate() != null
+                        && !t.getTransferDate().isBefore(start)
+                        && !t.getTransferDate().isAfter(end))
                 .collect(Collectors.toList());
 
         List<Transfer> monthlyIncoming = incoming.stream()
-                .filter(t -> !t.getTransferDate().isBefore(start) && !t.getTransferDate().isAfter(end))
+                .filter(t -> t.getTransferDate() != null
+                        && !t.getTransferDate().isBefore(start)
+                        && !t.getTransferDate().isAfter(end))
                 .collect(Collectors.toList());
 
         BigDecimal outgoingTotal = monthlyOutgoing.stream()
-                .map(Transfer::getAmount)
+                .map(t -> safeAmount(t.getAmount()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal incomingTotal = monthlyIncoming.stream()
-                .map(Transfer::getAmount)
+                .map(t -> safeAmount(t.getAmount()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Map<String, Object> result = new LinkedHashMap<>();
@@ -313,10 +338,12 @@ public class ReportExtendedService {
                 .filter(t -> t.getHandlingFeeType() != null)
                 .collect(Collectors.groupingBy(
                         t -> t.getHandlingFeeType().name(),
-                        Collectors.reducing(BigDecimal.ZERO, Transaction::getHandlingFee, BigDecimal::add)));
+                        Collectors.reducing(BigDecimal.ZERO,
+                                t -> safeAmount(t.getHandlingFee()),
+                                BigDecimal::add)));
 
         BigDecimal totalFees = transactions.stream()
-                .map(Transaction::getHandlingFee)
+                .map(t -> safeAmount(t.getHandlingFee()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Map<String, Object> result = new LinkedHashMap<>();
@@ -340,24 +367,24 @@ public class ReportExtendedService {
 
         BigDecimal totalBuy = transactions.stream()
                 .filter(t -> t.getTransactionType() == TransactionType.BUY)
-                .map(Transaction::getHufAmount)
+                .map(t -> safeAmount(t.getHufAmount()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal totalSell = transactions.stream()
                 .filter(t -> t.getTransactionType() == TransactionType.SELL)
-                .map(Transaction::getHufAmount)
+                .map(t -> safeAmount(t.getHufAmount()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal totalFees = transactions.stream()
-                .map(Transaction::getHandlingFee)
+                .map(t -> safeAmount(t.getHandlingFee()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         List<Map<String, Object>> balanceList = balances.stream().map(cb -> {
             Map<String, Object> m = new LinkedHashMap<>();
-            m.put("currencyCode", cb.getCurrency().getCode());
-            m.put("currentBalance", cb.getCurrentBalance());
-            m.put("openingBalance", cb.getOpeningBalance());
-            m.put("dailyChange", cb.getDailyChange());
+            m.put("currencyCode", safeCurrencyCode(cb));
+            m.put("currentBalance", safeAmount(cb.getCurrentBalance()));
+            m.put("openingBalance", safeAmount(cb.getOpeningBalance()));
+            m.put("dailyChange", safeAmount(cb.getDailyChange()));
             return m;
         }).collect(Collectors.toList());
 
@@ -383,19 +410,19 @@ public class ReportExtendedService {
 
         List<Map<String, Object>> balanceList = balances.stream().map(cb -> {
             Map<String, Object> m = new LinkedHashMap<>();
-            m.put("currencyCode", cb.getCurrency().getCode());
-            m.put("currencyName", cb.getCurrency().getName());
-            m.put("currentBalance", cb.getCurrentBalance());
-            m.put("openingBalance", cb.getOpeningBalance());
-            m.put("minBalance", cb.getMinBalance());
-            m.put("maxBalance", cb.getMaxBalance());
+            m.put("currencyCode", safeCurrencyCode(cb));
+            m.put("currencyName", safeCurrencyName(cb));
+            m.put("currentBalance", safeAmount(cb.getCurrentBalance()));
+            m.put("openingBalance", safeAmount(cb.getOpeningBalance()));
+            m.put("minBalance", safeAmount(cb.getMinBalance()));
+            m.put("maxBalance", safeAmount(cb.getMaxBalance()));
             m.put("isLow", cb.isLowBalance());
             m.put("isHigh", cb.isHighBalance());
             return m;
         }).collect(Collectors.toList());
 
         BigDecimal totalDenominationValue = denominations.stream()
-                .map(Denomination::getTotalValue)
+                .map(d -> safeAmount(d.getTotalValue()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Map<String, Object> result = new LinkedHashMap<>();
@@ -428,11 +455,11 @@ public class ReportExtendedService {
                     Map<String, Object> m = new LinkedHashMap<>();
                     m.put("id", t.getId());
                     m.put("receiptNumber", t.getReceiptNumber());
-                    m.put("transactionType", t.getTransactionType().name());
+                    m.put("transactionType", safeEnumName(t.getTransactionType()));
                     m.put("transactionDate", t.getTransactionDate());
-                    m.put("hufAmount", t.getHufAmount());
-                    m.put("currencyCode", t.getCurrency().getCode());
-                    m.put("currencyAmount", t.getCurrencyAmount());
+                    m.put("hufAmount", safeAmount(t.getHufAmount()));
+                    m.put("currencyCode", safeCurrencyCode(t));
+                    m.put("currencyAmount", safeAmount(t.getCurrencyAmount()));
                     m.put("customerName", t.getCustomerName());
                     m.put("customerId", t.getCustomerId());
                     m.put("amlSuspicious", t.getAmlSuspicious());
@@ -463,11 +490,11 @@ public class ReportExtendedService {
                 .collect(Collectors.toList());
 
         BigDecimal totalCardFees = cardTransactions.stream()
-                .map(Transaction::getHandlingFee)
+                .map(t -> safeAmount(t.getHandlingFee()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal totalCardAmount = cardTransactions.stream()
-                .map(Transaction::getHufAmount)
+                .map(t -> safeAmount(t.getHufAmount()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Map<String, Object> result = new LinkedHashMap<>();

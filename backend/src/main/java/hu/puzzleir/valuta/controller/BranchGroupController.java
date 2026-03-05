@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.entity.BranchGroup;
 import hu.puzzleir.valuta.service.BranchGroupService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -38,12 +39,12 @@ public class BranchGroupController {
     }
 
     @PostMapping
-    public ResponseEntity<BranchGroup> create(@RequestBody BranchGroup entity) {
+    public ResponseEntity<BranchGroup> create(@Valid @RequestBody BranchGroup entity) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(entity));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<BranchGroup> update(@PathVariable UUID id, @RequestBody BranchGroup entity) {
+    public ResponseEntity<BranchGroup> update(@PathVariable UUID id, @Valid @RequestBody BranchGroup entity) {
         return ResponseEntity.ok(service.update(id, entity));
     }
 

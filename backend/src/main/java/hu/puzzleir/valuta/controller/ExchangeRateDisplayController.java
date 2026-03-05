@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.entity.ExchangeRateDisplay;
 import hu.puzzleir.valuta.service.ExchangeRateDisplayService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -33,7 +34,7 @@ public class ExchangeRateDisplayController {
     @PostMapping("/{displayId}/update")
     public ResponseEntity<ExchangeRateDisplay> update(
             @PathVariable UUID displayId,
-            @RequestBody ExchangeRateDisplay entity) {
+            @Valid @RequestBody ExchangeRateDisplay entity) {
         return ResponseEntity.ok(service.update(displayId, entity));
     }
 }

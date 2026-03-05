@@ -16,7 +16,8 @@ import {
   ChevronDown,
   Bell,
   User,
-  Building2
+  Building2,
+  LayoutDashboard,
 } from 'lucide-react'
 
 // Menüpontok csoportosítva (professzionális sidebar struktúra)
@@ -47,6 +48,12 @@ const menuGroups = [
     items: [
       { path: '/cashdesk', label: 'Pénztár', icon: Wallet },
       { path: '/reports', label: 'Riportok', icon: FileText },
+    ]
+  },
+  {
+    label: 'Értéktár',
+    items: [
+      { path: '/treasury', label: 'Értéktári Dashboard', icon: LayoutDashboard },
     ]
   },
   {

@@ -59,6 +59,14 @@ import { ExportV2Page } from './features/export/ExportV2Page'
 import { MnbRatesV2Page } from './features/integration/MnbRatesV2Page'
 import { NavV2Page } from './features/integration/nav/NavV2Page'
 
+// === Treasury (Értéktári) modul ===
+import TreasuryLayout from './pages/treasury/TreasuryLayout'
+import TreasuryDashboard from './pages/treasury/TreasuryDashboard'
+import StockMatrix from './pages/treasury/StockMatrix'
+import MovementManager from './pages/treasury/MovementManager'
+import RatePanel from './pages/treasury/RatePanel'
+import ReportsCirculars from './pages/treasury/ReportsCirculars'
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   
@@ -195,6 +203,15 @@ export default function App() {
           
           {/* Branch Groups */}
           <Route path="/branch-groups" element={<BranchGroupPage />} />
+
+          {/* === Treasury (Értéktári) Routes === */}
+          <Route path="/treasury" element={<TreasuryLayout />}>
+            <Route index element={<TreasuryDashboard />} />
+            <Route path="matrix" element={<StockMatrix />} />
+            <Route path="movements" element={<MovementManager />} />
+            <Route path="rates" element={<RatePanel />} />
+            <Route path="reports" element={<ReportsCirculars />} />
+          </Route>
 
           {/* === Moduláris Feature Routes (v2) === */}
           {/* Reporting v2 */}

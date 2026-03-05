@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.entity.Workstation;
 import hu.puzzleir.valuta.service.WorkstationService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,12 +34,12 @@ public class WorkstationController {
     }
 
     @PostMapping
-    public ResponseEntity<Workstation> create(@RequestBody Workstation entity) {
+    public ResponseEntity<Workstation> create(@Valid @RequestBody Workstation entity) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(entity));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Workstation> update(@PathVariable UUID id, @RequestBody Workstation entity) {
+    public ResponseEntity<Workstation> update(@PathVariable UUID id, @Valid @RequestBody Workstation entity) {
         return ResponseEntity.ok(service.update(id, entity));
     }
 

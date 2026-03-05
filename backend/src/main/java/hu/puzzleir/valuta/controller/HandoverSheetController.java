@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.entity.HandoverSheet;
 import hu.puzzleir.valuta.service.HandoverSheetService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,7 +29,7 @@ public class HandoverSheetController {
     }
 
     @PostMapping("/generate")
-    public ResponseEntity<HandoverSheet> generate(@RequestBody HandoverSheet entity) {
+    public ResponseEntity<HandoverSheet> generate(@Valid @RequestBody HandoverSheet entity) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.generate(entity));
     }
 

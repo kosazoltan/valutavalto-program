@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.service.ReportExtendedService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -23,6 +24,7 @@ public class ReportExtendedController {
     private final ReportExtendedService service;
 
     @GetMapping("/transaction-list")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> getTransactionList(
             @RequestParam(required = false) UUID branchId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -31,6 +33,7 @@ public class ReportExtendedController {
     }
 
     @GetMapping("/receipt-list")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> getReceiptList(
             @RequestParam(required = false) UUID branchId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -39,6 +42,7 @@ public class ReportExtendedController {
     }
 
     @GetMapping("/fee-summary")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> getFeeSummary(
             @RequestParam(required = false) UUID branchId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -47,6 +51,7 @@ public class ReportExtendedController {
     }
 
     @GetMapping("/monthly-inventory")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> getMonthlyInventory(
             @RequestParam int year,
             @RequestParam int month,
@@ -55,6 +60,7 @@ public class ReportExtendedController {
     }
 
     @GetMapping("/monthly-turnover")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> getMonthlyTurnover(
             @RequestParam int year,
             @RequestParam int month,
@@ -63,6 +69,7 @@ public class ReportExtendedController {
     }
 
     @GetMapping("/monthly-transfers")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> getMonthlyTransfers(
             @RequestParam int year,
             @RequestParam int month,
@@ -71,6 +78,7 @@ public class ReportExtendedController {
     }
 
     @GetMapping("/handling-cost")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> getHandlingCost(
             @RequestParam(required = false) UUID branchId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -79,6 +87,7 @@ public class ReportExtendedController {
     }
 
     @GetMapping("/daily-cash-desk")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> getDailyCashDesk(
             @RequestParam(required = false) UUID cashDeskId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
@@ -86,12 +95,14 @@ public class ReportExtendedController {
     }
 
     @GetMapping("/current-cash-desk-status")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> getCurrentCashDeskStatus(
             @RequestParam(required = false) UUID cashDeskId) {
         return ResponseEntity.ok(service.getCurrentCashDeskStatus(cashDeskId));
     }
 
     @GetMapping("/suspicious-transactions")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<Map<String, Object>>> getSuspiciousTransactions(
             @RequestParam(required = false) UUID branchId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -100,6 +111,7 @@ public class ReportExtendedController {
     }
 
     @GetMapping("/card-transaction-fees")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> getCardTransactionFees(
             @RequestParam(required = false) UUID branchId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,

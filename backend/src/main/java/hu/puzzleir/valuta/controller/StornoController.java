@@ -7,6 +7,7 @@ import hu.puzzleir.valuta.dto.transaction.TransactionDto;
 import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.mapper.TransactionMapper;
 import hu.puzzleir.valuta.service.StornoService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -80,7 +81,7 @@ public class StornoController {
     @PostMapping("/execute")
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<TransactionDto> executeStorno(
-            @RequestBody StornoRequestDto request,
+            @Valid @RequestBody StornoRequestDto request,
             @RequestParam Long workerId) {
         Transaction transaction = stornoService.executeStorno(request, workerId);
         return ResponseEntity.ok(transactionMapper.toDto(transaction));

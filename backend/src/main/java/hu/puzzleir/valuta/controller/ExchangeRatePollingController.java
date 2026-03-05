@@ -120,7 +120,7 @@ public class ExchangeRatePollingController {
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<ExchangeRateSourceDto> updateSource(
             @PathVariable Long id,
-            @RequestBody UpdateExchangeRateSourceDto dto) {
+            @Valid @RequestBody UpdateExchangeRateSourceDto dto) {
 
         ExchangeRateSource source = sourceRepository.findById(id)
             .orElseThrow(() -> new com.puzzleir.backend.exception.ResourceNotFoundException(

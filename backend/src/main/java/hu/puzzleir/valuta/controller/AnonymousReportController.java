@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.entity.AnonymousReport;
 import hu.puzzleir.valuta.service.AnonymousReportService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,7 +29,7 @@ public class AnonymousReportController {
     }
 
     @PostMapping
-    public ResponseEntity<AnonymousReport> create(@RequestBody AnonymousReport entity) {
+    public ResponseEntity<AnonymousReport> create(@Valid @RequestBody AnonymousReport entity) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(entity));
     }
 

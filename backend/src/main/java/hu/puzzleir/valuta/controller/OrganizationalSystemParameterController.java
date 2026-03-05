@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.entity.OrganizationalSystemParameter;
 import hu.puzzleir.valuta.service.OrganizationalSystemParameterService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -32,14 +33,14 @@ public class OrganizationalSystemParameterController {
     }
 
     @PostMapping
-    public ResponseEntity<OrganizationalSystemParameter> create(@RequestBody OrganizationalSystemParameter entity) {
+    public ResponseEntity<OrganizationalSystemParameter> create(@Valid @RequestBody OrganizationalSystemParameter entity) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(entity));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<OrganizationalSystemParameter> update(
             @PathVariable UUID id,
-            @RequestBody OrganizationalSystemParameter entity) {
+            @Valid @RequestBody OrganizationalSystemParameter entity) {
         return ResponseEntity.ok(service.update(id, entity));
     }
 

@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.entity.OwnCompany;
 import hu.puzzleir.valuta.service.OwnCompanyService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,12 +34,12 @@ public class OwnCompanyController {
     }
 
     @PostMapping
-    public ResponseEntity<OwnCompany> create(@RequestBody OwnCompany entity) {
+    public ResponseEntity<OwnCompany> create(@Valid @RequestBody OwnCompany entity) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(entity));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<OwnCompany> update(@PathVariable UUID id, @RequestBody OwnCompany entity) {
+    public ResponseEntity<OwnCompany> update(@PathVariable UUID id, @Valid @RequestBody OwnCompany entity) {
         return ResponseEntity.ok(service.update(id, entity));
     }
 
