@@ -1,7 +1,9 @@
 package hu.puzzleir.valuta.repository;
 
 import hu.puzzleir.valuta.entity.CashBalance;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -20,6 +22,15 @@ public interface CashBalanceRepository extends JpaRepository<CashBalance, Long> 
      * Egyenleg keresése fiók és valuta alapján
      */
     Optional<CashBalance> findByBranchIdAndCurrencyId(UUID branchId, Long currencyId);
+
+    /**
+     * Egyenleg keresése PESSIMISTIC_WRITE lockkal (race condition védelem).
+     * CRITICAL FIX: Párhuzamos készletmódosítás megakadályozása.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT cb FROM CashBalance cb WHERE cb.branch.id = :branchId AND cb.currency.id = :currencyId")
+    Optional<CashBalance> findByBranchIdAndCurrencyIdForUpdate(
+            @Param("branchId") UUID branchId, @Param("currencyId") Long currencyId);
 
     /**
      * Összes egyenleg egy fiókhoz

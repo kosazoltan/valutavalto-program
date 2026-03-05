@@ -111,9 +111,9 @@ public class ReservationService {
         BigDecimal rawDeposit = amount.multiply(exchangeRate).setScale(2, RoundingMode.HALF_UP);
         BigDecimal depositAmount = roundToFive(rawDeposit);
 
-        // Készlet ellenőrzés — van-e elég valuta a fiókban
+        // CRITICAL FIX #2: PESSIMISTIC_WRITE lock — párhuzamos készletmódosítás megakadályozása
         CashBalance currencyBalance = cashBalanceRepository
-                .findByBranchIdAndCurrencyId(branchId, currency.getId())
+                .findByBranchIdAndCurrencyIdForUpdate(branchId, currency.getId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                     "Kassza egyenleg nem található: " + currencyCode));
         if (currencyBalance.getCurrentBalance().compareTo(amount) < 0) {
@@ -186,7 +186,9 @@ public class ReservationService {
         Long workerId = SecurityUtils.getCurrentWorkerId();
         UUID branchId = SecurityUtils.getCurrentBranchId();
 
-        Reservation reservation = getReservationById(reservationId);
+        // CRITICAL FIX #1: PESSIMISTIC_WRITE lock — párhuzamos teljesítés/stornó megakadályozása
+        Reservation reservation = reservationRepository.findByIdForUpdate(reservationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Foglaló nem található: " + reservationId));
         validateActive(reservation);
         validateBranch(reservation, branchId);
 
@@ -238,7 +240,9 @@ public class ReservationService {
         Long workerId = SecurityUtils.getCurrentWorkerId();
         UUID branchId = SecurityUtils.getCurrentBranchId();
 
-        Reservation reservation = getReservationById(reservationId);
+        // CRITICAL FIX #1: PESSIMISTIC_WRITE lock — párhuzamos teljesítés/stornó megakadályozása
+        Reservation reservation = reservationRepository.findByIdForUpdate(reservationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Foglaló nem található: " + reservationId));
         validateActive(reservation);
         validateBranch(reservation, branchId);
 
@@ -313,7 +317,17 @@ public class ReservationService {
             throw new ValidationException("A megadott dolgozónak nincs supervisor jogosultsága!");
         }
 
-        Reservation reservation = getReservationById(reservationId);
+        // CRITICAL FIX #3: Supervisor branch ellenőrzés — csak a SAJÁT irodájában hagyhat jóvá
+        if (!supervisor.getBranch().getId().equals(branchId)) {
+            throw new ValidationException(
+                    "A supervisor csak a saját irodájában hagyhat jóvá EBC stornót! " +
+                    "Supervisor iroda: " + supervisor.getBranch().getName() +
+                    ", aktuális iroda: " + branchId);
+        }
+
+        // CRITICAL FIX #1: PESSIMISTIC_WRITE lock — párhuzamos teljesítés/stornó megakadályozása
+        Reservation reservation = reservationRepository.findByIdForUpdate(reservationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Foglaló nem található: " + reservationId));
         validateActive(reservation);
         validateBranch(reservation, branchId);
 
@@ -460,8 +474,9 @@ public class ReservationService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                     "Valuta nem található: " + reservation.getCurrencyCode()));
 
+        // CRITICAL FIX #2: PESSIMISTIC_WRITE lock — párhuzamos készletmódosítás megakadályozása
         CashBalance currencyBalance = cashBalanceRepository
-                .findByBranchIdAndCurrencyId(reservation.getBranch().getId(), currency.getId())
+                .findByBranchIdAndCurrencyIdForUpdate(reservation.getBranch().getId(), currency.getId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                     "Kassza egyenleg nem található: " + reservation.getCurrencyCode()));
 
@@ -480,8 +495,9 @@ public class ReservationService {
         Currency huf = currencyRepository.findByCode("HUF")
                 .orElseThrow(() -> new ResourceNotFoundException("HUF valuta nem található!"));
 
+        // CRITICAL FIX #2: PESSIMISTIC_WRITE lock — párhuzamos készletmódosítás megakadályozása
         CashBalance hufBalance = cashBalanceRepository
-                .findByBranchIdAndCurrencyId(branchId, huf.getId())
+                .findByBranchIdAndCurrencyIdForUpdate(branchId, huf.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("HUF kassza egyenleg nem található!"));
 
         hufBalance.addBalance(amount);
@@ -495,8 +511,9 @@ public class ReservationService {
         Currency huf = currencyRepository.findByCode("HUF")
                 .orElseThrow(() -> new ResourceNotFoundException("HUF valuta nem található!"));
 
+        // CRITICAL FIX #2: PESSIMISTIC_WRITE lock — párhuzamos készletmódosítás megakadályozása
         CashBalance hufBalance = cashBalanceRepository
-                .findByBranchIdAndCurrencyId(branchId, huf.getId())
+                .findByBranchIdAndCurrencyIdForUpdate(branchId, huf.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("HUF kassza egyenleg nem található!"));
 
         if (hufBalance.getCurrentBalance().compareTo(amount) < 0) {

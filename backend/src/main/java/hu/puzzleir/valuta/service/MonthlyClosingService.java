@@ -56,16 +56,17 @@ public class MonthlyClosingService {
      */
     @Transactional
     public MonthlyClosingSummary performMonthlyClosing(UUID branchId, String yearMonth) {
-        // Validáció
+        // Validáció — HIGH FIX #5: Cheap validáció előbb, expensive DB query később
         YearMonth ym = parseYearMonth(yearMonth);
-        
-        if (monthlyClosingSummaryRepository.existsByBranchIdAndYearMonth(branchId, yearMonth)) {
-            throw new ValidationException("A(z) " + yearMonth + " hónap már le van zárva ennél az irodánál!");
-        }
 
-        // Jövőbeli hónap nem zárható le
+        // 1. Jövőbeli hónap ellenőrzés (cheap — nincs DB hívás)
         if (ym.isAfter(YearMonth.now())) {
             throw new ValidationException("Jövőbeli hónap nem zárható le: " + yearMonth);
+        }
+
+        // 2. DB ellenőrzés (expensive)
+        if (monthlyClosingSummaryRepository.existsByBranchIdAndYearMonth(branchId, yearMonth)) {
+            throw new ValidationException("A(z) " + yearMonth + " hónap már le van zárva ennél az irodánál!");
         }
 
         Branch branch = branchRepository.findById(branchId)
@@ -134,6 +135,14 @@ public class MonthlyClosingService {
 
     // ============ BELSŐ SEGÉDMETÓDUSOK ============
 
+    /**
+     * NULL-safe BigDecimal összeadás helper.
+     * HIGH FIX #2: Konzisztens NULL kezelés minden BigDecimal nullable mezőnél.
+     */
+    private BigDecimal safeAdd(BigDecimal current, BigDecimal toAdd) {
+        return current.add(toAdd != null ? toAdd : BigDecimal.ZERO);
+    }
+
     private YearMonth parseYearMonth(String yearMonth) {
         try {
             return YearMonth.parse(yearMonth);
@@ -157,22 +166,18 @@ public class MonthlyClosingService {
             CurrencyBreakdownEntry entry = breakdownMap.computeIfAbsent(
                 currencyCode, k -> new CurrencyBreakdownEntry(k));
 
+            // HIGH FIX #2: safeAdd helper — konzisztens NULL-safe BigDecimal összesítés
             if (t.getTransactionType() != null && t.getTransactionType().isBuyType()) {
                 entry.buyCount++;
-                entry.buyAmount = entry.buyAmount.add(
-                    t.getCurrencyAmount() != null ? t.getCurrencyAmount() : BigDecimal.ZERO);
-                entry.buyHuf = entry.buyHuf.add(
-                    t.getHufAmount() != null ? t.getHufAmount() : BigDecimal.ZERO);
+                entry.buyAmount = safeAdd(entry.buyAmount, t.getCurrencyAmount());
+                entry.buyHuf = safeAdd(entry.buyHuf, t.getHufAmount());
             } else if (t.getTransactionType() != null && t.getTransactionType().isSellType()) {
                 entry.sellCount++;
-                entry.sellAmount = entry.sellAmount.add(
-                    t.getCurrencyAmount() != null ? t.getCurrencyAmount() : BigDecimal.ZERO);
-                entry.sellHuf = entry.sellHuf.add(
-                    t.getHufAmount() != null ? t.getHufAmount() : BigDecimal.ZERO);
+                entry.sellAmount = safeAdd(entry.sellAmount, t.getCurrencyAmount());
+                entry.sellHuf = safeAdd(entry.sellHuf, t.getHufAmount());
             }
 
-            entry.handlingFee = entry.handlingFee.add(
-                t.getHandlingFee() != null ? t.getHandlingFee() : BigDecimal.ZERO);
+            entry.handlingFee = safeAdd(entry.handlingFee, t.getHandlingFee());
         }
 
         try {

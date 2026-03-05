@@ -88,8 +88,8 @@ public class AmlService {
         if (hufAmount.compareTo(IDENTIFICATION_LIMIT) >= 0) {
             result.requiresIdentification(true);
 
-            if (customerName == null || customerName.trim().isEmpty()
-                || documentNumber == null || documentNumber.trim().isEmpty()) {
+            if (customerName == null || customerName.isBlank()
+                || documentNumber == null || documentNumber.isBlank()) {
                 result.approved(false);
                 result.rejectionReason(
                     IDENTIFICATION_LIMIT.toPlainString() + " Ft feletti tranzakciohoz ugyfel azonositas (nev + igazolvany) KOTELEZO!");
@@ -106,8 +106,8 @@ public class AmlService {
         }
 
         // 3. Eves gongyolesi kontroll (ha van ugyfel azonosito)
-        // HIGH FIX #5: .trim().isEmpty() konzisztens validáció a .isBlank() mellett
-        if (customerId != null && !customerId.trim().isEmpty()) {
+        // HIGH FIX: .isBlank() konzisztens validáció (Java 11+)
+        if (customerId != null && !customerId.isBlank()) {
             BigDecimal annualTotal = getAnnualRollingTotal(customerId);
             BigDecimal projectedTotal = annualTotal.add(hufAmount);
 
@@ -316,13 +316,14 @@ public class AmlService {
      * -1: külföldi, nem kaphat USD-t
      *  0: normál
      *
-     * @param customerId ügyfél azonosító
-     * @param hufAmount  aktuális tranzakció HUF összeg (a heti göngyöléssel együtt)
+     * @param customerId   ügyfél azonosító
+     * @param hufAmount    aktuális tranzakció HUF összeg (a heti göngyöléssel együtt)
+     * @param currencyCode valuta kód (EUR, USD, stb.) — külföldi + USD = -1 blokkolás
      * @return TranzTipus érték (-1, 0, 1, 2, 3, 4, 5, 6)
      */
     @Transactional(readOnly = true)
-    public int classifyTransaction(String customerId, BigDecimal hufAmount) {
-        if (customerId == null || customerId.trim().isEmpty()) {
+    public int classifyTransaction(String customerId, BigDecimal hufAmount, String currencyCode) {
+        if (customerId == null || customerId.isBlank()) {
             // Névtelen ügyfél — csak összeg alapján
             return classifyByAmount(hufAmount);
         }
@@ -365,15 +366,25 @@ public class AmlService {
             Customer customer = customerOpt.get();
 
             // TranzTipus -1 és 2: külföldi ügyfél
+            // HIGH FIX #1: Explicit NULL kezelés + audit log
             if (Boolean.TRUE.equals(customer.getIsForeign())) {
-                // -1: külföldi, nem kaphat USD-t (speciális flag — a hívó dönti el a valutanem alapján)
-                // Itt 2-t adunk, a -1-et a checkAllThresholds kezeli valutanem alapján
+                // HIGH FIX #4: TranzTipus -1 — külföldi ügyfél nem kaphat USD-t
+                if ("USD".equals(currencyCode)) {
+                    log.warn("AML: Külföldi ügyfél {} USD tranzakciót próbál — BLOKKOLVA (TranzTipus -1)",
+                            customerId);
+                    return -1;
+                }
                 return 2;
+            } else if (customer.getIsForeign() == null) {
+                log.warn("AML: Ügyfél {} isForeign=NULL — feltételezzük belföldi", customerId);
             }
 
             // TranzTipus 1: belföldi kiemelt közszereplő (PEP)
+            // HIGH FIX #1: NULL-safe isPep ellenőrzés
             if (Boolean.TRUE.equals(customer.getIsPep())) {
                 return 1;
+            } else if (customer.getIsPep() == null) {
+                log.warn("AML: Ügyfél {} isPep=NULL — feltételezzük nem-PEP", customerId);
             }
         }
 
@@ -398,12 +409,13 @@ public class AmlService {
      *
      * Visszaadja a teljes AmlCheckResult-ot a legacy BIGCTRL.DLL logika alapján.
      *
-     * @param customerId ügyfél azonosító
-     * @param hufAmount  aktuális tranzakció forint összeg
+     * @param customerId   ügyfél azonosító
+     * @param hufAmount    aktuális tranzakció forint összeg
+     * @param currencyCode valuta kód (EUR, USD, stb.) — külföldi + USD = -1 blokkolás
      * @return AmlCheckResult DTO
      */
     @Transactional(readOnly = true)
-    public hu.puzzleir.valuta.dto.aml.AmlCheckResult checkAllThresholds(String customerId, BigDecimal hufAmount) {
+    public hu.puzzleir.valuta.dto.aml.AmlCheckResult checkAllThresholds(String customerId, BigDecimal hufAmount, String currencyCode) {
         List<String> warnings = new ArrayList<>();
         boolean requiresId = false;
         boolean requiresEnhanced = false;
@@ -414,7 +426,7 @@ public class AmlService {
         int quarterlyCount = 0;
         BigDecimal quarterlyTotal = BigDecimal.ZERO;
 
-        if (customerId != null && !customerId.trim().isEmpty()) {
+        if (customerId != null && !customerId.isBlank()) {
             weeklyTotal = getWeeklyTotal(customerId);
             yearlyMax = getYearlyMax(customerId);
 
@@ -424,7 +436,7 @@ public class AmlService {
         }
 
         BigDecimal hasforint = hufAmount.add(weeklyTotal);
-        int transactionType = classifyTransaction(customerId, hufAmount);
+        int transactionType = classifyTransaction(customerId, hufAmount, currencyCode);
 
         switch (transactionType) {
             case 6:

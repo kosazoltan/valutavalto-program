@@ -2,13 +2,16 @@ package hu.puzzleir.valuta.repository;
 
 import hu.puzzleir.valuta.entity.Reservation;
 import hu.puzzleir.valuta.entity.ReservationStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -18,6 +21,14 @@ import java.util.UUID;
  */
 @Repository
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
+
+    /**
+     * Foglaló lekérdezése PESSIMISTIC_WRITE lockkal (race condition védelem).
+     * CRITICAL FIX: Párhuzamos teljesítés/stornó megakadályozása.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM Reservation r WHERE r.id = :id")
+    Optional<Reservation> findByIdForUpdate(@Param("id") Long id);
 
     /**
      * Ügyfél foglalói adott státusszal

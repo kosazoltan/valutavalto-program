@@ -2682,9 +2682,9 @@ export interface AmlCheckResultDto {
 }
 
 export const amlApi = {
-  checkAllThresholds: async (customerId: string, hufAmount: number): Promise<AmlCheckResultDto> => {
+  checkAllThresholds: async (customerId: string, hufAmount: number, currencyCode?: string): Promise<AmlCheckResultDto> => {
     const response = await api.get<AmlCheckResultDto>('/aml/check-all-thresholds', {
-      params: { customerId, hufAmount }
+      params: { customerId, hufAmount, currencyCode }
     })
     return response.data
   }
