@@ -38,6 +38,7 @@ export interface ElectronAPI {
   getPendingTransactions: () => Promise<PendingTransactionRecord[]>;
   getPendingTransactionCount: () => Promise<number>;
   syncOffline: () => Promise<number>;
+  getSyncStatus: () => Promise<string>;
   getAppVersion: () => Promise<string>;
   getPrinters: () => Promise<PrinterInfo[]>;
   platform: string;

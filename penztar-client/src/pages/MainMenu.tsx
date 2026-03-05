@@ -2,6 +2,7 @@ import { useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useSessionStore } from '@/stores/sessionStore';
+import { useAppMode } from '@/hooks/useAppMode';
 import type { MenuItem, PageRoute } from '@/types';
 
 const MENU_ITEMS: MenuItem[] = [
@@ -19,14 +20,25 @@ const MENU_ITEMS: MenuItem[] = [
   { key: 'F12', label: 'Beállítások', icon: '⚙️', route: '/settings', hotkey: 'F12' },
 ];
 
+// Értéktár extra menüpontok
+const ERTEKTAR_ITEMS: MenuItem[] = [
+  { key: 'ET1', label: 'Értéktár áttekintő', icon: '🏦', route: '/ertektar', hotkey: 'Ctrl+1' },
+  { key: 'ET2', label: 'Szétosztás', icon: '📦', route: '/ertektar/distribution', hotkey: 'Ctrl+2' },
+  { key: 'ET3', label: 'Begyűjtés', icon: '📥', route: '/ertektar/collection', hotkey: 'Ctrl+3' },
+  { key: 'ET4', label: 'Összevont riportok', icon: '📊', route: '/ertektar/reports', hotkey: 'Ctrl+4' },
+];
+
 export default function MainMenu() {
   const navigate = useNavigate();
   const { user, companyType, branchCode, clearAuth } = useAuthStore();
   const { isOnline, currentTime, updateTime } = useSessionStore();
+  const { mode } = useAppMode();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const isErtektar = mode === 'ertektar';
   const isBestChange = companyType === 'BEST_CHANGE';
   const headerColor = isBestChange ? 'bg-red-600' : 'bg-orange-500';
+  const modeLabel = isErtektar ? 'Értéktár' : 'Pénztár';
 
   const handleNavigate = useCallback(
     (route: PageRoute) => {
@@ -40,7 +52,7 @@ export default function MainMenu() {
     navigate('/login');
   }, [clearAuth, navigate]);
 
-  // Gyorsbillentyűk (F1-F12)
+  // Gyorsbillentyűk (F1-F12 + Ctrl+1-4 értéktár módban)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const fKeyMatch = e.key.match(/^F(\d{1,2})$/);
@@ -54,11 +66,23 @@ export default function MainMenu() {
           }
         }
       }
+
+      // Értéktár gyorsbillentyűk: Ctrl+1..4
+      if (isErtektar && e.ctrlKey && !e.shiftKey && !e.altKey) {
+        const num = parseInt(e.key, 10);
+        if (num >= 1 && num <= 4) {
+          e.preventDefault();
+          const ertektarItem = ERTEKTAR_ITEMS[num - 1];
+          if (ertektarItem) {
+            handleNavigate(ertektarItem.route);
+          }
+        }
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleNavigate]);
+  }, [handleNavigate, isErtektar]);
 
   // Óra frissítés másodpercenként
   useEffect(() => {
@@ -90,10 +114,10 @@ export default function MainMenu() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">
-              {isBestChange ? '💱 Best Change' : '💎 Expressz'} — Pénztár
+              {isBestChange ? '💱 Best Change' : '💎 Expressz'} — {modeLabel}
             </h1>
             <p className="text-sm text-white/80">
-              {user?.fullName ?? 'Pénztáros'} | Pénztár: {branchCode}
+              {user?.fullName ?? 'Pénztáros'} | {modeLabel}: {branchCode}
             </p>
           </div>
           <button
@@ -107,25 +131,51 @@ export default function MainMenu() {
 
       {/* Menü gombok */}
       <main className="flex-1 overflow-auto p-6">
-        <div className="mx-auto grid max-w-4xl grid-cols-4 gap-4">
-          {MENU_ITEMS.map((item) => (
-            <button
-              key={item.key}
-              onClick={() => handleNavigate(item.route)}
-              className="menu-btn h-32"
-            >
-              <span className="menu-btn-icon">{item.icon}</span>
-              <span className="menu-btn-label">{item.label}</span>
-              <span className="menu-btn-hotkey">{item.hotkey}</span>
-            </button>
-          ))}
+        {/* Értéktár extra gombok */}
+        {isErtektar && (
+          <div className="mx-auto mb-6 max-w-4xl">
+            <h2 className="mb-3 text-lg font-semibold text-gray-600">🏦 Értéktár funkciók</h2>
+            <div className="grid grid-cols-4 gap-4">
+              {ERTEKTAR_ITEMS.map((item) => (
+                <button
+                  key={item.key}
+                  onClick={() => handleNavigate(item.route)}
+                  className="menu-btn h-28 border-2 border-indigo-200 bg-indigo-50 hover:bg-indigo-100"
+                >
+                  <span className="menu-btn-icon">{item.icon}</span>
+                  <span className="menu-btn-label text-indigo-800">{item.label}</span>
+                  <span className="menu-btn-hotkey text-indigo-500">{item.hotkey}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Pénztár menü gombok (F1-F12) */}
+        <div className="mx-auto max-w-4xl">
+          {isErtektar && (
+            <h2 className="mb-3 text-lg font-semibold text-gray-600">💰 Pénztár funkciók</h2>
+          )}
+          <div className="grid grid-cols-4 gap-4">
+            {MENU_ITEMS.map((item) => (
+              <button
+                key={item.key}
+                onClick={() => handleNavigate(item.route)}
+                className="menu-btn h-32"
+              >
+                <span className="menu-btn-icon">{item.icon}</span>
+                <span className="menu-btn-label">{item.label}</span>
+                <span className="menu-btn-hotkey">{item.hotkey}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </main>
 
       {/* Állapotsor */}
       <footer className="status-bar">
         <span>
-          👤 {user?.fullName ?? '—'} | 🏦 Pénztár: {branchCode}
+          👤 {user?.fullName ?? '—'} | 🏦 {modeLabel}: {branchCode}
         </span>
         <span>
           {isOnline ? (

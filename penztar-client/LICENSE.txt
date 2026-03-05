@@ -1,0 +1,51 @@
+VÉGFELHASZNÁLÓI LICENCSZERZŐDÉS
+VALUTAVÁLTÓ PÉNZTÁR RENDSZER
+
+Ez a szoftver az Exclusive Best Change Zrt. és az Expressz Ékszerház 
+és Minibank Kft. tulajdona.
+
+HASZNÁLATI FELTÉTELEK:
+
+1. JOGOSULTSÁG
+   Ez a szoftver kizárólag a Exclusive Best Change Zrt. és az Expressz 
+   Ékszerház és Minibank Kft. alkalmazottai használhatják munkahelyi 
+   célokra.
+
+2. KORLÁTOZÁSOK
+   - A szoftver másolása TILOS
+   - A szoftver terjesztése TILOS
+   - A szoftver módosítása TILOS
+   - A szoftver visszafejtése TILOS
+
+3. TULAJDONJOG
+   A szoftver teljes mértékben az Exclusive Best Change Zrt. és az 
+   Expressz Ékszerház és Minibank Kft. tulajdona marad.
+
+4. ADATVÉDELEM
+   A szoftver által gyűjtött adatok a vállalat tulajdonát képezik és 
+   kizárólag üzleti célokra használhatók.
+
+5. FELELŐSSÉG
+   A szoftvert "AHOGY VAN" alapon biztosítjuk. A fejlesztők és a 
+   tulajdonosok nem vállalnak felelősséget az esetleges hibákból vagy 
+   adatvesztésből eredő károkért.
+
+6. TÁMOGATÁS
+   Technikai támogatás elérhető:
+   - Email: support@bestchange.hu
+   - Telefon: +36-70-380-0202
+
+7. FRISSÍTÉSEK
+   A szoftver automatikus frissítéseket kaphat. A frissítések telepítése 
+   kötelező a biztonságos működés érdekében.
+
+8. MEGSZŰNÉS
+   Ez a licenc azonnal megszűnik, ha a felhasználó megszegi a fenti 
+   feltételeket. Megszűnéskor a szoftvert azonnal el kell távolítani 
+   minden eszközről.
+
+© 2026 Exclusive Best Change Zrt.
+© 2026 Expressz Ékszerház és Minibank Kft.
+Minden jog fenntartva.
+
+Utoljára frissítve: 2026-03-03

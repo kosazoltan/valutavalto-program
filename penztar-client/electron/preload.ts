@@ -49,6 +49,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   syncOffline: (): Promise<number> =>
     ipcRenderer.invoke('sync-offline'),
 
+  getSyncStatus: (): Promise<string> =>
+    ipcRenderer.invoke('get-sync-status'),
+
   getAppVersion: (): Promise<string> =>
     ipcRenderer.invoke('get-app-version'),
 

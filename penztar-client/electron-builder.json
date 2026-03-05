@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "hu.bestchange.penztar",
-  "productName": "Valuta Pénztár",
+  "appId": "com.bestchange.penztar",
+  "productName": "Valutaváltó Pénztár",
   "directories": {
     "output": "release"
   },
@@ -10,21 +10,28 @@
     "dist-electron/**/*"
   ],
   "win": {
+    "icon": "build/icons/app-icon-bestchange.png",
     "target": [
       {
         "target": "nsis",
         "arch": ["x64"]
       }
     ],
-    "icon": "public/icon.ico"
+    "artifactName": "Penztar-Setup-${version}.exe"
   },
   "nsis": {
     "oneClick": false,
-    "perMachine": true,
     "allowToChangeInstallationDirectory": true,
-    "installerLanguages": ["hu"],
     "language": "1038",
-    "shortcutName": "Valuta Pénztár"
+    "installerIcon": "build/icons/app-icon-bestchange.ico",
+    "uninstallerIcon": "build/icons/app-icon-bestchange.ico",
+    "installerHeader": "build/installer-header.png",
+    "license": "LICENSE.txt"
+  },
+  "publish": {
+    "provider": "github",
+    "owner": "kosazoltan",
+    "repo": "valutavalto-program"
   },
   "extraResources": []
 }

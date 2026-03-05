@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { setAuthToken, loadPersistedToken } from '@/api/client';
+import { useAppMode } from '@/hooks/useAppMode';
 import LoginPage from '@/pages/LoginPage';
 import MainMenu from '@/pages/MainMenu';
 import SellPage from '@/pages/SellPage';
@@ -16,6 +17,11 @@ import CircularPage from '@/pages/CircularPage';
 import CustomerPage from '@/pages/CustomerPage';
 import ReportsPage from '@/pages/ReportsPage';
 import SettingsPage from '@/pages/SettingsPage';
+// Értéktár képernyők
+import ErtektarDashboard from '@/pages/ErtektarDashboard';
+import DistributionPage from '@/pages/DistributionPage';
+import CollectionPage from '@/pages/CollectionPage';
+import ConsolidatedReportsPage from '@/pages/ConsolidatedReportsPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -27,6 +33,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const [isRestoring, setIsRestoring] = useState(true);
+  const { mode, isLoading: isModeLoading } = useAppMode();
 
   // M1: Token restore — betöltéskor ellenőrizzük van-e tárolt JWT
   useEffect(() => {
@@ -41,9 +48,6 @@ export default function App() {
             const now = Math.floor(Date.now() / 1000);
             if (payload.exp && payload.exp > now) {
               setAuthToken(token);
-              // Megjegyzés: user objektum nélkül csak a token-t állítjuk be,
-              // a ProtectedRoute átirányít login-ra ha nincs user
-              // Ez elég a token-alapú kérésekhez amíg a user újra bejelentkezik
             }
           }
         }
@@ -56,7 +60,7 @@ export default function App() {
     void restoreToken();
   }, []);
 
-  if (isRestoring) {
+  if (isRestoring || isModeLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <p className="text-gray-500">⏳ Betöltés...</p>
@@ -171,6 +175,45 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+
+      {/* Értéktár route-ok — csak 'ertektar' módban elérhetők, de route mindig regisztrálva */}
+      {mode === 'ertektar' && (
+        <>
+          <Route
+            path="/ertektar"
+            element={
+              <ProtectedRoute>
+                <ErtektarDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ertektar/distribution"
+            element={
+              <ProtectedRoute>
+                <DistributionPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ertektar/collection"
+            element={
+              <ProtectedRoute>
+                <CollectionPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ertektar/reports"
+            element={
+              <ProtectedRoute>
+                <ConsolidatedReportsPage />
+              </ProtectedRoute>
+            }
+          />
+        </>
+      )}
+
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );

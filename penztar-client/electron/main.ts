@@ -10,6 +10,8 @@ import {
   markTransactionSynced,
   getPendingTransactionCount,
 } from './sqlite';
+import { printReceipt, type PrintReceiptData } from './printer';
+import { syncEngine } from './sync-engine';
 
 const isDev = !app.isPackaged;
 
@@ -45,10 +47,14 @@ function createWindow(): void {
 
 // --- IPC Handlers ---
 
-ipcMain.handle('print-receipt', async (_event, data: string): Promise<boolean> => {
-  // TODO: ESC/POS nyomtató integráció
-  console.log('[PRINT]', data.substring(0, 100));
-  return true;
+ipcMain.handle('print-receipt', async (_event, dataJson: string): Promise<boolean> => {
+  try {
+    const data = JSON.parse(dataJson) as PrintReceiptData;
+    return await printReceipt(data);
+  } catch (err) {
+    console.error('[IPC] print-receipt hiba:', err);
+    return false;
+  }
 });
 
 ipcMain.handle('get-config', async (_event, key: string): Promise<string | null> => {
@@ -90,23 +96,13 @@ ipcMain.handle('mark-transaction-synced', async (_event, id: number): Promise<vo
 });
 
 ipcMain.handle('sync-offline', async (): Promise<number> => {
-  // Szinkronizálja a pending tranzakciókat a szerverrel
-  const pending = getPendingTransactions();
-  let syncedCount = 0;
+  // SyncEngine-en keresztül szinkronizálunk
+  const result = await syncEngine.syncAll();
+  return result.synced;
+});
 
-  for (const tx of pending) {
-    try {
-      // TODO: valódi API hívás a szerverhez — egyelőre csak megjelöljük szinkronizáltnak
-      // await apiClient.post(`/transactions/${tx.type.toLowerCase()}`, { ... });
-      markTransactionSynced(tx.id);
-      syncedCount++;
-    } catch {
-      // Ha nem sikerül, a többi se fog — megszakítjuk
-      break;
-    }
-  }
-
-  return syncedCount;
+ipcMain.handle('get-sync-status', async (): Promise<string> => {
+  return JSON.stringify(syncEngine.getStatus());
 });
 
 ipcMain.handle('get-app-version', async (): Promise<string> => {
@@ -123,6 +119,16 @@ ipcMain.handle('get-printers', async (): Promise<Electron.PrinterInfo[]> => {
 app.whenReady().then(async () => {
   await initDatabase();
   createWindow();
+
+  // SyncEngine indítás — 30 másodperces intervallum
+  syncEngine.start(30_000);
+  console.log('[App] SyncEngine elindítva');
+});
+
+app.on('will-quit', () => {
+  // SyncEngine leállítás
+  syncEngine.stop();
+  console.log('[App] SyncEngine leállítva');
 });
 
 app.on('window-all-closed', () => {

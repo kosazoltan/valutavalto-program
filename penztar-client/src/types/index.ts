@@ -134,7 +134,11 @@ export type PageRoute =
   | '/rates'
   | '/customer'
   | '/lists'
-  | '/settings';
+  | '/settings'
+  | '/ertektar'
+  | '/ertektar/distribution'
+  | '/ertektar/collection'
+  | '/ertektar/reports';
 
 // --- Menu ---
 export interface MenuItem {
@@ -364,4 +368,97 @@ export interface TransactionListItem {
   customerName?: string;
   cashierName: string;
   createdAt: string;
+}
+
+// ============================================================
+// Értéktár — Típusdefiníciók
+// ============================================================
+
+// --- Értéktár: Alárendelt pénztár státusz ---
+export type BranchOnlineStatus = 'online' | 'warning' | 'offline';
+
+export interface SubordinateBranch {
+  code: string;
+  name: string;
+  companyId: number;
+  lastSyncAt: string | null;
+  onlineStatus: BranchOnlineStatus;
+  cashBalances: CashBalanceSummary[];
+  totalHufValue: number;
+  dailyTurnover: number;
+}
+
+// --- Értéktár: Szétosztás (Distribution) ---
+export interface DistributionItem {
+  targetBranchCode: string;
+  currencyCode: CurrencyCode | 'HUF';
+  amount: number;
+  denominations?: Denomination[];
+}
+
+export interface DistributionBatch {
+  items: DistributionItem[];
+  note?: string;
+}
+
+export interface DistributionResult {
+  receiptNumbers: string[];
+  successCount: number;
+  failedCount: number;
+  errors: string[];
+}
+
+// --- Értéktár: Begyűjtés (Collection) ---
+export type CollectionStatus = 'REQUESTED' | 'IN_PROGRESS' | 'COMPLETED' | 'REJECTED';
+
+export interface CollectionRequest {
+  sourceBranchCode: string;
+  currencyCode: CurrencyCode | 'HUF';
+  amount: number;
+  note?: string;
+}
+
+export interface CollectionRecord {
+  id: number;
+  sourceBranchCode: string;
+  sourceBranchName: string;
+  currencyCode: CurrencyCode | 'HUF';
+  amount: number;
+  status: CollectionStatus;
+  requestedAt: string;
+  completedAt?: string;
+  note?: string;
+}
+
+// --- Értéktár: Összevont riport ---
+export interface ConsolidatedReportFilter {
+  dateFrom: string;
+  dateTo: string;
+  branchCodes?: string[];
+}
+
+export interface BranchDailyReport {
+  branchCode: string;
+  branchName: string;
+  date: string;
+  sellCount: number;
+  buyCount: number;
+  totalTransactions: number;
+  sellHufVolume: number;
+  buyHufVolume: number;
+  totalHufTurnover: number;
+  totalFees: number;
+}
+
+export interface ConsolidatedReport {
+  dateFrom: string;
+  dateTo: string;
+  branches: BranchDailyReport[];
+  totals: {
+    totalTransactions: number;
+    totalSellCount: number;
+    totalBuyCount: number;
+    totalHufTurnover: number;
+    totalFees: number;
+  };
 }

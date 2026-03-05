@@ -2247,6 +2247,12 @@ function getConfig(key) {
 }
 function setConfig(key, value) {
   if (!db) return;
+  if (key.length > 100) {
+    throw new Error(`Config key too long: ${key.length} chars (max 100)`);
+  }
+  if (value.length > 1e4) {
+    throw new Error(`Config value too long: ${value.length} chars (max 10000)`);
+  }
   db.run(
     `INSERT INTO config (key, value, updated_at) VALUES (?, ?, datetime('now'))
      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
@@ -2254,6 +2260,512 @@ function setConfig(key, value) {
   );
   saveDatabase();
 }
+function deleteConfig(key) {
+  if (!db) return;
+  db.run("DELETE FROM config WHERE key = ?", [key]);
+  saveDatabase();
+}
+function savePendingTransaction(type, currencyCode, foreignAmount, hufAmount, roundedHufAmount, rate, customerId, denominations) {
+  if (!db) throw new Error("Database not initialized");
+  db.run(
+    `INSERT INTO pending_transactions (type, currency_code, foreign_amount, huf_amount, rounded_huf_amount, rate, customer_id, denominations)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [type, currencyCode, foreignAmount, hufAmount, roundedHufAmount, rate, customerId, denominations]
+  );
+  saveDatabase();
+  const stmt = db.prepare("SELECT last_insert_rowid() as id");
+  stmt.step();
+  const row = stmt.getAsObject();
+  stmt.free();
+  return row["id"] ?? 0;
+}
+function getPendingTransactions() {
+  if (!db) return [];
+  const results = [];
+  const stmt = db.prepare("SELECT * FROM pending_transactions WHERE synced = 0 ORDER BY created_at ASC");
+  while (stmt.step()) {
+    const row = stmt.getAsObject();
+    results.push(row);
+  }
+  stmt.free();
+  return results;
+}
+function markTransactionSynced(id) {
+  if (!db) return;
+  db.run("UPDATE pending_transactions SET synced = 1 WHERE id = ?", [id]);
+  saveDatabase();
+}
+function getPendingTransactionCount() {
+  if (!db) return 0;
+  const stmt = db.prepare("SELECT COUNT(*) as cnt FROM pending_transactions WHERE synced = 0");
+  stmt.step();
+  const row = stmt.getAsObject();
+  stmt.free();
+  return row["cnt"] ?? 0;
+}
+function getDb() {
+  return db;
+}
+const ESC = "\x1B";
+const GS = "";
+const CMD = {
+  INIT: `${ESC}@`,
+  ALIGN_CENTER: `${ESC}a`,
+  ALIGN_LEFT: `${ESC}a\0`,
+  BOLD_ON: `${ESC}E`,
+  BOLD_OFF: `${ESC}E\0`,
+  DOUBLE_WIDTH: `${GS}!`,
+  DOUBLE_HEIGHT: `${GS}!`,
+  DOUBLE_BOTH: `${GS}!`,
+  NORMAL_SIZE: `${GS}!\0`,
+  UNDERLINE_ON: `${ESC}-`,
+  UNDERLINE_OFF: `${ESC}-\0`,
+  CUT_PAPER: `${GS}V\0`,
+  PARTIAL_CUT: `${GS}V`,
+  FEED_LINES: (n) => `${ESC}d${String.fromCharCode(n)}`,
+  LINE: "─".repeat(42),
+  DOUBLE_LINE: "═".repeat(42)
+};
+const COMPANIES = {
+  BEST_CHANGE: {
+    name: "BEST CHANGE",
+    fullName: "EXCLUSIVE BEST CHANGE ZRT.",
+    taxNumber: "32313332-2-02",
+    address: "Szeged, Kárász u. 5."
+  },
+  EXPRESSZ: {
+    name: "EXPRESSZ",
+    fullName: "EXPRESSZ ÉKSZERHÁZ ÉS MINIBANK KFT.",
+    taxNumber: "14040535-2-02",
+    address: "Szeged, Klauzál tér 3."
+  }
+};
+const JOB_TYPE_LABELS = {
+  sell: "ELADÁSI BIZONYLAT",
+  buy: "VÁSÁRLÁSI BIZONYLAT",
+  transfer: "ÁTADÁS-ÁTVÉTELI BIZONYLAT",
+  storno: "STORNÓ BIZONYLAT",
+  closing: "NAPI ZÁRÁS"
+};
+function generateReceiptContent(data) {
+  const company = COMPANIES[data.companyType] ?? COMPANIES["BEST_CHANGE"];
+  const lines = [];
+  lines.push(CMD.INIT);
+  lines.push(CMD.ALIGN_CENTER);
+  lines.push(CMD.BOLD_ON);
+  lines.push(CMD.DOUBLE_BOTH);
+  lines.push(company.name);
+  lines.push(CMD.NORMAL_SIZE);
+  lines.push(company.fullName);
+  lines.push(CMD.BOLD_OFF);
+  lines.push(company.address);
+  lines.push(`Adószám: ${company.taxNumber}`);
+  lines.push("");
+  lines.push(CMD.DOUBLE_LINE);
+  lines.push("");
+  lines.push(CMD.BOLD_ON);
+  lines.push(CMD.DOUBLE_HEIGHT);
+  lines.push(JOB_TYPE_LABELS[data.type]);
+  lines.push(CMD.NORMAL_SIZE);
+  lines.push(CMD.BOLD_OFF);
+  lines.push("");
+  lines.push(CMD.ALIGN_LEFT);
+  lines.push(`Bizonylat: ${data.receiptNumber}`);
+  lines.push(`Dátum:     ${data.date}  ${data.time}`);
+  lines.push(`Pénztár:   ${data.branchCode}`);
+  lines.push(`Pénztáros: ${data.cashierName}`);
+  lines.push("");
+  lines.push(CMD.LINE);
+  if (data.type === "sell" || data.type === "buy") {
+    lines.push(...generateTransactionLines(data));
+  } else if (data.type === "transfer") {
+    lines.push(...generateTransferLines(data));
+  } else if (data.type === "storno") {
+    lines.push(...generateStornoLines(data));
+  } else if (data.type === "closing") {
+    lines.push(...generateClosingLines(data));
+  }
+  if (data.customerName) {
+    lines.push("");
+    lines.push(CMD.LINE);
+    lines.push(CMD.BOLD_ON);
+    lines.push("ÜGYFÉL ADATOK:");
+    lines.push(CMD.BOLD_OFF);
+    lines.push(`Név:      ${data.customerName}`);
+    if (data.customerDocType) {
+      lines.push(`Igazolv.: ${data.customerDocType}`);
+    }
+    if (data.customerDocNumber) {
+      lines.push(`Szám:     ${data.customerDocNumber}`);
+    }
+  }
+  lines.push("");
+  lines.push(CMD.DOUBLE_LINE);
+  lines.push(CMD.ALIGN_CENTER);
+  lines.push("Köszönjük, hogy minket választott!");
+  lines.push("");
+  lines.push(CMD.FEED_LINES(4));
+  lines.push(CMD.PARTIAL_CUT);
+  return lines.join("\n");
+}
+function generateTransactionLines(data) {
+  const lines = [];
+  const isSell = data.type === "sell";
+  lines.push("");
+  lines.push(CMD.BOLD_ON);
+  lines.push(isSell ? "Deviza eladás (HUF → valuta):" : "Deviza vásárlás (valuta → HUF):");
+  lines.push(CMD.BOLD_OFF);
+  lines.push("");
+  lines.push(`Valutanem:   ${data.currencyCode ?? "—"}`);
+  lines.push(`Összeg:      ${formatAmount(data.foreignAmount)} ${data.currencyCode ?? ""}`);
+  lines.push(`Árfolyam:    ${formatRate(data.rate)}`);
+  lines.push("");
+  lines.push(CMD.LINE);
+  lines.push(CMD.BOLD_ON);
+  lines.push(`HUF összeg:  ${formatAmount(data.hufAmount)} Ft`);
+  if (data.roundedHufAmount !== void 0 && data.roundingDiff !== void 0 && data.roundingDiff !== 0) {
+    lines.push(`Kerekítés:   ${formatAmount(data.roundingDiff)} Ft`);
+    lines.push(CMD.DOUBLE_HEIGHT);
+    lines.push(`FIZETENDŐ:   ${formatAmount(data.roundedHufAmount)} Ft`);
+    lines.push(CMD.NORMAL_SIZE);
+  } else {
+    lines.push(CMD.DOUBLE_HEIGHT);
+    lines.push(`FIZETENDŐ:   ${formatAmount(data.roundedHufAmount ?? data.hufAmount)} Ft`);
+    lines.push(CMD.NORMAL_SIZE);
+  }
+  lines.push(CMD.BOLD_OFF);
+  return lines;
+}
+function generateTransferLines(data) {
+  const lines = [];
+  lines.push("");
+  lines.push(CMD.BOLD_ON);
+  lines.push("Átadás-átvétel:");
+  lines.push(CMD.BOLD_OFF);
+  lines.push("");
+  lines.push(`Cél pénztár: ${data.transferTarget ?? "—"}`);
+  lines.push(`Valutanem:   ${data.currencyCode ?? "—"}`);
+  lines.push(`Összeg:      ${formatAmount(data.foreignAmount)} ${data.currencyCode ?? ""}`);
+  if (data.transferNote) {
+    lines.push(`Megjegyzés:  ${data.transferNote}`);
+  }
+  return lines;
+}
+function generateStornoLines(data) {
+  const lines = [];
+  lines.push("");
+  lines.push(CMD.BOLD_ON);
+  lines.push("STORNÓ:");
+  lines.push(CMD.BOLD_OFF);
+  lines.push("");
+  lines.push(`Eredeti biz.: ${data.originalReceiptNumber ?? "—"}`);
+  lines.push(`Valutanem:    ${data.currencyCode ?? "—"}`);
+  lines.push(`Összeg:       ${formatAmount(data.foreignAmount)} ${data.currencyCode ?? ""}`);
+  lines.push(`HUF összeg:   ${formatAmount(data.hufAmount)} Ft`);
+  if (data.stornoReason) {
+    lines.push("");
+    lines.push(`Indok: ${data.stornoReason}`);
+  }
+  return lines;
+}
+function generateClosingLines(data) {
+  const lines = [];
+  const summary = data.closingSummary;
+  if (!summary) {
+    lines.push("");
+    lines.push("(Nincs zárási adat)");
+    return lines;
+  }
+  lines.push("");
+  lines.push(CMD.BOLD_ON);
+  lines.push("FORGALMI ÖSSZESÍTŐ:");
+  lines.push(CMD.BOLD_OFF);
+  lines.push("");
+  lines.push(`Összes tranzakció: ${summary.totalTransactions}`);
+  lines.push(`  - Eladás:        ${summary.sellCount}`);
+  lines.push(`  - Vásárlás:      ${summary.buyCount}`);
+  lines.push("");
+  lines.push(`HUF forgalom:      ${formatAmount(summary.totalHufTurnover)} Ft`);
+  lines.push(`Díjbevétel:        ${formatAmount(summary.totalFees)} Ft`);
+  lines.push("");
+  lines.push(CMD.LINE);
+  lines.push(`Nyitó egyenleg:    ${formatAmount(summary.openingBalance)} Ft`);
+  lines.push(`Záró egyenleg:     ${formatAmount(summary.closingBalance)} Ft`);
+  if (summary.discrepancies.length > 0) {
+    lines.push("");
+    lines.push(CMD.BOLD_ON);
+    lines.push("ELTÉRÉSEK:");
+    lines.push(CMD.BOLD_OFF);
+    for (const d of summary.discrepancies) {
+      lines.push(`  ${d.currencyCode}: várt ${formatAmount(d.expected)} → tény ${formatAmount(d.actual)} (${formatAmount(d.difference)})`);
+    }
+  }
+  return lines;
+}
+function formatAmount(value) {
+  if (value === void 0) return "—";
+  return value.toLocaleString("hu-HU", { maximumFractionDigits: 2 });
+}
+function formatRate(value) {
+  if (value === void 0) return "—";
+  return value.toLocaleString("hu-HU", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+}
+async function printReceipt(data) {
+  try {
+    const content = generateReceiptContent(data);
+    console.log("[PRINTER] Bizonylat nyomtatás:", data.type, data.receiptNumber);
+    console.log(content);
+    return true;
+  } catch (err) {
+    console.error("[PRINTER] Nyomtatási hiba:", err);
+    return false;
+  }
+}
+async function httpGet(url, token) {
+  const headers = {
+    "Content-Type": "application/json"
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  const response = await fetch(url, {
+    method: "GET",
+    headers,
+    signal: AbortSignal.timeout(1e4)
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+  return response.json();
+}
+async function httpPost(url, body, token) {
+  const headers = {
+    "Content-Type": "application/json"
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(15e3)
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+  return response.json();
+}
+class SyncEngine {
+  constructor() {
+    __publicField(this, "intervalId", null);
+    __publicField(this, "status", {
+      lastSyncAt: null,
+      lastSyncResult: null,
+      isRunning: false
+    });
+  }
+  getServerUrl() {
+    const stored = getConfig("server_url");
+    return stored ?? "http://localhost:8080/api/v1";
+  }
+  getAuthToken() {
+    return getConfig("auth_token");
+  }
+  /**
+   * Szinkronizáció indítása — periodikus (alapértelmezetten 30s).
+   */
+  start(intervalMs = 3e4) {
+    if (this.intervalId) {
+      console.log("[SyncEngine] Már fut, újraindítás...");
+      this.stop();
+    }
+    console.log(`[SyncEngine] Indítás — ${intervalMs}ms intervallum`);
+    setTimeout(() => {
+      void this.runSync();
+    }, 5e3);
+    this.intervalId = setInterval(() => {
+      void this.runSync();
+    }, intervalMs);
+  }
+  /**
+   * Szinkronizáció leállítása.
+   */
+  stop() {
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+      console.log("[SyncEngine] Leállítva");
+    }
+  }
+  /**
+   * Teljes szinkronizálási ciklus futtatása.
+   */
+  async runSync() {
+    if (this.status.isRunning) {
+      console.log("[SyncEngine] Előző sync még fut, kihagyás");
+      return;
+    }
+    this.status.isRunning = true;
+    try {
+      const result = await this.syncAll();
+      this.status.lastSyncResult = result;
+      if (result.synced > 0) {
+        console.log(`[SyncEngine] ${result.synced} tranzakció szinkronizálva`);
+      }
+      if (result.failed > 0) {
+        console.warn(`[SyncEngine] ${result.failed} tranzakció SIKERTELEN:`, result.errors);
+      }
+      if (this.getAuthToken()) {
+        await this.syncRates();
+        await this.syncCirculars();
+      }
+      this.status.lastSyncAt = (/* @__PURE__ */ new Date()).toISOString();
+    } catch (err) {
+      console.error("[SyncEngine] Sync hiba:", err);
+    } finally {
+      this.status.isRunning = false;
+    }
+  }
+  /**
+   * Pending tranzakciók szinkronizálása a szerverrel.
+   */
+  async syncAll() {
+    const result = { synced: 0, failed: 0, errors: [] };
+    const pending = getPendingTransactions();
+    if (pending.length === 0) {
+      return result;
+    }
+    const serverUrl = this.getServerUrl();
+    const token = this.getAuthToken();
+    if (!token) {
+      result.errors.push("Nincs auth token — bejelentkezés szükséges");
+      result.failed = pending.length;
+      return result;
+    }
+    for (const tx of pending) {
+      try {
+        await this.syncTransaction(serverUrl, token, tx);
+        markTransactionSynced(tx.id);
+        result.synced++;
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        result.failed++;
+        result.errors.push(`TX #${tx.id} (${tx.type} ${tx.currency_code}): ${errorMsg}`);
+        if (errorMsg.includes("fetch") || errorMsg.includes("network") || errorMsg.includes("timeout")) {
+          result.errors.push("Hálózati hiba — további próbálkozások leállítva");
+          result.failed += pending.length - result.synced - result.failed;
+          break;
+        }
+      }
+    }
+    return result;
+  }
+  /**
+   * Egyedi tranzakció szinkronizálása.
+   */
+  async syncTransaction(serverUrl, token, tx) {
+    const endpoint = tx.type === "SELL" ? `${serverUrl}/transactions/sell` : `${serverUrl}/transactions/buy`;
+    const body = {
+      currencyCode: tx.currency_code,
+      foreignAmount: tx.foreign_amount,
+      hufAmount: tx.huf_amount,
+      roundedHufAmount: tx.rounded_huf_amount,
+      rate: tx.rate
+    };
+    if (tx.customer_id !== null) {
+      body["customerId"] = tx.customer_id;
+    }
+    if (tx.denominations !== null) {
+      try {
+        body["denominations"] = JSON.parse(tx.denominations);
+      } catch {
+        body["denominations"] = tx.denominations;
+      }
+    }
+    await httpPost(endpoint, body, token);
+  }
+  /**
+   * Árfolyamok letöltése és SQLite cache frissítése.
+   */
+  async syncRates() {
+    try {
+      const serverUrl = this.getServerUrl();
+      const token = this.getAuthToken();
+      const rates = await httpGet(
+        `${serverUrl}/rates`,
+        token
+      );
+      const db2 = getDb();
+      if (!db2 || !Array.isArray(rates)) return;
+      for (const rate of rates) {
+        db2.run(
+          `INSERT INTO cached_rates (currency_code, buy_rate, sell_rate, unit, updated_at)
+           VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT(currency_code) DO UPDATE SET
+             buy_rate = excluded.buy_rate,
+             sell_rate = excluded.sell_rate,
+             unit = excluded.unit,
+             updated_at = excluded.updated_at`,
+          [rate.currencyCode, rate.buyRate, rate.sellRate, rate.unit, rate.updatedAt]
+        );
+      }
+      console.log(`[SyncEngine] ${rates.length} árfolyam frissítve`);
+    } catch (err) {
+      console.warn("[SyncEngine] Árfolyam sync hiba:", err instanceof Error ? err.message : err);
+    }
+  }
+  /**
+   * Körlevelek letöltése és SQLite-ba mentése.
+   */
+  async syncCirculars() {
+    try {
+      const serverUrl = this.getServerUrl();
+      const token = this.getAuthToken();
+      const circulars = await httpGet(
+        `${serverUrl}/circulars`,
+        token
+      );
+      const db2 = getDb();
+      if (!db2 || !Array.isArray(circulars)) return;
+      db2.run(`
+        CREATE TABLE IF NOT EXISTS cached_circulars (
+          id INTEGER PRIMARY KEY,
+          subject TEXT NOT NULL,
+          body TEXT NOT NULL,
+          sender TEXT NOT NULL,
+          sent_at TEXT NOT NULL,
+          acknowledged INTEGER DEFAULT 0,
+          cached_at TEXT DEFAULT (datetime('now'))
+        )
+      `);
+      for (const circular of circulars) {
+        db2.run(
+          `INSERT INTO cached_circulars (id, subject, body, sender, sent_at)
+           VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET
+             subject = excluded.subject,
+             body = excluded.body,
+             sender = excluded.sender,
+             sent_at = excluded.sent_at`,
+          [circular.id, circular.subject, circular.body, circular.sender, circular.sentAt]
+        );
+      }
+      if (circulars.length > 0) {
+        console.log(`[SyncEngine] ${circulars.length} körlevél szinkronizálva`);
+      }
+    } catch (err) {
+      console.warn("[SyncEngine] Körlevél sync hiba:", err instanceof Error ? err.message : err);
+    }
+  }
+  /**
+   * Aktuális szinkronizáció státusz lekérdezése.
+   */
+  getStatus() {
+    return { ...this.status };
+  }
+}
+const syncEngine = new SyncEngine();
 const isDev = !electron.app.isPackaged;
 let mainWindow = null;
 function createWindow() {
@@ -2281,9 +2793,14 @@ function createWindow() {
     mainWindow = null;
   });
 }
-electron.ipcMain.handle("print-receipt", async (_event, data) => {
-  console.log("[PRINT]", data.substring(0, 100));
-  return true;
+electron.ipcMain.handle("print-receipt", async (_event, dataJson) => {
+  try {
+    const data = JSON.parse(dataJson);
+    return await printReceipt(data);
+  } catch (err) {
+    console.error("[IPC] print-receipt hiba:", err);
+    return false;
+  }
 });
 electron.ipcMain.handle("get-config", async (_event, key) => {
   return getConfig(key);
@@ -2291,15 +2808,44 @@ electron.ipcMain.handle("get-config", async (_event, key) => {
 electron.ipcMain.handle("set-config", async (_event, key, value) => {
   setConfig(key, value);
 });
+electron.ipcMain.handle("delete-config", async (_event, key) => {
+  deleteConfig(key);
+});
+electron.ipcMain.handle("save-pending-transaction", async (_event, type, currencyCode, foreignAmount, hufAmount, roundedHufAmount, rate, customerId, denominations) => {
+  return savePendingTransaction(type, currencyCode, foreignAmount, hufAmount, roundedHufAmount, rate, customerId, denominations);
+});
+electron.ipcMain.handle("get-pending-transactions", async () => {
+  return getPendingTransactions();
+});
+electron.ipcMain.handle("get-pending-transaction-count", async () => {
+  return getPendingTransactionCount();
+});
+electron.ipcMain.handle("mark-transaction-synced", async (_event, id) => {
+  markTransactionSynced(id);
+});
 electron.ipcMain.handle("sync-offline", async () => {
-  return 0;
+  const result = await syncEngine.syncAll();
+  return result.synced;
+});
+electron.ipcMain.handle("get-sync-status", async () => {
+  return JSON.stringify(syncEngine.getStatus());
 });
 electron.ipcMain.handle("get-app-version", async () => {
   return electron.app.getVersion();
 });
+electron.ipcMain.handle("get-printers", async () => {
+  if (!mainWindow) return [];
+  return mainWindow.webContents.getPrintersAsync();
+});
 electron.app.whenReady().then(async () => {
   await initDatabase();
   createWindow();
+  syncEngine.start(3e4);
+  console.log("[App] SyncEngine elindítva");
+});
+electron.app.on("will-quit", () => {
+  syncEngine.stop();
+  console.log("[App] SyncEngine leállítva");
 });
 electron.app.on("window-all-closed", () => {
   electron.app.quit();
