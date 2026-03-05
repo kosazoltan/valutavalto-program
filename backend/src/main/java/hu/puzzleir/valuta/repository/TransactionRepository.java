@@ -193,6 +193,139 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("date") LocalDate date
     );
 
+    // ============ AML LEGACY QUERY-K (BIGCTRL.DLL) ============
+
+    /**
+     * Heti göngyölés: ügyfél elmúlt 7 nap HUF összege.
+     * Legacy: HETIOSSZ mező — _diff < 8 → _hasforint + _hetiforint
+     */
+    @Query("SELECT COALESCE(SUM(t.hufAmount), 0) FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.customerId = :customerId " +
+           "AND t.transactionDate >= :sinceDate " +
+           "AND t.status = 'COMPLETED'")
+    BigDecimal sumCustomerWeeklyTotal(
+        @Param("companyId") UUID companyId,
+        @Param("customerId") String customerId,
+        @Param("sinceDate") LocalDate sinceDate
+    );
+
+    /**
+     * Éves maximum tranzakció összeg.
+     * Legacy: EVIMAX mező
+     */
+    @Query("SELECT COALESCE(MAX(t.hufAmount), 0) FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.customerId = :customerId " +
+           "AND t.transactionDate BETWEEN :yearStart AND :yearEnd " +
+           "AND t.status = 'COMPLETED'")
+    BigDecimal findCustomerYearlyMax(
+        @Param("companyId") UUID companyId,
+        @Param("customerId") String customerId,
+        @Param("yearStart") LocalDate yearStart,
+        @Param("yearEnd") LocalDate yearEnd
+    );
+
+    /**
+     * Negyedéves tranzakciószám.
+     * Legacy: BIGCTRL.DLL TranzTipus 4 — 4+ tranzakció a negyedévben
+     */
+    @Query("SELECT COUNT(t) FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.customerId = :customerId " +
+           "AND t.transactionDate BETWEEN :quarterStart AND :quarterEnd " +
+           "AND t.status = 'COMPLETED'")
+    long countCustomerQuarterlyTransactions(
+        @Param("companyId") UUID companyId,
+        @Param("customerId") String customerId,
+        @Param("quarterStart") LocalDate quarterStart,
+        @Param("quarterEnd") LocalDate quarterEnd
+    );
+
+    /**
+     * Negyedéves HUF összeg.
+     * Legacy: _negyedevFt >= 25.000.000
+     */
+    @Query("SELECT COALESCE(SUM(t.hufAmount), 0) FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.customerId = :customerId " +
+           "AND t.transactionDate BETWEEN :quarterStart AND :quarterEnd " +
+           "AND t.status = 'COMPLETED'")
+    BigDecimal sumCustomerQuarterlyTotal(
+        @Param("companyId") UUID companyId,
+        @Param("customerId") String customerId,
+        @Param("quarterStart") LocalDate quarterStart,
+        @Param("quarterEnd") LocalDate quarterEnd
+    );
+
+    /**
+     * Havi tranzakciók branch-hez (havi záráshoz).
+     */
+    @Query("SELECT t FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionDate BETWEEN :monthStart AND :monthEnd " +
+           "AND t.status = 'COMPLETED' " +
+           "ORDER BY t.transactionDate, t.transactionTime")
+    List<Transaction> findByBranchAndMonth(
+        @Param("branchId") UUID branchId,
+        @Param("monthStart") LocalDate monthStart,
+        @Param("monthEnd") LocalDate monthEnd
+    );
+
+    /**
+     * Havi összesítő: vétel HUF összeg branch-hez.
+     */
+    @Query("SELECT COALESCE(SUM(t.hufAmount), 0) FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionDate BETWEEN :monthStart AND :monthEnd " +
+           "AND t.transactionType IN ('BUY', 'WESTERN_UNION_RECEIVE', 'MONEYGRAM_RECEIVE') " +
+           "AND t.status = 'COMPLETED'")
+    BigDecimal sumMonthlyBuyHuf(
+        @Param("branchId") UUID branchId,
+        @Param("monthStart") LocalDate monthStart,
+        @Param("monthEnd") LocalDate monthEnd
+    );
+
+    /**
+     * Havi összesítő: eladás HUF összeg branch-hez.
+     */
+    @Query("SELECT COALESCE(SUM(t.hufAmount), 0) FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionDate BETWEEN :monthStart AND :monthEnd " +
+           "AND t.transactionType IN ('SELL', 'WESTERN_UNION_SEND', 'MONEYGRAM_SEND') " +
+           "AND t.status = 'COMPLETED'")
+    BigDecimal sumMonthlySellHuf(
+        @Param("branchId") UUID branchId,
+        @Param("monthStart") LocalDate monthStart,
+        @Param("monthEnd") LocalDate monthEnd
+    );
+
+    /**
+     * Havi kezelési díj összeg.
+     */
+    @Query("SELECT COALESCE(SUM(t.handlingFee), 0) FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionDate BETWEEN :monthStart AND :monthEnd " +
+           "AND t.status = 'COMPLETED'")
+    BigDecimal sumMonthlyHandlingFees(
+        @Param("branchId") UUID branchId,
+        @Param("monthStart") LocalDate monthStart,
+        @Param("monthEnd") LocalDate monthEnd
+    );
+
+    /**
+     * Havi tranzakciószám.
+     */
+    @Query("SELECT COUNT(t) FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionDate BETWEEN :monthStart AND :monthEnd " +
+           "AND t.status = 'COMPLETED'")
+    long countMonthlyTransactions(
+        @Param("branchId") UUID branchId,
+        @Param("monthStart") LocalDate monthStart,
+        @Param("monthEnd") LocalDate monthEnd
+    );
+
     // ============ HANDLING FEE QUERY-K (HIGH FIX #11, #12) ============
 
     /**

@@ -15,6 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.temporal.IsoFields;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -60,7 +63,7 @@ public class AmlService {
      * Legacy: BIGCTRL.DLL - a tranzakcio konyvelesetol fut le
      * result: 1 = ugyfel konyvelve (OK), 2 = STOP, 3 = nincs ugyfelszam/internet
      */
-    public AmlCheckResult checkTransaction(
+    public AmlBasicCheckResult checkTransaction(
             BigDecimal hufAmount,
             String customerId,
             String customerName,
@@ -68,13 +71,13 @@ public class AmlService {
 
         // Input validacio
         if (hufAmount == null || hufAmount.compareTo(BigDecimal.ZERO) < 0) {
-            return AmlCheckResult.builder()
+            return AmlBasicCheckResult.builder()
                 .approved(false)
                 .rejectionReason("Ervenytelen tranzakcio osszeg")
                 .build();
         }
 
-        AmlCheckResult.AmlCheckResultBuilder result = AmlCheckResult.builder()
+        AmlBasicCheckResult.AmlBasicCheckResultBuilder result = AmlBasicCheckResult.builder()
             .approved(true)
             .requiresIdentification(false)
             .requiresDetailedId(false)
@@ -193,7 +196,7 @@ public class AmlService {
     @lombok.Builder
     @lombok.NoArgsConstructor
     @lombok.AllArgsConstructor
-    public static class AmlCheckResult {
+    public static class AmlBasicCheckResult {
         private boolean approved;
         private boolean requiresIdentification;
         private boolean requiresDetailedId;
@@ -218,5 +221,275 @@ public class AmlService {
         private BigDecimal dailyTotal;
         private boolean identificationRequired;
         private boolean limitReached;
+    }
+
+    // ============ LEGACY BIGCTRL.DLL IMPLEMENTÁCIÓ ============
+
+    /** Legacy: 50M — kiemelt figyelmet igénylő (TranzTipus 6) */
+    private static final BigDecimal THRESHOLD_50M = new BigDecimal("50000000");
+
+    /** Legacy: 10M — fokozott figyelmet igénylő (TranzTipus 5) */
+    private static final BigDecimal THRESHOLD_10M = new BigDecimal("10000000");
+
+    /** Legacy: 25M negyedéves (TranzTipus 4) */
+    private static final BigDecimal THRESHOLD_25M_QUARTERLY = new BigDecimal("25000000");
+
+    /** Legacy: 8M éves ismétlődő (TranzTipus 3) */
+    private static final BigDecimal THRESHOLD_8M = new BigDecimal("8000000");
+
+    /** Legacy: negyedéves tranzakciószám küszöb (TranzTipus 4) */
+    private static final int QUARTERLY_TRANSACTION_COUNT_THRESHOLD = 4;
+
+    /**
+     * Heti göngyölés: az elmúlt 7 nap tranzakcióinak HUF összege.
+     *
+     * Legacy: BIGCTRL.DLL
+     *   _diff = Napidiff(_lastdatum, _megnyitottnap)
+     *   if _diff < 8 then _hasforint = _hasforint + _hetiforint
+     *   HETIOSSZ mező az ügyfél táblában
+     */
+    @Transactional(readOnly = true)
+    public BigDecimal getWeeklyTotal(String customerId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        LocalDate sinceDate = LocalDate.now().minusDays(7);
+
+        BigDecimal total = transactionRepository.sumCustomerWeeklyTotal(
+            companyId, customerId, sinceDate);
+        return total != null ? total : BigDecimal.ZERO;
+    }
+
+    /**
+     * Éves maximum tranzakció összeg.
+     *
+     * Legacy: EVIMAX mező — az adott évi legnagyobb tranzakció
+     */
+    @Transactional(readOnly = true)
+    public BigDecimal getYearlyMax(String customerId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        LocalDate now = LocalDate.now();
+        LocalDate yearStart = LocalDate.of(now.getYear(), 1, 1);
+        LocalDate yearEnd = LocalDate.of(now.getYear(), 12, 31);
+
+        BigDecimal max = transactionRepository.findCustomerYearlyMax(
+            companyId, customerId, yearStart, yearEnd);
+        return max != null ? max : BigDecimal.ZERO;
+    }
+
+    /**
+     * Negyedéves statisztikák: tranzakciószám és összeg.
+     *
+     * Legacy: BIGCTRL.DLL TranzTipus 4 — 4+ tranzakció ÉS >= 25M
+     *
+     * @return long[0] = count, BigDecimal[0] = total (visszatérés QuarterlyStats-ban)
+     */
+    @Transactional(readOnly = true)
+    public QuarterlyStats getQuarterlyStats(String customerId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        LocalDate now = LocalDate.now();
+
+        int quarter = now.get(IsoFields.QUARTER_OF_YEAR);
+        int year = now.getYear();
+        LocalDate quarterStart = LocalDate.of(year, (quarter - 1) * 3 + 1, 1);
+        LocalDate quarterEnd = quarterStart.plusMonths(3).minusDays(1);
+
+        long count = transactionRepository.countCustomerQuarterlyTransactions(
+            companyId, customerId, quarterStart, quarterEnd);
+        BigDecimal total = transactionRepository.sumCustomerQuarterlyTotal(
+            companyId, customerId, quarterStart, quarterEnd);
+
+        return QuarterlyStats.builder()
+            .count(count)
+            .total(total != null ? total : BigDecimal.ZERO)
+            .build();
+    }
+
+    /**
+     * Legacy TranzTipus klasszifikáció.
+     *
+     * BIGCTRL.DLL logika PONTOSAN:
+     *  6: _hasforint >= 50.000.000
+     *  5: _hasforint >= 10.000.000
+     *  4: negyedév 4+ tranzakció ÉS _negyedevFt >= 25.000.000
+     *  3: _evimax >= 8.000.000 ÉS _hasforint >= 8.000.000
+     *  2: külföldi ügyfél
+     *  1: belföldi kiemelt közszereplő (PEP)
+     * -1: külföldi, nem kaphat USD-t
+     *  0: normál
+     *
+     * @param customerId ügyfél azonosító
+     * @param hufAmount  aktuális tranzakció HUF összeg (a heti göngyöléssel együtt)
+     * @return TranzTipus érték (-1, 0, 1, 2, 3, 4, 5, 6)
+     */
+    @Transactional(readOnly = true)
+    public int classifyTransaction(String customerId, BigDecimal hufAmount) {
+        if (customerId == null || customerId.trim().isEmpty()) {
+            // Névtelen ügyfél — csak összeg alapján
+            return classifyByAmount(hufAmount);
+        }
+
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+
+        // Heti göngyölés: aktuális + elmúlt 7 nap
+        BigDecimal weeklyTotal = getWeeklyTotal(customerId);
+        BigDecimal hasforint = hufAmount.add(weeklyTotal);
+
+        // TranzTipus 6: >= 50M
+        if (hasforint.compareTo(THRESHOLD_50M) >= 0) {
+            return 6;
+        }
+
+        // TranzTipus 5: >= 10M
+        if (hasforint.compareTo(THRESHOLD_10M) >= 0) {
+            return 5;
+        }
+
+        // TranzTipus 4: negyedéves 4+ tranzakció ÉS >= 25M
+        QuarterlyStats qStats = getQuarterlyStats(customerId);
+        if (qStats.getCount() >= QUARTERLY_TRANSACTION_COUNT_THRESHOLD
+            && qStats.getTotal().compareTo(THRESHOLD_25M_QUARTERLY) >= 0) {
+            return 4;
+        }
+
+        // TranzTipus 3: éves max >= 8M ÉS aktuális hasforint >= 8M
+        BigDecimal yearlyMax = getYearlyMax(customerId);
+        if (yearlyMax.compareTo(THRESHOLD_8M) >= 0
+            && hasforint.compareTo(THRESHOLD_8M) >= 0) {
+            return 3;
+        }
+
+        // Ügyfél-specifikus ellenőrzések (isForeign, isPep)
+        Optional<Customer> customerOpt = customerRepository
+            .findByCustomerCodeAndCompanyId(customerId, companyId);
+
+        if (customerOpt.isPresent()) {
+            Customer customer = customerOpt.get();
+
+            // TranzTipus -1 és 2: külföldi ügyfél
+            if (Boolean.TRUE.equals(customer.getIsForeign())) {
+                // -1: külföldi, nem kaphat USD-t (speciális flag — a hívó dönti el a valutanem alapján)
+                // Itt 2-t adunk, a -1-et a checkAllThresholds kezeli valutanem alapján
+                return 2;
+            }
+
+            // TranzTipus 1: belföldi kiemelt közszereplő (PEP)
+            if (Boolean.TRUE.equals(customer.getIsPep())) {
+                return 1;
+            }
+        }
+
+        return 0; // normál
+    }
+
+    /**
+     * Összeg alapú klasszifikáció (névtelen ügyfélnél).
+     */
+    private int classifyByAmount(BigDecimal hufAmount) {
+        if (hufAmount.compareTo(THRESHOLD_50M) >= 0) {
+            return 6;
+        }
+        if (hufAmount.compareTo(THRESHOLD_10M) >= 0) {
+            return 5;
+        }
+        return 0;
+    }
+
+    /**
+     * Minden AML küszöb ellenőrzése egyben.
+     *
+     * Visszaadja a teljes AmlCheckResult-ot a legacy BIGCTRL.DLL logika alapján.
+     *
+     * @param customerId ügyfél azonosító
+     * @param hufAmount  aktuális tranzakció forint összeg
+     * @return AmlCheckResult DTO
+     */
+    @Transactional(readOnly = true)
+    public hu.puzzleir.valuta.dto.aml.AmlCheckResult checkAllThresholds(String customerId, BigDecimal hufAmount) {
+        List<String> warnings = new ArrayList<>();
+        boolean requiresId = false;
+        boolean requiresEnhanced = false;
+        boolean blocked = false;
+
+        BigDecimal weeklyTotal = BigDecimal.ZERO;
+        BigDecimal yearlyMax = BigDecimal.ZERO;
+        int quarterlyCount = 0;
+        BigDecimal quarterlyTotal = BigDecimal.ZERO;
+
+        if (customerId != null && !customerId.trim().isEmpty()) {
+            weeklyTotal = getWeeklyTotal(customerId);
+            yearlyMax = getYearlyMax(customerId);
+
+            QuarterlyStats qStats = getQuarterlyStats(customerId);
+            quarterlyCount = (int) qStats.getCount();
+            quarterlyTotal = qStats.getTotal();
+        }
+
+        BigDecimal hasforint = hufAmount.add(weeklyTotal);
+        int transactionType = classifyTransaction(customerId, hufAmount);
+
+        switch (transactionType) {
+            case 6:
+                requiresId = true;
+                requiresEnhanced = true;
+                warnings.add("KIEMELT: Heti göngyölt összeg >= 50.000.000 Ft (" + hasforint.toPlainString() + " Ft)");
+                break;
+            case 5:
+                requiresId = true;
+                requiresEnhanced = true;
+                warnings.add("FOKOZOTT: Heti göngyölt összeg >= 10.000.000 Ft (" + hasforint.toPlainString() + " Ft)");
+                break;
+            case 4:
+                requiresId = true;
+                requiresEnhanced = true;
+                warnings.add("NEGYEDÉVES: " + quarterlyCount + " tranzakció, összeg: " + quarterlyTotal.toPlainString() + " Ft (>= 25.000.000 Ft)");
+                break;
+            case 3:
+                requiresId = true;
+                warnings.add("ÉVES ISMÉTLŐDŐ: Éves max: " + yearlyMax.toPlainString() + " Ft, aktuális göngyölt: " + hasforint.toPlainString() + " Ft (>= 8.000.000 Ft)");
+                break;
+            case 2:
+                requiresId = true;
+                warnings.add("KÜLFÖLDI ÜGYFÉL: Fokozott azonosítás szükséges");
+                break;
+            case 1:
+                requiresId = true;
+                requiresEnhanced = true;
+                warnings.add("PEP: Kiemelt közszereplő — fokozott átvilágítás szükséges");
+                break;
+            case -1:
+                requiresId = true;
+                blocked = true;
+                warnings.add("BLOKKOLVA: Külföldi ügyfél nem kaphat USD-t");
+                break;
+            default:
+                // Normál — 300K feletti azonosítási kötelezettség
+                if (hufAmount.compareTo(IDENTIFICATION_LIMIT) >= 0) {
+                    requiresId = true;
+                    warnings.add("Azonosítás szükséges: " + hufAmount.toPlainString() + " Ft >= " + IDENTIFICATION_LIMIT.toPlainString() + " Ft");
+                }
+                break;
+        }
+
+        return hu.puzzleir.valuta.dto.aml.AmlCheckResult.builder()
+            .transactionType(transactionType)
+            .weeklyTotal(weeklyTotal)
+            .yearlyMax(yearlyMax)
+            .quarterlyCount(quarterlyCount)
+            .quarterlyTotal(quarterlyTotal)
+            .requiresId(requiresId)
+            .requiresEnhanced(requiresEnhanced)
+            .blocked(blocked)
+            .warnings(warnings)
+            .build();
+    }
+
+    // ============ HELPER DTO-K ============
+
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class QuarterlyStats {
+        private long count;
+        private BigDecimal total;
     }
 }

@@ -2667,6 +2667,115 @@ export const archivingApi = {
   }
 }
 
+// ================== AML ENHANCED API ==================
+
+export interface AmlCheckResultDto {
+  transactionType: number
+  weeklyTotal: number
+  yearlyMax: number
+  quarterlyCount: number
+  quarterlyTotal: number
+  requiresId: boolean
+  requiresEnhanced: boolean
+  blocked: boolean
+  warnings: string[]
+}
+
+export const amlApi = {
+  checkAllThresholds: async (customerId: string, hufAmount: number): Promise<AmlCheckResultDto> => {
+    const response = await api.get<AmlCheckResultDto>('/aml/check-all-thresholds', {
+      params: { customerId, hufAmount }
+    })
+    return response.data
+  }
+}
+
+// ================== MONTHLY CLOSING API ==================
+
+export interface MonthlyClosingSummary {
+  id: number
+  branchId: string
+  branchName?: string
+  yearMonth: string
+  closedAt: string
+  closedByWorkerId?: number
+  closedByWorkerName?: string
+  totalBuyHuf: number
+  totalSellHuf: number
+  totalHandlingFee: number
+  transactionCount: number
+  currencyBreakdown?: string
+  createdAt: string
+}
+
+export const monthlyClosingApi = {
+  performClosing: async (branchId: string, yearMonth: string): Promise<MonthlyClosingSummary> => {
+    const response = await api.post<MonthlyClosingSummary>(`/closing/monthly/${branchId}/${yearMonth}`)
+    return response.data
+  },
+  getReport: async (branchId: string, yearMonth: string): Promise<MonthlyClosingSummary> => {
+    const response = await api.get<MonthlyClosingSummary>(`/closing/monthly/${branchId}/${yearMonth}`)
+    return response.data
+  },
+  getAllClosedMonths: async (branchId: string): Promise<MonthlyClosingSummary[]> => {
+    const response = await api.get<MonthlyClosingSummary[]>(`/closing/monthly/${branchId}`)
+    return response.data
+  }
+}
+
+// ================== RESERVATIONS API ==================
+
+export interface Reservation {
+  id: string
+  customerId?: string
+  customerName?: string
+  currencyCode: string
+  amount: number
+  reservationType: string
+  reservationDate: string
+  expiryDate?: string
+  status: string
+  branchId?: string
+  branchName?: string
+  notes?: string
+  createdAt: string
+}
+
+export interface CreateReservationRequest {
+  customerId?: string
+  customerName?: string
+  currencyCode: string
+  amount: number
+  reservationType: string
+  expiryDate?: string
+  notes?: string
+}
+
+export const reservationsApi = {
+  create: async (data: CreateReservationRequest): Promise<Reservation> => {
+    const response = await api.post<Reservation>('/reservations', data)
+    return response.data
+  },
+  getById: async (id: string): Promise<Reservation> => {
+    const response = await api.get<Reservation>(`/reservations/${id}`)
+    return response.data
+  },
+  list: async (params?: { status?: string; customerId?: string }): Promise<Reservation[]> => {
+    const response = await api.get<Reservation[]>('/reservations', { params })
+    return response.data
+  },
+  cancel: async (id: string): Promise<Reservation> => {
+    const response = await api.post<Reservation>(`/reservations/${id}/cancel`)
+    return response.data
+  },
+  fulfill: async (id: string, transactionId: string): Promise<Reservation> => {
+    const response = await api.post<Reservation>(`/reservations/${id}/fulfill`, null, {
+      params: { transactionId }
+    })
+    return response.data
+  }
+}
+
 // ================== EXCHANGE RATE DISPLAY API ==================
 
 export interface ExchangeRateDisplay {

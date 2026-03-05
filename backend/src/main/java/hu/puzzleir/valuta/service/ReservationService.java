@@ -1,0 +1,531 @@
+package hu.puzzleir.valuta.service;
+
+import com.puzzleir.backend.entity.Branch;
+import com.puzzleir.backend.entity.Company;
+import com.puzzleir.backend.exception.ResourceNotFoundException;
+import com.puzzleir.backend.exception.ValidationException;
+import com.puzzleir.backend.repository.BranchRepository;
+import com.puzzleir.backend.repository.CompanyRepository;
+import hu.puzzleir.valuta.dto.reservation.ReservedStockDto;
+import hu.puzzleir.valuta.entity.*;
+import hu.puzzleir.valuta.repository.CashBalanceRepository;
+import hu.puzzleir.valuta.repository.CurrencyRepository;
+import hu.puzzleir.valuta.repository.CustomerRepository;
+import hu.puzzleir.valuta.repository.ReservationRepository;
+import hu.puzzleir.valuta.repository.WorkerRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * Foglaló (Reservation) szolgáltatás.
+ *
+ * Legacy mapping: FOGLALO.DLL — FoglaloBevetelezes, VisszaFizetoProcedura, FoglaloKivezetes
+ *
+ * Üzleti logika:
+ * 1. Bevételezés: ügyfél befizet HUF-ban → valuta lefoglalás + készlet elkülönítés
+ * 2. Teljesítés (_visszatipus=1): ügyfél megkapja a valutát, refund = deposit
+ * 3. Ügyfél stornó (_visszatipus=2): letét NEM jár vissza, refund = 0
+ * 4. EBC stornó (_visszatipus=3): dupla visszafizetés, refund = 2 × deposit
+ * 5. Készlet kezelés: FOGLALOKESZLET — valutanemenként elkülönített készlet
+ * 6. Bizonylat: bevételi + kiadási bizonylat generálás
+ */
+@Service
+@RequiredArgsConstructor
+@Transactional
+@Slf4j
+public class ReservationService {
+
+    private final ReservationRepository reservationRepository;
+    private final CustomerRepository customerRepository;
+    private final WorkerRepository workerRepository;
+    private final CashBalanceRepository cashBalanceRepository;
+    private final CurrencyRepository currencyRepository;
+    private final CompanyRepository companyRepository;
+    private final BranchRepository branchRepository;
+    private final AuditLogService auditLogService;
+
+    /** 5-re kerekítés (legacy Kerekito) */
+    private static final BigDecimal FIVE = new BigDecimal("5");
+
+    // ============ FOGLALÓ BEVÉTELEZÉS ============
+
+    /**
+     * Új foglaló létrehozás (FoglaloBevetelezes).
+     *
+     * Üzleti logika:
+     * 1. Ügyfél ellenőrzés
+     * 2. Valuta ellenőrzés + készlet ellenőrzés
+     * 3. Letét számítás: deposit = amount × rate, 5-re kerekítve
+     * 4. Készlet elkülönítés (CashBalance csökkentés a lefoglalt valuta összegével)
+     * 5. HUF készlet növelés (letét beérkezése)
+     * 6. AuditLog bejegyzés
+     *
+     * @param customerId   ügyfél ID
+     * @param currencyCode valuta kód (EUR, USD, stb.)
+     * @param amount       lefoglalandó valuta mennyiség
+     * @param exchangeRate alkalmazott árfolyam
+     * @param expiresAt    lejárati időpont
+     * @param notes        megjegyzés (opcionális)
+     * @return létrehozott Reservation
+     */
+    public Reservation createReservation(Long customerId, String currencyCode, BigDecimal amount,
+                                          BigDecimal exchangeRate, LocalDateTime expiresAt, String notes) {
+        // Security context
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+
+        // Validáció
+        if (expiresAt.isBefore(LocalDateTime.now())) {
+            throw new ValidationException("Lejárati idő nem lehet a múltban!");
+        }
+
+        // Entitások betöltése
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cég nem található"));
+        Branch branch = branchRepository.findById(branchId)
+                .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található"));
+        Worker worker = workerRepository.findById(workerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található"));
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ügyfél nem található: " + customerId));
+
+        // Valuta ellenőrzés
+        Currency currency = currencyRepository.findByCode(currencyCode)
+                .orElseThrow(() -> new ResourceNotFoundException("Valuta nem található: " + currencyCode));
+        if (!Boolean.TRUE.equals(currency.getActive())) {
+            throw new ValidationException("Inaktív valuta: " + currencyCode);
+        }
+
+        // Letét számítás: deposit = amount × rate, 5-re kerekítve
+        BigDecimal rawDeposit = amount.multiply(exchangeRate).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal depositAmount = roundToFive(rawDeposit);
+
+        // Készlet ellenőrzés — van-e elég valuta a fiókban
+        CashBalance currencyBalance = cashBalanceRepository
+                .findByBranchIdAndCurrencyId(branchId, currency.getId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                    "Kassza egyenleg nem található: " + currencyCode));
+        if (currencyBalance.getCurrentBalance().compareTo(amount) < 0) {
+            throw new ValidationException(String.format(
+                "Nincs elegendő %s készlet! Jelenlegi: %s, szükséges: %s",
+                currencyCode, currencyBalance.getCurrentBalance().toPlainString(),
+                amount.toPlainString()));
+        }
+
+        // Készlet elkülönítés — valuta csökkentés (lefoglalás)
+        currencyBalance.subtractBalance(amount);
+        cashBalanceRepository.save(currencyBalance);
+
+        // HUF készlet növelés — letét beérkezése
+        addHufBalance(branchId, depositAmount);
+
+        // Foglaló létrehozás
+        Reservation reservation = Reservation.builder()
+                .company(company)
+                .customer(customer)
+                .branch(branch)
+                .worker(worker)
+                .currencyCode(currencyCode)
+                .reservedAmount(amount)
+                .exchangeRate(exchangeRate)
+                .depositAmount(depositAmount)
+                .status(ReservationStatus.ACTIVE)
+                .expiresAt(expiresAt)
+                .refundAmount(BigDecimal.ZERO)
+                .supervisorApproval(false)
+                .notes(notes)
+                .build();
+
+        reservation = reservationRepository.save(reservation);
+
+        // AuditLog
+        auditLogService.log(
+                "RESERVATION_CREATED",
+                "Reservation",
+                reservation.getId().toString(),
+                workerId.toString(),
+                worker.getName(),
+                branchId.toString(),
+                branch.getName(),
+                String.format("Foglaló létrehozva: %s %s @ %s, letét: %s HUF, ügyfél: %s, lejárat: %s",
+                        amount.toPlainString(), currencyCode, exchangeRate.toPlainString(),
+                        depositAmount.toPlainString(), customer.getName(), expiresAt),
+                null, null
+        );
+
+        log.info("Foglaló létrehozva: id={}, ügyfél={}, {} {} @ {}, letét={} HUF",
+                reservation.getId(), customer.getName(), amount, currencyCode,
+                exchangeRate, depositAmount);
+
+        return reservation;
+    }
+
+    // ============ FOGLALÓ TELJESÍTÉS ============
+
+    /**
+     * Foglaló teljesítés (VisszaFizetoProcedura, _visszatipus=1: "ÜGYLET RENDBEN").
+     *
+     * Ügyfél megkapja a lefoglalt valutát.
+     * refundAmount = depositAmount (a letét beszámít a vételárba).
+     *
+     * @param reservationId foglaló ID
+     * @return frissített Reservation
+     */
+    public Reservation fulfillReservation(Long reservationId) {
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+
+        Reservation reservation = getReservationById(reservationId);
+        validateActive(reservation);
+        validateBranch(reservation, branchId);
+
+        // Idő előtti teljesítés ellenőrzés — NEM szükséges supervisor, mert ez normál teljesítés
+        reservation.setStatus(ReservationStatus.FULFILLED);
+        reservation.setFulfilledAt(LocalDateTime.now());
+        reservation.setRefundAmount(reservation.getDepositAmount());
+
+        reservation = reservationRepository.save(reservation);
+
+        // AuditLog
+        Worker worker = workerRepository.findById(workerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található"));
+        auditLogService.log(
+                "RESERVATION_FULFILLED",
+                "Reservation",
+                reservation.getId().toString(),
+                workerId.toString(),
+                worker.getName(),
+                branchId.toString(),
+                reservation.getBranch().getName(),
+                String.format("Foglaló teljesítve: %s %s, refund: %s HUF",
+                        reservation.getReservedAmount().toPlainString(),
+                        reservation.getCurrencyCode(),
+                        reservation.getRefundAmount().toPlainString()),
+                null, null
+        );
+
+        log.info("Foglaló teljesítve: id={}, refund={} HUF",
+                reservation.getId(), reservation.getRefundAmount());
+
+        return reservation;
+    }
+
+    // ============ ÜGYFÉL STORNÓ ============
+
+    /**
+     * Ügyfél stornó (VisszaFizetoProcedura, _visszatipus=2: "ÜGYFÉL MIATT SEMMIS").
+     *
+     * Ügyfél hibájából semmisül meg a foglaló.
+     * refundAmount = 0 (letét NEM jár vissza).
+     * A lefoglalt valuta visszakerül a készletbe.
+     *
+     * @param reservationId foglaló ID
+     * @param reason        stornó oka (opcionális)
+     * @return frissített Reservation
+     */
+    public Reservation cancelByCustomer(Long reservationId, String reason) {
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+
+        Reservation reservation = getReservationById(reservationId);
+        validateActive(reservation);
+        validateBranch(reservation, branchId);
+
+        // Státusz váltás
+        reservation.setStatus(ReservationStatus.CANCELLED_BY_CUSTOMER);
+        reservation.setCancelledAt(LocalDateTime.now());
+        reservation.setRefundAmount(BigDecimal.ZERO);
+        reservation.setCancellationReason(reason);
+
+        // Valuta visszavezetés a készletbe (FoglaloKivezetes inverze)
+        restoreCurrencyStock(reservation);
+
+        reservation = reservationRepository.save(reservation);
+
+        // AuditLog
+        Worker worker = workerRepository.findById(workerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található"));
+        auditLogService.log(
+                "RESERVATION_CANCELLED_BY_CUSTOMER",
+                "Reservation",
+                reservation.getId().toString(),
+                workerId.toString(),
+                worker.getName(),
+                branchId.toString(),
+                reservation.getBranch().getName(),
+                String.format("Ügyfél stornó: %s %s, refund: 0 HUF, ok: %s",
+                        reservation.getReservedAmount().toPlainString(),
+                        reservation.getCurrencyCode(),
+                        reason != null ? reason : "nincs megadva"),
+                null, null
+        );
+
+        log.info("Ügyfél stornó: id={}, valuta visszavezetve: {} {}",
+                reservation.getId(), reservation.getReservedAmount(), reservation.getCurrencyCode());
+
+        return reservation;
+    }
+
+    // ============ EBC STORNÓ ============
+
+    /**
+     * EBC stornó (VisszaFizetoProcedura, _visszatipus=3: "EBC MIATT SEMMIS").
+     *
+     * EBC hibájából semmisül meg a foglaló.
+     * refundAmount = 2 × depositAmount (dupla visszafizetés).
+     * A lefoglalt valuta visszakerül a készletbe.
+     * Supervisor jóváhagyás KÖTELEZŐ.
+     *
+     * @param reservationId     foglaló ID
+     * @param reason            stornó oka (KÖTELEZŐ)
+     * @param supervisorWorkerId supervisor worker ID
+     * @return frissített Reservation
+     */
+    public Reservation cancelByCompany(Long reservationId, String reason, Long supervisorWorkerId) {
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+
+        // Validáció
+        if (reason == null || reason.isBlank()) {
+            throw new ValidationException("EBC stornónál az indoklás kötelező!");
+        }
+        if (supervisorWorkerId == null) {
+            throw new ValidationException("EBC stornóhoz supervisor jóváhagyás szükséges!");
+        }
+
+        // Supervisor ellenőrzés
+        Worker supervisor = workerRepository.findById(supervisorWorkerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Supervisor nem található: " + supervisorWorkerId));
+        if (supervisor.getRole() != WorkerRole.SUPERVISOR
+                && supervisor.getRole() != WorkerRole.MANAGER
+                && supervisor.getRole() != WorkerRole.ADMIN) {
+            throw new ValidationException("A megadott dolgozónak nincs supervisor jogosultsága!");
+        }
+
+        Reservation reservation = getReservationById(reservationId);
+        validateActive(reservation);
+        validateBranch(reservation, branchId);
+
+        // Dupla visszafizetés
+        BigDecimal refund = reservation.getDepositAmount()
+                .multiply(new BigDecimal("2"))
+                .setScale(2, RoundingMode.HALF_UP);
+
+        // HUF készlet csökkentés (dupla visszafizetés kiadása)
+        subtractHufBalance(branchId, refund);
+
+        // Státusz váltás
+        reservation.setStatus(ReservationStatus.CANCELLED_BY_COMPANY);
+        reservation.setCancelledAt(LocalDateTime.now());
+        reservation.setRefundAmount(refund);
+        reservation.setCancellationReason(reason);
+        reservation.setSupervisorApproval(true);
+        reservation.setSupervisorWorker(supervisor);
+
+        // Valuta visszavezetés a készletbe
+        restoreCurrencyStock(reservation);
+
+        reservation = reservationRepository.save(reservation);
+
+        // AuditLog
+        Worker worker = workerRepository.findById(workerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található"));
+        auditLogService.log(
+                "RESERVATION_CANCELLED_BY_COMPANY",
+                "Reservation",
+                reservation.getId().toString(),
+                workerId.toString(),
+                worker.getName(),
+                branchId.toString(),
+                reservation.getBranch().getName(),
+                String.format("EBC stornó: %s %s, refund: %s HUF (2×), ok: %s, supervisor: %s",
+                        reservation.getReservedAmount().toPlainString(),
+                        reservation.getCurrencyCode(),
+                        refund.toPlainString(),
+                        reason,
+                        supervisor.getName()),
+                null, null
+        );
+
+        log.info("EBC stornó: id={}, refund={} HUF (2×), supervisor={}",
+                reservation.getId(), refund, supervisor.getName());
+
+        return reservation;
+    }
+
+    // ============ LEKÉRDEZÉSEK ============
+
+    /**
+     * Foglaló részletek lekérdezése
+     */
+    @Transactional(readOnly = true)
+    public Reservation getReservation(Long reservationId) {
+        return getReservationById(reservationId);
+    }
+
+    /**
+     * Aktív foglalók listája egy irodához.
+     */
+    @Transactional(readOnly = true)
+    public List<Reservation> getActiveReservations(UUID branchId) {
+        return reservationRepository.findActiveByBranch(branchId);
+    }
+
+    /**
+     * Lejárt, de nem lezárt foglalók.
+     */
+    @Transactional(readOnly = true)
+    public List<Reservation> getExpiredReservations() {
+        return reservationRepository.findByStatusAndExpiresAtBefore(
+                ReservationStatus.ACTIVE, LocalDateTime.now());
+    }
+
+    /**
+     * Foglalt készlet valutanemenként (FOGLALOKESZLET megfelelője).
+     *
+     * @param branchId iroda ID
+     * @return foglalt készlet lista valutanemenként
+     */
+    @Transactional(readOnly = true)
+    public List<ReservedStockDto> getReservedStock(UUID branchId) {
+        List<Object[]> rawData = reservationRepository.getReservedStockByBranch(branchId);
+        List<ReservedStockDto> result = new ArrayList<>();
+
+        for (Object[] row : rawData) {
+            String code = (String) row[0];
+            BigDecimal totalAmount = (BigDecimal) row[1];
+
+            // Aktív foglalók száma ehhez a valutához
+            long count = reservationRepository.countByBranchAndStatusAndCreatedAtBetween(
+                    branchId, ReservationStatus.ACTIVE,
+                    LocalDateTime.of(2000, 1, 1, 0, 0),
+                    LocalDateTime.now().plusYears(100));
+
+            result.add(ReservedStockDto.builder()
+                    .currencyCode(code)
+                    .reservedAmount(totalAmount)
+                    .activeCount(count)
+                    .build());
+        }
+
+        return result;
+    }
+
+    // ============ PRIVATE HELPER METHODS ============
+
+    /**
+     * Foglaló lekérdezése ID alapján, ResourceNotFoundException ha nem található.
+     */
+    private Reservation getReservationById(Long reservationId) {
+        return reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Foglaló nem található: " + reservationId));
+    }
+
+    /**
+     * Ellenőrzi, hogy a foglaló aktív-e.
+     */
+    private void validateActive(Reservation reservation) {
+        if (!reservation.isActive()) {
+            throw new ValidationException(String.format(
+                "Foglaló nem aktív! Jelenlegi státusz: %s", reservation.getStatus()));
+        }
+    }
+
+    /**
+     * Ellenőrzi, hogy a foglaló a megfelelő irodához tartozik-e.
+     */
+    private void validateBranch(Reservation reservation, UUID branchId) {
+        if (!reservation.getBranch().getId().equals(branchId)) {
+            throw new ValidationException("Ez a foglaló másik irodához tartozik!");
+        }
+    }
+
+    /**
+     * Valuta visszavezetés a készletbe (stornó esetén).
+     * A lefoglalt valuta mennyiséget hozzáadja a CashBalance-hoz.
+     */
+    private void restoreCurrencyStock(Reservation reservation) {
+        Currency currency = currencyRepository.findByCode(reservation.getCurrencyCode())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                    "Valuta nem található: " + reservation.getCurrencyCode()));
+
+        CashBalance currencyBalance = cashBalanceRepository
+                .findByBranchIdAndCurrencyId(reservation.getBranch().getId(), currency.getId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                    "Kassza egyenleg nem található: " + reservation.getCurrencyCode()));
+
+        currencyBalance.addBalance(reservation.getReservedAmount());
+        cashBalanceRepository.save(currencyBalance);
+
+        log.debug("Valuta visszavezetve: {} {} → iroda: {}",
+                reservation.getReservedAmount(), reservation.getCurrencyCode(),
+                reservation.getBranch().getName());
+    }
+
+    /**
+     * HUF készlet növelés (letét beérkezésekor).
+     */
+    private void addHufBalance(UUID branchId, BigDecimal amount) {
+        Currency huf = currencyRepository.findByCode("HUF")
+                .orElseThrow(() -> new ResourceNotFoundException("HUF valuta nem található!"));
+
+        CashBalance hufBalance = cashBalanceRepository
+                .findByBranchIdAndCurrencyId(branchId, huf.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("HUF kassza egyenleg nem található!"));
+
+        hufBalance.addBalance(amount);
+        cashBalanceRepository.save(hufBalance);
+    }
+
+    /**
+     * HUF készlet csökkentés (dupla visszafizetéskor).
+     */
+    private void subtractHufBalance(UUID branchId, BigDecimal amount) {
+        Currency huf = currencyRepository.findByCode("HUF")
+                .orElseThrow(() -> new ResourceNotFoundException("HUF valuta nem található!"));
+
+        CashBalance hufBalance = cashBalanceRepository
+                .findByBranchIdAndCurrencyId(branchId, huf.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("HUF kassza egyenleg nem található!"));
+
+        if (hufBalance.getCurrentBalance().compareTo(amount) < 0) {
+            throw new ValidationException(String.format(
+                "Nincs elegendő HUF a visszafizetéshez! Jelenlegi: %s, szükséges: %s",
+                hufBalance.getCurrentBalance().toPlainString(), amount.toPlainString()));
+        }
+
+        hufBalance.subtractBalance(amount);
+        cashBalanceRepository.save(hufBalance);
+    }
+
+    /**
+     * 5-re kerekítés (legacy Kerekito függvény).
+     *
+     * Pl: 1232 → 1230, 1233 → 1235, 1237 → 1235, 1238 → 1240
+     */
+    private BigDecimal roundToFive(BigDecimal value) {
+        // Egészre kerekítés HALF_UP, majd 5-re kerekítés
+        BigDecimal rounded = value.setScale(0, RoundingMode.HALF_UP);
+        BigDecimal remainder = rounded.remainder(FIVE);
+        if (remainder.compareTo(BigDecimal.ZERO) == 0) {
+            return rounded;
+        }
+        // Ha a maradék >= 3, felfelé kerekítünk 5-re; egyébként lefelé
+        if (remainder.compareTo(new BigDecimal("3")) >= 0) {
+            return rounded.add(FIVE.subtract(remainder));
+        } else {
+            return rounded.subtract(remainder);
+        }
+    }
+}

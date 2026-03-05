@@ -184,6 +184,22 @@ public class Customer {
     private Boolean isVip = false;
 
     /**
+     * Külföldi ügyfél
+     * Legacy: BIGCTRL.DLL TranzTipus 2 / -1
+     */
+    @Column(name = "is_foreign")
+    @Builder.Default
+    private Boolean isForeign = false;
+
+    /**
+     * Kiemelt közszereplő (Politically Exposed Person)
+     * Legacy: BIGCTRL.DLL TranzTipus 1
+     */
+    @Column(name = "is_pep")
+    @Builder.Default
+    private Boolean isPep = false;
+
+    /**
      * Megjegyzések
      */
     @Column(length = 1000)
