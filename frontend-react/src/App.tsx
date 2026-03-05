@@ -12,6 +12,9 @@ import DashboardPage from './pages/DashboardPage'
 import TransactionPage from './pages/transactions/TransactionPage'
 import TransactionListPage from './pages/transactions/TransactionListPage'
 import ConversionPage from './pages/transactions/ConversionPage'
+import CashierTransactionPage from './pages/transactions/CashierTransactionPage'
+import CashierMainMenu from './pages/CashierMainMenu'
+import ClosingWizardPage from './pages/closing/ClosingWizardPage'
 import TransferPage from './pages/transfers/TransferPage'
 import CustomerListPage from './pages/customers/CustomerListPage'
 import CustomerDetailPage from './pages/customers/CustomerDetailPage'
@@ -23,7 +26,6 @@ import DenominationPage from './pages/cashdesk/DenominationPage'
 import ReportsPage from './pages/reports/ReportsPage'
 import SettingsPage from './pages/settings/SettingsPage'
 import StornoPage from './pages/stornos/StornoPage'
-import ClosingWizardPage from './pages/closing/ClosingWizardPage'
 import RepresentativeListPage from './pages/representatives/RepresentativeListPage'
 import ShipmentListPage from './pages/shipments/ShipmentListPage'
 import WorkerCommissionPage from './pages/commissions/WorkerCommissionPage'
@@ -87,6 +89,11 @@ export default function App() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           
+          {/* Cashier (penztaros) routes */}
+          <Route path="/cashier" element={<CashierMainMenu />} />
+          <Route path="/transactions/cashier" element={<CashierTransactionPage />} />
+          <Route path="/closing/wizard" element={<ClosingWizardPage />} />
+
           {/* Transactions */}
           <Route path="/transactions" element={<TransactionListPage />} />
           <Route path="/transactions/new" element={<TransactionPage />} />
@@ -109,7 +116,6 @@ export default function App() {
           <Route path="/cashdesk/breaks" element={<CashDeskBreakPage />} />
           
           {/* Closing */}
-          <Route path="/closing/wizard" element={<ClosingWizardPage />} />
           <Route path="/closing/wizard/:wizardId" element={<ClosingWizardPage />} />
           
           {/* Representatives */}
