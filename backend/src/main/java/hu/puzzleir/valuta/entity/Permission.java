@@ -30,9 +30,11 @@ public class Permission {
     private String module;
 
     @Column(name = "is_system_permission")
+    @Builder.Default
     private Boolean isSystemPermission = false;
 
     @Column(name = "is_active")
+    @Builder.Default
     private Boolean isActive = true;
 
     @CreatedDate

@@ -45,6 +45,7 @@ public class Company {
     private String email;
 
     @Column(name = "is_active")
+    @Builder.Default
     private Boolean isActive = true;
 
     @CreatedDate

@@ -81,9 +81,11 @@ public class Transfer {
     private String notes;
 
     @Column(name = "handover_printed")
+    @Builder.Default
     private Boolean handoverPrinted = false;
 
     @Column(name = "receipt_printed")
+    @Builder.Default
     private Boolean receiptPrinted = false;
 
     @CreatedDate

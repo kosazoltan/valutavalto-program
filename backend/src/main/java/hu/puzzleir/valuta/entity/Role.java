@@ -35,9 +35,11 @@ public class Role {
     private Integer hierarchyLevel;
 
     @Column(name = "is_system_role")
+    @Builder.Default
     private Boolean isSystemRole = false;
 
     @Column(name = "is_active")
+    @Builder.Default
     private Boolean isActive = true;
 
     @ManyToMany(fetch = FetchType.LAZY)

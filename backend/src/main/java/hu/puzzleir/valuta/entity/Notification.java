@@ -37,6 +37,7 @@ public class Notification {
     private String userId;
 
     @Column(name = "is_read")
+    @Builder.Default
     private Boolean isRead = false;
 
     @CreatedDate

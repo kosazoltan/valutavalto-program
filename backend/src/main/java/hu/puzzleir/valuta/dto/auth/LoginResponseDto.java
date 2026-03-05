@@ -15,6 +15,7 @@ import lombok.NoArgsConstructor;
 @Builder
 public class LoginResponseDto {
     private String token;
+    @Builder.Default
     private String tokenType = "Bearer";
     private WorkerDto worker;
     private Long expiresIn; // Milliseconds

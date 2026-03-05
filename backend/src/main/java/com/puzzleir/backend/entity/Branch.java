@@ -75,6 +75,7 @@ public class Branch {
     private UUID denominationRuleId;
 
     @Column(name = "is_active")
+    @Builder.Default
     private Boolean isActive = true;
 
     @CreatedDate
