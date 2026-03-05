@@ -67,7 +67,8 @@ public interface DenominationBalanceRepository extends JpaRepository<Denominatio
      */
     @Query("SELECT COUNT(db) > 0 FROM DenominationBalance db " +
            "WHERE db.cashDeskId = :branchId " +
-           "AND db.updatedAt >= CAST(:date AS timestamp)")
+           "AND db.updatedAt >= CAST(:date AS timestamp) " +
+           "AND db.denomination.currency.code = :type")
     boolean existsByBranchIdAndDateAndType(
         @Param("branchId") UUID branchId,
         @Param("date") java.time.LocalDate date,
@@ -79,7 +80,8 @@ public interface DenominationBalanceRepository extends JpaRepository<Denominatio
      */
     @Query("SELECT COALESCE(SUM(db.totalValue), 0) FROM DenominationBalance db " +
            "WHERE db.cashDeskId = :branchId " +
-           "AND db.updatedAt >= CAST(:date AS timestamp)")
+           "AND db.updatedAt >= CAST(:date AS timestamp) " +
+           "AND db.denomination.currency.code = :type")
     BigDecimal sumDenominatedAmount(
         @Param("branchId") UUID branchId,
         @Param("date") java.time.LocalDate date,
