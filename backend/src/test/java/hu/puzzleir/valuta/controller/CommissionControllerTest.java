@@ -1,18 +1,23 @@
 package hu.puzzleir.valuta.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.puzzleir.backend.exception.GlobalExceptionHandler;
 import com.puzzleir.backend.exception.ValidationException;
 import hu.puzzleir.valuta.entity.CommissionCalculation;
-import hu.puzzleir.valuta.security.JwtAuthenticationFilter;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.CommissionCalculationService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.FilterType;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -20,32 +25,40 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * CommissionCalculationController INTEGRÁCIÓS tesztek — @WebMvcTest.
+ * CommissionCalculationController UNIT tesztek — standalone MockMvc.
  *
  * HTTP endpoint tesztek: kalkuláció, lista, jóváhagyás.
+ * Spring kontextus nélkül → gyors, izolált tesztek.
  */
-@WebMvcTest(
-    controllers = CommissionCalculationController.class,
-    excludeFilters = @ComponentScan.Filter(
-        type = FilterType.ASSIGNABLE_TYPE,
-        classes = JwtAuthenticationFilter.class
-    )
-)
+@ExtendWith(MockitoExtension.class)
 class CommissionControllerTest {
 
-    @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @Mock
     private CommissionCalculationService service;
 
-    @MockBean
-    private JwtAuthenticationFilter jwtAuthenticationFilter;
+    @InjectMocks
+    private CommissionCalculationController controller;
+
+    private static final UUID COMPANY_ID = UUID.randomUUID();
+    private static final UUID BRANCH_ID = UUID.randomUUID();
+
+    @BeforeEach
+    void setUp() {
+        ObjectMapper om = new ObjectMapper();
+        om.registerModule(new JavaTimeModule());
+
+        mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .setMessageConverters(new MappingJackson2HttpMessageConverter(om))
+                .build();
+    }
 
     /**
      * Segéd: teszt CommissionCalculation entity.
@@ -54,7 +67,7 @@ class CommissionControllerTest {
         return CommissionCalculation.builder()
                 .id(UUID.randomUUID())
                 .workerId(1L)
-                .branchId(UUID.randomUUID())
+                .branchId(BRANCH_ID)
                 .period("2026-01")
                 .calculationType(CommissionCalculation.CalculationType.MONTHLY)
                 .totalTransactions(50)
@@ -73,79 +86,73 @@ class CommissionControllerTest {
     // POST /calculate → 201
     // =====================================================================
     @Test
-    @WithMockUser(roles = "ADMIN")
     @DisplayName("POST /commissions/calculate → 201 CREATED")
     void testCalculate_200() throws Exception {
-        // Arrange
-        CommissionCalculation calc = createTestCalc();
-        when(service.calculateMonthly(eq(1L), eq("2026-01"), anyInt()))
-                .thenReturn(calc);
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
 
-        // Act & Assert
-        mockMvc.perform(post("/api/v1/commissions/calculate")
-                        .param("workerId", "1")
-                        .param("month", "2026-01"))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.period").value("2026-01"))
-                .andExpect(jsonPath("$.totalTransactions").value(50))
-                .andExpect(jsonPath("$.status").value("CALCULATED"));
+            CommissionCalculation calc = createTestCalc();
+            when(service.calculateMonthly(eq(1L), eq("2026-01"), anyInt()))
+                    .thenReturn(calc);
+
+            mockMvc.perform(post("/api/v1/commissions/calculate")
+                            .param("workerId", "1")
+                            .param("month", "2026-01"))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.period").value("2026-01"))
+                    .andExpect(jsonPath("$.totalTransactions").value(50))
+                    .andExpect(jsonPath("$.status").value("CALCULATED"));
+        }
     }
 
     // =====================================================================
     // POST /calculate-all → 201
     // =====================================================================
     @Test
-    @WithMockUser(roles = "ADMIN")
     @DisplayName("POST /commissions/calculate-all → 201 CREATED")
     void testCalculateAll_200() throws Exception {
-        // Arrange
-        List<CommissionCalculation> calcs = List.of(createTestCalc(), createTestCalc());
-        when(service.calculateAllWorkers(any(UUID.class), eq("2026-01"), anyInt()))
-                .thenReturn(calcs);
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
 
-        UUID branchId = UUID.randomUUID();
+            List<CommissionCalculation> calcs = List.of(createTestCalc(), createTestCalc());
+            when(service.calculateAllWorkers(any(UUID.class), eq("2026-01"), anyInt()))
+                    .thenReturn(calcs);
 
-        // Act & Assert
-        mockMvc.perform(post("/api/v1/commissions/calculate-all")
-                        .param("branchId", branchId.toString())
-                        .param("month", "2026-01"))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.length()").value(2));
+            mockMvc.perform(post("/api/v1/commissions/calculate-all")
+                            .param("branchId", BRANCH_ID.toString())
+                            .param("month", "2026-01"))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.length()").value(2));
+        }
     }
 
     // =====================================================================
     // POST /{id}/approve → 200
     // =====================================================================
     @Test
-    @WithMockUser(roles = "ADMIN")
     @DisplayName("POST /commissions/{id}/approve → 200 OK")
     void testApprove_200() throws Exception {
-        // Arrange
         CommissionCalculation calc = createTestCalc();
         calc.setStatus(CommissionCalculation.CommissionStatus.APPROVED);
         calc.setApprovedAt(LocalDateTime.now());
 
         when(service.approveCommission(any(UUID.class))).thenReturn(calc);
 
-        // Act & Assert
         mockMvc.perform(post("/api/v1/commissions/" + UUID.randomUUID() + "/approve"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("APPROVED"));
     }
 
     // =====================================================================
-    // POST /{id}/approve → 400 (nem létező ID)
+    // POST /{id}/approve → 400 (ValidationException)
     // =====================================================================
     @Test
-    @WithMockUser(roles = "ADMIN")
-    @DisplayName("POST /commissions/{id}/approve → 400 BAD REQUEST (nem létező)")
+    @DisplayName("POST /commissions/{id}/approve → 400 BAD REQUEST")
     void testApprove_404() throws Exception {
-        // Arrange — ValidationException a service-ből
         UUID fakeId = UUID.randomUUID();
         when(service.approveCommission(fakeId))
                 .thenThrow(new ValidationException("Jutalék számítás nem található: " + fakeId));
 
-        // Act & Assert
         mockMvc.perform(post("/api/v1/commissions/" + fakeId + "/approve"))
                 .andExpect(status().isBadRequest());
     }

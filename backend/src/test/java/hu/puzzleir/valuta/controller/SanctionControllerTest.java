@@ -4,62 +4,56 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.dto.sanction.SanctionScreeningRequest;
 import hu.puzzleir.valuta.dto.sanction.SanctionScreeningResult;
 import hu.puzzleir.valuta.repository.SanctionEntryRepository;
-import hu.puzzleir.valuta.security.JwtAuthenticationFilter;
 import hu.puzzleir.valuta.service.SanctionScreeningService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.FilterType;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.Collections;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * SanctionScreeningController INTEGRÁCIÓS tesztek — @WebMvcTest.
+ * SanctionScreeningController UNIT tesztek — standalone MockMvc.
  *
  * HTTP endpoint tesztek: ügyfél szűrés és XML import.
  */
-@WebMvcTest(
-    controllers = SanctionScreeningController.class,
-    excludeFilters = @ComponentScan.Filter(
-        type = FilterType.ASSIGNABLE_TYPE,
-        classes = JwtAuthenticationFilter.class
-    )
-)
+@ExtendWith(MockitoExtension.class)
 class SanctionControllerTest {
 
-    @Autowired
     private MockMvc mockMvc;
-
-    @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @Mock
     private SanctionScreeningService screeningService;
 
-    @MockBean
+    @Mock
     private SanctionEntryRepository sanctionEntryRepository;
 
-    @MockBean
-    private JwtAuthenticationFilter jwtAuthenticationFilter;
+    @InjectMocks
+    private SanctionScreeningController controller;
+
+    @BeforeEach
+    void setUp() {
+        objectMapper = new ObjectMapper();
+        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+    }
 
     // =====================================================================
     // POST /screen → 200 OK
     // =====================================================================
     @Test
-    @WithMockUser(roles = "CASHIER")
     @DisplayName("POST /sanctions/screen → 200 OK, CLEAR eredmény")
     void testScreen_200() throws Exception {
         // Arrange
@@ -69,8 +63,10 @@ class SanctionControllerTest {
                 .riskLevel("CLEAR")
                 .build();
 
+        // Principal null → workerId = "unknown"
         when(screeningService.screenCustomer(
-                eq("Kiss János"), any(), any(), any(), any(), any()
+                eq("Kiss János"), eq("123456AB"), isNull(),
+                eq("unknown"), eq("unknown"), isNull()
         )).thenReturn(clearResult);
 
         SanctionScreeningRequest request = SanctionScreeningRequest.builder()
@@ -80,7 +76,6 @@ class SanctionControllerTest {
 
         // Act & Assert
         mockMvc.perform(post("/api/v1/sanctions/screen")
-                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -92,7 +87,6 @@ class SanctionControllerTest {
     // POST /import → 201 CREATED
     // =====================================================================
     @Test
-    @WithMockUser(roles = "ADMIN")
     @DisplayName("POST /sanctions/import → 201 CREATED, XML feldolgozva")
     void testImport_200() throws Exception {
         // Arrange — mock XML fájl
@@ -102,10 +96,6 @@ class SanctionControllerTest {
                     <INDIVIDUAL>
                         <FIRST_NAME>Test</FIRST_NAME>
                         <SECOND_NAME>Person</SECOND_NAME>
-                        <THIRD_NAME/>
-                        <DATE_OF_BIRTH/>
-                        <NATIONALITY/>
-                        <REFERENCE_NUMBER>QDi.999</REFERENCE_NUMBER>
                     </INDIVIDUAL>
                 </CONSOLIDATED_LIST>
                 """;
@@ -119,10 +109,10 @@ class SanctionControllerTest {
 
         // Act & Assert
         mockMvc.perform(multipart("/api/v1/sanctions/import")
-                        .file(file)
-                        .with(csrf()))
+                        .file(file))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.imported").value(1))
-                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("sikeresen")));
+                .andExpect(jsonPath("$.message").value(
+                        org.hamcrest.Matchers.containsString("sikeresen")));
     }
 }

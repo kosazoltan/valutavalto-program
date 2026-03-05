@@ -27,6 +27,7 @@ import static org.mockito.Mockito.*;
  * Szankciós szűrés: exact match, fuzzy match (Levenshtein), XML import.
  */
 @ExtendWith(MockitoExtension.class)
+@org.mockito.junit.jupiter.MockitoSettings(strictness = org.mockito.quality.Strictness.LENIENT)
 class SanctionServiceTest {
 
     @InjectMocks
@@ -85,7 +86,6 @@ class SanctionServiceTest {
         // Arrange — pontosan ugyanaz a név a szankciós listán
         SanctionEntry entry = createEntry("John Smith", null);
         when(sanctionEntryRepository.findByActiveTrue()).thenReturn(List.of(entry));
-        when(sanctionEntryRepository.findByDocumentNumber(any())).thenReturn(Collections.emptyList());
 
         // Act
         SanctionScreeningResult result = service.screenCustomer(
@@ -107,11 +107,9 @@ class SanctionServiceTest {
     @Test
     @DisplayName("Szűrés: fuzzy match (Levenshtein ≤ 2) → POSSIBLE kockázati szint")
     void testScreen_fuzzyMatch_levenshtein2() {
-        // Arrange — "John" vs "Jonh" (Levenshtein = 2 a teljes nevekre)
-        // Használjunk rövid neveket ahol a Levenshtein ≤ 2
+        // Arrange — "Jon" vs "Jan" (Levenshtein = 1) → fuzzy match
         SanctionEntry entry = createEntry("Jon", null);
         when(sanctionEntryRepository.findByActiveTrue()).thenReturn(List.of(entry));
-        when(sanctionEntryRepository.findByDocumentNumber(any())).thenReturn(Collections.emptyList());
 
         // Act — "Jan" vs "Jon" = Levenshtein 1
         SanctionScreeningResult result = service.screenCustomer(
