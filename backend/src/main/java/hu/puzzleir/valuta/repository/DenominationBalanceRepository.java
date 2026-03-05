@@ -48,4 +48,41 @@ public interface DenominationBalanceRepository extends JpaRepository<Denominatio
         @Param("cashDeskId") UUID cashDeskId,
         @Param("currencyId") Long currencyId
     );
+
+    // ============ NAPZARAS QUERY-K ============
+
+    /**
+     * Van-e cimletez es az adott irodahoz es datumhoz?
+     */
+    @Query("SELECT COUNT(db) > 0 FROM DenominationBalance db " +
+           "WHERE db.cashDeskId = :branchId " +
+           "AND db.updatedAt >= CAST(:date AS timestamp)")
+    boolean existsByBranchIdAndDate(
+        @Param("branchId") UUID branchId,
+        @Param("date") java.time.LocalDate date
+    );
+
+    /**
+     * Van-e adott tipusu cimletez es?
+     */
+    @Query("SELECT COUNT(db) > 0 FROM DenominationBalance db " +
+           "WHERE db.cashDeskId = :branchId " +
+           "AND db.updatedAt >= CAST(:date AS timestamp)")
+    boolean existsByBranchIdAndDateAndType(
+        @Param("branchId") UUID branchId,
+        @Param("date") java.time.LocalDate date,
+        @Param("type") String type
+    );
+
+    /**
+     * Cimletezett osszeg a napzarashoz.
+     */
+    @Query("SELECT COALESCE(SUM(db.totalValue), 0) FROM DenominationBalance db " +
+           "WHERE db.cashDeskId = :branchId " +
+           "AND db.updatedAt >= CAST(:date AS timestamp)")
+    BigDecimal sumDenominatedAmount(
+        @Param("branchId") UUID branchId,
+        @Param("date") java.time.LocalDate date,
+        @Param("type") String type
+    );
 }

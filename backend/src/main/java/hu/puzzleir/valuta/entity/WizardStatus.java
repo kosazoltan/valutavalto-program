@@ -6,5 +6,6 @@ package hu.puzzleir.valuta.entity;
 public enum WizardStatus {
     IN_PROGRESS,
     COMPLETED,
+    FAILED,
     CANCELLED
 }

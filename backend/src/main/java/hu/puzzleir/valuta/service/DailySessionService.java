@@ -187,6 +187,24 @@ public class DailySessionService {
     }
 
     /**
+     * Nap zarasa (napzaras utan hivodik).
+     * Legacy: HARDWARE.LEZARTNAP = aktualis datum
+     */
+    public void closeSession(LocalDate closingDate) {
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+
+        DailySession session = dailySessionRepository.findByBranchIdAndSessionDate(branchId, closingDate)
+                .orElseThrow(() -> new ValidationException("Nincs munkamenet erre a napra: " + closingDate));
+
+        session.setStatus(DailySessionStatus.CLOSED);
+        session.setClosedAt(LocalDateTime.now());
+        session.setClosingBalanceHuf(calculateClosingBalance(branchId));
+
+        dailySessionRepository.save(session);
+        log.info("Napi munkamenet lezarva: datum={}, iroda={}", closingDate, branchId);
+    }
+
+    /**
      * Nyitó egyenleg számítása
      */
     private BigDecimal calculateOpeningBalance(UUID branchId) {

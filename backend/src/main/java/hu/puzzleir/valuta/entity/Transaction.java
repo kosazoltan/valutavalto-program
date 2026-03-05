@@ -243,6 +243,67 @@ public class Transaction {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    // ============ MULTI-LINE SUPPORT ============
+
+    /**
+     * Bizonylat tetelek (max 6 valutasor).
+     * Legacy: BLOKKTETEL tabla — egy bizonylaton max 6 kulonbozo valuta.
+     */
+    @OneToMany(mappedBy = "transaction", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OrderBy("lineNumber ASC")
+    @Builder.Default
+    private java.util.List<TransactionLine> lines = new java.util.ArrayList<>();
+
+    /**
+     * Multi-line bizonylat (tobb valutasor)?
+     */
+    @Column(name = "multi_line")
+    @Builder.Default
+    private Boolean multiLine = false;
+
+    /**
+     * Tetelsorok szama
+     */
+    @Column(name = "line_count")
+    @Builder.Default
+    private Integer lineCount = 1;
+
+    /**
+     * Kezelesi dij tipusa (NONE/PER_MILLE/BRACKET)
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "handling_fee_type", length = 20)
+    private HandlingFeeType handlingFeeType;
+
+    /**
+     * Kezdojegy osszeg
+     */
+    @Column(name = "initial_fee", precision = 10, scale = 0)
+    @Builder.Default
+    private BigDecimal initialFee = BigDecimal.ZERO;
+
+    /**
+     * Kedvezmeny tipus kod (legacy: _kedvWord)
+     * 0=nincs, 4=VIP, 20=F1, 32=foertektaros, 33=ertektaros, 34=jutalektmentes
+     */
+    @Column(name = "discount_type_code")
+    @Builder.Default
+    private Integer discountTypeCode = 0;
+
+    /**
+     * AML flag - gyanus tranzakcio
+     */
+    @Column(name = "aml_suspicious")
+    @Builder.Default
+    private Boolean amlSuspicious = false;
+
+    /**
+     * AML flag - eves limit elerve
+     */
+    @Column(name = "aml_annual_limit_reached")
+    @Builder.Default
+    private Boolean amlAnnualLimitReached = false;
+
     // ============ HELPER METHODS ============
 
     /**

@@ -54,4 +54,11 @@ public interface CashBalanceRepository extends JpaRepository<CashBalance, Long> 
            "AND cb.currentBalance >= cb.maxBalance " +
            "AND cb.maxBalance IS NOT NULL")
     List<CashBalance> findHighBalances(@Param("companyId") UUID companyId);
+
+    /**
+     * Iroda osszes HUF egyenlege (napzaras ellenorzeshez).
+     */
+    @Query("SELECT COALESCE(SUM(cb.currentBalance), 0) FROM CashBalance cb " +
+           "WHERE cb.branch.id = :branchId")
+    java.math.BigDecimal sumCurrentBalanceHuf(@Param("branchId") UUID branchId);
 }

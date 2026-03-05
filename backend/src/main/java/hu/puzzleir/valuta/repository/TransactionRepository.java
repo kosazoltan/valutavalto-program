@@ -146,4 +146,76 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("branchId") UUID branchId,
         @Param("date") LocalDate date
     );
+
+    // ============ AML QUERY-K ============
+
+    /**
+     * Ugyfel eves gongyolesi osszeg (AML).
+     * Legacy: BIGCTRL.DLL — eves kumulativ osszeg
+     */
+    @Query("SELECT COALESCE(SUM(t.hufAmount), 0) FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.customerId = :customerId " +
+           "AND t.transactionDate BETWEEN :startDate AND :endDate " +
+           "AND t.status = 'COMPLETED'")
+    BigDecimal sumCustomerAnnualTotal(
+        @Param("companyId") UUID companyId,
+        @Param("customerId") String customerId,
+        @Param("startDate") LocalDate startDate,
+        @Param("endDate") LocalDate endDate
+    );
+
+    /**
+     * Ugyfel napi osszeg (AML gyanusagi ellenorzes).
+     */
+    @Query("SELECT COALESCE(SUM(t.hufAmount), 0) FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.customerId = :customerId " +
+           "AND t.transactionDate = :date " +
+           "AND t.status = 'COMPLETED'")
+    BigDecimal sumCustomerDailyTotal(
+        @Param("companyId") UUID companyId,
+        @Param("customerId") String customerId,
+        @Param("date") LocalDate date
+    );
+
+    // ============ NAPZARAS QUERY-K ============
+
+    /**
+     * Napi kezelesi dij osszeg (napzaras ellenorzeshez).
+     */
+    @Query("SELECT COALESCE(SUM(t.handlingFee), 0) FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionDate = :date " +
+           "AND t.status = 'COMPLETED'")
+    BigDecimal sumDailyHandlingFees(
+        @Param("branchId") UUID branchId,
+        @Param("date") LocalDate date
+    );
+
+    /**
+     * Nem jelentett tranzakciok szama (NAV kontroll).
+     */
+    @Query("SELECT COUNT(t) FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionDate = :date " +
+           "AND t.status = 'COMPLETED' " +
+           "AND t.printed = false")
+    long countUnreportedTransactions(
+        @Param("branchId") UUID branchId,
+        @Param("date") LocalDate date
+    );
+
+    /**
+     * WU tranzakciok MTCN szam nelkul.
+     */
+    @Query("SELECT t FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionDate = :date " +
+           "AND t.mtcn IS NULL " +
+           "AND t.referenceNumber LIKE 'WU%'")
+    List<Transaction> findByBranchIdAndTransactionDateAndMtcnIsNull(
+        @Param("branchId") UUID branchId,
+        @Param("date") LocalDate date
+    );
 }

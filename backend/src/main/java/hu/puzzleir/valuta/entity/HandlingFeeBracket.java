@@ -1,0 +1,62 @@
+package hu.puzzleir.valuta.entity;
+
+import com.puzzleir.backend.entity.Company;
+import jakarta.persistence.*;
+import lombok.*;
+import java.math.BigDecimal;
+
+/**
+ * Kezelési díj sáv definíció.
+ *
+ * Legacy: _tranzsav[1..23] és _kdij[1..23] tömbök
+ * - _tranzsav[i] = sáv felső határa (Ft-ban)
+ * - _kdij[i] = a sávhoz tartozó kezelési díj (Ft-ban)
+ *
+ * Példa:
+ *   sáv 1: 0 - 50.000 Ft → díj: 300 Ft
+ *   sáv 2: 50.001 - 100.000 Ft → díj: 500 Ft
+ *   sáv 3: 100.001 - 200.000 Ft → díj: 800 Ft
+ *   stb.
+ */
+@Entity
+@Table(name = "handling_fee_bracket", indexes = {
+    @Index(name = "idx_fee_bracket_company", columnList = "company_id")
+})
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class HandlingFeeBracket {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id", nullable = false)
+    private Company company;
+
+    /**
+     * Sáv sorszáma (1-23, a legacy rendszerből)
+     */
+    @Column(name = "bracket_order", nullable = false)
+    private Integer bracketOrder;
+
+    /**
+     * Sáv felső határa (Ft-ban). A sáv alsó határa az előző sáv felső határa + 1.
+     * Legacy: _tranzsav[i]
+     */
+    @Column(name = "upper_limit", nullable = false, precision = 15, scale = 0)
+    private BigDecimal upperLimit;
+
+    /**
+     * Kezelési díj ebben a sávban (Ft-ban)
+     * Legacy: _kdij[i]
+     */
+    @Column(name = "fee_amount", nullable = false, precision = 15, scale = 0)
+    private BigDecimal feeAmount;
+
+    /**
+     * Aktív-e
+     */
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean active = true;
+}
