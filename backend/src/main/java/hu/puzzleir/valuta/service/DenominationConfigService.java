@@ -275,7 +275,8 @@ public class DenominationConfigService {
         for (DenominationConfig config : configs) {
             BigDecimal faceValue = config.getFaceValue();
 
-            if (faceValue.compareTo(BigDecimal.ZERO) > 0 && remaining.compareTo(faceValue) >= 0) {
+            // HIGH FIX #1: faceValue null guard — NPE megelőzés címletezésnél
+            if (faceValue != null && faceValue.compareTo(BigDecimal.ZERO) > 0 && remaining.compareTo(faceValue) >= 0) {
                 int count = remaining.divideToIntegralValue(faceValue).intValue();
 
                 if (count > 0) {

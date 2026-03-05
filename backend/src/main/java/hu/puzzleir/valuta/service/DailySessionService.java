@@ -55,6 +55,15 @@ public class DailySessionService {
             throw new ValidationException("Már van nyitott napi munkamenet!");
         }
 
+        // HIGH FIX #14: Ha ugyanaz a pénztáros megpróbálja KÉTSZER nyitni a napot → hiba
+        dailySessionRepository.findByBranchIdAndSessionDate(branchId, today).ifPresent(existingSession -> {
+            if (existingSession.getOpenedByWorker() != null
+                    && existingSession.getOpenedByWorker().getId().equals(workerId)) {
+                throw new ValidationException("Ez a pénztáros már nyitotta a mai napot!");
+            }
+            throw new ValidationException("Mai napra már létezik munkamenet ezen az irodán!");
+        });
+
         // Ellenőrzés: előző nap le van-e zárva
         dailySessionRepository.findLatest(branchId).ifPresent(lastSession -> {
             if (lastSession.getStatus() == DailySessionStatus.OPEN) {

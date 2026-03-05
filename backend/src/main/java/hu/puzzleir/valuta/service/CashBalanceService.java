@@ -132,6 +132,28 @@ public class CashBalanceService {
     }
 
     /**
+     * HIGH FIX #9: Negatív készlet ellenőrzés ELADÁSNÁL.
+     * Ellenőrzi, hogy az adott valutából van-e elegendő készlet a kiadáshoz.
+     *
+     * @param currencyId valuta ID
+     * @param amount     kiadandó összeg
+     * @throws ValidationException ha nincs elegendő készlet (negatívba menne)
+     */
+    public void validateSufficientBalance(Long currencyId, BigDecimal amount) {
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyId(branchId, currencyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Kassza egyenleg nem található"));
+
+        if (balance.getCurrentBalance().compareTo(amount) < 0) {
+            throw new ValidationException(String.format(
+                "Nincs elegendő %s készlet! Jelenlegi: %s, szükséges: %s",
+                balance.getCurrency().getCode(),
+                balance.getCurrentBalance().toPlainString(),
+                amount.toPlainString()));
+        }
+    }
+
+    /**
      * Egyenleg kézi módosítása (pénztár feltöltés/levétel)
      *
      * Legacy: PENZTARFELTOLTES, PENZTARLEVONÁS
@@ -155,8 +177,13 @@ public class CashBalanceService {
                     balance.getCurrency().getCode(), request.getAmount(),
                     oldBalance, balance.getCurrentBalance());
         } else {
+            // HIGH FIX #9: Negatív készlet ellenőrzés — ne lehessen mínuszba menni
             if (balance.getCurrentBalance().compareTo(request.getAmount()) < 0) {
-                throw new ValidationException("Nincs elegendő egyenleg a levonáshoz!");
+                throw new ValidationException(String.format(
+                    "Nincs elegendő %s egyenleg a levonáshoz! Jelenlegi: %s, kért: %s",
+                    balance.getCurrency().getCode(),
+                    balance.getCurrentBalance().toPlainString(),
+                    request.getAmount().toPlainString()));
             }
             balance.subtractBalance(request.getAmount());
             log.info("Kassza levonás: {} {} - {} -> {}",

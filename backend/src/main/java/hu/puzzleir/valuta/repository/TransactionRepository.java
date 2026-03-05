@@ -193,6 +193,36 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("date") LocalDate date
     );
 
+    // ============ HANDLING FEE QUERY-K (HIGH FIX #11, #12) ============
+
+    /**
+     * HIGH FIX #11: SHK (saját hatáskörű kedvezmény) napi felhasználás számlálása.
+     * discountTypeCode=4 → SHK kedvezmény a legacy rendszerben.
+     */
+    @Query("SELECT COUNT(t) FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionDate = :date " +
+           "AND t.discountTypeCode = 4 " +
+           "AND t.status = 'COMPLETED'")
+    long countShkTransactionsToday(
+        @Param("branchId") UUID branchId,
+        @Param("date") LocalDate date
+    );
+
+    /**
+     * HIGH FIX #12: Custom fee (egyedi kezdőjegy) napi felhasználás számlálása.
+     * discountTypeCode=20 → egyedi kezdőjegy a legacy rendszerben.
+     */
+    @Query("SELECT COUNT(t) FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionDate = :date " +
+           "AND t.discountTypeCode = 20 " +
+           "AND t.status = 'COMPLETED'")
+    long countCustomFeeTransactionsToday(
+        @Param("branchId") UUID branchId,
+        @Param("date") LocalDate date
+    );
+
     // ============ NAPZARAS QUERY-K ============
 
     /**

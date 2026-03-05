@@ -103,7 +103,8 @@ public class AmlService {
         }
 
         // 3. Eves gongyolesi kontroll (ha van ugyfel azonosito)
-        if (customerId != null && !customerId.isBlank()) {
+        // HIGH FIX #5: .trim().isEmpty() konzisztens validáció a .isBlank() mellett
+        if (customerId != null && !customerId.trim().isEmpty()) {
             BigDecimal annualTotal = getAnnualRollingTotal(customerId);
             BigDecimal projectedTotal = annualTotal.add(hufAmount);
 

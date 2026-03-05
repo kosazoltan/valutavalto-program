@@ -6,6 +6,7 @@ import hu.puzzleir.valuta.entity.HandlingFeeType;
 import hu.puzzleir.valuta.entity.InitialFeeConfig;
 import hu.puzzleir.valuta.repository.HandlingFeeBracketRepository;
 import hu.puzzleir.valuta.repository.InitialFeeConfigRepository;
+import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -46,6 +48,7 @@ public class HandlingFeeService {
     private final HandlingFeeBracketRepository bracketRepository;
     private final InitialFeeConfigRepository initialFeeConfigRepository;
     private final SystemParameterService systemParameterService;
+    private final TransactionRepository transactionRepository;
 
     /**
      * Kezelési díj számítása az összeg alapján.
@@ -80,9 +83,10 @@ public class HandlingFeeService {
         int perMille = getPerMilleRate(companyId);
         if (perMille <= 0) return BigDecimal.ZERO;
 
+        // Legacy compatible: HALF_UP, not HALF_EVEN — a régi rendszer HALF_UP kerekítést használt
         BigDecimal fee = hufAmount
             .multiply(new BigDecimal(perMille))
-            .divide(new BigDecimal( 1000), 0, RoundingMode.HALF_UP);
+            .divide(new BigDecimal(1000), 0, RoundingMode.HALF_UP);
 
         // Kerekítés 5 Ft-ra (legacy: mindig 5-re kerekít)
         return roundToFive(fee);
@@ -226,8 +230,11 @@ public class HandlingFeeService {
     /**
      * Kerekítés 5 Ft-ra (legacy kompatibilis).
      * 1-2 → 0, 3-7 → 5, 8-9 → 10
+     *
+     * HIGH FIX #3: package-private (nem private) a tesztelhetőség érdekében.
+     * Legacy compatible: HALF_UP, not HALF_EVEN
      */
-    private BigDecimal roundToFive(BigDecimal amount) {
+    static BigDecimal roundToFive(BigDecimal amount) {
         long value = amount.longValue();
         long remainder = value % 5;
         if (remainder < 3) {
@@ -237,22 +244,22 @@ public class HandlingFeeService {
         }
     }
 
+    /**
+     * HIGH FIX #11: SHK napi keret — valós query a Transaction táblából.
+     * Legacy: _shk = GetSajatHataskoru — napi SHK tranzakciók száma.
+     */
     private int getUsedShkToday() {
-        try {
-            String val = systemParameterService.getValue("SHK_USED_TODAY");
-            return Integer.parseInt(val);
-        } catch (Exception e) {
-            return 0;
-        }
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+        return (int) transactionRepository.countShkTransactionsToday(branchId, LocalDate.now());
     }
 
+    /**
+     * HIGH FIX #12: Custom fee napi keret — valós query a Transaction táblából.
+     * Legacy: _mekd = napiegyedikezdij — napi egyedi kezdőjegy tranzakciók száma.
+     */
     private int getUsedCustomFeeToday() {
-        try {
-            String val = systemParameterService.getValue("CUSTOM_FEE_USED_TODAY");
-            return Integer.parseInt(val);
-        } catch (Exception e) {
-            return 0;
-        }
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+        return (int) transactionRepository.countCustomFeeTransactionsToday(branchId, LocalDate.now());
     }
 
     // ============ RESULT DTO ============

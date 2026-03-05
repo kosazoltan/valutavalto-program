@@ -24,7 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -41,6 +43,15 @@ public class WorkerService {
     private final BranchRepository branchRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+
+    // HIGH FIX #16: Brute force védelem — max 5 sikertelen próba, utána 15 perc lock
+    private static final int MAX_FAILED_ATTEMPTS = 5;
+    private static final long LOCK_DURATION_MS = 15 * 60 * 1000L; // 15 perc
+
+    /**
+     * Brute force state: key = "companyCode:workerCode", value = [failedCount, lockUntilMs]
+     */
+    private static final Map<String, long[]> loginAttempts = new ConcurrentHashMap<>();
     
     /**
      * Worker létrehozás
@@ -255,16 +266,23 @@ public class WorkerService {
     }
     
     /**
-     * Login
+     * Login — HIGH FIX #16: Brute force védelemmel (max 5 sikertelen, 15 perc lock).
      */
     public LoginResponseDto login(LoginRequestDto dto, String ipAddress, String userAgent) {
+        // HIGH FIX #16: Brute force ellenőrzés ELŐSZÖR
+        String loginKey = dto.getCompanyCode() + ":" + dto.getWorkerCode();
+        checkBruteForceLock(loginKey);
+
         // Company keresés
         Company company = companyRepository.findByCode(dto.getCompanyCode())
                 .orElseThrow(() -> new ValidationException("Hibás cégkód!"));
         
         // Worker keresés
         Worker worker = workerRepository.findByCompanyIdAndCode(company.getId(), dto.getWorkerCode())
-                .orElseThrow(() -> new ValidationException("Hibás pénztáros kód vagy jelszó!"));
+                .orElseThrow(() -> {
+                    recordFailedAttempt(loginKey);
+                    return new ValidationException("Hibás pénztáros kód vagy jelszó!");
+                });
         
         // Aktív check
         if (!worker.getActive()) {
@@ -273,8 +291,12 @@ public class WorkerService {
         
         // Jelszó check
         if (!passwordEncoder.matches(dto.getPassword(), worker.getPasswordHash())) {
+            recordFailedAttempt(loginKey);
             throw new ValidationException("Hibás pénztáros kód vagy jelszó!");
         }
+
+        // Sikeres login → reset counter
+        loginAttempts.remove(loginKey);
         
         // Branch check (ha megadva)
         if (dto.getBranchId() != null) {
@@ -328,5 +350,40 @@ public class WorkerService {
                     session.setLogoutAt(LocalDateTime.now());
                     sessionRepository.save(session);
                 });
+    }
+
+    // ============ HIGH FIX #16: BRUTE FORCE HELPER METHODS ============
+
+    /**
+     * Ellenőrzi, hogy a login kulcs lockolt-e.
+     */
+    private void checkBruteForceLock(String loginKey) {
+        long[] state = loginAttempts.get(loginKey);
+        if (state != null && state[0] >= MAX_FAILED_ATTEMPTS) {
+            long lockUntil = state[1];
+            if (System.currentTimeMillis() < lockUntil) {
+                long remainingMinutes = (lockUntil - System.currentTimeMillis()) / 60000 + 1;
+                throw new ValidationException(String.format(
+                    "Túl sok sikertelen bejelentkezési kísérlet! Próbálja újra %d perc múlva.", remainingMinutes));
+            }
+            // Lock lejárt → reset
+            loginAttempts.remove(loginKey);
+        }
+    }
+
+    /**
+     * Rögzíti a sikertelen bejelentkezési kísérletet.
+     */
+    private void recordFailedAttempt(String loginKey) {
+        loginAttempts.compute(loginKey, (key, state) -> {
+            if (state == null) {
+                return new long[]{1, 0};
+            }
+            state[0]++;
+            if (state[0] >= MAX_FAILED_ATTEMPTS) {
+                state[1] = System.currentTimeMillis() + LOCK_DURATION_MS;
+            }
+            return state;
+        });
     }
 }

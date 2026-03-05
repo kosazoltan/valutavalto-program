@@ -84,7 +84,9 @@ public class TransferService {
         Worker toWorker = workerRepository.findById(workerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Dolgozó nem található: " + workerId));
 
-        if (toWorker.getBranch() != null && !toWorker.getBranch().getId().equals(transfer.getToBranch().getId())) {
+        // HIGH FIX #10: Objects.equals használata — biztos összehasonlítás LAZY branch esetén is
+        if (toWorker.getBranch() != null && !java.util.Objects.equals(
+                toWorker.getBranch().getId(), transfer.getToBranch().getId())) {
             throw new ValidationException("Csak a célfiók dolgozói fogadhatják ezt az átadást!");
         }
 
@@ -98,6 +100,20 @@ public class TransferService {
         if (dto.getNotes() != null) {
             transfer.setNotes((transfer.getNotes() != null ? transfer.getNotes() + "\n" : "") + dto.getNotes());
         }
+
+        // Kassza egyenleg frissítés: küldő fióknál csökkentés, fogadó fióknál növelés
+        CashBalance fromBalance = cashBalanceRepository.findByBranchIdAndCurrencyId(
+                transfer.getFromBranch().getId(), transfer.getCurrency().getId())
+                .orElseThrow(() -> new ValidationException("Küldő fiók kassza egyenlege nem található!"));
+        fromBalance.updateBalance(transfer.getAmount(), false); // outgoing — küldött összeg
+
+        CashBalance toBalance = cashBalanceRepository.findByBranchIdAndCurrencyId(
+                transfer.getToBranch().getId(), transfer.getCurrency().getId())
+                .orElseThrow(() -> new ValidationException("Fogadó fiók kassza egyenlege nem található!"));
+        toBalance.updateBalance(dto.getReceivedAmount(), true); // incoming — ténylegesen fogadott összeg
+
+        cashBalanceRepository.save(fromBalance);
+        cashBalanceRepository.save(toBalance);
 
         transfer = transferRepository.save(transfer);
         return toDto(transfer);

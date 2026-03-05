@@ -189,9 +189,13 @@ public class ExchangeRate {
     // ============ HELPER METHODS ============
 
     /**
-     * Visszaadja a megfelelő vételi árfolyamot az összeg alapján
+     * Visszaadja a megfelelő vételi árfolyamot az összeg alapján.
+     * HIGH FIX #4: null amountHuf guard — NPE megelőzés
      */
     public BigDecimal getBuyRateForAmount(BigDecimal amountHuf) {
+        if (amountHuf == null) {
+            return baseBuyRate;
+        }
         if (limit3Amount != null && amountHuf.compareTo(limit3Amount) >= 0 && limit3BuyRate != null) {
             return limit3BuyRate;
         }
@@ -205,9 +209,13 @@ public class ExchangeRate {
     }
 
     /**
-     * Visszaadja a megfelelő eladási árfolyamot az összeg alapján
+     * Visszaadja a megfelelő eladási árfolyamot az összeg alapján.
+     * HIGH FIX #4: null amountHuf guard — NPE megelőzés
      */
     public BigDecimal getSellRateForAmount(BigDecimal amountHuf) {
+        if (amountHuf == null) {
+            return baseSellRate;
+        }
         if (limit3Amount != null && amountHuf.compareTo(limit3Amount) >= 0 && limit3SellRate != null) {
             return limit3SellRate;
         }

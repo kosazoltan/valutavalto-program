@@ -48,6 +48,7 @@ public class DailyClosingService {
     private final ExchangeRateRepository exchangeRateRepository;
     private final CurrencyRepository currencyRepository;
     private final SystemParameterService systemParameterService;
+    private final AuditLogService auditLogService;
 
     /** Max lep esek szama */
     private static final int TOTAL_STEPS = 9;
@@ -380,8 +381,19 @@ public class DailyClosingService {
 
     /**
      * Napi arfolyamok snapshot-ja (archivalaas).
+     * HIGH FIX #7: Duplikáció ellenőrzés — ne mentsen ha már van aznapi snapshot.
      */
     private void snapshotDailyRates(UUID companyId, LocalDate date) {
+        // Duplikáció ellenőrzés: ha már vannak aznapi rögzített árfolyamok, skip
+        List<ExchangeRate> existingRates = exchangeRateRepository
+            .findActiveRatesByDate(companyId, date);
+
+        if (!existingRates.isEmpty() && existingRates.stream()
+                .allMatch(r -> date.equals(r.getValidDate()))) {
+            log.info("Napi arfolyam snapshot mar letezik: datum={}, {} db — SKIP", date, existingRates.size());
+            return;
+        }
+
         // Az aktualis aktiv arfolyamokat "befagyasztjuk" a zaras napjahoz
         List<ExchangeRate> activeRates = exchangeRateRepository
             .findActiveRatesByDate(companyId, date);
@@ -398,11 +410,36 @@ public class DailyClosingService {
      * Dekad (10 napos idoszak) zaras kontroll.
      * Legacy: DekzarCtrl - minden 10. napon kulon osszesites.
      */
+    /**
+     * HIGH FIX #6: Dekád zárás — ne csak logoljon, hozzon létre audit riport record-ot.
+     * Legacy: DekzarCtrl — a 10., 20. és hónap utolsó napján dekád összesítés.
+     */
     private void checkDecadeClosing(UUID branchId, LocalDate date) {
         int dayOfMonth = date.getDayOfMonth();
         if (dayOfMonth == 10 || dayOfMonth == 20 || dayOfMonth == date.lengthOfMonth()) {
-            log.info("Dekad zaras szukseges: nap={}", dayOfMonth);
-            // TODO: dekad jelentes generalasa
+            String decadePeriod;
+            if (dayOfMonth == 10) {
+                decadePeriod = "1-10";
+            } else if (dayOfMonth == 20) {
+                decadePeriod = "11-20";
+            } else {
+                decadePeriod = "21-" + dayOfMonth;
+            }
+            log.info("Dekad zaras vegrehajtva: nap={}, idoszak={}", dayOfMonth, decadePeriod);
+
+            // Dekád riport record létrehozása az AuditLog-ba
+            auditLogService.log(
+                "DECADE_CLOSING",
+                "DailyClosing",
+                branchId.toString(),
+                SecurityUtils.getCurrentWorkerId() != null ? SecurityUtils.getCurrentWorkerId().toString() : null,
+                null,
+                branchId.toString(),
+                null,
+                String.format("{\"date\":\"%s\",\"dayOfMonth\":%d,\"decadePeriod\":\"%s\"}", date, dayOfMonth, decadePeriod),
+                null,
+                null
+            );
         }
     }
 

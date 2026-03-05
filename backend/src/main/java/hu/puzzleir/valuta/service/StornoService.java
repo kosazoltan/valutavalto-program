@@ -56,15 +56,19 @@ public class StornoService {
         UUID branchId = SecurityUtils.getCurrentBranchId();
         int dailyCount = (int) transactionRepository.countReversalsByBranchAndDate(branchId, LocalDate.now());
 
+        // HIGH FIX #8: Ha a tranzakció ALREADY_REVERSED → dobjon hibát, ne engedje tovább
+        if (transaction.isReversed()) {
+            throw new ValidationException("Ez a tranzakció már sztornózva lett (REVERSED státusz)!");
+        }
+        if (transaction.isReversal()) {
+            throw new ValidationException("Sztornó tranzakció nem sztornózható!");
+        }
+
         boolean requiresApproval = dailyCount >= DAILY_STORNO_LIMIT
                 || !transaction.getTransactionDate().equals(LocalDate.now());
 
         String message;
-        if (transaction.isReversed()) {
-            message = "Ez a tranzakció már sztornózva lett!";
-        } else if (transaction.isReversal()) {
-            message = "Sztornó tranzakció nem sztornózható!";
-        } else if (requiresApproval) {
+        if (requiresApproval) {
             message = String.format("Napi sztornó szám (%d) elérte a limitet vagy korábbi napi tranzakció. Supervisor jóváhagyás szükséges.", dailyCount);
         } else {
             message = "Sztornó végrehajtható.";

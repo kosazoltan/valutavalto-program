@@ -27,6 +27,12 @@ public class Notification {
     @Column(nullable = false, length = 30)
     private String type;
 
+    /**
+     * HIGH FIX #15: Worker.id Long → String konverzió.
+     * A Worker.id Long típusú (GenerationType.IDENTITY), itt String-ként tároljuk.
+     * Mentéskor: String.valueOf(worker.getId()) — lekérdezéskor: Long.parseLong(userId).
+     * NE használj UUID-t ide — a Worker.id NEM UUID, hanem Long!
+     */
     @Column(name = "user_id", length = 50)
     private String userId;
 

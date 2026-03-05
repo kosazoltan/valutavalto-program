@@ -322,15 +322,17 @@ public class Transaction {
 
     /**
      * Sztornózva lett-e?
+     * HIGH FIX #13: null-safe.
      */
     public boolean isReversed() {
-        return status == TransactionStatus.REVERSED;
+        return TransactionStatus.REVERSED.equals(status);
     }
 
     /**
      * Aktív (nem sztornózott) tranzakció?
+     * HIGH FIX #13: null-safe — ha status null, nem aktív.
      */
     public boolean isActive() {
-        return status == TransactionStatus.COMPLETED;
+        return TransactionStatus.COMPLETED.equals(status);
     }
 }
