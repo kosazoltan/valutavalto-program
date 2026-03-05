@@ -238,13 +238,21 @@ public class HandlingFeeService {
     }
 
     private int getUsedShkToday() {
-        // TODO: Query from daily session / transaction stats
-        return 0;
+        try {
+            String val = systemParameterService.getValue("SHK_USED_TODAY");
+            return Integer.parseInt(val);
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     private int getUsedCustomFeeToday() {
-        // TODO: Query from daily session / transaction stats
-        return 0;
+        try {
+            String val = systemParameterService.getValue("CUSTOM_FEE_USED_TODAY");
+            return Integer.parseInt(val);
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     // ============ RESULT DTO ============

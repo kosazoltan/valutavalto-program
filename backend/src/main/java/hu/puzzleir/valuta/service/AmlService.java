@@ -66,6 +66,14 @@ public class AmlService {
             String customerName,
             String documentNumber) {
 
+        // Input validacio
+        if (hufAmount == null || hufAmount.compareTo(BigDecimal.ZERO) < 0) {
+            return AmlCheckResult.builder()
+                .approved(false)
+                .rejectionReason("Ervenytelen tranzakcio osszeg")
+                .build();
+        }
+
         AmlCheckResult.AmlCheckResultBuilder result = AmlCheckResult.builder()
             .approved(true)
             .requiresIdentification(false)
@@ -77,8 +85,8 @@ public class AmlService {
         if (hufAmount.compareTo(IDENTIFICATION_LIMIT) >= 0) {
             result.requiresIdentification(true);
 
-            if (customerName == null || customerName.isBlank()
-                || documentNumber == null || documentNumber.isBlank()) {
+            if (customerName == null || customerName.trim().isEmpty()
+                || documentNumber == null || documentNumber.trim().isEmpty()) {
                 result.approved(false);
                 result.rejectionReason(
                     IDENTIFICATION_LIMIT.toPlainString() + " Ft feletti tranzakciohoz ugyfel azonositas (nev + igazolvany) KOTELEZO!");

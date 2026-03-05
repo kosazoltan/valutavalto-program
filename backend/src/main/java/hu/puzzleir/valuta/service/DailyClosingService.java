@@ -47,6 +47,7 @@ public class DailyClosingService {
     private final ClosingWizardRepository closingWizardRepository;
     private final ExchangeRateRepository exchangeRateRepository;
     private final CurrencyRepository currencyRepository;
+    private final SystemParameterService systemParameterService;
 
     /** Max lep esek szama */
     private static final int TOTAL_STEPS = 9;
@@ -157,7 +158,7 @@ public class DailyClosingService {
     private StepCheckResult checkMtcnNumbers(UUID branchId, LocalDate date) {
         // Western Union tranzakciok keresese (MTCN szam nelkul)
         List<Transaction> wuTransactions = transactionRepository
-            .findByBranchIdAndTransactionDateAndMtcnIsNull(branchId, date);
+            .findByBranchIdAndTransactionDateAndMtcnIsNull(branchId, date, "WU%");
 
         // Ha nincs WU modullunk, skip
         boolean hasWesternUnion = hasFeature(branchId, "WESTERN_UNION");
@@ -407,13 +408,17 @@ public class DailyClosingService {
 
     /**
      * Ellenorzi hogy az iroda rendelkezik-e egy adott feature-rel.
+     * A feature-ok a SystemParameter tablaban tarolodnak: FEATURE_{featureName} = true/false
      */
     private boolean hasFeature(UUID branchId, String featureName) {
-        // Alapertelmezetten: WESTERN_UNION, VAT, DEPOSITS, ECOMMERCE, AXA, MONEYGRAM
-        // Ezek a SystemParameter tabla ban tarolodnak iroda szinten
-        // Egyelore: csak a valutavalto alapfeaturok aktivan (WU, cimletezes)
-        // A tobbi opcionalis — skip-eli ha nincs
-        return false; // Default: nincs, skip
+        try {
+            String key = "FEATURE_" + featureName;
+            String val = systemParameterService.getValue(key);
+            return "true".equalsIgnoreCase(val) || "1".equals(val);
+        } catch (Exception e) {
+            // Ha nincs ilyen parameter, a feature nem aktiv
+            return false;
+        }
     }
 
     // ============ HELPER CLASSOK ============

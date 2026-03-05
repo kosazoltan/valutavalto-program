@@ -208,14 +208,16 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     /**
      * WU tranzakciok MTCN szam nelkul.
+     * CRITICAL FIX (Eszter review): LIKE parameterezve SQL injection ellen.
      */
     @Query("SELECT t FROM Transaction t " +
            "WHERE t.branch.id = :branchId " +
            "AND t.transactionDate = :date " +
            "AND t.mtcn IS NULL " +
-           "AND t.referenceNumber LIKE 'WU%'")
+           "AND t.referenceNumber LIKE :refPrefix")
     List<Transaction> findByBranchIdAndTransactionDateAndMtcnIsNull(
         @Param("branchId") UUID branchId,
-        @Param("date") LocalDate date
+        @Param("date") LocalDate date,
+        @Param("refPrefix") String refPrefix
     );
 }

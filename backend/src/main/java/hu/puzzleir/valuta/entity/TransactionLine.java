@@ -119,13 +119,15 @@ public class TransactionLine {
      * A régi rendszerben: _aktErtek = round((_aktArfolyam / 100 * _aktBankjegy) + 0.001)
      * JPY esetén: _aktErtek = round(_aktErtek / 10)
      *
-     * @param currencyCode valutanem kód (JPY speciális kezelés)
+     * CRITICAL FIX (Eszter review): paraméter eltávolítva, currency entity-ből olvassa a kódot.
      */
-    public BigDecimal calculateHufValue(String currencyCode) {
-        BigDecimal divisor = "JPY".equals(currencyCode)
+    public BigDecimal calculateHufValue() {
+        String code = this.currency != null ? this.currency.getCode() : "";
+        BigDecimal divisor = "JPY".equals(code)
             ? new BigDecimal("1000")
             : new BigDecimal("100");
-        return appliedRate.divide(divisor).multiply(banknoteCount)
+        return appliedRate.divide(divisor, 4, java.math.RoundingMode.HALF_UP)
+            .multiply(banknoteCount)
             .setScale(0, java.math.RoundingMode.HALF_UP);
     }
 
