@@ -13,6 +13,8 @@ import {
 } from 'lucide-react'
 import { NumberInput } from '../../components/NumberInput'
 import { formatDecimal } from '../../utils/numberFormat'
+import { transactionApi } from '../../services/api'
+import type { BuyRequest, SellRequest } from '../../services/api'
 
 // Mock data
 const mockRates = [
@@ -68,6 +70,9 @@ export default function TransactionPage() {
   // Identification
   const [identificationLevel, setIdentificationLevel] = useState<'SIMPLE' | 'SIMPLIFIED' | 'FULL'>('SIMPLE')
   const [requiresSourceVerification, setRequiresSourceVerification] = useState(false)
+
+  // Submission state
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Focus on foreign amount input on mount
   useEffect(() => {
@@ -215,10 +220,64 @@ export default function TransactionPage() {
     }
   }
 
-  const handleSubmit = () => {
-    // TODO: API call to save transaction
-    alert('Tranzakció mentve!')
-    navigate('/transactions')
+  const handleSubmit = async () => {
+    if (!selectedCurrency || isSubmitting) return
+
+    const foreignNum = parseFloat(foreignAmount.replace(',', '.')) || 0
+    const hufNum = parseFloat(hufAmount.replace(/\s/g, '').replace(',', '.')) || 0
+    if (foreignNum <= 0 || hufNum <= 0) {
+      alert('Kérem adjon meg érvényes összeget!')
+      return
+    }
+
+    // Ügyfél azonosítás ellenőrzése
+    if (identificationLevel !== 'SIMPLE' && !customer) {
+      alert('Ügyfél azonosítás szükséges ehhez az összeghez!')
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const customerData = customer ? {
+        customerId: customer.id,
+        customerName: customer.name,
+        customerDocumentNumber: customer.documentNumber,
+        customerNationality: customer.nationality,
+      } : {}
+
+      const rate = transactionType === 'BUY'
+        ? selectedCurrency.buyRate
+        : selectedCurrency.sellRate
+
+      if (transactionType === 'BUY') {
+        const request: BuyRequest = {
+          currencyId: parseInt(selectedCurrency.id),
+          currencyAmount: foreignNum,
+          customExchangeRate: rate,
+          ...customerData,
+        }
+        const result = await transactionApi.buy(request)
+        alert(`Vétel tranzakció sikeresen mentve!\nBizonylat szám: ${result.receiptNumber}`)
+      } else {
+        const request: SellRequest = {
+          currencyId: parseInt(selectedCurrency.id),
+          currencyAmount: foreignNum,
+          customExchangeRate: rate,
+          ...customerData,
+        }
+        const result = await transactionApi.sell(request)
+        alert(`Eladás tranzakció sikeresen mentve!\nBizonylat szám: ${result.receiptNumber}`)
+      }
+
+      navigate('/transactions')
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Ismeretlen hiba'
+      const axiosError = error as { response?: { data?: { message?: string } } }
+      const serverMessage = axiosError?.response?.data?.message
+      alert(`Hiba a tranzakció mentése során!\n${serverMessage || message}`)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handlePrint = () => {
@@ -257,12 +316,13 @@ export default function TransactionPage() {
           </button>
           <button 
             onClick={handleSubmit} 
-            className="form-button-primary flex items-center gap-1"
+            disabled={isSubmitting}
+            className="form-button-primary flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
             data-action="save"
             title="Mentés (Enter gombról)"
           >
             <Save size={16} />
-            Mentés
+            {isSubmitting ? 'Mentés...' : 'Mentés'}
           </button>
         </div>
       </div>

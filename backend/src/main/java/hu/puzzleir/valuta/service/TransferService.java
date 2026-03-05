@@ -29,6 +29,7 @@ public class TransferService {
     private final BranchRepository branchRepository;
     private final CurrencyRepository currencyRepository;
     private final WorkerRepository workerRepository;
+    private final CashBalanceRepository cashBalanceRepository;
 
     @Transactional
     public TransferDto create(CreateTransferDto dto, Long workerId) {

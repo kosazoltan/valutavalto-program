@@ -16,6 +16,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.annotation.PostConstruct;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -53,6 +55,17 @@ public class TransactionService {
     // Azonosítás nélküli limit HUF-ban (300.000 Ft - NAV szabályozás)
     private static final BigDecimal IDENTIFICATION_LIMIT = new BigDecimal("300000");
 
+    // HUF currency ID cache — startup-kor betöltve, ne kelljen minden tranzakciónál DB-t kérdezni
+    private Long cachedHufCurrencyId;
+
+    @PostConstruct
+    void initHufCurrencyId() {
+        cachedHufCurrencyId = currencyRepository.findByCode("HUF")
+                .orElseThrow(() -> new ResourceNotFoundException("HUF valuta nem található a rendszerben!"))
+                .getId();
+        log.info("HUF currency ID cached: {}", cachedHufCurrencyId);
+    }
+
     /**
      * Vétel tranzakció végrehajtása
      * (Ügyfél valutát ad el, cég HUF-ot fizet)
@@ -79,12 +92,17 @@ public class TransactionService {
         // Árfolyam meghatározása
         ExchangeRate rate = exchangeRateService.getCurrentRate(request.getCurrencyId());
 
-        // HUF összeg számítása
+        // HUF összeg számítása (helper kezeli a kedvezményt is)
         BigDecimal hufAmount = calculateBuyHufAmount(
             request.getCurrencyAmount(),
             rate,
             request.getDiscountPercent()
         );
+
+        // Kedvezmény validálás
+        if (request.getDiscountPercent() != null && request.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0) {
+            validateDiscount(request.getDiscountPercent());
+        }
 
         // Azonosítás ellenőrzése
         validateIdentification(hufAmount, request.getCustomerName(), request.getCustomerDocumentNumber());
@@ -92,14 +110,10 @@ public class TransactionService {
         // Bizonylat szám generálása
         String receiptNumber = generateReceiptNumber(branchId, "V");
 
-        // Alkalmazott árfolyam (limit alapján)
-        BigDecimal appliedRate = rate.getBuyRateForAmount(hufAmount);
-        if (request.getDiscountPercent() != null && request.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0) {
-            // Kedvezmény ellenőrzése
-            validateDiscount(request.getDiscountPercent());
-            BigDecimal multiplier = BigDecimal.ONE.subtract(request.getDiscountPercent().divide(new BigDecimal("100")));
-            appliedRate = appliedRate.multiply(multiplier);
-        }
+        // Alkalmazott árfolyam (discount NÉLKÜL a pre-discount hufAmount alapján)
+        BigDecimal preDiscountHufAmount = request.getCurrencyAmount()
+                .multiply(rate.getBaseBuyRate()).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal appliedRate = rate.getBuyRateForAmount(preDiscountHufAmount);
 
         // Tranzakció létrehozása
         Transaction transaction = Transaction.builder()
@@ -172,12 +186,17 @@ public class TransactionService {
         // Árfolyam meghatározása
         ExchangeRate rate = exchangeRateService.getCurrentRate(request.getCurrencyId());
 
-        // HUF összeg számítása
+        // HUF összeg számítása (helper kezeli a kedvezményt is)
         BigDecimal hufAmount = calculateSellHufAmount(
             request.getCurrencyAmount(),
             rate,
             request.getDiscountPercent()
         );
+
+        // Kedvezmény validálás
+        if (request.getDiscountPercent() != null && request.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0) {
+            validateDiscount(request.getDiscountPercent());
+        }
 
         // Készlet ellenőrzése
         validateCurrencyStock(branchId, currency.getId(), request.getCurrencyAmount());
@@ -188,13 +207,10 @@ public class TransactionService {
         // Bizonylat szám generálása
         String receiptNumber = generateReceiptNumber(branchId, "E");
 
-        // Alkalmazott árfolyam (limit alapján)
-        BigDecimal appliedRate = rate.getSellRateForAmount(hufAmount);
-        if (request.getDiscountPercent() != null && request.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0) {
-            validateDiscount(request.getDiscountPercent());
-            BigDecimal multiplier = BigDecimal.ONE.subtract(request.getDiscountPercent().divide(new BigDecimal("100")));
-            appliedRate = appliedRate.multiply(multiplier);
-        }
+        // Alkalmazott árfolyam (discount NÉLKÜL a pre-discount hufAmount alapján)
+        BigDecimal preDiscountHufAmount = request.getCurrencyAmount()
+                .multiply(rate.getBaseSellRate()).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal appliedRate = rate.getSellRateForAmount(preDiscountHufAmount);
 
         // Tranzakció létrehozása
         Transaction transaction = Transaction.builder()
@@ -470,12 +486,25 @@ public class TransactionService {
         BigDecimal sellTotal = transactionRepository.sumDailyTurnover(branchId, today, TransactionType.SELL);
         long reversalCount = transactionRepository.countReversalsByBranchAndDate(branchId, today);
 
+        // Bővített mezők: count és handling fees
+        long buyCount = transactionRepository.countByBranchIdAndTransactionDateAndTransactionType(branchId, today, TransactionType.BUY);
+        long sellCount = transactionRepository.countByBranchIdAndTransactionDateAndTransactionType(branchId, today, TransactionType.SELL);
+        BigDecimal totalHandlingFees = transactionRepository.sumDailyHandlingFees(branchId, today);
+
         return DailyTurnoverSummary.builder()
                 .date(today)
-                .buyTotal(buyTotal)
-                .sellTotal(sellTotal)
-                .netTotal(sellTotal.subtract(buyTotal))
+                .buyTotal(buyTotal != null ? buyTotal : BigDecimal.ZERO)
+                .sellTotal(sellTotal != null ? sellTotal : BigDecimal.ZERO)
+                .netTotal((sellTotal != null ? sellTotal : BigDecimal.ZERO)
+                        .subtract(buyTotal != null ? buyTotal : BigDecimal.ZERO))
                 .reversalCount(reversalCount)
+                // Bővített mezők
+                .totalBuyCount(buyCount)
+                .totalSellCount(sellCount)
+                .totalBuyHuf(buyTotal != null ? buyTotal : BigDecimal.ZERO)
+                .totalSellHuf(sellTotal != null ? sellTotal : BigDecimal.ZERO)
+                .totalHandlingFees(totalHandlingFees != null ? totalHandlingFees : BigDecimal.ZERO)
+                .totalReversalCount(reversalCount)
                 .build();
     }
 
@@ -488,10 +517,12 @@ public class TransactionService {
     }
 
     private BigDecimal calculateBuyHufAmount(BigDecimal currencyAmount, ExchangeRate rate, BigDecimal discountPercent) {
+        // Alap hufAmount discount NÉLKÜL (tier meghatározáshoz)
         BigDecimal baseAmount = currencyAmount.multiply(rate.getBaseBuyRate());
         BigDecimal appliedRate = rate.getBuyRateForAmount(baseAmount);
         BigDecimal hufAmount = currencyAmount.multiply(appliedRate).setScale(0, RoundingMode.HALF_UP);
 
+        // Kedvezmény alkalmazása a VÉGSŐ hufAmount-ra (egyszer!)
         if (discountPercent != null && discountPercent.compareTo(BigDecimal.ZERO) > 0) {
             BigDecimal discount = hufAmount.multiply(discountPercent).divide(new BigDecimal("100"), 0, RoundingMode.HALF_UP);
             hufAmount = hufAmount.subtract(discount);
@@ -501,10 +532,12 @@ public class TransactionService {
     }
 
     private BigDecimal calculateSellHufAmount(BigDecimal currencyAmount, ExchangeRate rate, BigDecimal discountPercent) {
+        // Alap hufAmount discount NÉLKÜL (tier meghatározáshoz)
         BigDecimal baseAmount = currencyAmount.multiply(rate.getBaseSellRate());
         BigDecimal appliedRate = rate.getSellRateForAmount(baseAmount);
         BigDecimal hufAmount = currencyAmount.multiply(appliedRate).setScale(0, RoundingMode.HALF_UP);
 
+        // Kedvezmény alkalmazása a VÉGSŐ hufAmount-ra (egyszer!)
         if (discountPercent != null && discountPercent.compareTo(BigDecimal.ZERO) > 0) {
             BigDecimal discount = hufAmount.multiply(discountPercent).divide(new BigDecimal("100"), 0, RoundingMode.HALF_UP);
             hufAmount = hufAmount.subtract(discount);
@@ -570,9 +603,7 @@ public class TransactionService {
     }
 
     private Long getHufCurrencyId() {
-        return currencyRepository.findByCode("HUF")
-                .orElseThrow(() -> new ResourceNotFoundException("HUF valuta nem található"))
-                .getId();
+        return cachedHufCurrencyId;
     }
 
     // ============ REQUEST/RESPONSE DTO-k ============
@@ -644,5 +675,12 @@ public class TransactionService {
         private BigDecimal sellTotal;
         private BigDecimal netTotal;
         private long reversalCount;
+        // Bővített mezők — frontend kompatibilitás
+        private long totalBuyCount;
+        private long totalSellCount;
+        private BigDecimal totalBuyHuf;
+        private BigDecimal totalSellHuf;
+        private BigDecimal totalHandlingFees;
+        private long totalReversalCount;
     }
 }

@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.security;
 
+import com.puzzleir.backend.exception.ValidationException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -11,14 +12,24 @@ import java.util.UUID;
 public class SecurityUtils {
     
     /**
+     * Null guard helper — dob ValidationException ha nincs bejelentkezett felhasználó.
+     */
+    private static <T> T requireAuth(T value) {
+        if (value == null) {
+            throw new ValidationException("Nincs bejelentkezett felhasználó!");
+        }
+        return value;
+    }
+    
+    /**
      * Aktuális bejelentkezett worker ID
      */
     public static Long getCurrentWorkerId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getDetails() instanceof WorkerAuthenticationDetails) {
-            return ((WorkerAuthenticationDetails) auth.getDetails()).getWorkerId();
+            return requireAuth(((WorkerAuthenticationDetails) auth.getDetails()).getWorkerId());
         }
-        return null;
+        throw new ValidationException("Nincs bejelentkezett felhasználó!");
     }
     
     /**
@@ -27,9 +38,9 @@ public class SecurityUtils {
     public static UUID getCurrentCompanyId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getDetails() instanceof WorkerAuthenticationDetails) {
-            return ((WorkerAuthenticationDetails) auth.getDetails()).getCompanyId();
+            return requireAuth(((WorkerAuthenticationDetails) auth.getDetails()).getCompanyId());
         }
-        return null;
+        throw new ValidationException("Nincs bejelentkezett felhasználó!");
     }
     
     /**
@@ -38,9 +49,9 @@ public class SecurityUtils {
     public static UUID getCurrentBranchId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getDetails() instanceof WorkerAuthenticationDetails) {
-            return ((WorkerAuthenticationDetails) auth.getDetails()).getBranchId();
+            return requireAuth(((WorkerAuthenticationDetails) auth.getDetails()).getBranchId());
         }
-        return null;
+        throw new ValidationException("Nincs bejelentkezett felhasználó!");
     }
     
     /**

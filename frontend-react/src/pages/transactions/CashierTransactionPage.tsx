@@ -9,7 +9,8 @@ import {
 import { CashierHeader } from '../../components/cashier/CashierHeader'
 import { HotkeyBar } from '../../components/cashier/HotkeyBar'
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext'
-// import { exchangeRateApi } from '../../services/api'  // TODO: bekotni production API-hoz
+import { transactionApi } from '../../services/api'
+import type { BuyRequest, SellRequest } from '../../services/api'
 
 /**
  * Penztaros Eladas/Vetel kepernyoje — 6 soros valuta tabla.
@@ -60,6 +61,9 @@ export default function CashierTransactionPage() {
   // Fees
   const [handlingFee, _setHandlingFee] = useState(0)
   const [discount, _setDiscount] = useState(0)
+
+  // Submission state
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Refs for keyboard navigation
   const currencyRefs = useRef<(HTMLInputElement | null)[]>([])
@@ -216,25 +220,64 @@ export default function CashierTransactionPage() {
       }
     }
 
-    // TODO: API hivas
-    console.log('Tranzakcio:', {
-      type: mode,
-      lines: filledRows,
-      total,
-      handlingFee,
-      discount,
-      customer: { name: customerName, doc: customerDocNumber, address: customerAddress },
-    })
+    setIsSubmitting(true)
+    const receiptNumbers: string[] = []
 
-    alert(`Bizonylat keszitve: ${filledRows.length} tetel, ${total.toLocaleString('hu-HU')} Ft`)
+    try {
+      // Minden kitoltott sort kulon tranzakciokent kuldunk
+      for (const row of filledRows) {
+        const customerData = total >= IDENTIFICATION_LIMIT ? {
+          customerName: customerName.trim() || undefined,
+          customerDocumentNumber: customerDocNumber.trim() || undefined,
+          customerAddress: customerAddress.trim() || undefined,
+        } : {}
 
-    // Reset
-    setRows(Array.from({ length: MAX_LINES }, emptyRow))
-    setActiveRow(0)
-    setActiveField('currency')
-    setCustomerName('')
-    setCustomerDocNumber('')
-    setCustomerAddress('')
+        if (mode === 'buy') {
+          const request: BuyRequest = {
+            currencyId: 0, // A backend currencyCode alapján is feldolgozza
+            currencyAmount: parseFloat(row.quantity) || 0,
+            customExchangeRate: row.exchangeRate,
+            handlingFee: handlingFee > 0 ? handlingFee : undefined,
+            discountPercent: discount > 0 ? discount : undefined,
+            ...customerData,
+          }
+          const result = await transactionApi.buy(request)
+          receiptNumbers.push(result.receiptNumber)
+        } else {
+          const request: SellRequest = {
+            currencyId: 0,
+            currencyAmount: parseFloat(row.quantity) || 0,
+            customExchangeRate: row.exchangeRate,
+            handlingFee: handlingFee > 0 ? handlingFee : undefined,
+            discountPercent: discount > 0 ? discount : undefined,
+            ...customerData,
+          }
+          const result = await transactionApi.sell(request)
+          receiptNumbers.push(result.receiptNumber)
+        }
+      }
+
+      alert(
+        `Bizonylat(ok) sikeresen keszitve!\n` +
+        `${filledRows.length} tetel, ${total.toLocaleString('hu-HU')} Ft\n` +
+        `Bizonylat szamok: ${receiptNumbers.join(', ')}`
+      )
+
+      // Reset
+      setRows(Array.from({ length: MAX_LINES }, emptyRow))
+      setActiveRow(0)
+      setActiveField('currency')
+      setCustomerName('')
+      setCustomerDocNumber('')
+      setCustomerAddress('')
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Ismeretlen hiba'
+      const axiosError = error as { response?: { data?: { message?: string } } }
+      const serverMessage = axiosError?.response?.data?.message
+      alert(`Hiba a tranzakcio mentes soran!\n${serverMessage || message}`)
+    } finally {
+      setIsSubmitting(false)
+    }
   }, [rows, mode, total, handlingFee, discount, customerName, customerDocNumber, customerAddress])
 
   const handleCancel = useCallback(() => {
@@ -422,11 +465,11 @@ export default function CashierTransactionPage() {
             {/* Veglegestes gomb */}
             <button
               onClick={handleSubmit}
-              disabled={!rows.some((r) => r.hufValue > 0)}
+              disabled={isSubmitting || !rows.some((r) => r.hufValue > 0)}
               className="w-full py-3 rounded-lg text-white font-bold text-lg shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
               style={{ backgroundColor: 'var(--primary)' }}
             >
-              BIZONYLAT KESZITESE
+              {isSubmitting ? 'MENTES...' : 'BIZONYLAT KESZITESE'}
             </button>
           </div>
         </div>
