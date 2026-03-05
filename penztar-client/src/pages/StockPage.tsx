@@ -3,17 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { getCashBalanceSummary, getCompanyTotals } from '@/api/cash';
 import { getCurrencyInfo } from '@/utils/currencies';
-import type { CashBalanceSummary, CompanyTotals } from '@/types';
+import { regenerateInventory } from '@/api/inventoryRegeneration';
+import type { CashBalanceSummary, CompanyTotals, RegenerationResult } from '@/types';
 
 export default function StockPage() {
   const navigate = useNavigate();
-  const { companyType } = useAuthStore();
+  const { companyType, branchCode } = useAuthStore();
 
   const [balances, setBalances] = useState<CashBalanceSummary[]>([]);
   const [totals, setTotals] = useState<CompanyTotals | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [regenResult, setRegenResult] = useState<RegenerationResult | null>(null);
+  const [isRegenerating, setIsRegenerating] = useState(false);
 
   const isBestChange = companyType === 'BEST_CHANGE';
   const headerColor = isBestChange ? 'bg-red-600' : 'bg-orange-500';
@@ -37,6 +40,21 @@ export default function StockPage() {
       setIsLoading(false);
     }
   }, []);
+
+  const handleRegenerate = useCallback(async () => {
+    if (!branchCode) return;
+    setIsRegenerating(true);
+    setRegenResult(null);
+    try {
+      const result = await regenerateInventory(branchCode);
+      setRegenResult(result);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Regenerálási hiba';
+      setError(`❌ ${message}`);
+    } finally {
+      setIsRegenerating(false);
+    }
+  }, [branchCode]);
 
   useEffect(() => {
     void fetchData();
@@ -126,6 +144,45 @@ export default function StockPage() {
                 </button>
               </div>
             </div>
+          </div>
+
+          {/* Készlet regenerálás */}
+          <div className="rounded-xl border bg-amber-50 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-amber-700">🔄 Készlet regenerálás</p>
+                <p className="text-xs text-amber-600">
+                  Újraszámolja a készletet a tranzakciók alapján (supervisor jogosultság)
+                </p>
+              </div>
+              <button
+                onClick={() => void handleRegenerate()}
+                disabled={isRegenerating}
+                className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+              >
+                {isRegenerating ? '⏳ Regenerálás...' : '🔄 Regenerálás'}
+              </button>
+            </div>
+            {regenResult && (
+              <div className="mt-3 rounded-lg bg-white p-3">
+                <p className="text-sm font-medium">
+                  Eredmény: {regenResult.discrepancyCount} eltérés, {regenResult.correctedCount} javított valuta
+                </p>
+                {regenResult.discrepancies && regenResult.discrepancies.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-xs font-semibold text-red-600">Eltérések:</p>
+                    {regenResult.discrepancies.map((d) => (
+                      <p key={d.currencyCode} className="text-xs text-red-500">
+                        {d.currencyCode}: elvárt {d.expectedAmount}, jelenlegi {d.actualAmount}, eltérés {d.difference}
+                      </p>
+                    ))}
+                  </div>
+                )}
+                {regenResult.discrepancyCount === 0 && (
+                  <p className="text-xs text-green-600">✅ Nincs eltérés — a készlet konzisztens.</p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Hiba */}

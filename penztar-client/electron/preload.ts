@@ -126,5 +126,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   }>> =>
     ipcRenderer.invoke('get-cached-rates'),
 
+  // Batch 2B: Okmány szkenner
+  scanDocument: (): Promise<{ imageBase64: string; fileName: string }> =>
+    ipcRenderer.invoke('scan-document'),
+
   platform: process.platform,
 });

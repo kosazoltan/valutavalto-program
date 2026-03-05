@@ -166,6 +166,18 @@ ipcMain.handle('get-cached-rates', async () => {
   return getCachedRates();
 });
 
+// --- Batch 2B: Okmány szkenner (placeholder) ---
+ipcMain.handle('scan-document', async (): Promise<{ imageBase64: string; fileName: string }> => {
+  // TODO: TWAIN/WIA driver implementáció
+  // Jelenleg placeholder — 1x1 üres PNG-t ad vissza
+  console.log('[IPC] scan-document — placeholder mód (TWAIN/WIA driver nincs implementálva)');
+  const emptyPng = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+  return {
+    imageBase64: emptyPng,
+    fileName: `scan_${Date.now()}.png`,
+  };
+});
+
 // --- App Lifecycle ---
 
 app.whenReady().then(async () => {

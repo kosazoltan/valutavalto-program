@@ -87,6 +87,9 @@ export interface ElectronAPI {
   getCachedBranchStatusTimestamp: () => Promise<string | null>;
   getCachedRates: () => Promise<CachedRateRecord[]>;
 
+  // Batch 2B: Okmány szkenner
+  scanDocument: () => Promise<{ imageBase64: string; fileName: string }>;
+
   platform: string;
 }
 

@@ -141,7 +141,14 @@ export type PageRoute =
   | '/ertektar'
   | '/ertektar/distribution'
   | '/ertektar/collection'
-  | '/ertektar/reports';
+  | '/ertektar/reports'
+  | '/ertektar/rate-approval'
+  | '/daily-report'
+  | '/police'
+  | '/monthly-closing'
+  | '/commissions'
+  | '/booking'
+  | '/profit';
 
 // --- Menu ---
 export interface MenuItem {
@@ -604,3 +611,305 @@ export interface EveningClosingData {
   confirmedAt?: string;
   createdAt: string;
 }
+
+// ============================================================
+// Árfolyam engedélyezés (Rate Approval) — Típusdefiníciók
+// ============================================================
+
+export type RateApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'APPLIED';
+
+export interface RateApproval {
+  id: string;
+  branchId: string;
+  branchName: string;
+  currencyCode: string;
+  oldBuyRate: number | null;
+  oldSellRate: number | null;
+  newBuyRate: number;
+  newSellRate: number;
+  status: RateApprovalStatus;
+  requestedById: number | null;
+  requestedByName: string | null;
+  approvedById: number | null;
+  approvedByName: string | null;
+  requestedAt: string | null;
+  approvedAt: string | null;
+  reason: string | null;
+}
+
+export interface RequestRateChangeRequest {
+  branchId: string;
+  currencyCode: string;
+  newBuyRate: number;
+  newSellRate: number;
+  reason?: string;
+}
+
+// ============================================================
+// Napi jelentés (Daily Report) — Típusdefiníciók
+// ============================================================
+
+export interface DailyReportData {
+  id: number;
+  branchId: string;
+  branchCode: string;
+  branchName: string;
+  reportDate: string;
+  submitted: boolean;
+  submittedAt: string | null;
+  submittedById: number | null;
+  submittedByName: string | null;
+  reportData: string | null;
+  totalBuyHuf: number;
+  totalSellHuf: number;
+  totalFeeHuf: number;
+  totalProfit: number;
+  transactionCount: number;
+  createdAt: string | null;
+}
+
+// ============================================================
+// Rendőrségi adatkérés (Police Request) — Típusdefiníciók
+// ============================================================
+
+export type PoliceRequestStatus = 'RECEIVED' | 'PROCESSING' | 'COMPLETED' | 'REJECTED';
+
+export interface PoliceRequestData {
+  id: string;
+  requestNumber: string;
+  requestDate: string;
+  requestedBy: string;
+  customerName: string | null;
+  documentNumber: string | null;
+  dateRangeFrom: string | null;
+  dateRangeTo: string | null;
+  status: PoliceRequestStatus;
+  responseData: string | null;
+  completedAt: string | null;
+  createdAt: string | null;
+  createdById: number | null;
+  createdByName: string | null;
+}
+
+export interface CreatePoliceRequest {
+  requestNumber: string;
+  requestDate: string;
+  requestedBy: string;
+  customerName?: string;
+  documentNumber?: string;
+  dateRangeFrom?: string;
+  dateRangeTo?: string;
+}
+
+// ============================================================
+// Készlet regenerálás — Típusdefiníciók
+// ============================================================
+
+export interface RegenerationResult {
+  id: number;
+  branchId: string;
+  discrepancies: RegenerationDiscrepancy[];
+  correctedCurrencies: string[];
+  discrepancyCount: number;
+  correctedCount: number;
+  regeneratedAt: string;
+  regeneratedByName: string | null;
+}
+
+export interface RegenerationDiscrepancy {
+  currencyCode: string;
+  expectedAmount: string;
+  actualAmount: string;
+  difference: string;
+}
+
+// ============================================================
+// LED kijelző — Típusdefiníciók
+// ============================================================
+
+export type LedDisplayType = 'RATE_BOARD' | 'SCROLLING_TEXT';
+
+export interface LedDisplayData {
+  id: string;
+  branchId: string;
+  displayType: LedDisplayType;
+  content: string | null;
+  lastUpdated: string | null;
+}
+
+// ============================================================
+// Supervisor mód — Típusdefiníciók
+// ============================================================
+
+export interface SupervisorAuthRequest {
+  password: string;
+}
+
+export interface SupervisorAuthResponse {
+  authenticated: boolean;
+}
+
+export interface OverrideRateRequest {
+  branchId: string;
+  currency: string;
+  newBuyRate: number;
+  newSellRate: number;
+  reason: string;
+}
+
+export interface OverrideFeeRequest {
+  transactionId: number;
+  newFee: number;
+  reason: string;
+}
+
+export interface SystemParam {
+  id: string;
+  key: string;
+  value: string;
+  type: string;
+  category: string;
+  description: string;
+  updatedAt: string;
+}
+
+// ============================================================
+// Pénztáros kezelés — Típusdefiníciók
+// ============================================================
+
+export interface WorkerDetail {
+  id: number;
+  companyId: string;
+  code: string;
+  name: string;
+  role: 'CASHIER' | 'SUPERVISOR' | 'MANAGER' | 'ADMIN';
+  branchId: string;
+  branchCode: string;
+  branchName: string;
+  active: boolean;
+  phone?: string;
+  email?: string;
+  lastLoginAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface WorkerAttendance {
+  id: string;
+  workerId: number;
+  branchId: string;
+  loginAt: string;
+  logoutAt?: string;
+  ipAddress?: string;
+}
+
+export interface WorkerBreak {
+  id: string;
+  workerId: number;
+  branchId: string;
+  breakStart: string;
+  breakEnd?: string;
+  reason?: string;
+  approvedBy?: string;
+}
+
+// ============================================================
+// Bizonylat kereső — Típusdefiníciók
+// ============================================================
+
+export interface ReceiptSearchResult {
+  id: number;
+  receiptNumber: string;
+  transactionDate: string;
+  transactionTime: string;
+  transactionType: string;
+  transactionTypeDisplay: string;
+  currencyCode: string;
+  currencyAmount: number;
+  hufAmount: number;
+  exchangeRate: number;
+  customerName?: string;
+  cashierName: string;
+  status: string;
+}
+
+export interface ReceiptDetail {
+  id: number;
+  receiptNumber: string;
+  transactionDate: string;
+  transactionTime: string;
+  transactionType: string;
+  transactionTypeDisplay: string;
+  status: string;
+  currencyCode: string;
+  currencyAmount: number;
+  hufAmount: number;
+  exchangeRate: number;
+  handlingFee: number;
+  customerName?: string;
+  customerAddress?: string;
+  customerDocumentNumber?: string;
+  cashierName: string;
+  branchCode: string;
+  lines: ReceiptLine[];
+  qrData?: string;
+}
+
+export interface ReceiptLine {
+  lineNumber: number;
+  currencyCode: string;
+  appliedRate: number;
+  banknoteCount: number;
+  hufValue: number;
+  lineDiscount: number;
+}
+
+// ============================================================
+// Matrica pénztár — Típusdefiníciók
+// ============================================================
+
+export interface StampBatch {
+  id: string;
+  branchId: string;
+  serialPrefix: string;
+  serialStart: number;
+  serialEnd: number;
+  totalCount: number;
+  usedCount: number;
+  receivedAt: string;
+  receivedBy?: string;
+  note?: string;
+}
+
+export interface StampAssignment {
+  id: string;
+  batchId: string;
+  serialNumber: string;
+  transactionId?: number;
+  assignedAt: string;
+  assignedBy?: string;
+}
+
+export interface CreateStampBatchRequest {
+  branchId: string;
+  serialPrefix: string;
+  serialStart: number;
+  serialEnd: number;
+  note?: string;
+}
+
+export interface AssignStampRequest {
+  serialNumber: string;
+  transactionId: number;
+}
+
+// ============================================================
+// Navigáció kiegészítés (Batch 2B)
+// ============================================================
+
+export type PageRouteBatch2B =
+  | PageRoute
+  | '/supervisor'
+  | '/worker-management'
+  | '/receipt-search'
+  | '/stamps';

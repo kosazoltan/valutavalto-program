@@ -3189,6 +3189,14 @@ electron.ipcMain.handle("get-cached-branch-status-timestamp", async () => {
 electron.ipcMain.handle("get-cached-rates", async () => {
   return getCachedRates();
 });
+electron.ipcMain.handle("scan-document", async () => {
+  console.log("[IPC] scan-document — placeholder mód (TWAIN/WIA driver nincs implementálva)");
+  const emptyPng = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+  return {
+    imageBase64: emptyPng,
+    fileName: `scan_${Date.now()}.png`
+  };
+});
 electron.app.whenReady().then(async () => {
   await initDatabase();
   createWindow();

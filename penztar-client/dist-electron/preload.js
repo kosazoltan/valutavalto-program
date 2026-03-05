@@ -49,5 +49,7 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   getCachedBranchStatuses: () => electron.ipcRenderer.invoke("get-cached-branch-statuses"),
   getCachedBranchStatusTimestamp: () => electron.ipcRenderer.invoke("get-cached-branch-status-timestamp"),
   getCachedRates: () => electron.ipcRenderer.invoke("get-cached-rates"),
+  // Batch 2B: Okmány szkenner
+  scanDocument: () => electron.ipcRenderer.invoke("scan-document"),
   platform: process.platform
 });

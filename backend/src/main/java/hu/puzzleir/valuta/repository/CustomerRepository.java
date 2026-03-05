@@ -50,4 +50,14 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
      * Aktív ügyfelek
      */
     List<Customer> findByCompanyIdAndActiveTrue(UUID companyId);
+
+    /**
+     * Keresés név alapján (rendőrségi adatkéréshez)
+     */
+    List<Customer> findByNameContainingIgnoreCase(String name);
+
+    /**
+     * Keresés okmányszám alapján (rendőrségi adatkéréshez)
+     */
+    List<Customer> findByDocumentNumberContainingIgnoreCase(String documentNumber);
 }

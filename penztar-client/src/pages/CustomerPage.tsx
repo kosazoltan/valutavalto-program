@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import apiClient from '@/api/client';
+import DocumentScanner from '@/components/DocumentScanner';
 import type { CustomerDetail, CustomerCreateRequest, TransactionListItem } from '@/types';
 
 type TabView = 'search' | 'detail' | 'create' | 'edit';
@@ -21,6 +22,7 @@ export default function CustomerPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showScanner, setShowScanner] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState<CustomerCreateRequest>({
@@ -423,6 +425,16 @@ export default function CustomerPage() {
               </div>
             </div>
 
+            {/* Okmány szkennelés gomb */}
+            <div className="rounded-xl border bg-white p-4">
+              <button
+                onClick={() => setShowScanner(true)}
+                className="btn-primary w-full bg-indigo-600 hover:bg-indigo-700"
+              >
+                📷 Okmány szkennelés
+              </button>
+            </div>
+
             {/* Tranzakció történet */}
             <div className="rounded-xl border bg-white p-6">
               <h3 className="mb-3 font-semibold text-gray-700">📋 Tranzakció történet</h3>
@@ -467,6 +479,18 @@ export default function CustomerPage() {
         {tab === 'create' && renderForm('create')}
         {tab === 'edit' && renderForm('edit')}
       </main>
+
+      {/* Okmány szkenner modal */}
+      {showScanner && selectedCustomer && (
+        <DocumentScanner
+          customerId={selectedCustomer.id}
+          onClose={() => setShowScanner(false)}
+          onSaved={() => {
+            setShowScanner(false);
+            setSuccess('✅ Okmány sikeresen mentve!');
+          }}
+        />
+      )}
     </div>
   );
 }

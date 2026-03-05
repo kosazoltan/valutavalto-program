@@ -25,6 +25,24 @@ const SPECIAL_ITEMS: MenuItem[] = [
   { key: 'SP1', label: 'Foglalás', icon: '📋', route: '/reservation', hotkey: 'Ctrl+F' },
   { key: 'SP2', label: 'HRK (Házipénztár)', icon: '🏦', route: '/hrk', hotkey: 'Ctrl+H' },
   { key: 'SP3', label: 'Esti zárás', icon: '🌙', route: '/evening-closing', hotkey: 'Ctrl+E' },
+  { key: 'SP4', label: 'Napi jelentés', icon: '📋', route: '/daily-report', hotkey: 'Ctrl+D' },
+  { key: 'SP5', label: 'Rendőrség (Police)', icon: '🚔', route: '/police', hotkey: 'Ctrl+L' },
+];
+
+// Vezetői funkciók
+const ADMIN_ITEMS: MenuItem[] = [
+  { key: 'AD1', label: 'Havi zárás', icon: '📅', route: '/monthly-closing', hotkey: 'Ctrl+M' },
+  { key: 'AD2', label: 'Jutalék', icon: '💰', route: '/commissions', hotkey: 'Ctrl+J' },
+  { key: 'AD3', label: 'Könyvelés export', icon: '📑', route: '/booking', hotkey: 'Ctrl+B' },
+  { key: 'AD4', label: 'Haszon', icon: '📈', route: '/profit', hotkey: 'Ctrl+P' },
+];
+
+// Batch 2B speciális funkciók
+const BATCH2B_ITEMS: MenuItem[] = [
+  { key: 'B1', label: 'Supervisor mód', icon: '🔐', route: '/supervisor' as PageRoute, hotkey: 'Ctrl+S' },
+  { key: 'B2', label: 'Pénztáros kezelés', icon: '👥', route: '/worker-management' as PageRoute, hotkey: 'Ctrl+W' },
+  { key: 'B3', label: 'Bizonylat kereső', icon: '🔍', route: '/receipt-search' as PageRoute, hotkey: 'Ctrl+R' },
+  { key: 'B4', label: 'Matrica pénztár', icon: '🏷️', route: '/stamps' as PageRoute, hotkey: 'Ctrl+T' },
 ];
 
 // Értéktár extra menüpontok
@@ -33,6 +51,7 @@ const ERTEKTAR_ITEMS: MenuItem[] = [
   { key: 'ET2', label: 'Szétosztás', icon: '📦', route: '/ertektar/distribution', hotkey: 'Ctrl+2' },
   { key: 'ET3', label: 'Begyűjtés', icon: '📥', route: '/ertektar/collection', hotkey: 'Ctrl+3' },
   { key: 'ET4', label: 'Összevont riportok', icon: '📊', route: '/ertektar/reports', hotkey: 'Ctrl+4' },
+  { key: 'ET5', label: 'Árfolyam engedélyezés', icon: '✅', route: '/ertektar/rate-approval', hotkey: 'Ctrl+A' },
 ];
 
 export default function MainMenu() {
@@ -74,7 +93,7 @@ export default function MainMenu() {
         }
       }
 
-      // Speciális funkciók: Ctrl+F, Ctrl+H, Ctrl+E
+      // Speciális funkciók: Ctrl+F, Ctrl+H, Ctrl+E + Vezetői: Ctrl+M, Ctrl+J, Ctrl+B, Ctrl+P
       if (e.ctrlKey && !e.shiftKey && !e.altKey) {
         const keyLower = e.key.toLowerCase();
         if (keyLower === 'f') {
@@ -86,18 +105,52 @@ export default function MainMenu() {
         } else if (keyLower === 'e') {
           e.preventDefault();
           handleNavigate('/evening-closing');
+        } else if (keyLower === 'm') {
+          e.preventDefault();
+          handleNavigate('/monthly-closing');
+        } else if (keyLower === 'j') {
+          e.preventDefault();
+          handleNavigate('/commissions');
+        } else if (keyLower === 'b') {
+          e.preventDefault();
+          handleNavigate('/booking');
+        } else if (keyLower === 'p') {
+          e.preventDefault();
+          handleNavigate('/profit');
+        } else if (keyLower === 'd') {
+          e.preventDefault();
+          handleNavigate('/daily-report');
+        } else if (keyLower === 'l') {
+          e.preventDefault();
+          handleNavigate('/police');
+        } else if (keyLower === 's') {
+          e.preventDefault();
+          handleNavigate('/supervisor' as PageRoute);
+        } else if (keyLower === 'w') {
+          e.preventDefault();
+          handleNavigate('/worker-management' as PageRoute);
+        } else if (keyLower === 'r') {
+          e.preventDefault();
+          handleNavigate('/receipt-search' as PageRoute);
+        } else if (keyLower === 't') {
+          e.preventDefault();
+          handleNavigate('/stamps' as PageRoute);
         }
       }
 
-      // Értéktár gyorsbillentyűk: Ctrl+1..4
+      // Értéktár gyorsbillentyűk: Ctrl+1..5 + Ctrl+A
       if (isErtektar && e.ctrlKey && !e.shiftKey && !e.altKey) {
         const num = parseInt(e.key, 10);
-        if (num >= 1 && num <= 4) {
+        if (num >= 1 && num <= 5) {
           e.preventDefault();
           const ertektarItem = ERTEKTAR_ITEMS[num - 1];
           if (ertektarItem) {
             handleNavigate(ertektarItem.route);
           }
+        }
+        if (e.key.toLowerCase() === 'a') {
+          e.preventDefault();
+          handleNavigate('/ertektar/rate-approval');
         }
       }
     };
@@ -157,7 +210,7 @@ export default function MainMenu() {
         {isErtektar && (
           <div className="mx-auto mb-6 max-w-4xl">
             <h2 className="mb-3 text-lg font-semibold text-gray-600">🏦 Értéktár funkciók</h2>
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-5 gap-4">
               {ERTEKTAR_ITEMS.map((item) => (
                 <button
                   key={item.key}
@@ -196,7 +249,7 @@ export default function MainMenu() {
         {/* Speciális funkciók */}
         <div className="mx-auto mt-6 max-w-4xl">
           <h2 className="mb-3 text-lg font-semibold text-gray-600">⚡ Speciális funkciók</h2>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-5 gap-4">
             {SPECIAL_ITEMS.map((item) => (
               <button
                 key={item.key}
@@ -206,6 +259,42 @@ export default function MainMenu() {
                 <span className="menu-btn-icon">{item.icon}</span>
                 <span className="menu-btn-label text-purple-800">{item.label}</span>
                 <span className="menu-btn-hotkey text-purple-500">{item.hotkey}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Batch 2B — Supervisor, Pénztáros, Bizonylat, Matrica */}
+        <div className="mx-auto mt-6 max-w-4xl">
+          <h2 className="mb-3 text-lg font-semibold text-gray-600">🔐 Felügyeleti funkciók</h2>
+          <div className="grid grid-cols-4 gap-4">
+            {BATCH2B_ITEMS.map((item) => (
+              <button
+                key={item.key}
+                onClick={() => handleNavigate(item.route)}
+                className="menu-btn h-28 border-2 border-amber-200 bg-amber-50 hover:bg-amber-100"
+              >
+                <span className="menu-btn-icon">{item.icon}</span>
+                <span className="menu-btn-label text-amber-800">{item.label}</span>
+                <span className="menu-btn-hotkey text-amber-500">{item.hotkey}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Vezetői funkciók */}
+        <div className="mx-auto mt-6 max-w-4xl">
+          <h2 className="mb-3 text-lg font-semibold text-gray-600">📊 Vezetői funkciók</h2>
+          <div className="grid grid-cols-4 gap-4">
+            {ADMIN_ITEMS.map((item) => (
+              <button
+                key={item.key}
+                onClick={() => handleNavigate(item.route)}
+                className="menu-btn h-28 border-2 border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
+              >
+                <span className="menu-btn-icon">{item.icon}</span>
+                <span className="menu-btn-label text-emerald-800">{item.label}</span>
+                <span className="menu-btn-hotkey text-emerald-500">{item.hotkey}</span>
               </button>
             ))}
           </div>

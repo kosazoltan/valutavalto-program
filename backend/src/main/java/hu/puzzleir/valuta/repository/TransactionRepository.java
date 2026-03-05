@@ -397,4 +397,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("date") LocalDate date,
         @Param("refPrefix") String refPrefix
     );
+
+    /**
+     * Összes tranzakció egy irodához (készlet regeneráláshoz)
+     */
+    @Query("SELECT t FROM Transaction t WHERE t.branch.id = :branchId ORDER BY t.transactionDate")
+    List<Transaction> findByBranchId(@Param("branchId") UUID branchId);
 }

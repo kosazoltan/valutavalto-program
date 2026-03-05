@@ -26,6 +26,20 @@ import ErtektarDashboard from '@/pages/ErtektarDashboard';
 import DistributionPage from '@/pages/DistributionPage';
 import CollectionPage from '@/pages/CollectionPage';
 import ConsolidatedReportsPage from '@/pages/ConsolidatedReportsPage';
+// Batch 2B képernyők
+import SupervisorPage from '@/pages/SupervisorPage';
+import WorkerManagementPage from '@/pages/WorkerManagementPage';
+import ReceiptSearchPage from '@/pages/ReceiptSearchPage';
+import StampPage from '@/pages/StampPage';
+// Batch 2C — új képernyők
+import RateApprovalPage from '@/pages/RateApprovalPage';
+import DailyReportPage from '@/pages/DailyReportPage';
+import PolicePage from '@/pages/PolicePage';
+// Vezetői képernyők
+import MonthlyClosingPage from '@/pages/MonthlyClosingPage';
+import CommissionPage from '@/pages/CommissionPage';
+import BookingPage from '@/pages/BookingPage';
+import ProfitPage from '@/pages/ProfitPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -206,6 +220,58 @@ export default function App() {
         }
       />
 
+      {/* Vezetői funkciók */}
+      <Route
+        path="/monthly-closing"
+        element={
+          <ProtectedRoute>
+            <MonthlyClosingPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/commissions"
+        element={
+          <ProtectedRoute>
+            <CommissionPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/booking"
+        element={
+          <ProtectedRoute>
+            <BookingPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profit"
+        element={
+          <ProtectedRoute>
+            <ProfitPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Batch 2C — Napi jelentés + Police (mindkét módban elérhető) */}
+      <Route
+        path="/daily-report"
+        element={
+          <ProtectedRoute>
+            <DailyReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/police"
+        element={
+          <ProtectedRoute>
+            <PolicePage />
+          </ProtectedRoute>
+        }
+      />
+
       {/* Értéktár route-ok — csak 'ertektar' módban elérhetők, de route mindig regisztrálva */}
       {mode === 'ertektar' && (
         <>
@@ -241,8 +307,50 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/ertektar/rate-approval"
+            element={
+              <ProtectedRoute>
+                <RateApprovalPage />
+              </ProtectedRoute>
+            }
+          />
         </>
       )}
+
+      {/* Batch 2B route-ok */}
+      <Route
+        path="/supervisor"
+        element={
+          <ProtectedRoute>
+            <SupervisorPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/worker-management"
+        element={
+          <ProtectedRoute>
+            <WorkerManagementPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/receipt-search"
+        element={
+          <ProtectedRoute>
+            <ReceiptSearchPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/stamps"
+        element={
+          <ProtectedRoute>
+            <StampPage />
+          </ProtectedRoute>
+        }
+      />
 
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
