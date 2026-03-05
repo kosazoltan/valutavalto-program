@@ -1071,3 +1071,184 @@ export type PageRouteBatch3 =
   | PageRouteBatch2B
   | '/decade-report'
   | '/competition';
+
+// ============================================================
+// Batch 4 — Trade, Sync, Dashboard, Notification, System Params
+// ============================================================
+
+// --- Trade (devizakereskedés) ---
+export type TradeStatus = 'PROPOSED' | 'ACCEPTED' | 'REJECTED' | 'COMPLETED' | 'CANCELLED';
+
+export interface TradeData {
+  id: string;
+  fromBranchId: string;
+  fromBranchName: string;
+  toBranchId: string;
+  toBranchName: string;
+  currencyCode: string;
+  amount: number;
+  rate: number;
+  status: TradeStatus;
+  proposedBy: number;
+  acceptedBy: number | null;
+  proposedAt: string;
+  acceptedAt: string | null;
+  completedAt: string | null;
+  notes: string | null;
+}
+
+// --- Sync ---
+export type SyncType = 'RATES' | 'TRANSACTIONS' | 'INVENTORY' | 'CLOSING' | 'FULL';
+export type SyncDirection = 'UP' | 'DOWN';
+export type SyncStatusType = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED';
+
+export interface SyncLogData {
+  id: string;
+  branchId: string;
+  syncType: SyncType;
+  direction: SyncDirection;
+  status: SyncStatusType;
+  startedAt: string;
+  completedAt: string | null;
+  recordCount: number;
+  errorMessage: string | null;
+}
+
+// --- Dashboard ---
+export interface DashboardSummaryData {
+  todayVolume: number;
+  activeBranches: number;
+  openTransactions: number;
+  alertCount: number;
+  currencyVolumes: Record<string, number>;
+  recentTransactions: Array<{
+    id: number;
+    receiptNumber: string;
+    type: string;
+    currencyCode: string;
+    amount: number;
+    hufAmount: number;
+    cashierName: string;
+    createdAt: string;
+  }>;
+  branchSyncStatuses: Array<{
+    branchCode: string;
+    branchName: string;
+    lastSyncAt: string;
+    status: string;
+  }>;
+}
+
+// --- Notification (bővített) ---
+export type NotificationType = 'INFO' | 'WARNING' | 'ALERT' | 'RATE_CHANGE' | 'CIRCULAR' | 'SYSTEM';
+
+export interface NotificationData {
+  id: string;
+  title: string;
+  message: string;
+  type: NotificationType;
+  userId: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+// --- System Parameter kategóriák ---
+export type SystemParamCategory = 'GENERAL' | 'RATES' | 'FEES' | 'LIMITS' | 'SYNC' | 'PRINT' | 'SECURITY';
+
+// --- Navigáció kiegészítés (Batch 4) ---
+export type PageRouteBatch4 =
+  | PageRouteBatch3
+  | '/trade'
+  | '/dashboard';
+
+// ============================================================
+// Batch 4B — Helga locserver + Backup + Licenc + Nyomtatási sablonok
+// ============================================================
+
+// --- Fiók monitoring (locserver) ---
+export interface BranchStatusData {
+  id: string;
+  branchId: string;
+  lastHeartbeat: string | null;
+  lastSync: string | null;
+  isOnline: boolean;
+  lastTransactionAt: string | null;
+  dailyTransactionCount: number;
+  dailyVolumeHuf: number;
+  openAlerts: number;
+}
+
+// --- Backup / Restore ---
+export type BackupType = 'FULL' | 'INCREMENTAL' | 'TABLES_ONLY';
+export type BackupStatusType = 'RUNNING' | 'COMPLETED' | 'FAILED';
+
+export interface BackupRecordData {
+  id: string;
+  backupType: BackupType;
+  status: BackupStatusType;
+  filePath: string | null;
+  fileSizeBytes: number | null;
+  startedAt: string;
+  completedAt: string | null;
+  createdBy: string | null;
+}
+
+export interface CreateBackupRequest {
+  type: BackupType;
+}
+
+// --- Licenc kezelés ---
+export type LicenseStatusType = 'VALID' | 'EXPIRED' | 'EXCEEDED' | 'NO_LICENSE' | 'NOT_YET_VALID';
+
+export interface LicenseData {
+  id: string;
+  companyId: number | null;
+  licenseKey: string;
+  validFrom: string;
+  validTo: string;
+  maxBranches: number;
+  maxWorkers: number;
+  features: string | null;
+  isActive: boolean;
+  remainingDays: number;
+}
+
+export interface LicenseStatusData {
+  status: LicenseStatusType;
+  remainingDays: number;
+  maxBranches: number;
+  maxWorkers: number;
+  features: string | null;
+}
+
+export interface LicenseActivateRequest {
+  licenseKey: string;
+}
+
+// --- Nyomtatási sablonok ---
+export type PrintTemplateType = 'RECEIPT' | 'REPORT' | 'LABEL' | 'CLOSING';
+
+export interface PrintTemplateData {
+  id: string;
+  name: string;
+  templateType: PrintTemplateType;
+  content: string | null;
+  isDefault: boolean;
+  companyId: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PrintTemplateCreateRequest {
+  name: string;
+  templateType: string;
+  content: string;
+  isDefault?: boolean;
+  companyId?: number;
+}
+
+// --- Navigáció kiegészítés (Batch 4B) ---
+export type PageRouteBatch4B =
+  | PageRouteBatch3
+  | '/backup'
+  | '/print-templates';

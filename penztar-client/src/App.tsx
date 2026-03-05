@@ -43,6 +43,12 @@ import ProfitPage from '@/pages/ProfitPage';
 // Batch 3 — Dekádjelentés + Verseny
 import DecadeReportPage from '@/pages/DecadeReportPage';
 import CompetitionPage from '@/pages/CompetitionPage';
+// Batch 4 — Trade + Dashboard
+import TradePage from '@/pages/TradePage';
+import DashboardPage from '@/pages/DashboardPage';
+// Batch 4B — Backup + Nyomtatási sablonok
+import BackupPage from '@/pages/BackupPage';
+import PrintTemplatePage from '@/pages/PrintTemplatePage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -369,6 +375,42 @@ export default function App() {
         element={
           <ProtectedRoute>
             <CompetitionPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Batch 4B route-ok */}
+      <Route
+        path="/backup"
+        element={
+          <ProtectedRoute>
+            <BackupPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/print-templates"
+        element={
+          <ProtectedRoute>
+            <PrintTemplatePage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Batch 4 route-ok */}
+      <Route
+        path="/trade"
+        element={
+          <ProtectedRoute>
+            <TradePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <DashboardPage />
           </ProtectedRoute>
         }
       />

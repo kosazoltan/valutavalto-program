@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
+import { getAllSystemParams, updateSystemParam, type SystemParamData } from '@/api/systemParams';
 import type { PrinterInfo } from '@/types/electron';
 
 export default function SettingsPage() {
@@ -18,6 +19,13 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+
+  // System params state
+  const [sysParams, setSysParams] = useState<SystemParamData[]>([]);
+  const [activeParamCat, setActiveParamCat] = useState('GENERAL');
+  const [editingParam, setEditingParam] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const paramCategories = ['GENERAL', 'RATES', 'FEES', 'LIMITS', 'SYNC', 'PRINT', 'SECURITY'] as const;
 
   // Betöltés
   useEffect(() => {
@@ -48,6 +56,17 @@ export default function SettingsPage() {
     };
 
     void loadSettings();
+
+    // Load system params
+    const loadParams = async () => {
+      try {
+        const data = await getAllSystemParams();
+        setSysParams(data);
+      } catch {
+        // System params may not be available for non-admin users
+      }
+    };
+    void loadParams();
   }, []);
 
   const handleSave = useCallback(async () => {
@@ -187,6 +206,100 @@ export default function SettingsPage() {
               <p className="mt-1 text-xs text-gray-400">Jelenleg csak magyar nyelv elérhető.</p>
             </div>
           </div>
+
+          {/* Rendszer paraméterek */}
+          {sysParams.length > 0 && (
+            <div className="rounded-xl border bg-white p-6">
+              <h2 className="mb-4 text-lg font-semibold text-gray-700">📋 Rendszer paraméterek</h2>
+              {/* Category tabs */}
+              <div className="mb-4 flex flex-wrap gap-1">
+                {paramCategories.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setActiveParamCat(cat)}
+                    className={`rounded px-3 py-1 text-xs font-medium transition ${
+                      activeParamCat === cat
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+              {/* Params list */}
+              <div className="space-y-2">
+                {sysParams
+                  .filter((p) => p.category === activeParamCat)
+                  .map((p) => (
+                    <div key={p.id} className="flex items-center justify-between rounded border px-3 py-2">
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-gray-700">{p.parameterKey}</div>
+                        {p.description && (
+                          <div className="text-xs text-gray-400">{p.description}</div>
+                        )}
+                      </div>
+                      {editingParam === p.parameterKey ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            className="w-40 rounded border px-2 py-1 text-sm"
+                            autoFocus
+                          />
+                          <button
+                            onClick={() => {
+                              void (async () => {
+                                try {
+                                  await updateSystemParam(p.parameterKey, editValue);
+                                  setSysParams((prev) =>
+                                    prev.map((sp) =>
+                                      sp.parameterKey === p.parameterKey
+                                        ? { ...sp, parameterValue: editValue }
+                                        : sp
+                                    )
+                                  );
+                                  setEditingParam(null);
+                                  setSuccess('✅ Paraméter mentve!');
+                                } catch {
+                                  setError('Paraméter mentése sikertelen.');
+                                }
+                              })();
+                            }}
+                            className="rounded bg-green-500 px-2 py-1 text-xs text-white hover:bg-green-600"
+                          >
+                            ✅
+                          </button>
+                          <button
+                            onClick={() => setEditingParam(null)}
+                            className="rounded bg-gray-300 px-2 py-1 text-xs hover:bg-gray-400"
+                          >
+                            ✖
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-600">{p.parameterValue}</span>
+                          <button
+                            onClick={() => {
+                              setEditingParam(p.parameterKey);
+                              setEditValue(p.parameterValue);
+                            }}
+                            className="rounded bg-blue-100 px-2 py-1 text-xs text-blue-700 hover:bg-blue-200"
+                          >
+                            ✏️
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                {sysParams.filter((p) => p.category === activeParamCat).length === 0 && (
+                  <p className="text-sm text-gray-400">Nincs paraméter ebben a kategóriában.</p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Offline adatok */}
           <div className="rounded-xl border bg-white p-6">

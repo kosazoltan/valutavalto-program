@@ -1,5 +1,7 @@
 package hu.puzzleir.valuta.controller;
 
+import hu.puzzleir.valuta.dto.notification.BroadcastNotificationDto;
+import hu.puzzleir.valuta.dto.notification.SendNotificationDto;
 import hu.puzzleir.valuta.entity.Notification;
 import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
 import hu.puzzleir.valuta.service.NotificationService;
@@ -30,8 +32,20 @@ public class NotificationController {
         return ResponseEntity.ok(service.getUnread(getUserId(auth)));
     }
 
+    @GetMapping("/unread-count")
+    public ResponseEntity<Map<String, Integer>> getUnreadCount(Authentication auth) {
+        int count = service.getUnreadCount(getUserId(auth));
+        return ResponseEntity.ok(Map.of("count", count));
+    }
+
     @PostMapping("/{id}/mark-read")
     public ResponseEntity<Void> markAsRead(@PathVariable UUID id) {
+        service.markAsRead(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/read")
+    public ResponseEntity<Void> markRead(@PathVariable UUID id) {
         service.markAsRead(id);
         return ResponseEntity.noContent().build();
     }
@@ -46,6 +60,18 @@ public class NotificationController {
     public ResponseEntity<Notification> send(@RequestBody Map<String, String> body) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.send(
                 body.get("userId"), body.get("title"), body.get("message"), body.get("type")));
+    }
+
+    @PostMapping("/send")
+    public ResponseEntity<Notification> sendToWorker(@RequestBody SendNotificationDto dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                service.sendToWorker(dto.getWorkerId(), dto.getTitle(), dto.getMessage(), dto.getType()));
+    }
+
+    @PostMapping("/broadcast")
+    public ResponseEntity<Map<String, Integer>> broadcast(@RequestBody BroadcastNotificationDto dto) {
+        int count = service.sendToAll(dto.getTitle(), dto.getMessage());
+        return ResponseEntity.ok(Map.of("sent", count));
     }
 
     private String getUserId(Authentication auth) {

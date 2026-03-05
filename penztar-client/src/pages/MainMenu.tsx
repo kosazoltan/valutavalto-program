@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useSessionStore } from '@/stores/sessionStore';
 import { useAppMode } from '@/hooks/useAppMode';
+import NotificationBell from '@/components/NotificationBell';
 import type { MenuItem, PageRoute } from '@/types';
 
 const MENU_ITEMS: MenuItem[] = [
@@ -49,6 +50,12 @@ const BATCH2B_ITEMS: MenuItem[] = [
 const BATCH3_ITEMS: MenuItem[] = [
   { key: 'C1', label: 'Dekádjelentés', icon: '📅', route: '/decade-report' as PageRoute, hotkey: 'Ctrl+G' },
   { key: 'C2', label: 'Pénztáros verseny', icon: '🏆', route: '/competition' as PageRoute, hotkey: 'Ctrl+K' },
+];
+
+// Batch 4 funkciók
+const BATCH4_ITEMS: MenuItem[] = [
+  { key: 'D1', label: 'Dashboard', icon: '📊', route: '/dashboard' as PageRoute, hotkey: 'Ctrl+0' },
+  { key: 'D2', label: 'Devizakereskedés', icon: '🔄', route: '/trade' as PageRoute, hotkey: 'Ctrl+X' },
 ];
 
 // Értéktár extra menüpontok
@@ -147,6 +154,12 @@ export default function MainMenu() {
         } else if (keyLower === 'k') {
           e.preventDefault();
           handleNavigate('/competition' as PageRoute);
+        } else if (keyLower === 'x') {
+          e.preventDefault();
+          handleNavigate('/trade' as PageRoute);
+        } else if (e.key === '0') {
+          e.preventDefault();
+          handleNavigate('/dashboard' as PageRoute);
         }
       }
 
@@ -207,12 +220,15 @@ export default function MainMenu() {
               {user?.fullName ?? 'Pénztáros'} | {modeLabel}: {branchCode}
             </p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="rounded-lg bg-white/20 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/30"
-          >
-            🚪 Kijelentkezés
-          </button>
+          <div className="flex items-center gap-3">
+            <NotificationBell />
+            <button
+              onClick={handleLogout}
+              className="rounded-lg bg-white/20 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/30"
+            >
+              🚪 Kijelentkezés
+            </button>
+          </div>
         </div>
       </header>
 
@@ -325,6 +341,24 @@ export default function MainMenu() {
                 <span className="menu-btn-icon">{item.icon}</span>
                 <span className="menu-btn-label text-cyan-800">{item.label}</span>
                 <span className="menu-btn-hotkey text-cyan-500">{item.hotkey}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Batch 4 — Dashboard + Devizakereskedés */}
+        <div className="mx-auto mt-6 max-w-4xl">
+          <h2 className="mb-3 text-lg font-semibold text-gray-600">📊 Összesítés & Kereskedés</h2>
+          <div className="grid grid-cols-4 gap-4">
+            {BATCH4_ITEMS.map((item) => (
+              <button
+                key={item.key}
+                onClick={() => handleNavigate(item.route)}
+                className="menu-btn h-28 border-2 border-teal-200 bg-teal-50 hover:bg-teal-100"
+              >
+                <span className="menu-btn-icon">{item.icon}</span>
+                <span className="menu-btn-label text-teal-800">{item.label}</span>
+                <span className="menu-btn-hotkey text-teal-500">{item.hotkey}</span>
               </button>
             ))}
           </div>
