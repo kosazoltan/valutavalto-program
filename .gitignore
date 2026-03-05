@@ -76,3 +76,5 @@ logs/
 **/*.crt
 **/*.key
 !docker/ssl/.gitkeep
+
+docs/legacy-drive/
