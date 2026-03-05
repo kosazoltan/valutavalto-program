@@ -9,6 +9,12 @@ import {
   getPendingTransactions,
   markTransactionSynced,
   getPendingTransactionCount,
+  savePendingDistribution,
+  savePendingTransfer,
+  savePendingCollection,
+  getCachedBranchStatuses,
+  getCachedBranchStatusTimestamp,
+  getCachedRates,
 } from './sqlite';
 import { printReceipt, type PrintReceiptData } from './printer';
 import { syncEngine } from './sync-engine';
@@ -112,6 +118,52 @@ ipcMain.handle('get-app-version', async (): Promise<string> => {
 ipcMain.handle('get-printers', async (): Promise<Electron.PrinterInfo[]> => {
   if (!mainWindow) return [];
   return mainWindow.webContents.getPrintersAsync();
+});
+
+// --- Értéktár Offline IPC Handlers ---
+
+ipcMain.handle('save-pending-distribution', async (
+  _event,
+  targetBranchCode: string,
+  currencyCode: string,
+  amount: number,
+  denominations: string | null,
+  note: string | null,
+): Promise<number> => {
+  return savePendingDistribution(targetBranchCode, currencyCode, amount, denominations, note);
+});
+
+ipcMain.handle('save-pending-transfer', async (
+  _event,
+  targetBranchCode: string,
+  currencyCode: string,
+  amount: number,
+  denominations: string | null,
+  note: string | null,
+): Promise<number> => {
+  return savePendingTransfer(targetBranchCode, currencyCode, amount, denominations, note);
+});
+
+ipcMain.handle('save-pending-collection', async (
+  _event,
+  sourceBranchCode: string,
+  currencyCode: string,
+  amount: number,
+  note: string | null,
+): Promise<number> => {
+  return savePendingCollection(sourceBranchCode, currencyCode, amount, note);
+});
+
+ipcMain.handle('get-cached-branch-statuses', async () => {
+  return getCachedBranchStatuses();
+});
+
+ipcMain.handle('get-cached-branch-status-timestamp', async () => {
+  return getCachedBranchStatusTimestamp();
+});
+
+ipcMain.handle('get-cached-rates', async () => {
+  return getCachedRates();
 });
 
 // --- App Lifecycle ---

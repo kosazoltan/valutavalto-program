@@ -2225,6 +2225,54 @@ async function initDatabase() {
       cached_at TEXT DEFAULT (datetime('now'))
     );
   `);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS pending_transfers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      target_branch_code TEXT NOT NULL,
+      currency_code TEXT NOT NULL,
+      amount REAL NOT NULL,
+      denominations TEXT,
+      note TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      synced INTEGER DEFAULT 0
+    );
+  `);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS pending_distributions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      target_branch_code TEXT NOT NULL,
+      currency_code TEXT NOT NULL,
+      amount REAL NOT NULL,
+      denominations TEXT,
+      note TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      synced INTEGER DEFAULT 0
+    );
+  `);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS cached_branch_status (
+      branch_code TEXT PRIMARY KEY,
+      branch_name TEXT NOT NULL,
+      company_id INTEGER,
+      last_sync_at TEXT,
+      online_status TEXT DEFAULT 'offline',
+      total_huf_value REAL DEFAULT 0,
+      daily_turnover REAL DEFAULT 0,
+      cash_balances TEXT,
+      cached_at TEXT DEFAULT (datetime('now'))
+    );
+  `);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS pending_collections (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      source_branch_code TEXT NOT NULL,
+      currency_code TEXT NOT NULL,
+      amount REAL NOT NULL,
+      note TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      synced INTEGER DEFAULT 0
+    );
+  `);
   saveDatabase();
 }
 function saveDatabase() {
@@ -2305,6 +2353,139 @@ function getPendingTransactionCount() {
 }
 function getDb() {
   return db;
+}
+function savePendingDistribution(targetBranchCode, currencyCode, amount, denominations, note) {
+  if (!db) throw new Error("Database not initialized");
+  db.run(
+    `INSERT INTO pending_distributions (target_branch_code, currency_code, amount, denominations, note)
+     VALUES (?, ?, ?, ?, ?)`,
+    [targetBranchCode, currencyCode, amount, denominations, note]
+  );
+  saveDatabase();
+  const stmt = db.prepare("SELECT last_insert_rowid() as id");
+  stmt.step();
+  const row = stmt.getAsObject();
+  stmt.free();
+  return row["id"] ?? 0;
+}
+function getPendingDistributions() {
+  if (!db) return [];
+  const results = [];
+  const stmt = db.prepare("SELECT * FROM pending_distributions WHERE synced = 0 ORDER BY created_at ASC");
+  while (stmt.step()) {
+    results.push(stmt.getAsObject());
+  }
+  stmt.free();
+  return results;
+}
+function markDistributionSynced(id) {
+  if (!db) return;
+  db.run("UPDATE pending_distributions SET synced = 1 WHERE id = ?", [id]);
+  saveDatabase();
+}
+function savePendingTransfer(targetBranchCode, currencyCode, amount, denominations, note) {
+  if (!db) throw new Error("Database not initialized");
+  db.run(
+    `INSERT INTO pending_transfers (target_branch_code, currency_code, amount, denominations, note)
+     VALUES (?, ?, ?, ?, ?)`,
+    [targetBranchCode, currencyCode, amount, denominations, note]
+  );
+  saveDatabase();
+  const stmt = db.prepare("SELECT last_insert_rowid() as id");
+  stmt.step();
+  const row = stmt.getAsObject();
+  stmt.free();
+  return row["id"] ?? 0;
+}
+function getPendingTransfers() {
+  if (!db) return [];
+  const results = [];
+  const stmt = db.prepare("SELECT * FROM pending_transfers WHERE synced = 0 ORDER BY created_at ASC");
+  while (stmt.step()) {
+    results.push(stmt.getAsObject());
+  }
+  stmt.free();
+  return results;
+}
+function markTransferSynced(id) {
+  if (!db) return;
+  db.run("UPDATE pending_transfers SET synced = 1 WHERE id = ?", [id]);
+  saveDatabase();
+}
+function savePendingCollection(sourceBranchCode, currencyCode, amount, note) {
+  if (!db) throw new Error("Database not initialized");
+  db.run(
+    `INSERT INTO pending_collections (source_branch_code, currency_code, amount, note)
+     VALUES (?, ?, ?, ?)`,
+    [sourceBranchCode, currencyCode, amount, note]
+  );
+  saveDatabase();
+  const stmt = db.prepare("SELECT last_insert_rowid() as id");
+  stmt.step();
+  const row = stmt.getAsObject();
+  stmt.free();
+  return row["id"] ?? 0;
+}
+function getPendingCollections() {
+  if (!db) return [];
+  const results = [];
+  const stmt = db.prepare("SELECT * FROM pending_collections WHERE synced = 0 ORDER BY created_at ASC");
+  while (stmt.step()) {
+    results.push(stmt.getAsObject());
+  }
+  stmt.free();
+  return results;
+}
+function markCollectionSynced(id) {
+  if (!db) return;
+  db.run("UPDATE pending_collections SET synced = 1 WHERE id = ?", [id]);
+  saveDatabase();
+}
+function saveCachedBranchStatus(branchCode, branchName, companyId, lastSyncAt, onlineStatus, totalHufValue, dailyTurnover, cashBalances) {
+  if (!db) return;
+  db.run(
+    `INSERT INTO cached_branch_status (branch_code, branch_name, company_id, last_sync_at, online_status, total_huf_value, daily_turnover, cash_balances, cached_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+     ON CONFLICT(branch_code) DO UPDATE SET
+       branch_name = excluded.branch_name,
+       company_id = excluded.company_id,
+       last_sync_at = excluded.last_sync_at,
+       online_status = excluded.online_status,
+       total_huf_value = excluded.total_huf_value,
+       daily_turnover = excluded.daily_turnover,
+       cash_balances = excluded.cash_balances,
+       cached_at = excluded.cached_at`,
+    [branchCode, branchName, companyId, lastSyncAt, onlineStatus, totalHufValue, dailyTurnover, cashBalances]
+  );
+  saveDatabase();
+}
+function getCachedBranchStatuses() {
+  if (!db) return [];
+  const results = [];
+  const stmt = db.prepare("SELECT * FROM cached_branch_status ORDER BY branch_code ASC");
+  while (stmt.step()) {
+    results.push(stmt.getAsObject());
+  }
+  stmt.free();
+  return results;
+}
+function getCachedBranchStatusTimestamp() {
+  if (!db) return null;
+  const stmt = db.prepare("SELECT MAX(cached_at) as last_cached FROM cached_branch_status");
+  stmt.step();
+  const row = stmt.getAsObject();
+  stmt.free();
+  return row["last_cached"] ?? null;
+}
+function getCachedRates() {
+  if (!db) return [];
+  const results = [];
+  const stmt = db.prepare("SELECT * FROM cached_rates ORDER BY currency_code ASC");
+  while (stmt.step()) {
+    results.push(stmt.getAsObject());
+  }
+  stmt.free();
+  return results;
 }
 const ESC = "\x1B";
 const GS = "";
@@ -2398,6 +2579,25 @@ function generateReceiptContent(data) {
     if (data.customerDocNumber) {
       lines.push(`Szám:     ${data.customerDocNumber}`);
     }
+  }
+  if (data.receiptNumber && (data.type === "sell" || data.type === "buy")) {
+    lines.push("");
+    lines.push(CMD.LINE);
+    lines.push(CMD.ALIGN_CENTER);
+    lines.push("");
+    lines.push(CMD.BOLD_ON);
+    lines.push("QR KÓD:");
+    lines.push(CMD.BOLD_OFF);
+    const qrContent = [
+      data.receiptNumber,
+      data.date,
+      (data.roundedHufAmount ?? data.hufAmount ?? 0).toString(),
+      data.currencyCode ?? "HUF",
+      company.taxNumber,
+      data.branchCode
+    ].join("|");
+    lines.push(`[QR:${qrContent}]`);
+    lines.push("");
   }
   lines.push("");
   lines.push(CMD.DOUBLE_LINE);
@@ -2619,6 +2819,10 @@ class SyncEngine {
       if (this.getAuthToken()) {
         await this.syncRates();
         await this.syncCirculars();
+        await this.syncDistributions();
+        await this.syncTransfers();
+        await this.syncCollections();
+        await this.cacheBranchStatus();
       }
       this.status.lastSyncAt = (/* @__PURE__ */ new Date()).toISOString();
     } catch (err) {
@@ -2759,6 +2963,136 @@ class SyncEngine {
     }
   }
   /**
+   * Értéktár: Pending distributions szinkronizálása.
+   */
+  async syncDistributions() {
+    try {
+      const pending = getPendingDistributions();
+      if (pending.length === 0) return;
+      const serverUrl = this.getServerUrl();
+      const token = this.getAuthToken();
+      if (!token) return;
+      for (const dist of pending) {
+        try {
+          const body = {
+            targetBranchCode: dist.target_branch_code,
+            currencyCode: dist.currency_code,
+            amount: dist.amount
+          };
+          if (dist.denominations) {
+            try {
+              body["denominations"] = JSON.parse(dist.denominations);
+            } catch {
+            }
+          }
+          if (dist.note) body["note"] = dist.note;
+          await httpPost(`${serverUrl}/ertektar/distribution`, body, token);
+          markDistributionSynced(dist.id);
+        } catch (err) {
+          console.warn(`[SyncEngine] Distribution #${dist.id} sync hiba:`, err instanceof Error ? err.message : err);
+          break;
+        }
+      }
+    } catch (err) {
+      console.warn("[SyncEngine] Distribution sync hiba:", err instanceof Error ? err.message : err);
+    }
+  }
+  /**
+   * Értéktár: Pending transfers szinkronizálása.
+   */
+  async syncTransfers() {
+    try {
+      const pending = getPendingTransfers();
+      if (pending.length === 0) return;
+      const serverUrl = this.getServerUrl();
+      const token = this.getAuthToken();
+      if (!token) return;
+      for (const tx of pending) {
+        try {
+          const body = {
+            targetBranchCode: tx.target_branch_code,
+            currencyCode: tx.currency_code,
+            amount: tx.amount
+          };
+          if (tx.denominations) {
+            try {
+              body["denominations"] = JSON.parse(tx.denominations);
+            } catch {
+            }
+          }
+          if (tx.note) body["note"] = tx.note;
+          await httpPost(`${serverUrl}/transfers`, body, token);
+          markTransferSynced(tx.id);
+        } catch (err) {
+          console.warn(`[SyncEngine] Transfer #${tx.id} sync hiba:`, err instanceof Error ? err.message : err);
+          break;
+        }
+      }
+    } catch (err) {
+      console.warn("[SyncEngine] Transfer sync hiba:", err instanceof Error ? err.message : err);
+    }
+  }
+  /**
+   * Értéktár: Pending collections szinkronizálása.
+   */
+  async syncCollections() {
+    try {
+      const pending = getPendingCollections();
+      if (pending.length === 0) return;
+      const serverUrl = this.getServerUrl();
+      const token = this.getAuthToken();
+      if (!token) return;
+      for (const col of pending) {
+        try {
+          const body = {
+            sourceBranchCode: col.source_branch_code,
+            currencyCode: col.currency_code,
+            amount: col.amount
+          };
+          if (col.note) body["note"] = col.note;
+          await httpPost(`${serverUrl}/ertektar/collections`, body, token);
+          markCollectionSynced(col.id);
+        } catch (err) {
+          console.warn(`[SyncEngine] Collection #${col.id} sync hiba:`, err instanceof Error ? err.message : err);
+          break;
+        }
+      }
+    } catch (err) {
+      console.warn("[SyncEngine] Collection sync hiba:", err instanceof Error ? err.message : err);
+    }
+  }
+  /**
+   * Értéktár: Pénztár státuszok cache-elése.
+   */
+  async cacheBranchStatus() {
+    try {
+      const serverUrl = this.getServerUrl();
+      const token = this.getAuthToken();
+      const branches = await httpGet(
+        `${serverUrl}/ertektar/branches/status`,
+        token
+      );
+      if (!Array.isArray(branches)) return;
+      for (const branch of branches) {
+        saveCachedBranchStatus(
+          branch.code,
+          branch.name,
+          branch.companyId,
+          branch.lastSyncAt,
+          branch.onlineStatus,
+          branch.totalHufValue,
+          branch.dailyTurnover,
+          branch.cashBalances ? JSON.stringify(branch.cashBalances) : null
+        );
+      }
+      if (branches.length > 0) {
+        console.log(`[SyncEngine] ${branches.length} pénztár státusz cache-elve`);
+      }
+    } catch (err) {
+      console.warn("[SyncEngine] Branch status cache hiba:", err instanceof Error ? err.message : err);
+    }
+  }
+  /**
    * Aktuális szinkronizáció státusz lekérdezése.
    */
   getStatus() {
@@ -2836,6 +3170,24 @@ electron.ipcMain.handle("get-app-version", async () => {
 electron.ipcMain.handle("get-printers", async () => {
   if (!mainWindow) return [];
   return mainWindow.webContents.getPrintersAsync();
+});
+electron.ipcMain.handle("save-pending-distribution", async (_event, targetBranchCode, currencyCode, amount, denominations, note) => {
+  return savePendingDistribution(targetBranchCode, currencyCode, amount, denominations, note);
+});
+electron.ipcMain.handle("save-pending-transfer", async (_event, targetBranchCode, currencyCode, amount, denominations, note) => {
+  return savePendingTransfer(targetBranchCode, currencyCode, amount, denominations, note);
+});
+electron.ipcMain.handle("save-pending-collection", async (_event, sourceBranchCode, currencyCode, amount, note) => {
+  return savePendingCollection(sourceBranchCode, currencyCode, amount, note);
+});
+electron.ipcMain.handle("get-cached-branch-statuses", async () => {
+  return getCachedBranchStatuses();
+});
+electron.ipcMain.handle("get-cached-branch-status-timestamp", async () => {
+  return getCachedBranchStatusTimestamp();
+});
+electron.ipcMain.handle("get-cached-rates", async () => {
+  return getCachedRates();
 });
 electron.app.whenReady().then(async () => {
   await initDatabase();

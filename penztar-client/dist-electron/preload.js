@@ -22,5 +22,32 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   getSyncStatus: () => electron.ipcRenderer.invoke("get-sync-status"),
   getAppVersion: () => electron.ipcRenderer.invoke("get-app-version"),
   getPrinters: () => electron.ipcRenderer.invoke("get-printers"),
+  // --- Értéktár Offline IPC ---
+  savePendingDistribution: (targetBranchCode, currencyCode, amount, denominations, note) => electron.ipcRenderer.invoke(
+    "save-pending-distribution",
+    targetBranchCode,
+    currencyCode,
+    amount,
+    denominations,
+    note
+  ),
+  savePendingTransfer: (targetBranchCode, currencyCode, amount, denominations, note) => electron.ipcRenderer.invoke(
+    "save-pending-transfer",
+    targetBranchCode,
+    currencyCode,
+    amount,
+    denominations,
+    note
+  ),
+  savePendingCollection: (sourceBranchCode, currencyCode, amount, note) => electron.ipcRenderer.invoke(
+    "save-pending-collection",
+    sourceBranchCode,
+    currencyCode,
+    amount,
+    note
+  ),
+  getCachedBranchStatuses: () => electron.ipcRenderer.invoke("get-cached-branch-statuses"),
+  getCachedBranchStatusTimestamp: () => electron.ipcRenderer.invoke("get-cached-branch-status-timestamp"),
+  getCachedRates: () => electron.ipcRenderer.invoke("get-cached-rates"),
   platform: process.platform
 });

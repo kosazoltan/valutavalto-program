@@ -17,7 +17,17 @@ import {
   getConfig,
   setConfig,
   getDb,
+  getPendingDistributions,
+  markDistributionSynced,
+  getPendingTransfers,
+  markTransferSynced,
+  getPendingCollections,
+  markCollectionSynced,
+  saveCachedBranchStatus,
   type PendingTransactionRow,
+  type PendingDistributionRow,
+  type PendingTransferRow,
+  type PendingCollectionRow,
 } from './sqlite';
 
 // --- Típusok ---
@@ -48,6 +58,17 @@ interface CircularResponse {
   body: string;
   sender: string;
   sentAt: string;
+}
+
+interface BranchStatusResponse {
+  code: string;
+  name: string;
+  companyId: number;
+  lastSyncAt: string | null;
+  onlineStatus: string;
+  totalHufValue: number;
+  dailyTurnover: number;
+  cashBalances: unknown[];
 }
 
 // --- HTTP kliens (lightweight, nincs axios az electron main-ben) ---
@@ -173,6 +194,11 @@ export class SyncEngine {
       if (this.getAuthToken()) {
         await this.syncRates();
         await this.syncCirculars();
+        // 3. Értéktár szinkronizáció
+        await this.syncDistributions();
+        await this.syncTransfers();
+        await this.syncCollections();
+        await this.cacheBranchStatus();
       }
 
       this.status.lastSyncAt = new Date().toISOString();
@@ -343,6 +369,147 @@ export class SyncEngine {
       }
     } catch (err) {
       console.warn('[SyncEngine] Körlevél sync hiba:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  /**
+   * Értéktár: Pending distributions szinkronizálása.
+   */
+  async syncDistributions(): Promise<void> {
+    try {
+      const pending = getPendingDistributions();
+      if (pending.length === 0) return;
+
+      const serverUrl = this.getServerUrl();
+      const token = this.getAuthToken();
+      if (!token) return;
+
+      for (const dist of pending) {
+        try {
+          const body: Record<string, unknown> = {
+            targetBranchCode: dist.target_branch_code,
+            currencyCode: dist.currency_code,
+            amount: dist.amount,
+          };
+          if (dist.denominations) {
+            try { body['denominations'] = JSON.parse(dist.denominations); } catch { /* skip */ }
+          }
+          if (dist.note) body['note'] = dist.note;
+
+          await httpPost(`${serverUrl}/ertektar/distribution`, body, token);
+          markDistributionSynced(dist.id);
+        } catch (err) {
+          console.warn(`[SyncEngine] Distribution #${dist.id} sync hiba:`, err instanceof Error ? err.message : err);
+          break; // Hálózati hiba → kilépés
+        }
+      }
+    } catch (err) {
+      console.warn('[SyncEngine] Distribution sync hiba:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  /**
+   * Értéktár: Pending transfers szinkronizálása.
+   */
+  async syncTransfers(): Promise<void> {
+    try {
+      const pending = getPendingTransfers();
+      if (pending.length === 0) return;
+
+      const serverUrl = this.getServerUrl();
+      const token = this.getAuthToken();
+      if (!token) return;
+
+      for (const tx of pending) {
+        try {
+          const body: Record<string, unknown> = {
+            targetBranchCode: tx.target_branch_code,
+            currencyCode: tx.currency_code,
+            amount: tx.amount,
+          };
+          if (tx.denominations) {
+            try { body['denominations'] = JSON.parse(tx.denominations); } catch { /* skip */ }
+          }
+          if (tx.note) body['note'] = tx.note;
+
+          await httpPost(`${serverUrl}/transfers`, body, token);
+          markTransferSynced(tx.id);
+        } catch (err) {
+          console.warn(`[SyncEngine] Transfer #${tx.id} sync hiba:`, err instanceof Error ? err.message : err);
+          break;
+        }
+      }
+    } catch (err) {
+      console.warn('[SyncEngine] Transfer sync hiba:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  /**
+   * Értéktár: Pending collections szinkronizálása.
+   */
+  async syncCollections(): Promise<void> {
+    try {
+      const pending = getPendingCollections();
+      if (pending.length === 0) return;
+
+      const serverUrl = this.getServerUrl();
+      const token = this.getAuthToken();
+      if (!token) return;
+
+      for (const col of pending) {
+        try {
+          const body: Record<string, unknown> = {
+            sourceBranchCode: col.source_branch_code,
+            currencyCode: col.currency_code,
+            amount: col.amount,
+          };
+          if (col.note) body['note'] = col.note;
+
+          await httpPost(`${serverUrl}/ertektar/collections`, body, token);
+          markCollectionSynced(col.id);
+        } catch (err) {
+          console.warn(`[SyncEngine] Collection #${col.id} sync hiba:`, err instanceof Error ? err.message : err);
+          break;
+        }
+      }
+    } catch (err) {
+      console.warn('[SyncEngine] Collection sync hiba:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  /**
+   * Értéktár: Pénztár státuszok cache-elése.
+   */
+  async cacheBranchStatus(): Promise<void> {
+    try {
+      const serverUrl = this.getServerUrl();
+      const token = this.getAuthToken();
+
+      const branches = await httpGet<BranchStatusResponse[]>(
+        `${serverUrl}/ertektar/branches/status`,
+        token,
+      );
+
+      if (!Array.isArray(branches)) return;
+
+      for (const branch of branches) {
+        saveCachedBranchStatus(
+          branch.code,
+          branch.name,
+          branch.companyId,
+          branch.lastSyncAt,
+          branch.onlineStatus,
+          branch.totalHufValue,
+          branch.dailyTurnover,
+          branch.cashBalances ? JSON.stringify(branch.cashBalances) : null,
+        );
+      }
+
+      if (branches.length > 0) {
+        console.log(`[SyncEngine] ${branches.length} pénztár státusz cache-elve`);
+      }
+    } catch (err) {
+      console.warn('[SyncEngine] Branch status cache hiba:', err instanceof Error ? err.message : err);
     }
   }
 

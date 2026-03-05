@@ -20,6 +20,13 @@ const MENU_ITEMS: MenuItem[] = [
   { key: 'F12', label: 'Beállítások', icon: '⚙️', route: '/settings', hotkey: 'F12' },
 ];
 
+// Speciális funkciók menüpontok
+const SPECIAL_ITEMS: MenuItem[] = [
+  { key: 'SP1', label: 'Foglalás', icon: '📋', route: '/reservation', hotkey: 'Ctrl+F' },
+  { key: 'SP2', label: 'HRK (Házipénztár)', icon: '🏦', route: '/hrk', hotkey: 'Ctrl+H' },
+  { key: 'SP3', label: 'Esti zárás', icon: '🌙', route: '/evening-closing', hotkey: 'Ctrl+E' },
+];
+
 // Értéktár extra menüpontok
 const ERTEKTAR_ITEMS: MenuItem[] = [
   { key: 'ET1', label: 'Értéktár áttekintő', icon: '🏦', route: '/ertektar', hotkey: 'Ctrl+1' },
@@ -64,6 +71,21 @@ export default function MainMenu() {
           if (item) {
             handleNavigate(item.route);
           }
+        }
+      }
+
+      // Speciális funkciók: Ctrl+F, Ctrl+H, Ctrl+E
+      if (e.ctrlKey && !e.shiftKey && !e.altKey) {
+        const keyLower = e.key.toLowerCase();
+        if (keyLower === 'f') {
+          e.preventDefault();
+          handleNavigate('/reservation');
+        } else if (keyLower === 'h') {
+          e.preventDefault();
+          handleNavigate('/hrk');
+        } else if (keyLower === 'e') {
+          e.preventDefault();
+          handleNavigate('/evening-closing');
         }
       }
 
@@ -166,6 +188,24 @@ export default function MainMenu() {
                 <span className="menu-btn-icon">{item.icon}</span>
                 <span className="menu-btn-label">{item.label}</span>
                 <span className="menu-btn-hotkey">{item.hotkey}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Speciális funkciók */}
+        <div className="mx-auto mt-6 max-w-4xl">
+          <h2 className="mb-3 text-lg font-semibold text-gray-600">⚡ Speciális funkciók</h2>
+          <div className="grid grid-cols-3 gap-4">
+            {SPECIAL_ITEMS.map((item) => (
+              <button
+                key={item.key}
+                onClick={() => handleNavigate(item.route)}
+                className="menu-btn h-28 border-2 border-purple-200 bg-purple-50 hover:bg-purple-100"
+              >
+                <span className="menu-btn-icon">{item.icon}</span>
+                <span className="menu-btn-label text-purple-800">{item.label}</span>
+                <span className="menu-btn-hotkey text-purple-500">{item.hotkey}</span>
               </button>
             ))}
           </div>

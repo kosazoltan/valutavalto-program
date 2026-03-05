@@ -64,5 +64,67 @@ contextBridge.exposeInMainWorld('electronAPI', {
   }>> =>
     ipcRenderer.invoke('get-printers'),
 
+  // --- Értéktár Offline IPC ---
+
+  savePendingDistribution: (
+    targetBranchCode: string,
+    currencyCode: string,
+    amount: number,
+    denominations: string | null,
+    note: string | null,
+  ): Promise<number> =>
+    ipcRenderer.invoke(
+      'save-pending-distribution',
+      targetBranchCode, currencyCode, amount, denominations, note,
+    ),
+
+  savePendingTransfer: (
+    targetBranchCode: string,
+    currencyCode: string,
+    amount: number,
+    denominations: string | null,
+    note: string | null,
+  ): Promise<number> =>
+    ipcRenderer.invoke(
+      'save-pending-transfer',
+      targetBranchCode, currencyCode, amount, denominations, note,
+    ),
+
+  savePendingCollection: (
+    sourceBranchCode: string,
+    currencyCode: string,
+    amount: number,
+    note: string | null,
+  ): Promise<number> =>
+    ipcRenderer.invoke(
+      'save-pending-collection',
+      sourceBranchCode, currencyCode, amount, note,
+    ),
+
+  getCachedBranchStatuses: (): Promise<Array<{
+    branch_code: string;
+    branch_name: string;
+    company_id: number | null;
+    last_sync_at: string | null;
+    online_status: string;
+    total_huf_value: number;
+    daily_turnover: number;
+    cash_balances: string | null;
+    cached_at: string;
+  }>> =>
+    ipcRenderer.invoke('get-cached-branch-statuses'),
+
+  getCachedBranchStatusTimestamp: (): Promise<string | null> =>
+    ipcRenderer.invoke('get-cached-branch-status-timestamp'),
+
+  getCachedRates: (): Promise<Array<{
+    currency_code: string;
+    buy_rate: number;
+    sell_rate: number;
+    unit: number;
+    updated_at: string;
+  }>> =>
+    ipcRenderer.invoke('get-cached-rates'),
+
   platform: process.platform,
 });

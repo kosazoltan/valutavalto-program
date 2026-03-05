@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import type { CollectionRecord, CollectionStatus, CurrencyCode } from '@/types';
 
 // --- Konstansok ---
@@ -59,6 +60,7 @@ function generateMockRecords(): CollectionRecord[] {
 export default function CollectionPage() {
   const navigate = useNavigate();
   const { companyType } = useAuthStore();
+  const { isOnline } = useOnlineStatus();
   const isBestChange = companyType === 'BEST_CHANGE';
   const headerColor = isBestChange ? 'bg-red-600' : 'bg-orange-500';
 
@@ -96,15 +98,24 @@ export default function CollectionPage() {
     setFeedback(null);
 
     try {
-      // TODO: API hívás — POST /api/v1/ertektar/collections
-      console.log('[Collection] Begyűjtés indítása:', {
-        sourceBranchCode: selectedBranch,
-        currencyCode: selectedCurrency,
-        amount: parseFloat(amount),
-        note: collectionNote,
-      });
-
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      if (!isOnline && window.electronAPI) {
+        // OFFLINE mód — pending queue-ba mentés
+        await window.electronAPI.savePendingCollection(
+          selectedBranch,
+          selectedCurrency,
+          parseFloat(amount),
+          collectionNote || null,
+        );
+      } else {
+        // TODO: API hívás — POST /api/v1/ertektar/collections
+        console.log('[Collection] Begyűjtés indítása:', {
+          sourceBranchCode: selectedBranch,
+          currencyCode: selectedCurrency,
+          amount: parseFloat(amount),
+          note: collectionNote,
+        });
+        await new Promise((resolve) => setTimeout(resolve, 800));
+      }
 
       // Mock: hozzáadjuk a listához
       const branchInfo = MOCK_BRANCHES.find((b) => b.code === selectedBranch);
@@ -120,9 +131,10 @@ export default function CollectionPage() {
       };
       setRecords((prev) => [newRecord, ...prev]);
 
+      const offlineSuffix = !isOnline ? ' (offline — szinkronizálódik később)' : '';
       setFeedback({
         success: true,
-        message: `Begyűjtés kérelem elküldve: ${branchInfo?.name ?? selectedBranch} — ${formatAmount(parseFloat(amount))} ${selectedCurrency}`,
+        message: `Begyűjtés kérelem elküldve: ${branchInfo?.name ?? selectedBranch} — ${formatAmount(parseFloat(amount))} ${selectedCurrency}${offlineSuffix}`,
       });
 
       // Reset

@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import type { BranchDailyReport, ConsolidatedReport } from '@/types';
 
 // --- Segédfüggvények ---
@@ -105,6 +106,7 @@ function exportToCsv(report: ConsolidatedReport): void {
 export default function ConsolidatedReportsPage() {
   const navigate = useNavigate();
   const { companyType } = useAuthStore();
+  const { isOnline } = useOnlineStatus();
   const isBestChange = companyType === 'BEST_CHANGE';
   const headerColor = isBestChange ? 'bg-red-600' : 'bg-orange-500';
 
@@ -193,6 +195,18 @@ export default function ConsolidatedReportsPage() {
           {/* Riport táblázat */}
           {report && (
             <>
+              {/* Offline figyelmeztetés */}
+              {!isOnline && (
+                <div className="mb-4 rounded-lg border-2 border-yellow-400 bg-yellow-50 p-3 text-center">
+                  <p className="font-bold text-yellow-800">
+                    ⚠️ Offline riport — nem végleges
+                  </p>
+                  <p className="text-sm text-yellow-700">
+                    Az adatok a legutolsó gyorsítótárazott állapotot tükrözik. Online visszacsatlakozás után frissüljön!
+                  </p>
+                </div>
+              )}
+
               {/* Összesítő kártyák */}
               <div className="mb-6 grid grid-cols-4 gap-4">
                 <div className="rounded-lg border bg-white p-4 shadow-sm">

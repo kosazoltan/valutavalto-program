@@ -17,6 +17,10 @@ import CircularPage from '@/pages/CircularPage';
 import CustomerPage from '@/pages/CustomerPage';
 import ReportsPage from '@/pages/ReportsPage';
 import SettingsPage from '@/pages/SettingsPage';
+// Speciális funkciók
+import ReservationPage from '@/pages/ReservationPage';
+import HrkPage from '@/pages/HrkPage';
+import EveningClosingPage from '@/pages/EveningClosingPage';
 // Értéktár képernyők
 import ErtektarDashboard from '@/pages/ErtektarDashboard';
 import DistributionPage from '@/pages/DistributionPage';
@@ -172,6 +176,32 @@ export default function App() {
         element={
           <ProtectedRoute>
             <SettingsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Speciális funkciók */}
+      <Route
+        path="/reservation"
+        element={
+          <ProtectedRoute>
+            <ReservationPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/hrk"
+        element={
+          <ProtectedRoute>
+            <HrkPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/evening-closing"
+        element={
+          <ProtectedRoute>
+            <EveningClosingPage />
           </ProtectedRoute>
         }
       />

@@ -135,6 +135,9 @@ export type PageRoute =
   | '/customer'
   | '/lists'
   | '/settings'
+  | '/reservation'
+  | '/hrk'
+  | '/evening-closing'
   | '/ertektar'
   | '/ertektar/distribution'
   | '/ertektar/collection'
@@ -371,6 +374,56 @@ export interface TransactionListItem {
 }
 
 // ============================================================
+// Szankciós szűrés (TERROR) — Típusdefiníciók
+// ============================================================
+
+export type SanctionRiskLevel = 'CLEAR' | 'POSSIBLE' | 'CONFIRMED';
+export type SanctionMatchType = 'EXACT' | 'PARTIAL' | 'ALIAS';
+
+export interface SanctionScreeningRequest {
+  name: string;
+  documentNumber?: string;
+  dateOfBirth?: string;
+}
+
+export interface SanctionMatch {
+  entryId: string;
+  fullName: string;
+  aliases: string | null;
+  dateOfBirth: string | null;
+  nationality: string | null;
+  documentNumber: string | null;
+  listType: string;
+  listReference: string | null;
+  matchType: SanctionMatchType;
+  score: number;
+}
+
+export interface SanctionScreeningResult {
+  matched: boolean;
+  matches: SanctionMatch[];
+  riskLevel: SanctionRiskLevel;
+}
+
+export interface SanctionStatusResponse {
+  lastUpdateDate: string | null;
+  activeEntryCount: number;
+}
+
+// ============================================================
+// QR kód — Típusdefiníciók
+// ============================================================
+
+export interface QRData {
+  bizonylatSzam: string;
+  datum: string;
+  osszeg: number;
+  valuta: string;
+  adoszam: string;
+  penztarKod: number;
+}
+
+// ============================================================
 // Értéktár — Típusdefiníciók
 // ============================================================
 
@@ -461,4 +514,93 @@ export interface ConsolidatedReport {
     totalHufTurnover: number;
     totalFees: number;
   };
+}
+
+// ============================================================
+// Foglalás (Reservation) — Típusdefiníciók
+// ============================================================
+
+export type ReservationStatus = 'ACTIVE' | 'COMPLETED' | 'EXPIRED' | 'CANCELLED';
+
+export interface Reservation {
+  id: number;
+  receiptNumber: string;
+  customerId: number;
+  customerName: string;
+  currencyCode: CurrencyCode;
+  amount: number;
+  rate: number;
+  hufAmount: number;
+  status: ReservationStatus;
+  expiresAt: string;
+  createdAt: string;
+  completedAt?: string;
+  cancelledAt?: string;
+  cancelReason?: string;
+}
+
+export interface CreateReservationRequest {
+  customerId: number;
+  currencyCode: CurrencyCode;
+  amount: number;
+  rate: number;
+  hufAmount: number;
+  expiresInMinutes?: number;
+}
+
+export interface RedeemReservationResponse {
+  reservation: Reservation;
+  transactionReceiptNumber: string;
+}
+
+// ============================================================
+// HRK (Házipénztári Kezelés) — Típusdefiníciók
+// ============================================================
+
+export type HrkType = 'HANDOVER' | 'RECEIVE';
+export type HrkStatus = 'PENDING' | 'COMPLETED' | 'CANCELLED';
+
+export interface HrkTransaction {
+  id: string;
+  branchId: string;
+  type: HrkType;
+  currencyCode: string;
+  amount: number;
+  hufAmount: number;
+  bankAccountNumber?: string;
+  reference: string;
+  note?: string;
+  status: HrkStatus;
+  workerId: number;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface CreateHrkRequest {
+  currencyCode: string;
+  amount: number;
+  hufAmount: number;
+  bankAccountNumber?: string;
+  note?: string;
+}
+
+// ============================================================
+// Esti zárás (Evening Closing) — Típusdefiníciók
+// ============================================================
+
+export type EveningClosingStatus = 'PREPARING' | 'READY' | 'SENT' | 'CONFIRMED';
+
+export interface EveningClosingData {
+  id: string;
+  branchId: string;
+  closingDate: string;
+  status: EveningClosingStatus;
+  packageData?: string;
+  transactionCount: number;
+  totalBuyHuf: number;
+  totalSellHuf: number;
+  inventorySnapshot?: string;
+  sentAt?: string;
+  confirmedAt?: string;
+  createdAt: string;
 }

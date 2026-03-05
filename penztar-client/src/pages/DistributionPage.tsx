@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import type { CurrencyCode, DistributionItem, Denomination } from '@/types';
 
 // --- Konstansok ---
@@ -31,6 +32,7 @@ function formatHuf(amount: number): string {
 export default function DistributionPage() {
   const navigate = useNavigate();
   const { companyType } = useAuthStore();
+  const { isOnline } = useOnlineStatus();
   const isBestChange = companyType === 'BEST_CHANGE';
   const headerColor = isBestChange ? 'bg-red-600' : 'bg-orange-500';
 
@@ -89,17 +91,32 @@ export default function DistributionPage() {
         denominations: item.denominations.length > 0 ? item.denominations : undefined,
       }));
 
-      // TODO: API hívás — POST /api/v1/ertektar/distribution
-      // const result = await apiClient.post('/ertektar/distribution', { items, note });
-      console.log('[Distribution] Batch küldés:', _items, 'Megjegyzés:', note);
+      if (!isOnline && window.electronAPI) {
+        // OFFLINE mód — pending_distributions-be mentés
+        for (const item of _items) {
+          await window.electronAPI.savePendingDistribution(
+            item.targetBranchCode,
+            item.currencyCode,
+            item.amount,
+            item.denominations ? JSON.stringify(item.denominations) : null,
+            note || null,
+          );
+        }
+        setResult({
+          success: true,
+          message: `${selectedItems.length} pénztárnak rögzítve (offline — szinkronizálódik később) — összesen ${formatHuf(totalAmount)} ${currencyCode}`,
+        });
+      } else {
+        // ONLINE mód — API hívás
+        // TODO: API hívás — POST /api/v1/ertektar/distribution
+        console.log('[Distribution] Batch küldés:', _items, 'Megjegyzés:', note);
+        await new Promise((resolve) => setTimeout(resolve, 1_000));
 
-      // Mock siker
-      await new Promise((resolve) => setTimeout(resolve, 1_000));
-
-      setResult({
-        success: true,
-        message: `${selectedItems.length} pénztárnak sikeresen kiküldve — összesen ${formatHuf(totalAmount)} ${currencyCode}`,
-      });
+        setResult({
+          success: true,
+          message: `${selectedItems.length} pénztárnak sikeresen kiküldve — összesen ${formatHuf(totalAmount)} ${currencyCode}`,
+        });
+      }
 
       // Form reset
       setFormItems((prev) =>

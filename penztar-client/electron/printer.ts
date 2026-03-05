@@ -174,6 +174,28 @@ export function generateReceiptContent(data: PrintReceiptData): string {
     }
   }
 
+  // QR kód szekció (ha van bizonylat szám — KÖTELEZŐ a bizonylaton)
+  if (data.receiptNumber && (data.type === 'sell' || data.type === 'buy')) {
+    lines.push('');
+    lines.push(CMD.LINE);
+    lines.push(CMD.ALIGN_CENTER);
+    lines.push('');
+    lines.push(CMD.BOLD_ON);
+    lines.push('QR KÓD:');
+    lines.push(CMD.BOLD_OFF);
+    // QR kód tartalom: bizonylatszám|dátum|összeg|valuta|adószám|pénztárkód
+    const qrContent = [
+      data.receiptNumber,
+      data.date,
+      (data.roundedHufAmount ?? data.hufAmount ?? 0).toString(),
+      data.currencyCode ?? 'HUF',
+      company.taxNumber,
+      data.branchCode,
+    ].join('|');
+    lines.push(`[QR:${qrContent}]`);
+    lines.push('');
+  }
+
   // Lábléc
   lines.push('');
   lines.push(CMD.DOUBLE_LINE);

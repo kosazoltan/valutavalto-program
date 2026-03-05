@@ -20,6 +20,26 @@ export interface PrinterInfo {
   isDefault: boolean;
 }
 
+export interface CachedBranchStatusRecord {
+  branch_code: string;
+  branch_name: string;
+  company_id: number | null;
+  last_sync_at: string | null;
+  online_status: string;
+  total_huf_value: number;
+  daily_turnover: number;
+  cash_balances: string | null;
+  cached_at: string;
+}
+
+export interface CachedRateRecord {
+  currency_code: string;
+  buy_rate: number;
+  sell_rate: number;
+  unit: number;
+  updated_at: string;
+}
+
 export interface ElectronAPI {
   printReceipt: (data: string) => Promise<boolean>;
   getConfig: (key: string) => Promise<string | null>;
@@ -41,6 +61,32 @@ export interface ElectronAPI {
   getSyncStatus: () => Promise<string>;
   getAppVersion: () => Promise<string>;
   getPrinters: () => Promise<PrinterInfo[]>;
+
+  // Értéktár offline mód
+  savePendingDistribution: (
+    targetBranchCode: string,
+    currencyCode: string,
+    amount: number,
+    denominations: string | null,
+    note: string | null,
+  ) => Promise<number>;
+  savePendingTransfer: (
+    targetBranchCode: string,
+    currencyCode: string,
+    amount: number,
+    denominations: string | null,
+    note: string | null,
+  ) => Promise<number>;
+  savePendingCollection: (
+    sourceBranchCode: string,
+    currencyCode: string,
+    amount: number,
+    note: string | null,
+  ) => Promise<number>;
+  getCachedBranchStatuses: () => Promise<CachedBranchStatusRecord[]>;
+  getCachedBranchStatusTimestamp: () => Promise<string | null>;
+  getCachedRates: () => Promise<CachedRateRecord[]>;
+
   platform: string;
 }
 

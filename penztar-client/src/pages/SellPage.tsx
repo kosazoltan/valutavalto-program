@@ -3,14 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { useRateStore } from '@/stores/rateStore';
 import { useAuthStore } from '@/stores/authStore';
 import { sellCurrency } from '@/api/transactions';
+import { screenCustomer } from '@/api/sanctions';
 import { roundHuf } from '@/utils/rounding';
 import { checkAmlLimits, AML_IDENTIFICATION_LIMIT } from '@/utils/validation';
 import { getForeignCurrencies, getCurrencyInfo } from '@/utils/currencies';
+import { generateQRCode } from '@/utils/qrcode';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import CurrencySelector from '@/components/CurrencySelector';
 import CustomerSearch from '@/components/CustomerSearch';
 import DenomGrid from '@/components/DenomGrid';
-import type { CurrencyCode, Customer, Denomination } from '@/types';
+import SanctionAlert from '@/components/SanctionAlert';
+import type { CurrencyCode, Customer, Denomination, SanctionScreeningResult } from '@/types';
 
 type InputMode = 'foreign' | 'huf';
 
@@ -30,6 +33,15 @@ export default function SellPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Szankciós szűrés state-ek
+  const [sanctionResult, setSanctionResult] = useState<SanctionScreeningResult | null>(null);
+  const [sanctionChecked, setSanctionChecked] = useState(false);
+  const [sanctionApproved, setSanctionApproved] = useState(false);
+  const [isScreening, setIsScreening] = useState(false);
+
+  // QR kód state
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
 
   const { isOnline } = useOnlineStatus();
   const isBestChange = companyType === 'BEST_CHANGE';
@@ -79,11 +91,18 @@ export default function SellPage() {
 
   // Ügyfél kötelező ellenőrzés
   const customerRequired = amlCheck.requiresIdentification;
+
+  // Szankciós szűrés: CONFIRMED → tiltás, POSSIBLE → supervisor kell
+  const sanctionBlocked = sanctionResult?.riskLevel === 'CONFIRMED';
+  const sanctionNeedsApproval = sanctionResult?.riskLevel === 'POSSIBLE' && !sanctionApproved;
+
   const canSubmit =
     selectedCurrency !== null &&
     parseFloat(foreignAmount) > 0 &&
     hufNumeric > 0 &&
-    (!customerRequired || customer !== null);
+    (!customerRequired || customer !== null) &&
+    !sanctionBlocked &&
+    !sanctionNeedsApproval;
 
   const handleForeignChange = useCallback((value: string) => {
     setInputMode('foreign');
@@ -95,14 +114,67 @@ export default function SellPage() {
     setHufAmount(value);
   }, []);
 
+  // Szankciós szűrés végrehajtása — ügyfél változásakor
+  const handleSanctionScreen = useCallback(async (customerName: string, docNumber?: string) => {
+    if (!customerName || !isOnline) {
+      setSanctionResult(null);
+      setSanctionChecked(false);
+      setSanctionApproved(false);
+      return;
+    }
+
+    setIsScreening(true);
+    try {
+      const result = await screenCustomer({
+        name: customerName,
+        documentNumber: docNumber,
+      });
+      setSanctionResult(result);
+      setSanctionChecked(true);
+      setSanctionApproved(false);
+
+      if (result.riskLevel === 'CLEAR') {
+        console.log('[SellPage] Szankciós szűrés: CLEAR — nincs találat');
+      } else {
+        console.warn(`[SellPage] Szankciós szűrés: ${result.riskLevel} — ${result.matches.length} találat!`);
+      }
+    } catch (err) {
+      console.error('[SellPage] Szankciós szűrés hiba:', err);
+      // Ha a szűrés nem elérhető, ne blokkoljuk a tranzakciót, de jelezzünk
+      setSanctionResult(null);
+      setSanctionChecked(false);
+    } finally {
+      setIsScreening(false);
+    }
+  }, [isOnline]);
+
+  // Ügyfél változásakor automatikus szankciós szűrés
+  useEffect(() => {
+    if (customer) {
+      void handleSanctionScreen(customer.name, customer.documentNumber);
+    } else {
+      setSanctionResult(null);
+      setSanctionChecked(false);
+      setSanctionApproved(false);
+    }
+  }, [customer, handleSanctionScreen]);
+
   const handleSubmit = useCallback(async () => {
     if (!selectedCurrency || !canSubmit || isSubmitting) return;
+
+    // Szankciós szűrés KÖTELEZŐ ellenőrzés — online módban
+    if (customer && isOnline && !sanctionChecked) {
+      setError('❌ Szankciós szűrés nem történt meg. Kérjük várjon.');
+      return;
+    }
 
     setIsSubmitting(true);
     setError('');
     setSuccess('');
 
     try {
+      let receiptNumber = '';
+
       if (isOnline) {
         // Online mód — normál API hívás
         const result = await sellCurrency({
@@ -114,6 +186,8 @@ export default function SellPage() {
           customerId: customer?.id,
           denominations: denominations.length > 0 ? denominations : undefined,
         });
+
+        receiptNumber = result.receiptNumber;
 
         setSuccess(
           `✅ Eladás sikeres! Bizonylat: ${result.receiptNumber} — ${result.foreignAmount} ${selectedCurrency} = ${result.roundedHufAmount.toLocaleString('hu-HU')} Ft`,
@@ -138,16 +212,36 @@ export default function SellPage() {
           );
         }
 
+        receiptNumber = `OFF-${Date.now()}`;
+
         setSuccess(
           `✅ Eladás rögzítve — ${parseFloat(foreignAmount)} ${selectedCurrency} = ${roundedHuf.toLocaleString('hu-HU')} Ft (offline — szinkronizálódik később)`,
         );
       }
 
-      // Reset
+      // QR kód generálás a bizonylatra
+      try {
+        const qrData = await generateQRCode({
+          bizonylatSzam: receiptNumber,
+          datum: new Date().toISOString().slice(0, 10),
+          osszeg: roundedHuf,
+          valuta: selectedCurrency,
+          adoszam: '32313332-2-02', // TODO: cég adószámból dinamikusan
+          penztarKod: 101, // TODO: config-ból
+        });
+        setQrCodeDataUrl(qrData);
+      } catch (qrErr) {
+        console.error('[SellPage] QR kód generálás hiba:', qrErr);
+      }
+
+      // Reset (de QR kódot megtartjuk)
       setForeignAmount('');
       setHufAmount('');
       setCustomer(null);
       setDenominations([]);
+      setSanctionResult(null);
+      setSanctionChecked(false);
+      setSanctionApproved(false);
     } catch (err) {
       // L2: Error message leak — teljes hiba csak console-ba
       console.error('[SellPage] Tranzakció hiba:', err);
@@ -166,6 +260,7 @@ export default function SellPage() {
     sellRate,
     customer,
     denominations,
+    sanctionChecked,
   ]);
 
   // ESC → vissza
@@ -354,6 +449,25 @@ export default function SellPage() {
               </p>
             </button>
 
+            {/* Szankciós szűrés eredmény */}
+            {isScreening && (
+              <div className="rounded-lg border bg-blue-50 p-3 text-sm text-blue-700">
+                ⏳ Szankciós szűrés folyamatban...
+              </div>
+            )}
+            {sanctionResult && sanctionResult.riskLevel !== 'CLEAR' && (
+              <SanctionAlert
+                result={sanctionResult}
+                onSupervisorApprove={() => setSanctionApproved(true)}
+                onBlock={() => {
+                  setCustomer(null);
+                  setSanctionResult(null);
+                  setSanctionChecked(false);
+                  setSanctionApproved(false);
+                }}
+              />
+            )}
+
             {/* Véglegesítés */}
             {error && (
               <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
@@ -363,6 +477,24 @@ export default function SellPage() {
             {success && (
               <div className="rounded-lg bg-green-50 p-3 text-sm text-green-700">
                 {success}
+              </div>
+            )}
+
+            {/* QR kód megjelenítés a sikeres tranzakció után */}
+            {qrCodeDataUrl && (
+              <div className="rounded-lg border bg-white p-3 text-center">
+                <p className="mb-2 text-xs font-medium text-gray-500">Bizonylat QR kód</p>
+                <img
+                  src={qrCodeDataUrl}
+                  alt="Bizonylat QR kód"
+                  className="mx-auto h-32 w-32"
+                />
+                <button
+                  onClick={() => setQrCodeDataUrl(null)}
+                  className="mt-2 text-xs text-gray-400 hover:text-gray-600"
+                >
+                  ✕ Bezárás
+                </button>
               </div>
             )}
 

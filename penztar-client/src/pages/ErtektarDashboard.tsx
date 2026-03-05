@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import type { SubordinateBranch, BranchOnlineStatus } from '@/types';
 
 // --- Konstansok ---
@@ -93,27 +94,64 @@ export default function ErtektarDashboard() {
   const { companyType, branchCode } = useAuthStore();
   const [branches, setBranches] = useState<SubordinateBranch[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isOfflineData, setIsOfflineData] = useState(false);
+  const [offlineTimestamp, setOfflineTimestamp] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const { isOnline } = useOnlineStatus();
   const isBestChange = companyType === 'BEST_CHANGE';
   const headerColor = isBestChange ? 'bg-red-600' : 'bg-orange-500';
 
   const loadBranches = useCallback(async () => {
     try {
-      // TODO: Valódi API hívás — GET /api/v1/ertektar/branches
-      const mockData = generateMockBranches();
-      // Státusz újraszámolás
-      const updated = mockData.map((b) => ({
-        ...b,
-        onlineStatus: resolveOnlineStatus(b.lastSyncAt),
-      }));
-      setBranches(updated);
+      if (!isOnline && window.electronAPI) {
+        // OFFLINE mód — cached_branch_status-ból töltünk
+        const cachedStatuses = await window.electronAPI.getCachedBranchStatuses();
+        const timestamp = await window.electronAPI.getCachedBranchStatusTimestamp();
+
+        if (cachedStatuses.length > 0) {
+          const offlineBranches: SubordinateBranch[] = cachedStatuses.map((cs) => ({
+            code: cs.branch_code,
+            name: cs.branch_name,
+            companyId: cs.company_id ?? -1,
+            lastSyncAt: cs.last_sync_at,
+            onlineStatus: resolveOnlineStatus(cs.last_sync_at),
+            cashBalances: [],
+            totalHufValue: cs.total_huf_value,
+            dailyTurnover: cs.daily_turnover,
+          }));
+          setBranches(offlineBranches);
+          setIsOfflineData(true);
+          setOfflineTimestamp(timestamp);
+        } else {
+          // Ha nincs cached adat sem → fallback mock
+          const mockData = generateMockBranches();
+          const updated = mockData.map((b) => ({
+            ...b,
+            onlineStatus: resolveOnlineStatus(b.lastSyncAt),
+          }));
+          setBranches(updated);
+          setIsOfflineData(true);
+          setOfflineTimestamp(null);
+        }
+      } else {
+        // ONLINE mód — API hívás (vagy mock ha nincs API)
+        // TODO: Valódi API hívás — GET /api/v1/ertektar/branches
+        const mockData = generateMockBranches();
+        const updated = mockData.map((b) => ({
+          ...b,
+          onlineStatus: resolveOnlineStatus(b.lastSyncAt),
+        }));
+        setBranches(updated);
+        setIsOfflineData(false);
+        setOfflineTimestamp(null);
+      }
     } catch (err) {
       console.error('[ÉrtéktárDashboard] Betöltési hiba:', err);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isOnline]);
 
   useEffect(() => {
     void loadBranches();
@@ -167,6 +205,20 @@ export default function ErtektarDashboard() {
       </header>
 
       <main className="flex-1 overflow-auto p-6">
+        {/* Offline figyelmeztető sáv */}
+        {isOfflineData && (
+          <div className="mb-4 rounded-lg border-2 border-yellow-400 bg-yellow-50 p-3 text-center">
+            <p className="font-bold text-yellow-800">
+              📡 Offline adatok
+              {offlineTimestamp && (
+                <span className="ml-2 font-normal text-yellow-700">
+                  (utolsó frissítés: {new Date(offlineTimestamp).toLocaleString('hu-HU', { hour: '2-digit', minute: '2-digit' })})
+                </span>
+              )}
+            </p>
+          </div>
+        )}
+
         {/* Összesítő kártyák */}
         <div className="mb-6 grid grid-cols-4 gap-4">
           <div className="rounded-lg border bg-white p-4 shadow-sm">
