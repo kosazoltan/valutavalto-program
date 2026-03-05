@@ -157,11 +157,15 @@ public class InventoryService {
 
     /**
      * Mozgás jóváhagyása (PENDING → APPROVED).
+     * Pessimistic lock-kal védve a race condition ellen.
      */
     @Transactional
     public InventoryMovementDto approveMovement(Long movementId, Long workerId) {
-        InventoryMovement movement = findMovement(movementId);
+        InventoryMovement movement = findMovementForUpdate(movementId);
         Worker worker = findWorker(workerId);
+
+        // Stornó védelem: véglegesen lezárt mozgás nem módosítható
+        validateNotFinalized(movement);
 
         if (movement.getStatus() != MovementStatus.PENDING) {
             throw new ValidationException("Csak függőben lévő mozgás hagyható jóvá! Jelenlegi státusz: "
@@ -184,11 +188,15 @@ public class InventoryService {
 
     /**
      * Mozgás fogadása (IN_TRANSIT → RECEIVED) — CashBalance frissítéssel!
+     * Pessimistic lock-kal védve a race condition ellen.
      */
     @Transactional
     public InventoryMovementDto receiveMovement(Long movementId, Long workerId, ReceiveMovementDto dto) {
-        InventoryMovement movement = findMovement(movementId);
+        InventoryMovement movement = findMovementForUpdate(movementId);
         Worker worker = findWorker(workerId);
+
+        // Stornó védelem: véglegesen lezárt mozgás nem módosítható
+        validateNotFinalized(movement);
 
         if (movement.getStatus() != MovementStatus.IN_TRANSIT
                 && movement.getStatus() != MovementStatus.APPROVED) {
@@ -206,11 +214,18 @@ public class InventoryService {
         switch (movement.getMovementType()) {
             case BANK_WITHDRAW -> {
                 // Bank → pénztár: cél iroda készlet növelése
+                if (movement.getToBranch() == null) {
+                    throw new ValidationException("Bank kivét mozgásnál a cél iroda (toBranch) nem lehet null!");
+                }
                 updateCashBalance(movement.getToBranch().getId(),
                         movement.getCurrency().getId(), receivedAmount, true);
             }
             case BRANCH_TRANSFER -> {
-                // Irodák közti: forrás csökkentés, cél növelés
+                // Irodák közti: forrás csökkentés, cél növelés — NPE védelem
+                if (movement.getFromBranch() == null || movement.getToBranch() == null) {
+                    throw new ValidationException(
+                            "Irodák közti mozgásnál fromBranch és toBranch nem lehet null!");
+                }
                 updateCashBalance(movement.getFromBranch().getId(),
                         movement.getCurrency().getId(), movement.getAmount(), false);
                 updateCashBalance(movement.getToBranch().getId(),
@@ -227,10 +242,15 @@ public class InventoryService {
 
     /**
      * Mozgás visszavonása (PENDING → CANCELLED).
+     * Pessimistic lock-kal védve a race condition ellen.
      */
     @Transactional
     public void cancelMovement(Long movementId) {
-        InventoryMovement movement = findMovement(movementId);
+        InventoryMovement movement = findMovementForUpdate(movementId);
+
+        // Stornó védelem: véglegesen lezárt mozgás nem módosítható
+        validateNotFinalized(movement);
+
         if (movement.getStatus() != MovementStatus.PENDING) {
             throw new ValidationException("Csak függőben lévő mozgás vonható vissza! Jelenlegi státusz: "
                     + movement.getStatus().getDisplayName());
@@ -384,6 +404,29 @@ public class InventoryService {
     private InventoryMovement findMovement(Long id) {
         return movementRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Készlet mozgás nem található: " + id));
+    }
+
+    /**
+     * Pessimistic lock-kal lekérdezi a mozgást — race condition elleni védelem.
+     * Státusz váltó műveletekhez (approve, receive, cancel) KÖTELEZŐ ez a metódus!
+     */
+    private InventoryMovement findMovementForUpdate(Long id) {
+        return movementRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Készlet mozgás nem található: " + id));
+    }
+
+    /**
+     * Stornó védelem: RECEIVED, CANCELLED és REJECTED státuszú mozgások
+     * véglegesen lezártak — NEM módosíthatók.
+     */
+    private void validateNotFinalized(InventoryMovement movement) {
+        if (movement.getStatus() == MovementStatus.RECEIVED
+                || movement.getStatus() == MovementStatus.CANCELLED
+                || movement.getStatus() == MovementStatus.REJECTED) {
+            throw new ValidationException(
+                    "A mozgás véglegesen lezárt, nem módosítható! Státusz: "
+                            + movement.getStatus().getDisplayName());
+        }
     }
 
     private InventoryMovementDto toDto(InventoryMovement m) {

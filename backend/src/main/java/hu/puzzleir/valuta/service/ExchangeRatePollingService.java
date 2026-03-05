@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -73,6 +74,12 @@ public class ExchangeRatePollingService {
     private volatile String lastPollError;
     private volatile int lastPollUpdatedCount;
 
+    /**
+     * Lock a párhuzamos polling megakadályozására
+     * (manuális trigger + ütemezett cron ne fusson egyszerre).
+     */
+    private final Object pollLock = new Object();
+
     // ============ ÜTEMEZETT POLLING ============
 
     /**
@@ -85,7 +92,9 @@ public class ExchangeRatePollingService {
     @Scheduled(cron = "0 0 14 * * MON-FRI")
     public void pollMnbRates() {
         log.info("MNB árfolyam polling indítása (ütemezett)...");
-        executeMnbPoll();
+        synchronized (pollLock) {
+            executeMnbPoll();
+        }
     }
 
     /**
@@ -93,7 +102,9 @@ public class ExchangeRatePollingService {
      */
     public void triggerManualPoll() {
         log.info("MNB árfolyam polling indítása (manuális trigger)...");
-        executeMnbPoll();
+        synchronized (pollLock) {
+            executeMnbPoll();
+        }
     }
 
     /**
@@ -117,8 +128,8 @@ public class ExchangeRatePollingService {
     private void executeMnbPoll() {
         LocalDateTime startTime = LocalDateTime.now();
         try {
-            // 1. HTTP GET az MNB-ről
-            RestTemplate restTemplate = new RestTemplate();
+            // 1. HTTP GET az MNB-ről (timeout: 30s connect, 30s read)
+            RestTemplate restTemplate = createRestTemplateWithTimeout();
             ResponseEntity<String> response = restTemplate.getForEntity(MNB_URL, String.class);
 
             if (response.getBody() == null || response.getBody().isBlank()) {
@@ -294,7 +305,8 @@ public class ExchangeRatePollingService {
         Map<String, BigDecimal> result = new LinkedHashMap<>();
 
         try {
-            RestTemplate restTemplate = new RestTemplate();
+            // Timeout: 30s connect, 30s read
+            RestTemplate restTemplate = createRestTemplateWithTimeout();
             ResponseEntity<String> response = restTemplate.getForEntity(ECB_URL, String.class);
 
             if (response.getBody() == null || response.getBody().isBlank()) {
@@ -490,6 +502,17 @@ public class ExchangeRatePollingService {
         } catch (Exception e) {
             log.warn("ExchangeRateSource '{}' frissítés sikertelen: {}", sourceName, e.getMessage());
         }
+    }
+
+    /**
+     * RestTemplate timeout beállítással (30s connect, 30s read).
+     * Megakadályozza a végtelen várakozást ha az MNB/ECB nem válaszol.
+     */
+    private RestTemplate createRestTemplateWithTimeout() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(30_000);
+        factory.setReadTimeout(30_000);
+        return new RestTemplate(factory);
     }
 
     /**

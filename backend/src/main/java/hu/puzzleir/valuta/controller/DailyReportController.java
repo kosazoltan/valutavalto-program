@@ -29,6 +29,7 @@ public class DailyReportController {
     private final DailyReportService dailyReportService;
 
     @GetMapping("/{branchId}/{date}")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<DailyReportDto> getReport(
             @PathVariable UUID branchId,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
@@ -55,6 +56,7 @@ public class DailyReportController {
     }
 
     @GetMapping("/submission-status")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<SubmissionStatusDto>> getSubmissionStatus(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         LocalDate reportDate = date != null ? date : LocalDate.now();

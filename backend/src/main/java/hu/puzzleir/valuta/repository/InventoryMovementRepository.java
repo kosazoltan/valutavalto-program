@@ -5,7 +5,9 @@ import hu.puzzleir.valuta.entity.MovementStatus;
 import hu.puzzleir.valuta.entity.MovementType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -19,6 +21,10 @@ import java.util.UUID;
 public interface InventoryMovementRepository extends JpaRepository<InventoryMovement, Long> {
 
     Optional<InventoryMovement> findByReferenceNumber(String referenceNumber);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT im FROM InventoryMovement im WHERE im.id = :id")
+    Optional<InventoryMovement> findByIdForUpdate(@Param("id") Long id);
 
     List<InventoryMovement> findByStatus(MovementStatus status);
 

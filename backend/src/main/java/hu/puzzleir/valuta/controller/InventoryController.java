@@ -34,6 +34,7 @@ public class InventoryController {
     // ============ STOCK QUERIES ============
 
     @GetMapping("/stock")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ResponseEntity<List<CashBalance>> getAllStock() {
         // Összes iroda készlete — lekérdezés az összes CashBalance-ből
         // Megjegyzés: éles környezetben paginated + company szűrős lenne
@@ -41,11 +42,13 @@ public class InventoryController {
     }
 
     @GetMapping("/stock/{branchId}")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<CashBalance>> getStockByBranch(@PathVariable UUID branchId) {
         return ResponseEntity.ok(inventoryService.getCurrentStock(branchId));
     }
 
     @GetMapping("/matrix")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ResponseEntity<StockMatrixDto> getStockMatrix() {
         return ResponseEntity.ok(inventoryService.getStockMatrix());
     }
@@ -121,6 +124,7 @@ public class InventoryController {
     // ============ MOVEMENT HISTORY ============
 
     @GetMapping("/movements")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Page<InventoryMovementDto>> searchMovements(
             @RequestParam(required = false) UUID branchId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -133,6 +137,7 @@ public class InventoryController {
     }
 
     @GetMapping("/movements/{id}")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<InventoryMovementDto> getMovement(@PathVariable Long id) {
         return ResponseEntity.ok(inventoryService.getMovement(id));
     }

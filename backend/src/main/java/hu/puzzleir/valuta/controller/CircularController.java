@@ -26,11 +26,13 @@ public class CircularController {
     private final CircularService circularService;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<CircularDto>> findAll() {
         return ResponseEntity.ok(circularService.findAll());
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<CircularDto> findById(@PathVariable Long id) {
         return ResponseEntity.ok(circularService.findById(id));
     }
@@ -46,11 +48,13 @@ public class CircularController {
     }
 
     @PostMapping("/{id}/acknowledge")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<CircularDto> acknowledge(@PathVariable Long id) {
         return ResponseEntity.ok(circularService.acknowledge(id));
     }
 
     @GetMapping("/unacknowledged")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<CircularDto>> findUnacknowledged() {
         return ResponseEntity.ok(circularService.findUnacknowledged());
     }

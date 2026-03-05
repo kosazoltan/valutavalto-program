@@ -9,6 +9,7 @@ import hu.puzzleir.valuta.dto.treasury.SubmissionStatusDto;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class DailyReportService {
 
     private final DailyReportRepository dailyReportRepository;
@@ -56,6 +58,10 @@ public class DailyReportService {
         BigDecimal totalFeeHuf = BigDecimal.ZERO;
 
         for (Transaction t : transactions) {
+            if (t.getTransactionType() == null) {
+                log.warn("Transaction {} típus null — kihagyva a napi riportból", t.getId());
+                continue;
+            }
             if (t.getTransactionType().isBuyType()) {
                 totalBuyHuf = totalBuyHuf.add(
                         t.getHufAmount() != null ? t.getHufAmount() : BigDecimal.ZERO);
@@ -150,6 +156,10 @@ public class DailyReportService {
         // Egyszerű JSON összesítés valutánként
         Map<String, Map<String, BigDecimal>> byCurrency = new LinkedHashMap<>();
         for (Transaction t : transactions) {
+            if (t.getTransactionType() == null) {
+                log.warn("Transaction {} típus null — kihagyva a report JSON-ból", t.getId());
+                continue;
+            }
             String code = t.getCurrency().getCode();
             Map<String, BigDecimal> totals = byCurrency.computeIfAbsent(code,
                     k -> new LinkedHashMap<>());
