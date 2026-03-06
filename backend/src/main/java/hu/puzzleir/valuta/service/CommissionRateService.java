@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import com.puzzleir.backend.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.entity.CommissionRate;
 import hu.puzzleir.valuta.repository.CommissionRateRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +23,7 @@ public class CommissionRateService {
 
     public CommissionRate findById(UUID id) {
         return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("CommissionRate not found: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("CommissionRate not found: " + id));
     }
 
     @Transactional

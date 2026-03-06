@@ -133,6 +133,11 @@ public class TransactionService {
                 .multiply(rate.getBaseBuyRate()).setScale(0, RoundingMode.HALF_UP);
         BigDecimal appliedRate = rate.getBuyRateForAmount(preDiscountHufAmount);
 
+        // Kedvezmény összeg a PRE-DISCOUNT értékből (nem a már csökkentett hufAmount-ból!)
+        BigDecimal fullHufBeforeDiscount = request.getCurrencyAmount()
+                .multiply(appliedRate).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal discountAmount = calculateDiscountAmount(fullHufBeforeDiscount, request.getDiscountPercent());
+
         // POS terminál integráció — bankkártyás fizetésnél
         PaymentMethod paymentMethod = request.getPaymentMethod() != null ? request.getPaymentMethod() : PaymentMethod.CASH;
         String posAuthCode = null;
@@ -169,7 +174,7 @@ public class TransactionService {
                 .hufAmount(payableAmount)
                 .handlingFee(serverHandlingFee)
                 .discountPercent(request.getDiscountPercent() != null ? request.getDiscountPercent() : BigDecimal.ZERO)
-                .discountAmount(calculateDiscountAmount(hufAmount, request.getDiscountPercent()))
+                .discountAmount(discountAmount)
                 .roundingAmount(roundingDifference)
                 .paymentMethod(paymentMethod)
                 .posAuthorizationCode(posAuthCode)
@@ -266,6 +271,11 @@ public class TransactionService {
                 .multiply(rate.getBaseSellRate()).setScale(0, RoundingMode.HALF_UP);
         BigDecimal appliedRate = rate.getSellRateForAmount(preDiscountHufAmount);
 
+        // Kedvezmény összeg a PRE-DISCOUNT értékből (nem a már csökkentett hufAmount-ból!)
+        BigDecimal fullHufBeforeDiscount = request.getCurrencyAmount()
+                .multiply(appliedRate).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal discountAmount = calculateDiscountAmount(fullHufBeforeDiscount, request.getDiscountPercent());
+
         // POS terminál integráció — bankkártyás fizetésnél
         PaymentMethod paymentMethod = request.getPaymentMethod() != null ? request.getPaymentMethod() : PaymentMethod.CASH;
         String posAuthCode = null;
@@ -302,7 +312,7 @@ public class TransactionService {
                 .hufAmount(payableAmount)
                 .handlingFee(serverHandlingFee)
                 .discountPercent(request.getDiscountPercent() != null ? request.getDiscountPercent() : BigDecimal.ZERO)
-                .discountAmount(calculateDiscountAmount(hufAmount, request.getDiscountPercent()))
+                .discountAmount(discountAmount)
                 .roundingAmount(roundingDifference)
                 .paymentMethod(paymentMethod)
                 .posAuthorizationCode(posAuthCode)

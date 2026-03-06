@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../stores/authStore'
 import { authApi } from '../../services/api'
 import { Eye, EyeOff, User, Lock, Building2 } from 'lucide-react'
+import { getErrorMessage } from '../../utils/errorHandling'
 
 export default function LoginPage() {
   const [companyCode, setCompanyCode] = useState('BEST')
@@ -35,10 +36,7 @@ export default function LoginPage() {
       )
       navigate('/dashboard')
     } catch (err: unknown) {
-      const errorMessage = err && typeof err === 'object' && 'response' in err
-        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || 'Bejelentkezési hiba történt!'
-        : 'Bejelentkezési hiba történt!'
-      setError(errorMessage)
+      setError(getErrorMessage(err))
     } finally {
       setLoading(false)
     }

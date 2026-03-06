@@ -14,7 +14,7 @@ import java.util.UUID;
  * CommissionRule repository — tier-alapú jutalék szabályok.
  */
 @Repository
-public interface CommissionRuleRepository2 extends JpaRepository<CommissionRule, UUID> {
+public interface CommissionRuleRepository extends JpaRepository<CommissionRule, UUID> {
 
     @Query("SELECT r FROM CommissionRule r " +
            "WHERE r.companyId = :companyId " +

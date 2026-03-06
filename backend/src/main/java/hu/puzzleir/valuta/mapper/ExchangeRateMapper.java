@@ -17,9 +17,9 @@ public class ExchangeRateMapper {
 
         return ExchangeRateDto.builder()
                 .id(entity.getId())
-                .currencyId(entity.getCurrency().getId())
-                .currencyCode(entity.getCurrency().getCode())
-                .currencyName(entity.getCurrency().getName())
+                .currencyId(entity.getCurrency() != null ? entity.getCurrency().getId() : null)
+                .currencyCode(entity.getCurrency() != null ? entity.getCurrency().getCode() : null)
+                .currencyName(entity.getCurrency() != null ? entity.getCurrency().getName() : null)
                 .validDate(entity.getValidDate())
                 .validTime(entity.getValidTime())
                 .baseBuyRate(entity.getBaseBuyRate())

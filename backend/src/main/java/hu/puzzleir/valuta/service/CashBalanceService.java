@@ -318,10 +318,12 @@ public class CashBalanceService {
                 Optional<ExchangeRate> exchangeRate = exchangeRateRepository.findLatestRate(companyId, currency.getId(), branchId);
                 if (exchangeRate.isPresent()) {
                     ExchangeRate er = exchangeRate.get();
-                    buyRate = er.getBaseBuyRate();
-                    sellRate = er.getBaseSellRate();
-                    // Középárfolyam HUF értékhez
-                    rate = buyRate.add(sellRate).divide(BigDecimal.valueOf(2), 4, RoundingMode.HALF_UP);
+                    if (er.getBaseBuyRate() != null && er.getBaseSellRate() != null) {
+                        buyRate = er.getBaseBuyRate();
+                        sellRate = er.getBaseSellRate();
+                        // Középárfolyam HUF értékhez
+                        rate = buyRate.add(sellRate).divide(BigDecimal.valueOf(2), 4, RoundingMode.HALF_UP);
+                    }
                 }
             }
 
@@ -402,7 +404,9 @@ public class CashBalanceService {
                         CashBalance first = balances.get(0);
                         Optional<ExchangeRate> er = exchangeRateRepository.findLatestRate(
                                 companyId, first.getCurrency().getId(), first.getBranch().getId());
-                        if (er.isPresent()) {
+                        if (er.isPresent()
+                                && er.get().getBaseBuyRate() != null
+                                && er.get().getBaseSellRate() != null) {
                             rate = er.get().getBaseBuyRate().add(er.get().getBaseSellRate())
                                     .divide(BigDecimal.valueOf(2), 4, RoundingMode.HALF_UP);
                         }

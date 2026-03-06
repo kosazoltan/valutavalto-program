@@ -147,6 +147,7 @@ public class ExchangeRateService {
      *
      * Legacy: ARFVALT - kedvezményes árfolyam, supervisor ellenőrzés >2% felett
      */
+    @Transactional(readOnly = true)
     public ExchangeRate applyDiscount(Long rateId, BigDecimal discountPercent) {
         ExchangeRate rate = exchangeRateRepository.findById(rateId)
                 .orElseThrow(() -> new ResourceNotFoundException("Árfolyam nem található"));
@@ -164,10 +165,31 @@ public class ExchangeRateService {
         log.info("Árfolyam kedvezmény alkalmazva: {}% - új vétel: {}, eladás: {}",
                 discountPercent, newBuyRate, newSellRate);
 
-        // Visszaadjuk a módosított árfolyamot (tranzakció szintű, nem perzisztáljuk)
-        rate.setBaseBuyRate(newBuyRate);
-        rate.setBaseSellRate(newSellRate);
-        return rate;
+        // Visszaadjuk a módosított árfolyamot tranzakció szintű használatra
+        // FONTOS: NE módosítsuk a managed entity-t — az JPA dirty checking miatt perzisztálódna!
+        // Ehelyett másolatot készítünk a kedvezményes értékekkel.
+        return ExchangeRate.builder()
+                .id(rate.getId())
+                .company(rate.getCompany())
+                .branch(rate.getBranch())
+                .currency(rate.getCurrency())
+                .validDate(rate.getValidDate())
+                .validTime(rate.getValidTime())
+                .baseBuyRate(newBuyRate)
+                .baseSellRate(newSellRate)
+                .limit1Amount(rate.getLimit1Amount())
+                .limit1BuyRate(rate.getLimit1BuyRate())
+                .limit1SellRate(rate.getLimit1SellRate())
+                .limit2Amount(rate.getLimit2Amount())
+                .limit2BuyRate(rate.getLimit2BuyRate())
+                .limit2SellRate(rate.getLimit2SellRate())
+                .limit3Amount(rate.getLimit3Amount())
+                .limit3BuyRate(rate.getLimit3BuyRate())
+                .limit3SellRate(rate.getLimit3SellRate())
+                .officialRate(rate.getOfficialRate())
+                .active(rate.getActive())
+                .createdBy(rate.getCreatedBy())
+                .build();
     }
 
     /**

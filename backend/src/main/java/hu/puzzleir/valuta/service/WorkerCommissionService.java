@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import com.puzzleir.backend.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.entity.WorkerCommission;
@@ -32,7 +33,7 @@ public class WorkerCommissionService {
 
     public WorkerCommission findById(UUID id) {
         return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("WorkerCommission not found: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("WorkerCommission not found: " + id));
     }
 
     @Transactional
@@ -71,7 +72,7 @@ public class WorkerCommissionService {
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             BigDecimal totalFees = active.stream()
-                    .map(Transaction::getHandlingFee)
+                    .map(t -> t.getHandlingFee() != null ? t.getHandlingFee() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             // Default commission rate: 0.1% of total turnover

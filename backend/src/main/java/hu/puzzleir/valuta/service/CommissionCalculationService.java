@@ -6,7 +6,7 @@ import hu.puzzleir.valuta.entity.CommissionRule;
 import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.repository.CommissionCalculationRepository;
-import hu.puzzleir.valuta.repository.CommissionRuleRepository2;
+import hu.puzzleir.valuta.repository.CommissionRuleRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +34,7 @@ import java.util.*;
 public class CommissionCalculationService {
 
     private final CommissionCalculationRepository commissionCalcRepo;
-    private final CommissionRuleRepository2 commissionRuleRepo;
+    private final CommissionRuleRepository commissionRuleRepo;
     private final TransactionRepository transactionRepository;
 
     /**

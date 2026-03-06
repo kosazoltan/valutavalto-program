@@ -4,8 +4,10 @@ import com.puzzleir.backend.entity.Branch;
 import com.puzzleir.backend.entity.Company;
 import hu.puzzleir.valuta.dto.admin.*;
 import hu.puzzleir.valuta.service.CompanyAdminService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,6 +19,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/admin")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class CompanyAdminController {
 
     private final CompanyAdminService companyAdminService;
@@ -37,7 +40,7 @@ public class CompanyAdminController {
     @PutMapping("/companies/{id}")
     public ResponseEntity<Void> updateCompany(
             @PathVariable UUID id,
-            @RequestBody CompanyUpdateDto dto) {
+            @Valid @RequestBody CompanyUpdateDto dto) {
         companyAdminService.updateCompany(id, dto);
         return ResponseEntity.ok().build();
     }
@@ -58,7 +61,7 @@ public class CompanyAdminController {
     @PutMapping("/branches/{id}")
     public ResponseEntity<Void> updateBranch(
             @PathVariable UUID id,
-            @RequestBody BranchUpdateDto dto) {
+            @Valid @RequestBody BranchUpdateDto dto) {
         companyAdminService.updateBranch(id, dto);
         return ResponseEntity.ok().build();
     }

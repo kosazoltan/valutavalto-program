@@ -131,7 +131,7 @@ export default function TransactionPage() {
         const target = e.target as HTMLElement
         // Only handle if not typing in an input field
         if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA' && !target.isContentEditable) {
-          const index = parseInt(e.key) - 1
+          const index = parseInt(e.key, 10) - 1
           if (mockRates[index]) {
             setSelectedCurrency(mockRates[index])
             // Focus on foreign amount after currency selection

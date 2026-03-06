@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import com.puzzleir.backend.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.entity.Contribution;
 import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.repository.ContributionRepository;
@@ -30,7 +31,7 @@ public class ContributionService {
 
     public Contribution findById(UUID id) {
         return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Contribution not found: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Contribution not found: " + id));
     }
 
     @Transactional
@@ -46,11 +47,11 @@ public class ContributionService {
         }
 
         BigDecimal totalTurnover = transactions.stream()
-                .map(Transaction::getHufAmount)
+                .map(t -> t.getHufAmount() != null ? t.getHufAmount() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal totalFees = transactions.stream()
-                .map(Transaction::getHandlingFee)
+                .map(t -> t.getHandlingFee() != null ? t.getHandlingFee() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // MNB contribution (PSZÁF díj) — simplified calculation

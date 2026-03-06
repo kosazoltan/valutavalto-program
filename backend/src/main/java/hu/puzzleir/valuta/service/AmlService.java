@@ -702,7 +702,8 @@ public class AmlService {
         // Ha a tranzakciók nagy része az IDENTIFICATION_LIMIT közelében van (80-99% közötti)
         BigDecimal limitThreshold = IDENTIFICATION_LIMIT.multiply(STRUCTURING_RATIO);
         long nearLimitCount = dailyTxs.stream()
-            .filter(tx -> tx.getHufAmount().compareTo(limitThreshold) >= 0
+            .filter(tx -> tx.getHufAmount() != null
+                       && tx.getHufAmount().compareTo(limitThreshold) >= 0
                        && tx.getHufAmount().compareTo(IDENTIFICATION_LIMIT) < 0)
             .count();
 
@@ -768,6 +769,9 @@ public class AmlService {
         BigDecimal currentYearTotal = transactionRepository.sumCustomerAnnualTotal(
             companyId, customerId, yearStart, yearEnd
         );
+        if (currentYearTotal == null) {
+            currentYearTotal = BigDecimal.ZERO;
+        }
 
         // 2. Új összeg a sztornó után
         BigDecimal newYearTotal = currentYearTotal.subtract(hufAmount);

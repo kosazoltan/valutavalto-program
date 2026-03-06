@@ -108,6 +108,7 @@ public class CurrencyCalculatorService {
                 ExchangeRate toRate = exchangeRateRepository.findLatestRate(companyId, to.getId(), branchId)
                         .orElse(null);
                 if (toRate == null) continue;
+                if (fromRate.getBaseBuyRate() == null || toRate.getBaseSellRate() == null) continue;
 
                 // Cross-rate: from sell rate / to buy rate
                 BigDecimal crossRate = fromRate.getBaseBuyRate()
@@ -136,6 +137,10 @@ public class CurrencyCalculatorService {
 
         ExchangeRate rate = exchangeRateRepository.findLatestRate(companyId, curr.getId(), branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Nincs árfolyam: " + foreignCode));
+
+        if (rate.getBaseBuyRate() == null || rate.getBaseSellRate() == null) {
+            throw new ValidationException("Az árfolyam nincs megfelelően konfigurálva: " + foreignCode);
+        }
 
         BigDecimal appliedRate;
         BigDecimal fromAmount;
@@ -198,6 +203,13 @@ public class CurrencyCalculatorService {
                 .orElseThrow(() -> new ResourceNotFoundException("Nincs árfolyam: " + fromCurrency));
         ExchangeRate toRate = exchangeRateRepository.findLatestRate(companyId, toCurr.getId(), branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Nincs árfolyam: " + toCurrency));
+
+        if (fromRate.getBaseBuyRate() == null || fromRate.getBaseSellRate() == null) {
+            throw new ValidationException("Az árfolyam nincs megfelelően konfigurálva: " + fromCurrency);
+        }
+        if (toRate.getBaseBuyRate() == null || toRate.getBaseSellRate() == null) {
+            throw new ValidationException("Az árfolyam nincs megfelelően konfigurálva: " + toCurrency);
+        }
 
         // Cross-rate: from → HUF → to
         BigDecimal hufAmount;

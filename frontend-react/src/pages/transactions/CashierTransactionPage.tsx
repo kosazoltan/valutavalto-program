@@ -341,7 +341,7 @@ export default function CashierTransactionPage() {
                         onKeyDown={(e) => handleKeyDown(e, idx, 'currency')}
                         onFocus={() => { setActiveRow(idx); setActiveField('currency') }}
                         className="w-20 h-12 text-center font-mono text-lg font-bold uppercase bg-transparent border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:border-transparent"
-                        style={{ '--tw-ring-color': 'var(--primary)' } as any}
+                        style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
                         maxLength={3}
                         placeholder="EUR"
                         autoComplete="off"
@@ -362,7 +362,7 @@ export default function CashierTransactionPage() {
                         type="text"
                         inputMode="numeric"
                         className="w-28 h-12 text-right font-mono text-lg font-semibold bg-transparent border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:border-transparent"
-                        style={{ '--tw-ring-color': 'var(--primary)' } as any}
+                        style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
                         placeholder="0"
                         disabled={!row.currencyCode}
                       />
@@ -429,7 +429,7 @@ export default function CashierTransactionPage() {
                 onChange={(e) => setCustomerName(e.target.value)}
                 placeholder="Kovacs Janos"
                 className="w-full h-11 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white focus:ring-2 focus:border-transparent"
-                style={{ '--tw-ring-color': 'var(--primary)' } as any}
+                style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
               />
             </div>
 
@@ -440,7 +440,7 @@ export default function CashierTransactionPage() {
                 onChange={(e) => setCustomerDocNumber(e.target.value)}
                 placeholder="123456AB"
                 className="w-full h-11 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent font-mono text-gray-900 dark:text-white focus:ring-2 focus:border-transparent"
-                style={{ '--tw-ring-color': 'var(--primary)' } as any}
+                style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
               />
             </div>
 
@@ -451,7 +451,7 @@ export default function CashierTransactionPage() {
                 onChange={(e) => setCustomerAddress(e.target.value)}
                 placeholder="1111 Budapest, Fo utca 1."
                 className="w-full h-11 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white focus:ring-2 focus:border-transparent"
-                style={{ '--tw-ring-color': 'var(--primary)' } as any}
+                style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
               />
             </div>
 

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
+import type { LucideIcon } from 'lucide-react'
 import {
   Banknote, Coins, Repeat, ArrowRight, XCircle,
   TrendingUp, Wallet, BarChart3, Lock, FileText,
@@ -23,7 +24,7 @@ import { useCompanyTheme } from '../contexts/CompanyThemeContext'
 interface MenuItem {
   key: string
   label: string
-  icon: any
+  icon: LucideIcon | null
   color: string
   route: string
 }
@@ -34,21 +35,21 @@ const PAGE1: MenuItem[] = [
   { key: '3', label: 'KONVERZIO', icon: Repeat, color: 'from-purple-500 to-purple-600', route: '/transactions/conversion' },
   { key: '4', label: 'ATADAS', icon: ArrowRight, color: 'from-orange-500 to-orange-600', route: '/transfers' },
   { key: '5', label: '', icon: null, color: '', route: '' },
-  { key: '6', label: 'STORNO', icon: XCircle, color: 'from-red-500 to-red-600', route: '/stornos' },
+  { key: '6', label: 'STORNO', icon: XCircle, color: 'from-red-500 to-red-600', route: '/transactions' },
   { key: '7', label: 'ARFOLYAM', icon: TrendingUp, color: 'from-cyan-500 to-cyan-600', route: '/rates' },
   { key: '8', label: 'KESZLET', icon: Wallet, color: 'from-teal-500 to-teal-600', route: '/cashdesk' },
   { key: '9', label: 'FORGALOM', icon: BarChart3, color: 'from-indigo-500 to-indigo-600', route: '/reports' },
 ]
 
 const PAGE2: MenuItem[] = [
-  { key: '1', label: 'ZARAS', icon: Lock, color: 'from-red-500 to-red-600', route: '/closing' },
+  { key: '1', label: 'ZARAS', icon: Lock, color: 'from-red-500 to-red-600', route: '/closing/wizard' },
   { key: '2', label: 'BIZONYLATOK', icon: FileText, color: 'from-blue-500 to-blue-600', route: '/receipts' },
-  { key: '3', label: 'TARSPENZTARAK', icon: Building2, color: 'from-purple-500 to-purple-600', route: '/branches' },
+  { key: '3', label: 'TARSPENZTARAK', icon: Building2, color: 'from-purple-500 to-purple-600', route: '/branch-groups' },
   { key: '4', label: 'LISTAK', icon: List, color: 'from-gray-500 to-gray-600', route: '/transactions' },
-  { key: '5', label: 'PENZTAROSOK', icon: Users, color: 'from-emerald-500 to-emerald-600', route: '/settings/workers' },
-  { key: '6', label: 'NAPI FORGALOM', icon: Calendar, color: 'from-orange-500 to-orange-600', route: '/reports/daily' },
-  { key: '7', label: 'REGI ZARAS', icon: Archive, color: 'from-amber-500 to-amber-600', route: '/closing/archive' },
-  { key: '8', label: 'REGENERALAS', icon: RefreshCw, color: 'from-cyan-500 to-cyan-600', route: '/cashdesk/regenerate' },
+  { key: '5', label: 'PENZTAROSOK', icon: Users, color: 'from-emerald-500 to-emerald-600', route: '/settings/users' },
+  { key: '6', label: 'NAPI FORGALOM', icon: Calendar, color: 'from-orange-500 to-orange-600', route: '/reports/extended' },
+  { key: '7', label: 'REGI ZARAS', icon: Archive, color: 'from-amber-500 to-amber-600', route: '/archiving' },
+  { key: '8', label: 'REGENERALAS', icon: RefreshCw, color: 'from-cyan-500 to-cyan-600', route: '/cashdesk/denominations' },
   { key: '9', label: 'EGYEB', icon: Settings, color: 'from-gray-500 to-gray-600', route: '/settings' },
 ]
 

@@ -103,16 +103,24 @@ public class JwtTokenProvider {
      * Company ID kinyerése (MULTI-TENANT!)
      */
     public UUID getCompanyIdFromToken(String token) {
-        String companyIdStr = getClaims(token).get("companyId", String.class);
-        return companyIdStr != null ? UUID.fromString(companyIdStr) : null;
+        try {
+            String companyIdStr = getClaims(token).get("companyId", String.class);
+            return companyIdStr != null ? UUID.fromString(companyIdStr) : null;
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
-    
+
     /**
      * Branch ID kinyerése
      */
     public UUID getBranchIdFromToken(String token) {
-        String branchIdStr = getClaims(token).get("branchId", String.class);
-        return branchIdStr != null ? UUID.fromString(branchIdStr) : null;
+        try {
+            String branchIdStr = getClaims(token).get("branchId", String.class);
+            return branchIdStr != null ? UUID.fromString(branchIdStr) : null;
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
     
     /**
