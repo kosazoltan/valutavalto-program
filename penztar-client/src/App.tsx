@@ -62,6 +62,9 @@ import MnbReportPage from '@/pages/MnbReportPage';
 import NavReportPage from '@/pages/NavReportPage';
 // Batch 8B — Cég/Fiók adminisztráció
 import CompanyAdminPage from '@/pages/CompanyAdminPage';
+// Sprint 3 — Szünet, Konverzió
+import BreakPage from '@/pages/BreakPage';
+import ConversionPage from '@/pages/ConversionPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -490,6 +493,24 @@ export default function App() {
         element={
           <ProtectedRoute>
             <CompanyAdminPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Sprint 3 — Szünet + Konverzió */}
+      <Route
+        path="/break"
+        element={
+          <ProtectedRoute>
+            <BreakPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/conversion"
+        element={
+          <ProtectedRoute>
+            <ConversionPage />
           </ProtectedRoute>
         }
       />

@@ -84,3 +84,5 @@ logs/
 !docker/ssl/.gitkeep
 
 docs/legacy-drive/
+
+Anti/

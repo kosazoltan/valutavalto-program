@@ -1,12 +1,9 @@
 package hu.puzzleir.valuta.service;
 
-import com.puzzleir.backend.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.entity.HandlingFeeBracket;
 import hu.puzzleir.valuta.entity.HandlingFeeType;
-import hu.puzzleir.valuta.entity.InitialFeeConfig;
 import hu.puzzleir.valuta.repository.HandlingFeeBracketRepository;
-import hu.puzzleir.valuta.repository.InitialFeeConfigRepository;
-import hu.puzzleir.valuta.repository.TransactionRepository;
+import hu.puzzleir.valuta.repository.HandlingFeeTransactionRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,28 +13,25 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
 /**
- * Kezelési díj számító motor.
+ * Kezelési díj szolgáltatás — autoritatív díjszámítás.
  *
- * Legacy: A régi rendszerben két kezelési díj rendszer létezett:
+ * Legacy: GetKezelesidij — a Delphi rendszerben az EZRELÉK vagy SÁVOS
+ * díjszámítás a _realEzrelek alapján dőlt el.
  *
- * 1. EZRELÉKES rendszer (_realEzrelek > 0):
- *    díj = összeg * ezrelék / 1000
- *    Pl. 5 ezrelék: 100.000 Ft tranzakció → 500 Ft díj
+ * A HandlingFeeCalculator erre a service-re épít:
+ * - calculateHandlingFee() → szerver oldali díjszámítás
+ * - getRemainingCustomFeeQuota() → napi egyedi díj limit
  *
- * 2. SÁVOS rendszer (_realEzrelek < 0):
- *    _tranzsav[1..23] = sáv felső határai
- *    _kdij[1..23] = sávhoz tartozó díjak
- *    Az összeg melyik sávba esik, annyi a díj.
- *
- * Ezen felül: KEZDŐJEGY (initial fee)
- *    - Minden tranzakcióhoz járhat kezdőjegy
- *    - Saját hatáskörű kedvezmény (SHK): max 5/nap, a pénztáros elengedheti
- *    - Egyedi kezdőjegy: max 3/nap
- *    - VIP, értéktáros engedély stb. felülírhatja
+ * System paraméterek:
+ * - HANDLING_FEE_TYPE: NONE / PER_MILLE / BRACKET
+ * - HANDLING_FEE_PER_MILLE: ezrelék érték (pl. "5" = 5‰)
+ * - DAILY_CUSTOM_FEE_LIMIT: napi egyedi díj limit (default: 3)
  */
 @Service
 @RequiredArgsConstructor
@@ -45,235 +39,140 @@ import java.util.UUID;
 @Slf4j
 public class HandlingFeeService {
 
-    private final HandlingFeeBracketRepository bracketRepository;
-    private final InitialFeeConfigRepository initialFeeConfigRepository;
     private final SystemParameterService systemParameterService;
-    private final TransactionRepository transactionRepository;
+    private final HandlingFeeBracketRepository bracketRepository;
+    private final HandlingFeeTransactionRepository feeTransactionRepository;
+
+    /** Default napi egyedi kezelési díj limit */
+    private static final int DEFAULT_DAILY_CUSTOM_FEE_LIMIT = 3;
 
     /**
-     * Kezelési díj számítása az összeg alapján.
+     * Kezelési díj számítása a HUF összeg alapján.
      *
-     * @param hufAmount tranzakció forint összege
-     * @return kezelési díj Ft-ban (kerekítve)
+     * A díj típusa a system_parameter HANDLING_FEE_TYPE értékétől függ:
+     * - NONE: 0 Ft (nincs díj)
+     * - PER_MILLE: összeg × ezrelék / 1000
+     * - BRACKET: sávos díjtáblázat
+     *
+     * @param hufAmount tranzakció HUF összege (nettó)
+     * @return kezelési díj (Ft)
      */
     public BigDecimal calculateHandlingFee(BigDecimal hufAmount) {
-        UUID companyId = SecurityUtils.getCurrentCompanyId();
-        HandlingFeeType feeType = getHandlingFeeType(companyId);
+        if (hufAmount == null || hufAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
 
-        switch (feeType) {
-            case NONE:
-                return BigDecimal.ZERO;
+        HandlingFeeType feeType = resolveFeeType();
 
-            case PER_MILLE:
-                return calculatePerMilleFee(hufAmount, companyId);
+        return switch (feeType) {
+            case NONE -> BigDecimal.ZERO;
+            case PER_MILLE -> calculatePerMille(hufAmount);
+            case BRACKET -> calculateBracket(hufAmount);
+        };
+    }
 
-            case BRACKET:
-                return calculateBracketFee(hufAmount, companyId);
+    /**
+     * Hátralévő egyedi kezelési díj kvóta az aktuális pénztáros számára.
+     *
+     * Legacy: HARDWARE.NAPIEGYEDIKEZDIJ — napi max 3 egyedi díj.
+     * Az aktuális nap tranzakcióit számolja, ahol a pénztáros
+     * egyedi (nem standard) kezelési díjat alkalmazott.
+     *
+     * @return hátralévő kvóta (0 = limit elérve)
+     */
+    public int getRemainingCustomFeeQuota() {
+        int dailyLimit = getDailyCustomFeeLimit();
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+        UUID branchId = SecurityUtils.getCurrentBranchId();
 
-            default:
-                return BigDecimal.ZERO;
+        LocalDateTime dayStart = LocalDate.now().atStartOfDay();
+        LocalDateTime dayEnd = LocalDate.now().atTime(LocalTime.MAX);
+
+        // Megszámoljuk a mai nap egyedi díjas tranzakcióit
+        // Egyedi díj = discountReason kitöltött (supervisor által jóváhagyott egyedi díj)
+        List<?> todayCustomFees = feeTransactionRepository
+                .findByBranchAndPeriod(branchId, dayStart, dayEnd)
+                .stream()
+                .filter(h -> h.getDiscountReason() != null && !h.getDiscountReason().isBlank())
+                .toList();
+
+        int used = todayCustomFees.size();
+        int remaining = dailyLimit - used;
+
+        log.debug("Egyedi kezelési díj kvóta — worker: {}, használt: {}/{}, maradék: {}",
+                workerId, used, dailyLimit, remaining);
+
+        return Math.max(0, remaining);
+    }
+
+    // === PRIVÁT SEGÉDMETÓDUSOK ===
+
+    /**
+     * Díj típus feloldása system_parameter-ből.
+     */
+    private HandlingFeeType resolveFeeType() {
+        try {
+            String typeStr = systemParameterService.getValue("HANDLING_FEE_TYPE");
+            return HandlingFeeType.valueOf(typeStr.toUpperCase());
+        } catch (Exception e) {
+            log.warn("HANDLING_FEE_TYPE paraméter nem olvasható ({}), default: BRACKET", e.getMessage());
+            return HandlingFeeType.BRACKET;
         }
     }
 
     /**
-     * Ezrelékes díj számítás.
-     * Legacy: díj = összeg * _realEzrelek / 1000, kerekítve 5 Ft-ra
+     * Ezrelékes díjszámítás.
+     * Legacy: _realEzrelek > 0 esetén → összeg × ezrelék / 1000
      */
-    private BigDecimal calculatePerMilleFee(BigDecimal hufAmount, UUID companyId) {
-        int perMille = getPerMilleRate(companyId);
-        if (perMille <= 0) return BigDecimal.ZERO;
-
-        // Legacy compatible: HALF_UP, not HALF_EVEN — a régi rendszer HALF_UP kerekítést használt
-        BigDecimal fee = hufAmount
-            .multiply(new BigDecimal(perMille))
-            .divide(new BigDecimal(1000), 0, RoundingMode.HALF_UP);
-
-        // Kerekítés 5 Ft-ra (legacy: mindig 5-re kerekít)
-        return roundToFive(fee);
+    private BigDecimal calculatePerMille(BigDecimal hufAmount) {
+        try {
+            String perMilleStr = systemParameterService.getValue("HANDLING_FEE_PER_MILLE");
+            BigDecimal perMille = new BigDecimal(perMilleStr);
+            return hufAmount.multiply(perMille)
+                    .divide(BigDecimal.valueOf(1000), 0, RoundingMode.HALF_UP);
+        } catch (Exception e) {
+            log.error("PER_MILLE díjszámítás hiba: {}", e.getMessage());
+            return BigDecimal.ZERO;
+        }
     }
 
     /**
-     * Sávos díj számítás.
-     * Legacy: A _tranzsav tömbben keresi meg melyik sávba esik az összeg,
-     *         és a _kdij tömbből veszi a díjat.
+     * Sávos díjszámítás.
+     * Legacy: _tranzsav[1..23] és _kdij[1..23] tömbök
+     * Az összeg sávba esését a bracket tábla alapján keressük.
      */
-    private BigDecimal calculateBracketFee(BigDecimal hufAmount, UUID companyId) {
+    private BigDecimal calculateBracket(BigDecimal hufAmount) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         List<HandlingFeeBracket> brackets = bracketRepository
-            .findByCompanyIdAndActiveOrderByBracketOrder(companyId, true);
+                .findByCompanyIdAndActiveOrderByBracketOrder(companyId, true);
 
-        if (brackets.isEmpty()) return BigDecimal.ZERO;
+        if (brackets.isEmpty()) {
+            log.warn("Nincs aktív kezelési díj sáv a {} céghez! Díj: 0 Ft", companyId);
+            return BigDecimal.ZERO;
+        }
 
+        // Megkeressük az összeghez tartozó sávot
         for (HandlingFeeBracket bracket : brackets) {
             if (hufAmount.compareTo(bracket.getUpperLimit()) <= 0) {
                 return bracket.getFeeAmount();
             }
         }
 
-        // Ha az összeg minden sávot meghalad, az utolsó sáv díja
-        return brackets.get(brackets.size() - 1).getFeeAmount();
+        // Ha túllépi az utolsó sávot → az utolsó sáv díja érvényesül
+        HandlingFeeBracket lastBracket = brackets.get(brackets.size() - 1);
+        log.info("Összeg ({} Ft) túllépi az utolsó sávot ({} Ft), díj: {} Ft",
+                hufAmount, lastBracket.getUpperLimit(), lastBracket.getFeeAmount());
+        return lastBracket.getFeeAmount();
     }
 
     /**
-     * Kezdőjegy (initial fee) számítása.
-     *
-     * Legacy: A KEZDIJ táblából olvassa, típustól függ.
-     * Ha a tranzakció összege eléri a minimumot, jár a kezdőjegy.
+     * Napi egyedi díj limit lekérése system_parameter-ből.
      */
-    public BigDecimal calculateInitialFee(BigDecimal hufAmount) {
-        UUID companyId = SecurityUtils.getCurrentCompanyId();
-
-        InitialFeeConfig config = initialFeeConfigRepository
-            .findByCompanyIdAndActive(companyId, true)
-            .orElse(null);
-
-        if (config == null) return BigDecimal.ZERO;
-
-        // Minimum összeg ellenőrzés
-        if (config.getMinTransactionAmount() != null
-            && hufAmount.compareTo(config.getMinTransactionAmount()) < 0) {
-            return BigDecimal.ZERO;
-        }
-
-        BigDecimal fee = config.getFeeAmount();
-
-        // Maximum korlát
-        if (config.getMaxFeeAmount() != null
-            && fee.compareTo(config.getMaxFeeAmount()) > 0) {
-            fee = config.getMaxFeeAmount();
-        }
-
-        return fee;
-    }
-
-    /**
-     * Saját hatáskörű kedvezmény (SHK) ellenőrzése.
-     *
-     * Legacy: _shk = GetSajatHataskoru — max 5/nap
-     * A pénztáros napi SHK kerete csökken minden kedvezményes tranzakcióval.
-     *
-     * @return hátralévő SHK keret (0 = nem adhat több kedvezményt)
-     */
-    public int getRemainingShkQuota() {
-        UUID companyId = SecurityUtils.getCurrentCompanyId();
-
-        InitialFeeConfig config = initialFeeConfigRepository
-            .findByCompanyIdAndActive(companyId, true)
-            .orElse(null);
-
-        int dailyLimit = (config != null && config.getDailyDiscountLimit() != null)
-            ? config.getDailyDiscountLimit() : 5;
-
-        int usedToday = getUsedShkToday();
-        return Math.max(0, dailyLimit - usedToday);
-    }
-
-    /**
-     * Egyedi kezdőjegy napi keret ellenőrzése.
-     *
-     * Legacy: _mekd = 3 - _ne (napiegyedikezdij)
-     * Max 3 egyedi kezdőjegy naponta.
-     */
-    public int getRemainingCustomFeeQuota() {
-        UUID companyId = SecurityUtils.getCurrentCompanyId();
-
-        InitialFeeConfig config = initialFeeConfigRepository
-            .findByCompanyIdAndActive(companyId, true)
-            .orElse(null);
-
-        int dailyLimit = (config != null && config.getDailyCustomFeeLimit() != null)
-            ? config.getDailyCustomFeeLimit() : 3;
-
-        int usedToday = getUsedCustomFeeToday();
-        return Math.max(0, dailyLimit - usedToday);
-    }
-
-    /**
-     * Teljes díj összesítés (kezelési díj + kezdőjegy).
-     */
-    public FeeCalculationResult calculateTotalFees(BigDecimal hufAmount) {
-        BigDecimal handlingFee = calculateHandlingFee(hufAmount);
-        BigDecimal initialFee = calculateInitialFee(hufAmount);
-        BigDecimal totalFee = handlingFee.add(initialFee);
-        int remainingShk = getRemainingShkQuota();
-        int remainingCustomFee = getRemainingCustomFeeQuota();
-
-        return FeeCalculationResult.builder()
-            .handlingFee(handlingFee)
-            .initialFee(initialFee)
-            .totalFee(totalFee)
-            .remainingShkQuota(remainingShk)
-            .remainingCustomFeeQuota(remainingCustomFee)
-            .feeType(getHandlingFeeType(SecurityUtils.getCurrentCompanyId()))
-            .build();
-    }
-
-    // ============ HELPER ============
-
-    private HandlingFeeType getHandlingFeeType(UUID companyId) {
+    private int getDailyCustomFeeLimit() {
         try {
-            String typeStr = systemParameterService.getValue("HANDLING_FEE_TYPE");
-            return HandlingFeeType.valueOf(typeStr);
+            return Integer.parseInt(systemParameterService.getValue("DAILY_CUSTOM_FEE_LIMIT"));
         } catch (Exception e) {
-            return HandlingFeeType.NONE;
+            return DEFAULT_DAILY_CUSTOM_FEE_LIMIT;
         }
-    }
-
-    private int getPerMilleRate(UUID companyId) {
-        try {
-            String val = systemParameterService.getValue("HANDLING_FEE_PER_MILLE");
-            return Integer.parseInt(val);
-        } catch (Exception e) {
-            return 0;
-        }
-    }
-
-    /**
-     * Kerekítés 5 Ft-ra (legacy kompatibilis).
-     * 1-2 → 0, 3-7 → 5, 8-9 → 10
-     *
-     * HIGH FIX #3: package-private (nem private) a tesztelhetőség érdekében.
-     * Legacy compatible: HALF_UP, not HALF_EVEN
-     */
-    static BigDecimal roundToFive(BigDecimal amount) {
-        long value = amount.longValue();
-        long remainder = value % 5;
-        if (remainder < 3) {
-            return new BigDecimal(value - remainder);
-        } else {
-            return new BigDecimal(value + (5 - remainder));
-        }
-    }
-
-    /**
-     * HIGH FIX #11: SHK napi keret — valós query a Transaction táblából.
-     * Legacy: _shk = GetSajatHataskoru — napi SHK tranzakciók száma.
-     */
-    private int getUsedShkToday() {
-        UUID branchId = SecurityUtils.getCurrentBranchId();
-        return (int) transactionRepository.countShkTransactionsToday(branchId, LocalDate.now());
-    }
-
-    /**
-     * HIGH FIX #12: Custom fee napi keret — valós query a Transaction táblából.
-     * Legacy: _mekd = napiegyedikezdij — napi egyedi kezdőjegy tranzakciók száma.
-     */
-    private int getUsedCustomFeeToday() {
-        UUID branchId = SecurityUtils.getCurrentBranchId();
-        return (int) transactionRepository.countCustomFeeTransactionsToday(branchId, LocalDate.now());
-    }
-
-    // ============ RESULT DTO ============
-
-    @lombok.Data
-    @lombok.Builder
-    @lombok.NoArgsConstructor
-    @lombok.AllArgsConstructor
-    public static class FeeCalculationResult {
-        private BigDecimal handlingFee;
-        private BigDecimal initialFee;
-        private BigDecimal totalFee;
-        private int remainingShkQuota;
-        private int remainingCustomFeeQuota;
-        private HandlingFeeType feeType;
     }
 }
