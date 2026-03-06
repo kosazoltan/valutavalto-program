@@ -42,6 +42,7 @@ public class HandlingFeeService {
     private final SystemParameterService systemParameterService;
     private final HandlingFeeBracketRepository bracketRepository;
     private final HandlingFeeTransactionRepository feeTransactionRepository;
+    private final DiscountThresholdService discountThresholdService;
 
     /** Default napi egyedi kezelési díj limit */
     private static final int DEFAULT_DAILY_CUSTOM_FEE_LIMIT = 3;
@@ -64,11 +65,22 @@ public class HandlingFeeService {
 
         HandlingFeeType feeType = resolveFeeType();
 
-        return switch (feeType) {
+        BigDecimal baseFee = switch (feeType) {
             case NONE -> BigDecimal.ZERO;
             case PER_MILLE -> calculatePerMille(hufAmount);
             case BRACKET -> calculateBracket(hufAmount);
         };
+
+        // Automatikus kedvezmény/felár alkalmazása (BIGARFVALT/KISARFVALT)
+        var discount = discountThresholdService.resolveDiscount(hufAmount);
+        if (discount.isPresent()) {
+            BigDecimal adjusted = discountThresholdService.applyDiscount(baseFee, discount.get());
+            log.debug("Kezelési díj kedvezmény alkalmazva: {} Ft → {} Ft ({})",
+                    baseFee, adjusted, discount.get().getCode());
+            return adjusted;
+        }
+
+        return baseFee;
     }
 
     /**

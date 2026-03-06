@@ -58,6 +58,12 @@ const BATCH4_ITEMS: MenuItem[] = [
   { key: 'D2', label: 'Devizakereskedés', icon: '🔄', route: '/trade' as PageRoute, hotkey: 'Ctrl+X' },
 ];
 
+// Sprint 3 funkciók
+const SPRINT3_ITEMS: MenuItem[] = [
+  { key: 'S1', label: 'Konverzió', icon: '🔄', route: '/conversion' as PageRoute, hotkey: 'Ctrl+V' },
+  { key: 'S2', label: 'Szünet', icon: '☕', route: '/break' as PageRoute, hotkey: 'Ctrl+Q' },
+];
+
 // Értéktár extra menüpontok
 const ERTEKTAR_ITEMS: MenuItem[] = [
   { key: 'ET1', label: 'Értéktár áttekintő', icon: '🏦', route: '/ertektar', hotkey: 'Ctrl+1' },
@@ -160,6 +166,12 @@ export default function MainMenu() {
         } else if (e.key === '0') {
           e.preventDefault();
           handleNavigate('/dashboard' as PageRoute);
+        } else if (keyLower === 'v') {
+          e.preventDefault();
+          handleNavigate('/conversion' as PageRoute);
+        } else if (keyLower === 'q') {
+          e.preventDefault();
+          handleNavigate('/break' as PageRoute);
         }
       }
 
@@ -359,6 +371,23 @@ export default function MainMenu() {
                 <span className="menu-btn-icon">{item.icon}</span>
                 <span className="menu-btn-label text-teal-800">{item.label}</span>
                 <span className="menu-btn-hotkey text-teal-500">{item.hotkey}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        {/* Sprint 3 — Konverzió + Szünet */}
+        <div className="mx-auto mt-6 max-w-4xl">
+          <h2 className="mb-3 text-lg font-semibold text-gray-600">🔄 Kiegészítő funkciók</h2>
+          <div className="grid grid-cols-4 gap-4">
+            {SPRINT3_ITEMS.map((item) => (
+              <button
+                key={item.key}
+                onClick={() => handleNavigate(item.route)}
+                className="menu-btn h-28 border-2 border-violet-200 bg-violet-50 hover:bg-violet-100"
+              >
+                <span className="menu-btn-icon">{item.icon}</span>
+                <span className="menu-btn-label text-violet-800">{item.label}</span>
+                <span className="menu-btn-hotkey text-violet-500">{item.hotkey}</span>
               </button>
             ))}
           </div>
