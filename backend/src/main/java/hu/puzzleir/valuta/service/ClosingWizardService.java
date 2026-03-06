@@ -10,13 +10,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.dto.closingwizard.ClosingWizardDto;
 import hu.puzzleir.valuta.dto.closingwizard.ClosingWizardStepDto;
 import hu.puzzleir.valuta.entity.*;
+import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.ClosingWizardRepository;
+import hu.puzzleir.valuta.repository.DailySessionRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -34,6 +38,8 @@ public class ClosingWizardService {
     private final ClosingWizardRepository closingWizardRepository;
     private final WorkerRepository workerRepository;
     private final BranchRepository branchRepository;
+    private final CashBalanceRepository cashBalanceRepository;
+    private final DailySessionRepository dailySessionRepository;
     private final ObjectMapper objectMapper;
 
     /**
@@ -166,6 +172,187 @@ public class ClosingWizardService {
         log.info("Zárási varázsló megszakítva: id={}", wizardId);
 
         return toDto(saved);
+    }
+
+    // ============ STEP-SPECIFIC METHODS ============
+
+    /**
+     * Step 1: Nyitott tranzakciók validálása.
+     * Visszaadja a befejezetlen tranzakciók listáját.
+     */
+    @Transactional(readOnly = true)
+    public List<String> validateOpenTransactions(UUID branchId) {
+        List<String> errors = new ArrayList<>();
+
+        // Ellenőrzés: van-e nyitott session
+        if (!dailySessionRepository.hasOpenSession(branchId)) {
+            errors.add("Nincs nyitott napi munkamenet!");
+            return errors;
+        }
+
+        // Aktuális session lekérése
+        DailySession currentSession = dailySessionRepository.findLatest(branchId)
+                .orElse(null);
+        if (currentSession != null && currentSession.getStatus() == DailySessionStatus.PENDING_CLOSE) {
+            errors.add("A nap zárás alatt van, várjon a folyamat befejezésére!");
+        }
+
+        // TODO: Tranzakció repository ellenőrzés (ha van PENDING státuszú tranzakció)
+        // Ez a valós implementációban a TransactionRepository-ból jönne
+
+        return errors;
+    }
+
+    /**
+     * Step 2: Címletolvasó — valutánként címletek rögzítése.
+     * Visszaadja a számolt összesítést.
+     */
+    public Map<String, Object> countDenominations(UUID branchId, Map<String, Map<Integer, Integer>> denomCounts) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        Map<String, BigDecimal> totals = new LinkedHashMap<>();
+
+        for (Map.Entry<String, Map<Integer, Integer>> entry : denomCounts.entrySet()) {
+            String currencyCode = entry.getKey();
+            Map<Integer, Integer> denoms = entry.getValue();
+
+            BigDecimal total = BigDecimal.ZERO;
+            List<Map<String, Object>> denomDetails = new ArrayList<>();
+
+            for (Map.Entry<Integer, Integer> denom : denoms.entrySet()) {
+                int value = denom.getKey();
+                int count = denom.getValue();
+                BigDecimal subtotal = BigDecimal.valueOf(value).multiply(BigDecimal.valueOf(count));
+                total = total.add(subtotal);
+
+                denomDetails.add(Map.of(
+                        "value", value,
+                        "count", count,
+                        "subtotal", subtotal
+                ));
+            }
+
+            totals.put(currencyCode, total);
+            result.put(currencyCode, Map.of("denominations", denomDetails, "total", total));
+        }
+
+        result.put("totals", totals);
+        return result;
+    }
+
+    /**
+     * Step 3: Eltérés számítás — nyilvántartás vs fizikai készlet.
+     */
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> calculateDifferences(UUID branchId, Map<String, BigDecimal> physicalCounts) {
+        List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
+        List<Map<String, Object>> differences = new ArrayList<>();
+
+        for (CashBalance cb : balances) {
+            String code = cb.getCurrency().getCode();
+            BigDecimal expected = cb.getCurrentBalance();
+            BigDecimal actual = physicalCounts.getOrDefault(code, BigDecimal.ZERO);
+            BigDecimal diff = actual.subtract(expected);
+
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("currencyCode", code);
+            item.put("expected", expected);
+            item.put("actual", actual);
+            item.put("difference", diff);
+            item.put("status", diff.compareTo(BigDecimal.ZERO) == 0 ? "OK" : "DISCREPANCY");
+
+            differences.add(item);
+        }
+
+        return differences;
+    }
+
+    /**
+     * Step 4: Zárási riport generálás.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> generateClosingReport(UUID wizardId) {
+        ClosingWizard wizard = closingWizardRepository.findByIdWithSteps(wizardId)
+                .orElseThrow(() -> new ResourceNotFoundException("Varázsló nem található: " + wizardId));
+
+        UUID branchId = wizard.getBranch().getId();
+        DailySession session = dailySessionRepository.findByBranchIdAndSessionDate(branchId, LocalDate.now())
+                .orElse(null);
+
+        Map<String, Object> report = new LinkedHashMap<>();
+        report.put("wizardId", wizardId.toString());
+        report.put("branchName", wizard.getBranch().getName());
+        report.put("closingDate", wizard.getClosingDate().toString());
+        report.put("closingType", wizard.getClosingType().name());
+
+        if (session != null) {
+            report.put("transactionCount", session.getTransactionCount());
+            report.put("buyCount", session.getBuyCount());
+            report.put("sellCount", session.getSellCount());
+            report.put("reversalCount", session.getReversalCount());
+            report.put("buyTurnoverHuf", session.getBuyTurnoverHuf());
+            report.put("sellTurnoverHuf", session.getSellTurnoverHuf());
+            report.put("handlingFeeTotal", session.getHandlingFeeTotal());
+            report.put("openingBalanceHuf", session.getOpeningBalanceHuf());
+            report.put("closingBalanceHuf", session.getClosingBalanceHuf() != null
+                    ? session.getClosingBalanceHuf() : BigDecimal.ZERO);
+        }
+
+        // Készlet állapot
+        List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
+        List<Map<String, Object>> inventorySnapshot = new ArrayList<>();
+        for (CashBalance cb : balances) {
+            inventorySnapshot.add(Map.of(
+                    "currencyCode", cb.getCurrency().getCode(),
+                    "openingBalance", cb.getOpeningBalance(),
+                    "currentBalance", cb.getCurrentBalance(),
+                    "dailyChange", cb.getDailyChange()
+            ));
+        }
+        report.put("inventory", inventorySnapshot);
+
+        return report;
+    }
+
+    /**
+     * Step 5: Zárás véglegesítése és session lezárása.
+     */
+    public boolean finalizeClosing(UUID wizardId, Long workerId) {
+        ClosingWizard wizard = closingWizardRepository.findByIdWithSteps(wizardId)
+                .orElseThrow(() -> new ResourceNotFoundException("Varázsló nem található: " + wizardId));
+
+        if (wizard.getWizardStatus() != WizardStatus.IN_PROGRESS) {
+            throw new ValidationException("Ez a varázsló már nem aktív!");
+        }
+
+        Worker worker = workerRepository.findById(workerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található: " + workerId));
+
+        UUID branchId = wizard.getBranch().getId();
+
+        // Session lezárása
+        DailySession session = dailySessionRepository.findByBranchIdAndSessionDate(branchId, LocalDate.now())
+                .orElse(null);
+        if (session != null && session.isOpen()) {
+            BigDecimal closingBalance = cashBalanceRepository.sumCurrentBalanceHuf(branchId);
+            session.setStatus(DailySessionStatus.CLOSED);
+            session.setClosedByWorker(worker);
+            session.setClosedAt(LocalDateTime.now());
+            session.setClosingBalanceHuf(closingBalance);
+            session.setDenominationVerified(true);
+            dailySessionRepository.save(session);
+        }
+
+        // Wizard lezárása
+        wizard.getSteps().forEach(step -> step.setCompleted(true));
+        wizard.setWizardStatus(WizardStatus.COMPLETED);
+        wizard.setCompletedByWorker(worker);
+        wizard.setCompletedAt(LocalDateTime.now());
+        closingWizardRepository.save(wizard);
+
+        log.info("Zárás véglegesítve: wizard={}, session={}", wizardId,
+                session != null ? session.getId() : "none");
+
+        return true;
     }
 
     // ============ HELPER METHODS ============

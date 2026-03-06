@@ -511,6 +511,16 @@ function Step5Finalize({
   isCompleting: boolean;
   onComplete: () => void;
 }) {
+  const [confirmStep, setConfirmStep] = useState(0);
+
+  const handleFirstConfirm = () => {
+    setConfirmStep(1);
+  };
+
+  const handleFinalConfirm = () => {
+    onComplete();
+  };
+
   return (
     <div className="space-y-6 text-center">
       <div>
@@ -534,15 +544,45 @@ function Step5Finalize({
         </p>
       </div>
 
-      <button
-        onClick={onComplete}
-        disabled={isCompleting}
-        className="btn-primary mx-auto bg-green-600 px-8 text-lg hover:bg-green-700 disabled:opacity-50"
-      >
-        {isCompleting
-          ? '⏳ Napzárás végrehajtása...'
-          : '🌙 Napzárás véglegesítése és nyomtatás'}
-      </button>
+      {confirmStep === 0 && (
+        <button
+          onClick={handleFirstConfirm}
+          disabled={isCompleting}
+          className="mx-auto rounded-lg bg-orange-500 px-8 py-3 text-lg font-medium text-white hover:bg-orange-600 disabled:opacity-50"
+        >
+          🌙 Zárom a napot
+        </button>
+      )}
+
+      {confirmStep === 1 && (
+        <div className="space-y-4">
+          <div className="rounded-lg border-2 border-red-300 bg-red-50 p-4">
+            <p className="font-bold text-red-800">
+              ⛔ BIZTOSAN ZÁRJA A NAPOT?
+            </p>
+            <p className="text-sm text-red-700">
+              Ez a művelet visszavonhatatlan! Kattintson az alábbi gombra a véglegesítéshez.
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-4">
+            <button
+              onClick={() => setConfirmStep(0)}
+              className="rounded-lg border bg-white px-6 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+            >
+              ← Mégsem
+            </button>
+            <button
+              onClick={handleFinalConfirm}
+              disabled={isCompleting}
+              className="rounded-lg bg-green-600 px-8 py-3 text-lg font-medium text-white hover:bg-green-700 disabled:opacity-50"
+            >
+              {isCompleting
+                ? '⏳ Napzárás végrehajtása...'
+                : '✅ VÉGLEGESÍTÉS — Zárom a napot!'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

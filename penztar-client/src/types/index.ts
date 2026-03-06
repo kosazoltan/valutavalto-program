@@ -1350,3 +1350,69 @@ export interface CustomerRanking {
 export type PageRouteBatch5A =
   | PageRouteBatch4B
   | '/rate-history';
+
+// ============================================================
+// Batch 6A — Napi záró wizard + Pénztárnyitás + Kalkulátor + Kerekítés
+// ============================================================
+
+// --- Kerekítési szabályok ---
+export interface RoundingRule {
+  id: number;
+  currencyCode: string;
+  precisionValue: number;
+  smallThreshold: number;
+  largeThreshold: number;
+  smallRounding: 'UP' | 'DOWN' | 'HALF_UP';
+  largeRounding: 'UP' | 'DOWN' | 'HALF_UP';
+}
+
+// --- Deviza kalkulátor ---
+export interface CalculationResult {
+  fromCurrency: string;
+  toCurrency: string;
+  fromAmount: number;
+  toAmount: number;
+  appliedRate: number;
+  spread: number;
+  commission: number;
+  direction: string;
+  roundingInfo: string;
+}
+
+export interface ConvertRequest {
+  fromCurrency: string;
+  toCurrency: string;
+  amount: number;
+  direction: 'BUY' | 'SELL';
+}
+
+export interface ReverseRequest {
+  currency: string;
+  hufAmount: number;
+}
+
+// --- Pénztárnyitás ---
+export interface SessionOpenRequest {
+  workerId: number;
+  branchId: string;
+}
+
+export interface SessionData {
+  sessionId: number;
+  branchId: string;
+  branchName: string;
+  workerId: number;
+  workerName: string;
+  sessionDate: string;
+  status: string;
+  openedAt: string;
+  closedAt?: string;
+  openingBalances: Record<string, number>;
+  warnings: string[];
+}
+
+// --- Navigáció kiegészítés (Batch 6A) ---
+export type PageRouteBatch6A =
+  | PageRouteBatch5A
+  | '/session-open'
+  | '/calculator';

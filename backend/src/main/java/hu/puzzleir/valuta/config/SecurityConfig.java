@@ -57,6 +57,10 @@ public class SecurityConfig {
 
                 // Health check
                 .requestMatchers("/actuator/**").permitAll()
+                .requestMatchers("/api/v1/health", "/api/v1/health/**").permitAll()
+
+                // Swagger / OpenAPI docs
+                .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/api-docs/**", "/v3/api-docs/**").permitAll()
 
                 // Branch endpoints - minden bejelentkezett user
                 .requestMatchers("/api/v1/branches/**").authenticated()

@@ -3,6 +3,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { setAuthToken, loadPersistedToken } from '@/api/client';
 import { useAppMode } from '@/hooks/useAppMode';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import ToastContainer from '@/components/Toast';
 import LoginPage from '@/pages/LoginPage';
 import MainMenu from '@/pages/MainMenu';
 import SellPage from '@/pages/SellPage';
@@ -49,6 +51,11 @@ import DashboardPage from '@/pages/DashboardPage';
 // Batch 4B — Backup + Nyomtatási sablonok
 import BackupPage from '@/pages/BackupPage';
 import PrintTemplatePage from '@/pages/PrintTemplatePage';
+// Batch 6A — Pénztárnyitás + Kalkulátor
+import SessionOpenPage from '@/pages/SessionOpenPage';
+import CalculatorPage from '@/pages/CalculatorPage';
+// Batch 6B — Audit napló
+import AuditLogPage from '@/pages/AuditLogPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -96,6 +103,8 @@ export default function App() {
   }
 
   return (
+    <ErrorBoundary>
+    <ToastContainer />
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route
@@ -415,7 +424,36 @@ export default function App() {
         }
       />
 
+      {/* Batch 6B — Audit napló */}
+      <Route
+        path="/audit"
+        element={
+          <ProtectedRoute>
+            <AuditLogPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Batch 6A route-ok */}
+      <Route
+        path="/session-open"
+        element={
+          <ProtectedRoute>
+            <SessionOpenPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/calculator"
+        element={
+          <ProtectedRoute>
+            <CalculatorPage />
+          </ProtectedRoute>
+        }
+      />
+
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
+    </ErrorBoundary>
   );
 }
