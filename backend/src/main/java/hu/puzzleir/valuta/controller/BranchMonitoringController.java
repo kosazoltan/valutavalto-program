@@ -5,7 +5,9 @@ import hu.puzzleir.valuta.dto.monitoring.HeartbeatRequest;
 import hu.puzzleir.valuta.service.BranchMonitoringService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,6 +18,7 @@ import java.util.UUID;
  * Fiók monitoring controller — locserver központi szerver.
  * Heartbeat fogadás, online/offline fiókok, dashboard.
  */
+@PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
 @RestController
 @RequestMapping("/api/v1/monitoring")
 @RequiredArgsConstructor

@@ -42,7 +42,7 @@ public class DenominationCalculatorService {
             return Collections.emptyMap();
         }
 
-        List<Denomination> denoms = getActiveDenominations(currencyCode);
+        List<Denomination> denoms = new java.util.ArrayList<>(getActiveDenominations(currencyCode));
         if (denoms.isEmpty()) {
             log.warn("Nincs aktív címlet a {} valutához!", currencyCode);
             return Collections.emptyMap();
@@ -92,7 +92,7 @@ public class DenominationCalculatorService {
             return Collections.emptyMap();
         }
 
-        List<Denomination> denoms = getActiveDenominations(currencyCode);
+        List<Denomination> denoms = new java.util.ArrayList<>(getActiveDenominations(currencyCode));
         denoms.sort((a, b) -> b.getFaceValue().compareTo(a.getFaceValue()));
 
         Map<BigDecimal, Integer> result = new LinkedHashMap<>();

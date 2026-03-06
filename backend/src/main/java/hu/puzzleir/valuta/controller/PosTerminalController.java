@@ -3,7 +3,9 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.entity.PosTerminal;
 import hu.puzzleir.valuta.service.PosTerminalService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -14,6 +16,7 @@ import java.util.UUID;
 /**
  * POS terminál controller — kártyás terminálok kezelése.
  */
+@PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
 @RestController
 @RequestMapping("/api/v1/pos-terminal")
 @RequiredArgsConstructor

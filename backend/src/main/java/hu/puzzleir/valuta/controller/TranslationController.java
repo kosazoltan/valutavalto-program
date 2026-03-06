@@ -5,7 +5,9 @@ import hu.puzzleir.valuta.dto.translation.TranslationImportRequest;
 import hu.puzzleir.valuta.entity.Translation;
 import hu.puzzleir.valuta.service.TranslationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -13,6 +15,7 @@ import java.util.Map;
 /**
  * Többnyelvűség (i18n) REST controller.
  */
+@PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
 @RestController
 @RequestMapping("/api/v1/translations")
 @RequiredArgsConstructor

@@ -3,9 +3,13 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.entity.Contribution;
 import hu.puzzleir.valuta.service.ContributionService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -15,6 +19,7 @@ import java.util.UUID;
 /**
  * Járulék controller — járulék kalkuláció és nyilvántartás.
  */
+@PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
 @RestController
 @RequestMapping("/api/v1/contributions")
 @RequiredArgsConstructor

@@ -120,7 +120,7 @@ class DenominationCalculatorServiceTest {
         Currency huf = new Currency();
         huf.setCode("HUF");
 
-        return List.of(
+        return new java.util.ArrayList<>(List.of(
                 createDenom(huf, "20000", true),
                 createDenom(huf, "10000", true),
                 createDenom(huf, "5000", true),
@@ -129,7 +129,7 @@ class DenominationCalculatorServiceTest {
                 createDenom(huf, "500", true),
                 createDenom(huf, "200", true),
                 createDenom(huf, "100", true)
-        );
+        ));
     }
 
     private Denomination createDenom(Currency currency, String faceValue, boolean active) {

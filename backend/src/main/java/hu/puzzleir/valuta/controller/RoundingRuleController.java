@@ -3,7 +3,9 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.dto.rounding.RoundingRuleDto;
 import hu.puzzleir.valuta.service.RoundingRuleService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -13,6 +15,7 @@ import java.util.Map;
 /**
  * Kerekítési szabályok controller.
  */
+@PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
 @RestController
 @RequestMapping("/api/v1/rounding-rules")
 @RequiredArgsConstructor

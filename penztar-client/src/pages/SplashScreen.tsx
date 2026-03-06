@@ -16,7 +16,8 @@ export default function SplashScreen() {
     // Backend health check (opcionális)
     const checkBackend = async () => {
       try {
-        const response = await fetch('http://localhost:3000/health', {
+        const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1';
+        const response = await fetch(`${apiBase}/health`, {
           method: 'GET',
           signal: AbortSignal.timeout(1500), // 1.5s timeout
         });

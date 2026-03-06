@@ -5,7 +5,9 @@ import hu.puzzleir.valuta.entity.DataCollection;
 import hu.puzzleir.valuta.service.DataCollectionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -19,6 +21,7 @@ import java.util.stream.Collectors;
  *
  * A központi szerver gyűjti össze az irodák napi adatait.
  */
+@PreAuthorize("hasRole('ADMIN')")
 @RestController
 @RequestMapping("/api/v1/data-collection")
 @RequiredArgsConstructor

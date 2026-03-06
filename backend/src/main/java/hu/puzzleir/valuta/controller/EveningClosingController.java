@@ -4,8 +4,11 @@ import hu.puzzleir.valuta.dto.eveningclosing.*;
 import hu.puzzleir.valuta.service.EveningClosingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -16,6 +19,7 @@ import java.time.LocalDate;
  * Legacy: Delphi ESTIZAR modul → FTP-n bináris csomag.
  * Modern: REST API — JSON adatcsomag küldés a központnak.
  */
+@PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
 @RestController
 @RequestMapping("/api/evening-closing")
 @RequiredArgsConstructor

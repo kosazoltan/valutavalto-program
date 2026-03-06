@@ -3,7 +3,9 @@ package hu.puzzleir.valuta.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -19,6 +21,7 @@ import java.util.Map;
  * ÁLLAPOT: STUB — nincs élő integráció, minden endpoint
  * HTTP 501 Not Implemented választ ad.
  */
+@PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
 @RestController
 @RequestMapping("/api/v1/western-union")
 @Tag(name = "Western Union (STUB)", description = "Western Union integráció — jelenleg inaktív")

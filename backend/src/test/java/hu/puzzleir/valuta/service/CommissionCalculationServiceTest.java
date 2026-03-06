@@ -7,7 +7,7 @@ import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.entity.TransactionStatus;
 import hu.puzzleir.valuta.repository.CommissionCalculationRepository;
-import hu.puzzleir.valuta.repository.CommissionRuleRepository2;
+import hu.puzzleir.valuta.repository.CommissionRuleRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import org.junit.jupiter.api.DisplayName;
@@ -41,7 +41,7 @@ class CommissionCalculationServiceTest {
     private CommissionCalculationRepository commissionCalcRepo;
 
     @Mock
-    private CommissionRuleRepository2 commissionRuleRepo;
+    private CommissionRuleRepository commissionRuleRepo;
 
     @Mock
     private TransactionRepository transactionRepository;

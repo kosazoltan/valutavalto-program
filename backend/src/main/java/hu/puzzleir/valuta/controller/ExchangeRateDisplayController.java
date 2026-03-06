@@ -4,7 +4,9 @@ import hu.puzzleir.valuta.entity.ExchangeRateDisplay;
 import hu.puzzleir.valuta.service.ExchangeRateDisplayService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -14,6 +16,7 @@ import java.util.UUID;
 /**
  * Árfolyam kijelző controller — kijelző konfigurációk és aktuális árfolyamok.
  */
+@PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
 @RestController
 @RequestMapping("/api/v1/exchange-rate-display")
 @RequiredArgsConstructor

@@ -3,7 +3,9 @@ package hu.puzzleir.valuta.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -24,6 +26,7 @@ import java.util.Map;
  * ÁLLAPOT: STUB — a szkenner integráció az Electron kliens oldalon
  * történik, a backend csak a feltöltött képet fogadja.
  */
+@PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
 @RestController
 @RequestMapping("/api/v1/document-scanner")
 @Tag(name = "Dokumentum Szkenner (STUB)", description = "TWAIN szkenner integráció — Electron kliens oldalon")

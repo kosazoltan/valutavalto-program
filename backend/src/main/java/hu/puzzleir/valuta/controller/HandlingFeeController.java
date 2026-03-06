@@ -7,8 +7,11 @@ import hu.puzzleir.valuta.dto.handlingfee.HandlingFeeTransactionDto;
 import hu.puzzleir.valuta.service.HandlingFeeTransactionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -17,6 +20,7 @@ import java.util.UUID;
 /**
  * Kezelési díj REST végpontok.
  */
+@PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
 @RestController
 @RequestMapping("/api/v1/handling-fees")
 @RequiredArgsConstructor

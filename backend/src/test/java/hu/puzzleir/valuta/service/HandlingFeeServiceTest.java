@@ -172,18 +172,13 @@ class HandlingFeeServiceTest {
     }
 
     private void setupSecurityContext(UUID companyId) {
-        // SecurityUtils mock — a tényleges SecurityUtils statikus metódusok mock-olása
-        // production-ben Spring Security context-ből jön
-        try {
-            var auth = new org.springframework.security.authentication.TestingAuthenticationToken(
-                    "test", "test", "ROLE_CASHIER");
-            var details = new java.util.HashMap<String, Object>();
-            details.put("companyId", companyId);
-            auth.setDetails(details);
-            org.springframework.security.core.context.SecurityContextHolder.getContext()
-                    .setAuthentication(auth);
-        } catch (Exception e) {
-            // SecurityContext setup failure — tesztek más mock-ot használnak
-        }
+        UUID branchId = UUID.randomUUID();
+        var details = new hu.puzzleir.valuta.security.WorkerAuthenticationDetails(
+                1L, companyId, branchId, "CASHIER");
+        var auth = new org.springframework.security.authentication.TestingAuthenticationToken(
+                "test", "test", "ROLE_CASHIER");
+        auth.setDetails(details);
+        org.springframework.security.core.context.SecurityContextHolder.getContext()
+                .setAuthentication(auth);
     }
 }

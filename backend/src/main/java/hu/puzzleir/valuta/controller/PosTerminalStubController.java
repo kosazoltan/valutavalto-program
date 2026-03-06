@@ -3,7 +3,9 @@ package hu.puzzleir.valuta.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -20,6 +22,7 @@ import java.util.Map;
  * ÁLLAPOT: STUB — nincs élő integráció, az Electron kliens a terminál
  * SDK-ján keresztül fog kommunikálni, a backend csak a tranzakciót rögzíti.
  */
+@PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
 @RestController
 @RequestMapping("/api/v1/pos-terminal")
 @Tag(name = "POS Terminál (STUB)", description = "Bankkártyás fizetés terminál integráció — stub")

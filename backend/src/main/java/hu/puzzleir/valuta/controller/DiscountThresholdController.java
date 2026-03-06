@@ -5,7 +5,9 @@ import hu.puzzleir.valuta.service.DiscountThresholdService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -19,6 +21,7 @@ import java.util.Optional;
  * Legacy: BIGARFVALT / KISARFVALT — automatikus kedvezmény/felár
  * a tranzakció összeg alapján.
  */
+@PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
 @RestController
 @RequestMapping("/api/discount-threshold")
 @RequiredArgsConstructor

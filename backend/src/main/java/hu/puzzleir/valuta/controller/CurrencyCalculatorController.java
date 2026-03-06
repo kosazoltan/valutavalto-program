@@ -6,7 +6,9 @@ import hu.puzzleir.valuta.dto.calculator.ReverseRequestDto;
 import hu.puzzleir.valuta.service.CurrencyCalculatorService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -15,6 +17,7 @@ import java.util.Map;
 /**
  * Deviza átváltás kalkulátor controller.
  */
+@PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
 @RestController
 @RequestMapping("/api/v1/calculator")
 @RequiredArgsConstructor

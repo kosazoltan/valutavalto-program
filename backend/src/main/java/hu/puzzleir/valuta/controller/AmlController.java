@@ -4,8 +4,11 @@ import hu.puzzleir.valuta.dto.aml.*;
 import hu.puzzleir.valuta.service.AmlService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -17,6 +20,7 @@ import java.util.Map;
  *
  * 2017. évi LIII. tv. — Pénzmosás és terrorizmus finanszírozása megelőzéséről.
  */
+@PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
 @RestController
 @RequestMapping("/api/v1/aml")
 @RequiredArgsConstructor

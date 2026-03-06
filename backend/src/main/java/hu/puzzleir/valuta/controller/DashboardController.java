@@ -3,7 +3,9 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.dto.dashboard.DashboardSummaryDto;
 import hu.puzzleir.valuta.service.DashboardService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -11,6 +13,7 @@ import java.util.UUID;
 /**
  * Dashboard controller — admin összesítő.
  */
+@PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
 @RestController
 @RequestMapping("/api/v1/dashboard")
 @RequiredArgsConstructor

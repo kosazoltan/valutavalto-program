@@ -5,8 +5,11 @@ import hu.puzzleir.valuta.dto.decade.GenerateDecadeReportDto;
 import hu.puzzleir.valuta.service.DecadeReportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.data.domain.Page;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -14,6 +17,7 @@ import java.util.UUID;
 /**
  * Dekádjelentés REST végpontok.
  */
+@PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
 @RestController
 @RequestMapping("/api/v1/decade-reports")
 @RequiredArgsConstructor

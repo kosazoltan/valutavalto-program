@@ -4,10 +4,15 @@ import hu.puzzleir.valuta.dto.nav.NavReportDto;
 import hu.puzzleir.valuta.dto.nav.NavReportableTransactionDto;
 import hu.puzzleir.valuta.service.NavReportService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpHeaders;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -18,6 +23,7 @@ import java.util.List;
  *
  * 2M+ Ft tranzakciók jelentése a Nemzeti Adó- és Vámhivatal felé.
  */
+@PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
 @RestController
 @RequestMapping("/api/v1/nav-reports")
 @RequiredArgsConstructor

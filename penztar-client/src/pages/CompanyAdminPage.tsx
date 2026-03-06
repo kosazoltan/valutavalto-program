@@ -43,7 +43,7 @@ export default function CompanyAdminPage() {
     setIsLoading(true);
     setError('');
     try {
-      const response = await apiClient.get<BranchWithStats[]>('/api/v1/admin/branches');
+      const response = await apiClient.get<BranchWithStats[]>('/admin/branches');
       setBranches(response.data);
     } catch (err) {
       setError('Nem sikerült betölteni a fiókokat');
@@ -69,7 +69,7 @@ export default function CompanyAdminPage() {
     if (!editBranch) return;
     setIsSaving(true);
     try {
-      await apiClient.put(`/api/v1/admin/branches/${editBranch.id}`, {
+      await apiClient.put(`/admin/branches/${editBranch.id}`, {
         name: editName,
         phone: editPhone || undefined,
         email: editEmail || undefined,

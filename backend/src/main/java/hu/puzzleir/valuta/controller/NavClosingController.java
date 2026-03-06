@@ -7,9 +7,13 @@ import hu.puzzleir.valuta.entity.NavClosingType;
 import hu.puzzleir.valuta.service.NavClosingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.data.domain.Page;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -19,6 +23,7 @@ import java.util.stream.Collectors;
 /**
  * NAV zárás controller — adóhatósági kötelezettség.
  */
+@PreAuthorize("hasRole('ADMIN')")
 @RestController
 @RequestMapping("/api/v1/nav/closings")
 @RequiredArgsConstructor

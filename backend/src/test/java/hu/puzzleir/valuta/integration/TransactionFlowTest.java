@@ -12,6 +12,10 @@ import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.DailySessionService;
 import hu.puzzleir.valuta.service.ExchangeRateService;
 import hu.puzzleir.valuta.service.TransactionService;
+import hu.puzzleir.valuta.service.ReceiptSequenceService;
+import hu.puzzleir.valuta.service.HandlingFeeCalculator;
+import hu.puzzleir.valuta.service.AmlService;
+import hu.puzzleir.valuta.service.PosTerminalService;
 import hu.puzzleir.valuta.service.StornoService;
 import hu.puzzleir.valuta.dto.storno.StornoRequestDto;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,6 +63,10 @@ class TransactionFlowTest {
     @Mock private BranchRepository branchRepository;
     @Mock private DailySessionService dailySessionService;
     @Mock private ExchangeRateService exchangeRateService;
+    @Mock private ReceiptSequenceService receiptSequenceService;
+    @Mock private HandlingFeeCalculator handlingFeeCalculator;
+    @Mock private AmlService amlService;
+    @Mock private PosTerminalService posTerminalService;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();
     private static final UUID BRANCH_ID = UUID.randomUUID();
@@ -115,6 +123,27 @@ class TransactionFlowTest {
         hufBalance.setId(2L);
         hufBalance.setCurrentBalance(new BigDecimal("10000000"));
         hufBalance.setOpeningBalance(new BigDecimal("10000000"));
+
+        // Default mock: HandlingFeeCalculator returns 0 (no fee)
+        when(handlingFeeCalculator.calculate(any(), any(), any()))
+            .thenReturn(java.math.BigDecimal.ZERO);
+        when(handlingFeeCalculator.calculateBuyGross(any(), any()))
+            .thenAnswer(inv -> {
+                java.math.BigDecimal net = inv.getArgument(0);
+                java.math.BigDecimal fee = inv.getArgument(1);
+                return net != null && fee != null ? net.subtract(fee) : net;
+            });
+        when(handlingFeeCalculator.calculateSellGross(any(), any()))
+            .thenAnswer(inv -> {
+                java.math.BigDecimal net = inv.getArgument(0);
+                java.math.BigDecimal fee = inv.getArgument(1);
+                return net != null && fee != null ? net.add(fee) : net;
+            });
+        // Default mock: ReceiptSequenceService
+        when(receiptSequenceService.generateReceiptNumber(any(), any()))
+            .thenReturn("TEST-001");
+        when(receiptSequenceService.generateReversalReceiptNumber(any(), any()))
+            .thenReturn("STORNO-001");
     }
 
     // ===== SELL FLOW =====

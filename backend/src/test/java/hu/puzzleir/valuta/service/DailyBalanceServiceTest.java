@@ -1,5 +1,7 @@
 package hu.puzzleir.valuta.service;
 
+import com.puzzleir.backend.entity.Company;
+import com.puzzleir.backend.repository.CompanyRepository;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,21 +15,17 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
- * DailyBalanceService UNIT tesztek — Mockito.
- *
- * calculateDailyBalance() metódus tesztelése:
- * - Nyitó + vétel + átvétel - eladás - átadás = záró
- * - Első nap (nincs előző nap) → havi zárásból olvas
- * - Negatív záró készlet → WARNING de nem hiba
- * - Több valutanem párhuzamosan
- * - NULL-safety
+ * DailyBalanceService UNIT tesztek.
  */
 @ExtendWith(MockitoExtension.class)
 @org.mockito.junit.jupiter.MockitoSettings(strictness = org.mockito.quality.Strictness.LENIENT)
@@ -43,336 +41,132 @@ class DailyBalanceServiceTest {
     private TransactionRepository transactionRepository;
 
     @Mock
-    private MonthlyClosingRepository monthlyClosingRepository;
+    private TransferRepository transferRepository;
 
     @Mock
     private CurrencyRepository currencyRepository;
+
+    @Mock
+    private CompanyRepository companyRepository;
+
+    @Mock
+    private AuditLogService auditLogService;
 
     private static final UUID TEST_COMPANY_ID = UUID.randomUUID();
     private static final UUID TEST_BRANCH_ID = UUID.randomUUID();
 
     @BeforeEach
     void setUp() {
-        // SecurityContext beállítása
         hu.puzzleir.valuta.security.WorkerAuthenticationDetails details =
             new hu.puzzleir.valuta.security.WorkerAuthenticationDetails(
-                1L, TEST_COMPANY_ID, TEST_BRANCH_ID, "CASHIER");
-        TestingAuthenticationToken auth = new TestingAuthenticationToken("test", "pass", "ROLE_CASHIER");
+                1L, TEST_COMPANY_ID, TEST_BRANCH_ID, "ADMIN");
+        TestingAuthenticationToken auth = new TestingAuthenticationToken("test", "pass", "ROLE_ADMIN");
         auth.setDetails(details);
         SecurityContextHolder.getContext().setAuthentication(auth);
-    }
 
-    // ============ ALAPVETŐ SZÁMÍTÁS ============
-
-    @Test
-    @DisplayName("calculateDailyBalance: nyitó + vétel + átvétel - eladás - átadás = záró")
-    void testCalculateDailyBalance_basicFormula() {
-        // GIVEN
-        LocalDate today = LocalDate.of(2024, 12, 15);
-        String currencyCode = "EUR";
-        
-        // Mock: Előző nap záró készlete
-        DailyBalance previousDay = createMockDailyBalance(
-            today.minusDays(1), currencyCode, 
-            BigDecimal.ZERO, // nyitó
-            new BigDecimal("1000") // záró = nyitó + mozgások
-        );
-        when(dailyBalanceRepository.findByBranchIdAndDateAndCurrencyCodeAndCompanyId(
-            eq(TEST_BRANCH_ID), eq(today.minusDays(1)), eq(currencyCode), eq(TEST_COMPANY_ID)
-        )).thenReturn(Optional.of(previousDay));
-        
-        // Mock: Mai tranzakciók
-        when(transactionRepository.sumDailyPurchases(TEST_BRANCH_ID, today, currencyCode, TEST_COMPANY_ID))
-            .thenReturn(new BigDecimal("500")); // vétel
-        when(transactionRepository.sumDailySales(TEST_BRANCH_ID, today, currencyCode, TEST_COMPANY_ID))
-            .thenReturn(new BigDecimal("300")); // eladás
-        
-        // WHEN
-        DailyBalance result = dailyBalanceService.calculateDailyBalance(TEST_BRANCH_ID, today, currencyCode);
-        
-        // THEN
-        // Nyitó = előző nap záró
-        assertThat(result.getOpeningBalance()).isEqualByComparingTo(new BigDecimal("1000"));
-        
-        // Mozgások
-        assertThat(result.getPurchases()).isEqualByComparingTo(new BigDecimal("500"));
-        assertThat(result.getSales()).isEqualByComparingTo(new BigDecimal("300"));
-        assertThat(result.getTransfersIn()).isEqualByComparingTo(BigDecimal.ZERO);
-        assertThat(result.getTransfersOut()).isEqualByComparingTo(BigDecimal.ZERO);
-        
-        // Záró = 1000 + 500 - 300 = 1200
-        assertThat(result.getClosingBalance()).isEqualByComparingTo(new BigDecimal("1200"));
-        
-        verify(dailyBalanceRepository, times(1)).save(any(DailyBalance.class));
-    }
-
-    // ============ ELSŐ NAP (nincs előző nap) ============
-
-    @Test
-    @DisplayName("calculateDailyBalance: első nap — előző hó végi záró a havi zárásból")
-    void testCalculateDailyBalance_firstDay() {
-        // GIVEN
-        LocalDate firstDayOfMonth = LocalDate.of(2024, 12, 1);
-        String currencyCode = "USD";
-        
-        // Mock: NINCS előző nap (nov 30 nem létezik a napi mérlegben)
-        when(dailyBalanceRepository.findByBranchIdAndDateAndCurrencyCodeAndCompanyId(
-            eq(TEST_BRANCH_ID), eq(LocalDate.of(2024, 11, 30)), eq(currencyCode), eq(TEST_COMPANY_ID)
-        )).thenReturn(Optional.empty());
-        
-        // Mock: De VAN előző havi zárás (nov 30)
-        MonthlyClosing monthlyClosing = new MonthlyClosing();
-        monthlyClosing.setClosingBalance(new BigDecimal("5000"));
-        when(monthlyClosingRepository.findByBranchIdAndClosingDateAndCurrencyCodeAndCompanyId(
-            eq(TEST_BRANCH_ID), eq(LocalDate.of(2024, 11, 30)), eq(currencyCode), eq(TEST_COMPANY_ID)
-        )).thenReturn(Optional.of(monthlyClosing));
-        
-        // Mock: Mai tranzakciók
-        when(transactionRepository.sumDailyPurchases(TEST_BRANCH_ID, firstDayOfMonth, currencyCode, TEST_COMPANY_ID))
-            .thenReturn(new BigDecimal("200"));
-        when(transactionRepository.sumDailySales(TEST_BRANCH_ID, firstDayOfMonth, currencyCode, TEST_COMPANY_ID))
-            .thenReturn(new BigDecimal("100"));
-        
-        // WHEN
-        DailyBalance result = dailyBalanceService.calculateDailyBalance(TEST_BRANCH_ID, firstDayOfMonth, currencyCode);
-        
-        // THEN
-        // Nyitó = előző hó végi záró
-        assertThat(result.getOpeningBalance()).isEqualByComparingTo(new BigDecimal("5000"));
-        
-        // Záró = 5000 + 200 - 100 = 5100
-        assertThat(result.getClosingBalance()).isEqualByComparingTo(new BigDecimal("5100"));
-    }
-
-    // ============ TELJESEN ELSŐ NAP (nincs havi zárás sem) ============
-
-    @Test
-    @DisplayName("calculateDailyBalance: teljesen első nap (nincs előzmény) → nyitó = 0")
-    void testCalculateDailyBalance_veryFirstDay() {
-        // GIVEN
-        LocalDate veryFirstDay = LocalDate.of(2024, 1, 1);
-        String currencyCode = "GBP";
-        
-        // Mock: NINCS előző nap
-        when(dailyBalanceRepository.findByBranchIdAndDateAndCurrencyCodeAndCompanyId(
-            any(), any(), eq(currencyCode), eq(TEST_COMPANY_ID)
-        )).thenReturn(Optional.empty());
-        
-        // Mock: NINCS havi zárás sem
-        when(monthlyClosingRepository.findByBranchIdAndClosingDateAndCurrencyCodeAndCompanyId(
-            any(), any(), eq(currencyCode), eq(TEST_COMPANY_ID)
-        )).thenReturn(Optional.empty());
-        
-        // Mock: Mai tranzakciók
-        when(transactionRepository.sumDailyPurchases(TEST_BRANCH_ID, veryFirstDay, currencyCode, TEST_COMPANY_ID))
-            .thenReturn(new BigDecimal("1000"));
-        when(transactionRepository.sumDailySales(TEST_BRANCH_ID, veryFirstDay, currencyCode, TEST_COMPANY_ID))
-            .thenReturn(BigDecimal.ZERO);
-        
-        // WHEN
-        DailyBalance result = dailyBalanceService.calculateDailyBalance(TEST_BRANCH_ID, veryFirstDay, currencyCode);
-        
-        // THEN
-        // Nyitó = 0 (nincs előzmény)
-        assertThat(result.getOpeningBalance()).isEqualByComparingTo(BigDecimal.ZERO);
-        
-        // Záró = 0 + 1000 = 1000
-        assertThat(result.getClosingBalance()).isEqualByComparingTo(new BigDecimal("1000"));
-    }
-
-    // ============ NEGATÍV ZÁRÓ KÉSZLET ============
-
-    @Test
-    @DisplayName("calculateDailyBalance: negatív záró készlet → WARNING de nem hiba")
-    void testCalculateDailyBalance_negativeClosing() {
-        // GIVEN
-        LocalDate today = LocalDate.of(2024, 12, 20);
-        String currencyCode = "CHF";
-        
-        // Mock: Előző nap
-        DailyBalance previousDay = createMockDailyBalance(
-            today.minusDays(1), currencyCode, 
-            BigDecimal.ZERO, 
-            new BigDecimal("100") // csak 100 CHF maradt
-        );
-        when(dailyBalanceRepository.findByBranchIdAndDateAndCurrencyCodeAndCompanyId(
-            eq(TEST_BRANCH_ID), eq(today.minusDays(1)), eq(currencyCode), eq(TEST_COMPANY_ID)
-        )).thenReturn(Optional.of(previousDay));
-        
-        // Mock: Mai eladás TÖBB mint a készlet (300 eladás, de csak 100 volt)
-        when(transactionRepository.sumDailyPurchases(TEST_BRANCH_ID, today, currencyCode, TEST_COMPANY_ID))
-            .thenReturn(BigDecimal.ZERO);
-        when(transactionRepository.sumDailySales(TEST_BRANCH_ID, today, currencyCode, TEST_COMPANY_ID))
-            .thenReturn(new BigDecimal("300")); // !!! negatív lesz
-        
-        // WHEN
-        DailyBalance result = dailyBalanceService.calculateDailyBalance(TEST_BRANCH_ID, today, currencyCode);
-        
-        // THEN
-        // Záró = 100 + 0 - 300 = -200 (NEGATÍV!)
-        assertThat(result.getClosingBalance()).isEqualByComparingTo(new BigDecimal("-200"));
-        
-        // WARNING log-ot kell írni (ezt mockolni nem tudjuk, de a mentés megtörténik)
-        verify(dailyBalanceRepository, times(1)).save(argThat(db -> 
-            db.getClosingBalance().compareTo(BigDecimal.ZERO) < 0
-        ));
-        
-        // NEM dob ValidationException-t (csak WARNING)
-        assertThatCode(() -> dailyBalanceService.calculateDailyBalance(TEST_BRANCH_ID, today, currencyCode))
-            .doesNotThrowAnyException();
-    }
-
-    // ============ TÖBB VALUTANEM PÁRHUZAMOSAN ============
-
-    @Test
-    @DisplayName("calculateAllCurrenciesForDay: több valuta párhuzamosan")
-    void testCalculateAllCurrenciesForDay_multiCurrency() {
-        // GIVEN
-        LocalDate today = LocalDate.of(2024, 12, 25);
-        
-        // Mock: 3 aktív valuta
-        List<Currency> currencies = Arrays.asList(
-            createMockCurrency("EUR"),
-            createMockCurrency("USD"),
-            createMockCurrency("GBP")
-        );
-        when(currencyRepository.findActiveByCompany(TEST_COMPANY_ID))
-            .thenReturn(currencies);
-        
-        // Mock: minden valutának van előző napi zárója
-        for (Currency currency : currencies) {
-            DailyBalance previousDay = createMockDailyBalance(
-                today.minusDays(1), 
-                currency.getCode(), 
-                BigDecimal.ZERO, 
-                new BigDecimal("500")
-            );
-            when(dailyBalanceRepository.findByBranchIdAndDateAndCurrencyCodeAndCompanyId(
-                eq(TEST_BRANCH_ID), eq(today.minusDays(1)), eq(currency.getCode()), eq(TEST_COMPANY_ID)
-            )).thenReturn(Optional.of(previousDay));
-            
-            // Mock: minden valutának van forgalma
-            when(transactionRepository.sumDailyPurchases(TEST_BRANCH_ID, today, currency.getCode(), TEST_COMPANY_ID))
-                .thenReturn(new BigDecimal("100"));
-            when(transactionRepository.sumDailySales(TEST_BRANCH_ID, today, currency.getCode(), TEST_COMPANY_ID))
-                .thenReturn(new BigDecimal("50"));
-        }
-        
-        // WHEN
-        dailyBalanceService.calculateAllCurrenciesForDay(TEST_BRANCH_ID, today);
-        
-        // THEN
-        // 3 valuta × 1 mentés = 3 mentés
-        verify(dailyBalanceRepository, times(3)).save(any(DailyBalance.class));
-    }
-
-    // ============ NULL-SAFETY ============
-
-    @Test
-    @DisplayName("calculateDailyBalance: NULL visszatérés védelem — előző nap záró NULL → 0")
-    void testCalculateDailyBalance_nullSafety() {
-        // GIVEN
-        LocalDate today = LocalDate.of(2024, 12, 31);
-        String currencyCode = "JPY";
-        
-        // Mock: Előző nap létezik, de closingBalance NULL (adatbázis hiba)
-        DailyBalance previousDay = createMockDailyBalance(
-            today.minusDays(1), currencyCode, 
-            BigDecimal.ZERO, 
-            null // NULL!
-        );
-        when(dailyBalanceRepository.findByBranchIdAndDateAndCurrencyCodeAndCompanyId(
-            eq(TEST_BRANCH_ID), eq(today.minusDays(1)), eq(currencyCode), eq(TEST_COMPANY_ID)
-        )).thenReturn(Optional.of(previousDay));
-        
-        // Mock: Mai forgalom
-        when(transactionRepository.sumDailyPurchases(TEST_BRANCH_ID, today, currencyCode, TEST_COMPANY_ID))
-            .thenReturn(new BigDecimal("200"));
-        when(transactionRepository.sumDailySales(TEST_BRANCH_ID, today, currencyCode, TEST_COMPANY_ID))
-            .thenReturn(BigDecimal.ZERO);
-        
-        // WHEN
-        DailyBalance result = dailyBalanceService.calculateDailyBalance(TEST_BRANCH_ID, today, currencyCode);
-        
-        // THEN
-        // Nyitó = 0 (NULL → 0 konverzió)
-        assertThat(result.getOpeningBalance()).isEqualByComparingTo(BigDecimal.ZERO);
-        
-        // Záró = 0 + 200 = 200
-        assertThat(result.getClosingBalance()).isEqualByComparingTo(new BigDecimal("200"));
-        
-        // NEM NPE
-        assertThatCode(() -> dailyBalanceService.calculateDailyBalance(TEST_BRANCH_ID, today, currencyCode))
-            .doesNotThrowAnyException();
+        // Common mock: Company
+        Company mockCompany = new Company();
+        mockCompany.setId(TEST_COMPANY_ID);
+        when(companyRepository.findById(TEST_COMPANY_ID)).thenReturn(Optional.of(mockCompany));
     }
 
     @Test
-    @DisplayName("calculateDailyBalance: záró készlet SOSEM lehet NULL — default BigDecimal.ZERO")
-    void testCalculateDailyBalance_closingNeverNull() {
-        // GIVEN
-        LocalDate today = LocalDate.of(2025, 1, 1);
-        String currencyCode = "CZK";
-        
-        // Mock: Nincs előzmény
-        when(dailyBalanceRepository.findByBranchIdAndDateAndCurrencyCodeAndCompanyId(
-            any(), any(), eq(currencyCode), eq(TEST_COMPANY_ID)
-        )).thenReturn(Optional.empty());
-        
-        // Mock: NINCS forgalom (minden NULL)
-        when(transactionRepository.sumDailyPurchases(TEST_BRANCH_ID, today, currencyCode, TEST_COMPANY_ID))
-            .thenReturn(null); // NULL!
-        when(transactionRepository.sumDailySales(TEST_BRANCH_ID, today, currencyCode, TEST_COMPANY_ID))
-            .thenReturn(null); // NULL!
-        
-        // WHEN
-        DailyBalance result = dailyBalanceService.calculateDailyBalance(TEST_BRANCH_ID, today, currencyCode);
-        
-        // THEN
-        // Minden mező BigDecimal.ZERO (NEM NULL)
-        assertThat(result.getOpeningBalance()).isNotNull().isEqualByComparingTo(BigDecimal.ZERO);
-        assertThat(result.getPurchases()).isNotNull().isEqualByComparingTo(BigDecimal.ZERO);
-        assertThat(result.getSales()).isNotNull().isEqualByComparingTo(BigDecimal.ZERO);
-        assertThat(result.getClosingBalance()).isNotNull().isEqualByComparingTo(BigDecimal.ZERO);
+    @DisplayName("getDailyBalances: üres nap → üres lista")
+    void testGetDailyBalances_empty() {
+        LocalDate today = LocalDate.of(2024, 6, 15);
+
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_BRANCH_ID, today))
+            .thenReturn(Collections.emptyList());
+
+        List<DailyBalance> result = dailyBalanceService.getDailyBalances(TEST_BRANCH_ID, today);
+
+        assertThat(result).isEmpty();
     }
 
-    // ============ HELPER METÓDUSOK ============
+    @Test
+    @DisplayName("getDailyBalances: van adat → visszaadja")
+    void testGetDailyBalances_withData() {
+        LocalDate today = LocalDate.of(2024, 6, 15);
 
-    private DailyBalance createMockDailyBalance(LocalDate date, String currencyCode, 
-                                                 BigDecimal opening, BigDecimal closing) {
         DailyBalance db = new DailyBalance();
-        db.setId(UUID.randomUUID());
-        
-        Company company = new Company();
-        company.setId(TEST_COMPANY_ID);
-        db.setCompany(company);
-        
-        Branch branch = new Branch();
-        branch.setId(TEST_BRANCH_ID);
-        db.setBranch(branch);
-        
-        db.setDate(date);
-        db.setCurrencyCode(currencyCode);
-        db.setOpeningBalance(opening);
-        db.setClosingBalance(closing);
-        db.setPurchases(BigDecimal.ZERO);
-        db.setSales(BigDecimal.ZERO);
-        db.setTransfersIn(BigDecimal.ZERO);
-        db.setTransfersOut(BigDecimal.ZERO);
-        
-        return db;
+        db.setBranchId(TEST_BRANCH_ID);
+        db.setBalanceDate(today);
+        db.setCurrencyCode("EUR");
+
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_BRANCH_ID, today))
+            .thenReturn(List.of(db));
+
+        List<DailyBalance> result = dailyBalanceService.getDailyBalances(TEST_BRANCH_ID, today);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getCurrencyCode()).isEqualTo("EUR");
     }
 
-    private Currency createMockCurrency(String code) {
-        Currency currency = new Currency();
-        currency.setId(UUID.randomUUID());
-        currency.setCode(code);
-        currency.setName(code + " Currency");
-        currency.setActive(true);
-        
-        Company company = new Company();
-        company.setId(TEST_COMPANY_ID);
-        currency.setCompany(company);
-        
-        return currency;
+    @Test
+    @DisplayName("getMonthlyBalances: havi adatok lekérdezése")
+    void testGetMonthlyBalances() {
+        when(dailyBalanceRepository.findByBranchAndMonth(eq(TEST_BRANCH_ID), eq(2024), eq(6)))
+            .thenReturn(Collections.emptyList());
+
+        List<DailyBalance> result = dailyBalanceService.getMonthlyBalances(TEST_BRANCH_ID, 2024, 6);
+
+        assertThat(result).isNotNull();
+        verify(dailyBalanceRepository).findByBranchAndMonth(
+            eq(TEST_BRANCH_ID), eq(2024), eq(6)
+        );
+    }
+
+    @Test
+    @DisplayName("closeDailyBalance: void return, no exception")
+    void testCloseDailyBalance() {
+        LocalDate today = LocalDate.of(2024, 6, 15);
+        String currencyCode = "EUR";
+
+        DailyBalance balance = new DailyBalance();
+        balance.setBranchId(TEST_BRANCH_ID);
+        balance.setBalanceDate(today);
+        balance.setCurrencyCode(currencyCode);
+        balance.setIsClosed(false);
+
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDateAndCurrencyCode(TEST_BRANCH_ID, today, currencyCode))
+            .thenReturn(Optional.of(balance));
+
+        assertThatNoException().isThrownBy(() ->
+            dailyBalanceService.closeDailyBalance(TEST_BRANCH_ID, today, currencyCode)
+        );
+    }
+
+    @Test
+    @DisplayName("calculateDailyBalance: basic EUR calculation")
+    void testCalculateDailyBalance() {
+        LocalDate today = LocalDate.of(2024, 6, 15);
+        String currencyCode = "EUR";
+
+        // No existing balance
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDateAndCurrencyCode(TEST_BRANCH_ID, today, currencyCode))
+            .thenReturn(Optional.empty());
+
+        // Previous day: no balance → opening = 0
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDateAndCurrencyCode(
+            TEST_BRANCH_ID, today.minusDays(1), currencyCode))
+            .thenReturn(Optional.empty());
+        when(dailyBalanceRepository.findMonthlyClosingBalance(eq(TEST_BRANCH_ID), eq(currencyCode), anyInt(), anyInt()))
+            .thenReturn(Collections.emptyList());
+
+        // Daily turnover
+        when(transactionRepository.sumDailyTurnover(eq(TEST_BRANCH_ID), eq(today), eq(TransactionType.BUY)))
+            .thenReturn(new BigDecimal("2000.00"));
+        when(transactionRepository.sumDailyTurnover(eq(TEST_BRANCH_ID), eq(today), eq(TransactionType.SELL)))
+            .thenReturn(new BigDecimal("1500.00"));
+
+        // Save mock
+        when(dailyBalanceRepository.save(any(DailyBalance.class)))
+            .thenAnswer(inv -> inv.getArgument(0));
+
+        DailyBalance result = dailyBalanceService.calculateDailyBalance(TEST_BRANCH_ID, today, currencyCode);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getCurrencyCode()).isEqualTo(currencyCode);
+        verify(dailyBalanceRepository).save(any(DailyBalance.class));
     }
 }

@@ -4,7 +4,9 @@ import hu.puzzleir.valuta.dto.currency.CurrencyDto;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -13,6 +15,7 @@ import java.util.stream.Collectors;
 /**
  * Valuta controller - valuták listázása
  */
+@PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
 @RestController
 @RequestMapping("/api/v1/currencies")
 @RequiredArgsConstructor
