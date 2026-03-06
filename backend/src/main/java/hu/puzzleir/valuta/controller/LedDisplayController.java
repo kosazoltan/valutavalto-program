@@ -1,7 +1,6 @@
 package hu.puzzleir.valuta.controller;
 
-import hu.puzzleir.valuta.dto.led.LedDisplayDto;
-import hu.puzzleir.valuta.dto.led.UpdateScrollingTextDto;
+import hu.puzzleir.valuta.dto.led.*;
 import hu.puzzleir.valuta.service.LedDisplayService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -14,8 +13,7 @@ import java.util.UUID;
 
 /**
  * LED kijelző controller.
- *
- * Placeholder — a fizikai LED vezérlés (RS-232 / USB) későbbi fejlesztés.
+ * Árfolyam tábla + futó szöveg + konfiguráció kezelés + tartalom lekérdezés.
  */
 @RestController
 @RequestMapping("/api/v1/led")
@@ -23,6 +21,8 @@ import java.util.UUID;
 public class LedDisplayController {
 
     private final LedDisplayService ledDisplayService;
+
+    // ============ DISPLAY CONTROL ============
 
     @PostMapping("/rate-board/update")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
@@ -42,5 +42,36 @@ public class LedDisplayController {
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<LedDisplayDto>> getStatus(@RequestParam UUID branchId) {
         return ResponseEntity.ok(ledDisplayService.getStatus(branchId));
+    }
+
+    // ============ DISPLAY UPDATE (Batch 8A spec) ============
+
+    @PostMapping("/update/{branchId}")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<LedDisplayDto> updateDisplay(@PathVariable UUID branchId) {
+        return ResponseEntity.ok(ledDisplayService.updateRateBoard(branchId));
+    }
+
+    // ============ CONFIG ============
+
+    @GetMapping("/config/{branchId}")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<LedDisplayConfigDto> getDisplayConfig(@PathVariable UUID branchId) {
+        return ResponseEntity.ok(ledDisplayService.getDisplayConfig(branchId));
+    }
+
+    @PutMapping("/config")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<LedDisplayConfigDto> saveDisplayConfig(
+            @Valid @RequestBody SaveLedDisplayConfigRequest request) {
+        return ResponseEntity.ok(ledDisplayService.saveDisplayConfig(request));
+    }
+
+    // ============ CONTENT ============
+
+    @GetMapping("/content/{branchId}")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<List<LedDisplayLineDto>> getDisplayContent(@PathVariable UUID branchId) {
+        return ResponseEntity.ok(ledDisplayService.getDisplayContent(branchId));
     }
 }

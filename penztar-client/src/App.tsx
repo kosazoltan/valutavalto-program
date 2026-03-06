@@ -60,6 +60,8 @@ import AuditLogPage from '@/pages/AuditLogPage';
 import AmlPage from '@/pages/AmlPage';
 import MnbReportPage from '@/pages/MnbReportPage';
 import NavReportPage from '@/pages/NavReportPage';
+// Batch 8B — Cég/Fiók adminisztráció
+import CompanyAdminPage from '@/pages/CompanyAdminPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -478,6 +480,16 @@ export default function App() {
         element={
           <ProtectedRoute>
             <NavReportPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Batch 8B — Cég/Fiók adminisztráció */}
+      <Route
+        path="/admin/companies"
+        element={
+          <ProtectedRoute>
+            <CompanyAdminPage />
           </ProtectedRoute>
         }
       />

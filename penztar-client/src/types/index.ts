@@ -1416,3 +1416,108 @@ export type PageRouteBatch6A =
   | PageRouteBatch5A
   | '/session-open'
   | '/calculator';
+
+// ============================================================
+// Batch 8A — Pénztárgép + LED kijelző config + Szkenner + FTP sync
+// ============================================================
+
+// --- Pénztárgép (Cash Register) ---
+export type CashRegisterEventType = 'OPEN' | 'CLOSE' | 'RECEIPT' | 'STORNO' | 'X_REPORT' | 'Z_REPORT';
+
+export interface CashRegisterEventData {
+  id: string;
+  branchId: string;
+  eventType: CashRegisterEventType;
+  receiptNumber: string | null;
+  amount: number | null;
+  currencyCode: string | null;
+  amountHuf: number | null;
+  taxNumber: string | null;
+  cashRegisterId: string | null;
+  eventTimestamp: string;
+  rawResponse: string | null;
+}
+
+export interface CashRegisterReceiptRequest {
+  branchId: string;
+  receiptNumber: string;
+  amount: number;
+  currencyCode: string;
+  amountHuf: number;
+}
+
+export interface CashRegisterStornoRequest {
+  branchId: string;
+  originalReceiptId: string;
+}
+
+// --- LED kijelző konfiguráció ---
+export type LedDisplayConnectionType = 'SERIAL' | 'USB' | 'NETWORK';
+
+export interface LedDisplayConfigData {
+  id: string;
+  branchId: string;
+  displayType: LedDisplayConnectionType;
+  connectionString: string | null;
+  isActive: boolean;
+  refreshIntervalSeconds: number;
+  displayedCurrencies: string | null;
+  lastUpdatedAt: string | null;
+}
+
+export interface SaveLedDisplayConfigRequest {
+  branchId: string;
+  displayType?: string;
+  connectionString?: string;
+  isActive?: boolean;
+  refreshIntervalSeconds?: number;
+  displayedCurrencies?: string;
+}
+
+export interface LedDisplayLine {
+  currencyCode: string;
+  buyRate: number;
+  sellRate: number;
+  unit: number;
+}
+
+// --- Dokumentum szkenner ---
+export type ScannedDocumentType = 'ID_CARD' | 'PASSPORT' | 'DRIVERS_LICENSE' | 'OTHER';
+
+export interface ScannedDocumentData {
+  id: string;
+  customerId: string | null;
+  transactionId: string | null;
+  documentType: ScannedDocumentType;
+  fileName: string;
+  mimeType: string | null;
+  fileSizeBytes: number | null;
+  storagePath: string | null;
+  scannedBy: number | null;
+  scannedAt: string;
+  notes: string | null;
+}
+
+// --- FTP szinkronizáció ---
+export type FtpSyncDirection = 'UPLOAD' | 'DOWNLOAD';
+export type FtpSyncStatusType = 'SUCCESS' | 'FAILED';
+
+export interface FtpSyncLogData {
+  id: string;
+  branchId: string;
+  direction: FtpSyncDirection;
+  fileName: string | null;
+  status: FtpSyncStatusType;
+  fileSizeBytes: number | null;
+  startedAt: string;
+  completedAt: string | null;
+  errorMessage: string | null;
+}
+
+export interface FtpSyncResult {
+  success: boolean;
+  message: string;
+  fileName: string | null;
+  fileSizeBytes: number | null;
+  syncLog: FtpSyncLogData;
+}
