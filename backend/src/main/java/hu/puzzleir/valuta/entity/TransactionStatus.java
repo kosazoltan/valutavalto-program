@@ -8,7 +8,8 @@ public enum TransactionStatus {
     COMPLETED("Befejezett"),
     REVERSED("Sztornózott"),
     FAILED("Sikertelen"),
-    CANCELLED("Megszakított");
+    CANCELLED("Megszakított"),
+    ARCHIVED("Archivált");
 
     private final String displayName;
 

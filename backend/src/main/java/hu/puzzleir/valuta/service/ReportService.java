@@ -4,8 +4,11 @@ import hu.puzzleir.valuta.entity.CashBalance;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.DailySession;
 import hu.puzzleir.valuta.entity.Denomination;
+import hu.puzzleir.valuta.entity.MonthlyClosing;
 import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.entity.TransactionType;
+import hu.puzzleir.valuta.entity.Transfer;
+import hu.puzzleir.valuta.entity.TransferStatus;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -42,6 +45,8 @@ public class ReportService {
     private final DenominationRepository denominationRepository;
     private final CurrencyRepository currencyRepository;
     private final WorkerRepository workerRepository;
+    private final TransferRepository transferRepository;
+    private final MonthlyClosingRepository monthlyClosingRepository;
 
     /**
      * Napi zárás riport
@@ -318,6 +323,201 @@ public class ReportService {
                 .build();
     }
 
+    /**
+     * Havi forgalmi kimutatás
+     *
+     * Legacy: HAVIFORG - havi forgalmi összesítő
+     */
+    public MonthlyTurnoverReport generateMonthlyTurnoverReport(Integer year, Integer month) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+
+        // Havi zárások lekérése
+        List<MonthlyClosing> closings = monthlyClosingRepository
+                .findByCompanyIdAndClosingYearOrderByClosingMonthDesc(companyId, year).stream()
+                .filter(c -> c.getClosingMonth().equals(month))
+                .collect(Collectors.toList());
+
+        BigDecimal totalBuyHuf = BigDecimal.ZERO;
+        BigDecimal totalSellHuf = BigDecimal.ZERO;
+        BigDecimal totalHandlingFees = BigDecimal.ZERO;
+        int totalTransactions = 0;
+        int totalBuyCount = 0;
+        int totalSellCount = 0;
+        int totalReversals = 0;
+
+        List<BranchMonthlyData> branchData = new ArrayList<>();
+
+        for (MonthlyClosing closing : closings) {
+            totalBuyHuf = totalBuyHuf.add(closing.getTotalBuyHuf() != null ? closing.getTotalBuyHuf() : BigDecimal.ZERO);
+            totalSellHuf = totalSellHuf.add(closing.getTotalSellHuf() != null ? closing.getTotalSellHuf() : BigDecimal.ZERO);
+            totalHandlingFees = totalHandlingFees.add(closing.getTotalHandlingFees() != null ? closing.getTotalHandlingFees() : BigDecimal.ZERO);
+            totalTransactions += closing.getTotalTransactionCount() != null ? closing.getTotalTransactionCount() : 0;
+            totalBuyCount += closing.getBuyCount() != null ? closing.getBuyCount() : 0;
+            totalSellCount += closing.getSellCount() != null ? closing.getSellCount() : 0;
+            totalReversals += closing.getReversalCount() != null ? closing.getReversalCount() : 0;
+
+            branchData.add(BranchMonthlyData.builder()
+                    .branchId(closing.getBranch().getId())
+                    .branchName(closing.getBranch().getName())
+                    .transactionCount(closing.getTotalTransactionCount())
+                    .buyCount(closing.getBuyCount())
+                    .sellCount(closing.getSellCount())
+                    .reversalCount(closing.getReversalCount())
+                    .buyHuf(closing.getTotalBuyHuf())
+                    .sellHuf(closing.getTotalSellHuf())
+                    .netResult(closing.getNetResult())
+                    .handlingFees(closing.getTotalHandlingFees())
+                    .finalized(closing.getFinalized())
+                    .build());
+        }
+
+        return MonthlyTurnoverReport.builder()
+                .year(year)
+                .month(month)
+                .generatedAt(LocalDateTime.now())
+                .branchCount(closings.size())
+                .totalTransactions(totalTransactions)
+                .totalBuyCount(totalBuyCount)
+                .totalSellCount(totalSellCount)
+                .totalReversals(totalReversals)
+                .totalBuyHuf(totalBuyHuf)
+                .totalSellHuf(totalSellHuf)
+                .netTurnoverHuf(totalSellHuf.subtract(totalBuyHuf))
+                .totalHandlingFees(totalHandlingFees)
+                .branchData(branchData)
+                .build();
+    }
+
+    /**
+     * Átadás-átvétel összesítő riport
+     *
+     * Legacy: ATADATVET - átadás-átvétel kimutatás
+     */
+    public TransferReport generateTransferReport(LocalDate startDate, LocalDate endDate) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+
+        // Kimenő átadások
+        List<Transfer> outgoing = transferRepository.findByFromBranchIdAndCompanyIdOrderByCreatedAtDesc(branchId, companyId)
+                .stream()
+                .filter(t -> !t.getTransferDate().isBefore(startDate) && !t.getTransferDate().isAfter(endDate))
+                .collect(Collectors.toList());
+
+        // Bejövő átadások
+        List<Transfer> incoming = transferRepository.findByToBranchIdAndCompanyIdOrderByCreatedAtDesc(branchId, companyId)
+                .stream()
+                .filter(t -> !t.getTransferDate().isBefore(startDate) && !t.getTransferDate().isAfter(endDate))
+                .collect(Collectors.toList());
+
+        // Kimenő összesítés
+        BigDecimal totalOutgoingHuf = outgoing.stream()
+                .filter(t -> t.getStatus() != TransferStatus.CANCELLED)
+                .map(t -> t.getHufValue() != null ? t.getHufValue() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        int outgoingCompleted = (int) outgoing.stream().filter(t -> t.getStatus() == TransferStatus.COMPLETED).count();
+        int outgoingPending = (int) outgoing.stream().filter(t -> t.getStatus() == TransferStatus.PENDING).count();
+
+        // Bejövő összesítés
+        BigDecimal totalIncomingHuf = incoming.stream()
+                .filter(t -> t.getStatus() == TransferStatus.COMPLETED)
+                .map(t -> t.getHufValue() != null ? t.getHufValue() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        int incomingCompleted = (int) incoming.stream().filter(t -> t.getStatus() == TransferStatus.COMPLETED).count();
+        int incomingPending = (int) incoming.stream().filter(t -> t.getStatus() == TransferStatus.PENDING).count();
+
+        // Eltérések
+        BigDecimal totalDifference = incoming.stream()
+                .filter(t -> t.getStatus() == TransferStatus.COMPLETED && t.getDifference() != null)
+                .map(Transfer::getDifference)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<TransferSummaryItem> outgoingItems = outgoing.stream()
+                .map(t -> TransferSummaryItem.builder()
+                        .transferNumber(t.getTransferNumber())
+                        .date(t.getTransferDate())
+                        .targetBranchName(t.getToBranch().getName())
+                        .currencyCode(t.getCurrency().getCode())
+                        .amount(t.getAmount())
+                        .hufValue(t.getHufValue())
+                        .status(t.getStatus().name())
+                        .build())
+                .collect(Collectors.toList());
+
+        List<TransferSummaryItem> incomingItems = incoming.stream()
+                .map(t -> TransferSummaryItem.builder()
+                        .transferNumber(t.getTransferNumber())
+                        .date(t.getTransferDate())
+                        .targetBranchName(t.getFromBranch().getName())
+                        .currencyCode(t.getCurrency().getCode())
+                        .amount(t.getReceivedAmount() != null ? t.getReceivedAmount() : t.getAmount())
+                        .hufValue(t.getHufValue())
+                        .status(t.getStatus().name())
+                        .difference(t.getDifference())
+                        .build())
+                .collect(Collectors.toList());
+
+        return TransferReport.builder()
+                .startDate(startDate)
+                .endDate(endDate)
+                .generatedAt(LocalDateTime.now())
+                .outgoingCount(outgoing.size())
+                .outgoingCompleted(outgoingCompleted)
+                .outgoingPending(outgoingPending)
+                .totalOutgoingHuf(totalOutgoingHuf)
+                .incomingCount(incoming.size())
+                .incomingCompleted(incomingCompleted)
+                .incomingPending(incomingPending)
+                .totalIncomingHuf(totalIncomingHuf)
+                .netTransferHuf(totalIncomingHuf.subtract(totalOutgoingHuf))
+                .totalDifference(totalDifference)
+                .outgoingItems(outgoingItems)
+                .incomingItems(incomingItems)
+                .build();
+    }
+
+    /**
+     * Kezelési díj összesítő riport
+     *
+     * Legacy: Kezelési költség jelentés
+     */
+    public HandlingFeeReport generateHandlingFeeReport(LocalDate startDate, LocalDate endDate) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+
+        BigDecimal totalFees = BigDecimal.ZERO;
+        int transactionsWithFee = 0;
+        Map<String, BigDecimal> feesByCurrency = new LinkedHashMap<>();
+
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            List<Transaction> transactions = transactionRepository.findActiveByBranchAndDate(branchId, date);
+
+            for (Transaction t : transactions) {
+                if (t.getHandlingFee() != null && t.getHandlingFee().compareTo(BigDecimal.ZERO) > 0) {
+                    totalFees = totalFees.add(t.getHandlingFee());
+                    transactionsWithFee++;
+
+                    String currencyCode = t.getCurrency().getCode();
+                    feesByCurrency.merge(currencyCode, t.getHandlingFee(), BigDecimal::add);
+                }
+            }
+        }
+
+        List<CurrencyFeeData> currencyFeeList = feesByCurrency.entrySet().stream()
+                .map(e -> new CurrencyFeeData(e.getKey(), e.getValue()))
+                .collect(Collectors.toList());
+
+        return HandlingFeeReport.builder()
+                .startDate(startDate)
+                .endDate(endDate)
+                .generatedAt(LocalDateTime.now())
+                .totalHandlingFees(totalFees)
+                .transactionsWithFee(transactionsWithFee)
+                .feesByCurrency(currencyFeeList)
+                .build();
+    }
+
     // ============ HELPER METHODS ============
 
     private Map<String, CurrencyTurnover> calculateCurrencyTurnovers(List<Transaction> transactions) {
@@ -485,5 +685,101 @@ public class ReportService {
         private int highBalanceAlerts;
         private int lowDenominationAlerts;
         private List<CashBalance> balances;
+    }
+
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class MonthlyTurnoverReport {
+        private Integer year;
+        private Integer month;
+        private LocalDateTime generatedAt;
+        private int branchCount;
+        private int totalTransactions;
+        private int totalBuyCount;
+        private int totalSellCount;
+        private int totalReversals;
+        private BigDecimal totalBuyHuf;
+        private BigDecimal totalSellHuf;
+        private BigDecimal netTurnoverHuf;
+        private BigDecimal totalHandlingFees;
+        private List<BranchMonthlyData> branchData;
+    }
+
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class BranchMonthlyData {
+        private UUID branchId;
+        private String branchName;
+        private Integer transactionCount;
+        private Integer buyCount;
+        private Integer sellCount;
+        private Integer reversalCount;
+        private BigDecimal buyHuf;
+        private BigDecimal sellHuf;
+        private BigDecimal netResult;
+        private BigDecimal handlingFees;
+        private Boolean finalized;
+    }
+
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class TransferReport {
+        private LocalDate startDate;
+        private LocalDate endDate;
+        private LocalDateTime generatedAt;
+        private int outgoingCount;
+        private int outgoingCompleted;
+        private int outgoingPending;
+        private BigDecimal totalOutgoingHuf;
+        private int incomingCount;
+        private int incomingCompleted;
+        private int incomingPending;
+        private BigDecimal totalIncomingHuf;
+        private BigDecimal netTransferHuf;
+        private BigDecimal totalDifference;
+        private List<TransferSummaryItem> outgoingItems;
+        private List<TransferSummaryItem> incomingItems;
+    }
+
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class TransferSummaryItem {
+        private String transferNumber;
+        private LocalDate date;
+        private String targetBranchName;
+        private String currencyCode;
+        private BigDecimal amount;
+        private BigDecimal hufValue;
+        private String status;
+        private BigDecimal difference;
+    }
+
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class HandlingFeeReport {
+        private LocalDate startDate;
+        private LocalDate endDate;
+        private LocalDateTime generatedAt;
+        private BigDecimal totalHandlingFees;
+        private int transactionsWithFee;
+        private List<CurrencyFeeData> feesByCurrency;
+    }
+
+    @lombok.Data
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class CurrencyFeeData {
+        private String currencyCode;
+        private BigDecimal totalFees;
     }
 }

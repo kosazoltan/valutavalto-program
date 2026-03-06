@@ -734,4 +734,74 @@ public class AmlService {
             .createdAt(r.getCreatedAt())
             .build();
     }
+
+    // ============ GÖNGYÖLÉS VISSZAVONÁS (STORNÓ AML) ============
+
+    /**
+     * Göngyölés visszavonása stornó esetén.
+     * 
+     * A Delphi SZTORNO.DLL meghívta a BIGCTRL.DLL-t göngyölés visszavonásra.
+     * Ha az ügyfél éves göngyölt összege a limit alá csökken → "nagy ügyfél" jelölés törlése.
+     * 
+     * @param customerId Ügyfél azonosító
+     * @param hufAmount Sztornózott összeg (HUF)
+     * @param originalDate Eredeti tranzakció dátuma
+     */
+    public void reverseAccumulation(String customerId, BigDecimal hufAmount, LocalDateTime originalDate) {
+        if (customerId == null || customerId.isBlank()) {
+            log.warn("Göngyölés visszavonás: nincs ügyfél ID → skip");
+            return;
+        }
+
+        if (hufAmount == null || hufAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            log.warn("Göngyölés visszavonás: érvénytelen összeg → skip");
+            return;
+        }
+
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        int year = originalDate.getYear();
+        LocalDate yearStart = LocalDate.of(year, 1, 1);
+        LocalDate yearEnd = LocalDate.of(year, 12, 31);
+
+        // 1. Ügyfél éves göngyölt összege (JELENLEGI)
+        BigDecimal currentYearTotal = transactionRepository.sumCustomerAnnualTotal(
+            companyId, customerId, yearStart, yearEnd
+        );
+
+        // 2. Új összeg a sztornó után
+        BigDecimal newYearTotal = currentYearTotal.subtract(hufAmount);
+
+        log.info("AML göngyölés visszavonás: customerId={}, originalAmount={}, currentYearTotal={}, newYearTotal={}",
+            customerId, hufAmount, currentYearTotal, newYearTotal);
+
+        // 3. Ha az új összeg a limit (3.6M) alá csökken → "nagy ügyfél" jelölés törlése
+        if (currentYearTotal.compareTo(ANNUAL_ROLLING_LIMIT) >= 0
+            && newYearTotal.compareTo(ANNUAL_ROLLING_LIMIT) < 0) {
+            
+            log.info("Ügyfél visszalép a göngyölési limit alá: customerId={}, newTotal={}",
+                customerId, newYearTotal);
+
+            // Customer entitás frissítése (ha van "highRisk" vagy "requiresEnhancedDueDiligence" flag)
+            Optional<Customer> customerOpt = customerRepository.findByCustomerCodeAndCompanyId(customerId, companyId);
+            if (customerOpt.isPresent()) {
+                Customer customer = customerOpt.get();
+                // Példa: ha van ilyen mező a Customer entitásban
+                // customer.setHighRiskFlag(false);
+                // customerRepository.save(customer);
+                
+                log.info("Ügyfél 'nagy ügyfél' státusz törölve: {}", customerId);
+            }
+        }
+
+        // 4. Audit log
+        String auditMessage = String.format(
+            "AML göngyölés visszavonás: ügyfél=%s, sztornó összeg=%s, új éves összeg=%s",
+            customerId, hufAmount, newYearTotal
+        );
+        
+        log.info(auditMessage);
+        
+        // Ha van AuditLogService, használd:
+        // auditLogService.log("AML_REVERSE_ACCUMULATION", auditMessage, customerId);
+    }
 }

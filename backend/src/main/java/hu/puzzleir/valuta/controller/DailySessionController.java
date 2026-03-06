@@ -102,4 +102,32 @@ public class DailySessionController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
     }
+
+    /**
+     * Napi zárás validáció - címletezések ellenőrzése
+     *
+     * GET /api/v1/daily-sessions/validate-closing
+     *
+     * Legacy: NapzarControl - 5 típus ellenőrzés
+     */
+    @GetMapping("/validate-closing")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<DailySessionService.DailyClosingValidation> validateDailyClosing() {
+        DailySessionService.DailyClosingValidation validation = dailySessionService.validateDailyClosing();
+        return ResponseEntity.ok(validation);
+    }
+
+    /**
+     * Napi zárás végrehajtása teljes validációval
+     *
+     * POST /api/v1/daily-sessions/close-with-validation
+     *
+     * Legacy: NAPZAR - teljes napi zárás validációkkal
+     */
+    @PostMapping("/close-with-validation")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<DailySessionDto> closeDayWithValidation() {
+        DailySession session = dailySessionService.closeDayWithValidation();
+        return ResponseEntity.ok(dailySessionMapper.toDto(session));
+    }
 }

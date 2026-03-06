@@ -16,8 +16,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import hu.puzzleir.valuta.entity.ExchangeRate;
+import hu.puzzleir.valuta.repository.ExchangeRateRepository;
+
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -39,6 +47,7 @@ public class CashBalanceService {
     private final CurrencyRepository currencyRepository;
     private final CompanyRepository companyRepository;
     private final BranchRepository branchRepository;
+    private final ExchangeRateRepository exchangeRateRepository;
 
     /**
      * Aktuális iroda összes egyenlegének lekérése
@@ -273,6 +282,155 @@ public class CashBalanceService {
                 .build();
     }
 
+    /**
+     * Részletes pillanat állás HUF egyenértékekkel
+     *
+     * Legacy: PILLALL - pillanat állás részletes
+     * - Minden valuta egyenleg
+     * - Aktuális árfolyam
+     * - HUF egyenérték
+     * - Napi változás
+     */
+    @Transactional(readOnly = true)
+    public DetailedCashPosition getDetailedCashPosition() {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+
+        List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
+        List<CashPositionItem> items = new ArrayList<>();
+
+        BigDecimal totalHufValue = BigDecimal.ZERO;
+        BigDecimal totalOpeningHufValue = BigDecimal.ZERO;
+        int lowAlerts = 0;
+        int highAlerts = 0;
+
+        for (CashBalance balance : balances) {
+            Currency currency = balance.getCurrency();
+            BigDecimal currentBalance = balance.getCurrentBalance();
+            BigDecimal openingBalance = balance.getOpeningBalance() != null ? balance.getOpeningBalance() : BigDecimal.ZERO;
+
+            // Árfolyam lekérése
+            BigDecimal rate = BigDecimal.ONE; // HUF-nak 1
+            BigDecimal buyRate = BigDecimal.ONE;
+            BigDecimal sellRate = BigDecimal.ONE;
+
+            if (!"HUF".equals(currency.getCode())) {
+                Optional<ExchangeRate> exchangeRate = exchangeRateRepository.findLatestRate(companyId, currency.getId(), branchId);
+                if (exchangeRate.isPresent()) {
+                    ExchangeRate er = exchangeRate.get();
+                    buyRate = er.getBaseBuyRate();
+                    sellRate = er.getBaseSellRate();
+                    // Középárfolyam HUF értékhez
+                    rate = buyRate.add(sellRate).divide(BigDecimal.valueOf(2), 4, RoundingMode.HALF_UP);
+                }
+            }
+
+            // HUF egyenérték számítás
+            BigDecimal hufValue = currentBalance.multiply(rate).setScale(0, RoundingMode.HALF_UP);
+            BigDecimal openingHufValue = openingBalance.multiply(rate).setScale(0, RoundingMode.HALF_UP);
+            BigDecimal dailyChange = currentBalance.subtract(openingBalance);
+            BigDecimal dailyChangeHuf = hufValue.subtract(openingHufValue);
+
+            totalHufValue = totalHufValue.add(hufValue);
+            totalOpeningHufValue = totalOpeningHufValue.add(openingHufValue);
+
+            if (balance.isLowBalance()) lowAlerts++;
+            if (balance.isHighBalance()) highAlerts++;
+
+            CashPositionItem item = CashPositionItem.builder()
+                    .currencyId(currency.getId())
+                    .currencyCode(currency.getCode())
+                    .currencyName(currency.getName())
+                    .currentBalance(currentBalance)
+                    .openingBalance(openingBalance)
+                    .dailyChange(dailyChange)
+                    .buyRate(buyRate)
+                    .sellRate(sellRate)
+                    .midRate(rate)
+                    .hufValue(hufValue)
+                    .openingHufValue(openingHufValue)
+                    .dailyChangeHuf(dailyChangeHuf)
+                    .minBalance(balance.getMinBalance())
+                    .maxBalance(balance.getMaxBalance())
+                    .isLowBalance(balance.isLowBalance())
+                    .isHighBalance(balance.isHighBalance())
+                    .lastTransactionAt(balance.getLastTransactionAt())
+                    .build();
+
+            items.add(item);
+        }
+
+        return DetailedCashPosition.builder()
+                .branchId(branchId)
+                .timestamp(LocalDateTime.now())
+                .items(items)
+                .totalHufValue(totalHufValue)
+                .totalOpeningHufValue(totalOpeningHufValue)
+                .totalDailyChangeHuf(totalHufValue.subtract(totalOpeningHufValue))
+                .currencyCount(items.size())
+                .lowBalanceAlerts(lowAlerts)
+                .highBalanceAlerts(highAlerts)
+                .build();
+    }
+
+    /**
+     * Cég szintű pillanat állás (összes iroda összesítve)
+     */
+    @Transactional(readOnly = true)
+    public CompanyCashPosition getCompanyCashPosition() {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+
+        List<CashBalance> allBalances = cashBalanceRepository.findByCompanyId(companyId);
+
+        // Csoportosítás valutánként
+        List<CompanyCurrencyPosition> currencyPositions = allBalances.stream()
+                .collect(Collectors.groupingBy(cb -> cb.getCurrency().getCode()))
+                .entrySet().stream()
+                .map(entry -> {
+                    String currencyCode = entry.getKey();
+                    List<CashBalance> balances = entry.getValue();
+
+                    BigDecimal totalBalance = balances.stream()
+                            .map(CashBalance::getCurrentBalance)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                    int branchCount = balances.size();
+
+                    // Árfolyam (első elem alapján)
+                    BigDecimal rate = BigDecimal.ONE;
+                    if (!"HUF".equals(currencyCode) && !balances.isEmpty()) {
+                        CashBalance first = balances.get(0);
+                        Optional<ExchangeRate> er = exchangeRateRepository.findLatestRate(
+                                companyId, first.getCurrency().getId(), first.getBranch().getId());
+                        if (er.isPresent()) {
+                            rate = er.get().getBaseBuyRate().add(er.get().getBaseSellRate())
+                                    .divide(BigDecimal.valueOf(2), 4, RoundingMode.HALF_UP);
+                        }
+                    }
+
+                    BigDecimal hufValue = totalBalance.multiply(rate).setScale(0, RoundingMode.HALF_UP);
+
+                    return CompanyCurrencyPosition.builder()
+                            .currencyCode(currencyCode)
+                            .totalBalance(totalBalance)
+                            .branchCount(branchCount)
+                            .hufValue(hufValue)
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        BigDecimal grandTotalHuf = currencyPositions.stream()
+                .map(CompanyCurrencyPosition::getHufValue)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return CompanyCashPosition.builder()
+                .companyId(companyId)
+                .timestamp(LocalDateTime.now())
+                .currencyPositions(currencyPositions)
+                .grandTotalHuf(grandTotalHuf)
+                .build();
+    }
+
     // ============ REQUEST/RESPONSE DTO-k ============
 
     @lombok.Data
@@ -313,5 +471,67 @@ public class CashBalanceService {
         private int lowBalanceAlerts;
         private int highBalanceAlerts;
         private List<CashBalance> balances;
+    }
+
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class CashPositionItem {
+        private Long currencyId;
+        private String currencyCode;
+        private String currencyName;
+        private BigDecimal currentBalance;
+        private BigDecimal openingBalance;
+        private BigDecimal dailyChange;
+        private BigDecimal buyRate;
+        private BigDecimal sellRate;
+        private BigDecimal midRate;
+        private BigDecimal hufValue;
+        private BigDecimal openingHufValue;
+        private BigDecimal dailyChangeHuf;
+        private BigDecimal minBalance;
+        private BigDecimal maxBalance;
+        private boolean isLowBalance;
+        private boolean isHighBalance;
+        private LocalDateTime lastTransactionAt;
+    }
+
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class DetailedCashPosition {
+        private UUID branchId;
+        private LocalDateTime timestamp;
+        private List<CashPositionItem> items;
+        private BigDecimal totalHufValue;
+        private BigDecimal totalOpeningHufValue;
+        private BigDecimal totalDailyChangeHuf;
+        private int currencyCount;
+        private int lowBalanceAlerts;
+        private int highBalanceAlerts;
+    }
+
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class CompanyCurrencyPosition {
+        private String currencyCode;
+        private BigDecimal totalBalance;
+        private int branchCount;
+        private BigDecimal hufValue;
+    }
+
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class CompanyCashPosition {
+        private UUID companyId;
+        private LocalDateTime timestamp;
+        private List<CompanyCurrencyPosition> currencyPositions;
+        private BigDecimal grandTotalHuf;
     }
 }

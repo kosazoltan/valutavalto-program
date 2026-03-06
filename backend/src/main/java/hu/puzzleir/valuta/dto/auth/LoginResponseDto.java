@@ -18,5 +18,10 @@ public class LoginResponseDto {
     @Builder.Default
     private String tokenType = "Bearer";
     private WorkerDto worker;
-    private Long expiresIn; // Milliseconds
+
+    // Frontend compatibility: expiresAt as ISO string
+    private String expiresAt;
+
+    // Legacy: expiresIn in milliseconds (for backward compatibility)
+    private Long expiresIn;
 }

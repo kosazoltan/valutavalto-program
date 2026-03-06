@@ -47,4 +47,12 @@ public interface CurrencyRepository extends JpaRepository<Currency, Long> {
     default List<Currency> findAllActiveOrdered() {
         return findByActiveTrueOrderByDisplayOrderAsc();
     }
+
+    /**
+     * Aktív valuták company szerint (multi-tenant kompatibilis)
+     * Ha nincs company-hoz kötve a Currency, visszaadja az összes aktívat.
+     */
+    @Query("SELECT c FROM Currency c WHERE c.active = true " +
+           "ORDER BY c.displayOrder ASC")
+    List<Currency> findActiveByCompany(java.util.UUID companyId);
 }

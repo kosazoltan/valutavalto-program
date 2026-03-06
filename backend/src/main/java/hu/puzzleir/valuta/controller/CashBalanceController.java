@@ -142,4 +142,29 @@ public class CashBalanceController {
         List<CashBalanceService.CurrencyTotalBalance> totals = cashBalanceService.getCompanyTotals();
         return ResponseEntity.ok(totals);
     }
+
+    /**
+     * Részletes pillanat állás HUF egyenértékekkel
+     *
+     * GET /api/v1/cash-balances/position
+     *
+     * Legacy: PILLALL - pillanat állás részletes
+     */
+    @GetMapping("/position")
+    public ResponseEntity<CashBalanceService.DetailedCashPosition> getDetailedCashPosition() {
+        CashBalanceService.DetailedCashPosition position = cashBalanceService.getDetailedCashPosition();
+        return ResponseEntity.ok(position);
+    }
+
+    /**
+     * Cég szintű pillanat állás (összes iroda összesítve)
+     *
+     * GET /api/v1/cash-balances/company-position
+     */
+    @GetMapping("/company-position")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public ResponseEntity<CashBalanceService.CompanyCashPosition> getCompanyCashPosition() {
+        CashBalanceService.CompanyCashPosition position = cashBalanceService.getCompanyCashPosition();
+        return ResponseEntity.ok(position);
+    }
 }

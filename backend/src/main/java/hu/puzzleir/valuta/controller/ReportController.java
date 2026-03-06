@@ -103,4 +103,46 @@ public class ReportController {
         ReportService.DailyClosingReport report = reportService.generateDailyClosingReport(LocalDate.now());
         return ResponseEntity.ok(report);
     }
+
+    /**
+     * Havi forgalmi kimutatás
+     *
+     * GET /api/v1/reports/monthly-turnover?year=2024&month=1
+     */
+    @GetMapping("/monthly-turnover")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<ReportService.MonthlyTurnoverReport> getMonthlyTurnoverReport(
+            @RequestParam Integer year,
+            @RequestParam Integer month) {
+        ReportService.MonthlyTurnoverReport report = reportService.generateMonthlyTurnoverReport(year, month);
+        return ResponseEntity.ok(report);
+    }
+
+    /**
+     * Átadás-átvétel összesítő riport
+     *
+     * GET /api/v1/reports/transfers?startDate=...&endDate=...
+     */
+    @GetMapping("/transfers")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<ReportService.TransferReport> getTransferReport(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        ReportService.TransferReport report = reportService.generateTransferReport(startDate, endDate);
+        return ResponseEntity.ok(report);
+    }
+
+    /**
+     * Kezelési díj összesítő riport
+     *
+     * GET /api/v1/reports/handling-fees?startDate=...&endDate=...
+     */
+    @GetMapping("/handling-fees")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<ReportService.HandlingFeeReport> getHandlingFeeReport(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        ReportService.HandlingFeeReport report = reportService.generateHandlingFeeReport(startDate, endDate);
+        return ResponseEntity.ok(report);
+    }
 }

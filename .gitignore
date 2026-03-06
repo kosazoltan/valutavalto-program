@@ -3,6 +3,12 @@
 .env.local
 .env.production
 
+# SSH Keys (KRITIKUS - ne commitold!)
+ssh-keys/
+*.pem
+*.key
+id_rsa_*
+
 # PostgreSQL adatbázis mentések
 *.sql.gz
 *.dump

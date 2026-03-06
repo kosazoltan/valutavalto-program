@@ -291,6 +291,15 @@ public class Transaction {
     private Integer discountTypeCode = 0;
 
     /**
+     * Magyar 5 Ft-os kerekítési különbözet.
+     * roundingAmount = payableAmount - bruttó
+     * Pozitív = felkerekítés, negatív = lekerekítés.
+     */
+    @Column(name = "rounding_amount", precision = 15, scale = 2)
+    @Builder.Default
+    private BigDecimal roundingAmount = BigDecimal.ZERO;
+
+    /**
      * AML flag - gyanus tranzakcio
      */
     @Column(name = "aml_suspicious")

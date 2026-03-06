@@ -9,6 +9,7 @@ import com.puzzleir.backend.repository.CompanyRepository;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.util.HungarianRounding;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -48,6 +49,9 @@ public class TransactionService {
     private final BranchRepository branchRepository;
     private final DailySessionService dailySessionService;
     private final ExchangeRateService exchangeRateService;
+    private final ReceiptSequenceService receiptSequenceService;
+    private final HandlingFeeCalculator handlingFeeCalculator;
+    private final AmlService amlService;
 
     // Sztornó limit supervisor nélkül (3 db/nap)
     private static final int DAILY_REVERSAL_LIMIT = 3;
@@ -104,11 +108,22 @@ public class TransactionService {
             validateDiscount(request.getDiscountPercent());
         }
 
-        // Azonosítás ellenőrzése
-        validateIdentification(hufAmount, request.getCustomerName(), request.getCustomerDocumentNumber());
+        // Kezelési díj szerver oldali számítás (kliens értékét felülírjuk)
+        BigDecimal serverHandlingFee = handlingFeeCalculator.calculate(
+                hufAmount, TransactionType.BUY, request.getHandlingFee());
 
-        // Bizonylat szám generálása
-        String receiptNumber = generateReceiptNumber(branchId, "V");
+        // Bruttó: vételnél nettó - díj (a cég levonja a kezelési díjat)
+        BigDecimal grossAmount = handlingFeeCalculator.calculateBuyGross(hufAmount, serverHandlingFee);
+
+        // Magyar 5 Ft-os kerekítés a fizetendő összegre
+        BigDecimal payableAmount = HungarianRounding.roundToFive(grossAmount);
+        BigDecimal roundingDifference = payableAmount.subtract(grossAmount);
+
+        // Azonosítás ellenőrzése
+        validateIdentification(payableAmount, request.getCustomerName(), request.getCustomerDocumentNumber());
+
+        // Bizonylat szám generálása (új szekvencia rendszer)
+        String receiptNumber = receiptSequenceService.generateReceiptNumber(branchId, TransactionType.BUY);
 
         // Alkalmazott árfolyam (discount NÉLKÜL a pre-discount hufAmount alapján)
         BigDecimal preDiscountHufAmount = request.getCurrencyAmount()
@@ -128,10 +143,11 @@ public class TransactionService {
                 .currency(currency)
                 .currencyAmount(request.getCurrencyAmount())
                 .exchangeRate(appliedRate)
-                .hufAmount(hufAmount)
-                .handlingFee(request.getHandlingFee() != null ? request.getHandlingFee() : BigDecimal.ZERO)
+                .hufAmount(payableAmount)
+                .handlingFee(serverHandlingFee)
                 .discountPercent(request.getDiscountPercent() != null ? request.getDiscountPercent() : BigDecimal.ZERO)
                 .discountAmount(calculateDiscountAmount(hufAmount, request.getDiscountPercent()))
+                .roundingAmount(roundingDifference)
                 .customerId(request.getCustomerId())
                 .customerName(request.getCustomerName())
                 .customerAddress(request.getCustomerAddress())
@@ -144,18 +160,18 @@ public class TransactionService {
 
         // Kassza frissítése - HUF csökken, valuta nő
         updateCashBalance(branchId, currency.getId(), request.getCurrencyAmount(), true);  // valuta +
-        updateCashBalance(branchId, getHufCurrencyId(), hufAmount.negate(), false);        // HUF -
+        updateCashBalance(branchId, getHufCurrencyId(), payableAmount.negate(), false);    // HUF -
 
         // Napi statisztika frissítése
         dailySessionService.updateSessionStats(
             TransactionType.BUY,
-            hufAmount,
+            payableAmount,
             transaction.getHandlingFee()
         );
 
-        log.info("Vétel tranzakció: {} - {} {} @ {} = {} HUF",
+        log.info("Vétel tranzakció: {} - {} {} @ {} = {} HUF (kerekítés: {} Ft, díj: {} Ft)",
                 receiptNumber, request.getCurrencyAmount(), currency.getCode(),
-                appliedRate, hufAmount);
+                appliedRate, payableAmount, roundingDifference, serverHandlingFee);
 
         return saved;
     }
@@ -201,11 +217,22 @@ public class TransactionService {
         // Készlet ellenőrzése
         validateCurrencyStock(branchId, currency.getId(), request.getCurrencyAmount());
 
-        // Azonosítás ellenőrzése
-        validateIdentification(hufAmount, request.getCustomerName(), request.getCustomerDocumentNumber());
+        // Kezelési díj szerver oldali számítás (kliens értékét felülírjuk)
+        BigDecimal serverHandlingFee = handlingFeeCalculator.calculate(
+                hufAmount, TransactionType.SELL, request.getHandlingFee());
 
-        // Bizonylat szám generálása
-        String receiptNumber = generateReceiptNumber(branchId, "E");
+        // Bruttó: eladásnál nettó + díj
+        BigDecimal grossAmount = handlingFeeCalculator.calculateSellGross(hufAmount, serverHandlingFee);
+
+        // Magyar 5 Ft-os kerekítés a fizetendő összegre
+        BigDecimal payableAmount = HungarianRounding.roundToFive(grossAmount);
+        BigDecimal roundingDifference = payableAmount.subtract(grossAmount);
+
+        // Azonosítás ellenőrzése
+        validateIdentification(payableAmount, request.getCustomerName(), request.getCustomerDocumentNumber());
+
+        // Bizonylat szám generálása (új szekvencia rendszer)
+        String receiptNumber = receiptSequenceService.generateReceiptNumber(branchId, TransactionType.SELL);
 
         // Alkalmazott árfolyam (discount NÉLKÜL a pre-discount hufAmount alapján)
         BigDecimal preDiscountHufAmount = request.getCurrencyAmount()
@@ -225,10 +252,11 @@ public class TransactionService {
                 .currency(currency)
                 .currencyAmount(request.getCurrencyAmount())
                 .exchangeRate(appliedRate)
-                .hufAmount(hufAmount)
-                .handlingFee(request.getHandlingFee() != null ? request.getHandlingFee() : BigDecimal.ZERO)
+                .hufAmount(payableAmount)
+                .handlingFee(serverHandlingFee)
                 .discountPercent(request.getDiscountPercent() != null ? request.getDiscountPercent() : BigDecimal.ZERO)
                 .discountAmount(calculateDiscountAmount(hufAmount, request.getDiscountPercent()))
+                .roundingAmount(roundingDifference)
                 .customerId(request.getCustomerId())
                 .customerName(request.getCustomerName())
                 .customerAddress(request.getCustomerAddress())
@@ -241,18 +269,18 @@ public class TransactionService {
 
         // Kassza frissítése - HUF nő, valuta csökken
         updateCashBalance(branchId, currency.getId(), request.getCurrencyAmount().negate(), false); // valuta -
-        updateCashBalance(branchId, getHufCurrencyId(), hufAmount, true);                            // HUF +
+        updateCashBalance(branchId, getHufCurrencyId(), payableAmount, true);                       // HUF +
 
         // Napi statisztika frissítése
         dailySessionService.updateSessionStats(
             TransactionType.SELL,
-            hufAmount,
+            payableAmount,
             transaction.getHandlingFee()
         );
 
-        log.info("Eladás tranzakció: {} - {} {} @ {} = {} HUF",
+        log.info("Eladás tranzakció: {} - {} {} @ {} = {} HUF (kerekítés: {} Ft, díj: {} Ft)",
                 receiptNumber, request.getCurrencyAmount(), currency.getCode(),
-                appliedRate, hufAmount);
+                appliedRate, payableAmount, roundingDifference, serverHandlingFee);
 
         return saved;
     }
@@ -303,8 +331,9 @@ public class TransactionService {
         Worker worker = workerRepository.findById(workerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található"));
 
-        // Bizonylat szám generálása
-        String receiptNumber = generateReceiptNumber(branchId, "S");
+        // Bizonylat szám generálása — az EREDETI típus számlálójából (NEM külön S prefix!)
+        String receiptNumber = receiptSequenceService.generateReversalReceiptNumber(
+                branchId, original.getTransactionType());
 
         // Sztornó tranzakció létrehozása (ellentétes értékekkel)
         Transaction reversal = Transaction.builder()
@@ -323,6 +352,7 @@ public class TransactionService {
                 .handlingFee(original.getHandlingFee())
                 .discountPercent(original.getDiscountPercent())
                 .discountAmount(original.getDiscountAmount())
+                .roundingAmount(original.getRoundingAmount())
                 .originalTransaction(original)
                 .reversalReason(request.getReason())
                 .approvedBy(request.getApprovedBy())
@@ -355,6 +385,15 @@ public class TransactionService {
             original.getHufAmount(),
             BigDecimal.ZERO
         );
+
+        // AML göngyölés visszavonása (ha van ügyfél ID)
+        if (original.getCustomerId() != null && !original.getCustomerId().isBlank()) {
+            amlService.reverseAccumulation(
+                original.getCustomerId(),
+                original.getHufAmount(),
+                original.getTransactionDate().atTime(original.getTransactionTime())
+            );
+        }
 
         log.info("Sztornó tranzakció: {} - eredeti: {} - ok: {}",
                 receiptNumber, original.getReceiptNumber(), request.getReason());
@@ -394,13 +433,22 @@ public class TransactionService {
         // HUF-on keresztül konvertálás
         BigDecimal hufAmount = request.getFromAmount().multiply(fromRate.getBaseBuyRate())
                 .setScale(0, RoundingMode.HALF_UP);
-        BigDecimal toAmount = hufAmount.divide(toRate.getBaseSellRate(), 2, RoundingMode.HALF_UP);
+
+        // Magyar 5 Ft-os kerekítés a köztes HUF összegre
+        BigDecimal roundedHufAmount = HungarianRounding.roundToFive(hufAmount);
+        BigDecimal roundingDifference = roundedHufAmount.subtract(hufAmount);
+
+        BigDecimal toAmount = roundedHufAmount.divide(toRate.getBaseSellRate(), 2, RoundingMode.HALF_UP);
 
         // Készlet ellenőrzése
         validateCurrencyStock(branchId, toCurrency.getId(), toAmount);
 
-        // Bizonylat szám generálása
-        String receiptNumber = generateReceiptNumber(branchId, "K");
+        // Kezelési díj szerver oldali számítás
+        BigDecimal serverHandlingFee = handlingFeeCalculator.calculate(
+                roundedHufAmount, TransactionType.CONVERSION, request.getHandlingFee());
+
+        // Bizonylat szám generálása (új szekvencia rendszer)
+        String receiptNumber = receiptSequenceService.generateReceiptNumber(branchId, TransactionType.CONVERSION);
 
         // Konverziós árfolyam számítása
         BigDecimal conversionRate = fromRate.getBaseBuyRate().divide(toRate.getBaseSellRate(), 6, RoundingMode.HALF_UP);
@@ -417,8 +465,9 @@ public class TransactionService {
                 .currency(fromCurrency)
                 .currencyAmount(request.getFromAmount())
                 .exchangeRate(conversionRate)
-                .hufAmount(hufAmount)
-                .handlingFee(request.getHandlingFee() != null ? request.getHandlingFee() : BigDecimal.ZERO)
+                .hufAmount(roundedHufAmount)
+                .handlingFee(serverHandlingFee)
+                .roundingAmount(roundingDifference)
                 .customerId(request.getCustomerId())
                 .customerName(request.getCustomerName())
                 .notes(String.format("Konverzió: %s %s -> %s %s",
@@ -432,9 +481,9 @@ public class TransactionService {
         updateCashBalance(branchId, fromCurrency.getId(), request.getFromAmount(), true);  // forrás valuta +
         updateCashBalance(branchId, toCurrency.getId(), toAmount.negate(), false);         // cél valuta -
 
-        log.info("Konverzió: {} - {} {} -> {} {}",
+        log.info("Konverzió: {} - {} {} -> {} {} (HUF köztes: {}, kerekítés: {})",
                 receiptNumber, request.getFromAmount(), fromCurrency.getCode(),
-                toAmount, toCurrency.getCode());
+                toAmount, toCurrency.getCode(), roundedHufAmount, roundingDifference);
 
         return saved;
     }
@@ -584,13 +633,19 @@ public class TransactionService {
     }
 
     private void updateCashBalance(UUID branchId, Long currencyId, BigDecimal amount, boolean isIncoming) {
-        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyId(branchId, currencyId)
+        // Pessimistic lock használata race condition elkerülésére
+        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(branchId, currencyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Kassza egyenleg nem található"));
 
         balance.updateBalance(amount.abs(), isIncoming);
         cashBalanceRepository.save(balance);
     }
 
+    /**
+     * @deprecated Használd a {@link ReceiptSequenceService#generateReceiptNumber} metódust.
+     * Ez a metódus a régi E+MMDD+5szám formátumot generálja — csak backward compatibility-hez.
+     */
+    @Deprecated
     private String generateReceiptNumber(UUID branchId, String prefix) {
         LocalDate today = LocalDate.now();
         String datePrefix = prefix + String.format("%02d%02d", today.getMonthValue(), today.getDayOfMonth());

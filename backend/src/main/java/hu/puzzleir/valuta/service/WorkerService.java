@@ -214,14 +214,43 @@ public class WorkerService {
     public WorkerDto findById(Long id) {
         Worker worker = workerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Worker nem található: " + id));
-        
+
         // Multi-tenant check
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         if (!worker.getCompany().getId().equals(companyId)) {
             throw new ValidationException("Nincs jogosultsága ehhez a dolgozóhoz!");
         }
-        
+
         return WorkerDto.from(worker);
+    }
+
+    /**
+     * Worker entity lekérése az aktuális felhasználóhoz
+     */
+    @Transactional(readOnly = true)
+    public Worker getCurrentWorker() {
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+        if (workerId == null) {
+            throw new ValidationException("Nincs bejelentkezett felhasználó!");
+        }
+        return workerRepository.findById(workerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Worker nem található: " + workerId));
+    }
+
+    /**
+     * Worker entity lekérése ID alapján
+     */
+    @Transactional(readOnly = true)
+    public Worker getWorkerEntity(Long id) {
+        Worker worker = workerRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Worker nem található: " + id));
+
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (!worker.getCompany().getId().equals(companyId)) {
+            throw new ValidationException("Nincs jogosultsága ehhez a dolgozóhoz!");
+        }
+
+        return worker;
     }
     
     /**
@@ -331,10 +360,15 @@ public class WorkerService {
         worker.setLastLoginAt(LocalDateTime.now());
         workerRepository.save(worker);
         
+        // Calculate expiration time
+        long expiresInMs = 86400000L; // 24 óra millisec
+        LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(expiresInMs / 1000);
+
         return LoginResponseDto.builder()
                 .token(token)
                 .worker(WorkerDto.from(worker))
-                .expiresIn(86400000L) // 24 óra millisec
+                .expiresIn(expiresInMs)
+                .expiresAt(expiresAt.toString()) // ISO format for frontend
                 .build();
     }
     

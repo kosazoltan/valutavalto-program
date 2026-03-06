@@ -9,6 +9,7 @@ import com.puzzleir.backend.repository.CompanyRepository;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.DailySessionRepository;
+import hu.puzzleir.valuta.repository.DenominationCountRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,7 @@ public class DailySessionService {
 
     private final DailySessionRepository dailySessionRepository;
     private final CashBalanceRepository cashBalanceRepository;
+    private final DenominationCountRepository denominationCountRepository;
     private final WorkerRepository workerRepository;
     private final CompanyRepository companyRepository;
     private final BranchRepository branchRepository;
@@ -228,9 +230,17 @@ public class DailySessionService {
 
     /**
      * Záró egyenleg számítása
+     *
+     * A záró egyenleg a HUF kassza aktuális egyenlege, ami tartalmazza a nap folyamán
+     * végrehajtott összes tranzakció (vétel, eladás, kezelési díjak stb.) hatását.
      */
     private BigDecimal calculateClosingBalance(UUID branchId) {
-        return calculateOpeningBalance(branchId); // Ugyanaz a logika
+        List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
+        return balances.stream()
+                .filter(cb -> "HUF".equals(cb.getCurrency().getCode()))
+                .map(CashBalance::getCurrentBalance)
+                .findFirst()
+                .orElse(BigDecimal.ZERO);
     }
 
     /**
@@ -251,5 +261,112 @@ public class DailySessionService {
     public List<DailySession> getSessionHistory(LocalDate startDate, LocalDate endDate) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         return dailySessionRepository.findByDateRange(companyId, startDate, endDate);
+    }
+
+    /**
+     * Napi zárás validáció - címletezések ellenőrzése
+     *
+     * Legacy: NapzarControl hibakódok
+     * - 0: rendben
+     * - 1: esti címletezés hibás (valuta pénztár)
+     * - 2: kezelési díj címletezés hibás
+     * - 3: Western Union címletezés hibás
+     * - 4: ÁFA pénztár címletezés hibás
+     * - 5: e-kereskedelem címletezés hibás
+     */
+    @Transactional(readOnly = true)
+    public DailyClosingValidation validateDailyClosing() {
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+        LocalDate today = LocalDate.now();
+
+        DailyClosingValidation validation = new DailyClosingValidation();
+        validation.setValidationDate(today);
+
+        // 1. Valuta pénztár (esti zárás) ellenőrzés
+        long currencyNotReady = denominationCountRepository.countNotReady(branchId, today, 1);
+        validation.setCurrencyDenominationOk(currencyNotReady == 0);
+        if (currencyNotReady > 0) {
+            validation.setErrorCode(1);
+            validation.setErrorMessage("Esti címletezés hibás - valuta pénztár nem egyezik");
+            return validation;
+        }
+
+        // 2. Kezelési díj ellenőrzés
+        long handlingFeeNotReady = denominationCountRepository.countNotReady(branchId, today, 2);
+        validation.setHandlingFeeDenominationOk(handlingFeeNotReady == 0);
+        if (handlingFeeNotReady > 0) {
+            validation.setErrorCode(2);
+            validation.setErrorMessage("Kezelési díj címletezés hibás");
+            return validation;
+        }
+
+        // 3. Western Union ellenőrzés
+        long wuNotReady = denominationCountRepository.countNotReady(branchId, today, 3);
+        validation.setWesternUnionDenominationOk(wuNotReady == 0);
+        if (wuNotReady > 0) {
+            validation.setErrorCode(3);
+            validation.setErrorMessage("Western Union címletezés hibás");
+            return validation;
+        }
+
+        // 4. ÁFA pénztár ellenőrzés
+        long vatNotReady = denominationCountRepository.countNotReady(branchId, today, 4);
+        validation.setVatDenominationOk(vatNotReady == 0);
+        if (vatNotReady > 0) {
+            validation.setErrorCode(4);
+            validation.setErrorMessage("ÁFA pénztár címletezés hibás");
+            return validation;
+        }
+
+        // 5. E-kereskedelem ellenőrzés
+        long ecomNotReady = denominationCountRepository.countNotReady(branchId, today, 6);
+        validation.setEcommerceDenominationOk(ecomNotReady == 0);
+        if (ecomNotReady > 0) {
+            validation.setErrorCode(5);
+            validation.setErrorMessage("E-kereskedelem címletezés hibás");
+            return validation;
+        }
+
+        // Minden rendben
+        validation.setErrorCode(0);
+        validation.setErrorMessage("Minden címletezés rendben");
+        validation.setAllValid(true);
+
+        return validation;
+    }
+
+    /**
+     * Napi zárás végrehajtása validációval
+     *
+     * Legacy: NAPZAR - teljes napi zárás folyamat
+     */
+    public DailySession closeDayWithValidation() {
+        // Először validáljuk a címletezéseket
+        DailyClosingValidation validation = validateDailyClosing();
+
+        if (!validation.isAllValid()) {
+            throw new ValidationException("Napi zárás nem lehetséges: " + validation.getErrorMessage());
+        }
+
+        // Ha minden rendben, zárjuk a napot
+        return closeDay(true);
+    }
+
+    // ============ DTO-K ============
+
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class DailyClosingValidation {
+        private LocalDate validationDate;
+        private int errorCode;
+        private String errorMessage;
+        private boolean allValid;
+        private boolean currencyDenominationOk;
+        private boolean handlingFeeDenominationOk;
+        private boolean westernUnionDenominationOk;
+        private boolean vatDenominationOk;
+        private boolean ecommerceDenominationOk;
     }
 }

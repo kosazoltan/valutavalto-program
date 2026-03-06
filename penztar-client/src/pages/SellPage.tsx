@@ -13,7 +13,8 @@ import CurrencySelector from '@/components/CurrencySelector';
 import CustomerSearch from '@/components/CustomerSearch';
 import DenomGrid from '@/components/DenomGrid';
 import SanctionAlert from '@/components/SanctionAlert';
-import type { CurrencyCode, Customer, Denomination, SanctionScreeningResult } from '@/types';
+import ReceiptPreviewModal from '@/components/ReceiptPreviewModal';
+import type { CurrencyCode, Customer, Denomination, SanctionScreeningResult, PrintReceiptData } from '@/types';
 
 type InputMode = 'foreign' | 'huf';
 
@@ -42,6 +43,10 @@ export default function SellPage() {
 
   // QR kód state
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
+
+  // Bizonylat preview modal state
+  const [showReceiptPreview, setShowReceiptPreview] = useState(false);
+  const [pendingReceiptData, setPendingReceiptData] = useState<PrintReceiptData | null>(null);
 
   const { isOnline } = useOnlineStatus();
   const isBestChange = companyType === 'BEST_CHANGE';
@@ -192,11 +197,6 @@ export default function SellPage() {
         setSuccess(
           `✅ Eladás sikeres! Bizonylat: ${result.receiptNumber} — ${result.foreignAmount} ${selectedCurrency} = ${result.roundedHufAmount.toLocaleString('hu-HU')} Ft`,
         );
-
-        // Trigger nyomtatás
-        if (window.electronAPI) {
-          void window.electronAPI.printReceipt(JSON.stringify(result));
-        }
       } else {
         // Offline mód — mentés pending_transactions-be
         if (window.electronAPI) {
@@ -234,7 +234,31 @@ export default function SellPage() {
         console.error('[SellPage] QR kód generálás hiba:', qrErr);
       }
 
-      // Reset (de QR kódot megtartjuk)
+      // Bizonylat preview modal megjelenítése
+      const now = new Date();
+      const receiptData: PrintReceiptData = {
+        type: 'sell',
+        companyType: companyType ?? 'BEST_CHANGE',
+        receiptNumber,
+        branchCode: 'SZG001', // TODO(config): dinamikus branch code
+        cashierName: 'Pénztáros', // TODO(auth): bejelentkezett user fullName
+        date: now.toISOString().slice(0, 10),
+        time: now.toTimeString().slice(0, 8),
+        currencyCode: selectedCurrency,
+        foreignAmount: parseFloat(foreignAmount),
+        rate: sellRate,
+        hufAmount: hufNumeric,
+        roundedHufAmount: roundedHuf,
+        roundingDiff: roundingDiff,
+        customerName: customer?.name,
+        customerDocType: customer?.documentType,
+        customerDocNumber: customer?.documentNumber,
+      };
+
+      setPendingReceiptData(receiptData);
+      setShowReceiptPreview(true);
+
+      // Reset (de QR kódot és receipt data-t megtartjuk)
       setForeignAmount('');
       setHufAmount('');
       setCustomer(null);
@@ -262,6 +286,21 @@ export default function SellPage() {
     denominations,
     sanctionChecked,
   ]);
+
+  // Nyomtatás callback — Electron IPC hívás
+  const handlePrint = useCallback(async () => {
+    if (!pendingReceiptData || !window.electronAPI) {
+      console.error('[SellPage] Nincs bizonylat adat vagy Electron API nem elérhető');
+      return;
+    }
+
+    try {
+      await window.electronAPI.printReceipt(JSON.stringify(pendingReceiptData));
+      console.log('[SellPage] Bizonylat nyomtatás sikeres:', pendingReceiptData.receiptNumber);
+    } catch (err) {
+      console.error('[SellPage] Nyomtatási hiba:', err);
+    }
+  }, [pendingReceiptData]);
 
   // ESC → vissza
   useEffect(() => {
@@ -537,6 +576,15 @@ export default function SellPage() {
           onClose={() => setShowDenom(false)}
         />
       )}
+
+      {/* Bizonylat előnézet modal */}
+      <ReceiptPreviewModal
+        isOpen={showReceiptPreview}
+        onClose={() => setShowReceiptPreview(false)}
+        receiptData={pendingReceiptData}
+        qrCodeDataUrl={qrCodeDataUrl}
+        onPrint={handlePrint}
+      />
     </div>
   );
 }

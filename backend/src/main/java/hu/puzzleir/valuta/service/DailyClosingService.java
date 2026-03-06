@@ -49,6 +49,7 @@ public class DailyClosingService {
     private final CurrencyRepository currencyRepository;
     private final SystemParameterService systemParameterService;
     private final AuditLogService auditLogService;
+    private final DailyBalanceService dailyBalanceService;
 
     /** Max lep esek szama */
     private static final int TOTAL_STEPS = 9;
@@ -373,7 +374,17 @@ public class DailyClosingService {
         // 2. Napi munkamenet lezarasa
         dailySessionService.closeSession(closingDate);
 
-        // 3. Dekad kontroll (10 napos idoszak zaras)
+        // 3. Napi mérleg számítása (MODERN KIEGÉSZÍTÉS — Delphi napi forgalom számítás)
+        try {
+            dailyBalanceService.calculateAllCurrenciesForDay(branchId, closingDate);
+            log.info("Napi mérleg számítás sikeres: datum={}, iroda={}", closingDate, branchId);
+        } catch (Exception e) {
+            log.error("Napi mérleg számítás hiba: datum={}, iroda={}, hiba={}", 
+                closingDate, branchId, e.getMessage(), e);
+            // NEM dobunk kivételt — ne akadjon meg a zárás, csak logoljuk
+        }
+
+        // 4. Dekad kontroll (10 napos idoszak zaras)
         checkDecadeClosing(branchId, closingDate);
 
         log.info("Napzaras vegrehajtva: datum={}, iroda={}", closingDate, branchId);
