@@ -13,4 +13,13 @@ public class CircularDto {
     private Boolean acknowledged;
     private String acknowledgedAt;
     private String createdAt;
+    // Sprint 3 — típus rendszer
+    private String circularType;
+    private String circularTypeDescription;
+    private String target;
+    private String priority;
+    private String registrationNumber;
+    private String attachmentFilename;
+    private String validFrom;
+    private String validTo;
 }

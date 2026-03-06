@@ -312,6 +312,14 @@ export interface CurrencyInfo {
 }
 
 // --- Circular (Körlevél) ---
+export type CircularTypeEnum =
+  | 'GENERAL' | 'REGULATION' | 'RATE_POLICY' | 'SECURITY_ALERT'
+  | 'INVENTORY' | 'HR' | 'TECHNICAL' | 'BEST_CHANGE' | 'ZALOG'
+  | 'MANAGEMENT' | 'APPOINTMENT' | 'NEW_YEAR' | 'YEAR_END'
+  | 'MONTHLY_SUMMARY' | 'VIP_NOTICE' | 'AUDIT_NOTICE' | 'TRAINING';
+
+export type CircularPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+
 export interface Circular {
   id: number;
   subject: string;
@@ -320,6 +328,15 @@ export interface Circular {
   sentAt: string;
   acknowledged: boolean;
   acknowledgedAt?: string;
+  // Sprint 3 — típus rendszer
+  circularType?: CircularTypeEnum;
+  circularTypeDescription?: string;
+  target?: string;
+  priority?: CircularPriority;
+  registrationNumber?: string;
+  attachmentFilename?: string;
+  validFrom?: string;
+  validTo?: string;
 }
 
 // --- Customer Detail (Ügyfél bővített) ---
