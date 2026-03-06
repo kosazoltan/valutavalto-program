@@ -170,6 +170,16 @@ public class Customer {
     private String registrationNumber;
 
     /**
+     * Ügyfél típusa: FULL (teljes KYC) vagy SIMPLIFIED (kis ügyfél).
+     * Legacy: KISUGYFEL — egyszerűsített ügyfélnyilvántartás
+     * 300.000 Ft alatti tranzakciókhoz nem szükséges teljes azonosítás.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "customer_type", nullable = false, length = 20)
+    @Builder.Default
+    private CustomerType customerType = CustomerType.FULL;
+
+    /**
      * Aktív ügyfél-e
      */
     @Column(nullable = false)

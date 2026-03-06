@@ -80,6 +80,7 @@ export interface TransactionResponse {
 export interface Customer {
   id: number;
   name: string;
+  customerType: 'FULL' | 'SIMPLIFIED';
   documentType: 'PERSONAL_ID' | 'PASSPORT' | 'DRIVING_LICENSE';
   documentNumber: string;
   nationality: string;
