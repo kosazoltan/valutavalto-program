@@ -1,43 +1,43 @@
-# Valutaváltó ERP v2.0
+﻿# ValutavĂˇltĂł ERP v2.0
 
-Modern valutaváltó / pénzváltó ERP rendszer — Spring Boot + React + Electron desktop klienssel.
+Modern valutavĂˇltĂł / pĂ©nzvĂˇltĂł ERP rendszer â€" Spring Boot + React + Electron desktop klienssel.
 
 ## Tech Stack
 
-| Layer     | Technológia                                                |
+| Layer     | TechnolĂłgia                                                |
 | --------- | ---------------------------------------------------------- |
 | Backend   | **Java 21**, Spring Boot 3.2, Spring Security, Spring Data JPA |
 | Frontend  | **React 19**, TypeScript 5.7, Tailwind CSS 3, Zustand 5   |
 | Desktop   | **Electron 33**, Vite 6, electron-builder                  |
-| Adatbázis | **PostgreSQL** (szerver), **SQLite** (offline kliens)      |
-| Tesztelés | JUnit 5, Mockito, Vitest 4, Testing Library                |
+| AdatbĂˇzis | **PostgreSQL** (szerver), **SQLite** (offline kliens)      |
+| TesztelĂ©s | JUnit 5, Mockito, Vitest 4, Testing Library                |
 | Build     | Maven (backend), npm / Vite (frontend)                     |
 
-## Architektúra
+## ArchitektĂşra
 
 ```
-┌──────────────────────┐    REST API     ┌───────────────────────┐
-│   Electron Desktop   │◄──────────────►│   Spring Boot Backend │
-│  React 19 + TS + TW  │                │  Java 21 + PostgreSQL │
-│  SQLite offline sync  │                │  35 Flyway migráció   │
-└──────────────────────┘                └───────────────────────┘
-         │                                         │
-         │  Offline támogatás                      │  Több iroda
-         │  ← SQL.js (böngészőbe)                  │  ← Branch management
-         │  ← Sync engine                          │  ← Központi admin
-         └─────────────────────────────────────────┘
+â"Śâ"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"    REST API     â"Śâ"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"
+â"'   Electron Desktop   â"'â-"â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â-şâ"'   Spring Boot Backend â"'
+â"'  React 19 + TS + TW  â"'                â"'  Java 21 + PostgreSQL â"'
+â"'  SQLite offline sync  â"'                â"'  48 Flyway migrĂˇciĂł   â"'
+â""â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"                â""â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"
+         â"'                                         â"'
+         â"'  Offline tĂˇmogatĂˇs                      â"'  TĂ¶bb iroda
+         â"'  â† SQL.js (bĂ¶ngĂ©szĹ'be)                  â"'  â† Branch management
+         â"'  â† Sync engine                          â"'  â† KĂ¶zponti admin
+         â""â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"
 ```
 
-**Főbb modulok:**
-- 🏦 **Tranzakciók** — vétel, eladás, sztornó, kezelési díjak
-- 📊 **Árfolyam-kezelés** — MNB, egyedi, kategóriás, spread-számítás
-- 🔒 **AML** — pénzmosás elleni kontroll (NAV előírások, göngyölés)
-- 🌙 **Napzárás** — 5 lépéses varázsló, címletezés, eltérés-kimutatás
-- 🔄 **Irodaközi kereskedés** — deviza trade irodák között
-- 👥 **Ügyfél-kezelés** — azonosítás, szankciós szűrés, PEP
-- 📑 **Riportok** — napi, dekádos, havi, NAV, MNB jelentések
-- 🖨️ **Nyomtatás** — bizonylatok, zárási riportok, sablonok
-- ⚡ **Offline mód** — SQLite + sync engine Electron kliensben
+**FĹ'bb modulok:**
+- đźŹ¦ **TranzakciĂłk** â€" vĂ©tel, eladĂˇs, sztornĂł, kezelĂ©si dĂ­jak
+- đź"Š **Ărfolyam-kezelĂ©s** â€" MNB, egyedi, kategĂłriĂˇs, spread-szĂˇmĂ­tĂˇs
+- đź"' **AML** â€" pĂ©nzmosĂˇs elleni kontroll (NAV elĹ'Ă­rĂˇsok, gĂ¶ngyĂ¶lĂ©s)
+- đźŚ™ **NapzĂˇrĂˇs** â€" 5 lĂ©pĂ©ses varĂˇzslĂł, cĂ­mletezĂ©s, eltĂ©rĂ©s-kimutatĂˇs
+- đź"" **IrodakĂ¶zi kereskedĂ©s** â€" deviza trade irodĂˇk kĂ¶zĂ¶tt
+- đź'Ą **ĂśgyfĂ©l-kezelĂ©s** â€" azonosĂ­tĂˇs, szankciĂłs szĹ±rĂ©s, PEP
+- đź"' **Riportok** â€" napi, dekĂˇdos, havi, NAV, MNB jelentĂ©sek
+- đź-¨ď¸Ź **NyomtatĂˇs** â€" bizonylatok, zĂˇrĂˇsi riportok, sablonok
+- âšˇ **Offline mĂłd** â€" SQLite + sync engine Electron kliensben
 
 ## Quick Start
 
@@ -46,23 +46,23 @@ Modern valutaváltó / pénzváltó ERP rendszer — Spring Boot + React + Elect
 ```bash
 cd backend
 
-# Java 21 szükséges (pl. Eclipse Adoptium)
+# Java 21 szĂĽksĂ©ges (pl. Eclipse Adoptium)
 export JAVA_HOME="/path/to/jdk-21"
 
-# Futtatás (dev profillal, beépített H2-vel)
+# FuttatĂˇs (dev profillal, beĂ©pĂ­tett H2-vel)
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 
 # Vagy: csak build
 ./mvnw clean package -DskipTests
 ```
 
-### Frontend (dev mód)
+### Frontend (dev mĂłd)
 
 ```bash
 cd penztar-client
 
 npm install
-npm run dev          # Vite dev server → http://localhost:5173
+npm run dev          # Vite dev server â†' http://localhost:5173
 ```
 
 ### Electron (desktop)
@@ -72,81 +72,81 @@ cd penztar-client
 
 npm install
 npm run electron:dev   # Electron + Vite HMR
-npm run build          # Production build + Electron csomagolás
+npm run build          # Production build + Electron csomagolĂˇs
 ```
 
-## API Endpointok (főbb)
+## API Endpointok (fĹ'bb)
 
-| Metódus  | Endpoint                               | Leírás                              |
+| MetĂłdus  | Endpoint                               | LeĂ­rĂˇs                              |
 | -------- | -------------------------------------- | ----------------------------------- |
-| `POST`   | `/api/auth/login`                      | Bejelentkezés                       |
-| `POST`   | `/api/auth/logout`                     | Kijelentkezés                       |
+| `POST`   | `/api/auth/login`                      | BejelentkezĂ©s                       |
+| `POST`   | `/api/auth/logout`                     | KijelentkezĂ©s                       |
 | `GET`    | `/api/dashboard`                       | Dashboard adatok                    |
-| `GET`    | `/api/currencies`                      | Valuták listája                     |
-| `GET`    | `/api/exchange-rates`                  | Aktuális árfolyamok                 |
-| `PUT`    | `/api/exchange-rates/{id}`             | Árfolyam módosítás                  |
-| `POST`   | `/api/rate-approvals`                  | Árfolyam-jóváhagyás kérés          |
-| `GET`    | `/api/rate-history`                    | Árfolyam előzmények                 |
-| `POST`   | `/api/transactions/sell`               | Eladás                              |
-| `POST`   | `/api/transactions/buy`                | Vétel                               |
-| `GET`    | `/api/transactions`                    | Tranzakció lista                    |
-| `GET`    | `/api/transactions/{id}`              | Tranzakció részletek                |
-| `POST`   | `/api/storno/check`                    | Sztornó ellenőrzés                  |
-| `POST`   | `/api/storno/execute`                  | Sztornó végrehajtás                 |
-| `GET`    | `/api/customers`                       | Ügyfelek listája                    |
-| `POST`   | `/api/customers`                       | Ügyfél létrehozás                   |
-| `GET`    | `/api/aml/check`                       | AML ellenőrzés                      |
-| `GET`    | `/api/aml/pending`                     | Függő AML bejelentések              |
-| `POST`   | `/api/aml/report`                      | AML bejelentés                      |
-| `POST`   | `/api/closing-wizard/start`            | Napzárás indítás                    |
-| `GET`    | `/api/closing-wizard/{id}`             | Varázsló állapot                    |
-| `POST`   | `/api/closing-wizard/{id}/navigate`    | Varázsló navigáció                  |
-| `POST`   | `/api/closing-wizard/{id}/complete`    | Napzárás befejezés                  |
+| `GET`    | `/api/currencies`                      | ValutĂˇk listĂˇja                     |
+| `GET`    | `/api/exchange-rates`                  | AktuĂˇlis Ăˇrfolyamok                 |
+| `PUT`    | `/api/exchange-rates/{id}`             | Ărfolyam mĂłdosĂ­tĂˇs                  |
+| `POST`   | `/api/rate-approvals`                  | Ărfolyam-jĂłvĂˇhagyĂˇs kĂ©rĂ©s          |
+| `GET`    | `/api/rate-history`                    | Ărfolyam elĹ'zmĂ©nyek                 |
+| `POST`   | `/api/transactions/sell`               | EladĂˇs                              |
+| `POST`   | `/api/transactions/buy`                | VĂ©tel                               |
+| `GET`    | `/api/transactions`                    | TranzakciĂł lista                    |
+| `GET`    | `/api/transactions/{id}`              | TranzakciĂł rĂ©szletek                |
+| `POST`   | `/api/storno/check`                    | SztornĂł ellenĹ'rzĂ©s                  |
+| `POST`   | `/api/storno/execute`                  | SztornĂł vĂ©grehajtĂˇs                 |
+| `GET`    | `/api/customers`                       | Ăśgyfelek listĂˇja                    |
+| `POST`   | `/api/customers`                       | ĂśgyfĂ©l lĂ©trehozĂˇs                   |
+| `GET`    | `/api/aml/check`                       | AML ellenĹ'rzĂ©s                      |
+| `GET`    | `/api/aml/pending`                     | FĂĽggĹ' AML bejelentĂ©sek              |
+| `POST`   | `/api/aml/report`                      | AML bejelentĂ©s                      |
+| `POST`   | `/api/closing-wizard/start`            | NapzĂˇrĂˇs indĂ­tĂˇs                    |
+| `GET`    | `/api/closing-wizard/{id}`             | VarĂˇzslĂł Ăˇllapot                    |
+| `POST`   | `/api/closing-wizard/{id}/navigate`    | VarĂˇzslĂł navigĂˇciĂł                  |
+| `POST`   | `/api/closing-wizard/{id}/complete`    | NapzĂˇrĂˇs befejezĂ©s                  |
 | `GET`    | `/api/cash-balance`                    | Kassza egyenleg                     |
-| `GET`    | `/api/denominations`                   | Címlet készlet                      |
+| `GET`    | `/api/denominations`                   | CĂ­mlet kĂ©szlet                      |
 | `GET`    | `/api/daily-sessions`                  | Napi munkamenetek                   |
-| `POST`   | `/api/daily-sessions/open`             | Munkamenet nyitás                   |
-| `POST`   | `/api/daily-sessions/close`            | Munkamenet zárás                    |
-| `GET`    | `/api/trades`                          | Irodaközi trade-ek                  |
-| `POST`   | `/api/trades/propose`                  | Trade ajánlat                       |
-| `POST`   | `/api/trades/{id}/accept`              | Trade elfogadás                     |
-| `POST`   | `/api/trades/{id}/reject`              | Trade elutasítás                    |
-| `GET`    | `/api/receipts/search`                 | Bizonylat keresés                   |
-| `POST`   | `/api/receipts/{id}/print`             | Bizonylat nyomtatás                 |
+| `POST`   | `/api/daily-sessions/open`             | Munkamenet nyitĂˇs                   |
+| `POST`   | `/api/daily-sessions/close`            | Munkamenet zĂˇrĂˇs                    |
+| `GET`    | `/api/trades`                          | IrodakĂ¶zi trade-ek                  |
+| `POST`   | `/api/trades/propose`                  | Trade ajĂˇnlat                       |
+| `POST`   | `/api/trades/{id}/accept`              | Trade elfogadĂˇs                     |
+| `POST`   | `/api/trades/{id}/reject`              | Trade elutasĂ­tĂˇs                    |
+| `GET`    | `/api/receipts/search`                 | Bizonylat keresĂ©s                   |
+| `POST`   | `/api/receipts/{id}/print`             | Bizonylat nyomtatĂˇs                 |
 | `GET`    | `/api/reports/daily`                   | Napi riport                         |
-| `GET`    | `/api/reports/decade`                  | Dekádos riport                      |
+| `GET`    | `/api/reports/decade`                  | DekĂˇdos riport                      |
 | `GET`    | `/api/reports/monthly`                 | Havi riport                         |
-| `GET`    | `/api/sanctions/screen`                | Szankciós szűrés                    |
-| `GET`    | `/api/audit-log`                       | Audit napló                         |
-| `GET`    | `/api/workers`                         | Dolgozók listája                    |
-| `GET`    | `/api/branches`                        | Irodák listája                      |
-| `GET`    | `/api/commissions`                     | Jutalék számítás                    |
-| `GET`    | `/api/calculator/convert`              | Árfolyam kalkulátor                 |
-| `GET`    | `/api/inventory`                       | Készlet kimutatás                   |
+| `GET`    | `/api/sanctions/screen`                | SzankciĂłs szĹ±rĂ©s                    |
+| `GET`    | `/api/audit-log`                       | Audit naplĂł                         |
+| `GET`    | `/api/workers`                         | DolgozĂłk listĂˇja                    |
+| `GET`    | `/api/branches`                        | IrodĂˇk listĂˇja                      |
+| `GET`    | `/api/commissions`                     | JutalĂ©k szĂˇmĂ­tĂˇs                    |
+| `GET`    | `/api/calculator/convert`              | Ărfolyam kalkulĂˇtor                 |
+| `GET`    | `/api/inventory`                       | KĂ©szlet kimutatĂˇs                   |
 | `GET`    | `/api/health`                          | Health check                        |
-| `POST`   | `/api/sync/push`                       | Offline szinkronizáció              |
+| `POST`   | `/api/sync/push`                       | Offline szinkronizĂˇciĂł              |
 
-> Összesen **99 REST controller** — teljes MNB/NAV integráció, backup, licensz, nyomtatás.
+> Ă-sszesen **99 REST controller** â€" teljes MNB/NAV integrĂˇciĂł, backup, licensz, nyomtatĂˇs.
 
-## Adatbázis
+## AdatbĂˇzis
 
-- **35 Flyway migráció** (V1–V35)
-- Főbb táblák: `transaction`, `currency`, `exchange_rate`, `cash_balance`, `customer`, `worker`, `branch`, `daily_session`, `closing_wizard`, `trade`, `audit_log`, `sanction_list`, `denomination`
-- PostgreSQL (éles), H2 (teszt)
+- **48 Flyway migrĂˇciĂł** (V1â€"V35)
+- FĹ'bb tĂˇblĂˇk: `transaction`, `currency`, `exchange_rate`, `cash_balance`, `customer`, `worker`, `branch`, `daily_session`, `closing_wizard`, `trade`, `audit_log`, `sanction_list`, `denomination`
+- PostgreSQL (Ă©les), H2 (teszt)
 
-## Tesztelés
+## TesztelĂ©s
 
 ### Backend (JUnit 5 + Mockito)
 
 ```bash
 cd backend
 ./mvnw test
-# Eredmény: 131 teszt, 0 hiba
+# EredmĂ©ny: 131 teszt, 0 hiba
 ```
 
-**Teszt típusok:**
-- Unit tesztek: service réteg (RateCalculation, Trade, Commission, Sanction, stb.)
-- Integrációs tesztek: üzleti flow-k (Transaction, Closing, Trade, AML, Rate)
+**Teszt tĂ­pusok:**
+- Unit tesztek: service rĂ©teg (RateCalculation, Trade, Commission, Sanction, stb.)
+- IntegrĂˇciĂłs tesztek: ĂĽzleti flow-k (Transaction, Closing, Trade, AML, Rate)
 - Controller tesztek: REST API (@WebMvcTest)
 
 ### Frontend (Vitest 4 + Testing Library)
@@ -154,74 +154,96 @@ cd backend
 ```bash
 cd penztar-client
 npx vitest run
-# Eredmény: 50 teszt, 10 fájl, 0 hiba
+# EredmĂ©ny: 50 teszt, 10 fĂˇjl, 0 hiba
 ```
 
-**Teszt típusok:**
+**Teszt tĂ­pusok:**
 - Komponens tesztek: ErrorBoundary, Toast rendszer
 - Page tesztek: Login, Dashboard, MainMenu, Closing, Calculator, AuditLog, Trade
-- API modul tesztek: 14 API modul importálhatóság
+- API modul tesztek: 14 API modul importĂˇlhatĂłsĂˇg
 - Hook tesztek: useToast
 
-### TypeScript ellenőrzés
+### TypeScript ellenĹ'rzĂ©s
 
 ```bash
 cd penztar-client
 npx tsc --noEmit
-# Eredmény: 0 hiba
+# EredmĂ©ny: 0 hiba
 ```
 
-## Projekt Struktúra
+## Projekt StruktĂşra
 
 ```
 valutavalto-program/
-├── backend/                      # Spring Boot backend
-│   ├── src/main/java/            # Forráskód (99 controller, 40+ service)
-│   ├── src/main/resources/
-│   │   └── db/migration/         # 35 Flyway migráció (V1-V35)
-│   ├── src/test/java/            # JUnit tesztek
-│   └── pom.xml                   # Maven konfig
-├── penztar-client/               # React + Electron frontend
-│   ├── src/
-│   │   ├── pages/                # 42 oldal
-│   │   ├── components/           # 9 közös komponens
-│   │   ├── api/                  # API kliensek
-│   │   ├── stores/               # Zustand store-ok
-│   │   ├── hooks/                # Custom React hook-ok
-│   │   └── test/                 # Teszt konfig & API tesztek
-│   ├── electron/                 # Electron main process
-│   │   ├── main.ts               # App belépési pont
-│   │   ├── preload.ts            # IPC bridge
-│   │   ├── printer.ts            # Nyomtatás
-│   │   ├── sqlite.ts             # Offline SQLite
-│   │   ├── sync-engine.ts        # Szinkronizáció
-│   │   └── updater.ts            # Auto-update
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── vitest.config.ts
-├── database/                     # Extra migrációk
-└── README.md                     # Ez a fájl
+â"śâ"€â"€ backend/                      # Spring Boot backend
+â"'   â"śâ"€â"€ src/main/java/            # ForrĂˇskĂłd (99 controller, 40+ service)
+â"'   â"śâ"€â"€ src/main/resources/
+â"'   â"'   â""â"€â"€ db/migration/         # 48 Flyway migrĂˇciĂł (V1-V48)
+â"'   â"śâ"€â"€ src/test/java/            # JUnit tesztek
+â"'   â""â"€â"€ pom.xml                   # Maven konfig
+â"śâ"€â"€ penztar-client/               # React + Electron frontend
+â"'   â"śâ"€â"€ src/
+â"'   â"'   â"śâ"€â"€ pages/                # 42 oldal
+â"'   â"'   â"śâ"€â"€ components/           # 9 kĂ¶zĂ¶s komponens
+â"'   â"'   â"śâ"€â"€ api/                  # API kliensek
+â"'   â"'   â"śâ"€â"€ stores/               # Zustand store-ok
+â"'   â"'   â"śâ"€â"€ hooks/                # Custom React hook-ok
+â"'   â"'   â""â"€â"€ test/                 # Teszt konfig & API tesztek
+â"'   â"śâ"€â"€ electron/                 # Electron main process
+â"'   â"'   â"śâ"€â"€ main.ts               # App belĂ©pĂ©si pont
+â"'   â"'   â"śâ"€â"€ preload.ts            # IPC bridge
+â"'   â"'   â"śâ"€â"€ printer.ts            # NyomtatĂˇs
+â"'   â"'   â"śâ"€â"€ sqlite.ts             # Offline SQLite
+â"'   â"'   â"śâ"€â"€ sync-engine.ts        # SzinkronizĂˇciĂł
+â"'   â"'   â""â"€â"€ updater.ts            # Auto-update
+â"'   â"śâ"€â"€ package.json
+â"'   â"śâ"€â"€ tsconfig.json
+â"'   â""â"€â"€ vitest.config.ts
+â"śâ"€â"€ database/                     # Extra migrĂˇciĂłk
+â""â"€â"€ README.md                     # Ez a fĂˇjl
 ```
 
-## Összesítő Statisztikák
+## Ă-sszesĂ­tĹ' StatisztikĂˇk
 
-| Metrika                  | Szám          |
+| Metrika                  | SzĂˇm          |
 | ------------------------ | ------------- |
 | Backend kontrollerek     | 99            |
 | Backend service-ek       | 40+           |
-| Flyway migrációk         | 35            |
+| Flyway migrĂˇciĂłk         | 35            |
 | Frontend oldalak         | 42            |
 | Frontend komponensek     | 9             |
 | API modulok              | 14+           |
 | Backend tesztek          | 131           |
 | Frontend tesztek         | 50            |
-| **Összes teszt**         | **181**       |
-| TypeScript hibák         | 0             |
+| **Ă-sszes teszt**         | **181**       |
+| TypeScript hibĂˇk         | 0             |
+
+## Sprint 3 (2026-03-06) — Hiánypótlás
+
+A teljes Delphi→Modern audit alapján az összes rövid és középtávú hiány pótolva:
+
+| Modul | Leírás | Legacy |
+|---|---|---|
+| HandlingFeeService | Sávos + ezrelékes kezelési díj + auto kedvezmény | GetKezelesidij |
+| SealNumber | Plomba szám generálás ({branch}-{date}-{seq}) | GETPLOMB |
+| BreakPage | Szünet mód — teljes képernyős overlay, PIN, supervisor override | PAUSDISP |
+| ConversionPage | Valuta→valuta konverzió, cross-rate | ARFVALT |
+| DiscountThreshold | Automatikus kedvezmény/felár 500K+/10K- küszöbök | BIGARFVALT/KISARFVALT |
+| DenominationCalculator | Címlet kalkulátor — greedy + készlet-figyelő | KELLCIM |
+| CustomerType | Egyszerűsített ügyfél (300K Ft alatt) | KISUGYFEL |
+| CircularType | 17 körlevél típus + célcsoport + prioritás + iktatószám | KORLEV DLL |
+| HrkMonthlyClosing | HRK havi zárás — valutánkénti összesítés | HRKZARO |
+| LED Driver | 19 driver típus absztrakció (RS-232/LAN/Virtual) | METRO/TRUELIGHT/TOPICA DLL-ek |
+| WU/OTP/TWAIN Stub | Partner API placeholderek (501 Not Implemented) | WUNION, OTP terminal |
+
+**Flyway migrációk:** V42-V48 (7 új)
+**Unit tesztek:** +17 új teszt metódus (HandlingFee, Denomination, SealNumber)
 
 ## Fejlesztők
 
-Fejlesztette a PuzzleIR csapat.
+Fejlesztette a PuzzleIR csapat — Junior AI (Claude Opus 4.6) koordinálásával.
 
 ## Licensz
 
 MIT
+
