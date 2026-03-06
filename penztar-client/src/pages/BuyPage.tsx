@@ -228,8 +228,8 @@ export default function BuyPage() {
           datum: new Date().toISOString().slice(0, 10),
           osszeg: roundedHuf,
           valuta: selectedCurrency,
-          adoszam: '32313332-2-02', // TODO: cég adószámból dinamikusan
-          penztarKod: 101, // TODO: config-ból
+          adoszam: '32313332-2-02', // TODO(config): cég adószámból dinamikusan — SystemParameter API integrációval
+          penztarKod: 101, // TODO(config): pénztárgép kód SystemParameter-ből
         });
         setQrCodeDataUrl(qrData);
       } catch (qrErr) {

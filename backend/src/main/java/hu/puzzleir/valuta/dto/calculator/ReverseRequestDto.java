@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.dto.calculator;
 
+import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -13,6 +14,11 @@ import java.math.BigDecimal;
 @Builder
 public class ReverseRequestDto {
 
+    @NotBlank(message = "Valutakód kötelező")
+    @Size(min = 3, max = 3, message = "Valutakód 3 karakteres")
     private String currency;
+
+    @NotNull(message = "HUF összeg kötelező")
+    @DecimalMin(value = "1", message = "A HUF összegnek pozitívnak kell lennie")
     private BigDecimal hufAmount;
 }

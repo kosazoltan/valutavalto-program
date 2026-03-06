@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.dto.trade.RejectTradeDto;
 import hu.puzzleir.valuta.dto.trade.TradeDto;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.TradeService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -28,7 +29,7 @@ public class TradeController {
     private final TradeService service;
 
     @PostMapping("/propose")
-    public ResponseEntity<TradeDto> propose(@RequestBody ProposeTradeDto dto) {
+    public ResponseEntity<TradeDto> propose(@Valid @RequestBody ProposeTradeDto dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.proposeTrade(dto));
     }
 

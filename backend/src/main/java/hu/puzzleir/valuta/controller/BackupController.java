@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.dto.backup.BackupRecordResponse;
 import hu.puzzleir.valuta.dto.backup.CreateBackupRequest;
 import hu.puzzleir.valuta.entity.BackupType;
 import hu.puzzleir.valuta.service.BackupService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
@@ -31,7 +32,7 @@ public class BackupController {
      * POST /api/v1/backup/create
      */
     @PostMapping("/create")
-    public ResponseEntity<BackupRecordResponse> createBackup(@RequestBody CreateBackupRequest request) {
+    public ResponseEntity<BackupRecordResponse> createBackup(@Valid @RequestBody CreateBackupRequest request) {
         BackupType type = request.getType() != null ? request.getType() : BackupType.FULL;
         BackupRecordResponse response = backupService.createBackup(type, "admin");
         return ResponseEntity.ok(response);

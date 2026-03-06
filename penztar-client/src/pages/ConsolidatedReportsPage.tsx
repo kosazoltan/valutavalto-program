@@ -118,7 +118,7 @@ export default function ConsolidatedReportsPage() {
   const handleLoad = useCallback(async () => {
     setIsLoading(true);
     try {
-      // TODO: API hívás — GET /api/v1/ertektar/reports/consolidated?from=...&to=...
+      // TODO(api): API hívás — GET /api/v1/ertektar/reports/consolidated?from=...&to=... — backend Értéktár modul szükséges
       await new Promise((resolve) => setTimeout(resolve, 500));
       const mockReport = generateMockReport(dateFrom, dateTo);
       setReport(mockReport);

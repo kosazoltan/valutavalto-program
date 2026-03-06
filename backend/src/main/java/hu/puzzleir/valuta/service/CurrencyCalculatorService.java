@@ -179,7 +179,7 @@ public class CurrencyCalculatorService {
                 .toAmount(toAmount)
                 .appliedRate(appliedRate)
                 .spread(spread)
-                .commission(BigDecimal.ZERO) // TODO: commission számítás implementáció
+                .commission(BigDecimal.ZERO) // TODO(integration): CommissionCalculationService integráció a jutalék kalkulációhoz
                 .direction(direction)
                 .roundingInfo("Kerekítés: " + foreignCode + " szabály alkalmazva")
                 .build();

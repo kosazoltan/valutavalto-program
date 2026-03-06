@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.dto.monitoring.BranchStatusResponse;
 import hu.puzzleir.valuta.dto.monitoring.HeartbeatRequest;
 import hu.puzzleir.valuta.service.BranchMonitoringService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -27,7 +28,7 @@ public class BranchMonitoringController {
      * POST /api/v1/monitoring/heartbeat
      */
     @PostMapping("/heartbeat")
-    public ResponseEntity<Void> heartbeat(@RequestBody HeartbeatRequest request) {
+    public ResponseEntity<Void> heartbeat(@Valid @RequestBody HeartbeatRequest request) {
         branchMonitoringService.updateHeartbeat(request.getBranchId());
         return ResponseEntity.ok().build();
     }

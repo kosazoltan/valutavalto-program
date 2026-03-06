@@ -77,7 +77,7 @@ export default function CollectionPage() {
 
   const loadRecords = useCallback(async () => {
     try {
-      // TODO: API hívás — GET /api/v1/ertektar/collections
+      // TODO(api): API hívás — GET /api/v1/ertektar/collections — backend Értéktár modul implementáció szükséges
       const mockData = generateMockRecords();
       setRecords(mockData);
     } catch (err) {
@@ -107,7 +107,7 @@ export default function CollectionPage() {
           collectionNote || null,
         );
       } else {
-        // TODO: API hívás — POST /api/v1/ertektar/collections
+        // TODO(api): API hívás — POST /api/v1/ertektar/collections — backend Értéktár modul implementáció szükséges
         console.log('[Collection] Begyűjtés indítása:', {
           sourceBranchCode: selectedBranch,
           currencyCode: selectedCurrency,

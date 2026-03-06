@@ -136,7 +136,7 @@ export default function ErtektarDashboard() {
         }
       } else {
         // ONLINE mód — API hívás (vagy mock ha nincs API)
-        // TODO: Valódi API hívás — GET /api/v1/ertektar/branches
+        // TODO(api): Valódi API hívás — GET /api/v1/ertektar/branches — backend Értéktár modul szükséges
         const mockData = generateMockBranches();
         const updated = mockData.map((b) => ({
           ...b,

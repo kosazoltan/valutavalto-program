@@ -108,7 +108,7 @@ export default function DistributionPage() {
         });
       } else {
         // ONLINE mód — API hívás
-        // TODO: API hívás — POST /api/v1/ertektar/distribution
+        // TODO(api): API hívás — POST /api/v1/ertektar/distribution — backend Értéktár modul szükséges
         console.log('[Distribution] Batch küldés:', _items, 'Megjegyzés:', note);
         await new Promise((resolve) => setTimeout(resolve, 1_000));
 

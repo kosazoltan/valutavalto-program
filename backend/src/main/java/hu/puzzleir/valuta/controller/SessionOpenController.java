@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.dto.session.SessionDataDto;
 import hu.puzzleir.valuta.dto.session.SessionOpenRequestDto;
 import hu.puzzleir.valuta.service.SessionOpenService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,7 +32,7 @@ public class SessionOpenController {
      */
     @PostMapping("/open")
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<SessionDataDto> openSession(@RequestBody SessionOpenRequestDto request) {
+    public ResponseEntity<SessionDataDto> openSession(@Valid @RequestBody SessionOpenRequestDto request) {
         SessionDataDto result = sessionOpenService.openSession(
                 request.getWorkerId(),
                 request.getBranchId()

@@ -35,7 +35,7 @@ public class EveningClosingService {
                     throw new ValidationException("Erre a napra már van esti zárás: " + date);
                 });
 
-        // TODO: Valódi összesítés a Transaction repository-ból
+        // TODO(integration): Valódi összesítés a Transaction repository-ból — TransactionRepository összesítő query szükséges
         // Egyelőre placeholder adatokkal — a production integrációnál bekötjük
         EveningClosing closing = EveningClosing.builder()
                 .companyId(companyId)
@@ -72,7 +72,7 @@ public class EveningClosingService {
             throw new ValidationException("Csak READY státuszú zárás küldhető el");
         }
 
-        // TODO: REST API hívás a központi szerverre
+        // TODO(integration): REST API hívás a központi szerverre — FtpSyncService vagy RestTemplate integráció szükséges
         closing.setStatus("SENT");
         closing.setSentAt(LocalDateTime.now());
         EveningClosing sent = eveningClosingRepository.save(closing);

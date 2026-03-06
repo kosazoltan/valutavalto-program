@@ -89,12 +89,12 @@ public class CustomerControlService {
 
     /**
      * Éves tranzakció összeg lekérdezése (HUF)
-     * TODO: Integráció a Transaction repository-val
+     * TODO(integration): Integráció a Transaction repository-val — TransactionRepository.sumHufByCustomerAndYear() szükséges
      */
     @Transactional(readOnly = true)
     public BigDecimal getAnnualTransactionTotal(Long customerId, int year) {
         log.debug("Éves összeg lekérdezés - ügyfél: {}, év: {}", customerId, year);
-        // TODO: SELECT SUM(huf_amount) FROM transaction WHERE customer_id = :customerId AND YEAR(transaction_date) = :year
+        // TODO(integration): SELECT SUM(huf_amount) FROM transaction WHERE customer_id = :customerId AND YEAR(transaction_date) = :year
         return BigDecimal.ZERO;
     }
 

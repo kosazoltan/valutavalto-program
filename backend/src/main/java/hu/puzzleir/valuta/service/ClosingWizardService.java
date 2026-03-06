@@ -197,8 +197,8 @@ public class ClosingWizardService {
             errors.add("A nap zárás alatt van, várjon a folyamat befejezésére!");
         }
 
-        // TODO: Tranzakció repository ellenőrzés (ha van PENDING státuszú tranzakció)
-        // Ez a valós implementációban a TransactionRepository-ból jönne
+        // TODO(integration): Tranzakció repository ellenőrzés (ha van PENDING státuszú tranzakció)
+        // A valós implementációban a TransactionRepository.findByBranchIdAndStatus(PENDING) szükséges
 
         return errors;
     }

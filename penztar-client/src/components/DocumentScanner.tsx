@@ -20,7 +20,7 @@ export default function DocumentScanner({ customerId, onClose, onSaved }: Docume
     setError('');
     try {
       if (window.electronAPI?.scanDocument) {
-        // Electron IPC — TWAIN/WIA driver (TODO: implementáció)
+        // Electron IPC — TWAIN/WIA driver (TODO(hardware): TWAIN/WIA scanner driver implementáció — Electron main process szükséges)
         const result = await window.electronAPI.scanDocument();
         setPreview(result.imageBase64);
         setFileName(result.fileName);

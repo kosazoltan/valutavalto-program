@@ -72,7 +72,7 @@ public class ClosingControlService {
         control.setNotes(message);
         closingControlRepository.save(control);
 
-        // TODO: Email/push notification küldés az irodának
+        // TODO(notification): Email/push notification küldés az irodának — NotificationService integráció szükséges
         log.info("Figyelmeztetés rögzítve: branch={}", branchId);
     }
 

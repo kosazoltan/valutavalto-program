@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.dto.calculator.CalculationResultDto;
 import hu.puzzleir.valuta.dto.calculator.ConvertRequestDto;
 import hu.puzzleir.valuta.dto.calculator.ReverseRequestDto;
 import hu.puzzleir.valuta.service.CurrencyCalculatorService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -27,7 +28,7 @@ public class CurrencyCalculatorController {
      * POST /api/v1/calculator/convert
      */
     @PostMapping("/convert")
-    public ResponseEntity<CalculationResultDto> convert(@RequestBody ConvertRequestDto request) {
+    public ResponseEntity<CalculationResultDto> convert(@Valid @RequestBody ConvertRequestDto request) {
         CalculationResultDto result = currencyCalculatorService.calculate(
                 request.getFromCurrency(),
                 request.getToCurrency(),
@@ -43,7 +44,7 @@ public class CurrencyCalculatorController {
      * POST /api/v1/calculator/reverse
      */
     @PostMapping("/reverse")
-    public ResponseEntity<Map<String, BigDecimal>> reverse(@RequestBody ReverseRequestDto request) {
+    public ResponseEntity<Map<String, BigDecimal>> reverse(@Valid @RequestBody ReverseRequestDto request) {
         BigDecimal foreignAmount = currencyCalculatorService.calculateReverse(
                 request.getCurrency(),
                 request.getHufAmount()
