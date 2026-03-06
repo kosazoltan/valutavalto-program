@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -107,6 +109,54 @@ public class MnbReportController {
                 "attachment; filename=mnb_report_" + report.getReportDate() + ".xml")
             .contentType(MediaType.APPLICATION_XML)
             .body(xml);
+    }
+
+    // ============ BATCH 7A: COMPANY SZINTŰ RIPORTOK ============
+
+    /**
+     * Napi MNB riport (company szintű).
+     * GET /api/v1/mnb-reports/daily?date=
+     */
+    @GetMapping("/daily")
+    public ResponseEntity<MnbDailyReportDto> getDailyReport(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ResponseEntity.ok(mnbReportService.generateDailyMnbReport(date));
+    }
+
+    /**
+     * Havi MNB riport.
+     * GET /api/v1/mnb-reports/monthly?month=
+     */
+    @GetMapping("/monthly")
+    public ResponseEntity<MnbMonthlyReportDto> getMonthlyReport(
+            @RequestParam String month) {
+        YearMonth ym = YearMonth.parse(month);
+        return ResponseEntity.ok(mnbReportService.generateMonthlyMnbReport(ym));
+    }
+
+    /**
+     * MNB XML export.
+     * GET /api/v1/mnb-reports/daily/xml?date=
+     */
+    @GetMapping("/daily/xml")
+    public ResponseEntity<String> exportDailyXml(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        String xml = mnbReportService.exportMnbXml(date);
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=mnb_daily_" + date + ".xml")
+            .contentType(MediaType.APPLICATION_XML)
+            .body(xml);
+    }
+
+    /**
+     * MNB adat validáció.
+     * GET /api/v1/mnb-reports/validate?date=
+     */
+    @GetMapping("/validate")
+    public ResponseEntity<List<String>> validateData(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ResponseEntity.ok(mnbReportService.validateMnbData(date));
     }
 
     // ============ DTO KONVERZIÓ ============

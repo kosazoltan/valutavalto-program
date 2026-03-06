@@ -341,6 +341,205 @@ public class MnbReportService {
             .replace("'", "&apos;");
     }
 
+    // ============ BATCH 7A: COMPANY SZINTŰ RIPORTOK ============
+
+    /**
+     * Napi MNB riport generálás company szinten (nem branch szinten).
+     */
+    @Transactional(readOnly = true)
+    public hu.puzzleir.valuta.dto.mnb.MnbDailyReportDto generateDailyMnbReport(LocalDate date) {
+        UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
+        List<Transaction> transactions = transactionRepository.findActiveByCompanyAndDate(companyId, date);
+
+        Map<String, CurrencyAggregation> aggregations = aggregateTransactions(transactions);
+
+        BigDecimal totalBuyHuf = BigDecimal.ZERO;
+        BigDecimal totalSellHuf = BigDecimal.ZERO;
+        int totalTxCount = 0;
+
+        List<hu.puzzleir.valuta.dto.mnb.MnbCurrencyLineDto> lines = new ArrayList<>();
+        for (Map.Entry<String, CurrencyAggregation> entry : aggregations.entrySet()) {
+            CurrencyAggregation agg = entry.getValue();
+            lines.add(hu.puzzleir.valuta.dto.mnb.MnbCurrencyLineDto.builder()
+                .currencyCode(entry.getKey())
+                .buyAmount(agg.buyAmount)
+                .sellAmount(agg.sellAmount)
+                .buyHuf(agg.buyHufTotal)
+                .sellHuf(agg.sellHufTotal)
+                .avgBuyRate(agg.getBuyCount() > 0
+                    ? agg.buyRateSum.divide(BigDecimal.valueOf(agg.getBuyCount()), 4, RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO)
+                .avgSellRate(agg.getSellCount() > 0
+                    ? agg.sellRateSum.divide(BigDecimal.valueOf(agg.getSellCount()), 4, RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO)
+                .transactionCount(agg.totalCount)
+                .build());
+
+            totalBuyHuf = totalBuyHuf.add(agg.buyHufTotal);
+            totalSellHuf = totalSellHuf.add(agg.sellHufTotal);
+            totalTxCount += agg.totalCount;
+        }
+
+        return hu.puzzleir.valuta.dto.mnb.MnbDailyReportDto.builder()
+            .date(date)
+            .totalBuyHuf(totalBuyHuf)
+            .totalSellHuf(totalSellHuf)
+            .totalTransactions(totalTxCount)
+            .currencyLines(lines)
+            .build();
+    }
+
+    /**
+     * Havi MNB riport generálás company szinten.
+     */
+    @Transactional(readOnly = true)
+    public hu.puzzleir.valuta.dto.mnb.MnbMonthlyReportDto generateMonthlyMnbReport(YearMonth month) {
+        UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
+        LocalDate monthStart = month.atDay(1);
+        LocalDate monthEnd = month.atEndOfMonth();
+
+        List<Transaction> transactions = transactionRepository.findActiveByCompanyAndMonth(
+            companyId, monthStart, monthEnd);
+
+        Map<String, CurrencyAggregation> aggregations = aggregateTransactions(transactions);
+
+        BigDecimal totalBuyHuf = BigDecimal.ZERO;
+        BigDecimal totalSellHuf = BigDecimal.ZERO;
+        int totalTxCount = 0;
+
+        List<hu.puzzleir.valuta.dto.mnb.MnbCurrencyLineDto> lines = new ArrayList<>();
+        for (Map.Entry<String, CurrencyAggregation> entry : aggregations.entrySet()) {
+            CurrencyAggregation agg = entry.getValue();
+            lines.add(hu.puzzleir.valuta.dto.mnb.MnbCurrencyLineDto.builder()
+                .currencyCode(entry.getKey())
+                .buyAmount(agg.buyAmount)
+                .sellAmount(agg.sellAmount)
+                .buyHuf(agg.buyHufTotal)
+                .sellHuf(agg.sellHufTotal)
+                .avgBuyRate(agg.getBuyCount() > 0
+                    ? agg.buyRateSum.divide(BigDecimal.valueOf(agg.getBuyCount()), 4, RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO)
+                .avgSellRate(agg.getSellCount() > 0
+                    ? agg.sellRateSum.divide(BigDecimal.valueOf(agg.getSellCount()), 4, RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO)
+                .transactionCount(agg.totalCount)
+                .build());
+
+            totalBuyHuf = totalBuyHuf.add(agg.buyHufTotal);
+            totalSellHuf = totalSellHuf.add(agg.sellHufTotal);
+            totalTxCount += agg.totalCount;
+        }
+
+        // Munkanapok becslése (hétköznapok)
+        int workingDays = 0;
+        LocalDate d = monthStart;
+        while (!d.isAfter(monthEnd)) {
+            if (d.getDayOfWeek().getValue() <= 5) workingDays++;
+            d = d.plusDays(1);
+        }
+
+        return hu.puzzleir.valuta.dto.mnb.MnbMonthlyReportDto.builder()
+            .month(month.toString())
+            .totalBuyHuf(totalBuyHuf)
+            .totalSellHuf(totalSellHuf)
+            .totalTransactions(totalTxCount)
+            .workingDays(workingDays)
+            .currencyLines(lines)
+            .build();
+    }
+
+    /**
+     * MNB XML export company szinten.
+     */
+    @Transactional(readOnly = true)
+    public String exportMnbXml(LocalDate date) {
+        hu.puzzleir.valuta.dto.mnb.MnbDailyReportDto report = generateDailyMnbReport(date);
+
+        String taxId = "00000000-0-00";
+        try {
+            List<OwnCompany> companies = ownCompanyService.listActive();
+            if (!companies.isEmpty() && companies.get(0).getTaxNumber() != null) {
+                taxId = companies.get(0).getTaxNumber();
+            }
+        } catch (Exception e) {
+            log.warn("Saját cég adószám nem elérhető: {}", e.getMessage());
+        }
+
+        StringBuilder xml = new StringBuilder();
+        xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+        xml.append("<MNBReport>\n");
+        xml.append("  <Header>\n");
+        xml.append("    <ReportType>DAILY</ReportType>\n");
+        xml.append("    <ReportDate>").append(date).append("</ReportDate>\n");
+        xml.append("    <CompanyTaxId>").append(escapeXml(taxId)).append("</CompanyTaxId>\n");
+        xml.append("  </Header>\n");
+        xml.append("  <Transactions>\n");
+
+        for (hu.puzzleir.valuta.dto.mnb.MnbCurrencyLineDto line : report.getCurrencyLines()) {
+            xml.append("    <Currency code=\"").append(escapeXml(line.getCurrencyCode())).append("\">\n");
+            xml.append("      <BuyAmount>").append(line.getBuyAmount().setScale(2, RoundingMode.HALF_UP)).append("</BuyAmount>\n");
+            xml.append("      <SellAmount>").append(line.getSellAmount().setScale(2, RoundingMode.HALF_UP)).append("</SellAmount>\n");
+            xml.append("      <BuyHuf>").append(line.getBuyHuf().setScale(0, RoundingMode.HALF_UP)).append("</BuyHuf>\n");
+            xml.append("      <SellHuf>").append(line.getSellHuf().setScale(0, RoundingMode.HALF_UP)).append("</SellHuf>\n");
+            xml.append("      <AvgBuyRate>").append(line.getAvgBuyRate().setScale(2, RoundingMode.HALF_UP)).append("</AvgBuyRate>\n");
+            xml.append("      <AvgSellRate>").append(line.getAvgSellRate().setScale(2, RoundingMode.HALF_UP)).append("</AvgSellRate>\n");
+            xml.append("      <TransactionCount>").append(line.getTransactionCount()).append("</TransactionCount>\n");
+            xml.append("    </Currency>\n");
+        }
+
+        xml.append("  </Transactions>\n");
+        xml.append("  <Summary>\n");
+        xml.append("    <TotalBuyHuf>").append(report.getTotalBuyHuf().setScale(0, RoundingMode.HALF_UP)).append("</TotalBuyHuf>\n");
+        xml.append("    <TotalSellHuf>").append(report.getTotalSellHuf().setScale(0, RoundingMode.HALF_UP)).append("</TotalSellHuf>\n");
+        xml.append("    <TotalTransactions>").append(report.getTotalTransactions()).append("</TotalTransactions>\n");
+        xml.append("  </Summary>\n");
+        xml.append("</MNBReport>");
+
+        return xml.toString();
+    }
+
+    /**
+     * MNB adat validáció.
+     */
+    @Transactional(readOnly = true)
+    public List<String> validateMnbData(LocalDate date) {
+        List<String> errors = new ArrayList<>();
+
+        hu.puzzleir.valuta.dto.mnb.MnbDailyReportDto report = generateDailyMnbReport(date);
+
+        if (report.getTotalTransactions() == 0) {
+            errors.add("Nincs tranzakció az adott napon: " + date);
+        }
+
+        for (hu.puzzleir.valuta.dto.mnb.MnbCurrencyLineDto line : report.getCurrencyLines()) {
+            if (line.getAvgBuyRate().compareTo(BigDecimal.ZERO) <= 0 && line.getBuyAmount().compareTo(BigDecimal.ZERO) > 0) {
+                errors.add(line.getCurrencyCode() + ": Vételi árfolyam 0 vagy negatív!");
+            }
+            if (line.getAvgSellRate().compareTo(BigDecimal.ZERO) <= 0 && line.getSellAmount().compareTo(BigDecimal.ZERO) > 0) {
+                errors.add(line.getCurrencyCode() + ": Eladási árfolyam 0 vagy negatív!");
+            }
+            if (line.getAvgBuyRate().compareTo(BigDecimal.ZERO) > 0 && line.getAvgSellRate().compareTo(BigDecimal.ZERO) > 0) {
+                if (line.getAvgBuyRate().compareTo(line.getAvgSellRate()) >= 0) {
+                    errors.add(line.getCurrencyCode() + ": Vételi árfolyam >= eladási árfolyam (spread negatív!)");
+                }
+            }
+        }
+
+        // Adószám ellenőrzés
+        try {
+            List<OwnCompany> companies = ownCompanyService.listActive();
+            if (companies.isEmpty()) {
+                errors.add("Nincs aktív cég regisztrálva!");
+            } else if (companies.get(0).getTaxNumber() == null || companies.get(0).getTaxNumber().isBlank()) {
+                errors.add("Cég adószáma hiányzik!");
+            }
+        } catch (Exception e) {
+            errors.add("Cég adatok nem elérhetők: " + e.getMessage());
+        }
+
+        return errors;
+    }
+
     // ============ BELSŐ SEGÉDOSZTÁLYOK ============
 
     /**

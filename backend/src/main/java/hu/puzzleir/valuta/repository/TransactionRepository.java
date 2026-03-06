@@ -503,4 +503,105 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("from") LocalDateTime from,
         @Param("to") LocalDateTime to
     );
+
+    // ============ BATCH 7A: AML + NAV REPORT QUERY-K ============
+
+    /**
+     * Ügyfél elmúlt 30 nap tranzakcióinak összege.
+     */
+    @Query("SELECT COALESCE(SUM(t.hufAmount), 0) FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.customerId = :customerId " +
+           "AND t.transactionDate >= :sinceDate " +
+           "AND t.status = 'COMPLETED'")
+    BigDecimal sumCustomerTotalSince(
+        @Param("companyId") UUID companyId,
+        @Param("customerId") String customerId,
+        @Param("sinceDate") LocalDate sinceDate
+    );
+
+    /**
+     * Ügyfél elmúlt 30 nap tranzakciószáma.
+     */
+    @Query("SELECT COUNT(t) FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.customerId = :customerId " +
+           "AND t.transactionDate >= :sinceDate " +
+           "AND t.status = 'COMPLETED'")
+    long countCustomerTransactionsSince(
+        @Param("companyId") UUID companyId,
+        @Param("customerId") String customerId,
+        @Param("sinceDate") LocalDate sinceDate
+    );
+
+    /**
+     * Ügyfél napi tranzakciószáma (structuring detektálás).
+     */
+    @Query("SELECT COUNT(t) FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.customerId = :customerId " +
+           "AND t.transactionDate = :date " +
+           "AND t.status = 'COMPLETED'")
+    long countCustomerDailyTransactions(
+        @Param("companyId") UUID companyId,
+        @Param("customerId") String customerId,
+        @Param("date") LocalDate date
+    );
+
+    /**
+     * Ügyfél napi tranzakcióinak listája (structuring detektálás).
+     */
+    @Query("SELECT t FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.customerId = :customerId " +
+           "AND t.transactionDate = :date " +
+           "AND t.status = 'COMPLETED' " +
+           "ORDER BY t.transactionTime")
+    List<Transaction> findCustomerDailyTransactions(
+        @Param("companyId") UUID companyId,
+        @Param("customerId") String customerId,
+        @Param("date") LocalDate date
+    );
+
+    /**
+     * NAV adatszolgáltatás: 2M+ Ft tranzakciók adott napon, company szinten.
+     */
+    @Query("SELECT t FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.transactionDate = :date " +
+           "AND t.hufAmount >= :threshold " +
+           "AND t.status = 'COMPLETED' " +
+           "ORDER BY t.hufAmount DESC")
+    List<Transaction> findReportableTransactions(
+        @Param("companyId") UUID companyId,
+        @Param("date") LocalDate date,
+        @Param("threshold") BigDecimal threshold
+    );
+
+    /**
+     * MNB riport: aktív tranzakciók company + dátum alapján (branch-független).
+     */
+    @Query("SELECT t FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.transactionDate = :date " +
+           "AND t.status = 'COMPLETED' " +
+           "ORDER BY t.transactionTime")
+    List<Transaction> findActiveByCompanyAndDate(
+        @Param("companyId") UUID companyId,
+        @Param("date") LocalDate date
+    );
+
+    /**
+     * MNB riport: aktív tranzakciók company + hónap alapján.
+     */
+    @Query("SELECT t FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.transactionDate BETWEEN :monthStart AND :monthEnd " +
+           "AND t.status = 'COMPLETED' " +
+           "ORDER BY t.transactionDate, t.transactionTime")
+    List<Transaction> findActiveByCompanyAndMonth(
+        @Param("companyId") UUID companyId,
+        @Param("monthStart") LocalDate monthStart,
+        @Param("monthEnd") LocalDate monthEnd
+    );
 }

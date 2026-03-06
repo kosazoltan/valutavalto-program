@@ -1,9 +1,13 @@
 package hu.puzzleir.valuta.service;
 
 import com.puzzleir.backend.exception.ValidationException;
-import hu.puzzleir.valuta.entity.Customer;
-import hu.puzzleir.valuta.entity.Transaction;
-import hu.puzzleir.valuta.entity.TransactionType;
+import hu.puzzleir.valuta.dto.aml.AmlDailySummaryDto;
+import hu.puzzleir.valuta.dto.aml.AmlReportDto;
+import hu.puzzleir.valuta.dto.aml.CreateAmlReportDto;
+import hu.puzzleir.valuta.dto.aml.CustomerRiskProfileDto;
+import hu.puzzleir.valuta.entity.*;
+import hu.puzzleir.valuta.repository.AmlReportRepository;
+import hu.puzzleir.valuta.repository.AmlThresholdRepository;
 import hu.puzzleir.valuta.repository.CustomerRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -15,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.temporal.IsoFields;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,6 +50,8 @@ public class AmlService {
 
     private final TransactionRepository transactionRepository;
     private final CustomerRepository customerRepository;
+    private final AmlReportRepository amlReportRepository;
+    private final AmlThresholdRepository amlThresholdRepository;
 
     /** Azonositas nelkuli limit (NAV) */
     private static final BigDecimal IDENTIFICATION_LIMIT = new BigDecimal("300000");
@@ -503,5 +511,227 @@ public class AmlService {
     public static class QuarterlyStats {
         private long count;
         private BigDecimal total;
+    }
+
+    // ============ 2017. ÉVI LIII. TV. — PÉNZMOSÁS ELLENI MODUL ============
+
+    /** 2017. LIII. tv.: Bejelentési küszöb */
+    private static final BigDecimal REPORTING_THRESHOLD = new BigDecimal("2000000");
+
+    /** 2017. LIII. tv.: Fokozott átvilágítási küszöb */
+    private static final BigDecimal ENHANCED_THRESHOLD = new BigDecimal("4500000");
+
+    /** Structuring detektálás: limit alatti tranzakciók száma egy napon belül */
+    private static final int STRUCTURING_MIN_TRANSACTIONS = 3;
+
+    /** Structuring: ha a tranzakciók a limit 80%-a fölött vannak */
+    private static final BigDecimal STRUCTURING_RATIO = new BigDecimal("0.80");
+
+    /** Napi gyakoriság küszöb (gyanús ha > 3) */
+    private static final int DAILY_FREQUENCY_THRESHOLD = 3;
+
+    /** 30 napos volumen küszöb (gyanús ha > 5M) */
+    private static final BigDecimal MONTHLY_VOLUME_THRESHOLD = new BigDecimal("5000000");
+
+    /**
+     * Ügyfél kockázati profil lekérése.
+     * Elmúlt 30 nap tranzakciói, összegek, gyakorisság alapján.
+     */
+    @Transactional(readOnly = true)
+    public CustomerRiskProfileDto getCustomerRiskProfile(String customerId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        LocalDate today = LocalDate.now();
+        LocalDate thirtyDaysAgo = today.minusDays(30);
+
+        BigDecimal last30DaysTotal = transactionRepository.sumCustomerTotalSince(
+            companyId, customerId, thirtyDaysAgo);
+        long last30DaysCount = transactionRepository.countCustomerTransactionsSince(
+            companyId, customerId, thirtyDaysAgo);
+        BigDecimal dailyTotal = getDailyCustomerTotal(customerId);
+        long dailyCount = transactionRepository.countCustomerDailyTransactions(
+            companyId, customerId, today);
+
+        boolean structuring = isStructuringInternal(companyId, customerId, today);
+        boolean highFrequency = dailyCount > DAILY_FREQUENCY_THRESHOLD;
+        boolean highVolume = last30DaysTotal.compareTo(MONTHLY_VOLUME_THRESHOLD) > 0;
+
+        String riskLevel;
+        if (structuring || (highFrequency && highVolume)) {
+            riskLevel = "CRITICAL";
+        } else if (highFrequency || highVolume) {
+            riskLevel = "HIGH";
+        } else if (last30DaysTotal.compareTo(REPORTING_THRESHOLD) >= 0) {
+            riskLevel = "MEDIUM";
+        } else {
+            riskLevel = "LOW";
+        }
+
+        // Ügyfél név lekérése
+        String customerName = null;
+        Optional<Customer> customerOpt = customerRepository.findByCustomerCodeAndCompanyId(customerId, companyId);
+        if (customerOpt.isPresent()) {
+            customerName = customerOpt.get().getName();
+        }
+
+        return CustomerRiskProfileDto.builder()
+            .customerId(customerId)
+            .customerName(customerName)
+            .riskLevel(riskLevel)
+            .last30DaysTotal(last30DaysTotal)
+            .last30DaysTransactionCount((int) last30DaysCount)
+            .dailyTotal(dailyTotal)
+            .dailyTransactionCount((int) dailyCount)
+            .annualTotal(getAnnualRollingTotal(customerId))
+            .structuringDetected(structuring)
+            .highFrequency(highFrequency)
+            .highVolume(highVolume)
+            .build();
+    }
+
+    /**
+     * AML bejelentés létrehozása.
+     */
+    public AmlReportDto submitReport(CreateAmlReportDto dto) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        String workerCode = SecurityUtils.getCurrentWorkerCode();
+
+        com.puzzleir.backend.entity.Company company = new com.puzzleir.backend.entity.Company();
+        company.setId(companyId);
+
+        AmlReport report = AmlReport.builder()
+            .company(company)
+            .customerId(dto.getCustomerId())
+            .reportType(AmlReportType.valueOf(dto.getReportType()))
+            .riskLevel(dto.getRiskLevel() != null
+                ? AmlRiskLevel.valueOf(dto.getRiskLevel())
+                : AmlRiskLevel.LOW)
+            .amountHuf(dto.getAmountHuf())
+            .currencyCode(dto.getCurrencyCode())
+            .originalAmount(dto.getOriginalAmount())
+            .customerName(dto.getCustomerName())
+            .documentType(dto.getDocumentType())
+            .documentNumber(dto.getDocumentNumber())
+            .workerNotes(dto.getWorkerNotes())
+            .status(AmlReportStatus.DRAFT)
+            .createdBy(workerCode)
+            .build();
+
+        if (dto.getTransactionId() != null) {
+            Transaction tx = transactionRepository.findById(dto.getTransactionId()).orElse(null);
+            report.setTransaction(tx);
+        }
+
+        AmlReport saved = amlReportRepository.save(report);
+        log.info("AML bejelentés létrehozva: id={}, type={}, amount={}", saved.getId(), dto.getReportType(), dto.getAmountHuf());
+        return toDto(saved);
+    }
+
+    /**
+     * Függő (DRAFT/SUBMITTED) bejelentések listája.
+     */
+    @Transactional(readOnly = true)
+    public List<AmlReportDto> getPendingReports() {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return amlReportRepository.findPendingByCompanyId(companyId)
+            .stream().map(this::toDto).toList();
+    }
+
+    /**
+     * Napi AML összesítő.
+     */
+    @Transactional(readOnly = true)
+    public AmlDailySummaryDto getDailyAmlSummary(LocalDate date) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        LocalDateTime from = date.atStartOfDay();
+        LocalDateTime to = date.atTime(LocalTime.MAX);
+
+        List<AmlReport> reports = amlReportRepository.findByCompanyIdAndDateRange(companyId, from, to);
+
+        int pending = 0, submitted = 0, flagged = 0;
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        for (AmlReport r : reports) {
+            switch (r.getStatus()) {
+                case DRAFT -> pending++;
+                case SUBMITTED -> submitted++;
+                case FLAGGED -> flagged++;
+                default -> {}
+            }
+            totalAmount = totalAmount.add(r.getAmountHuf() != null ? r.getAmountHuf() : BigDecimal.ZERO);
+        }
+
+        long standardCount = amlReportRepository.countByCompanyIdAndDateRangeAndType(companyId, from, to, AmlReportType.STANDARD);
+        long enhancedCount = amlReportRepository.countByCompanyIdAndDateRangeAndType(companyId, from, to, AmlReportType.ENHANCED);
+        long suspiciousCount = amlReportRepository.countByCompanyIdAndDateRangeAndType(companyId, from, to, AmlReportType.SUSPICIOUS);
+        long thresholdCount = amlReportRepository.countByCompanyIdAndDateRangeAndType(companyId, from, to, AmlReportType.THRESHOLD);
+
+        return AmlDailySummaryDto.builder()
+            .date(date)
+            .totalReports(reports.size())
+            .pendingReports(pending)
+            .submittedReports(submitted)
+            .flaggedReports(flagged)
+            .standardChecks(standardCount)
+            .enhancedChecks(enhancedCount)
+            .suspiciousChecks(suspiciousCount)
+            .thresholdChecks(thresholdCount)
+            .totalAmountHuf(totalAmount)
+            .build();
+    }
+
+    /**
+     * Structuring detektálás: ha az ügyfél több kis tranzakcióval próbálja
+     * elkerülni az azonosítási limitet (300K).
+     *
+     * Pl. 3 db 290K tranzakció egy napon = GYANÚS.
+     */
+    @Transactional(readOnly = true)
+    public boolean isStructuring(String customerId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return isStructuringInternal(companyId, customerId, LocalDate.now());
+    }
+
+    private boolean isStructuringInternal(UUID companyId, String customerId, LocalDate date) {
+        List<Transaction> dailyTxs = transactionRepository.findCustomerDailyTransactions(
+            companyId, customerId, date);
+
+        if (dailyTxs.size() < STRUCTURING_MIN_TRANSACTIONS) {
+            return false;
+        }
+
+        // Ha a tranzakciók nagy része az IDENTIFICATION_LIMIT közelében van (80-99% közötti)
+        BigDecimal limitThreshold = IDENTIFICATION_LIMIT.multiply(STRUCTURING_RATIO);
+        long nearLimitCount = dailyTxs.stream()
+            .filter(tx -> tx.getHufAmount().compareTo(limitThreshold) >= 0
+                       && tx.getHufAmount().compareTo(IDENTIFICATION_LIMIT) < 0)
+            .count();
+
+        return nearLimitCount >= STRUCTURING_MIN_TRANSACTIONS;
+    }
+
+    // ============ DTO KONVERZIÓ ============
+
+    private AmlReportDto toDto(AmlReport r) {
+        return AmlReportDto.builder()
+            .id(r.getId())
+            .customerId(r.getCustomerId())
+            .transactionId(r.getTransaction() != null ? r.getTransaction().getId() : null)
+            .reportType(r.getReportType().name())
+            .riskLevel(r.getRiskLevel().name())
+            .amountHuf(r.getAmountHuf())
+            .currencyCode(r.getCurrencyCode())
+            .originalAmount(r.getOriginalAmount())
+            .customerName(r.getCustomerName())
+            .documentType(r.getDocumentType())
+            .documentNumber(r.getDocumentNumber())
+            .workerNotes(r.getWorkerNotes())
+            .reviewedBy(r.getReviewedBy())
+            .reviewedAt(r.getReviewedAt())
+            .status(r.getStatus().name())
+            .submittedAt(r.getSubmittedAt())
+            .acknowledgedAt(r.getAcknowledgedAt())
+            .externalReference(r.getExternalReference())
+            .createdBy(r.getCreatedBy())
+            .createdAt(r.getCreatedAt())
+            .build();
     }
 }

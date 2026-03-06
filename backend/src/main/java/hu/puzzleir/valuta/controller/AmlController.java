@@ -1,0 +1,94 @@
+package hu.puzzleir.valuta.controller;
+
+import hu.puzzleir.valuta.dto.aml.*;
+import hu.puzzleir.valuta.service.AmlService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * AML (Pénzmosás elleni) controller.
+ *
+ * 2017. évi LIII. tv. — Pénzmosás és terrorizmus finanszírozása megelőzéséről.
+ */
+@RestController
+@RequestMapping("/api/v1/aml")
+@RequiredArgsConstructor
+public class AmlController {
+
+    private final AmlService amlService;
+
+    /**
+     * Tranzakció AML ellenőrzés.
+     * POST /api/v1/aml/check
+     */
+    @PostMapping("/check")
+    public ResponseEntity<AmlCheckResult> checkTransaction(
+            @Valid @RequestBody AmlTransactionCheckRequest request) {
+        AmlCheckResult result = amlService.checkAllThresholds(
+            request.getCustomerId(),
+            request.getAmountHuf(),
+            request.getCurrencyCode()
+        );
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Ügyfél kockázati profil.
+     * GET /api/v1/aml/customer-risk/{customerId}
+     */
+    @GetMapping("/customer-risk/{customerId}")
+    public ResponseEntity<CustomerRiskProfileDto> getCustomerRiskProfile(
+            @PathVariable String customerId) {
+        return ResponseEntity.ok(amlService.getCustomerRiskProfile(customerId));
+    }
+
+    /**
+     * AML bejelentés létrehozása.
+     * POST /api/v1/aml/report
+     */
+    @PostMapping("/report")
+    public ResponseEntity<AmlReportDto> submitReport(
+            @Valid @RequestBody CreateAmlReportDto request) {
+        return ResponseEntity.ok(amlService.submitReport(request));
+    }
+
+    /**
+     * Függő bejelentések.
+     * GET /api/v1/aml/pending
+     */
+    @GetMapping("/pending")
+    public ResponseEntity<List<AmlReportDto>> getPendingReports() {
+        return ResponseEntity.ok(amlService.getPendingReports());
+    }
+
+    /**
+     * Napi AML összesítő.
+     * GET /api/v1/aml/summary?date=
+     */
+    @GetMapping("/summary")
+    public ResponseEntity<AmlDailySummaryDto> getDailySummary(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ResponseEntity.ok(amlService.getDailyAmlSummary(date));
+    }
+
+    /**
+     * Structuring detektálás.
+     * GET /api/v1/aml/structuring-check/{customerId}
+     */
+    @GetMapping("/structuring-check/{customerId}")
+    public ResponseEntity<Map<String, Object>> checkStructuring(
+            @PathVariable String customerId) {
+        boolean isStructuring = amlService.isStructuring(customerId);
+        return ResponseEntity.ok(Map.of(
+            "customerId", customerId,
+            "structuringDetected", isStructuring
+        ));
+    }
+}

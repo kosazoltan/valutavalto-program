@@ -1,260 +1,227 @@
-# Valutaváltó Program - Teljes Körű Rendszer
+# Valutaváltó ERP v2.0
 
-## 🏗️ Projekt Struktúra
+Modern valutaváltó / pénzváltó ERP rendszer — Spring Boot + React + Electron desktop klienssel.
+
+## Tech Stack
+
+| Layer     | Technológia                                                |
+| --------- | ---------------------------------------------------------- |
+| Backend   | **Java 21**, Spring Boot 3.2, Spring Security, Spring Data JPA |
+| Frontend  | **React 19**, TypeScript 5.7, Tailwind CSS 3, Zustand 5   |
+| Desktop   | **Electron 33**, Vite 6, electron-builder                  |
+| Adatbázis | **PostgreSQL** (szerver), **SQLite** (offline kliens)      |
+| Tesztelés | JUnit 5, Mockito, Vitest 4, Testing Library                |
+| Build     | Maven (backend), npm / Vite (frontend)                     |
+
+## Architektúra
+
+```
+┌──────────────────────┐    REST API     ┌───────────────────────┐
+│   Electron Desktop   │◄──────────────►│   Spring Boot Backend │
+│  React 19 + TS + TW  │                │  Java 21 + PostgreSQL │
+│  SQLite offline sync  │                │  35 Flyway migráció   │
+└──────────────────────┘                └───────────────────────┘
+         │                                         │
+         │  Offline támogatás                      │  Több iroda
+         │  ← SQL.js (böngészőbe)                  │  ← Branch management
+         │  ← Sync engine                          │  ← Központi admin
+         └─────────────────────────────────────────┘
+```
+
+**Főbb modulok:**
+- 🏦 **Tranzakciók** — vétel, eladás, sztornó, kezelési díjak
+- 📊 **Árfolyam-kezelés** — MNB, egyedi, kategóriás, spread-számítás
+- 🔒 **AML** — pénzmosás elleni kontroll (NAV előírások, göngyölés)
+- 🌙 **Napzárás** — 5 lépéses varázsló, címletezés, eltérés-kimutatás
+- 🔄 **Irodaközi kereskedés** — deviza trade irodák között
+- 👥 **Ügyfél-kezelés** — azonosítás, szankciós szűrés, PEP
+- 📑 **Riportok** — napi, dekádos, havi, NAV, MNB jelentések
+- 🖨️ **Nyomtatás** — bizonylatok, zárási riportok, sablonok
+- ⚡ **Offline mód** — SQLite + sync engine Electron kliensben
+
+## Quick Start
+
+### Backend
+
+```bash
+cd backend
+
+# Java 21 szükséges (pl. Eclipse Adoptium)
+export JAVA_HOME="/path/to/jdk-21"
+
+# Futtatás (dev profillal, beépített H2-vel)
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+
+# Vagy: csak build
+./mvnw clean package -DskipTests
+```
+
+### Frontend (dev mód)
+
+```bash
+cd penztar-client
+
+npm install
+npm run dev          # Vite dev server → http://localhost:5173
+```
+
+### Electron (desktop)
+
+```bash
+cd penztar-client
+
+npm install
+npm run electron:dev   # Electron + Vite HMR
+npm run build          # Production build + Electron csomagolás
+```
+
+## API Endpointok (főbb)
+
+| Metódus  | Endpoint                               | Leírás                              |
+| -------- | -------------------------------------- | ----------------------------------- |
+| `POST`   | `/api/auth/login`                      | Bejelentkezés                       |
+| `POST`   | `/api/auth/logout`                     | Kijelentkezés                       |
+| `GET`    | `/api/dashboard`                       | Dashboard adatok                    |
+| `GET`    | `/api/currencies`                      | Valuták listája                     |
+| `GET`    | `/api/exchange-rates`                  | Aktuális árfolyamok                 |
+| `PUT`    | `/api/exchange-rates/{id}`             | Árfolyam módosítás                  |
+| `POST`   | `/api/rate-approvals`                  | Árfolyam-jóváhagyás kérés          |
+| `GET`    | `/api/rate-history`                    | Árfolyam előzmények                 |
+| `POST`   | `/api/transactions/sell`               | Eladás                              |
+| `POST`   | `/api/transactions/buy`                | Vétel                               |
+| `GET`    | `/api/transactions`                    | Tranzakció lista                    |
+| `GET`    | `/api/transactions/{id}`              | Tranzakció részletek                |
+| `POST`   | `/api/storno/check`                    | Sztornó ellenőrzés                  |
+| `POST`   | `/api/storno/execute`                  | Sztornó végrehajtás                 |
+| `GET`    | `/api/customers`                       | Ügyfelek listája                    |
+| `POST`   | `/api/customers`                       | Ügyfél létrehozás                   |
+| `GET`    | `/api/aml/check`                       | AML ellenőrzés                      |
+| `GET`    | `/api/aml/pending`                     | Függő AML bejelentések              |
+| `POST`   | `/api/aml/report`                      | AML bejelentés                      |
+| `POST`   | `/api/closing-wizard/start`            | Napzárás indítás                    |
+| `GET`    | `/api/closing-wizard/{id}`             | Varázsló állapot                    |
+| `POST`   | `/api/closing-wizard/{id}/navigate`    | Varázsló navigáció                  |
+| `POST`   | `/api/closing-wizard/{id}/complete`    | Napzárás befejezés                  |
+| `GET`    | `/api/cash-balance`                    | Kassza egyenleg                     |
+| `GET`    | `/api/denominations`                   | Címlet készlet                      |
+| `GET`    | `/api/daily-sessions`                  | Napi munkamenetek                   |
+| `POST`   | `/api/daily-sessions/open`             | Munkamenet nyitás                   |
+| `POST`   | `/api/daily-sessions/close`            | Munkamenet zárás                    |
+| `GET`    | `/api/trades`                          | Irodaközi trade-ek                  |
+| `POST`   | `/api/trades/propose`                  | Trade ajánlat                       |
+| `POST`   | `/api/trades/{id}/accept`              | Trade elfogadás                     |
+| `POST`   | `/api/trades/{id}/reject`              | Trade elutasítás                    |
+| `GET`    | `/api/receipts/search`                 | Bizonylat keresés                   |
+| `POST`   | `/api/receipts/{id}/print`             | Bizonylat nyomtatás                 |
+| `GET`    | `/api/reports/daily`                   | Napi riport                         |
+| `GET`    | `/api/reports/decade`                  | Dekádos riport                      |
+| `GET`    | `/api/reports/monthly`                 | Havi riport                         |
+| `GET`    | `/api/sanctions/screen`                | Szankciós szűrés                    |
+| `GET`    | `/api/audit-log`                       | Audit napló                         |
+| `GET`    | `/api/workers`                         | Dolgozók listája                    |
+| `GET`    | `/api/branches`                        | Irodák listája                      |
+| `GET`    | `/api/commissions`                     | Jutalék számítás                    |
+| `GET`    | `/api/calculator/convert`              | Árfolyam kalkulátor                 |
+| `GET`    | `/api/inventory`                       | Készlet kimutatás                   |
+| `GET`    | `/api/health`                          | Health check                        |
+| `POST`   | `/api/sync/push`                       | Offline szinkronizáció              |
+
+> Összesen **99 REST controller** — teljes MNB/NAV integráció, backup, licensz, nyomtatás.
+
+## Adatbázis
+
+- **35 Flyway migráció** (V1–V35)
+- Főbb táblák: `transaction`, `currency`, `exchange_rate`, `cash_balance`, `customer`, `worker`, `branch`, `daily_session`, `closing_wizard`, `trade`, `audit_log`, `sanction_list`, `denomination`
+- PostgreSQL (éles), H2 (teszt)
+
+## Tesztelés
+
+### Backend (JUnit 5 + Mockito)
+
+```bash
+cd backend
+./mvnw test
+# Eredmény: 131 teszt, 0 hiba
+```
+
+**Teszt típusok:**
+- Unit tesztek: service réteg (RateCalculation, Trade, Commission, Sanction, stb.)
+- Integrációs tesztek: üzleti flow-k (Transaction, Closing, Trade, AML, Rate)
+- Controller tesztek: REST API (@WebMvcTest)
+
+### Frontend (Vitest 4 + Testing Library)
+
+```bash
+cd penztar-client
+npx vitest run
+# Eredmény: 50 teszt, 10 fájl, 0 hiba
+```
+
+**Teszt típusok:**
+- Komponens tesztek: ErrorBoundary, Toast rendszer
+- Page tesztek: Login, Dashboard, MainMenu, Closing, Calculator, AuditLog, Trade
+- API modul tesztek: 14 API modul importálhatóság
+- Hook tesztek: useToast
+
+### TypeScript ellenőrzés
+
+```bash
+cd penztar-client
+npx tsc --noEmit
+# Eredmény: 0 hiba
+```
+
+## Projekt Struktúra
 
 ```
 valutavalto-program/
-├── backend/                  # Spring Boot 3.2 + Java 21 REST API
-├── frontend-flutter/         # Pénztáros kliens (Windows/Linux Desktop)
-├── frontend-react/           # Admin UI (Értéktár, Fő értéktár, Compliance)
-├── docker/                   # Docker Compose fájlok (pénztár gép)
-├── scripts/                  # Automatizálási scriptek (backup, migráció)
-├── database/                 # SQL schema, migrációk
-│   └── migrations/
-├── docs/                     # Dokumentáció, API specifikáció
-└── .env.example              # Példa environment változók
+├── backend/                      # Spring Boot backend
+│   ├── src/main/java/            # Forráskód (99 controller, 40+ service)
+│   ├── src/main/resources/
+│   │   └── db/migration/         # 35 Flyway migráció (V1-V35)
+│   ├── src/test/java/            # JUnit tesztek
+│   └── pom.xml                   # Maven konfig
+├── penztar-client/               # React + Electron frontend
+│   ├── src/
+│   │   ├── pages/                # 42 oldal
+│   │   ├── components/           # 9 közös komponens
+│   │   ├── api/                  # API kliensek
+│   │   ├── stores/               # Zustand store-ok
+│   │   ├── hooks/                # Custom React hook-ok
+│   │   └── test/                 # Teszt konfig & API tesztek
+│   ├── electron/                 # Electron main process
+│   │   ├── main.ts               # App belépési pont
+│   │   ├── preload.ts            # IPC bridge
+│   │   ├── printer.ts            # Nyomtatás
+│   │   ├── sqlite.ts             # Offline SQLite
+│   │   ├── sync-engine.ts        # Szinkronizáció
+│   │   └── updater.ts            # Auto-update
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── vitest.config.ts
+├── database/                     # Extra migrációk
+└── README.md                     # Ez a fájl
 ```
 
----
+## Összesítő Statisztikák
 
-## 🚀 Gyors Kezdés (Fejlesztőknek)
+| Metrika                  | Szám          |
+| ------------------------ | ------------- |
+| Backend kontrollerek     | 99            |
+| Backend service-ek       | 40+           |
+| Flyway migrációk         | 35            |
+| Frontend oldalak         | 42            |
+| Frontend komponensek     | 9             |
+| API modulok              | 14+           |
+| Backend tesztek          | 131           |
+| Frontend tesztek         | 50            |
+| **Összes teszt**         | **181**       |
+| TypeScript hibák         | 0             |
 
-### **1. Előfeltételek**
+## Fejlesztők
 
-- **Java 21** (Spring Boot backend)
-- **Node.js 20+** (React admin UI, archíválás script)
-- **Flutter 3.16+** (Desktop kliens)
-- **PostgreSQL 16 kliens** (psql parancs - helyi fejlesztéshez)
-- **Docker Desktop** (opcionális - pénztár gép szimuláció)
+Fejlesztette a PuzzleIR csapat.
 
-### **2. Klónozás és környezet setup**
+## Licensz
 
-```powershell
-# Git repo klónozás
-git clone https://github.com/kosazoltan/valutavalto-program.git
-cd valutavalto-program
-
-# Environment változók másolás
-Copy-Item .env.example .env
-
-# FONTOS: Szerkeszd a .env fájlt!
-# - RENDER_DB_URL → Render Dashboard-ról másold
-# - JWT_SECRET → Generálj erős random string-et
-# - Többi változó egyelőre maradhat placeholder
-notepad .env
-```
-
-### **3. Render PostgreSQL Connection String beszerzése**
-
-1. Menj: https://dashboard.render.com
-2. Válaszd: `valuta-production` database
-3. Info tab → **Internal Database URL** másolása
-4. Másold be a `.env` fájl `RENDER_DB_URL` változójába
-
-**Példa:**
-```
-RENDER_DB_URL=postgresql://valuta_user:abc123xyz@dpg-ct4nq8l9q8jc739xxxxxx.frankfurt-postgres.render.com/valuta_production
-```
-
----
-
-## 📊 Adatbázis Setup
-
-### **Schema import Render PostgreSQL-be**
-
-```powershell
-# PostgreSQL kliens telepítés (ha nincs még)
-choco install postgresql16 --params '/Port:5433'
-
-# Render adatbázis kapcsolat teszt
-$env:RENDER_DB_URL = "postgresql://..."  # .env-ből másold
-psql $env:RENDER_DB_URL -c "SELECT version();"
-
-# Schema import (valuta_data.sql módosított verzió)
-psql $env:RENDER_DB_URL -f database\migrations\001_initial_schema.sql
-
-# pgcrypto extension engedélyezés (titkosításhoz)
-psql $env:RENDER_DB_URL -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
-```
-
----
-
-## 🏢 Architektúra Áttekintés
-
-### **3-szintű Hierarchia:**
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ FŐ ÉRTÉKTÁR (React Admin)                                   │
-│ - Árfolyam készítés (konkurencia + bank árfolyam)          │
-│ - Kedvezmény beállítás (pénztáranként)                     │
-│ - 9‰ tranzakciós illeték (ezrelékes OR sávos)              │
-└──────────────────────┬──────────────────────────────────────┘
-                       ↓ (árfolyamok publikálás)
-┌─────────────────────────────────────────────────────────────┐
-│ ÉRTÉKTÁR (React Admin)                                       │
-│ - Pénztárak ellátása (forint/valuta csomag)                │
-│ - Bank kapcsolat (valuta ki/be, forint ki/be)              │
-│ - Western Union, MoneyGram, Exclusive Cash                  │
-└──────────────────────┬──────────────────────────────────────┘
-                       ↓ (csomag küldés "úton lévő")
-┌─────────────────────────────────────────────────────────────┐
-│ PÉNZTÁR (Flutter Desktop + Lokális PostgreSQL)              │
-│ - Tranzakció rögzítés (vásárlás/eladás)                    │
-│ - Készlet monitorozás                                       │
-│ - Auto-sync: 5-10 perc OR 10 tranzakció → Render           │
-└─────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────┐
-│ COMPLIANCE OFFICER (React Admin)                            │
-│ - MNB AML/terror lista feltöltés (CSV/Excel)               │
-│ - Ügyfél ellenőrzés tranzakció előtt                        │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### **Adatbázis Architektúra:**
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ RENDER POSTGRESQL (Frankfurt - 1 GB RAM, 25 GB storage)    │
-│ - Központi adatbázis (utolsó 12 hónap tranzakció)          │
-│ - Logical Replication Publisher (árfolyamok, AML lista)    │
-│ - $26.50/hó                                                 │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-                       ↓ (Logical Replication)
-┌─────────────────────────────────────────────────────────────┐
-│ PÉNZTÁR GÉP - LOKÁLIS POSTGRESQL (Docker)                  │
-│ - Subscriber (exchange_rates, prohibited_persons sync)     │
-│ - Helyi tranzakciók írás (offline működés)                 │
-│ - WAL archíválás → USB drive (BitLocker titkosítva)        │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-                       ↓ (Automatikus archíválás havonta)
-┌─────────────────────────────────────────────────────────────┐
-│ CLOUDFLARE R2 (180 GB archívum)                             │
-│ - 7 év historikus tranzakciók (Parquet compressed)         │
-│ - Régi bizonylatok PDF-ek                                  │
-│ - $3/hó                                                     │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 🔒 Biztonsági Rétegek
-
-### **1. PostgreSQL mező-szintű titkosítás (pgcrypto)**
-```sql
--- Személyi adat titkosítás AES-256-GCM
-INSERT INTO client_person (name, id_card_number) VALUES (
-  'Kovács János',
-  pgp_sym_encrypt('123456AB', current_setting('app.encryption_key'), 'cipher-algo=aes256')
-);
-```
-
-### **2. USB Drive titkosítás (BitLocker)**
-- AES-256-XTS teljes meghajtó titkosítás
-- Recovery key központi szerveren (széf)
-- Automatikus unlock területi vezető jelszavával
-
-### **3. WAL fájl titkosítás (GPG - opcionális)**
-```bash
-archive_command = 'gpg --encrypt --recipient backup@valuta.hu --output /backup/wal/%f.gpg %p'
-```
-
-### **4. TLS 1.3 hálózati kommunikáció**
-- Render PostgreSQL SSL alapértelmezett
-- Spring Boot → Render: TLS 1.3
-- Flutter Desktop → Spring Boot: HTTPS
-
----
-
-## 🔧 Fejlesztői Eszközök
-
-### **Backend (Spring Boot)**
-```powershell
-cd backend
-mvnw spring-boot:run
-# API: http://localhost:8080
-# Swagger UI: http://localhost:8080/swagger-ui.html
-```
-
-### **Frontend React (Admin)**
-```powershell
-cd frontend-react
-npm install
-npm run dev
-# UI: http://localhost:3000
-```
-
-### **Frontend Flutter (Pénztár kliens)**
-```powershell
-cd frontend-flutter
-flutter pub get
-flutter run -d windows
-```
-
----
-
-## 📦 Docker (Pénztár gép szimuláció)
-
-```powershell
-cd docker
-docker-compose -f docker-compose.cashier.yml up -d
-
-# Ellenőrzés
-docker ps
-docker logs valuta-cashier-db
-
-# Leállítás
-docker-compose -f docker-compose.cashier.yml down
-```
-
----
-
-## 📋 Fejlesztési Roadmap
-
-- [x] **Task 1-2**: Render PostgreSQL setup + Projekt struktúra
-- [ ] **Task 3**: PostgreSQL schema import + pgcrypto
-- [ ] **Task 4**: Spring Boot backend alapok (Auth, REST API)
-- [ ] **Task 5**: Flutter Desktop pénztár kliens (Offline support)
-- [ ] **Task 6**: React Admin UI (Árfolyam készítő)
-- [ ] **Task 7**: PostgreSQL Logical Replication (Render → Pénztár)
-- [ ] **Task 8**: USB Backup automatizálás (BitLocker + WAL)
-- [ ] **Task 9**: Cloudflare R2 archíválás (12 hónap+ régi adat)
-- [ ] **Task 10**: Kecskemét pilot teszt (1 értéktár + 3 pénztár)
-
----
-
-## 🆘 Hibaelhárítás
-
-### **Render PostgreSQL Connection Timeout**
-```powershell
-# Ellenőrzés: Render Dashboard → valuta-production → Info → Connection String friss?
-psql $env:RENDER_DB_URL -c "SELECT 1;"
-
-# Ha timeout: Ellenőrizd a Render Dashboard-on hogy "Suspended" státusz van-e (inaktivitás miatt)
-```
-
-### **psql command not found**
-```powershell
-# PostgreSQL 16 kliens telepítés
-choco install postgresql16
-
-# PATH ellenőrzés
-$env:Path -split ';' | Select-String postgres
-```
-
----
-
-## 📞 Támogatás
-
-- **Dokumentáció**: `docs/` mappa
-- **API Specifikáció**: `docs/api-specification.md` (később)
-- **Hibabejelentés**: GitHub Issues
-
----
-
-## 📄 Licenc
-
-Proprietary - Valuta Váltó Kft. © 2025
+MIT

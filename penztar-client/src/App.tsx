@@ -56,6 +56,10 @@ import SessionOpenPage from '@/pages/SessionOpenPage';
 import CalculatorPage from '@/pages/CalculatorPage';
 // Batch 6B — Audit napló
 import AuditLogPage from '@/pages/AuditLogPage';
+// Batch 7A — AML + MNB + NAV
+import AmlPage from '@/pages/AmlPage';
+import MnbReportPage from '@/pages/MnbReportPage';
+import NavReportPage from '@/pages/NavReportPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -448,6 +452,32 @@ export default function App() {
         element={
           <ProtectedRoute>
             <CalculatorPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Batch 7A — AML + MNB + NAV */}
+      <Route
+        path="/aml"
+        element={
+          <ProtectedRoute>
+            <AmlPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mnb-report"
+        element={
+          <ProtectedRoute>
+            <MnbReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/nav-report"
+        element={
+          <ProtectedRoute>
+            <NavReportPage />
           </ProtectedRoute>
         }
       />
