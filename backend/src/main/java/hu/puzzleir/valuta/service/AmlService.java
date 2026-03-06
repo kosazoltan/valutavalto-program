@@ -801,7 +801,7 @@ public class AmlService {
         
         log.info(auditMessage);
         
-        // Ha van AuditLogService, használd:
-        // auditLogService.log("AML_REVERSE_ACCUMULATION", auditMessage, customerId);
+        // AuditLogService használata
+        auditLogService.log("AML_REVERSE_ACCUMULATION", auditMessage, customerId);
     }
 }

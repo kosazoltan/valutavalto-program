@@ -176,4 +176,16 @@ public class DailyBalance {
             this.difference = closingBalance.subtract(actualStock);
         }
     }
+
+    /**
+     * Automatikus kalkuláció mentés előtt
+     */
+    @PrePersist
+    @PreUpdate
+    public void onSave() {
+        calculateClosingBalance();
+        if (actualStock != null) {
+            calculateDifference();
+        }
+    }
 }

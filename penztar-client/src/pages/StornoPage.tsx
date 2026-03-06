@@ -1,13 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
+import { toast } from '@/hooks/useToast';
 import { checkStorno, executeStorno } from '@/api/stornos';
 import { getCurrencyInfo } from '@/utils/currencies';
-import type { StornoCheck, CurrencyCode } from '@/types';
+import { generateQRCode } from '@/utils/qrcode';
+import ReceiptPreviewModal from '@/components/ReceiptPreviewModal';
+import type { StornoCheck, CurrencyCode, PrintReceiptData } from '@/types';
 
 export default function StornoPage() {
   const navigate = useNavigate();
-  const { companyType } = useAuthStore();
+  const { companyType, user, branchCode } = useAuthStore();
 
   const [receiptSearch, setReceiptSearch] = useState('');
   const [stornoCheck, setStornoCheck] = useState<StornoCheck | null>(null);
@@ -17,6 +20,11 @@ export default function StornoPage() {
   const [isExecuting, setIsExecuting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // QR kód és bizonylat preview state-ek
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
+  const [showReceiptPreview, setShowReceiptPreview] = useState(false);
+  const [pendingReceiptData, setPendingReceiptData] = useState<PrintReceiptData | null>(null);
 
   const isBestChange = companyType === 'BEST_CHANGE';
   const headerColor = isBestChange ? 'bg-red-600' : 'bg-orange-500';
@@ -69,9 +77,51 @@ export default function StornoPage() {
           : undefined,
       });
 
+      const tx = stornoCheck.transaction;
+      const receiptNumber = result.newReceiptNumber;
+
       setSuccess(
-        `✅ Stornó sikeres! Új bizonylat: ${result.newReceiptNumber}`,
+        `✅ Stornó sikeres! Új bizonylat: ${receiptNumber}`,
       );
+
+      // QR kód generálás a stornó bizonylatra
+      try {
+        const taxNumber = companyType === 'BEST_CHANGE' ? '32313332-2-02' : '14040535-2-02';
+        
+        const qrData = await generateQRCode({
+          bizonylatSzam: receiptNumber,
+          datum: new Date().toISOString().slice(0, 10),
+          osszeg: tx.roundedHufAmount,
+          valuta: tx.currencyCode,
+          adoszam: taxNumber,
+          penztarKod: parseInt(branchCode, 10),
+        });
+        setQrCodeDataUrl(qrData);
+      } catch (qrErr) {
+        console.error('[StornoPage] QR kód generálás hiba:', qrErr);
+      }
+
+      // Stornó bizonylat adatok összeállítása
+      const now = new Date();
+      const receiptData: PrintReceiptData = {
+        type: 'storno',
+        companyType: companyType ?? 'BEST_CHANGE',
+        receiptNumber,
+        branchCode: branchCode, // Dinamikus érték
+        cashierName: user?.fullName ?? 'Pénztáros', // Bejelentkezett user
+        date: now.toISOString().slice(0, 10),
+        time: now.toTimeString().slice(0, 8),
+        currencyCode: tx.currencyCode,
+        foreignAmount: tx.foreignAmount,
+        rate: tx.rate,
+        hufAmount: tx.hufAmount,
+        roundedHufAmount: tx.roundedHufAmount,
+        stornoReason: reason.trim(),
+        originalReceiptNumber: tx.receiptNumber, // Eredeti bizonylat száma
+      };
+
+      setPendingReceiptData(receiptData);
+      setShowReceiptPreview(true);
 
       // Reset
       setStornoCheck(null);
@@ -81,10 +131,30 @@ export default function StornoPage() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Stornó végrehajtási hiba';
       setError(`❌ ${message}`);
+      toast.error(`Stornó hiba: ${message}`);
     } finally {
       setIsExecuting(false);
     }
-  }, [stornoCheck, reason, supervisorPassword]);
+  }, [stornoCheck, reason, supervisorPassword, companyType, branchCode, user]);
+
+  // Nyomtatás callback
+  const handlePrint = useCallback(async () => {
+    if (!pendingReceiptData || !window.electronAPI) {
+      console.error('[StornoPage] Nincs bizonylat adat vagy Electron API nem elérhető');
+      toast.error('Nyomtatási hiba: Electron API nem elérhető');
+      return;
+    }
+
+    try {
+      await window.electronAPI.printReceipt(JSON.stringify(pendingReceiptData));
+      console.log('[StornoPage] Stornó bizonylat nyomtatás sikeres:', pendingReceiptData.receiptNumber);
+      toast.success('Stornó bizonylat nyomtatva!');
+    } catch (err) {
+      console.error('[StornoPage] Nyomtatási hiba:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Ismeretlen hiba';
+      toast.error(`Nyomtatási hiba: ${errorMessage}`);
+    }
+  }, [pendingReceiptData]);
 
   // ESC → vissza
   useEffect(() => {
@@ -272,6 +342,15 @@ export default function StornoPage() {
           )}
         </div>
       </main>
+
+      {/* Stornó bizonylat előnézet modal */}
+      <ReceiptPreviewModal
+        isOpen={showReceiptPreview}
+        onClose={() => setShowReceiptPreview(false)}
+        receiptData={pendingReceiptData}
+        qrCodeDataUrl={qrCodeDataUrl}
+        onPrint={handlePrint}
+      />
     </div>
   );
 }

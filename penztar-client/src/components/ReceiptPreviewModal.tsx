@@ -146,7 +146,7 @@ export default function ReceiptPreviewModal({
 
             <div className="my-3 border-t border-gray-300" />
 
-            {/* Tranzakció tételek */}
+            {/* Tranzakció tételek — Sell/Buy */}
             {(receiptData.type === 'sell' || receiptData.type === 'buy') && (
               <div className="space-y-2">
                 <p className="font-semibold">
@@ -182,6 +182,41 @@ export default function ReceiptPreviewModal({
               </div>
             )}
 
+            {/* Stornó specifikus adatok */}
+            {receiptData.type === 'storno' && (
+              <div className="space-y-2">
+                <p className="font-semibold text-red-700">STORNÓZOTT TRANZAKCIÓ</p>
+                
+                {receiptData.originalReceiptNumber && (
+                  <p>
+                    <span className="font-semibold">Eredeti bizonylat:</span> {receiptData.originalReceiptNumber}
+                  </p>
+                )}
+
+                <p>
+                  <span>Valutanem:</span> {receiptData.currencyCode ?? '—'}
+                </p>
+                <p>
+                  <span>Összeg:</span> {formatAmount(receiptData.foreignAmount)}{' '}
+                  {receiptData.currencyCode ?? ''}
+                </p>
+                <p>
+                  <span>Árfolyam:</span> {formatRate(receiptData.rate)}
+                </p>
+                <p>
+                  <span className="font-semibold">HUF összeg:</span> {formatAmount(receiptData.roundedHufAmount ?? receiptData.hufAmount)} Ft
+                </p>
+
+                {receiptData.stornoReason && (
+                  <>
+                    <div className="my-2 border-t border-gray-400" />
+                    <p className="font-semibold">Stornó oka:</p>
+                    <p className="text-[10px] italic">{receiptData.stornoReason}</p>
+                  </>
+                )}
+              </div>
+            )}
+
             {/* Ügyfél adatok */}
             {receiptData.customerName && (
               <>
@@ -200,7 +235,7 @@ export default function ReceiptPreviewModal({
             )}
 
             {/* QR kód */}
-            {qrCodeDataUrl && (receiptData.type === 'sell' || receiptData.type === 'buy') && (
+            {qrCodeDataUrl && (receiptData.type === 'sell' || receiptData.type === 'buy' || receiptData.type === 'storno') && (
               <>
                 <div className="my-3 border-t border-gray-300" />
                 <div className="text-center">

@@ -6,6 +6,8 @@ import com.puzzleir.backend.exception.ResourceNotFoundException;
 import com.puzzleir.backend.exception.ValidationException;
 import com.puzzleir.backend.repository.BranchRepository;
 import com.puzzleir.backend.repository.CompanyRepository;
+import hu.puzzleir.valuta.dto.pos.PosResultStatus;
+import hu.puzzleir.valuta.dto.pos.PosTransactionResult;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -52,6 +54,7 @@ public class TransactionService {
     private final ReceiptSequenceService receiptSequenceService;
     private final HandlingFeeCalculator handlingFeeCalculator;
     private final AmlService amlService;
+    private final PosTerminalService posTerminalService;
 
     // Sztornó limit supervisor nélkül (3 db/nap)
     private static final int DAILY_REVERSAL_LIMIT = 3;
@@ -130,6 +133,26 @@ public class TransactionService {
                 .multiply(rate.getBaseBuyRate()).setScale(0, RoundingMode.HALF_UP);
         BigDecimal appliedRate = rate.getBuyRateForAmount(preDiscountHufAmount);
 
+        // POS terminál integráció — bankkártyás fizetésnél
+        PaymentMethod paymentMethod = request.getPaymentMethod() != null ? request.getPaymentMethod() : PaymentMethod.CASH;
+        String posAuthCode = null;
+        String posRefNumber = null;
+        String posTerminalId = request.getPosTerminalId();
+
+        if (paymentMethod == PaymentMethod.CARD) {
+            if (posTerminalId == null || posTerminalId.isBlank()) {
+                throw new ValidationException("Bankkártyás fizetéshez POS terminál azonosító kötelező!");
+            }
+            PosTransactionResult posResult = posTerminalService.initiatePayment(
+                    payableAmount, "HUF", posTerminalId);
+            if (!posResult.approved()) {
+                throw new ValidationException("Bankkártyás fizetés elutasítva: " + posResult.errorMessage());
+            }
+            posAuthCode = posResult.authorizationCode();
+            posRefNumber = posResult.referenceNumber();
+            log.info("POS fizetés elfogadva: auth={}, ref={}", posAuthCode, posRefNumber);
+        }
+
         // Tranzakció létrehozása
         Transaction transaction = Transaction.builder()
                 .company(company)
@@ -148,6 +171,10 @@ public class TransactionService {
                 .discountPercent(request.getDiscountPercent() != null ? request.getDiscountPercent() : BigDecimal.ZERO)
                 .discountAmount(calculateDiscountAmount(hufAmount, request.getDiscountPercent()))
                 .roundingAmount(roundingDifference)
+                .paymentMethod(paymentMethod)
+                .posAuthorizationCode(posAuthCode)
+                .posReferenceNumber(posRefNumber)
+                .posTerminalId(posTerminalId)
                 .customerId(request.getCustomerId())
                 .customerName(request.getCustomerName())
                 .customerAddress(request.getCustomerAddress())
@@ -239,6 +266,26 @@ public class TransactionService {
                 .multiply(rate.getBaseSellRate()).setScale(0, RoundingMode.HALF_UP);
         BigDecimal appliedRate = rate.getSellRateForAmount(preDiscountHufAmount);
 
+        // POS terminál integráció — bankkártyás fizetésnél
+        PaymentMethod paymentMethod = request.getPaymentMethod() != null ? request.getPaymentMethod() : PaymentMethod.CASH;
+        String posAuthCode = null;
+        String posRefNumber = null;
+        String posTerminalId = request.getPosTerminalId();
+
+        if (paymentMethod == PaymentMethod.CARD) {
+            if (posTerminalId == null || posTerminalId.isBlank()) {
+                throw new ValidationException("Bankkártyás fizetéshez POS terminál azonosító kötelező!");
+            }
+            PosTransactionResult posResult = posTerminalService.initiatePayment(
+                    payableAmount, "HUF", posTerminalId);
+            if (!posResult.approved()) {
+                throw new ValidationException("Bankkártyás fizetés elutasítva: " + posResult.errorMessage());
+            }
+            posAuthCode = posResult.authorizationCode();
+            posRefNumber = posResult.referenceNumber();
+            log.info("POS fizetés elfogadva: auth={}, ref={}", posAuthCode, posRefNumber);
+        }
+
         // Tranzakció létrehozása
         Transaction transaction = Transaction.builder()
                 .company(company)
@@ -257,6 +304,10 @@ public class TransactionService {
                 .discountPercent(request.getDiscountPercent() != null ? request.getDiscountPercent() : BigDecimal.ZERO)
                 .discountAmount(calculateDiscountAmount(hufAmount, request.getDiscountPercent()))
                 .roundingAmount(roundingDifference)
+                .paymentMethod(paymentMethod)
+                .posAuthorizationCode(posAuthCode)
+                .posReferenceNumber(posRefNumber)
+                .posTerminalId(posTerminalId)
                 .customerId(request.getCustomerId())
                 .customerName(request.getCustomerName())
                 .customerAddress(request.getCustomerAddress())
@@ -331,6 +382,24 @@ public class TransactionService {
         Worker worker = workerRepository.findById(workerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található"));
 
+        // POS terminál sztornó — ha az eredeti tranzakció bankkártyás volt
+        String posAuthCode = null;
+        String posRefNumber = null;
+        if (original.getPaymentMethod() == PaymentMethod.CARD
+                && original.getPosTerminalId() != null && !original.getPosTerminalId().isBlank()) {
+            String originalPosRef = original.getPosReferenceNumber() != null
+                    ? original.getPosReferenceNumber()
+                    : original.getReceiptNumber();
+            PosTransactionResult posResult = posTerminalService.initiateReversal(
+                    originalPosRef, original.getPosTerminalId());
+            if (!posResult.approved()) {
+                throw new ValidationException("POS sztornó elutasítva: " + posResult.errorMessage());
+            }
+            posAuthCode = posResult.authorizationCode();
+            posRefNumber = posResult.referenceNumber();
+            log.info("POS sztornó elfogadva: auth={}, ref={}", posAuthCode, posRefNumber);
+        }
+
         // Bizonylat szám generálása — az EREDETI típus számlálójából (NEM külön S prefix!)
         String receiptNumber = receiptSequenceService.generateReversalReceiptNumber(
                 branchId, original.getTransactionType());
@@ -353,6 +422,10 @@ public class TransactionService {
                 .discountPercent(original.getDiscountPercent())
                 .discountAmount(original.getDiscountAmount())
                 .roundingAmount(original.getRoundingAmount())
+                .paymentMethod(original.getPaymentMethod())
+                .posAuthorizationCode(posAuthCode)
+                .posReferenceNumber(posRefNumber)
+                .posTerminalId(original.getPosTerminalId())
                 .originalTransaction(original)
                 .reversalReason(request.getReason())
                 .approvedBy(request.getApprovedBy())
@@ -678,6 +751,10 @@ public class TransactionService {
         private String customerDocumentNumber;
         private String customerNationality;
         private String notes;
+        /** Fizetési mód: CASH (alapértelmezett) vagy CARD (bankkártya) */
+        private PaymentMethod paymentMethod;
+        /** POS terminál azonosító (csak CARD fizetésnél kötelező) */
+        private String posTerminalId;
     }
 
     @lombok.Data
@@ -695,6 +772,10 @@ public class TransactionService {
         private String customerDocumentNumber;
         private String customerNationality;
         private String notes;
+        /** Fizetési mód: CASH (alapértelmezett) vagy CARD (bankkártya) */
+        private PaymentMethod paymentMethod;
+        /** POS terminál azonosító (csak CARD fizetésnél kötelező) */
+        private String posTerminalId;
     }
 
     @lombok.Data

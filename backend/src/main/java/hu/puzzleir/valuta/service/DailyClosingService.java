@@ -2,6 +2,9 @@ package hu.puzzleir.valuta.service;
 
 import com.puzzleir.backend.entity.Branch;
 import com.puzzleir.backend.exception.ValidationException;
+import hu.puzzleir.valuta.dto.eveningclosing.DailyDataPackage;
+import hu.puzzleir.valuta.dto.eveningclosing.DataSyncResult;
+import hu.puzzleir.valuta.dto.pos.PosClosingResult;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -50,6 +53,9 @@ public class DailyClosingService {
     private final SystemParameterService systemParameterService;
     private final AuditLogService auditLogService;
     private final DailyBalanceService dailyBalanceService;
+    private final PosTerminalService posTerminalService;
+    private final PosTerminalRepository posTerminalRepository;
+    private final EveningClosingService eveningClosingService;
 
     /** Max lep esek szama */
     private static final int TOTAL_STEPS = 9;
@@ -384,7 +390,13 @@ public class DailyClosingService {
             // NEM dobunk kivételt — ne akadjon meg a zárás, csak logoljuk
         }
 
-        // 4. Dekad kontroll (10 napos idoszak zaras)
+        // 4. POS terminál napi zárás — ha van aktív terminál az irodán
+        executePosTerminalClosing(branchId, closingDate);
+
+        // 5. Esti zárás adatcsomag küldés a központnak (legacy ESTIZAR ekvivalens)
+        executeEveningSync(branchId, closingDate);
+
+        // 6. Dekad kontroll (10 napos idoszak zaras)
         checkDecadeClosing(branchId, closingDate);
 
         log.info("Napzaras vegrehajtva: datum={}, iroda={}", closingDate, branchId);
@@ -415,6 +427,66 @@ public class DailyClosingService {
         }
 
         log.info("Napi arfolyamok rogzitve: {} db", activeRates.size());
+    }
+
+    /**
+     * POS terminál napi zárás — az irodához tartozó összes aktív terminálon.
+     * Legacy: otpterminal DLL — napzárás hívás.
+     */
+    private void executePosTerminalClosing(UUID branchId, LocalDate closingDate) {
+        try {
+            List<PosTerminal> terminals = posTerminalRepository
+                    .findByBranchIdAndIsActiveTrueOrderByTerminalNameAsc(branchId);
+
+            if (terminals.isEmpty()) {
+                log.debug("Nincs aktív POS terminál az irodán: branchId={}", branchId);
+                return;
+            }
+
+            for (PosTerminal terminal : terminals) {
+                try {
+                    PosClosingResult result = posTerminalService.dailyClose(terminal.getTerminalId());
+                    if (result.success()) {
+                        log.info("POS terminál napi zárás sikeres: terminál={}, tranzakciók={}, összeg={}",
+                                terminal.getTerminalId(), result.transactionCount(), result.totalAmount());
+                    } else {
+                        log.warn("POS terminál napi zárás sikertelen: terminál={}, hiba={}",
+                                terminal.getTerminalId(), result.errorMessage());
+                    }
+                } catch (Exception e) {
+                    log.error("POS terminál napi zárás hiba: terminál={}, hiba={}",
+                            terminal.getTerminalId(), e.getMessage(), e);
+                    // NEM dobunk kivételt — ne akadjon meg a zárás
+                }
+            }
+        } catch (Exception e) {
+            log.error("POS terminál napi zárás általános hiba: branchId={}, hiba={}",
+                    branchId, e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Esti zárás adatcsomag küldése a központnak.
+     * Legacy: Delphi ESTIZAR modul → FTP-n bináris csomag.
+     * Modern: REST API — JSON adatcsomag.
+     */
+    private void executeEveningSync(UUID branchId, LocalDate closingDate) {
+        try {
+            DailyDataPackage pkg = eveningClosingService.prepareDailyPackage(branchId, closingDate);
+            DataSyncResult result = eveningClosingService.sendToHeadquarters(pkg);
+
+            if (result.isSuccess()) {
+                log.info("Esti zárás adatcsomag sikeresen elküldve: branchId={}, datum={}, checksum={}",
+                        branchId, closingDate, result.getChecksum());
+            } else {
+                log.warn("Esti zárás adatcsomag küldés sikertelen: branchId={}, datum={}, hiba={}",
+                        branchId, closingDate, result.getMessage());
+            }
+        } catch (Exception e) {
+            log.error("Esti zárás adatcsomag küldés hiba: branchId={}, datum={}, hiba={}",
+                    branchId, closingDate, e.getMessage(), e);
+            // NEM dobunk kivételt — ne akadjon meg a zárás
+        }
     }
 
     /**

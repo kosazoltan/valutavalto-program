@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRateStore } from '@/stores/rateStore';
 import { useAuthStore } from '@/stores/authStore';
+import { toast } from '@/hooks/useToast';
 import { sellCurrency } from '@/api/transactions';
 import { screenCustomer } from '@/api/sanctions';
 import { roundHuf } from '@/utils/rounding';
@@ -21,7 +22,7 @@ type InputMode = 'foreign' | 'huf';
 export default function SellPage() {
   const navigate = useNavigate();
   const { getSellRate, fetchRates, rates } = useRateStore();
-  const { companyType } = useAuthStore();
+  const { companyType, user, branchCode } = useAuthStore();
 
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode | null>(null);
   const [foreignAmount, setForeignAmount] = useState('');
@@ -221,13 +222,16 @@ export default function SellPage() {
 
       // QR kód generálás a bizonylatra
       try {
+        // Cég adószám: companyType alapján
+        const taxNumber = companyType === 'BEST_CHANGE' ? '32313332-2-02' : '14040535-2-02';
+        
         const qrData = await generateQRCode({
           bizonylatSzam: receiptNumber,
           datum: new Date().toISOString().slice(0, 10),
           osszeg: roundedHuf,
           valuta: selectedCurrency,
-          adoszam: '32313332-2-02', // TODO(config): cég adószámból dinamikusan — SystemParameter API integrációval
-          penztarKod: 101, // TODO(config): pénztárgép kód SystemParameter-ből
+          adoszam: taxNumber, // Dinamikus érték companyType alapján
+          penztarKod: parseInt(branchCode, 10), // Branch code → pénztárgép kód
         });
         setQrCodeDataUrl(qrData);
       } catch (qrErr) {
@@ -240,8 +244,8 @@ export default function SellPage() {
         type: 'sell',
         companyType: companyType ?? 'BEST_CHANGE',
         receiptNumber,
-        branchCode: 'SZG001', // TODO(config): dinamikus branch code
-        cashierName: 'Pénztáros', // TODO(auth): bejelentkezett user fullName
+        branchCode: branchCode, // Dinamikus érték authStore-ból
+        cashierName: user?.fullName ?? 'Pénztáros', // Bejelentkezett user neve
         date: now.toISOString().slice(0, 10),
         time: now.toTimeString().slice(0, 8),
         currencyCode: selectedCurrency,
@@ -291,14 +295,18 @@ export default function SellPage() {
   const handlePrint = useCallback(async () => {
     if (!pendingReceiptData || !window.electronAPI) {
       console.error('[SellPage] Nincs bizonylat adat vagy Electron API nem elérhető');
+      toast.error('Nyomtatási hiba: Electron API nem elérhető');
       return;
     }
 
     try {
       await window.electronAPI.printReceipt(JSON.stringify(pendingReceiptData));
       console.log('[SellPage] Bizonylat nyomtatás sikeres:', pendingReceiptData.receiptNumber);
+      toast.success('Bizonylat nyomtatva!');
     } catch (err) {
       console.error('[SellPage] Nyomtatási hiba:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Ismeretlen hiba';
+      toast.error(`Nyomtatási hiba: ${errorMessage}`);
     }
   }, [pendingReceiptData]);
 

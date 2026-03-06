@@ -76,11 +76,17 @@ public class DailyBalanceService {
         BigDecimal purchases = transactionRepository.sumDailyTurnover(
             branchId, date, TransactionType.BUY
         );
+        if (purchases == null) {
+            purchases = BigDecimal.ZERO;
+        }
 
         // 3. Eladás (SELL típusú tranzakciók — kiadott valuta)
         BigDecimal sales = transactionRepository.sumDailyTurnover(
             branchId, date, TransactionType.SELL
         );
+        if (sales == null) {
+            sales = BigDecimal.ZERO;
+        }
 
         // 4. Átvétel más irodától (transfer IN)
         BigDecimal transfersIn = getTransfersIn(branchId, date, currencyCode);
@@ -144,6 +150,7 @@ public class DailyBalanceService {
             .findClosingBalance(branchId, currencyCode, previousDay)
             .orElse(null);
 
+        // NULL védelem: ha az előző nap létezik DE closingBalance NULL → 0
         if (previousClosing != null) {
             return previousClosing;
         }
@@ -160,7 +167,7 @@ public class DailyBalanceService {
             previousMonthEnd.getMonthValue()
         );
 
-        if (!monthlyClosing.isEmpty()) {
+        if (!monthlyClosing.isEmpty() && monthlyClosing.get(0).getClosingBalance() != null) {
             return monthlyClosing.get(0).getClosingBalance();
         }
 
@@ -172,19 +179,35 @@ public class DailyBalanceService {
 
     /**
      * Átvétel (transfer IN) számítása
+     * 
+     * TODO: Transfer funkció nincs implementálva — future scope.
+     * Ha a rendszer iroda-közötti átutalást használ, implementáld ezt a metódust.
+     * 
+     * @param branchId Iroda ID
+     * @param date Dátum
+     * @param currencyCode Valuta kód
+     * @return Transfer IN összeg (jelenleg mindig 0)
      */
     private BigDecimal getTransfersIn(UUID branchId, LocalDate date, String currencyCode) {
         // Transfer entitás lekérdezés (ha van Transfer tábla)
-        // Placeholder — implementáld ha van Transfer entity
+        // return transferRepository.sumTransfersIn(branchId, date, currencyCode);
         return BigDecimal.ZERO;
     }
 
     /**
      * Átadás (transfer OUT) számítása
+     * 
+     * TODO: Transfer funkció nincs implementálva — future scope.
+     * Ha a rendszer iroda-közötti átutalást használ, implementáld ezt a metódust.
+     * 
+     * @param branchId Iroda ID
+     * @param date Dátum
+     * @param currencyCode Valuta kód
+     * @return Transfer OUT összeg (jelenleg mindig 0)
      */
     private BigDecimal getTransfersOut(UUID branchId, LocalDate date, String currencyCode) {
         // Transfer entitás lekérdezés (ha van Transfer tábla)
-        // Placeholder — implementáld ha van Transfer entity
+        // return transferRepository.sumTransfersOut(branchId, date, currencyCode);
         return BigDecimal.ZERO;
     }
 

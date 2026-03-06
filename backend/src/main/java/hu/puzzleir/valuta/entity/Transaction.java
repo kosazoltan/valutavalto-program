@@ -239,6 +239,35 @@ public class Transaction {
     @Column(name = "reference_number", length = 100)
     private String referenceNumber;
 
+    // ============ POS TERMINÁL / BANKKÁRTYA ============
+
+    /**
+     * Fizetési mód (CASH/CARD)
+     * Legacy: a Delphi-ben implicit — kártyás fizetés OTP DLL-en keresztül ment.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_method", length = 20)
+    @Builder.Default
+    private PaymentMethod paymentMethod = PaymentMethod.CASH;
+
+    /**
+     * POS terminál autorizációs kód (kártyás fizetésnél)
+     */
+    @Column(name = "pos_authorization_code", length = 50)
+    private String posAuthorizationCode;
+
+    /**
+     * POS terminál referencia szám
+     */
+    @Column(name = "pos_reference_number", length = 100)
+    private String posReferenceNumber;
+
+    /**
+     * POS terminál azonosító (melyik terminálon történt)
+     */
+    @Column(name = "pos_terminal_id", length = 50)
+    private String posTerminalId;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
