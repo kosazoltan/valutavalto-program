@@ -20,14 +20,14 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * Napi készlet / forgalom szolgáltatás.
+ * Napi kĂ©szlet / forgalom szolgĂˇltatĂˇs.
  * 
- * A Delphi napi záráskor számolta a készletmozgást:
- * nyitó + vétel + átvétel - eladás - átadás = záró
+ * A Delphi napi zĂˇrĂˇskor szĂˇmolta a kĂ©szletmozgĂˇst:
+ * nyitĂł + vĂ©tel + ĂˇtvĂ©tel - eladĂˇs - ĂˇtadĂˇs = zĂˇrĂł
  * 
- * Ez a számviteli lánc alapja, nélkülözhetetlen a havi záráshoz.
+ * Ez a szĂˇmviteli lĂˇnc alapja, nĂ©lkĂĽlĂ¶zhetetlen a havi zĂˇrĂˇshoz.
  * 
- * Legacy: NAPZAR.DLL — napi forgalom számítás
+ * Legacy: NAPZAR.DLL â€” napi forgalom szĂˇmĂ­tĂˇs
  */
 @Service
 @RequiredArgsConstructor
@@ -43,36 +43,36 @@ public class DailyBalanceService {
     private final AuditLogService auditLogService;
 
     /**
-     * Napi mérleg számítása egy iroda + dátum + valuta kombinációhoz.
+     * Napi mĂ©rleg szĂˇmĂ­tĂˇsa egy iroda + dĂˇtum + valuta kombinĂˇciĂłhoz.
      * 
      * @param branchId Iroda ID
-     * @param date Dátum
-     * @param currencyCode Valuta kód
-     * @return Számított DailyBalance
+     * @param date DĂˇtum
+     * @param currencyCode Valuta kĂłd
+     * @return SzĂˇmĂ­tott DailyBalance
      */
     public DailyBalance calculateDailyBalance(UUID branchId, LocalDate date, String currencyCode) {
-        log.info("Napi mérleg számítása: branchId={}, date={}, currency={}", branchId, date, currencyCode);
+        log.info("Napi mĂ©rleg szĂˇmĂ­tĂˇsa: branchId={}, date={}, currency={}", branchId, date, currencyCode);
 
-        // Cég azonosító
+        // CĂ©g azonosĂ­tĂł
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Company company = companyRepository.findById(companyId)
-            .orElseThrow(() -> new ValidationException("Cég nem található: " + companyId));
+            .orElseThrow(() -> new ValidationException("CĂ©g nem talĂˇlhatĂł: " + companyId));
 
-        // Ellenőrzés: már létezik-e
+        // EllenĹ‘rzĂ©s: mĂˇr lĂ©tezik-e
         DailyBalance existing = dailyBalanceRepository
             .findByBranchIdAndBalanceDateAndCurrencyCode(branchId, date, currencyCode)
             .orElse(null);
 
         if (existing != null && existing.getIsClosed()) {
             throw new ValidationException(
-                String.format("A %s napi mérleg már lezárva! (%s)", date, currencyCode)
+                String.format("A %s napi mĂ©rleg mĂˇr lezĂˇrva! (%s)", date, currencyCode)
             );
         }
 
-        // 1. Nyitó készlet (előző nap záró VAGY előző hó végi záró)
+        // 1. NyitĂł kĂ©szlet (elĹ‘zĹ‘ nap zĂˇrĂł VAGY elĹ‘zĹ‘ hĂł vĂ©gi zĂˇrĂł)
         BigDecimal openingBalance = getOpeningBalance(branchId, date, currencyCode);
 
-        // 2. Vásárlás (BUY típusú tranzakciók — beérkezett valuta)
+        // 2. VĂˇsĂˇrlĂˇs (BUY tĂ­pusĂş tranzakciĂłk â€” beĂ©rkezett valuta)
         BigDecimal purchases = transactionRepository.sumDailyTurnover(
             branchId, date, TransactionType.BUY
         );
@@ -80,7 +80,7 @@ public class DailyBalanceService {
             purchases = BigDecimal.ZERO;
         }
 
-        // 3. Eladás (SELL típusú tranzakciók — kiadott valuta)
+        // 3. EladĂˇs (SELL tĂ­pusĂş tranzakciĂłk â€” kiadott valuta)
         BigDecimal sales = transactionRepository.sumDailyTurnover(
             branchId, date, TransactionType.SELL
         );
@@ -88,13 +88,13 @@ public class DailyBalanceService {
             sales = BigDecimal.ZERO;
         }
 
-        // 4. Átvétel más irodától (transfer IN)
+        // 4. ĂtvĂ©tel mĂˇs irodĂˇtĂłl (transfer IN)
         BigDecimal transfersIn = getTransfersIn(branchId, date, currencyCode);
 
-        // 5. Átadás más irodába (transfer OUT)
+        // 5. ĂtadĂˇs mĂˇs irodĂˇba (transfer OUT)
         BigDecimal transfersOut = getTransfersOut(branchId, date, currencyCode);
 
-        // 6. Záró készlet számítása
+        // 6. ZĂˇrĂł kĂ©szlet szĂˇmĂ­tĂˇsa
         BigDecimal closingBalance = openingBalance
             .add(purchases)
             .add(transfersIn)
@@ -117,22 +117,22 @@ public class DailyBalanceService {
         balance.setTransfersOut(transfersOut);
         balance.setClosingBalance(closingBalance);
 
-        // Mentés
+        // MentĂ©s
         DailyBalance saved = dailyBalanceRepository.save(balance);
 
-        log.info("Napi mérleg kész: opening={}, purchases={}, transfersIn={}, sales={}, transfersOut={}, closing={}",
+        log.info("Napi mĂ©rleg kĂ©sz: opening={}, purchases={}, transfersIn={}, sales={}, transfersOut={}, closing={}",
             openingBalance, purchases, transfersIn, sales, transfersOut, closingBalance);
 
         return saved;
     }
 
     /**
-     * Összes valuta napi mérlege (egy napra)
+     * Ă–sszes valuta napi mĂ©rlege (egy napra)
      */
     public List<DailyBalance> calculateAllCurrenciesForDay(UUID branchId, LocalDate date) {
-        log.info("Összes valuta napi mérlege: branchId={}, date={}", branchId, date);
+        log.info("Ă–sszes valuta napi mĂ©rlege: branchId={}, date={}", branchId, date);
 
-        // Aktív valuták
+        // AktĂ­v valutĂˇk
         List<Currency> currencies = currencyRepository.findActiveByCompany(SecurityUtils.getCurrentCompanyId());
 
         return currencies.stream()
@@ -141,21 +141,21 @@ public class DailyBalanceService {
     }
 
     /**
-     * Nyitó készlet számítása (előző nap záró VAGY előző hó végi záró)
+     * NyitĂł kĂ©szlet szĂˇmĂ­tĂˇsa (elĹ‘zĹ‘ nap zĂˇrĂł VAGY elĹ‘zĹ‘ hĂł vĂ©gi zĂˇrĂł)
      */
     private BigDecimal getOpeningBalance(UUID branchId, LocalDate date, String currencyCode) {
-        // 1. Előző nap záró
+        // 1. ElĹ‘zĹ‘ nap zĂˇrĂł
         LocalDate previousDay = date.minusDays(1);
         BigDecimal previousClosing = dailyBalanceRepository
             .findClosingBalance(branchId, currencyCode, previousDay)
             .orElse(null);
 
-        // NULL védelem: ha az előző nap létezik DE closingBalance NULL → 0
+        // NULL vĂ©delem: ha az elĹ‘zĹ‘ nap lĂ©tezik DE closingBalance NULL â†’ 0
         if (previousClosing != null) {
             return previousClosing;
         }
 
-        // 2. Ha az előző nap nincs (pl. hónap első napja) → előző hó végi záró
+        // 2. Ha az elĹ‘zĹ‘ nap nincs (pl. hĂłnap elsĹ‘ napja) â†’ elĹ‘zĹ‘ hĂł vĂ©gi zĂˇrĂł
         LocalDate previousMonthEnd = date.minusMonths(1).withDayOfMonth(
             date.minusMonths(1).lengthOfMonth()
         );
@@ -171,77 +171,77 @@ public class DailyBalanceService {
             return monthlyClosing.get(0).getClosingBalance();
         }
 
-        // 3. Ha semmi nincs → 0 (első nap az irodában)
-        log.warn("Nincs előző napi/havi készlet: branchId={}, currency={}, date={} → nyitó=0",
+        // 3. Ha semmi nincs â†’ 0 (elsĹ‘ nap az irodĂˇban)
+        log.warn("Nincs elĹ‘zĹ‘ napi/havi kĂ©szlet: branchId={}, currency={}, date={} â†’ nyitĂł=0",
             branchId, currencyCode, date);
         return BigDecimal.ZERO;
     }
 
     /**
-     * Átvétel (transfer IN) számítása
+     * ĂtvĂ©tel (transfer IN) szĂˇmĂ­tĂˇsa
      * 
-     * TODO: Transfer funkció nincs implementálva — future scope.
-     * Ha a rendszer iroda-közötti átutalást használ, implementáld ezt a metódust.
+     * TODO: Transfer funkciĂł nincs implementĂˇlva â€” future scope.
+     * Ha a rendszer iroda-kĂ¶zĂ¶tti ĂˇtutalĂˇst hasznĂˇl, implementĂˇld ezt a metĂłdust.
      * 
      * @param branchId Iroda ID
-     * @param date Dátum
-     * @param currencyCode Valuta kód
-     * @return Transfer IN összeg (jelenleg mindig 0)
+     * @param date DĂˇtum
+     * @param currencyCode Valuta kĂłd
+     * @return Transfer IN Ă¶sszeg (jelenleg mindig 0)
      */
     private BigDecimal getTransfersIn(UUID branchId, LocalDate date, String currencyCode) {
-        // Transfer entitás lekérdezés (ha van Transfer tábla)
+        // Transfer entitĂˇs lekĂ©rdezĂ©s (ha van Transfer tĂˇbla)
         // return transferRepository.sumTransfersIn(branchId, date, currencyCode);
         return BigDecimal.ZERO;
     }
 
     /**
-     * Átadás (transfer OUT) számítása
+     * ĂtadĂˇs (transfer OUT) szĂˇmĂ­tĂˇsa
      * 
-     * TODO: Transfer funkció nincs implementálva — future scope.
-     * Ha a rendszer iroda-közötti átutalást használ, implementáld ezt a metódust.
+     * TODO: Transfer funkciĂł nincs implementĂˇlva â€” future scope.
+     * Ha a rendszer iroda-kĂ¶zĂ¶tti ĂˇtutalĂˇst hasznĂˇl, implementĂˇld ezt a metĂłdust.
      * 
      * @param branchId Iroda ID
-     * @param date Dátum
-     * @param currencyCode Valuta kód
-     * @return Transfer OUT összeg (jelenleg mindig 0)
+     * @param date DĂˇtum
+     * @param currencyCode Valuta kĂłd
+     * @return Transfer OUT Ă¶sszeg (jelenleg mindig 0)
      */
     private BigDecimal getTransfersOut(UUID branchId, LocalDate date, String currencyCode) {
-        // Transfer entitás lekérdezés (ha van Transfer tábla)
+        // Transfer entitĂˇs lekĂ©rdezĂ©s (ha van Transfer tĂˇbla)
         // return transferRepository.sumTransfersOut(branchId, date, currencyCode);
         return BigDecimal.ZERO;
     }
 
     /**
-     * Napi mérleg lezárása
+     * Napi mĂ©rleg lezĂˇrĂˇsa
      */
     public void closeDailyBalance(UUID branchId, LocalDate date, String currencyCode) {
         DailyBalance balance = dailyBalanceRepository
             .findByBranchIdAndBalanceDateAndCurrencyCode(branchId, date, currencyCode)
             .orElseThrow(() -> new ValidationException(
-                String.format("Nincs napi mérleg: %s / %s", date, currencyCode)
+                String.format("Nincs napi mĂ©rleg: %s / %s", date, currencyCode)
             ));
 
         if (balance.getIsClosed()) {
-            throw new ValidationException("A mérleg már lezárva!");
+            throw new ValidationException("A mĂ©rleg mĂˇr lezĂˇrva!");
         }
 
         balance.setIsClosed(true);
         balance.setClosedAt(LocalDateTime.now());
-        balance.setClosedBy(SecurityUtils.getCurrentUsername());
+        balance.setClosedBy(SecurityUtils.getCurrentWorkerCode());
 
         dailyBalanceRepository.save(balance);
 
         auditLogService.log(
             "DAILY_BALANCE_CLOSED",
-            String.format("Napi mérleg lezárva: %s / %s", date, currencyCode),
+            String.format("Napi mĂ©rleg lezĂˇrva: %s / %s", date, currencyCode),
             branchId.toString()
         );
 
-        log.info("Napi mérleg lezárva: branchId={}, date={}, currency={}", branchId, date, currencyCode);
+        log.info("Napi mĂ©rleg lezĂˇrva: branchId={}, date={}, currency={}", branchId, date, currencyCode);
     }
 
     /**
-     * Leltári eltérés rögzítése
+     * LeltĂˇri eltĂ©rĂ©s rĂ¶gzĂ­tĂ©se
      */
     public void recordActualStock(
         UUID branchId,
@@ -253,7 +253,7 @@ public class DailyBalanceService {
         DailyBalance balance = dailyBalanceRepository
             .findByBranchIdAndBalanceDateAndCurrencyCode(branchId, date, currencyCode)
             .orElseThrow(() -> new ValidationException(
-                String.format("Nincs napi mérleg: %s / %s", date, currencyCode)
+                String.format("Nincs napi mĂ©rleg: %s / %s", date, currencyCode)
             ));
 
         balance.setActualStock(actualStock);
@@ -265,12 +265,12 @@ public class DailyBalanceService {
 
         dailyBalanceRepository.save(balance);
 
-        log.info("Leltári eltérés rögzítve: branchId={}, date={}, currency={}, actual={}, difference={}",
+        log.info("LeltĂˇri eltĂ©rĂ©s rĂ¶gzĂ­tve: branchId={}, date={}, currency={}, actual={}, difference={}",
             branchId, date, currencyCode, actualStock, balance.getDifference());
     }
 
     /**
-     * Napi mérleg lekérdezése
+     * Napi mĂ©rleg lekĂ©rdezĂ©se
      */
     @Transactional(readOnly = true)
     public List<DailyBalance> getDailyBalances(UUID branchId, LocalDate date) {
@@ -278,10 +278,11 @@ public class DailyBalanceService {
     }
 
     /**
-     * Havi mérlegek lekérdezése
+     * Havi mĂ©rlegek lekĂ©rdezĂ©se
      */
     @Transactional(readOnly = true)
     public List<DailyBalance> getMonthlyBalances(UUID branchId, int year, int month) {
         return dailyBalanceRepository.findByBranchAndMonth(branchId, year, month);
     }
 }
+

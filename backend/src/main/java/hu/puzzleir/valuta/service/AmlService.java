@@ -52,6 +52,7 @@ public class AmlService {
     private final CustomerRepository customerRepository;
     private final AmlReportRepository amlReportRepository;
     private final AmlThresholdRepository amlThresholdRepository;
+    private final AuditLogService auditLogService;
 
     /** Azonositas nelkuli limit (NAV) */
     private static final BigDecimal IDENTIFICATION_LIMIT = new BigDecimal("300000");

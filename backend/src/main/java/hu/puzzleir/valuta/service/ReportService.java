@@ -8,7 +8,7 @@ import hu.puzzleir.valuta.entity.MonthlyClosing;
 import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.entity.Transfer;
-import hu.puzzleir.valuta.entity.TransferStatus;
+import hu.puzzleir.valuta.entity.Transfer.TransferStatus;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -25,13 +25,13 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Riport szolgáltatás.
+ * Riport szolgÄ‚Ë‡ltatÄ‚Ë‡s.
  *
- * Legacy: Napi zárás riportok, forgalmi kimutatások
- * - Napi forgalmi összesítő
- * - Valutánkénti forgalom
- * - Pénztáros teljesítmény
- * - Időszaki kimutatások
+ * Legacy: Napi zÄ‚Ë‡rÄ‚Ë‡s riportok, forgalmi kimutatÄ‚Ë‡sok
+ * - Napi forgalmi Ä‚Â¶sszesÄ‚Â­tÄąâ€
+ * - ValutÄ‚Ë‡nkÄ‚Â©nti forgalom
+ * - PÄ‚Â©nztÄ‚Ë‡ros teljesÄ‚Â­tmÄ‚Â©ny
+ * - IdÄąâ€szaki kimutatÄ‚Ë‡sok
  */
 @Service
 @RequiredArgsConstructor
@@ -49,9 +49,9 @@ public class ReportService {
     private final MonthlyClosingRepository monthlyClosingRepository;
 
     /**
-     * Napi zárás riport
+     * Napi zÄ‚Ë‡rÄ‚Ë‡s riport
      *
-     * Legacy: NAPZAR - összesítő riport nyomtatáshoz
+     * Legacy: NAPZAR - Ä‚Â¶sszesÄ‚Â­tÄąâ€ riport nyomtatÄ‚Ë‡shoz
      */
     public DailyClosingReport generateDailyClosingReport(LocalDate date) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
@@ -61,16 +61,16 @@ public class ReportService {
         DailySession session = dailySessionRepository.findByBranchIdAndSessionDate(branchId, date)
                 .orElse(null);
 
-        // Napi tranzakciók
+        // Napi tranzakciÄ‚Ĺ‚k
         List<Transaction> transactions = transactionRepository.findByBranchAndDate(branchId, date);
 
-        // Valutánkénti bontás
+        // ValutÄ‚Ë‡nkÄ‚Â©nti bontÄ‚Ë‡s
         Map<String, CurrencyTurnover> currencyTurnovers = calculateCurrencyTurnovers(transactions);
 
         // Kassza egyenlegek
         List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
 
-        // Címletezés (HUF)
+        // CÄ‚Â­mletezÄ‚Â©s (HUF)
         Currency huf = currencyRepository.findByCode("HUF").orElse(null);
         List<Denomination> hufDenominations = huf != null
                 ? denominationRepository.findByBranchAndCurrency(branchId, huf.getId())
@@ -80,7 +80,7 @@ public class ReportService {
                 .map(Denomination::getTotalValue)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Összesítés
+        // Ä‚â€“sszesÄ‚Â­tÄ‚Â©s
         BigDecimal totalBuy = transactions.stream()
                 .filter(t -> t.getTransactionType() == TransactionType.BUY && t.isActive())
                 .map(Transaction::getHufAmount)
@@ -123,9 +123,9 @@ public class ReportService {
     }
 
     /**
-     * Időszaki forgalmi kimutatás
+     * IdÄąâ€szaki forgalmi kimutatÄ‚Ë‡s
      *
-     * Legacy: Időszaki riportok
+     * Legacy: IdÄąâ€szaki riportok
      */
     public PeriodReport generatePeriodReport(LocalDate startDate, LocalDate endDate) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
@@ -176,11 +176,11 @@ public class ReportService {
     }
 
     /**
-     * Pénztáros teljesítmény riport
+     * PÄ‚Â©nztÄ‚Ë‡ros teljesÄ‚Â­tmÄ‚Â©ny riport
      */
     public WorkerPerformanceReport generateWorkerPerformanceReport(Long workerId, LocalDate startDate, LocalDate endDate) {
         Worker worker = workerRepository.findById(workerId)
-                .orElseThrow(() -> new RuntimeException("Pénztáros nem található"));
+                .orElseThrow(() -> new RuntimeException("PÄ‚Â©nztÄ‚Ë‡ros nem talÄ‚Ë‡lhatÄ‚Ĺ‚"));
 
         List<Transaction> transactions = new ArrayList<>();
         LocalDate current = startDate;
@@ -223,13 +223,13 @@ public class ReportService {
     }
 
     /**
-     * Valutánkénti forgalmi kimutatás
+     * ValutÄ‚Ë‡nkÄ‚Â©nti forgalmi kimutatÄ‚Ë‡s
      */
     public CurrencyReport generateCurrencyReport(Long currencyId, LocalDate startDate, LocalDate endDate) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
 
         Currency currency = currencyRepository.findById(currencyId)
-                .orElseThrow(() -> new RuntimeException("Valuta nem található"));
+                .orElseThrow(() -> new RuntimeException("Valuta nem talÄ‚Ë‡lhatÄ‚Ĺ‚"));
 
         List<Transaction> buyTransactions = transactionRepository.findByTypeAndDateRange(
                 companyId, TransactionType.BUY, startDate, endDate).stream()
@@ -291,9 +291,9 @@ public class ReportService {
     }
 
     /**
-     * Kassza állapot riport (pillanat állás)
+     * Kassza Ä‚Ë‡llapot riport (pillanat Ä‚Ë‡llÄ‚Ë‡s)
      *
-     * Legacy: PILLALL - pillanat állapot
+     * Legacy: PILLALL - pillanat Ä‚Ë‡llapot
      */
     public CashStatusReport generateCashStatusReport() {
         UUID branchId = SecurityUtils.getCurrentBranchId();
@@ -307,7 +307,7 @@ public class ReportService {
                 .findFirst()
                 .orElse(BigDecimal.ZERO);
 
-        // Összes egyenleg HUF-ra átszámítva (egyszerűsített - csak HUF-ot mutatjuk)
+        // Ä‚â€“sszes egyenleg HUF-ra Ä‚Ë‡tszÄ‚Ë‡mÄ‚Â­tva (egyszerÄąÂ±sÄ‚Â­tett - csak HUF-ot mutatjuk)
         int lowBalanceAlerts = (int) balances.stream().filter(CashBalance::isLowBalance).count();
         int highBalanceAlerts = (int) balances.stream().filter(CashBalance::isHighBalance).count();
         int lowDenominationAlerts = (int) denominations.stream().filter(Denomination::isLowStock).count();
@@ -324,14 +324,14 @@ public class ReportService {
     }
 
     /**
-     * Havi forgalmi kimutatás
+     * Havi forgalmi kimutatÄ‚Ë‡s
      *
-     * Legacy: HAVIFORG - havi forgalmi összesítő
+     * Legacy: HAVIFORG - havi forgalmi Ä‚Â¶sszesÄ‚Â­tÄąâ€
      */
     public MonthlyTurnoverReport generateMonthlyTurnoverReport(Integer year, Integer month) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
 
-        // Havi zárások lekérése
+        // Havi zÄ‚Ë‡rÄ‚Ë‡sok lekÄ‚Â©rÄ‚Â©se
         List<MonthlyClosing> closings = monthlyClosingRepository
                 .findByCompanyIdAndClosingYearOrderByClosingMonthDesc(companyId, year).stream()
                 .filter(c -> c.getClosingMonth().equals(month))
@@ -357,17 +357,17 @@ public class ReportService {
             totalReversals += closing.getReversalCount() != null ? closing.getReversalCount() : 0;
 
             branchData.add(BranchMonthlyData.builder()
-                    .branchId(closing.getBranch().getId())
-                    .branchName(closing.getBranch().getName())
+                    .branchId(closing.getBranchId())
+                    .branchName("Iroda-" + closing.getBranchId().toString().substring(0,8))
                     .transactionCount(closing.getTotalTransactionCount())
                     .buyCount(closing.getBuyCount())
                     .sellCount(closing.getSellCount())
                     .reversalCount(closing.getReversalCount())
                     .buyHuf(closing.getTotalBuyHuf())
                     .sellHuf(closing.getTotalSellHuf())
-                    .netResult(closing.getNetResult())
+                    .netResult(closing.getTotalSellHuf().subtract(closing.getTotalBuyHuf()))
                     .handlingFees(closing.getTotalHandlingFees())
-                    .finalized(closing.getFinalized())
+                    .finalized(("CLOSED".equals(closing.getStatus())))
                     .build());
         }
 
@@ -389,27 +389,27 @@ public class ReportService {
     }
 
     /**
-     * Átadás-átvétel összesítő riport
+     * Ä‚ÂtadÄ‚Ë‡s-Ä‚Ë‡tvÄ‚Â©tel Ä‚Â¶sszesÄ‚Â­tÄąâ€ riport
      *
-     * Legacy: ATADATVET - átadás-átvétel kimutatás
+     * Legacy: ATADATVET - Ä‚Ë‡tadÄ‚Ë‡s-Ä‚Ë‡tvÄ‚Â©tel kimutatÄ‚Ë‡s
      */
     public TransferReport generateTransferReport(LocalDate startDate, LocalDate endDate) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         UUID branchId = SecurityUtils.getCurrentBranchId();
 
-        // Kimenő átadások
+        // KimenÄąâ€ Ä‚Ë‡tadÄ‚Ë‡sok
         List<Transfer> outgoing = transferRepository.findByFromBranchIdAndCompanyIdOrderByCreatedAtDesc(branchId, companyId)
                 .stream()
                 .filter(t -> !t.getTransferDate().isBefore(startDate) && !t.getTransferDate().isAfter(endDate))
                 .collect(Collectors.toList());
 
-        // Bejövő átadások
+        // BejÄ‚Â¶vÄąâ€ Ä‚Ë‡tadÄ‚Ë‡sok
         List<Transfer> incoming = transferRepository.findByToBranchIdAndCompanyIdOrderByCreatedAtDesc(branchId, companyId)
                 .stream()
                 .filter(t -> !t.getTransferDate().isBefore(startDate) && !t.getTransferDate().isAfter(endDate))
                 .collect(Collectors.toList());
 
-        // Kimenő összesítés
+        // KimenÄąâ€ Ä‚Â¶sszesÄ‚Â­tÄ‚Â©s
         BigDecimal totalOutgoingHuf = outgoing.stream()
                 .filter(t -> t.getStatus() != TransferStatus.CANCELLED)
                 .map(t -> t.getHufValue() != null ? t.getHufValue() : BigDecimal.ZERO)
@@ -418,7 +418,7 @@ public class ReportService {
         int outgoingCompleted = (int) outgoing.stream().filter(t -> t.getStatus() == TransferStatus.COMPLETED).count();
         int outgoingPending = (int) outgoing.stream().filter(t -> t.getStatus() == TransferStatus.PENDING).count();
 
-        // Bejövő összesítés
+        // BejÄ‚Â¶vÄąâ€ Ä‚Â¶sszesÄ‚Â­tÄ‚Â©s
         BigDecimal totalIncomingHuf = incoming.stream()
                 .filter(t -> t.getStatus() == TransferStatus.COMPLETED)
                 .map(t -> t.getHufValue() != null ? t.getHufValue() : BigDecimal.ZERO)
@@ -427,7 +427,7 @@ public class ReportService {
         int incomingCompleted = (int) incoming.stream().filter(t -> t.getStatus() == TransferStatus.COMPLETED).count();
         int incomingPending = (int) incoming.stream().filter(t -> t.getStatus() == TransferStatus.PENDING).count();
 
-        // Eltérések
+        // EltÄ‚Â©rÄ‚Â©sek
         BigDecimal totalDifference = incoming.stream()
                 .filter(t -> t.getStatus() == TransferStatus.COMPLETED && t.getDifference() != null)
                 .map(Transfer::getDifference)
@@ -478,9 +478,9 @@ public class ReportService {
     }
 
     /**
-     * Kezelési díj összesítő riport
+     * KezelÄ‚Â©si dÄ‚Â­j Ä‚Â¶sszesÄ‚Â­tÄąâ€ riport
      *
-     * Legacy: Kezelési költség jelentés
+     * Legacy: KezelÄ‚Â©si kÄ‚Â¶ltsÄ‚Â©g jelentÄ‚Â©s
      */
     public HandlingFeeReport generateHandlingFeeReport(LocalDate startDate, LocalDate endDate) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();

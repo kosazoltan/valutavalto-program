@@ -45,4 +45,14 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
 
     @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(t.transferNumber, 4) AS long)), 0) FROM Transfer t WHERE t.transferNumber LIKE :prefix%")
     long findMaxTransferNumber(@Param("prefix") String prefix);
+
+    /** ReportService — kimenő átadások */
+    @Query("SELECT t FROM Transfer t WHERE t.fromBranch.id = :branchId ORDER BY t.createdAt DESC")
+    List<Transfer> findByFromBranchIdAndCompanyIdOrderByCreatedAtDesc(
+        @Param("branchId") UUID branchId, UUID companyId);
+
+    /** ReportService — bejövő átadások */
+    @Query("SELECT t FROM Transfer t WHERE t.toBranch.id = :branchId ORDER BY t.createdAt DESC")
+    List<Transfer> findByToBranchIdAndCompanyIdOrderByCreatedAtDesc(
+        @Param("branchId") UUID branchId, UUID companyId);
 }

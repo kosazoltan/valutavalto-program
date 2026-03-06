@@ -25,6 +25,25 @@ public class AuditLogService {
 
     private final AuditLogRepository auditLogRepository;
 
+    /**
+     * Egyszerűsített audit log — action + message + entityId (String).
+     * SecurityContext-ből tölti ki a user/branch adatokat.
+     */
+    @Transactional
+    public void log(String action, String message, String entityId) {
+        log(action, "SYSTEM", entityId,
+            null, null, null, null, message, null, null);
+    }
+
+    /**
+     * Egyszerűsített audit log — action + message + entityId (Long).
+     */
+    @Transactional
+    public void log(String action, String message, Long entityId) {
+        log(action, "SYSTEM", entityId != null ? entityId.toString() : null,
+            null, null, null, null, message, null, null);
+    }
+
     @Transactional
     public void log(String action, String entityType, String entityId,
                     String userId, String userName, String branchId, String branchName,

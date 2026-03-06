@@ -28,6 +28,13 @@ public class PosTerminal {
     @Column(name = "terminal_name", length = 200)
     private String terminalName;
 
+    /**
+     * Terminál típusa: MOCK, OTP, INGENICO, VERIFONE, PAX
+     */
+    @Column(name = "terminal_type", length = 30)
+    @Builder.Default
+    private String terminalType = "MOCK";
+
     @Column(name = "branch_id", nullable = false)
     private UUID branchId;
 

@@ -134,12 +134,13 @@ public class DiscountThresholdService {
     }
 
     private Optional<FeeDiscount> findActiveDiscount(String paramKey, String defaultCode) {
-        String code;
+        String resolvedCode;
         try {
-            code = systemParameterService.getValue(paramKey);
+            resolvedCode = systemParameterService.getValue(paramKey);
         } catch (Exception e) {
-            code = defaultCode;
+            resolvedCode = defaultCode;
         }
+        final String code = resolvedCode;
 
         return feeDiscountRepository.findAll().stream()
                 .filter(d -> code.equals(d.getCode()))
