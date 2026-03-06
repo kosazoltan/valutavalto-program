@@ -62,6 +62,12 @@ public class SecurityConfig {
                 // Swagger / OpenAPI docs
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/api-docs/**", "/v3/api-docs/**").permitAll()
 
+                // WebSocket endpoint
+                .requestMatchers("/ws/**").permitAll()
+
+                // Camera live stream - minden bejelentkezett user
+                .requestMatchers("/api/v1/camera/stream/**").authenticated()
+
                 // Branch endpoints - minden bejelentkezett user
                 .requestMatchers("/api/v1/branches/**").authenticated()
 

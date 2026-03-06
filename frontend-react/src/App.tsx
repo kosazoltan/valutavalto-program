@@ -52,6 +52,16 @@ import NotificationPage from './pages/notifications/NotificationPage'
 import OrganizationalSystemParameterPage from './pages/organizations/OrganizationalSystemParameterPage'
 import BranchGroupPage from './pages/branches/BranchGroupPage'
 import AuditLogPage from './pages/audit/AuditLogPage'
+import CircularPage from './pages/circulars/CircularPage'
+import FeePackagePage from './pages/fees/FeePackagePage'
+import PepPage from './pages/pep/PepPage'
+import RateGroupPage from './pages/rates/RateGroupPage'
+import ReservationPage from './pages/reservations/ReservationPage'
+import SuspiciousReportPage from './pages/suspicious/SuspiciousReportPage'
+import PermissionPage from './pages/settings/PermissionPage'
+import RolePage from './pages/settings/RolePage'
+import SystemParameterPage from './pages/settings/SystemParameterPage'
+import UserPage from './pages/settings/UserPage'
 
 // === Moduláris Feature Pages (v2) ===
 import { ReportsV2Page } from './features/reporting/ReportsV2Page'
@@ -59,6 +69,15 @@ import { ComplianceV2Page } from './features/compliance/ComplianceV2Page'
 import { ExportV2Page } from './features/export/ExportV2Page'
 import { MnbRatesV2Page } from './features/integration/MnbRatesV2Page'
 import { NavV2Page } from './features/integration/nav/NavV2Page'
+
+// === Kamera modul ===
+import CameraLivePage from './pages/camera/CameraLivePage'
+import CameraPlaybackPage from './pages/camera/CameraPlaybackPage'
+import CameraConfigPage from './pages/camera/CameraConfigPage'
+import CameraStatusPage from './pages/camera/CameraStatusPage'
+
+// === Árfolyam-kezelés modul ===
+import RateCreationDashboard from './pages/ratemanagement/RateCreationDashboard'
 
 // === Treasury (Értéktári) modul ===
 import TreasuryLayout from './pages/treasury/TreasuryLayout'
@@ -208,6 +227,30 @@ export default function App() {
           {/* Audit Log */}
           <Route path="/audit-log" element={<AuditLogPage />} />
 
+          {/* Circulars (Körlevelek) */}
+          <Route path="/circulars" element={<CircularPage />} />
+
+          {/* Fee Packages */}
+          <Route path="/fee-packages" element={<FeePackagePage />} />
+
+          {/* PEP (Politically Exposed Persons) */}
+          <Route path="/pep" element={<PepPage />} />
+
+          {/* Rate Groups */}
+          <Route path="/rates/groups" element={<RateGroupPage />} />
+
+          {/* Reservations (Foglalások) */}
+          <Route path="/reservations" element={<ReservationPage />} />
+
+          {/* Suspicious Reports (Gyanús tranzakció jelentések) */}
+          <Route path="/suspicious-reports" element={<SuspiciousReportPage />} />
+
+          {/* Settings sub-pages */}
+          <Route path="/settings/permissions" element={<PermissionPage />} />
+          <Route path="/settings/roles" element={<RolePage />} />
+          <Route path="/settings/parameters" element={<SystemParameterPage />} />
+          <Route path="/settings/users" element={<UserPage />} />
+
           {/* === Treasury (Értéktári) Routes === */}
           <Route path="/treasury" element={<TreasuryLayout />}>
             <Route index element={<TreasuryDashboard />} />
@@ -216,6 +259,15 @@ export default function App() {
             <Route path="rates" element={<RatePanel />} />
             <Route path="reports" element={<ReportsCirculars />} />
           </Route>
+
+          {/* === Kamera Routes === */}
+          <Route path="/camera/live" element={<CameraLivePage />} />
+          <Route path="/camera/playback" element={<CameraPlaybackPage />} />
+          <Route path="/camera/config" element={<CameraConfigPage />} />
+          <Route path="/camera/status" element={<CameraStatusPage />} />
+
+          {/* === Árfolyam-kezelés Routes === */}
+          <Route path="/rate-management" element={<RateCreationDashboard />} />
 
           {/* === Moduláris Feature Routes (v2) === */}
           {/* Reporting v2 */}

@@ -98,6 +98,19 @@
             <version>2.3.0</version>
         </dependency>
 
+        <!-- Webcam capture for USB cameras -->
+        <dependency>
+            <groupId>com.github.sarxos</groupId>
+            <artifactId>webcam-capture</artifactId>
+            <version>0.3.12</version>
+        </dependency>
+
+        <!-- Spring WebSocket for real-time rate updates -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+
         <!-- QR Code Generation (ZXing) -->
         <dependency>
             <groupId>com.google.zxing</groupId>

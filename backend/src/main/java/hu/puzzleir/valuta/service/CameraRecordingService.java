@@ -1,0 +1,276 @@
+package hu.puzzleir.valuta.service;
+
+import com.github.sarxos.webcam.Webcam;
+import hu.puzzleir.valuta.config.CameraProperties;
+import hu.puzzleir.valuta.entity.CameraConfig;
+import hu.puzzleir.valuta.entity.CameraRecording;
+import hu.puzzleir.valuta.repository.CameraConfigRepository;
+import hu.puzzleir.valuta.repository.CameraRecordingRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import jakarta.annotation.PreDestroy;
+import java.awt.Dimension;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class CameraRecordingService {
+
+    private final CameraProperties cameraProperties;
+    private final CameraConfigRepository cameraConfigRepository;
+    private final CameraRecordingRepository recordingRepository;
+    private final CameraStorageService storageService;
+
+    private final Map<String, Webcam> activeWebcams = new ConcurrentHashMap<>();
+    private final Map<String, CameraRecording> activeRecordings = new ConcurrentHashMap<>();
+    private final AtomicBoolean running = new AtomicBoolean(false);
+    private ExecutorService executorService;
+
+    /**
+     * Start recording on application startup if enabled.
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    public void onApplicationReady() {
+        if (!cameraProperties.isEnabled()) {
+            log.info("Kamera rendszer kikapcsolva (camera.enabled=false)");
+            return;
+        }
+        startAllCameras();
+    }
+
+    /**
+     * Start all configured cameras for the current branch.
+     */
+    public void startAllCameras() {
+        if (running.getAndSet(true)) {
+            log.warn("Kamera rogzites mar fut");
+            return;
+        }
+
+        List<Webcam> webcams = Webcam.getWebcams();
+        if (webcams.isEmpty()) {
+            log.warn("Nem talalhato USB webkamera");
+            running.set(false);
+            return;
+        }
+
+        executorService = Executors.newFixedThreadPool(webcams.size());
+        log.info("Talalt webkamerak: {}", webcams.size());
+
+        for (int i = 0; i < webcams.size(); i++) {
+            Webcam webcam = webcams.get(i);
+            String cameraId = "cam" + (i + 1);
+
+            try {
+                Dimension resolution = new Dimension(
+                        cameraProperties.getResolution().getWidth(),
+                        cameraProperties.getResolution().getHeight());
+                webcam.setViewSize(resolution);
+                webcam.open();
+                activeWebcams.put(cameraId, webcam);
+
+                executorService.submit(() -> captureLoop(webcam, cameraId));
+                log.info("Kamera inditva: {} ({})", cameraId, webcam.getName());
+            } catch (Exception e) {
+                log.error("Kamera inditas sikertelen: {}", cameraId, e);
+            }
+        }
+    }
+
+    /**
+     * Stop all cameras on application shutdown.
+     */
+    @PreDestroy
+    public void stopAllCameras() {
+        running.set(false);
+        log.info("Kamera rogzites leallitasa...");
+
+        // Finalize active recordings
+        for (Map.Entry<String, CameraRecording> entry : activeRecordings.entrySet()) {
+            finalizeRecording(entry.getValue());
+        }
+        activeRecordings.clear();
+
+        // Close webcams
+        for (Map.Entry<String, Webcam> entry : activeWebcams.entrySet()) {
+            try {
+                entry.getValue().close();
+                log.info("Kamera leallitva: {}", entry.getKey());
+            } catch (Exception e) {
+                log.warn("Kamera leallitas hiba: {}", entry.getKey(), e);
+            }
+        }
+        activeWebcams.clear();
+
+        if (executorService != null) {
+            executorService.shutdownNow();
+        }
+    }
+
+    /**
+     * Main capture loop for a camera — runs in a separate thread.
+     */
+    private void captureLoop(Webcam webcam, String cameraId) {
+        Thread.currentThread().setName("camera-" + cameraId);
+        long frameIntervalMs = 1000 / cameraProperties.getFps();
+        UUID branchId = getBranchIdForCamera(cameraId);
+
+        log.info("Capture loop inditva: {} @ {} FPS", cameraId, cameraProperties.getFps());
+
+        while (running.get() && webcam.isOpen()) {
+            try {
+                // Check if we need a new segment
+                CameraRecording recording = activeRecordings.get(cameraId);
+                if (recording == null || shouldRotateSegment(recording)) {
+                    if (recording != null) {
+                        finalizeRecording(recording);
+                    }
+                    recording = startNewSegment(branchId, cameraId);
+                    activeRecordings.put(cameraId, recording);
+                }
+
+                // Capture frame
+                BufferedImage image = webcam.getImage();
+                if (image != null) {
+                    byte[] jpegData = storageService.encodeJpeg(image);
+                    Path segmentFile = Path.of(recording.getLocalFilePath());
+                    storageService.appendFrame(segmentFile, jpegData);
+                }
+
+                Thread.sleep(frameIntervalMs);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            } catch (Exception e) {
+                log.error("Frame capture hiba: {}", cameraId, e);
+                try { Thread.sleep(1000); } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }
+
+        log.info("Capture loop leallt: {}", cameraId);
+    }
+
+    /**
+     * Start a new recording segment.
+     */
+    @Transactional
+    public CameraRecording startNewSegment(UUID branchId, String cameraId) {
+        LocalDateTime now = LocalDateTime.now();
+        try {
+            Path dir = storageService.ensureDirectoryExists(branchId, now.toLocalDate());
+            String fileName = storageService.generateSegmentFileName(cameraId, now);
+            Path segmentFile = dir.resolve(fileName);
+
+            CameraRecording recording = CameraRecording.builder()
+                    .branchId(branchId)
+                    .cameraId(cameraId)
+                    .startTime(now)
+                    .localFilePath(segmentFile.toString())
+                    .expiresAt(now.toLocalDate().plusDays(cameraProperties.getRetentionDays()))
+                    .status(CameraRecording.RecordingStatus.RECORDING)
+                    .build();
+
+            recording = recordingRepository.save(recording);
+            log.info("Uj szegmens inditva: {} -> {}", cameraId, fileName);
+            return recording;
+        } catch (IOException e) {
+            log.error("Szegmens inditas sikertelen: {}", cameraId, e);
+            throw new RuntimeException("Szegmens letrehozas sikertelen", e);
+        }
+    }
+
+    /**
+     * Finalize a recording segment.
+     */
+    @Transactional
+    public void finalizeRecording(CameraRecording recording) {
+        recording.setEndTime(LocalDateTime.now());
+        recording.setStatus(CameraRecording.RecordingStatus.COMPLETED);
+        if (recording.getLocalFilePath() != null) {
+            recording.setFileSizeBytes(storageService.getFileSize(Path.of(recording.getLocalFilePath())));
+        }
+        recordingRepository.save(recording);
+        log.info("Szegmens lezarva: {} ({} bytes)", recording.getCameraId(), recording.getFileSizeBytes());
+    }
+
+    /**
+     * Check if the current segment should be rotated.
+     */
+    private boolean shouldRotateSegment(CameraRecording recording) {
+        if (recording.getStartTime() == null) return true;
+        long minutes = java.time.Duration.between(recording.getStartTime(), LocalDateTime.now()).toMinutes();
+        return minutes >= cameraProperties.getSegmentDurationMinutes();
+    }
+
+    /**
+     * Get branch ID for a camera — from config or fallback.
+     */
+    private UUID getBranchIdForCamera(String cameraId) {
+        // Try to find from camera config
+        List<CameraConfig> configs = cameraConfigRepository.findAll();
+        for (CameraConfig config : configs) {
+            if (cameraId.equals(config.getCameraId())) {
+                return config.getBranchId();
+            }
+        }
+        // Fallback: use a default branch ID (should be configured)
+        log.warn("Nincs branch konfiguracio a kamerahoz: {}, alapertelmezett hasznalata", cameraId);
+        return UUID.fromString("00000000-0000-0000-0000-000000000001");
+    }
+
+    /**
+     * Get the current live frame from a camera as JPEG bytes.
+     */
+    public byte[] getLiveFrame(String cameraId) {
+        Webcam webcam = activeWebcams.get(cameraId);
+        if (webcam == null || !webcam.isOpen()) {
+            return null;
+        }
+        try {
+            BufferedImage image = webcam.getImage();
+            if (image == null) return null;
+            return storageService.encodeJpeg(image);
+        } catch (IOException e) {
+            log.error("Live frame lekeres sikertelen: {}", cameraId, e);
+            return null;
+        }
+    }
+
+    /**
+     * Check if a camera is currently recording.
+     */
+    public boolean isRecording(String cameraId) {
+        return activeWebcams.containsKey(cameraId) && activeWebcams.get(cameraId).isOpen();
+    }
+
+    /**
+     * Get all active camera IDs.
+     */
+    public Set<String> getActiveCameraIds() {
+        return Collections.unmodifiableSet(activeWebcams.keySet());
+    }
+
+    /**
+     * Get the active recording for a camera.
+     */
+    public CameraRecording getActiveRecording(String cameraId) {
+        return activeRecordings.get(cameraId);
+    }
+}
