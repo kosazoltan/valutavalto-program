@@ -44,16 +44,35 @@ export async function startOAuthFlow(
   return data;
 }
 
+// --- Keresés ---
+
+export async function searchMessages(
+  query: string,
+  accountId?: string,
+): Promise<EmailSummary[]> {
+  const params: Record<string, string> = { query };
+  if (accountId) params.accountId = accountId;
+  const { data } = await apiClient.get<EmailSummary[]>('/email/search', {
+    params,
+  });
+  return data;
+}
+
 // --- Üzenetek ---
 
 export async function getMessages(
   folder: string = 'INBOX',
   maxResults: number = 50,
   accountId?: string,
-): Promise<{ messages: EmailSummary[]; nextPageToken?: string }> {
+): Promise<{
+  messages: EmailSummary[];
+  nextPageToken?: string;
+  source?: 'gmail' | 'cache';
+}> {
   const { data } = await apiClient.get<{
     messages: EmailSummary[];
     nextPageToken?: string;
+    source?: 'gmail' | 'cache';
   }>('/email/messages', { params: { folder, maxResults, accountId } });
   return data;
 }

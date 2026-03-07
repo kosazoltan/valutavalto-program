@@ -5,20 +5,22 @@ import hu.puzzleir.valuta.dto.email.ComposeEmailDto;
 import hu.puzzleir.valuta.dto.email.EmailDetailDto;
 import hu.puzzleir.valuta.dto.email.EmailListDto;
 import hu.puzzleir.valuta.entity.EmailAccount;
+import hu.puzzleir.valuta.entity.EmailCache;
+import hu.puzzleir.valuta.repository.EmailCacheRepository;
 import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
 import hu.puzzleir.valuta.service.EmailAccountService;
 import hu.puzzleir.valuta.service.GmailApiService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Email levelezés controller — levél olvasás, küldés, válasz, továbbítás, törlés.
@@ -27,18 +29,21 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/email")
 @RequiredArgsConstructor
+@Slf4j
 public class EmailController {
 
     private final EmailAccountService emailAccountService;
     private final GmailApiService gmailApiService;
+    private final EmailCacheRepository emailCacheRepository;
 
     /**
      * Levelek listázása.
      * Ha accountId adott → azt használja (verifyAccountAccess után).
      * Ha nem → az első elérhető aktív fiókot.
+     * Gmail API hiba esetén → fallback: EmailCache-ből.
      */
     @GetMapping("/messages")
-    public ResponseEntity<EmailListDto> listMessages(
+    public ResponseEntity<Map<String, Object>> listMessages(
             @RequestParam(required = false) UUID accountId,
             @RequestParam(defaultValue = "INBOX") String folder,
             @RequestParam(defaultValue = "50") int maxResults,
@@ -50,8 +55,87 @@ public class EmailController {
         } else {
             account = getActiveAccount(auth);
         }
-        EmailListDto result = gmailApiService.listMessages(account, folder, maxResults);
-        return ResponseEntity.ok(result);
+
+        try {
+            EmailListDto result = gmailApiService.listMessages(account, folder, maxResults);
+            Map<String, Object> response = new HashMap<>();
+            response.put("messages", result.getMessages());
+            response.put("nextPageToken", result.getNextPageToken());
+            response.put("resultSizeEstimate", result.getResultSizeEstimate());
+            response.put("source", "gmail");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.warn("Gmail API hiba, fallback cache-re: account={}, error={}", account.getGmailAddress(), e.getMessage());
+            // Fallback: EmailCache-ből
+            List<EmailCache> cached = emailCacheRepository
+                    .findByEmailAccountIdAndLabelIdsContainingOrderByReceivedAtDesc(account.getId(), folder.toUpperCase());
+
+            List<EmailListDto.EmailSummaryDto> summaries = cached.stream()
+                    .limit(maxResults)
+                    .map(c -> EmailListDto.EmailSummaryDto.builder()
+                            .id(c.getGmailMessageId())
+                            .threadId(c.getThreadId())
+                            .subject(c.getSubject())
+                            .from(c.getSenderAddress())
+                            .snippet(c.getSnippet())
+                            .isRead(c.getIsRead())
+                            .hasAttachments(c.getHasAttachments())
+                            .receivedAt(c.getReceivedAt() != null
+                                    ? c.getReceivedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+                                    : 0L)
+                            .build())
+                    .collect(Collectors.toList());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("messages", summaries);
+            response.put("nextPageToken", null);
+            response.put("resultSizeEstimate", summaries.size());
+            response.put("source", "cache");
+            return ResponseEntity.ok(response);
+        }
+    }
+
+    /**
+     * Keresés levelek között Gmail search query szintaxissal.
+     * Ha accountId adott → abban a fiókban keres.
+     * Ha nincs → az összes elérhető fiókban keres.
+     */
+    @GetMapping("/search")
+    public ResponseEntity<List<EmailListDto.EmailSummaryDto>> searchMessages(
+            @RequestParam String query,
+            @RequestParam(required = false) UUID accountId,
+            @RequestParam(defaultValue = "20") int maxResults,
+            Authentication auth) {
+        maxResults = Math.min(maxResults, 100);
+        if (accountId != null) {
+            verifyAccountAccess(accountId, auth);
+            EmailAccount account = getAccountById(accountId);
+            List<EmailListDto.EmailSummaryDto> results = gmailApiService.searchMessages(account, query, maxResults);
+            return ResponseEntity.ok(results);
+        }
+
+        // Nincs accountId → összes elérhető fiókban keresünk
+        WorkerAuthenticationDetails details = getAuthDetails(auth);
+        List<EmailAccount> accounts = emailAccountService.getAccountsForWorker(
+                details.getWorkerId(), details.getActiveRole(), details.getBranchId());
+
+        List<EmailListDto.EmailSummaryDto> allResults = new ArrayList<>();
+        for (EmailAccount account : accounts) {
+            try {
+                List<EmailListDto.EmailSummaryDto> results = gmailApiService.searchMessages(account, query, maxResults);
+                allResults.addAll(results);
+            } catch (Exception e) {
+                log.warn("Keresés hiba fiókban: {}, error={}", account.getGmailAddress(), e.getMessage());
+            }
+        }
+
+        // Rendezés dátum szerint (legújabb elöl), limit
+        allResults.sort((a, b) -> Long.compare(b.getReceivedAt(), a.getReceivedAt()));
+        if (allResults.size() > maxResults) {
+            allResults = allResults.subList(0, maxResults);
+        }
+
+        return ResponseEntity.ok(allResults);
     }
 
     /**

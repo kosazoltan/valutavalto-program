@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
-import { getEmailAccounts, getMessages } from '@/api/email';
+import { getEmailAccounts, getMessages, searchMessages } from '@/api/email';
 import type { EmailSummary, EmailDetail, EmailAccount } from '@/types/email';
 import EmailSidebar from '@/components/email/EmailSidebar';
 import EmailList from '@/components/email/EmailList';
@@ -33,6 +33,10 @@ export default function EmailPage() {
     body: string;
   } | null>(null);
   const [hasAccounts, setHasAccounts] = useState<boolean | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<EmailSummary[] | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
 
   // Fiókok betöltés
   useEffect(() => {
@@ -59,8 +63,10 @@ export default function EmailPage() {
     try {
       const result = await getMessages(selectedFolder, 50, selectedAccountId);
       setEmails(result.messages);
+      setIsOffline(result.source === 'cache');
     } catch {
       setEmails([]);
+      setIsOffline(true);
     } finally {
       setLoading(false);
     }
@@ -121,6 +127,24 @@ export default function EmailPage() {
     setReplyTo(null);
     setForwardData(null);
     setComposeOpen(true);
+  }, []);
+
+  const handleSearch = useCallback(async () => {
+    if (!searchQuery.trim()) return;
+    setIsSearching(true);
+    try {
+      const results = await searchMessages(searchQuery, selectedAccountId);
+      setSearchResults(results);
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [searchQuery, selectedAccountId]);
+
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery('');
+    setSearchResults(null);
   }, []);
 
   // Nincs fiók → beállítás link
@@ -189,6 +213,34 @@ export default function EmailPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void handleSearch();
+                }}
+                placeholder="Keresés levelekben..."
+                className="rounded-lg border-0 bg-white/20 px-3 py-2 text-sm text-white placeholder-white/60 focus:bg-white/30 focus:outline-none w-48"
+              />
+              <button
+                onClick={() => void handleSearch()}
+                disabled={isSearching || !searchQuery.trim()}
+                className="rounded-lg bg-white/20 px-3 py-2 text-sm hover:bg-white/30 disabled:opacity-50"
+              >
+                {isSearching ? '⏳' : '🔍'}
+              </button>
+              {searchResults !== null && (
+                <button
+                  onClick={handleClearSearch}
+                  className="rounded-lg bg-white/30 px-3 py-2 text-sm hover:bg-white/40"
+                  title="Keresés törlése"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
             <button
               onClick={handleNewEmail}
               className="rounded-lg bg-white/20 px-4 py-2 text-sm hover:bg-white/30"
@@ -217,18 +269,40 @@ export default function EmailPage() {
         </div>
       </header>
 
+      {/* Offline banner */}
+      {isOffline && (
+        <div className="bg-yellow-100 border-b border-yellow-300 px-6 py-2 text-sm text-yellow-800 flex items-center gap-2">
+          <span>⚠️</span>
+          <span>Offline mód — a legutolsó szinkronizált adatok láthatóak</span>
+        </div>
+      )}
+
+      {/* Keresési eredmény jelző */}
+      {searchResults !== null && (
+        <div className="bg-blue-50 border-b border-blue-200 px-6 py-2 text-sm text-blue-700 flex items-center justify-between">
+          <span>🔍 Keresési eredmények: {searchResults.length} találat &quot;{searchQuery}&quot;</span>
+          <button onClick={handleClearSearch} className="text-blue-600 hover:underline text-xs">
+            Keresés törlése
+          </button>
+        </div>
+      )}
+
       {/* 3 paneles layout */}
       <div className="flex flex-1 overflow-hidden">
         <EmailSidebar
           selectedFolder={selectedFolder}
-          onSelectFolder={setSelectedFolder}
+          onSelectFolder={(folder: string) => {
+            setSelectedFolder(folder);
+            setSearchQuery('');
+            setSearchResults(null);
+          }}
           unreadCount={unreadCount}
         />
         <EmailList
-          emails={emails}
+          emails={searchResults ?? emails}
           selectedId={selectedEmailId}
           onSelect={setSelectedEmailId}
-          loading={loading}
+          loading={loading || isSearching}
         />
         <EmailViewer
           emailId={selectedEmailId}

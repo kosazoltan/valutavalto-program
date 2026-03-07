@@ -19,4 +19,6 @@ public interface EmailAccountRepository extends JpaRepository<EmailAccount, UUID
     List<EmailAccount> findByOwnCompanyId(UUID ownCompanyId);
 
     List<EmailAccount> findByBranchIdAndIsActiveTrue(UUID branchId);
+
+    List<EmailAccount> findByIsActiveTrue();
 }

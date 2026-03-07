@@ -66,7 +66,7 @@ public class GmailApiService {
                             .subject(getHeader(msg, "Subject"))
                             .from(getHeader(msg, "From"))
                             .snippet(msg.getSnippet())
-                            .isRead(!msg.getLabelIds().contains("UNREAD"))
+                            .isRead(msg.getLabelIds() == null || !msg.getLabelIds().contains("UNREAD"))
                             .hasAttachments(hasAttachments(msg))
                             .receivedAt(msg.getInternalDate())
                             .build());
@@ -256,6 +256,46 @@ public class GmailApiService {
         } catch (Exception e) {
             log.warn("getUnreadCount hiba: account={}, error={}", account.getGmailAddress(), e.getMessage());
             return 0;
+        }
+    }
+
+    /**
+     * Keresés Gmail üzenetek között query szintaxissal.
+     * Támogatott query-k: from:, to:, subject:, has:attachment, is:unread, stb.
+     */
+    public List<EmailListDto.EmailSummaryDto> searchMessages(EmailAccount account, String query, int maxResults) {
+        Gmail gmail = getGmailService(account);
+        try {
+            ListMessagesResponse response = gmail.users().messages().list(USER_ME)
+                    .setQ(query)
+                    .setMaxResults((long) maxResults)
+                    .execute();
+
+            List<EmailListDto.EmailSummaryDto> summaries = new ArrayList<>();
+            if (response.getMessages() != null) {
+                for (Message msgRef : response.getMessages()) {
+                    Message msg = gmail.users().messages().get(USER_ME, msgRef.getId())
+                            .setFormat("metadata")
+                            .setMetadataHeaders(List.of("Subject", "From", "Date"))
+                            .execute();
+
+                    summaries.add(EmailListDto.EmailSummaryDto.builder()
+                            .id(msg.getId())
+                            .threadId(msg.getThreadId())
+                            .subject(getHeader(msg, "Subject"))
+                            .from(getHeader(msg, "From"))
+                            .snippet(msg.getSnippet())
+                            .isRead(msg.getLabelIds() == null || !msg.getLabelIds().contains("UNREAD"))
+                            .hasAttachments(hasAttachments(msg))
+                            .receivedAt(msg.getInternalDate())
+                            .build());
+                }
+            }
+            return summaries;
+
+        } catch (IOException e) {
+            log.error("Gmail searchMessages hiba: account={}, query={}", account.getGmailAddress(), query, e);
+            throw new ValidationException("Gmail keresés hiba: " + e.getMessage());
         }
     }
 
