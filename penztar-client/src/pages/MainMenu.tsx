@@ -1,8 +1,9 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useSessionStore } from '@/stores/sessionStore';
 import { useAppMode } from '@/hooks/useAppMode';
+import { getUnreadCount } from '@/api/email';
 import NotificationBell from '@/components/NotificationBell';
 import type { MenuItem, PageRoute, OperationalRoleCode } from '@/types';
 import { OPERATIONAL_ROLE_NAMES } from '@/types';
@@ -90,6 +91,8 @@ export default function MainMenu() {
   const { isOnline, currentTime, updateTime } = useSessionStore();
   const { mode } = useAppMode();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const [emailUnreadCount, setEmailUnreadCount] = useState(0);
 
   const isErtektar = mode === 'ertektar';
   const isBestChange = companyType === 'BEST_CHANGE';
@@ -218,6 +221,25 @@ export default function MainMenu() {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [updateTime]);
+
+  // Email olvasatlan szám betöltése (30 másodpercenként)
+  useEffect(() => {
+    let mounted = true;
+    const fetchUnread = async () => {
+      try {
+        const count = await getUnreadCount();
+        if (mounted) setEmailUnreadCount(count);
+      } catch {
+        // Nincs fiók vagy hiba → csendben 0
+      }
+    };
+    void fetchUnread();
+    const interval = setInterval(() => void fetchUnread(), 30_000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   // Online/offline figyelés
   useEffect(() => {
@@ -402,11 +424,16 @@ export default function MainMenu() {
               <button
                 key={item.key}
                 onClick={() => handleNavigate(item.route)}
-                className="menu-btn h-28 border-2 border-sky-200 bg-sky-50 hover:bg-sky-100"
+                className="menu-btn relative h-28 border-2 border-sky-200 bg-sky-50 hover:bg-sky-100"
               >
                 <span className="menu-btn-icon">{item.icon}</span>
                 <span className="menu-btn-label text-sky-800">{item.label}</span>
                 <span className="menu-btn-hotkey text-sky-500">{item.hotkey}</span>
+                {emailUnreadCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-6 min-w-6 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-bold text-white">
+                    {emailUnreadCount > 99 ? '99+' : emailUnreadCount}
+                  </span>
+                )}
               </button>
             ))}
           </div>

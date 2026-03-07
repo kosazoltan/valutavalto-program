@@ -42,6 +42,8 @@ export interface EmailAccount {
   gmailAddress: string;
   displayName?: string;
   isActive: boolean;
+  lastSyncAt?: string;
+  syncError?: string;
 }
 
 export interface ComposeEmailDto {

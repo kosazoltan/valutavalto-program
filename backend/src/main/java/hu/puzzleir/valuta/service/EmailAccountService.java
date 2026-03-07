@@ -43,6 +43,14 @@ public class EmailAccountService {
     private final HttpTransport googleHttpTransport;
 
     /**
+     * Email fiók lekérdezése ID alapján.
+     */
+    public EmailAccount getAccountById(UUID accountId) {
+        return emailAccountRepository.findById(accountId)
+                .orElseThrow(() -> new ResourceNotFoundException("Email fiók nem található: " + accountId));
+    }
+
+    /**
      * A bejelentkezett worker számára elérhető email fiókok lekérdezése.
      * Az activeRole határozza meg, melyik szervezeti egység emailjét látja.
      *

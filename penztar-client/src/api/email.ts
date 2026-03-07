@@ -20,6 +20,21 @@ export async function createEmailAccount(
   return data;
 }
 
+export async function updateEmailAccount(
+  accountId: string,
+  dto: Partial<EmailAccount>,
+): Promise<EmailAccount> {
+  const { data } = await apiClient.put<EmailAccount>(
+    `/email/accounts/${accountId}`,
+    dto,
+  );
+  return data;
+}
+
+export async function deleteEmailAccount(accountId: string): Promise<void> {
+  await apiClient.delete(`/email/accounts/${accountId}`);
+}
+
 export async function startOAuthFlow(
   accountId: string,
 ): Promise<{ authUrl: string }> {
@@ -34,12 +49,18 @@ export async function startOAuthFlow(
 export async function getMessages(
   folder: string = 'INBOX',
   maxResults: number = 50,
+  accountId?: string,
 ): Promise<{ messages: EmailSummary[]; nextPageToken?: string }> {
   const { data } = await apiClient.get<{
     messages: EmailSummary[];
     nextPageToken?: string;
-  }>('/email/messages', { params: { folder, maxResults } });
+  }>('/email/messages', { params: { folder, maxResults, accountId } });
   return data;
+}
+
+export async function getUnreadCount(): Promise<number> {
+  const res = await apiClient.get<{ unreadCount: number }>('/email/unread-count');
+  return res.data.unreadCount;
 }
 
 export async function getMessage(messageId: string): Promise<EmailDetail> {

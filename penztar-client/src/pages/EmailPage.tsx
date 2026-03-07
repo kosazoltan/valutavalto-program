@@ -14,7 +14,8 @@ export default function EmailPage() {
   const isBestChange = companyType === 'BEST_CHANGE';
   const headerColor = isBestChange ? 'bg-red-600' : 'bg-orange-500';
 
-  const [, setAccounts] = useState<EmailAccount[]>([]);
+  const [accounts, setAccounts] = useState<EmailAccount[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | undefined>(undefined);
   const [selectedFolder, setSelectedFolder] = useState('INBOX');
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
   const [emails, setEmails] = useState<EmailSummary[]>([]);
@@ -40,26 +41,30 @@ export default function EmailPage() {
         const accs = await getEmailAccounts();
         setAccounts(accs);
         setHasAccounts(accs.length > 0);
+        // Ha több fiók van, az elsőt választjuk alapból
+        if (accs.length > 0 && !selectedAccountId) {
+          setSelectedAccountId(accs[0]!.id);
+        }
       } catch {
         setHasAccounts(false);
       }
     };
     void load();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Levelek betöltés ha van fiók
   const loadMessages = useCallback(async () => {
     if (hasAccounts === false) return;
     setLoading(true);
     try {
-      const result = await getMessages(selectedFolder, 50);
+      const result = await getMessages(selectedFolder, 50, selectedAccountId);
       setEmails(result.messages);
     } catch {
       setEmails([]);
     } finally {
       setLoading(false);
     }
-  }, [selectedFolder, hasAccounts]);
+  }, [selectedFolder, hasAccounts, selectedAccountId]);
 
   useEffect(() => {
     if (hasAccounts) {
@@ -164,7 +169,25 @@ export default function EmailPage() {
       {/* Fejléc */}
       <header className={`${headerColor} px-6 py-3 text-white`}>
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">📧 Levelezés</h1>
+          <div className="flex items-center gap-4">
+            <h1 className="text-xl font-bold">📧 Levelezés</h1>
+            {accounts.length > 1 && (
+              <select
+                value={selectedAccountId ?? ''}
+                onChange={(e) => {
+                  setSelectedAccountId(e.target.value || undefined);
+                  setSelectedEmailId(null);
+                }}
+                className="rounded-lg border-0 bg-white/20 px-3 py-1.5 text-sm text-white placeholder-white/60 focus:bg-white/30 focus:outline-none"
+              >
+                {accounts.map((acc) => (
+                  <option key={acc.id} value={acc.id} className="text-gray-900">
+                    {acc.displayName ?? acc.gmailAddress}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handleNewEmail}

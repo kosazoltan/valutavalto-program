@@ -238,6 +238,28 @@ public class GmailApiService {
     }
 
     /**
+     * Olvasatlan levelek száma a fiókban.
+     * Ha nincs token → return 0 (silent fail).
+     */
+    public int getUnreadCount(EmailAccount account) {
+        if (account.getOauthAccessToken() == null && account.getOauthRefreshToken() == null) {
+            return 0;
+        }
+        try {
+            Gmail gmail = getGmailService(account);
+            ListMessagesResponse response = gmail.users().messages().list(USER_ME)
+                    .setQ("is:unread in:INBOX")
+                    .setMaxResults(1L)
+                    .execute();
+            return response.getResultSizeEstimate() != null
+                    ? response.getResultSizeEstimate().intValue() : 0;
+        } catch (Exception e) {
+            log.warn("getUnreadCount hiba: account={}, error={}", account.getGmailAddress(), e.getMessage());
+            return 0;
+        }
+    }
+
+    /**
      * Csatolmány letöltése.
      */
     public byte[] getAttachment(EmailAccount account, String messageId, String attachmentId) {
