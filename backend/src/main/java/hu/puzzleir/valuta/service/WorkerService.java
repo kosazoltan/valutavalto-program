@@ -14,6 +14,9 @@ import com.puzzleir.backend.exception.ValidationException;
 import com.puzzleir.backend.repository.BranchRepository;
 import com.puzzleir.backend.repository.CompanyRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
+import hu.puzzleir.valuta.repository.WorkerRoleAssignmentRepository;
+import hu.puzzleir.valuta.repository.WorkerRoleDefinitionRepository;
+import hu.puzzleir.valuta.repository.WorkerRolePermissionRepository;
 import hu.puzzleir.valuta.repository.WorkerSessionRepository;
 import hu.puzzleir.valuta.security.JwtTokenProvider;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -43,6 +46,8 @@ public class WorkerService {
     private final BranchRepository branchRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final WorkerRoleAssignmentRepository roleAssignmentRepository;
+    private final WorkerRolePermissionRepository rolePermissionRepository;
 
     // HIGH FIX #16: Brute force védelem — max 5 sikertelen próba, utána 15 perc lock
     private static final int MAX_FAILED_ATTEMPTS = 5;
@@ -339,8 +344,31 @@ public class WorkerService {
             worker.setBranch(branch);
         }
         
+        // V57: Operatív szerepkör keresés
+        List<WorkerRoleAssignment> roleAssignments = roleAssignmentRepository.findByWorkerId(worker.getId());
+        List<String> roleCodes = roleAssignments.stream()
+                .map(ra -> ra.getRoleDef().getCode())
+                .collect(Collectors.toList());
+
+        // Ha 0 vagy 1 role van → automatikus belépés azzal
+        String activeRole = null;
+        List<String> permissions = List.of();
+        boolean roleSelectionRequired = false;
+
+        if (roleCodes.size() == 1) {
+            activeRole = roleCodes.get(0);
+            WorkerRoleDefinition roleDef = roleAssignments.get(0).getRoleDef();
+            permissions = rolePermissionRepository.findByRoleDefIdWithPermission(roleDef.getId()).stream()
+                    .map(wrp -> wrp.getPermission().getCode())
+                    .collect(Collectors.toList());
+        } else if (roleCodes.size() > 1) {
+            // Több role → a frontend-nek kell választania
+            roleSelectionRequired = true;
+        }
+        // Ha 0 role → legacy mode, nincs operatív role (backward compat)
+
         // JWT token generálás
-        String token = jwtTokenProvider.generateToken(worker);
+        String token = jwtTokenProvider.generateToken(worker, activeRole, permissions);
         String tokenId = jwtTokenProvider.getTokenIdFromToken(token);
         
         // Session tracking
@@ -369,6 +397,10 @@ public class WorkerService {
                 .worker(WorkerDto.from(worker))
                 .expiresIn(expiresInMs)
                 .expiresAt(expiresAt.toString()) // ISO format for frontend
+                .roles(roleCodes)
+                .activeRole(activeRole)
+                .permissions(permissions)
+                .roleSelectionRequired(roleSelectionRequired)
                 .build();
     }
     

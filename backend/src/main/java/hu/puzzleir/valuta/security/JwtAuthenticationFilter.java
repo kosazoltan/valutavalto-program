@@ -55,9 +55,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         Collections.singletonList(authority)
                     );
                 
-                // Custom details (workerId, companyId, branchId)
+                // Operatív szerepkör kinyerése (V57)
+                String activeRole = jwtTokenProvider.getActiveRoleFromToken(jwt);
+
+                // Custom details (workerId, companyId, branchId, role, activeRole)
                 WorkerAuthenticationDetails details = new WorkerAuthenticationDetails(
-                    workerId, companyId, branchId, role
+                    workerId, companyId, branchId, role, activeRole
                 );
                 authentication.setDetails(details);
                 

@@ -32,6 +32,17 @@ public class JwtTokenProvider {
      * JWT generálás Worker-hez (MULTI-TENANT!)
      */
     public String generateToken(Worker worker) {
+        return generateToken(worker, null, null);
+    }
+
+    /**
+     * JWT generálás Worker-hez operatív szerepkörrel.
+     * 
+     * @param worker        Worker entity
+     * @param activeRole    Operatív szerepkör kódja (pl. CASHIER, VAULT_KEEPER) — null ha nincs
+     * @param permissions   Az aktív role-hoz tartozó permission kódok — null ha nincs
+     */
+    public String generateToken(Worker worker, String activeRole, java.util.List<String> permissions) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("workerId", worker.getId());
         claims.put("workerCode", worker.getCode());
@@ -43,6 +54,14 @@ public class JwtTokenProvider {
         // 🔴 MULTI-TENANT: Company ID claim!
         claims.put("companyId", worker.getCompany().getId());
         claims.put("companyCode", worker.getCompany().getCode());
+        
+        // Operatív szerepkör (V57)
+        if (activeRole != null) {
+            claims.put("activeRole", activeRole);
+        }
+        if (permissions != null && !permissions.isEmpty()) {
+            claims.put("permissions", permissions);
+        }
         
         // Token ID (session tracking)
         String tokenId = UUID.randomUUID().toString();
@@ -155,5 +174,24 @@ public class JwtTokenProvider {
     public boolean isTokenExpired(String token) {
         Date expiration = getClaims(token).getExpiration();
         return expiration.before(new Date());
+    }
+
+    /**
+     * Operatív szerepkör kinyerése token-ből (V57)
+     */
+    public String getActiveRoleFromToken(String token) {
+        return getClaims(token).get("activeRole", String.class);
+    }
+
+    /**
+     * Permission lista kinyerése token-ből (V57)
+     */
+    @SuppressWarnings("unchecked")
+    public java.util.List<String> getPermissionsFromToken(String token) {
+        Object perms = getClaims(token).get("permissions");
+        if (perms instanceof java.util.List) {
+            return (java.util.List<String>) perms;
+        }
+        return java.util.Collections.emptyList();
     }
 }

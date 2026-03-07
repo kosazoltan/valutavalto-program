@@ -105,4 +105,17 @@ public class SecurityUtils {
             role.equals("ADMIN")
         );
     }
+
+    /**
+     * Aktuális operatív szerepkör (V57 — pl. CASHIER, VAULT_KEEPER, DIRECTOR)
+     * 
+     * @return operatív role kód, vagy null ha nincs beállítva
+     */
+    public static String getActiveOperationalRole() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getDetails() instanceof WorkerAuthenticationDetails) {
+            return ((WorkerAuthenticationDetails) auth.getDetails()).getActiveRole();
+        }
+        return null;
+    }
 }

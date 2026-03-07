@@ -88,3 +88,7 @@ docs/legacy-drive/
 Anti/
 
 Felmérés/
+
+# Nagy fájlok kizárása
+*.m4a
+Felmérés/

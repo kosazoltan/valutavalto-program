@@ -4,7 +4,9 @@ import hu.puzzleir.valuta.dto.worker.ChangePasswordDto;
 import hu.puzzleir.valuta.dto.worker.CreateWorkerDto;
 import hu.puzzleir.valuta.dto.worker.UpdateWorkerDto;
 import hu.puzzleir.valuta.dto.worker.WorkerDto;
+import hu.puzzleir.valuta.entity.WorkerRoleDefinition;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.service.WorkerRoleService;
 import hu.puzzleir.valuta.service.WorkerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +29,7 @@ import java.util.UUID;
 public class WorkerController {
     
     private final WorkerService workerService;
+    private final WorkerRoleService workerRoleService;
     
     /**
      * Új dolgozó létrehozás
@@ -164,5 +167,50 @@ public class WorkerController {
         Long currentWorkerId = SecurityUtils.getCurrentWorkerId();
         WorkerDto worker = workerService.findById(currentWorkerId);
         return ResponseEntity.ok(worker);
+    }
+
+    // ============================================================
+    // V57: Operatív szerepkör kezelés
+    // ============================================================
+
+    /**
+     * Worker operatív szerepkör listája
+     * 
+     * GET /api/v1/workers/{id}/roles
+     */
+    @GetMapping("/{id}/roles")
+    public ResponseEntity<List<String>> getWorkerRoles(@PathVariable Long id) {
+        List<String> roles = workerRoleService.getRoleCodesForWorker(id);
+        return ResponseEntity.ok(roles);
+    }
+
+    /**
+     * Operatív szerepkör hozzáadás
+     * 
+     * POST /api/v1/workers/{id}/roles/{roleCode}
+     * Csak SUPERVISOR, MANAGER, ADMIN
+     */
+    @PostMapping("/{id}/roles/{roleCode}")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<Void> assignRole(
+            @PathVariable Long id,
+            @PathVariable String roleCode) {
+        workerRoleService.assignRole(id, roleCode);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    /**
+     * Operatív szerepkör eltávolítás
+     * 
+     * DELETE /api/v1/workers/{id}/roles/{roleCode}
+     * Csak SUPERVISOR, MANAGER, ADMIN
+     */
+    @DeleteMapping("/{id}/roles/{roleCode}")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<Void> removeRole(
+            @PathVariable Long id,
+            @PathVariable String roleCode) {
+        workerRoleService.removeRole(id, roleCode);
+        return ResponseEntity.noContent().build();
     }
 }

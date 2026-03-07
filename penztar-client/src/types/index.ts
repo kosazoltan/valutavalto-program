@@ -13,7 +13,33 @@ export interface LoginResponse {
   token: string;
   refreshToken: string;
   user: User;
+  /** V57: operatív szerepkör kódok */
+  roles?: string[];
+  /** V57: kiválasztott aktív operatív role */
+  activeRole?: string | null;
+  /** V57: aktív role-hoz tartozó permission kódok */
+  permissions?: string[];
+  /** V57: true ha több role van és választani kell */
+  roleSelectionRequired?: boolean;
 }
+
+/** V57: Operatív szerepkör kódok */
+export type OperationalRoleCode =
+  | 'CASHIER' | 'COURIER' | 'VAULT_KEEPER' | 'CHIEF_VAULT'
+  | 'REGIONAL_MGR' | 'OFFICE_MGR' | 'AUDITOR' | 'SECURITY' | 'DIRECTOR';
+
+/** V57: Operatív szerepkör nevek (magyar) */
+export const OPERATIONAL_ROLE_NAMES: Record<OperationalRoleCode, string> = {
+  CASHIER: 'Valutapénztáros',
+  COURIER: 'Értékszállító',
+  VAULT_KEEPER: 'Értéktáros',
+  CHIEF_VAULT: 'Főértéktáros',
+  REGIONAL_MGR: 'Területi vezető',
+  OFFICE_MGR: 'Irodavezető',
+  AUDITOR: 'Kontroller',
+  SECURITY: 'Biztonsági vezető',
+  DIRECTOR: 'Igazgató',
+};
 
 export interface User {
   id: number;
@@ -22,6 +48,18 @@ export interface User {
   role: 'CASHIER' | 'MANAGER' | 'ADMIN';
   branchCode: string;
   companyId: number;
+  /** V57: operatív szerepkör kódok */
+  roles?: string[];
+  /** V57: aktív operatív szerepkör */
+  activeRole?: string | null;
+  /** V57: aktív role-hoz tartozó permission kódok */
+  permissions?: string[];
+}
+
+/** V57: Role selection request */
+export interface SelectRoleRequest {
+  token: string;
+  roleCode: string;
 }
 
 // --- Company ---

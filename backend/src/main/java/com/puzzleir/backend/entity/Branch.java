@@ -74,6 +74,12 @@ public class Branch {
     @Column(name = "denomination_rule_id")
     private UUID denominationRuleId;
 
+    /**
+     * Értéktári terület hozzárendelés (V60 migráció)
+     */
+    @Column(name = "vault_territory_id")
+    private Integer vaultTerritoryId;
+
     @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = true;

@@ -4,7 +4,8 @@ import { useAuthStore } from '@/stores/authStore';
 import { useSessionStore } from '@/stores/sessionStore';
 import { useAppMode } from '@/hooks/useAppMode';
 import NotificationBell from '@/components/NotificationBell';
-import type { MenuItem, PageRoute } from '@/types';
+import type { MenuItem, PageRoute, OperationalRoleCode } from '@/types';
+import { OPERATIONAL_ROLE_NAMES } from '@/types';
 
 const MENU_ITEMS: MenuItem[] = [
   { key: 'F1', label: 'Eladás', icon: '💰', route: '/sell', hotkey: 'F1' },
@@ -80,7 +81,7 @@ const ERTEKTAR_ITEMS: MenuItem[] = [
 
 export default function MainMenu() {
   const navigate = useNavigate();
-  const { user, companyType, branchCode, clearAuth } = useAuthStore();
+  const { user, companyType, branchCode, clearAuth, activeRole, hasPermission } = useAuthStore();
   const { isOnline, currentTime, updateTime } = useSessionStore();
   const { mode } = useAppMode();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -235,6 +236,11 @@ export default function MainMenu() {
             </h1>
             <p className="text-sm text-white/80">
               {user?.fullName ?? 'Pénztáros'} | {modeLabel}: {branchCode}
+              {activeRole && (
+                <span className="ml-2 rounded bg-white/20 px-2 py-0.5 text-xs font-medium">
+                  {OPERATIONAL_ROLE_NAMES[activeRole as OperationalRoleCode] ?? activeRole}
+                </span>
+              )}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -397,8 +403,8 @@ export default function MainMenu() {
             ))}
           </div>
         </div>
-        {/* HR — Dolgozói törzsadat (csak MANAGER/ADMIN) */}
-        {(user?.role === 'MANAGER' || user?.role === 'ADMIN') && (
+        {/* HR — Dolgozói törzsadat (WORKER_MANAGE permission VAGY legacy MANAGER/ADMIN) */}
+        {(hasPermission('WORKER_MANAGE') || user?.role === 'MANAGER' || user?.role === 'ADMIN') && (
           <div className="mx-auto mt-6 max-w-4xl">
             <h2 className="mb-3 text-lg font-semibold text-gray-600">👥 HR / Személyügyi</h2>
             <div className="grid grid-cols-4 gap-4">

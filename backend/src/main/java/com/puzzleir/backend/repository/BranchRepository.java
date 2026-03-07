@@ -94,6 +94,11 @@ public interface BranchRepository extends JpaRepository<Branch, UUID> {
     List<Branch> findAllDescendants(@Param("branchId") UUID branchId);
 
     /**
+     * Fiókok értéktári terület szerint (vault_territory_id)
+     */
+    List<Branch> findByVaultTerritoryId(Integer vaultTerritoryId);
+
+    /**
      * Rekurzív lekérdezés: teljes útvonal a gyökérig
      */
     @Query(value = """
