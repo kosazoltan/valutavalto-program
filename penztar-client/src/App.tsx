@@ -65,6 +65,8 @@ import CompanyAdminPage from '@/pages/CompanyAdminPage';
 // Sprint 3 — Szünet, Konverzió
 import BreakPage from '@/pages/BreakPage';
 import ConversionPage from '@/pages/ConversionPage';
+// HR modul — Dolgozói törzsadatok
+import EmployeePage from '@/pages/EmployeePage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -511,6 +513,16 @@ export default function App() {
         element={
           <ProtectedRoute>
             <ConversionPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* HR modul — Dolgozói törzsadatok */}
+      <Route
+        path="/employees"
+        element={
+          <ProtectedRoute>
+            <EmployeePage />
           </ProtectedRoute>
         }
       />
