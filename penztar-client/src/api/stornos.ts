@@ -40,7 +40,7 @@ export async function requestStornoApproval(
 }
 
 export async function approveStorno(
-  approvalId: number,
+  approvalId: string,
   approvedByWorkerId: number,
   approved: boolean,
   reason?: string,

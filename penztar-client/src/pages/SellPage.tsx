@@ -110,6 +110,7 @@ export default function SellPage() {
 
   const canSubmit =
     selectedCurrency !== null &&
+    currencyList.length > 0 &&
     parseFloat(foreignAmount) > 0 &&
     hufNumeric > 0 &&
     (!customerRequired || customer !== null) &&

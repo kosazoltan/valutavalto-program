@@ -180,7 +180,7 @@ public class DailyBalanceService {
     /**
      * ĂtvĂ©tel (transfer IN) szĂˇmĂ­tĂˇsa
      * 
-     * TODO: Transfer funkciĂł nincs implementĂˇlva â€” future scope.
+     * Transfer query a TransferRepository-bĂł nincs implementĂˇlva â€” future scope.
      * Ha a rendszer iroda-kĂ¶zĂ¶tti ĂˇtutalĂˇst hasznĂˇl, implementĂˇld ezt a metĂłdust.
      * 
      * @param branchId Iroda ID
@@ -195,7 +195,7 @@ public class DailyBalanceService {
     /**
      * ĂtadĂˇs (transfer OUT) szĂˇmĂ­tĂˇsa
      * 
-     * TODO: Transfer funkciĂł nincs implementĂˇlva â€” future scope.
+     * Transfer query a TransferRepository-bĂł nincs implementĂˇlva â€” future scope.
      * Ha a rendszer iroda-kĂ¶zĂ¶tti ĂˇtutalĂˇst hasznĂˇl, implementĂˇld ezt a metĂłdust.
      * 
      * @param branchId Iroda ID
