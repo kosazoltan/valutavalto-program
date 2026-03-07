@@ -7,13 +7,13 @@ vi.mock('react-router-dom', () => ({
 
 // Mock authStore
 vi.mock('@/stores/authStore', () => ({
-  useAuthStore: () => ({ companyType: 'DEFAULT' }),
+  useAuthStore: () => ({ companyType: 'DEFAULT', branchCode: '101', user: { id: 1, fullName: 'Test' } }),
 }));
 
 // Mock closing API
 vi.mock('@/api/closing', () => ({
   startClosingWizard: vi.fn().mockResolvedValue({
-    sessionId: 'test-session',
+    id: 'test-session',
     currentStep: 1,
     balanceCheck: [],
     denominations: [],
@@ -21,7 +21,7 @@ vi.mock('@/api/closing', () => ({
     summary: null,
   }),
   navigateClosingWizard: vi.fn().mockResolvedValue({
-    sessionId: 'test-session',
+    id: 'test-session',
     currentStep: 2,
     balanceCheck: [],
     denominations: [],
@@ -29,6 +29,7 @@ vi.mock('@/api/closing', () => ({
     summary: null,
   }),
   completeClosingWizard: vi.fn().mockResolvedValue(true),
+  cancelClosingWizard: vi.fn().mockResolvedValue(true),
 }));
 
 // Mock currencies

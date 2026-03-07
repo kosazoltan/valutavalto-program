@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.entity;
 import com.puzzleir.backend.entity.Branch;
 import com.puzzleir.backend.entity.Company;
 import jakarta.persistence.*;
+import jakarta.persistence.Version;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -267,6 +268,9 @@ public class Transaction {
      */
     @Column(name = "pos_terminal_id", length = 50)
     private String posTerminalId;
+
+    @Version
+    private Long version;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)

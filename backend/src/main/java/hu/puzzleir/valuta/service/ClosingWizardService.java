@@ -143,8 +143,15 @@ public class ClosingWizardService {
         Worker worker = workerRepository.findById(workerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található: " + workerId));
 
-        // Minden lépés teljesítve jelölése
-        wizard.getSteps().forEach(step -> step.setCompleted(true));
+        // M-1: Ellenőrizzük, hogy minden lépés ténylegesen végrehajtva lett-e
+        boolean allStepsCompleted = wizard.getSteps().stream().allMatch(s -> Boolean.TRUE.equals(s.getCompleted()));
+        if (!allStepsCompleted) {
+            List<String> incomplete = wizard.getSteps().stream()
+                    .filter(s -> !Boolean.TRUE.equals(s.getCompleted()))
+                    .map(s -> "Lépés " + s.getStepNumber())
+                    .collect(Collectors.toList());
+            throw new ValidationException("Nem minden lépés lett végrehajtva: " + String.join(", ", incomplete));
+        }
 
         wizard.setWizardStatus(WizardStatus.COMPLETED);
         wizard.setCompletedByWorker(worker);

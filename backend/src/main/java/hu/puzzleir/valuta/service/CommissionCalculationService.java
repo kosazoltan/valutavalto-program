@@ -52,13 +52,9 @@ public class CommissionCalculationService {
         LocalDate monthStart = ym.atDay(1);
         LocalDate monthEnd = ym.atEndOfMonth();
 
-        // Pénztáros tranzakcióinak összegyűjtése
-        List<Transaction> allTransactions = new ArrayList<>();
-        LocalDate current = monthStart;
-        while (!current.isAfter(monthEnd)) {
-            allTransactions.addAll(transactionRepository.findByWorkerAndDate(workerId, current));
-            current = current.plusDays(1);
-        }
+        // H-7: Pénztáros tranzakcióinak összegyűjtése egyetlen range query-vel (N+1 fix)
+        List<Transaction> allTransactions = transactionRepository.findByWorkerIdAndTransactionDateBetween(
+                workerId, monthStart, monthEnd);
 
         List<Transaction> active = allTransactions.stream()
                 .filter(Transaction::isActive)

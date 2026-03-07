@@ -17,6 +17,8 @@ import hu.puzzleir.valuta.repository.StornoApprovalRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import com.puzzleir.backend.entity.Dictionary;
+import com.puzzleir.backend.repository.DictionaryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -41,6 +43,7 @@ public class StornoService {
     private final WorkerRepository workerRepository;
     private final BranchRepository branchRepository;
     private final TransactionService transactionService;
+    private final DictionaryRepository dictionaryRepository;
 
     // Napi sztornó limit supervisor jóváhagyás nélkül
     private static final int DAILY_STORNO_LIMIT = 3;
@@ -125,6 +128,13 @@ public class StornoService {
 
         approval.setApprovedByWorker(approver);
         approval.setApprovedAt(LocalDateTime.now());
+
+        // M-3: ApprovalStatus beállítása
+        String statusCode = approved ? "APPROVED" : "REJECTED";
+        approval.setApprovalStatus(dictionaryRepository
+                .findByCategoryAndCode("STORNO_APPROVAL_STATUS", statusCode)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Hiányzó dictionary bejegyzés: STORNO_APPROVAL_STATUS/" + statusCode)));
 
         if (!approved) {
             approval.setRejectionReason(reason);

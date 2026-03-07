@@ -105,6 +105,13 @@ public class TransferService {
         CashBalance fromBalance = cashBalanceRepository.findByBranchIdAndCurrencyId(
                 transfer.getFromBranch().getId(), transfer.getCurrency().getId())
                 .orElseThrow(() -> new ValidationException("Küldő fiók kassza egyenlege nem található!"));
+
+        // H-5: Negatív kassza védelem — ellenőrzés csökkentés ELŐTT
+        if (fromBalance.getCurrentBalance().compareTo(transfer.getAmount()) < 0) {
+            throw new ValidationException("Küldő fiók egyenlege nem elegendő! Elérhető: "
+                    + fromBalance.getCurrentBalance() + ", szükséges: " + transfer.getAmount());
+        }
+
         fromBalance.updateBalance(transfer.getAmount(), false); // outgoing — küldött összeg
 
         CashBalance toBalance = cashBalanceRepository.findByBranchIdAndCurrencyId(

@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -45,6 +46,14 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
 
     @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(t.transferNumber, 4) AS long)), 0) FROM Transfer t WHERE t.transferNumber LIKE :prefix%")
     long findMaxTransferNumber(@Param("prefix") String prefix);
+
+    /** H-3: Bejövő átadások összege (DailyBalanceService-hez) */
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transfer t WHERE t.toBranch.id = :branchId AND t.transferDate = :date AND t.currency.code = :currencyCode AND t.status = 'COMPLETED'")
+    BigDecimal sumTransfersIn(@Param("branchId") UUID branchId, @Param("date") LocalDate date, @Param("currencyCode") String currencyCode);
+
+    /** H-3: Kimenő átadások összege (DailyBalanceService-hez) */
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transfer t WHERE t.fromBranch.id = :branchId AND t.transferDate = :date AND t.currency.code = :currencyCode AND t.status = 'COMPLETED'")
+    BigDecimal sumTransfersOut(@Param("branchId") UUID branchId, @Param("date") LocalDate date, @Param("currencyCode") String currencyCode);
 
     /** ReportService — kimenő átadások */
     @Query("SELECT t FROM Transfer t WHERE t.fromBranch.id = :branchId ORDER BY t.createdAt DESC")

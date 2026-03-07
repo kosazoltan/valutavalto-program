@@ -189,9 +189,7 @@ public class DailyBalanceService {
      * @return Transfer IN Ă¶sszeg (jelenleg mindig 0)
      */
     private BigDecimal getTransfersIn(UUID branchId, LocalDate date, String currencyCode) {
-        // Transfer entitĂˇs lekĂ©rdezĂ©s (ha van Transfer tĂˇbla)
-        // return transferRepository.sumTransfersIn(branchId, date, currencyCode);
-        return BigDecimal.ZERO;
+        return transferRepository.sumTransfersIn(branchId, date, currencyCode);
     }
 
     /**
@@ -206,9 +204,7 @@ public class DailyBalanceService {
      * @return Transfer OUT Ă¶sszeg (jelenleg mindig 0)
      */
     private BigDecimal getTransfersOut(UUID branchId, LocalDate date, String currencyCode) {
-        // Transfer entitĂˇs lekĂ©rdezĂ©s (ha van Transfer tĂˇbla)
-        // return transferRepository.sumTransfersOut(branchId, date, currencyCode);
-        return BigDecimal.ZERO;
+        return transferRepository.sumTransfersOut(branchId, date, currencyCode);
     }
 
     /**

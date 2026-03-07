@@ -125,7 +125,9 @@ export default function TransferPage() {
       setSuccess('');
 
       try {
-        await receiveTransfer(id);
+        // A transfer.amount az elvárt összeg — átvételkor megerősítjük
+        const transfer = pendingTransfers.find((t) => t.id === id);
+        await receiveTransfer(id, transfer?.amount ?? 0);
         setSuccess('✅ Átadás átvéve!');
         void fetchData();
       } catch (err) {

@@ -35,7 +35,7 @@ const STEP_ICONS: Record<ClosingStep, string> = {
 
 export default function ClosingPage() {
   const navigate = useNavigate();
-  const { companyType } = useAuthStore();
+  const { companyType, branchCode, user } = useAuthStore();
 
   const [wizardState, setWizardState] = useState<ClosingWizardState | null>(null);
   const [currentStep, setCurrentStep] = useState<ClosingStep>(1);
@@ -52,7 +52,8 @@ export default function ClosingPage() {
     setIsLoading(true);
     setError('');
     try {
-      const state = await startClosingWizard();
+      const workerId = user?.id ?? 0;
+      const state = await startClosingWizard(branchCode, 'DAILY', workerId);
       setWizardState(state);
       setCurrentStep(state.currentStep);
     } catch (err) {
@@ -61,7 +62,7 @@ export default function ClosingPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [branchCode, user]);
 
   useEffect(() => {
     void handleStart();
@@ -78,7 +79,7 @@ export default function ClosingPage() {
       setError('');
 
       try {
-        const state = await navigateClosingWizard(wizardState.sessionId, step);
+        const state: ClosingWizardState = await navigateClosingWizard(wizardState.id, step);
         setWizardState(state);
         setCurrentStep(state.currentStep);
       } catch (err) {
@@ -99,13 +100,14 @@ export default function ClosingPage() {
     setError('');
 
     try {
-      await completeClosingWizard(wizardState.sessionId);
+      const workerId = user?.id ?? 0;
+      await completeClosingWizard(wizardState.id, workerId);
       setSuccess('✅ Napzárás sikeresen végrehajtva!');
 
       // Nyomtatás trigger
       if (window.electronAPI) {
         void window.electronAPI.printReceipt(
-          JSON.stringify({ type: 'closing', sessionId: wizardState.sessionId }),
+          JSON.stringify({ type: 'closing', sessionId: wizardState.id }),
         );
       }
     } catch (err) {

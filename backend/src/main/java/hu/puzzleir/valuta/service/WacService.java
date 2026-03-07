@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.service;
 
 import com.puzzleir.backend.entity.Branch;
 import com.puzzleir.backend.entity.Company;
+import com.puzzleir.backend.exception.ValidationException;
 import com.puzzleir.backend.repository.BranchRepository;
 import com.puzzleir.backend.repository.CompanyRepository;
 import hu.puzzleir.valuta.entity.CurrencyStock;
@@ -76,6 +77,12 @@ public class WacService {
                 .findForUpdate(companyId, entityType, entityId, currencyCode)
                 .orElseThrow(() -> new IllegalStateException(
                         "Készlet nem található: " + entityType + "/" + entityId + "/" + currencyCode));
+
+        // C-4: Negatív készlet védelem
+        if (stock.getQuantity().compareTo(quantity) < 0) {
+            throw new ValidationException("Nincs elegendő készlet: " + currencyCode
+                    + " (kért: " + quantity + ", elérhető: " + stock.getQuantity() + ")");
+        }
 
         BigDecimal wacAtIssue = stock.issueStock(quantity);
         currencyStockRepository.save(stock);

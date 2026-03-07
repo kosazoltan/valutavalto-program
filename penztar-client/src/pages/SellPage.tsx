@@ -4,6 +4,7 @@ import { useRateStore } from '@/stores/rateStore';
 import { useAuthStore } from '@/stores/authStore';
 import { toast } from '@/hooks/useToast';
 import { sellCurrency } from '@/api/transactions';
+import { getActiveCurrencies, type CurrencyDto } from '@/api/currencies';
 import { screenCustomer } from '@/api/sanctions';
 import { roundHuf } from '@/utils/rounding';
 import { checkAmlLimits, AML_IDENTIFICATION_LIMIT } from '@/utils/validation';
@@ -25,6 +26,11 @@ export default function SellPage() {
   const { companyType, user, branchCode } = useAuthStore();
 
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode | null>(null);
+  const [currencyList, setCurrencyList] = useState<CurrencyDto[]>([]);
+
+  useEffect(() => {
+    getActiveCurrencies().then(setCurrencyList).catch(() => {});
+  }, []);
   const [foreignAmount, setForeignAmount] = useState('');
   const [hufAmount, setHufAmount] = useState('');
   const [inputMode, setInputMode] = useState<InputMode>('foreign');
@@ -184,8 +190,9 @@ export default function SellPage() {
       if (isOnline) {
         // Online mód — normál API hívás
         const result = await sellCurrency({
+          currencyId: currencyList.find(c => c.code === selectedCurrency)?.id ?? 0,
+          currencyAmount: parseFloat(foreignAmount),
           currencyCode: selectedCurrency,
-          foreignAmount: parseFloat(foreignAmount),
           hufAmount: hufNumeric,
           roundedHufAmount: roundedHuf,
           rate: sellRate,

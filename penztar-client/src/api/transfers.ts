@@ -1,6 +1,10 @@
 import apiClient from './client';
 import type { Transfer, TransferRequest, Branch } from '@/types';
 
+// ============================================================
+// Transfer API — igazítva a TransferController-hez
+// ============================================================
+
 export async function createTransfer(
   request: TransferRequest,
 ): Promise<Transfer> {
@@ -15,19 +19,26 @@ export async function getPendingTransfers(): Promise<Transfer[]> {
 
 export async function receiveTransfer(
   id: number,
+  receivedAmount: number,
+  notes?: string,
 ): Promise<Transfer> {
-  const response = await apiClient.post<Transfer>(`/transfers/${id}/receive`);
-  return response.data;
+  const { data } = await apiClient.post<Transfer>(`/transfers/${id}/receive`, {
+    receivedAmount,
+    notes,
+  });
+  return data;
 }
 
 export async function rejectTransfer(
   id: number,
   reason: string,
 ): Promise<Transfer> {
-  const response = await apiClient.post<Transfer>(`/transfers/${id}/reject`, {
-    reason,
-  });
-  return response.data;
+  const { data } = await apiClient.post<Transfer>(
+    `/transfers/${id}/reject`,
+    null,
+    { params: { reason } },
+  );
+  return data;
 }
 
 export async function getBranches(): Promise<Branch[]> {

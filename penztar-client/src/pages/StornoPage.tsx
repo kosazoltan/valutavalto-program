@@ -50,7 +50,8 @@ export default function StornoPage() {
     setStornoCheck(null);
 
     try {
-      const result = await checkStorno(transactionId);
+      const workerId = user?.id ?? 0;
+      const result = await checkStorno(transactionId, workerId);
       setStornoCheck(result);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Keresési hiba';
@@ -69,13 +70,17 @@ export default function StornoPage() {
     setSuccess('');
 
     try {
-      const result = await executeStorno({
-        transactionId: stornoCheck.transaction.id,
-        reason: reason.trim(),
-        supervisorPassword: stornoCheck.requiresSupervisor
-          ? supervisorPassword
-          : undefined,
-      });
+      const workerId = user?.id ?? 0;
+      const result = await executeStorno(
+        {
+          transactionId: stornoCheck.transaction.id,
+          reason: reason.trim(),
+          supervisorPassword: stornoCheck.requiresSupervisor
+            ? supervisorPassword
+            : undefined,
+        },
+        workerId,
+      );
 
       const tx = stornoCheck.transaction;
       const receiptNumber = result.newReceiptNumber;

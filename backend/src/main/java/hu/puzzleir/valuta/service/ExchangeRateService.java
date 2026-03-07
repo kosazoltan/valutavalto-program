@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -158,7 +159,7 @@ public class ExchangeRateService {
         }
 
         // Kedvezményes árfolyam számítása
-        BigDecimal multiplier = BigDecimal.ONE.subtract(discountPercent.divide(new BigDecimal("100")));
+        BigDecimal multiplier = BigDecimal.ONE.subtract(discountPercent.divide(new BigDecimal("100"), 6, RoundingMode.HALF_UP));
         BigDecimal newBuyRate = rate.getBaseBuyRate().multiply(multiplier);
         BigDecimal newSellRate = rate.getBaseSellRate().multiply(multiplier);
 

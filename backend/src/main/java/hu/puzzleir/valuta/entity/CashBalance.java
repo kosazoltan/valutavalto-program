@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.entity;
 import com.puzzleir.backend.entity.Branch;
 import com.puzzleir.backend.entity.Company;
 import jakarta.persistence.*;
+import jakarta.persistence.Version;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -93,6 +94,9 @@ public class CashBalance {
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @Version
+    private Long version;
 
     @LastModifiedDate
     @Column(name = "updated_at")

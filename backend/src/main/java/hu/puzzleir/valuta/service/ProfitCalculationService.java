@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.*;
@@ -101,22 +102,22 @@ public class ProfitCalculationService {
         }
 
         // Bevétel = eladásból kapott HUF - vételre kifizetett HUF (spread profit)
-        BigDecimal revenue = totalSellHuf.subtract(totalBuyHuf);
+        BigDecimal revenue = totalSellHuf.subtract(totalBuyHuf).setScale(2, RoundingMode.HALF_UP);
         BigDecimal grossProfit = revenue;
-        BigDecimal netProfit = grossProfit.subtract(totalFees);
+        BigDecimal netProfit = grossProfit.subtract(totalFees).setScale(2, RoundingMode.HALF_UP);
 
         List<Map<String, Object>> profitByCurrency = new ArrayList<>();
         for (CurrencyProfit cp : currencyMap.values()) {
-            BigDecimal currRevenue = cp.sellHuf.subtract(cp.buyHuf);
+            BigDecimal currRevenue = cp.sellHuf.subtract(cp.buyHuf).setScale(2, RoundingMode.HALF_UP);
             Map<String, Object> entry = new LinkedHashMap<>();
             entry.put("currencyCode", cp.currencyCode);
             entry.put("buyCount", cp.buyCount);
             entry.put("sellCount", cp.sellCount);
-            entry.put("buyHuf", cp.buyHuf);
-            entry.put("sellHuf", cp.sellHuf);
+            entry.put("buyHuf", cp.buyHuf.setScale(2, RoundingMode.HALF_UP));
+            entry.put("sellHuf", cp.sellHuf.setScale(2, RoundingMode.HALF_UP));
             entry.put("revenue", currRevenue);
-            entry.put("fees", cp.fees);
-            entry.put("profit", currRevenue.subtract(cp.fees));
+            entry.put("fees", cp.fees.setScale(2, RoundingMode.HALF_UP));
+            entry.put("profit", currRevenue.subtract(cp.fees).setScale(2, RoundingMode.HALF_UP));
             profitByCurrency.add(entry);
         }
 

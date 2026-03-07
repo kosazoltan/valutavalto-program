@@ -89,12 +89,21 @@ export interface ExchangeRate {
 
 // --- Transaction ---
 export interface TransactionRequest {
-  currencyCode: CurrencyCode;
-  foreignAmount: number;
-  hufAmount: number;
-  rate: number;
-  roundedHufAmount: number;
+  currencyId: number;
+  currencyAmount: number;
+  discountPercent?: number;
+  handlingFee?: number;
   customerId?: number;
+  customerName?: string;
+  customerAddress?: string;
+  customerDocumentNumber?: string;
+  customerNationality?: string;
+  notes?: string;
+  // Frontend-specifikus mezők (csak UI-hoz):
+  currencyCode?: CurrencyCode;
+  hufAmount?: number;
+  rate?: number;
+  roundedHufAmount?: number;
   denominations?: Denomination[];
 }
 
@@ -288,7 +297,7 @@ export interface StornoResponse {
 export type ClosingStep = 1 | 2 | 3 | 4 | 5;
 
 export interface ClosingWizardState {
-  sessionId: string;
+  id: string;
   currentStep: ClosingStep;
   balanceCheck: BalanceCheckItem[];
   denominations: DenominationEntry[];

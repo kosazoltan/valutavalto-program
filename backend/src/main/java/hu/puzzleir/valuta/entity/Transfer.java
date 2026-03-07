@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.entity;
 
 import jakarta.persistence.*;
+import jakarta.persistence.Version;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -87,6 +88,9 @@ public class Transfer {
     @Column(name = "receipt_printed")
     @Builder.Default
     private Boolean receiptPrinted = false;
+
+    @Version
+    private Long version;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
