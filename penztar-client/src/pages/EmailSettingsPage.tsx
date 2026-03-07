@@ -39,7 +39,9 @@ export default function EmailSettingsPage() {
     setLoading(true);
     try {
       const data = await getEmailAccounts();
-      setAccounts(data);
+      setAccounts([...data.accounts, ...data.configurable].filter(
+        (a, i, arr) => arr.findIndex(b => b.id === a.id) === i,
+      ));
     } catch {
       setError('Nem sikerült betölteni az email fiókokat.');
     } finally {

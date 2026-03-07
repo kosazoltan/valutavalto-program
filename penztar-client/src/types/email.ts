@@ -5,7 +5,7 @@ export interface EmailSummary {
   subject: string;
   sender: string;
   snippet: string;
-  receivedAt: string;
+  receivedAt: number; // epoch ms from backend
   isRead: boolean;
   hasAttachments: boolean;
 }

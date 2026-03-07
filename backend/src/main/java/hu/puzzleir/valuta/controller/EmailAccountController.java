@@ -90,12 +90,23 @@ public class EmailAccountController {
 
     /**
      * OAuth2 callback — Google visszaírányít ide az authorization code-dal.
+     * Sikeres token exchange után redirect a frontend email settings oldalra.
      */
     @GetMapping("/callback")
-    public ResponseEntity<EmailAccount> oauthCallback(@RequestParam String code,
-                                                       @RequestParam String state) {
-        EmailAccount account = emailAccountService.handleOAuthCallback(code, state);
-        return ResponseEntity.ok(account);
+    public ResponseEntity<Void> oauthCallback(@RequestParam String code,
+                                               @RequestParam String state) {
+        try {
+            emailAccountService.handleOAuthCallback(code, state);
+            // Redirect a frontend email settings oldalra
+            return ResponseEntity.status(302)
+                    .header("Location", "/email/settings?oauth=success")
+                    .build();
+        } catch (Exception e) {
+            return ResponseEntity.status(302)
+                    .header("Location", "/email/settings?oauth=error&message=" +
+                            java.net.URLEncoder.encode(e.getMessage(), java.nio.charset.StandardCharsets.UTF_8))
+                    .build();
+        }
     }
 
     private WorkerAuthenticationDetails getAuthDetails(Authentication auth) {

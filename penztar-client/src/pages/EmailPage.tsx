@@ -42,12 +42,13 @@ export default function EmailPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const accs = await getEmailAccounts();
-        setAccounts(accs);
-        setHasAccounts(accs.length > 0);
+        const data = await getEmailAccounts();
+        const allAccounts = data.accounts;
+        setAccounts(allAccounts);
+        setHasAccounts(allAccounts.length > 0);
         // Ha több fiók van, az elsőt választjuk alapból
-        if (accs.length > 0 && !selectedAccountId) {
-          setSelectedAccountId(accs[0]!.id);
+        if (allAccounts.length > 0 && !selectedAccountId) {
+          setSelectedAccountId(allAccounts[0]!.id);
         }
       } catch {
         setHasAccounts(false);

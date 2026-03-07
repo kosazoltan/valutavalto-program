@@ -8,8 +8,14 @@ import type {
 
 // --- Fiókok ---
 
-export async function getEmailAccounts(): Promise<EmailAccount[]> {
-  const { data } = await apiClient.get<EmailAccount[]>('/email/accounts');
+export async function getEmailAccounts(): Promise<{
+  accounts: EmailAccount[];
+  configurable: EmailAccount[];
+}> {
+  const { data } = await apiClient.get<{
+    accounts: EmailAccount[];
+    configurable: EmailAccount[];
+  }>('/email/accounts');
   return data;
 }
 

@@ -63,8 +63,9 @@ public class EmailCache {
     @Column(name = "label_ids", columnDefinition = "TEXT")
     private String labelIds;
 
-    @Column(name = "received_at")
-    private LocalDateTime receivedAt;
+    @Column(name = "received_at", nullable = false)
+    @Builder.Default
+    private LocalDateTime receivedAt = LocalDateTime.now();
 
     @Column(name = "cached_at", nullable = false)
     @Builder.Default

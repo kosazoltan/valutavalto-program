@@ -198,9 +198,10 @@ public class EmailController {
      */
     @PostMapping("/messages/{messageId}/forward")
     public ResponseEntity<Map<String, String>> forwardMessage(@PathVariable String messageId,
-                                                               @RequestParam String to,
+                                                               @RequestBody Map<String, String> body,
                                                                @RequestParam(required = false) UUID accountId,
                                                                Authentication auth) {
+        String to = body.get("to");
         EmailAccount account;
         if (accountId != null) {
             verifyAccountAccess(accountId, auth);

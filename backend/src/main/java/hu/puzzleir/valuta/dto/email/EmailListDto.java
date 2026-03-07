@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.dto.email;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -33,10 +34,16 @@ public class EmailListDto {
         private String id;
         private String threadId;
         private String subject;
+        /** JSON: "sender" — a frontend EmailSummary.sender-t vár */
+        @JsonProperty("sender")
         private String from;
         private String snippet;
+        /** JSON: "isRead" — Jackson primitív boolean "is" prefixet levágja, @JsonProperty kényszeríti */
+        @JsonProperty("isRead")
         private boolean isRead;
+        @JsonProperty("hasAttachments")
         private boolean hasAttachments;
+        /** Epoch ms → String konverzió a frontend számára */
         private long receivedAt;
     }
 }

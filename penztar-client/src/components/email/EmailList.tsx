@@ -7,8 +7,8 @@ interface EmailListProps {
   loading: boolean;
 }
 
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
+function formatDate(dateStr: string | number): string {
+  const date = typeof dateStr === 'number' ? new Date(dateStr) : new Date(dateStr);
   const now = new Date();
   const isToday =
     date.getFullYear() === now.getFullYear() &&

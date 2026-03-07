@@ -6,6 +6,8 @@ import org.springframework.stereotype.Repository;
 
 import org.springframework.data.domain.Pageable;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -18,11 +20,13 @@ public interface EmailCacheRepository extends JpaRepository<EmailCache, UUID> {
 
     Optional<EmailCache> findByEmailAccountIdAndGmailMessageId(UUID emailAccountId, String gmailMessageId);
 
-    void deleteByEmailAccountId(UUID emailAccountId);
-
     List<EmailCache> findByEmailAccountIdAndLabelIdsContainingOrderByReceivedAtDesc(UUID emailAccountId, String label);
 
     List<EmailCache> findByEmailAccountIdOrderByReceivedAtDesc(UUID emailAccountId, Pageable pageable);
 
+    @Transactional
     void deleteByReceivedAtBefore(LocalDateTime cutoff);
+
+    @Transactional
+    void deleteByEmailAccountId(UUID emailAccountId);
 }
