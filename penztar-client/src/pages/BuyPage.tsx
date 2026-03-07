@@ -33,7 +33,11 @@ export default function BuyPage() {
 
   // Currency lista betöltése
   useEffect(() => {
-    getActiveCurrencies().then(setCurrencyList).catch(() => {});
+    getActiveCurrencies()
+      .then(setCurrencyList)
+      .catch(() => {
+        toast.error('Nem sikerült betölteni a valuták listáját. Próbálja újra!');
+      });
   }, []);
   const [foreignAmount, setForeignAmount] = useState('');
   const [hufAmount, setHufAmount] = useState('');

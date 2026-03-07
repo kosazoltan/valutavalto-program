@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.dto.cashbalance.CashBalanceDto;
 import hu.puzzleir.valuta.entity.CashBalance;
 import hu.puzzleir.valuta.mapper.CashBalanceMapper;
 import hu.puzzleir.valuta.service.CashBalanceService;
+import hu.puzzleir.valuta.util.OptimisticLockRetry;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -116,7 +117,9 @@ public class CashBalanceController {
     @PostMapping("/adjust")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ResponseEntity<CashBalanceDto> adjustBalance(@Valid @RequestBody AdjustBalanceDto dto) {
-        CashBalance balance = cashBalanceService.adjustBalance(cashBalanceMapper.toServiceRequest(dto));
+        CashBalance balance = OptimisticLockRetry.execute(
+                () -> cashBalanceService.adjustBalance(cashBalanceMapper.toServiceRequest(dto)),
+                "adjustBalance");
         return ResponseEntity.ok(cashBalanceMapper.toDto(balance));
     }
 

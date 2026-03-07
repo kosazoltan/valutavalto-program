@@ -144,6 +144,9 @@ public class ClosingWizardService {
                 .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található: " + workerId));
 
         // M-1: Ellenőrizzük, hogy minden lépés ténylegesen végrehajtva lett-e
+        if (wizard.getSteps() == null || wizard.getSteps().isEmpty()) {
+            throw new ValidationException("A varázslónak nincsenek lépései — nem zárható le!");
+        }
         boolean allStepsCompleted = wizard.getSteps().stream().allMatch(s -> Boolean.TRUE.equals(s.getCompleted()));
         if (!allStepsCompleted) {
             List<String> incomplete = wizard.getSteps().stream()

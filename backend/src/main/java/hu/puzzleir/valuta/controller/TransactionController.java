@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.mapper.TransactionMapper;
 import hu.puzzleir.valuta.service.TransactionService;
+import hu.puzzleir.valuta.util.OptimisticLockRetry;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -41,7 +42,9 @@ public class TransactionController {
     @PostMapping("/buy")
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<TransactionDto> executeBuy(@Valid @RequestBody BuyRequestDto dto) {
-        Transaction transaction = transactionService.executeBuy(transactionMapper.toBuyRequest(dto));
+        Transaction transaction = OptimisticLockRetry.execute(
+                () -> transactionService.executeBuy(transactionMapper.toBuyRequest(dto)),
+                "executeBuy");
         return ResponseEntity.status(HttpStatus.CREATED).body(transactionMapper.toDto(transaction));
     }
 
@@ -53,7 +56,9 @@ public class TransactionController {
     @PostMapping("/sell")
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<TransactionDto> executeSell(@Valid @RequestBody SellRequestDto dto) {
-        Transaction transaction = transactionService.executeSell(transactionMapper.toSellRequest(dto));
+        Transaction transaction = OptimisticLockRetry.execute(
+                () -> transactionService.executeSell(transactionMapper.toSellRequest(dto)),
+                "executeSell");
         return ResponseEntity.status(HttpStatus.CREATED).body(transactionMapper.toDto(transaction));
     }
 
@@ -65,7 +70,9 @@ public class TransactionController {
     @PostMapping("/reversal")
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<TransactionDto> executeReversal(@Valid @RequestBody ReversalRequestDto dto) {
-        Transaction transaction = transactionService.executeReversal(transactionMapper.toReversalRequest(dto));
+        Transaction transaction = OptimisticLockRetry.execute(
+                () -> transactionService.executeReversal(transactionMapper.toReversalRequest(dto)),
+                "executeReversal");
         return ResponseEntity.status(HttpStatus.CREATED).body(transactionMapper.toDto(transaction));
     }
 
@@ -77,7 +84,9 @@ public class TransactionController {
     @PostMapping("/conversion")
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<TransactionDto> executeConversion(@Valid @RequestBody ConversionRequestDto dto) {
-        Transaction transaction = transactionService.executeConversion(transactionMapper.toConversionRequest(dto));
+        Transaction transaction = OptimisticLockRetry.execute(
+                () -> transactionService.executeConversion(transactionMapper.toConversionRequest(dto)),
+                "executeConversion");
         return ResponseEntity.status(HttpStatus.CREATED).body(transactionMapper.toDto(transaction));
     }
 

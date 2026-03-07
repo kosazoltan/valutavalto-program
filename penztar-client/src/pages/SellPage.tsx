@@ -29,7 +29,11 @@ export default function SellPage() {
   const [currencyList, setCurrencyList] = useState<CurrencyDto[]>([]);
 
   useEffect(() => {
-    getActiveCurrencies().then(setCurrencyList).catch(() => {});
+    getActiveCurrencies()
+      .then(setCurrencyList)
+      .catch(() => {
+        toast.error('Nem sikerült betölteni a valuták listáját. Próbálja újra!');
+      });
   }, []);
   const [foreignAmount, setForeignAmount] = useState('');
   const [hufAmount, setHufAmount] = useState('');
