@@ -41,11 +41,11 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
- * TransactionFlow integrációs tesztek — üzleti flow-k Mockito-val.
+ * TransactionFlow integrĂˇciĂłs tesztek â€” ĂĽzleti flow-k Mockito-val.
  *
- * Sell flow: session open → sell → receipt → close
- * Buy flow: customer create → buy → AML check → receipt
- * Storno flow: sell → storno → inventory restored
+ * Sell flow: session open â†’ sell â†’ receipt â†’ close
+ * Buy flow: customer create â†’ buy â†’ AML check â†’ receipt
+ * Storno flow: sell â†’ storno â†’ inventory restored
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -91,7 +91,7 @@ class TransactionFlowTest {
 
         company = new Company();
         company.setId(COMPANY_ID);
-        company.setName("Test Cég");
+        company.setName("Test CĂ©g");
 
         branch = new Branch();
         branch.setId(BRANCH_ID);
@@ -100,12 +100,12 @@ class TransactionFlowTest {
 
         worker = new Worker();
         worker.setId(WORKER_ID);
-        worker.setName("Teszt Pénztáros");
+        worker.setName("Teszt PĂ©nztĂˇros");
 
         eurCurrency = new Currency();
         eurCurrency.setId(EUR_ID);
         eurCurrency.setCode("EUR");
-        eurCurrency.setName("Euró");
+        eurCurrency.setName("EurĂł");
 
         eurRate = new ExchangeRate();
         eurRate.setId(1L);
@@ -149,11 +149,11 @@ class TransactionFlowTest {
     // ===== SELL FLOW =====
 
     @Nested
-    @DisplayName("Sell Flow — session open → sell → receipt → close")
+    @DisplayName("Sell Flow â€” session open â†’ sell â†’ receipt â†’ close")
     class SellFlowTests {
 
         @Test
-        @DisplayName("testSellFlow_fullCycle — eladás teljes ciklus")
+        @DisplayName("testSellFlow_fullCycle â€” eladĂˇs teljes ciklus")
         void testSellFlow_fullCycle() {
             try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
                 secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -164,7 +164,7 @@ class TransactionFlowTest {
                 // Open session
                 when(dailySessionService.hasOpenSession()).thenReturn(true);
 
-                // Entitások
+                // EntitĂˇsok
                 when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
                 when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
                 when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
@@ -173,10 +173,16 @@ class TransactionFlowTest {
                 // Rate
                 when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
 
-                // Készlet ellenőrzés — EUR és HUF külön
+                // KĂ©szlet ellenĹ‘rzĂ©s â€” EUR Ă©s HUF kĂĽlĂ¶n (read + pessimistic lock)
                 when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, EUR_ID))
                         .thenReturn(Optional.of(eurBalance));
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, EUR_ID))
+                        .thenReturn(Optional.of(eurBalance));
                 when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, HUF_ID))
+                        .thenReturn(Optional.of(hufBalance));
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, EUR_ID))
+                        .thenReturn(Optional.of(eurBalance));
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, HUF_ID))
                         .thenReturn(Optional.of(hufBalance));
 
                 // Receipt number
@@ -194,7 +200,7 @@ class TransactionFlowTest {
                 TransactionService.SellRequest request = TransactionService.SellRequest.builder()
                         .currencyId(EUR_ID)
                         .currencyAmount(new BigDecimal("100"))
-                        .customerName("Teszt Ügyfél")
+                        .customerName("Teszt ĂśgyfĂ©l")
                         .customerDocumentNumber("123456AA")
                         .build();
 
@@ -206,7 +212,7 @@ class TransactionFlowTest {
                 assertThat(result.getCurrency().getCode()).isEqualTo("EUR");
                 assertThat(result.getCurrencyAmount()).isEqualByComparingTo(new BigDecimal("100"));
 
-                // Bizonylat szám generálva
+                // Bizonylat szĂˇm generĂˇlva
                 assertThat(result.getReceiptNumber()).startsWith("E");
 
                 verify(transactionRepository).save(any(Transaction.class));
@@ -215,7 +221,7 @@ class TransactionFlowTest {
         }
 
         @Test
-        @DisplayName("testSellFlow_noSession — nincs nyitott munkamenet")
+        @DisplayName("testSellFlow_noSession â€” nincs nyitott munkamenet")
         void testSellFlow_noSession() {
             try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
                 secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -236,7 +242,7 @@ class TransactionFlowTest {
         }
 
         @Test
-        @DisplayName("testSellFlow_insufficientStock — nincs elegendő készlet")
+        @DisplayName("testSellFlow_insufficientStock â€” nincs elegendĹ‘ kĂ©szlet")
         void testSellFlow_insufficientStock() {
             try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
                 secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -251,10 +257,12 @@ class TransactionFlowTest {
                 when(currencyRepository.findById(EUR_ID)).thenReturn(Optional.of(eurCurrency));
                 when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
 
-                // Üres készlet
+                // Ăśres kĂ©szlet
                 CashBalance emptyBalance = new CashBalance();
                 emptyBalance.setCurrentBalance(new BigDecimal("10"));
                 when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, EUR_ID))
+                        .thenReturn(Optional.of(emptyBalance));
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, EUR_ID))
                         .thenReturn(Optional.of(emptyBalance));
 
                 TransactionService.SellRequest request = TransactionService.SellRequest.builder()
@@ -264,7 +272,7 @@ class TransactionFlowTest {
 
                 assertThatThrownBy(() -> transactionService.executeSell(request))
                         .isInstanceOf(ValidationException.class)
-                        .hasMessageContaining("készlet");
+                        .hasMessageContaining("kĂ©szlet");
             }
         }
     }
@@ -272,11 +280,11 @@ class TransactionFlowTest {
     // ===== BUY FLOW =====
 
     @Nested
-    @DisplayName("Buy Flow — customer → buy → AML check → receipt")
+    @DisplayName("Buy Flow â€” customer â†’ buy â†’ AML check â†’ receipt")
     class BuyFlowTests {
 
         @Test
-        @DisplayName("testBuyFlow_withCustomer — ügyfeles vétel tranzakció")
+        @DisplayName("testBuyFlow_withCustomer â€” ĂĽgyfeles vĂ©tel tranzakciĂł")
         void testBuyFlow_withCustomer() {
             try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
                 secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -292,7 +300,11 @@ class TransactionFlowTest {
                 when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
                 when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, EUR_ID))
                         .thenReturn(Optional.of(eurBalance));
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, EUR_ID))
+                        .thenReturn(Optional.of(eurBalance));
                 when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, HUF_ID))
+                        .thenReturn(Optional.of(hufBalance));
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, HUF_ID))
                         .thenReturn(Optional.of(hufBalance));
                 when(transactionRepository.findMaxReceiptNumber(eq(BRANCH_ID), any(), anyString()))
                         .thenReturn(Optional.empty());
@@ -306,9 +318,9 @@ class TransactionFlowTest {
                         .currencyId(EUR_ID)
                         .currencyAmount(new BigDecimal("500"))
                         .customerId("CUST-001")
-                        .customerName("Nagy Béla")
+                        .customerName("Nagy BĂ©la")
                         .customerDocumentNumber("AB123456")
-                        .customerAddress("Budapest, Fő u. 1.")
+                        .customerAddress("Budapest, FĹ‘ u. 1.")
                         .customerNationality("HU")
                         .build();
 
@@ -317,7 +329,7 @@ class TransactionFlowTest {
                 assertThat(result).isNotNull();
                 assertThat(result.getTransactionType()).isEqualTo(TransactionType.BUY);
                 assertThat(result.getStatus()).isEqualTo(TransactionStatus.COMPLETED);
-                assertThat(result.getCustomerName()).isEqualTo("Nagy Béla");
+                assertThat(result.getCustomerName()).isEqualTo("Nagy BĂ©la");
                 assertThat(result.getCustomerDocumentNumber()).isEqualTo("AB123456");
                 assertThat(result.getReceiptNumber()).startsWith("V");
 
@@ -327,7 +339,7 @@ class TransactionFlowTest {
         }
 
         @Test
-        @DisplayName("testBuyFlow_largeAmount_requiresIdentification — 300K+ Ft azonosítás kötelező")
+        @DisplayName("testBuyFlow_largeAmount_requiresIdentification â€” 300K+ Ft azonosĂ­tĂˇs kĂ¶telezĹ‘")
         void testBuyFlow_largeAmount_requiresIdentification() {
             try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
                 secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -342,7 +354,7 @@ class TransactionFlowTest {
                 when(currencyRepository.findById(EUR_ID)).thenReturn(Optional.of(eurCurrency));
                 when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
 
-                // 1000 EUR * 390 = 390.000 Ft > 300.000 limit → ügyfél nélkül hibát dob
+                // 1000 EUR * 390 = 390.000 Ft > 300.000 limit â†’ ĂĽgyfĂ©l nĂ©lkĂĽl hibĂˇt dob
                 TransactionService.BuyRequest request = TransactionService.BuyRequest.builder()
                         .currencyId(EUR_ID)
                         .currencyAmount(new BigDecimal("1000"))
@@ -350,12 +362,12 @@ class TransactionFlowTest {
 
                 assertThatThrownBy(() -> transactionService.executeBuy(request))
                         .isInstanceOf(ValidationException.class)
-                        .hasMessageContaining("azonosítás");
+                        .hasMessageContaining("azonosĂ­tĂˇs");
             }
         }
 
         @Test
-        @DisplayName("testBuyFlow_withDiscount — kedvezményes vétel")
+        @DisplayName("testBuyFlow_withDiscount â€” kedvezmĂ©nyes vĂ©tel")
         void testBuyFlow_withDiscount() {
             try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
                 secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -371,7 +383,11 @@ class TransactionFlowTest {
                 when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
                 when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, EUR_ID))
                         .thenReturn(Optional.of(eurBalance));
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, EUR_ID))
+                        .thenReturn(Optional.of(eurBalance));
                 when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, HUF_ID))
+                        .thenReturn(Optional.of(hufBalance));
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, HUF_ID))
                         .thenReturn(Optional.of(hufBalance));
                 when(transactionRepository.findMaxReceiptNumber(eq(BRANCH_ID), any(), anyString()))
                         .thenReturn(Optional.empty());
@@ -395,7 +411,7 @@ class TransactionFlowTest {
         }
 
         @Test
-        @DisplayName("testBuyFlow_excessiveDiscount — 2%+ kedvezmény supervisor nélkül")
+        @DisplayName("testBuyFlow_excessiveDiscount â€” 2%+ kedvezmĂ©ny supervisor nĂ©lkĂĽl")
         void testBuyFlow_excessiveDiscount() {
             try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
                 secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -426,11 +442,11 @@ class TransactionFlowTest {
     // ===== STORNO FLOW =====
 
     @Nested
-    @DisplayName("Storno Flow — sell → storno → inventory restored")
+    @DisplayName("Storno Flow â€” sell â†’ storno â†’ inventory restored")
     class StornoFlowTests {
 
         @Test
-        @DisplayName("testStornoFlow — eladás sztornó → készlet visszaáll")
+        @DisplayName("testStornoFlow â€” eladĂˇs sztornĂł â†’ kĂ©szlet visszaĂˇll")
         void testStornoFlow() {
             try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
                 secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -441,7 +457,7 @@ class TransactionFlowTest {
                 when(dailySessionService.hasOpenSession()).thenReturn(true);
                 when(dailySessionService.getDailyReversalCount()).thenReturn(0);
 
-                // Eredeti tranzakció
+                // Eredeti tranzakciĂł
                 Transaction original = Transaction.builder()
                         .id(100L)
                         .company(company)
@@ -469,7 +485,11 @@ class TransactionFlowTest {
                         .thenReturn(Optional.empty());
                 when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, EUR_ID))
                         .thenReturn(Optional.of(eurBalance));
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, EUR_ID))
+                        .thenReturn(Optional.of(eurBalance));
                 when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, HUF_ID))
+                        .thenReturn(Optional.of(hufBalance));
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, HUF_ID))
                         .thenReturn(Optional.of(hufBalance));
                 when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> {
                     Transaction t = inv.getArgument(0);
@@ -479,7 +499,7 @@ class TransactionFlowTest {
 
                 TransactionService.ReversalRequest reversalRequest = TransactionService.ReversalRequest.builder()
                         .originalTransactionId(100L)
-                        .reason("Téves rögzítés")
+                        .reason("TĂ©ves rĂ¶gzĂ­tĂ©s")
                         .approvedBy("SUPERVISOR")
                         .build();
 
@@ -489,19 +509,19 @@ class TransactionFlowTest {
                 assertThat(reversal.getTransactionType()).isEqualTo(TransactionType.REVERSAL);
                 assertThat(reversal.getStatus()).isEqualTo(TransactionStatus.COMPLETED);
                 assertThat(reversal.getReceiptNumber()).startsWith("S");
-                assertThat(reversal.getReversalReason()).isEqualTo("Téves rögzítés");
+                assertThat(reversal.getReversalReason()).isEqualTo("TĂ©ves rĂ¶gzĂ­tĂ©s");
 
-                // Eredeti REVERSED-re állítva
+                // Eredeti REVERSED-re ĂˇllĂ­tva
                 verify(transactionRepository, atLeast(2)).save(any(Transaction.class));
 
-                // Kassza frissítés megtörtént (eladás sztornó: valuta +, HUF -)
+                // Kassza frissĂ­tĂ©s megtĂ¶rtĂ©nt (eladĂˇs sztornĂł: valuta +, HUF -)
                 verify(cashBalanceRepository, atLeast(2)).save(any(CashBalance.class));
                 verify(dailySessionService).updateSessionStats(eq(TransactionType.REVERSAL), any(), any());
             }
         }
 
         @Test
-        @DisplayName("testStornoFlow_alreadyReversed — már sztornózott tranzakció")
+        @DisplayName("testStornoFlow_alreadyReversed â€” mĂˇr sztornĂłzott tranzakciĂł")
         void testStornoFlow_alreadyReversed() {
             try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
                 secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -527,12 +547,12 @@ class TransactionFlowTest {
 
                 assertThatThrownBy(() -> transactionService.executeReversal(request))
                         .isInstanceOf(ValidationException.class)
-                        .hasMessageContaining("sztornózva");
+                        .hasMessageContaining("sztornĂłzva");
             }
         }
 
         @Test
-        @DisplayName("testStornoFlow_differentBranch — más iroda tranzakcióját nem lehet sztornózni")
+        @DisplayName("testStornoFlow_differentBranch â€” mĂˇs iroda tranzakciĂłjĂˇt nem lehet sztornĂłzni")
         void testStornoFlow_differentBranch() {
             try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
                 secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
