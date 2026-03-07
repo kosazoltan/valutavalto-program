@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.Map;
@@ -35,7 +36,7 @@ public class SystemParameterManagementController {
     @PutMapping("/{key}")
     public ResponseEntity<SystemParameter> updateByKey(
             @PathVariable String key,
-            @RequestBody Map<String, String> body) {
+            @Valid @RequestBody Map<String, String> body) {
         SystemParameter existing = service.getByKey(key);
         return ResponseEntity.ok(service.update(
                 existing.getId(),
@@ -44,7 +45,7 @@ public class SystemParameterManagementController {
     }
 
     @PostMapping("/bulk-update")
-    public ResponseEntity<Map<String, String>> bulkUpdate(@RequestBody BulkUpdateDto dto) {
+    public ResponseEntity<Map<String, String>> bulkUpdate(@Valid @RequestBody BulkUpdateDto dto) {
         int updated = 0;
         for (Map.Entry<String, String> entry : dto.getParameters().entrySet()) {
             try {

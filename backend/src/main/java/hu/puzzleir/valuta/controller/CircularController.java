@@ -90,7 +90,7 @@ public class CircularController {
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     @Operation(summary = "Körlevél létrehozása típussal és célcsoporttal")
     public ResponseEntity<CircularDto> createTyped(
-            @RequestBody TypedCircularRequest request,
+            @Valid @RequestBody TypedCircularRequest request,
             Authentication auth) {
         Long workerId = getWorkerId(auth);
 

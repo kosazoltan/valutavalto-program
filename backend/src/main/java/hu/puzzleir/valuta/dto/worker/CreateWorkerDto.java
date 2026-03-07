@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.dto.worker;
 import hu.puzzleir.valuta.entity.WorkerRole;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -30,7 +31,8 @@ public class CreateWorkerDto {
     private String name;
     
     @NotBlank(message = "Jelszó kötelező")
-    @Size(min = 4, message = "Jelszó minimum 4 karakter")
+    @Size(min = 8, max = 128, message = "Jelszó 8-128 karakter között legyen")
+    @Pattern(regexp = "^(?=.*[A-Z])(?=.*[0-9]).*$", message = "Nagybetű és szám kötelező")
     private String password;
     
     @NotNull(message = "Szerepkör kötelező")

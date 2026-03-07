@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.Map;
@@ -40,7 +41,7 @@ public class UserController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<UserDetailDto> create(@RequestBody Map<String, String> body) {
+    public ResponseEntity<UserDetailDto> create(@Valid @RequestBody Map<String, String> body) {
         return ResponseEntity.status(HttpStatus.CREATED).body(userService.createUser(
                 body.get("username"), body.get("fullName"), body.get("email"),
                 body.get("password"), body.get("roleId"), body.get("branchId")));
@@ -48,7 +49,7 @@ public class UserController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
-    public ResponseEntity<UserDetailDto> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<UserDetailDto> update(@PathVariable Long id, @Valid @RequestBody Map<String, Object> body) {
         return ResponseEntity.ok(userService.updateUser(id,
                 (String) body.get("email"), (String) body.get("fullName"),
                 (String) body.get("roleId"),
@@ -57,13 +58,13 @@ public class UserController {
 
     @PostMapping("/{id}/change-password")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> changePassword(@PathVariable Long id, @RequestBody Map<String, String> body) {
+    public ResponseEntity<Void> changePassword(@PathVariable Long id, @Valid @RequestBody Map<String, String> body) {
         userService.changePassword(id, body.get("newPassword"));
         return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/me/password")
-    public ResponseEntity<Void> updateMyPassword(Authentication auth, @RequestBody Map<String, String> body) {
+    public ResponseEntity<Void> updateMyPassword(Authentication auth, @Valid @RequestBody Map<String, String> body) {
         Long workerId = getWorkerId(auth);
         userService.updateMyPassword(workerId, body.get("oldPassword"), body.get("newPassword"));
         return ResponseEntity.noContent().build();

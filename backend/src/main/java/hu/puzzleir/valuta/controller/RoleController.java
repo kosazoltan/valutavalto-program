@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.Map;
@@ -31,7 +32,7 @@ public class RoleController {
     }
 
     @PostMapping
-    public ResponseEntity<RoleDto> create(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<RoleDto> create(@Valid @RequestBody Map<String, Object> body) {
         String code = (String) body.get("code");
         String name = (String) body.get("name");
         String description = (String) body.get("description");
@@ -41,7 +42,7 @@ public class RoleController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<RoleDto> update(@PathVariable UUID id, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<RoleDto> update(@PathVariable UUID id, @Valid @RequestBody Map<String, Object> body) {
         String name = (String) body.get("name");
         String description = (String) body.get("description");
         Boolean active = body.containsKey("active") ? (Boolean) body.get("active") : null;

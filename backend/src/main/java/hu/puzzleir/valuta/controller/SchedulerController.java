@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.UUID;
@@ -34,7 +35,7 @@ public class SchedulerController {
      * POST /api/v1/scheduler/tasks — Új feladat regisztrálása
      */
     @PostMapping("/tasks")
-    public ResponseEntity<ScheduledTaskDto> createTask(@RequestBody ScheduledTaskDto dto) {
+    public ResponseEntity<ScheduledTaskDto> createTask(@Valid @RequestBody ScheduledTaskDto dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(schedulerService.registerTask(dto));
     }
 

@@ -51,7 +51,7 @@ public class RateApprovalController {
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ResponseEntity<RateApprovalDto> rejectRateChange(
             @PathVariable UUID id,
-            @RequestBody(required = false) RejectRateChangeDto dto) {
+            @Valid @RequestBody(required = false) RejectRateChangeDto dto) {
         String reason = dto != null ? dto.getReason() : null;
         return ResponseEntity.ok(rateApprovalService.rejectRateChange(id, reason));
     }

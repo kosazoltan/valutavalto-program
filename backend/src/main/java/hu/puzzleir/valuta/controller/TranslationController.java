@@ -9,6 +9,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.Map;
 
@@ -49,7 +50,7 @@ public class TranslationController {
      * POST /api/v1/translations
      */
     @PostMapping
-    public ResponseEntity<TranslationDto> saveTranslation(@RequestBody TranslationDto dto) {
+    public ResponseEntity<TranslationDto> saveTranslation(@Valid @RequestBody TranslationDto dto) {
         Translation saved = translationService.saveTranslation(dto);
         TranslationDto response = TranslationDto.builder()
             .id(saved.getId())
@@ -67,7 +68,7 @@ public class TranslationController {
      */
     @PostMapping("/import")
     public ResponseEntity<Map<String, Object>> importTranslations(
-            @RequestBody TranslationImportRequest request) {
+            @Valid @RequestBody TranslationImportRequest request) {
         int count = translationService.importTranslations(
             request.getLanguageCode(), request.getTranslations());
         return ResponseEntity.ok(Map.of(

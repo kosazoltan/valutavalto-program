@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.Map;
 import java.util.UUID;
@@ -38,7 +39,7 @@ public class ConfigExportController {
     @PostMapping("/import/{branchId}")
     public ResponseEntity<ImportResultDto> importConfig(
             @PathVariable UUID branchId,
-            @RequestBody ConfigBundleDto bundle) {
+            @Valid @RequestBody ConfigBundleDto bundle) {
         return ResponseEntity.ok(configExportService.importConfig(branchId, bundle));
     }
 

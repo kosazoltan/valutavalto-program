@@ -64,7 +64,7 @@ public class SecurityConfig {
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/api-docs/**", "/v3/api-docs/**").permitAll()
 
                 // WebSocket endpoint
-                .requestMatchers("/ws/**").permitAll()
+                .requestMatchers("/ws/**").authenticated()
 
                 // Camera live stream - minden bejelentkezett user
                 .requestMatchers("/api/v1/camera/stream/**").authenticated()

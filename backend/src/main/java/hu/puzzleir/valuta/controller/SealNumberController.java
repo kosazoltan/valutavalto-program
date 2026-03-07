@@ -11,6 +11,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.Map;
@@ -41,7 +42,7 @@ public class SealNumberController {
     @PostMapping("/generate")
     @Operation(summary = "Plomba szám generálása és mentése")
     public ResponseEntity<SealNumber> generate(
-            @RequestBody GenerateRequest request) {
+            @Valid @RequestBody GenerateRequest request) {
         SealNumber seal = sealNumberService.generate(
                 request.branchCode(),
                 request.sealType() != null ? request.sealType() : SealType.CLOSE,

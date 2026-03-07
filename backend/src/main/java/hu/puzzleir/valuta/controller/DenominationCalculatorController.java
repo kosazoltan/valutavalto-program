@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.math.BigDecimal;
 import java.util.Map;
@@ -40,7 +41,7 @@ public class DenominationCalculatorController {
     @PostMapping("/suggest-balanced")
     @Operation(summary = "Készlet-figyelő címlet javaslat")
     public ResponseEntity<CalculationResult> suggestBalanced(
-            @RequestBody BalancedRequest request) {
+            @Valid @RequestBody BalancedRequest request) {
 
         Map<BigDecimal, Integer> result = calculatorService.calculateBalanced(
                 request.currencyCode(), request.amount(), request.availableStock());

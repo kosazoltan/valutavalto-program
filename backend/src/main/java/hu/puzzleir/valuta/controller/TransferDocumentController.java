@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -31,7 +32,7 @@ public class TransferDocumentController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<TransferDocument> create(@RequestBody CreateRequest request) {
+    public ResponseEntity<TransferDocument> create(@Valid @RequestBody CreateRequest request) {
         TransferDocument doc = transferDocumentService.createTransfer(
                 request.senderId, request.currencyCode, request.quantity,
                 request.sourceType, request.sourceId,
@@ -44,7 +45,7 @@ public class TransferDocumentController {
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<TransferDocument> pickup(
             @PathVariable Long id,
-            @RequestBody PickupRequest request) {
+            @Valid @RequestBody PickupRequest request) {
         return ResponseEntity.ok(
                 transferDocumentService.courierPickup(id, request.courierId, request.courierPin));
     }
@@ -59,7 +60,7 @@ public class TransferDocumentController {
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<TransferDocument> confirm(
             @PathVariable Long id,
-            @RequestBody ConfirmRequest request) {
+            @Valid @RequestBody ConfirmRequest request) {
         return ResponseEntity.ok(
                 transferDocumentService.receiverConfirm(id, request.receiverId));
     }

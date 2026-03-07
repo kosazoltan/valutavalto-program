@@ -106,7 +106,7 @@ public class EmployeeController {
      * Body: JSON string (az ebc_employees.json tartalma)
      */
     @PostMapping("/import")
-    public ResponseEntity<Map<String, Object>> importEmployees(@RequestBody String jsonContent) {
+    public ResponseEntity<Map<String, Object>> importEmployees(@Valid @RequestBody String jsonContent) {
         int count = employeeService.importFromJson(jsonContent);
         return ResponseEntity.ok(Map.of(
                 "success", true,

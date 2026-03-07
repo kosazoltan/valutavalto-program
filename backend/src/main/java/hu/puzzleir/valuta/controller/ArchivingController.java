@@ -64,7 +64,7 @@ public class ArchivingController {
      */
     @PostMapping("/monthly")
     public ResponseEntity<Map<String, Object>> archiveMonth(
-            @RequestBody Map<String, String> body) {
+            @Valid @RequestBody Map<String, String> body) {
         UUID branchId = UUID.fromString(body.get("branchId"));
         YearMonth yearMonth = YearMonth.parse(body.get("yearMonth"));
         int count = monthlyArchiveService.archiveMonth(branchId, yearMonth);

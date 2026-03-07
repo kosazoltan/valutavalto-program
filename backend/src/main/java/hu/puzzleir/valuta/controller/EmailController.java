@@ -179,7 +179,7 @@ public class EmailController {
      */
     @PostMapping("/messages/{messageId}/reply")
     public ResponseEntity<Map<String, String>> replyToMessage(@PathVariable String messageId,
-                                                               @RequestBody Map<String, String> body,
+                                                               @Valid @RequestBody Map<String, String> body,
                                                                @RequestParam(required = false) UUID accountId,
                                                                Authentication auth) {
         EmailAccount account;
@@ -198,7 +198,7 @@ public class EmailController {
      */
     @PostMapping("/messages/{messageId}/forward")
     public ResponseEntity<Map<String, String>> forwardMessage(@PathVariable String messageId,
-                                                               @RequestBody Map<String, String> body,
+                                                               @Valid @RequestBody Map<String, String> body,
                                                                @RequestParam(required = false) UUID accountId,
                                                                Authentication auth) {
         String to = body.get("to");

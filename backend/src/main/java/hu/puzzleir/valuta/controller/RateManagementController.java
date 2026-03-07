@@ -82,7 +82,7 @@ public class RateManagementController {
     }
 
     @PostMapping("/publish")
-    public ResponseEntity<RatePublication> publishBatch(@RequestBody RatePublishRequestDto dto) {
+    public ResponseEntity<RatePublication> publishBatch(@Valid @RequestBody RatePublishRequestDto dto) {
         return ResponseEntity.ok(publishService.publish(dto.getWorkgroupId(), dto.getTemplateIds(), dto.getNotes()));
     }
 

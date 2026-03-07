@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.Map;
@@ -46,14 +47,14 @@ public class SystemParameterController {
     }
 
     @PostMapping
-    public ResponseEntity<SystemParameter> create(@RequestBody Map<String, String> body) {
+    public ResponseEntity<SystemParameter> create(@Valid @RequestBody Map<String, String> body) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(
                 body.get("parameterKey"), body.get("parameterValue"),
                 body.get("parameterType"), body.get("category"), body.get("description")));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<SystemParameter> update(@PathVariable UUID id, @RequestBody Map<String, String> body) {
+    public ResponseEntity<SystemParameter> update(@PathVariable UUID id, @Valid @RequestBody Map<String, String> body) {
         return ResponseEntity.ok(service.update(id, body.get("parameterValue"), body.get("description")));
     }
 

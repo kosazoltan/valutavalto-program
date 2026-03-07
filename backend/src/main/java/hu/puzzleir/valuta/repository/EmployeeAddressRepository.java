@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.repository;
 import hu.puzzleir.valuta.entity.EmployeeAddress;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -16,5 +17,6 @@ public interface EmployeeAddressRepository extends JpaRepository<EmployeeAddress
     List<EmployeeAddress> findByEmployeeId(Long employeeId);
 
     /** Dolgozó címeinek törlése */
+    @Transactional
     void deleteByEmployeeId(Long employeeId);
 }

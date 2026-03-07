@@ -7,6 +7,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.Map;
 
@@ -30,7 +31,7 @@ public class WesternUnionStubController {
 
     @PostMapping("/send")
     @Operation(summary = "[STUB] Pénzküldés indítása")
-    public ResponseEntity<Map<String, Object>> sendMoney(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<Map<String, Object>> sendMoney(@Valid @RequestBody Map<String, Object> request) {
         log.warn("Western Union STUB hívás: /send — partner inaktív");
         return ResponseEntity.status(501).body(Map.of(
                 "status", "NOT_IMPLEMENTED",
@@ -41,7 +42,7 @@ public class WesternUnionStubController {
 
     @PostMapping("/receive")
     @Operation(summary = "[STUB] Pénz átvétel")
-    public ResponseEntity<Map<String, Object>> receiveMoney(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<Map<String, Object>> receiveMoney(@Valid @RequestBody Map<String, Object> request) {
         log.warn("Western Union STUB hívás: /receive — partner inaktív");
         return ResponseEntity.status(501).body(Map.of(
                 "status", "NOT_IMPLEMENTED",

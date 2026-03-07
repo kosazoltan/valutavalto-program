@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -130,7 +131,7 @@ public class ClosingWizardController {
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> countDenominations(
             @PathVariable UUID wizardId,
-            @RequestBody Map<String, Map<Integer, Integer>> denomCounts) {
+            @Valid @RequestBody Map<String, Map<Integer, Integer>> denomCounts) {
         ClosingWizardDto wizard = closingWizardService.getWizard(wizardId);
         Map<String, Object> result = closingWizardService.countDenominations(
                 UUID.fromString(wizard.getBranchId()), denomCounts);
@@ -146,7 +147,7 @@ public class ClosingWizardController {
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<Map<String, Object>>> calculateDifferences(
             @PathVariable UUID wizardId,
-            @RequestBody Map<String, BigDecimal> physicalCounts) {
+            @Valid @RequestBody Map<String, BigDecimal> physicalCounts) {
         ClosingWizardDto wizard = closingWizardService.getWizard(wizardId);
         List<Map<String, Object>> result = closingWizardService.calculateDifferences(
                 UUID.fromString(wizard.getBranchId()), physicalCounts);

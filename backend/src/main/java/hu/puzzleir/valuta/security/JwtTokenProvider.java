@@ -5,7 +5,9 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -21,12 +23,30 @@ import java.util.UUID;
  */
 @Component
 public class JwtTokenProvider {
+
+    private final Environment environment;
+
+    public JwtTokenProvider(Environment environment) {
+        this.environment = environment;
+    }
     
     @Value("${jwt.secret:valuta-secret-key-change-in-production-must-be-at-least-256-bits-long}")
     private String secretKey;
     
     @Value("${jwt.expiration:86400000}") // 24 óra
     private long expiration;
+
+    @PostConstruct
+    public void validateSecret() {
+        boolean isProduction = java.util.Arrays.asList(environment.getActiveProfiles()).contains("production");
+        if (isProduction && (secretKey == null || secretKey.startsWith("valuta-secret-key-change"))) {
+            throw new IllegalStateException("FATAL: JWT_SECRET env var NINCS konfigurálva! Production-ban KÖTELEZŐ random 256-bit kulcsot használni.");
+        }
+        // Kulcs hossz ellenőrzés minden profilban
+        if (secretKey != null && secretKey.getBytes().length < 32) {
+            throw new IllegalStateException("FATAL: JWT_SECRET túl rövid! Minimum 32 byte (256 bit) szükséges. Jelenlegi: " + secretKey.getBytes().length + " byte.");
+        }
+    }
     
     /**
      * JWT generálás Worker-hez (MULTI-TENANT!)

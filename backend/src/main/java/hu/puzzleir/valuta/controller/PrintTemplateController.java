@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.UUID;
@@ -50,7 +51,7 @@ public class PrintTemplateController {
      * POST /api/v1/print-templates
      */
     @PostMapping
-    public ResponseEntity<PrintTemplateResponse> createTemplate(@RequestBody PrintTemplateDto dto) {
+    public ResponseEntity<PrintTemplateResponse> createTemplate(@Valid @RequestBody PrintTemplateDto dto) {
         return ResponseEntity.ok(printTemplateService.saveTemplate(dto));
     }
 
@@ -60,7 +61,7 @@ public class PrintTemplateController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<PrintTemplateResponse> updateTemplate(
-            @PathVariable UUID id, @RequestBody PrintTemplateDto dto) {
+            @PathVariable UUID id, @Valid @RequestBody PrintTemplateDto dto) {
         return ResponseEntity.ok(printTemplateService.updateTemplate(id, dto));
     }
 
@@ -70,7 +71,7 @@ public class PrintTemplateController {
      */
     @PostMapping("/{id}/preview")
     public ResponseEntity<String> previewTemplate(
-            @PathVariable UUID id, @RequestBody PrintTemplatePreviewRequest request) {
+            @PathVariable UUID id, @Valid @RequestBody PrintTemplatePreviewRequest request) {
         String rendered = printTemplateService.previewTemplate(id, request.getData());
         return ResponseEntity.ok(rendered);
     }

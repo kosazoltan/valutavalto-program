@@ -76,7 +76,7 @@ public class CameraAdminController {
      */
     @PostMapping("/cleanup")
     public ResponseEntity<Map<String, Object>> manualCleanup(
-            @RequestBody(required = false) Map<String, String> body) {
+            @Valid @RequestBody(required = false) Map<String, String> body) {
         LocalDate beforeDate = LocalDate.now().minusDays(50);
         if (body != null && body.containsKey("beforeDate")) {
             beforeDate = LocalDate.parse(body.get("beforeDate"));

@@ -7,6 +7,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.Map;
 
@@ -31,7 +32,7 @@ public class PosTerminalStubController {
 
     @PostMapping("/authorize")
     @Operation(summary = "[STUB] Kártyás tranzakció engedélyeztetés")
-    public ResponseEntity<Map<String, Object>> authorize(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<Map<String, Object>> authorize(@Valid @RequestBody Map<String, Object> request) {
         log.warn("POS terminál STUB hívás: /authorize");
         return ResponseEntity.status(501).body(Map.of(
                 "status", "NOT_IMPLEMENTED",

@@ -47,7 +47,7 @@ public class TradeController {
     }
 
     @PostMapping("/{id}/reject")
-    public ResponseEntity<TradeDto> reject(@PathVariable UUID id, @RequestBody(required = false) RejectTradeDto dto) {
+    public ResponseEntity<TradeDto> reject(@PathVariable UUID id, @Valid @RequestBody(required = false) RejectTradeDto dto) {
         String reason = dto != null ? dto.getReason() : null;
         return ResponseEntity.ok(service.rejectTrade(id, reason));
     }

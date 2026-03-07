@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.*;
 
@@ -47,7 +48,7 @@ public class EmailAccountController {
      * Email fiók létrehozása. Csak CHIEF_VAULT/REGIONAL_MGR/DIRECTOR.
      */
     @PostMapping
-    public ResponseEntity<EmailAccount> create(@RequestBody EmailAccountDto dto, Authentication auth) {
+    public ResponseEntity<EmailAccount> create(@Valid @RequestBody EmailAccountDto dto, Authentication auth) {
         WorkerAuthenticationDetails details = getAuthDetails(auth);
         requireAdminRole(details);
         EmailAccount account = emailAccountService.createOrUpdateAccount(dto, details.getWorkerId());
@@ -59,7 +60,7 @@ public class EmailAccountController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<EmailAccount> update(@PathVariable UUID id,
-                                                @RequestBody EmailAccountDto dto,
+                                                @Valid @RequestBody EmailAccountDto dto,
                                                 Authentication auth) {
         WorkerAuthenticationDetails details = getAuthDetails(auth);
         requireAdminRole(details);

@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.Map;
@@ -41,7 +42,7 @@ public class PermissionController {
     }
 
     @PostMapping
-    public ResponseEntity<PermissionDto> create(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<PermissionDto> create(@Valid @RequestBody Map<String, Object> body) {
         return ResponseEntity.status(HttpStatus.CREATED).body(roleService.createPermission(
                 (String) body.get("code"), (String) body.get("name"),
                 (String) body.get("description"), (String) body.get("module"),
@@ -49,7 +50,7 @@ public class PermissionController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<PermissionDto> update(@PathVariable UUID id, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<PermissionDto> update(@PathVariable UUID id, @Valid @RequestBody Map<String, Object> body) {
         return ResponseEntity.ok(roleService.updatePermission(id,
                 (String) body.get("name"), (String) body.get("description"), (String) body.get("module")));
     }

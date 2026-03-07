@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.Map;
@@ -59,21 +60,21 @@ public class NotificationController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<Notification> send(@RequestBody Map<String, String> body) {
+    public ResponseEntity<Notification> send(@Valid @RequestBody Map<String, String> body) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.send(
                 body.get("userId"), body.get("title"), body.get("message"), body.get("type")));
     }
 
     @PostMapping("/send")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<Notification> sendToWorker(@RequestBody SendNotificationDto dto) {
+    public ResponseEntity<Notification> sendToWorker(@Valid @RequestBody SendNotificationDto dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(
                 service.sendToWorker(dto.getWorkerId(), dto.getTitle(), dto.getMessage(), dto.getType()));
     }
 
     @PostMapping("/broadcast")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
-    public ResponseEntity<Map<String, Integer>> broadcast(@RequestBody BroadcastNotificationDto dto) {
+    public ResponseEntity<Map<String, Integer>> broadcast(@Valid @RequestBody BroadcastNotificationDto dto) {
         int count = service.sendToAll(dto.getTitle(), dto.getMessage());
         return ResponseEntity.ok(Map.of("sent", count));
     }

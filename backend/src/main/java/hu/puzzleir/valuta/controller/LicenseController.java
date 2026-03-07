@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 /**
  * Licenc controller — státusz, aktuális licenc, aktiválás.
@@ -44,7 +45,7 @@ public class LicenseController {
      */
     @PostMapping("/activate")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<LicenseResponse> activateLicense(@RequestBody LicenseActivateRequest request) {
+    public ResponseEntity<LicenseResponse> activateLicense(@Valid @RequestBody LicenseActivateRequest request) {
         return ResponseEntity.ok(licenseService.activateLicense(request.getLicenseKey()));
     }
 }
