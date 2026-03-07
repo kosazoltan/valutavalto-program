@@ -1,0 +1,41 @@
+version: '3.8'
+
+# Valutaváltó ERP — Lokális fejlesztői környezet
+# Használat: docker-compose up -d
+# Majd: backend → ./mvnw spring-boot:run
+#        frontend → cd penztar-client && npm run dev
+
+services:
+  # PostgreSQL adatbázis (helyi teszteléshez)
+  postgres:
+    image: postgres:16-alpine
+    container_name: valuta-postgres
+    environment:
+      POSTGRES_DB: valuta
+      POSTGRES_USER: valuta_user
+      POSTGRES_PASSWORD: valuta_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - valuta-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U valuta_user -d valuta"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # pgAdmin (opcionális — böngészőből DB kezelés)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: valuta-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@valuta.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  valuta-pgdata:
