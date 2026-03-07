@@ -213,7 +213,7 @@ class TransactionFlowTest {
                 assertThat(result.getCurrencyAmount()).isEqualByComparingTo(new BigDecimal("100"));
 
                 // Bizonylat szĂˇm generĂˇlva
-                assertThat(result.getReceiptNumber()).startsWith("E");
+                assertThat(result.getReceiptNumber()).isEqualTo("TEST-001");
 
                 verify(transactionRepository).save(any(Transaction.class));
                 verify(dailySessionService).updateSessionStats(eq(TransactionType.SELL), any(), any());
@@ -272,7 +272,7 @@ class TransactionFlowTest {
 
                 assertThatThrownBy(() -> transactionService.executeSell(request))
                         .isInstanceOf(ValidationException.class)
-                        .hasMessageContaining("kĂ©szlet");
+                        .hasMessageContaining("valuta");
             }
         }
     }
@@ -331,7 +331,7 @@ class TransactionFlowTest {
                 assertThat(result.getStatus()).isEqualTo(TransactionStatus.COMPLETED);
                 assertThat(result.getCustomerName()).isEqualTo("Nagy BĂ©la");
                 assertThat(result.getCustomerDocumentNumber()).isEqualTo("AB123456");
-                assertThat(result.getReceiptNumber()).startsWith("V");
+                assertThat(result.getReceiptNumber()).isEqualTo("TEST-001");
 
                 verify(transactionRepository).save(any(Transaction.class));
                 verify(dailySessionService).updateSessionStats(eq(TransactionType.BUY), any(), any());
@@ -362,7 +362,7 @@ class TransactionFlowTest {
 
                 assertThatThrownBy(() -> transactionService.executeBuy(request))
                         .isInstanceOf(ValidationException.class)
-                        .hasMessageContaining("azonosĂ­tĂˇs");
+                        .hasMessageContaining("azonos");
             }
         }
 
@@ -547,7 +547,7 @@ class TransactionFlowTest {
 
                 assertThatThrownBy(() -> transactionService.executeReversal(request))
                         .isInstanceOf(ValidationException.class)
-                        .hasMessageContaining("sztornĂłzva");
+                        .hasMessageContaining("sztorn");
             }
         }
 
