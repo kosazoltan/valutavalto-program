@@ -64,6 +64,11 @@ const BATCH4_ITEMS: MenuItem[] = [
   { key: 'D2', label: 'Devizakereskedés', icon: '🔄', route: '/trade' as PageRoute, hotkey: 'Ctrl+X' },
 ];
 
+// Email funkciók
+const EMAIL_ITEMS: MenuItem[] = [
+  { key: 'EM1', label: 'Levelezés', icon: '📧', route: '/email' as PageRoute, hotkey: 'Ctrl+I' },
+];
+
 // Sprint 3 funkciók
 const SPRINT3_ITEMS: MenuItem[] = [
   { key: 'S1', label: 'Konverzió', icon: '🔄', route: '/conversion' as PageRoute, hotkey: 'Ctrl+V' },
@@ -178,6 +183,9 @@ export default function MainMenu() {
         } else if (keyLower === 'q') {
           e.preventDefault();
           handleNavigate('/break' as PageRoute);
+        } else if (keyLower === 'i') {
+          e.preventDefault();
+          handleNavigate('/email' as PageRoute);
         }
       }
 
@@ -382,6 +390,23 @@ export default function MainMenu() {
                 <span className="menu-btn-icon">{item.icon}</span>
                 <span className="menu-btn-label text-teal-800">{item.label}</span>
                 <span className="menu-btn-hotkey text-teal-500">{item.hotkey}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        {/* Email — Levelezés */}
+        <div className="mx-auto mt-6 max-w-4xl">
+          <h2 className="mb-3 text-lg font-semibold text-gray-600">📧 Kommunikáció</h2>
+          <div className="grid grid-cols-4 gap-4">
+            {EMAIL_ITEMS.map((item) => (
+              <button
+                key={item.key}
+                onClick={() => handleNavigate(item.route)}
+                className="menu-btn h-28 border-2 border-sky-200 bg-sky-50 hover:bg-sky-100"
+              >
+                <span className="menu-btn-icon">{item.icon}</span>
+                <span className="menu-btn-label text-sky-800">{item.label}</span>
+                <span className="menu-btn-hotkey text-sky-500">{item.hotkey}</span>
               </button>
             ))}
           </div>

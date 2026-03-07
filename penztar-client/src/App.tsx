@@ -67,6 +67,9 @@ import BreakPage from '@/pages/BreakPage';
 import ConversionPage from '@/pages/ConversionPage';
 // HR modul — Dolgozói törzsadatok
 import EmployeePage from '@/pages/EmployeePage';
+// Sprint 2 — Gmail integráció
+import EmailPage from '@/pages/EmailPage';
+import EmailSettingsPage from '@/pages/EmailSettingsPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -513,6 +516,24 @@ export default function App() {
         element={
           <ProtectedRoute>
             <ConversionPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Sprint 2 — Gmail integráció */}
+      <Route
+        path="/email"
+        element={
+          <ProtectedRoute>
+            <EmailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/email/settings"
+        element={
+          <ProtectedRoute>
+            <EmailSettingsPage />
           </ProtectedRoute>
         }
       />

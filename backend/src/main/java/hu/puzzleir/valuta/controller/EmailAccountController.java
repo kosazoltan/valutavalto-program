@@ -15,6 +15,7 @@ import java.util.*;
 
 /**
  * Email fiók kezelés controller — CRUD + OAuth2 flow.
+ * Fiók létrehozás/módosítás/törlés/OAuth: CHIEF_VAULT, REGIONAL_MGR, DIRECTOR role szükséges.
  */
 @RestController
 @RequestMapping("/api/v1/email/accounts")
@@ -40,43 +41,49 @@ public class EmailAccountController {
         return ResponseEntity.ok(result);
     }
 
+    private static final Set<String> ADMIN_ROLES = Set.of("CHIEF_VAULT", "REGIONAL_MGR", "DIRECTOR");
+
     /**
-     * Email fiók létrehozása.
+     * Email fiók létrehozása. Csak CHIEF_VAULT/REGIONAL_MGR/DIRECTOR.
      */
     @PostMapping
     public ResponseEntity<EmailAccount> create(@RequestBody EmailAccountDto dto, Authentication auth) {
         WorkerAuthenticationDetails details = getAuthDetails(auth);
+        requireAdminRole(details);
         EmailAccount account = emailAccountService.createOrUpdateAccount(dto, details.getWorkerId());
         return ResponseEntity.status(HttpStatus.CREATED).body(account);
     }
 
     /**
-     * Email fiók módosítása.
+     * Email fiók módosítása. Csak CHIEF_VAULT/REGIONAL_MGR/DIRECTOR.
      */
     @PutMapping("/{id}")
     public ResponseEntity<EmailAccount> update(@PathVariable UUID id,
                                                 @RequestBody EmailAccountDto dto,
                                                 Authentication auth) {
         WorkerAuthenticationDetails details = getAuthDetails(auth);
+        requireAdminRole(details);
         dto.setId(id);
         EmailAccount account = emailAccountService.createOrUpdateAccount(dto, details.getWorkerId());
         return ResponseEntity.ok(account);
     }
 
     /**
-     * Email fiók törlése.
+     * Email fiók törlése. Csak CHIEF_VAULT/REGIONAL_MGR/DIRECTOR.
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+    public ResponseEntity<Void> delete(@PathVariable UUID id, Authentication auth) {
+        requireAdminRole(getAuthDetails(auth));
         emailAccountService.deleteAccount(id);
         return ResponseEntity.noContent().build();
     }
 
     /**
-     * OAuth2 flow indítása — redirect URL generálás.
+     * OAuth2 flow indítása. Csak CHIEF_VAULT/REGIONAL_MGR/DIRECTOR.
      */
     @GetMapping("/{id}/auth")
-    public ResponseEntity<Map<String, String>> startAuth(@PathVariable UUID id) {
+    public ResponseEntity<Map<String, String>> startAuth(@PathVariable UUID id, Authentication auth) {
+        requireAdminRole(getAuthDetails(auth));
         String authUrl = emailAccountService.startOAuthFlow(id);
         return ResponseEntity.ok(Map.of("authUrl", authUrl));
     }
@@ -96,5 +103,11 @@ public class EmailAccountController {
             return details;
         }
         throw new ValidationException("Hitelesítés szükséges!");
+    }
+
+    private void requireAdminRole(WorkerAuthenticationDetails details) {
+        if (!ADMIN_ROLES.contains(details.getActiveRole())) {
+            throw new ValidationException("Email fiók kezelés csak CHIEF_VAULT, REGIONAL_MGR vagy DIRECTOR jogosultsággal lehetséges!");
+        }
     }
 }
