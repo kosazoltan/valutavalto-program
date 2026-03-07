@@ -52,6 +52,11 @@ const BATCH3_ITEMS: MenuItem[] = [
   { key: 'C2', label: 'Pénztáros verseny', icon: '🏆', route: '/competition' as PageRoute, hotkey: 'Ctrl+K' },
 ];
 
+// HR funkciók
+const HR_ITEMS: MenuItem[] = [
+  { key: 'H1', label: 'Dolgozói törzsadat', icon: '👥', route: '/employees' as PageRoute, hotkey: 'Ctrl+Shift+E' },
+];
+
 // Batch 4 funkciók
 const BATCH4_ITEMS: MenuItem[] = [
   { key: 'D1', label: 'Dashboard', icon: '📊', route: '/dashboard' as PageRoute, hotkey: 'Ctrl+0' },
@@ -392,6 +397,25 @@ export default function MainMenu() {
             ))}
           </div>
         </div>
+        {/* HR — Dolgozói törzsadat (csak MANAGER/ADMIN) */}
+        {(user?.role === 'MANAGER' || user?.role === 'ADMIN') && (
+          <div className="mx-auto mt-6 max-w-4xl">
+            <h2 className="mb-3 text-lg font-semibold text-gray-600">👥 HR / Személyügyi</h2>
+            <div className="grid grid-cols-4 gap-4">
+              {HR_ITEMS.map((item) => (
+                <button
+                  key={item.key}
+                  onClick={() => handleNavigate(item.route)}
+                  className="menu-btn h-28 border-2 border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
+                >
+                  <span className="menu-btn-icon">{item.icon}</span>
+                  <span className="menu-btn-label text-emerald-800">{item.label}</span>
+                  <span className="menu-btn-hotkey text-emerald-500">{item.hotkey}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Állapotsor */}
