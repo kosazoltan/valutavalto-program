@@ -75,6 +75,11 @@ public class ExchangeRatePollingService {
     private volatile int lastPollUpdatedCount;
 
     /**
+     * Az utolsó sikeres polling forrása: "MNB", "ECB", "CACHED", vagy "NONE" (még nem futott).
+     */
+    private volatile String lastPollSource = "NONE";
+
+    /**
      * Lock a párhuzamos polling megakadályozására
      * (manuális trigger + ütemezett cron ne fusson egyszerre).
      */
@@ -87,23 +92,25 @@ public class ExchangeRatePollingService {
      * Az MNB ~11:00 körül publikálja a napi árfolyamot, így:
      *   - 8:30: korai próba (ha van előző napi esti publikáció)
      *   - 14:00: fő lekérdezés (biztosan frissül)
+     *
+     * Fallback lánc: MNB → ECB → utolsó ismert DB árfolyam (CACHED).
      */
     @Scheduled(cron = "0 30 8 * * MON-FRI")
     @Scheduled(cron = "0 0 14 * * MON-FRI")
-    public void pollMnbRates() {
-        log.info("MNB árfolyam polling indítása (ütemezett)...");
+    public void pollExchangeRates() {
+        log.info("Árfolyam polling indítása (ütemezett)...");
         synchronized (pollLock) {
-            executeMnbPoll();
+            executePollingWithFallback();
         }
     }
 
     /**
-     * Manuális árfolyam frissítés trigger.
+     * Manuális árfolyam frissítés trigger — fallback lánccal.
      */
     public void triggerManualPoll() {
-        log.info("MNB árfolyam polling indítása (manuális trigger)...");
+        log.info("Árfolyam polling indítása (manuális trigger)...");
         synchronized (pollLock) {
-            executeMnbPoll();
+            executePollingWithFallback();
         }
     }
 
@@ -111,60 +118,130 @@ public class ExchangeRatePollingService {
      * Az utolsó polling állapota.
      */
     public Map<String, Object> getPollingStatus() {
-        Map<String, Object> status = new LinkedHashMap<>();
-        status.put("lastPollTime", lastPollTime);
-        status.put("lastPollSuccess", lastPollSuccess);
-        status.put("lastPollError", lastPollError);
-        status.put("lastPollUpdatedCount", lastPollUpdatedCount);
-        return status;
+        synchronized (pollLock) {
+            Map<String, Object> status = new LinkedHashMap<>();
+            status.put("lastPollTime", lastPollTime);
+            status.put("lastPollSuccess", lastPollSuccess);
+            status.put("lastPollError", lastPollError);
+            status.put("lastPollUpdatedCount", lastPollUpdatedCount);
+            status.put("lastPollSource", lastPollSource);
+            return status;
+        }
+    }
+
+    /**
+     * Az utolsó polling forrása: "MNB", "ECB", "CACHED", vagy "NONE".
+     */
+    public String getLastPollSource() {
+        return lastPollSource;
     }
 
     // ============ MNB POLLING LOGIKA ============
 
     /**
-     * MNB polling végrehajtása — HTTP GET + XML parse + DB update.
-     * Hiba esetén NEM dob exception-t, graceful handling.
+     * Fallback lánc végrehajtása: MNB → ECB → CACHED.
+     *
+     * 1. MNB API (elsődleges) → ha sikeres → kész
+     * 2. Ha MNB FAIL → ECB API (másodlagos) → EUR-bázisú → HUF konverzió → DB update
+     * 3. Ha ECB is FAIL → utolsó ismert DB árfolyam marad (CACHED) → WARN/ERROR log
      */
-    private void executeMnbPoll() {
+    private void executePollingWithFallback() {
         LocalDateTime startTime = LocalDateTime.now();
+
+        // 1. Elsődleges: MNB
         try {
-            // 1. HTTP GET az MNB-ről (timeout: 30s connect, 30s read)
-            RestTemplate restTemplate = createRestTemplateWithTimeout();
-            ResponseEntity<String> response = restTemplate.getForEntity(MNB_URL, String.class);
-
-            if (response.getBody() == null || response.getBody().isBlank()) {
-                handlePollError("MNB válasz üres", startTime);
-                return;
-            }
-
-            log.info("MNB válasz megérkezett, XML feldolgozás...");
-
-            // 2. XML parse
-            Map<String, MnbRate> parsedRates = parseMnbXml(response.getBody());
-
-            if (parsedRates.isEmpty()) {
-                handlePollError("MNB XML-ből nem sikerült árfolyamot kinyerni", startTime);
-                return;
-            }
-
-            log.info("MNB XML feldolgozva: {} árfolyam", parsedRates.size());
-
-            // 3. DB update
-            int updatedCount = updateOfficialRates(parsedRates);
-
-            // 4. Sikeres polling rögzítése
+            int updatedCount = executeMnbPoll();
             lastPollTime = startTime;
             lastPollSuccess = true;
             lastPollError = null;
             lastPollUpdatedCount = updatedCount;
-
+            lastPollSource = "MNB";
             updateSourceStatus("MNB", true, null);
-
-            log.info("MNB árfolyam polling sikeres: {} valuta frissítve, időpont: {}", updatedCount, startTime);
-
+            log.info("Árfolyam frissítés: MNB OK — {} valuta frissítve", updatedCount);
+            return;
         } catch (Exception e) {
-            handlePollError("MNB polling hiba: " + e.getMessage(), startTime);
+            log.warn("MNB API nem elérhető: {} — ECB fallback...", e.getMessage());
+            updateSourceStatus("MNB", false, e.getMessage());
         }
+
+        // 2. Másodlagos: ECB
+        try {
+            int updatedCount = executeEcbFallbackPoll();
+            lastPollTime = startTime;
+            lastPollSuccess = true;
+            lastPollError = null;
+            lastPollUpdatedCount = updatedCount;
+            lastPollSource = "ECB";
+            updateSourceStatus("ECB", true, null);
+            log.info("Árfolyam frissítés: ECB fallback OK — {} valuta frissítve", updatedCount);
+            return;
+        } catch (Exception e) {
+            log.warn("ECB API sem elérhető: {} — utolsó ismert árfolyam marad", e.getMessage());
+            updateSourceStatus("ECB", false, e.getMessage());
+        }
+
+        // 3. Harmadlagos: CACHED — a DB-ben az utolsó ismert árfolyam marad
+        lastPollTime = startTime;
+        lastPollSuccess = false;
+        lastPollError = "Sem MNB, sem ECB nem elérhető — utolsó ismert árfolyamok használatban";
+        lastPollUpdatedCount = 0;
+        lastPollSource = "CACHED";
+        log.error("FIGYELEM: Sem MNB, sem ECB nem elérhető! A rendszer utolsó ismert árfolyamokkal dolgozik.");
+    }
+
+    /**
+     * MNB polling végrehajtása — HTTP GET + XML parse + DB update.
+     * Sikeres esetben visszaadja a frissített valuták számát.
+     * Hiba esetén exception-t dob a fallback lánc számára.
+     */
+    private int executeMnbPoll() {
+        // 1. HTTP GET az MNB-ről (timeout: 30s connect, 30s read)
+        RestTemplate restTemplate = createRestTemplateWithTimeout();
+        ResponseEntity<String> response = restTemplate.getForEntity(MNB_URL, String.class);
+
+        if (response.getBody() == null || response.getBody().isBlank()) {
+            throw new RuntimeException("MNB válasz üres");
+        }
+
+        log.info("MNB válasz megérkezett, XML feldolgozás...");
+
+        // 2. XML parse
+        Map<String, MnbRate> parsedRates = parseMnbXml(response.getBody());
+
+        if (parsedRates.isEmpty()) {
+            throw new RuntimeException("MNB XML-ből nem sikerült árfolyamot kinyerni");
+        }
+
+        log.info("MNB XML feldolgozva: {} árfolyam", parsedRates.size());
+
+        // 3. DB update
+        return updateOfficialRates(parsedRates);
+    }
+
+    /**
+     * ECB fallback polling — ECB árfolyamok lekérdezése és DB-be mentése.
+     * Az ECB EUR-bázisú árfolyamokat ad, amiket HUF-ra számítunk át.
+     * Sikeres esetben visszaadja a frissített valuták számát.
+     * Hiba esetén exception-t dob.
+     */
+    private int executeEcbFallbackPoll() {
+        if ("MNB".equals(lastPollSource)) {
+            log.warn("FIGYELEM: ECB fallback felülírja a mai MNB árfolyamokat! Az ECB EUR-keresztszámítású értékei kevésbé pontosak.");
+        }
+
+        Map<String, BigDecimal> ecbRates = fetchEcbRatesOnly();
+
+        if (ecbRates.isEmpty()) {
+            throw new RuntimeException("ECB árfolyam lekérdezés üres eredményt adott");
+        }
+
+        // ECB árfolyamokat MnbRate formátumra konvertálva mentjük az updateOfficialRates-szel
+        Map<String, MnbRate> ratesForDb = new LinkedHashMap<>();
+        for (Map.Entry<String, BigDecimal> entry : ecbRates.entrySet()) {
+            ratesForDb.put(entry.getKey(), new MnbRate(entry.getKey(), entry.getValue(), 1));
+        }
+
+        return updateOfficialRates(ratesForDb);
     }
 
     /**
@@ -250,6 +327,9 @@ public class ExchangeRatePollingService {
         int updatedCount = 0;
         LocalDate today = LocalDate.now();
 
+        // Egyszer töltjük be az összes árfolyamot — N+1 query megelőzés
+        List<ExchangeRate> allRates = exchangeRateRepository.findAll();
+
         for (Map.Entry<String, MnbRate> entry : mnbRates.entrySet()) {
             String currencyCode = entry.getKey();
             BigDecimal officialRate = entry.getValue().rate();
@@ -263,8 +343,8 @@ public class ExchangeRatePollingService {
 
                 Currency currency = currencyOpt.get();
 
-                // Frissítsük az összes aktív, mai dátumú árfolyamot ehhez a valutához
-                List<ExchangeRate> activeRates = exchangeRateRepository.findAll().stream()
+                // Memóriában szűrünk az előre betöltött listából
+                List<ExchangeRate> activeRates = allRates.stream()
                     .filter(er -> er.getCurrency().getId().equals(currency.getId())
                         && er.getActive()
                         && er.getValidDate().equals(today))
@@ -293,7 +373,17 @@ public class ExchangeRatePollingService {
     // ============ ECB ÁRFOLYAMOK ============
 
     /**
-     * ECB árfolyam lekérdezés (backup/összehasonlítás).
+     * ECB árfolyam lekérdezés side-effect nélkül (GET endpoint-hoz).
+     * NEM frissíti az ExchangeRateSource állapotot — csak lekérdez és visszaad.
+     *
+     * @return Map currency kód → HUF-ban kifejezett árfolyam
+     */
+    public Map<String, BigDecimal> fetchEcbRatesOnly() {
+        return fetchEcbRatesInternal(false);
+    }
+
+    /**
+     * ECB árfolyam lekérdezés (polling logikához — updateSourceStatus-t is hív).
      * URL: https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml
      *
      * Az ECB EUR-bázisú árfolyamokat ad: 1 EUR = X foreign currency.
@@ -302,6 +392,16 @@ public class ExchangeRatePollingService {
      * @return Map currency kód → HUF-ban kifejezett árfolyam
      */
     public Map<String, BigDecimal> fetchEcbRates() {
+        return fetchEcbRatesInternal(true);
+    }
+
+    /**
+     * ECB árfolyam lekérdezés belső implementáció.
+     *
+     * @param updateSource ha true, frissíti az ExchangeRateSource állapotot
+     * @return Map currency kód → HUF-ban kifejezett árfolyam
+     */
+    private Map<String, BigDecimal> fetchEcbRatesInternal(boolean updateSource) {
         Map<String, BigDecimal> result = new LinkedHashMap<>();
 
         try {
@@ -367,11 +467,15 @@ public class ExchangeRatePollingService {
 
             log.info("ECB árfolyamok lekérdezve: {} valuta", result.size());
 
-            updateSourceStatus("ECB", true, null);
+            if (updateSource) {
+                updateSourceStatus("ECB", true, null);
+            }
 
         } catch (Exception e) {
             log.error("ECB árfolyam lekérdezés hiba: {}", e.getMessage(), e);
-            updateSourceStatus("ECB", false, e.getMessage());
+            if (updateSource) {
+                updateSourceStatus("ECB", false, e.getMessage());
+            }
         }
 
         return result;
@@ -464,18 +568,6 @@ public class ExchangeRatePollingService {
     }
 
     // ============ SEGÉD METÓDUSOK ============
-
-    /**
-     * Hiba kezelés polling közben — log + source status update.
-     */
-    private void handlePollError(String errorMessage, LocalDateTime startTime) {
-        log.error("MNB polling hiba: {}", errorMessage);
-        lastPollTime = startTime;
-        lastPollSuccess = false;
-        lastPollError = errorMessage;
-        lastPollUpdatedCount = 0;
-        updateSourceStatus("MNB", false, errorMessage);
-    }
 
     /**
      * ExchangeRateSource állapot frissítése.

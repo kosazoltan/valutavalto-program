@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.controller;
 
+import com.puzzleir.backend.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.dto.polling.ApplyMarginsDto;
 import hu.puzzleir.valuta.dto.polling.ExchangeRateSourceDto;
 import hu.puzzleir.valuta.dto.polling.PollingStatusDto;
@@ -15,6 +16,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -54,18 +56,20 @@ public class ExchangeRatePollingController {
      *
      * GET /api/v1/rates/polling/status
      */
-    @GetMapping("/status")
+    @GetMapping("/status") // Publikus monitoring endpoint — szándékosan nem auth-védett
     public ResponseEntity<PollingStatusDto> getPollingStatus() {
         Map<String, Object> status = pollingService.getPollingStatus();
         PollingStatusDto dto = PollingStatusDto.builder()
             .lastPollTime(status.get("lastPollTime") != null
-                ? (java.time.LocalDateTime) status.get("lastPollTime") : null)
+                ? (LocalDateTime) status.get("lastPollTime") : null)
             .lastPollSuccess(status.get("lastPollSuccess") != null
                 && (boolean) status.get("lastPollSuccess"))
             .lastPollError(status.get("lastPollError") != null
                 ? (String) status.get("lastPollError") : null)
             .lastPollUpdatedCount(status.get("lastPollUpdatedCount") != null
                 ? (int) status.get("lastPollUpdatedCount") : 0)
+            .lastPollSource(status.get("lastPollSource") != null
+                ? (String) status.get("lastPollSource") : "NONE")
             .build();
         return ResponseEntity.ok(dto);
     }
@@ -77,7 +81,7 @@ public class ExchangeRatePollingController {
      */
     @GetMapping("/ecb")
     public ResponseEntity<Map<String, BigDecimal>> getEcbRates() {
-        Map<String, BigDecimal> rates = pollingService.fetchEcbRates();
+        Map<String, BigDecimal> rates = pollingService.fetchEcbRatesOnly();
         return ResponseEntity.ok(rates);
     }
 
@@ -123,7 +127,7 @@ public class ExchangeRatePollingController {
             @Valid @RequestBody UpdateExchangeRateSourceDto dto) {
 
         ExchangeRateSource source = sourceRepository.findById(id)
-            .orElseThrow(() -> new com.puzzleir.backend.exception.ResourceNotFoundException(
+            .orElseThrow(() -> new ResourceNotFoundException(
                 "Árfolyam forrás nem található: " + id));
 
         if (dto.getPollIntervalMinutes() != null) {

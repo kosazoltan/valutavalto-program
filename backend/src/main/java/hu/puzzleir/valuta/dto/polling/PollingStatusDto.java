@@ -19,4 +19,6 @@ public class PollingStatusDto {
     private boolean lastPollSuccess;
     private String lastPollError;
     private int lastPollUpdatedCount;
+    /** Az utolsó polling forrása: "MNB", "ECB", "CACHED", vagy "NONE". */
+    private String lastPollSource;
 }
