@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.dto.employee;
 
-import hu.puzzleir.valuta.entity.PaymentMethod;
+import hu.puzzleir.valuta.entity.EmployeePaymentMethod;
 import hu.puzzleir.valuta.entity.SalaryType;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -62,7 +62,7 @@ public class CreateEmployeeDto {
 
     private SalaryType salaryType;
     private BigDecimal salaryAmount;
-    private PaymentMethod paymentMethod;
+    private EmployeePaymentMethod paymentMethod;
 
     private String vocationalSchoolName;
     private String vocationalQualification;

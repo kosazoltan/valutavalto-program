@@ -108,6 +108,30 @@ public class Customer {
     private LocalDate documentExpiry;
 
     /**
+     * Személyi igazolvány szám (külön mező)
+     */
+    @Column(name = "id_card_number", length = 30)
+    private String idCardNumber;
+
+    /**
+     * Személyi igazolvány lejárat
+     */
+    @Column(name = "id_card_expiry")
+    private LocalDate idCardExpiry;
+
+    /**
+     * Útlevél szám (külön mező)
+     */
+    @Column(name = "passport_number", length = 30)
+    private String passportNumber;
+
+    /**
+     * Útlevél lejárat
+     */
+    @Column(name = "passport_expiry")
+    private LocalDate passportExpiry;
+
+    /**
      * Lakcím
      * Legacy: UGYFELCIM
      */

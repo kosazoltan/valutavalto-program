@@ -28,10 +28,16 @@ public class CustomerDto {
     private String birthPlace;
     private String nationality;
 
-    // Dokumentum
+    // Dokumentum (legacy)
     private String documentNumber;
     private DocumentType documentType;
     private LocalDate documentExpiry;
+
+    // Külön okmányszámok
+    private String idCardNumber;
+    private LocalDate idCardExpiry;
+    private String passportNumber;
+    private LocalDate passportExpiry;
 
     // Cím
     private String address;

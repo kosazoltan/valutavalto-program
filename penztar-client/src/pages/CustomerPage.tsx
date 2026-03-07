@@ -39,6 +39,12 @@ export default function CustomerPage() {
     address: '',
     motherName: '',
     taxNumber: '',
+    idCardNumber: '',
+    idCardExpiry: '',
+    passportNumber: '',
+    passportExpiry: '',
+    phone: '',
+    email: '',
   });
 
   const handleSearch = useCallback(async () => {
@@ -124,6 +130,12 @@ export default function CustomerPage() {
       address: selectedCustomer.address,
       motherName: selectedCustomer.motherName,
       taxNumber: selectedCustomer.taxNumber ?? '',
+      idCardNumber: selectedCustomer.idCardNumber ?? '',
+      idCardExpiry: selectedCustomer.idCardExpiry ?? '',
+      passportNumber: selectedCustomer.passportNumber ?? '',
+      passportExpiry: selectedCustomer.passportExpiry ?? '',
+      phone: selectedCustomer.phone ?? '',
+      email: selectedCustomer.email ?? '',
     });
     setTab('edit');
   }, [selectedCustomer]);
@@ -139,6 +151,12 @@ export default function CustomerPage() {
       address: '',
       motherName: '',
       taxNumber: '',
+      idCardNumber: '',
+      idCardExpiry: '',
+      passportNumber: '',
+      passportExpiry: '',
+      phone: '',
+      email: '',
     });
     setError('');
     setSuccess('');
@@ -301,6 +319,74 @@ export default function CustomerPage() {
               onChange={(e) => updateField('taxNumber', e.target.value)}
               className="input-field"
               placeholder="12345678-1-11"
+            />
+          </div>
+
+          {/* Külön okmányszámok */}
+          <div className="col-span-2 mt-2 border-t pt-3">
+            <h3 className="mb-2 text-sm font-semibold text-gray-600">📄 Okmányok (külön)</h3>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Személyi ig. szám</label>
+            <input
+              type="text"
+              value={formData.idCardNumber ?? ''}
+              onChange={(e) => updateField('idCardNumber', e.target.value)}
+              className="input-field"
+              placeholder="123456AB"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Személyi ig. lejárat</label>
+            <input
+              type="date"
+              value={formData.idCardExpiry ?? ''}
+              onChange={(e) => updateField('idCardExpiry', e.target.value)}
+              className="input-field"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Útlevél szám</label>
+            <input
+              type="text"
+              value={formData.passportNumber ?? ''}
+              onChange={(e) => updateField('passportNumber', e.target.value)}
+              className="input-field"
+              placeholder="BA1234567"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Útlevél lejárat</label>
+            <input
+              type="date"
+              value={formData.passportExpiry ?? ''}
+              onChange={(e) => updateField('passportExpiry', e.target.value)}
+              className="input-field"
+            />
+          </div>
+
+          {/* Kontakt adatok */}
+          <div className="col-span-2 mt-2 border-t pt-3">
+            <h3 className="mb-2 text-sm font-semibold text-gray-600">📞 Elérhetőségek</h3>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Telefonszám</label>
+            <input
+              type="tel"
+              value={formData.phone ?? ''}
+              onChange={(e) => updateField('phone', e.target.value)}
+              className="input-field"
+              placeholder="+36 30 123 4567"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">E-mail cím</label>
+            <input
+              type="email"
+              value={formData.email ?? ''}
+              onChange={(e) => updateField('email', e.target.value)}
+              className="input-field"
+              placeholder="pelda@gmail.com"
             />
           </div>
         </div>
@@ -470,6 +556,42 @@ export default function CustomerPage() {
                   <div>
                     <span className="text-gray-500">Adószám:</span>
                     <p className="font-medium">{selectedCustomer.taxNumber}</p>
+                  </div>
+                )}
+                {selectedCustomer.idCardNumber && (
+                  <div>
+                    <span className="text-gray-500">Személyi ig. szám:</span>
+                    <p className="font-medium">{selectedCustomer.idCardNumber}</p>
+                  </div>
+                )}
+                {selectedCustomer.idCardExpiry && (
+                  <div>
+                    <span className="text-gray-500">Személyi ig. lejárat:</span>
+                    <p className="font-medium">{new Date(selectedCustomer.idCardExpiry).toLocaleDateString('hu-HU')}</p>
+                  </div>
+                )}
+                {selectedCustomer.passportNumber && (
+                  <div>
+                    <span className="text-gray-500">Útlevél szám:</span>
+                    <p className="font-medium">{selectedCustomer.passportNumber}</p>
+                  </div>
+                )}
+                {selectedCustomer.passportExpiry && (
+                  <div>
+                    <span className="text-gray-500">Útlevél lejárat:</span>
+                    <p className="font-medium">{new Date(selectedCustomer.passportExpiry).toLocaleDateString('hu-HU')}</p>
+                  </div>
+                )}
+                {selectedCustomer.phone && (
+                  <div>
+                    <span className="text-gray-500">Telefonszám:</span>
+                    <p className="font-medium">{selectedCustomer.phone}</p>
+                  </div>
+                )}
+                {selectedCustomer.email && (
+                  <div>
+                    <span className="text-gray-500">E-mail:</span>
+                    <p className="font-medium">{selectedCustomer.email}</p>
                   </div>
                 )}
               </div>

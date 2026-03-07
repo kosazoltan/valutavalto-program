@@ -31,6 +31,12 @@ public class CreateCustomerDto {
     private DocumentType documentType;
     private LocalDate documentExpiry;
 
+    // Külön okmányszámok
+    private String idCardNumber;
+    private LocalDate idCardExpiry;
+    private String passportNumber;
+    private LocalDate passportExpiry;
+
     private String address;
     private String postalCode;
     private String city;

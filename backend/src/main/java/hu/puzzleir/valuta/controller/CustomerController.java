@@ -96,6 +96,28 @@ public class CustomerController {
     }
 
     /**
+     * Ügyfél keresése személyi ig. szám alapján
+     *
+     * GET /api/v1/customers/id-card/{idCardNumber}
+     */
+    @GetMapping("/id-card/{idCardNumber}")
+    public ResponseEntity<CustomerDto> getCustomerByIdCard(@PathVariable String idCardNumber) {
+        Customer customer = customerService.findByIdCardNumber(idCardNumber);
+        return ResponseEntity.ok(customerMapper.toDto(customer));
+    }
+
+    /**
+     * Ügyfél keresése útlevél szám alapján
+     *
+     * GET /api/v1/customers/passport/{passportNumber}
+     */
+    @GetMapping("/passport/{passportNumber}")
+    public ResponseEntity<CustomerDto> getCustomerByPassport(@PathVariable String passportNumber) {
+        Customer customer = customerService.findByPassportNumber(passportNumber);
+        return ResponseEntity.ok(customerMapper.toDto(customer));
+    }
+
+    /**
      * Ügyfelek keresése név alapján
      *
      * GET /api/v1/customers/search?name=...

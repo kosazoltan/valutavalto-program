@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.dto.employee;
 
-import hu.puzzleir.valuta.entity.PaymentMethod;
+import hu.puzzleir.valuta.entity.EmployeePaymentMethod;
 import hu.puzzleir.valuta.entity.SalaryType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -65,7 +65,7 @@ public class EmployeeDto {
     // Bér
     private SalaryType salaryType;
     private BigDecimal salaryAmount;
-    private PaymentMethod paymentMethod;
+    private EmployeePaymentMethod paymentMethod;
 
     // Végzettség / Szakképzés
     private String vocationalSchoolName;

@@ -22,6 +22,16 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
     Optional<Customer> findByDocumentNumberAndCompanyId(String documentNumber, UUID companyId);
 
     /**
+     * Ügyfél keresése személyi ig. szám alapján
+     */
+    Optional<Customer> findByIdCardNumberAndCompanyId(String idCardNumber, UUID companyId);
+
+    /**
+     * Ügyfél keresése útlevél szám alapján
+     */
+    Optional<Customer> findByPassportNumberAndCompanyId(String passportNumber, UUID companyId);
+
+    /**
      * Ügyfél keresése ügyfélkód alapján
      */
     Optional<Customer> findByCustomerCodeAndCompanyId(String customerCode, UUID companyId);

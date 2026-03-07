@@ -186,7 +186,7 @@ public class Employee {
     /** Kifizetés módja: B (banki), K (készpénz) */
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_method", length = 5)
-    private PaymentMethod paymentMethod;
+    private EmployeePaymentMethod paymentMethod;
 
     // ===== Végzettség / Szakképzés =====
 

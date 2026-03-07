@@ -647,10 +647,10 @@ public class EmployeeService {
         }
     }
 
-    private PaymentMethod parsePaymentMethod(String val) {
+    private EmployeePaymentMethod parsePaymentMethod(String val) {
         if (val == null || val.isBlank()) return null;
         try {
-            return PaymentMethod.valueOf(val.trim().toUpperCase());
+            return EmployeePaymentMethod.valueOf(val.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
             log.warn("Ismeretlen kifizetés mód: '{}'", val);
             return null;

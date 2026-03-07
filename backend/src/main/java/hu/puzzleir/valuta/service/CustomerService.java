@@ -63,6 +63,10 @@ public class CustomerService {
                 .documentNumber(request.getDocumentNumber())
                 .documentType(request.getDocumentType())
                 .documentExpiry(request.getDocumentExpiry())
+                .idCardNumber(request.getIdCardNumber())
+                .idCardExpiry(request.getIdCardExpiry())
+                .passportNumber(request.getPassportNumber())
+                .passportExpiry(request.getPassportExpiry())
                 .address(request.getAddress())
                 .postalCode(request.getPostalCode())
                 .city(request.getCity())
@@ -99,6 +103,10 @@ public class CustomerService {
         if (request.getDocumentNumber() != null) customer.setDocumentNumber(request.getDocumentNumber());
         if (request.getDocumentType() != null) customer.setDocumentType(request.getDocumentType());
         if (request.getDocumentExpiry() != null) customer.setDocumentExpiry(request.getDocumentExpiry());
+        if (request.getIdCardNumber() != null) customer.setIdCardNumber(request.getIdCardNumber());
+        if (request.getIdCardExpiry() != null) customer.setIdCardExpiry(request.getIdCardExpiry());
+        if (request.getPassportNumber() != null) customer.setPassportNumber(request.getPassportNumber());
+        if (request.getPassportExpiry() != null) customer.setPassportExpiry(request.getPassportExpiry());
         if (request.getAddress() != null) customer.setAddress(request.getAddress());
         if (request.getPostalCode() != null) customer.setPostalCode(request.getPostalCode());
         if (request.getCity() != null) customer.setCity(request.getCity());
@@ -143,6 +151,26 @@ public class CustomerService {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         return customerRepository.findByDocumentNumberAndCompanyId(documentNumber, companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ügyfél nem található: " + documentNumber));
+    }
+
+    /**
+     * Ügyfél keresése személyi ig. szám alapján
+     */
+    @Transactional(readOnly = true)
+    public Customer findByIdCardNumber(String idCardNumber) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return customerRepository.findByIdCardNumberAndCompanyId(idCardNumber, companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ügyfél nem található személyi ig. szám alapján: " + idCardNumber));
+    }
+
+    /**
+     * Ügyfél keresése útlevél szám alapján
+     */
+    @Transactional(readOnly = true)
+    public Customer findByPassportNumber(String passportNumber) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return customerRepository.findByPassportNumberAndCompanyId(passportNumber, companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ügyfél nem található útlevél szám alapján: " + passportNumber));
     }
 
     /**
@@ -237,6 +265,10 @@ public class CustomerService {
         private String documentNumber;
         private DocumentType documentType;
         private LocalDate documentExpiry;
+        private String idCardNumber;
+        private LocalDate idCardExpiry;
+        private String passportNumber;
+        private LocalDate passportExpiry;
         private String address;
         private String postalCode;
         private String city;
@@ -265,6 +297,10 @@ public class CustomerService {
         private String documentNumber;
         private DocumentType documentType;
         private LocalDate documentExpiry;
+        private String idCardNumber;
+        private LocalDate idCardExpiry;
+        private String passportNumber;
+        private LocalDate passportExpiry;
         private String address;
         private String postalCode;
         private String city;

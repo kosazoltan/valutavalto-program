@@ -88,6 +88,14 @@ export interface Customer {
   birthPlace: string;
   address: string;
   motherName: string;
+  // Külön okmányszámok
+  idCardNumber?: string;
+  idCardExpiry?: string;
+  passportNumber?: string;
+  passportExpiry?: string;
+  // Kontakt
+  phone?: string;
+  email?: string;
 }
 
 export interface CustomerSearchRequest {
@@ -356,6 +364,14 @@ export interface CustomerCreateRequest {
   address: string;
   motherName: string;
   taxNumber?: string;
+  // Külön okmányszámok
+  idCardNumber?: string;
+  idCardExpiry?: string;
+  passportNumber?: string;
+  passportExpiry?: string;
+  // Kontakt
+  phone?: string;
+  email?: string;
 }
 
 // --- Reports (Riportok) ---
