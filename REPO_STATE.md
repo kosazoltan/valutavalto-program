@@ -91,3 +91,32 @@ cd penztar-client && npm run build
 - Sprint 4A-D: security hardening, kamera, Ã¡rfolyam-kezelÃ©s, teszt javÃ­tÃ¡sok
 - Gmail integrÃ¡ciÃ³ Sprint 1+2 (kÃ¼lÃ¶n repo: gmail-client)
 - Teljes audit: 3 batch + 2 kÃ¶r reaudit (134 fÃ¡jl, +5505 sor)
+
+## ?? BEÉPÍTETT AI RENDSZER (17. törvény) — TERVEZETT
+### Implementálandó (konzílium szükséges)
+1. **Fõértéktáros AI Asszisztens**
+   - Természetes nyelvû lekérdezés: "Mai EUR forgalom irodánként" › SQL › táblázat
+   - Kimutatás/riport generálás tetszõleges adatkombinációból
+   - Árfolyam javaslat: MNB + ECB + piaci trend › optimális eladási/vételi ár
+   - Banki beszállítás/kiszállítás optimalizálás (készlet + árfolyam elemzés)
+
+2. **Adaptív Import AI**
+   - PDF/Excel/CSV feltöltés › AI értelmezi › megfelelõ DB tábla
+   - Banki kivonatok automatikus feldolgozás
+   - Szállítólevelek, bizonylatok import
+   - Preview + jóváhagyás KÖTELEZÕ
+
+3. **Napi Operatív AI**
+   - Napi nyitás asszisztens (ellenõrzõlista, hiányzó adatok)
+   - Eltérés detektálás (pénztár › mérleg › riport)
+   - Audit támogatás (MNB/NAV megfelelõség ellenõrzés)
+
+### Modell stratégia
+- Haiku 4.5: Osztályozás, egyszerû SQL, routing
+- Sonnet 4.6: Elemzés, javaslat, komplex lekérdezés, import
+
+### Biztonsági korlátok
+- Read-only SQL sandbox alapértelmezetten
+- Mutáció › supervisor jóváhagyás
+- Jogosultság: munkakör-alapú (pénztáros/supervisor/manager/admin)
+- Audit trail: minden AI mûvelet naplózva
