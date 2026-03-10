@@ -17,6 +17,13 @@ interface CurrencyBreakdownEntry {
   sellAmount: number;
   sellHuf: number;
   handlingFee: number;
+  // MNB készletértékelés
+  mnbOfficialRate?: number;
+  stockQuantity?: number;
+  weightedAvgCost?: number;
+  stockValueMnb?: number;
+  stockValueWac?: number;
+  unrealizedPnl?: number;
 }
 
 function formatHuf(value: number): string {
@@ -234,6 +241,91 @@ export default function MonthlyClosingPage() {
                         <td className="px-4 py-2 text-right">{formatHuf(entry.handlingFee)}</td>
                       </tr>
                     ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* MNB Készletértékelés — havi zárási árfolyamok */}
+          {breakdown.some((e) => e.mnbOfficialRate != null) && (
+            <div className="rounded-lg border bg-white shadow-sm">
+              <div className="border-b px-4 py-3">
+                <h2 className="font-semibold text-gray-800">🏦 MNB Készletértékelés</h2>
+                <p className="text-xs text-gray-500">Devizakészlet felértékelése MNB hivatalos középárfolyammal</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left">Valuta</th>
+                      <th className="px-4 py-2 text-right">MNB árfolyam</th>
+                      <th className="px-4 py-2 text-right">Készlet</th>
+                      <th className="px-4 py-2 text-right">WAC</th>
+                      <th className="px-4 py-2 text-right">Érték (MNB)</th>
+                      <th className="px-4 py-2 text-right">Érték (WAC)</th>
+                      <th className="px-4 py-2 text-right">Nem realizált eredmény</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {breakdown
+                      .filter((e) => e.mnbOfficialRate != null)
+                      .map((entry) => (
+                        <tr key={`mnb-${entry.currencyCode}`} className="border-t hover:bg-gray-50">
+                          <td className="px-4 py-2 font-medium">{entry.currencyCode}</td>
+                          <td className="px-4 py-2 text-right">
+                            {entry.mnbOfficialRate?.toLocaleString('hu-HU', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                          </td>
+                          <td className="px-4 py-2 text-right">
+                            {entry.stockQuantity?.toLocaleString('hu-HU')}
+                          </td>
+                          <td className="px-4 py-2 text-right">
+                            {entry.weightedAvgCost?.toLocaleString('hu-HU', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                          </td>
+                          <td className="px-4 py-2 text-right">
+                            {entry.stockValueMnb != null ? formatHuf(entry.stockValueMnb) : '—'}
+                          </td>
+                          <td className="px-4 py-2 text-right">
+                            {entry.stockValueWac != null ? formatHuf(entry.stockValueWac) : '—'}
+                          </td>
+                          <td className={`px-4 py-2 text-right font-semibold ${
+                            (entry.unrealizedPnl ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {entry.unrealizedPnl != null ? formatHuf(entry.unrealizedPnl) : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    {/* Összesítő sor */}
+                    <tr className="border-t-2 bg-gray-100 font-bold">
+                      <td className="px-4 py-2" colSpan={4}>Összesen</td>
+                      <td className="px-4 py-2 text-right">
+                        {formatHuf(
+                          breakdown
+                            .filter((e) => e.stockValueMnb != null)
+                            .reduce((sum, e) => sum + (e.stockValueMnb ?? 0), 0)
+                        )}
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        {formatHuf(
+                          breakdown
+                            .filter((e) => e.stockValueWac != null)
+                            .reduce((sum, e) => sum + (e.stockValueWac ?? 0), 0)
+                        )}
+                      </td>
+                      <td className={`px-4 py-2 text-right font-bold ${
+                        breakdown
+                          .filter((e) => e.unrealizedPnl != null)
+                          .reduce((sum, e) => sum + (e.unrealizedPnl ?? 0), 0) >= 0
+                            ? 'text-green-700'
+                            : 'text-red-700'
+                      }`}>
+                        {formatHuf(
+                          breakdown
+                            .filter((e) => e.unrealizedPnl != null)
+                            .reduce((sum, e) => sum + (e.unrealizedPnl ?? 0), 0)
+                        )}
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
