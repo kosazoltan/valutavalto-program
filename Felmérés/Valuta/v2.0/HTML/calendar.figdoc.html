@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Specifik&aacute;ci&oacute;</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="specifikáció">Specifikáció</h1>
+<h2 id="változtatások">Változtatások</h2>
+<table>
+<thead>
+<tr>
+<th>Verzió/Dátum</th>
+<th>Leírás</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.0 - 2024.11.27</td>
+<td>Első verzió</td>
+</tr>
+</tbody>
+</table>
+<h3 id="entitások">Entitások</h3>
+<h3 id="figdef-calendar">FIGDEF# calendar</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Naptár</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Naptárak</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Hide</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>day</td>
+<td>Nap</td>
+<td>DATE</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>day_of_week</td>
+<td>Hét napja</td>
+<td>INT</td>
+<td>1</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>1-7 (hétfő-vasárnap)</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>day_type_did</td>
+<td>Naptípus</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DAY_TYPE</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>country_did</td>
+<td>Ország</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>COUNTRY</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-calendar_ext">FIGDEF# calendar_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Naptár</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Naptárak</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">calendar</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+<th>Hide</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>day_type</td>
+<td>Naptípus</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>DAY_TYPE</td>
+<td>description</td>
+<td>day_type_did</td>
+<td></td>
+</tr>
+<tr>
+<td>country</td>
+<td>Ország</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>COUNTRY</td>
+<td>description</td>
+<td>country_did</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-calendar_name_info">FIGDEF# calendar_name_info</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Calendar</span> <span class="hljs-string">Name</span> <span class="hljs-string">Info</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Plural</span> <span class="hljs-bullet">-</span> <span class="hljs-string">Calendar</span> <span class="hljs-string">Name</span> <span class="hljs-string">Info</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>year_day</td>
+<td>Yearday</td>
+<td>INT</td>
+<td>10</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>name_info_id</td>
+<td>Name Info</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>name_info</td>
+<td></td>
+</tr>
+<tr>
+<td>is_primary</td>
+<td>Is Primary</td>
+<td>BOOL</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>is_starred</td>
+<td>Is Starred</td>
+<td>BOOL</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-name_day">FIGDEF# name_day</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Névnap</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Névnapok</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>first_name</td>
+<td>Keresztnév</td>
+<td>VARCHAR</td>
+<td>64</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>name_day</td>
+<td>Névnap</td>
+<td>VARCHAR</td>
+<td>4</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-name_day_ext">FIGDEF# name_day_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Névnap</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Névnapok</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">name_day</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>person_name_day_ext</td>
+<td>Névnaposok</td>
+<td>List&lt;PersonNameDayExt?&gt;</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>list:person_name_day_ext</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-name_info">FIGDEF# name_info</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Name</span> <span class="hljs-string">Info</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Plural</span> <span class="hljs-bullet">-</span> <span class="hljs-string">Name</span> <span class="hljs-string">Info</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>first_name</td>
+<td>Keresztnév</td>
+<td>TEXT</td>
+<td>65535</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>unaccented_name</td>
+<td>Unaccented Name</td>
+<td>TEXT</td>
+<td>65535</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>commonness</td>
+<td>Commonness</td>
+<td>INT</td>
+<td>10</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>gender</td>
+<td>Gender</td>
+<td>INT</td>
+<td>10</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>origin</td>
+<td>Origin</td>
+<td>TEXT</td>
+<td>65535</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>nicknames</td>
+<td>Nicknames</td>
+<td>TEXT</td>
+<td>65535</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>related_names</td>
+<td>Related Names</td>
+<td>TEXT</td>
+<td>65535</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>opposite_names</td>
+<td>Opposite Names</td>
+<td>TEXT</td>
+<td>65535</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>foreign_names</td>
+<td>Foreign Names</td>
+<td>TEXT</td>
+<td>65535</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+
+            
+            
+        </body>
+        </html>

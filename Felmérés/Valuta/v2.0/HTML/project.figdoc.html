@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Specifik&aacute;ci&oacute;</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="specifikáció">Specifikáció</h1>
+<h2 id="változtatások">Változtatások</h2>
+<table>
+<thead>
+<tr>
+<th>Verzió/Dátum</th>
+<th>Leírás</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.0 - 2024.11.27</td>
+<td>Első verzió</td>
+</tr>
+</tbody>
+</table>
+<h2 id="entitások">Entitások</h2>
+<h3 id="figdef-project">FIGDEF# project</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Projekt</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Projektek</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>SubType</th>
+<th>Hide</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>project_code</td>
+<td>Munkaszám</td>
+<td>VARCHAR</td>
+<td>32</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>name</td>
+<td>Projekt elnevezése</td>
+<td>VARCHAR</td>
+<td>1024</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>company_id</td>
+<td>Cég</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>company</td>
+<td><a href="http://company.id">company.id</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>partner_id</td>
+<td>Partner</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>partner</td>
+<td><a href="http://partner.id">partner.id</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>inst_loc_id</td>
+<td>Telepítési hely</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>inst_loc</td>
+<td>inst_loc.id</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>valid_from_date</td>
+<td>Érvényes-től</td>
+<td>DATE</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>valid_to_date</td>
+<td>Érvényes-ig</td>
+<td>DATE</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>project_date</td>
+<td>Projekt dátuma</td>
+<td>DATE</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>project_status_did</td>
+<td>Projekt állapota</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>project_STATUS</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>settlement_basis_did</td>
+<td>Elszámolás alapja</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>SETTLEMENT_BASIS</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>settlement_frequency_did</td>
+<td>Elszámolás gyakorisága</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>SETTLEMENT_FREQUENCY</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>payment_deadline</td>
+<td>Fizetési határidő</td>
+<td>SMALLINT</td>
+<td>5</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>technical_content</td>
+<td>Műszaki tartalom</td>
+<td>LONGTEXT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>X</td>
+</tr>
+<tr>
+<td>note</td>
+<td>Megjegyzés</td>
+<td>VARCHAR</td>
+<td>2048</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>margin</td>
+<td>Árrés</td>
+<td>DECIMAL</td>
+<td>19</td>
+<td>2</td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>PERCENT</td>
+<td></td>
+</tr>
+<tr>
+<td>hourly_rate</td>
+<td>Óradíj</td>
+<td>DECIMAL</td>
+<td>19</td>
+<td>2</td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>CURRENCY</td>
+<td></td>
+</tr>
+<tr>
+<td>distance_fee</td>
+<td>Távolsági díj</td>
+<td>DECIMAL</td>
+<td>19</td>
+<td>2</td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>CURRENCY</td>
+<td></td>
+</tr>
+<tr>
+<td>departure_fee</td>
+<td>Kiszállási díj</td>
+<td>DECIMAL</td>
+<td>19</td>
+<td>2</td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>CURRENCY</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-project_ext">FIGDEF# project_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Projekt</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Projektek</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">project</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>inst_loc</td>
+<td>Telepítési hely</td>
+<td>InstLoc</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>inst_loc</td>
+<td>name</td>
+<td>inst_loc_id</td>
+</tr>
+<tr>
+<td>project_status</td>
+<td>Projekt állapota</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>project_STATUS</td>
+<td>description</td>
+<td>project_status_did</td>
+</tr>
+<tr>
+<td>project_documents</td>
+<td>íprojekt Document</td>
+<td>List&lt;ProjectDocumentExt?&gt;</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>list:project_document_ext</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>company</td>
+<td>Cég</td>
+<td>Company</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>company</td>
+<td>name</td>
+<td>company_id</td>
+</tr>
+<tr>
+<td>settlement_basis</td>
+<td>Elszámolás alapja</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>SETTLEMENT_BASIS</td>
+<td>description</td>
+<td>settlement_basis_did</td>
+</tr>
+<tr>
+<td>settlement_frequency</td>
+<td>Elszámolás gyakorisága</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>SETTLEMENT_FREQUENCY</td>
+<td>description</td>
+<td>settlement_frequency_did</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-project_from_menu_ext">FIGDEF# project_from_menu_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Projekt</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Projektek</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">project</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>partner</td>
+<td>Partner</td>
+<td>Partner</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>partner</td>
+<td>short_name</td>
+<td>partner_id</td>
+</tr>
+<tr>
+<td>inst_loc_with_partner_ext</td>
+<td>Telepítési hely</td>
+<td>InstLocWithPartnerExt</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>inst_loc_with_partner_ext</td>
+<td>name</td>
+<td>inst_loc_id</td>
+</tr>
+<tr>
+<td>project_status</td>
+<td>Projekt állapota</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>project_STATUS</td>
+<td>description</td>
+<td>project_status_did</td>
+</tr>
+<tr>
+<td>project_documents</td>
+<td>Projekt Document</td>
+<td>List&lt;ProjectDocumentExt?&gt;</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>list:project_document_ext</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>company</td>
+<td>Cég</td>
+<td>Company</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>company</td>
+<td>name</td>
+<td>company_id</td>
+</tr>
+<tr>
+<td>settlement_basis</td>
+<td>Elszámolás alapja</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>SETTLEMENT_BASIS</td>
+<td>description</td>
+<td>settlement_basis_did</td>
+</tr>
+<tr>
+<td>settlement_frequency</td>
+<td>Elszámolás gyakorisága</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>SETTLEMENT_FREQUENCY</td>
+<td>description</td>
+<td>settlement_frequency_did</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-project_by_company_ext">FIGDEF# project_by_company_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Céges</span> <span class="hljs-string">project</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Céges</span> <span class="hljs-string">projectek</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">project</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>inst_loc</td>
+<td>Telepítési hely</td>
+<td>InstLoc</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>inst_loc</td>
+<td>name</td>
+<td>inst_loc_id</td>
+</tr>
+<tr>
+<td>project_status</td>
+<td>Projekt állapota</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>project_STATUS</td>
+<td>description</td>
+<td>project_status_did</td>
+</tr>
+<tr>
+<td>project_documents</td>
+<td>Projekt Document</td>
+<td>List&lt;ProjectDocumentExt?&gt;</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>list:project_document_ext</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>partner</td>
+<td>Partner</td>
+<td>PartnerExt</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>partner_ext</td>
+<td>name</td>
+<td>partner_id</td>
+</tr>
+<tr>
+<td>settlement_basis</td>
+<td>Elszámolás alapja</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>SETTLEMENT_BASIS</td>
+<td>description</td>
+<td>settlement_basis_did</td>
+</tr>
+<tr>
+<td>settlement_frequency</td>
+<td>Elszámolás gyakorisága</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>SETTLEMENT_FREQUENCY</td>
+<td>description</td>
+<td>settlement_frequency_did</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-project_document">FIGDEF# project_document</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Projekt</span> <span class="hljs-string">dokumentum</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Projekt</span> <span class="hljs-string">dokumentumok</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>project_id</td>
+<td>Projekt</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>project</td>
+<td><a href="http://project.id">project.id</a></td>
+</tr>
+<tr>
+<td>document_id</td>
+<td>Dokumentum</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>document</td>
+<td><a href="http://document.id">document.id</a></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-project_document_ext">FIGDEF# project_document_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Projekt</span> <span class="hljs-string">dokumentum</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Projekt</span> <span class="hljs-string">dokumentumok</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">project_document</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>document</td>
+<td>Dokumentum</td>
+<td>DocumentExt</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>document_ext</td>
+<td>name</td>
+<td>document_id</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-settlement">FIGDEF# settlement</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Elszámolás</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Elszámolások</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>project_id</td>
+<td>Projekt</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>project</td>
+<td><a href="http://project.id">project.id</a></td>
+</tr>
+<tr>
+<td>note</td>
+<td>Megjegyzés</td>
+<td>VARCHAR</td>
+<td>2048</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-settlement_ext">FIGDEF# settlement_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Elszámolás</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Elszámolások</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">settlement</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>project</td>
+<td>Projekt</td>
+<td>Project</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>project</td>
+<td>name</td>
+<td>project_id</td>
+</tr>
+</tbody>
+</table>
+
+            
+            
+        </body>
+        </html>

@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Valutav&aacute;lt&oacute; Rendszer Tranzakci&oacute;s Folyamatai</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="valutaváltó-rendszer-tranzakciós-folyamatai">Valutaváltó Rendszer Tranzakciós Folyamatai</h1>
+<h2 id="bevezetés">Bevezetés</h2>
+<p>Ez a dokumentum a valutaváltó rendszer tranzakciós folyamatait írja le részletesen, beleértve a különböző tranzakciótípusok kezelését, a
+jutalékszámítást és a tranzakciók ellenőrzését.</p>
+<h2 id="valutaváltási-tranzakciók-típusai">Valutaváltási tranzakciók típusai</h2>
+<p>A rendszer a következő tranzakciótípusokat támogatja a <code>TRANSACTION_TYPE</code> szótár alapján (a teljes szótár a rendszerben található, itt csak a főbb
+típusokat szerepeltetjük):</p>
+<ol>
+<li><strong>Valutaváltás</strong> - Standard valutaváltási művelet</li>
+<li><strong>Visszaváltás</strong> - Korábbi váltásból származó valuta visszaváltása</li>
+<li><strong>Nagytételű váltás</strong> - Speciális kezelést igénylő, nagy összegű tranzakció</li>
+<li><strong>Készpénzbefizetés</strong> - Pénztár feltöltése</li>
+<li><strong>Készpénzkifizetés</strong> - Pénzkészlet csökkentése (pl. szállítmány előkészítés)</li>
+</ol>
+<h2 id="általános-tranzakciós-folyamat">Általános tranzakciós folyamat</h2>
+<h3 id="tranzakció-indítása">Tranzakció indítása</h3>
+<ol>
+<li>A pénztáros az ügyfél kérésére új tranzakciót (<code>transaction</code>) indít.</li>
+<li>A rendszer automatikusan generál egy egyedi tranzakció számot (<code>transaction_number</code>).</li>
+<li>A pénztáros kiválasztja a tranzakció típusát (<code>transaction_type_did</code>).</li>
+<li>Megadja a forrás devizanemet (<code>source_currency_id</code>) és összeget (<code>source_amount</code>).</li>
+<li>Kiválasztja a cél devizanemet (<code>target_currency_id</code>).</li>
+</ol>
+<h3 id="árfolyam-meghatározása">Árfolyam meghatározása</h3>
+<ol>
+<li>
+<p>A rendszer meghatározza az alkalmazandó árfolyamot a következő prioritás szerint:</p>
+<ul>
+<li>Fiókspecifikus árfolyam (<code>branch_exchange_rate_id</code>)</li>
+<li>Fiókcsoport árfolyam (<code>branch_group_exchange_rate_id</code>)</li>
+<li>Központi árfolyam (<code>exchange_rate_id</code>)</li>
+</ul>
+</li>
+<li>
+<p>Az árfolyam típusa a tranzakció irányától függ:</p>
+<ul>
+<li>Vétel esetén a vételi árfolyam (<code>buy_rate</code>)</li>
+<li>Eladás esetén az eladási árfolyam (<code>sell_rate</code>)</li>
+<li>Speciális esetekben a középárfolyam (<code>mid_rate</code>)</li>
+</ul>
+</li>
+<li>
+<p>A rendszer kiszámítja és megjeleníti a cél összeget (<code>target_amount</code>).</p>
+</li>
+</ol>
+<h3 id="jutalék-számítása">Jutalék számítása</h3>
+<ol>
+<li>
+<p>A rendszer a beállított jutalékszabályok alapján kiszámítja a tranzakciós jutalékot (<code>fee_amount</code>).</p>
+</li>
+<li>
+<p>A jutalék függhet:</p>
+<ul>
+<li>A tranzakció típusától</li>
+<li>Az összeg nagyságától</li>
+<li>Az ügyfél típusától (törzsügyfél kedvezményt kaphat)</li>
+<li>A devizanemtől</li>
+<li>A fiók egyedi beállításaitól</li>
+</ul>
+</li>
+<li>
+<p>A jutalék devizaneme (<code>fee_currency_id</code>) külön beállítható, általában:</p>
+<ul>
+<li>A forrás devizanem</li>
+<li>A cél devizanem</li>
+<li>A fiók alap devizaneme</li>
+</ul>
+</li>
+</ol>
+<h3 id="bankjegy-részletek-kezelése">Bankjegy részletek kezelése</h3>
+<ol>
+<li>
+<p>A pénztáros rögzíti a tranzakcióhoz tartozó bankjegy részleteket (<code>transaction_banknote</code>):</p>
+<ul>
+<li>A bevételezett bankjegyek esetén (<code>is_input</code> = true)</li>
+<li>A kiadott bankjegyek esetén (<code>is_input</code> = false)</li>
+</ul>
+</li>
+<li>
+<p>Minden bankjegyre megadja:</p>
+<ul>
+<li>Devizanem (<code>currency_id</code>)</li>
+<li>Címlet (<code>denomination</code>)</li>
+<li>Mennyiség (<code>quantity</code>)</li>
+<li>Érme-e (<code>is_coin</code>)</li>
+</ul>
+</li>
+<li>
+<p>A rendszer ellenőrzi, hogy a megadott bankjegyek összege megegyezik-e a tranzakció összegével.</p>
+</li>
+</ol>
+<h3 id="ügyfél-azonosítás">Ügyfél-azonosítás</h3>
+<ol>
+<li>A rendszer ellenőrzi, hogy a tranzakció összege meghaladja-e az ügyfél-azonosítási limitet.</li>
+<li>Limit feletti összeg esetén kötelező az ügyfél azonosítása és adatainak rögzítése.</li>
+<li>A pénztáros rögzíti vagy kiválasztja az ügyfél adatait (<code>customer_id</code>).</li>
+<li>Nagy összegű vagy gyanús tranzakció esetén fokozott ügyfél-átvilágítás szükséges.</li>
+</ol>
+<h3 id="tranzakció-véglegesítése">Tranzakció véglegesítése</h3>
+<ol>
+<li>A pénztáros ellenőrzi a tranzakció részleteit.</li>
+<li>Az ügyfél elfogadja az árfolyamot és a jutalékot.</li>
+<li>A pénztáros véglegesíti a tranzakciót, a státusz (<code>status_did</code>) &quot;COMPLETED&quot;-re változik.</li>
+<li>A rendszer:
+<ul>
+<li>Frissíti a bankjegykészletet (<code>banknote_inventory</code>)</li>
+<li>Naplózza a tranzakciót</li>
+<li>Nyomtatja a bizonylatot</li>
+</ul>
+</li>
+</ol>
+<h2 id="speciális-tranzakciós-folyamatok">Speciális tranzakciós folyamatok</h2>
+<h3 id="nagytételű-váltás">Nagytételű váltás</h3>
+<ol>
+<li>Egy előre meghatározott limit feletti tranzakciók nagytételű váltásnak minősülnek.</li>
+<li>A nagytételű váltás további jóváhagyást igényel egy supervisortól vagy managertől.</li>
+<li>A jóváhagyási folyamat során ellenőrzik:
+<ul>
+<li>A bankjegykészlet elegendőségét</li>
+<li>Az ügyfél-azonosítás megfelelőségét</li>
+<li>A pénzmosás-gyanús jeleket</li>
+</ul>
+</li>
+<li>A jóváhagyást követően a tranzakció a normál folyamat szerint folytatódik.</li>
+</ol>
+<h3 id="kedvezményes-árfolyam-alkalmazása">Kedvezményes árfolyam alkalmazása</h3>
+<ol>
+<li>
+<p>Bizonyos ügyfelek (törzsügyfelek, VIP ügyfelek) jogosultak lehetnek kedvezményes árfolyamra.</p>
+</li>
+<li>
+<p>A pénztáros kiválaszthatja a kedvezmény okát (<code>OVERRIDE_REASON</code>):</p>
+<ul>
+<li>SPECIAL_CUSTOMER - Kiemelt ügyfél</li>
+<li>BUSINESS_NEED - Üzleti érdek</li>
+<li>MANAGEMENT_APPROVAL - Vezetői jóváhagyás</li>
+</ul>
+</li>
+<li>
+<p>A kedvezményes árfolyam alkalmazása jóváhagyási szintet (<code>APPROVAL_LEVEL</code>) igényel:</p>
+<ul>
+<li>CASHIER - Kisebb kedvezmények esetén</li>
+<li>SUPERVISOR - Közepes kedvezmények esetén</li>
+<li>MANAGER - Jelentősebb kedvezmények esetén</li>
+<li>DIRECTOR - Különleges esetekben</li>
+</ul>
+</li>
+<li>
+<p>A jóváhagyást követően a kedvezményes árfolyam alkalmazható a tranzakcióra.</p>
+</li>
+</ol>
+<h3 id="tranzakció-sztornózása">Tranzakció sztornózása</h3>
+<ol>
+<li>
+<p>Hibás tranzakció esetén a pénztáros sztornózhatja a tranzakciót.</p>
+</li>
+<li>
+<p>Sztornózás csak az alábbi feltételek mellett lehetséges:</p>
+<ul>
+<li>A tranzakció még nem része a napi zárásnak</li>
+<li>A sztornózást megfelelő jogosultsággal rendelkező személy végzi</li>
+<li>A sztornózás okát kötelezően rögzítik</li>
+</ul>
+</li>
+<li>
+<p>A sztornózás új tranzakciót hoz létre ellentétes előjellel, ami a korábbi tranzakcióra hivatkozik.</p>
+</li>
+<li>
+<p>A rendszer frissíti a bankjegykészletet és naplózza a sztornó műveletet.</p>
+</li>
+</ol>
+<h2 id="tranzakciók-ellenőrzése-és-jelentéskészítés">Tranzakciók ellenőrzése és jelentéskészítés</h2>
+<h3 id="napi-ellenőrzés">Napi ellenőrzés</h3>
+<ol>
+<li>
+<p>A napi zárás során a rendszer ellenőrzi az összes tranzakciót.</p>
+</li>
+<li>
+<p>Az ellenőrzés kiterjed:</p>
+<ul>
+<li>A tranzakciók összegének egyezőségére</li>
+<li>A bankjegykészlet változásainak helyességére</li>
+<li>A jutalékok megfelelő számítására</li>
+</ul>
+</li>
+<li>
+<p>Eltérés esetén a záró riport hibát jelez, és manuális ellenőrzés szükséges.</p>
+</li>
+</ol>
+<h3 id="időszaki-jelentések">Időszaki jelentések</h3>
+<ol>
+<li>
+<p>A rendszer különböző időszakokra (napi, heti, havi - <code>PERIOD</code>) készít tranzakciós jelentéseket.</p>
+</li>
+<li>
+<p>A jelentések tartalmazhatnak:</p>
+<ul>
+<li>Forgalmi adatokat devizanemenként</li>
+<li>Jutalékbevétel kimutatást</li>
+<li>Árfolyamnyereség-elemzést</li>
+<li>Pénztáros teljesítmény-statisztikákat</li>
+</ul>
+</li>
+<li>
+<p>A jelentéseket a megfelelő jogosultsággal rendelkező vezetők tekinthetik meg.</p>
+</li>
+</ol>
+<h3 id="hatósági-jelentéskészítés">Hatósági jelentéskészítés</h3>
+<ol>
+<li>
+<p>A rendszer támogatja a hatósági jelentések automatikus generálását.</p>
+</li>
+<li>
+<p>A jelentések kitérnek:</p>
+<ul>
+<li>Nagy összegű tranzakciókra</li>
+<li>Gyanús tranzakciós mintázatokra</li>
+<li>Limit feletti ügyféltranzakciókra</li>
+</ul>
+</li>
+<li>
+<p>A hatósági jelentéseket a megfelelő jogosultsággal rendelkező compliance munkatársak kezelik és továbbítják.</p>
+</li>
+</ol>
+
+            
+            
+        </body>
+        </html>

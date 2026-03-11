@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Load2fit Rendszer - Modul- &eacute;s Men&uuml;strukt&uacute;ra</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="load2fit-rendszer---modul--és-menüstruktúra">Load2fit Rendszer - Modul- és Menüstruktúra</h1>
+<h2 id="bevezetés">Bevezetés</h2>
+<p>Ez a dokumentum a Load2fit szállítmányozási bróker rendszer javasolt modul- és menüstruktúráját írja le. A rendszer két különálló alkalmazásból áll:</p>
+<ol>
+<li><strong>Központi Adminisztrációs Alkalmazás</strong>: A rendszer felügyeletét, adminisztrációját és a háttérfolyamatok kezelését biztosítja.</li>
+<li><strong>Megbízói és Fuvarozói Alkalmazás</strong>: A megbízók és fuvarozók számára biztosít felületet a megbízások és ajánlatok kezelésére.</li>
+</ol>
+<p>Mindkét alkalmazás CRUD-alapú (Create-Read-Update-Delete) karbantartókból épül fel, de a komplex üzleti folyamatokat és felhasználói eseteket is támogatja.</p>
+<h2 id="modulstruktúra">Modulstruktúra</h2>
+<p>A rendszer két alkalmazása az alábbi fő modulokból épül fel:</p>
+<h2 id="a-központi-adminisztrációs-alkalmazás-moduljai">A. Központi Adminisztrációs Alkalmazás moduljai</h2>
+<h3 id="1-felhasználókezelési-és-ellenőrzési-modul">1. Felhasználókezelési és ellenőrzési modul</h3>
+<p><strong>Cél:</strong> A rendszer felhasználóinak (Fuvarozók és Megbízók) adminisztrációja, ellenőrzése és jóváhagyása.</p>
+<p><strong>Főbb komponensek:</strong></p>
+<ul>
+<li>Felhasználó ellenőrzés és jóváhagyás (<code>user_verification</code>)</li>
+<li>Felhasználói tevékenység napló (<code>user_activity_log</code>)</li>
+<li>Felhasználói értékelések moderálása (<code>user_rating_moderation</code>)</li>
+<li>Felhasználói adatok auditálása (<code>user_data_audit</code>)</li>
+</ul>
+<h3 id="2-jutalék-és-fizetés-adminisztrációs-modul">2. Jutalék és fizetés adminisztrációs modul</h3>
+<p><strong>Cél:</strong> A jutalékok kezelése, számlázás, fizetések nyilvántartása és ellenőrzése.</p>
+<p><strong>Főbb komponensek:</strong></p>
+<ul>
+<li>Jutalék díjszabás karbantartás (<code>commission_rate</code>)</li>
+<li>Jutalék kalkuláció ellenőrzés (<code>commission_calculation_verification</code>)</li>
+<li>Számla kiállítás és kezelés (<code>invoice_management</code>)</li>
+<li>Fizetés nyilvántartás és ellenőrzés (<code>payment_tracking</code>)</li>
+<li>Fizetési emlékeztető kezelés (<code>payment_reminder</code>)</li>
+<li>Pénzügyi statisztikák (<code>financial_statistics</code>)</li>
+</ul>
+<h3 id="3-reklamáció-kezelési-modul">3. Reklamáció kezelési modul</h3>
+<p><strong>Cél:</strong> A felhasználói reklamációk adminisztrációja, feldolgozása és nyomon követése.</p>
+<p><strong>Főbb komponensek:</strong></p>
+<ul>
+<li>Reklamáció feldolgozás (<code>complaint_processing</code>)</li>
+<li>Reklamáció eszkaláció (<code>complaint_escalation</code>)</li>
+<li>Reklamáció státuszkövetés (<code>complaint_status_tracking</code>)</li>
+<li>Reklamáció statisztikák (<code>complaint_statistics</code>)</li>
+<li>Minőségbiztosítás (<code>quality_assurance</code>)</li>
+</ul>
+<h3 id="4-jelentés-és-elemzés-modul">4. Jelentés és elemzés modul</h3>
+<p><strong>Cél:</strong> Átfogó elemzések, kimutatások, jelentések készítése a rendszer működéséről.</p>
+<p><strong>Főbb komponensek:</strong></p>
+<ul>
+<li>Forgalmi jelentések (<code>traffic_reports</code>)</li>
+<li>Bevétel jelentések (<code>revenue_reports</code>)</li>
+<li>Felhasználói aktivitás jelentések (<code>user_activity_reports</code>)</li>
+<li>Teljesítmény-elemzések (<code>performance_analysis</code>)</li>
+<li>Piaci trendek elemzése (<code>market_trend_analysis</code>)</li>
+<li>Értékelési statisztikák (<code>rating_statistics</code>)</li>
+</ul>
+<h3 id="5-rendszeradminisztráció-modul">5. Rendszeradminisztráció modul</h3>
+<p><strong>Cél:</strong> A rendszer üzemeltetésével kapcsolatos adminisztratív feladatok ellátása.</p>
+<p><strong>Főbb komponensek:</strong></p>
+<ul>
+<li>Rendszerfelhasználó kezelés (<code>system_user</code>)</li>
+<li>Jogosultságkezelés (<code>permission</code>)</li>
+<li>Rendszerparaméterek beállítása (<code>system_parameter</code>)</li>
+<li>Naplóelemzés (<code>log_analysis</code>)</li>
+<li>Biztonsági mentések kezelése (<code>backup_management</code>)</li>
+<li>Hírlevél kezelés (<code>newsletter</code>)</li>
+<li>Rendszermonitorozás (<code>system_monitoring</code>)</li>
+</ul>
+<h2 id="b-megbízói-és-fuvarozói-alkalmazás-moduljai">B. Megbízói és Fuvarozói Alkalmazás moduljai</h2>
+<h3 id="1-felhasználói-profil-modul">1. Felhasználói profil modul</h3>
+<p><strong>Cél:</strong> A felhasználók (Fuvarozók és Megbízók) saját adatainak kezelése és profilbeállítások.</p>
+<p><strong>Főbb komponensek:</strong></p>
+<ul>
+<li>Fuvarozó profil kezelés (<code>carrier_profile</code>)</li>
+<li>Megbízó profil kezelés (<code>client_profile</code>)</li>
+<li>Felhasználói értékelések (<code>user_rating</code>)</li>
+<li>Felhasználói preferenciák (<code>user_preferences</code>)</li>
+<li>Értesítési beállítások (<code>notification_settings</code>)</li>
+</ul>
+<h3 id="2-megbízás-modul">2. Megbízás modul</h3>
+<p><strong>Cél:</strong> A szállítási megbízások kezelése, publikálása, keresése.</p>
+<p><strong>Főbb komponensek:</strong></p>
+<ul>
+<li>Megbízás karbantartás (<code>assignment</code>)</li>
+<li>Megbízás publikálás (<code>assignment_publication</code>)</li>
+<li>Megbízás keresés (<code>assignment_search</code>)</li>
+<li>Megbízás sablon kezelés (<code>assignment_template</code>)</li>
+<li>Megbízás státuszkövetés (<code>assignment_status_tracking</code>)</li>
+<li>Kooperatív megbízás kezelés (<code>cooperative_assignment</code>)</li>
+</ul>
+<h3 id="3-ajánlat-modul">3. Ajánlat modul</h3>
+<p><strong>Cél:</strong> A megbízásokra adott ajánlatok kezelése, elbírálása, elfogadása.</p>
+<p><strong>Főbb komponensek:</strong></p>
+<ul>
+<li>Ajánlat karbantartás (<code>offer</code>)</li>
+<li>Ajánlat elbírálás (<code>offer_evaluation</code>)</li>
+<li>Ajánlat elfogadás (<code>offer_acceptance</code>)</li>
+<li>Ajánlat visszaigazolás (<code>offer_confirmation</code>)</li>
+<li>Ajánlat módosítás kérés (<code>offer_modification_request</code>)</li>
+<li>Ajánlat státuszkövetés (<code>offer_status_tracking</code>)</li>
+</ul>
+<h3 id="4-fizetés-és-jutalék-felhasználói-modul">4. Fizetés és jutalék felhasználói modul</h3>
+<p><strong>Cél:</strong> A felhasználók számára releváns fizetési és jutalék információk kezelése.</p>
+<p><strong>Főbb komponensek:</strong></p>
+<ul>
+<li>Jutalék áttekintés (<code>commission_overview</code>)</li>
+<li>Fizetési információk (<code>payment_information</code>)</li>
+<li>Számla megtekintés (<code>invoice_view</code>)</li>
+<li>Fizetési műveletek (<code>payment_operations</code>)</li>
+</ul>
+<h3 id="5-felhasználói-reklamáció-modul">5. Felhasználói reklamáció modul</h3>
+<p><strong>Cél:</strong> A felhasználók által kezdeményezett reklamációk kezelése.</p>
+<p><strong>Főbb komponensek:</strong></p>
+<ul>
+<li>Reklamáció benyújtás (<code>complaint_submission</code>)</li>
+<li>Reklamáció nyomon követés (<code>complaint_tracking</code>)</li>
+<li>Reklamáció válaszok megtekintése (<code>complaint_response_view</code>)</li>
+<li>Reklamáció lezárás (<code>complaint_closure</code>)</li>
+</ul>
+<h2 id="menüstruktúra">Menüstruktúra</h2>
+<p>A rendszer két különálló alkalmazásának menüstruktúrája az alábbiakban kerül bemutatásra:</p>
+<h2 id="a-központi-adminisztrációs-alkalmazás-menüstruktúrája">A. Központi Adminisztrációs Alkalmazás menüstruktúrája</h2>
+<h3 id="főmenü">Főmenü</h3>
+<ol>
+<li><strong>Felhasználók adminisztrációja</strong> - Felhasználók kezelése és ellenőrzése</li>
+<li><strong>Jutalékok és fizetések</strong> - Pénzügyi műveletek adminisztrációja</li>
+<li><strong>Reklamációk kezelése</strong> - Reklamációk feldolgozása</li>
+<li><strong>Jelentések és elemzések</strong> - Riportok, elemzések</li>
+<li><strong>Rendszeradminisztráció</strong> - Rendszerbeállítások és karbantartás</li>
+</ol>
+<h3 id="almenük">Almenük</h3>
+<h4 id="1-felhasználók-adminisztrációja">1. Felhasználók adminisztrációja</h4>
+<ul>
+<li>
+<p><strong>Fuvarozók adminisztrációja</strong></p>
+<ul>
+<li>Fuvarozó lista</li>
+<li>Fuvarozó részletes adatok</li>
+<li>Fuvarozó jóváhagyás</li>
+<li>Fuvarozó státuszváltoztatás</li>
+<li>Fuvarozó értékelések moderálása</li>
+<li>Fuvarozó tevékenység napló</li>
+</ul>
+</li>
+<li>
+<p><strong>Megbízók adminisztrációja</strong></p>
+<ul>
+<li>Megbízó lista</li>
+<li>Megbízó részletes adatok</li>
+<li>Megbízó jóváhagyás</li>
+<li>Megbízó státuszváltoztatás</li>
+<li>Megbízó értékelések moderálása</li>
+<li>Megbízó tevékenység napló</li>
+</ul>
+</li>
+<li>
+<p><strong>Felhasználó ellenőrzés</strong></p>
+<ul>
+<li>Függőben lévő ellenőrzések</li>
+<li>Ellenőrzési napló</li>
+<li>API kapcsolatok állapota</li>
+<li>Manuális ellenőrzés</li>
+<li>Felhasználói adatok auditálása</li>
+</ul>
+</li>
+<li>
+<p><strong>Értékelések moderálása</strong></p>
+<ul>
+<li>Értékelés lista</li>
+<li>Értékelés moderálás</li>
+<li>Értékelési statisztikák</li>
+<li>Problémás értékelések kezelése</li>
+</ul>
+</li>
+</ul>
+<h4 id="2-jutalékok-és-fizetések">2. Jutalékok és fizetések</h4>
+<ul>
+<li>
+<p><strong>Jutalék adminisztráció</strong></p>
+<ul>
+<li>Jutalék lista</li>
+<li>Jutalék részletek</li>
+<li>Jutalék számítás ellenőrzés</li>
+<li>Jutalék korrekció</li>
+</ul>
+</li>
+<li>
+<p><strong>Jutalék díjszabás</strong></p>
+<ul>
+<li>Díjszabás lista</li>
+<li>Új díjszabás</li>
+<li>Díjszabás szerkesztése</li>
+<li>Díjszabás érvényesítése</li>
+<li>Díjszabás-történet</li>
+</ul>
+</li>
+<li>
+<p><strong>Számlázás</strong></p>
+<ul>
+<li>Számla lista</li>
+<li>Számla részletek</li>
+<li>Számla generálás</li>
+<li>Számla küldés</li>
+<li>Számla sztornózás</li>
+</ul>
+</li>
+<li>
+<p><strong>Fizetések adminisztrációja</strong></p>
+<ul>
+<li>Fizetés lista</li>
+<li>Fizetés ellenőrzése</li>
+<li>Fizetési emlékeztetők kezelése</li>
+<li>Fizetési statisztikák</li>
+<li>Késedelmes fizetések kezelése</li>
+</ul>
+</li>
+</ul>
+<h4 id="3-reklamációk-kezelése">3. Reklamációk kezelése</h4>
+<ul>
+<li>
+<p><strong>Reklamáció adminisztráció</strong></p>
+<ul>
+<li>Reklamáció lista</li>
+<li>Reklamáció részletek</li>
+<li>Reklamáció státuszkövetés</li>
+<li>Reklamáció lezárása</li>
+</ul>
+</li>
+<li>
+<p><strong>Reklamáció feldolgozás</strong></p>
+<ul>
+<li>Feldolgozandó reklamációk</li>
+<li>Reklamáció hozzárendelése</li>
+<li>Reklamáció megválaszolása</li>
+<li>Reklamáció eszkalálása</li>
+<li>Minőségbiztosítás</li>
+</ul>
+</li>
+<li>
+<p><strong>Reklamáció statisztikák</strong></p>
+<ul>
+<li>Reklamáció típusok</li>
+<li>Megoldási idők</li>
+<li>Elégedettségi mutatók</li>
+<li>Reklamációs trendek</li>
+</ul>
+</li>
+</ul>
+<h4 id="4-jelentések-és-elemzések">4. Jelentések és elemzések</h4>
+<ul>
+<li>
+<p><strong>Forgalmi jelentések</strong></p>
+<ul>
+<li>Napi forgalom</li>
+<li>Heti forgalom</li>
+<li>Havi forgalom</li>
+<li>Éves forgalom</li>
+<li>Egyedi időszak elemzése</li>
+</ul>
+</li>
+<li>
+<p><strong>Bevétel jelentések</strong></p>
+<ul>
+<li>Jutalékbevételek</li>
+<li>Bevétel előrejelzés</li>
+<li>Bevétel elemzés</li>
+<li>Pénzügyi teljesítmény mutatók</li>
+</ul>
+</li>
+<li>
+<p><strong>Felhasználói jelentések</strong></p>
+<ul>
+<li>Felhasználói aktivitás</li>
+<li>Új regisztrációk</li>
+<li>Felhasználói elégedettség</li>
+<li>Értékelési trendek</li>
+<li>Felhasználói viselkedés elemzése</li>
+</ul>
+</li>
+<li>
+<p><strong>Teljesítmény jelentések</strong></p>
+<ul>
+<li>Rendszerteljesítmény</li>
+<li>Válaszidők</li>
+<li>Hibaarányok</li>
+<li>Terhelési statisztikák</li>
+</ul>
+</li>
+<li>
+<p><strong>Piaci elemzések</strong></p>
+<ul>
+<li>Piaci trendek</li>
+<li>Árazási trendek</li>
+<li>Szezonális minták</li>
+<li>Versenytárs elemzés</li>
+<li>Piaci előrejelzések</li>
+</ul>
+</li>
+</ul>
+<h4 id="5-rendszeradminisztráció">5. Rendszeradminisztráció</h4>
+<ul>
+<li>
+<p><strong>Rendszerfelhasználó kezelés</strong></p>
+<ul>
+<li>Felhasználók listája</li>
+<li>Új felhasználó létrehozása</li>
+<li>Felhasználó szerkesztése</li>
+<li>Felhasználó deaktiválása/aktiválása</li>
+<li>Jelszókezelés</li>
+</ul>
+</li>
+<li>
+<p><strong>Jogosultságkezelés</strong></p>
+<ul>
+<li>Szerepkörök karbantartása</li>
+<li>Jogosultságok kiosztása</li>
+<li>Jogosultság-felülvizsgálat</li>
+<li>Jogosultság audit</li>
+</ul>
+</li>
+<li>
+<p><strong>Rendszerparaméterek</strong></p>
+<ul>
+<li>Általános paraméterek</li>
+<li>Jutalék-paraméterek</li>
+<li>Értesítési paraméterek</li>
+<li>Biztonsági paraméterek</li>
+<li>Integrációs paraméterek</li>
+</ul>
+</li>
+<li>
+<p><strong>Hírlevél kezelés</strong></p>
+<ul>
+<li>Hírlevél lista</li>
+<li>Új hírlevél</li>
+<li>Hírlevél szerkesztése</li>
+<li>Hírlevél küldése</li>
+<li>Hírlevél statisztikák</li>
+</ul>
+</li>
+<li>
+<p><strong>Rendszernapló</strong></p>
+<ul>
+<li>Napló megtekintése</li>
+<li>Audit napló</li>
+<li>Biztonsági események</li>
+<li>Napló exportálása</li>
+<li>Napló elemzés</li>
+</ul>
+</li>
+<li>
+<p><strong>Rendszer-karbantartás</strong></p>
+<ul>
+<li>Biztonsági mentés</li>
+<li>Adatbázis-karbantartás</li>
+<li>Verzióinformációk</li>
+<li>Rendszerteljesítmény</li>
+<li>Rendszermonitorozás</li>
+</ul>
+</li>
+</ul>
+<h2 id="b-megbízói-és-fuvarozói-alkalmazás-menüstruktúrája">B. Megbízói és Fuvarozói Alkalmazás menüstruktúrája</h2>
+<h3 id="főmenü-1">Főmenü</h3>
+<ol>
+<li><strong>Profil</strong> - Felhasználói profil kezelése</li>
+<li><strong>Megbízások</strong> - Megbízások kezelése</li>
+<li><strong>Ajánlatok</strong> - Ajánlatok kezelése</li>
+<li><strong>Pénzügyek</strong> - Jutalékok és fizetések kezelése</li>
+<li><strong>Reklamációk</strong> - Felhasználói reklamációk kezelése</li>
+</ol>
+<h3 id="almenük-1">Almenük</h3>
+<h4 id="1-profil">1. Profil</h4>
+<ul>
+<li>
+<p><strong>Saját adatok</strong> - Profil adatok kezelése</p>
+<ul>
+<li>Profil megtekintése</li>
+<li>Profil szerkesztése</li>
+<li>Jelszó módosítása</li>
+<li>Értesítési beállítások</li>
+</ul>
+</li>
+<li>
+<p><strong>Értékelések</strong> - Felhasználói értékelések</p>
+<ul>
+<li>Kapott értékelések</li>
+<li>Adott értékelések</li>
+<li>Új értékelés írása</li>
+<li>Értékelési statisztikák</li>
+</ul>
+</li>
+<li>
+<p><strong>Preferenciák</strong> - Felhasználói beállítások</p>
+<ul>
+<li>Megbízás preferenciák</li>
+<li>Ajánlat preferenciák</li>
+<li>Értesítési preferenciák</li>
+<li>Megjelenítési beállítások</li>
+</ul>
+</li>
+</ul>
+<h4 id="2-megbízások">2. Megbízások</h4>
+<ul>
+<li>
+<p><strong>Megbízás kezelés</strong> - Megbízások karbantartása</p>
+<ul>
+<li>Megbízás lista</li>
+<li>Új megbízás</li>
+<li>Megbízás szerkesztése</li>
+<li>Megbízás publikálása</li>
+<li>Megbízás visszavonása</li>
+<li>Megbízás lezárása</li>
+</ul>
+</li>
+<li>
+<p><strong>Megbízás keresés</strong> - Megbízások keresése</p>
+<ul>
+<li>Egyszerű keresés</li>
+<li>Részletes keresés</li>
+<li>Keresési sablonok</li>
+<li>Keresési előzmények</li>
+<li>Mentett keresések</li>
+</ul>
+</li>
+<li>
+<p><strong>Kooperatív megbízások</strong> - Több fuvarozós megbízások</p>
+<ul>
+<li>Kooperatív megbízás lista</li>
+<li>Kooperatív megbízás létrehozása</li>
+<li>Kooperatív megbízás részletei</li>
+<li>Résztvevők kezelése</li>
+</ul>
+</li>
+<li>
+<p><strong>Megbízás sablonok</strong> - Gyakran használt sablonok</p>
+<ul>
+<li>Sablon lista</li>
+<li>Új sablon</li>
+<li>Sablon szerkesztése</li>
+<li>Sablon törlése</li>
+<li>Sablon használata</li>
+</ul>
+</li>
+</ul>
+<h4 id="3-ajánlatok">3. Ajánlatok</h4>
+<ul>
+<li>
+<p><strong>Ajánlat kezelés</strong> - Ajánlatok karbantartása</p>
+<ul>
+<li>Ajánlat lista</li>
+<li>Új ajánlat</li>
+<li>Ajánlat szerkesztése</li>
+<li>Ajánlat visszavonása</li>
+<li>Ajánlat másolása</li>
+</ul>
+</li>
+<li>
+<p><strong>Ajánlat elbírálás</strong> - Beérkezett ajánlatok elbírálása</p>
+<ul>
+<li>Elbírálandó ajánlatok</li>
+<li>Ajánlat elfogadása</li>
+<li>Ajánlat elutasítása</li>
+<li>Módosítási kérés küldése</li>
+<li>Ajánlatok összehasonlítása</li>
+</ul>
+</li>
+<li>
+<p><strong>Ajánlat visszaigazolás</strong> - Elfogadott ajánlatok visszaigazolása</p>
+<ul>
+<li>Visszaigazolásra váró ajánlatok</li>
+<li>Visszaigazolás</li>
+<li>Visszaigazolás elutasítása</li>
+<li>Feltételek egyeztetése</li>
+</ul>
+</li>
+<li>
+<p><strong>Ajánlat statisztikák</strong> - Ajánlatokkal kapcsolatos statisztikák</p>
+<ul>
+<li>Elfogadási arány</li>
+<li>Átlagos ajánlati ár</li>
+<li>Ajánlati trendek</li>
+<li>Személyes teljesítmény</li>
+</ul>
+</li>
+</ul>
+<h4 id="4-pénzügyek">4. Pénzügyek</h4>
+<ul>
+<li>
+<p><strong>Jutalék áttekintés</strong></p>
+<ul>
+<li>Aktuális jutalékok</li>
+<li>Jutalék előzmények</li>
+<li>Jutalék részletek</li>
+<li>Jutalék kalkulátor</li>
+</ul>
+</li>
+<li>
+<p><strong>Fizetések</strong></p>
+<ul>
+<li>Fizetendő tételek</li>
+<li>Fizetési előzmények</li>
+<li>Fizetési mód beállítása</li>
+<li>Fizetési értesítések</li>
+</ul>
+</li>
+<li>
+<p><strong>Számlák</strong></p>
+<ul>
+<li>Számla lista</li>
+<li>Számla részletek</li>
+<li>Számla letöltése</li>
+<li>Számla fizetése</li>
+</ul>
+</li>
+</ul>
+<h4 id="5-reklamációk">5. Reklamációk</h4>
+<ul>
+<li>
+<p><strong>Reklamáció kezelés</strong></p>
+<ul>
+<li>Reklamáció lista</li>
+<li>Új reklamáció</li>
+<li>Reklamáció részletek</li>
+<li>Reklamáció lezárása</li>
+</ul>
+</li>
+<li>
+<p><strong>Reklamáció nyomon követés</strong></p>
+<ul>
+<li>Folyamatban lévő reklamációk</li>
+<li>Reklamáció válaszok</li>
+<li>Reklamáció státuszok</li>
+<li>Reklamáció eszkalálás</li>
+</ul>
+</li>
+</ul>
+<h2 id="crud-komponensek">CRUD komponensek</h2>
+<p>A rendszer CRUD (Create-Read-Update-Delete) műveletek köré szervezett karbantartó komponensekből épül fel, amelyek az alábbi sablon szerint működnek minden entitás esetében:</p>
+<h3 id="lista-nézet">Lista nézet</h3>
+<ul>
+<li>Szűrési és keresési lehetőségek</li>
+<li>Rendezési lehetőségek</li>
+<li>Lapozás nagy mennyiségű adat esetén</li>
+<li>Műveletek: új létrehozása, megtekintés, szerkesztés, törlés/inaktiválás</li>
+</ul>
+<h3 id="részletes-nézet">Részletes nézet</h3>
+<ul>
+<li>Entitás összes adatának megtekintése</li>
+<li>Kapcsolódó entitások adatainak megtekintése</li>
+<li>Változástörténet megtekintése (ha elérhető)</li>
+<li>Műveletek: szerkesztés, törlés/inaktiválás, egyéb entitásspecifikus műveletek</li>
+</ul>
+<h3 id="létrehozásiszerkesztési-űrlap">Létrehozási/szerkesztési űrlap</h3>
+<ul>
+<li>Adatbeviteli mezők az entitás minden attribútumához</li>
+<li>Validációs szabályok érvényesítése</li>
+<li>Kapcsolódó entitások kiválasztása (pl. legördülő listákból)</li>
+<li>Kódszótár elemek kiválasztása</li>
+<li>Mentés és mégse műveletek</li>
+</ul>
+<h3 id="törlésinaktiválás">Törlés/inaktiválás</h3>
+<ul>
+<li>Megerősítés kérése a művelet végrehajtása előtt</li>
+<li>Referenciális integritás ellenőrzése</li>
+<li>Törlés helyett inaktiválás, ha az entitásra más entitások hivatkoznak</li>
+</ul>
+<h2 id="folyamat-specifikus-képernyők">Folyamat-specifikus képernyők</h2>
+<p>A CRUD alapú képernyők mellett a rendszer tartalmaz speciális, munkafolyamat-orientált képernyőket is:</p>
+<h3 id="megbízás-létrehozási-képernyő">Megbízás létrehozási képernyő</h3>
+<ul>
+<li>Megbízás alapadatainak megadása</li>
+<li>Szállítási adatok részletes megadása</li>
+<li>Rakomány adatok megadása</li>
+<li>Árajánlati elvárások beállítása</li>
+<li>Megbízás érvényességi idejének beállítása</li>
+<li>Előnézet és publikálás</li>
+</ul>
+<h3 id="ajánlattételi-képernyő">Ajánlattételi képernyő</h3>
+<ul>
+<li>Megbízás részleteinek megtekintése</li>
+<li>Ajánlati ár megadása</li>
+<li>Szállítási feltételek megadása</li>
+<li>Érvényességi idő beállítása</li>
+<li>Ajánlat beküldése</li>
+</ul>
+<h3 id="ajánlat-elbírálási-képernyő">Ajánlat elbírálási képernyő</h3>
+<ul>
+<li>Beérkezett ajánlatok összehasonlítása</li>
+<li>Ajánlattevők értékeléseinek megtekintése</li>
+<li>Ajánlat elfogadása/elutasítása/módosítási kérés</li>
+<li>Döntés indoklása</li>
+</ul>
+<h3 id="jutalék-fizetési-képernyő">Jutalék fizetési képernyő</h3>
+<ul>
+<li>Fizetendő jutalék részleteinek megtekintése</li>
+<li>Fizetési mód kiválasztása</li>
+<li>Fizetés végrehajtása</li>
+<li>Fizetési bizonylat letöltése</li>
+</ul>
+<h3 id="értékelési-képernyő">Értékelési képernyő</h3>
+<ul>
+<li>Értékelési szempontok kitöltése</li>
+<li>Szöveges értékelés megadása</li>
+<li>Értékelés beküldése</li>
+<li>Korábbi értékelések megtekintése</li>
+</ul>
+<h3 id="reklamáció-kezelési-képernyő">Reklamáció kezelési képernyő</h3>
+<ul>
+<li>Reklamáció részleteinek megtekintése</li>
+<li>Válasz megfogalmazása</li>
+<li>Megoldási javaslat rögzítése</li>
+<li>Reklamáció lezárása/eszkalálása</li>
+</ul>
+<h2 id="kezelőfelületek-szerepkörönként">Kezelőfelületek szerepkörönként</h2>
+<p>A rendszer két különálló alkalmazásának hozzáférési jogosultságai különböznek a felhasználó szerepkörétől függően:</p>
+<h2 id="a-központi-adminisztrációs-alkalmazás-szerepkörei">A. Központi Adminisztrációs Alkalmazás szerepkörei</h2>
+<h3 id="rendszeradminisztrátor">Rendszeradminisztrátor</h3>
+<ul>
+<li>Minden modulhoz teljes hozzáférés</li>
+<li>Rendszeradminisztráció menü kiemelt fontosságú</li>
+<li>Felhasználó ellenőrzés és jóváhagyás</li>
+<li>Rendszerparaméterek beállítása</li>
+<li>Hírlevél kezelés</li>
+<li>Rendszermonitorozás és karbantartás</li>
+</ul>
+<h3 id="ügyfélszolgálati-munkatárs">Ügyfélszolgálati munkatárs</h3>
+<ul>
+<li>Felhasználók adminisztrációja menü olvasási jogosultsággal</li>
+<li>Reklamációk kezelése menü teljes hozzáféréssel</li>
+<li>Jelentések és elemzések menü korlátozott hozzáféréssel (csak ügyfélszolgálati jelentések)</li>
+<li>Felhasználói értékelések moderálása</li>
+</ul>
+<h3 id="pénzügyi-munkatárs">Pénzügyi munkatárs</h3>
+<ul>
+<li>Jutalékok és fizetések menü teljes hozzáféréssel</li>
+<li>Jelentések és elemzések menü korlátozott hozzáféréssel (csak pénzügyi jelentések)</li>
+<li>Felhasználók adminisztrációja menü olvasási jogosultsággal</li>
+</ul>
+<h3 id="felhasználó-ellenőr">Felhasználó ellenőr</h3>
+<ul>
+<li>Felhasználók adminisztrációja menü teljes hozzáféréssel</li>
+<li>Felhasználó ellenőrzés és jóváhagyás</li>
+<li>Felhasználói adatok auditálása</li>
+<li>Jelentések és elemzések menü korlátozott hozzáféréssel (csak felhasználói jelentések)</li>
+</ul>
+<h3 id="minőségbiztosítási-munkatárs">Minőségbiztosítási munkatárs</h3>
+<ul>
+<li>Reklamációk kezelése menü teljes hozzáféréssel</li>
+<li>Felhasználói értékelések moderálása</li>
+<li>Jelentések és elemzések menü korlátozott hozzáféréssel (minőségbiztosítási jelentések)</li>
+</ul>
+<h2 id="b-megbízói-és-fuvarozói-alkalmazás-szerepkörei">B. Megbízói és Fuvarozói Alkalmazás szerepkörei</h2>
+<h3 id="megbízó">Megbízó</h3>
+<ul>
+<li>Profil menü teljes hozzáféréssel (saját adatok)</li>
+<li>Megbízások menü teljes hozzáféréssel</li>
+<li>Ajánlatok menü korlátozott hozzáféréssel (csak a saját megbízásokra érkezett ajánlatok)</li>
+<li>Pénzügyek menü korlátozott hozzáféréssel (csak saját pénzügyi adatok)</li>
+<li>Reklamációk menü korlátozott hozzáféréssel (csak saját reklamációk)</li>
+</ul>
+<h3 id="fuvarozó">Fuvarozó</h3>
+<ul>
+<li>Profil menü teljes hozzáféréssel (saját adatok)</li>
+<li>Megbízások menü korlátozott hozzáféréssel (csak keresés, megtekintés)</li>
+<li>Ajánlatok menü teljes hozzáféréssel</li>
+<li>Pénzügyek menü korlátozott hozzáféréssel (csak saját pénzügyi adatok)</li>
+<li>Reklamációk menü korlátozott hozzáféréssel (csak saját reklamációk)</li>
+</ul>
+<h2 id="megfontolások-a-rendszer-kialakításához">Megfontolások a rendszer kialakításához</h2>
+<h3 id="általános-megfontolások">Általános megfontolások</h3>
+<ol>
+<li>
+<p><strong>Reszponzív design</strong> - Mindkét alkalmazás minden funkciója használható legyen különböző eszközökön (PC, tablet, mobil)</p>
+</li>
+<li>
+<p><strong>Folyamat-orientált kialakítás</strong> - Bár mindkét alkalmazás CRUD-komponensekből épül fel, a felhasználói felületet a gyakori munkafolyamatok köré kell szervezni</p>
+</li>
+<li>
+<p><strong>Egységes megjelenés</strong> - Következetes színvilág, ikonok, gombkiosztás mindkét alkalmazás minden képernyőjén, de vizuálisan megkülönböztethető design a két alkalmazás között</p>
+</li>
+<li>
+<p><strong>Gyorsbillentyűk</strong> - Gyakran használt funkciókhoz gyorsbillentyűk definiálása mindkét alkalmazásban</p>
+</li>
+<li>
+<p><strong>Kontextusfüggő segítség</strong> - Minden képernyőn elérhető súgó, amely az adott képernyő funkcióit magyarázza</p>
+</li>
+<li>
+<p><strong>Jogosultságfüggő menük</strong> - Csak azok a menüpontok jelenjenek meg, amelyekhez a felhasználónak jogosultsága van</p>
+</li>
+</ol>
+<h3 id="két-alkalmazás-specifikus-megfontolások">Két alkalmazás specifikus megfontolások</h3>
+<ol start="7">
+<li>
+<p><strong>Adatszinkronizáció</strong> - A két alkalmazás közötti adatszinkronizáció biztosítása, különös tekintettel a valós idejű adatokra (pl. megbízások, ajánlatok státusza)</p>
+</li>
+<li>
+<p><strong>Egységes bejelentkezés</strong> - Single Sign-On (SSO) megoldás biztosítása, hogy a felhasználóknak ne kelljen külön bejelentkezniük a két alkalmazásba</p>
+</li>
+<li>
+<p><strong>Konzisztens üzleti logika</strong> - Az üzleti szabályok konzisztens érvényesítése mindkét alkalmazásban</p>
+</li>
+<li>
+<p><strong>Moduláris fejlesztés</strong> - A két alkalmazás közös komponenseinek moduláris fejlesztése, újrafelhasználható komponensek kialakítása</p>
+</li>
+<li>
+<p><strong>API-alapú kommunikáció</strong> - Jól definiált API-k kialakítása a két alkalmazás közötti kommunikációhoz</p>
+</li>
+</ol>
+<h3 id="dashboard-kialakítás">Dashboard kialakítás</h3>
+<ol start="12">
+<li><strong>Dashboard</strong> - A bejelentkezés után szerepkör-specifikus kezdőképernyő (dashboard) fogadja a felhasználót a legfontosabb információkkal:</li>
+</ol>
+<p><strong>Megbízói és Fuvarozói Alkalmazásban:</strong></p>
+<ul>
+<li>Megbízóknak: aktív megbízások, beérkezett ajánlatok, értékelések</li>
+<li>Fuvarozóknak: elérhető megbízások, elfogadott ajánlatok, fizetendő jutalékok</li>
+</ul>
+<p><strong>Központi Adminisztrációs Alkalmazásban:</strong></p>
+<ul>
+<li>Adminisztrátoroknak: rendszerállapot, függőben lévő jóváhagyások, biztonsági események</li>
+<li>Ügyfélszolgálati munkatársaknak: új reklamációk, feldolgozandó ügyek</li>
+<li>Pénzügyi munkatársaknak: pénzügyi összesítők, függő fizetések</li>
+<li>Felhasználó ellenőröknek: ellenőrizendő felhasználók, függőben lévő jóváhagyások</li>
+</ul>
+<h3 id="értesítési-rendszer">Értesítési rendszer</h3>
+<ol start="13">
+<li><strong>Értesítések</strong> - Alkalmazás-specifikus értesítési rendszer, amely a felhasználók számára fontos eseményekről tájékoztat:</li>
+</ol>
+<p><strong>Megbízói és Fuvarozói Alkalmazásban:</strong></p>
+<ul>
+<li>Új ajánlatok</li>
+<li>Elfogadott ajánlatok</li>
+<li>Fizetési emlékeztetők</li>
+<li>Új értékelések</li>
+<li>Megbízás státuszváltozások</li>
+</ul>
+<p><strong>Központi Adminisztrációs Alkalmazásban:</strong></p>
+<ul>
+<li>Új felhasználói regisztrációk</li>
+<li>Rendszeresemények</li>
+<li>Kritikus hibák</li>
+<li>Feldolgozandó reklamációk</li>
+<li>Biztonsági figyelmeztetések</li>
+</ul>
+
+            
+            
+        </body>
+        </html>

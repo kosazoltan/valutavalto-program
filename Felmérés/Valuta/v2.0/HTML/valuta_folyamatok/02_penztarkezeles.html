@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Valutav&aacute;lt&oacute; Rendszer P&eacute;nzt&aacute;rkezel&eacute;si Folyamatai</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="valutaváltó-rendszer-pénztárkezelési-folyamatai">Valutaváltó Rendszer Pénztárkezelési Folyamatai</h1>
+<h2 id="bevezetés">Bevezetés</h2>
+<p>Ez a dokumentum a valutaváltó rendszer pénztárkezelési folyamatait írja le, beleértve a bankjegykészlet nyilvántartását, a kasszanyitást és -zárást,
+valamint az egyéb pénztárműveleteket.</p>
+<h2 id="bankjegykészlet-nyilvántartása">Bankjegykészlet nyilvántartása</h2>
+<h3 id="bankjegykészlet-rögzítése">Bankjegykészlet rögzítése</h3>
+<ol>
+<li>A pénztáros vagy pénztárvezető rögzíti a fiók bankjegykészletét (<code>banknote_inventory</code>).</li>
+<li>Minden devizanem minden címletére megadja:
+<ul>
+<li>Devizanem (<code>currency_id</code>)</li>
+<li>Címlet (<code>denomination</code>)</li>
+<li>Mennyiség (<code>quantity</code>)</li>
+<li>Fiók azonosító (<code>branch_id</code>)</li>
+<li>Érme-e (<code>is_coin</code>) - jelölés, hogy érméről vagy bankjegyről van szó</li>
+</ul>
+</li>
+<li>A rendszer automatikusan frissíti az utolsó frissítés dátumát (<code>last_updated</code>).</li>
+<li>A bankjegykészlet állománya real-time nyomon követhető a kibővített nézeten (<code>banknote_inventory_ext</code>) keresztül.</li>
+</ol>
+<h3 id="készletmozgások-követése">Készletmozgások követése</h3>
+<ol>
+<li>A rendszer a tranzakciók alapján automatikusan vezeti a bankjegykészlet változásait.</li>
+<li>Minden valutaváltási tranzakció után a rendszer:
+<ul>
+<li>Csökkenti a forrásdeviza készletét a kiadott címletek alapján</li>
+<li>Növeli a céldeviza készletét a bevételezett címletek alapján</li>
+</ul>
+</li>
+<li>A készletváltozásokat a <code>transaction_banknote</code> entitáson keresztül követi a rendszer.</li>
+</ol>
+<h2 id="napi-pénztárműveletek">Napi pénztárműveletek</h2>
+<h3 id="kasszanyitás">Kasszanyitás</h3>
+<ol>
+<li>A pénztáros a munkanap kezdetén megnyitja a pénztárat.</li>
+<li>A rendszer rögzíti a nyitás időpontját és a nyitó pénztáros azonosítóját.</li>
+<li>A pénztáros ellenőrzi és megerősíti a nyitó készpénzállományt, amely az előző napi záróállománnyal egyezik.</li>
+<li>Eltérés esetén a pénztáros jegyzőkönyvet vesz fel, és azonnali felülvizsgálatot kezdeményez.</li>
+<li>A nyitás után a pénztár tranzakciókésszé válik.</li>
+</ol>
+<h3 id="valutaváltási-tranzakció">Valutaváltási tranzakció</h3>
+<ol>
+<li>
+<p>A pénztáros rögzíti a valutaváltási tranzakciót (<code>transaction</code>):</p>
+<ul>
+<li>Tranzakció száma (<code>transaction_number</code>) - rendszer által generált</li>
+<li>Fiók (<code>branch_id</code>)</li>
+<li>Tranzakció dátuma (<code>transaction_date</code>)</li>
+<li>Tranzakció típusa (<code>transaction_type_did</code>) - a valutaváltó-szótárból</li>
+<li>Forrás devizanem (<code>source_currency_id</code>)</li>
+<li>Cél devizanem (<code>target_currency_id</code>)</li>
+<li>Forrás összeg (<code>source_amount</code>)</li>
+<li>Cél összeg (<code>target_amount</code>) - rendszer által kalkulált</li>
+<li>Árfolyam (<code>exchange_rate</code>) - rendszer által megállapított a megfelelő forrásból</li>
+<li>Jutalék összege (<code>fee_amount</code>) és devizaneme (<code>fee_currency_id</code>)</li>
+<li>Ügyfél (<code>customer_id</code>) - nagyobb összeg esetén kötelező</li>
+<li>Pénztáros (<code>cashier_id</code>) - automatikusan a bejelentkezett felhasználó</li>
+<li>Státusz (<code>status_did</code>) - kezdetben &quot;PROCESSING&quot;</li>
+</ul>
+</li>
+<li>
+<p>A rendszer ellenőrzi az adatok helyességét:</p>
+<ul>
+<li>Árfolyam érvényességét</li>
+<li>Pénztár elegendő készletét</li>
+<li>Ügyfél-azonosítás szükségességét (limitek alapján)</li>
+<li>Tranzakció szabályosságát</li>
+</ul>
+</li>
+<li>
+<p>A pénztáros rögzíti a bankjegy-részleteket (<code>transaction_banknote</code>):</p>
+<ul>
+<li>Tranzakció azonosító (<code>transaction_id</code>)</li>
+<li>Devizanem (<code>currency_id</code>)</li>
+<li>Címlet (<code>denomination</code>)</li>
+<li>Mennyiség (<code>quantity</code>)</li>
+<li>Bevétel/kiadás jelölése (<code>is_input</code>)</li>
+<li>Érme jelölése (<code>is_coin</code>)</li>
+</ul>
+</li>
+<li>
+<p>A tranzakció végrehajtása után a státusza &quot;COMPLETED&quot;-re változik.</p>
+</li>
+<li>
+<p>A rendszer automatikusan frissíti a bankjegykészletet.</p>
+</li>
+</ol>
+<h3 id="kasszazárás">Kasszazárás</h3>
+<ol>
+<li>
+<p>A pénztáros a munkanap végén kezdeményezi a napi zárást (<code>daily_closing</code>).</p>
+</li>
+<li>
+<p>A rendszer összesíti a napi forgalmat:</p>
+<ul>
+<li>Összes tranzakció száma (<code>total_transactions</code>)</li>
+<li>Összes vételi volumen (<code>total_buy_volume</code>)</li>
+<li>Összes eladási volumen (<code>total_sell_volume</code>)</li>
+<li>Összes jutalék (<code>total_fees</code>)</li>
+</ul>
+</li>
+<li>
+<p>A pénztáros rögzíti a záró készpénzállományt devizanemenként és címletenként (<code>closing_detail</code>):</p>
+<ul>
+<li>Várható mennyiség (<code>expected_quantity</code>) - rendszer által számolt</li>
+<li>Tényleges mennyiség (<code>actual_quantity</code>) - pénztáros által számolt</li>
+</ul>
+</li>
+<li>
+<p>A rendszer összehasonlítja a várható és tényleges értékeket:</p>
+<ul>
+<li>Egyezés esetén a zárás státusza &quot;CLOSED&quot; lesz</li>
+<li>Eltérés esetén a státusz &quot;ERROR&quot;, és felelős vezető jóváhagyása szükséges</li>
+</ul>
+</li>
+<li>
+<p>A zárás adatai:</p>
+<ul>
+<li>Fiók (<code>branch_id</code>)</li>
+<li>Zárás dátuma (<code>closing_date</code>)</li>
+<li>Zárást végző pénztáros (<code>cashier_id</code>)</li>
+<li>Nyitó készpénzállomány (<code>opening_cash</code>)</li>
+<li>Záró készpénzállomány (<code>closing_cash</code>)</li>
+<li>Státusz (<code>status_did</code>)</li>
+<li>Megjegyzések (<code>notes</code>) - különösen eltérések esetén</li>
+<li>Zárás időpontja (<code>closing_time</code>)</li>
+</ul>
+</li>
+<li>
+<p>A vezető ellenőrzi a zárást, és jóváhagyás esetén a státusz &quot;VERIFIED&quot;-re változik.</p>
+</li>
+</ol>
+<h2 id="rendkívüli-pénztárműveletek">Rendkívüli pénztárműveletek</h2>
+<h3 id="készpénzkorrekció">Készpénzkorrekció</h3>
+<ol>
+<li>
+<p>Supervisor vagy manager jogosultsággal rendelkező felhasználó kezdeményezhet készpénzkészlet-korrekciót.</p>
+</li>
+<li>
+<p>A korrekció oka (<code>OVERRIDE_REASON</code>) lehet:</p>
+<ul>
+<li>ERROR_CORRECTION - Hibajavítás</li>
+<li>MANAGEMENT_APPROVAL - Vezetői jóváhagyás</li>
+<li>OTHER - Egyéb, részletes indoklással</li>
+</ul>
+</li>
+<li>
+<p>Minden korrekcióhoz kötelező jegyzőkönyv készül, amely tartalmazza:</p>
+<ul>
+<li>A korrekció előtti és utáni állapotot</li>
+<li>A korrekciót végző személyt</li>
+<li>A jóváhagyó vezetőt</li>
+<li>Részletes indoklást</li>
+</ul>
+</li>
+<li>
+<p>A korrekció után a rendszer frissíti a bankjegykészletet és audit naplóbejegyzést készít.</p>
+</li>
+</ol>
+<h3 id="rendkívüli-napi-zárás">Rendkívüli napi zárás</h3>
+<ol>
+<li>Műszaki hiba, áramszünet vagy egyéb rendkívüli esemény esetén rendkívüli napi zárás kezdeményezhető.</li>
+<li>A folyamat hasonló a normál záráshoz, de a státusz &quot;PROCESSING&quot; marad, amíg supervisor nem ellenőrzi.</li>
+<li>A rendkívüli zárás után kötelező teljes pénztárellenőrzés következik a következő nyitás előtt.</li>
+</ol>
+
+            
+            
+        </body>
+        </html>

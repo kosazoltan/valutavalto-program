@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Valutav&aacute;lt&oacute; Rendszer - Meghatalmazott Kezel&eacute;si Folyamatok</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="valutaváltó-rendszer---meghatalmazott-kezelési-folyamatok">Valutaváltó Rendszer - Meghatalmazott Kezelési Folyamatok</h1>
+<h2 id="bevezetés">Bevezetés</h2>
+<p>Ez a dokumentum a valutaváltó rendszer meghatalmazott kezelési folyamatait írja le, beleértve a meghatalmazottak regisztrációját, jogosultságaik kezelését, tevékenységük nyomon követését és a kapcsolódó dokumentációs folyamatokat.</p>
+<h2 id="meghatalmazott-regisztrációs-folyamatok">Meghatalmazott regisztrációs folyamatok</h2>
+<h3 id="új-meghatalmazott-regisztrációja">Új meghatalmazott regisztrációja</h3>
+<ol>
+<li>
+<p>A meghatalmazott regisztrációja a pénztárban kezdeményezhető:</p>
+<ul>
+<li>Az ügyfél (meghatalmazó) és a leendő meghatalmazott együttes jelenléte szükséges</li>
+<li>Mindkét fél hiteles azonosítása kötelező</li>
+<li>A meghatalmazó ügyfélnek már regisztrált ügyfélnek kell lennie a rendszerben (<code>customer</code> entitás)</li>
+</ul>
+</li>
+<li>
+<p>A meghatalmazott adatainak rögzítése az <code>authorized_representative</code> entitásban:</p>
+<ul>
+<li>Személyes adatok: név, születési adatok, állampolgárság</li>
+<li>Elérhetőségek: cím, telefon, e-mail</li>
+<li>Azonosító okmányok adatai (típus, szám, érvényesség)</li>
+<li>Meghatalmazás típusa (<code>representative_type_did</code>) a <code>REPRESENTATIVE_TYPE</code> szótárból:
+<ul>
+<li>PERMANENT - Állandó meghatalmazott</li>
+<li>TEMPORARY - Időszakos meghatalmazott</li>
+<li>LEGAL_GUARDIAN - Törvényes képviselő</li>
+<li>POWER_OF_ATTORNEY - Ügyvédi meghatalmazás</li>
+<li>COMPANY_DELEGATE - Céges megbízott</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p>A kapcsolat típusának megadása (<code>relationship_did</code>) a <code>RELATIONSHIP_TYPE</code> szótárból:</p>
+<ul>
+<li>FAMILY - Családtag</li>
+<li>COLLEAGUE - Munkatárs</li>
+<li>FRIEND - Barát</li>
+<li>PROFESSIONAL - Szakmai kapcsolat</li>
+<li>BUSINESS - Üzleti kapcsolat</li>
+<li>OTHER - Egyéb</li>
+</ul>
+</li>
+<li>
+<p>A meghatalmazott okmányainak rögzítése (<code>representative_document</code>):</p>
+<ul>
+<li>Személyazonosító okmányok adatai</li>
+<li>Dokumentumok beszkennelése és tárolása</li>
+<li>Dokumentumok érvényességének ellenőrzése és rögzítése</li>
+</ul>
+</li>
+<li>
+<p>A rendszer elvégzi az adatellenőrzést:</p>
+<ul>
+<li>Adatok formai helyességének ellenőrzése</li>
+<li>Duplikáció-ellenőrzés (létező meghatalmazott keresése)</li>
+<li>Okmányérvényesség-ellenőrzés</li>
+</ul>
+</li>
+</ol>
+<h3 id="meghatalmazás-létrehozása">Meghatalmazás létrehozása</h3>
+<ol>
+<li>
+<p>A meghatalmazás adatainak rögzítése az <code>authorization</code> entitásban:</p>
+<ul>
+<li>Meghatalmazott kapcsolatának megadása (<code>authorized_representative_id</code>)</li>
+<li>Meghatalmazás típusának kiválasztása (<code>authorization_type_did</code>) a <code>AUTHORIZATION_TYPE</code> szótárból:
+<ul>
+<li>FULL - Teljes körű meghatalmazás</li>
+<li>LIMITED - Korlátozott meghatalmazás</li>
+<li>WITHDRAWAL - Csak pénzfelvétel</li>
+<li>EXCHANGE - Csak valutaváltás</li>
+<li>ADMINISTRATIVE - Csak ügyintézés</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p>A meghatalmazás hatályának megadása:</p>
+<ul>
+<li>Kiállítás dátuma (<code>issue_date</code>)</li>
+<li>Érvényesség kezdete (<code>start_date</code>)</li>
+<li>Érvényesség vége (<code>expiry_date</code>) - lehet határozatlan is</li>
+<li>Státusz beállítása (<code>status_did</code>) a <code>AUTHORIZATION_STATUS</code> szótárból (kezdetben &quot;PENDING&quot;)</li>
+</ul>
+</li>
+<li>
+<p>Korlátozások és limitek beállítása:</p>
+<ul>
+<li>Maximum összeg (<code>max_amount</code>) - az egy tranzakcióban kezelhető maximum összeg</li>
+<li>Maximum tranzakciószám (<code>max_transaction_count</code>) - a meghatalmazással végezhető tranzakciók száma</li>
+</ul>
+</li>
+<li>
+<p>A meghatalmazás dokumentációja:</p>
+<ul>
+<li>Meghatalmazási dokumentum feltöltése (<code>document_path</code>)</li>
+<li>Manuális aláírt dokumentum beszkennelése vagy</li>
+<li>Rendszer által generált dokumentum elektronikus aláírása</li>
+</ul>
+</li>
+<li>
+<p>Az engedélyezett műveletek egyedi definiálása:</p>
+<ul>
+<li>Az <code>allowed_operation</code> entitásban művelettípusonként beállítható, hogy mire jogosult a meghatalmazott</li>
+<li>A művelettípusok (<code>operation_did</code>) a <code>OPERATION_TYPE</code> szótárból:
+<ul>
+<li>WITHDRAWAL - Pénzfelvétel</li>
+<li>DEPOSIT - Pénzbefizetés</li>
+<li>EXCHANGE - Valutaváltás</li>
+<li>DATA_CHANGE - Adatmódosítás</li>
+<li>VIEW_HISTORY - Tranzakciótörténet lekérés</li>
+<li>DOCUMENTATION - Dokumentáció igénylés</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h3 id="meghatalmazás-verifikálása">Meghatalmazás verifikálása</h3>
+<ol>
+<li>
+<p>A meghatalmazás verifikálása szükséges annak aktiválásához:</p>
+<ul>
+<li>A verifikációt megfelelő jogosultsággal rendelkező munkatárs végezheti</li>
+<li>A jogosultsági szint függ a meghatalmazás típusától és korlátaitól</li>
+<li>Magasabb összegű limitek esetén magasabb szintű jóváhagyás szükséges</li>
+</ul>
+</li>
+<li>
+<p>A verifikáció folyamata:</p>
+<ul>
+<li>A dokumentumok és adatok ellenőrzése</li>
+<li>Az azonosítás helyességének validálása</li>
+<li>A meghatalmazás szabályosságának megerősítése</li>
+<li>A státusz &quot;ACTIVE&quot;-ra állítása</li>
+</ul>
+</li>
+<li>
+<p>A verifikáció rögzítése:</p>
+<ul>
+<li>Verifikáló személy (<code>verified_by</code>)</li>
+<li>Verifikáció dátuma (<code>verification_date</code>)</li>
+<li>Megjegyzések (<code>notes</code>)</li>
+</ul>
+</li>
+<li>
+<p>A sikeres verifikáció után a meghatalmazás aktívvá válik, és a meghatalmazott megkezdheti tevékenységét.</p>
+</li>
+</ol>
+<h2 id="meghatalmazott-azonosítási-folyamat">Meghatalmazott azonosítási folyamat</h2>
+<h3 id="meghatalmazott-azonosítása-tranzakció-során">Meghatalmazott azonosítása tranzakció során</h3>
+<ol>
+<li>
+<p>A meghatalmazott érkezésekor a pénztáros azonosítja őt:</p>
+<ul>
+<li>Név és személyes adatok ellenőrzése</li>
+<li>Személyazonosító okmányok ellenőrzése</li>
+<li>A rendszerben a meghatalmazott adatainak visszakeresése</li>
+</ul>
+</li>
+<li>
+<p>A rendszer ellenőrzi a meghatalmazást:</p>
+<ul>
+<li>Meghatalmazás érvényességét (időbeli hatály)</li>
+<li>Meghatalmazás státuszát (aktív-e)</li>
+<li>A kért művelet engedélyezett-e a meghatalmazás keretében</li>
+<li>Az összegkorlátok és tranzakciószám-korlátok betartását</li>
+</ul>
+</li>
+<li>
+<p>Sikeres azonosítás után:</p>
+<ul>
+<li>A rendszer megjeleníti a meghatalmazó ügyfél adatait</li>
+<li>Megjeleníti a meghatalmazott jogosultságait</li>
+<li>Jelzi az esetleges korlátozásokat</li>
+</ul>
+</li>
+<li>
+<p>Sikertelen azonosítás vagy érvénytelen meghatalmazás esetén:</p>
+<ul>
+<li>A rendszer figyelmeztetést jelenít meg</li>
+<li>A tranzakció nem folytatható</li>
+<li>A pénztáros tájékoztatja a meghatalmazottat az elutasítás okáról</li>
+</ul>
+</li>
+</ol>
+<h3 id="tevékenységek-naplózása">Tevékenységek naplózása</h3>
+<ol>
+<li>
+<p>A meghatalmazott minden tevékenysége részletes naplózásra kerül a <code>representative_log</code> entitásban:</p>
+<ul>
+<li>Tevékenység időpontja (<code>log_date</code>)</li>
+<li>Tevékenység típusa (<code>log_type_did</code>) a <code>REPRESENTATIVE_LOG_TYPE</code> szótárból:
+<ul>
+<li>LOGIN - Bejelentkezés</li>
+<li>LOGOUT - Kijelentkezés</li>
+<li>TRANSACTION - Tranzakció végrehajtás</li>
+<li>DATA_UPDATE - Adatmódosítás</li>
+<li>AUTH_CHANGE - Jogosultság változás</li>
+<li>DOC_UPLOAD - Dokumentum feltöltés</li>
+<li>STATUS_CHANGE - Státusz változás</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p>Tranzakciók esetén rögzítésre kerül:</p>
+<ul>
+<li>A tranzakció azonosítója (<code>transaction_id</code>)</li>
+<li>A tranzakciót kezelő pénztáros (<code>performed_by</code>)</li>
+<li>A fiók, ahol a tevékenység történt (<code>branch_id</code>)</li>
+<li>Részletes leírás (<code>details</code>)</li>
+</ul>
+</li>
+<li>
+<p>A napló adatai automatikusan generálódnak a rendszerben, és nem módosíthatók.</p>
+</li>
+<li>
+<p>A naplóbejegyzések az auditálási és biztonsági folyamatok alapját képezik.</p>
+</li>
+</ol>
+<h2 id="meghatalmazás-kezelési-folyamatok">Meghatalmazás kezelési folyamatok</h2>
+<h3 id="meghatalmazás-módosítása">Meghatalmazás módosítása</h3>
+<ol>
+<li>
+<p>A meghatalmazás adatai módosíthatók:</p>
+<ul>
+<li>A meghatalmazó kérésére</li>
+<li>Jogszabályi változások miatt</li>
+<li>Biztonsági okokból</li>
+</ul>
+</li>
+<li>
+<p>A módosítás folyamata:</p>
+<ul>
+<li>A meghatalmazó azonosítása szükséges</li>
+<li>A módosítandó paraméterek meghatározása</li>
+<li>Új dokumentáció készítése szükség esetén</li>
+<li>A módosítások jóváhagyása megfelelő jogosultsági szinten</li>
+</ul>
+</li>
+<li>
+<p>Módosítható paraméterek:</p>
+<ul>
+<li>Érvényességi idő (meghosszabbítás vagy rövidítés)</li>
+<li>Jogosultsági körök (bővítés vagy szűkítés)</li>
+<li>Összeg- és tranzakciószám-korlátok</li>
+</ul>
+</li>
+<li>
+<p>A módosítás után a meghatalmazás ismételt verifikációja szükséges.</p>
+</li>
+<li>
+<p>Minden módosítás naplózásra kerül a <code>representative_log</code> entitásban.</p>
+</li>
+</ol>
+<h3 id="meghatalmazás-felfüggesztése">Meghatalmazás felfüggesztése</h3>
+<ol>
+<li>
+<p>A meghatalmazás felfüggeszthető:</p>
+<ul>
+<li>A meghatalmazó kérésére</li>
+<li>Biztonsági okokból (gyanús tevékenység esetén)</li>
+<li>Adminisztratív okokból (pl. okmányok lejárta miatt)</li>
+</ul>
+</li>
+<li>
+<p>A felfüggesztés folyamata:</p>
+<ul>
+<li>A felfüggesztést kezdeményező személy azonosítása</li>
+<li>Felfüggesztési ok rögzítése</li>
+<li>A meghatalmazás státuszának &quot;SUSPENDED&quot;-re állítása</li>
+</ul>
+</li>
+<li>
+<p>A felfüggesztés következményei:</p>
+<ul>
+<li>A meghatalmazott nem kezdeményezhet tranzakciókat</li>
+<li>A felfüggesztés tényéről a meghatalmazót értesíteni kell</li>
+<li>A felfüggesztés ideiglenes állapot, amely után reaktiválás vagy visszavonás következhet</li>
+</ul>
+</li>
+<li>
+<p>A felfüggesztés naplózása a <code>representative_log</code> entitásban, <code>STATUS_CHANGE</code> típussal.</p>
+</li>
+</ol>
+<h3 id="meghatalmazás-visszavonása">Meghatalmazás visszavonása</h3>
+<ol>
+<li>
+<p>A meghatalmazás véglegesen visszavonható:</p>
+<ul>
+<li>A meghatalmazó kérésére</li>
+<li>Jogszabályi kötelezettség miatt</li>
+<li>Visszaélés vagy szabálytalanság miatt</li>
+</ul>
+</li>
+<li>
+<p>A visszavonás folyamata:</p>
+<ul>
+<li>A visszavonást kezdeményező személy azonosítása</li>
+<li>Visszavonási ok rögzítése</li>
+<li>A meghatalmazás státuszának &quot;REVOKED&quot;-ra állítása</li>
+</ul>
+</li>
+<li>
+<p>A visszavonás következményei:</p>
+<ul>
+<li>A meghatalmazott jogosultsága véglegesen megszűnik</li>
+<li>A visszavonás tényéről hivatalos értesítés készül</li>
+<li>A meghatalmazott adatai archiválásra kerülnek</li>
+</ul>
+</li>
+<li>
+<p>A visszavonás naplózása a <code>representative_log</code> entitásban, <code>STATUS_CHANGE</code> típussal.</p>
+</li>
+</ol>
+<h2 id="meghatalmazott-tevékenységek-ellenőrzése">Meghatalmazott tevékenységek ellenőrzése</h2>
+<h3 id="rendszeres-ellenőrzések">Rendszeres ellenőrzések</h3>
+<ol>
+<li>
+<p>A meghatalmazottak tevékenységét rendszeresen ellenőrizni kell:</p>
+<ul>
+<li>Havi rendszerességgel tranzakcióminta-elemzés</li>
+<li>Negyedévente a meghatalmazások érvényességének felülvizsgálata</li>
+<li>Félévente teljes körű audit a meghatalmazotti tevékenységekről</li>
+</ul>
+</li>
+<li>
+<p>Az ellenőrzések kitérnek:</p>
+<ul>
+<li>A tranzakciók szabályosságára</li>
+<li>A jogosultsági korlátok betartására</li>
+<li>A szokatlan tranzakciós mintákra</li>
+<li>Az okmányok érvényességére</li>
+</ul>
+</li>
+<li>
+<p>Az ellenőrzések dokumentálása és megőrzése jogszabályi előírás szerint történik.</p>
+</li>
+</ol>
+<h3 id="gyanús-események-kezelése">Gyanús események kezelése</h3>
+<ol>
+<li>
+<p>A rendszer automatikusan figyeli a gyanús eseményeket:</p>
+<ul>
+<li>Szokatlan gyakorisággal végzett tranzakciók</li>
+<li>Korlátokhoz közeli összegű, rendszeres tranzakciók</li>
+<li>Szokatlan időpontban vagy helyen végzett tevékenységek</li>
+</ul>
+</li>
+<li>
+<p>Gyanús esemény észlelése esetén:</p>
+<ul>
+<li>Automatikus figyelmeztetés a compliance részleg felé</li>
+<li>A meghatalmazás ideiglenes felfüggesztése súlyos gyanú esetén</li>
+<li>Kivizsgálási folyamat indítása</li>
+</ul>
+</li>
+<li>
+<p>A kivizsgálás lépései:</p>
+<ul>
+<li>A tevékenységi napló részletes elemzése</li>
+<li>A meghatalmazó megkeresése és tájékoztatása</li>
+<li>Szükség esetén a meghatalmazott meghallgatása</li>
+<li>Hatósági bejelentés, ha jogszabályi kötelezettség</li>
+</ul>
+</li>
+<li>
+<p>A kivizsgálás eredménye alapján döntés a meghatalmazás sorsáról (visszaállítás, további felfüggesztés vagy visszavonás).</p>
+</li>
+</ol>
+<h2 id="meghatalmazásokkal-kapcsolatos-jelentések">Meghatalmazásokkal kapcsolatos jelentések</h2>
+<h3 id="vezetői-jelentések">Vezetői jelentések</h3>
+<ol>
+<li>
+<p>A rendszer különböző vezetői jelentéseket készít a meghatalmazottakról:</p>
+<ul>
+<li>Aktív meghatalmazások számának alakulása</li>
+<li>Meghatalmazottak által végrehajtott tranzakciók összesítése</li>
+<li>Meghatalmazotti tevékenységek fiókbontásban</li>
+<li>Meghatalmazás-típusok megoszlása</li>
+</ul>
+</li>
+<li>
+<p>A jelentések segítik:</p>
+<ul>
+<li>A meghatalmazotti aktivitás trendelemzését</li>
+<li>A kockázatelemzést és -kezelést</li>
+<li>A képzési és folyamatfejlesztési igények azonosítását</li>
+</ul>
+</li>
+</ol>
+<h3 id="compliance-jelentések">Compliance jelentések</h3>
+<ol>
+<li>
+<p>A compliance részleg számára specifikus jelentések készülnek:</p>
+<ul>
+<li>Szokatlan tevékenységi mintázatok</li>
+<li>Korlátokhoz közeli tranzakciók</li>
+<li>Aktiválások és visszavonások alakulása</li>
+<li>Felfüggesztési és visszavonási okok statisztikái</li>
+</ul>
+</li>
+<li>
+<p>Ezek a jelentések támogatják:</p>
+<ul>
+<li>A compliance kockázatok azonosítását</li>
+<li>A belső ellenőrzési folyamatokat</li>
+<li>A jogszabályi megfelelőség biztosítását</li>
+<li>A visszaélés-megelőzési stratégiák kialakítását</li>
+</ul>
+</li>
+</ol>
+<h2 id="meghatalmazásokkal-kapcsolatos-ügyfélkommunikáció">Meghatalmazásokkal kapcsolatos ügyfélkommunikáció</h2>
+<h3 id="tájékoztatás-és-értesítések">Tájékoztatás és értesítések</h3>
+<ol>
+<li>
+<p>A meghatalmazással kapcsolatos eseményekről a rendszer automatikus értesítéseket küld:</p>
+<ul>
+<li>Új meghatalmazás létrehozásakor</li>
+<li>Meghatalmazás módosításakor</li>
+<li>Meghatalmazás közelgő lejáratáról</li>
+<li>Meghatalmazás státuszváltozásáról</li>
+</ul>
+</li>
+<li>
+<p>Az értesítések többféle csatornán történhetnek:</p>
+<ul>
+<li>E-mail</li>
+<li>SMS (ha kritikus változás történt)</li>
+<li>Postai levél (meghatározott esetekben)</li>
+</ul>
+</li>
+<li>
+<p>Az értesítések tartalma szabványos, de testreszabható, és minden esetben tartalmazza:</p>
+<ul>
+<li>Az esemény pontos leírását</li>
+<li>A szükséges teendőket (ha vannak)</li>
+<li>A kapcsolattartási információkat</li>
+</ul>
+</li>
+</ol>
+<h3 id="ügyfélkérdések-kezelése">Ügyfélkérdések kezelése</h3>
+<ol>
+<li>
+<p>A meghatalmazásokkal kapcsolatos ügyfélkérdések kezelése:</p>
+<ul>
+<li>Telefonos ügyfélszolgálaton</li>
+<li>Személyesen a fiókokban</li>
+<li>Elektronikus csatornákon</li>
+</ul>
+</li>
+<li>
+<p>A kérdések kezelésének folyamata:</p>
+<ul>
+<li>Az ügyfél azonosítása</li>
+<li>A kérdés rögzítése</li>
+<li>A válasz megadása a rendszerben elérhető adatok alapján</li>
+<li>A válasz dokumentálása</li>
+</ul>
+</li>
+<li>
+<p>Összetettebb kérdések esetén a válaszadás eszkalálható magasabb szintű ügyintézőhöz.</p>
+</li>
+</ol>
+<h2 id="meghatalmazások-jogszabályi-megfelelősége">Meghatalmazások jogszabályi megfelelősége</h2>
+<h3 id="jogszabályi-háttér-követése">Jogszabályi háttér követése</h3>
+<ol>
+<li>
+<p>A meghatalmazásokra vonatkozó jogszabályi környezet folyamatos nyomon követése:</p>
+<ul>
+<li>Pénzmosás-megelőzési szabályok</li>
+<li>Pénzügyi szolgáltatásokra vonatkozó előírások</li>
+<li>Adatvédelmi jogszabályok</li>
+<li>Meghatalmazásokra vonatkozó általános jogi környezet</li>
+</ul>
+</li>
+<li>
+<p>A rendszer paraméterezése a jogszabályi változások függvényében:</p>
+<ul>
+<li>Azonosítási limitek módosítása</li>
+<li>Dokumentációs követelmények frissítése</li>
+<li>Ellenőrzési folyamatok szigorítása/enyhítése</li>
+</ul>
+</li>
+<li>
+<p>A változásokról a munkatársak rendszeres tájékoztatása és képzése.</p>
+</li>
+</ol>
+<h3 id="dokumentáció-megőrzése">Dokumentáció megőrzése</h3>
+<ol>
+<li>
+<p>A meghatalmazásokkal kapcsolatos dokumentumok megőrzése a jogszabályi előírásoknak megfelelően:</p>
+<ul>
+<li>Elektronikus formában a rendszerben</li>
+<li>Papíralapú dokumentumok archiválása</li>
+<li>A megőrzési idő általában 8 év, vagy a jogszabályban előírt időtartam</li>
+</ul>
+</li>
+<li>
+<p>Az archivált dokumentumok visszakereshetőségének biztosítása:</p>
+<ul>
+<li>Indexelés ügyfélkód, dátum és dokumentumtípus szerint</li>
+<li>Elektronikus kereső rendszer</li>
+<li>Fizikai archiválási rend</li>
+</ul>
+</li>
+<li>
+<p>A dokumentumok védelme illetéktelen hozzáféréstől és módosítástól.</p>
+</li>
+</ol>
+<h2 id="meghatalmazottak-képzése-és-támogatása">Meghatalmazottak képzése és támogatása</h2>
+<h3 id="tájékoztató-anyagok">Tájékoztató anyagok</h3>
+<ol>
+<li>
+<p>A meghatalmazottak számára tájékoztató anyagok készülnek:</p>
+<ul>
+<li>Általános jogosultságokról és korlátozásokról</li>
+<li>A valutaváltási folyamatról</li>
+<li>A biztonsági követelményekről</li>
+<li>Az elvárt azonosítási folyamatról</li>
+</ul>
+</li>
+<li>
+<p>A tájékoztató anyagok többféle formátumban elérhetők:</p>
+<ul>
+<li>Nyomtatott brosúrák</li>
+<li>Online dokumentumok</li>
+<li>Rövid összefoglaló videók</li>
+</ul>
+</li>
+<li>
+<p>A tájékoztató anyagokat rendszeresen frissítik a változó jogszabályi és üzleti környezetnek megfelelően.</p>
+</li>
+</ol>
+<h3 id="meghatalmazotti-támogatás">Meghatalmazotti támogatás</h3>
+<ol>
+<li>
+<p>A meghatalmazottak számára több támogatási csatorna áll rendelkezésre:</p>
+<ul>
+<li>Dedikált ügyfélszolgálati vonal</li>
+<li>Személyes konzultáció lehetősége a fiókokban</li>
+<li>Online segítség és GYIK</li>
+</ul>
+</li>
+<li>
+<p>A gyakori kérdések és problémák alapján rendszeres frissítések készülnek a tájékoztató anyagokhoz.</p>
+</li>
+<li>
+<p>A meghatalmazottak elégedettségét a rendszer rendszeresen méri és elemzi.</p>
+</li>
+</ol>
+<h2 id="rendszerintegráció-és-folyamatfejlesztés">Rendszerintegráció és folyamatfejlesztés</h2>
+<h3 id="integráció-más-rendszermodulokkal">Integráció más rendszermodulokkal</h3>
+<ol>
+<li>
+<p>A meghatalmazott kezelési modul szorosan integrálódik a valutaváltó rendszer más moduljaival:</p>
+<ul>
+<li>Tranzakciókezelés - a meghatalmazott által végrehajtható műveletek ellenőrzése</li>
+<li>Ügyfélkezelés - a meghatalmazó adatainak elérése</li>
+<li>Jogosultságkezelés - a meghatalmazott jogosultságainak érvényesítése</li>
+<li>Naplózás és audit - a tevékenységek rögzítése</li>
+</ul>
+</li>
+<li>
+<p>Az integráció biztosítja a zökkenőmentes működést és az adatok konzisztenciáját.</p>
+</li>
+<li>
+<p>A rendszermodulok közötti kommunikáció szabványos interfészeken keresztül történik.</p>
+</li>
+</ol>
+<h3 id="folyamatos-fejlesztés">Folyamatos fejlesztés</h3>
+<ol>
+<li>
+<p>A meghatalmazott kezelési folyamatok folyamatosan fejlődnek:</p>
+<ul>
+<li>Felhasználói visszajelzések alapján</li>
+<li>Hatékonysági elemzések eredményeként</li>
+<li>Új üzleti igények felmerülésekor</li>
+<li>Technológiai fejlődés következtében</li>
+</ul>
+</li>
+<li>
+<p>A fejlesztési igényeket rendszeresen értékelik és priorizálják a következő szempontok alapján:</p>
+<ul>
+<li>Üzleti érték</li>
+<li>Compliance követelmények</li>
+<li>Felhasználói élmény</li>
+<li>Megvalósíthatóság és költség</li>
+</ul>
+</li>
+<li>
+<p>A fejlesztéseket tesztkönyezetben validálják, és csak sikeres teszt után vezetik be az éles rendszerbe.</p>
+</li>
+<li>
+<p>Minden jelentősebb változás után képzést és tájékoztatást biztosítanak a felhasználók számára.</p>
+</li>
+</ol>
+
+            
+            
+        </body>
+        </html>

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Load2fit Sz&aacute;ll&iacute;tm&aacute;nyoz&aacute;si Br&oacute;ker Rendszer</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="load2fit-szállítmányozási-bróker-rendszer">Load2fit Szállítmányozási Bróker Rendszer</h1>
+<h2 id="bevezetés">Bevezetés</h2>
+<p>A Load2fit egy szállítmányozási bróker rendszer, amely a Fuvarozók és a Megbízók közötti kapcsolat megbízható, gyors, költséghatékony megvalósítását célozza. A rendszer két fő alkalmazásból áll:</p>
+<ol>
+<li><strong>Központi web alapú adminisztrációs, üzemeltetői felügyeleti alkalmazás</strong></li>
+<li><strong>Multiplatformos, ügyfeleknek készült alkalmazás</strong>, amelybe a felhasználók regisztrálhatják magukat</li>
+</ol>
+<h2 id="üzleti-felhasználók">Üzleti felhasználók</h2>
+<p>A rendszer üzleti felhasználói:</p>
+<ul>
+<li><strong>Megbízók</strong>: USA-beli vagy kanadai jogi vagy természetes személyek</li>
+<li><strong>Fuvarozók</strong>: USA-beli vagy kanadai, meghatározott engedéllyel rendelkező jogi személyek</li>
+</ul>
+<p>A két felhasználói kör között átfedés is lehet.</p>
+<h2 id="regisztráció-és-ellenőrzés">Regisztráció és ellenőrzés</h2>
+<p>Az üzleti felhasználók regisztrációkor adat ellenőrzésen esnek át:</p>
+<ul>
+<li><strong>Fuvarozók</strong>: FMCSA adatbázisban ellenőrzés</li>
+<li><strong>Megbízók (jogi személyek)</strong>:
+<ul>
+<li>USA: <a href="http://data.gov">data.gov</a> adatbázisból ellenőrzés</li>
+<li>Kanada: GOV Canada GST/HST adatbázisból ellenőrzés</li>
+</ul>
+</li>
+<li><strong>Megbízók (magánszemélyek)</strong>:
+<ul>
+<li>USA: Social Security Administration (SSA) ellenőrzés</li>
+<li>Kanada: Social Insurance Number (SIN) ellenőrzés</li>
+</ul>
+</li>
+</ul>
+<h2 id="alapvető-folyamatok">Alapvető folyamatok</h2>
+<ol>
+<li><strong>Megbízás létrehozása és publikálása</strong>: A Megbízó létrehozza és publikálja a megbízást, amely tartalmazza a szükséges adatokat, de anonim marad mások számára.</li>
+<li><strong>Fuvarozó keresés</strong>: A Megbízó kereshet Fuvarost, de a Fuvaros adatai részben anonimak maradnak.</li>
+<li><strong>Megbízás keresés</strong>: A Fuvarozó kereshet megbízást különböző feltételekkel.</li>
+<li><strong>Ajánlattétel</strong>: A Fuvarozó ajánlatot tehet a megbízásra.</li>
+<li><strong>Ajánlat elbírálása</strong>: A Megbízó elbírálja a beérkezett ajánlatokat.</li>
+<li><strong>Kapcsolat létrehozása</strong>: Az elfogadott ajánlatról a Fuvarozó értesítést kap, amit visszaigazolhat.</li>
+<li><strong>Jutalék fizetés</strong>: A Load2fit bekéri a jutalékot, számlát állít ki, és sikeres fizetés esetén a megbízás anonimitása megszűnik.</li>
+<li><strong>Értékelés</strong>: Mind a Fuvarozó, mind a Megbízó értékelheti a másik felet sikeres kapcsolat esetén.</li>
+</ol>
+<h2 id="rendszer-funkciók">Rendszer funkciók</h2>
+<ul>
+<li>Reklamáció kezelés</li>
+<li>Jutalék díj karbantartás</li>
+<li>Load2fit rendszer értékelése</li>
+<li>Hírlevelek</li>
+</ul>
+<h2 id="dokumentáció-struktúra">Dokumentáció struktúra</h2>
+<p>Ez a mappa a Load2fit rendszer folyamatait, modul- és menüstruktúráját, valamint egyéb rendszerszintű dokumentációját tartalmazza. A kapcsolódó entitás definíciók a load2fit_*.figdoc.md fájlokban találhatók.</p>
+
+            
+            
+        </body>
+        </html>

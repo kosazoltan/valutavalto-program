@@ -1,0 +1,1882 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Specifik&aacute;ci&oacute;</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="specifikáció">Specifikáció</h1>
+<h2 id="változtatások">Változtatások</h2>
+<table>
+<thead>
+<tr>
+<th>Verzió/Dátum</th>
+<th>Leírás</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.0 - 2024.11.27</td>
+<td>Első verzió</td>
+</tr>
+</tbody>
+</table>
+<h2 id="entitások">Entitások</h2>
+<p>jasjhashjasdhasjdhjkadshhjasdhjkdsa
+a
+sdasd
+as
+d
+asd
+as
+d
+asd
+as
+d
+asd
+asd
+asddasdsaasd
+asdd
+asd
+asdadsasd</p>
+<h3 id="figdef-worker">FIGDEF# worker</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Dolgozó</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Dolgozók</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>person_id</td>
+<td>Személy</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>person</td>
+<td><a href="http://person.id">person.id</a></td>
+</tr>
+<tr>
+<td>employment_type_did</td>
+<td>Foglalkoztatás típusa</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EMPLOYMENT_TYPE</td>
+<td></td>
+</tr>
+<tr>
+<td>worker_status_did</td>
+<td>Dolgozó állapota</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>WORKER_STATUS</td>
+<td></td>
+</tr>
+<tr>
+<td>payroll_type_did</td>
+<td>Bérszámfejtés típusa</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>PAYROLL_TYPE</td>
+<td></td>
+</tr>
+<tr>
+<td>company_id</td>
+<td>Cég</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>company</td>
+<td><a href="http://company.id">company.id</a></td>
+</tr>
+<tr>
+<td>feor_did</td>
+<td>FEOR</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>FEOR</td>
+<td></td>
+</tr>
+<tr>
+<td>position</td>
+<td>Beosztás</td>
+<td>VARCHAR</td>
+<td>2048</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>entry_date</td>
+<td>Belépés dátuma</td>
+<td>DATE</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>leaving_date</td>
+<td>Kilépés dátuma</td>
+<td>DATE</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>weekly_working_hours</td>
+<td>Heti munkaidő</td>
+<td>SMALLINT</td>
+<td>5</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>other_labor_notice</td>
+<td>Egyéb munkajogi értesítés</td>
+<td>VARCHAR</td>
+<td>2048</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>method_of_termination_did</td>
+<td>Megszüntetés módja</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>METHOD_OF_TERMINATION</td>
+<td></td>
+</tr>
+<tr>
+<td>method_of_termination_desc</td>
+<td>Megszüntetés módjának leírása</td>
+<td>VARCHAR</td>
+<td>2048</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-worker_ext">FIGDEF# worker_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Dolgozó</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Dolgozók</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">worker</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>person</td>
+<td>Személy</td>
+<td>PersonExt</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>person_ext</td>
+<td>last_name</td>
+<td>person_id</td>
+</tr>
+<tr>
+<td>company</td>
+<td>Cég</td>
+<td>Company</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>company</td>
+<td>shortName</td>
+<td>company_id</td>
+</tr>
+<tr>
+<td>employment_type</td>
+<td>Foglalkoztatás típusa</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>EMPLOYMENT_TYPE</td>
+<td>description</td>
+<td>employment_type_did</td>
+</tr>
+<tr>
+<td>worker_status</td>
+<td>Dolgozó állapota</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>WORKER_STATUS</td>
+<td>description</td>
+<td>worker_status_did</td>
+</tr>
+<tr>
+<td>payroll_type</td>
+<td>Bérszámfejtés típusa</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>PAYROLL_TYPE</td>
+<td>description</td>
+<td>payroll_type_did</td>
+</tr>
+<tr>
+<td>feor</td>
+<td>FEOR</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>FEOR</td>
+<td>description</td>
+<td>feor_did</td>
+</tr>
+<tr>
+<td>method_of_termination</td>
+<td>Megszüntetés módja</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>METHOD_OF_TERMINATION</td>
+<td>description</td>
+<td>method_of_termination_did</td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-worker_assignment_request">FIGDEF# worker_assignment_request</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">hozzárendelési</span> <span class="hljs-string">kérelem</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">hozzárendelési</span> <span class="hljs-string">kérelmek</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>worker_id</td>
+<td>Dolgozó</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>worker</td>
+<td><a href="http://worker.id">worker.id</a></td>
+</tr>
+<tr>
+<td>requested_place_of_employment</td>
+<td>Kért munkavégzés helye</td>
+<td>CHAR</td>
+<td>10</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>reason</td>
+<td>Indok</td>
+<td>VARCHAR</td>
+<td>2048</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>request_datetime</td>
+<td>Kérés dátuma</td>
+<td>DATETIME</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>worker_assignment_request_did</td>
+<td>Dolgozó hozzárendelési kérelem</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>WORKER_ASSIGNMENT_REQUEST</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-worker_assignment_request_ext">FIGDEF# worker_assignment_request_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Munkaerő</span> <span class="hljs-string">kirendelési</span> <span class="hljs-string">kérelem</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Munkaerő</span> <span class="hljs-string">kirendelési</span> <span class="hljs-string">kérelmek</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">worker_assignment_request</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>worker_assignment_request</td>
+<td>Worker Assignment Request</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>WORKER_ASSIGNMENT_REQUEST</td>
+<td>description</td>
+<td>worker_assignment_request_did</td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-worker_bank_account">FIGDEF# worker_bank_account</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">bankszámla</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">bankszámlák</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Hide</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>worker_id</td>
+<td>Dolgozó</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>worker</td>
+<td><a href="http://worker.id">worker.id</a></td>
+<td>X</td>
+</tr>
+<tr>
+<td>name</td>
+<td>Bank neve</td>
+<td>VARCHAR</td>
+<td>128</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>country_did</td>
+<td>Ország</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>COUNTRY</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>address</td>
+<td>Cím</td>
+<td>VARCHAR</td>
+<td>2048</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>swift</td>
+<td>SWIFT</td>
+<td>VARCHAR</td>
+<td>32</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>huf_bank_account_number</td>
+<td>HUF bankszámlaszám</td>
+<td>VARCHAR</td>
+<td>64</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>huf_iban</td>
+<td>HUF IBAN</td>
+<td>VARCHAR</td>
+<td>32</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>dev_bank_account_number</td>
+<td>Deviza bankszámlaszám</td>
+<td>VARCHAR</td>
+<td>64</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>dev_iban</td>
+<td>Deviza IBAN</td>
+<td>VARCHAR</td>
+<td>32</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>account_owner</td>
+<td>Számlatulajdonos</td>
+<td>VARCHAR</td>
+<td>128</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>currency_did</td>
+<td>Dev. pénzneme</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>CURRENCY</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>bank_account_status_did</td>
+<td>Bszla. állapota</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>BANK_ACCOUNT_STATUS</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>note</td>
+<td>Megjegyzés</td>
+<td>VARCHAR</td>
+<td>2048</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-worker_bank_account_ext">FIGDEF# worker_bank_account_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">bankszámla</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">bankszámlái</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">worker_bank_account</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+<th>Hide</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>country</td>
+<td>Ország</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>COUNTRY</td>
+<td>description</td>
+<td>country_did</td>
+<td></td>
+</tr>
+<tr>
+<td>currency</td>
+<td>Pénznem</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>CURRENCY</td>
+<td>description</td>
+<td>currency_did</td>
+<td></td>
+</tr>
+<tr>
+<td>bank_account_status</td>
+<td>Bszla. állapota</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>BANK_ACCOUNT_STATUS</td>
+<td>description</td>
+<td>bank_account_status_did</td>
+<td></td>
+</tr>
+<tr>
+<td>worker_bank_account_documents</td>
+<td>Worker Bank Account Documents</td>
+<td>List&lt;WorkerBankAccountDocumentExt?&gt;</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>list:worker_bank_account_document_ext</td>
+<td></td>
+<td></td>
+<td>X</td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-worker_bank_account_document">FIGDEF# worker_bank_account_document</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">bankszámla</span> <span class="hljs-string">dokumentum</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">bankszámla</span> <span class="hljs-string">dokumentumok</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>worker_bank_account_id</td>
+<td>Dolgozó bankszámla</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>worker_bank_account</td>
+<td>worker_bank_account.id</td>
+</tr>
+<tr>
+<td>document_id</td>
+<td>Dokumentum</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>document</td>
+<td><a href="http://document.id">document.id</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-worker_bank_account_document_ext">FIGDEF# worker_bank_account_document_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">bankszámla</span> <span class="hljs-string">dokumentuma</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">bankszámla</span> <span class="hljs-string">dokumentumai</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">worker_bank_account_document</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>document</td>
+<td>Dokumentum</td>
+<td>DocumentExt</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>document_ext</td>
+<td>name</td>
+<td>document_id</td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-worker_car">FIGDEF# worker_car</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">autó</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">autók</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Hide</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>worker_id</td>
+<td>Dolgozó</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>worker</td>
+<td><a href="http://worker.id">worker.id</a></td>
+<td>X</td>
+</tr>
+<tr>
+<td>car_id</td>
+<td>Autó</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>car</td>
+<td><a href="http://car.id">car.id</a></td>
+<td></td>
+</tr>
+<tr>
+<td>valid_from_date</td>
+<td>Érvényes-től</td>
+<td>DATE</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>valid_to_date</td>
+<td>Érvényes-ig</td>
+<td>DATE</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-worker_car_ext">FIGDEF# worker_car_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">gépjárműve</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">gépjárművei</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">worker_car</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>car</td>
+<td>Autó</td>
+<td>CarExt</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>car_ext</td>
+<td>license_plate_number</td>
+<td>car_id</td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-worker_car_document">FIGDEF# worker_car_document</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">autó</span> <span class="hljs-string">dokumentuma</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">autó</span> <span class="hljs-string">dokumentumok</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>worker_car_id</td>
+<td>Dolgozó autója</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>worker_car</td>
+<td>worker_car.id</td>
+</tr>
+<tr>
+<td>document_id</td>
+<td>Dokumentum</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>document</td>
+<td><a href="http://document.id">document.id</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-worker_car_document_ext">FIGDEF# worker_car_document_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">gépjármű</span> <span class="hljs-string">dokumentuma</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">gépjármű</span> <span class="hljs-string">dokumentumai</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">worker_car_document</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>document</td>
+<td>Dokumentum</td>
+<td>DocumentExt</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>document_ext</td>
+<td>name</td>
+<td>document_id</td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-worker_document">FIGDEF# worker_document</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Okmány</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Okmányok</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>worker_id</td>
+<td>Dolgozó</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>worker</td>
+<td><a href="http://worker.id">worker.id</a></td>
+</tr>
+<tr>
+<td>document_id</td>
+<td>Dokumentum</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>document</td>
+<td><a href="http://document.id">document.id</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-worker_document_ext">FIGDEF# worker_document_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">dokumentum</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">dokumentumok</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">worker_document</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>document</td>
+<td>Dokumentum</td>
+<td>DocumentExt</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>document_ext</td>
+<td>name</td>
+<td>document_id</td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-worker_document_site_validity">FIGDEF# worker_document_site_validity</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">dokumentum</span> <span class="hljs-string">telephely</span> <span class="hljs-string">érvényesség</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">dokumentum</span> <span class="hljs-string">telephely</span> <span class="hljs-string">érvényességek</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>worker_document_id</td>
+<td>Dolgozó dokumentum</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>worker_document</td>
+<td>worker_document.id</td>
+</tr>
+<tr>
+<td>site_id</td>
+<td>Telephely</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>site</td>
+<td><a href="http://site.id">site.id</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-worker_life_path">FIGDEF# worker_life_path</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">életpálya</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">életpályák</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>SubType</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>worker_id</td>
+<td>Dolgozó</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>worker</td>
+<td><a href="http://worker.id">worker.id</a></td>
+<td></td>
+</tr>
+<tr>
+<td>valid_from_date</td>
+<td>Érvényes-től</td>
+<td>DATE</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>valid_to_date</td>
+<td>Érvényes-ig</td>
+<td>DATE</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>description</td>
+<td>Leírás</td>
+<td>VARCHAR</td>
+<td>2048</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>abroad</td>
+<td>Külföld</td>
+<td>BOOL</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>health_insurance_fee_settled</td>
+<td>Egészségbiztosítási járulék rendezve</td>
+<td>BOOL</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>who_settled_health_insurance_fee</td>
+<td>Ki rendezte az egészségbiztosítási járulékot</td>
+<td>VARCHAR</td>
+<td>32</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>health_insurance_fee_debt</td>
+<td>Egészségbiztosítási járulék tartozás</td>
+<td>DECIMAL</td>
+<td>19</td>
+<td>2</td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>CURRENCY</td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-worker_note">FIGDEF# worker_note</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">megjegyzés</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">megjegyzések</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Hide</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>worker_id</td>
+<td>Dolgozó</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>worker</td>
+<td><a href="http://worker.id">worker.id</a></td>
+<td>X</td>
+</tr>
+<tr>
+<td>note</td>
+<td>Megjegyzés</td>
+<td>TEXT</td>
+<td>65535</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>ruser_id</td>
+<td>Felhasználó</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>ruser</td>
+<td><a href="http://ruser.id">ruser.id</a></td>
+<td></td>
+</tr>
+<tr>
+<td>worker_note_status_did</td>
+<td>Dolgozó megjegyzés állapota</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>WORKER_NOTE_STATUS</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>creation_dt</td>
+<td>Létrehozás dátuma</td>
+<td>DATETIME</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-worker_note_ext">FIGDEF# worker_note_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">megjegyzése</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Dolgozó</span> <span class="hljs-string">megjegyzései</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">worker_note</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ruser</td>
+<td>Ruser</td>
+<td>Ruser</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>ruser</td>
+<td>user_name</td>
+<td>ruser_id</td>
+</tr>
+<tr>
+<td>worker_note_status</td>
+<td>Dolgozó megjegyzés állapota</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>WORKER_NOTE_STATUS</td>
+<td>description</td>
+<td>worker_note_status_did</td>
+</tr>
+</tbody>
+</table>
+
+            
+            
+        </body>
+        </html>

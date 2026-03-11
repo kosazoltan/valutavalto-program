@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Load2fit Rendszer Alapfolyamatai</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="load2fit-rendszer-alapfolyamatai">Load2fit Rendszer Alapfolyamatai</h1>
+<h2 id="bevezetés">Bevezetés</h2>
+<p>Ez a dokumentum a Load2fit szállítmányozási bróker rendszer alapvető folyamatait írja le, beleértve a regisztrációt, felhasználó-ellenőrzést, megbízások kezelését és az ajánlattételi folyamatot. Az itt leírt folyamatok a rendszer alapvető működésének gerincét alkotják.</p>
+<h2 id="felhasználói-regisztráció-és-ellenőrzés">Felhasználói regisztráció és ellenőrzés</h2>
+<h3 id="fuvarozó-regisztrációja">Fuvarozó regisztrációja</h3>
+<ol>
+<li>A Fuvarozó a multiplatformos alkalmazáson keresztül regisztrál a rendszerbe.</li>
+<li>Megadja a kötelező adatokat:
+<ul>
+<li>Cégnév (<code>company_name</code>)</li>
+<li>Adószám (<code>tax_id</code>)</li>
+<li>FMCSA engedélyszám (<code>fmcsa_license_number</code>)</li>
+<li>Székhely cím (<code>headquarters_address</code>)</li>
+<li>Telephelyek címei (<code>location_addresses</code>) - opcionális, több is lehet</li>
+<li>Kapcsolattartó adatai (<code>contact_info</code>)</li>
+<li>Szállítói kompetenciák (<code>carrier_competencies</code>) - milyen típusú szállításokat vállal</li>
+<li>Működési terület (<code>operation_area</code>) - mely államokban/tartományokban működik</li>
+</ul>
+</li>
+<li>A rendszer valós időben ellenőrzi az FMCSA adatbázisban az engedélyszám érvényességét.</li>
+<li>Sikeres ellenőrzés esetén a Fuvarozó státusza (<code>carrier_status_did</code>) &quot;PENDING_APPROVAL&quot; lesz.</li>
+<li>A rendszeradminisztrátor ellenőrzi a megadott adatokat, és jóváhagyás esetén a státusz &quot;ACTIVE&quot; lesz.</li>
+</ol>
+<h3 id="megbízó-regisztrációja-jogi-személy">Megbízó regisztrációja (jogi személy)</h3>
+<ol>
+<li>A Megbízó (jogi személy) a multiplatformos alkalmazáson keresztül regisztrál a rendszerbe.</li>
+<li>Megadja a kötelező adatokat:
+<ul>
+<li>Cégnév (<code>company_name</code>)</li>
+<li>Adószám (<code>tax_id</code>)</li>
+<li>Székhely cím (<code>headquarters_address</code>)</li>
+<li>Kapcsolattartó adatai (<code>contact_info</code>)</li>
+<li>Ország (<code>country_did</code>) - USA vagy Kanada</li>
+</ul>
+</li>
+<li>A rendszer valós időben ellenőrzi az adószám érvényességét:
+<ul>
+<li>USA esetén a <a href="http://data.gov">data.gov</a> adatbázisából</li>
+<li>Kanada esetén a GOV Canada GST/HST adatbázisából</li>
+</ul>
+</li>
+<li>Sikeres ellenőrzés esetén a Megbízó státusza (<code>client_status_did</code>) &quot;PENDING_APPROVAL&quot; lesz.</li>
+<li>A rendszeradminisztrátor ellenőrzi a megadott adatokat, és jóváhagyás esetén a státusz &quot;ACTIVE&quot; lesz.</li>
+</ol>
+<h3 id="megbízó-regisztrációja-magánszemély">Megbízó regisztrációja (magánszemély)</h3>
+<ol>
+<li>A Megbízó (magánszemély) a multiplatformos alkalmazáson keresztül regisztrál a rendszerbe.</li>
+<li>Megadja a kötelező adatokat:
+<ul>
+<li>Teljes név (<code>full_name</code>)</li>
+<li>Társadalombiztosítási szám (<code>ssn</code> vagy <code>sin</code>)</li>
+<li>Lakcím (<code>address</code>)</li>
+<li>Elérhetőségek (<code>contact_info</code>)</li>
+<li>Ország (<code>country_did</code>) - USA vagy Kanada</li>
+</ul>
+</li>
+<li>A rendszer ellenőrzi a társadalombiztosítási szám érvényességét:
+<ul>
+<li>USA esetén az SSA rendszerén keresztül</li>
+<li>Kanada esetén a SIN rendszerén keresztül</li>
+</ul>
+</li>
+<li>Sikeres ellenőrzés esetén a Megbízó státusza (<code>client_status_did</code>) &quot;PENDING_APPROVAL&quot; lesz.</li>
+<li>A rendszeradminisztrátor ellenőrzi a megadott adatokat, és jóváhagyás esetén a státusz &quot;ACTIVE&quot; lesz.</li>
+</ol>
+<h2 id="megbízások-kezelése">Megbízások kezelése</h2>
+<h3 id="új-megbízás-létrehozása">Új megbízás létrehozása</h3>
+<ol>
+<li>Az aktív státuszú Megbízó (akár jogi személy/cég, akár magánszemély) új megbízást (<code>assignment</code>) hoz létre a rendszerben.</li>
+<li>Megadja a kötelező adatokat:
+<ul>
+<li>Megbízás címe (<code>title</code>)</li>
+<li>Részletes leírás (<code>description</code>)</li>
+<li>Szállítási adatok:
+<ul>
+<li>Feladási hely (<code>pickup_location</code>)</li>
+<li>Célállomás (<code>delivery_location</code>)</li>
+<li>Feladási időablak (<code>pickup_time_window</code>)</li>
+<li>Kézbesítési időablak (<code>delivery_time_window</code>)</li>
+</ul>
+</li>
+<li>Rakomány adatok:
+<ul>
+<li>Típus (<code>cargo_type_did</code>)</li>
+<li>Súly (<code>weight</code>)</li>
+<li>Térfogat (<code>volume</code>)</li>
+<li>Speciális kezelési igények (<code>special_handling_requirements</code>) - opcionális</li>
+</ul>
+</li>
+<li>Árajánlati elvárások:
+<ul>
+<li>Minimum ár (<code>min_price</code>) - opcionális</li>
+<li>Maximum ár (<code>max_price</code>) - opcionális</li>
+<li>Pénznem (<code>currency_did</code>) - USD</li>
+</ul>
+</li>
+<li>Megbízás érvényességi ideje (<code>validity_period</code>)</li>
+</ul>
+</li>
+<li>A rendszer ellenőrzi az adatok helyességét és teljességét.</li>
+<li>Sikeres ellenőrzés esetén a megbízás státusza (<code>assignment_status_did</code>) &quot;DRAFT&quot; lesz.</li>
+</ol>
+<h3 id="megbízás-publikálása">Megbízás publikálása</h3>
+<ol>
+<li>A Megbízó a &quot;DRAFT&quot; státuszú megbízást publikálja.</li>
+<li>A rendszer ellenőrzi, hogy minden kötelező adat ki van-e töltve.</li>
+<li>Sikeres ellenőrzés esetén a megbízás státusza &quot;PUBLISHED&quot; lesz.</li>
+<li>A publikált megbízás kereshető lesz a Fuvarozók számára, de a Megbízó adatai anonimak maradnak.</li>
+</ol>
+<h3 id="megbízás-keresése">Megbízás keresése</h3>
+<ol>
+<li>A Fuvarozó különböző feltételek alapján kereshet megbízásokat:
+<ul>
+<li>Földrajzi hely (feladási/célállomás)</li>
+<li>Időablak</li>
+<li>Rakomány típusa</li>
+<li>Árkategória</li>
+<li>Egyéb szűrők</li>
+</ul>
+</li>
+<li>A Fuvarozó mentheti a keresési feltételeket későbbi használatra.</li>
+<li>A keresési eredmények listázzák a releváns megbízásokat, de a Megbízók adatai anonimak maradnak.</li>
+</ol>
+<h2 id="ajánlattételi-folyamat">Ajánlattételi folyamat</h2>
+<h3 id="ajánlat-készítése">Ajánlat készítése</h3>
+<ol>
+<li>A Fuvarozó kiválaszt egy &quot;PUBLISHED&quot; státuszú megbízást, és ajánlatot (<code>offer</code>) készít.</li>
+<li>Megadja az ajánlat adatait:
+<ul>
+<li>Ár (<code>price</code>) - USD-ben</li>
+<li>Szállítási feltételek (<code>delivery_conditions</code>)</li>
+<li>Érvényességi idő (<code>validity_period</code>)</li>
+<li>Megjegyzések (<code>notes</code>) - opcionális</li>
+</ul>
+</li>
+<li>A rendszer ellenőrzi az ajánlat adatait.</li>
+<li>Sikeres ellenőrzés esetén az ajánlat státusza (<code>offer_status_did</code>) &quot;SUBMITTED&quot; lesz.</li>
+</ol>
+<h3 id="ajánlat-elbírálása">Ajánlat elbírálása</h3>
+<ol>
+<li>A Megbízó értesítést kap a beérkezett ajánlatról.</li>
+<li>A Megbízó megtekinti az ajánlat részleteit, de a Fuvarozó adatai részben anonimak maradnak (csak a telephelyek nem teljes címei, értékelése, szállítói kompetenciái láthatók).</li>
+<li>A Megbízó dönthet az ajánlat elfogadásáról, elutasításáról vagy módosítási kéréséről.</li>
+<li>Elfogadás esetén az ajánlat státusza &quot;ACCEPTED&quot; lesz.</li>
+<li>Elutasítás esetén az ajánlat státusza &quot;REJECTED&quot; lesz.</li>
+<li>Módosítási kérés esetén az ajánlat státusza &quot;MODIFICATION_REQUESTED&quot; lesz, és a Fuvarozó értesítést kap.</li>
+</ol>
+<h3 id="kapcsolat-létrehozása">Kapcsolat létrehozása</h3>
+<ol>
+<li>A Fuvarozó értesítést kap az elfogadott ajánlatról.</li>
+<li>A Fuvarozó visszaigazolhatja az elfogadott ajánlatot.</li>
+<li>Visszaigazolás esetén a Load2fit bekéri a jutalékot az érvényes díjszabás szerint.</li>
+<li>A rendszer számlát állít ki a jutalékról a Fuvarozónak.</li>
+<li>Sikeres fizetés esetén:
+<ul>
+<li>A megbízás anonimitása megszűnik a Fuvarozó számára</li>
+<li>A Megbízó értesítést kap a kapcsolat létrejöttéről, a Fuvarozó adataival</li>
+<li>A megbízás státusza &quot;IN_PROGRESS&quot; lesz</li>
+</ul>
+</li>
+</ol>
+<h3 id="kooperatív-megbízás-teljesítés">Kooperatív megbízás teljesítés</h3>
+<ol>
+<li>Nagy mennyiségű áru esetén a Megbízó engedélyezheti a kooperatív teljesítést.</li>
+<li>Ebben az esetben több Fuvarozó ajánlata is elfogadható.</li>
+<li>A rendszer nyilvántartja, hogy melyik Fuvarozó a rakomány mely részéért felelős.</li>
+<li>Minden Fuvarozó csak a saját részére vonatkozó jutalékot fizeti.</li>
+</ol>
+<h2 id="értékelési-rendszer">Értékelési rendszer</h2>
+<h3 id="fuvarozó-értékelése">Fuvarozó értékelése</h3>
+<ol>
+<li>A megbízás teljesítése után a Megbízó értékelheti a Fuvarozót.</li>
+<li>Az értékelés szempontjai:
+<ul>
+<li>Pontosság</li>
+<li>Kommunikáció</li>
+<li>Áru állapota</li>
+<li>Általános elégedettség</li>
+</ul>
+</li>
+<li>Az értékelés 1-5 skálán történik, szöveges megjegyzéssel kiegészítve.</li>
+<li>Az értékelések átlaga megjelenik a Fuvarozó profiljában.</li>
+</ol>
+<h3 id="megbízó-értékelése">Megbízó értékelése</h3>
+<ol>
+<li>A megbízás teljesítése után a Fuvarozó értékelheti a Megbízót.</li>
+<li>Az értékelés szempontjai:
+<ul>
+<li>Pontos információk</li>
+<li>Kommunikáció</li>
+<li>Fizetési pontosság</li>
+<li>Általános elégedettség</li>
+</ul>
+</li>
+<li>Az értékelés 1-5 skálán történik, szöveges megjegyzéssel kiegészítve.</li>
+<li>Az értékelések átlaga megjelenik a Megbízó profiljában.</li>
+</ol>
+
+            
+            
+        </body>
+        </html>

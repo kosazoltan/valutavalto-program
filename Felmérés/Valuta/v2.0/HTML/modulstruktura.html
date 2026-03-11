@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Valutav&aacute;lt&oacute; Rendszer - Modul- &eacute;s Men&uuml;strukt&uacute;ra</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="valutaváltó-rendszer---modul--és-menüstruktúra">Valutaváltó Rendszer - Modul- és Menüstruktúra</h1>
+<h2 id="bevezetés">Bevezetés</h2>
+<p>Ez a dokumentum a valutaváltó rendszer javasolt modul- és menüstruktúráját írja le. A rendszer CRUD-alapú (Create-Read-Update-Delete) karbantartókból
+épül fel, de a komplex üzleti folyamatokat és felhasználói eseteket is támogatja.</p>
+<h2 id="modulstruktúra">Modulstruktúra</h2>
+<p>A rendszer az alábbi fő modulokból épül fel:</p>
+<h3 id="1-alapadatok-modul">1. Alapadatok modul</h3>
+<p><strong>Cél:</strong> A rendszer alapvető törzsadatainak kezelése, karbantartása.</p>
+<p><strong>Főbb komponensek:</strong></p>
+<ul>
+<li>Devizanem karbantartás (<code>currency</code>)</li>
+<li>Devizanem címletek karbantartása (<code>currency_denomination</code>)</li>
+<li>Árfolyam karbantartás (<code>exchange_rate</code>)</li>
+<li>Fiók karbantartás (<code>branch</code>)</li>
+<li>Dolgozók karbantartása (<code>worker</code>)</li>
+<li>Pénztárosok karbantartása (<code>cashier</code>)</li>
+<li>Általános kódszótárak karbantartása</li>
+</ul>
+<h3 id="2-pénztár-modul">2. Pénztár modul</h3>
+<p><strong>Cél:</strong> A napi pénztárműveletek kezelése, a valutaváltási tranzakciók lebonyolítása.</p>
+<p><strong>Főbb komponensek:</strong></p>
+<ul>
+<li>Valutaváltási tranzakció kezelő (<code>transaction</code>)</li>
+<li>Bankjegykészlet nyilvántartás (<code>banknote_inventory</code>)</li>
+<li>Kasszanyitás/zárás kezelő (<code>daily_closing</code>)</li>
+<li>Pénztári korrekciók</li>
+<li>Címletezési optimalizáció (<code>denomination_optimization</code>)</li>
+<li>Címletezési szabályok kezelése (<code>denomination_rule</code>)</li>
+<li>Címletezési napló (<code>denomination_transaction_log</code>)</li>
+</ul>
+<h3 id="3-ügyfélkezelési-modul">3. Ügyfélkezelési modul</h3>
+<p><strong>Cél:</strong> Az ügyféladatok és ügyféltörténet kezelése.</p>
+<p><strong>Főbb komponensek:</strong></p>
+<ul>
+<li>Ügyfél karbantartás (<code>customer</code>)</li>
+<li>Ügyfélkategória kezelés</li>
+<li>Ügyfélpreferenciák kezelés</li>
+<li>Ügyféltranzakció történet</li>
+<li>Meghatalmazott kezelés (<code>authorized_representative</code>)</li>
+<li>Meghatalmazás kezelés (<code>authorization</code>)</li>
+<li>Meghatalmazotti tevékenység napló (<code>representative_log</code>)</li>
+</ul>
+<h3 id="4-szállítmány-modul">4. Szállítmány modul</h3>
+<p><strong>Cél:</strong> A valutaszállítmányok kezelése, a készletoptimalizálás támogatása.</p>
+<p><strong>Főbb komponensek:</strong></p>
+<ul>
+<li>Szállítmányigény kezelés</li>
+<li>Szállítmány előkészítés</li>
+<li>Szállítmánykövetés</li>
+<li>Készletoptimalizálás</li>
+<li>Szállítmány címletezés</li>
+</ul>
+<h3 id="5-jelentés-és-elemzés-modul">5. Jelentés és elemzés modul</h3>
+<p><strong>Cél:</strong> Átfogó elemzések, kimutatások, jelentések készítése.</p>
+<p><strong>Főbb komponensek:</strong></p>
+<ul>
+<li>Forgalmi jelentések</li>
+<li>Árfolyam-nyereség jelentések</li>
+<li>Pénztári zárás riportok</li>
+<li>Hatósági jelentések</li>
+<li>Teljesítmény-elemzések</li>
+<li>Címletezési statisztikák</li>
+<li>Meghatalmazotti tevékenység elemzések</li>
+</ul>
+<h3 id="6-adminisztráció-modul">6. Adminisztráció modul</h3>
+<p><strong>Cél:</strong> A rendszer üzemeltetésével kapcsolatos adminisztratív feladatok ellátása.</p>
+<p><strong>Főbb komponensek:</strong></p>
+<ul>
+<li>Felhasználókezelés</li>
+<li>Jogosultságkezelés</li>
+<li>Rendszerparaméterek beállítása</li>
+<li>Naplóelemzés</li>
+<li>Biztonsági mentések kezelése</li>
+<li>Címletezési paraméterek globális beállítása</li>
+<li>Meghatalmazotti jogosultságok felügyelete</li>
+</ul>
+<h2 id="menüstruktúra">Menüstruktúra</h2>
+<h3 id="főmenü">Főmenü</h3>
+<ol>
+<li><strong>Valutaváltás</strong> - Pénztárkezelő felület</li>
+<li><strong>Törzsadatok</strong> - Alapadatok karbantartása</li>
+<li><strong>Ügyfélkezelés</strong> - Ügyféladatok kezelése</li>
+<li><strong>Szállítmánykezelés</strong> - Szállítmányok kezelése</li>
+<li><strong>Jelentések</strong> - Riportok, elemzések</li>
+<li><strong>Adminisztráció</strong> - Rendszerbeállítások</li>
+</ol>
+<h3 id="almenük">Almenük</h3>
+<h4 id="1-valutaváltás">1. Valutaváltás</h4>
+<ul>
+<li><strong>Új valutaváltás</strong> - Új tranzakció indítása</li>
+<li><strong>Kassza nyitása</strong> - Napi kassza nyitás</li>
+<li><strong>Kassza zárása</strong> - Napi kassza zárás</li>
+<li><strong>Bankjegykészlet</strong> - Aktuális készlet megtekintése</li>
+<li><strong>Napi tranzakciók</strong> - Az adott nap tranzakcióinak listája</li>
+<li><strong>Valutaváltás sztornó</strong> - Tranzakció sztornózása</li>
+<li><strong>Pénztári korrekció</strong> - Készpénzállomány korrekciója</li>
+<li><strong>Címletezési javaslat</strong> - Intelligens címletezési javaslatok generálása</li>
+<li><strong>Címletezési napló</strong> - Tranzakciók címletezési adatainak megtekintése</li>
+</ul>
+<h4 id="2-törzsadatok">2. Törzsadatok</h4>
+<ul>
+<li>
+<p><strong>Devizanemek</strong> - Devizanemek karbantartása</p>
+<ul>
+<li>Devizanem lista</li>
+<li>Új devizanem</li>
+<li>Devizanem szerkesztése</li>
+<li>Devizanem státuszváltoztatás</li>
+</ul>
+</li>
+<li>
+<p><strong>Devizanem címletek</strong> - Címletek karbantartása</p>
+<ul>
+<li>Címlet lista devizanemenként</li>
+<li>Új címlet</li>
+<li>Címlet szerkesztése</li>
+<li>Címlet elérhetőség beállítása</li>
+<li>Címlet sorrendjének meghatározása</li>
+</ul>
+</li>
+<li>
+<p><strong>Árfolyamok</strong> - Árfolyamok karbantartása</p>
+<ul>
+<li>Központi árfolyamok</li>
+<li>Fiókspecifikus árfolyamok</li>
+<li>Fiókcsoport árfolyamok</li>
+<li>Új árfolyam rögzítése</li>
+<li>Árfolyam importálás</li>
+</ul>
+</li>
+<li>
+<p><strong>Fiókok</strong> - Fiókadatok karbantartása</p>
+<ul>
+<li>Fiók lista</li>
+<li>Új fiók létrehozása</li>
+<li>Fiók szerkesztése</li>
+<li>Fiók státuszváltoztatás</li>
+<li>Fiókcsoportok kezelése</li>
+</ul>
+</li>
+<li>
+<p><strong>Dolgozók</strong> - Dolgozók adatainak karbantartása</p>
+<ul>
+<li>Dolgozó lista</li>
+<li>Új dolgozó</li>
+<li>Dolgozó szerkesztése</li>
+<li>Dolgozó státuszváltoztatás</li>
+</ul>
+</li>
+<li>
+<p><strong>Pénztárosok</strong> - Pénztárosok adatainak karbantartása</p>
+<ul>
+<li>Pénztáros lista</li>
+<li>Új pénztáros</li>
+<li>Pénztáros szerkesztése</li>
+<li>Pénztáros fiókhoz rendelése</li>
+<li>Pénztáros státuszváltoztatás</li>
+</ul>
+</li>
+<li>
+<p><strong>Kódszótárak</strong> - Kódszótárak karbantartása</p>
+<ul>
+<li>Szerepkörök (ROLE)</li>
+<li>Devizanem státuszok (CURRENCY_STATUS)</li>
+<li>Tranzakció típusok (TRANSACTION_TYPE)</li>
+<li>Zárás státuszok (CLOSING_STATUS)</li>
+<li>Címlet elérhetőség (DENOMINATION_AVAILABILITY)</li>
+<li>Optimalizációs stratégia (OPTIMIZATION_STRATEGY)</li>
+<li>Címletezési szabály típus (DENOMINATION_RULE_TYPE)</li>
+<li>Meghatalmazás típusok (REPRESENTATIVE_TYPE)</li>
+<li>Kapcsolat típusok (RELATIONSHIP_TYPE)</li>
+<li>Meghatalmazás jogosultság (AUTHORIZATION_TYPE)</li>
+<li>Meghatalmazás státusz (AUTHORIZATION_STATUS)</li>
+<li>Művelet típusok (OPERATION_TYPE)</li>
+<li>További kódszótárak...</li>
+</ul>
+</li>
+</ul>
+<h4 id="3-ügyfélkezelés">3. Ügyfélkezelés</h4>
+<ul>
+<li><strong>Ügyfélkeresés</strong> - Ügyfelek keresése különböző szempontok alapján</li>
+<li><strong>Új ügyfél</strong> - Új ügyfél létrehozása</li>
+<li><strong>Ügyfél szerkesztése</strong> - Meglévő ügyféladatok módosítása</li>
+<li><strong>Ügyfélkategóriák</strong> - Ügyfélkategóriák karbantartása</li>
+<li><strong>Ügyfélpreferenciák</strong> - Egyedi ügyfélbeállítások kezelése</li>
+<li><strong>Ügyféltranzakciók</strong> - Ügyfélhez tartozó tranzakciótörténet</li>
+<li><strong>Ügyfélpanaszok</strong> - Ügyfélpanaszok nyilvántartása, kezelése</li>
+<li><strong>Ügyfélkommunikáció</strong> - Ügyfélértesítések, komunikáció kezelése</li>
+<li><strong>Meghatalmazottak</strong> - Ügyfél meghatalmazottainak kezelése
+<ul>
+<li>Meghatalmazott keresés</li>
+<li>Új meghatalmazott</li>
+<li>Meghatalmazott szerkesztése</li>
+<li>Meghatalmazott dokumentumok</li>
+<li>Meghatalmazások kezelése</li>
+<li>Meghatalmazás érvényesítése</li>
+<li>Meghatalmazás felfüggesztése/visszavonása</li>
+<li>Meghatalmazott tevékenységnapló</li>
+</ul>
+</li>
+</ul>
+<h4 id="4-szállítmánykezelés">4. Szállítmánykezelés</h4>
+<ul>
+<li>
+<p><strong>Szállítmányigények</strong> - Szállítmányigények listázása, kezelése</p>
+<ul>
+<li>Új igény létrehozása</li>
+<li>Igények jóváhagyása</li>
+<li>Igények módosítása</li>
+<li>Igények törlése</li>
+</ul>
+</li>
+<li>
+<p><strong>Aktív szállítmányok</strong> - Előkészítés alatt és szállítás alatt lévő tételek</p>
+<ul>
+<li>Szállítmány előkészítése</li>
+<li>Szállítmány indítása</li>
+<li>Szállítmány fogadása</li>
+<li>Szállítmányok nyomonkövetése</li>
+<li>Szállítmány címletezés beállítása</li>
+</ul>
+</li>
+<li>
+<p><strong>Szállítmánytörténet</strong> - Lezárt szállítmányok nyilvántartása</p>
+<ul>
+<li>Szállítmánytörténet lekérdezése</li>
+<li>Szállítmányeltérések kezelése</li>
+<li>Szállítmánydokumentáció</li>
+</ul>
+</li>
+<li>
+<p><strong>Készletoptimalizálás</strong> - Készletszint-elemzés, optimalizálás</p>
+<ul>
+<li>Optimalizálási javaslatok</li>
+<li>Szezonális készlettervezés</li>
+<li>Biztonsági készletszintek beállítása</li>
+<li>Címlet-specifikus optimalizálás</li>
+</ul>
+</li>
+</ul>
+<h4 id="5-jelentések">5. Jelentések</h4>
+<ul>
+<li>
+<p><strong>Napi jelentések</strong></p>
+<ul>
+<li>Napi forgalmi kimutatás</li>
+<li>Napi zárás jelentés</li>
+<li>Kasszaállomány kimutatás</li>
+<li>Címletezési hatékonyság</li>
+</ul>
+</li>
+<li>
+<p><strong>Időszaki jelentések</strong></p>
+<ul>
+<li>Heti forgalom</li>
+<li>Havi forgalom</li>
+<li>Negyedéves/éves forgalom</li>
+<li>Árfolyamnyereség-kimutatás</li>
+<li>Jutalékbevétel-kimutatás</li>
+<li>Címletfelhasználási statisztikák</li>
+</ul>
+</li>
+<li>
+<p><strong>Fiók jelentések</strong></p>
+<ul>
+<li>Fiók teljesítmény</li>
+<li>Fiók készletek</li>
+<li>Fiók tranzakciók</li>
+<li>Fiók-specifikus címletstatisztikák</li>
+</ul>
+</li>
+<li>
+<p><strong>Ügyfél- és meghatalmazott jelentések</strong></p>
+<ul>
+<li>Ügyfélaktivitási jelentések</li>
+<li>Meghatalmazotti tevékenység összesítők</li>
+<li>Meghatalmazás-státusz kimutatások</li>
+</ul>
+</li>
+<li>
+<p><strong>Hatósági jelentések</strong></p>
+<ul>
+<li>Nagy összegű tranzakciók jelentése</li>
+<li>Gyanús tranzakciók jelentése</li>
+<li>Meghatalmazotti tranzakciók jelentése</li>
+<li>Egyéb hatósági jelentések</li>
+</ul>
+</li>
+<li>
+<p><strong>Elemzések</strong></p>
+<ul>
+<li>Tranzakciós minták elemzése</li>
+<li>Ügyfélviselkedés-elemzés</li>
+<li>Szezonalitás-elemzés</li>
+<li>Jövedelmezőség-elemzés</li>
+<li>Címletezési stratégiák hatékonyságelemzése</li>
+<li>Meghatalmazotti aktivitáselemzés</li>
+</ul>
+</li>
+</ul>
+<h4 id="6-adminisztráció">6. Adminisztráció</h4>
+<ul>
+<li>
+<p><strong>Felhasználókezelés</strong></p>
+<ul>
+<li>Felhasználók listája</li>
+<li>Új felhasználó létrehozása</li>
+<li>Felhasználó szerkesztése</li>
+<li>Felhasználó deaktiválása/aktiválása</li>
+<li>Jelszókezelés</li>
+</ul>
+</li>
+<li>
+<p><strong>Jogosultságkezelés</strong></p>
+<ul>
+<li>Szerepkörök karbantartása</li>
+<li>Jogosultságok kiosztása</li>
+<li>Jogosultság-felülvizsgálat</li>
+<li>Meghatalmazotti jogosultságok felügyelete</li>
+</ul>
+</li>
+<li>
+<p><strong>Rendszerparaméterek</strong></p>
+<ul>
+<li>Általános paraméterek</li>
+<li>Árfolyam-paraméterek</li>
+<li>Jutalék-paraméterek</li>
+<li>Készlethatárok</li>
+<li>Biztonsági paraméterek</li>
+<li>Címletezési paraméterek</li>
+<li>Meghatalmazás-kezelési paraméterek</li>
+</ul>
+</li>
+<li>
+<p><strong>Címletezés adminisztráció</strong></p>
+<ul>
+<li>Címletezési stratégiák karbantartása</li>
+<li>Címletezési szabályok létrehozása/módosítása</li>
+<li>Optimalizációs algoritmusok beállítása</li>
+<li>Címletezési tesztelő eszköz</li>
+</ul>
+</li>
+<li>
+<p><strong>Rendszernapló</strong></p>
+<ul>
+<li>Napló megtekintése</li>
+<li>Audit napló</li>
+<li>Biztonsági események</li>
+<li>Meghatalmazotti aktivitási napló</li>
+<li>Napló exportálása</li>
+</ul>
+</li>
+<li>
+<p><strong>Rendszer-karbantartás</strong></p>
+<ul>
+<li>Biztonsági mentés</li>
+<li>Adatbázis-karbantartás</li>
+<li>Verzióinformációk</li>
+<li>Rendszerteljesítmény</li>
+</ul>
+</li>
+</ul>
+<h2 id="crud-komponensek">CRUD komponensek</h2>
+<p>A rendszer CRUD (Create-Read-Update-Delete) műveletek köré szervezett karbantartó komponensekből épül fel, amelyek az alábbi sablon szerint működnek
+minden entitás esetében:</p>
+<h3 id="lista-nézet">Lista nézet</h3>
+<ul>
+<li>Szűrési és keresési lehetőségek</li>
+<li>Rendezési lehetőségek</li>
+<li>Lapozás nagy mennyiségű adat esetén</li>
+<li>Műveletek: új létrehozása, megtekintés, szerkesztés, törlés/inaktiválás</li>
+</ul>
+<h3 id="részletes-nézet">Részletes nézet</h3>
+<ul>
+<li>Entitás összes adatának megtekintése</li>
+<li>Kapcsolódó entitások adatainak megtekintése</li>
+<li>Változástörténet megtekintése (ha elérhető)</li>
+<li>Műveletek: szerkesztés, törlés/inaktiválás, egyéb entitásspecifikus műveletek</li>
+</ul>
+<h3 id="létrehozásiszerkesztési-űrlap">Létrehozási/szerkesztési űrlap</h3>
+<ul>
+<li>Adatbeviteli mezők az entitás minden attribútumához</li>
+<li>Validációs szabályok érvényesítése</li>
+<li>Kapcsolódó entitások kiválasztása (pl. legördülő listákból)</li>
+<li>Kódszótár elemek kiválasztása</li>
+<li>Mentés és mégse műveletek</li>
+</ul>
+<h3 id="törlésinaktiválás">Törlés/inaktiválás</h3>
+<ul>
+<li>Megerősítés kérése a művelet végrehajtása előtt</li>
+<li>Referenciális integritás ellenőrzése</li>
+<li>Törlés helyett inaktiválás, ha az entitásra más entitások hivatkoznak</li>
+</ul>
+<h2 id="folyamat-specifikus-képernyők">Folyamat-specifikus képernyők</h2>
+<p>A CRUD alapú képernyők mellett a rendszer tartalmaz speciális, munkafolyamat-orientált képernyőket is:</p>
+<h3 id="valutaváltási-tranzakció-képernyő">Valutaváltási tranzakció képernyő</h3>
+<ul>
+<li>Forrás és cél devizanemek kiválasztása</li>
+<li>Összeg megadása</li>
+<li>Automatikus árfolyam-alkalmazás és jutalékszámítás</li>
+<li>Bankjegycímlet-megadási lehetőség intelligens címletezési javaslatokkal</li>
+<li>Ügyfél kiválasztása/rögzítése</li>
+<li>Meghatalmazott azonosítása és jogosultságainak ellenőrzése</li>
+<li>Tranzakció véglegesítése</li>
+</ul>
+<h3 id="kasszanyitászárás-képernyő">Kasszanyitás/zárás képernyő</h3>
+<ul>
+<li>Kezdő/záró állomány rögzítése devizanemenként és címletenként</li>
+<li>Automatikus egyeztetés a várt és tényleges állomány között</li>
+<li>Eltérések kezelése</li>
+<li>Zárási jegyzőkönyv készítése</li>
+</ul>
+<h3 id="szállítmány-előkészítés-képernyő">Szállítmány-előkészítés képernyő</h3>
+<ul>
+<li>Devizanemek és címletek kiválasztása</li>
+<li>Mennyiségek megadása optimális címletezési javaslatokkal</li>
+<li>Csomagolási és biztonsági információk rögzítése</li>
+<li>Kísérőjegyzék nyomtatása</li>
+</ul>
+<h3 id="készletoptimalizáló-képernyő">Készletoptimalizáló képernyő</h3>
+<ul>
+<li>Aktuális készletek vizualizációja</li>
+<li>Forgalmi adatok alapján javasolt készletszintek</li>
+<li>Automatikus szállítmányigény-javaslatok</li>
+<li>Szezonális tervezési lehetőségek</li>
+<li>Címlet-specifikus optimalizálás</li>
+</ul>
+<h3 id="meghatalmazott-regisztrációs-képernyő">Meghatalmazott regisztrációs képernyő</h3>
+<ul>
+<li>Meghatalmazó ügyfél azonosítása</li>
+<li>Meghatalmazott adatainak rögzítése</li>
+<li>Meghatalmazás típusának és paramétereinek beállítása</li>
+<li>Engedélyezett műveletek meghatározása</li>
+<li>Dokumentumok csatolása</li>
+<li>Meghatalmazás érvényesítése</li>
+</ul>
+<h3 id="címletezési-szabály-létrehozása-képernyő">Címletezési szabály létrehozása képernyő</h3>
+<ul>
+<li>Devizanem kiválasztása</li>
+<li>Szabálytípus meghatározása</li>
+<li>Paraméterek beállítása</li>
+<li>Optimalizációs stratégia kiválasztása</li>
+<li>Szabály tesztelése valós adatokon</li>
+<li>Érvénybeléptetés</li>
+</ul>
+<h2 id="kezelőfelületek-szerepkörönként">Kezelőfelületek szerepkörönként</h2>
+<p>A menüstruktúra és a hozzáférési jogosultságok különbözhetnek a felhasználó szerepkörétől függően:</p>
+<h3 id="pénztáros">Pénztáros</h3>
+<ul>
+<li>Valutaváltás menü teljes hozzáféréssel</li>
+<li>Ügyfélkezelés korlátozott hozzáféréssel (csak keresés, megtekintés, új létrehozása)</li>
+<li>Meghatalmazott azonosítás és ellenőrzés</li>
+<li>Jelentések korlátozott hozzáféréssel (csak napi jelentések)</li>
+</ul>
+<h3 id="fiókvezető">Fiókvezető</h3>
+<ul>
+<li>Valutaváltás menü teljes hozzáféréssel</li>
+<li>Ügyfélkezelés teljes hozzáféréssel</li>
+<li>Meghatalmazott kezelés teljes hozzáféréssel</li>
+<li>Szállítmánykezelés teljes hozzáféréssel</li>
+<li>Jelentések bővített hozzáféréssel (fiókszintű jelentések)</li>
+<li>Címletezési szabályok kezelése fiókszinten</li>
+<li>Adminisztráció korlátozott hozzáféréssel (csak felhasználókezelés a saját fiókra vonatkozóan)</li>
+</ul>
+<h3 id="rendszeradminisztrátor">Rendszeradminisztrátor</h3>
+<ul>
+<li>Minden modulhoz teljes hozzáférés</li>
+<li>Adminisztráció menü kiemelt fontosságú</li>
+<li>Globális címletezési stratégiák és szabályok konfigurálása</li>
+<li>Meghatalmazotti jogosultságrendszer felügyelete</li>
+</ul>
+<h3 id="auditor">Auditor</h3>
+<ul>
+<li>Minden modulhoz csak olvasási jogosultság</li>
+<li>Jelentések modulhoz teljes hozzáférés</li>
+<li>Rendszernapló és audit napló teljes hozzáféréssel</li>
+<li>Címletezési naplók és meghatalmazotti tevékenységnaplók elemzése</li>
+</ul>
+<h2 id="megfontolások-a-rendszer-kialakításához">Megfontolások a rendszer kialakításához</h2>
+<ol>
+<li>
+<p><strong>Reszponzív design</strong> - A rendszer minden funkciója használható legyen különböző eszközökön (PC, tablet)</p>
+</li>
+<li>
+<p><strong>Folyamat-orientált kialakítás</strong> - Bár a rendszer CRUD-komponensekből épül fel, a felhasználói felületet a gyakori munkafolyamatok köré kell
+szervezni</p>
+</li>
+<li>
+<p><strong>Egységes megjelenés</strong> - Következetes színvilág, ikonok, gombkiosztás minden képernyőn</p>
+</li>
+<li>
+<p><strong>Gyorsbillentyűk</strong> - Gyakran használt funkciókhoz gyorsbillentyűk definiálása</p>
+</li>
+<li>
+<p><strong>Kontextusfüggő segítség</strong> - Minden képernyőn elérhető súgó, amely az adott képernyő funkcióit magyarázza</p>
+</li>
+<li>
+<p><strong>Jogosultságfüggő menük</strong> - Csak azok a menüpontok jelenjenek meg, amelyekhez a felhasználónak jogosultsága van</p>
+</li>
+<li>
+<p><strong>Dashboard</strong> - A bejelentkezés után szerepkör-specifikus kezdőképernyő (dashboard) fogadja a felhasználót a legfontosabb információkkal:</p>
+<ul>
+<li>Pénztárosoknak: aktuális árfolyamok, napi tranzakciók, címletezési javaslatok</li>
+<li>Fiókvezetőknek: forgalmi adatok, készletinformációk, meghatalmazotti tevékenységek</li>
+<li>Adminisztrátoroknak: rendszerállapot, biztonsági események</li>
+</ul>
+</li>
+<li>
+<p><strong>Értesítések</strong> - A rendszeren belüli értesítési rendszer, amely a felhasználók számára fontos eseményekről tájékoztat:</p>
+<ul>
+<li>Árfolyamváltozások</li>
+<li>Címletkészlet-szintek kritikus értékei</li>
+<li>Meghatalmazások közelgő lejárata</li>
+<li>Gyanús tevékenységek</li>
+</ul>
+</li>
+</ol>
+
+            
+            
+        </body>
+        </html>

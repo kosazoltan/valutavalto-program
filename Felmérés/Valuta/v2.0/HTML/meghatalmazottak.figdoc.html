@@ -1,0 +1,1938 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Valutav&aacute;lt&oacute; Rendszer - &Uuml;gyf&eacute;l Meghatalmazottak</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="valutaváltó-rendszer---ügyfél-meghatalmazottak">Valutaváltó Rendszer - Ügyfél Meghatalmazottak</h1>
+<h2 id="változtatások">Változtatások</h2>
+<table>
+<thead>
+<tr>
+<th>Verzió/Dátum</th>
+<th>Leírás</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.0 - 2025.05.06</td>
+<td>Első verzió - Meghatalmazottak kezelésének bevezetése</td>
+</tr>
+</tbody>
+</table>
+<h2 id="ügyfél-meghatalmazottak-és-kapcsolódó-entitások">Ügyfél Meghatalmazottak és Kapcsolódó Entitások</h2>
+<hr>
+<h3 id="figdef-authorized_representative">FIGDEF# authorized_representative</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Meghatalmazott</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Meghatalmazottak</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>SubType</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>customer_id</td>
+<td>Ügyfél</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>A meghatalmazó ügyfél</td>
+<td>TABLE</td>
+<td>customer</td>
+<td><a href="http://customer.id">customer.id</a></td>
+<td></td>
+</tr>
+<tr>
+<td>first_name</td>
+<td>Keresztnév</td>
+<td>VARCHAR</td>
+<td>64</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>last_name</td>
+<td>Vezetéknév</td>
+<td>VARCHAR</td>
+<td>64</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>birth_date</td>
+<td>Születési dátum</td>
+<td>DATE</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>identity_number</td>
+<td>Személyazonosító szám</td>
+<td>VARCHAR</td>
+<td>32</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>identity_type_did</td>
+<td>Személyazonosító típusa</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>IDENTITY_TYPE</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>address</td>
+<td>Cím</td>
+<td>VARCHAR</td>
+<td>256</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>city</td>
+<td>Város</td>
+<td>VARCHAR</td>
+<td>64</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>zip_code</td>
+<td>Irányítószám</td>
+<td>VARCHAR</td>
+<td>16</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>country_did</td>
+<td>Ország</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>COUNTRY</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>phone</td>
+<td>Telefonszám</td>
+<td>VARCHAR</td>
+<td>32</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>email</td>
+<td>E-mail cím</td>
+<td>VARCHAR</td>
+<td>128</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EMAIL</td>
+</tr>
+<tr>
+<td>nationality_did</td>
+<td>Állampolgárság</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>NATIONALITY</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>is_pep</td>
+<td>Kiemelt közszereplő</td>
+<td>BOOL</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>representative_type_did</td>
+<td>Meghatalmazás típusa</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>REPRESENTATIVE_TYPE</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>relationship_did</td>
+<td>Kapcsolat típusa</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td>Az ügyfélhez fűződő viszonya</td>
+<td></td>
+<td>RELATIONSHIP_TYPE</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>is_active</td>
+<td>Aktív</td>
+<td>BOOL</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-authorized_representative_ext">FIGDEF# authorized_representative_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Meghatalmazott</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Meghatalmazottak</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">authorized_representative</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>customer</td>
+<td>Ügyfél</td>
+<td>Customer</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>customer</td>
+<td>last_name</td>
+<td>customer_id</td>
+</tr>
+<tr>
+<td>identity_type</td>
+<td>Személyazonosító típusa</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>IDENTITY_TYPE</td>
+<td>description</td>
+<td>identity_type_did</td>
+</tr>
+<tr>
+<td>country</td>
+<td>Ország</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>COUNTRY</td>
+<td>description</td>
+<td>country_did</td>
+</tr>
+<tr>
+<td>nationality</td>
+<td>Állampolgárság</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>NATIONALITY</td>
+<td>description</td>
+<td>nationality_did</td>
+</tr>
+<tr>
+<td>representative_type</td>
+<td>Meghatalmazás típusa</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>REPRESENTATIVE_TYPE</td>
+<td>description</td>
+<td>representative_type_did</td>
+</tr>
+<tr>
+<td>relationship</td>
+<td>Kapcsolat típusa</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>RELATIONSHIP_TYPE</td>
+<td>description</td>
+<td>relationship_did</td>
+</tr>
+<tr>
+<td>authorizations</td>
+<td>Jogosultságok</td>
+<td>List&lt;AuthorizationExt?&gt;</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>list:authorization_ext</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>documents</td>
+<td>Dokumentumok</td>
+<td>List&lt;RepresentativeDocumentExt?&gt;</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>list:representative_document_ext</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>transactions</td>
+<td>Tranzakciók</td>
+<td>List&lt;TransactionExt?&gt;</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>list:transaction_ext</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-authorization">FIGDEF# authorization</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Meghatalmazás</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Meghatalmazások</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>SubType</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>authorized_representative_id</td>
+<td>Meghatalmazott</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>authorized_representative</td>
+<td>authorized_representative.id</td>
+<td></td>
+</tr>
+<tr>
+<td>authorization_type_did</td>
+<td>Meghatalmazás típusa</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>AUTHORIZATION_TYPE</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>issue_date</td>
+<td>Kiállítás dátuma</td>
+<td>DATE</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>start_date</td>
+<td>Érvényesség kezdete</td>
+<td>DATE</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>expiry_date</td>
+<td>Érvényesség vége</td>
+<td>DATE</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>max_amount</td>
+<td>Maximum összeg</td>
+<td>DECIMAL</td>
+<td>19</td>
+<td>2</td>
+<td>X</td>
+<td></td>
+<td></td>
+<td>Maximum tranzakciós összeg</td>
+<td></td>
+<td></td>
+<td></td>
+<td>CURRENCY</td>
+</tr>
+<tr>
+<td>max_transaction_count</td>
+<td>Maximum tranzakciószám</td>
+<td>INT</td>
+<td>10</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>status_did</td>
+<td>Státusz</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>AUTHORIZATION_STATUS</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>created_by</td>
+<td>Létrehozta</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>cashier</td>
+<td><a href="http://cashier.id">cashier.id</a></td>
+<td></td>
+</tr>
+<tr>
+<td>created_date</td>
+<td>Létrehozás dátuma</td>
+<td>DATETIME</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>verified_by</td>
+<td>Ellenőrizte</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>cashier</td>
+<td><a href="http://cashier.id">cashier.id</a></td>
+<td></td>
+</tr>
+<tr>
+<td>verification_date</td>
+<td>Ellenőrzés dátuma</td>
+<td>DATETIME</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>document_path</td>
+<td>Dokumentum útvonala</td>
+<td>VARCHAR</td>
+<td>512</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>notes</td>
+<td>Megjegyzések</td>
+<td>VARCHAR</td>
+<td>1024</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-authorization_ext">FIGDEF# authorization_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Meghatalmazás</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Meghatalmazások</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">authorization</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>authorized_representative</td>
+<td>Meghatalmazott</td>
+<td>AuthorizedRepresentative</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>authorized_representative</td>
+<td>last_name</td>
+<td>authorized_representative_id</td>
+</tr>
+<tr>
+<td>authorization_type</td>
+<td>Meghatalmazás típusa</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>AUTHORIZATION_TYPE</td>
+<td>description</td>
+<td>authorization_type_did</td>
+</tr>
+<tr>
+<td>status</td>
+<td>Státusz</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>AUTHORIZATION_STATUS</td>
+<td>description</td>
+<td>status_did</td>
+</tr>
+<tr>
+<td>created_by_user</td>
+<td>Létrehozta</td>
+<td>Cashier</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>cashier</td>
+<td>last_name</td>
+<td>created_by</td>
+</tr>
+<tr>
+<td>verified_by_user</td>
+<td>Ellenőrizte</td>
+<td>Cashier</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>cashier</td>
+<td>last_name</td>
+<td>verified_by</td>
+</tr>
+<tr>
+<td>allowed_operations</td>
+<td>Engedélyezett műveletek</td>
+<td>List&lt;AllowedOperationExt?&gt;</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>list:allowed_operation_ext</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-allowed_operation">FIGDEF# allowed_operation</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Engedélyezett</span> <span class="hljs-string">művelet</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Engedélyezett</span> <span class="hljs-string">műveletek</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>authorization_id</td>
+<td>Meghatalmazás</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>authorization</td>
+<td><a href="http://authorization.id">authorization.id</a></td>
+</tr>
+<tr>
+<td>operation_did</td>
+<td>Művelet</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>OPERATION_TYPE</td>
+<td></td>
+</tr>
+<tr>
+<td>is_allowed</td>
+<td>Engedélyezett</td>
+<td>BOOL</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>notes</td>
+<td>Megjegyzések</td>
+<td>VARCHAR</td>
+<td>512</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-allowed_operation_ext">FIGDEF# allowed_operation_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Engedélyezett</span> <span class="hljs-string">művelet</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Engedélyezett</span> <span class="hljs-string">műveletek</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">allowed_operation</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>authorization</td>
+<td>Meghatalmazás</td>
+<td>Authorization</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>authorization</td>
+<td>id</td>
+<td>authorization_id</td>
+</tr>
+<tr>
+<td>operation</td>
+<td>Művelet</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>OPERATION_TYPE</td>
+<td>description</td>
+<td>operation_did</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-representative_document">FIGDEF# representative_document</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Meghatalmazott</span> <span class="hljs-string">dokumentum</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Meghatalmazott</span> <span class="hljs-string">dokumentumok</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>authorized_representative_id</td>
+<td>Meghatalmazott</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>authorized_representative</td>
+<td>authorized_representative.id</td>
+</tr>
+<tr>
+<td>document_type_did</td>
+<td>Dokumentum típusa</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DOCUMENT_TYPE</td>
+<td></td>
+</tr>
+<tr>
+<td>document_number</td>
+<td>Dokumentum száma</td>
+<td>VARCHAR</td>
+<td>64</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>issue_date</td>
+<td>Kiállítás dátuma</td>
+<td>DATE</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>expiry_date</td>
+<td>Lejárat dátuma</td>
+<td>DATE</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>issuing_authority</td>
+<td>Kiállító hatóság</td>
+<td>VARCHAR</td>
+<td>128</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>issuing_country_did</td>
+<td>Kiállító ország</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>COUNTRY</td>
+<td></td>
+</tr>
+<tr>
+<td>document_path</td>
+<td>Dokumentum útvonala</td>
+<td>VARCHAR</td>
+<td>512</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>verified</td>
+<td>Ellenőrizve</td>
+<td>BOOL</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>verification_date</td>
+<td>Ellenőrzés dátuma</td>
+<td>DATETIME</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>verified_by</td>
+<td>Ellenőrizte</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>cashier</td>
+<td><a href="http://cashier.id">cashier.id</a></td>
+</tr>
+<tr>
+<td>notes</td>
+<td>Megjegyzések</td>
+<td>VARCHAR</td>
+<td>1024</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-representative_document_ext">FIGDEF# representative_document_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Meghatalmazott</span> <span class="hljs-string">dokumentum</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Meghatalmazott</span> <span class="hljs-string">dokumentumok</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">representative_document</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>authorized_representative</td>
+<td>Meghatalmazott</td>
+<td>AuthorizedRepresentative</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>authorized_representative</td>
+<td>last_name</td>
+<td>authorized_representative_id</td>
+</tr>
+<tr>
+<td>document_type</td>
+<td>Dokumentum típusa</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>DOCUMENT_TYPE</td>
+<td>description</td>
+<td>document_type_did</td>
+</tr>
+<tr>
+<td>issuing_country</td>
+<td>Kiállító ország</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>COUNTRY</td>
+<td>description</td>
+<td>issuing_country_did</td>
+</tr>
+<tr>
+<td>verified_by_user</td>
+<td>Ellenőrizte</td>
+<td>Cashier</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>cashier</td>
+<td>last_name</td>
+<td>verified_by</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-representative_log">FIGDEF# representative_log</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Meghatalmazott</span> <span class="hljs-string">aktivitás</span> <span class="hljs-string">napló</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Meghatalmazott</span> <span class="hljs-string">aktivitás</span> <span class="hljs-string">naplók</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>authorized_representative_id</td>
+<td>Meghatalmazott</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>authorized_representative</td>
+<td>authorized_representative.id</td>
+</tr>
+<tr>
+<td>log_date</td>
+<td>Dátum</td>
+<td>DATETIME</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>log_type_did</td>
+<td>Napló típusa</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>REPRESENTATIVE_LOG_TYPE</td>
+<td></td>
+</tr>
+<tr>
+<td>transaction_id</td>
+<td>Tranzakció</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>transaction</td>
+<td><a href="http://transaction.id">transaction.id</a></td>
+</tr>
+<tr>
+<td>performed_by</td>
+<td>Végrehajtotta</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>cashier</td>
+<td><a href="http://cashier.id">cashier.id</a></td>
+</tr>
+<tr>
+<td>branch_id</td>
+<td>Fiók</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>branch</td>
+<td><a href="http://branch.id">branch.id</a></td>
+</tr>
+<tr>
+<td>details</td>
+<td>Részletek</td>
+<td>VARCHAR</td>
+<td>1024</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-representative_log_ext">FIGDEF# representative_log_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Meghatalmazott</span> <span class="hljs-string">aktivitás</span> <span class="hljs-string">napló</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Meghatalmazott</span> <span class="hljs-string">aktivitás</span> <span class="hljs-string">naplók</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">representative_log</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>authorized_representative</td>
+<td>Meghatalmazott</td>
+<td>AuthorizedRepresentative</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>authorized_representative</td>
+<td>last_name</td>
+<td>authorized_representative_id</td>
+</tr>
+<tr>
+<td>log_type</td>
+<td>Napló típusa</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>REPRESENTATIVE_LOG_TYPE</td>
+<td>description</td>
+<td>log_type_did</td>
+</tr>
+<tr>
+<td>transaction</td>
+<td>Tranzakció</td>
+<td>Transaction</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>transaction</td>
+<td>transaction_number</td>
+<td>transaction_id</td>
+</tr>
+<tr>
+<td>performed_by_user</td>
+<td>Végrehajtotta</td>
+<td>Cashier</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>cashier</td>
+<td>last_name</td>
+<td>performed_by</td>
+</tr>
+<tr>
+<td>branch</td>
+<td>Fiók</td>
+<td>Branch</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>branch</td>
+<td>name</td>
+<td>branch_id</td>
+</tr>
+</tbody>
+</table>
+<h2 id="kódszótárak">Kódszótárak</h2>
+<h3 id="dictdef-representative_type">DICTDEF# REPRESENTATIVE_TYPE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">REPRESENTATIVE_TYPE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PERMANENT</td>
+<td>Állandó meghatalmazott</td>
+<td>01968c15-a123-7a22-b345-01ac432de100</td>
+</tr>
+<tr>
+<td>TEMPORARY</td>
+<td>Időszakos meghatalmazott</td>
+<td>01968c15-b234-7b33-c456-12bd543ef200</td>
+</tr>
+<tr>
+<td>LEGAL_GUARDIAN</td>
+<td>Törvényes képviselő</td>
+<td>01968c15-c345-736a-9408-5cd3e99dc300</td>
+</tr>
+<tr>
+<td>POWER_OF_ATTORNEY</td>
+<td>Ügyvédi meghatalmazás</td>
+<td>01968c15-d456-7d9b-9c77-003175234400</td>
+</tr>
+<tr>
+<td>COMPANY_DELEGATE</td>
+<td>Céges megbízott</td>
+<td>01968c15-e567-73a9-9420-c173e3f8f500</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-relationship_type">DICTDEF# RELATIONSHIP_TYPE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">RELATIONSHIP_TYPE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FAMILY</td>
+<td>Családtag</td>
+<td>01968d16-a123-71a1-a123-45ef6789a100</td>
+</tr>
+<tr>
+<td>COLLEAGUE</td>
+<td>Munkatárs</td>
+<td>01968d16-b234-7890-b573-4a18075ba200</td>
+</tr>
+<tr>
+<td>FRIEND</td>
+<td>Barát</td>
+<td>01968d16-c345-70af-b28c-8712af444300</td>
+</tr>
+<tr>
+<td>PROFESSIONAL</td>
+<td>Szakmai kapcsolat</td>
+<td>01968d16-d456-7f9f-955e-88b361f2d400</td>
+</tr>
+<tr>
+<td>BUSINESS</td>
+<td>Üzleti kapcsolat</td>
+<td>01968d16-e567-7a1a-1a1a-a1a1a1a1a500</td>
+</tr>
+<tr>
+<td>OTHER</td>
+<td>Egyéb</td>
+<td>01968d16-f678-7b2b-2b2b-b2b2b2b2b600</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-authorization_type">DICTDEF# AUTHORIZATION_TYPE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">AUTHORIZATION_TYPE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FULL</td>
+<td>Teljes körű meghatalmazás</td>
+<td>01968e17-a123-7a22-b345-01ac432d0100</td>
+</tr>
+<tr>
+<td>LIMITED</td>
+<td>Korlátozott meghatalmazás</td>
+<td>01968e17-b234-7b33-c456-12bd543e0200</td>
+</tr>
+<tr>
+<td>WITHDRAWAL</td>
+<td>Csak pénzfelvétel</td>
+<td>01968e17-c345-736a-9408-5cd3e99d0300</td>
+</tr>
+<tr>
+<td>EXCHANGE</td>
+<td>Csak valutaváltás</td>
+<td>01968e17-d456-7d9b-9c77-003175230400</td>
+</tr>
+<tr>
+<td>ADMINISTRATIVE</td>
+<td>Csak ügyintézés</td>
+<td>01968e17-e567-73a9-9420-c173e3f80500</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-authorization_status">DICTDEF# AUTHORIZATION_STATUS</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">AUTHORIZATION_STATUS</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ACTIVE</td>
+<td>Aktív</td>
+<td>01968f18-a123-71a1-a123-45ef67890100</td>
+</tr>
+<tr>
+<td>PENDING</td>
+<td>Függőben</td>
+<td>01968f18-b234-7890-b573-4a18075b0200</td>
+</tr>
+<tr>
+<td>EXPIRED</td>
+<td>Lejárt</td>
+<td>01968f18-c345-70af-b28c-8712af440300</td>
+</tr>
+<tr>
+<td>REVOKED</td>
+<td>Visszavont</td>
+<td>01968f18-d456-7f9f-955e-88b361f20400</td>
+</tr>
+<tr>
+<td>SUSPENDED</td>
+<td>Felfüggesztett</td>
+<td>01968f18-e567-7a1a-1a1a-a1a1a1a10500</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-operation_type">DICTDEF# OPERATION_TYPE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">OPERATION_TYPE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>WITHDRAWAL</td>
+<td>Pénzfelvétel</td>
+<td>01969019-a123-7a22-b345-01ac432d0100</td>
+</tr>
+<tr>
+<td>DEPOSIT</td>
+<td>Pénzbefizetés</td>
+<td>01969019-b234-7b33-c456-12bd543e0200</td>
+</tr>
+<tr>
+<td>EXCHANGE</td>
+<td>Valutaváltás</td>
+<td>01969019-c345-736a-9408-5cd3e99d0300</td>
+</tr>
+<tr>
+<td>DATA_CHANGE</td>
+<td>Adatmódosítás</td>
+<td>01969019-d456-7d9b-9c77-003175230400</td>
+</tr>
+<tr>
+<td>VIEW_HISTORY</td>
+<td>Tranzakciótörténet lekérés</td>
+<td>01969019-e567-73a9-9420-c173e3f80500</td>
+</tr>
+<tr>
+<td>DOCUMENTATION</td>
+<td>Dokumentáció igénylés</td>
+<td>01969019-f678-71a1-a123-45ef67890600</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-representative_log_type">DICTDEF# REPRESENTATIVE_LOG_TYPE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">REPRESENTATIVE_LOG_TYPE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LOGIN</td>
+<td>Bejelentkezés</td>
+<td>0196911a-a123-7a22-b345-01ac432d0100</td>
+</tr>
+<tr>
+<td>LOGOUT</td>
+<td>Kijelentkezés</td>
+<td>0196911a-b234-7b33-c456-12bd543e0200</td>
+</tr>
+<tr>
+<td>TRANSACTION</td>
+<td>Tranzakció végrehajtás</td>
+<td>0196911a-c345-736a-9408-5cd3e99d0300</td>
+</tr>
+<tr>
+<td>DATA_UPDATE</td>
+<td>Adatmódosítás</td>
+<td>0196911a-d456-7d9b-9c77-003175230400</td>
+</tr>
+<tr>
+<td>AUTH_CHANGE</td>
+<td>Jogosultság változás</td>
+<td>0196911a-e567-73a9-9420-c173e3f80500</td>
+</tr>
+<tr>
+<td>DOC_UPLOAD</td>
+<td>Dokumentum feltöltés</td>
+<td>0196911a-f678-71a1-a123-45ef67890600</td>
+</tr>
+<tr>
+<td>STATUS_CHANGE</td>
+<td>Státusz változás</td>
+<td>0196911a-0789-7890-b573-4a18075b0700</td>
+</tr>
+</tbody>
+</table>
+
+            
+            
+        </body>
+        </html>

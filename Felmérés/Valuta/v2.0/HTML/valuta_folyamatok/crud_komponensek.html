@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Valutav&aacute;lt&oacute; Rendszer - CRUD Komponensek Specifik&aacute;ci&oacute;ja</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="valutaváltó-rendszer---crud-komponensek-specifikációja">Valutaváltó Rendszer - CRUD Komponensek Specifikációja</h1>
+<h2 id="bevezetés">Bevezetés</h2>
+<p>Ez a dokumentum részletezi a valutaváltó rendszer CRUD (Create, Read, Update, Delete) komponenseinek specifikációját. Minden fő entitás esetében
+létrejönnek ezek az alapvető karbantartó komponensek, amelyek egységes elvek szerint működnek, de tartalmazzák az entitás-specifikus funkciókat is.</p>
+<h2 id="általános-crud-komponens-felépítés">Általános CRUD komponens felépítés</h2>
+<p>Minden entitáshoz az alábbi standard CRUD komponensek készülnek:</p>
+<h3 id="1-lista-komponens">1. Lista komponens</h3>
+<ul>
+<li>Entitások táblázatos megjelenítése</li>
+<li>Szűrési lehetőségek releváns mezők szerint</li>
+<li>Lapozás és rendezés</li>
+<li>Műveleti gombok: létrehozás, megtekintés, szerkesztés, törlés/inaktiválás</li>
+<li>Exportálási lehetőség (CSV, Excel)</li>
+</ul>
+<h3 id="2-részletes-nézet-komponens">2. Részletes nézet komponens</h3>
+<ul>
+<li>Entitás összes adatának megjelenítése csak olvasható formában</li>
+<li>Kapcsolódó entitások megjelenítése (tabfüleken vagy accordionokban)</li>
+<li>Műveleti gombok: vissza a listához, szerkesztés, törlés/inaktiválás</li>
+<li>Entitás-specifikus akciógombok</li>
+</ul>
+<h3 id="3-szerkesztőlétrehozó-komponens">3. Szerkesztő/létrehozó komponens</h3>
+<ul>
+<li>Űrlap az entitás mezőinek szerkesztésére</li>
+<li>Validáció az entitás szabályai szerint</li>
+<li>Kapcsolódó entitások kiválasztása (legördülő listák, keresők)</li>
+<li>Műveleti gombok: mentés, mégse, entitás-specifikus akciógombok</li>
+</ul>
+<h3 id="4-törlésinaktiválás-komponens">4. Törlés/inaktiválás komponens</h3>
+<ul>
+<li>Megerősítési dialógus</li>
+<li>Függőségek ellenőrzése</li>
+<li>Törlés vagy inaktiválás végrehajtása</li>
+</ul>
+<h2 id="entitás-specifikus-crud-komponensek">Entitás-specifikus CRUD komponensek</h2>
+<p>Az alábbiakban részletezzük a fő entitások CRUD komponenseinek specifikus tulajdonságait.</p>
+<h3 id="currency-devizanem">Currency (Devizanem)</h3>
+<h4 id="lista-komponens">Lista komponens</h4>
+<ul>
+<li>Szűrési lehetőségek: kód, név, aktív státusz</li>
+<li>Rendezés: kód, név, státusz</li>
+<li>Speciális oszlopok: alapdevizanem jelölés, státusz</li>
+</ul>
+<h4 id="részletes-nézet-komponens">Részletes nézet komponens</h4>
+<ul>
+<li>Árfolyam-történet tabfül</li>
+<li>Kapcsolódó tranzakciók tabfül</li>
+<li>Speciális akciógombok: aktiválás/deaktiválás, alapdevizanemmé tétel (csak adminisztrátornak)</li>
+</ul>
+<h4 id="szerkesztőlétrehozó-komponens">Szerkesztő/létrehozó komponens</h4>
+<ul>
+<li>Speciális validáció: ISO 4217 kód ellenőrzése</li>
+<li>Figyelmeztető üzenet az alapdevizanem megváltoztatásakor</li>
+</ul>
+<h3 id="exchange-rate-árfolyam">Exchange Rate (Árfolyam)</h3>
+<h4 id="lista-komponens-1">Lista komponens</h4>
+<ul>
+<li>Szűrési lehetőségek: forrás devizanem, cél devizanem, dátum, érvényesség</li>
+<li>Speciális oszlopok: vételi/közép/eladási árfolyam, érvényességi idő</li>
+</ul>
+<h4 id="részletes-nézet-komponens-1">Részletes nézet komponens</h4>
+<ul>
+<li>Grafikon tabfül az árfolyam-alakulással</li>
+<li>Kapcsolódó tranzakciók tabfül</li>
+<li>Speciális akciógombok: érvényesség módosítása, árfolyam-másolás új dátumra</li>
+</ul>
+<h4 id="szerkesztőlétrehozó-komponens-1">Szerkesztő/létrehozó komponens</h4>
+<ul>
+<li>Automatikus számítások: ha pl. középárfolyamot ad meg, javaslatot tesz vételi/eladási árfolyamra</li>
+<li>Figyelmeztetés átfedő érvényességi időszak esetén</li>
+<li>Tömeges importálás lehetősége CSV-ből</li>
+</ul>
+<h3 id="branch-fiók">Branch (Fiók)</h3>
+<h4 id="lista-komponens-2">Lista komponens</h4>
+<ul>
+<li>Szűrési lehetőségek: kód, név, ország, város, aktív státusz</li>
+<li>Speciális oszlopok: nyitvatartási idő, aktív pénztárosok száma</li>
+</ul>
+<h4 id="részletes-nézet-komponens-2">Részletes nézet komponens</h4>
+<ul>
+<li>Pénztárosok tabfül</li>
+<li>Bankjegykészlet tabfül</li>
+<li>Tranzakciók tabfül</li>
+<li>Speciális akciógombok: aktiválás/deaktiválás, pénztáros hozzárendelés</li>
+</ul>
+<h4 id="szerkesztőlétrehozó-komponens-2">Szerkesztő/létrehozó komponens</h4>
+<ul>
+<li>Térkép komponens a cím kiválasztásához</li>
+<li>Nyitvatartási idők beállítása napi bontásban</li>
+<li>Fiókcsoporthoz rendelés lehetősége</li>
+</ul>
+<h3 id="cashier-pénztáros">Cashier (Pénztáros)</h3>
+<h4 id="lista-komponens-3">Lista komponens</h4>
+<ul>
+<li>Szűrési lehetőségek: név, fiók, szerepkör, aktív státusz</li>
+<li>Speciális oszlopok: aktuális státusz (bejelentkezett/kijelentkezett), tranzakciószám</li>
+</ul>
+<h4 id="részletes-nézet-komponens-3">Részletes nézet komponens</h4>
+<ul>
+<li>Tranzakciók tabfül</li>
+<li>Napi zárások tabfül</li>
+<li>Jogosultságok tabfül</li>
+<li>Speciális akciógombok: fiókváltás, szerepkörváltás, aktiválás/deaktiválás</li>
+</ul>
+<h4 id="szerkesztőlétrehozó-komponens-3">Szerkesztő/létrehozó komponens</h4>
+<ul>
+<li>Dolgozó kiválasztása (ha már létezik)</li>
+<li>Jogosultságok beállítása</li>
+<li>Fiókok hozzárendelése (egy pénztáros több fiókban is dolgozhat)</li>
+</ul>
+<h3 id="transaction-valutaváltási-tranzakció">Transaction (Valutaváltási tranzakció)</h3>
+<h4 id="lista-komponens-4">Lista komponens</h4>
+<ul>
+<li>Szűrési lehetőségek: dátum, tranzakciószám, fiók, pénztáros, ügyfél, devizanemek, összeg, státusz</li>
+<li>Speciális oszlopok: forrás összeg/deviza, cél összeg/deviza, jutalék, pénztáros</li>
+</ul>
+<h4 id="részletes-nézet-komponens-4">Részletes nézet komponens</h4>
+<ul>
+<li>Bankjegy részletek tabfül</li>
+<li>Ügyfél adatok tabfül (ha kapcsolódik ügyfél)</li>
+<li>Tranzakció történet tabfül (módosítások, sztornók)</li>
+<li>Speciális akciógombok: sztornó, nyugta újranyomtatás</li>
+</ul>
+<h4 id="szerkesztőlétrehozó-komponens-4">Szerkesztő/létrehozó komponens</h4>
+<ul>
+<li>A tényleges tranzakció folyamatához igazított speciális űrlap:
+<ul>
+<li>Forrás és cél devizanem kiválasztása</li>
+<li>Összeg megadása</li>
+<li>Árfolyam automatikus lekérése vagy manuális felülbírálás</li>
+<li>Jutalék számítása vagy manuális felülbírálás</li>
+<li>Bankjegy részletek megadása</li>
+<li>Ügyfél kiválasztása vagy rögzítése</li>
+</ul>
+</li>
+</ul>
+<h3 id="banknote-inventory-bankjegykészlet">Banknote Inventory (Bankjegykészlet)</h3>
+<h4 id="lista-komponens-5">Lista komponens</h4>
+<ul>
+<li>Szűrési lehetőségek: fiók, devizanem, címlet, érmék/bankjegyek</li>
+<li>Speciális oszlopok: mennyiség, érték helyi valutában, utolsó frissítés</li>
+</ul>
+<h4 id="részletes-nézet-komponens-5">Részletes nézet komponens</h4>
+<ul>
+<li>Készletváltozás-történet tabfül</li>
+<li>Kapcsolódó tranzakciók tabfül</li>
+<li>Speciális akciógombok: készletkorrekció, leltár</li>
+</ul>
+<h4 id="szerkesztőlétrehozó-komponens-5">Szerkesztő/létrehozó komponens</h4>
+<ul>
+<li>Fiók és devizanem kiválasztása</li>
+<li>Címletek megadása táblázatos formában</li>
+<li>Mennyiségek megadása</li>
+<li>Korrekció esetén indoklás megadása</li>
+</ul>
+<h3 id="daily-closing-napi-zárás">Daily Closing (Napi zárás)</h3>
+<h4 id="lista-komponens-6">Lista komponens</h4>
+<ul>
+<li>Szűrési lehetőségek: dátum, fiók, pénztáros, státusz</li>
+<li>Speciális oszlopok: tranzakciószám, forgalom, záró készpénzállomány</li>
+</ul>
+<h4 id="részletes-nézet-komponens-6">Részletes nézet komponens</h4>
+<ul>
+<li>Zárás részletek tabfül (devizanemenként, címletenként)</li>
+<li>Tranzakciók tabfül</li>
+<li>Eltérések tabfül</li>
+<li>Speciális akciógombok: jóváhagyás, visszanyitás (csak supervisor), zárási jegyzőkönyv nyomtatása</li>
+</ul>
+<h4 id="szerkesztőlétrehozó-komponens-6">Szerkesztő/létrehozó komponens</h4>
+<ul>
+<li>A zárási folyamathoz igazított speciális űrlap:
+<ul>
+<li>Pénztár kiválasztása</li>
+<li>Záró pénzkészlet rögzítése devizanemenként, címletenként</li>
+<li>Automatikus egyeztetés a várt készlettel</li>
+<li>Eltérések rögzítése és indoklása</li>
+<li>Zárási megjegyzések rögzítése</li>
+</ul>
+</li>
+</ul>
+<h3 id="customer-ügyfél">Customer (Ügyfél)</h3>
+<h4 id="lista-komponens-7">Lista komponens</h4>
+<ul>
+<li>Szűrési lehetőségek: név, azonosító, kategória, regisztráció dátuma</li>
+<li>Speciális oszlopok: tranzakciók száma, utolsó tranzakció dátuma</li>
+</ul>
+<h4 id="részletes-nézet-komponens-7">Részletes nézet komponens</h4>
+<ul>
+<li>Személyes adatok tabfül</li>
+<li>Tranzakciók tabfül</li>
+<li>Preferenciák tabfül</li>
+<li>Megjegyzések tabfül</li>
+<li>Speciális akciógombok: kategória módosítás, inaktiválás, dokumentumok megtekintése</li>
+</ul>
+<h4 id="szerkesztőlétrehozó-komponens-7">Szerkesztő/létrehozó komponens</h4>
+<ul>
+<li>Személyes adatok űrlap</li>
+<li>Azonosító okmányok adatainak rögzítése</li>
+<li>Marketing preferenciák beállítása</li>
+<li>Dokumentumok feltöltése (személyi igazolvány, egyéb azonosítók)</li>
+</ul>
+<h2 id="rendszerparaméter-specifikus-komponensek">Rendszerparaméter-specifikus komponensek</h2>
+<p>A rendszerparaméterek nem standard CRUD komponensekkel kezelendők, hanem kategóriákra bontott konfigurációs képernyőkkel:</p>
+<h3 id="általános-paraméterek">Általános paraméterek</h3>
+<ul>
+<li>Rendszer neve, verziója</li>
+<li>Alapértelmezett nyelv</li>
+<li>Alapértelmezett devizanem</li>
+<li>Naplózási beállítások</li>
+</ul>
+<h3 id="árfolyam-paraméterek">Árfolyam paraméterek</h3>
+<ul>
+<li>Alapértelmezett jutaléksávok</li>
+<li>Alapértelmezett árfolyam-marzsok</li>
+<li>Árfolyam-frissítési időpontok</li>
+<li>Árfolyam-kerekítési szabályok</li>
+</ul>
+<h3 id="biztonsági-paraméterek">Biztonsági paraméterek</h3>
+<ul>
+<li>Jelszó komplexitási követelmények</li>
+<li>Bejelentkezési kísérletek száma</li>
+<li>Munkamenet időtúllépés</li>
+<li>Kétfaktoros hitelesítés beállításai</li>
+</ul>
+<h3 id="üzleti-szabály-paraméterek">Üzleti szabály paraméterek</h3>
+<ul>
+<li>Ügyfél-azonosítási limitek</li>
+<li>Tranzakció jóváhagyási limitek</li>
+<li>Készletszint határértékek</li>
+<li>Napi limitek felhasználónként</li>
+</ul>
+<h2 id="jogosultságkezelés-a-crud-műveletekhez">Jogosultságkezelés a CRUD műveletekhez</h2>
+<p>A CRUD műveletek jogosultságai finom granularitással beállíthatók:</p>
+<h3 id="olvasási-jogosultság-szintek">Olvasási jogosultság szintek</h3>
+<ul>
+<li>Nincs hozzáférés</li>
+<li>Csak saját adatok (pl. pénztáros csak a saját tranzakcióit láthatja)</li>
+<li>Fiókhoz tartozó adatok (pl. fiókvezető láthatja a fiók összes tranzakcióját)</li>
+<li>Teljes hozzáférés (pl. adminisztrátor minden adatot láthat)</li>
+</ul>
+<h3 id="írásimódosítási-jogosultság-szintek">Írási/módosítási jogosultság szintek</h3>
+<ul>
+<li>Nincs jogosultság</li>
+<li>Csak létrehozás</li>
+<li>Létrehozás és saját adatok módosítása</li>
+<li>Létrehozás és fiókhoz tartozó adatok módosítása</li>
+<li>Teljes módosítási jogosultság</li>
+</ul>
+<h3 id="törlési-jogosultság-szintek">Törlési jogosultság szintek</h3>
+<ul>
+<li>Nincs jogosultság</li>
+<li>Csak saját adatok törlése/inaktiválása</li>
+<li>Fiókhoz tartozó adatok törlése/inaktiválása</li>
+<li>Teljes törlési jogosultság</li>
+</ul>
+<h3 id="jóváhagyási-jogosultság-szintek">Jóváhagyási jogosultság szintek</h3>
+<ul>
+<li>Nincs jogosultság</li>
+<li>Fiókszintű jóváhagyás</li>
+<li>Régiószintű jóváhagyás</li>
+<li>Teljes jóváhagyási jogosultság</li>
+</ul>
+<h2 id="crud-komponensek-technikai-megfontolásai">CRUD komponensek technikai megfontolásai</h2>
+<ol>
+<li>
+<p><strong>Újrafelhasználható komponensek</strong> - A CRUD komponensek újrafelhasználhatóan, paraméterezhető módon készülnek</p>
+</li>
+<li>
+<p><strong>Validációs keretrendszer</strong> - Egységes validációs keretrendszer használata minden entitás űrlapjához</p>
+</li>
+<li>
+<p><strong>Reakciógyorsaság</strong> - Nagyméretű listák esetén lap alapú betöltés és virtuális görgetés</p>
+</li>
+<li>
+<p><strong>Audit naplózás</strong> - Minden módosítás automatikus audit naplózása</p>
+</li>
+<li>
+<p><strong>Formulák mezőközi függőségek kezelésére</strong> - Számított mezők és mezők közötti függőségek dinamikus kezelése</p>
+</li>
+<li>
+<p><strong>Testreszabható listák</strong> - A felhasználó testreszabhatja a listanézetek oszlopait és a rendezést</p>
+</li>
+<li>
+<p><strong>Gyorsbillentyűk</strong> - Standard gyorsbillentyűk a CRUD műveletekhez (pl. Ctrl+S mentéshez)</p>
+</li>
+<li>
+<p><strong>Offline működés</strong> - Kritikus komponensek esetében korlátozott offline működés támogatása</p>
+</li>
+<li>
+<p><strong>Többnyelvűség</strong> - Minden komponens támogatja a többnyelvűséget</p>
+</li>
+<li>
+<p><strong>Akadálymentesség</strong> - WCAG 2.1 AA szintű akadálymentesség minden komponensnél</p>
+</li>
+</ol>
+
+            
+            
+        </body>
+        </html>

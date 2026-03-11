@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Specifik&aacute;ci&oacute;</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="specifikáció">Specifikáció</h1>
+<h2 id="változtatások">Változtatások</h2>
+<table>
+<thead>
+<tr>
+<th>Verzió/Dátum</th>
+<th>Leírás</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.0 - 2024.11.27</td>
+<td>Első verzió</td>
+</tr>
+</tbody>
+</table>
+<h3 id="entitások">Entitások</h3>
+<h3 id="figdef-carrental">FIGDEF# carrental</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Autókölcsönző</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Autókölcsönzők</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>short_name</td>
+<td>Rövid név</td>
+<td>VARCHAR</td>
+<td>256</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>name</td>
+<td>Név</td>
+<td>VARCHAR</td>
+<td>2048</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>company_form_did</td>
+<td>Cégforma</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>COMPANY_FORM</td>
+<td></td>
+</tr>
+<tr>
+<td>partner_status_did</td>
+<td>Partner állapota</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>PARTNER_STATUS</td>
+<td></td>
+</tr>
+<tr>
+<td>code</td>
+<td>Kód</td>
+<td>VARCHAR</td>
+<td>32</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>tax_number</td>
+<td>Adószám</td>
+<td>VARCHAR</td>
+<td>32</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>eu_tax_number</td>
+<td>EU adószám</td>
+<td>VARCHAR</td>
+<td>32</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>country_did</td>
+<td>Ország</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>COUNTRY</td>
+<td></td>
+</tr>
+<tr>
+<td>zip_code</td>
+<td>Irányítószám</td>
+<td>VARCHAR</td>
+<td>10</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>settlement</td>
+<td>Település</td>
+<td>VARCHAR</td>
+<td>128</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>street_house</td>
+<td>Utca, házszám</td>
+<td>VARCHAR</td>
+<td>512</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-carrental_ext">FIGDEF# carrental_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Autókölcsönző</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Autókölcsönzők</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">carrental</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+<th>Hide</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>company_form</td>
+<td>Cégforma</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>COMPANY_FORM</td>
+<td>description</td>
+<td>company_form_did</td>
+<td></td>
+</tr>
+<tr>
+<td>partner_status</td>
+<td>Partner állapota</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>PARTNER_STATUS</td>
+<td>description</td>
+<td>partner_status_did</td>
+<td></td>
+</tr>
+<tr>
+<td>country</td>
+<td>Ország</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>COUNTRY</td>
+<td>description</td>
+<td>country_did</td>
+<td></td>
+</tr>
+<tr>
+<td>own_contacts</td>
+<td>Saját kapcsolattartók</td>
+<td>List&lt;OwnContactExt?&gt;</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>list:own_contact_ext</td>
+<td></td>
+<td></td>
+<td>X</td>
+</tr>
+<tr>
+<td>carrental_contacts</td>
+<td>Kapcsolattartók</td>
+<td>List&lt;CarrentalContactExt?&gt;</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>list:carrental_contact_ext</td>
+<td></td>
+<td></td>
+<td>X</td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-carrental_contact">FIGDEF# carrental_contact</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Autókölcsönző</span> <span class="hljs-string">kapcsolat</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Autókölcsönző</span> <span class="hljs-string">kapcsolatok</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>contact_type_did</td>
+<td>Kapcsolat típusa</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>CONTACT_TYPE</td>
+<td></td>
+</tr>
+<tr>
+<td>last_name</td>
+<td>Vezetéknév</td>
+<td>VARCHAR</td>
+<td>128</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>first_name</td>
+<td>Keresztnév</td>
+<td>VARCHAR</td>
+<td>128</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>title</td>
+<td>Titulus</td>
+<td>VARCHAR</td>
+<td>32</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>carrental_id</td>
+<td>Autókölcsönző</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>carrental</td>
+<td><a href="http://carrental.id">carrental.id</a></td>
+</tr>
+<tr>
+<td>contact</td>
+<td>Kapcsolat</td>
+<td>VARCHAR</td>
+<td>256</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>rank</td>
+<td>Rang</td>
+<td>SMALLINT</td>
+<td>5</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-carrental_contact_ext">FIGDEF# carrental_contact_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Autókölcsönző</span> <span class="hljs-string">kapcsolat</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Autókölcsönző</span> <span class="hljs-string">kapcsolatok</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">carrental_contact</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+<th>Hide</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>contact_type</td>
+<td>Kapcsolat típusa</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>CONTACT_TYPE</td>
+<td>description</td>
+<td>contact_type_did</td>
+<td></td>
+</tr>
+<tr>
+<td>carrental_contact_categories</td>
+<td>Autókölcsönző kapcsolat kategória</td>
+<td>List&lt;CarrentalContactCategoryExt?&gt;</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>list:carrental_contact_category_ext</td>
+<td></td>
+<td></td>
+<td>X</td>
+</tr>
+<tr>
+<td>carrental_contact_infos</td>
+<td>Autókölcsönző kapcsolat információ</td>
+<td>List&lt;CarrentalContactInfoExt?&gt;</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>list:carrental_contact_info_ext</td>
+<td></td>
+<td></td>
+<td>X</td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-carrental_contact_category">FIGDEF# carrental_contact_category</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Autókölcsönző</span> <span class="hljs-string">kapcsolat</span> <span class="hljs-string">kategória</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Autókölcsönző</span> <span class="hljs-string">kapcsolat</span> <span class="hljs-string">kategóriák</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>carrental_contact_id</td>
+<td>Autókölcsönző kapcsolat</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>carrental_contact</td>
+<td>carrental_contact_info.id</td>
+</tr>
+<tr>
+<td>category_id</td>
+<td>Kategória</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>category</td>
+<td><a href="http://category.id">category.id</a></td>
+</tr>
+<tr>
+<td>valid_from_date</td>
+<td>Érvényes-től</td>
+<td>DATE</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>valid_to_date</td>
+<td>Érvényes-ig</td>
+<td>DATE</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-carrental_contact_category_ext">FIGDEF# carrental_contact_category_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Autókölcsönző</span> <span class="hljs-string">kapcsolat</span> <span class="hljs-string">kategória</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Autókölcsönző</span> <span class="hljs-string">kapcsolat</span> <span class="hljs-string">kategóriák</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">carrental_contact_category</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>category</td>
+<td>Kategória</td>
+<td>CategoryExt</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>category_ext</td>
+<td>category</td>
+<td>category_id</td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-carrental_contact_info">FIGDEF# carrental_contact_info</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Autókölcsönző</span> <span class="hljs-string">kapcsolat</span> <span class="hljs-string">információ</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Autókölcsönző</span> <span class="hljs-string">kapcsolat</span> <span class="hljs-string">információk</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>carrental_contact_id</td>
+<td>Autókölcsönző kapcsolat</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>carrental_contact</td>
+<td>carrental_contact.id</td>
+</tr>
+<tr>
+<td>contact_type_did</td>
+<td>Kapcsolat típusa</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>CONTACT_TYPE</td>
+<td></td>
+</tr>
+<tr>
+<td>info</td>
+<td>Információ</td>
+<td>VARCHAR</td>
+<td>256</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>valid_from_date</td>
+<td>Érvényes-től</td>
+<td>DATE</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>valid_to_date</td>
+<td>Érvényes-ig</td>
+<td>DATE</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-carrental_contact_info_ext">FIGDEF# carrental_contact_info_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Autókölcsönző</span> <span class="hljs-string">kapcsolatok</span> <span class="hljs-string">információ</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Autókölcsönző</span> <span class="hljs-string">kapcsolatok</span> <span class="hljs-string">információi</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">carrental_contact_info</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>contact_type</td>
+<td>Kapcsolat típusa</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>CONTACT_TYPE</td>
+<td>description</td>
+<td>contact_type_did</td>
+</tr>
+</tbody>
+</table>
+
+            
+            
+        </body>
+        </html>

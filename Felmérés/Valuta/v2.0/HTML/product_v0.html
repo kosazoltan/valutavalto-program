@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Specifik&aacute;ci&oacute;</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="specifikáció">Specifikáció</h1>
+<h2 id="változtatások">Változtatások</h2>
+<table>
+<thead>
+<tr>
+<th>Verzió/Dátum</th>
+<th>Leírás</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.0 - 2024.11.27</td>
+<td>Első verzió</td>
+</tr>
+</tbody>
+</table>
+<h2 id="felépítás">Felépítás</h2>
+<h2 id="entitások">Entitások</h2>
+<h3 id="figdef-product">FIGDEF# product</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Termék</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Termékek</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>manufacturer</td>
+<td>Gyártó</td>
+<td>VARCHAR</td>
+<td>255</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>article_number</td>
+<td>Cikkszám</td>
+<td>VARCHAR</td>
+<td>128</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>code</td>
+<td>Termékkód/Vonalkód</td>
+<td>VARCHAR</td>
+<td>64</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>name</td>
+<td>Név</td>
+<td>VARCHAR</td>
+<td>1024</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>description</td>
+<td>Leírás</td>
+<td>VARCHAR</td>
+<td>2000</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>category</td>
+<td>Kategória</td>
+<td>VARCHAR</td>
+<td>512</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>partner_id</td>
+<td>Beszállító</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>partner</td>
+<td><a href="http://partner.id">partner.id</a></td>
+</tr>
+<tr>
+<td>product_supplier_url</td>
+<td>Termék link</td>
+<td>VARCHAR</td>
+<td>1024</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-product_ext">FIGDEF# product_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Termék</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Termékek</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">product</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>partner</td>
+<td>Beszállító</td>
+<td>Partner</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>partner</td>
+<td>name</td>
+<td>partner_id</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-product_with_stock_ext">FIGDEF# product_with_stock_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Termék</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Termékek</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">product</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>partner</td>
+<td>Beszállító</td>
+<td>Partner</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>partner</td>
+<td>name</td>
+<td>partner_id</td>
+</tr>
+<tr>
+<td>stock</td>
+<td>Készlet</td>
+<td>Stock</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>stock</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-product_for_import_ext">FIGDEF# product_for_import_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Termék</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Termékek</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">product</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>partner</td>
+<td>Beszállító</td>
+<td>Partner</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>partner</td>
+<td>name</td>
+<td>partner_id</td>
+</tr>
+<tr>
+<td>common_key</td>
+<td>Közös kulcs</td>
+<td>VARCHAR</td>
+<td>512</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-product_list_price">FIGDEF# product_list_price</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Listaár</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Listaárak</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Hide</th>
+<th>SubType</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>product_id</td>
+<td>Termék</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>product</td>
+<td><a href="http://product.id">product.id</a></td>
+<td>X</td>
+<td></td>
+</tr>
+<tr>
+<td>list_price_date</td>
+<td>Listaár dátuma</td>
+<td>DATE</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>list_price_netto</td>
+<td>Listaár (nettó)</td>
+<td>DECIMAL</td>
+<td>19</td>
+<td>2</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>CURRENCY</td>
+</tr>
+<tr>
+<td>currency_did</td>
+<td>Pénznem</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>CURRENCY</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-product_list_price_ext">FIGDEF# product_list_price_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Listaár</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Listaárak</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">product_list_price</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+<th>Hide</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>currency</td>
+<td>Pénznem</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>CURRENCY</td>
+<td>description</td>
+<td>currency_did</td>
+<td></td>
+</tr>
+<tr>
+<td>product</td>
+<td>Termék</td>
+<td>Product</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>product</td>
+<td>name</td>
+<td>product_id</td>
+<td>X</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-product_price">FIGDEF# product_price</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Termék</span> <span class="hljs-string">ára</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Termékek</span> <span class="hljs-string">árai</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>SubType</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>product_id</td>
+<td>Termék</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>product</td>
+<td><a href="http://product.id">product.id</a></td>
+<td></td>
+</tr>
+<tr>
+<td>invoice_in_item_id</td>
+<td>Bejövő számlatétel</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>invoice_in_item</td>
+<td>invoice_in_item.id</td>
+<td></td>
+</tr>
+<tr>
+<td>purchase_price_netto</td>
+<td>Beszerzési ár (nettó)</td>
+<td>DECIMAL</td>
+<td>19</td>
+<td>2</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>CURRENCY</td>
+</tr>
+<tr>
+<td>currency_did</td>
+<td>Pénznem</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>CURRENCY</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>sales_price_netto</td>
+<td>Eladási ár (nettó)</td>
+<td>DECIMAL</td>
+<td>19</td>
+<td>2</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>CURRENCY</td>
+</tr>
+<tr>
+<td>quantity</td>
+<td>Mennyiség</td>
+<td>DECIMAL</td>
+<td>19</td>
+<td>2</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>CURRENCY</td>
+</tr>
+<tr>
+<td>stock_quantity</td>
+<td>Készletmennyiség</td>
+<td>DECIMAL</td>
+<td>19</td>
+<td>2</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>CURRENCY</td>
+</tr>
+<tr>
+<td>unit_of_measure_did</td>
+<td>Mértékegység</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>UNIT_OF_MEASURE</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-product_document">FIGDEF# product_document</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Termék</span> <span class="hljs-string">dokumentum</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Termék</span> <span class="hljs-string">dokumentumok</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>product_id</td>
+<td>Termék</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>product</td>
+<td><a href="http://product.id">product.id</a></td>
+</tr>
+<tr>
+<td>document_id</td>
+<td>Dokumentum</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>document</td>
+<td><a href="http://document.id">document.id</a></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-product_document_ext">FIGDEF# product_document_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Termék</span> <span class="hljs-string">dokumentum</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Termék</span> <span class="hljs-string">dokumentumok</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">product_document</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>document</td>
+<td>Dokumentum</td>
+<td>DocumentExt</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>document_ext</td>
+<td>name</td>
+<td>document_id</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-stock">FIGDEF# stock</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Készlet</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Készletek</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>SubType</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>product_id</td>
+<td>Termék</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>product</td>
+<td><a href="http://product.id">product.id</a></td>
+<td></td>
+</tr>
+<tr>
+<td>quantity</td>
+<td>Mennyiség</td>
+<td>DECIMAL</td>
+<td>19</td>
+<td>2</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>CURRENCY</td>
+</tr>
+<tr>
+<td>unit_of_measure_did</td>
+<td>Mértékegység</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>UNIT_OF_MEASURE</td>
+<td>description</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-stock_ext">FIGDEF# stock_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Készlet</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Készletek</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">stock</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>product</td>
+<td>Termék</td>
+<td>Product</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>product</td>
+<td>name</td>
+<td>product_id</td>
+</tr>
+<tr>
+<td>unit_of_measure</td>
+<td>Mértékegység</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>UNIT_OF_MEASURE</td>
+<td>description</td>
+<td>unit_of_measure_did</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-stock_movement">FIGDEF# stock_movement</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Készletmozgás</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Készletmozgások</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>SubType</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>movement_date</td>
+<td>Készletmozgás dátuma</td>
+<td>DATETIME</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>product_id</td>
+<td>Termék</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>product</td>
+<td><a href="http://product.id">product.id</a></td>
+<td></td>
+</tr>
+<tr>
+<td>quantity</td>
+<td>Mennyiség</td>
+<td>DECIMAL</td>
+<td>19</td>
+<td>2</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>CURRENCY</td>
+</tr>
+<tr>
+<td>unit_of_measure_did</td>
+<td>Mértékegység</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>UNIT_OF_MEASURE</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>partner_id</td>
+<td>Partner</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>partner</td>
+<td><a href="http://partner.id">partner.id</a></td>
+<td></td>
+</tr>
+<tr>
+<td>movement_type_did</td>
+<td>Mozgás iránya</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>MOVEMENT_TYPE</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-stock_movement_ext">FIGDEF# stock_movement_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Készletmozgás</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Készletmozgások</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">stock_movement</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>product</td>
+<td>Termék</td>
+<td>Product</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>product</td>
+<td>name</td>
+<td>product_id</td>
+</tr>
+<tr>
+<td>partner</td>
+<td>Partner</td>
+<td>Partner</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>partner</td>
+<td>short_name</td>
+<td>partner_id</td>
+</tr>
+<tr>
+<td>movement_type</td>
+<td>Mozgás iránya</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>MOVEMENT_TYPE</td>
+<td>description</td>
+<td>movement_type_did</td>
+</tr>
+<tr>
+<td>unit_of_measure</td>
+<td>Mértékegység</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>UNIT_OF_MEASURE</td>
+<td>description</td>
+<td>unit_of_measure_did</td>
+</tr>
+</tbody>
+</table>
+
+            
+            
+        </body>
+        </html>

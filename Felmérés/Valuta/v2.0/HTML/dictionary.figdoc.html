@@ -1,0 +1,6197 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Specifik&aacute;ci&oacute;</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="specifikáció">Specifikáció</h1>
+<h1 id="változtatások">Változtatások</h1>
+<table>
+<thead>
+<tr>
+<th>Verzió/Dátum</th>
+<th>Leírás</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.0 - 2024.11.27</td>
+<td>Első verzió</td>
+</tr>
+</tbody>
+</table>
+<h3 id="entitások">Entitások</h3>
+<h3 id="figdef-dictionary">FIGDEF# dictionary</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Szótár</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Szótárak</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>code_type_did</td>
+<td>Kód típusa</td>
+<td>VARCHAR</td>
+<td>64</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>CODE_TYPE</td>
+<td></td>
+</tr>
+<tr>
+<td>description</td>
+<td>Leírás</td>
+<td>VARCHAR</td>
+<td>256</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>note</td>
+<td>Megjegyzés</td>
+<td>TEXT</td>
+<td>65535</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>seq</td>
+<td>Sorrend</td>
+<td>SMALLINT</td>
+<td>5</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>contr_code</td>
+<td>Vezérlőkód</td>
+<td>VARCHAR</td>
+<td>128</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>code</td>
+<td>Kód</td>
+<td>VARCHAR</td>
+<td>64</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-dictionary_language">FIGDEF# dictionary_language</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Szótár</span> <span class="hljs-string">nyelv</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Szótár</span> <span class="hljs-string">nyelvek</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>dictionary_id</td>
+<td>Szótár</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>dictionary</td>
+<td><a href="http://dictionary.id">dictionary.id</a></td>
+</tr>
+<tr>
+<td>description</td>
+<td>Leírás</td>
+<td>VARCHAR</td>
+<td>256</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>note</td>
+<td>Megjegyzés</td>
+<td>TEXT</td>
+<td>65535</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>language_did</td>
+<td>Nyelv</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>LANGUAGE</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-dictionary_relation">FIGDEF# dictionary_relation</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Szótár</span> <span class="hljs-string">kapcsolat</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Szótár</span> <span class="hljs-string">kapcsolatok</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>code_type_1_did</td>
+<td>Kód típusa_1</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>CODE_TYPE_1</td>
+<td></td>
+</tr>
+<tr>
+<td>code_type_2_did</td>
+<td>Kód típusa_2</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>CODE_TYPE_2</td>
+<td></td>
+</tr>
+<tr>
+<td>relation_type_did</td>
+<td>Kapcsolat típusa</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>RELATION_TYPE</td>
+<td></td>
+</tr>
+<tr>
+<td>valid_from_dt</td>
+<td>Érvényes-től</td>
+<td>DATETIME</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>valid_to_dt</td>
+<td>Érvényes-ig</td>
+<td>DATETIME</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="figdef-dictionary_validity">FIGDEF# dictionary_validity</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Szótár</span> <span class="hljs-string">érvényesség</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Szótár</span> <span class="hljs-string">érvényességek</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>dictionary_id</td>
+<td>Szótár</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>dictionary</td>
+<td><a href="http://dictionary.id">dictionary.id</a></td>
+</tr>
+<tr>
+<td>valid_from_dt</td>
+<td>Érvényes-től</td>
+<td>DATETIME</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>valid_to_dt</td>
+<td>Érvényes-ig</td>
+<td>DATETIME</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="adatszótárak">Adatszótárak</h2>
+<h3 id="dictdef-car_owner_category">DICTDEF# CAR_OWNER_CATEGORY</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">CAR_OWNER_CATEGORY</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CORPORATE</td>
+<td>céges</td>
+<td>01940560-a617-7c63-9e46-aff48f2b0724</td>
+</tr>
+<tr>
+<td>EMPLOYEES</td>
+<td>dolgozóé</td>
+<td>01940560-baa4-7740-94e8-bb686d7206ca</td>
+</tr>
+<tr>
+<td>RENTED</td>
+<td>bérelt</td>
+<td>01940560-cc61-7e3d-9fa0-0a52623782ab</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-category_group">DICTDEF# CATEGORY_GROUP</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">CATEGORY_GROUP</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CONTACT_SUBJECT</td>
+<td>Kapcsolattartás témakör</td>
+<td>019406f8-b375-70d9-b93d-1c1c732bebb2</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-code_type">DICTDEF# CODE_TYPE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">CODE_TYPE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ADDRESS_TYPE</td>
+<td>Cím típus</td>
+<td>019406f8-c38b-7691-9825-3fec7e4af5b5</td>
+</tr>
+<tr>
+<td>CAR_OWNERSHIP_CATEGORY</td>
+<td>Autó tulajdoni kategória</td>
+<td>019406f8-cfa9-7be5-9536-53e657b2cb17</td>
+</tr>
+<tr>
+<td>CATEGORY_GROUP</td>
+<td>Kategória csoport</td>
+<td>019406f8-d8b6-7fa0-9edb-58499fec0497</td>
+</tr>
+<tr>
+<td>CITIZENSHIP</td>
+<td>Állampolgárság</td>
+<td>019406f8-dfde-74ab-89d5-4ca05091c2c6</td>
+</tr>
+<tr>
+<td>CODE_TYPE</td>
+<td>Kódcsoportok</td>
+<td>019406f8-e771-78df-b9c2-8394785dcfae</td>
+</tr>
+<tr>
+<td>COMPANY_FORM</td>
+<td>Cégforma</td>
+<td>019406f8-f009-7b0d-ae02-ffabbddf0723</td>
+</tr>
+<tr>
+<td>CONTACT_TYPE</td>
+<td>Elérhetőség típus</td>
+<td>019406f8-f74e-7096-8afe-b17eb2d4ca79</td>
+</tr>
+<tr>
+<td>CONTRACT_STATUS</td>
+<td>Szerződés státusz</td>
+<td>019406f8-fe38-7eca-8504-d84655c33435</td>
+</tr>
+<tr>
+<td>COUNTRY</td>
+<td>Ország</td>
+<td>019406f9-0518-77ff-a59f-a1b15f8a1920</td>
+</tr>
+<tr>
+<td>DAY_TYPE</td>
+<td>Nap típus</td>
+<td>019406f9-0bd6-7499-b4ff-0fb2c1aacc81</td>
+</tr>
+<tr>
+<td>DEMAND_STATUS</td>
+<td>Igény státusz</td>
+<td>019406f9-1295-79b0-a78e-add23568cb5a</td>
+</tr>
+<tr>
+<td>DOCUMENT_STATUS</td>
+<td>Dokumentum státusz</td>
+<td>019406f9-1d30-7d77-9e47-2dbf7fc0fb73</td>
+</tr>
+<tr>
+<td>EDUCATIONAL_DEGREE</td>
+<td>Képzettségi fok</td>
+<td>019406f9-25ae-7a8d-9816-9a7653c8b0ed</td>
+</tr>
+<tr>
+<td>EMPLOYMENT_TYPE</td>
+<td>Foglalkoztatás típusa</td>
+<td>019406f9-2cdc-7d71-8fb7-f84b3f5f6b75</td>
+</tr>
+<tr>
+<td>ERROR_MESSAGE</td>
+<td>Hibaüzenet</td>
+<td>019406f9-33ed-7eae-b0d9-40216ff4f7c8</td>
+</tr>
+<tr>
+<td>FEOR</td>
+<td>FEOR</td>
+<td>019406f9-3acd-7747-95e0-fdcac12cd05e</td>
+</tr>
+<tr>
+<td>LANGUAGE</td>
+<td>Nyelv</td>
+<td>019406f9-42b1-7dd5-8112-4d4fc82900bd</td>
+</tr>
+<tr>
+<td>MEDICAL_EXAM_RESULT</td>
+<td>Üzemorvosi vizsgálat eredménye</td>
+<td>019406f9-4a7e-75ca-87e2-f4767ac95288</td>
+</tr>
+<tr>
+<td>MEDICAL_EXAM_STATUS</td>
+<td>Üzemorvosi vizsgálat státusza</td>
+<td>019406f9-5145-7878-8ea0-ff05c7de6756</td>
+</tr>
+<tr>
+<td>METHOD_OF_TERMINATION</td>
+<td>Kilépés módja</td>
+<td>019406f9-57f1-75af-b503-d97a79014bf7</td>
+</tr>
+<tr>
+<td>OBLIGATION</td>
+<td>Kötelezttség</td>
+<td>019406f9-5ed7-71af-9d3c-c5b6d5e8dab4</td>
+</tr>
+<tr>
+<td>PARTNER_STATUS</td>
+<td>Partner státusz</td>
+<td>019406f9-65e2-7b10-8c54-bfeedac948c2</td>
+</tr>
+<tr>
+<td>PAYROLL_TYPE</td>
+<td>Bérfizetés módja</td>
+<td>019406f9-6ca6-7572-86dc-55d0700db5aa</td>
+</tr>
+<tr>
+<td>PERSON_DOCUMENT_STATUS</td>
+<td>Személy dokumentum státusz</td>
+<td>019406f9-7338-7f7a-ad9a-e583f0f851c4</td>
+</tr>
+<tr>
+<td>POSITION</td>
+<td>Beosztás</td>
+<td>019406f9-79bb-7fbb-8370-44cf9f2b5c17</td>
+</tr>
+<tr>
+<td>QUALIFICATION_TYPE</td>
+<td>Képzettség</td>
+<td>019406f9-8012-7217-ad60-b95579988784</td>
+</tr>
+<tr>
+<td>REASON</td>
+<td>Táppénz kategória (ok)</td>
+<td>019406f9-8704-7dea-980b-282d8b14378b</td>
+</tr>
+<tr>
+<td>SETTLEMENT_BASIS</td>
+<td>Elszámolás alapja</td>
+<td>019406f9-8dc0-79cd-b41e-60b057b28923</td>
+</tr>
+<tr>
+<td>SETTLEMENT_FREQUENCY</td>
+<td>Elszámolási periódus</td>
+<td>019406f9-93fb-77a8-afe5-6cb65269c849</td>
+</tr>
+<tr>
+<td>SICK_PAYED_PERIOD_DOCUMENT_STATUS</td>
+<td>Táppénz dokumentum státusz</td>
+<td>019406f9-9a24-7599-b53f-b5cf63e16b90</td>
+</tr>
+<tr>
+<td>STATUS</td>
+<td>Táppénzes időszak státusza</td>
+<td>019406f9-a01d-7353-8b81-c1d3a4072c42</td>
+</tr>
+<tr>
+<td>TASK_TYPE</td>
+<td>Feladat típus</td>
+<td>019406f9-a64b-7bdb-970b-00a62680414d</td>
+</tr>
+<tr>
+<td>TIME_USE_TYPE</td>
+<td>idő felhasználás típus</td>
+<td>019406f9-ac8b-75ee-ba5d-c0eaf840933c</td>
+</tr>
+<tr>
+<td>WORKER_DOCUMENT_STATUS</td>
+<td>Munkavállaló dokumentum státusz</td>
+<td>019406f9-b30a-72dc-9da1-c9219b96821c</td>
+</tr>
+<tr>
+<td>WORKER_NOTE_STATUS</td>
+<td>Munkavállalóhoz való megjegyzés státusza</td>
+<td>019406f9-beef-7f13-918c-7b178a8a3693</td>
+</tr>
+<tr>
+<td>WORKER_STATUS</td>
+<td>Munkavállaló státusz</td>
+<td>019406f9-c527-778f-b180-ba822f6f1d25</td>
+</tr>
+<tr>
+<td>WORKING_TIME_SCHEDULE_STATUS</td>
+<td>Munkaidő beosztás státusz</td>
+<td>019406f9-cb2b-7047-958c-539cfb54f313</td>
+</tr>
+<tr>
+<td>CURRENCY</td>
+<td>Pénznem</td>
+<td>019406f9-d13c-74f2-b632-25607e0918fa</td>
+</tr>
+<tr>
+<td>INVOICE_STATE</td>
+<td>Számla állapot</td>
+<td>019406f9-d923-7a98-8a46-bebd15feae3f</td>
+</tr>
+<tr>
+<td>INVOICE_TYPE</td>
+<td>Számla típus</td>
+<td>019406f9-df4d-75f6-9fe6-607b97a5db10</td>
+</tr>
+<tr>
+<td>PAYMENT_METHOD</td>
+<td>Fizetési mód</td>
+<td>019406f9-e57a-73d9-80f4-0d11864918a2</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-company_form">DICTDEF# COMPANY_FORM</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">COMPANY_FORM</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BT</td>
+<td>betéti társaság</td>
+<td>019406f9-f353-7ec8-aeea-f69f3ea5680a</td>
+</tr>
+<tr>
+<td>KFT</td>
+<td>korlátolt felelősségű társaság</td>
+<td>019406f9-f9a8-7cb4-a90d-5a41a7ec13e2</td>
+</tr>
+<tr>
+<td>KKT</td>
+<td>közkereseti társaság</td>
+<td>019406f9-ffdd-7755-bc02-8819c7b7c469</td>
+</tr>
+<tr>
+<td>NYRT</td>
+<td>nyilvánosan működő részvénytársaság</td>
+<td>019406fa-0604-7946-85c2-54c509c440ff</td>
+</tr>
+<tr>
+<td>SE</td>
+<td>Európai társaság</td>
+<td>019406fa-0c03-71a8-8f1f-aa50635ce729</td>
+</tr>
+<tr>
+<td>ZRT</td>
+<td>zártkörűen működő részvénytársaság</td>
+<td>019406fa-120d-7dfc-9fcb-7939e4593c98</td>
+</tr>
+<tr>
+<td>PERSON</td>
+<td>Magánszemély</td>
+<td>019406fa-188f-7263-bc26-de28b1c17e74</td>
+</tr>
+<tr>
+<td>SOLE_PROPRIETOR</td>
+<td>Egyéni vállalkozó</td>
+<td>019406fa-2106-729f-8690-046fbe0429a0</td>
+</tr>
+<tr>
+<td>OTHER</td>
+<td>Egyéb</td>
+<td>019406fa-2785-782c-a080-3ac06e954c6d</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-contract_status">DICTDEF# CONTRACT_STATUS</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">CONTRACT_STATUS</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ACTIVE</td>
+<td>Aktív</td>
+<td>019406fa-3812-7052-ba5a-d9d4ee68fe0e</td>
+</tr>
+<tr>
+<td>EXPIRED</td>
+<td>Lejárt</td>
+<td>019406fa-3e0c-7f2e-83da-b097c462cfd5</td>
+</tr>
+<tr>
+<td>PLAN</td>
+<td>Terv</td>
+<td>019406fa-43e4-758f-9f3c-5766cfcbc985</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-country">DICTDEF# COUNTRY</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">COUNTRY</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ALB</td>
+<td>Albánia</td>
+<td>019406fa-51d9-7871-8293-9af289183bfa</td>
+</tr>
+<tr>
+<td>AND</td>
+<td>Andorra</td>
+<td>019406fa-57d7-7d52-a98f-35b1c681ffc2</td>
+</tr>
+<tr>
+<td>AUT</td>
+<td>Ausztria</td>
+<td>019406fa-5e20-7fa2-b790-b7d3b422e966</td>
+</tr>
+<tr>
+<td>BEL</td>
+<td>Belgium</td>
+<td>019406fa-65dc-736a-a2a5-3970574a034b</td>
+</tr>
+<tr>
+<td>BGR</td>
+<td>Bulgária</td>
+<td>019406fa-6c8a-7db9-a4d7-6edf6a5ce819</td>
+</tr>
+<tr>
+<td>BLR</td>
+<td>Fehéroroszország</td>
+<td>019406fa-729b-74a5-948a-1a7974c13544</td>
+</tr>
+<tr>
+<td>CHE</td>
+<td>Svájc</td>
+<td>019406fa-7860-7d64-a5fb-68d6dc91dec0</td>
+</tr>
+<tr>
+<td>CZE</td>
+<td>Csehország</td>
+<td>019406fa-7e26-75e8-b6e4-c2ce7f4a4cd8</td>
+</tr>
+<tr>
+<td>DEU</td>
+<td>Németország</td>
+<td>019406fa-83d5-7795-8065-4ac0e8b2e386</td>
+</tr>
+<tr>
+<td>DNK</td>
+<td>Dánia</td>
+<td>019406fa-8f86-7c7e-8a5f-259f8096eea3</td>
+</tr>
+<tr>
+<td>ESP</td>
+<td>Spanyolország</td>
+<td>019406fa-95fe-71b9-bad8-0b7ca8bea2bc</td>
+</tr>
+<tr>
+<td>EST</td>
+<td>Észtország</td>
+<td>019406fa-a44c-76cd-8d39-3c2a13f66d66</td>
+</tr>
+<tr>
+<td>FIN</td>
+<td>Finnország</td>
+<td>019406fa-aabd-71a7-99c7-b85e976b90d9</td>
+</tr>
+<tr>
+<td>FRA</td>
+<td>Franciaország</td>
+<td>019406fa-b0a8-7b58-9df2-f8a0bcc61f68</td>
+</tr>
+<tr>
+<td>GBR</td>
+<td>Egyesült Királyság</td>
+<td>019406fa-b6b6-7c41-a265-a3f3cf39c857</td>
+</tr>
+<tr>
+<td>GRC</td>
+<td>Görögország</td>
+<td>019406fa-c359-71ff-86bb-643b0a8a73b1</td>
+</tr>
+<tr>
+<td>HRV</td>
+<td>Horvátország</td>
+<td>019406fa-ca78-74d8-9977-985953e6fecd</td>
+</tr>
+<tr>
+<td>HUN</td>
+<td>Magyarország</td>
+<td>019406fa-d0ab-74cf-9334-c56ea0357188</td>
+</tr>
+<tr>
+<td>IRL</td>
+<td>Írország</td>
+<td>019406fa-d722-7bbe-a21d-496fb9c25305</td>
+</tr>
+<tr>
+<td>ISL</td>
+<td>Izland</td>
+<td>019406fa-dde0-7bf9-bfd2-0d9f9d95b90e</td>
+</tr>
+<tr>
+<td>ITA</td>
+<td>Olaszország</td>
+<td>019406fa-e789-7030-9862-ad2e27cbfea9</td>
+</tr>
+<tr>
+<td>LIE</td>
+<td>Liechtenstein</td>
+<td>019406fa-edf0-78ad-b4e2-75c3fc34c9a9</td>
+</tr>
+<tr>
+<td>LTU</td>
+<td>Litvánia</td>
+<td>019406fa-f9b6-7d6e-8f3d-28f9d6b259a8</td>
+</tr>
+<tr>
+<td>LUX</td>
+<td>Luxemburg</td>
+<td>019406fb-002b-7f44-967a-639f5b08cb6d</td>
+</tr>
+<tr>
+<td>LVA</td>
+<td>Lettország</td>
+<td>019406fb-0939-7bd8-98e7-ccb91b73aded</td>
+</tr>
+<tr>
+<td>MCO</td>
+<td>Monaco</td>
+<td>019406fb-123c-7849-89fd-77cc19ef99c0</td>
+</tr>
+<tr>
+<td>MDA</td>
+<td>Moldova</td>
+<td>019406fb-1cdc-745b-bc07-a4196eaee778</td>
+</tr>
+<tr>
+<td>MKD</td>
+<td>(Észak-)Macedónia</td>
+<td>019406fb-2648-78d9-802e-a50fec4042a9</td>
+</tr>
+<tr>
+<td>MLT</td>
+<td>Málta</td>
+<td>019406fb-2d2f-7e59-9beb-ed4e396710c1</td>
+</tr>
+<tr>
+<td>MNE</td>
+<td>Montenegró</td>
+<td>019406fb-5f1f-7055-8f21-dd1db6e73729</td>
+</tr>
+<tr>
+<td>NLD</td>
+<td>Hollandia</td>
+<td>019406fb-79a5-73be-9e37-0c1a18e7abd4</td>
+</tr>
+<tr>
+<td>NOR</td>
+<td>Norvégia</td>
+<td>019406fb-8188-7c4d-95ae-c7bbd62d7d6d</td>
+</tr>
+<tr>
+<td>POL</td>
+<td>Lengyelország</td>
+<td>019406fb-8882-7989-b05d-1fa3c3839eff</td>
+</tr>
+<tr>
+<td>PRT</td>
+<td>Portugália</td>
+<td>019406fb-8f24-7ddc-bdda-08534a645620</td>
+</tr>
+<tr>
+<td>ROU</td>
+<td>Románia</td>
+<td>019406fb-95e3-74f3-adb7-5b5d254cabca</td>
+</tr>
+<tr>
+<td>RUS</td>
+<td>Oroszország</td>
+<td>019406fb-9c02-76de-9f71-e06ffa0c8aa5</td>
+</tr>
+<tr>
+<td>SMR</td>
+<td>San Marino</td>
+<td>019406fb-a1c6-7ee8-aebc-7751464370d7</td>
+</tr>
+<tr>
+<td>SRB</td>
+<td>Szerbia</td>
+<td>019406fb-acaf-756b-9788-dc06c9080ee0</td>
+</tr>
+<tr>
+<td>SVK</td>
+<td>Szlovákia</td>
+<td>019406fb-b2ba-71a0-8a82-4fc2402f3cbf</td>
+</tr>
+<tr>
+<td>SVN</td>
+<td>Szlovénia</td>
+<td>019406fb-b84b-74bd-87f0-77b4a51dde80</td>
+</tr>
+<tr>
+<td>SWE</td>
+<td>Svédország</td>
+<td>019406fb-bdbe-7822-9280-00c5509ae59b</td>
+</tr>
+<tr>
+<td>TUR</td>
+<td>Törökország</td>
+<td>019406fb-c314-7967-8fda-590a3b10b6a9</td>
+</tr>
+<tr>
+<td>UKR</td>
+<td>Ukrajna</td>
+<td>019406fb-c8be-7892-a7b0-c61184e26b33</td>
+</tr>
+<tr>
+<td>VAT</td>
+<td>Vatikán</td>
+<td>019406fb-ce3e-7c71-990e-c872e9f9b17c</td>
+</tr>
+<tr>
+<td>USA</td>
+<td>Egyesült Államok</td>
+<td>019406fb-d2f0-7b8c-9a4d-5e1f3b6c3d1e</td>
+</tr>
+<tr>
+<td>CAN</td>
+<td>Kanada</td>
+<td>019406fb-d7a2-7b8c-9a4d-5e1f3b6c3d1e</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-day_type">DICTDEF# DAY_TYPE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">DAY_TYPE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HOLIDAY</td>
+<td>Ünnepnap</td>
+<td>019406fb-e4dc-7946-bdef-3a9563e31b0b</td>
+</tr>
+<tr>
+<td>SUNDAY</td>
+<td>Vasárnap</td>
+<td>019406fb-eb13-7408-b386-df93d83b5fb5</td>
+</tr>
+<tr>
+<td>WORK</td>
+<td>Munkanap</td>
+<td>019406fb-f114-7e66-933c-cc1bfd852569</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-demand_status">DICTDEF# DEMAND_STATUS</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">DEMAND_STATUS</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ACTIVE</td>
+<td>Élő</td>
+<td>019406fb-fe1a-7104-ae01-77082838086a</td>
+</tr>
+<tr>
+<td>CLOSED</td>
+<td>Lezárt</td>
+<td>019406fc-048c-73e7-951b-b897d1103afb</td>
+</tr>
+<tr>
+<td>DELETED</td>
+<td>Törölt</td>
+<td>019406fc-0c6b-7c98-bdce-d004740b3c85</td>
+</tr>
+<tr>
+<td>PLAN</td>
+<td>Terv</td>
+<td>019406fc-131e-7468-ba4e-dcab75954681</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-document_status">DICTDEF# DOCUMENT_STATUS</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">DOCUMENT_STATUS</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ACTIVE</td>
+<td>aktív</td>
+<td>019406fc-218e-70d5-92f6-b6435cbad1bc</td>
+</tr>
+<tr>
+<td>ASKED</td>
+<td>bekért</td>
+<td>019406fc-2854-7835-817c-7974de5de2ba</td>
+</tr>
+<tr>
+<td>EXPIRED</td>
+<td>lejárt</td>
+<td>019406fc-3004-724d-bcd5-f3c5b6c46e24</td>
+</tr>
+<tr>
+<td>REQUESTED</td>
+<td>igényelt</td>
+<td>019406fc-37af-70d8-8bad-6cbd00488a2b</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-education_degree">DICTDEF# EDUCATION_DEGREE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">EDUCATION_DEGREE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BSC</td>
+<td>BSC</td>
+<td>019406fc-4d91-7ad9-ac9a-3d3143fae64a</td>
+</tr>
+<tr>
+<td>GENERAL</td>
+<td>8 általános</td>
+<td>019406fc-5404-7924-927c-5f2a00444a20</td>
+</tr>
+<tr>
+<td>HIGH_SCHOOL</td>
+<td>gimnáziumi érettségi</td>
+<td>019406fc-5d0f-7830-bc76-3467f5443cca</td>
+</tr>
+<tr>
+<td>MSC</td>
+<td>MSC</td>
+<td>019406fc-6754-7b3a-ae66-8c7a0439b933</td>
+</tr>
+<tr>
+<td>SEC_SCHOOL</td>
+<td>szakközépiskolai érettségi</td>
+<td>019406fc-6e62-7427-8111-6f05c012b1f9</td>
+</tr>
+<tr>
+<td>VOC_TRAINING</td>
+<td>szakmunkásképző</td>
+<td>019406fc-7762-7fa1-916b-e6bb97808c73</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-employment_type">DICTDEF# EMPLOYMENT_TYPE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">EMPLOYMENT_TYPE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FULLTIME</td>
+<td>teljes munkaidős alkalmazott</td>
+<td>019406fc-ef89-733e-b64a-6c6254d42d43</td>
+</tr>
+<tr>
+<td>PARTTIME</td>
+<td>részmunkaidős alkalmazott</td>
+<td>019406fc-f635-7739-a171-5cfe15063d58</td>
+</tr>
+<tr>
+<td>RENDTED</td>
+<td>bérelt</td>
+<td>019406fc-fc97-7302-ae3a-61bfeacffb0b</td>
+</tr>
+<tr>
+<td>EXTERNAL</td>
+<td>Külsős</td>
+<td>01940701-fb8e-7b4b-8b4b-0f3b1f7b1b8c</td>
+</tr>
+<tr>
+<td>RETIRED</td>
+<td>Nyugdíjas</td>
+<td>01940701-01c0-7da3-9183-4ca78d6d1cdf</td>
+</tr>
+<tr>
+<td>STUDENT</td>
+<td>Diák</td>
+<td>01940701-0a3b-7b4e-9b4b-0f3b1f7b1b8d</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-error_message">DICTDEF# ERROR_MESSAGE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">ERROR_MESSAGE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CLIENT_UNIQ_001</td>
+<td>Nem egyedi kliens</td>
+<td>019406fd-0a96-7a38-a8f2-e5d415eda6f3</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-feor">DICTDEF# FEOR</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">FEOR</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>11</td>
+<td>Törvényhozók, igazgatási és érdek-képviseleti vezetők</td>
+<td>019406fd-da6d-71be-9c3e-bdb2ecfc6c01</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Fegyveres szervek felsőfokú képesítést igénylő foglalkozásai</td>
+<td>019406fd-da6d-71be-9c3e-bdb3934e446a</td>
+</tr>
+<tr>
+<td>111</td>
+<td>Törvényhozók, miniszterek, államtitkárok</td>
+<td>019406fd-da6d-71be-9c3e-bdb44a97748e</td>
+</tr>
+<tr>
+<td>1110</td>
+<td>Törvényhozó, miniszter, államtitkár</td>
+<td>019406fd-da6d-71be-9c3e-bdb56213c64e</td>
+</tr>
+<tr>
+<td>112</td>
+<td>Országos és területi közigazgatás, igazságszolgáltatás vezetői</td>
+<td>019406fd-da6d-71be-9c3e-bdb6bd1a3212</td>
+</tr>
+<tr>
+<td>1121</td>
+<td>Országos és területi közigazgatás, igazságszolgáltatás vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bdb7b3666641</td>
+</tr>
+<tr>
+<td>1122</td>
+<td>Helyi önkormányzat választott vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bdb8be249c2c</td>
+</tr>
+<tr>
+<td>1123</td>
+<td>Helyi önkormányzat kinevezett vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bdb92db88048</td>
+</tr>
+<tr>
+<td>113</td>
+<td>Országos és területi társadalmi (érdek-képviseleti), és egyéb szervezetek vezetői</td>
+<td>019406fd-da6d-71be-9c3e-bdba5a498981</td>
+</tr>
+<tr>
+<td>1131</td>
+<td>Társadalmi (érdek-képviseleti) és egyéb szervezet vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bdbb603cfeaa</td>
+</tr>
+<tr>
+<td>1132</td>
+<td>Egyházi vezető</td>
+<td>019406fd-da6d-71be-9c3e-bdbcb4c199fa</td>
+</tr>
+<tr>
+<td>12</td>
+<td>Gazdasági, költségvetési szervezetek vezetői</td>
+<td>019406fd-da6d-71be-9c3e-bdbdf57996be</td>
+</tr>
+<tr>
+<td>1210</td>
+<td>Gazdasági, költségvetési szervezet vezetője (igazgató, elnök, ügyvezető igazgató)</td>
+<td>019406fd-da6d-71be-9c3e-bdbe185aa3e3</td>
+</tr>
+<tr>
+<td>13</td>
+<td>Termelési és szolgáltatást nyújtó egységek vezetői</td>
+<td>019406fd-da6d-71be-9c3e-bdbfdbd93c35</td>
+</tr>
+<tr>
+<td>131</td>
+<td>Termelési egységek vezetői</td>
+<td>019406fd-da6d-71be-9c3e-bdc0ec3f9816</td>
+</tr>
+<tr>
+<td>1311</td>
+<td>Mezőgazdasági, erdészeti, halászati és vadászati tevékenységet folytató egység vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bdc1f6fc6188</td>
+</tr>
+<tr>
+<td>1312</td>
+<td>Ipari tevékenységet folytató egység vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bdc292fb6f89</td>
+</tr>
+<tr>
+<td>1313</td>
+<td>Építőipari tevékenységet folytató egység vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bdc383adb3fe</td>
+</tr>
+<tr>
+<td>132</td>
+<td>Szolgáltatást nyújtó egységek vezetői</td>
+<td>019406fd-da6d-71be-9c3e-bdc4edabd3d2</td>
+</tr>
+<tr>
+<td>1321</td>
+<td>Szállítási, logisztikai és raktározási tevékenységet folytató egység vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bdc5f5683990</td>
+</tr>
+<tr>
+<td>1322</td>
+<td>Informatikai és telekommunikációs tevékenységet folytató egység vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bdc67c0d6c5c</td>
+</tr>
+<tr>
+<td>1323</td>
+<td>Pénzintézeti tevékenységet folytató egység vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bdc72950fe5b</td>
+</tr>
+<tr>
+<td>1324</td>
+<td>Szociális tevékenységet folytató egység vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bdc889fe490c</td>
+</tr>
+<tr>
+<td>1325</td>
+<td>Gyermekgondozási tevékenységet folytató egység vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bdc9a3f9149f</td>
+</tr>
+<tr>
+<td>1326</td>
+<td>Idősgondozási tevékenységet folytató egység vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bdca6eedf4f5</td>
+</tr>
+<tr>
+<td>1327</td>
+<td>Egészségügyi tevékenységet folytató egység vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bdcb38ea6ce0</td>
+</tr>
+<tr>
+<td>1328</td>
+<td>Oktatási-nevelési tevékenységet folytató egység vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bdcc516a698c</td>
+</tr>
+<tr>
+<td>1329</td>
+<td>Egyéb szolgáltatást nyújtó egység vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bdcd8638c701</td>
+</tr>
+<tr>
+<td>133</td>
+<td>Kereskedelmi, vendéglátó és hasonló szolgáltatási tevékenységet folytató egységek vezetői</td>
+<td>019406fd-da6d-71be-9c3e-bdce19ce662f</td>
+</tr>
+<tr>
+<td>1331</td>
+<td>Szálláshely-szolgáltatási tevékenységet folytató egység vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bdcfd4bca784</td>
+</tr>
+<tr>
+<td>1332</td>
+<td>Vendéglátó tevékenységet folytató egység vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bdd0c92ca6b9</td>
+</tr>
+<tr>
+<td>1333</td>
+<td>Kereskedelmi tevékenységet folytató egység vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bdd1f600415c</td>
+</tr>
+<tr>
+<td>1334</td>
+<td>Üzleti szolgáltatási tevékenységet folytató egység vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bdd2f98a9395</td>
+</tr>
+<tr>
+<td>1335</td>
+<td>Kulturális tevékenységet folytató egység vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bdd3c138d219</td>
+</tr>
+<tr>
+<td>1336</td>
+<td>Sport- és rekreációs tevékenységet folytató egység vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bdd47cf0826f</td>
+</tr>
+<tr>
+<td>1339</td>
+<td>Egyéb kereskedelmi, vendéglátó és hasonló szolgáltatási tevékenységet folytató egység vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bdd5f5d32a4a</td>
+</tr>
+<tr>
+<td>14</td>
+<td>Gazdasági tevékenységet segítő egységek vezetői</td>
+<td>019406fd-da6d-71be-9c3e-bdd643c5645b</td>
+</tr>
+<tr>
+<td>1411</td>
+<td>Számviteli és pénzügyi tevékenységet folytató egység vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bdd7b642d792</td>
+</tr>
+<tr>
+<td>1412</td>
+<td>Személyzeti vezető, humánpolitikai egység vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bdd8d861d50a</td>
+</tr>
+<tr>
+<td>1413</td>
+<td>Kutatási és fejlesztési tevékenységet folytató egység vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bdd973f71919</td>
+</tr>
+<tr>
+<td>1414</td>
+<td>Vállalati stratégiatervezési egység vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bddaba73040b</td>
+</tr>
+<tr>
+<td>1415</td>
+<td>Értékesítési és marketingtevékenységet folytató egység vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bddb260d39a6</td>
+</tr>
+<tr>
+<td>1416</td>
+<td>Reklám-, PR- és egyéb kommunikációs tevékenységet folytató egység vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bddc2de75eac</td>
+</tr>
+<tr>
+<td>1419</td>
+<td>Egyéb gazdasági tevékenységet segítő egység vezetője</td>
+<td>019406fd-da6d-71be-9c3e-bddd106cfc1c</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Fegyveres szervek középfokú képesítést igénylő foglalkozásai</td>
+<td>019406fd-da6d-71be-9c3e-bdde47c13a11</td>
+</tr>
+<tr>
+<td>21</td>
+<td>Műszaki, informatikai és természettudományi foglalkozások</td>
+<td>019406fd-da6d-71be-9c3e-bddfabb58f9d</td>
+</tr>
+<tr>
+<td>211</td>
+<td>Ipari, építőipari mérnökök</td>
+<td>019406fd-da6d-71be-9c3e-bde0b7cbc892</td>
+</tr>
+<tr>
+<td>2111</td>
+<td>Bányamérnök</td>
+<td>019406fd-da6d-71be-9c3e-bde11804a9ad</td>
+</tr>
+<tr>
+<td>2112</td>
+<td>Kohó- és anyagmérnök</td>
+<td>019406fd-da6d-71be-9c3e-bde247711490</td>
+</tr>
+<tr>
+<td>2113</td>
+<td>Élelmiszer-ipari mérnök</td>
+<td>019406fd-da6d-71be-9c3e-bde3e0176dbf</td>
+</tr>
+<tr>
+<td>2114</td>
+<td>Fa- és könnyűipari mérnök</td>
+<td>019406fd-da6d-71be-9c3e-bde4c27a30f2</td>
+</tr>
+<tr>
+<td>2115</td>
+<td>Építészmérnök</td>
+<td>019406fd-da6d-71be-9c3e-bde5f409fa52</td>
+</tr>
+<tr>
+<td>2116</td>
+<td>Építőmérnök</td>
+<td>019406fd-da6d-71be-9c3e-bde6a02d57ba</td>
+</tr>
+<tr>
+<td>2117</td>
+<td>Vegyészmérnök</td>
+<td>019406fd-da6d-71be-9c3e-bde762ceaede</td>
+</tr>
+<tr>
+<td>2118</td>
+<td>Gépészmérnök</td>
+<td>019406fd-da6d-71be-9c3e-bde8ccc3cd8c</td>
+</tr>
+<tr>
+<td>212</td>
+<td>Elektromérnökök</td>
+<td>019406fd-da6d-71be-9c3e-bde95fa09494</td>
+</tr>
+<tr>
+<td>2121</td>
+<td>Villamosmérnök (energetikai mérnök)</td>
+<td>019406fd-da6d-71be-9c3e-bdea29ed1607</td>
+</tr>
+<tr>
+<td>2122</td>
+<td>Villamosmérnök (elektronikai mérnök)</td>
+<td>019406fd-da6d-71be-9c3e-bdeb7ff4a17a</td>
+</tr>
+<tr>
+<td>2123</td>
+<td>Telekommunikációs mérnök</td>
+<td>019406fd-da6d-71be-9c3e-bdec042ffb3c</td>
+</tr>
+<tr>
+<td>213</td>
+<td>Egyéb mérnökök</td>
+<td>019406fd-da6d-71be-9c3e-bded9dbaa883</td>
+</tr>
+<tr>
+<td>2131</td>
+<td>Mezőgazdasági mérnök</td>
+<td>019406fd-da6d-71be-9c3e-bdee7c9c6ebe</td>
+</tr>
+<tr>
+<td>2132</td>
+<td>Erdő- és természetvédelmi mérnök</td>
+<td>019406fd-da6d-71be-9c3e-bdef9fde51c1</td>
+</tr>
+<tr>
+<td>2133</td>
+<td>Táj- és kertépítészmérnök</td>
+<td>019406fd-da6d-71be-9c3e-bdf06e4ccbe2</td>
+</tr>
+<tr>
+<td>2134</td>
+<td>Település- és közlekedéstervező mérnök</td>
+<td>019406fd-da6d-71be-9c3e-bdf1e6d9e63a</td>
+</tr>
+<tr>
+<td>2135</td>
+<td>Földmérő és térinformatikus</td>
+<td>019406fd-da6d-71be-9c3e-bdf243a749aa</td>
+</tr>
+<tr>
+<td>2136</td>
+<td>Grafikus és multimédia-tervező</td>
+<td>019406fd-da6e-7699-a42b-3d3e6c18fe09</td>
+</tr>
+<tr>
+<td>2137</td>
+<td>Minőségbiztosítási mérnök</td>
+<td>019406fd-da6e-7699-a42b-3d3f295453da</td>
+</tr>
+<tr>
+<td>2139</td>
+<td>Egyéb, máshova nem sorolható mérnök</td>
+<td>019406fd-da6e-7699-a42b-3d4091003da9</td>
+</tr>
+<tr>
+<td>214</td>
+<td>Szoftver- és alkalmazásfejlesztők, -elemzők</td>
+<td>019406fd-da6e-7699-a42b-3d41dd600d19</td>
+</tr>
+<tr>
+<td>2141</td>
+<td>Rendszerelemző (informatikai)</td>
+<td>019406fd-da6e-7699-a42b-3d42f7b8ca7c</td>
+</tr>
+<tr>
+<td>2142</td>
+<td>Szoftverfejlesztő</td>
+<td>019406fd-da6e-7699-a42b-3d437929122c</td>
+</tr>
+<tr>
+<td>2143</td>
+<td>Hálózat- és multimédia-fejlesztő</td>
+<td>019406fd-da6e-7699-a42b-3d44ea6a2efc</td>
+</tr>
+<tr>
+<td>2144</td>
+<td>Alkalmazásprogramozó</td>
+<td>019406fd-da6e-7699-a42b-3d459bba07a3</td>
+</tr>
+<tr>
+<td>2149</td>
+<td>Egyéb szoftver- és alkalmazásfejlesztő, -elemző</td>
+<td>019406fd-da6e-7699-a42b-3d460fad204b</td>
+</tr>
+<tr>
+<td>215</td>
+<td>Adatbázis- és hálózati elemzők, üzemeltetők</td>
+<td>019406fd-da6e-7699-a42b-3d47908f8d9f</td>
+</tr>
+<tr>
+<td>2151</td>
+<td>Adatbázis-tervező és -üzemeltető</td>
+<td>019406fd-da6e-7699-a42b-3d4845cd9108</td>
+</tr>
+<tr>
+<td>2152</td>
+<td>Rendszergazda</td>
+<td>019406fd-da6e-7699-a42b-3d49bc626f7b</td>
+</tr>
+<tr>
+<td>2153</td>
+<td>Számítógép-hálózati elemző, üzemeltető</td>
+<td>019406fd-da6e-7699-a42b-3d4ac2eb1136</td>
+</tr>
+<tr>
+<td>2159</td>
+<td>Egyéb adatbázis- és hálózati elemző, üzemeltető</td>
+<td>019406fd-da6e-7699-a42b-3d4bdf972e40</td>
+</tr>
+<tr>
+<td>216</td>
+<td>Természettudományi foglalkozások</td>
+<td>019406fd-da6e-7699-a42b-3d4c50f82baf</td>
+</tr>
+<tr>
+<td>2161</td>
+<td>Fizikus</td>
+<td>019406fd-da6e-7699-a42b-3d4d94f48474</td>
+</tr>
+<tr>
+<td>2162</td>
+<td>Csillagász</td>
+<td>019406fd-da6e-7699-a42b-3d4eedfdec09</td>
+</tr>
+<tr>
+<td>2163</td>
+<td>Meteorológus</td>
+<td>019406fd-da6e-7699-a42b-3d4fa9339a93</td>
+</tr>
+<tr>
+<td>2164</td>
+<td>Kémikus</td>
+<td>019406fd-da6e-7699-a42b-3d5012fddfa9</td>
+</tr>
+<tr>
+<td>2165</td>
+<td>Geológus</td>
+<td>019406fd-da6e-7699-a42b-3d512a0d8811</td>
+</tr>
+<tr>
+<td>2166</td>
+<td>Matematikus</td>
+<td>019406fd-da6e-7699-a42b-3d529ba50dc9</td>
+</tr>
+<tr>
+<td>2167</td>
+<td>Biológus, botanikus, zoológus és rokon foglalkozású</td>
+<td>019406fd-da6e-7699-a42b-3d537990da64</td>
+</tr>
+<tr>
+<td>2168</td>
+<td>Környezetfelmérő, -tanácsadó</td>
+<td>019406fd-da6e-7699-a42b-3d548d25ae77</td>
+</tr>
+<tr>
+<td>2169</td>
+<td>Egyéb természettudományi foglalkozású</td>
+<td>019406fd-da6e-7699-a42b-3d5548aab949</td>
+</tr>
+<tr>
+<td>22</td>
+<td>Egészségügyi foglalkozások (felsőfokú képzettséghez kapcsolódó)</td>
+<td>019406fd-da6e-7699-a42b-3d562ff8634f</td>
+</tr>
+<tr>
+<td>221</td>
+<td>Orvosi, gyógyszerészi foglalkozások</td>
+<td>019406fd-da6e-7699-a42b-3d57a3a9b649</td>
+</tr>
+<tr>
+<td>2211</td>
+<td>Általános orvos</td>
+<td>019406fd-da6e-7699-a42b-3d58523e3161</td>
+</tr>
+<tr>
+<td>2212</td>
+<td>Szakorvos</td>
+<td>019406fd-da6e-7699-a42b-3d595ad653ca</td>
+</tr>
+<tr>
+<td>2213</td>
+<td>Fogorvos, fogszakorvos</td>
+<td>019406fd-da6e-7699-a42b-3d5ac109fec2</td>
+</tr>
+<tr>
+<td>2214</td>
+<td>Gyógyszerész, szakgyógyszerész</td>
+<td>019406fd-da6e-7699-a42b-3d5b7129c05c</td>
+</tr>
+<tr>
+<td>222</td>
+<td>Humán-egészségügyi (társ)foglalkozások</td>
+<td>019406fd-da6e-7699-a42b-3d5ce111df0e</td>
+</tr>
+<tr>
+<td>2221</td>
+<td>Környezet- és foglalkozás-egészségügyi foglalkozású</td>
+<td>019406fd-da6e-7699-a42b-3d5decc59830</td>
+</tr>
+<tr>
+<td>2222</td>
+<td>Optometrista</td>
+<td>019406fd-da6e-7699-a42b-3d5e6afc1758</td>
+</tr>
+<tr>
+<td>2223</td>
+<td>Dietetikus és táplálkozási tanácsadó</td>
+<td>019406fd-da6e-7699-a42b-3d5fcdf64093</td>
+</tr>
+<tr>
+<td>2224</td>
+<td>Gyógytornász</td>
+<td>019406fd-da6e-7699-a42b-3d60cbded15a</td>
+</tr>
+<tr>
+<td>2225</td>
+<td>Védőnő</td>
+<td>019406fd-da6e-7699-a42b-3d6157e63b19</td>
+</tr>
+<tr>
+<td>2226</td>
+<td>Mentőtiszt</td>
+<td>019406fd-da6e-7699-a42b-3d62eb393617</td>
+</tr>
+<tr>
+<td>2227</td>
+<td>Hallás- és beszédterapeuta</td>
+<td>019406fd-da6e-7699-a42b-3d632375d544</td>
+</tr>
+<tr>
+<td>2228</td>
+<td>Alternatív gyógymódot alkalmazó</td>
+<td>019406fd-da6e-7699-a42b-3d64a64eec8a</td>
+</tr>
+<tr>
+<td>2229</td>
+<td>Egyéb humán-egészségügyi (társ)foglalkozású</td>
+<td>019406fd-da6e-7699-a42b-3d65c8e4aa0a</td>
+</tr>
+<tr>
+<td>223</td>
+<td>Ápoló, szülész(nő) (felsőfokú képzettséghez kapcsolódó)</td>
+<td>019406fd-da6e-7699-a42b-3d664f4785f2</td>
+</tr>
+<tr>
+<td>2231</td>
+<td>Ápoló (felsőfokú képzettséghez kapcsolódó)</td>
+<td>019406fd-da6e-7699-a42b-3d676fdc7daa</td>
+</tr>
+<tr>
+<td>2232</td>
+<td>Szülész(nő) (felsőfokú képzettséghez kapcsolódó)</td>
+<td>019406fd-da6e-7699-a42b-3d687990847c</td>
+</tr>
+<tr>
+<td>224</td>
+<td>Állat- és növény-egészségügyi foglalkozások</td>
+<td>019406fd-da6e-7699-a42b-3d69e9427e30</td>
+</tr>
+<tr>
+<td>2241</td>
+<td>Állatorvos</td>
+<td>019406fd-da6e-7699-a42b-3d6a1ee89738</td>
+</tr>
+<tr>
+<td>2242</td>
+<td>Növényorvos (növényvédelmi szakértő)</td>
+<td>019406fd-da6e-7699-a42b-3d6b16f51d93</td>
+</tr>
+<tr>
+<td>23</td>
+<td>Szociális szolgáltatási foglalkozások (felsőfokú képzettséghez kapcsolódó)</td>
+<td>019406fd-da6e-7699-a42b-3d6cd87e8296</td>
+</tr>
+<tr>
+<td>231</td>
+<td>zociális szolgáltatási foglalkozások</td>
+<td>019406fd-da6e-7699-a42b-3d6d23c19616</td>
+</tr>
+<tr>
+<td>2311</td>
+<td>Szociálpolitikus</td>
+<td>019406fd-da6e-7699-a42b-3d6e86de804b</td>
+</tr>
+<tr>
+<td>2312</td>
+<td>Szociális munkás és tanácsadó</td>
+<td>019406fd-da6e-7699-a42b-3d6f69681b92</td>
+</tr>
+<tr>
+<td>24</td>
+<td>Oktatók, pedagógusok</td>
+<td>019406fd-da6e-7699-a42b-3d70382b58ee</td>
+</tr>
+<tr>
+<td>241</td>
+<td>Felsőoktatási intézményi oktatók, tanárok</td>
+<td>019406fd-da6e-7699-a42b-3d713a9988b9</td>
+</tr>
+<tr>
+<td>2410</td>
+<td>Egyetemi, főiskolai oktató, tanár</td>
+<td>019406fd-da6e-7699-a42b-3d725abbccb3</td>
+</tr>
+<tr>
+<td>242</td>
+<td>özépfokú nevelési-oktatási intézményi oktatók, tanárok</td>
+<td>019406fd-da6e-7699-a42b-3d7399cf35cf</td>
+</tr>
+<tr>
+<td>2421</td>
+<td>Középiskolai tanár</td>
+<td>019406fd-da6e-7699-a42b-3d7497b3d4fe</td>
+</tr>
+<tr>
+<td>2422</td>
+<td>Középfokú nevelési-oktatási intézményi szakoktató, gyakorlati oktató</td>
+<td>019406fd-da6e-7699-a42b-3d759135c981</td>
+</tr>
+<tr>
+<td>243</td>
+<td>Óvodai és alapfokú nevelési-oktatási intézményi tanárok, oktatók, nevelők</td>
+<td>019406fd-da6e-7699-a42b-3d76d36d3d4a</td>
+</tr>
+<tr>
+<td>2431</td>
+<td>Általános iskolai tanár, tanító</td>
+<td>019406fd-da6e-7699-a42b-3d77107607db</td>
+</tr>
+<tr>
+<td>2432</td>
+<td>Csecsemő- és kisgyermeknevelő, óvodapedagógus</td>
+<td>019406fd-da6e-7699-a42b-3d7825e9f36c</td>
+</tr>
+<tr>
+<td>244</td>
+<td>Speciális oktatók, nevelők</td>
+<td>019406fd-da6e-7699-a42b-3d79c0bda7a6</td>
+</tr>
+<tr>
+<td>2441</td>
+<td>Gyógypedagógus</td>
+<td>019406fd-da6e-7699-a42b-3d7a3d10c545</td>
+</tr>
+<tr>
+<td>2442</td>
+<td>Konduktor</td>
+<td>019406fd-da6e-7699-a42b-3d7be98bc359</td>
+</tr>
+<tr>
+<td>249</td>
+<td>gyéb szakképzett oktatók, nevelők</td>
+<td>019406fd-da6e-7699-a42b-3d7cd9e59fa7</td>
+</tr>
+<tr>
+<td>2491</td>
+<td>Pedagógiai szakértő, szaktanácsadó</td>
+<td>019406fd-da6e-7699-a42b-3d7d1e02579a</td>
+</tr>
+<tr>
+<td>2492</td>
+<td>Nyelvtanár (iskolarendszeren kívül)</td>
+<td>019406fd-da6e-7699-a42b-3d7e5c8c00e9</td>
+</tr>
+<tr>
+<td>2493</td>
+<td>Zenetanár (iskolarendszeren kívül)</td>
+<td>019406fd-da6e-7699-a42b-3d7f494aacf4</td>
+</tr>
+<tr>
+<td>2494</td>
+<td>Egyéb művészetek tanára (iskolarendszeren kívül)</td>
+<td>019406fd-da6e-7699-a42b-3d802fd74c43</td>
+</tr>
+<tr>
+<td>2495</td>
+<td>Informatikatanár (iskolarendszeren kívül)</td>
+<td>019406fd-da6e-7699-a42b-3d81804a3bee</td>
+</tr>
+<tr>
+<td>2499</td>
+<td>Egyéb szakképzett oktató, nevelő</td>
+<td>019406fd-da6e-7699-a42b-3d828a97fb0b</td>
+</tr>
+<tr>
+<td>25</td>
+<td>Gazdálkodási jellegű foglalkozások</td>
+<td>019406fd-da6e-7699-a42b-3d837589d230</td>
+</tr>
+<tr>
+<td>251</td>
+<td>Pénzügyi és számviteli foglalkozások</td>
+<td>019406fd-da6e-7699-a42b-3d84f3863dc7</td>
+</tr>
+<tr>
+<td>2511</td>
+<td>Pénzügyi elemző és befektetési tanácsadó</td>
+<td>019406fd-da6e-7699-a42b-3d85e8758379</td>
+</tr>
+<tr>
+<td>2512</td>
+<td>Adótanácsadó, adószakértő</td>
+<td>019406fd-da6e-7699-a42b-3d86359ef035</td>
+</tr>
+<tr>
+<td>2513</td>
+<td>Könyvvizsgáló, könyvelő, könyvszakértő</td>
+<td>019406fd-da6e-7699-a42b-3d8751010f30</td>
+</tr>
+<tr>
+<td>2514</td>
+<td>Kontroller</td>
+<td>019406fd-da6e-7699-a42b-3d8827d029a8</td>
+</tr>
+<tr>
+<td>252</td>
+<td>Szervezetirányítási, üzletpolitikai foglalkozások</td>
+<td>019406fd-da6e-7699-a42b-3d890bf2ec17</td>
+</tr>
+<tr>
+<td>2521</td>
+<td>Szervezetirányítási elemző, szervező</td>
+<td>019406fd-da6e-7699-a42b-3d8ac1d377f1</td>
+</tr>
+<tr>
+<td>2522</td>
+<td>Üzletpolitikai elemző, szervező</td>
+<td>019406fd-da6e-7699-a42b-3d8bc3f8430e</td>
+</tr>
+<tr>
+<td>2523</td>
+<td>Személyzeti és pályaválasztási szakértő</td>
+<td>019406fd-da6e-7699-a42b-3d8cd8b21ed9</td>
+</tr>
+<tr>
+<td>2524</td>
+<td>Képzési és személyzetfejlesztési szakértő</td>
+<td>019406fd-da6e-7699-a42b-3d8d2b1bafde</td>
+</tr>
+<tr>
+<td>253</td>
+<td>Kereskedelmi és marketingfoglalkozások</td>
+<td>019406fd-da6e-7699-a42b-3d8ea28cedc0</td>
+</tr>
+<tr>
+<td>2531</td>
+<td>Piackutató, reklám- és marketingtevékenységet tervező, szervező</td>
+<td>019406fd-da6e-7699-a42b-3d8f8afc52e1</td>
+</tr>
+<tr>
+<td>2532</td>
+<td>PR-tevékenységet tervező, szervező</td>
+<td>019406fd-da6e-7699-a42b-3d908b491a62</td>
+</tr>
+<tr>
+<td>2533</td>
+<td>Kereskedelmi tervező, szervező</td>
+<td>019406fd-da6e-7699-a42b-3d9141612eb9</td>
+</tr>
+<tr>
+<td>2534</td>
+<td>Informatikai és telekommunikációs technológiai termékek értékesítéséttervező, szervező</td>
+<td>019406fd-da6e-7699-a42b-3d928ab11da1</td>
+</tr>
+<tr>
+<td>26</td>
+<td>Jogi és társadalomtudományi foglalkozások</td>
+<td>019406fd-da6e-7699-a42b-3d93e4e99e83</td>
+</tr>
+<tr>
+<td>261</td>
+<td>Jogi foglalkozások</td>
+<td>019406fd-da6e-7699-a42b-3d944acf8b3c</td>
+</tr>
+<tr>
+<td>2611</td>
+<td>Jogász, jogtanácsos</td>
+<td>019406fd-da6e-7699-a42b-3d95379d7c46</td>
+</tr>
+<tr>
+<td>2612</td>
+<td>Ügyész</td>
+<td>019406fd-da6e-7699-a42b-3d96e5779d1f</td>
+</tr>
+<tr>
+<td>2613</td>
+<td>Bíró</td>
+<td>019406fd-da6e-7699-a42b-3d97d2d723d3</td>
+</tr>
+<tr>
+<td>2614</td>
+<td>Közjegyző</td>
+<td>019406fd-da6e-7699-a42b-3d98fa0ad127</td>
+</tr>
+<tr>
+<td>2615</td>
+<td>Ügyvéd</td>
+<td>019406fd-da6e-7699-a42b-3d99f2a2eff8</td>
+</tr>
+<tr>
+<td>2619</td>
+<td>Egyéb jogi foglalkozású</td>
+<td>019406fd-da6e-7699-a42b-3d9a3b4ab7cb</td>
+</tr>
+<tr>
+<td>262</td>
+<td>Társadalomtudományi foglalkozások</td>
+<td>019406fd-da6e-7699-a42b-3d9b0882ee9c</td>
+</tr>
+<tr>
+<td>2621</td>
+<td>Filozófus, politológus</td>
+<td>019406fd-da6e-7699-a42b-3d9c8ff0e1f8</td>
+</tr>
+<tr>
+<td>2622</td>
+<td>Történész, régész</td>
+<td>019406fd-da6e-7699-a42b-3d9d8b2d0000</td>
+</tr>
+<tr>
+<td>2623</td>
+<td>Néprajzkutató</td>
+<td>019406fd-da6e-7699-a42b-3d9e231096b2</td>
+</tr>
+<tr>
+<td>2624</td>
+<td>Elemző közgazdász</td>
+<td>019406fd-da6e-7699-a42b-3d9f2afbbc67</td>
+</tr>
+<tr>
+<td>2625</td>
+<td>Statisztikus</td>
+<td>019406fd-da6e-7699-a42b-3da0c9a45e51</td>
+</tr>
+<tr>
+<td>2626</td>
+<td>Szociológus, demográfus</td>
+<td>019406fd-da6e-7699-a42b-3da1fb1803b6</td>
+</tr>
+<tr>
+<td>2627</td>
+<td>Nyelvész, fordító, tolmács</td>
+<td>019406fd-da6e-7699-a42b-3da29bf3f6c3</td>
+</tr>
+<tr>
+<td>2628</td>
+<td>Pszichológus</td>
+<td>019406fd-da6e-7699-a42b-3da35c734ebe</td>
+</tr>
+<tr>
+<td>2629</td>
+<td>Egyéb társadalomtudományi foglalkozású</td>
+<td>019406fd-da6e-7699-a42b-3da406d64b44</td>
+</tr>
+<tr>
+<td>27</td>
+<td>Kulturális, sport-, művészeti és vallási foglalkozások (felsőfokú képzettséghez kapcsolódó)</td>
+<td>019406fd-da6e-7699-a42b-3da5cacda17a</td>
+</tr>
+<tr>
+<td>271</td>
+<td>Kulturális és sportfoglalkozások (felsőfokú képzettséghez kapcsolódó)</td>
+<td>019406fd-da6e-7699-a42b-3da65e334de2</td>
+</tr>
+<tr>
+<td>2711</td>
+<td>Könyvtáros, informatikus könyvtáros</td>
+<td>019406fd-da6e-7699-a42b-3da74f0be474</td>
+</tr>
+<tr>
+<td>2712</td>
+<td>Levéltáros</td>
+<td>019406fd-da6e-7699-a42b-3da8b9a7f81f</td>
+</tr>
+<tr>
+<td>2713</td>
+<td>Muzeológus, múzeumi gyűjteménygondnok</td>
+<td>019406fd-da6e-7699-a42b-3da9221ed163</td>
+</tr>
+<tr>
+<td>2714</td>
+<td>Kulturális szervező</td>
+<td>019406fd-da6e-7699-a42b-3daa05b01cbb</td>
+</tr>
+<tr>
+<td>2715</td>
+<td>Könyv- és lapkiadó szerkesztője</td>
+<td>019406fd-da6e-7699-a42b-3dab26a5ca49</td>
+</tr>
+<tr>
+<td>2716</td>
+<td>Újságíró, rádióműsor-, televízióműsor-szerkesztő</td>
+<td>019406fd-da6e-7699-a42b-3dacbd2a3a11</td>
+</tr>
+<tr>
+<td>2717</td>
+<td>Szakképzett edző, sportszervező, -irányító</td>
+<td>019406fd-da6e-7699-a42b-3dadef34dafe</td>
+</tr>
+<tr>
+<td>2719</td>
+<td>Egyéb kulturális és sportfoglalkozású (felsőfokú képzettséghez kapcsolódó)</td>
+<td>019406fd-da6e-7699-a42b-3dae9f5b0e7e</td>
+</tr>
+<tr>
+<td>272</td>
+<td>lkotó- és előadó-művészi foglalkozások (felsőfokú képzettséghez kapcsolódó)</td>
+<td>019406fd-da6e-7699-a42b-3daf4bb35b9f</td>
+</tr>
+<tr>
+<td>2721</td>
+<td>Író (újságíró nélkül)</td>
+<td>019406fd-da6e-7699-a42b-3db09a1558ea</td>
+</tr>
+<tr>
+<td>2722</td>
+<td>Képzőművész</td>
+<td>019406fd-da6e-7699-a42b-3db1df80cc94</td>
+</tr>
+<tr>
+<td>2723</td>
+<td>Iparművész, gyártmány- és ruhatervező</td>
+<td>019406fd-da6e-7699-a42b-3db262387e53</td>
+</tr>
+<tr>
+<td>2724</td>
+<td>Zeneszerző, zenész, énekes</td>
+<td>019406fd-da6e-7699-a42b-3db3aae8fbbb</td>
+</tr>
+<tr>
+<td>2725</td>
+<td>Rendező, operatőr</td>
+<td>019406fd-da6e-7699-a42b-3db47b420509</td>
+</tr>
+<tr>
+<td>2726</td>
+<td>Színész, bábművész</td>
+<td>019406fd-da6e-7699-a42b-3db59c55ec81</td>
+</tr>
+<tr>
+<td>2727</td>
+<td>Táncművész, koreográfus</td>
+<td>019406fd-da6e-7699-a42b-3db6ded61063</td>
+</tr>
+<tr>
+<td>2728</td>
+<td>Cirkuszi- és hasonló előadóművész</td>
+<td>019406fd-da6e-7699-a42b-3db74d9ce348</td>
+</tr>
+<tr>
+<td>2729</td>
+<td>Egyéb alkotó- és előadó-művészi foglalkozású (felsőfokú képzettséghez kapcsolódó)</td>
+<td>019406fd-da6e-7699-a42b-3db878a82588</td>
+</tr>
+<tr>
+<td>273</td>
+<td>Vallási foglalkozások (felsőfokú képzettséghez kapcsolódó)</td>
+<td>019406fd-da6e-7699-a42b-3db923b0a67f</td>
+</tr>
+<tr>
+<td>2730</td>
+<td>Pap (lelkész), egyházi foglalkozású</td>
+<td>019406fd-da6e-7699-a42b-3dbab6bc0cc9</td>
+</tr>
+<tr>
+<td>29</td>
+<td>Egyéb magasan képzett ügyintézők</td>
+<td>019406fd-da6e-7699-a42b-3dbbde188406</td>
+</tr>
+<tr>
+<td>291</td>
+<td>gyéb magasan képzett ügyintézők</td>
+<td>019406fd-da6e-7699-a42b-3dbce63392bc</td>
+</tr>
+<tr>
+<td>2910</td>
+<td>Egyéb magasan képzett ügyintéző</td>
+<td>019406fd-da6e-7699-a42b-3dbda906f7c9</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Fegyveres szervek középfokú képesítést nem igénylő foglalkozásai</td>
+<td>019406fd-da6e-7699-a42b-3dbe24bd814e</td>
+</tr>
+<tr>
+<td>31</td>
+<td>Technikusok és hasonló műszaki foglalkozások</td>
+<td>019406fd-da6e-7699-a42b-3dbf4264916b</td>
+</tr>
+<tr>
+<td>311</td>
+<td>Ipari, építőipari technikusok</td>
+<td>019406fd-da6e-7699-a42b-3dc05c600465</td>
+</tr>
+<tr>
+<td>3111</td>
+<td>Bányászati technikus</td>
+<td>019406fd-da6e-7699-a42b-3dc1ce189fb5</td>
+</tr>
+<tr>
+<td>3112</td>
+<td>Kohó- és anyagtechnikus</td>
+<td>019406fd-da6e-7699-a42b-3dc2ed2215eb</td>
+</tr>
+<tr>
+<td>3113</td>
+<td>Élelmiszer-ipari technikus</td>
+<td>019406fd-da6e-7699-a42b-3dc357766e2c</td>
+</tr>
+<tr>
+<td>3114</td>
+<td>Fa- és könnyűipari technikus</td>
+<td>019406fd-da6e-7699-a42b-3dc41827ba7d</td>
+</tr>
+<tr>
+<td>3115</td>
+<td>Vegyésztechnikus</td>
+<td>019406fd-da6e-7699-a42b-3dc58328e211</td>
+</tr>
+<tr>
+<td>3116</td>
+<td>Gépésztechnikus</td>
+<td>019406fd-da6e-7699-a42b-3dc6fd07a3eb</td>
+</tr>
+<tr>
+<td>3117</td>
+<td>Építő- és építésztechnikus</td>
+<td>019406fd-da6e-7699-a42b-3dc7bee46df7</td>
+</tr>
+<tr>
+<td>312</td>
+<td>Elektrotechnikusok</td>
+<td>019406fd-da6e-7699-a42b-3dc89e772dbc</td>
+</tr>
+<tr>
+<td>3121</td>
+<td>Villamosipari technikus (energetikai technikus)</td>
+<td>019406fd-da6e-7699-a42b-3dc93eed36f7</td>
+</tr>
+<tr>
+<td>3122</td>
+<td>Villamosipari technikus (elektronikai technikus)</td>
+<td>019406fd-da6e-7699-a42b-3dca26fbd33c</td>
+</tr>
+<tr>
+<td>313</td>
+<td>Egyéb technikusok</td>
+<td>019406fd-da6e-7699-a42b-3dcb88227352</td>
+</tr>
+<tr>
+<td>3131</td>
+<td>Mezőgazdasági technikus</td>
+<td>019406fd-da6e-7699-a42b-3dccaf3e93b3</td>
+</tr>
+<tr>
+<td>3132</td>
+<td>Erdő- és természetvédelmi technikus</td>
+<td>019406fd-da6e-7699-a42b-3dcd5d599c14</td>
+</tr>
+<tr>
+<td>3133</td>
+<td>Földmérő és térinformatikai technikus</td>
+<td>019406fd-da6e-7699-a42b-3dce74359fa4</td>
+</tr>
+<tr>
+<td>3134</td>
+<td>Környezetvédelmi technikus</td>
+<td>019406fd-da6e-7699-a42b-3dcf21794cc2</td>
+</tr>
+<tr>
+<td>3135</td>
+<td>Minőségbiztosítási technikus</td>
+<td>019406fd-da6e-7699-a42b-3dd0f312233f</td>
+</tr>
+<tr>
+<td>3136</td>
+<td>Műszaki rajzoló, szerkesztő</td>
+<td>019406fd-da6e-7699-a42b-3dd12148cf0b</td>
+</tr>
+<tr>
+<td>3139</td>
+<td>Egyéb, máshova nem sorolható technikus</td>
+<td>019406fd-da6e-7699-a42b-3dd224a4d33c</td>
+</tr>
+<tr>
+<td>314</td>
+<td>Számítástechnikai (informatikai) és kommunikációs foglalkozások</td>
+<td>019406fd-da6e-7699-a42b-3dd30cb9c380</td>
+</tr>
+<tr>
+<td>3141</td>
+<td>Informatikai és kommunikációs rendszereket kezelő technikus</td>
+<td>019406fd-da6f-7be2-ac42-aa26c4773c1e</td>
+</tr>
+<tr>
+<td>3142</td>
+<td>Informatikai és kommunikációs rendszerek felhasználóit támogató technikus</td>
+<td>019406fd-da6f-7be2-ac42-aa2713715bef</td>
+</tr>
+<tr>
+<td>3143</td>
+<td>Számítógéphálózat- és rendszertechnikus</td>
+<td>019406fd-da6f-7be2-ac42-aa2852e7f321</td>
+</tr>
+<tr>
+<td>3144</td>
+<td>Webrendszer- (hálózati) technikus</td>
+<td>019406fd-da6f-7be2-ac42-aa29858a2efd</td>
+</tr>
+<tr>
+<td>3145</td>
+<td>Műsorszóró és audiovizuális technikus</td>
+<td>019406fd-da6f-7be2-ac42-aa2abf79a9cc</td>
+</tr>
+<tr>
+<td>3146</td>
+<td>Telekommunikációs technikus</td>
+<td>019406fd-da6f-7be2-ac42-aa2b9fea9167</td>
+</tr>
+<tr>
+<td>315</td>
+<td>Folyamatirányítók (berendezések vezérlői)</td>
+<td>019406fd-da6f-7be2-ac42-aa2ced452a30</td>
+</tr>
+<tr>
+<td>3151</td>
+<td>Energetikai (erőművi) berendezés vezérlője</td>
+<td>019406fd-da6f-7be2-ac42-aa2dadcb16e4</td>
+</tr>
+<tr>
+<td>3152</td>
+<td>Égető-, víz- és csatornaművi berendezés vezérlője</td>
+<td>019406fd-da6f-7be2-ac42-aa2e4e94c2b0</td>
+</tr>
+<tr>
+<td>3153</td>
+<td>Vegyipari alapanyag-feldolgozó berendezés vezérlője</td>
+<td>019406fd-da6f-7be2-ac42-aa2f32ed4dc3</td>
+</tr>
+<tr>
+<td>3154</td>
+<td>Kőolaj- és földgázfinomító berendezés vezérlője</td>
+<td>019406fd-da6f-7be2-ac42-aa304e3bb67b</td>
+</tr>
+<tr>
+<td>3155</td>
+<td>Fémgyártási berendezés vezérlője</td>
+<td>019406fd-da6f-7be2-ac42-aa3170226d62</td>
+</tr>
+<tr>
+<td>3159</td>
+<td>Egyéb folyamatirányító berendezés vezérlője</td>
+<td>019406fd-da6f-7be2-ac42-aa324868c486</td>
+</tr>
+<tr>
+<td>316</td>
+<td>Üzemfenntartási foglalkozások</td>
+<td>019406fd-da6f-7be2-ac42-aa334d985e5a</td>
+</tr>
+<tr>
+<td>3161</td>
+<td>Munka- és termelésszervező</td>
+<td>019406fd-da6f-7be2-ac42-aa34dfe62c36</td>
+</tr>
+<tr>
+<td>3162</td>
+<td>Energetikus</td>
+<td>019406fd-da6f-7be2-ac42-aa3506852e3c</td>
+</tr>
+<tr>
+<td>3163</td>
+<td>Munkavédelmi és üzembiztonsági foglalkozású</td>
+<td>019406fd-da6f-7be2-ac42-aa36d15ccff2</td>
+</tr>
+<tr>
+<td>317</td>
+<td>Vízi- és légijármű-vezetők, légiirányítók</td>
+<td>019406fd-da6f-7be2-ac42-aa379f97f8e7</td>
+</tr>
+<tr>
+<td>3171</td>
+<td>Tengeri és belvízi hajóparancsnok, fedélzeti tiszt</td>
+<td>019406fd-da6f-7be2-ac42-aa380dd5ddac</td>
+</tr>
+<tr>
+<td>3172</td>
+<td>Légijármű-vezető, hajózómérnök</td>
+<td>019406fd-da6f-7be2-ac42-aa39707f8800</td>
+</tr>
+<tr>
+<td>3173</td>
+<td>Légiforgalmi irányító</td>
+<td>019406fd-da6f-7be2-ac42-aa3a2009063a</td>
+</tr>
+<tr>
+<td>3174</td>
+<td>Légiforgalmi irányítástechnikai berendezések üzemeltetője</td>
+<td>019406fd-da6f-7be2-ac42-aa3b88f54e0f</td>
+</tr>
+<tr>
+<td>319</td>
+<td>gyéb műszaki foglalkozások</td>
+<td>019406fd-da6f-7be2-ac42-aa3c6627c212</td>
+</tr>
+<tr>
+<td>3190</td>
+<td>Egyéb műszaki foglalkozású</td>
+<td>019406fd-da6f-7be2-ac42-aa3d0f6a2135</td>
+</tr>
+<tr>
+<td>32</td>
+<td>Szakmai irányítók, felügyelők</td>
+<td>019406fd-da6f-7be2-ac42-aa3e57d35490</td>
+</tr>
+<tr>
+<td>321</td>
+<td>Ipari, építőipari szakmai irányítók, felügyelők</td>
+<td>019406fd-da6f-7be2-ac42-aa3fe318ea00</td>
+</tr>
+<tr>
+<td>3211</td>
+<td>Bányászati szakmai irányító, felügyelő</td>
+<td>019406fd-da6f-7be2-ac42-aa4076693020</td>
+</tr>
+<tr>
+<td>3212</td>
+<td>Feldolgozóipari szakmai irányító, felügyelő</td>
+<td>019406fd-da6f-7be2-ac42-aa41db6151f9</td>
+</tr>
+<tr>
+<td>3213</td>
+<td>Építőipari szakmai irányító, felügyelő</td>
+<td>019406fd-da6f-7be2-ac42-aa42f6d4cf2e</td>
+</tr>
+<tr>
+<td>322</td>
+<td>Egyéb szakmai irányítók, felügyelők</td>
+<td>019406fd-da6f-7be2-ac42-aa430e7526b8</td>
+</tr>
+<tr>
+<td>3221</td>
+<td>Irodai szakmai irányító, felügyelő</td>
+<td>019406fd-da6f-7be2-ac42-aa443f472a24</td>
+</tr>
+<tr>
+<td>3222</td>
+<td>Konyhafőnök, séf</td>
+<td>019406fd-da6f-7be2-ac42-aa45e09a91f1</td>
+</tr>
+<tr>
+<td>33</td>
+<td>Egészségügyi foglalkozások</td>
+<td>019406fd-da6f-7be2-ac42-aa4652fd9fa1</td>
+</tr>
+<tr>
+<td>331</td>
+<td>Ápolási és szülészeti kapcsolódó foglalkozások</td>
+<td>019406fd-da6f-7be2-ac42-aa4724046317</td>
+</tr>
+<tr>
+<td>3311</td>
+<td>Ápoló, szakápoló</td>
+<td>019406fd-da6f-7be2-ac42-aa488ac7c49b</td>
+</tr>
+<tr>
+<td>3312</td>
+<td>Szülész(nő)i tevékenység segítője</td>
+<td>019406fd-da6f-7be2-ac42-aa4920b035e1</td>
+</tr>
+<tr>
+<td>332</td>
+<td>Egészségügyi asszisztensek</td>
+<td>019406fd-da6f-7be2-ac42-aa4a6d2ba4da</td>
+</tr>
+<tr>
+<td>3321</td>
+<td>Általános egészségügyi asszisztens</td>
+<td>019406fd-da6f-7be2-ac42-aa4b004498cc</td>
+</tr>
+<tr>
+<td>3322</td>
+<td>Egészségügyi dokumentátor</td>
+<td>019406fd-da6f-7be2-ac42-aa4c0ce7362a</td>
+</tr>
+<tr>
+<td>3323</td>
+<td>Orvosi képalkotó diagnosztikai és terápiás berendezések kezelője</td>
+<td>019406fd-da6f-7be2-ac42-aa4d7969155f</td>
+</tr>
+<tr>
+<td>3324</td>
+<td>Orvosi laboratóriumi asszisztens</td>
+<td>019406fd-da6f-7be2-ac42-aa4ed60d4eec</td>
+</tr>
+<tr>
+<td>3325</td>
+<td>Fogászati asszisztens</td>
+<td>019406fd-da6f-7be2-ac42-aa4f57b4c7c9</td>
+</tr>
+<tr>
+<td>3326</td>
+<td>Gyógyszertári és gyógyszerellátási asszisztens</td>
+<td>019406fd-da6f-7be2-ac42-aa5052ad19d6</td>
+</tr>
+<tr>
+<td>3327</td>
+<td>Alternatív gyógymódok alkalmazásának segítője</td>
+<td>019406fd-da6f-7be2-ac42-aa510f1e170c</td>
+</tr>
+<tr>
+<td>333</td>
+<td>umánegészségügyhöz kapcsolódó foglalkozások</td>
+<td>019406fd-da6f-7be2-ac42-aa52d1adaecb</td>
+</tr>
+<tr>
+<td>3331</td>
+<td>Környezet- és foglalkozás-egészségügyi kiegészítő foglalkozású</td>
+<td>019406fd-da6f-7be2-ac42-aa5325cdcc6e</td>
+</tr>
+<tr>
+<td>3332</td>
+<td>Fizioterápiás asszisztens, masszőr</td>
+<td>019406fd-da6f-7be2-ac42-aa54de11f0ad</td>
+</tr>
+<tr>
+<td>3333</td>
+<td>Fogtechnikus</td>
+<td>019406fd-da6f-7be2-ac42-aa5528608ede</td>
+</tr>
+<tr>
+<td>3334</td>
+<td>Ortopédiai eszközkészítő</td>
+<td>019406fd-da6f-7be2-ac42-aa56bdef1979</td>
+</tr>
+<tr>
+<td>3335</td>
+<td>Látszerész</td>
+<td>019406fd-da6f-7be2-ac42-aa5750cb0181</td>
+</tr>
+<tr>
+<td>3339</td>
+<td>Egyéb, humánegészségügyhöz kapcsolódó foglalkozású</td>
+<td>019406fd-da6f-7be2-ac42-aa5886a92d94</td>
+</tr>
+<tr>
+<td>334</td>
+<td>Állat- és növényegészségügyhöz kapcsolódó foglalkozások</td>
+<td>019406fd-da6f-7be2-ac42-aa598eac151d</td>
+</tr>
+<tr>
+<td>3341</td>
+<td>Állatorvosi asszisztens</td>
+<td>019406fd-da6f-7be2-ac42-aa5ad377c8e5</td>
+</tr>
+<tr>
+<td>3342</td>
+<td>Növényorvosi (növényvédelmi) asszisztens</td>
+<td>019406fd-da6f-7be2-ac42-aa5b5631e3ab</td>
+</tr>
+<tr>
+<td>34</td>
+<td>Oktatási asszisztensek</td>
+<td>019406fd-da6f-7be2-ac42-aa5cf25b4236</td>
+</tr>
+<tr>
+<td>341</td>
+<td>Oktatási asszisztensek</td>
+<td>019406fd-da6f-7be2-ac42-aa5ddb67a373</td>
+</tr>
+<tr>
+<td>3410</td>
+<td>Oktatási asszisztens</td>
+<td>019406fd-da6f-7be2-ac42-aa5ee247cfb8</td>
+</tr>
+<tr>
+<td>35</td>
+<td>Szociális gondozási és munkaerő-piaci szolgáltatási foglalkozások</td>
+<td>019406fd-da6f-7be2-ac42-aa5f69e7c505</td>
+</tr>
+<tr>
+<td>351</td>
+<td>Szociális foglalkozások</td>
+<td>019406fd-da6f-7be2-ac42-aa60caf8b116</td>
+</tr>
+<tr>
+<td>3511</td>
+<td>Szociális segítő</td>
+<td>019406fd-da6f-7be2-ac42-aa618307c9a3</td>
+</tr>
+<tr>
+<td>3512</td>
+<td>Hivatásos nevelőszülő, főállású anya</td>
+<td>019406fd-da6f-7be2-ac42-aa62e6cd71a0</td>
+</tr>
+<tr>
+<td>3513</td>
+<td>Szociális gondozó, szakgondozó</td>
+<td>019406fd-da6f-7be2-ac42-aa6310a83835</td>
+</tr>
+<tr>
+<td>3514</td>
+<td>Jelnyelvi tolmács</td>
+<td>019406fd-da6f-7be2-ac42-aa646634abd8</td>
+</tr>
+<tr>
+<td>3515</td>
+<td>Ifjúságsegítő</td>
+<td>019406fd-da6f-7be2-ac42-aa658ce9efdd</td>
+</tr>
+<tr>
+<td>352</td>
+<td>Munkaerő-piaci szolgáltatási ügyintézők</td>
+<td>019406fd-da6f-7be2-ac42-aa66578e8aac</td>
+</tr>
+<tr>
+<td>3520</td>
+<td>Munkaerő-piaci szolgáltatási ügyintéző</td>
+<td>019406fd-da6f-7be2-ac42-aa67f03a7b03</td>
+</tr>
+<tr>
+<td>36</td>
+<td>Üzleti jellegű szolgáltatások ügyintézői, hatósági ügyintézők, ügynökök</td>
+<td>019406fd-da6f-7be2-ac42-aa6827cd25df</td>
+</tr>
+<tr>
+<td>361</td>
+<td>Pénzügyi, gazdasági ügyintézők</td>
+<td>019406fd-da6f-7be2-ac42-aa695446856b</td>
+</tr>
+<tr>
+<td>3611</td>
+<td>Pénzügyi ügyintéző (a pénzintézeti ügyintéző kivételével)</td>
+<td>019406fd-da6f-7be2-ac42-aa6af3cde5b7</td>
+</tr>
+<tr>
+<td>3612</td>
+<td>Pénzintézeti ügyintéző</td>
+<td>019406fd-da6f-7be2-ac42-aa6bd618d3ec</td>
+</tr>
+<tr>
+<td>3613</td>
+<td>Tőzsde- és pénzügyi ügynök, bróker</td>
+<td>019406fd-da6f-7be2-ac42-aa6cd560b814</td>
+</tr>
+<tr>
+<td>3614</td>
+<td>Számviteli ügyintéző</td>
+<td>019406fd-da6f-7be2-ac42-aa6dde906ac7</td>
+</tr>
+<tr>
+<td>3615</td>
+<td>Statisztikai ügyintéző</td>
+<td>019406fd-da6f-7be2-ac42-aa6eebf18761</td>
+</tr>
+<tr>
+<td>3616</td>
+<td>Értékbecslő, kárbecslő, kárszakértő</td>
+<td>019406fd-da6f-7be2-ac42-aa6fe646458f</td>
+</tr>
+<tr>
+<td>362</td>
+<td>ereskedelmi és értékesítési ügyintézők, ügynökök</td>
+<td>019406fd-da6f-7be2-ac42-aa70653a7c84</td>
+</tr>
+<tr>
+<td>3621</td>
+<td>Biztosítási ügynök, ügyintéző</td>
+<td>019406fd-da6f-7be2-ac42-aa718a78a9a7</td>
+</tr>
+<tr>
+<td>3622</td>
+<td>Kereskedelmi ügyintéző</td>
+<td>019406fd-da6f-7be2-ac42-aa723524db3c</td>
+</tr>
+<tr>
+<td>3623</td>
+<td>Anyaggazdálkodó, felvásárló</td>
+<td>019406fd-da6f-7be2-ac42-aa73f90cebdf</td>
+</tr>
+<tr>
+<td>3624</td>
+<td>Ügynök (a biztosítási ügynök kivételével)</td>
+<td>019406fd-da6f-7be2-ac42-aa74d63b1d81</td>
+</tr>
+<tr>
+<td>363</td>
+<td>gyéb üzleti jellegű szolgáltatások ügyintézői</td>
+<td>019406fd-da6f-7be2-ac42-aa75c2208e8a</td>
+</tr>
+<tr>
+<td>3631</td>
+<td>Konferencia- és rendezvényszervező</td>
+<td>019406fd-da6f-7be2-ac42-aa7697d2b81b</td>
+</tr>
+<tr>
+<td>3632</td>
+<td>Marketing- és PR-ügyintéző</td>
+<td>019406fd-da6f-7be2-ac42-aa777dbf4f44</td>
+</tr>
+<tr>
+<td>3633</td>
+<td>Ingatlanügynök, ingatlanforgalmazási ügyintéző</td>
+<td>019406fd-da6f-7be2-ac42-aa78e5b15931</td>
+</tr>
+<tr>
+<td>3639</td>
+<td>Egyéb, máshova nem sorolható üzleti jellegű szolgáltatás ügyintézője</td>
+<td>019406fd-da6f-7be2-ac42-aa79d9a85cb7</td>
+</tr>
+<tr>
+<td>364</td>
+<td>Igazgatási és jogi asszisztensek</td>
+<td>019406fd-da6f-7be2-ac42-aa7aaaf503b8</td>
+</tr>
+<tr>
+<td>3641</td>
+<td>Személyi asszisztens</td>
+<td>019406fd-da6f-7be2-ac42-aa7b9cf6536d</td>
+</tr>
+<tr>
+<td>3642</td>
+<td>Jogi asszisztens</td>
+<td>019406fd-da6f-7be2-ac42-aa7c2e91b041</td>
+</tr>
+<tr>
+<td>3649</td>
+<td>Egyéb igazgatási és jogi asszisztens</td>
+<td>019406fd-da6f-7be2-ac42-aa7d9afee00e</td>
+</tr>
+<tr>
+<td>365</td>
+<td>Hatósági ügyintézők</td>
+<td>019406fd-da6f-7be2-ac42-aa7e65261759</td>
+</tr>
+<tr>
+<td>3651</td>
+<td>Vám- és pénzügyőr</td>
+<td>019406fd-da6f-7be2-ac42-aa7ff90909f9</td>
+</tr>
+<tr>
+<td>3652</td>
+<td>Adó- és illetékhivatali ügyintéző</td>
+<td>019406fd-da6f-7be2-ac42-aa80d95a8d34</td>
+</tr>
+<tr>
+<td>3653</td>
+<td>Társadalombiztosítási és segélyezési hatósági ügyintéző</td>
+<td>019406fd-da6f-7be2-ac42-aa8195fcbd21</td>
+</tr>
+<tr>
+<td>3654</td>
+<td>Hatósági engedélyek kiadásával foglalkozó ügyintéző</td>
+<td>019406fd-da6f-7be2-ac42-aa82c070f0ce</td>
+</tr>
+<tr>
+<td>3655</td>
+<td>Nyomozó</td>
+<td>019406fd-da6f-7be2-ac42-aa83d8cfb63b</td>
+</tr>
+<tr>
+<td>3656</td>
+<td>Végrehajtó, adósságbehajtó</td>
+<td>019406fd-da6f-7be2-ac42-aa8416566555</td>
+</tr>
+<tr>
+<td>3659</td>
+<td>Egyéb hatósági ügyintéző</td>
+<td>019406fd-da6f-7be2-ac42-aa858a546052</td>
+</tr>
+<tr>
+<td>37</td>
+<td>Művészeti, kulturális, sport- és vallási foglalkozások</td>
+<td>019406fd-da6f-7be2-ac42-aa8602810a22</td>
+</tr>
+<tr>
+<td>371</td>
+<td>Művészeti és kulturális foglalkozások</td>
+<td>019406fd-da6f-7be2-ac42-aa875a957ba3</td>
+</tr>
+<tr>
+<td>3711</td>
+<td>Segédszínész, statiszta</td>
+<td>019406fd-da6f-7be2-ac42-aa8892e5c626</td>
+</tr>
+<tr>
+<td>3712</td>
+<td>Segédrendező</td>
+<td>019406fd-da6f-7be2-ac42-aa89d551814b</td>
+</tr>
+<tr>
+<td>3713</td>
+<td>Fényképész</td>
+<td>019406fd-da6f-7be2-ac42-aa8a9af6af13</td>
+</tr>
+<tr>
+<td>3714</td>
+<td>Díszletező, díszítő</td>
+<td>019406fd-da6f-7be2-ac42-aa8b604e11c5</td>
+</tr>
+<tr>
+<td>3715</td>
+<td>Kiegészítő filmgyártási és színházi foglalkozású</td>
+<td>019406fd-da6f-7be2-ac42-aa8c06cb9f78</td>
+</tr>
+<tr>
+<td>3716</td>
+<td>Lakberendező, dekoratőr</td>
+<td>019406fd-da6f-7be2-ac42-aa8d0f8829bb</td>
+</tr>
+<tr>
+<td>3717</td>
+<td>Kulturális intézményi szaktechnikus</td>
+<td>019406fd-da6f-7be2-ac42-aa8e043c8abb</td>
+</tr>
+<tr>
+<td>3719</td>
+<td>Egyéb művészeti és kulturális foglalkozású</td>
+<td>019406fd-da6f-7be2-ac42-aa8f40a295d5</td>
+</tr>
+<tr>
+<td>372</td>
+<td>Sport- és szabadidős foglalkozások</td>
+<td>019406fd-da6f-7be2-ac42-aa90cf8b7679</td>
+</tr>
+<tr>
+<td>3721</td>
+<td>Sportoló</td>
+<td>019406fd-da6f-7be2-ac42-aa9124064672</td>
+</tr>
+<tr>
+<td>3722</td>
+<td>Fitnesz- és rekreációs program irányítója</td>
+<td>019406fd-da6f-7be2-ac42-aa928899103e</td>
+</tr>
+<tr>
+<td>373</td>
+<td>Egyéb vallási foglalkozások</td>
+<td>019406fd-da6f-7be2-ac42-aa93b0f7d505</td>
+</tr>
+<tr>
+<td>3730</td>
+<td>Egyéb vallási foglalkozású</td>
+<td>019406fd-da6f-7be2-ac42-aa942233af0e</td>
+</tr>
+<tr>
+<td>39</td>
+<td>Egyéb ügyintézők</td>
+<td>019406fd-da70-7064-a23c-11074199974e</td>
+</tr>
+<tr>
+<td>391</td>
+<td>Egyéb ügyintézők</td>
+<td>019406fd-da70-7064-a23c-11080a66e7b9</td>
+</tr>
+<tr>
+<td>3910</td>
+<td>Egyéb ügyintéző</td>
+<td>019406fd-da70-7064-a23c-1109a036c381</td>
+</tr>
+<tr>
+<td>4</td>
+<td>IRODAI ÉS ÜGYVITELI (ÜGYFÉLKAPCSOLATI) FOGLALKOZÁSOK</td>
+<td>019406fd-da70-7064-a23c-110a7d8a77cb</td>
+</tr>
+<tr>
+<td>41</td>
+<td>Irodai, ügyviteli foglalkozások</td>
+<td>019406fd-da70-7064-a23c-110ba2d0a6c4</td>
+</tr>
+<tr>
+<td>411</td>
+<td>Általános irodai, ügyviteli foglalkozások</td>
+<td>019406fd-da70-7064-a23c-110c105b85f6</td>
+</tr>
+<tr>
+<td>4111</td>
+<td>Titkár(nő)</td>
+<td>019406fd-da70-7064-a23c-110ded434a5c</td>
+</tr>
+<tr>
+<td>4112</td>
+<td>Általános irodai adminisztrátor</td>
+<td>019406fd-da70-7064-a23c-110e09d1b3f0</td>
+</tr>
+<tr>
+<td>4113</td>
+<td>Gépíró, szövegszerkesztő</td>
+<td>019406fd-da70-7064-a23c-110fd37b8513</td>
+</tr>
+<tr>
+<td>4114</td>
+<td>Adatrögzítő, kódoló</td>
+<td>019406fd-da70-7064-a23c-111059d8b097</td>
+</tr>
+<tr>
+<td>412</td>
+<td>Számviteli foglalkozások</td>
+<td>019406fd-da70-7064-a23c-11112c37d434</td>
+</tr>
+<tr>
+<td>4121</td>
+<td>Könyvelő (analitikus)</td>
+<td>019406fd-da70-7064-a23c-11120aeda233</td>
+</tr>
+<tr>
+<td>4122</td>
+<td>Bérelszámoló</td>
+<td>019406fd-da70-7064-a23c-11136fecc479</td>
+</tr>
+<tr>
+<td>4123</td>
+<td>Pénzügyi, statisztikai, biztosítási adminisztrátor</td>
+<td>019406fd-da70-7064-a23c-1114ebefa330</td>
+</tr>
+<tr>
+<td>4129</td>
+<td>Egyéb számviteli foglalkozású</td>
+<td>019406fd-da70-7064-a23c-1115f508224e</td>
+</tr>
+<tr>
+<td>413</td>
+<td>rodai szaknyilvántartási foglalkozások</td>
+<td>019406fd-da70-7064-a23c-1116a6bacea2</td>
+</tr>
+<tr>
+<td>4131</td>
+<td>Készlet- és anyagnyilvántartó</td>
+<td>019406fd-da70-7064-a23c-1117ab4e8b18</td>
+</tr>
+<tr>
+<td>4132</td>
+<td>Szállítási, szállítmányozási nyilvántartó</td>
+<td>019406fd-da70-7064-a23c-1118db3630e3</td>
+</tr>
+<tr>
+<td>4133</td>
+<td>Könyvtári, levéltári nyilvántartó</td>
+<td>019406fd-da70-7064-a23c-11190faeeca4</td>
+</tr>
+<tr>
+<td>4134</td>
+<td>Humánpolitikai adminisztrátor</td>
+<td>019406fd-da70-7064-a23c-111a46e6f129</td>
+</tr>
+<tr>
+<td>4135</td>
+<td>Postai szolgáltató (kézbesítő, válogató)</td>
+<td>019406fd-da70-7064-a23c-111bd74861d3</td>
+</tr>
+<tr>
+<td>4136</td>
+<td>Iratkezelő, irattáros</td>
+<td>019406fd-da70-7064-a23c-111c14d99932</td>
+</tr>
+<tr>
+<td>419</td>
+<td>Egyéb irodai, ügyviteli foglalkozások</td>
+<td>019406fd-da70-7064-a23c-111dc6179a47</td>
+</tr>
+<tr>
+<td>4190</td>
+<td>Egyéb, máshova nem sorolható irodai, ügyviteli foglalkozású</td>
+<td>019406fd-da70-7064-a23c-111ed1c99b01</td>
+</tr>
+<tr>
+<td>42</td>
+<td>Ügyfélkapcsolati foglalkozások</td>
+<td>019406fd-da70-7064-a23c-111f1e80a61f</td>
+</tr>
+<tr>
+<td>421</td>
+<td>Pénzkezelők, pénzintézeti pénztárosok</td>
+<td>019406fd-da70-7064-a23c-112046ded590</td>
+</tr>
+<tr>
+<td>4211</td>
+<td>Banki pénztáros</td>
+<td>019406fd-da70-7064-a23c-11219a826fbb</td>
+</tr>
+<tr>
+<td>4212</td>
+<td>Szerencsejáték-szervező</td>
+<td>019406fd-da70-7064-a23c-1122e7ff7d92</td>
+</tr>
+<tr>
+<td>4213</td>
+<td>Zálogházi ügyintéző és pénzkölcsönző</td>
+<td>019406fd-da70-7064-a23c-112337241cdc</td>
+</tr>
+<tr>
+<td>422</td>
+<td>Ügyfélkapcsolati foglalkozások</td>
+<td>019406fd-da70-7064-a23c-1124455fcf12</td>
+</tr>
+<tr>
+<td>4221</td>
+<td>Utazásszervező, tanácsadó</td>
+<td>019406fd-da71-7e64-a729-1213700a3551</td>
+</tr>
+<tr>
+<td>4222</td>
+<td>Recepciós</td>
+<td>019406fd-da71-7e64-a729-1214de8eb44c</td>
+</tr>
+<tr>
+<td>4223</td>
+<td>Szállodai recepciós</td>
+<td>019406fd-da71-7e64-a729-1215d96a8d3f</td>
+</tr>
+<tr>
+<td>4224</td>
+<td>Ügyfél- (vevő)tájékoztató</td>
+<td>019406fd-da71-7e64-a729-12165974deb7</td>
+</tr>
+<tr>
+<td>4225</td>
+<td>Ügyfélszolgálati központ tájékoztatója</td>
+<td>019406fd-da71-7e64-a729-121713c41d2e</td>
+</tr>
+<tr>
+<td>4226</td>
+<td>Lakossági kérdező, összeíró</td>
+<td>019406fd-da71-7e64-a729-12184d15b4e2</td>
+</tr>
+<tr>
+<td>4227</td>
+<td>Postai ügyfélkapcsolati foglalkozású</td>
+<td>019406fd-da71-7e64-a729-1219886414b4</td>
+</tr>
+<tr>
+<td>4229</td>
+<td>Egyéb ügyfélkapcsolati foglalkozású</td>
+<td>019406fd-da71-7e64-a729-121a0d4cccac</td>
+</tr>
+<tr>
+<td>5</td>
+<td>KERESKEDELMI ÉS SZOLGÁLTATÁSI FOGLALKOZÁSOK</td>
+<td>019406fd-da71-7e64-a729-121b14d66c5c</td>
+</tr>
+<tr>
+<td>51</td>
+<td>Kereskedelmi és vendéglátó-ipari foglalkozások</td>
+<td>019406fd-da71-7e64-a729-121c9b71c7fe</td>
+</tr>
+<tr>
+<td>511</td>
+<td>Kereskedelmi foglalkozások</td>
+<td>019406fd-da71-7e64-a729-121daecada49</td>
+</tr>
+<tr>
+<td>5111</td>
+<td>Kereskedő</td>
+<td>019406fd-da71-7e64-a729-121e89983458</td>
+</tr>
+<tr>
+<td>5112</td>
+<td>Vezető eladó</td>
+<td>019406fd-da71-7e64-a729-121f8043a00b</td>
+</tr>
+<tr>
+<td>5113</td>
+<td>Bolti eladó</td>
+<td>019406fd-da71-7e64-a729-1220bc0a508f</td>
+</tr>
+<tr>
+<td>5114</td>
+<td>Kölcsönző</td>
+<td>019406fd-da71-7e64-a729-12214b0d62bb</td>
+</tr>
+<tr>
+<td>5115</td>
+<td>Piaci, utcai árus</td>
+<td>019406fd-da71-7e64-a729-1222ada3c64a</td>
+</tr>
+<tr>
+<td>5116</td>
+<td>Piaci, utcai étel- és italárus</td>
+<td>019406fd-da71-7e64-a729-1223132e79df</td>
+</tr>
+<tr>
+<td>5117</td>
+<td>Bolti pénztáros, jegypénztáros</td>
+<td>019406fd-da71-7e64-a729-1224cd36dfa5</td>
+</tr>
+<tr>
+<td>512</td>
+<td>Egyéb kereskedelmi foglalkozások</td>
+<td>019406fd-da71-7e64-a729-1225b2f57021</td>
+</tr>
+<tr>
+<td>5121</td>
+<td>Üzemanyagtöltő állomás kezelője</td>
+<td>019406fd-da71-7e64-a729-12265e750856</td>
+</tr>
+<tr>
+<td>5122</td>
+<td>Áru- és divatbemutató</td>
+<td>019406fd-da71-7e64-a729-12272fb89619</td>
+</tr>
+<tr>
+<td>5123</td>
+<td>Telefonos (multimédiás) értékesítési ügynök</td>
+<td>019406fd-da71-7e64-a729-122899a405f2</td>
+</tr>
+<tr>
+<td>5129</td>
+<td>Egyéb, máshova nem sorolható kereskedelmi foglalkozású</td>
+<td>019406fd-da71-7e64-a729-1229b2e153f5</td>
+</tr>
+<tr>
+<td>513</td>
+<td>Vendéglátó-ipari foglalkozások</td>
+<td>019406fd-da71-7e64-a729-122a0ef23375</td>
+</tr>
+<tr>
+<td>5131</td>
+<td>Vendéglős</td>
+<td>019406fd-da71-7e64-a729-122b02f69595</td>
+</tr>
+<tr>
+<td>5132</td>
+<td>Pincér</td>
+<td>019406fd-da71-7e64-a729-122c265ca43b</td>
+</tr>
+<tr>
+<td>5133</td>
+<td>Pultos</td>
+<td>019406fd-da71-7e64-a729-122d2d673bb1</td>
+</tr>
+<tr>
+<td>5134</td>
+<td>Szakács</td>
+<td>019406fd-da71-7e64-a729-122e370b1731</td>
+</tr>
+<tr>
+<td>5135</td>
+<td>Cukrász</td>
+<td>019406fd-da71-7e64-a729-122fc33bc757</td>
+</tr>
+<tr>
+<td>52</td>
+<td>Szolgáltatási foglalkozások</td>
+<td>019406fd-da71-7e64-a729-12300578c71f</td>
+</tr>
+<tr>
+<td>521</td>
+<td>Személyi szolgáltatási foglalkozások</td>
+<td>019406fd-da71-7e64-a729-12316d488e5e</td>
+</tr>
+<tr>
+<td>5211</td>
+<td>Fodrász</td>
+<td>019406fd-da71-7e64-a729-12321a2ce3de</td>
+</tr>
+<tr>
+<td>5212</td>
+<td>Kozmetikus</td>
+<td>019406fd-da71-7e64-a729-1233f8870dc2</td>
+</tr>
+<tr>
+<td>5213</td>
+<td>Manikűrös, pedikűrös</td>
+<td>019406fd-da71-7e64-a729-1234a84e0df5</td>
+</tr>
+<tr>
+<td>5219</td>
+<td>Egyéb személyi szolgáltatási foglalkozású</td>
+<td>019406fd-da71-7e64-a729-1235835c881c</td>
+</tr>
+<tr>
+<td>522</td>
+<td>Személygondozási foglalkozások</td>
+<td>019406fd-da71-7e64-a729-123614a2fc1f</td>
+</tr>
+<tr>
+<td>5221</td>
+<td>Gyermekfelügyelő, dajka</td>
+<td>019406fd-da71-7e64-a729-12373bd38f24</td>
+</tr>
+<tr>
+<td>5222</td>
+<td>Segédápoló, műtőssegéd</td>
+<td>019406fd-da71-7e64-a729-1238608b8d0f</td>
+</tr>
+<tr>
+<td>5223</td>
+<td>Házi gondozó</td>
+<td>019406fd-da71-7e64-a729-1239350ae3e4</td>
+</tr>
+<tr>
+<td>5229</td>
+<td>Egyéb személygondozási foglalkozású</td>
+<td>019406fd-da71-7e64-a729-123a023d56fb</td>
+</tr>
+<tr>
+<td>523</td>
+<td>Utaskísérők, jegykezelők</td>
+<td>019406fd-da71-7e64-a729-123bb4e897f1</td>
+</tr>
+<tr>
+<td>5231</td>
+<td>Kalauz, menetjegyellenőr</td>
+<td>019406fd-da71-7e64-a729-123c135003ce</td>
+</tr>
+<tr>
+<td>5232</td>
+<td>Utaskísérő (repülőn, hajón)</td>
+<td>019406fd-da71-7e64-a729-123d2399c260</td>
+</tr>
+<tr>
+<td>5233</td>
+<td>Idegenvezető</td>
+<td>019406fd-da71-7e64-a729-123ea9c092f2</td>
+</tr>
+<tr>
+<td>524</td>
+<td>Épületfenntartási foglalkozások</td>
+<td>019406fd-da71-7e64-a729-123fa87fc27c</td>
+</tr>
+<tr>
+<td>5241</td>
+<td>Vezető takarító</td>
+<td>019406fd-da71-7e64-a729-12400db5371d</td>
+</tr>
+<tr>
+<td>5242</td>
+<td>Házvezető</td>
+<td>019406fd-da71-7e64-a729-12412b3f3bd4</td>
+</tr>
+<tr>
+<td>5243</td>
+<td>Épületgondnok</td>
+<td>019406fd-da71-7e64-a729-1242e773d1df</td>
+</tr>
+<tr>
+<td>525</td>
+<td>Személy- és vagyonvédelmi foglalkozások</td>
+<td>019406fd-da71-7e64-a729-1243fa263b21</td>
+</tr>
+<tr>
+<td>5251</td>
+<td>Rendőr</td>
+<td>019406fd-da71-7e64-a729-1244364cdfa8</td>
+</tr>
+<tr>
+<td>5252</td>
+<td>Tűzoltó</td>
+<td>019406fd-da71-7e64-a729-1245395e1a57</td>
+</tr>
+<tr>
+<td>5253</td>
+<td>Büntetés-végrehajtási őr</td>
+<td>019406fd-da71-7e64-a729-1246f24ea490</td>
+</tr>
+<tr>
+<td>5254</td>
+<td>Vagyonőr, testőr</td>
+<td>019406fd-da71-7e64-a729-12479effd3c1</td>
+</tr>
+<tr>
+<td>5255</td>
+<td>Természetvédelmi őr</td>
+<td>019406fd-da71-7e64-a729-12486bcd29a2</td>
+</tr>
+<tr>
+<td>5256</td>
+<td>Közterület-felügyelő</td>
+<td>019406fd-da71-7e64-a729-12497e5bd35b</td>
+</tr>
+<tr>
+<td>5259</td>
+<td>Egyéb személy- és vagyonvédelmi foglalkozású</td>
+<td>019406fd-da71-7e64-a729-124af36ac9e1</td>
+</tr>
+<tr>
+<td>529</td>
+<td>Egyéb szolgáltatási foglalkozások</td>
+<td>019406fd-da71-7e64-a729-124b61a586f0</td>
+</tr>
+<tr>
+<td>5291</td>
+<td>Járművezető-oktató</td>
+<td>019406fd-da71-7e64-a729-124c4a545b6a</td>
+</tr>
+<tr>
+<td>5292</td>
+<td>Hobbiállat-gondozó, -kozmetikus</td>
+<td>019406fd-da71-7e64-a729-124d5d18aa3b</td>
+</tr>
+<tr>
+<td>5293</td>
+<td>Temetkezési foglalkozású</td>
+<td>019406fd-da71-7e64-a729-124e83fa1c10</td>
+</tr>
+<tr>
+<td>5299</td>
+<td>Egyéb, máshova nem sorolható szolgáltatási foglalkozású</td>
+<td>019406fd-da71-7e64-a729-124f0b9b075a</td>
+</tr>
+<tr>
+<td>6</td>
+<td>MEZŐGAZDASÁGI ÉS ERDŐGAZDÁLKODÁSI FOGLALKOZÁSOK</td>
+<td>019406fd-da71-7e64-a729-1250f12e48b2</td>
+</tr>
+<tr>
+<td>61</td>
+<td>Mezőgazdasági foglalkozások</td>
+<td>019406fd-da71-7e64-a729-1251f336d2e9</td>
+</tr>
+<tr>
+<td>611</td>
+<td>Növénytermesztési foglalkozások</td>
+<td>019406fd-da71-7e64-a729-12523a71467d</td>
+</tr>
+<tr>
+<td>6111</td>
+<td>Szántóföldinövény-termesztő</td>
+<td>019406fd-da71-7e64-a729-12532a60871c</td>
+</tr>
+<tr>
+<td>6112</td>
+<td>Bionövény-termesztő</td>
+<td>019406fd-da71-7e64-a729-1254feb3e86e</td>
+</tr>
+<tr>
+<td>6113</td>
+<td>Zöldségtermesztő</td>
+<td>019406fd-da71-7e64-a729-1255968f3584</td>
+</tr>
+<tr>
+<td>6114</td>
+<td>Szőlő-, gyümölcstermesztő</td>
+<td>019406fd-da71-7e64-a729-1256884bb3f3</td>
+</tr>
+<tr>
+<td>6115</td>
+<td>Dísznövény-, virág- és faiskolai kertész, csemetenevelő</td>
+<td>019406fd-da71-7e64-a729-12579bc63ecf</td>
+</tr>
+<tr>
+<td>6116</td>
+<td>Gyógynövénytermesztő</td>
+<td>019406fd-da71-7e64-a729-1258eebc804b</td>
+</tr>
+<tr>
+<td>6119</td>
+<td>Egyéb növénytermesztési foglalkozású</td>
+<td>019406fd-da71-7e64-a729-12597ec4ad8d</td>
+</tr>
+<tr>
+<td>612</td>
+<td>Állattenyésztési és állatgondozási foglalkozások</td>
+<td>019406fd-da71-7e64-a729-125aeef6a555</td>
+</tr>
+<tr>
+<td>6121</td>
+<td>Szarvasmarha-, ló-, sertés-, juhtartó és -tenyésztő</td>
+<td>019406fd-da71-7e64-a729-125b305351e8</td>
+</tr>
+<tr>
+<td>6122</td>
+<td>Baromfitartó és -tenyésztő</td>
+<td>019406fd-da71-7e64-a729-125cf97935c4</td>
+</tr>
+<tr>
+<td>6123</td>
+<td>Méhész</td>
+<td>019406fd-da71-7e64-a729-125d7a67d446</td>
+</tr>
+<tr>
+<td>6124</td>
+<td>Kisállattartó és -tenyésztő</td>
+<td>019406fd-da71-7e64-a729-125e361a26a4</td>
+</tr>
+<tr>
+<td>613</td>
+<td>Vegyes profilú gazdálkodók</td>
+<td>019406fd-da71-7e64-a729-125fb5b5616e</td>
+</tr>
+<tr>
+<td>6130</td>
+<td>Vegyes profilú gazdálkodó</td>
+<td>019406fd-da71-7e64-a729-1260542a3c0e</td>
+</tr>
+<tr>
+<td>62</td>
+<td>Erdőgazdálkodási, vadgazdálkodási és halászati foglalkozások</td>
+<td>019406fd-da71-7e64-a729-12611c37071e</td>
+</tr>
+<tr>
+<td>621</td>
+<td>Erdőgazdálkodási foglalkozások</td>
+<td>019406fd-da71-7e64-a729-1262a8720595</td>
+</tr>
+<tr>
+<td>6211</td>
+<td>Erdészeti foglalkozású</td>
+<td>019406fd-da71-7e64-a729-1263a8eae949</td>
+</tr>
+<tr>
+<td>6212</td>
+<td>Fakitermelő (favágó)</td>
+<td>019406fd-da71-7e64-a729-12641ffb8644</td>
+</tr>
+<tr>
+<td>622</td>
+<td>Vadgazdálkodási foglalkozások</td>
+<td>019406fd-da71-7e64-a729-1265d367fbb6</td>
+</tr>
+<tr>
+<td>6220</td>
+<td>Vadgazdálkodási foglalkozású</td>
+<td>019406fd-da71-7e64-a729-12665c24fd67</td>
+</tr>
+<tr>
+<td>623</td>
+<td>Halászati foglalkozások</td>
+<td>019406fd-da71-7e64-a729-1267a13c58b1</td>
+</tr>
+<tr>
+<td>6230</td>
+<td>Halászati foglalkozású</td>
+<td>019406fd-da71-7e64-a729-12680710ca01</td>
+</tr>
+<tr>
+<td>7</td>
+<td>IPARI ÉS ÉPÍTŐIPARI FOGLALKOZÁSOK</td>
+<td>019406fd-da71-7e64-a729-126957040107</td>
+</tr>
+<tr>
+<td>71</td>
+<td>Élelmiszer-ipari foglalkozások</td>
+<td>019406fd-da71-7e64-a729-126ae8b2eae8</td>
+</tr>
+<tr>
+<td>711</td>
+<td>Élelmiszergyártók, -feldolgozók és -tartósítók</td>
+<td>019406fd-da71-7e64-a729-126b2165fdb5</td>
+</tr>
+<tr>
+<td>7111</td>
+<td>Húsfeldolgozó</td>
+<td>019406fd-da71-7e64-a729-126ccc6110f8</td>
+</tr>
+<tr>
+<td>7112</td>
+<td>Gyümölcs- és zöldségfeldolgozó, -tartósító</td>
+<td>019406fd-da71-7e64-a729-126dfdcf9965</td>
+</tr>
+<tr>
+<td>7113</td>
+<td>Tejfeldolgozó, tejtermékgyártó</td>
+<td>019406fd-da71-7e64-a729-126ec08e94b5</td>
+</tr>
+<tr>
+<td>7114</td>
+<td>Pék, édesiparitermék-gyártó</td>
+<td>019406fd-da71-7e64-a729-126f94d383ce</td>
+</tr>
+<tr>
+<td>7115</td>
+<td>Borász és egyéb szeszesital-gyártó, szikvízkészítő</td>
+<td>019406fd-da71-7e64-a729-1270bdae8c1e</td>
+</tr>
+<tr>
+<td>72</td>
+<td>Könnyűipari foglalkozások</td>
+<td>019406fd-da71-7e64-a729-1271df3ee09f</td>
+</tr>
+<tr>
+<td>721</td>
+<td>Ruha- és bőripari foglalkozások</td>
+<td>019406fd-da71-7e64-a729-12726ad546ad</td>
+</tr>
+<tr>
+<td>7211</td>
+<td>Szabásminta-készítő</td>
+<td>019406fd-da71-7e64-a729-127311f5faf5</td>
+</tr>
+<tr>
+<td>7212</td>
+<td>Szabó, varró</td>
+<td>019406fd-da71-7e64-a729-127455a49e94</td>
+</tr>
+<tr>
+<td>7213</td>
+<td>Kalapos, kesztyűs</td>
+<td>019406fd-da71-7e64-a729-127509b04989</td>
+</tr>
+<tr>
+<td>7214</td>
+<td>Szűcs, szőrmefestő</td>
+<td>019406fd-da71-7e64-a729-1276a0c361a6</td>
+</tr>
+<tr>
+<td>7215</td>
+<td>Tímár</td>
+<td>019406fd-da71-7e64-a729-1277967ff904</td>
+</tr>
+<tr>
+<td>7216</td>
+<td>Bőrdíszműves, bőröndös, bőrtermékkészítő, -javító</td>
+<td>019406fd-da71-7e64-a729-127813a7cf62</td>
+</tr>
+<tr>
+<td>7217</td>
+<td>Cipész, cipőkészítő, -javító</td>
+<td>019406fd-da71-7e64-a729-1279b2a79a71</td>
+</tr>
+<tr>
+<td>722</td>
+<td>aipari foglalkozások</td>
+<td>019406fd-da71-7e64-a729-127abfe2a1ad</td>
+</tr>
+<tr>
+<td>7221</td>
+<td>Famegmunkáló</td>
+<td>019406fd-da71-7e64-a729-127b6bd61c03</td>
+</tr>
+<tr>
+<td>7222</td>
+<td>Faesztergályos</td>
+<td>019406fd-da71-7e64-a729-127cc6327d91</td>
+</tr>
+<tr>
+<td>7223</td>
+<td>Bútorasztalos</td>
+<td>019406fd-da72-70a6-a2a5-1ac80dafe794</td>
+</tr>
+<tr>
+<td>7224</td>
+<td>Kárpitos</td>
+<td>019406fd-da72-70a6-a2a5-1ac9e92e7f4b</td>
+</tr>
+<tr>
+<td>7225</td>
+<td>Kádár, bognár</td>
+<td>019406fd-da72-70a6-a2a5-1aca68b104b9</td>
+</tr>
+<tr>
+<td>723</td>
+<td>Nyomdaipari foglalkozások</td>
+<td>019406fd-da72-70a6-a2a5-1acb57f88821</td>
+</tr>
+<tr>
+<td>7231</td>
+<td>Nyomdai előkészítő</td>
+<td>019406fd-da72-70a6-a2a5-1acc49e874aa</td>
+</tr>
+<tr>
+<td>7232</td>
+<td>Nyomdász, nyomdai gépmester</td>
+<td>019406fd-da72-70a6-a2a5-1acd02207bc8</td>
+</tr>
+<tr>
+<td>7233</td>
+<td>Könyvkötő</td>
+<td>019406fd-da72-70a6-a2a5-1ace48bc287e</td>
+</tr>
+<tr>
+<td>73</td>
+<td>Fém- és villamosipari foglalkozások</td>
+<td>019406fd-da72-70a6-a2a5-1acf1f7c7301</td>
+</tr>
+<tr>
+<td>731</td>
+<td>Kohászati foglalkozások</td>
+<td>019406fd-da72-70a6-a2a5-1ad0da0dad56</td>
+</tr>
+<tr>
+<td>7310</td>
+<td>Fémöntőminta-készítő</td>
+<td>019406fd-da72-70a6-a2a5-1ad1173874f3</td>
+</tr>
+<tr>
+<td>732</td>
+<td>Fémmegmunkálók</td>
+<td>019406fd-da72-70a6-a2a5-1ad234c9e914</td>
+</tr>
+<tr>
+<td>7321</td>
+<td>Lakatos</td>
+<td>019406fd-da72-70a6-a2a5-1ad369461258</td>
+</tr>
+<tr>
+<td>7322</td>
+<td>Szerszámkészítő</td>
+<td>019406fd-da72-70a6-a2a5-1ad449eac33a</td>
+</tr>
+<tr>
+<td>7323</td>
+<td>Forgácsoló</td>
+<td>019406fd-da72-70a6-a2a5-1ad5a4503272</td>
+</tr>
+<tr>
+<td>7324</td>
+<td>Fémcsiszoló, köszörűs, szerszámköszörűs</td>
+<td>019406fd-da72-70a6-a2a5-1ad6632fed73</td>
+</tr>
+<tr>
+<td>7325</td>
+<td>Hegesztő, lángvágó</td>
+<td>019406fd-da72-70a6-a2a5-1ad718fbf47c</td>
+</tr>
+<tr>
+<td>7326</td>
+<td>Kovács</td>
+<td>019406fd-da72-70a6-a2a5-1ad8f8d73870</td>
+</tr>
+<tr>
+<td>7327</td>
+<td>Festékszóró, fényező</td>
+<td>019406fd-da72-70a6-a2a5-1ad9eb2f05fc</td>
+</tr>
+<tr>
+<td>7328</td>
+<td>Fém- és egyéb tartószerkezet-szerelő</td>
+<td>019406fd-da72-70a6-a2a5-1adaf76f50d7</td>
+</tr>
+<tr>
+<td>733</td>
+<td>épek, berendezések karbantartói, javítói</td>
+<td>019406fd-da72-70a6-a2a5-1adb143f54ba</td>
+</tr>
+<tr>
+<td>7331</td>
+<td>Gépjármű- és motorkarbantartó, -javító</td>
+<td>019406fd-da72-70a6-a2a5-1adc7fe5689e</td>
+</tr>
+<tr>
+<td>7332</td>
+<td>Repülőgépmotor-karbantartó, -javító</td>
+<td>019406fd-da72-70a6-a2a5-1add837ae5a9</td>
+</tr>
+<tr>
+<td>7333</td>
+<td>Mezőgazdasági és ipari gép (motor) karbantartója, javítója</td>
+<td>019406fd-da72-70a6-a2a5-1adeea080644</td>
+</tr>
+<tr>
+<td>7334</td>
+<td>Mechanikaigép-karbantartó, -javító (műszerész)</td>
+<td>019406fd-da72-70a6-a2a5-1adf33267ea3</td>
+</tr>
+<tr>
+<td>7335</td>
+<td>Kerékpár-karbantartó, -javító</td>
+<td>019406fd-da72-70a6-a2a5-1ae0ed21a186</td>
+</tr>
+<tr>
+<td>734</td>
+<td>illamossági berendezések műszerészei, szerelői</td>
+<td>019406fd-da72-70a6-a2a5-1ae1387dc7d5</td>
+</tr>
+<tr>
+<td>7341</td>
+<td>Villamos gépek és készülékek műszerésze, javítója</td>
+<td>019406fd-da72-70a6-a2a5-1ae2d400322e</td>
+</tr>
+<tr>
+<td>7342</td>
+<td>Informatikai és telekommunikációs berendezések műszerésze, javítója</td>
+<td>019406fd-da72-70a6-a2a5-1ae31dd280b6</td>
+</tr>
+<tr>
+<td>7343</td>
+<td>Elektromoshálózat-szerelő, -javító</td>
+<td>019406fd-da72-70a6-a2a5-1ae43df83d0b</td>
+</tr>
+<tr>
+<td>74</td>
+<td>Kézműipari foglalkozások</td>
+<td>019406fd-da72-70a6-a2a5-1ae59646601b</td>
+</tr>
+<tr>
+<td>741</td>
+<td>Kézműipari foglalkozások</td>
+<td>019406fd-da72-70a6-a2a5-1ae65fe33cce</td>
+</tr>
+<tr>
+<td>7411</td>
+<td>Címfestő</td>
+<td>019406fd-da72-70a6-a2a5-1ae737655981</td>
+</tr>
+<tr>
+<td>7412</td>
+<td>Ékszerkészítő, ötvös, drágakőcsiszoló</td>
+<td>019406fd-da72-70a6-a2a5-1ae84bedf8b0</td>
+</tr>
+<tr>
+<td>7413</td>
+<td>Keramikus</td>
+<td>019406fd-da72-70a6-a2a5-1ae9939f1ac8</td>
+</tr>
+<tr>
+<td>7414</td>
+<td>Üveggyártó</td>
+<td>019406fd-da72-70a6-a2a5-1aeabad4f3bf</td>
+</tr>
+<tr>
+<td>7415</td>
+<td>Hangszerkészítő</td>
+<td>019406fd-da72-70a6-a2a5-1aeb300d73cd</td>
+</tr>
+<tr>
+<td>7416</td>
+<td>Szőr- és tollfeldolgozó</td>
+<td>019406fd-da72-70a6-a2a5-1aec83fc11c4</td>
+</tr>
+<tr>
+<td>7417</td>
+<td>Nád- és fűzfeldolgozó, seprű-, kefegyártó</td>
+<td>019406fd-da72-70a6-a2a5-1aedca76dfbd</td>
+</tr>
+<tr>
+<td>7418</td>
+<td>Textilműves, hímző, csipkeverő</td>
+<td>019406fd-da72-70a6-a2a5-1aee38ebe39e</td>
+</tr>
+<tr>
+<td>7419</td>
+<td>Egyéb kézműipari foglalkozású</td>
+<td>019406fd-da72-70a6-a2a5-1aef371b762e</td>
+</tr>
+<tr>
+<td>742</td>
+<td>Finommechanikai műszerészek</td>
+<td>019406fd-da73-7986-8c19-0daef86b68d4</td>
+</tr>
+<tr>
+<td>7420</td>
+<td>Finommechanikai műszerész</td>
+<td>019406fd-da73-7986-8c19-0daf4a85644c</td>
+</tr>
+<tr>
+<td>75</td>
+<td>Építőipari foglalkozások</td>
+<td>019406fd-da73-7986-8c19-0db056c6dbb7</td>
+</tr>
+<tr>
+<td>751</td>
+<td>Építőmesteri foglalkozások</td>
+<td>019406fd-da73-7986-8c19-0db1ce3338b3</td>
+</tr>
+<tr>
+<td>7511</td>
+<td>Kőműves</td>
+<td>019406fd-da73-7986-8c19-0db24c2b6a2e</td>
+</tr>
+<tr>
+<td>7512</td>
+<td>Gipszkartonozó, stukkózó</td>
+<td>019406fd-da73-7986-8c19-0db38209847a</td>
+</tr>
+<tr>
+<td>7513</td>
+<td>Ács</td>
+<td>019406fd-da73-7986-8c19-0db49685d288</td>
+</tr>
+<tr>
+<td>7514</td>
+<td>Épületasztalos</td>
+<td>019406fd-da73-7986-8c19-0db5e5d01a58</td>
+</tr>
+<tr>
+<td>7515</td>
+<td>Építményszerkezet-szerelő</td>
+<td>019406fd-da73-7986-8c19-0db6d981e7bd</td>
+</tr>
+<tr>
+<td>7519</td>
+<td>Egyéb építőmesteri foglalkozású</td>
+<td>019406fd-da73-7986-8c19-0db70e882957</td>
+</tr>
+<tr>
+<td>752</td>
+<td>Építési, szerelési foglalkozások</td>
+<td>019406fd-da73-7986-8c19-0db814f4f3a5</td>
+</tr>
+<tr>
+<td>7521</td>
+<td>Vezeték- és csőhálózat-szerelő (víz, gáz, fűtés)</td>
+<td>019406fd-da73-7986-8c19-0db99d21e950</td>
+</tr>
+<tr>
+<td>7522</td>
+<td>Szellőző-, hűtő- és klimatizálóberendezés-szerelő</td>
+<td>019406fd-da73-7986-8c19-0dba93f0900a</td>
+</tr>
+<tr>
+<td>7523</td>
+<td>Felvonószerelő</td>
+<td>019406fd-da73-7986-8c19-0dbb8272ecbe</td>
+</tr>
+<tr>
+<td>7524</td>
+<td>Épületvillamossági szerelő, villanyszerelő</td>
+<td>019406fd-da73-7986-8c19-0dbc9b0a3674</td>
+</tr>
+<tr>
+<td>7529</td>
+<td>Egyéb építési, szerelési foglalkozású</td>
+<td>019406fd-da73-7986-8c19-0dbd6fc4273c</td>
+</tr>
+<tr>
+<td>753</td>
+<td>Építési szakipari foglalkozások</td>
+<td>019406fd-da73-7986-8c19-0dbe4dfbfedd</td>
+</tr>
+<tr>
+<td>7531</td>
+<td>Szigetelő</td>
+<td>019406fd-da73-7986-8c19-0dbfb8852e79</td>
+</tr>
+<tr>
+<td>7532</td>
+<td>Tetőfedő</td>
+<td>019406fd-da73-7986-8c19-0dc0a60a4697</td>
+</tr>
+<tr>
+<td>7533</td>
+<td>Épület-, építménybádogos</td>
+<td>019406fd-da73-7986-8c19-0dc15cae1759</td>
+</tr>
+<tr>
+<td>7534</td>
+<td>Burkoló</td>
+<td>019406fd-da73-7986-8c19-0dc2b311bf61</td>
+</tr>
+<tr>
+<td>7535</td>
+<td>Festő és mázoló</td>
+<td>019406fd-da73-7986-8c19-0dc3213321b2</td>
+</tr>
+<tr>
+<td>7536</td>
+<td>Kőfaragó, műköves</td>
+<td>019406fd-da73-7986-8c19-0dc416bb9625</td>
+</tr>
+<tr>
+<td>7537</td>
+<td>Kályha- és kandallóépítő</td>
+<td>019406fd-da73-7986-8c19-0dc5d044c637</td>
+</tr>
+<tr>
+<td>7538</td>
+<td>Üvegező</td>
+<td>019406fd-da73-7986-8c19-0dc673d4c786</td>
+</tr>
+<tr>
+<td>7539</td>
+<td>Egyéb építési szakipari foglalkozású</td>
+<td>019406fd-da73-7986-8c19-0dc7aff2b2c3</td>
+</tr>
+<tr>
+<td>79</td>
+<td>Egyéb ipari és építőipari foglalkozások</td>
+<td>019406fd-da73-7986-8c19-0dc8d60ead3d</td>
+</tr>
+<tr>
+<td>7911</td>
+<td>Ipari búvár</td>
+<td>019406fd-da73-7986-8c19-0dc9cabab264</td>
+</tr>
+<tr>
+<td>7912</td>
+<td>Ipari alpinista</td>
+<td>019406fd-da73-7986-8c19-0dcaaa2fc748</td>
+</tr>
+<tr>
+<td>7913</td>
+<td>Robbantómester</td>
+<td>019406fd-da73-7986-8c19-0dcb4d1822fd</td>
+</tr>
+<tr>
+<td>7914</td>
+<td>Kártevőirtó, gyomirtó</td>
+<td>019406fd-da73-7986-8c19-0dcc4246c951</td>
+</tr>
+<tr>
+<td>7915</td>
+<td>Kéményseprő, épületszerkezet-tisztító</td>
+<td>019406fd-da73-7986-8c19-0dcda9fe6352</td>
+</tr>
+<tr>
+<td>7919</td>
+<td>Egyéb, máshova nem sorolható ipari és építőipari foglalkozású</td>
+<td>019406fd-da73-7986-8c19-0dceb9f61f50</td>
+</tr>
+<tr>
+<td>8</td>
+<td>GÉPKEZELŐK, ÖSSZESZERELŐK, JÁRMŰVEZETŐK</td>
+<td>019406fd-da73-7986-8c19-0dcf31bb933e</td>
+</tr>
+<tr>
+<td>81</td>
+<td>Feldolgozóipari gépek kezelői</td>
+<td>019406fd-da73-7986-8c19-0dd0b2730d06</td>
+</tr>
+<tr>
+<td>811</td>
+<td>Élelmiszer-, ital-, dohánygyártó gépek kezelői</td>
+<td>019406fd-da73-7986-8c19-0dd11b335aee</td>
+</tr>
+<tr>
+<td>8111</td>
+<td>Élelmiszer-, italgyártó gép kezelője</td>
+<td>019406fd-da73-7986-8c19-0dd207fc0ae0</td>
+</tr>
+<tr>
+<td>8112</td>
+<td>Dohánygyártó gép kezelője</td>
+<td>019406fd-da73-7986-8c19-0dd35f66fae3</td>
+</tr>
+<tr>
+<td>812</td>
+<td>Könnyűipari gépek kezelői és gyártósor mellett dolgozók</td>
+<td>019406fd-da73-7986-8c19-0dd4e15aba77</td>
+</tr>
+<tr>
+<td>8121</td>
+<td>Textilipari gép kezelője és gyártósor mellett dolgozó</td>
+<td>019406fd-da73-7986-8c19-0dd5ab1fcb99</td>
+</tr>
+<tr>
+<td>8122</td>
+<td>Ruházati gép kezelője és gyártósor mellett dolgozó</td>
+<td>019406fd-da73-7986-8c19-0dd6ca928ee5</td>
+</tr>
+<tr>
+<td>8123</td>
+<td>Bőrkikészítő és -feldolgozó gép kezelője és gyártósor mellett dolgozó</td>
+<td>019406fd-da73-7986-8c19-0dd702adc58a</td>
+</tr>
+<tr>
+<td>8124</td>
+<td>Cipőgyártó gép kezelője és gyártósor mellett dolgozó</td>
+<td>019406fd-da73-7986-8c19-0dd87fbbdda0</td>
+</tr>
+<tr>
+<td>8125</td>
+<td>Fafeldolgozó gép kezelője és gyártósor mellett dolgozó</td>
+<td>019406fd-da73-7986-8c19-0dd91b286bac</td>
+</tr>
+<tr>
+<td>8126</td>
+<td>Papír- és cellulóztermék-gyártó gép kezelője és gyártósor mellett dolgozó</td>
+<td>019406fd-da73-7986-8c19-0dda222f78c7</td>
+</tr>
+<tr>
+<td>813</td>
+<td>Vegyipari alapanyagot és terméket gyártók, gépkezelők</td>
+<td>019406fd-da73-7986-8c19-0ddb53e39655</td>
+</tr>
+<tr>
+<td>8131</td>
+<td>Kőolaj- és földgázfeldolgozó gép kezelője</td>
+<td>019406fd-da73-7986-8c19-0ddcb01fb0ca</td>
+</tr>
+<tr>
+<td>8132</td>
+<td>Vegyi alapanyagot és terméket gyártó gép kezelője</td>
+<td>019406fd-da73-7986-8c19-0dddd66e7d62</td>
+</tr>
+<tr>
+<td>8133</td>
+<td>Gyógyszergyártó gép kezelője</td>
+<td>019406fd-da73-7986-8c19-0ddefaf82d14</td>
+</tr>
+<tr>
+<td>8134</td>
+<td>Műtrágya- és növényvédőszer-gyártó gép kezelője</td>
+<td>019406fd-da73-7986-8c19-0ddf0117986b</td>
+</tr>
+<tr>
+<td>8135</td>
+<td>Műanyagtermék-gyártó gép kezelője</td>
+<td>019406fd-da73-7986-8c19-0de06b335cbc</td>
+</tr>
+<tr>
+<td>8136</td>
+<td>Gumitermékgyártó gép kezelője</td>
+<td>019406fd-da73-7986-8c19-0de125835809</td>
+</tr>
+<tr>
+<td>8137</td>
+<td>Fotó- és mozgófilmlaboráns</td>
+<td>019406fd-da73-7986-8c19-0de2b73c8079</td>
+</tr>
+<tr>
+<td>814</td>
+<td>Alapanyaggyártó gépek kezelői</td>
+<td>019406fd-da73-7986-8c19-0de355ad86da</td>
+</tr>
+<tr>
+<td>8141</td>
+<td>Kerámiaipari terméket gyártó gép kezelője</td>
+<td>019406fd-da73-7986-8c19-0de43047263b</td>
+</tr>
+<tr>
+<td>8142</td>
+<td>Üveget és üvegterméket gyártó gép kezelője</td>
+<td>019406fd-da73-7986-8c19-0de542320172</td>
+</tr>
+<tr>
+<td>8143</td>
+<td>Cement-, kő- és egyéb ásványianyag-feldolgozó gép kezelője</td>
+<td>019406fd-da73-7986-8c19-0de6345a1500</td>
+</tr>
+<tr>
+<td>8144</td>
+<td>Papíripari alapanyagot gyártó gép kezelője</td>
+<td>019406fd-da73-7986-8c19-0de7a59ddbdf</td>
+</tr>
+<tr>
+<td>815</td>
+<td>Fémfeldolgozó és -megmunkáló gépek kezelői</td>
+<td>019406fd-da73-7986-8c19-0de89042e02d</td>
+</tr>
+<tr>
+<td>8151</td>
+<td>Fémfeldolgozó gép kezelője</td>
+<td>019406fd-da73-7986-8c19-0de9bba217f9</td>
+</tr>
+<tr>
+<td>8152</td>
+<td>Fémmegmunkáló, felületkezelő gép kezelője</td>
+<td>019406fd-da73-7986-8c19-0dea75539b9b</td>
+</tr>
+<tr>
+<td>819</td>
+<td>Egyéb feldolgozóipari gépek kezelői</td>
+<td>019406fd-da73-7986-8c19-0debdd48e58a</td>
+</tr>
+<tr>
+<td>8190</td>
+<td>Egyéb, máshova nem sorolható feldolgozóipari gép kezelője</td>
+<td>019406fd-da73-7986-8c19-0deca2d48e56</td>
+</tr>
+<tr>
+<td>82</td>
+<td>Összeszerelők</td>
+<td>019406fd-da73-7986-8c19-0dedad4b5a95</td>
+</tr>
+<tr>
+<td>8211</td>
+<td>Mechanikaigép-összeszerelő</td>
+<td>019406fd-da73-7986-8c19-0dee89d63dc3</td>
+</tr>
+<tr>
+<td>8212</td>
+<td>Villamosberendezés-összeszerelő</td>
+<td>019406fd-da73-7986-8c19-0def6ccc277a</td>
+</tr>
+<tr>
+<td>8219</td>
+<td>Egyéb termék-összeszerelő</td>
+<td>019406fd-da73-7986-8c19-0df034c0dd90</td>
+</tr>
+<tr>
+<td>83</td>
+<td>Helyhez kötött gépek kezelői</td>
+<td>019406fd-da73-7986-8c19-0df1c73f7dcb</td>
+</tr>
+<tr>
+<td>831</td>
+<td>Bányászati gépek kezelői</td>
+<td>019406fd-da73-7986-8c19-0df20a87f049</td>
+</tr>
+<tr>
+<td>8311</td>
+<td>Szilárdásvány-kitermelő gép kezelője (szén, kő)</td>
+<td>019406fd-da73-7986-8c19-0df3b563764a</td>
+</tr>
+<tr>
+<td>8312</td>
+<td>Kútfúró, mélyfúró gép kezelője (kőolaj, földgáz, víz)</td>
+<td>019406fd-da73-7986-8c19-0df4dd549eae</td>
+</tr>
+<tr>
+<td>832</td>
+<td>Egyéb, helyhez kötött gépek kezelői</td>
+<td>019406fd-da73-7986-8c19-0df5cf8fb127</td>
+</tr>
+<tr>
+<td>8321</td>
+<td>Energetikai gép kezelője</td>
+<td>019406fd-da73-7986-8c19-0df65d69fb25</td>
+</tr>
+<tr>
+<td>8322</td>
+<td>Vízgazdálkodási gép kezelője</td>
+<td>019406fd-da73-7986-8c19-0df7b466fb5e</td>
+</tr>
+<tr>
+<td>8323</td>
+<td>Kazángépkezelő</td>
+<td>019406fd-da73-7986-8c19-0df8e4b8e6aa</td>
+</tr>
+<tr>
+<td>8324</td>
+<td>Sugármentesítő gép, berendezés kezelője</td>
+<td>019406fd-da73-7986-8c19-0df91cc69e60</td>
+</tr>
+<tr>
+<td>8325</td>
+<td>Csomagoló-, palackozó- és címkézőgép kezelője</td>
+<td>019406fd-da73-7986-8c19-0dfa75e9825a</td>
+</tr>
+<tr>
+<td>8326</td>
+<td>Mozigépész, vetítőgépész</td>
+<td>019406fd-da73-7986-8c19-0dfb25cb53c8</td>
+</tr>
+<tr>
+<td>8327</td>
+<td>Mosodai gép kezelője</td>
+<td>019406fd-da73-7986-8c19-0dfcb1a3a1ff</td>
+</tr>
+<tr>
+<td>8329</td>
+<td>Egyéb, máshova nem sorolható, helyhez kötött gép kezelője</td>
+<td>019406fd-da73-7986-8c19-0dfd9d0dcd6b</td>
+</tr>
+<tr>
+<td>84</td>
+<td>Járművezetők és mobil gépek kezelői</td>
+<td>019406fd-da73-7986-8c19-0dfeb54aa141</td>
+</tr>
+<tr>
+<td>841</td>
+<td>Járművezetők és kapcsolódó foglalkozások</td>
+<td>019406fd-da73-7986-8c19-0dffabcd3224</td>
+</tr>
+<tr>
+<td>8411</td>
+<td>Mozdonyvezető</td>
+<td>019406fd-da73-7986-8c19-0e00a4aa1514</td>
+</tr>
+<tr>
+<td>8412</td>
+<td>Vasútijármű-vezetéshez kapcsolódó foglalkozású</td>
+<td>019406fd-da73-7986-8c19-0e0128bff1c9</td>
+</tr>
+<tr>
+<td>8413</td>
+<td>Villamosvezető</td>
+<td>019406fd-da73-7986-8c19-0e027e1170ca</td>
+</tr>
+<tr>
+<td>8414</td>
+<td>Metróvezető</td>
+<td>019406fd-da73-7986-8c19-0e039f5ffc8b</td>
+</tr>
+<tr>
+<td>8415</td>
+<td>Trolibuszvezető</td>
+<td>019406fd-da73-7986-8c19-0e0487121b99</td>
+</tr>
+<tr>
+<td>8416</td>
+<td>Személygépkocsi-vezető</td>
+<td>019406fd-da73-7986-8c19-0e05a272c872</td>
+</tr>
+<tr>
+<td>8417</td>
+<td>Tehergépkocsi-vezető, kamionsofőr</td>
+<td>019406fd-da73-7986-8c19-0e06f2a36e8b</td>
+</tr>
+<tr>
+<td>8418</td>
+<td>Autóbuszvezető</td>
+<td>019406fd-da73-7986-8c19-0e0762144677</td>
+</tr>
+<tr>
+<td>8419</td>
+<td>Egyéb járművezető és kapcsolódó foglalkozású</td>
+<td>019406fd-da73-7986-8c19-0e08d22e8890</td>
+</tr>
+<tr>
+<td>842</td>
+<td>Mobil gépek kezelői</td>
+<td>019406fd-da73-7986-8c19-0e096f740103</td>
+</tr>
+<tr>
+<td>8421</td>
+<td>Mezőgazdasági, erdőgazdasági, növényvédő gép kezelője</td>
+<td>019406fd-da73-7986-8c19-0e0afbab2466</td>
+</tr>
+<tr>
+<td>8422</td>
+<td>Földmunkagép és hasonló könnyű- és nehézgép kezelője</td>
+<td>019406fd-da73-7986-8c19-0e0bc8365c82</td>
+</tr>
+<tr>
+<td>8423</td>
+<td>Köztisztasági, településtisztasági gép kezelője</td>
+<td>019406fd-da73-7986-8c19-0e0c01beca31</td>
+</tr>
+<tr>
+<td>8424</td>
+<td>Daru, felvonó és hasonló anyagmozgató gép kezelője</td>
+<td>019406fd-da73-7986-8c19-0e0dca146bb9</td>
+</tr>
+<tr>
+<td>8425</td>
+<td>Targoncavezető</td>
+<td>019406fd-da73-7986-8c19-0e0e152f22c7</td>
+</tr>
+<tr>
+<td>843</td>
+<td>Hajózási foglalkozások</td>
+<td>019406fd-da73-7986-8c19-0e0f0703b7a8</td>
+</tr>
+<tr>
+<td>8430</td>
+<td>Hajószemélyzet, kormányos, matróz</td>
+<td>019406fd-da73-7986-8c19-0e1012df13a7</td>
+</tr>
+<tr>
+<td>9</td>
+<td>SZAKKÉPZETTSÉGET NEM IGÉNYLŐ (EGYSZERŰ) FOGLALKOZÁSOK</td>
+<td>019406fd-da73-7986-8c19-0e11fb3effc8</td>
+</tr>
+<tr>
+<td>91</td>
+<td>Takarítók és hasonló jellegű egyszerű foglalkozások</td>
+<td>019406fd-da73-7986-8c19-0e1282c49214</td>
+</tr>
+<tr>
+<td>911</td>
+<td>Takarítók és kisegítők</td>
+<td>019406fd-da73-7986-8c19-0e130350e16c</td>
+</tr>
+<tr>
+<td>9111</td>
+<td>Háztartási takarító és kisegítő</td>
+<td>019406fd-da73-7986-8c19-0e140f55f994</td>
+</tr>
+<tr>
+<td>9112</td>
+<td>Intézményi takarító és kisegítő</td>
+<td>019406fd-da73-7986-8c19-0e15e92d2259</td>
+</tr>
+<tr>
+<td>9113</td>
+<td>Kézi mosó, vasaló</td>
+<td>019406fd-da73-7986-8c19-0e16bba1b3dc</td>
+</tr>
+<tr>
+<td>9114</td>
+<td>Járműtakarító</td>
+<td>019406fd-da73-7986-8c19-0e1776aaba7a</td>
+</tr>
+<tr>
+<td>9115</td>
+<td>Ablaktisztító</td>
+<td>019406fd-da73-7986-8c19-0e18a79db978</td>
+</tr>
+<tr>
+<td>9119</td>
+<td>Egyéb takarító és kisegítő</td>
+<td>019406fd-da73-7986-8c19-0e19f8138835</td>
+</tr>
+<tr>
+<td>92</td>
+<td>Egyszerű szolgáltatási, szállítási és hasonló foglalkozások</td>
+<td>019406fd-da73-7986-8c19-0e1a0012ca7d</td>
+</tr>
+<tr>
+<td>921</td>
+<td>Szemétgyűjtők és hasonló foglalkozások</td>
+<td>019406fd-da73-7986-8c19-0e1b60454849</td>
+</tr>
+<tr>
+<td>9211</td>
+<td>Szemétgyűjtő, utcaseprő</td>
+<td>019406fd-da73-7986-8c19-0e1cb423736e</td>
+</tr>
+<tr>
+<td>9212</td>
+<td>Hulladékosztályozó</td>
+<td>019406fd-da73-7986-8c19-0e1d16805a47</td>
+</tr>
+<tr>
+<td>922</td>
+<td>Szállítási foglalkozások és rakodók</td>
+<td>019406fd-da73-7986-8c19-0e1eb7e95bcb</td>
+</tr>
+<tr>
+<td>9221</td>
+<td>Pedálos vagy kézi hajtású gépek vezetője</td>
+<td>019406fd-da73-7986-8c19-0e1fb8ea55b2</td>
+</tr>
+<tr>
+<td>9222</td>
+<td>Állati erővel vont jármű hajtója</td>
+<td>019406fd-da73-7986-8c19-0e20c89ecd79</td>
+</tr>
+<tr>
+<td>9223</td>
+<td>Rakodómunkás</td>
+<td>019406fd-da73-7986-8c19-0e212905b77e</td>
+</tr>
+<tr>
+<td>9224</td>
+<td>Pultfeltöltő, árufeltöltő</td>
+<td>019406fd-da74-7118-a387-2c1157c546e4</td>
+</tr>
+<tr>
+<td>9225</td>
+<td>Kézi csomagoló</td>
+<td>019406fd-da74-7118-a387-2c1285a35477</td>
+</tr>
+<tr>
+<td>923</td>
+<td>Egyéb egyszerű szolgáltatási és szállítási foglalkozások</td>
+<td>019406fd-da74-7118-a387-2c138345cecb</td>
+</tr>
+<tr>
+<td>9231</td>
+<td>Portás, telepőr, egyszerű őr</td>
+<td>019406fd-da74-7118-a387-2c14698462c4</td>
+</tr>
+<tr>
+<td>9232</td>
+<td>Mérőóra-leolvasó és hasonló egyszerű foglalkozású</td>
+<td>019406fd-da74-7118-a387-2c1558b6d66c</td>
+</tr>
+<tr>
+<td>9233</td>
+<td>Hivatalsegéd, kézbesítő</td>
+<td>019406fd-da74-7118-a387-2c1684bdef6b</td>
+</tr>
+<tr>
+<td>9234</td>
+<td>Hordár, csomagkihordó</td>
+<td>019406fd-da74-7118-a387-2c17528ec811</td>
+</tr>
+<tr>
+<td>9235</td>
+<td>Gyorséttermi eladó</td>
+<td>019406fd-da74-7118-a387-2c1823c63264</td>
+</tr>
+<tr>
+<td>9236</td>
+<td>Konyhai kisegítő</td>
+<td>019406fd-da74-7118-a387-2c195c45588a</td>
+</tr>
+<tr>
+<td>9237</td>
+<td>Háztartási alkalmazott</td>
+<td>019406fd-da74-7118-a387-2c1ac2a58d61</td>
+</tr>
+<tr>
+<td>9238</td>
+<td>Parkolóőr</td>
+<td>019406fd-da74-7118-a387-2c1bcb502725</td>
+</tr>
+<tr>
+<td>9239</td>
+<td>Egyéb, máshova nem sorolható egyszerű szolgáltatási és szállítási foglalkozású</td>
+<td>019406fd-da74-7118-a387-2c1c493707fd</td>
+</tr>
+<tr>
+<td>93</td>
+<td>Egyszerű ipari, építőipari, mezőgazdasági foglalkozások</td>
+<td>019406fd-da74-7118-a387-2c1dad298704</td>
+</tr>
+<tr>
+<td>931</td>
+<td>Egyszerű ipari foglalkozások</td>
+<td>019406fd-da74-7118-a387-2c1e558b7110</td>
+</tr>
+<tr>
+<td>9310</td>
+<td>Egyszerű ipari foglalkozású</td>
+<td>019406fd-da74-7118-a387-2c1f3fe33e32</td>
+</tr>
+<tr>
+<td>932</td>
+<td>Egyszerű építőipari foglalkozások</td>
+<td>019406fd-da74-7118-a387-2c208095cb28</td>
+</tr>
+<tr>
+<td>9321</td>
+<td>Kubikos</td>
+<td>019406fd-da74-7118-a387-2c21d79a24d5</td>
+</tr>
+<tr>
+<td>9329</td>
+<td>Egyéb egyszerű építőipari foglalkozású</td>
+<td>019406fd-da74-7118-a387-2c22b1df4215</td>
+</tr>
+<tr>
+<td>933</td>
+<td>Egyszerű mezőgazdasági, erdészeti, vadászati és halászati foglalkozások</td>
+<td>019406fd-da74-7118-a387-2c2364c67370</td>
+</tr>
+<tr>
+<td>9331</td>
+<td>Egyszerű mezőgazdasági foglalkozású</td>
+<td>019406fd-da74-7118-a387-2c24ce96b957</td>
+</tr>
+<tr>
+<td>9332</td>
+<td>Egyszerű erdészeti, vadászati és halászati foglalkozású</td>
+<td>019406fd-da74-7118-a387-2c2586735a40</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-language">DICTDEF# LANGUAGE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">LANGUAGE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DE</td>
+<td>német</td>
+<td>01940700-03e3-7adf-b9dd-4f72870fef78</td>
+</tr>
+<tr>
+<td>EN</td>
+<td>angol</td>
+<td>01940700-0eb0-7418-a856-4d46eff0d0bc</td>
+</tr>
+<tr>
+<td>HU</td>
+<td>magyar</td>
+<td>01940700-1612-71da-99b4-0cb61aa7b02d</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-medical_exam_result">DICTDEF# MEDICAL_EXAM_RESULT</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">MEDICAL_EXAM_RESULT</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SUITABLE</td>
+<td>Alkalmas</td>
+<td>01940700-2705-7574-ac47-d5a702518928</td>
+</tr>
+<tr>
+<td>SUITABLE_WITH_RESTRICTIONS</td>
+<td>Megszorításokkal alkalmas</td>
+<td>01940700-2e0e-77f5-9704-1c0013bf7ff1</td>
+</tr>
+<tr>
+<td>UNSUITABLE</td>
+<td>Alkalmatlan</td>
+<td>01940700-3416-7cbd-9611-ec15da8ebd42</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-medical_exam_status">DICTDEF# MEDICAL_EXAM_STATUS</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">MEDICAL_EXAM_STATUS</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CLOSED</td>
+<td>Lezárt</td>
+<td>01940700-4021-706c-bc0b-9f6ef6352d9a</td>
+</tr>
+<tr>
+<td>PLAN</td>
+<td>Tervezett</td>
+<td>01940700-4653-740c-ae2c-d9e11bb66e0b</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-method_of_termination">DICTDEF# METHOD_OF_TERMINATION</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">METHOD_OF_TERMINATION</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>COMMON_AGREEMENT</td>
+<td>Közös megegyezéssel</td>
+<td>01940700-50f2-79f6-817a-2100a041a459</td>
+</tr>
+<tr>
+<td>IMMEDIATE_RESIGNATION</td>
+<td>Azonnali hatályú felmondással</td>
+<td>01940700-56ec-7f03-8fcf-ec33984b6516</td>
+</tr>
+<tr>
+<td>RESIGNATION</td>
+<td>Felmondással</td>
+<td>01940700-5ca8-707e-b6d5-af6dda78b43e</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-obligation">DICTDEF# OBLIGATION</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">OBLIGATION</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CONDITION</td>
+<td>Feltétellel</td>
+<td>01940700-6ab4-7b46-88f8-2a9ff0183f78</td>
+</tr>
+<tr>
+<td>N</td>
+<td>Nem kötelező</td>
+<td>01940700-7101-7623-b4fe-5a07fcaa909f</td>
+</tr>
+<tr>
+<td>Y</td>
+<td>Kötelező</td>
+<td>01940700-7745-718e-b06f-6888dea3ad42</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-partner_status">DICTDEF# PARTNER_STATUS</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">PARTNER_STATUS</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ACTIVE</td>
+<td>Aktív</td>
+<td>01940700-8474-7454-9a65-a33b00433b5b</td>
+</tr>
+<tr>
+<td>INACTIVE</td>
+<td>Inaktív</td>
+<td>01940700-8a5e-7b57-9a1b-d5ef8621e4cc</td>
+</tr>
+<tr>
+<td>INCOMPLETE</td>
+<td>Hiányos</td>
+<td>01940700-8f3b-7b1b-8b4b-0f3b1f7b1b8b</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-partner_role">DICTDEF# PARTNER_ROLE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">PARTNER_ROLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SUPPLIER</td>
+<td>Beszállító</td>
+<td>01940700-9660-7def-b074-5476e7bce22b</td>
+</tr>
+<tr>
+<td>CUSTOMER</td>
+<td>Vevő</td>
+<td>01940700-9cd7-729f-b36c-69d61f7cd42a</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-payroll_type">DICTDEF# PAYROLL_TYPE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">PAYROLL_TYPE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HOURLY_WAGE</td>
+<td>Órabér</td>
+<td>01940700-a9a4-7448-ac8b-2daeb5c5554c</td>
+</tr>
+<tr>
+<td>MONTHLY_SALERY</td>
+<td>Havibér</td>
+<td>01940700-b1cb-76b3-9fa4-515c532a677d</td>
+</tr>
+<tr>
+<td>PERFORMANCE_PAY</td>
+<td>Teljesítménybér</td>
+<td>01940700-b838-72c7-8b84-ff2becae4314</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-position">DICTDEF# POSITION</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">POSITION</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ACCOUNTANT</td>
+<td>könyvelő</td>
+<td>01940700-c5b3-7e86-b0a5-213cfdbe950f</td>
+</tr>
+<tr>
+<td>HR_COLLEAGUE</td>
+<td>munkaügyis</td>
+<td>01940700-cc26-7a1a-ac05-e0f4cd0cdd72</td>
+</tr>
+<tr>
+<td>REGIONAL_REPRESANTATIVE</td>
+<td>területi képvíselő</td>
+<td>01940700-d57f-70a0-a162-f6cb8ce1a334</td>
+</tr>
+<tr>
+<td>SECRETARY</td>
+<td>titkár</td>
+<td>01940700-dbfe-7e50-a3bd-5681e5026cf4</td>
+</tr>
+<tr>
+<td>WAREHAUSMAN</td>
+<td>raktáros</td>
+<td>01940700-e292-7854-b7ba-06f406461d67</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-reason">DICTDEF# REASON</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">REASON</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Üzemi baleset</td>
+<td>01940701-00c0-7da3-9183-4ca78d6d1cde</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Foglalkoztatási megbetegedés</td>
+<td>01940701-0760-7271-8f6b-bf416e349bd9</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Közúti baleset</td>
+<td>01940701-0d8b-7239-a16f-52f514a4239f</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Egyéb baleset</td>
+<td>01940701-1375-7945-856e-a2322ee9c77e</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Beteg gyermek ápolása</td>
+<td>01940701-19aa-7cd3-afe6-741d0f781d6f</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Szülés</td>
+<td>01940701-1f87-7e20-a6fe-13db040d67e6</td>
+</tr>
+<tr>
+<td>7</td>
+<td>hatósági elkülönítés közegészségügyi okokból</td>
+<td>01940701-25b4-7fb6-824a-9a3cc5110314</td>
+</tr>
+<tr>
+<td>8</td>
+<td>egyéb betegség</td>
+<td>01940701-2bcf-7d7d-a6b9-5044dca62012</td>
+</tr>
+<tr>
+<td>9</td>
+<td>veszélyeztetett terhesség</td>
+<td>01940701-3192-774d-afec-40257ddb7acb</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-settlement_basis">DICTDEF# SETTLEMENT_BASIS</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">SETTLEMENT_BASIS</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PERFORMANCE</td>
+<td>Teljesítmény</td>
+<td>01940701-3fef-7561-8444-23cf703e259d</td>
+</tr>
+<tr>
+<td>TIME_WORKED</td>
+<td>Ledolgozott idő</td>
+<td>01940701-462a-7950-a53b-333a24472f14</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-settlement_frequency">DICTDEF# SETTLEMENT_FREQUENCY</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">SETTLEMENT_FREQUENCY</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>15D</td>
+<td>15 naponként</td>
+<td>01940701-5370-7cc8-83ae-fdd878c41f45</td>
+</tr>
+<tr>
+<td>1M</td>
+<td>Havi</td>
+<td>01940701-5991-75fc-b8c0-7ca0fe416afe</td>
+</tr>
+<tr>
+<td>1W</td>
+<td>Heti</td>
+<td>01940701-5fc3-704e-9008-02d72e8ce660</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-status">DICTDEF# STATUS</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">STATUS</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CLOSED</td>
+<td>Lezárt</td>
+<td>01940701-6c41-700d-9354-ae8b4bee0611</td>
+</tr>
+<tr>
+<td>FINISHED</td>
+<td>Befejezett</td>
+<td>01940701-73ec-709b-af7e-3cea53a2361e</td>
+</tr>
+<tr>
+<td>ONGOING</td>
+<td>Folyamatban</td>
+<td>01940701-7a0e-7a7b-90a7-0e29c9bfcbdf</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-task_type">DICTDEF# TASK_TYPE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">TASK_TYPE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OTHER</td>
+<td>Egyéb</td>
+<td>01940701-85a6-7490-ba38-af261208d761</td>
+</tr>
+<tr>
+<td>STAIRS</td>
+<td>Lépcső</td>
+<td>01940701-8ba7-7b31-87f9-a9e9991c6ed7</td>
+</tr>
+<tr>
+<td>WALL</td>
+<td>Fal</td>
+<td>01940701-92ac-7c2b-b89f-7171c17c94f8</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-time_use_type">DICTDEF# TIME_USE_TYPE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">TIME_USE_TYPE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HOLIDAY</td>
+<td>Szabadság</td>
+<td>01940701-a129-7279-b406-b1a4ce5239de</td>
+</tr>
+<tr>
+<td>SICK_PAYED</td>
+<td>Táppénz</td>
+<td>01940701-a762-7245-a652-5ae99908f463</td>
+</tr>
+<tr>
+<td>WORK</td>
+<td>Munka</td>
+<td>01940701-b1f2-7af4-b263-5e1ece13c632</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-worker_note_status">DICTDEF# WORKER_NOTE_STATUS</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">WORKER_NOTE_STATUS</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ACTIVE</td>
+<td>Aktív</td>
+<td>01940701-c266-7199-940a-b7e2fe10b19f</td>
+</tr>
+<tr>
+<td>INACTIVE</td>
+<td>Inaktív</td>
+<td>01940701-ca2b-7df9-b78f-af5ff1685c42</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-worker_status">DICTDEF# WORKER_STATUS</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">WORKER_STATUS</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ACTIVE</td>
+<td>Aktív</td>
+<td>01940701-d5e6-7fcd-afba-08bb361964dd</td>
+</tr>
+<tr>
+<td>COME_ON</td>
+<td>GYES</td>
+<td>01940701-dec7-795d-b65d-cb087ce8b754</td>
+</tr>
+<tr>
+<td>DURING_EXIT</td>
+<td>Kilépés alatt</td>
+<td>01940701-e491-7a0a-8592-fe1224425529</td>
+</tr>
+<tr>
+<td>INTERESTED</td>
+<td>Érdeklődő</td>
+<td>01940701-ea1b-7b4b-a29e-3ddc58958caa</td>
+</tr>
+<tr>
+<td>PROBATION</td>
+<td>Próbaidős</td>
+<td>01940701-ef64-774d-aa75-2b0f54b1a5ca</td>
+</tr>
+<tr>
+<td>RESIGNED</td>
+<td>Felmondott</td>
+<td>01940701-f51b-7cf4-a464-95f84288d833</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-working_time_schedule_status">DICTDEF# WORKING_TIME_SCHEDULE_STATUS</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">WORKING_TIME_SCHEDULE_STATUS</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CLOSED</td>
+<td>Lezárt</td>
+<td>01940702-030e-72b8-9874-086ce9154587</td>
+</tr>
+<tr>
+<td>PLAN</td>
+<td>Terv</td>
+<td>01940702-0af2-7c7a-becd-4ac3a5cc53df</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-invoice_state">DICTDEF# INVOICE_STATE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">INVOICE_STATE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TERV</td>
+<td>Tervezett</td>
+<td>01940702-1bca-7365-bd27-96a2d8e4b7cf</td>
+</tr>
+<tr>
+<td>ELLVAR</td>
+<td>Ellenőrzésre vár</td>
+<td>01940702-2248-7170-9e9e-3512eac4647c</td>
+</tr>
+<tr>
+<td>JAVVAR</td>
+<td>Javításra vár</td>
+<td>01940702-2803-7e42-a223-52af0fdaecb3</td>
+</tr>
+<tr>
+<td>ROGZ</td>
+<td>Rögzített</td>
+<td>01940702-2d64-783d-a8a4-e94e4e560942</td>
+</tr>
+<tr>
+<td>FINVAR</td>
+<td>Számlázásra vár</td>
+<td>01940702-32fb-7ebb-9d36-2e3db6b01e5d</td>
+</tr>
+<tr>
+<td>ELO</td>
+<td>Élő</td>
+<td>01940702-3976-75b3-884d-6f103fa5e147</td>
+</tr>
+<tr>
+<td>RESZTELJ</td>
+<td>Részteljesített</td>
+<td>01940702-4198-70bf-a4eb-54edfbb03bc3</td>
+</tr>
+<tr>
+<td>RENDEZVE</td>
+<td>Rendezve</td>
+<td>01940702-4796-721f-a045-c66a451995f3</td>
+</tr>
+<tr>
+<td>LEZART</td>
+<td>Lezárt</td>
+<td>01940702-4ec8-7d06-8d0d-11874fe2287b</td>
+</tr>
+<tr>
+<td>ELUTASITOTT</td>
+<td>Elutasított</td>
+<td>01940702-54f8-7335-ad34-21f64f9b8578</td>
+</tr>
+<tr>
+<td>TOROLT</td>
+<td>Törölt</td>
+<td>01940702-5b3d-7000-bdb3-474b09f1dfbe</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-invoice_type">DICTDEF# INVOICE_TYPE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">INVOICE_TYPE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SZAM</td>
+<td>Számla</td>
+<td>01940702-795b-7214-8219-4bf27b7e1d23</td>
+</tr>
+<tr>
+<td>STOR</td>
+<td>Sztornó számla</td>
+<td>01940702-80ab-7211-9332-a0eed2af9c3b</td>
+</tr>
+<tr>
+<td>DIJB</td>
+<td>Díjbekérő számla</td>
+<td>01940702-861d-7f13-87cc-11ab80738670</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-payment_method">DICTDEF# PAYMENT_METHOD</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">PAYMENT_METHOD</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CREDIT_CARD</td>
+<td>Bankkártya</td>
+<td>02967c33-a123-7a22-b345-01ac432de000</td>
+</tr>
+<tr>
+<td>BANK_TRANSFER</td>
+<td>Banki átutalás</td>
+<td>02967c33-b234-7b33-c456-12bd543ef111</td>
+</tr>
+<tr>
+<td>PAYPAL</td>
+<td>PayPal</td>
+<td>02967c33-c345-736a-9408-5cd3e99dc222</td>
+</tr>
+<tr>
+<td>CASH</td>
+<td>Készpénz</td>
+<td>01940702-950e-7688-9cce-0ac50dd650ed</td>
+</tr>
+<tr>
+<td>CHEQ</td>
+<td>Csekk</td>
+<td>01940702-9f92-70fc-9ef4-696a03fecb0c</td>
+</tr>
+<tr>
+<td>OTHER</td>
+<td>Egyéb</td>
+<td>02967c33-d456-7d9b-9c77-003175234333</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-currency">DICTDEF# CURRENCY</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">CURRENCY</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HUF</td>
+<td>Forint</td>
+<td>01940702-b076-7c23-b1bc-358b900dcc44</td>
+</tr>
+<tr>
+<td>EUR</td>
+<td>Euro</td>
+<td>01940702-b599-70be-bb40-3e5b38196e1b</td>
+</tr>
+<tr>
+<td>USD</td>
+<td>US Dollár</td>
+<td>01940702-bb0c-7010-976a-b256ce811f49</td>
+</tr>
+<tr>
+<td>GBP</td>
+<td>Angol font</td>
+<td>01940702-c0a1-7b4c-8f2d-5e3f9b6a0c3d</td>
+</tr>
+<tr>
+<td>CHF</td>
+<td>Svájci frank</td>
+<td>01940702-c65e-7792-b201-eb99933a1360</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-task_rule_type">DICTDEF# TASK_RULE_TYPE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">TASK_RULE_TYPE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SENDER_REGEX</td>
+<td>Feladó minta</td>
+<td>01940702-d354-73e7-aa8c-a2a85196c49a</td>
+</tr>
+<tr>
+<td>SUBJECT_REGEX</td>
+<td>Subject minta</td>
+<td>01940702-d8e5-7187-ae32-41ca4d9aed99</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-bank_account_status">DICTDEF# BANK_ACCOUNT_STATUS</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">BANK_ACCOUNT_STATUS</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ACTIVE</td>
+<td>Aktív</td>
+<td>01940702-e6f8-7e74-b1b7-536d87d78c49</td>
+</tr>
+<tr>
+<td>INACTIVE</td>
+<td>Inaktív</td>
+<td>01940702-ed45-7216-8f2f-5e9e4180dd37</td>
+</tr>
+<tr>
+<td>DELETED</td>
+<td>Törölt</td>
+<td>01940702-f39f-790a-b36b-010fbce42b96</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-supplier">DICTDEF# SUPPLIER</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">SUPPLIER</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POWER</td>
+<td>Power bizt.</td>
+<td>01940703-02c3-730a-a7d9-7e5e3338c1bc</td>
+</tr>
+<tr>
+<td>RIEL</td>
+<td>RIEL</td>
+<td>01940703-092b-7484-b720-ce192f8b3d05</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-vat_period">DICTDEF# VAT_PERIOD</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">VAT_PERIOD</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MONTHLY</td>
+<td>Havi</td>
+<td>01940703-15ac-76e1-8e40-92758d07c4ba</td>
+</tr>
+<tr>
+<td>QUATERLY</td>
+<td>Negyedéves</td>
+<td>01940703-1c51-7dd8-82c9-e7106abb2e75</td>
+</tr>
+<tr>
+<td>YEARLY</td>
+<td>Éves</td>
+<td>01940703-23fd-756c-b107-9177b47064de</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-project_status">DICTDEF# PROJECT_STATUS</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">PROJECT_STATUS</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CLOSED</td>
+<td>Lezárt</td>
+<td>01940703-3327-7e56-8aed-1c56e1430fc2</td>
+</tr>
+<tr>
+<td>FINISHED</td>
+<td>Befejezett</td>
+<td>01940703-3a4b-734e-be2f-ca21a87938c9</td>
+</tr>
+<tr>
+<td>ONGOING</td>
+<td>Folyamatban</td>
+<td>01940703-4099-7f6b-bc34-e05aa22b44af</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-contact_type">DICTDEF# CONTACT_TYPE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">CONTACT_TYPE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>EMAIL</td>
+<td>Email</td>
+<td>01940703-4db4-7aae-9e6d-2128bff35bbd</td>
+</tr>
+<tr>
+<td>PHONE</td>
+<td>Telefon</td>
+<td>01940703-55a0-7e8c-be4b-6fef1034a9bd</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-qualification_type">DICTDEF# QUALIFICATION_TYPE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">QUALIFICATION_TYPE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ACCOUNTANT</td>
+<td>Könyvelő</td>
+<td>01940703-6c78-7a11-a0a6-e5b219dddda4</td>
+</tr>
+<tr>
+<td>ARCHITECT</td>
+<td>Építőmérnök</td>
+<td>01940703-7745-7c87-96cf-b02355fbb6e4</td>
+</tr>
+<tr>
+<td>CRANE_HANDLING</td>
+<td>Darukezelés</td>
+<td>01940703-7e89-7bc5-965e-cce3a9edfeef</td>
+</tr>
+<tr>
+<td>DRIVING_CAR</td>
+<td>Személyautó vezetés</td>
+<td>01940703-8449-7a79-a55d-720d7459dca9</td>
+</tr>
+<tr>
+<td>ENGLISH_LANGUAGE</td>
+<td>Angol</td>
+<td>01940703-8a25-7367-8575-2b5f42376b4d</td>
+</tr>
+<tr>
+<td>FORKLIFT_DRIVING</td>
+<td>Targoncavezetés</td>
+<td>01940703-8fa4-75ed-bea5-524c6d85b030</td>
+</tr>
+<tr>
+<td>GERMAN_LANGUAGE</td>
+<td>Német</td>
+<td>01940703-95a2-7e23-8c90-b1884e6bbcc3</td>
+</tr>
+<tr>
+<td>HEAVY_OP</td>
+<td>Nehézgépkezelő</td>
+<td>01940703-9bb6-75bd-b33d-cd61ad3d3dc2</td>
+</tr>
+<tr>
+<td>MASON</td>
+<td>Kőműves</td>
+<td>01940703-a199-75a2-b8a0-9016ac2ef0ad</td>
+</tr>
+<tr>
+<td>WOODWORKER</td>
+<td>Asztalos</td>
+<td>01940703-a7d3-7827-9e52-542c922c755d</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-citizenship">DICTDEF# CITIZENSHIP</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">CITIZENSHIP</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HU</td>
+<td>Magyar</td>
+<td>01940704-87ee-7aff-ac11-603938fff434</td>
+</tr>
+<tr>
+<td>DE</td>
+<td>Német</td>
+<td>01940704-87ee-7aff-ac11-603a5519ae81</td>
+</tr>
+<tr>
+<td>EN</td>
+<td>Angol</td>
+<td>01940704-87ee-7aff-ac11-603ba97901cc</td>
+</tr>
+<tr>
+<td>FR</td>
+<td>Francia</td>
+<td>01940704-87ee-7aff-ac11-603cf912a30e</td>
+</tr>
+<tr>
+<td>IT</td>
+<td>Olasz</td>
+<td>01940704-87ee-7aff-ac11-603d57df8a11</td>
+</tr>
+<tr>
+<td>ES</td>
+<td>Spanyol</td>
+<td>01940704-87ee-7aff-ac11-603e63e35d62</td>
+</tr>
+<tr>
+<td>RO</td>
+<td>Román</td>
+<td>01940704-87ee-7aff-ac11-603f078b3f8d</td>
+</tr>
+<tr>
+<td>PL</td>
+<td>Lengyel</td>
+<td>01940704-87ee-7aff-ac11-60405cd4304a</td>
+</tr>
+<tr>
+<td>CZ</td>
+<td>Cseh</td>
+<td>01940704-87ee-7aff-ac11-6041791c487d</td>
+</tr>
+<tr>
+<td>SK</td>
+<td>Szlovák</td>
+<td>01940704-87ee-7aff-ac11-6042e287dcc2</td>
+</tr>
+<tr>
+<td>SI</td>
+<td>Szlovén</td>
+<td>01940704-87ee-7aff-ac11-6043203fb2b2</td>
+</tr>
+<tr>
+<td>HR</td>
+<td>Horvát</td>
+<td>01940704-87ee-7aff-ac11-6044156a34b7</td>
+</tr>
+<tr>
+<td>RS</td>
+<td>Szerb</td>
+<td>01940704-87ee-7aff-ac11-60459ae65180</td>
+</tr>
+<tr>
+<td>BA</td>
+<td>Bosnyák</td>
+<td>01940704-87ee-7aff-ac11-60462240106a</td>
+</tr>
+<tr>
+<td>ME</td>
+<td>Montenegrói</td>
+<td>01940704-87ee-7aff-ac11-6047b2578122</td>
+</tr>
+<tr>
+<td>XK</td>
+<td>Koszovói</td>
+<td>01940704-87ee-7aff-ac11-60486651f799</td>
+</tr>
+<tr>
+<td>AL</td>
+<td>Albán</td>
+<td>01940704-87ee-7aff-ac11-6049383c81f0</td>
+</tr>
+<tr>
+<td>MK</td>
+<td>Macedón</td>
+<td>01940704-87ee-7aff-ac11-604a4c4e3696</td>
+</tr>
+<tr>
+<td>BG</td>
+<td>Bolgár</td>
+<td>01940704-87ee-7aff-ac11-604b88f8c1b6</td>
+</tr>
+<tr>
+<td>GR</td>
+<td>Görög</td>
+<td>01940704-87ee-7aff-ac11-604c940a4c29</td>
+</tr>
+<tr>
+<td>TR</td>
+<td>Török</td>
+<td>01940704-87ee-7aff-ac11-604d129bf887</td>
+</tr>
+<tr>
+<td>UR</td>
+<td>Ukrán</td>
+<td>01940704-87ee-7aff-ac11-604e79726638</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-address_type">DICTDEF# ADDRESS_TYPE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">ADDRESS_TYPE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RESIDENCE</td>
+<td>Lakcím</td>
+<td>01940704-b64f-7614-9230-91a04dabe660</td>
+</tr>
+<tr>
+<td>WORK</td>
+<td>Munkahely</td>
+<td>01940704-b64f-7614-9230-91a1edf4f121</td>
+</tr>
+<tr>
+<td>PERMANENT</td>
+<td>Állandó lakcím</td>
+<td>01940704-b64f-7614-9230-91a284333e34</td>
+</tr>
+<tr>
+<td>MAIL</td>
+<td>Levelezési cím</td>
+<td>01940704-b64f-7614-9230-91a3a7599a22</td>
+</tr>
+<tr>
+<td>SITE</td>
+<td>Telephely</td>
+<td>01940704-b64f-7614-9230-91a4e58fd755</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-right_parameter">DICTDEF# RIGHT_PARAMETER</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">RIGHT_PARAMETER</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Új</td>
+<td>01940704-f708-751b-aa6b-777a14c9add8</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Módosítás</td>
+<td>01940704-f708-751b-aa6b-777bfa7997ff</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Törlés</td>
+<td>01940704-f708-751b-aa6b-777cabdb9a92</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Megtekintés</td>
+<td>01940704-f708-751b-aa6b-777d6b1ed401</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Nyomtatás</td>
+<td>01940704-f708-751b-aa6b-777e68140678</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Exportálás</td>
+<td>01940704-f708-751b-aa6b-777f997416dd</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Importálás</td>
+<td>01940704-f708-751b-aa6b-778056b88a1e</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Mentés</td>
+<td>01940704-f708-751b-aa6b-7781497537ea</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-setting_type">DICTDEF# SETTING_TYPE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">SETTING_TYPE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Szöveges</td>
+<td>01940705-1f40-764f-9938-a93a44939bfa</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Szám</td>
+<td>01940705-1f40-764f-9938-a93b84ae487e</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Dátum</td>
+<td>01940705-1f40-764f-9938-a93c3e239b6a</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Logikai</td>
+<td>01940705-1f40-764f-9938-a93d9c7df04a</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Szöveg</td>
+<td>01940705-1f40-764f-9938-a93e2c8728bf</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-contract_type">DICTDEF# CONTRACT_TYPE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">CONTRACT_TYPE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Munkaszerződés</td>
+<td>01940705-4985-79e8-8627-5f76a647ae79</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Szolgáltatási</td>
+<td>01940705-4985-79e8-8627-5f77a0380f15</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Megbízási</td>
+<td>01940705-4985-79e8-8627-5f788cb6baa2</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Egyéb</td>
+<td>01940705-4985-79e8-8627-5f79def21249</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-subject">DICTDEF# SUBJECT</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">SUBJECT</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Árajánlat</td>
+<td>01940705-6ae1-7c66-b13a-0ff3b6c717c6</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Szerződés</td>
+<td>01940705-6ae1-7c66-b13a-0ff424961f67</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Számla</td>
+<td>01940705-6ae1-7c66-b13a-0ff5c01e1e0b</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Egyéb</td>
+<td>01940705-6ae1-7c66-b13a-0ff6a21f9726</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-validity_type">DICTDEF# VALIDITY_TYPE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">VALIDITY_TYPE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Érvényes</td>
+<td>01940705-8577-7aca-abdc-7c90b3a61bbb</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Lejárt</td>
+<td>01940705-8f04-7247-89d8-a83adcea44e5</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-payment_status">DICTDEF# PAYMENT_STATUS</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">PAYMENT_STATUS</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Fizetett</td>
+<td>01940705-9ae2-7017-a755-5616c6a6d4b3</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Kifizetetlen</td>
+<td>01940705-a20b-7c10-b77d-a8b883cbb58b</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-processing_status">DICTDEF# PROCESSING_STATUS</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">PROCESSING_STATUS</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Beérkezett</td>
+<td>01940705-ac9c-71e3-8d51-bada8c64d91e</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Besorolt</td>
+<td>01940705-b3ee-77e6-af56-e300a4ee8555</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Befogadott</td>
+<td>019481b2-9e91-7281-9747-e50358d2c1cf</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-unit_of_measure">DICTDEF# UNIT_OF_MEASURE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">UNIT_OF_MEASURE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>KG</td>
+<td>kg</td>
+<td>01940705-d353-73ba-bac9-49de6fbe2a6f</td>
+</tr>
+<tr>
+<td>L</td>
+<td>l</td>
+<td>01940705-d353-73ba-bac9-49df4a538f35</td>
+</tr>
+<tr>
+<td>M</td>
+<td>m</td>
+<td>01940705-d353-73ba-bac9-49e02da3546a</td>
+</tr>
+<tr>
+<td>DB</td>
+<td>db</td>
+<td>01940705-d353-73ba-bac9-49e103cf18f2</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-worker_assignment_request">DICTDEF# WORKER_ASSIGNMENT_REQUEST</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">WORKER_ASSIGNMENT_REQUEST</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>NEW</td>
+<td>Új</td>
+<td>01940705-f49c-7cac-a579-05e8cc87a93c</td>
+</tr>
+<tr>
+<td>MOD</td>
+<td>Módosítás</td>
+<td>01940705-f49c-7cac-a579-05e9d930b053</td>
+</tr>
+<tr>
+<td>DEL</td>
+<td>Törlés</td>
+<td>01940705-f49c-7cac-a579-05eaaa399fc6</td>
+</tr>
+<tr>
+<td>VIEW</td>
+<td>Megtekintés</td>
+<td>01940705-f49c-7cac-a579-05eb58b09101</td>
+</tr>
+<tr>
+<td>PRINT</td>
+<td>Nyomtatás</td>
+<td>01940705-f49c-7cac-a579-05ec431b56b9</td>
+</tr>
+<tr>
+<td>EXP</td>
+<td>Exportálás</td>
+<td>01940705-f49c-7cac-a579-05ed06dd693a</td>
+</tr>
+<tr>
+<td>IMP</td>
+<td>Importálás</td>
+<td>01940705-f49c-7cac-a579-05eecd8a2ec7</td>
+</tr>
+<tr>
+<td>SAVE</td>
+<td>Mentés</td>
+<td>01940705-f49c-7cac-a579-05efa74b5a3e</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-worksheet_status">DICTDEF# WORKSHEET_STATUS</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">WORKSHEET_STATUS</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CLOSED</td>
+<td>Lezárt</td>
+<td>01940706-13ef-77d4-af60-9381b6ab3b2c</td>
+</tr>
+<tr>
+<td>FINISHED</td>
+<td>Befejezett</td>
+<td>01940706-13ef-77d4-af60-9382c2611e42</td>
+</tr>
+<tr>
+<td>ONGOING</td>
+<td>Folyamatban</td>
+<td>01940706-13ef-77d4-af60-938365eb2ff2</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-material_use">DICTDEF# MATERIAL_USE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">MATERIAL_USE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>USED</td>
+<td>Felhasznált</td>
+<td>01940706-309f-7924-828e-9534a39d8b2b</td>
+</tr>
+<tr>
+<td>DISMOUNTED</td>
+<td>Leszerelt</td>
+<td>01940706-309f-7924-828e-9535e0d60b6c</td>
+</tr>
+<tr>
+<td>DISCARDED</td>
+<td>Selejtezett</td>
+<td>01940706-309f-7924-828e-953658ac2527</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-material_reason">DICTDEF# MATERIAL_REASON</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">MATERIAL_REASON</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DAMAGED</td>
+<td>Sérült</td>
+<td>01940706-4be8-7abd-b8f7-87bd677388e4</td>
+</tr>
+<tr>
+<td>LOST</td>
+<td>Elveszett</td>
+<td>01940706-4be8-7abd-b8f7-87bea7b1b1b7</td>
+</tr>
+<tr>
+<td>OTHER</td>
+<td>Egyéb</td>
+<td>01940706-4be8-7abd-b8f7-87c0b1b1b1b1</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-closure_status">DICTDEF# CLOSURE_STATUS</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">CLOSURE_STATUS</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CLOSED</td>
+<td>Lezárt</td>
+<td>01940706-59de-7f46-8271-2df713337fd5</td>
+</tr>
+<tr>
+<td>OPEN</td>
+<td>Nyitott</td>
+<td>01940706-60dc-70ad-91a9-11c3967dae93</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-closure_item_type">DICTDEF# CLOSURE_ITEM_TYPE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">CLOSURE_ITEM_TYPE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>WORKER</td>
+<td>Munkavégzés</td>
+<td>01940706-751f-7369-b876-af7873de9c5a</td>
+</tr>
+<tr>
+<td>MATERIAL</td>
+<td>Anyagfelhasználás</td>
+<td>01940706-7d5e-77dc-a509-4654103a4b58</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dictdef-movement_type">DICTDEF# MOVEMENT_TYPE</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">MOVEMENT_TYPE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IN</td>
+<td>Bevételezés</td>
+<td>0194402b-e5f3-7364-9913-ba00a36514db</td>
+</tr>
+<tr>
+<td>OUT</td>
+<td>Kivételezés</td>
+<td>0194402b-ffc4-764a-9352-1c9881385f67</td>
+</tr>
+<tr>
+<td>MOVE</td>
+<td>Mozgatás</td>
+<td>0194402c-15c1-7646-9bee-bea860a04360</td>
+</tr>
+<tr>
+<td>DISPOSAL</td>
+<td>Selejtezés</td>
+<td>0194402c-292c-7cc0-8a05-6ee529a60bfc</td>
+</tr>
+</tbody>
+</table>
+
+            
+            
+        </body>
+        </html>

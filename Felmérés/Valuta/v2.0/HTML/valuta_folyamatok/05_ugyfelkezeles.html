@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Valutav&aacute;lt&oacute; Rendszer &Uuml;gyf&eacute;lkezel&eacute;si Folyamatai</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="valutaváltó-rendszer-ügyfélkezelési-folyamatai">Valutaváltó Rendszer Ügyfélkezelési Folyamatai</h1>
+<h2 id="bevezetés">Bevezetés</h2>
+<p>Ez a dokumentum a valutaváltó rendszer ügyfélkezelési folyamatait írja le, beleértve az ügyfélazonosítást, ügyfélnyilvántartást, ügyfélkategorizálást
+és a különleges ügyfélkérések kezelését.</p>
+<h2 id="ügyfélnyilvántartási-folyamatok">Ügyfélnyilvántartási folyamatok</h2>
+<h3 id="új-ügyfél-regisztrációja">Új ügyfél regisztrációja</h3>
+<ol>
+<li>
+<p>Az ügyfélazonosítási limit feletti tranzakció esetén, vagy ha az ügyfél maga kéri, a pénztáros kezdeményezi az ügyfélregisztrációt.</p>
+</li>
+<li>
+<p>Az ügyfél adatainak rögzítése a <code>customer</code> entitásban:</p>
+<ul>
+<li>Személyes adatok: név, születési adatok</li>
+<li>Elérhetőségek: cím, telefon, e-mail</li>
+<li>Azonosító okmányok adatai</li>
+<li>Ügyfélbesorolás (<code>customer_type_did</code> a megfelelő szótárból)</li>
+<li>Marketing hozzájárulások</li>
+</ul>
+</li>
+<li>
+<p>A rendszer elvégzi az adatellenőrzést:</p>
+<ul>
+<li>Adatok formai helyességének ellenőrzése</li>
+<li>Duplikáció-ellenőrzés (létező ügyfél keresése)</li>
+<li>Okmányérvényesség-ellenőrzés</li>
+</ul>
+</li>
+<li>
+<p>Sikeres regisztráció esetén egyedi ügyfél-azonosító generálódik.</p>
+</li>
+<li>
+<p>A rendszer opcionálisan törzsvásárlói kártyát generálhat.</p>
+</li>
+</ol>
+<h3 id="ügyfél-azonosítás-tranzakció-során">Ügyfél-azonosítás tranzakció során</h3>
+<ol>
+<li>
+<p>Már regisztrált ügyfél esetén a pénztáros azonosítja az ügyfelet:</p>
+<ul>
+<li>Név és személyes adatok alapján</li>
+<li>Törzsvásárlói kártya alapján</li>
+<li>Azonosító okmányok alapján</li>
+</ul>
+</li>
+<li>
+<p>A rendszer megjeleníti az ügyfél adatait és tranzakciós történetét.</p>
+</li>
+<li>
+<p>Az ügyfél-azonosítás sikeres befejezése után a tranzakció folytatható.</p>
+</li>
+<li>
+<p>Gyanús körülmények esetén fokozott ügyfél-átvilágítás kezdeményezhető.</p>
+</li>
+</ol>
+<h3 id="ügyfél-adatok-karbantartása">Ügyfél adatok karbantartása</h3>
+<ol>
+<li>
+<p>Az ügyfél kérheti adatai módosítását.</p>
+</li>
+<li>
+<p>A módosítási folyamat során:</p>
+<ul>
+<li>A pénztáros azonosítja az ügyfelet</li>
+<li>A módosítandó adatokat frissíti a rendszerben</li>
+<li>Bizonyos adatmódosítások (pl. név, születési adatok) csak okmányok alapján végezhetők</li>
+</ul>
+</li>
+<li>
+<p>Minden adatmódosítás naplózásra kerül:</p>
+<ul>
+<li>Ki végezte a módosítást</li>
+<li>Mit módosított</li>
+<li>Mikor történt a módosítás</li>
+<li>Milyen bizonyítékok alapján</li>
+</ul>
+</li>
+<li>
+<p>Az ügyfél kérheti adatai törlését is, ami a jogszabályi kötelezettségek figyelembevételével történik.</p>
+</li>
+</ol>
+<h2 id="ügyfélkategorizálás-és--elemzés">Ügyfélkategorizálás és -elemzés</h2>
+<h3 id="ügyfélkategóriák-kezelése">Ügyfélkategóriák kezelése</h3>
+<ol>
+<li>
+<p>Az ügyfelek különböző kategóriákba sorolhatók a <code>CUSTOMER_TYPE</code> szótár alapján:</p>
+<ul>
+<li>REGULAR - Alkalmi ügyfél</li>
+<li>LOYAL - Törzsvásárló</li>
+<li>VIP - Kiemelt ügyfél</li>
+<li>CORPORATE - Vállalati ügyfél</li>
+<li>PARTNER - Stratégiai partner</li>
+</ul>
+</li>
+<li>
+<p>Az ügyfeleket a rendszer automatikusan kategorizálja:</p>
+<ul>
+<li>Tranzakciós forgalom alapján</li>
+<li>Tranzakciók gyakorisága alapján</li>
+<li>Speciális jellemzők alapján (pl. vállalati státusz)</li>
+</ul>
+</li>
+<li>
+<p>A kategória hatással van:</p>
+<ul>
+<li>Az alkalmazott árfolyamokra</li>
+<li>A felszámított jutalékokra</li>
+<li>A nyújtott szolgáltatások körére</li>
+</ul>
+</li>
+</ol>
+<h3 id="ügyfélprofil-elemzés">Ügyfélprofil-elemzés</h3>
+<ol>
+<li>
+<p>A rendszer elemzi az ügyfelek tranzakciós szokásait:</p>
+<ul>
+<li>Preferált devizanemek</li>
+<li>Átlagos tranzakciós méret</li>
+<li>Tranzakciók gyakorisága</li>
+<li>Szezonális minták</li>
+</ul>
+</li>
+<li>
+<p>Az elemzések alapján a rendszer:</p>
+<ul>
+<li>Személyre szabott ajánlatokat generálhat</li>
+<li>Optimalizálhatja a készleteket</li>
+<li>Azonosíthatja a szokatlan tranzakciós mintákat</li>
+</ul>
+</li>
+<li>
+<p>Az elemzést csak a megfelelő jogosultsággal rendelkező felhasználók láthatják.</p>
+</li>
+</ol>
+<h2 id="speciális-ügyfélkérések-kezelése">Speciális ügyfélkérések kezelése</h2>
+<h3 id="vip-ügyfélkiszolgálás">VIP ügyfélkiszolgálás</h3>
+<ol>
+<li>
+<p>A VIP ügyfelek különleges kiszolgálást igényelhetnek:</p>
+<ul>
+<li>Soron kívüli kiszolgálás</li>
+<li>Kedvezményes árfolyam alkalmazása</li>
+<li>Különleges címletigények kielégítése</li>
+<li>Diszkrét ügyintézés</li>
+</ul>
+</li>
+<li>
+<p>A VIP kiszolgálást csak erre jogosult pénztárosok végezhetik.</p>
+</li>
+<li>
+<p>VIP kérés kezelése során a rendszer is speciális folyamatot indít:</p>
+<ul>
+<li>A kérés prioritást kap (<code>PRIORITY</code> = HIGH vagy CRITICAL)</li>
+<li>Automatikus értesítés megy a fiókvezetőnek</li>
+<li>A teljesítés minden lépése dokumentálásra kerül</li>
+</ul>
+</li>
+</ol>
+<h3 id="előre-egyeztetett-nagy-összegű-tranzakciók">Előre egyeztetett nagy összegű tranzakciók</h3>
+<ol>
+<li>
+<p>Az ügyfelek előre jelezhetik nagy összegű valutaváltási igényüket:</p>
+<ul>
+<li>Online felületen</li>
+<li>Telefonon</li>
+<li>Személyesen</li>
+</ul>
+</li>
+<li>
+<p>Az ilyen igények speciális kezelést kapnak:</p>
+<ul>
+<li>Egyedi árfolyam-kalkuláció</li>
+<li>Készlet előkészítése</li>
+<li>Időpontfoglalás</li>
+<li>Fokozott biztonsági intézkedések</li>
+</ul>
+</li>
+<li>
+<p>A rendszer támogatja az előre egyeztetett tranzakciókat:</p>
+<ul>
+<li>Előjegyzési naptár</li>
+<li>Készlettervezés</li>
+<li>Jóváhagyási folyamat</li>
+<li>Speciális bizonylatolás</li>
+</ul>
+</li>
+</ol>
+<h3 id="ügyfélpanasz-kezelés">Ügyfélpanasz-kezelés</h3>
+<ol>
+<li>
+<p>Az ügyfelek panaszt nyújthatnak be a szolgáltatással kapcsolatban.</p>
+</li>
+<li>
+<p>A panaszokat a rendszer rögzíti:</p>
+<ul>
+<li>Panasz tárgya</li>
+<li>Kapcsolódó tranzakció(k)</li>
+<li>Ügyfél adatai</li>
+<li>Panasz leírása</li>
+<li>Kért intézkedés</li>
+</ul>
+</li>
+<li>
+<p>A panaszkezelési folyamat:</p>
+<ul>
+<li>Panasz rögzítése és visszaigazolása</li>
+<li>Kivizsgálás</li>
+<li>Döntéshozatal</li>
+<li>Válasz az ügyfélnek</li>
+<li>Esetleges korrekciós intézkedések</li>
+</ul>
+</li>
+<li>
+<p>A rendszer nyomon követi a panaszkezelési határidőket és statisztikákat készít.</p>
+</li>
+</ol>
+<h2 id="jogszabályi-megfelelési-folyamatok">Jogszabályi megfelelési folyamatok</h2>
+<h3 id="ügyfél-átvilágítás">Ügyfél-átvilágítás</h3>
+<ol>
+<li>
+<p>A rendszer támogatja a pénzmosás-megelőzési jogszabályoknak megfelelő ügyfél-átvilágítást:</p>
+<ul>
+<li>Egyszerűsített átvilágítás - alapvető azonosítás</li>
+<li>Normál átvilágítás - részletesebb adategyeztetés</li>
+<li>Fokozott átvilágítás - alapos ellenőrzés és kibővített adatkör</li>
+</ul>
+</li>
+<li>
+<p>Az átvilágítás szintje függ:</p>
+<ul>
+<li>A tranzakció összegétől</li>
+<li>Az ügyfél kockázati besorolásától</li>
+<li>Esetleges gyanús körülményektől</li>
+</ul>
+</li>
+<li>
+<p>A rendszer figyelmezteti a pénztárost, ha átvilágítás szükséges, és végigvezeti a megfelelő folyamaton.</p>
+</li>
+</ol>
+<h3 id="bejelentési-kötelezettségek-teljesítése">Bejelentési kötelezettségek teljesítése</h3>
+<ol>
+<li>
+<p>A rendszer automatikusan jelzi a bejelentés-köteles tranzakciókat:</p>
+<ul>
+<li>Limit feletti készpénztranzakciók</li>
+<li>Gyanús tranzakciós minták</li>
+<li>Szankciós listán szereplő ügyfelek</li>
+</ul>
+</li>
+<li>
+<p>A bejelentési folyamat:</p>
+<ul>
+<li>Automatikus jelzés generálása</li>
+<li>Compliance officer értesítése</li>
+<li>A tranzakció részletes elemzése</li>
+<li>Döntés a bejelentésről</li>
+<li>Bejelentés elkészítése és továbbítása</li>
+</ul>
+</li>
+<li>
+<p>A bejelentésekkel kapcsolatos minden tevékenység szigorú naplózás alá esik.</p>
+</li>
+</ol>
+<h3 id="ügyfélnyilvántartás-megőrzése">Ügyfélnyilvántartás megőrzése</h3>
+<ol>
+<li>
+<p>A rendszer a jogszabályi követelményeknek megfelelően tárolja az ügyféladatokat:</p>
+<ul>
+<li>Az azonosítási adatokat a jogszabályban előírt ideig (általában 8 év)</li>
+<li>A tranzakciós adatokat a jogszabályban előírt ideig</li>
+<li>A marketing célú adatokat a hozzájárulás visszavonásáig</li>
+</ul>
+</li>
+<li>
+<p>Az adatmegőrzési szabályok automatikusan érvényesülnek:</p>
+<ul>
+<li>Archiválási folyamatok</li>
+<li>Automatikus anonimizálás</li>
+<li>Törlési ciklusok</li>
+</ul>
+</li>
+<li>
+<p>A rendszer biztosítja az adatok visszakereshetőségét hatósági megkeresés esetén.</p>
+</li>
+</ol>
+<h2 id="ügyfélkommunikáció">Ügyfélkommunikáció</h2>
+<h3 id="értesítések-kezelése">Értesítések kezelése</h3>
+<ol>
+<li>
+<p>A rendszer támogatja az ügyfelek értesítését különböző csatornákon:</p>
+<ul>
+<li>E-mail</li>
+<li>SMS</li>
+<li>Push értesítés (mobil alkalmazás esetén)</li>
+<li>Postai levél</li>
+</ul>
+</li>
+<li>
+<p>Értesítések típusai:</p>
+<ul>
+<li>Tranzakciós értesítések</li>
+<li>Árfolyam-értesítések</li>
+<li>Marketing célú kommunikáció</li>
+<li>Jogszabályi tájékoztatók</li>
+</ul>
+</li>
+<li>
+<p>Az értesítési beállítások az ügyfélprofil részét képezik, és a GDPR követelményeknek megfelelően kezelendők.</p>
+</li>
+</ol>
+<h3 id="marketing-kommunikáció">Marketing kommunikáció</h3>
+<ol>
+<li>
+<p>A marketing kommunikáció csak megfelelő hozzájárulással történhet.</p>
+</li>
+<li>
+<p>A rendszer támogatja a célzott marketing kommunikációt:</p>
+<ul>
+<li>Ügyfélszegmensek szerinti szűrés</li>
+<li>Preferenciák figyelembevétele</li>
+<li>Tranzakciós szokások alapján történő ajánlatok</li>
+</ul>
+</li>
+<li>
+<p>Minden marketing kommunikáció tartalmazza a leiratkozási lehetőséget.</p>
+</li>
+<li>
+<p>A marketing tevékenységek eredményei elemezhetők és riportolhatók.</p>
+</li>
+</ol>
+
+            
+            
+        </body>
+        </html>

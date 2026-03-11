@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Valutav&aacute;lt&oacute; Rendszer Alapfolyamatai</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="valutaváltó-rendszer-alapfolyamatai">Valutaváltó Rendszer Alapfolyamatai</h1>
+<h2 id="bevezetés">Bevezetés</h2>
+<p>Ez a dokumentum a valutaváltó rendszer alapvető folyamatait írja le, beleértve a devizanemek kezelését, árfolyamok beállítását és a fiókok
+működtetését. Az itt leírt folyamatok a rendszer alapvető működésének gerincét alkotják.</p>
+<h2 id="devizanemek-kezelése">Devizanemek kezelése</h2>
+<h3 id="új-devizanem-rögzítése">Új devizanem rögzítése</h3>
+<ol>
+<li>A rendszeradminisztrátor az adminisztrációs felületen új devizanemet (<code>currency</code>) hoz létre.</li>
+<li>Megadja a kötelező adatokat:
+<ul>
+<li>ISO 4217 devizakód (<code>code</code>) - egyedi azonosító</li>
+<li>Teljes név (<code>name</code>)</li>
+<li>Szimbólum (<code>symbol</code>) - opcionális</li>
+<li>Alap devizanem-e (<code>is_base</code>) - rendszerenként egy lehet aktív alapdevizanem</li>
+<li>Státusz (<code>currency_status_did</code>) - kezdetben általában &quot;ACTIVE&quot;</li>
+</ul>
+</li>
+<li>A rendszer menti az új devizanemet a törzsadatok közé.</li>
+<li>Egy devizanem státusza (<code>currency_status_did</code>) lehet:
+<ul>
+<li>ACTIVE - aktívan használható</li>
+<li>INACTIVE - ideiglenesen nem használható</li>
+<li>SUSPENDED - felfüggesztett (pl. hatósági utasításra)</li>
+<li>DEPRECATED - kivezetett (történeti adatokban még előfordulhat)</li>
+</ul>
+</li>
+</ol>
+<h3 id="devizanem-módosítása">Devizanem módosítása</h3>
+<ol>
+<li>Az adminisztrátor kiválasztja a módosítani kívánt devizanemet.</li>
+<li>Módosíthatja a nevet, szimbólumot és a státuszt.</li>
+<li>Az ISO kód (<code>code</code>) módosítása csak különleges esetben, audit mellett engedélyezett.</li>
+<li>Az alapdevizanem-jelölés (<code>is_base</code>) módosítása rendszerszintű hatással jár, és speciális jóváhagyást igényel.</li>
+</ol>
+<h2 id="árfolyamok-kezelése">Árfolyamok kezelése</h2>
+<h3 id="napi-központi-árfolyamok-rögzítése">Napi központi árfolyamok rögzítése</h3>
+<ol>
+<li>Az árfolyamkezelésért felelős munkatárs az MNB/ECB/egyéb központi forrásból származó napi árfolyamokat (<code>exchange_rate</code>) rögzíti a rendszerben.</li>
+<li>Minden devizanem-párra megadja az alábbi értékeket:
+<ul>
+<li>Forrás devizanem (<code>source_currency_id</code>)</li>
+<li>Cél devizanem (<code>target_currency_id</code>)</li>
+<li>Árfolyam dátuma (<code>rate_date</code>)</li>
+<li>Vételi árfolyam (<code>buy_rate</code>)</li>
+<li>Közép árfolyam (<code>mid_rate</code>)</li>
+<li>Eladási árfolyam (<code>sell_rate</code>)</li>
+<li>Érvényesség kezdete (<code>validation_date</code>)</li>
+<li>Érvényesség vége (<code>expiration_date</code>) - opcionális</li>
+</ul>
+</li>
+<li>A rendszer ellenőrzi, hogy egyazon devizanem-párra ne legyen átfedő érvényességi időszak.</li>
+<li>Az árfolyamok az aktív jelölést (<code>is_active</code>) automatikusan megkapják a megadott érvényességi idő alapján.</li>
+</ol>
+<h3 id="fiókspecifikus-árfolyamok-beállítása">Fiókspecifikus árfolyamok beállítása</h3>
+<p>A rendszer támogatja, hogy a fiókok egyedi árfolyamokat alkalmazzanak, amelyek eltérhetnek a központi árfolyamoktól. Ez a funkció a
+<code>branch_exchange_rate</code> entitás segítségével valósul meg (a pontos definíció a fájlokból kimaradt, de a hivatkozások alapján létezik).</p>
+<ol>
+<li>Fiókvezetők vagy kijelölt árfolyamkezelők módosíthatják a helyi árfolyamokat.</li>
+<li>A módosítás történhet:
+<ul>
+<li>Rögzített árfolyammal (FIXED)</li>
+<li>Additív módosítással (ADDITIVE) - a központi árfolyamhoz hozzáadott/kivont érték</li>
+<li>Multiplikatív módosítással (MULTIPLICATIVE) - százalékos szorzó</li>
+</ul>
+</li>
+<li>Minden módosításhoz jóváhagyás szükséges a megfelelő szinten (APPROVAL_LEVEL).</li>
+</ol>
+<h2 id="fiókkezelés">Fiókkezelés</h2>
+<h3 id="új-fiók-létrehozása">Új fiók létrehozása</h3>
+<ol>
+<li>A rendszeradminisztrátor új fiókot (<code>branch</code>) hoz létre.</li>
+<li>Megadja a fiók alapadatait:
+<ul>
+<li>Kód (<code>code</code>) - egyedi azonosító</li>
+<li>Név (<code>name</code>)</li>
+<li>Cím adatok: utca (<code>address</code>), város (<code>city</code>), irányítószám (<code>zip_code</code>), ország (<code>country_did</code>)</li>
+<li>Elérhetőségek: telefon (<code>phone</code>), e-mail (<code>email</code>)</li>
+<li>Nyitvatartási idő: nyitás (<code>opening_time</code>), zárás (<code>closing_time</code>)</li>
+</ul>
+</li>
+<li>A fiók kezdetben inaktív állapotban jön létre, aktiválás előtt további beállítások szükségesek.</li>
+</ol>
+<h3 id="fiók-aktiválása">Fiók aktiválása</h3>
+<ol>
+<li>Az adminisztrátor vagy megfelelő jogosultsággal rendelkező vezető aktiválhatja a fiókot (<code>is_active</code> = true).</li>
+<li>Aktiválás előtti ellenőrzőlista:
+<ul>
+<li>Legalább egy aktív pénztáros hozzárendelése</li>
+<li>Kezdeti pénzkészlet rögzítése minden devizanemben</li>
+<li>Árfolyamok ellenőrzése</li>
+<li>Engedélyek és jogosultságok beállítása</li>
+</ul>
+</li>
+</ol>
+<h3 id="pénztárosok-hozzárendelése">Pénztárosok hozzárendelése</h3>
+<ol>
+<li>Az adminisztrátor a dolgozói törzsadatban (<code>worker</code>) szereplő személyekből pénztárosokat (<code>cashier</code>) rendelhet a fiókhoz.</li>
+<li>Megadja a pénztáros adatait:
+<ul>
+<li>Dolgozó azonosító (<code>worker_id</code>)</li>
+<li>Fiók azonosító (<code>branch_id</code>)</li>
+<li>Szerepkör (<code>role_did</code>) - lehet: ADMIN, MANAGER, CASHIER, SUPERVISOR, AUDITOR vagy READONLY</li>
+<li>Aktív státusz (<code>is_active</code>)</li>
+</ul>
+</li>
+<li>A rendszer ellenőrzi a dolgozó megfelelő képesítését és jogosultságát.</li>
+</ol>
+<h3 id="fiókcsoportok-kezelése">Fiókcsoportok kezelése</h3>
+<p>A rendszer támogatja a fiókok csoportosítását különböző szempontok szerint. A fiókcsoportok típusai (<code>BRANCH_GROUP_TYPE</code>) lehetnek:</p>
+<ul>
+<li>REGIONAL - földrajzi régió alapján</li>
+<li>FUNCTIONAL - funkció alapján</li>
+<li>ORGANIZATIONAL - szervezeti struktúra alapján</li>
+<li>CUSTOM - egyedi csoportosítás</li>
+</ul>
+<p>A csoportos árfolyamkezelés a <code>branch_group_exchange_rate</code> entitáson keresztül történik.</p>
+
+            
+            
+        </body>
+        </html>

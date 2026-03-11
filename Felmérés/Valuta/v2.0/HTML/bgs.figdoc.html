@@ -1,0 +1,1922 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Specifik&aacute;ci&oacute;</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="specifikáció">Specifikáció</h1>
+<h2 id="folyamatok">Folyamatok</h2>
+
+<pre><code><code>⚠️No PlantUML server, specify one with "plantuml.server".
+
+@startuml
+header Anyag befelé
+
+entity InvoiceIn [
+    =InvoiceIn - Beszállítói számla
+]
+
+entity InvoiceInItem [
+    =InvoiceInItem - Beszállítói számla tétel
+]
+
+entity Material [
+    =Material - Anyag
+]
+
+entity MaterialMovement [
+    =MaterialMovement - Anyagmozgás
+]
+
+entity MaterialMovementItem [
+    =MaterialMovementItem - Anyagmozgás tétel
+]
+
+InvoiceIn --> InvoiceInItem : 1-n
+
+InvoiceIn -> Material : 1-n
+@enduml
+</code></code></pre>
+<pre><code><code>⚠️No PlantUML server, specify one with "plantuml.server".
+
+@startuml
+header Anyag befelé
+
+InvoiceIn -> MaterialMovement : 1-n
+InvoiceIn -> WareHouse
+
+@enduml
+</code></code></pre><h2 id="változtatások">Változtatások</h2>
+<table>
+<thead>
+<tr>
+<th>Verzió/Dátum</th>
+<th>Leírás</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.0 - 2024.11.27</td>
+<td>Első verzió</td>
+</tr>
+</tbody>
+</table>
+<h3 id="entitások">Entitások</h3>
+<h3 id="figdef-worksheet">FIGDEF# worksheet</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Munkalap</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Munkalapok</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Hide</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>code</td>
+<td>Kód</td>
+<td>VARCHAR</td>
+<td>64</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>partner_id</td>
+<td>Partner</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>partner</td>
+<td><a href="http://partner.id">partner.id</a></td>
+<td></td>
+</tr>
+<tr>
+<td>inst_loc_id</td>
+<td>Telepítési hely</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>inst_loc</td>
+<td>inst_loc.id</td>
+<td></td>
+</tr>
+<tr>
+<td>project_id</td>
+<td>Projekt</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>project</td>
+<td><a href="http://project.id">project.id</a></td>
+<td></td>
+</tr>
+<tr>
+<td>name</td>
+<td>Név</td>
+<td>VARCHAR</td>
+<td>1024</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>description</td>
+<td>Leírás</td>
+<td>VARCHAR</td>
+<td>2000</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>worksheet_status_did</td>
+<td>Munkalap státusz</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>WORKSHEET_STATUS</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>worksheet_open_date</td>
+<td>Munkalap dátuma</td>
+<td>DATE</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>open_worker_id</td>
+<td>Munkalap nyitó</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>worker</td>
+<td><a href="http://worker.id">worker.id</a></td>
+<td></td>
+</tr>
+<tr>
+<td>worksheet_begin</td>
+<td>Munkalap kezdete</td>
+<td>DATETIME</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>worksheet_end</td>
+<td>Munkalap vége</td>
+<td>DATETIME</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>occasional_flag</td>
+<td>Eseti</td>
+<td>BOOL</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>worksheet_close_date</td>
+<td>Lezárás dátuma</td>
+<td>DATE</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>close_worker_id</td>
+<td>Munkalap lezáró</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>worker</td>
+<td><a href="http://worker.id">worker.id</a></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-worksheet_ext">FIGDEF# worksheet_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Munkalap</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Munkalapok</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">worksheet</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+<th>Hide</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>partner</td>
+<td>Partner</td>
+<td>Partner</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>partner</td>
+<td>name</td>
+<td>partner_id</td>
+<td></td>
+</tr>
+<tr>
+<td>inst_loc</td>
+<td>Telepítési hely</td>
+<td>InstLoc</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>inst_loc</td>
+<td>name</td>
+<td>inst_loc_id</td>
+<td></td>
+</tr>
+<tr>
+<td>project</td>
+<td>Projekt</td>
+<td>Project</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>project</td>
+<td>name</td>
+<td>project_id</td>
+<td></td>
+</tr>
+<tr>
+<td>worksheet_status</td>
+<td>Munkalap státusz</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>WORKSHEET_STATUS</td>
+<td>description</td>
+<td>worksheet_status_did</td>
+<td></td>
+</tr>
+<tr>
+<td>open_worker_ext</td>
+<td>Munkalap nyitó</td>
+<td>WorkerExt</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>worker_ext</td>
+<td>person.last_name</td>
+<td>open_worker_id</td>
+<td></td>
+</tr>
+<tr>
+<td>close_worker_ext</td>
+<td>Munkalap lezáró</td>
+<td>WorkerExt</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>worker_ext</td>
+<td>person.last_name</td>
+<td>close_worker_id</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-worksheet_worker">FIGDEF# worksheet_worker</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Munkalap</span> <span class="hljs-string">résztvevő</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Munkalap</span> <span class="hljs-string">résztvevői</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Hide</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>worksheet_id</td>
+<td>Munkalap</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>worksheet</td>
+<td><a href="http://worksheet.id">worksheet.id</a></td>
+<td>X</td>
+</tr>
+<tr>
+<td>worker_id</td>
+<td>Résztvevő</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>worker</td>
+<td><a href="http://worker.id">worker.id</a></td>
+<td></td>
+</tr>
+<tr>
+<td>work_begin</td>
+<td>Munkavégzés kezdete</td>
+<td>DATETIME</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>work_end</td>
+<td>Munkavégzés vége</td>
+<td>DATETIME</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>work_time</td>
+<td>Munkaidő</td>
+<td>DECIMAL</td>
+<td>19</td>
+<td>2</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>completed_tasks</td>
+<td>Elvégzett feladatok</td>
+<td>VARCHAR</td>
+<td>2000</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>note</td>
+<td>Megjegyzés</td>
+<td>VARCHAR</td>
+<td>2000</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>status_did</td>
+<td>Státusz</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>STATUS</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-worksheet_worker_ext">FIGDEF# worksheet_worker_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Munkalap</span> <span class="hljs-string">résztvevő</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Munkalap</span> <span class="hljs-string">résztvevői</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">worksheet_worker</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>worksheet</td>
+<td>Munkalap</td>
+<td>Worksheet</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>worksheet</td>
+<td>name</td>
+<td>worksheet_id</td>
+</tr>
+<tr>
+<td>worker_ext</td>
+<td>Résztvevő</td>
+<td>WorkerExt</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>worker_ext</td>
+<td>person.last_name</td>
+<td>worker_id</td>
+</tr>
+<tr>
+<td>status</td>
+<td>Státusz</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>STATUS</td>
+<td>description</td>
+<td>status_did</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-worksheet_material">FIGDEF# worksheet_material</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Munkalap</span> <span class="hljs-string">anyag</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Munkalap</span> <span class="hljs-string">anyagai</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Hide</th>
+<th>SubType</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>material_use_did</td>
+<td>Tétel jellege</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>MATERIAL_USE</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>worksheet_id</td>
+<td>Munkalap</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>worksheet</td>
+<td><a href="http://worksheet.id">worksheet.id</a></td>
+<td>X</td>
+<td></td>
+</tr>
+<tr>
+<td>material_id</td>
+<td>Anyag</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>material</td>
+<td><a href="http://material.id">material.id</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>quantity</td>
+<td>Mennyiség</td>
+<td>DECIMAL</td>
+<td>19</td>
+<td>2</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>CURRENCY</td>
+</tr>
+<tr>
+<td>unit_of_measure_did</td>
+<td>Mértékegység</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>UNIT_OF_MEASURE</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>material_reason_did</td>
+<td>Indoklás</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>MATERIAL_REASON</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>note</td>
+<td>Megjegyzés</td>
+<td>VARCHAR</td>
+<td>2000</td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>sold_flag</td>
+<td>Eladott</td>
+<td>BOOL</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>status_did</td>
+<td>Státusz</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>STATUS</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-worksheet_material_ext">FIGDEF# worksheet_material_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Munkalap</span> <span class="hljs-string">anyag</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Munkalap</span> <span class="hljs-string">anyagai</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">worksheet_material</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+<th>Hide</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>material_use</td>
+<td>Tétel jellege</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>MATERIAL_USE</td>
+<td>description</td>
+<td>material_use_did</td>
+<td></td>
+</tr>
+<tr>
+<td>worksheet</td>
+<td>Munkalap</td>
+<td>Worksheet</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>worksheet</td>
+<td>name</td>
+<td>worksheet_id</td>
+<td>X</td>
+</tr>
+<tr>
+<td>material</td>
+<td>Anyag</td>
+<td>Material</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>material</td>
+<td>name</td>
+<td>material_id</td>
+<td></td>
+</tr>
+<tr>
+<td>material_reason</td>
+<td>Indoklás</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>MATERIAL_REASON</td>
+<td>description</td>
+<td>material_reason_did</td>
+<td></td>
+</tr>
+<tr>
+<td>status</td>
+<td>Státusz</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>STATUS</td>
+<td>description</td>
+<td>status_did</td>
+<td></td>
+</tr>
+<tr>
+<td>unit_of_measure</td>
+<td>Mértékegység</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>UNIT_OF_MEASURE</td>
+<td>description</td>
+<td>unit_of_measure_did</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-worksheet_document">FIGDEF# worksheet_document</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Munkalap</span> <span class="hljs-string">dokumentum</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Munkalap</span> <span class="hljs-string">dokumentumok</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>worksheet_id</td>
+<td>Termék</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>worksheet</td>
+<td><a href="http://worksheet.id">worksheet.id</a></td>
+</tr>
+<tr>
+<td>document_id</td>
+<td>Dokumentum</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>document</td>
+<td><a href="http://document.id">document.id</a></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-worksheet_document_ext">FIGDEF# worksheet_document_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Munkalap</span> <span class="hljs-string">dokumentum</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Munkalap</span> <span class="hljs-string">dokumentumok</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">worksheet_document</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>document</td>
+<td>Dokumentum</td>
+<td>DocumentExt</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>document_ext</td>
+<td>name</td>
+<td>document_id</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-closure">FIGDEF# closure</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Elszámolás</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Elszámolások</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>SubType</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>partner_id</td>
+<td>Partner</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>partner</td>
+<td><a href="http://partner.id">partner.id</a></td>
+<td></td>
+</tr>
+<tr>
+<td>inst_loc_id</td>
+<td>Telepítési hely</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>inst_loc</td>
+<td>inst_loc.id</td>
+<td></td>
+</tr>
+<tr>
+<td>project_id</td>
+<td>Projekt</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>project</td>
+<td><a href="http://project.id">project.id</a></td>
+<td></td>
+</tr>
+<tr>
+<td>closure_date</td>
+<td>Elszámolás dátuma</td>
+<td>DATE</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>closure_status_did</td>
+<td>Elszámolás státusz</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>CLOSURE_STATUS</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>invoice_out_id</td>
+<td>Számla</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>invoice_out</td>
+<td>invoice_out.id</td>
+<td></td>
+</tr>
+<tr>
+<td>margin</td>
+<td>Árrés</td>
+<td>DECIMAL</td>
+<td>19</td>
+<td>2</td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>PERCENT</td>
+</tr>
+<tr>
+<td>hourly_rate</td>
+<td>Óradíj</td>
+<td>DECIMAL</td>
+<td>19</td>
+<td>2</td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>CURRENCY</td>
+</tr>
+<tr>
+<td>distance_fee</td>
+<td>Távolsági díj</td>
+<td>DECIMAL</td>
+<td>19</td>
+<td>2</td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>CURRENCY</td>
+</tr>
+<tr>
+<td>departure_fee</td>
+<td>Kiszállási díj</td>
+<td>DECIMAL</td>
+<td>19</td>
+<td>2</td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>CURRENCY</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-closure_ext">FIGDEF# closure_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Elszámolás</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Elszámolások</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">closure</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>partner</td>
+<td>Partner</td>
+<td>Partner</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>partner</td>
+<td>name</td>
+<td>partner_id</td>
+</tr>
+<tr>
+<td>inst_loc</td>
+<td>Telepítési hely</td>
+<td>InstLoc</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>inst_loc</td>
+<td>name</td>
+<td>inst_loc_id</td>
+</tr>
+<tr>
+<td>project</td>
+<td>Projekt</td>
+<td>Project</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>project</td>
+<td>name</td>
+<td>project_id</td>
+</tr>
+<tr>
+<td>closure_status</td>
+<td>Elszámolás státusz</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>CLOSURE_STATUS</td>
+<td>description</td>
+<td>closure_status_did</td>
+</tr>
+<tr>
+<td>invoice_out</td>
+<td>Számla</td>
+<td>InvoiceOut</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>invoice_out</td>
+<td>invoice_no</td>
+<td>invoice_out_id</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-closure_from_menu_ext">FIGDEF# closure_from_menu_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Elszámolás</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Elszámolások</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">closure</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+<th>Hide</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>partner</td>
+<td>Partner</td>
+<td>Partner</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>partner</td>
+<td>name</td>
+<td>partner_id</td>
+<td></td>
+</tr>
+<tr>
+<td>inst_loc</td>
+<td>Telepítési hely</td>
+<td>InstLoc</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>inst_loc</td>
+<td>name</td>
+<td>inst_loc_id</td>
+<td></td>
+</tr>
+<tr>
+<td>project</td>
+<td>Projekt</td>
+<td>Project</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>project</td>
+<td>name</td>
+<td>project_id</td>
+<td></td>
+</tr>
+<tr>
+<td>closure_status</td>
+<td>Elszámolás státusz</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>CLOSURE_STATUS</td>
+<td>description</td>
+<td>closure_status_did</td>
+<td></td>
+</tr>
+<tr>
+<td>invoice_out</td>
+<td>Számla</td>
+<td>InvoiceOut</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>invoice_out</td>
+<td>invoice_no</td>
+<td>invoice_out_id</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-closure_item">FIGDEF# closure_item</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Elszámolás</span> <span class="hljs-string">tétel</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Elszámolás</span> <span class="hljs-string">tételei</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">TABLE</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>SubType</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id</td>
+<td>IDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>closure_id</td>
+<td>Elszámolás</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>closure</td>
+<td><a href="http://closure.id">closure.id</a></td>
+<td></td>
+</tr>
+<tr>
+<td>worksheet_id</td>
+<td>Munkalap</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>worksheet</td>
+<td><a href="http://worksheet.id">worksheet.id</a></td>
+<td></td>
+</tr>
+<tr>
+<td>closure_item_type_did</td>
+<td>Tétel típus</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>CLOSURE_ITEM_TYPE</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>worksheet_worker_id</td>
+<td>Munkalap résztvevő</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>worker</td>
+<td><a href="http://worker.id">worker.id</a></td>
+<td></td>
+</tr>
+<tr>
+<td>worksheet_material_id</td>
+<td>Munkalap anyag</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>material</td>
+<td><a href="http://material.id">material.id</a></td>
+<td></td>
+</tr>
+<tr>
+<td>price</td>
+<td>Ár</td>
+<td>DECIMAL</td>
+<td>19</td>
+<td>2</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>CURRENCY</td>
+</tr>
+<tr>
+<td>currency_did</td>
+<td>Pénznem</td>
+<td>DICT</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>CURRENCY</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>invoice_out_item_id</td>
+<td>Számla tétel</td>
+<td>FKIDENT</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>TABLE</td>
+<td>invoice_out_item</td>
+<td>invoice_out_item.id</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="figdef-closure_item_ext">FIGDEF# closure_item_ext</h3>
+<pre><code class="language-yaml">    <span class="hljs-attr">label:</span> <span class="hljs-string">Elszámolás</span> <span class="hljs-string">tétel</span>
+    <span class="hljs-attr">pluralLabel:</span> <span class="hljs-string">Elszámolás</span> <span class="hljs-string">tételei</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">EXTEND</span>
+    <span class="hljs-attr">parent:</span> <span class="hljs-string">closure_item</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Label</th>
+<th>Type</th>
+<th>Size</th>
+<th>Decimals</th>
+<th>Nullable</th>
+<th>Unique</th>
+<th>AutoIncr.</th>
+<th>Description</th>
+<th>FT</th>
+<th>Foreign</th>
+<th>FK</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>worksheet</td>
+<td>Munkalap</td>
+<td>Worksheet</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>worksheet</td>
+<td>name</td>
+<td>worksheet_id</td>
+</tr>
+<tr>
+<td>closure_item_type</td>
+<td>Tétel típus</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>CLOSURE_ITEM_TYPE</td>
+<td>description</td>
+<td>closure_item_type_did</td>
+</tr>
+<tr>
+<td>worksheet_worker</td>
+<td>Munkalap résztvevő</td>
+<td>WorkerExt</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>EXTEND</td>
+<td>worker_ext</td>
+<td>person.last_name</td>
+<td>worksheet_worker_id</td>
+</tr>
+<tr>
+<td>worksheet_material</td>
+<td>Munkalap anyag</td>
+<td>Material</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>material</td>
+<td>name</td>
+<td>worksheet_material_id</td>
+</tr>
+<tr>
+<td>currency</td>
+<td>Pénznem</td>
+<td>Dictionary</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>DICT</td>
+<td>CURRENCY</td>
+<td>description</td>
+<td>currency_did</td>
+</tr>
+<tr>
+<td>invoice_out_item</td>
+<td>Számla tétel</td>
+<td>InvoiceOutItem</td>
+<td></td>
+<td></td>
+<td>X</td>
+<td></td>
+<td></td>
+<td></td>
+<td>DTO</td>
+<td>invoice_out_item</td>
+<td>invoice_no</td>
+<td>invoice_out_item_id</td>
+</tr>
+</tbody>
+</table>
+
+            
+            
+        </body>
+        </html>

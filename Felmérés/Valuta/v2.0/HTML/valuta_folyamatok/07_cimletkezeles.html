@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Valutav&aacute;lt&oacute; Rendszer - C&iacute;mletez&eacute;s Param&eacute;terez&eacute;si Folyamatok</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="valutaváltó-rendszer---címletezés-paraméterezési-folyamatok">Valutaváltó Rendszer - Címletezés Paraméterezési Folyamatok</h1>
+<h2 id="bevezetés">Bevezetés</h2>
+<p>Ez a dokumentum a valutaváltó rendszer címletezési paraméterezési folyamatait írja le, amelyek lehetővé teszik a rugalmas és optimalizált címletkezelést különböző üzleti helyzetekben.</p>
+<h2 id="címletezés-paraméterezés-adminisztrációs-folyamatai">Címletezés paraméterezés adminisztrációs folyamatai</h2>
+<h3 id="címletkészlet-definiálása">Címletkészlet definiálása</h3>
+<ol>
+<li>
+<p>A rendszeradminisztrátor minden devizanemhez definiálja az elérhető címleteket (<code>currency_denomination</code>):</p>
+<ul>
+<li>Devizanem kiválasztása (<code>currency_id</code>)</li>
+<li>Címlet értékének megadása (<code>denomination</code>)</li>
+<li>Érme vagy bankjegy jelölése (<code>is_coin</code>)</li>
+<li>Aktív státusz beállítása (<code>is_active</code>)</li>
+<li>Rendezési sorrend beállítása (<code>sorting_order</code>) a címletek logikus megjelenítéséhez</li>
+<li>Elérhetőség kategóriájának megadása (<code>availability_did</code>) a <code>DENOMINATION_AVAILABILITY</code> szótárból:
+<ul>
+<li>COMMON - Gyakori címlet</li>
+<li>STANDARD - Általános címlet</li>
+<li>RARE - Ritka címlet</li>
+<li>OBSOLETE - Elavult címlet</li>
+<li>SPECIAL - Speciális/Gyűjtői címlet</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p>A címletkészlet karbantartása a devizanem-kezelés részét képezi, és a rendszeradminisztrátor felelőssége.</p>
+</li>
+<li>
+<p>Új címlet bevezetésekor vagy régi kivonásakor a címletkészlet módosítható, ami automatikusan hatással van a címletezési optimalizációs folyamatokra.</p>
+</li>
+</ol>
+<h3 id="címletezési-optimalizációs-stratégiák-definiálása">Címletezési optimalizációs stratégiák definiálása</h3>
+<ol>
+<li>
+<p>A rendszerben különböző címletezési optimalizációs stratégiák definiálhatók (<code>denomination_optimization</code>):</p>
+<ul>
+<li>Stratégia neve (<code>name</code>) és leírása (<code>description</code>)</li>
+<li>Stratégia típusának kiválasztása (<code>strategy_did</code>) a <code>OPTIMIZATION_STRATEGY</code> szótárból:
+<ul>
+<li>GREEDY - Mohó algoritmus (legnagyobb címletekkel kezdve)</li>
+<li>DYNAMIC - Dinamikus programozás (minimális darabszámra optimalizálva)</li>
+<li>MIN_COINS - Minimum érme kiadása</li>
+<li>MIN_BANKNOTES - Minimum bankjegy kiadása</li>
+<li>MIN_TOTAL - Minimum összes darabszám</li>
+<li>CUSTOM - Egyedi algoritmus</li>
+<li>BRANCH_SPECIFIC - Fiókspecifikus optimalizálás</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p>A stratégiákhoz további paraméterek állíthatók be:</p>
+<ul>
+<li>Prioritási sorrend a címletekre (<code>priority_order</code>) JSON formátumban</li>
+<li>Érmeminimalizálás bekapcsolása (<code>min_coins</code>)</li>
+<li>Bankjegyminimalizálás bekapcsolása (<code>min_banknotes</code>)</li>
+<li>Összes darabszám minimalizálása (<code>min_total_count</code>)</li>
+<li>Alapértelmezett stratégia jelölése (<code>is_default</code>)</li>
+</ul>
+</li>
+<li>
+<p>Az optimalizációs stratégiák konfigurálásához rendszeradminisztrátori jogosultság szükséges.</p>
+</li>
+<li>
+<p>Az optimalizációs stratégiák tesztelése és finomhangolása a bevezetés előtt ajánlott.</p>
+</li>
+</ol>
+<h3 id="címletezési-szabályok-definiálása">Címletezési szabályok definiálása</h3>
+<ol>
+<li>
+<p>Különböző üzleti helyzetekre specifikus címletezési szabályok hozhatók létre (<code>denomination_rule</code>):</p>
+<ul>
+<li>Szabály neve (<code>rule_name</code>) és devizanem (<code>currency_id</code>)</li>
+<li>Szabály típusának kiválasztása (<code>rule_type_did</code>) a <code>DENOMINATION_RULE_TYPE</code> szótárból:
+<ul>
+<li>FIXED - Fix címletezés</li>
+<li>AMOUNT_BASED - Összeg alapú</li>
+<li>CUSTOMER_TYPE - Ügyfél típus alapú</li>
+<li>TRANSACTION_TYPE - Tranzakció típus alapú</li>
+<li>BRANCH_DEFAULT - Fiók alapértelmezett</li>
+<li>TIME_BASED - Időszak alapú</li>
+<li>AVAILABILITY - Készlet alapú</li>
+<li>PRIORITY - Prioritás alapú</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p>A szabályokhoz beállítható paraméterek:</p>
+<ul>
+<li>Összeghatárok (<code>min_amount</code>, <code>max_amount</code>)</li>
+<li>Szabály konfigurációja JSON formátumban (<code>rule_config</code>)</li>
+<li>Fiókspecifikus alkalmazás (<code>branch_id</code>)</li>
+<li>Használandó optimalizációs stratégia (<code>optimization_id</code>)</li>
+</ul>
+</li>
+<li>
+<p>A szabályok definiálásához szükséges jogosultsági szint: SUPERVISOR vagy MANAGER.</p>
+</li>
+<li>
+<p>A szabályok aktiválása/deaktiválása az <code>is_active</code> mező segítségével történik.</p>
+</li>
+</ol>
+<h2 id="címletezési-folyamatok-alkalmazása-a-napi-működésben">Címletezési folyamatok alkalmazása a napi működésben</h2>
+<h3 id="tranzakciós-címletezés">Tranzakciós címletezés</h3>
+<ol>
+<li>
+<p>Valutaváltási tranzakció során a rendszer az alábbi lépéseket követi a címletezés meghatározásához:</p>
+<ul>
+<li>A tranzakció típusa és összege alapján meghatározza az alkalmazandó címletezési szabályt</li>
+<li>A fiók-specifikus szabályokat előnyben részesíti az általános szabályokkal szemben</li>
+<li>Az ügyfél típusa és a tranzakció jellege befolyásolhatja a címletezési szabály kiválasztását</li>
+</ul>
+</li>
+<li>
+<p>A címletezési szabály által meghatározott optimalizációs stratégia alapján a rendszer:</p>
+<ul>
+<li>Kiszámítja az optimális címletkombinációt</li>
+<li>Figyelembe veszi a fiók aktuális készletét</li>
+<li>Jelzi, ha az optimális címletezés nem lehetséges a készlethiány miatt</li>
+</ul>
+</li>
+<li>
+<p>A pénztáros a javasolt címletezést:</p>
+<ul>
+<li>Elfogadhatja és alkalmazhatja</li>
+<li>Módosíthatja, ha az ügyfélnek specifikus címletigénye van</li>
+<li>Felülbírálhatja különleges esetekben, megfelelő jogosultsággal</li>
+</ul>
+</li>
+<li>
+<p>A rendszer rögzíti a kiválasztott címletezési szabályt (<code>denomination_rule_id</code>) a tranzakcióban és naplózza a teljes címletezési folyamatot (<code>denomination_transaction_log</code>).</p>
+</li>
+</ol>
+<h3 id="pénztárkezelésben-való-alkalmazás">Pénztárkezelésben való alkalmazás</h3>
+<ol>
+<li>
+<p>Pénztárnyitáskor a rendszer az alapértelmezett címletezési szabályt társítja a pénztár munkamenethez:</p>
+<ul>
+<li>A pénztár alapértelmezett szabálya (<code>cashier_desk.denomination_rule_id</code>)</li>
+<li>A fiók alapértelmezett szabálya, ha a pénztárnak nincs specifikus szabálya</li>
+<li>A rendszer általános alapértelmezett szabálya, ha egyik sincs definiálva</li>
+</ul>
+</li>
+<li>
+<p>A pénztáros a munkamenet során:</p>
+<ul>
+<li>Használhatja az alapértelmezett címletezési szabályt</li>
+<li>Ideiglenesen másik szabályt választhat specifikus tranzakciókhoz</li>
+<li>Egyedi címletezést alkalmazhat a rendszer javaslatától eltérően</li>
+</ul>
+</li>
+<li>
+<p>A címletezéssel kapcsolatos összes döntés naplózásra kerül.</p>
+</li>
+</ol>
+<h3 id="készpénzátadások-címletezése">Készpénzátadások címletezése</h3>
+<ol>
+<li>
+<p>Pénztárak közötti készpénzátadás során:</p>
+<ul>
+<li>A rendszer optimális címletezési ajánlást készít a <code>cash_transfer.denomination_rule_id</code> alapján</li>
+<li>A címletezés figyelembe veszi mindkét pénztár aktuális készletét</li>
+<li>A címleteket tételesen rögzítik a <code>cash_transfer_detail</code> entitásban, hivatkozva a megfelelő <code>currency_denomination_id</code>-ra</li>
+</ul>
+</li>
+<li>
+<p>Az átadás során a címletek darabszáma pontosan rögzítésre kerül és a készletek automatikusan frissülnek.</p>
+</li>
+</ol>
+<h3 id="szállítmányok-címletezése">Szállítmányok címletezése</h3>
+<ol>
+<li>
+<p>Fiók közötti szállítmányoknál:</p>
+<ul>
+<li>A szállítmányhoz társított címletezési szabály (<code>branch_transfer.denomination_rule_id</code>) meghatározza az optimális címletkombinációt</li>
+<li>A szabály figyelembe veszi a küldő és fogadó fiók igényeit és készletét</li>
+<li>A szállítmány tételeit a <code>branch_transfer_item</code> entitásban rögzítik, hivatkozva a <code>currency_denomination_id</code>-ra</li>
+</ul>
+</li>
+<li>
+<p>Ütemezett szállítmányoknál:</p>
+<ul>
+<li>Az ütemezett szállítás alapértelmezett címletezési szabálya (<code>scheduled_transfer.denomination_rule_id</code>) érvényesül</li>
+<li>A tényleges szállítmányok létrehozásakor ez a szabály öröklődik</li>
+</ul>
+</li>
+</ol>
+<h2 id="címletezési-folyamatok-ellenőrzése-és-elemzése">Címletezési folyamatok ellenőrzése és elemzése</h2>
+<h3 id="címletezési-napló-elemzése">Címletezési napló elemzése</h3>
+<ol>
+<li>
+<p>A címletezési folyamatok naplózása a <code>denomination_transaction_log</code> entitásban történik:</p>
+<ul>
+<li>Rögzítésre kerül a kért összeg és a tényleges kiadott összeg</li>
+<li>Tárolódik az eredeti kérés és a végső címletezés</li>
+<li>A manuális felülbírálások jelölésre kerülnek (<code>manual_override</code>)</li>
+</ul>
+</li>
+<li>
+<p>A napló elemzésével a vezetők:</p>
+<ul>
+<li>Értékelhetik a címletezési szabályok hatékonyságát</li>
+<li>Azonosíthatják a gyakori felülbírálási mintákat</li>
+<li>Optimalizálhatják a címletkészletet a valós igények alapján</li>
+</ul>
+</li>
+</ol>
+<h3 id="címletezési-statisztikák">Címletezési statisztikák</h3>
+<ol>
+<li>
+<p>A rendszer rendszeres statisztikákat készít a címletezésről:</p>
+<ul>
+<li>Címletenként kiadott és bevételezett mennyiségek</li>
+<li>Címletezési szabályok alkalmazási gyakorisága</li>
+<li>Optimalizációs stratégiák eredményességi mutatói</li>
+<li>Felülbírálások gyakorisága és okai</li>
+</ul>
+</li>
+<li>
+<p>Ezek a statisztikák segítik:</p>
+<ul>
+<li>A címletezési stratégiák finomhangolását</li>
+<li>A készletgazdálkodás optimalizálását</li>
+<li>A pénztárosok képzési igényeinek azonosítását</li>
+<li>A különleges ügyfélpreferenciák megismerését</li>
+</ul>
+</li>
+</ol>
+<h2 id="címletezési-paraméterek-karbantartása">Címletezési paraméterek karbantartása</h2>
+<h3 id="rendszeres-felülvizsgálat">Rendszeres felülvizsgálat</h3>
+<ol>
+<li>
+<p>A címletezési paramétereket rendszeresen felül kell vizsgálni:</p>
+<ul>
+<li>Negyedévente a szabályok és stratégiák teljesítmény-értékelése</li>
+<li>Félévente teljes körű hatékonyság-elemzés</li>
+<li>Évente a teljes paraméterrendszer újraértékelése</li>
+</ul>
+</li>
+<li>
+<p>A felülvizsgálat során különös figyelmet kell fordítani:</p>
+<ul>
+<li>A ritkán használt vagy hatékonytalan szabályokra</li>
+<li>Az ügyfelek által gyakran felülbírált címletezési ajánlásokra</li>
+<li>A fiók-specifikus igények változásaira</li>
+</ul>
+</li>
+</ol>
+<h3 id="változások-bevezetése">Változások bevezetése</h3>
+<ol>
+<li>
+<p>A címletezési paraméterek módosítása kontrollált folyamat:</p>
+<ul>
+<li>A változtatásokat először teszt környezetben kell ellenőrizni</li>
+<li>A módosítások előtt szimulációkat kell végezni valós tranzakciós adatokon</li>
+<li>A változtatásokat fokozatosan kell bevezetni (például először csak egy fiókban)</li>
+</ul>
+</li>
+<li>
+<p>A paraméterek módosítása után:</p>
+<ul>
+<li>A pénztárosokat tájékoztatni kell a változásokról</li>
+<li>A változtatások hatását szorosan nyomon kell követni</li>
+<li>Az esetleges problémákat azonnal kezelni kell</li>
+</ul>
+</li>
+</ol>
+<h3 id="extrém-helyzetek-kezelése">Extrém helyzetek kezelése</h3>
+<ol>
+<li>
+<p>Rendkívüli helyzetekre specifikus címletezési szabályok definiálhatók:</p>
+<ul>
+<li>Pénzhiány vagy többlet esetére</li>
+<li>Új címletek bevezetésekor</li>
+<li>Régi címletek kivonásakor</li>
+<li>Szezonális csúcsterhelés idejére</li>
+</ul>
+</li>
+<li>
+<p>A rendkívüli szabályokat:</p>
+<ul>
+<li>Előre el kell készíteni</li>
+<li>Tesztelni kell</li>
+<li>Szükség esetén azonnal aktiválni lehet</li>
+<li>A helyzet normalizálódása után deaktiválni kell</li>
+</ul>
+</li>
+</ol>
+
+            
+            
+        </body>
+        </html>
