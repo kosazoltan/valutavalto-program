@@ -17,7 +17,7 @@ import java.util.UUID;
  * Dokumentum feltöltés (multipart/form-data) és lekérdezés.
  */
 @RestController
-@RequestMapping("/api/v1/documents")
+@RequestMapping("/api/v1/scanned-documents")
 @RequiredArgsConstructor
 public class DocumentScannerController {
 
