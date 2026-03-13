@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.entity.CameraTransactionLink;
 import hu.puzzleir.valuta.repository.CameraRecordingRepository;
 import hu.puzzleir.valuta.repository.CameraTransactionLinkRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

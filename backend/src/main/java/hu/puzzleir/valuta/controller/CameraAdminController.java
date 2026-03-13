@@ -8,6 +8,7 @@ import hu.puzzleir.valuta.service.CameraCleanupService;
 import hu.puzzleir.valuta.service.CameraUploadService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;

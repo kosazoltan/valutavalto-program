@@ -12,6 +12,7 @@ import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.CameraRecordingService;
 import hu.puzzleir.valuta.service.CameraTransactionLinker;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
