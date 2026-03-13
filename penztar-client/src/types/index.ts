@@ -4,8 +4,8 @@
 
 // --- Auth ---
 export interface LoginRequest {
-  branchCode: string;
-  username: string;
+  companyCode: string;
+  workerCode: string;
   password: string;
 }
 

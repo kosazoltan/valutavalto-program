@@ -1,5 +1,6 @@
 import { useState, useCallback, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { useAuthStore } from '@/stores/authStore';
 import { login, selectRole } from '@/api/auth';
 import type { LoginResponse, OperationalRoleCode } from '@/types';
@@ -45,8 +46,8 @@ export default function LoginPage() {
 
       try {
         const response = await login({
-          branchCode: localBranchCode,
-          username,
+          companyCode: localBranchCode,
+          workerCode: username,
           password,
         });
 
@@ -69,10 +70,31 @@ export default function LoginPage() {
           navigate('/menu');
         }
       } catch (err: unknown) {
-        if (err instanceof Error) {
-          setError('Hibás felhasználónév vagy jelszó');
+        if (axios.isAxiosError(err)) {
+          if (!err.response) {
+            setError('Kapcsolódási hiba. Ellenőrizze a hálózatot.');
+          } else {
+            const responseData = err.response.data as unknown;
+            const backendMessage =
+              typeof responseData === 'string'
+                ? responseData
+                : typeof responseData === 'object' && responseData !== null
+                  ? (responseData as { message?: string; error?: string }).message
+                    ?? (responseData as { message?: string; error?: string }).error
+                  : null;
+
+            if (backendMessage) {
+              setError(backendMessage);
+            } else if (err.response.status >= 500) {
+              setError('Szerverhiba. Próbálja később.');
+            } else {
+              setError('Hibás felhasználónév vagy jelszó');
+            }
+          }
+        } else if (err instanceof Error) {
+          setError(err.message || 'Ismeretlen hiba történt.');
         } else {
-          setError('Kapcsolódási hiba. Ellenőrizze a hálózatot.');
+          setError('Ismeretlen hiba történt.');
         }
       } finally {
         setIsLoading(false);

@@ -37,6 +37,18 @@
     {
       "from": "node_modules/sql.js/dist/sql-wasm.wasm",
       "to": "sql-wasm.wasm"
+    },
+    {
+      "from": "node_modules/sql.js/dist/sql-wasm.wasm",
+      "to": "node_modules/sql.js/dist/sql-wasm.wasm"
+    },
+    {
+      "from": "node_modules/sql.js/dist/sql-wasm.js",
+      "to": "node_modules/sql.js/dist/sql-wasm.js"
+    },
+    {
+      "from": "node_modules/sql.js/package.json",
+      "to": "node_modules/sql.js/package.json"
     }
   ]
 }

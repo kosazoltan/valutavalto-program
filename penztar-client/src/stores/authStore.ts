@@ -25,6 +25,9 @@ interface AuthState {
 
 function resolveCompanyType(branchCode: string): CompanyType {
   const code = parseInt(branchCode, 10);
+  if (Number.isNaN(code)) {
+    return 'BEST_CHANGE';
+  }
   return code < 151 ? 'BEST_CHANGE' : 'EXPRESSZ';
 }
 
