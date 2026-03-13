@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@ConditionalOnProperty(name = "camera.enabled", havingValue = "true")
 @RestController
 @RequestMapping("/api/v1/camera")
 @RequiredArgsConstructor

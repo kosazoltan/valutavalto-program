@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 
+@ConditionalOnProperty(name = "camera.enabled", havingValue = "true")
 @Service
 @RequiredArgsConstructor
 @Slf4j

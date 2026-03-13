@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+@ConditionalOnProperty(name = "camera.enabled", havingValue = "true")
 @Service
 @RequiredArgsConstructor
 @Slf4j

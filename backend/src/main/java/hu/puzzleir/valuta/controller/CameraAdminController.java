@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+@ConditionalOnProperty(name = "camera.enabled", havingValue = "true")
 @RestController
 @RequestMapping("/api/v1/camera/admin")
 @RequiredArgsConstructor

@@ -22,6 +22,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Iterator;
 import java.util.UUID;
 
+@ConditionalOnProperty(name = "camera.enabled", havingValue = "true")
 @Service
 @RequiredArgsConstructor
 @Slf4j
