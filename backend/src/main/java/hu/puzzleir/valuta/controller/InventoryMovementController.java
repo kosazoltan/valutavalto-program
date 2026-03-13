@@ -14,21 +14,21 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Készlet mozgás napló controller.
+ * KĂ©szlet mozgĂˇs naplĂł controller.
  *
  * GET /api/v1/inventory/movements?branchId=&currency=&date=
  * GET /api/v1/inventory/balance?branchId=&currency=&date=
- * POST /api/v1/inventory/adjustment — supervisor only (lásd InventoryController.correction)
+ * POST /api/v1/inventory/adjustment â€” supervisor only (lĂˇsd InventoryController.correction)
  */
 @RestController
-@RequestMapping("/api/v1/inventory")
+@RequestMapping("/api/v1/inventory-movements")
 @RequiredArgsConstructor
 public class InventoryMovementController {
 
     private final InventoryMovementService inventoryMovementService;
 
     /**
-     * Készlet mozgások listázása
+     * KĂ©szlet mozgĂˇsok listĂˇzĂˇsa
      */
     @GetMapping("/movement-log")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
@@ -40,7 +40,7 @@ public class InventoryMovementController {
     }
 
     /**
-     * Napi készlet egyenleg
+     * Napi kĂ©szlet egyenleg
      */
     @GetMapping("/daily-balance")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")

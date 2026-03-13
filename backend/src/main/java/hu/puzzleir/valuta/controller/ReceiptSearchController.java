@@ -18,11 +18,11 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
- * Bizonylat keresĹ‘ controller.
+ * Bizonylat keresÄąâ€ controller.
  */
 @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
 @RestController
-@RequestMapping("/api/v1/receipts")
+@RequestMapping("/api/v1/receipts-search")
 @RequiredArgsConstructor
 public class ReceiptSearchController {
 
@@ -30,7 +30,7 @@ public class ReceiptSearchController {
 
     /**
      * GET /api/v1/receipts/search
-     * Bizonylat keresĂ©s.
+     * Bizonylat keresÄ‚Â©s.
      */
     @GetMapping("/search")
     public ResponseEntity<Page<ReceiptSearchResultDto>> search(
@@ -51,7 +51,7 @@ public class ReceiptSearchController {
 
     /**
      * GET /api/v1/receipts/{id}
-     * Bizonylat rĂ©szletek.
+     * Bizonylat rÄ‚Â©szletek.
      */
     
 }

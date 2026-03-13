@@ -15,11 +15,11 @@ import jakarta.validation.Valid;
 import java.util.Map;
 
 /**
- * Pénztáros kezelés kiegészítő controller — jelenlét, szünet, jelszó reset.
+ * PĂ©nztĂˇros kezelĂ©s kiegĂ©szĂ­tĹ‘ controller â€” jelenlĂ©t, szĂĽnet, jelszĂł reset.
  * Az alap CRUD a WorkerController-ben van.
  */
 @RestController
-@RequestMapping("/api/v1/workers")
+@RequestMapping("/api/v1/worker-management")
 @RequiredArgsConstructor
 public class WorkerManagementController {
 
@@ -27,7 +27,7 @@ public class WorkerManagementController {
 
     /**
      * GET /api/v1/workers/{id}/attendance
-     * Jelenlét napló.
+     * JelenlĂ©t naplĂł.
      */
     @GetMapping("/{id}/attendance")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
@@ -39,7 +39,7 @@ public class WorkerManagementController {
 
     /**
      * POST /api/v1/workers/{id}/reset-password
-     * Jelszó reset.
+     * JelszĂł reset.
      */
     @PostMapping("/{id}/reset-password")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
@@ -56,7 +56,7 @@ public class WorkerManagementController {
 
     /**
      * POST /api/v1/workers/{id}/break-start
-     * Szünet indítás.
+     * SzĂĽnet indĂ­tĂˇs.
      */
     @PostMapping("/{id}/break-start")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
@@ -69,7 +69,7 @@ public class WorkerManagementController {
 
     /**
      * POST /api/v1/workers/{id}/break-end
-     * Szünet befejezés.
+     * SzĂĽnet befejezĂ©s.
      */
     @PostMapping("/{id}/break-end")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
