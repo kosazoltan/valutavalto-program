@@ -189,9 +189,10 @@ app.whenReady().then(async () => {
     await initDatabase();
   } catch (err) {
     log.error('[App] initDatabase failed', err);
+    const details = err instanceof Error ? err.message : String(err);
     dialog.showErrorBox(
       'Adatbázis hiba',
-      'A helyi adatbázist nem sikerült inicializálni. Kérjük, ellenőrizd a jogosultságokat és indítsd újra az alkalmazást.',
+      `A helyi adatbázist nem sikerült inicializálni.\n\nRészletek:\n${details}`,
     );
     app.quit();
     return;

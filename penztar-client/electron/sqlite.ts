@@ -10,18 +10,43 @@ function getDbPath(): string {
   const userDir = app.getPath('home');
   const valutaDir = path.join(userDir, '.valuta');
   if (!fs.existsSync(valutaDir)) {
-    fs.mkdirSync(valutaDir, { recursive: true });
+    try {
+      fs.mkdirSync(valutaDir, { recursive: true });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new Error(`Nem sikerült létrehozni a valuta mappát: ${valutaDir}. ${message}`);
+    }
   }
   return path.join(valutaDir, 'local.db');
+}
+
+function resolveWasmPath(): string {
+  const candidates: string[] = [];
+
+  if (app.isPackaged) {
+    candidates.push(path.join(process.resourcesPath, 'sql-wasm.wasm'));
+    candidates.push(path.join(app.getAppPath(), 'resources', 'sql-wasm.wasm'));
+    candidates.push(path.join(app.getAppPath(), 'sql-wasm.wasm'));
+    candidates.push(path.join(__dirname, 'sql-wasm.wasm'));
+  } else {
+    candidates.push(path.join(__dirname, '../node_modules/sql.js/dist/sql-wasm.wasm'));
+    candidates.push(path.join(process.cwd(), 'node_modules/sql.js/dist/sql-wasm.wasm'));
+  }
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  throw new Error(`sql-wasm.wasm nem található. Próbált útvonalak: ${candidates.join(' | ')}`);
 }
 
 export async function initDatabase(): Promise<void> {
   try {
     dbPath = getDbPath();
 
-    const wasmPath = app.isPackaged
-      ? path.join(process.resourcesPath, 'sql-wasm.wasm')
-      : path.join(__dirname, '../node_modules/sql.js/dist/sql-wasm.wasm');
+    const wasmPath = resolveWasmPath();
 
     const wasmBinary = fs.readFileSync(wasmPath);
     const SQL = await initSqlJs({ wasmBinary });
@@ -140,8 +165,29 @@ export async function initDatabase(): Promise<void> {
 
     saveDatabase();
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    throw new Error(`Database init failed: ${message}`);
+    const error = err as NodeJS.ErrnoException | Error;
+    const errorCode = 'code' in error && error.code ? String(error.code) : 'unknown';
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const wasmPath = (() => {
+      try {
+        return resolveWasmPath();
+      } catch (resolveErr) {
+        const resolveMessage = resolveErr instanceof Error ? resolveErr.message : String(resolveErr);
+        return `resolve error: ${resolveMessage}`;
+      }
+    })();
+
+    const details = [
+      `dbPath=${dbPath || 'n/a'}`,
+      `wasmPath=${wasmPath}`,
+      `resourcesPath=${process.resourcesPath}`,
+      `appPath=${app.getAppPath()}`,
+      `isPackaged=${app.isPackaged}`,
+      `errorCode=${errorCode}`,
+      `errorMessage=${errorMessage}`,
+    ].join('\n');
+
+    throw new Error(`Database init failed:\n${details}`);
   }
 }
 
