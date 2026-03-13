@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { CredentialResponse, GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google'
 import { useAuthStore } from '../../stores/authStore'
 import { authApi } from '../../services/api'
 import { Eye, EyeOff, User, Lock, Building2 } from 'lucide-react'
@@ -15,6 +16,7 @@ export default function LoginPage() {
 
   const login = useAuthStore((state) => state.login)
   const navigate = useNavigate()
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -26,6 +28,34 @@ export default function LoginPage() {
         companyCode,
         workerCode,
         password
+      })
+
+      login(
+        response.worker,
+        response.token,
+        response.tokenType,
+        response.expiresAt
+      )
+      navigate('/dashboard')
+    } catch (err: unknown) {
+      setError(getErrorMessage(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
+    if (!credentialResponse.credential) {
+      setError('Google bejelentkezés sikertelen: hiányzó token')
+      return
+    }
+
+    setError('')
+    setLoading(true)
+
+    try {
+      const response = await authApi.googleLogin({
+        idToken: credentialResponse.credential
       })
 
       login(
@@ -141,6 +171,18 @@ export default function LoginPage() {
                 {loading ? 'Bejelentkezés...' : 'Bejelentkezés'}
               </button>
             </div>
+
+            {googleClientId && (
+              <div className="pt-3 flex justify-center">
+                <GoogleOAuthProvider clientId={googleClientId}>
+                  <GoogleLogin
+                    onSuccess={handleGoogleSuccess}
+                    onError={() => setError('Google bejelentkezés sikertelen')}
+                    useOneTap={false}
+                  />
+                </GoogleOAuthProvider>
+              </div>
+            )}
           </form>
 
           {/* Footer info */}

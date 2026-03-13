@@ -72,6 +72,10 @@ export interface LoginRequest {
   password: string
 }
 
+export interface GoogleLoginRequest {
+  idToken: string
+}
+
 export interface LoginResponse {
   token: string
   tokenType: string
@@ -90,11 +94,19 @@ export interface LoginResponse {
     companyCode: string
     companyName: string
   }
+  roles?: string[]
+  activeRole?: string | null
+  permissions?: string[]
+  roleSelectionRequired?: boolean
 }
 
 export const authApi = {
   login: async (data: LoginRequest): Promise<LoginResponse> => {
     const response = await api.post<LoginResponse>('/auth/login', data)
+    return response.data
+  },
+  googleLogin: async (data: GoogleLoginRequest): Promise<LoginResponse> => {
+    const response = await api.post<LoginResponse>('/auth/google-login', data)
     return response.data
   },
   logout: async (): Promise<void> => {

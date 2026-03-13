@@ -74,6 +74,11 @@ public interface WorkerRepository extends JpaRepository<Worker, Long> {
     long countActiveWorkersByBranch(@Param("branchId") UUID branchId);
     
     /**
+     * Worker keresés email alapján
+     */
+    Optional<Worker> findByEmail(String email);
+    
+    /**
      * Supervisor és felsőbb jogosultságú dolgozók
      */
     @Query("SELECT w FROM Worker w WHERE w.company.id = :companyId AND w.role IN ('SUPERVISOR', 'MANAGER', 'ADMIN') AND w.active = true")

@@ -53,7 +53,7 @@ public class SecurityConfig {
             // Authorization rules
             .authorizeHttpRequests(auth -> auth
                 // Public endpoints (login)
-                .requestMatchers("/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
+                .requestMatchers("/api/v1/auth/login", "/api/v1/auth/google-login", "/api/v1/auth/refresh").permitAll()
                 .requestMatchers("/api/v1/email/accounts/callback").permitAll()
 
                 // Health check
