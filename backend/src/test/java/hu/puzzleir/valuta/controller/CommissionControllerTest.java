@@ -2,7 +2,7 @@ package hu.puzzleir.valuta.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.puzzleir.backend.exception.GlobalExceptionHandler;
+import com.puzzleir.backend.exception.ErrorLogExceptionHandler;
 import com.puzzleir.backend.exception.ValidationException;
 import hu.puzzleir.valuta.entity.CommissionCalculation;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -30,10 +30,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * CommissionCalculationController UNIT tesztek — standalone MockMvc.
+ * CommissionCalculationController UNIT tesztek â€” standalone MockMvc.
  *
- * HTTP endpoint tesztek: kalkuláció, lista, jóváhagyás.
- * Spring kontextus nélkül → gyors, izolált tesztek.
+ * HTTP endpoint tesztek: kalkulĂˇciĂł, lista, jĂłvĂˇhagyĂˇs.
+ * Spring kontextus nĂ©lkĂĽl â†’ gyors, izolĂˇlt tesztek.
  */
 @ExtendWith(MockitoExtension.class)
 class CommissionControllerTest {
@@ -55,13 +55,13 @@ class CommissionControllerTest {
         om.registerModule(new JavaTimeModule());
 
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
-                .setControllerAdvice(new GlobalExceptionHandler())
+                .setControllerAdvice(new ErrorLogExceptionHandler())
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(om))
                 .build();
     }
 
     /**
-     * Segéd: teszt CommissionCalculation entity.
+     * SegĂ©d: teszt CommissionCalculation entity.
      */
     private CommissionCalculation createTestCalc() {
         return CommissionCalculation.builder()
@@ -83,10 +83,10 @@ class CommissionControllerTest {
     }
 
     // =====================================================================
-    // POST /calculate → 201
+    // POST /calculate â†’ 201
     // =====================================================================
     @Test
-    @DisplayName("POST /commissions/calculate → 201 CREATED")
+    @DisplayName("POST /commissions/calculate â†’ 201 CREATED")
     void testCalculate_200() throws Exception {
         try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
             sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -106,10 +106,10 @@ class CommissionControllerTest {
     }
 
     // =====================================================================
-    // POST /calculate-all → 201
+    // POST /calculate-all â†’ 201
     // =====================================================================
     @Test
-    @DisplayName("POST /commissions/calculate-all → 201 CREATED")
+    @DisplayName("POST /commissions/calculate-all â†’ 201 CREATED")
     void testCalculateAll_200() throws Exception {
         try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
             sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -127,10 +127,10 @@ class CommissionControllerTest {
     }
 
     // =====================================================================
-    // POST /{id}/approve → 200
+    // POST /{id}/approve â†’ 200
     // =====================================================================
     @Test
-    @DisplayName("POST /commissions/{id}/approve → 200 OK")
+    @DisplayName("POST /commissions/{id}/approve â†’ 200 OK")
     void testApprove_200() throws Exception {
         CommissionCalculation calc = createTestCalc();
         calc.setStatus(CommissionCalculation.CommissionStatus.APPROVED);
@@ -144,14 +144,14 @@ class CommissionControllerTest {
     }
 
     // =====================================================================
-    // POST /{id}/approve → 400 (ValidationException)
+    // POST /{id}/approve â†’ 400 (ValidationException)
     // =====================================================================
     @Test
-    @DisplayName("POST /commissions/{id}/approve → 400 BAD REQUEST")
+    @DisplayName("POST /commissions/{id}/approve â†’ 400 BAD REQUEST")
     void testApprove_404() throws Exception {
         UUID fakeId = UUID.randomUUID();
         when(service.approveCommission(fakeId))
-                .thenThrow(new ValidationException("Jutalék számítás nem található: " + fakeId));
+                .thenThrow(new ValidationException("JutalĂ©k szĂˇmĂ­tĂˇs nem talĂˇlhatĂł: " + fakeId));
 
         mockMvc.perform(post("/api/v1/commissions/" + fakeId + "/approve"))
                 .andExpect(status().isBadRequest());
