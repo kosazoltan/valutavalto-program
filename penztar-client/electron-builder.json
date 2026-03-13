@@ -33,5 +33,10 @@
     "owner": "kosazoltan",
     "repo": "valutavalto-program"
   },
-  "extraResources": []
+  "extraResources": [
+    {
+      "from": "node_modules/sql.js/dist/sql-wasm.wasm",
+      "to": "sql-wasm.wasm"
+    }
+  ]
 }
