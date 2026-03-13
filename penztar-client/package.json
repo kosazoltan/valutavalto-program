@@ -1,6 +1,6 @@
 {
   "name": "valuta-penztar",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "Valutaváltó Pénztár Kliens - Electron",
   "private": true,
   "main": "dist-electron/main.js",
