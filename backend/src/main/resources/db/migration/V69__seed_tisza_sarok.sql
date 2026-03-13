@@ -1,17 +1,44 @@
+-- V69: Tisza Sarok branch seed data
+-- Seeds all required dictionary entries + branch + workers
+-- Note: Hibernate @GeneratedValue(UUID) does NOT add DEFAULT to DB column, must supply id explicitly
+
+-- Dictionary: Branch Status ACTIVE
+INSERT INTO dictionary (id, category, code, name, name_hu, sort_order, is_active, created_at)
+VALUES (gen_random_uuid(), 'BRANCH_STATUS', 'ACTIVE', 'Active', 'Aktiv', 1, true, NOW())
+ON CONFLICT (category, code) DO NOTHING;
+
+-- Dictionary: Branch Type PENZTAR (penztar iroda)
+INSERT INTO dictionary (id, category, code, name, name_hu, sort_order, is_active, created_at)
+VALUES (gen_random_uuid(), 'BRANCH_TYPE', 'PENZTAR', 'Cash Office', 'Penztar', 4, true, NOW())
+ON CONFLICT (category, code) DO NOTHING;
+
+-- Dictionary: Country HUNGARY
+INSERT INTO dictionary (id, category, code, name, name_hu, sort_order, is_active, created_at)
+VALUES (gen_random_uuid(), 'COUNTRY', 'HU', 'Hungary', 'Magyarorszag', 1, true, NOW())
+ON CONFLICT (category, code) DO NOTHING;
+
 -- Company: Exclusive Best Change Zrt.
 INSERT INTO company (id, name, code, is_active, created_at)
 VALUES (gen_random_uuid(), 'Exclusive Best Change Zrt.', 'EBC', true, NOW())
 ON CONFLICT DO NOTHING;
 
--- Dictionary: Branch Status ACTIVE
--- Note: Hibernate @GeneratedValue(UUID) means DB column has no DEFAULT, must supply id explicitly
-INSERT INTO dictionary (id, category, code, name, name_hu, sort_order, is_active, created_at)
-VALUES (gen_random_uuid(), 'BRANCH_STATUS', 'ACTIVE', 'Active', 'Aktiv', 1, true, NOW())
-ON CONFLICT (category, code) DO NOTHING;
-
 -- Branch: Tisza Sarok (Szeged)
-INSERT INTO branch (id, company_id, name, code, bank_code, city, address, zip_code, opening_date, is_active, branch_status_did, created_at)
-SELECT gen_random_uuid(), c.id, 'Tisza Sarok', 'TISZA', 'TISZA', 'Szeged', 'Tisza Sarok, Szeged', '6720', CURRENT_DATE, true,
+-- Required NOT NULL dictionary FKs: branch_type_did, country_did, branch_status_did
+INSERT INTO branch (id, company_id, name, code, bank_code, city, address, zip_code, opening_date, is_active,
+    branch_type_did, country_did, branch_status_did, created_at)
+SELECT
+    gen_random_uuid(),
+    c.id,
+    'Tisza Sarok',
+    'TISZA',
+    'TISZA',
+    'Szeged',
+    'Tisza Sarok, Szeged',
+    '6720',
+    CURRENT_DATE,
+    true,
+    (SELECT id FROM dictionary WHERE category = 'BRANCH_TYPE' AND code = 'PENZTAR'),
+    (SELECT id FROM dictionary WHERE category = 'COUNTRY' AND code = 'HU'),
     (SELECT id FROM dictionary WHERE category = 'BRANCH_STATUS' AND code = 'ACTIVE'),
     NOW()
 FROM company c WHERE c.code = 'EBC'
