@@ -47,21 +47,19 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
     @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(t.transferNumber, 4) AS long)), 0) FROM Transfer t WHERE t.transferNumber LIKE :prefix%")
     long findMaxTransferNumber(@Param("prefix") String prefix);
 
-    /** H-3: Bejövő átadások összege (DailyBalanceService-hez) */
+    /** H-3: BejĂ¶vĹ‘ ĂˇtadĂˇsok Ă¶sszege (DailyBalanceService-hez) */
     @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transfer t WHERE t.toBranch.id = :branchId AND t.transferDate = :date AND t.currency.code = :currencyCode AND t.status = 'COMPLETED'")
     BigDecimal sumTransfersIn(@Param("branchId") UUID branchId, @Param("date") LocalDate date, @Param("currencyCode") String currencyCode);
 
-    /** H-3: Kimenő átadások összege (DailyBalanceService-hez) */
+    /** H-3: KimenĹ‘ ĂˇtadĂˇsok Ă¶sszege (DailyBalanceService-hez) */
     @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transfer t WHERE t.fromBranch.id = :branchId AND t.transferDate = :date AND t.currency.code = :currencyCode AND t.status = 'COMPLETED'")
     BigDecimal sumTransfersOut(@Param("branchId") UUID branchId, @Param("date") LocalDate date, @Param("currencyCode") String currencyCode);
 
-    /** ReportService — kimenő átadások */
+    /** ReportService â€” kimenĹ‘ ĂˇtadĂˇsok */
     @Query("SELECT t FROM Transfer t WHERE t.fromBranch.id = :branchId ORDER BY t.createdAt DESC")
-    List<Transfer> findByFromBranchIdAndCompanyIdOrderByCreatedAtDesc(
-        @Param("branchId") UUID branchId, UUID companyId);
+    List<Transfer> findByFromBranchIdOrderByCreatedAtDesc(@Param("branchId") UUID branchId);
 
-    /** ReportService — bejövő átadások */
+    /** ReportService â€” bejĂ¶vĹ‘ ĂˇtadĂˇsok */
     @Query("SELECT t FROM Transfer t WHERE t.toBranch.id = :branchId ORDER BY t.createdAt DESC")
-    List<Transfer> findByToBranchIdAndCompanyIdOrderByCreatedAtDesc(
-        @Param("branchId") UUID branchId, UUID companyId);
+    List<Transfer> findByToBranchIdOrderByCreatedAtDesc(@Param("branchId") UUID branchId);
 }

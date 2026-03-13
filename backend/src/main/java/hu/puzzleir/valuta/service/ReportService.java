@@ -25,13 +25,13 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Riport szolgÄ‚Ë‡ltatÄ‚Ë‡s.
+ * Riport szolgĂ„â€šĂ‹â€ˇltatĂ„â€šĂ‹â€ˇs.
  *
- * Legacy: Napi zÄ‚Ë‡rÄ‚Ë‡s riportok, forgalmi kimutatÄ‚Ë‡sok
- * - Napi forgalmi Ä‚Â¶sszesÄ‚Â­tÄąâ€
- * - ValutÄ‚Ë‡nkÄ‚Â©nti forgalom
- * - PÄ‚Â©nztÄ‚Ë‡ros teljesÄ‚Â­tmÄ‚Â©ny
- * - IdÄąâ€szaki kimutatÄ‚Ë‡sok
+ * Legacy: Napi zĂ„â€šĂ‹â€ˇrĂ„â€šĂ‹â€ˇs riportok, forgalmi kimutatĂ„â€šĂ‹â€ˇsok
+ * - Napi forgalmi Ă„â€šĂ‚Â¶sszesĂ„â€šĂ‚Â­tĂ„Ä…Ă˘â‚¬Â
+ * - ValutĂ„â€šĂ‹â€ˇnkĂ„â€šĂ‚Â©nti forgalom
+ * - PĂ„â€šĂ‚Â©nztĂ„â€šĂ‹â€ˇros teljesĂ„â€šĂ‚Â­tmĂ„â€šĂ‚Â©ny
+ * - IdĂ„Ä…Ă˘â‚¬Âszaki kimutatĂ„â€šĂ‹â€ˇsok
  */
 @Service
 @RequiredArgsConstructor
@@ -49,9 +49,9 @@ public class ReportService {
     private final MonthlyClosingRepository monthlyClosingRepository;
 
     /**
-     * Napi zÄ‚Ë‡rÄ‚Ë‡s riport
+     * Napi zĂ„â€šĂ‹â€ˇrĂ„â€šĂ‹â€ˇs riport
      *
-     * Legacy: NAPZAR - Ä‚Â¶sszesÄ‚Â­tÄąâ€ riport nyomtatÄ‚Ë‡shoz
+     * Legacy: NAPZAR - Ă„â€šĂ‚Â¶sszesĂ„â€šĂ‚Â­tĂ„Ä…Ă˘â‚¬Â riport nyomtatĂ„â€šĂ‹â€ˇshoz
      */
     public DailyClosingReport generateDailyClosingReport(LocalDate date) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
@@ -61,16 +61,16 @@ public class ReportService {
         DailySession session = dailySessionRepository.findByBranchIdAndSessionDate(branchId, date)
                 .orElse(null);
 
-        // Napi tranzakciÄ‚Ĺ‚k
+        // Napi tranzakciĂ„â€šÄąâ€šk
         List<Transaction> transactions = transactionRepository.findByBranchAndDate(branchId, date);
 
-        // ValutÄ‚Ë‡nkÄ‚Â©nti bontÄ‚Ë‡s
+        // ValutĂ„â€šĂ‹â€ˇnkĂ„â€šĂ‚Â©nti bontĂ„â€šĂ‹â€ˇs
         Map<String, CurrencyTurnover> currencyTurnovers = calculateCurrencyTurnovers(transactions);
 
         // Kassza egyenlegek
         List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
 
-        // CÄ‚Â­mletezÄ‚Â©s (HUF)
+        // CĂ„â€šĂ‚Â­mletezĂ„â€šĂ‚Â©s (HUF)
         Currency huf = currencyRepository.findByCode("HUF").orElse(null);
         List<Denomination> hufDenominations = huf != null
                 ? denominationRepository.findByBranchAndCurrency(branchId, huf.getId())
@@ -80,7 +80,7 @@ public class ReportService {
                 .map(Denomination::getTotalValue)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Ä‚â€“sszesÄ‚Â­tÄ‚Â©s
+        // Ă„â€šĂ˘â‚¬â€śsszesĂ„â€šĂ‚Â­tĂ„â€šĂ‚Â©s
         BigDecimal totalBuy = transactions.stream()
                 .filter(t -> t.getTransactionType() == TransactionType.BUY && t.isActive())
                 .map(Transaction::getHufAmount)
@@ -123,9 +123,9 @@ public class ReportService {
     }
 
     /**
-     * IdÄąâ€szaki forgalmi kimutatÄ‚Ë‡s
+     * IdĂ„Ä…Ă˘â‚¬Âszaki forgalmi kimutatĂ„â€šĂ‹â€ˇs
      *
-     * Legacy: IdÄąâ€szaki riportok
+     * Legacy: IdĂ„Ä…Ă˘â‚¬Âszaki riportok
      */
     public PeriodReport generatePeriodReport(LocalDate startDate, LocalDate endDate) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
@@ -176,11 +176,11 @@ public class ReportService {
     }
 
     /**
-     * PÄ‚Â©nztÄ‚Ë‡ros teljesÄ‚Â­tmÄ‚Â©ny riport
+     * PĂ„â€šĂ‚Â©nztĂ„â€šĂ‹â€ˇros teljesĂ„â€šĂ‚Â­tmĂ„â€šĂ‚Â©ny riport
      */
     public WorkerPerformanceReport generateWorkerPerformanceReport(Long workerId, LocalDate startDate, LocalDate endDate) {
         Worker worker = workerRepository.findById(workerId)
-                .orElseThrow(() -> new RuntimeException("PÄ‚Â©nztÄ‚Ë‡ros nem talÄ‚Ë‡lhatÄ‚Ĺ‚"));
+                .orElseThrow(() -> new RuntimeException("PĂ„â€šĂ‚Â©nztĂ„â€šĂ‹â€ˇros nem talĂ„â€šĂ‹â€ˇlhatĂ„â€šÄąâ€š"));
 
         List<Transaction> transactions = new ArrayList<>();
         LocalDate current = startDate;
@@ -223,13 +223,13 @@ public class ReportService {
     }
 
     /**
-     * ValutÄ‚Ë‡nkÄ‚Â©nti forgalmi kimutatÄ‚Ë‡s
+     * ValutĂ„â€šĂ‹â€ˇnkĂ„â€šĂ‚Â©nti forgalmi kimutatĂ„â€šĂ‹â€ˇs
      */
     public CurrencyReport generateCurrencyReport(Long currencyId, LocalDate startDate, LocalDate endDate) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
 
         Currency currency = currencyRepository.findById(currencyId)
-                .orElseThrow(() -> new RuntimeException("Valuta nem talÄ‚Ë‡lhatÄ‚Ĺ‚"));
+                .orElseThrow(() -> new RuntimeException("Valuta nem talĂ„â€šĂ‹â€ˇlhatĂ„â€šÄąâ€š"));
 
         List<Transaction> buyTransactions = transactionRepository.findByTypeAndDateRange(
                 companyId, TransactionType.BUY, startDate, endDate).stream()
@@ -291,9 +291,9 @@ public class ReportService {
     }
 
     /**
-     * Kassza Ä‚Ë‡llapot riport (pillanat Ä‚Ë‡llÄ‚Ë‡s)
+     * Kassza Ă„â€šĂ‹â€ˇllapot riport (pillanat Ă„â€šĂ‹â€ˇllĂ„â€šĂ‹â€ˇs)
      *
-     * Legacy: PILLALL - pillanat Ä‚Ë‡llapot
+     * Legacy: PILLALL - pillanat Ă„â€šĂ‹â€ˇllapot
      */
     public CashStatusReport generateCashStatusReport() {
         UUID branchId = SecurityUtils.getCurrentBranchId();
@@ -307,7 +307,7 @@ public class ReportService {
                 .findFirst()
                 .orElse(BigDecimal.ZERO);
 
-        // Ä‚â€“sszes egyenleg HUF-ra Ä‚Ë‡tszÄ‚Ë‡mÄ‚Â­tva (egyszerÄąÂ±sÄ‚Â­tett - csak HUF-ot mutatjuk)
+        // Ă„â€šĂ˘â‚¬â€śsszes egyenleg HUF-ra Ă„â€šĂ‹â€ˇtszĂ„â€šĂ‹â€ˇmĂ„â€šĂ‚Â­tva (egyszerĂ„Ä…Ă‚Â±sĂ„â€šĂ‚Â­tett - csak HUF-ot mutatjuk)
         int lowBalanceAlerts = (int) balances.stream().filter(CashBalance::isLowBalance).count();
         int highBalanceAlerts = (int) balances.stream().filter(CashBalance::isHighBalance).count();
         int lowDenominationAlerts = (int) denominations.stream().filter(Denomination::isLowStock).count();
@@ -324,14 +324,14 @@ public class ReportService {
     }
 
     /**
-     * Havi forgalmi kimutatÄ‚Ë‡s
+     * Havi forgalmi kimutatĂ„â€šĂ‹â€ˇs
      *
-     * Legacy: HAVIFORG - havi forgalmi Ä‚Â¶sszesÄ‚Â­tÄąâ€
+     * Legacy: HAVIFORG - havi forgalmi Ă„â€šĂ‚Â¶sszesĂ„â€šĂ‚Â­tĂ„Ä…Ă˘â‚¬Â
      */
     public MonthlyTurnoverReport generateMonthlyTurnoverReport(Integer year, Integer month) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
 
-        // Havi zÄ‚Ë‡rÄ‚Ë‡sok lekÄ‚Â©rÄ‚Â©se
+        // Havi zĂ„â€šĂ‹â€ˇrĂ„â€šĂ‹â€ˇsok lekĂ„â€šĂ‚Â©rĂ„â€šĂ‚Â©se
         List<MonthlyClosing> closings = monthlyClosingRepository
                 .findByCompanyIdAndClosingYearOrderByClosingMonthDesc(companyId, year).stream()
                 .filter(c -> c.getClosingMonth().equals(month))
@@ -389,27 +389,27 @@ public class ReportService {
     }
 
     /**
-     * Ä‚ÂtadÄ‚Ë‡s-Ä‚Ë‡tvÄ‚Â©tel Ä‚Â¶sszesÄ‚Â­tÄąâ€ riport
+     * Ă„â€šĂ‚ÂtadĂ„â€šĂ‹â€ˇs-Ă„â€šĂ‹â€ˇtvĂ„â€šĂ‚Â©tel Ă„â€šĂ‚Â¶sszesĂ„â€šĂ‚Â­tĂ„Ä…Ă˘â‚¬Â riport
      *
-     * Legacy: ATADATVET - Ä‚Ë‡tadÄ‚Ë‡s-Ä‚Ë‡tvÄ‚Â©tel kimutatÄ‚Ë‡s
+     * Legacy: ATADATVET - Ă„â€šĂ‹â€ˇtadĂ„â€šĂ‹â€ˇs-Ă„â€šĂ‹â€ˇtvĂ„â€šĂ‚Â©tel kimutatĂ„â€šĂ‹â€ˇs
      */
     public TransferReport generateTransferReport(LocalDate startDate, LocalDate endDate) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         UUID branchId = SecurityUtils.getCurrentBranchId();
 
-        // KimenÄąâ€ Ä‚Ë‡tadÄ‚Ë‡sok
-        List<Transfer> outgoing = transferRepository.findByFromBranchIdAndCompanyIdOrderByCreatedAtDesc(branchId, companyId)
+        // KimenĂ„Ä…Ă˘â‚¬Â Ă„â€šĂ‹â€ˇtadĂ„â€šĂ‹â€ˇsok
+        List<Transfer> outgoing = transferRepository.findByFromBranchIdOrderByCreatedAtDesc(branchId)
                 .stream()
                 .filter(t -> !t.getTransferDate().isBefore(startDate) && !t.getTransferDate().isAfter(endDate))
                 .collect(Collectors.toList());
 
-        // BejÄ‚Â¶vÄąâ€ Ä‚Ë‡tadÄ‚Ë‡sok
-        List<Transfer> incoming = transferRepository.findByToBranchIdAndCompanyIdOrderByCreatedAtDesc(branchId, companyId)
+        // BejĂ„â€šĂ‚Â¶vĂ„Ä…Ă˘â‚¬Â Ă„â€šĂ‹â€ˇtadĂ„â€šĂ‹â€ˇsok
+        List<Transfer> incoming = transferRepository.findByToBranchIdOrderByCreatedAtDesc(branchId)
                 .stream()
                 .filter(t -> !t.getTransferDate().isBefore(startDate) && !t.getTransferDate().isAfter(endDate))
                 .collect(Collectors.toList());
 
-        // KimenÄąâ€ Ä‚Â¶sszesÄ‚Â­tÄ‚Â©s
+        // KimenĂ„Ä…Ă˘â‚¬Â Ă„â€šĂ‚Â¶sszesĂ„â€šĂ‚Â­tĂ„â€šĂ‚Â©s
         BigDecimal totalOutgoingHuf = outgoing.stream()
                 .filter(t -> t.getStatus() != TransferStatus.CANCELLED)
                 .map(t -> t.getHufValue() != null ? t.getHufValue() : BigDecimal.ZERO)
@@ -418,7 +418,7 @@ public class ReportService {
         int outgoingCompleted = (int) outgoing.stream().filter(t -> t.getStatus() == TransferStatus.COMPLETED).count();
         int outgoingPending = (int) outgoing.stream().filter(t -> t.getStatus() == TransferStatus.PENDING).count();
 
-        // BejÄ‚Â¶vÄąâ€ Ä‚Â¶sszesÄ‚Â­tÄ‚Â©s
+        // BejĂ„â€šĂ‚Â¶vĂ„Ä…Ă˘â‚¬Â Ă„â€šĂ‚Â¶sszesĂ„â€šĂ‚Â­tĂ„â€šĂ‚Â©s
         BigDecimal totalIncomingHuf = incoming.stream()
                 .filter(t -> t.getStatus() == TransferStatus.COMPLETED)
                 .map(t -> t.getHufValue() != null ? t.getHufValue() : BigDecimal.ZERO)
@@ -427,7 +427,7 @@ public class ReportService {
         int incomingCompleted = (int) incoming.stream().filter(t -> t.getStatus() == TransferStatus.COMPLETED).count();
         int incomingPending = (int) incoming.stream().filter(t -> t.getStatus() == TransferStatus.PENDING).count();
 
-        // EltÄ‚Â©rÄ‚Â©sek
+        // EltĂ„â€šĂ‚Â©rĂ„â€šĂ‚Â©sek
         BigDecimal totalDifference = incoming.stream()
                 .filter(t -> t.getStatus() == TransferStatus.COMPLETED && t.getDifference() != null)
                 .map(Transfer::getDifference)
@@ -478,9 +478,9 @@ public class ReportService {
     }
 
     /**
-     * KezelÄ‚Â©si dÄ‚Â­j Ä‚Â¶sszesÄ‚Â­tÄąâ€ riport
+     * KezelĂ„â€šĂ‚Â©si dĂ„â€šĂ‚Â­j Ă„â€šĂ‚Â¶sszesĂ„â€šĂ‚Â­tĂ„Ä…Ă˘â‚¬Â riport
      *
-     * Legacy: KezelÄ‚Â©si kÄ‚Â¶ltsÄ‚Â©g jelentÄ‚Â©s
+     * Legacy: KezelĂ„â€šĂ‚Â©si kĂ„â€šĂ‚Â¶ltsĂ„â€šĂ‚Â©g jelentĂ„â€šĂ‚Â©s
      */
     public HandlingFeeReport generateHandlingFeeReport(LocalDate startDate, LocalDate endDate) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
