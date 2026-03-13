@@ -185,18 +185,29 @@ ipcMain.handle('get-cached-rates', async () => {
 // --- App Lifecycle ---
 
 app.whenReady().then(async () => {
-  await initDatabase();
+  try {
+    await initDatabase();
+  } catch (err) {
+    log.error('[App] initDatabase failed', err);
+    dialog.showErrorBox(
+      'Adatbázis hiba',
+      'A helyi adatbázist nem sikerült inicializálni. Kérjük, ellenőrizd a jogosultságokat és indítsd újra az alkalmazást.',
+    );
+    app.quit();
+    return;
+  }
+
   createWindow();
 
   // SyncEngine indítás — 30 másodperces intervallum
   syncEngine.start(30_000);
-  console.log('[App] SyncEngine elindítva');
+  log.info('[App] SyncEngine elindítva');
 });
 
 app.on('will-quit', () => {
   // SyncEngine leállítás
   syncEngine.stop();
-  console.log('[App] SyncEngine leállítva');
+  log.info('[App] SyncEngine leállítva');
 });
 
 app.on('window-all-closed', () => {

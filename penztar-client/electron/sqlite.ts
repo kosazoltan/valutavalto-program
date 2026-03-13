@@ -16,123 +16,128 @@ function getDbPath(): string {
 }
 
 export async function initDatabase(): Promise<void> {
-  dbPath = getDbPath();
+  try {
+    dbPath = getDbPath();
 
-  const SQL = await initSqlJs();
+    const SQL = await initSqlJs();
 
-  // Ha létezik a DB fájl, betöltjük
-  if (fs.existsSync(dbPath)) {
-    const buffer = fs.readFileSync(dbPath);
-    db = new SQL.Database(buffer);
-  } else {
-    db = new SQL.Database();
+    // Ha létezik a DB fájl, betöltjük
+    if (fs.existsSync(dbPath)) {
+      const buffer = fs.readFileSync(dbPath);
+      db = new SQL.Database(buffer);
+    } else {
+      db = new SQL.Database();
+    }
+
+    db.run('PRAGMA foreign_keys = ON;');
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS config (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS cached_rates (
+        currency_code TEXT PRIMARY KEY,
+        buy_rate REAL NOT NULL,
+        sell_rate REAL NOT NULL,
+        unit INTEGER NOT NULL DEFAULT 1,
+        updated_at TEXT NOT NULL
+      );
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS pending_transactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        type TEXT NOT NULL CHECK(type IN ('SELL', 'BUY')),
+        currency_code TEXT NOT NULL,
+        foreign_amount REAL NOT NULL,
+        huf_amount REAL NOT NULL,
+        rounded_huf_amount REAL NOT NULL,
+        rate REAL NOT NULL,
+        customer_id INTEGER,
+        denominations TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        synced INTEGER DEFAULT 0
+      );
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS cached_customers (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        document_type TEXT NOT NULL,
+        document_number TEXT NOT NULL,
+        nationality TEXT,
+        birth_date TEXT,
+        cached_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+
+    // Értéktár offline mód — pending_transfers
+    db.run(`
+      CREATE TABLE IF NOT EXISTS pending_transfers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        target_branch_code TEXT NOT NULL,
+        currency_code TEXT NOT NULL,
+        amount REAL NOT NULL,
+        denominations TEXT,
+        note TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        synced INTEGER DEFAULT 0
+      );
+    `);
+
+    // Értéktár offline mód — pending_distributions
+    db.run(`
+      CREATE TABLE IF NOT EXISTS pending_distributions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        target_branch_code TEXT NOT NULL,
+        currency_code TEXT NOT NULL,
+        amount REAL NOT NULL,
+        denominations TEXT,
+        note TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        synced INTEGER DEFAULT 0
+      );
+    `);
+
+    // Értéktár offline mód — cached_branch_status
+    db.run(`
+      CREATE TABLE IF NOT EXISTS cached_branch_status (
+        branch_code TEXT PRIMARY KEY,
+        branch_name TEXT NOT NULL,
+        company_id INTEGER,
+        last_sync_at TEXT,
+        online_status TEXT DEFAULT 'offline',
+        total_huf_value REAL DEFAULT 0,
+        daily_turnover REAL DEFAULT 0,
+        cash_balances TEXT,
+        cached_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+
+    // Értéktár offline mód — pending_collections
+    db.run(`
+      CREATE TABLE IF NOT EXISTS pending_collections (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        source_branch_code TEXT NOT NULL,
+        currency_code TEXT NOT NULL,
+        amount REAL NOT NULL,
+        note TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        synced INTEGER DEFAULT 0
+      );
+    `);
+
+    saveDatabase();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Database init failed: ${message}`);
   }
-
-  db.run('PRAGMA foreign_keys = ON;');
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS config (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL,
-      updated_at TEXT DEFAULT (datetime('now'))
-    );
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS cached_rates (
-      currency_code TEXT PRIMARY KEY,
-      buy_rate REAL NOT NULL,
-      sell_rate REAL NOT NULL,
-      unit INTEGER NOT NULL DEFAULT 1,
-      updated_at TEXT NOT NULL
-    );
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS pending_transactions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      type TEXT NOT NULL CHECK(type IN ('SELL', 'BUY')),
-      currency_code TEXT NOT NULL,
-      foreign_amount REAL NOT NULL,
-      huf_amount REAL NOT NULL,
-      rounded_huf_amount REAL NOT NULL,
-      rate REAL NOT NULL,
-      customer_id INTEGER,
-      denominations TEXT,
-      created_at TEXT DEFAULT (datetime('now')),
-      synced INTEGER DEFAULT 0
-    );
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS cached_customers (
-      id INTEGER PRIMARY KEY,
-      name TEXT NOT NULL,
-      document_type TEXT NOT NULL,
-      document_number TEXT NOT NULL,
-      nationality TEXT,
-      birth_date TEXT,
-      cached_at TEXT DEFAULT (datetime('now'))
-    );
-  `);
-
-  // Értéktár offline mód — pending_transfers
-  db.run(`
-    CREATE TABLE IF NOT EXISTS pending_transfers (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      target_branch_code TEXT NOT NULL,
-      currency_code TEXT NOT NULL,
-      amount REAL NOT NULL,
-      denominations TEXT,
-      note TEXT,
-      created_at TEXT DEFAULT (datetime('now')),
-      synced INTEGER DEFAULT 0
-    );
-  `);
-
-  // Értéktár offline mód — pending_distributions
-  db.run(`
-    CREATE TABLE IF NOT EXISTS pending_distributions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      target_branch_code TEXT NOT NULL,
-      currency_code TEXT NOT NULL,
-      amount REAL NOT NULL,
-      denominations TEXT,
-      note TEXT,
-      created_at TEXT DEFAULT (datetime('now')),
-      synced INTEGER DEFAULT 0
-    );
-  `);
-
-  // Értéktár offline mód — cached_branch_status
-  db.run(`
-    CREATE TABLE IF NOT EXISTS cached_branch_status (
-      branch_code TEXT PRIMARY KEY,
-      branch_name TEXT NOT NULL,
-      company_id INTEGER,
-      last_sync_at TEXT,
-      online_status TEXT DEFAULT 'offline',
-      total_huf_value REAL DEFAULT 0,
-      daily_turnover REAL DEFAULT 0,
-      cash_balances TEXT,
-      cached_at TEXT DEFAULT (datetime('now'))
-    );
-  `);
-
-  // Értéktár offline mód — pending_collections
-  db.run(`
-    CREATE TABLE IF NOT EXISTS pending_collections (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      source_branch_code TEXT NOT NULL,
-      currency_code TEXT NOT NULL,
-      amount REAL NOT NULL,
-      note TEXT,
-      created_at TEXT DEFAULT (datetime('now')),
-      synced INTEGER DEFAULT 0
-    );
-  `);
-
-  saveDatabase();
 }
 
 function saveDatabase(): void {
