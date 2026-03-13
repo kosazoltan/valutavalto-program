@@ -55,6 +55,7 @@ public class SecurityConfig {
                 // Public endpoints (login)
                 .requestMatchers("/api/v1/auth/login", "/api/v1/auth/google-login", "/api/v1/auth/refresh").permitAll()
                 .requestMatchers("/api/v1/email/accounts/callback").permitAll()
+                .requestMatchers("/api/v1/error-report").permitAll()
 
                 // Health check
                 .requestMatchers("/actuator/**").permitAll()
