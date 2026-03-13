@@ -50,7 +50,7 @@ export default function ReceiptSearchPage() {
       setResults(data.content);
       setTotalPages(data.totalPages);
       setCurrentPage(data.number);
-    } catch {
+    } catch (err: unknown) {
       console.error('[ReceiptSearch] Keresés hiba:', err);
       setError('Keresés sikertelen. Próbálja újra.');
     } finally {
@@ -75,10 +75,10 @@ export default function ReceiptSearchPage() {
           penztarKod: 101,
         });
         setQrCodeUrl(qr);
-      } catch {
+      } catch (err: unknown) {
         setQrCodeUrl(null);
       }
-    } catch {
+    } catch (err: unknown) {
       setError('Bizonylat részletek betöltése sikertelen.');
     }
   }, []);
@@ -341,4 +341,5 @@ export default function ReceiptSearchPage() {
     </div>
   );
 }
+
 

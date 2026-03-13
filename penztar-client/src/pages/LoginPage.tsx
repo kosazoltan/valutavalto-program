@@ -68,7 +68,7 @@ export default function LoginPage() {
           setAuth(user, response.token, response.refreshToken ?? '');
           navigate('/menu');
         }
-      } catch {
+      } catch (err: unknown) {
         if (err instanceof Error) {
           setError('Hibás felhasználónév vagy jelszó');
         } else {
@@ -107,7 +107,7 @@ export default function LoginPage() {
         );
         setAuth(user, response.token, response.refreshToken ?? '');
         navigate('/menu');
-      } catch {
+      } catch (err: unknown) {
         setError('Hiba a szerepkör kiválasztásakor.');
       } finally {
         setIsLoading(false);
@@ -256,4 +256,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
 

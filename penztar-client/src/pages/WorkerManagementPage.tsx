@@ -46,7 +46,7 @@ export default function WorkerManagementPage() {
     try {
       const data = await getWorkers();
       setWorkers(data);
-    } catch {
+    } catch (err: unknown) {
       console.error('[WorkerMgmt] Betöltés hiba:', err);
       setError('Dolgozók betöltése sikertelen.');
     } finally {
@@ -81,7 +81,7 @@ export default function WorkerManagementPage() {
       void loadWorkers();
       setFormCode(''); setFormName(''); setFormPassword('');
       setFormEmail(''); setFormPhone(''); setFormRole('CASHIER');
-    } catch {
+    } catch (err: unknown) {
       setError('❌ Létrehozás sikertelen.');
     }
   }, [formCode, formName, formPassword, formRole, formPhone, formEmail, user, loadWorkers]);
@@ -101,7 +101,7 @@ export default function WorkerManagementPage() {
       setSuccess('✅ Pénztáros adatai frissítve!');
       setTab('list');
       void loadWorkers();
-    } catch {
+    } catch (err: unknown) {
       setError('❌ Módosítás sikertelen.');
     }
   }, [selectedWorker, formName, formRole, formPhone, formEmail, formActive, loadWorkers]);
@@ -115,7 +115,7 @@ export default function WorkerManagementPage() {
       setSuccess('✅ Jelszó sikeresen resetelve!');
       setResetPwWorkerId(null);
       setResetPwValue('');
-    } catch {
+    } catch (err: unknown) {
       setError('❌ Jelszó reset sikertelen.');
     }
   }, [resetPwWorkerId, resetPwValue]);
@@ -137,7 +137,7 @@ export default function WorkerManagementPage() {
     try {
       const data = await getWorkerAttendance(w.id);
       setAttendance(data.content);
-    } catch {
+    } catch (err: unknown) {
       setError('Jelenlét napló betöltése sikertelen.');
     }
   }, []);
@@ -147,7 +147,7 @@ export default function WorkerManagementPage() {
       await startWorkerBreak(workerId, 'Supervisor által engedélyezett szünet');
       setSuccess('✅ Szünet elindítva!');
       void loadWorkers();
-    } catch {
+    } catch (err: unknown) {
       setError('❌ Szünet indítás sikertelen.');
     }
   }, [loadWorkers]);
@@ -157,7 +157,7 @@ export default function WorkerManagementPage() {
       await endWorkerBreak(workerId);
       setSuccess('✅ Szünet befejezve!');
       void loadWorkers();
-    } catch {
+    } catch (err: unknown) {
       setError('❌ Szünet befejezés sikertelen.');
     }
   }, [loadWorkers]);
@@ -405,4 +405,5 @@ export default function WorkerManagementPage() {
     </div>
   );
 }
+
 

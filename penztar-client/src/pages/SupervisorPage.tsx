@@ -51,7 +51,7 @@ export default function SupervisorPage() {
       } else {
         setAuthError('Hibás supervisor jelszó!');
       }
-    } catch {
+    } catch (err: unknown) {
       setAuthError('Hitelesítési hiba. Próbálja újra.');
     }
   }, [password]);
@@ -60,7 +60,7 @@ export default function SupervisorPage() {
     try {
       const data = await getSystemParams();
       setParams(data);
-    } catch {
+    } catch (err: unknown) {
       console.error('[Supervisor] Paraméterek betöltése hiba:', err);
     }
   }, []);
@@ -92,7 +92,7 @@ export default function SupervisorPage() {
       setRateBuy('');
       setRateSell('');
       setRateReason('');
-    } catch {
+    } catch (err: unknown) {
       setError('❌ Árfolyam felülbírálás sikertelen.');
     } finally {
       setIsSubmitting(false);
@@ -117,7 +117,7 @@ export default function SupervisorPage() {
       setFeeTxId('');
       setFeeAmount('');
       setFeeReason('');
-    } catch {
+    } catch (err: unknown) {
       setError('❌ Díj felülbírálás sikertelen.');
     } finally {
       setIsSubmitting(false);
@@ -368,4 +368,5 @@ export default function SupervisorPage() {
     </div>
   );
 }
+
 

@@ -40,7 +40,7 @@ export default function StampPage() {
     try {
       const data = await getStampInventory();
       setBatches(data);
-    } catch {
+    } catch (err: unknown) {
       console.error('[Stamp] Készlet betöltése hiba:', err);
       setError('Matrica készlet betöltése sikertelen.');
     } finally {
@@ -53,7 +53,7 @@ export default function StampPage() {
     try {
       const data = await getUsedStamps();
       setUsedStamps(data);
-    } catch {
+    } catch (err: unknown) {
       console.error('[Stamp] Felhasznált betöltése hiba:', err);
       setError('Felhasznált matricák betöltése sikertelen.');
     } finally {
@@ -99,7 +99,7 @@ export default function StampPage() {
       setBatchNote('');
       setTab('inventory');
       void loadInventory();
-    } catch {
+    } catch (err: unknown) {
       setError('❌ Batch felvétel sikertelen.');
     }
   }, [batchBranchId, batchPrefix, batchStart, batchEnd, batchNote, loadInventory]);
@@ -120,7 +120,7 @@ export default function StampPage() {
       setAssignSerial('');
       setAssignTxId('');
       void loadInventory();
-    } catch {
+    } catch (err: unknown) {
       setError('❌ Hozzárendelés sikertelen.');
     }
   }, [assignSerial, assignTxId, loadInventory]);
@@ -315,4 +315,5 @@ export default function StampPage() {
     </div>
   );
 }
+
 

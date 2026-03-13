@@ -23,7 +23,7 @@ export default function BackupPage() {
     try {
       const result = await getBackupHistory(0, 50);
       setRecords(result.content);
-    } catch {
+    } catch (err: unknown) {
       console.error('[BackupPage] Betöltési hiba:', err);
       setError('Mentés előzmények betöltése sikertelen.');
     } finally {
@@ -45,7 +45,7 @@ export default function BackupPage() {
       await createBackup(type);
       setSuccess(`✅ ${type} mentés sikeresen létrehozva!`);
       await loadHistory();
-    } catch {
+    } catch (err: unknown) {
       console.error('[BackupPage] Mentés hiba:', err);
       setError('Mentés létrehozása sikertelen.');
     } finally {
@@ -73,7 +73,7 @@ export default function BackupPage() {
     try {
       await restoreBackup(id);
       setSuccess('✅ Visszaállítás sikeresen elindítva!');
-    } catch {
+    } catch (err: unknown) {
       console.error('[BackupPage] Visszaállítás hiba:', err);
       setError('Visszaállítás sikertelen.');
     } finally {
@@ -245,4 +245,5 @@ export default function BackupPage() {
     </div>
   );
 }
+
 

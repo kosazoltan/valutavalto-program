@@ -53,7 +53,7 @@ export default function StornoPage() {
       const workerId = user?.id ?? 0;
       const result = await checkStorno(transactionId, workerId);
       setStornoCheck(result);
-    } catch {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Keresési hiba';
       setError(`❌ ${message}`);
     } finally {
@@ -133,7 +133,7 @@ export default function StornoPage() {
       setReceiptSearch('');
       setReason('');
       setSupervisorPassword('');
-    } catch {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Stornó végrehajtási hiba';
       setError(`❌ ${message}`);
       toast.error(`Stornó hiba: ${message}`);
@@ -154,7 +154,7 @@ export default function StornoPage() {
       await window.electronAPI.printReceipt(JSON.stringify(pendingReceiptData));
       console.log('[StornoPage] Stornó bizonylat nyomtatás sikeres:', pendingReceiptData.receiptNumber);
       toast.success('Stornó bizonylat nyomtatva!');
-    } catch {
+    } catch (err: unknown) {
       console.error('[StornoPage] Nyomtatási hiba:', err);
       const errorMessage = err instanceof Error ? err.message : 'Ismeretlen hiba';
       toast.error(`Nyomtatási hiba: ${errorMessage}`);
@@ -359,4 +359,5 @@ export default function StornoPage() {
     </div>
   );
 }
+
 

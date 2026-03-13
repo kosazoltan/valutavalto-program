@@ -56,7 +56,7 @@ export default function ClosingPage() {
       const state = await startClosingWizard(branchCode, 'DAILY', workerId);
       setWizardState(state);
       setCurrentStep(state.currentStep);
-    } catch {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Napzárás indítási hiba';
       setError(`❌ ${message}`);
     } finally {
@@ -82,7 +82,7 @@ export default function ClosingPage() {
         const state: ClosingWizardState = await navigateClosingWizard(wizardState.id, step);
         setWizardState(state);
         setCurrentStep(state.currentStep);
-      } catch {
+      } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Navigációs hiba';
         setError(`❌ ${message}`);
       } finally {
@@ -110,7 +110,7 @@ export default function ClosingPage() {
           JSON.stringify({ type: 'closing', sessionId: wizardState.id }),
         );
       }
-    } catch {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Napzárás befejezési hiba';
       setError(`❌ ${message}`);
     } finally {
@@ -588,4 +588,5 @@ function Step5Finalize({
     </div>
   );
 }
+
 

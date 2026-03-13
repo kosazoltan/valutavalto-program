@@ -56,7 +56,7 @@ export default function CustomerPage() {
         params: { query: searchQuery },
       });
       setSearchResults(response.data);
-    } catch {
+    } catch (err: unknown) {
       console.error('[CustomerPage] Keresés hiba:', err);
       setError('Keresés sikertelen. Próbálja újra.');
     } finally {
@@ -73,7 +73,7 @@ export default function CustomerPage() {
         `/customers/${customer.id}/transactions`,
       );
       setTransactions(response.data);
-    } catch {
+    } catch (err: unknown) {
       console.error('[CustomerPage] Tranzakció történet hiba:', err);
       setTransactions([]);
     }
@@ -89,7 +89,7 @@ export default function CustomerPage() {
       setSelectedCustomer(response.data);
       setSuccess('✅ Ügyfél sikeresen rögzítve!');
       setTab('detail');
-    } catch {
+    } catch (err: unknown) {
       console.error('[CustomerPage] Rögzítés hiba:', err);
       setError('Ügyfél rögzítés sikertelen. Próbálja újra.');
     } finally {
@@ -110,7 +110,7 @@ export default function CustomerPage() {
       setSelectedCustomer(response.data);
       setSuccess('✅ Ügyfél adatok frissítve!');
       setTab('detail');
-    } catch {
+    } catch (err: unknown) {
       console.error('[CustomerPage] Módosítás hiba:', err);
       setError('Ügyfél módosítás sikertelen. Próbálja újra.');
     } finally {
@@ -169,7 +169,7 @@ export default function CustomerPage() {
       const response = await apiClient.get<CustomerStats>(`/customers/${customerId}/stats`);
       setCustomerStats(response.data);
       setTab('stats');
-    } catch {
+    } catch (err: unknown) {
       console.error('[CustomerPage] Statisztika hiba:', err);
       setError('Statisztika betöltés sikertelen.');
     } finally {
@@ -185,7 +185,7 @@ export default function CustomerPage() {
       });
       setVipList(response.data);
       setTab('vip');
-    } catch {
+    } catch (err: unknown) {
       console.error('[CustomerPage] VIP lista hiba:', err);
       setError('VIP lista betöltés sikertelen.');
     } finally {
@@ -766,4 +766,5 @@ export default function CustomerPage() {
     </div>
   );
 }
+
 

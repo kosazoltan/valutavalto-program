@@ -28,7 +28,7 @@ export default function SessionOpenPage() {
       // branchCode → branchId mapping: a user.branchCode-ot küldjük
       const warns = await validateSessionOpen(user.branchCode);
       setWarnings(warns);
-    } catch {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Validációs hiba';
       setError(`❌ ${message}`);
     } finally {
@@ -52,7 +52,7 @@ export default function SessionOpenPage() {
       });
       setSessionData(data);
       setSuccess('✅ Pénztár sikeresen megnyitva!');
-    } catch {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Nyitási hiba';
       setError(`❌ ${message}`);
     } finally {
@@ -175,4 +175,5 @@ export default function SessionOpenPage() {
     </div>
   );
 }
+
 

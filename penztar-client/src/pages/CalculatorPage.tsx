@@ -30,7 +30,7 @@ export default function CalculatorPage() {
       try {
         const data = await getRoundingRules();
         setRules(data);
-      } catch {
+      } catch (err: unknown) {
         // Nem kritikus hiba
       }
     })();
@@ -54,7 +54,7 @@ export default function CalculatorPage() {
         direction,
       });
       setResult(data);
-    } catch {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Számítási hiba';
       setError(`❌ ${message}`);
       setResult(null);
@@ -250,4 +250,5 @@ export default function CalculatorPage() {
     </div>
   );
 }
+
 

@@ -33,7 +33,7 @@ export default function StockPage() {
       setBalances(balanceData);
       setTotals(totalData);
       setLastRefresh(new Date());
-    } catch {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Készlet lekérési hiba';
       setError(`❌ ${message}`);
     } finally {
@@ -48,7 +48,7 @@ export default function StockPage() {
     try {
       const result = await regenerateInventory(branchCode);
       setRegenResult(result);
-    } catch {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Regenerálási hiba';
       setError(`❌ ${message}`);
     } finally {
@@ -259,4 +259,5 @@ export default function StockPage() {
     </div>
   );
 }
+
 

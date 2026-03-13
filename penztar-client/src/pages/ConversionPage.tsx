@@ -49,7 +49,7 @@ export default function ConversionPage() {
       try {
         const res = await apiClient.get('/api/rates/current');
         setRates(res.data ?? []);
-      } catch {
+      } catch (err: unknown) {
         setError('Ărfolyamok betĂ¶ltĂ©se sikertelen');
       }
     };
@@ -102,7 +102,7 @@ export default function ConversionPage() {
     try {
       const res = await apiClient.get(`/api/customers/search?q=${encodeURIComponent(query)}&limit=10`);
       setCustomers(res.data ?? []);
-    } catch {
+    } catch (err: unknown) {
       setCustomers([]);
     }
   }, []);
@@ -142,7 +142,7 @@ export default function ConversionPage() {
       setSourceAmount('');
       setCustomerId(null);
       setCustomerName('');
-    } catch {
+    } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'KonverziĂł sikertelen';
       setError(`âťŚ ${msg}`);
     } finally {
@@ -357,6 +357,7 @@ export default function ConversionPage() {
     </div>
   );
 }
+
 
 
 

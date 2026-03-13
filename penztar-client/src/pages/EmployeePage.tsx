@@ -74,7 +74,7 @@ export default function EmployeePage() {
 
       const data = await getEmployees(params as any);
       setEmployees(data);
-    } catch {
+    } catch (err: unknown) {
       console.error('[Employee] Betöltés hiba:', err);
       setError('Dolgozók betöltése sikertelen.');
     } finally {
@@ -86,7 +86,7 @@ export default function EmployeePage() {
     try {
       const data = await getFeorCodes();
       setFeorCodes(data);
-    } catch {
+    } catch (err: unknown) {
       // Nem kritikus — a lista nélkül is működik
     }
   }, []);
@@ -106,7 +106,7 @@ export default function EmployeePage() {
       setSelectedEmployee(detail);
       setDetailTab('personal');
       setTab('detail');
-    } catch {
+    } catch (err: unknown) {
       setError('Dolgozó adatainak betöltése sikertelen.');
     } finally {
       setIsLoading(false);
@@ -121,7 +121,7 @@ export default function EmployeePage() {
       await deleteEmployee(id);
       setSuccess('✅ Dolgozó inaktiválva!');
       void loadEmployees();
-    } catch {
+    } catch (err: unknown) {
       setError('❌ Inaktiválás sikertelen.');
     }
   }, [loadEmployees]);
@@ -142,7 +142,7 @@ export default function EmployeePage() {
       setSuccess(`✅ ${result.message}`);
       setTab('list');
       void loadEmployees();
-    } catch {
+    } catch (err: unknown) {
       setError('❌ Import sikertelen. Ellenőrizd a JSON formátumot!');
     } finally {
       setIsLoading(false);
@@ -506,4 +506,5 @@ function Field({ label, value }: { label: string; value?: string | null }) {
     </div>
   );
 }
+
 

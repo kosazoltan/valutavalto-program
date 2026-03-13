@@ -22,7 +22,7 @@ export default function CircularPage() {
     try {
       const response = await apiClient.get<Circular[]>('/circulars');
       setCirculars(response.data);
-    } catch {
+    } catch (err: unknown) {
       console.error('[CircularPage] Betöltési hiba:', err);
       setError('Körlevelek betöltése sikertelen.');
     } finally {
@@ -49,7 +49,7 @@ export default function CircularPage() {
           prev ? { ...prev, acknowledged: true, acknowledgedAt: new Date().toISOString() } : null,
         );
       }
-    } catch {
+    } catch (err: unknown) {
       console.error('[CircularPage] Tudomásul vétel hiba:', err);
       setError('Tudomásul vétel sikertelen. Próbálja újra.');
     } finally {
@@ -178,4 +178,5 @@ export default function CircularPage() {
     </div>
   );
 }
+
 

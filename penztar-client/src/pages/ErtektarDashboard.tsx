@@ -146,7 +146,7 @@ export default function ErtektarDashboard() {
         setIsOfflineData(false);
         setOfflineTimestamp(null);
       }
-    } catch {
+    } catch (err: unknown) {
       console.error('[ÉrtéktárDashboard] Betöltési hiba:', err);
     } finally {
       setIsLoading(false);
@@ -292,4 +292,5 @@ export default function ErtektarDashboard() {
     </div>
   );
 }
+
 

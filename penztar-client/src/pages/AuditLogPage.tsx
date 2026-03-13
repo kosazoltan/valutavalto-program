@@ -89,7 +89,7 @@ export default function AuditLogPage() {
         setTotalElements(res.data.totalElements);
         setTotalPages(res.data.totalPages);
         setCurrentPage(res.data.number);
-      } catch {
+      } catch (err: unknown) {
         console.error('[AuditLogPage] Keresési hiba:', err);
         toast.error('Hiba az audit napló lekérdezésekor');
       } finally {
@@ -121,7 +121,7 @@ export default function AuditLogPage() {
       a.click();
       URL.revokeObjectURL(url);
       toast.success('CSV exportálva');
-    } catch {
+    } catch (err: unknown) {
       console.error('[AuditLogPage] Export hiba:', err);
       toast.error('Hiba a CSV exportáláskor');
     }
@@ -138,7 +138,7 @@ export default function AuditLogPage() {
         minute: '2-digit',
         second: '2-digit',
       });
-    } catch {
+    } catch (err: unknown) {
       return iso;
     }
   };
@@ -378,4 +378,5 @@ function DetailRow({ label, value }: { label: string; value: string | null | und
     </div>
   );
 }
+
 

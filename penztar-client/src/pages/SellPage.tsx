@@ -155,7 +155,7 @@ export default function SellPage() {
       } else {
         console.warn(`[SellPage] Szankciós szűrés: ${result.riskLevel} — ${result.matches.length} találat!`);
       }
-    } catch {
+    } catch (err: unknown) {
       console.error('[SellPage] Szankciós szűrés hiba:', err);
       // Ha a szűrés nem elérhető, ne blokkoljuk a tranzakciót, de jelezzünk
       setSanctionResult(null);
@@ -282,7 +282,7 @@ export default function SellPage() {
       setSanctionResult(null);
       setSanctionChecked(false);
       setSanctionApproved(false);
-    } catch {
+    } catch (err: unknown) {
       // L2: Error message leak — teljes hiba csak console-ba
       console.error('[SellPage] Tranzakció hiba:', err);
       setError('❌ Tranzakció sikertelen. Próbálja újra.');
@@ -315,7 +315,7 @@ export default function SellPage() {
       await window.electronAPI.printReceipt(JSON.stringify(pendingReceiptData));
       console.log('[SellPage] Bizonylat nyomtatás sikeres:', pendingReceiptData.receiptNumber);
       toast.success('Bizonylat nyomtatva!');
-    } catch {
+    } catch (err: unknown) {
       console.error('[SellPage] Nyomtatási hiba:', err);
       const errorMessage = err instanceof Error ? err.message : 'Ismeretlen hiba';
       toast.error(`Nyomtatási hiba: ${errorMessage}`);
@@ -608,4 +608,5 @@ export default function SellPage() {
     </div>
   );
 }
+
 

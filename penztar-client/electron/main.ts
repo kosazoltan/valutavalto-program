@@ -1,4 +1,5 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import log from 'electron-log/main';
 import path from 'node:path';
 import {
   initDatabase,
@@ -23,6 +24,18 @@ import './scanner';
 import './updater';
 
 const isDev = !app.isPackaged;
+
+log.initialize();
+log.transports.file.level = 'info';
+log.transports.console.level = isDev ? 'debug' : 'warn';
+
+process.on('uncaughtException', (err) => {
+  log.error('[Process] uncaughtException', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  log.error('[Process] unhandledRejection', reason as Error);
+});
 
 let mainWindow: BrowserWindow | null = null;
 

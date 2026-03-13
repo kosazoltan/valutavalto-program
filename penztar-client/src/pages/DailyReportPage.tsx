@@ -38,7 +38,7 @@ export default function DailyReportPage() {
     if (!data) return {};
     try {
       return JSON.parse(data) as CurrencyBreakdown;
-    } catch {
+    } catch (err: unknown) {
       return {};
     }
   }, []);
@@ -51,7 +51,7 @@ export default function DailyReportPage() {
       const data = await generateDailyReport(branchCode, date);
       setReport(data);
       setBreakdown(parseReportData(data.reportData));
-    } catch {
+    } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Hiba a jelentés generálásakor';
       setError(`❌ ${msg}`);
     } finally {
@@ -67,7 +67,7 @@ export default function DailyReportPage() {
       const data = await getDailyReport(branchCode, date);
       setReport(data);
       setBreakdown(parseReportData(data.reportData));
-    } catch {
+    } catch (err: unknown) {
       // Ha nincs korábbi — generálunk
       void handleGenerate();
     } finally {
@@ -245,4 +245,5 @@ export default function DailyReportPage() {
     </div>
   );
 }
+
 

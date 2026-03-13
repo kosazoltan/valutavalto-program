@@ -43,14 +43,14 @@ export default function SettingsPage() {
         setSelectedPrinter(printer ?? '');
         setAppVersion(version);
         setPendingCount(count);
-      } catch {
+      } catch (err: unknown) {
         console.error('[SettingsPage] Betöltési hiba:', err);
       }
 
       try {
         const printerList = await window.electronAPI.getPrinters();
         setPrinters(printerList);
-      } catch {
+      } catch (err: unknown) {
         console.error('[SettingsPage] Nyomtató lista hiba:', err);
       }
     };
@@ -62,7 +62,7 @@ export default function SettingsPage() {
       try {
         const data = await getAllSystemParams();
         setSysParams(data);
-      } catch {
+      } catch (err: unknown) {
         // System params may not be available for non-admin users
       }
     };
@@ -81,7 +81,7 @@ export default function SettingsPage() {
         await window.electronAPI.setConfig('selected_printer', selectedPrinter);
       }
       setSuccess('✅ Beállítások mentve!');
-    } catch {
+    } catch (err: unknown) {
       console.error('[SettingsPage] Mentés hiba:', err);
       setError('Beállítások mentése sikertelen.');
     } finally {
@@ -102,7 +102,7 @@ export default function SettingsPage() {
         setPendingCount(remaining);
         setSuccess(`✅ ${synced} tranzakció szinkronizálva! Hátralévő: ${remaining}`);
       }
-    } catch {
+    } catch (err: unknown) {
       console.error('[SettingsPage] Szinkronizáció hiba:', err);
       setError('Szinkronizáció sikertelen. Próbálja újra.');
     } finally {
@@ -262,7 +262,7 @@ export default function SettingsPage() {
                                   );
                                   setEditingParam(null);
                                   setSuccess('✅ Paraméter mentve!');
-                                } catch {
+                                } catch (err: unknown) {
                                   setError('Paraméter mentése sikertelen.');
                                 }
                               })();
@@ -354,4 +354,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
 
