@@ -26,3 +26,15 @@ export async function getRateHistory(
   );
   return response.data;
 }
+
+/**
+ * Árfolyam elosztás visszaigazolása.
+ * A pénztár jelzi, hogy megkapta az új árfolyamot.
+ */
+export async function acknowledgeRateDistribution(
+  distributionId: string,
+): Promise<void> {
+  await apiClient.post(
+    `/exchange-rate-master/distribution/${distributionId}/acknowledge`,
+  );
+}

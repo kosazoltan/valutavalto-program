@@ -4,6 +4,9 @@ import hu.puzzleir.valuta.dto.ratecreation.BankRateDTO;
 import hu.puzzleir.valuta.dto.ratecreation.CompetitorRateDTO;
 import hu.puzzleir.valuta.dto.ratecreation.GroupRateDTO;
 import hu.puzzleir.valuta.entity.ExchangeRate;
+import hu.puzzleir.valuta.entity.ExchangeRateMaster;
+import hu.puzzleir.valuta.entity.ExchangeRateMaster.MasterRateStatus;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.ExchangeRateRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +24,9 @@ import java.util.stream.Collectors;
 /**
  * Árfolyam-készítés szolgáltatás.
  * Bank és versenytárs árfolyamok kezelése, tervezet generálás, csoportos publikálás.
+ *
+ * A publishGroupRate() metódus most már ténylegesen létrehozza a törzs árfolyamot
+ * és elosztja a pénztáraknak az ExchangeRateMasterService-en keresztül.
  */
 @Service
 @RequiredArgsConstructor
@@ -29,6 +35,7 @@ import java.util.stream.Collectors;
 public class RateCreationService {
 
     private final ExchangeRateRepository exchangeRateRepository;
+    private final ExchangeRateMasterService masterService;
 
     /**
      * Bank árfolyamok lekérése az aktuális rátákból.
@@ -60,7 +67,6 @@ public class RateCreationService {
      */
     @Transactional(readOnly = true)
     public List<CompetitorRateDTO> getCompetitorRates() {
-        // Placeholder: versenytárs adatok későbbi integrációból jönnek
         return Collections.emptyList();
     }
 
@@ -106,19 +112,55 @@ public class RateCreationService {
 
     /**
      * Csoportos árfolyam publikálás.
+     *
+     * Folyamat:
+     * 1. Törzs árfolyam létrehozása (ExchangeRateMaster)
+     * 2. Automatikus jóváhagyás (APPROVED → PUBLISHED)
+     * 3. Elosztás a munkacsoport pénztárainak
+     *
+     * Legacy: ARFREG + ARFTMK - a főértéktáros beállítja az árfolyamot,
+     * majd a rendszer automatikusan elküldi a pénztáraknak.
      */
     public void publishGroupRate(GroupRateDTO groupRateDTO) {
-        log.info("Csoportos árfolyam publikálás groupId={}, {} ráta",
-                groupRateDTO.getGroupId(),
-                groupRateDTO.getRates() != null ? groupRateDTO.getRates().size() : 0);
+        if (groupRateDTO.getRates() == null || groupRateDTO.getRates().isEmpty()) {
+            throw new ValidationException("Legalább egy árfolyamot meg kell adni a publikáláshoz!");
+        }
 
-        // A tényleges publikálás a meglévő ExchangeRateService-en keresztül történik
-        // Ez a placeholder az árfolyam csoport kezelés alapja
-        if (groupRateDTO.getRates() != null) {
-            for (GroupRateDTO.RateEntry entry : groupRateDTO.getRates()) {
-                log.info("Publikálás: currencyId={}, buy={}, sell={}",
-                        entry.getCurrencyId(), entry.getBuyRate(), entry.getSellRate());
+        UUID workgroupId = groupRateDTO.getGroupId();
+        log.info("Csoportos árfolyam publikálás indítása: groupId={}, {} ráta",
+                workgroupId, groupRateDTO.getRates().size());
+
+        for (GroupRateDTO.RateEntry entry : groupRateDTO.getRates()) {
+            // Validáció
+            if (entry.getBuyRate() == null || entry.getSellRate() == null) {
+                throw new ValidationException(
+                    "Hiányzó árfolyam érték! currencyId=" + entry.getCurrencyId());
             }
+            if (entry.getBuyRate().compareTo(entry.getSellRate()) >= 0) {
+                throw new ValidationException(
+                    "Az eladási árfolyamnak nagyobbnak kell lennie a vételinél! currencyId="
+                    + entry.getCurrencyId());
+            }
+
+            // 1. Törzs árfolyam létrehozása
+            ExchangeRateMasterService.CreateMasterRateRequest request =
+                    ExchangeRateMasterService.CreateMasterRateRequest.builder()
+                            .currencyId(entry.getCurrencyId())
+                            .baseBuyRate(entry.getBuyRate())
+                            .baseSellRate(entry.getSellRate())
+                            .notes("Csoportos publikálás - groupId=" + workgroupId)
+                            .build();
+
+            ExchangeRateMaster master = masterService.createMasterRate(request);
+
+            // 2. Jóváhagyás
+            master = masterService.approveMasterRate(master.getId());
+
+            // 3. Publikálás és elosztás a munkacsoport pénztárainak
+            masterService.publishAndDistribute(master.getId(), workgroupId);
+
+            log.info("Árfolyam sikeresen publikálva: currencyId={}, buy={}, sell={}, groupId={}",
+                    entry.getCurrencyId(), entry.getBuyRate(), entry.getSellRate(), workgroupId);
         }
     }
 }

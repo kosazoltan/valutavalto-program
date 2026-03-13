@@ -1377,8 +1377,114 @@ export const rateCreationApi = {
     buyRate: number
     sellRate: number
   }): Promise<GroupRateDTO> => {
-    const response = await api.post<GroupRateDTO>('/rate-creation/publish-group-rate', data)
+    // A backend GroupRateDTO-t vár: { groupId, rates: [{ currencyId, buyRate, sellRate }] }
+    const backendPayload = {
+      groupId: data.currencyGroupId,
+      rates: [{
+        currencyId: Number(data.currencyId),
+        buyRate: data.buyRate,
+        sellRate: data.sellRate
+      }]
+    }
+    const response = await api.post<GroupRateDTO>('/rate-creation/publish-group-rate', backendPayload)
     return response.data
+  }
+}
+
+// ================== EXCHANGE RATE MASTER API ==================
+
+export interface ExchangeRateMaster {
+  id: string
+  companyId: string
+  currencyId: number
+  baseBuyRate: number
+  baseSellRate: number
+  officialRate?: number
+  limit1Amount?: number
+  limit1BuyRate?: number
+  limit1SellRate?: number
+  limit2Amount?: number
+  limit2BuyRate?: number
+  limit2SellRate?: number
+  limit3Amount?: number
+  limit3BuyRate?: number
+  limit3SellRate?: number
+  status: 'DRAFT' | 'APPROVED' | 'PUBLISHED' | 'REVOKED' | 'ARCHIVED'
+  versionNumber: number
+  validFrom: string
+  validUntil?: string
+  isActive: boolean
+  createdBy: number
+  approvedBy?: number
+  createdAt: string
+  approvedAt?: string
+  notes?: string
+}
+
+export interface ExchangeRateDistribution {
+  id: string
+  masterRateId: string
+  branchId: string
+  exchangeRateId?: number
+  distributedAt: string
+  status: 'PENDING' | 'DISTRIBUTED' | 'ACKNOWLEDGED' | 'FAILED'
+  acknowledgedAt?: string
+  errorMessage?: string
+}
+
+export interface CreateMasterRateRequest {
+  currencyId: number
+  baseBuyRate: number
+  baseSellRate: number
+  officialRate?: number
+  limit1Amount?: number
+  limit1BuyRate?: number
+  limit1SellRate?: number
+  limit2Amount?: number
+  limit2BuyRate?: number
+  limit2SellRate?: number
+  limit3Amount?: number
+  limit3BuyRate?: number
+  limit3SellRate?: number
+  notes?: string
+}
+
+export const exchangeRateMasterApi = {
+  list: async (): Promise<ExchangeRateMaster[]> => {
+    const response = await api.get<ExchangeRateMaster[]>('/exchange-rate-master')
+    return response.data
+  },
+  getActive: async (): Promise<ExchangeRateMaster[]> => {
+    const response = await api.get<ExchangeRateMaster[]>('/exchange-rate-master/active')
+    return response.data
+  },
+  getByStatus: async (status: string): Promise<ExchangeRateMaster[]> => {
+    const response = await api.get<ExchangeRateMaster[]>(`/exchange-rate-master/status/${status}`)
+    return response.data
+  },
+  create: async (data: CreateMasterRateRequest): Promise<ExchangeRateMaster> => {
+    const response = await api.post<ExchangeRateMaster>('/exchange-rate-master', data)
+    return response.data
+  },
+  approve: async (id: string): Promise<ExchangeRateMaster> => {
+    const response = await api.post<ExchangeRateMaster>(`/exchange-rate-master/${id}/approve`)
+    return response.data
+  },
+  publish: async (id: string, workgroupId?: string): Promise<ExchangeRateMaster> => {
+    const params = workgroupId ? { workgroupId } : {}
+    const response = await api.post<ExchangeRateMaster>(`/exchange-rate-master/${id}/publish`, null, { params })
+    return response.data
+  },
+  revoke: async (id: string): Promise<ExchangeRateMaster> => {
+    const response = await api.post<ExchangeRateMaster>(`/exchange-rate-master/${id}/revoke`)
+    return response.data
+  },
+  getDistribution: async (id: string): Promise<ExchangeRateDistribution[]> => {
+    const response = await api.get<ExchangeRateDistribution[]>(`/exchange-rate-master/${id}/distribution`)
+    return response.data
+  },
+  acknowledge: async (distributionId: string): Promise<void> => {
+    await api.post(`/exchange-rate-master/distribution/${distributionId}/acknowledge`)
   }
 }
 
