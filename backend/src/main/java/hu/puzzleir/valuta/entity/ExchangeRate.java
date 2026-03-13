@@ -173,7 +173,7 @@ public class ExchangeRate {
     /**
      * Árfolyam aktív-e
      */
-    @Column(nullable = false)
+    @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean active = true;
 

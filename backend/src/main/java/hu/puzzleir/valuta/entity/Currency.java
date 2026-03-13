@@ -58,7 +58,7 @@ public class Currency {
     /**
      * Aktív-e a valuta (kereskedhető)
      */
-    @Column(nullable = false)
+    @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean active = true;
 

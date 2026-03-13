@@ -39,6 +39,6 @@ public class CustomerRestriction {
     @Column(name = "expires_at")
     private LocalDateTime expiresAt;
 
-    @Column(nullable = false)
+    @Column(name = "is_active", nullable = false)
     private Boolean active;
 }
