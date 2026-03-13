@@ -1,6 +1,6 @@
 -- Rate management tables for exchange rate creation system
 
-CREATE TABLE rate_workgroup (
+CREATE TABLE IF NOT EXISTS rate_workgroup (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL,
     code VARCHAR(20) NOT NULL UNIQUE,
@@ -9,13 +9,13 @@ CREATE TABLE rate_workgroup (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE rate_workgroup_branch (
+CREATE TABLE IF NOT EXISTS rate_workgroup_branch (
     workgroup_id UUID NOT NULL REFERENCES rate_workgroup(id),
     branch_id UUID NOT NULL REFERENCES branch(id),
     PRIMARY KEY (workgroup_id, branch_id)
 );
 
-CREATE TABLE rate_template (
+CREATE TABLE IF NOT EXISTS rate_template (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     currency_id UUID NOT NULL REFERENCES currency(id),
     workgroup_id UUID NOT NULL REFERENCES rate_workgroup(id),
@@ -32,10 +32,10 @@ CREATE TABLE rate_template (
     published_at TIMESTAMP
 );
 
-CREATE INDEX idx_rate_template_wg_status ON rate_template(workgroup_id, status);
-CREATE INDEX idx_rate_template_currency ON rate_template(currency_id);
+CREATE INDEX IF NOT EXISTS idx_rate_template_wg_status ON rate_template(workgroup_id, status);
+CREATE INDEX IF NOT EXISTS idx_rate_template_currency ON rate_template(currency_id);
 
-CREATE TABLE rate_discount (
+CREATE TABLE IF NOT EXISTS rate_discount (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     workgroup_id UUID NOT NULL REFERENCES rate_workgroup(id),
     level INTEGER NOT NULL CHECK (level BETWEEN 1 AND 3),
@@ -46,7 +46,7 @@ CREATE TABLE rate_discount (
     UNIQUE(workgroup_id, level)
 );
 
-CREATE TABLE rate_publication (
+CREATE TABLE IF NOT EXISTS rate_publication (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     template_id UUID REFERENCES rate_template(id),
     workgroup_id UUID NOT NULL,
@@ -56,4 +56,4 @@ CREATE TABLE rate_publication (
     notes TEXT
 );
 
-CREATE INDEX idx_rate_publication_wg ON rate_publication(workgroup_id);
+CREATE INDEX IF NOT EXISTS idx_rate_publication_wg ON rate_publication(workgroup_id);

@@ -1,6 +1,6 @@
 -- Camera system tables for surveillance recording
 
-CREATE TABLE camera_config (
+CREATE TABLE IF NOT EXISTS camera_config (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     branch_id UUID NOT NULL REFERENCES branch(id),
     camera_id VARCHAR(50) NOT NULL,
@@ -16,7 +16,7 @@ CREATE TABLE camera_config (
     UNIQUE(branch_id, camera_id)
 );
 
-CREATE TABLE camera_recording (
+CREATE TABLE IF NOT EXISTS camera_recording (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     branch_id UUID NOT NULL REFERENCES branch(id),
     camera_id VARCHAR(50) NOT NULL,
@@ -32,11 +32,11 @@ CREATE TABLE camera_recording (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE INDEX idx_camera_recording_branch_date ON camera_recording(branch_id, start_time);
-CREATE INDEX idx_camera_recording_expires ON camera_recording(expires_at);
-CREATE INDEX idx_camera_recording_upload ON camera_recording(uploaded_to_server) WHERE NOT uploaded_to_server;
+CREATE INDEX IF NOT EXISTS idx_camera_recording_branch_date ON camera_recording(branch_id, start_time);
+CREATE INDEX IF NOT EXISTS idx_camera_recording_expires ON camera_recording(expires_at);
+CREATE INDEX IF NOT EXISTS idx_camera_recording_upload ON camera_recording(uploaded_to_server) WHERE NOT uploaded_to_server;
 
-CREATE TABLE camera_transaction_link (
+CREATE TABLE IF NOT EXISTS camera_transaction_link (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     recording_id UUID NOT NULL REFERENCES camera_recording(id) ON DELETE CASCADE,
     transaction_id UUID,
@@ -46,10 +46,10 @@ CREATE TABLE camera_transaction_link (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE INDEX idx_camera_tx_link_receipt ON camera_transaction_link(receipt_number);
-CREATE INDEX idx_camera_tx_link_tx ON camera_transaction_link(transaction_id);
+CREATE INDEX IF NOT EXISTS idx_camera_tx_link_receipt ON camera_transaction_link(receipt_number);
+CREATE INDEX IF NOT EXISTS idx_camera_tx_link_tx ON camera_transaction_link(transaction_id);
 
-CREATE TABLE camera_access_log (
+CREATE TABLE IF NOT EXISTS camera_access_log (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     recording_id UUID REFERENCES camera_recording(id),
     worker_id BIGINT NOT NULL,
