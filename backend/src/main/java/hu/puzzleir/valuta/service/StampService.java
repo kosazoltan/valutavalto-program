@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.service;
 
-import com.puzzleir.backend.exception.ValidationException;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.dto.stamp.*;
 import hu.puzzleir.valuta.entity.StampAssignment;
 import hu.puzzleir.valuta.entity.StampBatch;

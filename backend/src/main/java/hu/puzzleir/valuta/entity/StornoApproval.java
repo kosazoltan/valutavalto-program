@@ -1,7 +1,7 @@
 package hu.puzzleir.valuta.entity;
 
-import com.puzzleir.backend.entity.Branch;
-import com.puzzleir.backend.entity.Dictionary;
+import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.entity.Dictionary;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;

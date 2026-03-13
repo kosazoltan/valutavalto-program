@@ -1,11 +1,11 @@
 package hu.puzzleir.valuta.service;
 
-import com.puzzleir.backend.entity.Branch;
-import com.puzzleir.backend.entity.Company;
-import com.puzzleir.backend.exception.ResourceNotFoundException;
-import com.puzzleir.backend.exception.ValidationException;
-import com.puzzleir.backend.repository.BranchRepository;
-import com.puzzleir.backend.repository.CompanyRepository;
+import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.entity.Company;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.repository.BranchRepository;
+import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.entity.CashBalance;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;

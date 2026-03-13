@@ -2,9 +2,9 @@ package hu.puzzleir.valuta.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.puzzleir.backend.entity.Company;
-import com.puzzleir.backend.exception.ResourceNotFoundException;
-import com.puzzleir.backend.repository.CompanyRepository;
+import hu.puzzleir.valuta.entity.Company;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.dto.employee.*;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.*;

@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.security;
 
-import com.puzzleir.backend.exception.ValidationException;
+import hu.puzzleir.valuta.exception.ValidationException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 

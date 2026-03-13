@@ -1,7 +1,7 @@
 package hu.puzzleir.valuta.service;
 
-import com.puzzleir.backend.exception.ResourceNotFoundException;
-import com.puzzleir.backend.exception.ValidationException;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.entity.Permission;
 import hu.puzzleir.valuta.entity.WorkerRoleAssignment;
 import hu.puzzleir.valuta.entity.WorkerRoleDefinition;

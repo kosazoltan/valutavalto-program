@@ -6,7 +6,7 @@ import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.gmail.Gmail;
 import com.google.api.services.gmail.model.*;
-import com.puzzleir.backend.exception.ValidationException;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.config.GmailOAuthConfig;
 import hu.puzzleir.valuta.dto.email.EmailDetailDto;
 import hu.puzzleir.valuta.dto.email.EmailListDto;

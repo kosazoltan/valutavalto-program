@@ -102,13 +102,13 @@ public class TransferController {
         if (auth != null && auth.getDetails() instanceof WorkerAuthenticationDetails details) {
             return details.getWorkerId();
         }
-        throw new com.puzzleir.backend.exception.ValidationException("Hitelesítés szükséges!");
+        throw new hu.puzzleir.valuta.exception.ValidationException("Hitelesítés szükséges!");
     }
 
     private UUID getBranchId(Authentication auth) {
         if (auth != null && auth.getDetails() instanceof WorkerAuthenticationDetails details) {
             return details.getBranchId();
         }
-        throw new com.puzzleir.backend.exception.ValidationException("Hitelesítés szükséges!");
+        throw new hu.puzzleir.valuta.exception.ValidationException("Hitelesítés szükséges!");
     }
 }

@@ -1,9 +1,9 @@
 package hu.puzzleir.valuta.service;
 
-import com.puzzleir.backend.entity.Company;
-import com.puzzleir.backend.exception.ResourceNotFoundException;
-import com.puzzleir.backend.exception.ValidationException;
-import com.puzzleir.backend.repository.CompanyRepository;
+import hu.puzzleir.valuta.entity.Company;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.entity.Customer;
 import hu.puzzleir.valuta.entity.DocumentType;
 import hu.puzzleir.valuta.repository.CustomerRepository;

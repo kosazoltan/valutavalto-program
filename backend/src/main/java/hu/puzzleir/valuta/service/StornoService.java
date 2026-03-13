@@ -1,9 +1,9 @@
 package hu.puzzleir.valuta.service;
 
-import com.puzzleir.backend.entity.Branch;
-import com.puzzleir.backend.exception.ResourceNotFoundException;
-import com.puzzleir.backend.exception.ValidationException;
-import com.puzzleir.backend.repository.BranchRepository;
+import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.dto.storno.StornoApprovalDto;
 import hu.puzzleir.valuta.dto.storno.StornoCheckResultDto;
 import hu.puzzleir.valuta.dto.storno.StornoRequestDto;
@@ -17,8 +17,8 @@ import hu.puzzleir.valuta.repository.StornoApprovalRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
-import com.puzzleir.backend.entity.Dictionary;
-import com.puzzleir.backend.repository.DictionaryRepository;
+import hu.puzzleir.valuta.entity.Dictionary;
+import hu.puzzleir.valuta.repository.DictionaryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

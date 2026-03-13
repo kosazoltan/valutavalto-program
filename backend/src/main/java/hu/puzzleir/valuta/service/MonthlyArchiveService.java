@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.service;
 
-import com.puzzleir.backend.exception.ValidationException;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.entity.ArchivedTransaction;
 import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.entity.TransactionStatus;

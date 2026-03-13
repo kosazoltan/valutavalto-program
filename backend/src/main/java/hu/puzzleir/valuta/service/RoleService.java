@@ -3,7 +3,7 @@ package hu.puzzleir.valuta.service;
 import hu.puzzleir.valuta.dto.role.*;
 import hu.puzzleir.valuta.entity.Permission;
 import hu.puzzleir.valuta.entity.Role;
-import com.puzzleir.backend.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.repository.PermissionRepository;
 import hu.puzzleir.valuta.repository.RoleRepository;
 import lombok.RequiredArgsConstructor;

@@ -3,8 +3,8 @@ package hu.puzzleir.valuta.service;
 import com.google.api.client.auth.oauth2.TokenResponse;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.http.HttpTransport;
-import com.puzzleir.backend.exception.ResourceNotFoundException;
-import com.puzzleir.backend.exception.ValidationException;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.config.GmailOAuthConfig;
 import hu.puzzleir.valuta.dto.email.EmailAccountDto;
 import hu.puzzleir.valuta.entity.EmailAccount;
@@ -13,8 +13,8 @@ import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.repository.EmailAccountRepository;
 import hu.puzzleir.valuta.repository.VaultTerritoryRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
-import com.puzzleir.backend.entity.Branch;
-import com.puzzleir.backend.repository.BranchRepository;
+import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -159,7 +159,7 @@ public class EmailAccountService {
         account.setWorker(null);
 
         if (dto.getBranchId() != null) {
-            com.puzzleir.backend.entity.Branch branch = new com.puzzleir.backend.entity.Branch();
+            hu.puzzleir.valuta.entity.Branch branch = new hu.puzzleir.valuta.entity.Branch();
             branch.setId(dto.getBranchId());
             account.setBranch(branch);
         } else if (dto.getVaultTerritoryId() != null) {

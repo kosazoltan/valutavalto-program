@@ -2,7 +2,7 @@ package hu.puzzleir.valuta.controller;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.puzzleir.backend.exception.ValidationException;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.dto.auth.GoogleLoginRequestDto;
 import hu.puzzleir.valuta.dto.auth.LoginResponseDto;
 import hu.puzzleir.valuta.dto.worker.WorkerDto;

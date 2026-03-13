@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.service;
 
-import com.puzzleir.backend.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.entity.ProhibitedCompany;
 import hu.puzzleir.valuta.entity.ProhibitedPerson;
 import hu.puzzleir.valuta.repository.ProhibitedCompanyRepository;

@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.service;
 
-import com.puzzleir.backend.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.entity.FeeDiscount;
 import hu.puzzleir.valuta.entity.FeeRate;
 import hu.puzzleir.valuta.entity.FeeType;

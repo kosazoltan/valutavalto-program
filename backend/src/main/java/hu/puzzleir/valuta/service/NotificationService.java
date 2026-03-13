@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.service;
 
-import com.puzzleir.backend.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.entity.Notification;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.repository.NotificationRepository;

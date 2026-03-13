@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.service;
 
-import com.puzzleir.backend.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.dto.scheduler.ScheduledTaskDto;
 import hu.puzzleir.valuta.entity.ScheduledTask;
 import hu.puzzleir.valuta.repository.ScheduledTaskRepository;

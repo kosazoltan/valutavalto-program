@@ -1,6 +1,9 @@
 package hu.puzzleir.valuta.exception;
 
+import hu.puzzleir.valuta.errorlog.ErrorMailerService;
+import hu.puzzleir.valuta.errorlog.ErrorReportRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -8,9 +11,14 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.OptimisticLockException;
+import jakarta.servlet.http.HttpServletRequest;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -22,7 +30,22 @@ import java.util.Map;
 @Slf4j
 public class GlobalExceptionHandler {
 
+    @Autowired(required = false)
+    private ErrorMailerService errorMailerService;
+
     // --- 404 Not Found ---
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResource(NoResourceFoundException ex) {
+        log.debug("No resource found: {}", ex.getMessage());
+        return buildResponse(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage());
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleResourceNotFound(ResourceNotFoundException ex) {
+        log.warn("Resource not found: {}", ex.getMessage());
+        return buildResponse(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage());
+    }
+
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleEntityNotFound(EntityNotFoundException ex) {
         log.warn("Entity not found: {}", ex.getMessage());
@@ -58,6 +81,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
+    // --- 400 Bad Request (custom validation) ---
+    @ExceptionHandler(ValidationException.class)
+    public ResponseEntity<ErrorResponse> handleValidation(ValidationException ex) {
+        log.warn("Validation error: {}", ex.getMessage());
+        return buildResponse(HttpStatus.BAD_REQUEST, "BAD_REQUEST", ex.getMessage());
+    }
+
     // --- 400 Bad Request (IllegalArgument) ---
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleBadRequest(IllegalArgumentException ex) {
@@ -82,9 +112,33 @@ public class GlobalExceptionHandler {
 
     // --- 500 Internal Server Error (catch-all) ---
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleInternalError(Exception ex) {
+    public ResponseEntity<ErrorResponse> handleInternalError(Exception ex, HttpServletRequest request) {
         log.error("Unexpected internal error", ex);
+
+        if (errorMailerService != null) {
+            try {
+                errorMailerService.sendErrorReport(ErrorReportRequest.builder()
+                    .errorType("api_error")
+                    .message(ex.getMessage())
+                    .stack(stackTraceToString(ex))
+                    .url(request.getRequestURI())
+                    .requestMethod(request.getMethod())
+                    .requestId(request.getHeader("X-Request-ID"))
+                    .timestamp(Instant.now().toString())
+                    .build());
+            } catch (Exception reportEx) {
+                log.warn("Failed to send error report", reportEx);
+            }
+        }
+
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "Váratlan belső hiba történt");
+    }
+
+    private String stackTraceToString(Exception ex) {
+        StringWriter sw = new StringWriter();
+        ex.printStackTrace(new PrintWriter(sw));
+        String full = sw.toString();
+        return full.length() > 5000 ? full.substring(0, 5000) : full;
     }
 
     // --- Helper ---

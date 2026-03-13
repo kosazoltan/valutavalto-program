@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.service;
 
-import com.puzzleir.backend.exception.ValidationException;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.entity.RateTemplate;
 import hu.puzzleir.valuta.repository.RateTemplateRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;

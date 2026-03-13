@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.entity;
 
-import com.puzzleir.backend.entity.Branch;
+import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.config.EncryptedStringConverter;
 import jakarta.persistence.*;
 import lombok.*;

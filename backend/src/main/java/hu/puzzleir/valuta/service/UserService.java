@@ -2,8 +2,8 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.dto.user.UserDetailDto;
 import hu.puzzleir.valuta.entity.Worker;
-import com.puzzleir.backend.exception.ResourceNotFoundException;
-import com.puzzleir.backend.exception.ValidationException;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;

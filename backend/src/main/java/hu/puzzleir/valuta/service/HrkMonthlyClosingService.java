@@ -2,9 +2,9 @@ package hu.puzzleir.valuta.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.puzzleir.backend.exception.ValidationException;
-import com.puzzleir.backend.dto.HrkTransactionDto;
-import com.puzzleir.backend.service.HrkService;
+import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.dto.HrkTransactionDto;
+import hu.puzzleir.valuta.service.HrkService;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

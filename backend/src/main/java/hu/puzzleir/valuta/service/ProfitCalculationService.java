@@ -2,8 +2,8 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.repository.TransactionRepository;
-import com.puzzleir.backend.repository.BranchRepository;
-import com.puzzleir.backend.entity.Branch;
+import hu.puzzleir.valuta.repository.BranchRepository;
+import hu.puzzleir.valuta.entity.Branch;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

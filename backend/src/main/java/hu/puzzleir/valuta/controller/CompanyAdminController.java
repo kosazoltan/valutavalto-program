@@ -1,7 +1,7 @@
 package hu.puzzleir.valuta.controller;
 
-import com.puzzleir.backend.entity.Branch;
-import com.puzzleir.backend.entity.Company;
+import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.dto.admin.*;
 import hu.puzzleir.valuta.service.CompanyAdminService;
 import jakarta.validation.Valid;

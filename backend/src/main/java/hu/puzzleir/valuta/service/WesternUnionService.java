@@ -1,8 +1,8 @@
 package hu.puzzleir.valuta.service;
 
-import com.puzzleir.backend.entity.Branch;
-import com.puzzleir.backend.exception.ResourceNotFoundException;
-import com.puzzleir.backend.repository.BranchRepository;
+import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.dto.wu.WuDailyReportDto;
 import hu.puzzleir.valuta.dto.wu.WuTransactionDto;
 import hu.puzzleir.valuta.entity.WuBalance;

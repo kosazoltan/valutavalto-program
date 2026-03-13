@@ -3,7 +3,7 @@ package hu.puzzleir.valuta.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import com.puzzleir.backend.entity.Branch;
+import hu.puzzleir.valuta.entity.Branch;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

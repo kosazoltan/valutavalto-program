@@ -94,6 +94,6 @@ public class UserController {
         if (auth != null && auth.getDetails() instanceof WorkerAuthenticationDetails details) {
             return details.getWorkerId();
         }
-        throw new com.puzzleir.backend.exception.ValidationException("Hitelesítés szükséges!");
+        throw new hu.puzzleir.valuta.exception.ValidationException("Hitelesítés szükséges!");
     }
 }

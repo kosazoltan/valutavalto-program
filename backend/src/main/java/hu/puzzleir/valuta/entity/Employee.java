@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.entity;
 
-import com.puzzleir.backend.entity.Company;
+import hu.puzzleir.valuta.entity.Company;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

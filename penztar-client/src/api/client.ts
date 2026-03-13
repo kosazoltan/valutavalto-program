@@ -1,7 +1,14 @@
 import axios, { type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
 import axiosRetry, { exponentialDelay, isNetworkOrIdempotentRequestError } from 'axios-retry';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1';
+let API_BASE_URL = import.meta.env.VITE_API_URL;
+if (!API_BASE_URL) {
+  if (import.meta.env.DEV) {
+    API_BASE_URL = 'http://localhost:8080/api/v1';
+  } else {
+    throw new Error('VITE_API_URL environment variable is not set!');
+  }
+}
 
 let authToken: string | null = null;
 

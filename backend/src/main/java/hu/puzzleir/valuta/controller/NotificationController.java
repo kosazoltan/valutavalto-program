@@ -83,6 +83,6 @@ public class NotificationController {
         if (auth != null && auth.getDetails() instanceof WorkerAuthenticationDetails details) {
             return String.valueOf(details.getWorkerId());
         }
-        throw new com.puzzleir.backend.exception.ValidationException("Hitelesítés szükséges!");
+        throw new hu.puzzleir.valuta.exception.ValidationException("Hitelesítés szükséges!");
     }
 }

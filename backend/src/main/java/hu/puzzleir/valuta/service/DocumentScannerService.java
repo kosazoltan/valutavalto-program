@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.service;
 
-import com.puzzleir.backend.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.dto.document.ScannedDocumentDto;
 import hu.puzzleir.valuta.entity.ScannedDocument;
 import hu.puzzleir.valuta.entity.ScannedDocumentType;

@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.service;
 
-import com.puzzleir.backend.exception.ValidationException;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.dto.aml.AmlDailySummaryDto;
 import hu.puzzleir.valuta.dto.aml.AmlReportDto;
 import hu.puzzleir.valuta.dto.aml.CreateAmlReportDto;
@@ -596,7 +596,7 @@ public class AmlService {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         String workerCode = SecurityUtils.getCurrentWorkerCode();
 
-        com.puzzleir.backend.entity.Company company = new com.puzzleir.backend.entity.Company();
+        hu.puzzleir.valuta.entity.Company company = new hu.puzzleir.valuta.entity.Company();
         company.setId(companyId);
 
         AmlReport report = AmlReport.builder()

@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.service;
 
-import com.puzzleir.backend.exception.ValidationException;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.dto.ratemanagement.RateUpdateMessage;
 import hu.puzzleir.valuta.entity.RatePublication;
 import hu.puzzleir.valuta.entity.RateTemplate;

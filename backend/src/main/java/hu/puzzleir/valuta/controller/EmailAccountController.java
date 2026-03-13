@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.controller;
 
-import com.puzzleir.backend.exception.ValidationException;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.dto.email.EmailAccountDto;
 import hu.puzzleir.valuta.entity.EmailAccount;
 import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;

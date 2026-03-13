@@ -63,13 +63,6 @@ import RolePage from './pages/settings/RolePage'
 import SystemParameterPage from './pages/settings/SystemParameterPage'
 import UserPage from './pages/settings/UserPage'
 
-// === Moduláris Feature Pages (v2) ===
-import { ReportsV2Page } from './features/reporting/ReportsV2Page'
-import { ComplianceV2Page } from './features/compliance/ComplianceV2Page'
-import { ExportV2Page } from './features/export/ExportV2Page'
-import { MnbRatesV2Page } from './features/integration/MnbRatesV2Page'
-import { NavV2Page } from './features/integration/nav/NavV2Page'
-
 // === Kamera modul ===
 import CameraLivePage from './pages/camera/CameraLivePage'
 import CameraPlaybackPage from './pages/camera/CameraPlaybackPage'
@@ -269,21 +262,6 @@ export default function App() {
           {/* === Árfolyam-kezelés Routes === */}
           <Route path="/rate-management" element={<RateCreationDashboard />} />
 
-          {/* === Moduláris Feature Routes (v2) === */}
-          {/* Reporting v2 */}
-          <Route path="/reports-v2" element={<ReportsV2Page />} />
-
-          {/* Compliance v2 */}
-          <Route path="/compliance-v2" element={<ComplianceV2Page />} />
-
-          {/* Export v2 */}
-          <Route path="/export-v2" element={<ExportV2Page />} />
-
-          {/* MNB Rates v2 */}
-          <Route path="/mnb-rates-v2" element={<MnbRatesV2Page />} />
-
-          {/* NAV Integration v2 */}
-          <Route path="/nav-v2" element={<NavV2Page />} />
         </Route>
       </Routes>
       <Toaster />

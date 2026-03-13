@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.service;
 
-import com.puzzleir.backend.exception.ValidationException;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.entity.RateWorkgroup;
 import hu.puzzleir.valuta.repository.RateWorkgroupRepository;
 import lombok.RequiredArgsConstructor;

@@ -1,7 +1,7 @@
 package hu.puzzleir.valuta.service;
 
-import com.puzzleir.backend.entity.Branch;
-import com.puzzleir.backend.exception.ValidationException;
+import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.dto.eveningclosing.DailyDataPackage;
 import hu.puzzleir.valuta.dto.eveningclosing.DataSyncResult;
 import hu.puzzleir.valuta.dto.pos.PosClosingResult;
@@ -75,7 +75,7 @@ public class DailyClosingService {
         log.info("Napzaras inditasa: datum={}, iroda={}", closingDate, branchId);
 
         // Wizard letrehozasa
-        Branch branch = new com.puzzleir.backend.entity.Branch();
+        Branch branch = new hu.puzzleir.valuta.entity.Branch();
         branch.setId(branchId);
         Worker worker = new Worker();
         worker.setId(SecurityUtils.getCurrentWorkerId());

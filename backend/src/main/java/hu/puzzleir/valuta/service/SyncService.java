@@ -1,8 +1,8 @@
 package hu.puzzleir.valuta.service;
 
-import com.puzzleir.backend.entity.Branch;
-import com.puzzleir.backend.exception.ResourceNotFoundException;
-import com.puzzleir.backend.repository.BranchRepository;
+import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.dto.sync.SyncLogDto;
 import hu.puzzleir.valuta.dto.sync.SyncStatusDto;
 import hu.puzzleir.valuta.entity.SyncLog;

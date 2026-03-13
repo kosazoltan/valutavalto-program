@@ -1,8 +1,8 @@
 package hu.puzzleir.valuta.service;
 
-import com.puzzleir.backend.entity.Branch;
-import com.puzzleir.backend.exception.ResourceNotFoundException;
-import com.puzzleir.backend.repository.BranchRepository;
+import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.entity.ReceiptSequence;
 import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.repository.ReceiptSequenceRepository;

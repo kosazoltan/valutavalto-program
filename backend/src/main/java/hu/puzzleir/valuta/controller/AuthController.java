@@ -8,7 +8,7 @@ import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.JwtTokenProvider;
 import hu.puzzleir.valuta.service.WorkerRoleService;
 import hu.puzzleir.valuta.service.WorkerService;
-import com.puzzleir.backend.exception.ValidationException;
+import hu.puzzleir.valuta.exception.ValidationException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

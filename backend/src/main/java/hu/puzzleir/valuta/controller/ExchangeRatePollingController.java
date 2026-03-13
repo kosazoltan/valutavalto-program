@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.controller;
 
-import com.puzzleir.backend.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.dto.polling.ApplyMarginsDto;
 import hu.puzzleir.valuta.dto.polling.ExchangeRateSourceDto;
 import hu.puzzleir.valuta.dto.polling.PollingStatusDto;
