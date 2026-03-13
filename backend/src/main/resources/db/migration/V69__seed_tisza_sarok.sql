@@ -3,9 +3,16 @@ INSERT INTO company (id, name, code, is_active, created_at)
 VALUES (gen_random_uuid(), 'Exclusive Best Change Zrt.', 'EBC', true, NOW())
 ON CONFLICT DO NOTHING;
 
+-- Dictionary: Branch Status ACTIVE (needed for branch_status_did NOT NULL constraint)
+INSERT INTO dictionary (category, code, name, name_hu, sort_order, is_active, created_at)
+VALUES ('BRANCH_STATUS', 'ACTIVE', 'Active', 'Aktiv', 1, true, NOW())
+ON CONFLICT (category, code) DO NOTHING;
+
 -- Branch: Tisza Sarok (Szeged)
-INSERT INTO branch (id, company_id, name, code, bank_code, city, address, zip_code, opening_date, is_active, created_at)
-SELECT gen_random_uuid(), c.id, 'Tisza Sarok', 'TISZA', 'TISZA', 'Szeged', 'Tisza Sarok, Szeged', '6720', CURRENT_DATE, true, NOW()
+INSERT INTO branch (id, company_id, name, code, bank_code, city, address, zip_code, opening_date, is_active, branch_status_did, created_at)
+SELECT gen_random_uuid(), c.id, 'Tisza Sarok', 'TISZA', 'TISZA', 'Szeged', 'Tisza Sarok, Szeged', '6720', CURRENT_DATE, true,
+    (SELECT id FROM dictionary WHERE category = 'BRANCH_STATUS' AND code = 'ACTIVE'),
+    NOW()
 FROM company c WHERE c.code = 'EBC'
 ON CONFLICT DO NOTHING;
 
