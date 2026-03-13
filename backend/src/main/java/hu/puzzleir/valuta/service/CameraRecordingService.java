@@ -7,6 +7,7 @@ import hu.puzzleir.valuta.entity.CameraRecording;
 import hu.puzzleir.valuta.repository.CameraConfigRepository;
 import hu.puzzleir.valuta.repository.CameraRecordingRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -26,6 +27,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
+@ConditionalOnProperty(name = "camera.enabled", havingValue = "true", matchIfMissing = false)
 @RequiredArgsConstructor
 @Slf4j
 public class CameraRecordingService {
@@ -122,7 +124,7 @@ public class CameraRecordingService {
     }
 
     /**
-     * Main capture loop for a camera — runs in a separate thread.
+     * Main capture loop for a camera â€” runs in a separate thread.
      */
     private void captureLoop(Webcam webcam, String cameraId) {
         Thread.currentThread().setName("camera-" + cameraId);
@@ -220,7 +222,7 @@ public class CameraRecordingService {
     }
 
     /**
-     * Get branch ID for a camera — from config or fallback.
+     * Get branch ID for a camera â€” from config or fallback.
      */
     private UUID getBranchIdForCamera(String cameraId) {
         // Try to find from camera config
