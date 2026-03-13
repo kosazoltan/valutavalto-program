@@ -1,5 +1,5 @@
--- V60: MNB hivatalos árfolyam cache tábla
--- A havi záráshoz az MNB SOAP API-ból letöltött napi középárfolyamok.
+﻿-- V66: MNB hivatalos Ăˇrfolyam cache tĂˇbla
+-- A havi zĂˇrĂˇshoz az MNB SOAP API-bĂłl letĂ¶ltĂ¶tt napi kĂ¶zĂ©pĂˇrfolyamok.
 
 CREATE TABLE IF NOT EXISTS mnb_exchange_rate_cache (
     id              BIGSERIAL PRIMARY KEY,
