@@ -168,46 +168,6 @@ export default function CashierTransactionPage() {
     []
   )
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent, rowIdx: number, field: 'currency' | 'quantity') => {
-      if (e.key === 'Enter' || e.key === 'Tab') {
-        e.preventDefault()
-        if (field === 'currency' && rows[rowIdx]?.currencyCode.length === 3) {
-          // Ugras quantity-re
-          setActiveField('quantity')
-        } else if (field === 'quantity') {
-          // Kovetkezo sor
-          if (rowIdx < MAX_LINES - 1) {
-            setActiveRow(rowIdx + 1)
-            setActiveField('currency')
-          } else {
-            // Utolso sor utan: veglegestes
-            handleSubmit()
-          }
-        }
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault()
-        if (rowIdx < MAX_LINES - 1) {
-          setActiveRow(rowIdx + 1)
-        }
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        if (rowIdx > 0) {
-          setActiveRow(rowIdx - 1)
-        }
-      } else if (e.key === 'Escape') {
-        e.preventDefault()
-        // Sor torlese
-        setRows((prev) => {
-          const next = [...prev]
-          next[rowIdx] = emptyRow()
-          return next
-        })
-      }
-    },
-    [rows, handleSubmit]
-  )
-
   const handleSubmit = useCallback(async () => {
     const filledRows = rows.filter((r) => r.currencyCode && r.hufValue > 0)
     if (filledRows.length === 0) return
@@ -279,6 +239,46 @@ export default function CashierTransactionPage() {
       setIsSubmitting(false)
     }
   }, [rows, mode, total, handlingFee, discount, customerName, customerDocNumber, customerAddress])
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent, rowIdx: number, field: 'currency' | 'quantity') => {
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault()
+        if (field === 'currency' && rows[rowIdx]?.currencyCode.length === 3) {
+          // Ugras quantity-re
+          setActiveField('quantity')
+        } else if (field === 'quantity') {
+          // Kovetkezo sor
+          if (rowIdx < MAX_LINES - 1) {
+            setActiveRow(rowIdx + 1)
+            setActiveField('currency')
+          } else {
+            // Utolso sor utan: veglegestes
+            handleSubmit()
+          }
+        }
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        if (rowIdx < MAX_LINES - 1) {
+          setActiveRow(rowIdx + 1)
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        if (rowIdx > 0) {
+          setActiveRow(rowIdx - 1)
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault()
+        // Sor torlese
+        setRows((prev) => {
+          const next = [...prev]
+          next[rowIdx] = emptyRow()
+          return next
+        })
+      }
+    },
+    [rows, handleSubmit]
+  )
 
   const handleCancel = useCallback(() => {
     if (rows.some((r) => r.currencyCode)) {
