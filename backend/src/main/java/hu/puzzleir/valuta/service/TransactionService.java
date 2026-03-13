@@ -67,10 +67,19 @@ public class TransactionService {
 
     @PostConstruct
     void initHufCurrencyId() {
-        cachedHufCurrencyId = currencyRepository.findByCode("HUF")
-                .orElseThrow(() -> new ResourceNotFoundException("HUF valuta nem található a rendszerben!"))
-                .getId();
-        log.info("HUF currency ID cached: {}", cachedHufCurrencyId);
+        try {
+            cachedHufCurrencyId = currencyRepository.findByCode("HUF")
+                    .map(c -> c.getId())
+                    .orElse(null);
+            if (cachedHufCurrencyId != null) {
+                log.info("HUF currency ID cached: {}", cachedHufCurrencyId);
+            } else {
+                log.warn("HUF currency not found in DB — cash balance operations may fail until seeded");
+            }
+        } catch (Exception e) {
+            log.error("Failed to cache HUF currency ID (DB type mismatch?): {}", e.getMessage());
+            cachedHufCurrencyId = null;
+        }
     }
 
     /**
