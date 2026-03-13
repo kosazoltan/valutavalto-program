@@ -24,21 +24,12 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
     excludeFilters = @ComponentScan.Filter(
         type = FilterType.REGEX,
         pattern = {
-            // duplikalt service-ek (hu.puzzleir.valuta verzio az aktiv)
+            // duplikalt service/controller (hu.puzzleir.valuta verzio az aktiv)
+            // CSAK azok kizarva amiknek van hu.puzzleir.valuta csereje!
             "com\\.puzzleir\\.backend\\.service\\.EveningClosingService",
-            "com\\.puzzleir\\.backend\\.service\\.BranchService",
-            "com\\.puzzleir\\.backend\\.service\\.ClosingControlService",
-            "com\\.puzzleir\\.backend\\.service\\.CustomerControlService",
-            "com\\.puzzleir\\.backend\\.service\\.HrkService",
-
-            // duplikalt controller-ek (hu.puzzleir.valuta verzio az aktiv)
             "com\\.puzzleir\\.backend\\.controller\\.EveningClosingController",
-            "com\\.puzzleir\\.backend\\.controller\\.BranchController",
-            "com\\.puzzleir\\.backend\\.controller\\.ClosingControlController",
-            "com\\.puzzleir\\.backend\\.controller\\.CustomerControlController",
-            "com\\.puzzleir\\.backend\\.controller\\.HrkController",
 
-            // regi security config kikapcsolva
+            // regi security config kikapcsolva (hu.puzzleir.valuta.config.SecurityConfig aktiv)
             "com\\.puzzleir\\.backend\\.config\\.SecurityConfig"
         }
     )
