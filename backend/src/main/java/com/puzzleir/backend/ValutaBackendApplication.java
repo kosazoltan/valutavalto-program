@@ -39,6 +39,15 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 public class ValutaBackendApplication {
 
     public static void main(String[] args) {
+        // Render sometimes provides DATABASE_URL in non-JDBC format (postgres://...)
+        String databaseUrl = System.getenv("DATABASE_URL");
+        if (databaseUrl != null && !databaseUrl.isBlank() && !databaseUrl.startsWith("jdbc:")) {
+            if (databaseUrl.startsWith("postgres://") || databaseUrl.startsWith("postgresql://")) {
+                String jdbcUrl = databaseUrl.replaceFirst("^postgres(ql)?://", "jdbc:postgresql://");
+                System.setProperty("spring.datasource.url", jdbcUrl);
+            }
+        }
+
         SpringApplication.run(ValutaBackendApplication.class, args);
     }
 }
