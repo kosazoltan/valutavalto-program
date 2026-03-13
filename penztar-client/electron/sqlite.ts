@@ -23,9 +23,8 @@ export async function initDatabase(): Promise<void> {
       ? path.join(process.resourcesPath, 'sql-wasm.wasm')
       : path.join(__dirname, '../node_modules/sql.js/dist/sql-wasm.wasm');
 
-    const SQL = await initSqlJs({
-      locateFile: () => wasmPath,
-    });
+    const wasmBinary = fs.readFileSync(wasmPath);
+    const SQL = await initSqlJs({ wasmBinary });
 
     // Ha létezik a DB fájl, betöltjük
     if (fs.existsSync(dbPath)) {
