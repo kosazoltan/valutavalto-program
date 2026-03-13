@@ -3,9 +3,10 @@ INSERT INTO company (id, name, code, is_active, created_at)
 VALUES (gen_random_uuid(), 'Exclusive Best Change Zrt.', 'EBC', true, NOW())
 ON CONFLICT DO NOTHING;
 
--- Dictionary: Branch Status ACTIVE (needed for branch_status_did NOT NULL constraint)
-INSERT INTO dictionary (category, code, name, name_hu, sort_order, is_active, created_at)
-VALUES ('BRANCH_STATUS', 'ACTIVE', 'Active', 'Aktiv', 1, true, NOW())
+-- Dictionary: Branch Status ACTIVE
+-- Note: Hibernate @GeneratedValue(UUID) means DB column has no DEFAULT, must supply id explicitly
+INSERT INTO dictionary (id, category, code, name, name_hu, sort_order, is_active, created_at)
+VALUES (gen_random_uuid(), 'BRANCH_STATUS', 'ACTIVE', 'Active', 'Aktiv', 1, true, NOW())
 ON CONFLICT (category, code) DO NOTHING;
 
 -- Branch: Tisza Sarok (Szeged)

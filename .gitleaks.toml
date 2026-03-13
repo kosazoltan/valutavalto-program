@@ -1,0 +1,10 @@
+title = "Valutaváltó GitLeaks Config"
+
+[allowlist]
+  description = "Allowlisted old credentials (already removed from code and rotated)"
+  regexes = [
+    '''cfpx crja vhmk ktoe''',
+  ]
+  commits = [
+    "62b96c0616258e4232adf43619918ce85f16fc58",
+  ]
