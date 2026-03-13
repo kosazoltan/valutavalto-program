@@ -1,7 +1,7 @@
 package hu.puzzleir.valuta.service;
 
-import com.puzzleir.backend.entity.Branch;
-import com.puzzleir.backend.repository.BranchRepository;
+import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.dto.cashregister.CashRegisterEventDto;
 import hu.puzzleir.valuta.dto.cashregister.CashRegisterReceiptRequest;
 import hu.puzzleir.valuta.entity.CashRegisterEvent;

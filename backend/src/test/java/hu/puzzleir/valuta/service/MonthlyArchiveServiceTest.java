@@ -1,8 +1,8 @@
 package hu.puzzleir.valuta.service;
 
-import com.puzzleir.backend.entity.Branch;
-import com.puzzleir.backend.entity.Company;
-import com.puzzleir.backend.exception.ValidationException;
+import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.entity.Company;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;

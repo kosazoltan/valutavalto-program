@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.service;
 
-import com.puzzleir.backend.exception.ValidationException;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.dto.calculator.CalculationResultDto;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.ExchangeRate;
@@ -143,7 +143,7 @@ class CurrencyCalculatorServiceTest {
 
             assertThatThrownBy(() ->
                     service.calculate("EUR", "HUF", new BigDecimal("-100"), "BUY"))
-                    .isInstanceOf(com.puzzleir.backend.exception.ValidationException.class);
+                    .isInstanceOf(hu.puzzleir.valuta.exception.ValidationException.class);
         }
     }
 
@@ -156,7 +156,7 @@ class CurrencyCalculatorServiceTest {
 
             assertThatThrownBy(() ->
                     service.calculateReverse("EUR", BigDecimal.ZERO))
-                    .isInstanceOf(com.puzzleir.backend.exception.ValidationException.class);
+                    .isInstanceOf(hu.puzzleir.valuta.exception.ValidationException.class);
         }
     }
 

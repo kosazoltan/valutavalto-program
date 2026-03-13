@@ -1,7 +1,7 @@
 package hu.puzzleir.valuta.service;
 
-import com.puzzleir.backend.entity.Company;
-import com.puzzleir.backend.repository.CompanyRepository;
+import hu.puzzleir.valuta.entity.Company;
+import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.*;
 import org.junit.jupiter.api.BeforeEach;

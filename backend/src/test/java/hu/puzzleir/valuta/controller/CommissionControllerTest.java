@@ -2,8 +2,8 @@ package hu.puzzleir.valuta.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.puzzleir.backend.exception.ErrorLogExceptionHandler;
-import com.puzzleir.backend.exception.ValidationException;
+import hu.puzzleir.valuta.exception.GlobalExceptionHandler;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.entity.CommissionCalculation;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.CommissionCalculationService;
@@ -55,7 +55,7 @@ class CommissionControllerTest {
         om.registerModule(new JavaTimeModule());
 
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
-                .setControllerAdvice(new ErrorLogExceptionHandler())
+                .setControllerAdvice(new GlobalExceptionHandler())
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(om))
                 .build();
     }
