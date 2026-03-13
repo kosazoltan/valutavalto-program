@@ -10,8 +10,8 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 @SpringBootApplication
 @EnableJpaAuditing
 @ComponentScan(basePackages = {"com.puzzleir.backend", "hu.puzzleir.valuta"})
-@EntityScan(basePackages = {"com.puzzleir.backend.entity", "hu.puzzleir.valuta.entity"})
-@EnableJpaRepositories(basePackages = {"com.puzzleir.backend.repository", "hu.puzzleir.valuta.repository"})
+@EntityScan(basePackages = {"com.puzzleir.backend.entity", "com.puzzleir.backend.errorlog", "hu.puzzleir.valuta.entity"})
+@EnableJpaRepositories(basePackages = {"com.puzzleir.backend.repository", "com.puzzleir.backend.errorlog", "hu.puzzleir.valuta.repository"})
 public class ValutaBackendApplication {
 
     public static void main(String[] args) {
