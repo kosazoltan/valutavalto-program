@@ -7,6 +7,7 @@ import hu.puzzleir.valuta.dto.transaction.TransactionDto;
 import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.mapper.TransactionMapper;
 import hu.puzzleir.valuta.service.StornoService;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -36,8 +37,8 @@ public class StornoController {
     @GetMapping("/check/{transactionId}")
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<StornoCheckResultDto> checkStorno(
-            @PathVariable Long transactionId,
-            @RequestParam Long workerId) {
+            @PathVariable Long transactionId) {
+        Long workerId = SecurityUtils.getCurrentWorkerId();
         StornoCheckResultDto result = stornoService.checkStorno(transactionId, workerId);
         return ResponseEntity.ok(result);
     }
@@ -51,8 +52,8 @@ public class StornoController {
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<StornoApprovalDto> requestApproval(
             @RequestParam Long transactionId,
-            @RequestParam Long workerId,
             @RequestParam String reason) {
+        Long workerId = SecurityUtils.getCurrentWorkerId();
         StornoApprovalDto result = stornoService.requestApproval(transactionId, workerId, reason);
         return ResponseEntity.ok(result);
     }
@@ -66,9 +67,9 @@ public class StornoController {
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<StornoApprovalDto> approve(
             @PathVariable UUID approvalId,
-            @RequestParam Long approvedByWorkerId,
             @RequestParam boolean approved,
             @RequestParam(required = false) String reason) {
+        Long approvedByWorkerId = SecurityUtils.getCurrentWorkerId();
         StornoApprovalDto result = stornoService.approve(approvalId, approvedByWorkerId, approved, reason);
         return ResponseEntity.ok(result);
     }
@@ -81,8 +82,8 @@ public class StornoController {
     @PostMapping("/execute")
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<TransactionDto> executeStorno(
-            @Valid @RequestBody StornoRequestDto request,
-            @RequestParam Long workerId) {
+            @Valid @RequestBody StornoRequestDto request) {
+        Long workerId = SecurityUtils.getCurrentWorkerId();
         Transaction transaction = stornoService.executeStorno(request, workerId);
         return ResponseEntity.ok(transactionMapper.toDto(transaction));
     }
@@ -96,8 +97,8 @@ public class StornoController {
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<TransactionDto> executePosStorno(
             @RequestParam String posTransactionId,
-            @RequestParam Long workerId,
             @RequestParam String reason) {
+        Long workerId = SecurityUtils.getCurrentWorkerId();
         Transaction transaction = stornoService.executePosStorno(posTransactionId, workerId, reason);
         return ResponseEntity.ok(transactionMapper.toDto(transaction));
     }

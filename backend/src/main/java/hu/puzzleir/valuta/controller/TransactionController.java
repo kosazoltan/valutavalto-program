@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.dto.transaction.*;
 import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.mapper.TransactionMapper;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.TransactionService;
 import hu.puzzleir.valuta.util.OptimisticLockRetry;
 import jakarta.validation.Valid;
@@ -122,11 +123,11 @@ public class TransactionController {
      */
     @GetMapping
     public ResponseEntity<Page<TransactionDto>> searchTransactions(
-            @RequestParam(required = false) UUID branchId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam(required = false) TransactionType type,
             Pageable pageable) {
+        UUID branchId = SecurityUtils.getCurrentBranchId();
         Page<Transaction> page = transactionService.searchTransactions(branchId, startDate, endDate, type, pageable);
         Page<TransactionDto> dtoPage = page.map(transactionMapper::toDto);
         return ResponseEntity.ok(dtoPage);

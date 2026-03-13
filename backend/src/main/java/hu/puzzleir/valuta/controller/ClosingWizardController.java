@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.dto.closingwizard.ClosingWizardDto;
 import hu.puzzleir.valuta.dto.closingwizard.ClosingWizardStepDto;
 import hu.puzzleir.valuta.service.ClosingWizardService;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -34,10 +35,10 @@ public class ClosingWizardController {
     @PostMapping("/start")
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<ClosingWizardDto> startWizard(
-            @RequestParam UUID branchId,
             @RequestParam(required = false) UUID cashDeskId,
-            @RequestParam String closingType,
-            @RequestParam Long workerId) {
+            @RequestParam String closingType) {
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+        Long workerId = SecurityUtils.getCurrentWorkerId();
         ClosingWizardDto result = closingWizardService.startWizard(branchId, cashDeskId, closingType, workerId);
         return ResponseEntity.ok(result);
     }
@@ -90,8 +91,8 @@ public class ClosingWizardController {
     @PostMapping("/{wizardId}/complete")
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<ClosingWizardDto> complete(
-            @PathVariable UUID wizardId,
-            @RequestParam Long workerId) {
+            @PathVariable UUID wizardId) {
+        Long workerId = SecurityUtils.getCurrentWorkerId();
         ClosingWizardDto result = closingWizardService.complete(wizardId, workerId);
         return ResponseEntity.ok(result);
     }
@@ -113,11 +114,12 @@ public class ClosingWizardController {
     /**
      * Step 1: Nyitott tranzakciók validálása
      *
-     * GET /api/v1/closing-wizard/validate-transactions/{branchId}
+     * GET /api/v1/closing-wizard/validate-transactions
      */
-    @GetMapping("/validate-transactions/{branchId}")
+    @GetMapping("/validate-transactions")
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<List<String>> validateOpenTransactions(@PathVariable UUID branchId) {
+    public ResponseEntity<List<String>> validateOpenTransactions() {
+        UUID branchId = SecurityUtils.getCurrentBranchId();
         List<String> errors = closingWizardService.validateOpenTransactions(branchId);
         return ResponseEntity.ok(errors);
     }
@@ -174,8 +176,8 @@ public class ClosingWizardController {
     @PostMapping("/{wizardId}/finalize")
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> finalizeClosing(
-            @PathVariable UUID wizardId,
-            @RequestParam Long workerId) {
+            @PathVariable UUID wizardId) {
+        Long workerId = SecurityUtils.getCurrentWorkerId();
         boolean success = closingWizardService.finalizeClosing(wizardId, workerId);
         return ResponseEntity.ok(Map.of("success", success, "message",
                 success ? "Napzárás véglegesítve!" : "Napzárás sikertelen!"));

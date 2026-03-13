@@ -149,7 +149,10 @@ public class CurrencyCalculatorService {
 
         if ("BUY".equalsIgnoreCase(direction)) {
             // Ügyfél elad devizát → mi veszünk → buy rate
-            appliedRate = rate.getBuyRateForAmount(amount.multiply(rate.getBaseBuyRate()));
+            BigDecimal amountInHuf = "HUF".equals(fromCurrency)
+                    ? amount
+                    : amount.multiply(rate.getBaseBuyRate());
+            appliedRate = rate.getBuyRateForAmount(amountInHuf);
             if ("HUF".equals(fromCurrency)) {
                 // HUF → deviza (fordított: ügyfél forintot ad, devizát kap — de BUY irányban ez atipikus)
                 fromAmount = amount;
@@ -162,7 +165,10 @@ public class CurrencyCalculatorService {
             }
         } else {
             // Ügyfél vesz devizát → mi eladunk → sell rate
-            appliedRate = rate.getSellRateForAmount(amount.multiply(rate.getBaseSellRate()));
+            BigDecimal amountInHuf = "HUF".equals(fromCurrency)
+                    ? amount
+                    : amount.multiply(rate.getBaseSellRate());
+            appliedRate = rate.getSellRateForAmount(amountInHuf);
             if ("HUF".equals(fromCurrency)) {
                 // HUF → deviza: ügyfél forintot ad, devizát kap
                 fromAmount = amount;
