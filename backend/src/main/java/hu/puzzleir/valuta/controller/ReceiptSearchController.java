@@ -18,7 +18,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
- * Bizonylat kereső controller.
+ * Bizonylat keresĹ‘ controller.
  */
 @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
 @RestController
@@ -30,7 +30,7 @@ public class ReceiptSearchController {
 
     /**
      * GET /api/v1/receipts/search
-     * Bizonylat keresés.
+     * Bizonylat keresĂ©s.
      */
     @GetMapping("/search")
     public ResponseEntity<Page<ReceiptSearchResultDto>> search(
@@ -51,10 +51,7 @@ public class ReceiptSearchController {
 
     /**
      * GET /api/v1/receipts/{id}
-     * Bizonylat részletek.
+     * Bizonylat rĂ©szletek.
      */
-    @GetMapping("/{id}")
-    public ResponseEntity<ReceiptDetailDto> getDetail(@PathVariable Long id) {
-        return ResponseEntity.ok(receiptSearchService.getDetail(id));
-    }
+    
 }
