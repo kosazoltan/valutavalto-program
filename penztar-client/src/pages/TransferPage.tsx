@@ -72,7 +72,7 @@ export default function TransferPage() {
       ]);
       setBranches(branchData);
       setPendingTransfers(transferData);
-    } catch (err) {
+    } catch {
       const message = err instanceof Error ? err.message : 'Adatlekérési hiba';
       setError(`❌ ${message}`);
     } finally {
@@ -109,7 +109,7 @@ export default function TransferPage() {
       setTargetBranch('');
       setSendAmount('');
       setSendNote('');
-    } catch (err) {
+    } catch {
       const message = err instanceof Error ? err.message : 'Átadási hiba';
       setError(`❌ ${message}`);
     } finally {
@@ -130,7 +130,7 @@ export default function TransferPage() {
         await receiveTransfer(id, transfer?.amount ?? 0);
         setSuccess('✅ Átadás átvéve!');
         void fetchData();
-      } catch (err) {
+      } catch {
         const message = err instanceof Error ? err.message : 'Átvételi hiba';
         setError(`❌ ${message}`);
       } finally {
@@ -154,7 +154,7 @@ export default function TransferPage() {
         await rejectTransfer(id, reason);
         setSuccess('✅ Átadás elutasítva.');
         void fetchData();
-      } catch (err) {
+      } catch {
         const message = err instanceof Error ? err.message : 'Elutasítási hiba';
         setError(`❌ ${message}`);
       } finally {
@@ -413,3 +413,4 @@ export default function TransferPage() {
     </div>
   );
 }
+

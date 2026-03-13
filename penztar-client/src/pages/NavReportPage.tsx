@@ -45,7 +45,7 @@ export default function NavReportPage() {
     try {
       const res = await apiClient.get(`/nav-reports/daily?date=${date}`);
       setReport(res.data);
-    } catch (err) {
+    } catch {
       toast.error('NAV riport betöltése sikertelen');
     } finally {
       setLoading(false);
@@ -63,7 +63,7 @@ export default function NavReportPage() {
       a.click();
       URL.revokeObjectURL(url);
       toast.success('CSV exportálva');
-    } catch (err) {
+    } catch {
       toast.error('CSV export sikertelen');
     }
   }, [date]);
@@ -157,3 +157,4 @@ export default function NavReportPage() {
     </div>
   );
 }
+

@@ -54,7 +54,7 @@ export default function CalculatorPage() {
         direction,
       });
       setResult(data);
-    } catch (err) {
+    } catch {
       const message = err instanceof Error ? err.message : 'Számítási hiba';
       setError(`❌ ${message}`);
       setResult(null);
@@ -250,3 +250,4 @@ export default function CalculatorPage() {
     </div>
   );
 }
+

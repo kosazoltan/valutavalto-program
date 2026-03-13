@@ -116,7 +116,7 @@ export default function AmlPage() {
     try {
       const res = await apiClient.get('/aml/pending');
       setPendingReports(res.data);
-    } catch (err) {
+    } catch {
       toast.error('Függő bejelentések betöltése sikertelen');
     } finally {
       setLoading(false);
@@ -129,7 +129,7 @@ export default function AmlPage() {
     try {
       const res = await apiClient.get(`/aml/customer-risk/${riskCustomerId}`);
       setRiskProfile(res.data);
-    } catch (err) {
+    } catch {
       toast.error('Kockázati profil betöltése sikertelen');
     } finally {
       setLoading(false);
@@ -150,7 +150,7 @@ export default function AmlPage() {
         amountHuf: '', currencyCode: '', originalAmount: '',
         customerName: '', documentType: '', documentNumber: '', workerNotes: '',
       });
-    } catch (err) {
+    } catch {
       toast.error('Bejelentés létrehozása sikertelen');
     } finally {
       setLoading(false);
@@ -162,7 +162,7 @@ export default function AmlPage() {
     try {
       const res = await apiClient.get(`/aml/summary?date=${summaryDate}`);
       setSummary(res.data);
-    } catch (err) {
+    } catch {
       toast.error('Napi összesítő betöltése sikertelen');
     } finally {
       setLoading(false);
@@ -428,3 +428,4 @@ export default function AmlPage() {
     </div>
   );
 }
+

@@ -45,7 +45,7 @@ export default function CompanyAdminPage() {
     try {
       const response = await apiClient.get<BranchWithStats[]>('/admin/branches');
       setBranches(response.data);
-    } catch (err) {
+    } catch {
       setError('Nem sikerült betölteni a fiókokat');
       toast.error('Fiókok betöltése sikertelen');
     } finally {
@@ -251,3 +251,4 @@ export default function CompanyAdminPage() {
     </div>
   );
 }
+

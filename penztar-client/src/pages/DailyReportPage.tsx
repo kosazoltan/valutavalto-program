@@ -51,7 +51,7 @@ export default function DailyReportPage() {
       const data = await generateDailyReport(branchCode, date);
       setReport(data);
       setBreakdown(parseReportData(data.reportData));
-    } catch (err) {
+    } catch {
       const msg = err instanceof Error ? err.message : 'Hiba a jelentés generálásakor';
       setError(`❌ ${msg}`);
     } finally {
@@ -245,3 +245,4 @@ export default function DailyReportPage() {
     </div>
   );
 }
+

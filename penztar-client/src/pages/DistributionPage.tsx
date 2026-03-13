@@ -123,7 +123,7 @@ export default function DistributionPage() {
         prev.map((item) => ({ ...item, selected: false, amount: '' })),
       );
       setNote('');
-    } catch (err) {
+    } catch {
       setResult({
         success: false,
         message: `Hiba: ${err instanceof Error ? err.message : 'Ismeretlen hiba'}`,
@@ -269,3 +269,4 @@ export default function DistributionPage() {
     </div>
   );
 }
+

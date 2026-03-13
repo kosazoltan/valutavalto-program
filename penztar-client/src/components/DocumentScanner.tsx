@@ -1,149 +1,147 @@
-import { useState, useCallback } from 'react';
-import apiClient from '@/api/client';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface DocumentScannerProps {
-  customerId: number;
-  onClose: () => void;
-  onSaved?: () => void;
+  transactionId: string;
+  onScanned: (type: string, path: string) => void;
 }
 
-export default function DocumentScanner({ customerId, onClose, onSaved }: DocumentScannerProps) {
-  const [preview, setPreview] = useState<string | null>(null);
-  const [isScanning, setIsScanning] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [fileName, setFileName] = useState('');
+type DocumentType = 'szemelyi' | 'utlevel' | 'jogositvany' | 'egyeb';
 
-  const handleScan = useCallback(async () => {
-    setIsScanning(true);
-    setError('');
-    try {
-      if (window.electronAPI?.scanDocument) {
-        // Electron IPC — TWAIN/WIA driver (TODO(hardware): TWAIN/WIA scanner driver implementáció — Electron main process szükséges)
-        const result = await window.electronAPI.scanDocument();
-        setPreview(result.imageBase64);
-        setFileName(result.fileName);
-      } else {
-        // Placeholder — nincs szkenner elérhető
-        // Szimulált előnézet
-        setPreview('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
-        setFileName(`scan_${Date.now()}.png`);
-        setError('ℹ️ Szkenner nem elérhető — placeholder mód. Töltsön fel fájlt manuálisan.');
+const documentLabels: Record<DocumentType, string> = {
+  szemelyi: 'Személyi',
+  utlevel: 'Útlevél',
+  jogositvany: 'Jogosítvány',
+  egyeb: 'Egyéb',
+};
+
+export default function DocumentScanner({ transactionId, onScanned }: DocumentScannerProps) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  const [hasCamera, setHasCamera] = useState(true);
+  const [documentType, setDocumentType] = useState<DocumentType>('szemelyi');
+  const [savedDocs, setSavedDocs] = useState<string[]>([]);
+  const [status, setStatus] = useState('');
+
+  const loadDocuments = useCallback(async () => {
+    if (!window.electronAPI?.scanListDocuments) return;
+    const list = await window.electronAPI.scanListDocuments(transactionId);
+    setSavedDocs(list);
+  }, [transactionId]);
+
+  useEffect(() => {
+    let stream: MediaStream | null = null;
+
+    const initCamera = async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+        setHasCamera(true);
+      } catch (err) {
+        console.error('[DocumentScanner] Kamera hiba:', err);
+        setHasCamera(false);
       }
-    } catch (err) {
-      console.error('[DocumentScanner] Szkenner hiba:', err);
-      setError('Szkennelés sikertelen. Ellenőrizze a szkenner csatlakozást.');
-    } finally {
-      setIsScanning(false);
-    }
-  }, []);
-
-  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Max 5MB
-    if (file.size > 5 * 1024 * 1024) {
-      setError('A fájl mérete nem haladhatja meg az 5 MB-ot!');
-      return;
-    }
-
-    // Csak JPG/PNG
-    if (!['image/jpeg', 'image/png'].includes(file.type)) {
-      setError('Csak JPG vagy PNG fájl tölthető fel!');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      setPreview(reader.result as string);
-      setFileName(file.name);
-      setError('');
     };
-    reader.readAsDataURL(file);
-  }, []);
 
-  const handleSave = useCallback(async () => {
-    if (!preview) return;
-    setIsSaving(true);
-    setError('');
-    setSuccess('');
+    initCamera();
+    loadDocuments();
+
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [loadDocuments]);
+
+  const handleCapture = useCallback(async () => {
+    setStatus('');
+    if (!videoRef.current || !canvasRef.current) return;
+    if (!window.electronAPI?.scanSaveDocument) {
+      setStatus('❌ Mentés nem elérhető (Electron IPC)');
+      return;
+    }
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL('image/png');
+    const base64 = dataUrl.replace(/^data:image\/png;base64,/, '');
+
     try {
-      // Base64 → Blob → FormData
-      const response = await fetch(preview);
-      const blob = await response.blob();
-
-      const formData = new FormData();
-      formData.append('file', blob, fileName || 'document.png');
-
-      await apiClient.post(`/customers/${customerId}/documents`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-
-      setSuccess('✅ Okmány sikeresen mentve az ügyfélhez!');
-      setPreview(null);
-      setFileName('');
-      onSaved?.();
+      const result = await window.electronAPI.scanSaveDocument(transactionId, documentType, base64);
+      setStatus('✅ Dokumentum mentve (titkosítva)');
+      onScanned(documentType, result.path);
+      await loadDocuments();
     } catch (err) {
       console.error('[DocumentScanner] Mentés hiba:', err);
-      setError('❌ Okmány mentés sikertelen.');
-    } finally {
-      setIsSaving(false);
+      setStatus('❌ Mentés sikertelen');
     }
-  }, [preview, fileName, customerId, onSaved]);
+  }, [transactionId, documentType, onScanned, loadDocuments]);
+
+  const renderDocLabel = (filePath: string) => {
+    const name = filePath.split(/[/\\]/).pop() ?? '';
+    const prefix = name.split('_')[0] as DocumentType;
+    return documentLabels[prefix] ?? name;
+  };
+
+  if (!hasCamera) {
+    return (
+      <div className="rounded-lg border border-dashed bg-gray-50 p-4 text-center text-sm text-gray-500">
+        Nincs kamera
+      </div>
+    );
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-[600px] rounded-xl bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold">📷 Okmány szkennelés</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
-        </div>
+    <div className="space-y-4 rounded-xl border bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="text-sm font-medium text-gray-700">Dokumentum típus:</label>
+        <select
+          value={documentType}
+          onChange={(e) => setDocumentType(e.target.value as DocumentType)}
+          className="rounded-lg border px-3 py-2 text-sm"
+        >
+          {Object.entries(documentLabels).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+        <button
+          onClick={handleCapture}
+          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        >
+          📸 Fénykép
+        </button>
+        {status && <span className="text-sm text-gray-600">{status}</span>}
+      </div>
 
-        {/* Szkennelés / Fájl feltöltés */}
-        <div className="mb-4 flex gap-3">
-          <button onClick={handleScan} disabled={isScanning}
-            className="btn-primary flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50">
-            {isScanning ? '⏳ Szkennelés...' : '📷 Szkennelés indítása'}
-          </button>
-          <label className="flex flex-1 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 px-4 py-2 text-sm text-gray-600 hover:border-blue-400 hover:text-blue-600">
-            📁 Fájl feltöltés
-            <input type="file" accept="image/jpeg,image/png"
-              onChange={handleFileUpload} className="hidden" />
-          </label>
-        </div>
+      <div className="rounded-lg border bg-black">
+        <video ref={videoRef} autoPlay playsInline className="w-full rounded-lg" />
+      </div>
 
-        {/* Előnézet */}
-        <div className="mb-4 flex h-64 items-center justify-center rounded-lg border-2 border-dashed bg-gray-50">
-          {preview ? (
-            <img src={preview} alt="Okmány előnézet"
-              className="max-h-full max-w-full object-contain" />
-          ) : (
-            <p className="text-gray-400">Még nincs szkennelt okmány</p>
-          )}
-        </div>
+      <canvas ref={canvasRef} className="hidden" />
 
-        {/* Fájl info */}
-        {fileName && (
-          <p className="mb-2 text-xs text-gray-500">Fájl: {fileName}</p>
+      <div>
+        <h4 className="text-sm font-semibold text-gray-700 mb-2">Mentett dokumentumok</h4>
+        {savedDocs.length === 0 ? (
+          <p className="text-sm text-gray-400">Nincs mentett dokumentum.</p>
+        ) : (
+          <ul className="space-y-2">
+            {savedDocs.map((doc) => (
+              <li key={doc} className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm text-gray-700">
+                <span>📄</span>
+                <span>{renderDocLabel(doc)}</span>
+              </li>
+            ))}
+          </ul>
         )}
-
-        {/* Üzenetek */}
-        {error && <div className="mb-3 rounded-lg bg-red-50 p-2 text-sm text-red-700">{error}</div>}
-        {success && <div className="mb-3 rounded-lg bg-green-50 p-2 text-sm text-green-700">{success}</div>}
-
-        {/* Mentés */}
-        <div className="flex gap-3">
-          <button onClick={handleSave} disabled={!preview || isSaving}
-            className="btn-primary flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50">
-            {isSaving ? '⏳ Mentés...' : '💾 Mentés ügyfélhez'}
-          </button>
-          <button onClick={onClose}
-            className="flex-1 rounded-lg border px-4 py-2 text-sm hover:bg-gray-50">
-            Bezárás
-          </button>
-        </div>
       </div>
     </div>
   );

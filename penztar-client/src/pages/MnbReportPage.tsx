@@ -58,7 +58,7 @@ export default function MnbReportPage() {
     try {
       const res = await apiClient.get(`/mnb/reports/daily?date=${date}`);
       setDailyReport(res.data);
-    } catch (err) {
+    } catch {
       toast.error('MNB napi riport betöltése sikertelen');
     } finally {
       setLoading(false);
@@ -71,7 +71,7 @@ export default function MnbReportPage() {
     try {
       const res = await apiClient.get(`/mnb/reports/monthly?month=${month}`);
       setMonthlyReport(res.data);
-    } catch (err) {
+    } catch {
       toast.error('MNB havi riport betöltése sikertelen');
     } finally {
       setLoading(false);
@@ -86,7 +86,7 @@ export default function MnbReportPage() {
       if (res.data.length === 0) {
         toast.success('Validáció sikeres — nincs hiba!');
       }
-    } catch (err) {
+    } catch {
       toast.error('Validáció sikertelen');
     } finally {
       setLoading(false);
@@ -104,7 +104,7 @@ export default function MnbReportPage() {
       a.click();
       URL.revokeObjectURL(url);
       toast.success('XML exportálva');
-    } catch (err) {
+    } catch {
       toast.error('XML export sikertelen');
     }
   }, [date]);
@@ -243,3 +243,4 @@ export default function MnbReportPage() {
     </div>
   );
 }
+

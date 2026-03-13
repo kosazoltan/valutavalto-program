@@ -46,7 +46,7 @@ export default function WorkerManagementPage() {
     try {
       const data = await getWorkers();
       setWorkers(data);
-    } catch (err) {
+    } catch {
       console.error('[WorkerMgmt] Betöltés hiba:', err);
       setError('Dolgozók betöltése sikertelen.');
     } finally {
@@ -405,3 +405,4 @@ export default function WorkerManagementPage() {
     </div>
   );
 }
+

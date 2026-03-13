@@ -60,7 +60,7 @@ export default function SupervisorPage() {
     try {
       const data = await getSystemParams();
       setParams(data);
-    } catch (err) {
+    } catch {
       console.error('[Supervisor] Paraméterek betöltése hiba:', err);
     }
   }, []);
@@ -368,3 +368,4 @@ export default function SupervisorPage() {
     </div>
   );
 }
+

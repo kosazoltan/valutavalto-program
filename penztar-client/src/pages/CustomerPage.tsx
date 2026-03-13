@@ -56,7 +56,7 @@ export default function CustomerPage() {
         params: { query: searchQuery },
       });
       setSearchResults(response.data);
-    } catch (err) {
+    } catch {
       console.error('[CustomerPage] Keresés hiba:', err);
       setError('Keresés sikertelen. Próbálja újra.');
     } finally {
@@ -73,7 +73,7 @@ export default function CustomerPage() {
         `/customers/${customer.id}/transactions`,
       );
       setTransactions(response.data);
-    } catch (err) {
+    } catch {
       console.error('[CustomerPage] Tranzakció történet hiba:', err);
       setTransactions([]);
     }
@@ -89,7 +89,7 @@ export default function CustomerPage() {
       setSelectedCustomer(response.data);
       setSuccess('✅ Ügyfél sikeresen rögzítve!');
       setTab('detail');
-    } catch (err) {
+    } catch {
       console.error('[CustomerPage] Rögzítés hiba:', err);
       setError('Ügyfél rögzítés sikertelen. Próbálja újra.');
     } finally {
@@ -110,7 +110,7 @@ export default function CustomerPage() {
       setSelectedCustomer(response.data);
       setSuccess('✅ Ügyfél adatok frissítve!');
       setTab('detail');
-    } catch (err) {
+    } catch {
       console.error('[CustomerPage] Módosítás hiba:', err);
       setError('Ügyfél módosítás sikertelen. Próbálja újra.');
     } finally {
@@ -169,7 +169,7 @@ export default function CustomerPage() {
       const response = await apiClient.get<CustomerStats>(`/customers/${customerId}/stats`);
       setCustomerStats(response.data);
       setTab('stats');
-    } catch (err) {
+    } catch {
       console.error('[CustomerPage] Statisztika hiba:', err);
       setError('Statisztika betöltés sikertelen.');
     } finally {
@@ -185,7 +185,7 @@ export default function CustomerPage() {
       });
       setVipList(response.data);
       setTab('vip');
-    } catch (err) {
+    } catch {
       console.error('[CustomerPage] VIP lista hiba:', err);
       setError('VIP lista betöltés sikertelen.');
     } finally {
@@ -747,15 +747,23 @@ export default function CustomerPage() {
 
       {/* Okmány szkenner modal */}
       {showScanner && selectedCustomer && (
-        <DocumentScanner
-          customerId={selectedCustomer.id}
-          onClose={() => setShowScanner(false)}
-          onSaved={() => {
-            setShowScanner(false);
-            setSuccess('✅ Okmány sikeresen mentve!');
-          }}
-        />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-[700px] rounded-xl bg-white p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-bold">📷 Okmány szkennelés</h3>
+              <button onClick={() => setShowScanner(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <DocumentScanner
+              transactionId={String(selectedCustomer.id)}
+              onScanned={() => {
+                setShowScanner(false);
+                setSuccess('✅ Okmány sikeresen mentve!');
+              }}
+            />
+          </div>
+        </div>
       )}
     </div>
   );
 }
+

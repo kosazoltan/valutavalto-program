@@ -60,6 +60,7 @@ export interface ElectronAPI {
   syncOffline: () => Promise<number>;
   getSyncStatus: () => Promise<string>;
   getAppVersion: () => Promise<string>;
+  restartApp: () => Promise<void>;
   getPrinters: () => Promise<PrinterInfo[]>;
 
   // Értéktár offline mód
@@ -87,8 +88,19 @@ export interface ElectronAPI {
   getCachedBranchStatusTimestamp: () => Promise<string | null>;
   getCachedRates: () => Promise<CachedRateRecord[]>;
 
-  // Batch 2B: Okmány szkenner
-  scanDocument: () => Promise<{ imageBase64: string; fileName: string }>;
+  // Kamera
+  cameraSaveRecording: (transactionId: string, buffer: ArrayBuffer, ext: string) => Promise<string>;
+  cameraExportToUsb: (dateFrom: string, dateTo: string) => Promise<{ success: boolean; exported: number; error?: string }>;
+  cameraListRecordings: (transactionId?: string) => Promise<string[]>;
+
+  // Okmány scan
+  scanSaveDocument: (
+    transactionId: string,
+    documentType: 'szemelyi' | 'utlevel' | 'jogositvany' | 'egyeb',
+    imageBase64: string,
+  ) => Promise<{ path: string; encrypted: boolean }>;
+  scanGetDocument: (filepath: string) => Promise<string>;
+  scanListDocuments: (transactionId: string) => Promise<string[]>;
 
   platform: string;
 }

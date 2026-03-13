@@ -80,7 +80,7 @@ export default function CollectionPage() {
       // TODO(api): API hívás — GET /api/v1/ertektar/collections — backend Értéktár modul implementáció szükséges
       const mockData = generateMockRecords();
       setRecords(mockData);
-    } catch (err) {
+    } catch {
       console.error('[CollectionPage] Betöltési hiba:', err);
     } finally {
       setIsLoading(false);
@@ -141,7 +141,7 @@ export default function CollectionPage() {
       setSelectedBranch('');
       setAmount('');
       setCollectionNote('');
-    } catch (err) {
+    } catch {
       setFeedback({
         success: false,
         message: `Hiba: ${err instanceof Error ? err.message : 'Ismeretlen hiba'}`,
@@ -314,3 +314,4 @@ export default function CollectionPage() {
     </div>
   );
 }
+

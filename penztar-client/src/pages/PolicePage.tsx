@@ -49,7 +49,7 @@ export default function PolicePage() {
     try {
       const data = await getPoliceRequests();
       setRequests(data.content);
-    } catch (err) {
+    } catch {
       const msg = err instanceof Error ? err.message : 'Hiba a lekérdezés során';
       setError(`❌ ${msg}`);
     } finally {
@@ -99,7 +99,7 @@ export default function PolicePage() {
       setFormDateFrom('');
       setFormDateTo('');
       void fetchRequests();
-    } catch (err) {
+    } catch {
       const msg = err instanceof Error ? err.message : 'Hiba a létrehozás során';
       setError(`❌ ${msg}`);
     }
@@ -111,7 +111,7 @@ export default function PolicePage() {
       setSuccessMsg('✅ Feldolgozás kész!');
       setSelectedRequest(result);
       void fetchRequests();
-    } catch (err) {
+    } catch {
       const msg = err instanceof Error ? err.message : 'Hiba a feldolgozás során';
       setError(`❌ ${msg}`);
     }
@@ -338,3 +338,4 @@ export default function PolicePage() {
     </div>
   );
 }
+

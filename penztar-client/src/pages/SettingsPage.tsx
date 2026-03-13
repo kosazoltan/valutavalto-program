@@ -43,14 +43,14 @@ export default function SettingsPage() {
         setSelectedPrinter(printer ?? '');
         setAppVersion(version);
         setPendingCount(count);
-      } catch (err) {
+      } catch {
         console.error('[SettingsPage] Betöltési hiba:', err);
       }
 
       try {
         const printerList = await window.electronAPI.getPrinters();
         setPrinters(printerList);
-      } catch (err) {
+      } catch {
         console.error('[SettingsPage] Nyomtató lista hiba:', err);
       }
     };
@@ -81,7 +81,7 @@ export default function SettingsPage() {
         await window.electronAPI.setConfig('selected_printer', selectedPrinter);
       }
       setSuccess('✅ Beállítások mentve!');
-    } catch (err) {
+    } catch {
       console.error('[SettingsPage] Mentés hiba:', err);
       setError('Beállítások mentése sikertelen.');
     } finally {
@@ -102,7 +102,7 @@ export default function SettingsPage() {
         setPendingCount(remaining);
         setSuccess(`✅ ${synced} tranzakció szinkronizálva! Hátralévő: ${remaining}`);
       }
-    } catch (err) {
+    } catch {
       console.error('[SettingsPage] Szinkronizáció hiba:', err);
       setError('Szinkronizáció sikertelen. Próbálja újra.');
     } finally {
@@ -354,3 +354,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+

@@ -36,7 +36,7 @@ export default function ReportsPage() {
     try {
       const response = await apiClient.get<DailySummary>('/reports/daily-summary');
       setDailySummary(response.data);
-    } catch (err) {
+    } catch {
       console.error('[ReportsPage] Napi összesítő hiba:', err);
       setError('Napi összesítő betöltése sikertelen.');
     } finally {
@@ -57,7 +57,7 @@ export default function ReportsPage() {
 
       const response = await apiClient.get<TransactionListItem[]>('/reports/transactions', { params });
       setTransactions(response.data);
-    } catch (err) {
+    } catch {
       console.error('[ReportsPage] Tranzakció lista hiba:', err);
       setError('Tranzakció lista betöltése sikertelen.');
     } finally {
@@ -349,3 +349,4 @@ export default function ReportsPage() {
     </div>
   );
 }
+

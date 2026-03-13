@@ -3,8 +3,10 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { setAuthToken, loadPersistedToken } from '@/api/client';
 import { useAppMode } from '@/hooks/useAppMode';
+import { useUpdateNotifier } from '@/hooks/useUpdateNotifier';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import ToastContainer from '@/components/Toast';
+import UpdateBanner from '@/components/UpdateBanner';
 import LoginPage from '@/pages/LoginPage';
 import MainMenu from '@/pages/MainMenu';
 import SellPage from '@/pages/SellPage';
@@ -82,6 +84,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   const [isRestoring, setIsRestoring] = useState(true);
   const { mode, isLoading: isModeLoading } = useAppMode();
+  const { updateAvailable, hardRequired } = useUpdateNotifier();
 
   // M1: Token restore — betöltéskor ellenőrizzük van-e tárolt JWT
   useEffect(() => {
@@ -119,6 +122,7 @@ export default function App() {
   return (
     <ErrorBoundary>
     <ToastContainer />
+    <UpdateBanner updateAvailable={updateAvailable} hardRequired={hardRequired} />
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route

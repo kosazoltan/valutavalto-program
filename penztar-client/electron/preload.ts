@@ -55,6 +55,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAppVersion: (): Promise<string> =>
     ipcRenderer.invoke('get-app-version'),
 
+  restartApp: (): Promise<void> =>
+    ipcRenderer.invoke('restart-app'),
+
   getPrinters: (): Promise<Array<{
     name: string;
     displayName: string;
@@ -126,9 +129,29 @@ contextBridge.exposeInMainWorld('electronAPI', {
   }>> =>
     ipcRenderer.invoke('get-cached-rates'),
 
-  // Batch 2B: Okmány szkenner
-  scanDocument: (): Promise<{ imageBase64: string; fileName: string }> =>
-    ipcRenderer.invoke('scan-document'),
+  // Kamera
+  cameraSaveRecording: (transactionId: string, buffer: ArrayBuffer, ext: string): Promise<string> =>
+    ipcRenderer.invoke('camera-save-recording', transactionId, buffer, ext),
+
+  cameraExportToUsb: (dateFrom: string, dateTo: string): Promise<{ success: boolean; exported: number; error?: string }> =>
+    ipcRenderer.invoke('camera-export-to-usb', dateFrom, dateTo),
+
+  cameraListRecordings: (transactionId?: string): Promise<string[]> =>
+    ipcRenderer.invoke('camera-list-recordings', transactionId),
+
+  // Okmány scan
+  scanSaveDocument: (
+    transactionId: string,
+    documentType: 'szemelyi' | 'utlevel' | 'jogositvany' | 'egyeb',
+    imageBase64: string,
+  ): Promise<{ path: string; encrypted: boolean }> =>
+    ipcRenderer.invoke('scan-save-document', transactionId, documentType, imageBase64),
+
+  scanGetDocument: (filepath: string): Promise<string> =>
+    ipcRenderer.invoke('scan-get-document', filepath),
+
+  scanListDocuments: (transactionId: string): Promise<string[]> =>
+    ipcRenderer.invoke('scan-list-documents', transactionId),
 
   platform: process.platform,
 });

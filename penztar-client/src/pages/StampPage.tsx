@@ -40,7 +40,7 @@ export default function StampPage() {
     try {
       const data = await getStampInventory();
       setBatches(data);
-    } catch (err) {
+    } catch {
       console.error('[Stamp] Készlet betöltése hiba:', err);
       setError('Matrica készlet betöltése sikertelen.');
     } finally {
@@ -53,7 +53,7 @@ export default function StampPage() {
     try {
       const data = await getUsedStamps();
       setUsedStamps(data);
-    } catch (err) {
+    } catch {
       console.error('[Stamp] Felhasznált betöltése hiba:', err);
       setError('Felhasznált matricák betöltése sikertelen.');
     } finally {
@@ -315,3 +315,4 @@ export default function StampPage() {
     </div>
   );
 }
+

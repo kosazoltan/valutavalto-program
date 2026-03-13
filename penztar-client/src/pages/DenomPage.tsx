@@ -71,7 +71,7 @@ export default function DenomPage() {
         init[v] = serverEntry?.count ?? 0;
       }
       setCounts(init);
-    } catch (err) {
+    } catch {
       const message = err instanceof Error ? err.message : 'Címletezés lekérési hiba';
       setError(`❌ ${message}`);
       // Inicializálás nullákkal
@@ -122,7 +122,7 @@ export default function DenomPage() {
         denominations: denomData,
       });
       setSuccess(`✅ Címletezés mentve: ${selectedCurrency}`);
-    } catch (err) {
+    } catch {
       const message = err instanceof Error ? err.message : 'Mentési hiba';
       setError(`❌ ${message}`);
     } finally {
@@ -260,3 +260,4 @@ export default function DenomPage() {
     </div>
   );
 }
+

@@ -122,7 +122,7 @@ export default function ConsolidatedReportsPage() {
       await new Promise((resolve) => setTimeout(resolve, 500));
       const mockReport = generateMockReport(dateFrom, dateTo);
       setReport(mockReport);
-    } catch (err) {
+    } catch {
       console.error('[ConsolidatedReports] Betöltési hiba:', err);
     } finally {
       setIsLoading(false);
@@ -296,3 +296,4 @@ export default function ConsolidatedReportsPage() {
     </div>
   );
 }
+

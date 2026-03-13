@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import apiClient from '@/api/client';
@@ -35,7 +35,6 @@ export default function ConversionPage() {
   const [showCustomerSearch, setShowCustomerSearch] = useState(false);
 
   // Ăllapot
-  const [_isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -47,14 +46,11 @@ export default function ConversionPage() {
   // Ărfolyamok betĂ¶ltĂ©se
   useEffect(() => {
     const loadRates = async () => {
-      setIsLoading(true);
       try {
         const res = await apiClient.get('/api/rates/current');
         setRates(res.data ?? []);
       } catch {
         setError('Ărfolyamok betĂ¶ltĂ©se sikertelen');
-      } finally {
-        setIsLoading(false);
       }
     };
     void loadRates();
@@ -146,7 +142,7 @@ export default function ConversionPage() {
       setSourceAmount('');
       setCustomerId(null);
       setCustomerName('');
-    } catch (err) {
+    } catch {
       const msg = err instanceof Error ? err.message : 'KonverziĂł sikertelen';
       setError(`âťŚ ${msg}`);
     } finally {
@@ -341,7 +337,7 @@ export default function ConversionPage() {
           )}
           {hufEquivalent > 5_000_000 && !customerId && (
             <p className="text-amber-600 text-sm mt-2">
-              âš ď¸Ź 5.000.000 Ft feletti konverziĂłnĂˇl az ĂĽgyfĂ©l azonosĂ­tĂˇs KĂ–TELEZĹ (AML)!
+              âš ď¸Ź 5.000.000 Ft feletti konverziĂłnĂˇl az ĂĽgyfĂ©l azonosĂ­tĂˇs KĂ–TELEZĹ (AML)!
             </p>
           )}
         </div>
@@ -361,5 +357,10 @@ export default function ConversionPage() {
     </div>
   );
 }
+
+
+
+
+
 
 

@@ -37,7 +37,7 @@ export default function PrintTemplatePage() {
     try {
       const data = await getTemplates(filterType || undefined);
       setTemplates(data);
-    } catch (err) {
+    } catch {
       console.error('[PrintTemplatePage] Betöltési hiba:', err);
       setError('Sablonok betöltése sikertelen.');
     } finally {
@@ -94,7 +94,7 @@ export default function PrintTemplatePage() {
         setSuccess('✅ Sablon létrehozva!');
       }
       await loadTemplates();
-    } catch (err) {
+    } catch {
       console.error('[PrintTemplatePage] Mentés hiba:', err);
       setError('Sablon mentése sikertelen.');
     } finally {
@@ -117,7 +117,7 @@ export default function PrintTemplatePage() {
       };
       const rendered = await previewTemplate(selectedId, sampleData);
       setPreviewHtml(rendered);
-    } catch (err) {
+    } catch {
       console.error('[PrintTemplatePage] Előnézet hiba:', err);
       setError('Előnézet generálása sikertelen.');
     }
@@ -140,7 +140,7 @@ export default function PrintTemplatePage() {
       });
       setSuccess('✅ Alapértelmezetté téve!');
       await loadTemplates();
-    } catch (err) {
+    } catch {
       console.error('[PrintTemplatePage] Alapértelmezett beállítás hiba:', err);
       setError('Alapértelmezetté tétel sikertelen.');
     } finally {
@@ -326,3 +326,4 @@ export default function PrintTemplatePage() {
     </div>
   );
 }
+

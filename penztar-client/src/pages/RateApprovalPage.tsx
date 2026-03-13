@@ -40,7 +40,7 @@ export default function RateApprovalPage() {
     try {
       const data = await getPendingApprovals();
       setApprovals(data);
-    } catch (err) {
+    } catch {
       const msg = err instanceof Error ? err.message : 'Hiba a lekérdezés során';
       setError(`❌ ${msg}`);
     } finally {
@@ -65,7 +65,7 @@ export default function RateApprovalPage() {
       await approveRateChange(id);
       setSuccessMsg('✅ Árfolyam változtatás jóváhagyva!');
       void fetchApprovals();
-    } catch (err) {
+    } catch {
       const msg = err instanceof Error ? err.message : 'Jóváhagyási hiba';
       setError(`❌ ${msg}`);
     }
@@ -78,7 +78,7 @@ export default function RateApprovalPage() {
       await rejectRateChange(id, reason);
       setSuccessMsg('⛔ Árfolyam változtatás elutasítva.');
       void fetchApprovals();
-    } catch (err) {
+    } catch {
       const msg = err instanceof Error ? err.message : 'Elutasítási hiba';
       setError(`❌ ${msg}`);
     }
@@ -104,7 +104,7 @@ export default function RateApprovalPage() {
       setFormSellRate('');
       setFormReason('');
       void fetchApprovals();
-    } catch (err) {
+    } catch {
       const msg = err instanceof Error ? err.message : 'Kérelem létrehozási hiba';
       setError(`❌ ${msg}`);
     }
@@ -283,3 +283,4 @@ export default function RateApprovalPage() {
     </div>
   );
 }
+

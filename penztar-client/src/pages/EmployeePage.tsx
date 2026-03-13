@@ -74,7 +74,7 @@ export default function EmployeePage() {
 
       const data = await getEmployees(params as any);
       setEmployees(data);
-    } catch (err) {
+    } catch {
       console.error('[Employee] Betöltés hiba:', err);
       setError('Dolgozók betöltése sikertelen.');
     } finally {
@@ -506,3 +506,4 @@ function Field({ label, value }: { label: string; value?: string | null }) {
     </div>
   );
 }
+

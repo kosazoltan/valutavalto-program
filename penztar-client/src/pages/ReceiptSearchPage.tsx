@@ -50,7 +50,7 @@ export default function ReceiptSearchPage() {
       setResults(data.content);
       setTotalPages(data.totalPages);
       setCurrentPage(data.number);
-    } catch (err) {
+    } catch {
       console.error('[ReceiptSearch] Keresés hiba:', err);
       setError('Keresés sikertelen. Próbálja újra.');
     } finally {
@@ -341,3 +341,4 @@ export default function ReceiptSearchPage() {
     </div>
   );
 }
+

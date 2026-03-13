@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import apiClient from '@/api/client';
@@ -90,7 +90,7 @@ export default function BreakPage() {
         workerId: user?.id,
       });
       navigate('/');
-    } catch (err) {
+    } catch {
       setPinError('Ă‰rvĂ©nytelen PIN kĂłd!');
     }
   }, [pin, breakId, user, navigate]);
@@ -138,7 +138,7 @@ export default function BreakPage() {
 
         {isOvertime && !supervisorOverride && (
           <p className="text-red-400 text-lg mb-4 animate-pulse">
-            âš ď¸Ź TĂşllĂ©pte a megengedett szĂĽnet idĹ‘t! KĂ©rem tĂ©rjen vissza.
+            âš ď¸Ź TĂşllĂ©pte a megengedett szĂĽnet idĹ‘t! KĂ©rem tĂ©rjen vissza.
           </p>
         )}
 
@@ -188,7 +188,11 @@ export default function BreakPage() {
               onChange={(e) => { setPin(e.target.value); setPinError(''); }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
-                  isOvertime ? handleSupervisorOverride() : handleReturn();
+                  if (isOvertime) {
+                    void handleSupervisorOverride();
+                  } else {
+                    void handleReturn();
+                  }
                 }
               }}
               placeholder="PIN kĂłd"
@@ -229,4 +233,6 @@ export default function BreakPage() {
     </div>
   );
 }
+
+
 
