@@ -4,8 +4,8 @@ VALUES (gen_random_uuid(), 'Exclusive Best Change Zrt.', 'EBC', true, NOW())
 ON CONFLICT DO NOTHING;
 
 -- Branch: Tisza Sarok (Szeged)
-INSERT INTO branch (id, company_id, name, code, bank_code, city, address, is_active, created_at)
-SELECT gen_random_uuid(), c.id, 'Tisza Sarok', 'TISZA', 'TISZA', 'Szeged', 'Tisza Sarok, Szeged', true, NOW()
+INSERT INTO branch (id, company_id, name, code, bank_code, city, address, zip_code, opening_date, is_active, created_at)
+SELECT gen_random_uuid(), c.id, 'Tisza Sarok', 'TISZA', 'TISZA', 'Szeged', 'Tisza Sarok, Szeged', '6720', CURRENT_DATE, true, NOW()
 FROM company c WHERE c.code = 'EBC'
 ON CONFLICT DO NOTHING;
 
