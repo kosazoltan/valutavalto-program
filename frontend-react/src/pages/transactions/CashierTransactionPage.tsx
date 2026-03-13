@@ -205,7 +205,7 @@ export default function CashierTransactionPage() {
         })
       }
     },
-    [rows]
+    [rows, handleSubmit]
   )
 
   const handleSubmit = useCallback(async () => {

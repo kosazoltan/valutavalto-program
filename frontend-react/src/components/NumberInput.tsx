@@ -55,7 +55,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
       // Csak számokat, tizedesvesszőt/vesszőt és mínuszt engedünk
       // Az 'e', 'E', '+' karaktereket eltávolítjuk
       let cleaned = inputValue
-        .replace(/[^0-9,.\-]/g, '') // Csak számok, tizedesvessző, mínusz
+        .replace(/[^0-9,.-]/g, '') // Csak számok, tizedesvessző, mínusz
         .replace(/[eE+]/g, '') // Az 'e', 'E', '+' eltávolítása
 
       // Negatív számok kezelése

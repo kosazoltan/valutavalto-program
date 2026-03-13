@@ -82,8 +82,6 @@ export default function StockMatrix() {
   useHotkeys('r', () => void fetchData(), { enableOnFormTags: false })
   useHotkeys('p', () => setAutoRefresh((v) => !v), { enableOnFormTags: false })
 
-  if (loading) return <TableSkeleton rows={8} cols={8} />
-
   // Build the matrix
   const branchMap = new Map<string, BranchRow>()
   for (const b of balances) {
@@ -143,6 +141,8 @@ export default function StockMatrix() {
   }, [displayBranches, displayCurrencies])
 
   useHotkeys('e', () => handleExport(), { enableOnFormTags: false })
+
+  if (loading) return <TableSkeleton rows={8} cols={8} />
 
   return (
     <div className="space-y-4">
