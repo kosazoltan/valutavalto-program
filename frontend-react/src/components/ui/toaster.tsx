@@ -11,6 +11,7 @@ export interface Toast {
 
 let toastListeners: ((toasts: Toast[]) => void)[] = []
 let toasts: Toast[] = []
+let toastCounter = 0
 
 const updateToasts = (newToasts: Toast[]) => {
   toasts = newToasts
@@ -19,19 +20,19 @@ const updateToasts = (newToasts: Toast[]) => {
 
 export const toast = {
   success: (title: string, message?: string) => {
-    const id = Date.now().toString()
+    const id = `toast-${Date.now()}-${++toastCounter}`
     updateToasts([...toasts, { id, type: 'success', title, message, duration: 3000 }])
   },
   error: (title: string, message?: string) => {
-    const id = Date.now().toString()
+    const id = `toast-${Date.now()}-${++toastCounter}`
     updateToasts([...toasts, { id, type: 'error', title, message, duration: 5000 }])
   },
   warning: (title: string, message?: string) => {
-    const id = Date.now().toString()
+    const id = `toast-${Date.now()}-${++toastCounter}`
     updateToasts([...toasts, { id, type: 'warning', title, message, duration: 4000 }])
   },
   info: (title: string, message?: string) => {
-    const id = Date.now().toString()
+    const id = `toast-${Date.now()}-${++toastCounter}`
     updateToasts([...toasts, { id, type: 'info', title, message, duration: 3000 }])
   },
   dismiss: (id: string) => {
@@ -51,14 +52,18 @@ export function Toaster() {
   }, [])
 
   useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = []
     currentToasts.forEach(t => {
       if (t.duration) {
         const timer = setTimeout(() => {
           toast.dismiss(t.id)
         }, t.duration)
-        return () => clearTimeout(timer)
+        timers.push(timer)
       }
     })
+    return () => {
+      timers.forEach(timer => clearTimeout(timer))
+    }
   }, [currentToasts])
 
   const getIcon = (type: Toast['type']) => {

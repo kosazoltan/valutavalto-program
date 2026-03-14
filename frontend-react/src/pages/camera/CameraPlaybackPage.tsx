@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Search, PlayCircle, Calendar, FileVideo, Receipt } from 'lucide-react'
+import { api } from '../../services/api'
 
 interface RecordingMetadata {
   id: string
@@ -41,11 +42,9 @@ export default function CameraPlaybackPage() {
         start: startDate + 'T00:00:00',
         end: endDate + 'T23:59:59',
       })
-      const res = await fetch(`/api/v1/camera/recordings?${params}`)
-      if (res.ok) {
-        setRecordings(await res.json())
-        setLinks([])
-      }
+      const res = await api.get(`/camera/recordings?${params}`)
+      setRecordings(res.data)
+      setLinks([])
     } catch (err) {
       console.error('Kereses sikertelen:', err)
     } finally {
@@ -57,12 +56,9 @@ export default function CameraPlaybackPage() {
     if (!receiptNumber) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/v1/camera/recordings/by-receipt/${receiptNumber}`)
-      if (res.ok) {
-        const data = await res.json()
-        setLinks(data)
-        setRecordings([])
-      }
+      const res = await api.get(`/camera/recordings/by-receipt/${receiptNumber}`)
+      setLinks(res.data)
+      setRecordings([])
     } catch (err) {
       console.error('Kereses sikertelen:', err)
     } finally {

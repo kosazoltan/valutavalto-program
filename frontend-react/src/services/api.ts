@@ -267,7 +267,8 @@ export interface Transaction {
 }
 
 export interface BuyRequest {
-  currencyId: number
+  currencyId?: number
+  currencyCode?: string
   currencyAmount: number
   customExchangeRate?: number
   handlingFee?: number
@@ -281,7 +282,8 @@ export interface BuyRequest {
 }
 
 export interface SellRequest {
-  currencyId: number
+  currencyId?: number
+  currencyCode?: string
   currencyAmount: number
   customExchangeRate?: number
   handlingFee?: number

@@ -157,9 +157,8 @@ export default function CashierTransactionPage() {
         const row = next[rowIdx]!
         const qtyNum = parseFloat(qty) || 0
 
-        // Legacy arfolyam szamitas: rate / 100 * bankjegy (JPY /1000)
-        const divisor = row.currencyCode === 'JPY' ? 1000 : 100
-        const hufValue = Math.round((row.exchangeRate / divisor) * qtyNum)
+        // Arfolyam szamitas: rate * mennyiseg = HUF ertek
+        const hufValue = Math.round(row.exchangeRate * qtyNum)
 
         next[rowIdx] = { ...row, quantity: qty, hufValue }
         return next
@@ -194,7 +193,7 @@ export default function CashierTransactionPage() {
 
         if (mode === 'buy') {
           const request: BuyRequest = {
-            currencyId: 0, // A backend currencyCode alapján is feldolgozza
+            currencyCode: row.currencyCode,
             currencyAmount: parseFloat(row.quantity) || 0,
             customExchangeRate: row.exchangeRate,
             handlingFee: handlingFee > 0 ? handlingFee : undefined,
@@ -205,7 +204,7 @@ export default function CashierTransactionPage() {
           receiptNumbers.push(result.receiptNumber)
         } else {
           const request: SellRequest = {
-            currencyId: 0,
+            currencyCode: row.currencyCode,
             currencyAmount: parseFloat(row.quantity) || 0,
             customExchangeRate: row.exchangeRate,
             handlingFee: handlingFee > 0 ? handlingFee : undefined,

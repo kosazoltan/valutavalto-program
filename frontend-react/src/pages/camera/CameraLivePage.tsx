@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Camera, RefreshCw, Wifi, WifiOff } from 'lucide-react'
+import { api } from '../../services/api'
 
 interface CameraStatus {
   cameraId: string
@@ -39,9 +40,9 @@ export default function CameraLivePage() {
 
   const fetchCameraStatus = async () => {
     try {
-      const res = await fetch('/api/v1/camera/status')
-      if (res.ok) {
-        const data = await res.json()
+      const res = await api.get('/camera/status')
+      if (res.data) {
+        const data = res.data
         setCameras(data)
         if (data.length > 0 && !selectedCamera) {
           setSelectedCamera(data[0].cameraId)

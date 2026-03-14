@@ -102,11 +102,12 @@ public class TransactionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található"));
         Worker worker = workerRepository.findById(workerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található"));
-        Currency currency = currencyRepository.findById(request.getCurrencyId())
+        Long currencyId = resolveCurrencyId(request.getCurrencyId(), request.getCurrencyCode());
+        Currency currency = currencyRepository.findById(currencyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Valuta nem található"));
 
         // Árfolyam meghatározása
-        ExchangeRate rate = exchangeRateService.getCurrentRate(request.getCurrencyId());
+        ExchangeRate rate = exchangeRateService.getCurrentRate(currencyId);
 
         // HUF összeg számítása (helper kezeli a kedvezményt is)
         BigDecimal hufAmount = calculateBuyHufAmount(
@@ -237,11 +238,12 @@ public class TransactionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található"));
         Worker worker = workerRepository.findById(workerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található"));
-        Currency currency = currencyRepository.findById(request.getCurrencyId())
+        Long currencyId = resolveCurrencyId(request.getCurrencyId(), request.getCurrencyCode());
+        Currency currency = currencyRepository.findById(currencyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Valuta nem található"));
 
         // Árfolyam meghatározása
-        ExchangeRate rate = exchangeRateService.getCurrentRate(request.getCurrencyId());
+        ExchangeRate rate = exchangeRateService.getCurrentRate(currencyId);
 
         // HUF összeg számítása (helper kezeli a kedvezményt is)
         BigDecimal hufAmount = calculateSellHufAmount(
@@ -761,6 +763,21 @@ public class TransactionService {
             }
         }
         return cachedHufCurrencyId;
+    }
+
+    /**
+     * Currency ID feloldása: ha currencyId megvan, azt használjuk, egyébként currencyCode alapján.
+     */
+    private Long resolveCurrencyId(Long currencyId, String currencyCode) {
+        if (currencyId != null && currencyId > 0) {
+            return currencyId;
+        }
+        if (currencyCode != null && !currencyCode.isBlank()) {
+            return currencyRepository.findByCode(currencyCode.toUpperCase())
+                    .map(c -> c.getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Ismeretlen valuta kód: " + currencyCode));
+        }
+        throw new ValidationException("Valuta azonosító (currencyId) vagy valuta kód (currencyCode) kötelező!");
     }
 
     // ============ REQUEST/RESPONSE DTO-k ============
