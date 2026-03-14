@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/authStore';
 import apiClient from '@/api/client';
 import type { CurrencyCode, ExchangeRate, Customer } from '@/types';
 import { getCurrencyInfo } from '@/utils/currencies';
+import { roundHuf } from '@/utils/rounding';
 import { AML_IDENTIFICATION_LIMIT } from '@/utils/validation';
 
 /**
@@ -79,7 +80,7 @@ export default function ConversionPage() {
   // HUF ellenĂ©rtĂ©k (ĂˇtlĂˇthatĂłsĂˇghoz)
   const hufEquivalent = useMemo(() => {
     if (!sourceRate || sourceAmountNum <= 0) return 0;
-    return Math.round(sourceAmountNum * sourceRate.buyRate / sourceRate.unit);
+    return roundHuf(sourceAmountNum * sourceRate.buyRate / sourceRate.unit);
   }, [sourceRate, sourceAmountNum]);
 
   // ElĂ©rhetĹ‘ valutĂˇk (HUF nĂ©lkĂĽl)
