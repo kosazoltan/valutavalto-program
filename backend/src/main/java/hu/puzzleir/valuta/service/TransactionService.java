@@ -515,13 +515,16 @@ public class TransactionService {
         Worker worker = workerRepository.findById(workerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található"));
 
-        Currency fromCurrency = currencyRepository.findById(request.getFromCurrencyId())
+        Long fromCurrencyId = resolveCurrencyId(request.getFromCurrencyId(), request.getFromCurrencyCode());
+        Long toCurrencyId = resolveCurrencyId(request.getToCurrencyId(), request.getToCurrencyCode());
+
+        Currency fromCurrency = currencyRepository.findById(fromCurrencyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Forrás valuta nem található"));
-        Currency toCurrency = currencyRepository.findById(request.getToCurrencyId())
+        Currency toCurrency = currencyRepository.findById(toCurrencyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cél valuta nem található"));
 
         // Azonos valuta konverzió tiltása
-        if (request.getFromCurrencyId().equals(request.getToCurrencyId())) {
+        if (fromCurrencyId.equals(toCurrencyId)) {
             throw new ValidationException("Azonos valutanemek közötti konverzió nem lehetséges!");
         }
 
@@ -531,8 +534,8 @@ public class TransactionService {
         }
 
         // Árfolyamok lekérése
-        ExchangeRate fromRate = exchangeRateService.getCurrentRate(request.getFromCurrencyId());
-        ExchangeRate toRate = exchangeRateService.getCurrentRate(request.getToCurrencyId());
+        ExchangeRate fromRate = exchangeRateService.getCurrentRate(fromCurrencyId);
+        ExchangeRate toRate = exchangeRateService.getCurrentRate(toCurrencyId);
 
         // HUF-on keresztül konvertálás
         BigDecimal hufAmount = request.getFromAmount().multiply(fromRate.getBaseBuyRate())
@@ -861,7 +864,9 @@ public class TransactionService {
     @lombok.AllArgsConstructor
     public static class ConversionRequest {
         private Long fromCurrencyId;
+        private String fromCurrencyCode;
         private Long toCurrencyId;
+        private String toCurrencyCode;
         private BigDecimal fromAmount;
         private BigDecimal handlingFee;
         private String customerId;

@@ -123,17 +123,22 @@ export default function ConversionPage() {
       return;
     }
 
+    // AML ügyfél azonosítás kötelező ellenőrzés
+    if (hufEquivalent >= AML_IDENTIFICATION_LIMIT && !customerId) {
+      setError('Ügyfél azonosítás kötelező a konverzióhoz (AML limit túllépve)!');
+      return;
+    }
+
     setIsSubmitting(true);
     setError('');
     try {
       const res = await apiClient.post('/transactions/conversion', {
-        sourceCurrencyCode: sourceCurrency,
-        targetCurrencyCode: targetCurrency,
-        sourceAmount: sourceAmountNum,
-        targetAmount,
-        crossRate,
-        hufEquivalent,
-        customerId,
+        fromCurrencyCode: sourceCurrency,
+        toCurrencyCode: targetCurrency,
+        fromAmount: sourceAmountNum,
+        handlingFee: 0,
+        customerId: customerId ? String(customerId) : undefined,
+        customerName: customerName || undefined,
       });
 
       setSuccess(
@@ -337,8 +342,8 @@ export default function ConversionPage() {
             </div>
           )}
           {hufEquivalent >= AML_IDENTIFICATION_LIMIT && !customerId && (
-            <p className="text-amber-600 text-sm mt-2">
-              âš ď¸Ź 5.000.000 Ft feletti konverziĂłnĂˇl az ĂĽgyfĂ©l azonosĂ­tĂˇs KĂ–TELEZĹ (AML)!
+            <p className="text-amber-600 text-sm mt-2 font-bold">
+              ⚠️ {AML_IDENTIFICATION_LIMIT.toLocaleString('hu-HU')} Ft feletti konverziónál az ügyfél azonosítás KÖTELEZŐ (AML)!
             </p>
           )}
         </div>

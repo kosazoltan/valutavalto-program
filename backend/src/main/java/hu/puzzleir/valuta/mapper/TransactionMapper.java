@@ -93,11 +93,14 @@ public class TransactionMapper {
     public TransactionService.ConversionRequest toConversionRequest(ConversionRequestDto dto) {
         return TransactionService.ConversionRequest.builder()
                 .fromCurrencyId(dto.getFromCurrencyId())
+                .fromCurrencyCode(dto.getFromCurrencyCode())
                 .toCurrencyId(dto.getToCurrencyId())
+                .toCurrencyCode(dto.getToCurrencyCode())
                 .fromAmount(dto.getFromAmount())
                 .handlingFee(dto.getHandlingFee())
                 .customerId(dto.getCustomerId())
                 .customerName(dto.getCustomerName())
+                .customerDocumentNumber(dto.getCustomerDocumentNumber())
                 .build();
     }
 }
