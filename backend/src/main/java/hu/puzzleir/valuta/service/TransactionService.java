@@ -132,8 +132,9 @@ public class TransactionService {
         BigDecimal payableAmount = HungarianRounding.roundToFive(grossAmount);
         BigDecimal roundingDifference = payableAmount.subtract(grossAmount);
 
-        // Azonosítás ellenőrzése
-        validateIdentification(payableAmount, request.getCustomerName(), request.getCustomerDocumentNumber());
+        // AML ellenőrzés (Pmt. 2017. évi LIII. tv.)
+        performAmlCheck(payableAmount, request.getCustomerId(), request.getCustomerName(),
+                request.getCustomerDocumentNumber(), currency.getCode());
 
         // Bizonylat szám generálása (új szekvencia rendszer)
         String receiptNumber = receiptSequenceService.generateReceiptNumber(branchId, TransactionType.BUY);
@@ -271,8 +272,9 @@ public class TransactionService {
         BigDecimal payableAmount = HungarianRounding.roundToFive(grossAmount);
         BigDecimal roundingDifference = payableAmount.subtract(grossAmount);
 
-        // Azonosítás ellenőrzése
-        validateIdentification(payableAmount, request.getCustomerName(), request.getCustomerDocumentNumber());
+        // AML ellenőrzés (Pmt. 2017. évi LIII. tv.)
+        performAmlCheck(payableAmount, request.getCustomerId(), request.getCustomerName(),
+                request.getCustomerDocumentNumber(), currency.getCode());
 
         // Bizonylat szám generálása (új szekvencia rendszer)
         String receiptNumber = receiptSequenceService.generateReceiptNumber(branchId, TransactionType.SELL);
@@ -547,8 +549,9 @@ public class TransactionService {
 
         BigDecimal toAmount = roundedHufAmount.divide(toRate.getBaseSellRate(), 2, RoundingMode.HALF_UP);
 
-        // Azonosítás ellenőrzése konverziónál is (HUF egyenértéken)
-        validateIdentification(roundedHufAmount, request.getCustomerName(), request.getCustomerDocumentNumber());
+        // AML ellenőrzés konverziónál is (HUF egyenértéken)
+        performAmlCheck(roundedHufAmount, request.getCustomerId(), request.getCustomerName(),
+                request.getCustomerDocumentNumber(), fromCurrency.getCode());
 
         // Készlet ellenőrzése
         validateCurrencyStock(branchId, toCurrency.getId(), toAmount);
@@ -723,6 +726,48 @@ public class TransactionService {
         }
         if (discountPercent.compareTo(new BigDecimal("2.0")) > 0 && !SecurityUtils.isSupervisorOrAbove()) {
             throw new ValidationException("2% feletti kedvezményhez supervisor jogosultság szükséges!");
+        }
+    }
+
+    /**
+     * Teljes AML ellenőrzés a tranzakció előtt (Pmt. 2017. évi LIII. tv.).
+     *
+     * Hívja az AmlService.checkTransaction()-t az alapszintű ellenőrzéshez
+     * (azonosítás, éves göngyölés, napi gyanúsági limit), valamint a
+     * checkAllThresholds()-t a legacy BIGCTRL.DLL klasszifikációhoz (TranzTipus).
+     */
+    private void performAmlCheck(BigDecimal hufAmount, String customerId,
+                                 String customerName, String documentNumber, String currencyCode) {
+        // 1. Alapszintű AML ellenőrzés (azonosítás + göngyölés + gyanúsági flag)
+        AmlService.AmlBasicCheckResult basicResult = amlService.checkTransaction(
+                hufAmount, customerId, customerName, documentNumber);
+
+        if (!basicResult.isApproved()) {
+            throw new ValidationException(basicResult.getRejectionReason() != null
+                    ? basicResult.getRejectionReason()
+                    : "AML ellenőrzés sikertelen!");
+        }
+
+        if (basicResult.isRequiresApproval()) {
+            throw new ValidationException(basicResult.getApprovalReason() != null
+                    ? basicResult.getApprovalReason()
+                    : "Supervisor jóváhagyás szükséges (AML limit)!");
+        }
+
+        // 2. Legacy BIGCTRL.DLL klasszifikáció — blokkoló TranzTipus -1 ellenőrzés
+        if (customerId != null && !customerId.isBlank()) {
+            var thresholdResult = amlService.checkAllThresholds(customerId, hufAmount, currencyCode);
+            if (thresholdResult.isBlocked()) {
+                String warnings = thresholdResult.getWarnings() != null && !thresholdResult.getWarnings().isEmpty()
+                        ? String.join("; ", thresholdResult.getWarnings())
+                        : "AML szabály alapján blokkolva";
+                throw new ValidationException(warnings);
+            }
+        }
+
+        // 3. Részletes azonosítás logolása (1.5M+ Ft)
+        if (basicResult.isRequiresDetailedId()) {
+            log.warn("AML: Részletes azonosítás szükséges — {} Ft, ügyfél: {}", hufAmount, customerId);
         }
     }
 

@@ -6,6 +6,7 @@ import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.mapper.TransactionMapper;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.TransactionService;
+import hu.puzzleir.valuta.util.IdempotencyGuard;
 import hu.puzzleir.valuta.util.OptimisticLockRetry;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ public class TransactionController {
 
     private final TransactionService transactionService;
     private final TransactionMapper transactionMapper;
+    private final IdempotencyGuard idempotencyGuard;
 
     /**
      * Vétel (ügyfél valutát ad el, cég HUF-ot fizet)
@@ -42,11 +44,24 @@ public class TransactionController {
      */
     @PostMapping("/buy")
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<TransactionDto> executeBuy(@Valid @RequestBody BuyRequestDto dto) {
-        Transaction transaction = OptimisticLockRetry.execute(
-                () -> transactionService.executeBuy(transactionMapper.toBuyRequest(dto)),
-                "executeBuy");
-        return ResponseEntity.status(HttpStatus.CREATED).body(transactionMapper.toDto(transaction));
+    public ResponseEntity<TransactionDto> executeBuy(
+            @Valid @RequestBody BuyRequestDto dto,
+            @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey) {
+        TransactionDto cached = idempotencyGuard.tryAcquire(idempotencyKey);
+        if (cached != null) {
+            return ResponseEntity.status(HttpStatus.CREATED).body(cached);
+        }
+        try {
+            Transaction transaction = OptimisticLockRetry.execute(
+                    () -> transactionService.executeBuy(transactionMapper.toBuyRequest(dto)),
+                    "executeBuy");
+            TransactionDto result = transactionMapper.toDto(transaction);
+            idempotencyGuard.complete(idempotencyKey, result);
+            return ResponseEntity.status(HttpStatus.CREATED).body(result);
+        } catch (Exception e) {
+            idempotencyGuard.release(idempotencyKey);
+            throw e;
+        }
     }
 
     /**
@@ -56,11 +71,24 @@ public class TransactionController {
      */
     @PostMapping("/sell")
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<TransactionDto> executeSell(@Valid @RequestBody SellRequestDto dto) {
-        Transaction transaction = OptimisticLockRetry.execute(
-                () -> transactionService.executeSell(transactionMapper.toSellRequest(dto)),
-                "executeSell");
-        return ResponseEntity.status(HttpStatus.CREATED).body(transactionMapper.toDto(transaction));
+    public ResponseEntity<TransactionDto> executeSell(
+            @Valid @RequestBody SellRequestDto dto,
+            @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey) {
+        TransactionDto cached = idempotencyGuard.tryAcquire(idempotencyKey);
+        if (cached != null) {
+            return ResponseEntity.status(HttpStatus.CREATED).body(cached);
+        }
+        try {
+            Transaction transaction = OptimisticLockRetry.execute(
+                    () -> transactionService.executeSell(transactionMapper.toSellRequest(dto)),
+                    "executeSell");
+            TransactionDto result = transactionMapper.toDto(transaction);
+            idempotencyGuard.complete(idempotencyKey, result);
+            return ResponseEntity.status(HttpStatus.CREATED).body(result);
+        } catch (Exception e) {
+            idempotencyGuard.release(idempotencyKey);
+            throw e;
+        }
     }
 
     /**
@@ -70,11 +98,24 @@ public class TransactionController {
      */
     @PostMapping("/reversal")
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<TransactionDto> executeReversal(@Valid @RequestBody ReversalRequestDto dto) {
-        Transaction transaction = OptimisticLockRetry.execute(
-                () -> transactionService.executeReversal(transactionMapper.toReversalRequest(dto)),
-                "executeReversal");
-        return ResponseEntity.status(HttpStatus.CREATED).body(transactionMapper.toDto(transaction));
+    public ResponseEntity<TransactionDto> executeReversal(
+            @Valid @RequestBody ReversalRequestDto dto,
+            @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey) {
+        TransactionDto cached = idempotencyGuard.tryAcquire(idempotencyKey);
+        if (cached != null) {
+            return ResponseEntity.status(HttpStatus.CREATED).body(cached);
+        }
+        try {
+            Transaction transaction = OptimisticLockRetry.execute(
+                    () -> transactionService.executeReversal(transactionMapper.toReversalRequest(dto)),
+                    "executeReversal");
+            TransactionDto result = transactionMapper.toDto(transaction);
+            idempotencyGuard.complete(idempotencyKey, result);
+            return ResponseEntity.status(HttpStatus.CREATED).body(result);
+        } catch (Exception e) {
+            idempotencyGuard.release(idempotencyKey);
+            throw e;
+        }
     }
 
     /**
@@ -84,11 +125,24 @@ public class TransactionController {
      */
     @PostMapping("/conversion")
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<TransactionDto> executeConversion(@Valid @RequestBody ConversionRequestDto dto) {
-        Transaction transaction = OptimisticLockRetry.execute(
-                () -> transactionService.executeConversion(transactionMapper.toConversionRequest(dto)),
-                "executeConversion");
-        return ResponseEntity.status(HttpStatus.CREATED).body(transactionMapper.toDto(transaction));
+    public ResponseEntity<TransactionDto> executeConversion(
+            @Valid @RequestBody ConversionRequestDto dto,
+            @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey) {
+        TransactionDto cached = idempotencyGuard.tryAcquire(idempotencyKey);
+        if (cached != null) {
+            return ResponseEntity.status(HttpStatus.CREATED).body(cached);
+        }
+        try {
+            Transaction transaction = OptimisticLockRetry.execute(
+                    () -> transactionService.executeConversion(transactionMapper.toConversionRequest(dto)),
+                    "executeConversion");
+            TransactionDto result = transactionMapper.toDto(transaction);
+            idempotencyGuard.complete(idempotencyKey, result);
+            return ResponseEntity.status(HttpStatus.CREATED).body(result);
+        } catch (Exception e) {
+            idempotencyGuard.release(idempotencyKey);
+            throw e;
+        }
     }
 
     /**

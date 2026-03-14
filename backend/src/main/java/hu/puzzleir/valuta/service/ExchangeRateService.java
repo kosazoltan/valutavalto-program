@@ -16,10 +16,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.beans.factory.annotation.Value;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
@@ -39,6 +43,10 @@ public class ExchangeRateService {
     private final CompanyRepository companyRepository;
     private final BranchRepository branchRepository;
 
+    /** Árfolyam maximális kora órában (0 = nincs limit) */
+    @Value("${exchange-rate.max-age-hours:24}")
+    private int maxAgeHours;
+
     /**
      * Aktuális árfolyam lekérése egy valutához
      */
@@ -47,9 +55,34 @@ public class ExchangeRateService {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         UUID branchId = SecurityUtils.getCurrentBranchId();
 
-        return exchangeRateRepository.findLatestRate(companyId, currencyId, branchId)
+        ExchangeRate rate = exchangeRateRepository.findLatestRate(companyId, currencyId, branchId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                     "Nincs érvényes árfolyam ehhez a valutához: " + currencyId));
+
+        // Árfolyam frissesség ellenőrzése
+        validateRateFreshness(rate);
+
+        return rate;
+    }
+
+    /**
+     * Árfolyam frissesség validálása.
+     * Ha az árfolyam régebbi mint a konfigurált max kor, elutasítjuk.
+     */
+    private void validateRateFreshness(ExchangeRate rate) {
+        if (maxAgeHours <= 0) {
+            return; // nincs korhatár
+        }
+        LocalDateTime rateTimestamp = LocalDateTime.of(rate.getValidDate(), rate.getValidTime());
+        long hoursOld = ChronoUnit.HOURS.between(rateTimestamp, LocalDateTime.now());
+        if (hoursOld > maxAgeHours) {
+            log.warn("Lejárt árfolyam: {} — {} órás (max: {} óra)",
+                    rate.getCurrency().getCode(), hoursOld, maxAgeHours);
+            throw new ValidationException(
+                String.format("Az árfolyam lejárt! (Utolsó frissítés: %s %s, %d órája — maximum: %d óra). " +
+                              "Kérjük frissítse az árfolyamokat.",
+                    rate.getValidDate(), rate.getValidTime(), hoursOld, maxAgeHours));
+        }
     }
 
     /**
