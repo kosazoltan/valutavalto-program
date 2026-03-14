@@ -12,6 +12,7 @@ import hu.puzzleir.valuta.mapper.BranchMapper;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.repository.DictionaryRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -37,8 +38,9 @@ public class BranchService {
      */
     @Transactional(readOnly = true)
     public List<BranchDto> findAll() {
-        log.debug("Finding all branches");
-        List<Branch> branches = branchRepository.findAll();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        log.debug("Finding all branches for company: {}", companyId);
+        List<Branch> branches = branchRepository.findByCompanyId(companyId);
         return branchMapper.toDtoList(branches);
     }
 
@@ -47,8 +49,11 @@ public class BranchService {
      */
     @Transactional(readOnly = true)
     public List<BranchDto> findAllActive() {
-        log.debug("Finding all active branches");
-        List<Branch> branches = branchRepository.findByIsActiveTrue();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        log.debug("Finding all active branches for company: {}", companyId);
+        List<Branch> branches = branchRepository.findByIsActiveTrue().stream()
+                .filter(b -> b.getCompany() != null && b.getCompany().getId().equals(companyId))
+                .collect(Collectors.toList());
         return branchMapper.toDtoList(branches);
     }
 
@@ -60,7 +65,13 @@ public class BranchService {
         log.debug("Finding branch by id: {}", id);
         Branch branch = branchRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Fiók nem található: " + id));
-        
+
+        // IDOR védelem: csak saját cég fiókai érhetők el
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (branch.getCompany() != null && !branch.getCompany().getId().equals(companyId)) {
+            throw new ResourceNotFoundException("Fiók nem található: " + id);
+        }
+
         BranchDto dto = branchMapper.toDto(branch);
         
         // Load children IDs
@@ -80,6 +91,13 @@ public class BranchService {
         log.debug("Finding branch by code: {}", code);
         Branch branch = branchRepository.findByCode(code)
                 .orElseThrow(() -> new ResourceNotFoundException("Fiók nem található kóddal: " + code));
+
+        // IDOR védelem
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (branch.getCompany() != null && !branch.getCompany().getId().equals(companyId)) {
+            throw new ResourceNotFoundException("Fiók nem található kóddal: " + code);
+        }
+
         return branchMapper.toDto(branch);
     }
 
