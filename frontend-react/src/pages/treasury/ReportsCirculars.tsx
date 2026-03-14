@@ -61,9 +61,7 @@ export default function ReportsCirculars() {
           totalBuy: report.totalBuyHuf,
           totalSell: report.totalSellHuf,
           totalFee: report.totalHandlingFees,
-          totalProfit: report.totalBuyHuf + report.totalSellHuf > 0
-            ? Math.round((report.totalBuyHuf - report.totalSellHuf) * 0.02)
-            : 0,
+          totalProfit: report.totalHandlingFees || 0,
           transactionCount: report.transactionCount,
           submitted: report.sessionStatus === 'CLOSED',
           submittedAt: report.sessionStatus === 'CLOSED' ? todayISO() : undefined,

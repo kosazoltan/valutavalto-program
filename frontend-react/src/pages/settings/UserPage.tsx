@@ -84,7 +84,7 @@ export default function UserPage() {
       email: user.email || '',
       password: '',
       fullName: user.name || '',
-      roleId: user.roles?.[0] || '', // Backend uses single roleId
+      roleId: roles.find(r => r.name === user.roles?.[0] || r.code === user.roles?.[0])?.id || '',
       branchId: user.defaultBranchId || ''
     })
     setShowForm(true)

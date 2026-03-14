@@ -75,6 +75,9 @@ export const MOVEMENT_TYPE_LABELS: Record<string, string> = {
   BANK_WITHDRAWAL: 'Bank kivét',
   BANK_DEPOSIT: 'Bank befizetés',
   TRANSFER: 'Iroda szállítás',
+  VAULT_WITHDRAW: 'Bank kivét',
+  VAULT_DEPOSIT: 'Bank befizetés',
+  CURRENCY: 'Iroda szállítás',
   CORRECTION: 'Korrekció',
 }
 
@@ -82,7 +85,11 @@ export const MOVEMENT_TYPE_LABELS: Record<string, string> = {
 export const MOVEMENT_STATUS_LABELS: Record<string, string> = {
   PENDING: 'Függő',
   APPROVED: 'Jóváhagyva',
+  COMPLETED: 'Teljesítve',
+  RECEIVED: 'Átvéve',
   REJECTED: 'Elutasítva',
+  IN_TRANSIT: 'Szállítás alatt',
+  CANCELLED: 'Visszavonva',
 }
 
 /** Today's date as YYYY-MM-DD */

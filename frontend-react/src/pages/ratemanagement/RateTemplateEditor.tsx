@@ -307,7 +307,7 @@ export default function RateTemplateEditor() {
                       </button>
                     </>
                   )}
-                  {(t.status === 'APPROVED' || t.status === 'DRAFT') && (
+                  {t.status === 'APPROVED' && (
                     <button
                       className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                       onClick={() => t.id && publishTemplate(t.id)}

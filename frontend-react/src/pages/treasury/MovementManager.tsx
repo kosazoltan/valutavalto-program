@@ -78,12 +78,14 @@ export default function MovementManager() {
 
   const handleApprove = useCallback(async (id: number) => {
     try {
-      await transferApi.receive(id, { receivedAmount: 0 })
+      const transfer = pendingTransfers.find(t => t.id === id) ?? allTransfers.find(t => t.id === id)
+      const receivedAmount = transfer?.amount ?? 0
+      await transferApi.receive(id, { receivedAmount })
       void fetchData()
     } catch (err) {
       console.error('Approve error:', err)
     }
-  }, [fetchData])
+  }, [fetchData, pendingTransfers, allTransfers])
 
   const handleReject = useCallback(async (id: number) => {
     try {

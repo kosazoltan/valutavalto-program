@@ -67,7 +67,7 @@ export default function RatePublishHistory() {
                   {pub.notes && <p className="text-sm text-muted-foreground">{pub.notes}</p>}
                 </div>
                 <div className="text-right text-sm text-muted-foreground">
-                  <p>Publikalта: #{pub.publishedBy}</p>
+                  <p>Publikálta: #{pub.publishedBy}</p>
                   <p className="text-xs">{pub.id.substring(0, 8)}...</p>
                 </div>
               </div>
