@@ -159,9 +159,10 @@ public class ExchangeRateService {
         }
 
         // Kedvezményes árfolyam számítása
-        BigDecimal multiplier = BigDecimal.ONE.subtract(discountPercent.divide(new BigDecimal("100"), 6, RoundingMode.HALF_UP));
-        BigDecimal newBuyRate = rate.getBaseBuyRate().multiply(multiplier);
-        BigDecimal newSellRate = rate.getBaseSellRate().multiply(multiplier);
+        // Kedvezmény = spread csökkentés → buy rate NŐ (ügyfél többet kap), sell rate CSÖKKEN (ügyfél kevesebbet fizet)
+        BigDecimal discountFraction = discountPercent.divide(new BigDecimal("100"), 6, RoundingMode.HALF_UP);
+        BigDecimal newBuyRate = rate.getBaseBuyRate().multiply(BigDecimal.ONE.add(discountFraction));
+        BigDecimal newSellRate = rate.getBaseSellRate().multiply(BigDecimal.ONE.subtract(discountFraction));
 
         log.info("Árfolyam kedvezmény alkalmazva: {}% - új vétel: {}, eladás: {}",
                 discountPercent, newBuyRate, newSellRate);

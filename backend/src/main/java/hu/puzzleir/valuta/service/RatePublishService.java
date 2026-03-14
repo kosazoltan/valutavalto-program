@@ -186,14 +186,21 @@ public class RatePublishService {
      */
     private void broadcastRateUpdate(UUID workgroupId, List<RateTemplate> templates) {
         List<RateUpdateMessage.RateEntry> entries = templates.stream()
-                .map(t -> RateUpdateMessage.RateEntry.builder()
-                        .currencyId(t.getCurrencyId())
-                        .buyRate(t.getBaseBuyRate().add(
-                                t.getBuySpread() != null ? t.getBuySpread() : BigDecimal.ZERO))
-                        .sellRate(t.getBaseSellRate().add(
-                                t.getSellSpread() != null ? t.getSellSpread() : BigDecimal.ZERO))
-                        .roundingRule(t.getRoundingRule())
-                        .build())
+                .map(t -> {
+                    // Currency kód feloldása az ID-ból — a frontend-nek szüksége van rá
+                    String currencyCode = currencyRepository.findById(t.getCurrencyId())
+                            .map(c -> c.getCode())
+                            .orElse(null);
+                    return RateUpdateMessage.RateEntry.builder()
+                            .currencyId(t.getCurrencyId())
+                            .currencyCode(currencyCode)
+                            .buyRate(t.getBaseBuyRate().add(
+                                    t.getBuySpread() != null ? t.getBuySpread() : BigDecimal.ZERO))
+                            .sellRate(t.getBaseSellRate().add(
+                                    t.getSellSpread() != null ? t.getSellSpread() : BigDecimal.ZERO))
+                            .roundingRule(t.getRoundingRule())
+                            .build();
+                })
                 .toList();
 
         RateUpdateMessage message = RateUpdateMessage.builder()

@@ -110,7 +110,7 @@ public class CurrencyCalculatorService {
                 if (toRate == null) continue;
                 if (fromRate.getBaseBuyRate() == null || toRate.getBaseSellRate() == null) continue;
 
-                // Cross-rate: from sell rate / to buy rate
+                // Cross-rate: from buy rate / to sell rate (customer sells from, buys to)
                 BigDecimal crossRate = fromRate.getBaseBuyRate()
                         .divide(toRate.getBaseSellRate(), 6, RoundingMode.HALF_UP);
                 row.put(to.getCode(), crossRate);

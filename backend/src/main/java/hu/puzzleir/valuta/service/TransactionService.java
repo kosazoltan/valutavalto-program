@@ -664,9 +664,10 @@ public class TransactionService {
         BigDecimal hufAmount = currencyAmount.multiply(appliedRate).setScale(0, RoundingMode.HALF_UP);
 
         // Kedvezmény alkalmazása a VÉGSŐ hufAmount-ra (egyszer!)
+        // BUY: ügyfél valutát ad el → kedvezmény = TÖBB forintot kap (spread csökkentés)
         if (discountPercent != null && discountPercent.compareTo(BigDecimal.ZERO) > 0) {
             BigDecimal discount = hufAmount.multiply(discountPercent).divide(new BigDecimal("100"), 0, RoundingMode.HALF_UP);
-            hufAmount = hufAmount.subtract(discount);
+            hufAmount = hufAmount.add(discount);
         }
 
         return hufAmount;
@@ -750,6 +751,15 @@ public class TransactionService {
     }
 
     private Long getHufCurrencyId() {
+        if (cachedHufCurrencyId == null) {
+            // Újrapróbálás: lehet hogy a DB-ben késve került be a HUF valuta
+            cachedHufCurrencyId = currencyRepository.findByCode("HUF")
+                    .map(c -> c.getId())
+                    .orElse(null);
+            if (cachedHufCurrencyId == null) {
+                throw new ValidationException("HUF valuta nem található az adatbázisban! Kérjük inicializálja a valuta táblát.");
+            }
+        }
         return cachedHufCurrencyId;
     }
 

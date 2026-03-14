@@ -142,7 +142,12 @@ public class RateApprovalService {
         }
 
         approval.setStatus(RateApprovalStatus.REJECTED);
-        approval.setReason(reason);
+        // Elutasítási ok hozzáfűzése — az eredeti kérelem indoklása megmarad
+        String originalReason = approval.getReason();
+        String rejectionNote = (originalReason != null && !originalReason.isBlank())
+                ? originalReason + " | ELUTASÍTVA: " + reason
+                : "ELUTASÍTVA: " + reason;
+        approval.setReason(rejectionNote);
 
         approval = rateApprovalRepository.save(approval);
         log.info("Árfolyam változtatás elutasítva: id={}, reason={}", approvalId, reason);
