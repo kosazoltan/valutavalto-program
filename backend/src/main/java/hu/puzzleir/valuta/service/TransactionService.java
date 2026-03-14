@@ -520,6 +520,16 @@ public class TransactionService {
         Currency toCurrency = currencyRepository.findById(request.getToCurrencyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Cél valuta nem található"));
 
+        // Azonos valuta konverzió tiltása
+        if (request.getFromCurrencyId().equals(request.getToCurrencyId())) {
+            throw new ValidationException("Azonos valutanemek közötti konverzió nem lehetséges!");
+        }
+
+        // HUF konverzió tiltása — HUF-ra/HUF-ról vétel/eladás használandó
+        if ("HUF".equals(fromCurrency.getCode()) || "HUF".equals(toCurrency.getCode())) {
+            throw new ValidationException("HUF konverzió nem lehetséges! Használja a vétel/eladás funkciót.");
+        }
+
         // Árfolyamok lekérése
         ExchangeRate fromRate = exchangeRateService.getCurrentRate(request.getFromCurrencyId());
         ExchangeRate toRate = exchangeRateService.getCurrentRate(request.getToCurrencyId());
@@ -533,6 +543,9 @@ public class TransactionService {
         BigDecimal roundingDifference = roundedHufAmount.subtract(hufAmount);
 
         BigDecimal toAmount = roundedHufAmount.divide(toRate.getBaseSellRate(), 2, RoundingMode.HALF_UP);
+
+        // Azonosítás ellenőrzése konverziónál is (HUF egyenértéken)
+        validateIdentification(roundedHufAmount, request.getCustomerName(), request.getCustomerDocumentNumber());
 
         // Készlet ellenőrzése
         validateCurrencyStock(branchId, toCurrency.getId(), toAmount);
@@ -698,6 +711,12 @@ public class TransactionService {
     }
 
     private void validateDiscount(BigDecimal discountPercent) {
+        if (discountPercent.compareTo(BigDecimal.ZERO) < 0) {
+            throw new ValidationException("Kedvezmény nem lehet negatív!");
+        }
+        if (discountPercent.compareTo(new BigDecimal("100")) >= 0) {
+            throw new ValidationException("Kedvezmény nem lehet 100% vagy több!");
+        }
         if (discountPercent.compareTo(new BigDecimal("2.0")) > 0 && !SecurityUtils.isSupervisorOrAbove()) {
             throw new ValidationException("2% feletti kedvezményhez supervisor jogosultság szükséges!");
         }
@@ -847,6 +866,7 @@ public class TransactionService {
         private BigDecimal handlingFee;
         private String customerId;
         private String customerName;
+        private String customerDocumentNumber;
     }
 
     @lombok.Data

@@ -349,10 +349,17 @@ public class Transaction {
     // ============ HELPER METHODS ============
 
     /**
-     * Nettó összeg számítása (díjak levonása után)
+     * Nettó összeg számítása (díjak nélkül).
+     * BUY: hufAmount = bruttó (fee már levonva a payable-ből), ezért fee-t HOZZÁADJUK a nettóhoz.
+     * SELL: hufAmount = bruttó (fee hozzáadva a payable-hez), ezért fee-t LEVONJUK a nettóhoz.
      */
     public BigDecimal getNetHufAmount() {
-        return hufAmount.subtract(handlingFee).add(discountAmount);
+        if (transactionType == TransactionType.BUY) {
+            // hufAmount = payable = calcHuf - fee + rounding → nettó = hufAmount + fee
+            return hufAmount.add(handlingFee);
+        }
+        // SELL/CONVERSION/other: hufAmount = payable = calcHuf + fee + rounding → nettó = hufAmount - fee
+        return hufAmount.subtract(handlingFee);
     }
 
     /**
