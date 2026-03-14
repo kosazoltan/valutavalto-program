@@ -57,6 +57,11 @@ public class StornoService {
                 .orElseThrow(() -> new ResourceNotFoundException("Tranzakció nem található: " + transactionId));
 
         UUID branchId = SecurityUtils.getCurrentBranchId();
+
+        // IDOR védelem: csak saját iroda tranzakciója ellenőrizhető
+        if (!transaction.getBranch().getId().equals(branchId)) {
+            throw new ValidationException("Nincs jogosultság más iroda tranzakciójához!");
+        }
         int dailyCount = (int) transactionRepository.countReversalsByBranchAndDate(branchId, LocalDate.now());
 
         // HIGH FIX #8: Ha a tranzakció ALREADY_REVERSED → dobjon hibát, ne engedje tovább
@@ -97,6 +102,11 @@ public class StornoService {
                 .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található: " + workerId));
 
         UUID branchId = SecurityUtils.getCurrentBranchId();
+
+        // IDOR védelem: csak saját iroda tranzakciója sztornózható
+        if (!transaction.getBranch().getId().equals(branchId)) {
+            throw new ValidationException("Nincs jogosultság más iroda tranzakciójához!");
+        }
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
 
@@ -154,6 +164,12 @@ public class StornoService {
 
         Transaction original = transactionRepository.findById(transactionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tranzakció nem található: " + transactionId));
+
+        // IDOR védelem: csak saját iroda tranzakciója sztornózható
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+        if (!original.getBranch().getId().equals(branchId)) {
+            throw new ValidationException("Nincs jogosultság más iroda tranzakciójához!");
+        }
 
         if (original.isReversed()) {
             throw new ValidationException("Ez a tranzakció már sztornózva lett!");
