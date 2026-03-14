@@ -4,6 +4,52 @@
 **Datum:** 2026-03-06
 **Projekt:** Valutavalto Program — uj alrendszerek
 
+## VEGREHAJTASI STATUSZ (2026-03-14)
+
+Automatikus vegrehajtasban eddig elkeszult:
+
+- P0 sync alapok:
+  - `backend/src/main/resources/db/migration/V72__sync_outbox_inbox.sql`
+  - `sync_outbox` + `sync_inbox` tablák, indexekkel es statusz constraint-ekkel.
+- P0 idempotency enforcement backend oldalon:
+  - `backend/src/main/java/hu/puzzleir/valuta/security/IdempotencyFilter.java`
+  - Security chain-be kotve: `backend/src/main/java/hu/puzzleir/valuta/config/SecurityConfig.java`
+  - Unit tesztek: `backend/src/test/java/hu/puzzleir/valuta/security/IdempotencyFilterTest.java`
+- P0-T1 CI gate erosites:
+  - `.github/workflows/security.yml` frissitve, backend test kotelezo lepessel.
+  - `penztar-client` pipeline-ben test + typecheck + check:ipc gate.
+- Kliens oldali idempotency terites:
+  - `penztar-client/src/api/client.ts` request interceptor automatikusan ad `Idempotency-Key` headert POST/PUT/PATCH/DELETE hivasokra.
+  - Segedteszt: `penztar-client/src/test/api.test.ts` (method policy).
+- P0 sync runtime bekotes:
+  - `backend/src/main/java/hu/puzzleir/valuta/service/RatePublishService.java` mar outbox eseményt ír (`RATE_PUBLISHED`) a kozvetlen WS kuldes helyett.
+  - `backend/src/main/java/hu/puzzleir/valuta/service/OutboxSyncWorkerService.java` valos transportot futtat (`RATE_PUBLISHED` -> `/topic/rate-updates/*`) retry/dead-letter policy mellett.
+  - `backend/src/main/java/hu/puzzleir/valuta/repository/SyncInboxRepository.java` + inbox deduplikacio bekotve (`RECEIVED/PROCESSED/FAILED`).
+  - Unit teszt bovites: `backend/src/test/java/hu/puzzleir/valuta/service/OutboxSyncWorkerServiceTest.java` (retry, dead-letter, dedupe, topic dispatch).
+- P0 inbound sync ingest:
+  - Uj endpoint: `POST /api/v1/sync/events` (`backend/src/main/java/hu/puzzleir/valuta/controller/SyncInboundController.java`).
+  - Uj service: `backend/src/main/java/hu/puzzleir/valuta/service/SyncInboundEventService.java`.
+  - Payload-hash alapú idempotency konfliktuskezeles:
+    - azonos `Idempotency-Key` + eltérő payload => `SYNC_PAYLOAD_CONFLICT` (HTTP 409), inbox `FAILED`.
+    - azonos `Idempotency-Key` + azonos payload + mar feldolgozva => inbox `DUPLICATE`, ujrafeldolgozas kihagyva.
+  - DTO-k: `backend/src/main/java/hu/puzzleir/valuta/dto/sync/SyncInboundEventRequest.java`, `SyncInboundEventResponse.java`.
+  - Unit teszt: `backend/src/test/java/hu/puzzleir/valuta/service/SyncInboundEventServiceTest.java`.
+- P0 inbound HTTP contract hardening:
+  - Controller szintu MockMvc teszt lefedes: `backend/src/test/java/hu/puzzleir/valuta/controller/SyncInboundControllerTest.java` (200/400/409).
+  - Hiányzó kötelező header kezelése javitva global exception handlerben:
+    - `backend/src/main/java/hu/puzzleir/valuta/exception/GlobalExceptionHandler.java`
+    - `MissingRequestHeaderException` most 400 `BAD_REQUEST` valasszal ter vissza (nem 500).
+- P0 publish -> outbox flow teszt lefedes:
+  - Uj unit teszt: `backend/src/test/java/hu/puzzleir/valuta/service/RatePublishServiceTest.java`.
+  - Ellenorzi, hogy publish soran letrejon a `RATE_PUBLISHED` outbox event (`PENDING`, helyes `aggregateType`, `aggregateId`, payload branch/rate adatokkal).
+- Frontend regresszio gate allapot (penztar-client):
+  - `test` / `typecheck` / `check:ipc` futtatva.
+  - Hianyzo tesztfuggoseg javitva: `@testing-library/dom` felvéve dev dependency-k koze.
+
+Kovetkezo cel szelet:
+
+- Inbound sync endpoint teljesebb integration/E2E lefedes tovabbi branch-ekkel (nem tamogatott `eventType`, worker retry edge case-ek).
+
 ---
 
 ## TARTALOMJEGYZEK
@@ -782,6 +828,20 @@ ADMIN           — Minden
 
 ## MEGJEGYZESEK
 
+## 0. KIEGESZITO DOKUMENTUM (AI MASTERPLAN)
+
+Teljes, AI-val onalloan vegrehajthato atalakitasi/implementacios mesterterv:
+
+- `docs/AI_EXECUTION_MASTERPLAN.md`
+
+Ez a dokumentum a kovetkezoket tartalmazza reszletesen:
+- teljes celarchitektura
+- incremental vs full transformation strategia
+- fazisokra bontott vegrehajtasi terv
+- SQL, Java, TypeScript kodmintak
+- szinkron/idempotencia szabvanyok
+- szigoru AI vegrehajtasi utasitasok (teszt, rollback, DoD)
+
 1. **A webcam-capture konyvtar** (com.github.sarxos) Java-ban kezeli az USB webkamerakat, cross-platform, nincs szukseg nativ driver-re. Azonos konyvtar mint amit a legacy CameraOffice hasznalt.
 
 2. **Miert NEM IP kamera / ONVIF?** A felhasznalo kifejezetten USB webkamerakat kert. Ez egyszerubb (nincs halozati kamera konfig), olcsobb, es a legacy rendszer is igy mukodott.
@@ -791,3 +851,29 @@ ADMIN           — Minden
 4. **Miert kettos tarolas (helyi + szerver)?** A felhasznalo kifejezetten kerte, hogy mindket helyen 50 napig elerheto legyen. A helyi tarolas biztonsagi halo halozati problema eseten, a szerveres tarolas kozponti hozzaferest biztosit.
 
 5. **INTEGER vs UUID company_id** — A meglevo rendszerben meg INTEGER a company_id. Az uj tablak UUID-t hasznalnak (branch_id). A company_id konverziot kulon migracioval kell megoldani.
+
+6. **Electron desktop reteg mukodeskritikus (NEM opcionális).** A penztargepes alapfunkciohoz kotelezo a helyi rögzites, helyi tarolas, offline queue es IPC hid. Ez nem volt ilyen formaban a legacy rendszerben, ezert a modern kliensben kiemelt vedelmet igenyel.
+
+7. **Forrás és buildelt Electron fájlok kezelése:**
+  - Forrás: `penztar-client/electron/*.ts`
+  - Futtatási belépési pont: `penztar-client/package.json` → `main: dist-electron/main.js`
+  - Buildelt kimenet: `penztar-client/dist-electron/*` (runtime szempontbol lenyeges)
+  - Szabaly: Electron valtoztatas utan a forras es a buildelt allapot nem lehet inkonzisztens.
+
+8. **IPC szerzodes stabilitasa (torhetetlen kontrakt):**
+  - Main handler: `penztar-client/electron/main.ts`
+  - Preload bridge: `penztar-client/electron/preload.ts`
+  - Renderer tipusok: `penztar-client/src/types/electron.d.ts`
+  - Minden uj/atnevezett IPC csatornat ebben a 3 helyen egyszerre kell karbantartani.
+
+9. **Helyi adatreteg vedelme:**
+  - SQLite: `~/.valuta/local.db`
+  - Kamera tarolas: `C:/valuta/camera`
+  - Scan tarolas: `C:/valuta/scan`
+  - Kulcsfajl (scan): `C:/valuta/.scan_key`
+  - Ezen utvonalak valtoztatasa csak migracios tervvel es visszafele kompatibilitassal tortenhet.
+
+10. **Minimum regresszios ellenorzes Electron erinto modositashoz:**
+  - `npm run typecheck`
+  - `npm run build:renderer` vagy teljes `npm run build`
+  - IPC smoke: login token mentes/olvasas (`get-config`/`set-config`), offline pending mentes, kamera/scan hivasok.

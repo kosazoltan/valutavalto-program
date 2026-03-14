@@ -1,0 +1,88 @@
+services:
+  # ---------------------------------------------------------------------------
+  # Minimum MCP set (recommended baseline for AI-assisted development)
+  # ---------------------------------------------------------------------------
+
+  mcp-filesystem:
+    image: node:20-alpine
+    container_name: mcp-filesystem
+    working_dir: /workspace
+    command: >
+      sh -lc "npx -y supergateway --port 8810 --stdio
+      'npx -y @modelcontextprotocol/server-filesystem /workspace'"
+    volumes:
+      - ./:/workspace:rw
+    ports:
+      - "8810:8810"
+    restart: unless-stopped
+
+  mcp-git:
+    image: node:20-alpine
+    container_name: mcp-git
+    working_dir: /workspace
+    command: >
+      sh -lc "npx -y supergateway --port 8811 --stdio
+      'npx -y @cyanheads/git-mcp-server'"
+    volumes:
+      - ./:/workspace:rw
+    ports:
+      - "8811:8811"
+    restart: unless-stopped
+
+  mcp-fetch:
+    image: node:20-alpine
+    container_name: mcp-fetch
+    command: >
+      sh -lc "npx -y supergateway --port 8812 --stdio
+      'npx -y @mokei/mcp-fetch'"
+    ports:
+      - "8812:8812"
+    restart: unless-stopped
+
+  mcp-postgres:
+    image: node:20-alpine
+    container_name: mcp-postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://valuta_user:valuta_pass@postgres:5432/valuta
+    command: >
+      sh -lc "npx -y supergateway --port 8813 --stdio
+      'npx -y @modelcontextprotocol/server-postgres $DATABASE_URL'"
+    ports:
+      - "8813:8813"
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Optional MCP servers
+  # Enable with: docker compose -f docker-compose.yml -f docker-compose.mcp.yml --profile optional-mcp up -d
+  # Note: package names below are common community defaults; adjust if your team uses different ones.
+  # ---------------------------------------------------------------------------
+
+  mcp-shell:
+    image: node:20-alpine
+    container_name: mcp-shell
+    profiles: ["optional-mcp"]
+    working_dir: /workspace
+    command: >
+      sh -lc "npx -y supergateway --port 8814 --stdio
+      'npx -y mcp-server-shell --cwd /workspace'"
+    volumes:
+      - ./:/workspace:rw
+    ports:
+      - "8814:8814"
+    restart: unless-stopped
+
+  mcp-docker:
+    image: node:20-alpine
+    container_name: mcp-docker
+    profiles: ["optional-mcp"]
+    command: >
+      sh -lc "npx -y supergateway --port 8815 --stdio
+      'npx -y mcp-server-docker'"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "8815:8815"
+    restart: unless-stopped

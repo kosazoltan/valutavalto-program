@@ -67,6 +67,10 @@ cd penztar-client
 npm run dev
 ```
 
+### MCP kovetelmenyek (Dockeres fejleszteshez)
+
+- Lasd: [docs/MCP_DOCKER_REQUIREMENTS.md](docs/MCP_DOCKER_REQUIREMENTS.md)
+
 ## Projekt Struktúra
 
 ```

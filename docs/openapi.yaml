@@ -36,6 +36,8 @@ tags:
     description: Backup management
   - name: Exports
     description: Data export endpoints
+  - name: Sync
+    description: Idempotens sync események fogadása
 
 paths:
   # ==================== AUTH ====================
@@ -532,6 +534,40 @@ paths:
               schema:
                 type: boolean
 
+  # ==================== SYNC ====================
+  /sync/events:
+    post:
+      tags: [Sync]
+      summary: Receive inbound sync event (idempotent)
+      operationId: receiveSyncEvent
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncInboundEventRequest'
+      responses:
+        '200':
+          description: Event accepted or marked duplicate
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncInboundEventResponse'
+        '400':
+          description: Validation error or missing idempotency key
+        '409':
+          description: Idempotency key reused with different payload hash
+        '422':
+          description: Supported event processing failed
+
   # ==================== REPORTS ====================
   /reports/daily-closing:
     get:
@@ -808,6 +844,42 @@ components:
         branchId:
           type: integer
           format: int64
+
+    # ==================== SYNC ====================
+    SyncInboundEventRequest:
+      type: object
+      required:
+        - sourceNodeId
+        - eventType
+        - payload
+      properties:
+        sourceNodeId:
+          type: string
+          example: edge-node-01
+        eventType:
+          type: string
+          example: RATE_PUBLISHED
+        payload:
+          type: object
+          additionalProperties: true
+
+    SyncInboundEventResponse:
+      type: object
+      properties:
+        idempotencyKey:
+          type: string
+        eventType:
+          type: string
+        status:
+          type: string
+          enum: [RECEIVED, PROCESSED, FAILED, DUPLICATE]
+        duplicate:
+          type: boolean
+        processedAt:
+          type: string
+          format: date-time
+        message:
+          type: string
 
     # ==================== TRANSACTION ====================
     Transaction:

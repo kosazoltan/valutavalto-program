@@ -1,0 +1,297 @@
+version: 1
+name: valutavalto-ai-task-graph
+mode: incremental-first
+
+globalRules:
+  - never_edit_applied_migrations
+  - require_idempotency_for_write_apis
+  - require_regression_tests_for_critical_flows
+  - run_check_ipc_after_electron_changes
+  - update_docs_for_api_or_architecture_changes
+
+pipelines:
+  backendValidate:
+    - "cd backend && mvnw.cmd -q test"
+  electronValidate:
+    - "cd penztar-client && npm ci"
+    - "cd penztar-client && npm run typecheck"
+    - "cd penztar-client && npm run check:ipc"
+
+phases:
+  - id: P0
+    title: Baseline Hardening
+    goals:
+      - stabilize build gates
+      - enforce IPC contract checks
+      - prepare outbox/inbox base
+    tasks:
+      - id: P0-T1
+        title: Enable strict CI gates
+        targets:
+          - backend/pom.xml
+          - penztar-client/package.json
+        actions:
+          - add mandatory test step
+          - add typecheck and ipc checks in CI scripts
+        verify:
+          - "cd backend && mvnw.cmd -q test"
+          - "cd penztar-client && npm run typecheck"
+          - "cd penztar-client && npm run check:ipc"
+        acceptance:
+          - ci fails on test/type/ipc failure
+
+      - id: P0-T2
+        title: Add sync outbox/inbox migrations
+        targets:
+          - backend/src/main/resources/db/migration/V72__sync_outbox_inbox.sql
+        actions:
+          - create sync_outbox table
+          - create sync_inbox table
+          - create indexes for retry scheduling
+        verify:
+          - migration applies on clean db
+        acceptance:
+          - tables exist with required constraints
+
+      - id: P0-T3
+        title: Add idempotency filter
+        dependsOn: [P0-T2]
+        targets:
+          - backend/src/main/java/hu/puzzleir/valuta/shared/web/IdempotencyFilter.java
+        actions:
+          - enforce Idempotency-Key for POST/PUT/PATCH
+          - return 400 when missing
+        verify:
+          - integration test for missing header
+        acceptance:
+          - write endpoints reject missing key
+
+  - id: P1
+    title: Camera Production Module
+    goals:
+      - continuous local recording
+      - encrypted segment storage
+      - 50-day retention and upload queue
+    tasks:
+      - id: P1-T1
+        title: Camera domain entities and repos
+        targets:
+          - backend/src/main/java/hu/puzzleir/valuta/camera/entity/CameraRecording.java
+          - backend/src/main/java/hu/puzzleir/valuta/camera/entity/CameraTransactionLink.java
+          - backend/src/main/java/hu/puzzleir/valuta/camera/repository/CameraRecordingRepository.java
+        actions:
+          - implement entities with retention fields
+          - add query by branch/time and by receipt
+        verify:
+          - repository integration tests
+        acceptance:
+          - queries return expected segment and links
+
+      - id: P1-T2
+        title: Segment writer + encryption service
+        dependsOn: [P1-T1]
+        targets:
+          - backend/src/main/java/hu/puzzleir/valuta/camera/service/CameraRecorderService.java
+          - backend/src/main/java/hu/puzzleir/valuta/camera/service/CameraEncryptionService.java
+        actions:
+          - implement 1-hour segment rotation
+          - implement AES-GCM per segment write
+          - persist checksum and size on close
+        verify:
+          - unit tests for encryption roundtrip
+          - integration test for segment lifecycle
+        acceptance:
+          - closed segment has checksum, end_time, file size
+
+      - id: P1-T3
+        title: Transaction linkage API
+        dependsOn: [P1-T2]
+        targets:
+          - backend/src/main/java/hu/puzzleir/valuta/camera/service/CameraTransactionLinker.java
+          - backend/src/main/java/hu/puzzleir/valuta/trade/service/TransactionService.java
+        actions:
+          - link transaction to active recording by timestamp
+          - save receipt mapping
+        verify:
+          - integration test: execute trade then find recording by receipt
+        acceptance:
+          - receipt search returns linked recording ids
+
+      - id: P1-T4
+        title: Retention and cleanup scheduler
+        dependsOn: [P1-T3]
+        targets:
+          - backend/src/main/java/hu/puzzleir/valuta/camera/service/CameraCleanupService.java
+        actions:
+          - nightly delete expired local and remote recordings
+          - write audit entries for deletes
+        verify:
+          - unit test with mock storage and fixed clock
+        acceptance:
+          - expired recordings are deleted and audited
+
+      - id: P1-T5
+        title: Camera frontend pages
+        dependsOn: [P1-T4]
+        targets:
+          - frontend-react/src/pages/camera/CameraLivePage.tsx
+          - frontend-react/src/pages/camera/CameraPlaybackPage.tsx
+        actions:
+          - add live stream and search by receipt/date
+          - implement role-based visibility
+        verify:
+          - component tests and manual smoke
+        acceptance:
+          - manager/admin can playback, cashier cannot
+
+  - id: P2
+    title: Rate Management End-to-End
+    goals:
+      - versioned publication workflow
+      - reliable branch propagation
+      - fallback polling
+    tasks:
+      - id: P2-T1
+        title: Rate publication schema
+        targets:
+          - backend/src/main/resources/db/migration/V73__rate_publication_versioned.sql
+        actions:
+          - create publication and publication_item tables
+          - enforce workgroup+version uniqueness
+        verify:
+          - migration test
+        acceptance:
+          - unique versioning holds
+
+      - id: P2-T2
+        title: Publish service transaction
+        dependsOn: [P2-T1]
+        targets:
+          - backend/src/main/java/hu/puzzleir/valuta/rate/service/RatePublishService.java
+        actions:
+          - lock approved template
+          - create next version publication
+          - enqueue RATE_PUBLISHED outbox event
+        verify:
+          - service test with duplicate idempotency key
+        acceptance:
+          - duplicate publish request remains single effect
+
+      - id: P2-T3
+        title: WS and polling endpoints
+        dependsOn: [P2-T2]
+        targets:
+          - backend/src/main/java/hu/puzzleir/valuta/rate/websocket/RateUpdateWebSocketConfig.java
+          - backend/src/main/java/hu/puzzleir/valuta/rate/controller/RateQueryController.java
+        actions:
+          - publish topic by workgroup
+          - expose latest?since endpoint fallback
+        verify:
+          - websocket integration test
+          - polling controller integration test
+        acceptance:
+          - client receives publication via ws or polling fallback
+
+      - id: P2-T4
+        title: Electron/Frontend rate apply
+        dependsOn: [P2-T3]
+        targets:
+          - penztar-client/src/hooks/useRateUpdates.ts
+          - penztar-client/src/stores/rateStore.ts
+        actions:
+          - ignore stale versions
+          - apply only newer publication versions atomically
+        verify:
+          - unit test for stale vs newer update ordering
+        acceptance:
+          - local version monotonic increasing
+
+  - id: P3
+    title: Treasury and Trade Invariant Protection
+    goals:
+      - hard guards on negative stock
+      - stricter state transitions
+    tasks:
+      - id: P3-T1
+        title: Transaction state machine guard
+        targets:
+          - backend/src/main/java/hu/puzzleir/valuta/trade/domain/TransactionStateMachine.java
+        actions:
+          - define allowed transitions
+          - reject invalid transitions
+        verify:
+          - state machine unit tests
+        acceptance:
+          - invalid transitions fail deterministically
+
+      - id: P3-T2
+        title: Negative stock blocker
+        dependsOn: [P3-T1]
+        targets:
+          - backend/src/main/java/hu/puzzleir/valuta/treasury/service/InventoryGuardService.java
+        actions:
+          - pre-commit balance check
+          - escalation path for override roles
+        verify:
+          - integration tests for buy/sell and transfer flows
+        acceptance:
+          - no unapproved negative stock possible
+
+      - id: P3-T3
+        title: Daily close consistency report
+        dependsOn: [P3-T2]
+        targets:
+          - backend/src/main/java/hu/puzzleir/valuta/treasury/service/DailyCloseConsistencyService.java
+        actions:
+          - compare ledger, cash balance, movement logs
+        verify:
+          - report test fixtures for matching and mismatch
+        acceptance:
+          - close fails when mismatches exist
+
+  - id: P4
+    title: Fleet Rollout and Ops
+    goals:
+      - safe rollout to 100 cash desks
+      - measurable SLO compliance
+    tasks:
+      - id: P4-T1
+        title: Add observability dashboards
+        targets:
+          - docs/OBSERVABILITY_BASELINE.md
+        actions:
+          - define metrics and alerts for sync, camera, rates, trades
+        verify:
+          - dashboard screenshots and alert test events
+        acceptance:
+          - critical alerts fire on simulated failures
+
+      - id: P4-T2
+        title: Rollout wave runbooks
+        dependsOn: [P4-T1]
+        targets:
+          - docs/ROLLOUT_RUNBOOK.md
+        actions:
+          - define pilot and wave steps
+          - define rollback criteria and commands
+        verify:
+          - tabletop exercise
+        acceptance:
+          - rollback completed under target RTO
+
+qualityGates:
+  - id: QG-1
+    rule: "all critical tests pass"
+  - id: QG-2
+    rule: "no unresolved migration conflicts"
+  - id: QG-3
+    rule: "openapi updated when api changed"
+  - id: QG-4
+    rule: "ipc contract check passed"
+
+finalDefinitionOfDone:
+  - camera retention and linkage proven in integration tests
+  - rate publication versioning and propagation proven
+  - treasury invariants protected by automated tests
+  - sync idempotency proven with duplicate event tests
+  - rollout runbook validated in pilot

@@ -27,11 +27,14 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+      - name: Test backend
+        run: cd backend && mvn -B test --no-transfer-progress
+
       - name: Build backend
         run: cd backend && mvn -B package --no-transfer-progress -DskipTests
 
   penztar-lint:
-    name: penztar-client Lint + TypeCheck
+    name: penztar-client Test + Lint + TypeCheck + IPC Contract
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -41,7 +44,9 @@ jobs:
           cache: 'npm'
           cache-dependency-path: penztar-client/package-lock.json
       - run: cd penztar-client && npm ci --legacy-peer-deps
+      - run: cd penztar-client && npm run test --if-present
       - run: cd penztar-client && npm run typecheck
+      - run: cd penztar-client && npm run check:ipc
       - run: cd penztar-client && npm run lint --if-present
 
   frontend-lint:
