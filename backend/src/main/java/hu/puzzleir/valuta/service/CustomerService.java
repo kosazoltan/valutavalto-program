@@ -213,6 +213,13 @@ public class CustomerService {
     /**
      * Ügyfél inaktiválása
      */
+    /**
+     * Ügyfél mentése (merge/frissítés után).
+     */
+    public Customer save(Customer customer) {
+        return customerRepository.save(customer);
+    }
+
     public void deactivateCustomer(Long customerId) {
         Customer customer = findById(customerId);
         customer.setActive(false);

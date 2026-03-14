@@ -207,8 +207,8 @@ public class CustomerController {
             @PathVariable Long id,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        // A stats tartalmazza a történeti adatokat is
-        return ResponseEntity.ok(customerStatisticsService.getCustomerStats(id));
+        // TODO(enhancement): dátum szűrést a service rétegbe mozgatni a teljesítmény javításáért
+        return ResponseEntity.ok(customerStatisticsService.getCustomerStats(id, from, to));
     }
 
     /**
@@ -264,6 +264,9 @@ public class CustomerController {
                  duplicate.getLastTransactionDate().isAfter(primary.getLastTransactionDate()))) {
             primary.setLastTransactionDate(duplicate.getLastTransactionDate());
         }
+
+        // Módosított primary mentése
+        primary = customerService.save(primary);
 
         // Duplikátum inaktiválása
         customerService.deactivateCustomer(dto.getDuplicateId());

@@ -109,6 +109,67 @@ public class CustomerStatisticsService {
     }
 
     /**
+     * Ügyfél statisztikák dátum szűréssel.
+     */
+    @Transactional(readOnly = true)
+    public CustomerStatsDto getCustomerStats(Long customerId, LocalDate from, LocalDate to) {
+        if (from == null && to == null) {
+            return getCustomerStats(customerId);
+        }
+
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ügyfél nem található: " + customerId));
+
+        if (!customer.getCompany().getId().equals(companyId)) {
+            throw new ResourceNotFoundException("Ügyfél nem található: " + customerId);
+        }
+
+        List<Transaction> transactions = transactionRepository.findAll().stream()
+                .filter(t -> t.getCompany().getId().equals(companyId))
+                .filter(t -> TransactionStatus.COMPLETED.equals(t.getStatus()))
+                .filter(t -> {
+                    String docNum = customer.getDocumentNumber();
+                    return docNum != null && docNum.equals(t.getCustomerDocumentNumber());
+                })
+                .filter(t -> {
+                    LocalDate txDate = t.getTransactionDate();
+                    if (txDate == null) return false;
+                    if (from != null && txDate.isBefore(from)) return false;
+                    if (to != null && txDate.isAfter(to)) return false;
+                    return true;
+                })
+                .toList();
+
+        if (transactions.isEmpty()) {
+            return CustomerStatsDto.builder()
+                    .customerId(customerId)
+                    .customerName(customer.getName())
+                    .totalTransactions(0)
+                    .totalVolumeHuf(BigDecimal.ZERO)
+                    .averageAmount(BigDecimal.ZERO)
+                    .build();
+        }
+
+        BigDecimal totalVolume = transactions.stream()
+                .map(Transaction::getHufAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal avgAmount = totalVolume.divide(
+                new BigDecimal(transactions.size()), 2, RoundingMode.HALF_UP);
+
+        return CustomerStatsDto.builder()
+                .customerId(customerId)
+                .customerName(customer.getName())
+                .totalTransactions(transactions.size())
+                .totalVolumeHuf(totalVolume)
+                .averageAmount(avgAmount)
+                .build();
+    }
+
+    /**
      * Top ügyfelek listája (adott iroda, időszak, limit)
      */
     @Transactional(readOnly = true)
