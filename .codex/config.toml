@@ -1,0 +1,8 @@
+# Codex CLI project-level configuration
+# https://developers.openai.com/codex/config-reference/
+
+# Model to use
+model = "o4-mini"
+
+# Approval mode: "suggest" | "auto-edit" | "full-auto"
+approval_mode = "suggest"
