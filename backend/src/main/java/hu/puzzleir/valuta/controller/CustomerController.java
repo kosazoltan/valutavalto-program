@@ -68,6 +68,7 @@ public class CustomerController {
      * GET /api/v1/customers/{id}
      */
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<CustomerDto> getCustomerById(@PathVariable Long id) {
         Customer customer = customerService.findById(id);
         return ResponseEntity.ok(customerMapper.toDto(customer));
@@ -79,6 +80,7 @@ public class CustomerController {
      * GET /api/v1/customers/document/{documentNumber}
      */
     @GetMapping("/document/{documentNumber}")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<CustomerDto> getCustomerByDocumentNumber(@PathVariable String documentNumber) {
         Customer customer = customerService.findByDocumentNumber(documentNumber);
         return ResponseEntity.ok(customerMapper.toDto(customer));
@@ -90,6 +92,7 @@ public class CustomerController {
      * GET /api/v1/customers/code/{customerCode}
      */
     @GetMapping("/code/{customerCode}")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<CustomerDto> getCustomerByCode(@PathVariable String customerCode) {
         Customer customer = customerService.findByCustomerCode(customerCode);
         return ResponseEntity.ok(customerMapper.toDto(customer));
@@ -101,6 +104,7 @@ public class CustomerController {
      * GET /api/v1/customers/id-card/{idCardNumber}
      */
     @GetMapping("/id-card/{idCardNumber}")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<CustomerDto> getCustomerByIdCard(@PathVariable String idCardNumber) {
         Customer customer = customerService.findByIdCardNumber(idCardNumber);
         return ResponseEntity.ok(customerMapper.toDto(customer));
@@ -112,6 +116,7 @@ public class CustomerController {
      * GET /api/v1/customers/passport/{passportNumber}
      */
     @GetMapping("/passport/{passportNumber}")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<CustomerDto> getCustomerByPassport(@PathVariable String passportNumber) {
         Customer customer = customerService.findByPassportNumber(passportNumber);
         return ResponseEntity.ok(customerMapper.toDto(customer));
@@ -123,6 +128,7 @@ public class CustomerController {
      * GET /api/v1/customers/search?name=...
      */
     @GetMapping("/search")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<CustomerDto>> searchCustomers(@RequestParam String name) {
         List<Customer> customers = customerService.searchByName(name);
         List<CustomerDto> dtos = customers.stream()
@@ -137,6 +143,7 @@ public class CustomerController {
      * GET /api/v1/customers/vip
      */
     @GetMapping("/vip")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<CustomerDto>> getVipCustomers() {
         List<Customer> customers = customerService.getVipCustomers();
         List<CustomerDto> dtos = customers.stream()
@@ -151,6 +158,7 @@ public class CustomerController {
      * GET /api/v1/customers/active
      */
     @GetMapping("/active")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<CustomerDto>> getActiveCustomers() {
         List<Customer> customers = customerService.getActiveCustomers();
         List<CustomerDto> dtos = customers.stream()

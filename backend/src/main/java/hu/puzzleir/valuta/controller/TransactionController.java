@@ -97,6 +97,7 @@ public class TransactionController {
      * GET /api/v1/transactions/receipt/{receiptNumber}
      */
     @GetMapping("/receipt/{receiptNumber}")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<TransactionDto> findByReceiptNumber(@PathVariable String receiptNumber) {
         Transaction transaction = transactionService.findByReceiptNumber(receiptNumber);
         return ResponseEntity.ok(transactionMapper.toDto(transaction));
@@ -108,6 +109,7 @@ public class TransactionController {
      * GET /api/v1/transactions/daily
      */
     @GetMapping("/daily")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<TransactionDto>> getDailyTransactions() {
         List<Transaction> transactions = transactionService.getDailyTransactions();
         List<TransactionDto> dtos = transactions.stream()
@@ -139,6 +141,7 @@ public class TransactionController {
      * GET /api/v1/transactions/daily-turnover
      */
     @GetMapping("/daily-turnover")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<TransactionService.DailyTurnoverSummary> getDailyTurnover() {
         TransactionService.DailyTurnoverSummary summary = transactionService.getDailyTurnover();
         return ResponseEntity.ok(summary);

@@ -22,16 +22,19 @@ public class ReceiptController {
     private final ReceiptGeneratorService receiptGeneratorService;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<Receipt>> list(@RequestParam(required = false) UUID transactionId) {
         return ResponseEntity.ok(service.list(transactionId));
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Receipt> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(service.getById(id));
     }
 
     @PostMapping("/{id}/print")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Receipt> print(@PathVariable UUID id) {
         return ResponseEntity.ok(service.print(id));
     }
