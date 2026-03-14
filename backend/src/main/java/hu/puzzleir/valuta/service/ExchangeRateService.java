@@ -100,9 +100,27 @@ public class ExchangeRateService {
         Currency currency = currencyRepository.findById(request.getCurrencyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Valuta nem található: " + request.getCurrencyId()));
 
+        // Validáció: árfolyamok pozitívak
+        if (request.getBaseBuyRate() == null || request.getBaseBuyRate().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ValidationException("Vételi árfolyam 0-nál nagyobb kell legyen!");
+        }
+        if (request.getBaseSellRate() == null || request.getBaseSellRate().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ValidationException("Eladási árfolyam 0-nál nagyobb kell legyen!");
+        }
+
         // Validáció: eladási árfolyam > vételi árfolyam
         if (request.getBaseBuyRate().compareTo(request.getBaseSellRate()) >= 0) {
             throw new ValidationException("Az eladási árfolyamnak nagyobbnak kell lennie a vételinél!");
+        }
+
+        // Validáció: limit összegek növekvő sorrendben
+        if (request.getLimit1Amount() != null && request.getLimit2Amount() != null
+                && request.getLimit1Amount().compareTo(request.getLimit2Amount()) >= 0) {
+            throw new ValidationException("Limit1 összegnek kisebbnek kell lennie Limit2-nél!");
+        }
+        if (request.getLimit2Amount() != null && request.getLimit3Amount() != null
+                && request.getLimit2Amount().compareTo(request.getLimit3Amount()) >= 0) {
+            throw new ValidationException("Limit2 összegnek kisebbnek kell lennie Limit3-nál!");
         }
 
         Branch branch = null;

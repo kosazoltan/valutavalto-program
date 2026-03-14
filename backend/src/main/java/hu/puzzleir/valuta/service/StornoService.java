@@ -133,6 +133,12 @@ public class StornoService {
         StornoApproval approval = stornoApprovalRepository.findById(approvalId)
                 .orElseThrow(() -> new ResourceNotFoundException("Jóváhagyási kérés nem található: " + approvalId));
 
+        // IDOR védelem: csak saját iroda jóváhagyási kérése kezelhető
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+        if (!approval.getBranch().getId().equals(branchId)) {
+            throw new ValidationException("Nincs jogosultság más iroda jóváhagyási kéréséhez!");
+        }
+
         Worker approver = workerRepository.findById(approvedByWorkerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Jóváhagyó pénztáros nem található: " + approvedByWorkerId));
 
