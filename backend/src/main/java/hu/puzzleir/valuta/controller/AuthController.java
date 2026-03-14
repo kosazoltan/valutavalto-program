@@ -156,9 +156,13 @@ public class AuthController {
             return ResponseEntity.status(401).build();
         }
         
-        // Új token generálás
-        String newToken = jwtTokenProvider.generateToken(worker);
-        
+        // Aktív role és permissions megőrzése a régi tokenből
+        String activeRole = jwtTokenProvider.getActiveRoleFromToken(token);
+        java.util.List<String> permissions = jwtTokenProvider.getPermissionsFromToken(token);
+
+        // Új token generálás az aktív role megtartásával
+        String newToken = jwtTokenProvider.generateToken(worker, activeRole, permissions);
+
         return ResponseEntity.ok(Map.of("token", newToken));
     }
 }

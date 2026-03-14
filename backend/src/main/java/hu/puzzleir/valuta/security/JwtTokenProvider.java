@@ -6,6 +6,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
@@ -22,6 +23,7 @@ import java.util.UUID;
  * MULTI-TENANT: Token tartalmazza a companyId-t!
  */
 @Component
+@Slf4j
 public class JwtTokenProvider {
 
     private final Environment environment;
@@ -119,7 +121,17 @@ public class JwtTokenProvider {
                 .build()
                 .parseClaimsJws(token);
             return true;
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            log.warn("JWT token lejárt: {}", e.getMessage());
+            return false;
+        } catch (io.jsonwebtoken.security.SignatureException e) {
+            log.warn("JWT aláírás érvénytelen: {}", e.getMessage());
+            return false;
+        } catch (io.jsonwebtoken.MalformedJwtException e) {
+            log.warn("JWT token hibás formátumú: {}", e.getMessage());
+            return false;
         } catch (Exception e) {
+            log.warn("JWT validálás sikertelen: {}", e.getMessage());
             return false;
         }
     }
