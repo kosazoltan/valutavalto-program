@@ -4,7 +4,7 @@ import { api } from '../../services/api'
 
 interface RateTemplate {
   id?: string
-  currencyId: number | string
+  currencyId: number
   workgroupId: string
   baseBuyRate: string
   baseSellRate: string
@@ -22,9 +22,16 @@ interface Workgroup {
   code: string
 }
 
+interface CurrencyOption {
+  id: number
+  code: string
+  name: string
+}
+
 export default function RateTemplateEditor() {
   const [templates, setTemplates] = useState<RateTemplate[]>([])
   const [workgroups, setWorkgroups] = useState<Workgroup[]>([])
+  const [currencies, setCurrencies] = useState<CurrencyOption[]>([])
   const [selectedWorkgroup, setSelectedWorkgroup] = useState<string>('')
   const [editing, setEditing] = useState<RateTemplate | null>(null)
   const [loading, setLoading] = useState(true)
@@ -32,6 +39,7 @@ export default function RateTemplateEditor() {
 
   useEffect(() => {
     fetchWorkgroups()
+    fetchCurrencies()
   }, [])
 
   useEffect(() => {
@@ -65,9 +73,22 @@ export default function RateTemplateEditor() {
     }
   }
 
+  const fetchCurrencies = async () => {
+    try {
+      const res = await fetch('/api/v1/currencies')
+      if (res.ok) {
+        const data = (await res.json()) as CurrencyOption[]
+        setCurrencies(data)
+      }
+    } catch (err) {
+      console.error('Valutak lekerese sikertelen:', err)
+    }
+  }
+
   const saveTemplate = async () => {
     if (!editing) return
     setError(null)
+    if (!editing.currencyId || editing.currencyId <= 0) return
     try {
       if (editing.id) {
         await api.put(`/rate-management/templates/${editing.id}`, editing)
@@ -143,7 +164,7 @@ export default function RateTemplateEditor() {
   }
 
   const newTemplate = (): RateTemplate => ({
-    currencyId: '',  // will be parsed to number before sending
+    currencyId: currencies[0]?.id ?? 0,
     workgroupId: selectedWorkgroup,
     baseBuyRate: '',
     baseSellRate: '',
@@ -192,14 +213,20 @@ export default function RateTemplateEditor() {
           <div className="p-4">
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="text-sm font-medium">Valuta ID</label>
-                <input
+                <label className="text-sm font-medium">Valuta</label>
+                <select
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
-                  type="number"
                   value={editing.currencyId}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditing({ ...editing, currencyId: e.target.value ? parseInt(e.target.value, 10) : '' })}
-                  placeholder="Valuta ID (szam)"
-                />
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                    setEditing({ ...editing, currencyId: Number(e.target.value) })}
+                >
+                  <option value={0}>Valassz valutat...</option>
+                  {currencies.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.code} - {c.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="text-sm font-medium">Veteli arfolyam</label>
