@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.repository;
 import hu.puzzleir.valuta.entity.Currency;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -39,7 +40,7 @@ public interface CurrencyRepository extends JpaRepository<Currency, Long> {
      */
     @Query("SELECT c FROM Currency c WHERE LOWER(c.code) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%'))")
-    List<Currency> searchByCodeOrName(String search);
+    List<Currency> searchByCodeOrName(@Param("search") String search);
 
     /**
      * Összes aktív valuta rendezve (alias)

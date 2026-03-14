@@ -26,7 +26,7 @@ public interface HrkTransactionRepository extends JpaRepository<HrkTransaction, 
             @Param("endDate") LocalDateTime endDate);
 
     @Query("SELECT COUNT(h) FROM HrkTransaction h WHERE h.branchId = :branchId " +
-           "AND h.reference LIKE :prefix%")
+           "AND h.reference LIKE CONCAT(:prefix, '%')")
     long countByBranchIdAndReferencePrefix(
             @Param("branchId") UUID branchId,
             @Param("prefix") String prefix);
