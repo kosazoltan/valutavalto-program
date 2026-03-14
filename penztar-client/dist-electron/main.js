@@ -1,92 +1,2531 @@
-"use strict";var Sn=Object.defineProperty;var On=(s,i,c)=>i in s?Sn(s,i,{enumerable:!0,configurable:!0,writable:!0,value:c}):s[i]=c;var Q=(s,i,c)=>On(s,typeof i!="symbol"?i+"":i,c);const S=require("electron"),Ze=require("node:path"),be=require("node:fs"),Rn=require("node:crypto");function In(s){return s&&s.__esModule&&Object.prototype.hasOwnProperty.call(s,"default")?s.default:s}var St={exports:{}},vr;function Dn(){return vr||(vr=1,(function(s,i){var c=void 0,m=function(p){return c||(c=new Promise(function(y,C){var cr,lr,hr,fr,pr;var k=typeof p<"u"?p:{},J=k.onAbort;k.onAbort=function(e){C(new Error(e)),J&&J(e)},k.postRun=k.postRun||[],k.postRun.push(function(){y(k)}),s=void 0;var l;l||(l=typeof k<"u"?k:{});var Ir=!!globalThis.window,Je=!!globalThis.WorkerGlobalScope,Se=((lr=(cr=globalThis.process)==null?void 0:cr.versions)==null?void 0:lr.node)&&((hr=globalThis.process)==null?void 0:hr.type)!="renderer";l.onRuntimeInitialized=function(){function e(a,f){switch(typeof f){case"boolean":An(a,f?1:0);break;case"number":Tn(a,f);break;case"string":vn(a,f,-1,-1);break;case"object":if(f===null)_r(a);else if(f.length!=null){var b=je(f.length);M.set(f,b),Nn(a,b,f.length,-1),Le(b)}else Ge(a,"Wrong API use : tried to return a value of an unknown type ("+f+").",-1);break;default:_r(a)}}function t(a,f){for(var b=[],_=0;_<a;_+=1){var N=Z(f+4*_,"i32"),L=bn(N);if(L===1||L===2)N=gn(N);else if(L===3)N=_n(N);else if(L===4){L=N,N=En(L),L=wn(L);for(var H=new Uint8Array(N),X=0;X<N;X+=1)H[X]=M[L+X];N=H}else N=null;b.push(N)}return b}function r(a,f){this.Qa=a,this.db=f,this.Oa=1,this.mb=[]}function n(a,f){if(this.db=f,this.fb=Xe(a),this.fb===null)throw Error("Unable to allocate memory for the SQL string");this.lb=this.fb,this.$a=this.sb=null}function o(a){if(this.filename="dbfile_"+(4294967295*Math.random()>>>0),a!=null){var f=this.filename,b="/",_=f;if(b&&(b=typeof b=="string"?b:pt(b),_=f?lt(b+"/"+f):b),f=xt(!0,!0),_=Wr(_,f),a){if(typeof a=="string"){b=Array(a.length);for(var N=0,L=a.length;N<L;++N)b[N]=a.charCodeAt(N);a=b}Pe(_,f|146),b=me(_,577),rr(b,a,0,a.length,0),_t(b),Pe(_,f)}}this.handleError(w(this.filename,u)),this.db=Z(u,"i32"),gr(this.db),this.gb={},this.Sa={}}var u=le(4),h=l.cwrap,w=h("sqlite3_open","number",["string","number"]),A=h("sqlite3_close_v2","number",["number"]),v=h("sqlite3_exec","number",["number","string","number","number","number"]),I=h("sqlite3_changes","number",["number"]),F=h("sqlite3_prepare_v2","number",["number","string","number","number","number"]),dr=h("sqlite3_sql","string",["number"]),Jr=h("sqlite3_normalized_sql","string",["number"]),mr=h("sqlite3_prepare_v2","number",["number","number","number","number","number"]),en=h("sqlite3_bind_text","number",["number","number","number","number","number"]),yr=h("sqlite3_bind_blob","number",["number","number","number","number","number"]),tn=h("sqlite3_bind_double","number",["number","number","number"]),rn=h("sqlite3_bind_int","number",["number","number","number"]),nn=h("sqlite3_bind_parameter_index","number",["number","string"]),on=h("sqlite3_step","number",["number"]),sn=h("sqlite3_errmsg","string",["number"]),an=h("sqlite3_column_count","number",["number"]),un=h("sqlite3_data_count","number",["number"]),cn=h("sqlite3_column_double","number",["number","number"]),br=h("sqlite3_column_text","string",["number","number"]),ln=h("sqlite3_column_blob","number",["number","number"]),hn=h("sqlite3_column_bytes","number",["number","number"]),fn=h("sqlite3_column_type","number",["number","number"]),pn=h("sqlite3_column_name","string",["number","number"]),dn=h("sqlite3_reset","number",["number"]),mn=h("sqlite3_clear_bindings","number",["number"]),yn=h("sqlite3_finalize","number",["number"]),Er=h("sqlite3_create_function_v2","number","number string number number number number number number number".split(" ")),bn=h("sqlite3_value_type","number",["number"]),En=h("sqlite3_value_bytes","number",["number"]),_n=h("sqlite3_value_text","string",["number"]),wn=h("sqlite3_value_blob","number",["number"]),gn=h("sqlite3_value_double","number",["number"]),Tn=h("sqlite3_result_double","",["number","number"]),_r=h("sqlite3_result_null","",["number"]),vn=h("sqlite3_result_text","",["number","string","number","number"]),Nn=h("sqlite3_result_blob","",["number","number","number","number"]),An=h("sqlite3_result_int","",["number","number"]),Ge=h("sqlite3_result_error","",["number","string","number"]),wr=h("sqlite3_aggregate_context","number",["number","number"]),gr=h("RegisterExtensionFunctions","number",["number"]),Tr=h("sqlite3_update_hook","number",["number","number","number"]);r.prototype.bind=function(a){if(!this.Qa)throw"Statement closed";return this.reset(),Array.isArray(a)?this.Gb(a):a!=null&&typeof a=="object"?this.Hb(a):!0},r.prototype.step=function(){if(!this.Qa)throw"Statement closed";this.Oa=1;var a=on(this.Qa);switch(a){case 100:return!0;case 101:return!1;default:throw this.db.handleError(a)}},r.prototype.Ab=function(a){return a==null&&(a=this.Oa,this.Oa+=1),cn(this.Qa,a)},r.prototype.Ob=function(a){if(a==null&&(a=this.Oa,this.Oa+=1),a=br(this.Qa,a),typeof BigInt!="function")throw Error("BigInt is not supported");return BigInt(a)},r.prototype.Tb=function(a){return a==null&&(a=this.Oa,this.Oa+=1),br(this.Qa,a)},r.prototype.getBlob=function(a){a==null&&(a=this.Oa,this.Oa+=1);var f=hn(this.Qa,a);a=ln(this.Qa,a);for(var b=new Uint8Array(f),_=0;_<f;_+=1)b[_]=M[a+_];return b},r.prototype.get=function(a,f){f=f||{},a!=null&&this.bind(a)&&this.step(),a=[];for(var b=un(this.Qa),_=0;_<b;_+=1)switch(fn(this.Qa,_)){case 1:var N=f.useBigInt?this.Ob(_):this.Ab(_);a.push(N);break;case 2:a.push(this.Ab(_));break;case 3:a.push(this.Tb(_));break;case 4:a.push(this.getBlob(_));break;default:a.push(null)}return a},r.prototype.qb=function(){for(var a=[],f=an(this.Qa),b=0;b<f;b+=1)a.push(pn(this.Qa,b));return a},r.prototype.zb=function(a,f){a=this.get(a,f),f=this.qb();for(var b={},_=0;_<f.length;_+=1)b[f[_]]=a[_];return b},r.prototype.Sb=function(){return dr(this.Qa)},r.prototype.Pb=function(){return Jr(this.Qa)},r.prototype.run=function(a){return a!=null&&this.bind(a),this.step(),this.reset()},r.prototype.wb=function(a,f){f==null&&(f=this.Oa,this.Oa+=1),a=Xe(a),this.mb.push(a),this.db.handleError(en(this.Qa,f,a,-1,0))},r.prototype.Fb=function(a,f){f==null&&(f=this.Oa,this.Oa+=1);var b=je(a.length);M.set(a,b),this.mb.push(b),this.db.handleError(yr(this.Qa,f,b,a.length,0))},r.prototype.vb=function(a,f){f==null&&(f=this.Oa,this.Oa+=1),this.db.handleError((a===(a|0)?rn:tn)(this.Qa,f,a))},r.prototype.Ib=function(a){a==null&&(a=this.Oa,this.Oa+=1),yr(this.Qa,a,0,0,0)},r.prototype.xb=function(a,f){switch(f==null&&(f=this.Oa,this.Oa+=1),typeof a){case"string":this.wb(a,f);return;case"number":this.vb(a,f);return;case"bigint":this.wb(a.toString(),f);return;case"boolean":this.vb(a+0,f);return;case"object":if(a===null){this.Ib(f);return}if(a.length!=null){this.Fb(a,f);return}}throw"Wrong API use : tried to bind a value of an unknown type ("+a+")."},r.prototype.Hb=function(a){var f=this;return Object.keys(a).forEach(function(b){var _=nn(f.Qa,b);_!==0&&f.xb(a[b],_)}),!0},r.prototype.Gb=function(a){for(var f=0;f<a.length;f+=1)this.xb(a[f],f+1);return!0},r.prototype.reset=function(){return this.freemem(),mn(this.Qa)===0&&dn(this.Qa)===0},r.prototype.freemem=function(){for(var a;(a=this.mb.pop())!==void 0;)Le(a)},r.prototype.Ya=function(){this.freemem();var a=yn(this.Qa)===0;return delete this.db.gb[this.Qa],this.Qa=0,a},n.prototype.next=function(){if(this.fb===null)return{done:!0};if(this.$a!==null&&(this.$a.Ya(),this.$a=null),!this.db.db)throw this.ob(),Error("Database closed");var a=He(),f=le(4);Te(u),Te(f);try{this.db.handleError(mr(this.db.db,this.lb,-1,u,f)),this.lb=Z(f,"i32");var b=Z(u,"i32");return b===0?(this.ob(),{done:!0}):(this.$a=new r(b,this.db),this.db.gb[b]=this.$a,{value:this.$a,done:!1})}catch(_){throw this.sb=U(this.lb),this.ob(),_}finally{We(a)}},n.prototype.ob=function(){Le(this.fb),this.fb=null},n.prototype.Qb=function(){return this.sb!==null?this.sb:U(this.lb)},typeof Symbol=="function"&&typeof Symbol.iterator=="symbol"&&(n.prototype[Symbol.iterator]=function(){return this}),o.prototype.run=function(a,f){if(!this.db)throw"Database closed";if(f){a=this.tb(a,f);try{a.step()}finally{a.Ya()}}else this.handleError(v(this.db,a,0,0,u));return this},o.prototype.exec=function(a,f,b){if(!this.db)throw"Database closed";var _=null,N=null,L=null;try{L=N=Xe(a);var H=le(4);for(a=[];Z(L,"i8")!==0;){Te(u),Te(H),this.handleError(mr(this.db,L,-1,u,H));var X=Z(u,"i32");if(L=Z(H,"i32"),X!==0){var x=null;for(_=new r(X,this),f!=null&&_.bind(f);_.step();)x===null&&(x={columns:_.qb(),values:[]},a.push(x)),x.values.push(_.get(null,b));_.Ya()}}return a}catch(Y){throw _&&_.Ya(),Y}finally{N&&Le(N)}},o.prototype.Mb=function(a,f,b,_,N){typeof f=="function"&&(_=b,b=f,f=void 0),a=this.tb(a,f);try{for(;a.step();)b(a.zb(null,N))}finally{a.Ya()}if(typeof _=="function")return _()},o.prototype.tb=function(a,f){if(Te(u),this.handleError(F(this.db,a,-1,u,0)),a=Z(u,"i32"),a===0)throw"Nothing to prepare";var b=new r(a,this);return f!=null&&b.bind(f),this.gb[a]=b},o.prototype.Ub=function(a){return new n(a,this)},o.prototype.Nb=function(){Object.values(this.gb).forEach(function(f){f.Ya()}),Object.values(this.Sa).forEach(re),this.Sa={},this.handleError(A(this.db));var a=Hr(this.filename);return this.handleError(w(this.filename,u)),this.db=Z(u,"i32"),gr(this.db),a},o.prototype.close=function(){this.db!==null&&(Object.values(this.gb).forEach(function(a){a.Ya()}),Object.values(this.Sa).forEach(re),this.Sa={},this.Za&&(re(this.Za),this.Za=void 0),this.handleError(A(this.db)),Zt("/"+this.filename),this.db=null)},o.prototype.handleError=function(a){if(a===0)return null;throw a=sn(this.db),Error(a)},o.prototype.Rb=function(){return I(this.db)},o.prototype.Kb=function(a,f){Object.prototype.hasOwnProperty.call(this.Sa,a)&&(re(this.Sa[a]),delete this.Sa[a]);var b=Ae(function(_,N,L){N=t(N,L);try{var H=f.apply(null,N)}catch(X){Ge(_,X,-1);return}e(_,H)},"viii");return this.Sa[a]=b,this.handleError(Er(this.db,a,f.length,1,0,b,0,0,0)),this},o.prototype.Jb=function(a,f){var b=f.init||function(){return null},_=f.finalize||function(x){return x},N=f.step;if(!N)throw"An aggregate function must have a step function in "+a;var L={};Object.hasOwnProperty.call(this.Sa,a)&&(re(this.Sa[a]),delete this.Sa[a]),f=a+"__finalize",Object.hasOwnProperty.call(this.Sa,f)&&(re(this.Sa[f]),delete this.Sa[f]);var H=Ae(function(x,Y,Lt){var he=wr(x,1);Object.hasOwnProperty.call(L,he)||(L[he]=b()),Y=t(Y,Lt),Y=[L[he]].concat(Y);try{L[he]=N.apply(null,Y)}catch(Ln){delete L[he],Ge(x,Ln,-1)}},"viii"),X=Ae(function(x){var Y=wr(x,1);try{var Lt=_(L[Y])}catch(he){delete L[Y],Ge(x,he,-1);return}e(x,Lt),delete L[Y]},"vi");return this.Sa[a]=H,this.Sa[f]=X,this.handleError(Er(this.db,a,N.length-1,1,0,0,H,X,0)),this},o.prototype.Zb=function(a){return this.Za&&(Tr(this.db,0,0),re(this.Za),this.Za=void 0),a?(this.Za=Ae(function(f,b,_,N,L){switch(b){case 18:f="insert";break;case 23:f="update";break;case 9:f="delete";break;default:throw"unknown operationCode in updateHook callback: "+b}if(_=U(_),N=U(N),L>Number.MAX_SAFE_INTEGER)throw"rowId too big to fit inside a Number";a(f,_,N,Number(L))},"viiiij"),Tr(this.db,this.Za,0),this):this},r.prototype.bind=r.prototype.bind,r.prototype.step=r.prototype.step,r.prototype.get=r.prototype.get,r.prototype.getColumnNames=r.prototype.qb,r.prototype.getAsObject=r.prototype.zb,r.prototype.getSQL=r.prototype.Sb,r.prototype.getNormalizedSQL=r.prototype.Pb,r.prototype.run=r.prototype.run,r.prototype.reset=r.prototype.reset,r.prototype.freemem=r.prototype.freemem,r.prototype.free=r.prototype.Ya,n.prototype.next=n.prototype.next,n.prototype.getRemainingSQL=n.prototype.Qb,o.prototype.run=o.prototype.run,o.prototype.exec=o.prototype.exec,o.prototype.each=o.prototype.Mb,o.prototype.prepare=o.prototype.tb,o.prototype.iterateStatements=o.prototype.Ub,o.prototype.export=o.prototype.Nb,o.prototype.close=o.prototype.close,o.prototype.handleError=o.prototype.handleError,o.prototype.getRowsModified=o.prototype.Rb,o.prototype.create_function=o.prototype.Kb,o.prototype.create_aggregate=o.prototype.Jb,o.prototype.updateHook=o.prototype.Zb,l.Database=o};var et="./this.program",Oe=(e,t)=>{throw t},tt=(pr=(fr=globalThis.document)==null?void 0:fr.currentScript)==null?void 0:pr.src;typeof __filename<"u"?tt=__filename:Je&&(tt=self.location.href);var Re="",rt,Ie;if(Se){var nt=be;Re=__dirname+"/",Ie=e=>(e=ke(e)?new URL(e):e,nt.readFileSync(e)),rt=async e=>(e=ke(e)?new URL(e):e,nt.readFileSync(e,void 0)),1<process.argv.length&&(et=process.argv[1].replace(/\\/g,"/")),process.argv.slice(2),s.exports=l,Oe=(e,t)=>{throw process.exitCode=e,t}}else if(Ir||Je){try{Re=new URL(".",tt).href}catch{}Je&&(Ie=e=>{var t=new XMLHttpRequest;return t.open("GET",e,!1),t.responseType="arraybuffer",t.send(null),new Uint8Array(t.response)}),rt=async e=>{if(ke(e))return new Promise((r,n)=>{var o=new XMLHttpRequest;o.open("GET",e,!0),o.responseType="arraybuffer",o.onload=()=>{o.status==200||o.status==0&&o.response?r(o.response):n(o.status)},o.onerror=n,o.send(null)});var t=await fetch(e,{credentials:"same-origin"});if(t.ok)return t.arrayBuffer();throw Error(t.status+" : "+t.url)}}var it=console.log.bind(console),oe=console.error.bind(console),Ee,De=!1,ot,ke=e=>e.startsWith("file://"),M,B,_e,D,O,st,at,W;function It(){var e=Ye.buffer;M=new Int8Array(e),_e=new Int16Array(e),B=new Uint8Array(e),D=new Int32Array(e),O=new Uint32Array(e),st=new Float32Array(e),at=new Float64Array(e),W=new BigInt64Array(e),new BigUint64Array(e)}function we(e){var t;throw(t=l.onAbort)==null||t.call(l,e),e="Aborted("+e+")",oe(e),De=!0,new WebAssembly.RuntimeError(e+". Build with -sASSERTIONS for more info.")}var ut;async function Dr(e){if(!Ee)try{var t=await rt(e);return new Uint8Array(t)}catch{}if(e==ut&&Ee)e=new Uint8Array(Ee);else if(Ie)e=Ie(e);else throw"both async and sync fetching of the wasm failed";return e}async function kr(e,t){try{var r=await Dr(e);return await WebAssembly.instantiate(r,t)}catch(n){oe(`failed to asynchronously prepare wasm: ${n}`),we(n)}}async function Ur(e){var t=ut;if(!Ee&&!ke(t)&&!Se)try{var r=fetch(t,{credentials:"same-origin"});return await WebAssembly.instantiateStreaming(r,e)}catch(n){oe(`wasm streaming compile failed: ${n}`),oe("falling back to ArrayBuffer instantiation")}return kr(t,e)}class ct{constructor(t){Q(this,"name","ExitStatus");this.message=`Program terminated with exit(${t})`,this.status=t}}var Dt=e=>{for(;0<e.length;)e.shift()(l)},kt=[],Ut=[],Mr=()=>{var e=l.preRun.shift();Ut.push(e)},se=0,ge=null;function Z(e,t="i8"){switch(t.endsWith("*")&&(t="*"),t){case"i1":return M[e];case"i8":return M[e];case"i16":return _e[e>>1];case"i32":return D[e>>2];case"i64":return W[e>>3];case"float":return st[e>>2];case"double":return at[e>>3];case"*":return O[e>>2];default:we(`invalid type for getValue: ${t}`)}}var Ue=!0;function Te(e){var t="i32";switch(t.endsWith("*")&&(t="*"),t){case"i1":M[e]=0;break;case"i8":M[e]=0;break;case"i16":_e[e>>1]=0;break;case"i32":D[e>>2]=0;break;case"i64":W[e>>3]=BigInt(0);break;case"float":st[e>>2]=0;break;case"double":at[e>>3]=0;break;case"*":O[e>>2]=0;break;default:we(`invalid type for setValue: ${t}`)}}var Mt=new TextDecoder,Ft=(e,t,r,n)=>{if(r=t+r,n)return r;for(;e[t]&&!(t>=r);)++t;return t},U=(e,t,r)=>e?Mt.decode(B.subarray(e,Ft(B,e,t,r))):"",Ct=(e,t)=>{for(var r=0,n=e.length-1;0<=n;n--){var o=e[n];o==="."?e.splice(n,1):o===".."?(e.splice(n,1),r++):r&&(e.splice(n,1),r--)}if(t)for(;r;r--)e.unshift("..");return e},lt=e=>{var t=e.charAt(0)==="/",r=e.slice(-1)==="/";return(e=Ct(e.split("/").filter(n=>!!n),!t).join("/"))||t||(e="."),e&&r&&(e+="/"),(t?"/":"")+e},Bt=e=>{var t=/^(\/?|)([\s\S]*?)((?:\.{1,2}|[^\/]+?|)(\.[^.\/]*|))(?:[\/]*)$/.exec(e).slice(1);return e=t[0],t=t[1],!e&&!t?".":(t&&(t=t.slice(0,-1)),e+t)},Me=e=>e&&e.match(/([^\/]+|\/)\/*$/)[1],Fr=()=>{if(Se){var e=Rn;return t=>e.randomFillSync(t)}return t=>crypto.getRandomValues(t)},$t=e=>{($t=Fr())(e)},Cr=(...e)=>{for(var t="",r=!1,n=e.length-1;-1<=n&&!r;n--){if(r=0<=n?e[n]:"/",typeof r!="string")throw new TypeError("Arguments to path.resolve must be strings");if(!r)return"";t=r+"/"+t,r=r.charAt(0)==="/"}return t=Ct(t.split("/").filter(o=>!!o),!r).join("/"),(r?"/":"")+t||"."},Fe=e=>{var t=Ft(e,0);return Mt.decode(e.buffer?e.subarray(0,t):new Uint8Array(e.slice(0,t)))},ht=[],fe=e=>{for(var t=0,r=0;r<e.length;++r){var n=e.charCodeAt(r);127>=n?t++:2047>=n?t+=2:55296<=n&&57343>=n?(t+=4,++r):t+=3}return t},G=(e,t,r,n)=>{if(!(0<n))return 0;var o=r;n=r+n-1;for(var u=0;u<e.length;++u){var h=e.codePointAt(u);if(127>=h){if(r>=n)break;t[r++]=h}else if(2047>=h){if(r+1>=n)break;t[r++]=192|h>>6,t[r++]=128|h&63}else if(65535>=h){if(r+2>=n)break;t[r++]=224|h>>12,t[r++]=128|h>>6&63,t[r++]=128|h&63}else{if(r+3>=n)break;t[r++]=240|h>>18,t[r++]=128|h>>12&63,t[r++]=128|h>>6&63,t[r++]=128|h&63,u++}}return t[r]=0,r-o},Pt=[];function qt(e,t){Pt[e]={input:[],output:[],eb:t},bt(e,Br)}var Br={open(e){var t=Pt[e.node.rdev];if(!t)throw new d(43);e.tty=t,e.seekable=!1},close(e){e.tty.eb.fsync(e.tty)},fsync(e){e.tty.eb.fsync(e.tty)},read(e,t,r,n){if(!e.tty||!e.tty.eb.Bb)throw new d(60);for(var o=0,u=0;u<n;u++){try{var h=e.tty.eb.Bb(e.tty)}catch{throw new d(29)}if(h===void 0&&o===0)throw new d(6);if(h==null)break;o++,t[r+u]=h}return o&&(e.node.atime=Date.now()),o},write(e,t,r,n){if(!e.tty||!e.tty.eb.ub)throw new d(60);try{for(var o=0;o<n;o++)e.tty.eb.ub(e.tty,t[r+o])}catch{throw new d(29)}return n&&(e.node.mtime=e.node.ctime=Date.now()),o}},$r={Bb(){var o;e:{if(!ht.length){var e=null;if(Se){var t=Buffer.alloc(256),r=0,n=process.stdin.fd;try{r=nt.readSync(n,t,0,256)}catch(u){if(u.toString().includes("EOF"))r=0;else throw u}0<r&&(e=t.slice(0,r).toString("utf-8"))}else(o=globalThis.window)!=null&&o.prompt&&(e=window.prompt("Input: "),e!==null&&(e+=`
-`));if(!e){e=null;break e}t=Array(fe(e)+1),e=G(e,t,0,t.length),t.length=e,ht=t}e=ht.shift()}return e},ub(e,t){t===null||t===10?(it(Fe(e.output)),e.output=[]):t!=0&&e.output.push(t)},fsync(e){var t;0<((t=e.output)==null?void 0:t.length)&&(it(Fe(e.output)),e.output=[])},hc(){return{bc:25856,dc:5,ac:191,cc:35387,$b:[3,28,127,21,4,0,1,0,17,19,26,0,18,15,23,22,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}},ic(){return 0},jc(){return[24,80]}},Pr={ub(e,t){t===null||t===10?(oe(Fe(e.output)),e.output=[]):t!=0&&e.output.push(t)},fsync(e){var t;0<((t=e.output)==null?void 0:t.length)&&(oe(Fe(e.output)),e.output=[])}},g={Wa:null,Xa(){return g.createNode(null,"/",16895,0)},createNode(e,t,r,n){if((r&61440)===24576||(r&61440)===4096)throw new d(63);return g.Wa||(g.Wa={dir:{node:{Ta:g.La.Ta,Ua:g.La.Ua,lookup:g.La.lookup,ib:g.La.ib,rename:g.La.rename,unlink:g.La.unlink,rmdir:g.La.rmdir,readdir:g.La.readdir,symlink:g.La.symlink},stream:{Va:g.Ma.Va}},file:{node:{Ta:g.La.Ta,Ua:g.La.Ua},stream:{Va:g.Ma.Va,read:g.Ma.read,write:g.Ma.write,jb:g.Ma.jb,kb:g.Ma.kb}},link:{node:{Ta:g.La.Ta,Ua:g.La.Ua,readlink:g.La.readlink},stream:{}},yb:{node:{Ta:g.La.Ta,Ua:g.La.Ua},stream:jr}}),r=Wt(e,t,r,n),q(r.mode)?(r.La=g.Wa.dir.node,r.Ma=g.Wa.dir.stream,r.Na={}):(r.mode&61440)===32768?(r.La=g.Wa.file.node,r.Ma=g.Wa.file.stream,r.Ra=0,r.Na=null):(r.mode&61440)===40960?(r.La=g.Wa.link.node,r.Ma=g.Wa.link.stream):(r.mode&61440)===8192&&(r.La=g.Wa.yb.node,r.Ma=g.Wa.yb.stream),r.atime=r.mtime=r.ctime=Date.now(),e&&(e.Na[t]=r,e.atime=e.mtime=e.ctime=r.atime),r},fc(e){return e.Na?e.Na.subarray?e.Na.subarray(0,e.Ra):new Uint8Array(e.Na):new Uint8Array(0)},La:{Ta(e){var t={};return t.dev=(e.mode&61440)===8192?e.id:1,t.ino=e.id,t.mode=e.mode,t.nlink=1,t.uid=0,t.gid=0,t.rdev=e.rdev,q(e.mode)?t.size=4096:(e.mode&61440)===32768?t.size=e.Ra:(e.mode&61440)===40960?t.size=e.link.length:t.size=0,t.atime=new Date(e.atime),t.mtime=new Date(e.mtime),t.ctime=new Date(e.ctime),t.blksize=4096,t.blocks=Math.ceil(t.size/t.blksize),t},Ua(e,t){for(var r of["mode","atime","mtime","ctime"])t[r]!=null&&(e[r]=t[r]);t.size!==void 0&&(t=t.size,e.Ra!=t&&(t==0?(e.Na=null,e.Ra=0):(r=e.Na,e.Na=new Uint8Array(t),r&&e.Na.set(r.subarray(0,Math.min(t,e.Ra))),e.Ra=t)))},lookup(){throw g.nb||(g.nb=new d(44),g.nb.stack="<generic error, no stack>"),g.nb},ib(e,t,r,n){return g.createNode(e,t,r,n)},rename(e,t,r){try{var n=ae(t,r)}catch{}if(n){if(q(e.mode))for(var o in n.Na)throw new d(55);mt(n)}delete e.parent.Na[e.name],t.Na[r]=e,e.name=r,t.ctime=t.mtime=e.parent.ctime=e.parent.mtime=Date.now()},unlink(e,t){delete e.Na[t],e.ctime=e.mtime=Date.now()},rmdir(e,t){var r=ae(e,t),n;for(n in r.Na)throw new d(55);delete e.Na[t],e.ctime=e.mtime=Date.now()},readdir(e){return[".","..",...Object.keys(e.Na)]},symlink(e,t,r){return e=g.createNode(e,t,41471,0),e.link=r,e},readlink(e){if((e.mode&61440)!==40960)throw new d(28);return e.link}},Ma:{read(e,t,r,n,o){var u=e.node.Na;if(o>=e.node.Ra)return 0;if(e=Math.min(e.node.Ra-o,n),8<e&&u.subarray)t.set(u.subarray(o,o+e),r);else for(n=0;n<e;n++)t[r+n]=u[o+n];return e},write(e,t,r,n,o,u){if(t.buffer===M.buffer&&(u=!1),!n)return 0;if(e=e.node,e.mtime=e.ctime=Date.now(),t.subarray&&(!e.Na||e.Na.subarray)){if(u)return e.Na=t.subarray(r,r+n),e.Ra=n;if(e.Ra===0&&o===0)return e.Na=t.slice(r,r+n),e.Ra=n;if(o+n<=e.Ra)return e.Na.set(t.subarray(r,r+n),o),n}u=o+n;var h=e.Na?e.Na.length:0;if(h>=u||(u=Math.max(u,h*(1048576>h?2:1.125)>>>0),h!=0&&(u=Math.max(u,256)),h=e.Na,e.Na=new Uint8Array(u),0<e.Ra&&e.Na.set(h.subarray(0,e.Ra),0)),e.Na.subarray&&t.subarray)e.Na.set(t.subarray(r,r+n),o);else for(u=0;u<n;u++)e.Na[o+u]=t[r+u];return e.Ra=Math.max(e.Ra,o+n),n},Va(e,t,r){if(r===1?t+=e.position:r===2&&(e.node.mode&61440)===32768&&(t+=e.node.Ra),0>t)throw new d(28);return t},jb(e,t,r,n,o){if((e.node.mode&61440)!==32768)throw new d(43);if(e=e.node.Na,o&2||!e||e.buffer!==M.buffer){o=!0,n=65536*Math.ceil(t/65536);var u=ar(65536,n);if(u&&B.fill(0,u,u+n),n=u,!n)throw new d(48);e&&((0<r||r+t<e.length)&&(e.subarray?e=e.subarray(r,r+t):e=Array.prototype.slice.call(e,r,r+t)),M.set(e,n))}else o=!1,n=e.byteOffset;return{Xb:n,Eb:o}},kb(e,t,r,n){return g.Ma.write(e,t,0,n,r,!1),0}}},xt=(e,t)=>{var r=0;return e&&(r|=365),t&&(r|=146),r},ft=null,zt={},pe=[],qr=1,ee=null,Xt=!1,jt=!0,d=class{constructor(e){Q(this,"name","ErrnoError");this.Pa=e}},xr=class{constructor(){Q(this,"hb",{});Q(this,"node",null)}get flags(){return this.hb.flags}set flags(e){this.hb.flags=e}get position(){return this.hb.position}set position(e){this.hb.position=e}},zr=class{constructor(e,t,r,n){Q(this,"La",{});Q(this,"Ma",{});Q(this,"bb",null);e||(e=this),this.parent=e,this.Xa=e.Xa,this.id=qr++,this.name=t,this.mode=r,this.rdev=n,this.atime=this.mtime=this.ctime=Date.now()}get read(){return(this.mode&365)===365}set read(e){e?this.mode|=365:this.mode&=-366}get write(){return(this.mode&146)===146}set write(e){e?this.mode|=146:this.mode&=-147}};function z(e,t={}){if(!e)throw new d(44);t.pb??(t.pb=!0),e.charAt(0)==="/"||(e="//"+e);var r=0;e:for(;40>r;r++){e=e.split("/").filter(w=>!!w);for(var n=ft,o="/",u=0;u<e.length;u++){var h=u===e.length-1;if(h&&t.parent)break;if(e[u]!==".")if(e[u]==="..")if(o=Bt(o),n===n.parent){e=o+"/"+e.slice(u+1).join("/"),r--;continue e}else n=n.parent;else{o=lt(o+"/"+e[u]);try{n=ae(n,e[u])}catch(w){if((w==null?void 0:w.Pa)===44&&h&&t.Wb)return{path:o};throw w}if(!n.bb||h&&!t.pb||(n=n.bb.root),(n.mode&61440)===40960&&(!h||t.ab)){if(!n.La.readlink)throw new d(52);n=n.La.readlink(n),n.charAt(0)==="/"||(n=Bt(o)+"/"+n),e=n+"/"+e.slice(u+1).join("/");continue e}}}return{path:o,node:n}}throw new d(32)}function pt(e){for(var t;;){if(e===e.parent)return e=e.Xa.Db,t?e[e.length-1]!=="/"?`${e}/${t}`:e+t:e;t=t?`${e.name}/${t}`:e.name,e=e.parent}}function dt(e,t){for(var r=0,n=0;n<t.length;n++)r=(r<<5)-r+t.charCodeAt(n)|0;return(e+r>>>0)%ee.length}function mt(e){var t=dt(e.parent.id,e.name);if(ee[t]===e)ee[t]=e.cb;else for(t=ee[t];t;){if(t.cb===e){t.cb=e.cb;break}t=t.cb}}function ae(e,t){var r=q(e.mode)?(r=de(e,"x"))?r:e.La.lookup?0:2:54;if(r)throw new d(r);for(r=ee[dt(e.id,t)];r;r=r.cb){var n=r.name;if(r.parent.id===e.id&&n===t)return r}return e.La.lookup(e,t)}function Wt(e,t,r,n){return e=new zr(e,t,r,n),t=dt(e.parent.id,e.name),e.cb=ee[t],ee[t]=e}function q(e){return(e&61440)===16384}function de(e,t){return jt?0:t.includes("r")&&!(e.mode&292)||t.includes("w")&&!(e.mode&146)||t.includes("x")&&!(e.mode&73)?2:0}function Ht(e,t){if(!q(e.mode))return 54;try{return ae(e,t),20}catch{}return de(e,"wx")}function Yt(e,t,r){try{var n=ae(e,t)}catch(o){return o.Pa}if(e=de(e,"wx"))return e;if(r){if(!q(n.mode))return 54;if(n===n.parent||pt(n)==="/")return 10}else if(q(n.mode))return 31;return 0}function Ce(e){if(!e)throw new d(63);return e}function $(e){if(e=pe[e],!e)throw new d(8);return e}function Gt(e,t=-1){if(e=Object.assign(new xr,e),t==-1)e:{for(t=0;4096>=t;t++)if(!pe[t])break e;throw new d(33)}return e.fd=t,pe[t]=e}function Xr(e,t=-1){var r,n;return e=Gt(e,t),(n=(r=e.Ma)==null?void 0:r.ec)==null||n.call(r,e),e}function yt(e,t,r){var n=e==null?void 0:e.Ma.Ua;e=n?e:t,n??(n=t.La.Ua),Ce(n),n(e,r)}var jr={open(e){var t,r;e.Ma=zt[e.node.rdev].Ma,(r=(t=e.Ma).open)==null||r.call(t,e)},Va(){throw new d(70)}};function bt(e,t){zt[e]={Ma:t}}function Vt(e,t){var r=t==="/";if(r&&ft)throw new d(10);if(!r&&t){var n=z(t,{pb:!1});if(t=n.path,n=n.node,n.bb)throw new d(10);if(!q(n.mode))throw new d(54)}t={type:e,kc:{},Db:t,Vb:[]},e=e.Xa(t),e.Xa=t,t.root=e,r?ft=e:n&&(n.bb=t,n.Xa&&n.Xa.Vb.push(t))}function Be(e,t,r){var n=z(e,{parent:!0}).node;if(e=Me(e),!e)throw new d(28);if(e==="."||e==="..")throw new d(20);var o=Ht(n,e);if(o)throw new d(o);if(!n.La.ib)throw new d(63);return n.La.ib(n,e,t,r)}function Wr(e,t=438){return Be(e,t&4095|32768,0)}function V(e,t=511){return Be(e,t&1023|16384,0)}function $e(e,t,r){typeof r>"u"&&(r=t,t=438),Be(e,t|8192,r)}function Et(e,t){if(!Cr(e))throw new d(44);var r=z(t,{parent:!0}).node;if(!r)throw new d(44);t=Me(t);var n=Ht(r,t);if(n)throw new d(n);if(!r.La.symlink)throw new d(63);r.La.symlink(r,t,e)}function Qt(e){var t=z(e,{parent:!0}).node;e=Me(e);var r=ae(t,e),n=Yt(t,e,!0);if(n)throw new d(n);if(!t.La.rmdir)throw new d(63);if(r.bb)throw new d(10);t.La.rmdir(t,e),mt(r)}function Zt(e){var t=z(e,{parent:!0}).node;if(!t)throw new d(44);e=Me(e);var r=ae(t,e),n=Yt(t,e,!1);if(n)throw new d(n);if(!t.La.unlink)throw new d(63);if(r.bb)throw new d(10);t.La.unlink(t,e),mt(r)}function ve(e,t){return e=z(e,{ab:!t}).node,Ce(e.La.Ta)(e)}function Kt(e,t,r,n){yt(e,t,{mode:r&4095|t.mode&-4096,ctime:Date.now(),Lb:n})}function Pe(e,t){e=typeof e=="string"?z(e,{ab:!0}).node:e,Kt(null,e,t)}function Jt(e,t,r){if(q(t.mode))throw new d(31);if((t.mode&61440)!==32768)throw new d(28);var n=de(t,"w");if(n)throw new d(n);yt(e,t,{size:r,timestamp:Date.now()})}function me(e,t,r=438){if(e==="")throw new d(44);if(typeof t=="string"){var n={r:0,"r+":2,w:577,"w+":578,a:1089,"a+":1090}[t];if(typeof n>"u")throw Error(`Unknown file open mode: ${t}`);t=n}if(r=t&64?r&4095|32768:0,typeof e=="object")n=e;else{var o=e.endsWith("/"),u=z(e,{ab:!(t&131072),Wb:!0});n=u.node,e=u.path}if(u=!1,t&64)if(n){if(t&128)throw new d(20)}else{if(o)throw new d(31);n=Be(e,r|511,0),u=!0}if(!n)throw new d(44);if((n.mode&61440)===8192&&(t&=-513),t&65536&&!q(n.mode))throw new d(54);if(!u&&(n?(n.mode&61440)===40960?o=32:(o=["r","w","rw"][t&3],t&512&&(o+="w"),o=q(n.mode)&&(o!=="r"||t&576)?31:de(n,o)):o=44,o))throw new d(o);return t&512&&!u&&(o=n,o=typeof o=="string"?z(o,{ab:!0}).node:o,Jt(null,o,0)),t=Gt({node:n,path:pt(n),flags:t&-131713,seekable:!0,position:0,Ma:n.Ma,Yb:[],error:!1}),t.Ma.open&&t.Ma.open(t),u&&Pe(n,r&511),t}function _t(e){if(e.fd===null)throw new d(8);e.rb&&(e.rb=null);try{e.Ma.close&&e.Ma.close(e)}catch(t){throw t}finally{pe[e.fd]=null}e.fd=null}function er(e,t,r){if(e.fd===null)throw new d(8);if(!e.seekable||!e.Ma.Va)throw new d(70);if(r!=0&&r!=1&&r!=2)throw new d(28);e.position=e.Ma.Va(e,t,r),e.Yb=[]}function tr(e,t,r,n,o){if(0>n||0>o)throw new d(28);if(e.fd===null)throw new d(8);if((e.flags&2097155)===1)throw new d(8);if(q(e.node.mode))throw new d(31);if(!e.Ma.read)throw new d(28);var u=typeof o<"u";if(!u)o=e.position;else if(!e.seekable)throw new d(70);return t=e.Ma.read(e,t,r,n,o),u||(e.position+=t),t}function rr(e,t,r,n,o){if(0>n||0>o)throw new d(28);if(e.fd===null)throw new d(8);if((e.flags&2097155)===0)throw new d(8);if(q(e.node.mode))throw new d(31);if(!e.Ma.write)throw new d(28);e.seekable&&e.flags&1024&&er(e,0,2);var u=typeof o<"u";if(!u)o=e.position;else if(!e.seekable)throw new d(70);return t=e.Ma.write(e,t,r,n,o,void 0),u||(e.position+=t),t}function Hr(e){var t=t||0;t=me(e,t),e=ve(e).size;var r=new Uint8Array(e);return tr(t,r,0,e,0),_t(t),r}function te(e,t,r){e=lt("/dev/"+e);var n=xt(!!t,!!r);te.Cb??(te.Cb=64);var o=te.Cb++<<8|0;bt(o,{open(u){u.seekable=!1},close(){var u;(u=r==null?void 0:r.buffer)!=null&&u.length&&r(10)},read(u,h,w,A){for(var v=0,I=0;I<A;I++){try{var F=t()}catch{throw new d(29)}if(F===void 0&&v===0)throw new d(6);if(F==null)break;v++,h[w+I]=F}return v&&(u.node.atime=Date.now()),v},write(u,h,w,A){for(var v=0;v<A;v++)try{r(h[w+v])}catch{throw new d(29)}return A&&(u.node.mtime=u.node.ctime=Date.now()),v}}),$e(e,n,o)}var R={};function ue(e,t,r){if(t.charAt(0)==="/")return t;if(e=e===-100?"/":$(e).path,t.length==0){if(!r)throw new d(44);return e}return e+"/"+t}function qe(e,t){O[e>>2]=t.dev,O[e+4>>2]=t.mode,O[e+8>>2]=t.nlink,O[e+12>>2]=t.uid,O[e+16>>2]=t.gid,O[e+20>>2]=t.rdev,W[e+24>>3]=BigInt(t.size),D[e+32>>2]=4096,D[e+36>>2]=t.blocks;var r=t.atime.getTime(),n=t.mtime.getTime(),o=t.ctime.getTime();return W[e+40>>3]=BigInt(Math.floor(r/1e3)),O[e+48>>2]=r%1e3*1e6,W[e+56>>3]=BigInt(Math.floor(n/1e3)),O[e+64>>2]=n%1e3*1e6,W[e+72>>3]=BigInt(Math.floor(o/1e3)),O[e+80>>2]=o%1e3*1e6,W[e+88>>3]=BigInt(t.ino),0}var xe=void 0,ze=()=>{var e=D[+xe>>2];return xe+=4,e},wt=0,Yr=[0,31,60,91,121,152,182,213,244,274,305,335],Gr=[0,31,59,90,120,151,181,212,243,273,304,334],Ne={},nr=e=>{var t;ot=e,Ue||0<wt||((t=l.onExit)==null||t.call(l,e),De=!0),Oe(e,new ct(e))},Vr=e=>{if(!De)try{e()}catch(t){t instanceof ct||t=="unwind"||Oe(1,t)}finally{if(!(Ue||0<wt))try{ot=e=ot,nr(e)}catch(t){t instanceof ct||t=="unwind"||Oe(1,t)}}},gt={},ir=()=>{var n;if(!Tt){var e={USER:"web_user",LOGNAME:"web_user",PATH:"/",PWD:"/",HOME:"/home/web_user",LANG:(((n=globalThis.navigator)==null?void 0:n.language)??"C").replace("-","_")+".UTF-8",_:et||"./this.program"},t;for(t in gt)gt[t]===void 0?delete e[t]:e[t]=gt[t];var r=[];for(t in e)r.push(`${t}=${e[t]}`);Tt=r}return Tt},Tt,Qr=(e,t,r,n)=>{var o={string:v=>{var I=0;if(v!=null&&v!==0){I=fe(v)+1;var F=le(I);G(v,B,F,I),I=F}return I},array:v=>{var I=le(v.length);return M.set(v,I),I}};e=l["_"+e];var u=[],h=0;if(n)for(var w=0;w<n.length;w++){var A=o[r[w]];A?(h===0&&(h=He()),u[w]=A(n[w])):u[w]=n[w]}return r=e(...u),r=(function(v){return h!==0&&We(h),t==="string"?U(v):t==="boolean"?!!v:v})(r)},Xe=e=>{var t=fe(e)+1,r=je(t);return r&&G(e,B,r,t),r},ce,vt=[],re=e=>{ce.delete(ne.get(e)),ne.set(e,null),vt.push(e)},or=e=>{const t=e.length;return[t%128|128,t>>7,...e]},Zr={i:127,p:127,j:126,f:125,d:124,e:111},sr=e=>or(Array.from(e,t=>Zr[t])),Ae=(e,t)=>{if(!ce){ce=new WeakMap;var r=ne.length;if(ce)for(var n=0;n<0+r;n++){var o=ne.get(n);o&&ce.set(o,n)}}if(r=ce.get(e)||0)return r;r=vt.length?vt.pop():ne.grow(1);try{ne.set(r,e)}catch(u){if(!(u instanceof TypeError))throw u;t=Uint8Array.of(0,97,115,109,1,0,0,0,1,...or([1,96,...sr(t.slice(1)),...sr(t[0]==="v"?"":t[0])]),2,7,1,1,101,1,102,0,0,7,5,1,1,102,0,0),t=new WebAssembly.Module(t),t=new WebAssembly.Instance(t,{e:{f:e}}).exports.f,ne.set(r,t)}return ce.set(e,r),r};if(ee=Array(4096),Vt(g,"/"),V("/tmp"),V("/home"),V("/home/web_user"),(function(){V("/dev"),bt(259,{read:()=>0,write:(n,o,u,h)=>h,Va:()=>0}),$e("/dev/null",259),qt(1280,$r),qt(1536,Pr),$e("/dev/tty",1280),$e("/dev/tty1",1536);var e=new Uint8Array(1024),t=0,r=()=>(t===0&&($t(e),t=e.byteLength),e[--t]);te("random",r),te("urandom",r),V("/dev/shm"),V("/dev/shm/tmp")})(),(function(){V("/proc");var e=V("/proc/self");V("/proc/self/fd"),Vt({Xa(){var t=Wt(e,"fd",16895,73);return t.Ma={Va:g.Ma.Va},t.La={lookup(r,n){r=+n;var o=$(r);return r={parent:null,Xa:{Db:"fake"},La:{readlink:()=>o.path},id:r+1},r.parent=r},readdir(){return Array.from(pe.entries()).filter(([,r])=>r).map(([r])=>r.toString())}},t}},"/proc/self/fd")})(),l.noExitRuntime&&(Ue=l.noExitRuntime),l.print&&(it=l.print),l.printErr&&(oe=l.printErr),l.wasmBinary&&(Ee=l.wasmBinary),l.thisProgram&&(et=l.thisProgram),l.preInit)for(typeof l.preInit=="function"&&(l.preInit=[l.preInit]);0<l.preInit.length;)l.preInit.shift()();l.stackSave=()=>He(),l.stackRestore=e=>We(e),l.stackAlloc=e=>le(e),l.cwrap=(e,t,r,n)=>{var o=!r||r.every(u=>u==="number"||u==="boolean");return t!=="string"&&o&&!n?l["_"+e]:(...u)=>Qr(e,t,r,u)},l.addFunction=Ae,l.removeFunction=re,l.UTF8ToString=U,l.stringToNewUTF8=Xe,l.writeArrayToMemory=(e,t)=>{M.set(e,t)};var je,Le,ar,ur,We,le,He,Ye,ne,Kr={a:(e,t,r,n)=>we(`Assertion failed: ${U(e)}, at: `+[t?U(t):"unknown filename",r,n?U(n):"unknown function"]),i:function(e,t){try{return e=U(e),Pe(e,t),0}catch(r){if(typeof R>"u"||r.name!=="ErrnoError")throw r;return-r.Pa}},L:function(e,t,r){try{if(t=U(t),t=ue(e,t),r&-8)return-28;var n=z(t,{ab:!0}).node;return n?(e="",r&4&&(e+="r"),r&2&&(e+="w"),r&1&&(e+="x"),e&&de(n,e)?-2:0):-44}catch(o){if(typeof R>"u"||o.name!=="ErrnoError")throw o;return-o.Pa}},j:function(e,t){try{var r=$(e);return Kt(r,r.node,t,!1),0}catch(n){if(typeof R>"u"||n.name!=="ErrnoError")throw n;return-n.Pa}},h:function(e){try{var t=$(e);return yt(t,t.node,{timestamp:Date.now(),Lb:!1}),0}catch(r){if(typeof R>"u"||r.name!=="ErrnoError")throw r;return-r.Pa}},b:function(e,t,r){xe=r;try{var n=$(e);switch(t){case 0:var o=ze();if(0>o)break;for(;pe[o];)o++;return Xr(n,o).fd;case 1:case 2:return 0;case 3:return n.flags;case 4:return o=ze(),n.flags|=o,0;case 12:return o=ze(),_e[o+0>>1]=2,0;case 13:case 14:return 0}return-28}catch(u){if(typeof R>"u"||u.name!=="ErrnoError")throw u;return-u.Pa}},g:function(e,t){try{var r=$(e),n=r.node,o=r.Ma.Ta;e=o?r:n,o??(o=n.La.Ta),Ce(o);var u=o(e);return qe(t,u)}catch(h){if(typeof R>"u"||h.name!=="ErrnoError")throw h;return-h.Pa}},H:function(e,t){t=-9007199254740992>t||9007199254740992<t?NaN:Number(t);try{if(isNaN(t))return-61;var r=$(e);if(0>t||(r.flags&2097155)===0)throw new d(28);return Jt(r,r.node,t),0}catch(n){if(typeof R>"u"||n.name!=="ErrnoError")throw n;return-n.Pa}},G:function(e,t){try{if(t===0)return-28;var r=fe("/")+1;return t<r?-68:(G("/",B,e,t),r)}catch(n){if(typeof R>"u"||n.name!=="ErrnoError")throw n;return-n.Pa}},K:function(e,t){try{return e=U(e),qe(t,ve(e,!0))}catch(r){if(typeof R>"u"||r.name!=="ErrnoError")throw r;return-r.Pa}},C:function(e,t,r){try{return t=U(t),t=ue(e,t),V(t,r),0}catch(n){if(typeof R>"u"||n.name!=="ErrnoError")throw n;return-n.Pa}},J:function(e,t,r,n){try{t=U(t);var o=n&256;return t=ue(e,t,n&4096),qe(r,o?ve(t,!0):ve(t))}catch(u){if(typeof R>"u"||u.name!=="ErrnoError")throw u;return-u.Pa}},x:function(e,t,r,n){xe=n;try{t=U(t),t=ue(e,t);var o=n?ze():0;return me(t,r,o).fd}catch(u){if(typeof R>"u"||u.name!=="ErrnoError")throw u;return-u.Pa}},v:function(e,t,r,n){try{if(t=U(t),t=ue(e,t),0>=n)return-28;var o=z(t).node;if(!o)throw new d(44);if(!o.La.readlink)throw new d(28);var u=o.La.readlink(o),h=Math.min(n,fe(u)),w=M[r+h];return G(u,B,r,n+1),M[r+h]=w,h}catch(A){if(typeof R>"u"||A.name!=="ErrnoError")throw A;return-A.Pa}},u:function(e){try{return e=U(e),Qt(e),0}catch(t){if(typeof R>"u"||t.name!=="ErrnoError")throw t;return-t.Pa}},f:function(e,t){try{return e=U(e),qe(t,ve(e))}catch(r){if(typeof R>"u"||r.name!=="ErrnoError")throw r;return-r.Pa}},r:function(e,t,r){try{if(t=U(t),t=ue(e,t),r)if(r===512)Qt(t);else return-28;else Zt(t);return 0}catch(n){if(typeof R>"u"||n.name!=="ErrnoError")throw n;return-n.Pa}},q:function(e,t,r){try{t=U(t),t=ue(e,t,!0);var n=Date.now(),o,u;if(r){var h=O[r>>2]+4294967296*D[r+4>>2],w=D[r+8>>2];w==1073741823?o=n:w==1073741822?o=null:o=1e3*h+w/1e6,r+=16,h=O[r>>2]+4294967296*D[r+4>>2],w=D[r+8>>2],w==1073741823?u=n:w==1073741822?u=null:u=1e3*h+w/1e6}else u=o=n;if((u??o)!==null){e=o;var A=z(t,{ab:!0}).node;Ce(A.La.Ua)(A,{atime:e,mtime:u})}return 0}catch(v){if(typeof R>"u"||v.name!=="ErrnoError")throw v;return-v.Pa}},m:()=>we(""),l:()=>{Ue=!1,wt=0},A:function(e,t){e=-9007199254740992>e||9007199254740992<e?NaN:Number(e),e=new Date(1e3*e),D[t>>2]=e.getSeconds(),D[t+4>>2]=e.getMinutes(),D[t+8>>2]=e.getHours(),D[t+12>>2]=e.getDate(),D[t+16>>2]=e.getMonth(),D[t+20>>2]=e.getFullYear()-1900,D[t+24>>2]=e.getDay();var r=e.getFullYear();D[t+28>>2]=(r%4!==0||r%100===0&&r%400!==0?Gr:Yr)[e.getMonth()]+e.getDate()-1|0,D[t+36>>2]=-(60*e.getTimezoneOffset()),r=new Date(e.getFullYear(),6,1).getTimezoneOffset();var n=new Date(e.getFullYear(),0,1).getTimezoneOffset();D[t+32>>2]=(r!=n&&e.getTimezoneOffset()==Math.min(n,r))|0},y:function(e,t,r,n,o,u,h){o=-9007199254740992>o||9007199254740992<o?NaN:Number(o);try{var w=$(n);if((t&2)!==0&&(r&2)===0&&(w.flags&2097155)!==2)throw new d(2);if((w.flags&2097155)===1)throw new d(2);if(!w.Ma.jb)throw new d(43);if(!e)throw new d(28);var A=w.Ma.jb(w,e,o,t,r),v=A.Xb;return D[u>>2]=A.Eb,O[h>>2]=v,0}catch(I){if(typeof R>"u"||I.name!=="ErrnoError")throw I;return-I.Pa}},z:function(e,t,r,n,o,u){u=-9007199254740992>u||9007199254740992<u?NaN:Number(u);try{var h=$(o);if(r&2){if(r=u,(h.node.mode&61440)!==32768)throw new d(43);if(!(n&2)){var w=B.slice(e,e+t);h.Ma.kb&&h.Ma.kb(h,w,r,t,n)}}}catch(A){if(typeof R>"u"||A.name!=="ErrnoError")throw A;return-A.Pa}},n:(e,t)=>{if(Ne[e]&&(clearTimeout(Ne[e].id),delete Ne[e]),!t)return 0;var r=setTimeout(()=>{delete Ne[e],Vr(()=>ur(e,performance.now()))},t);return Ne[e]={id:r,lc:t},0},B:(e,t,r,n)=>{var o=new Date().getFullYear(),u=new Date(o,0,1).getTimezoneOffset();o=new Date(o,6,1).getTimezoneOffset(),O[e>>2]=60*Math.max(u,o),D[t>>2]=+(u!=o),t=h=>{var w=Math.abs(h);return`UTC${0<=h?"-":"+"}${String(Math.floor(w/60)).padStart(2,"0")}${String(w%60).padStart(2,"0")}`},e=t(u),t=t(o),o<u?(G(e,B,r,17),G(t,B,n,17)):(G(e,B,n,17),G(t,B,r,17))},d:()=>Date.now(),s:()=>2147483648,c:()=>performance.now(),o:e=>{var t=B.length;if(e>>>=0,2147483648<e)return!1;for(var r=1;4>=r;r*=2){var n=t*(1+.2/r);n=Math.min(n,e+100663296);e:{n=(Math.min(2147483648,65536*Math.ceil(Math.max(e,n)/65536))-Ye.buffer.byteLength+65535)/65536|0;try{Ye.grow(n),It();var o=1;break e}catch{}o=void 0}if(o)return!0}return!1},E:(e,t)=>{var r=0,n=0,o;for(o of ir()){var u=t+r;O[e+n>>2]=u,r+=G(o,B,u,1/0)+1,n+=4}return 0},F:(e,t)=>{var r=ir();O[e>>2]=r.length,e=0;for(var n of r)e+=fe(n)+1;return O[t>>2]=e,0},e:function(e){try{var t=$(e);return _t(t),0}catch(r){if(typeof R>"u"||r.name!=="ErrnoError")throw r;return r.Pa}},p:function(e,t){try{var r=$(e);return M[t]=r.tty?2:q(r.mode)?3:(r.mode&61440)===40960?7:4,_e[t+2>>1]=0,W[t+8>>3]=BigInt(0),W[t+16>>3]=BigInt(0),0}catch(n){if(typeof R>"u"||n.name!=="ErrnoError")throw n;return n.Pa}},w:function(e,t,r,n){try{e:{var o=$(e);e=t;for(var u,h=t=0;h<r;h++){var w=O[e>>2],A=O[e+4>>2];e+=8;var v=tr(o,M,w,A,u);if(0>v){var I=-1;break e}if(t+=v,v<A)break;typeof u<"u"&&(u+=v)}I=t}return O[n>>2]=I,0}catch(F){if(typeof R>"u"||F.name!=="ErrnoError")throw F;return F.Pa}},D:function(e,t,r,n){t=-9007199254740992>t||9007199254740992<t?NaN:Number(t);try{if(isNaN(t))return 61;var o=$(e);return er(o,t,r),W[n>>3]=BigInt(o.position),o.rb&&t===0&&r===0&&(o.rb=null),0}catch(u){if(typeof R>"u"||u.name!=="ErrnoError")throw u;return u.Pa}},I:function(e){var r,n;try{var t=$(e);return(n=(r=t.Ma)==null?void 0:r.fsync)==null?void 0:n.call(r,t)}catch(o){if(typeof R>"u"||o.name!=="ErrnoError")throw o;return o.Pa}},t:function(e,t,r,n){try{e:{var o=$(e);e=t;for(var u,h=t=0;h<r;h++){var w=O[e>>2],A=O[e+4>>2];e+=8;var v=rr(o,M,w,A,u);if(0>v){var I=-1;break e}if(t+=v,v<A)break;typeof u<"u"&&(u+=v)}I=t}return O[n>>2]=I,0}catch(F){if(typeof R>"u"||F.name!=="ErrnoError")throw F;return F.Pa}},k:nr};function Nt(){function e(){var o;if(l.calledRun=!0,!De){if(!l.noFSInit&&!Xt){var t,r;Xt=!0,t??(t=l.stdin),r??(r=l.stdout),n??(n=l.stderr),t?te("stdin",t):Et("/dev/tty","/dev/stdin"),r?te("stdout",null,r):Et("/dev/tty","/dev/stdout"),n?te("stderr",null,n):Et("/dev/tty1","/dev/stderr"),me("/dev/stdin",0),me("/dev/stdout",1),me("/dev/stderr",1)}if(At.N(),jt=!1,(o=l.onRuntimeInitialized)==null||o.call(l),l.postRun)for(typeof l.postRun=="function"&&(l.postRun=[l.postRun]);l.postRun.length;){var n=l.postRun.shift();kt.push(n)}Dt(kt)}}if(0<se)ge=Nt;else{if(l.preRun)for(typeof l.preRun=="function"&&(l.preRun=[l.preRun]);l.preRun.length;)Mr();Dt(Ut),0<se?ge=Nt:l.setStatus?(l.setStatus("Running..."),setTimeout(()=>{setTimeout(()=>l.setStatus(""),1),e()},1)):e()}}var At;return(async function(){var r;function e(n){var o;return n=At=n.exports,l._sqlite3_free=n.P,l._sqlite3_value_text=n.Q,l._sqlite3_prepare_v2=n.R,l._sqlite3_step=n.S,l._sqlite3_reset=n.T,l._sqlite3_exec=n.U,l._sqlite3_finalize=n.V,l._sqlite3_column_name=n.W,l._sqlite3_column_text=n.X,l._sqlite3_column_type=n.Y,l._sqlite3_errmsg=n.Z,l._sqlite3_clear_bindings=n._,l._sqlite3_value_blob=n.$,l._sqlite3_value_bytes=n.aa,l._sqlite3_value_double=n.ba,l._sqlite3_value_int=n.ca,l._sqlite3_value_type=n.da,l._sqlite3_result_blob=n.ea,l._sqlite3_result_double=n.fa,l._sqlite3_result_error=n.ga,l._sqlite3_result_int=n.ha,l._sqlite3_result_int64=n.ia,l._sqlite3_result_null=n.ja,l._sqlite3_result_text=n.ka,l._sqlite3_aggregate_context=n.la,l._sqlite3_column_count=n.ma,l._sqlite3_data_count=n.na,l._sqlite3_column_blob=n.oa,l._sqlite3_column_bytes=n.pa,l._sqlite3_column_double=n.qa,l._sqlite3_bind_blob=n.ra,l._sqlite3_bind_double=n.sa,l._sqlite3_bind_int=n.ta,l._sqlite3_bind_text=n.ua,l._sqlite3_bind_parameter_index=n.va,l._sqlite3_sql=n.wa,l._sqlite3_normalized_sql=n.xa,l._sqlite3_changes=n.ya,l._sqlite3_close_v2=n.za,l._sqlite3_create_function_v2=n.Aa,l._sqlite3_update_hook=n.Ba,l._sqlite3_open=n.Ca,je=l._malloc=n.Da,Le=l._free=n.Ea,l._RegisterExtensionFunctions=n.Fa,ar=n.Ga,ur=n.Ha,We=n.Ia,le=n.Ja,He=n.Ka,Ye=n.M,ne=n.O,It(),se--,(o=l.monitorRunDependencies)==null||o.call(l,se),se==0&&ge&&(n=ge,ge=null,n()),At}se++,(r=l.monitorRunDependencies)==null||r.call(l,se);var t={a:Kr};return l.instantiateWasm?new Promise(n=>{l.instantiateWasm(t,(o,u)=>{n(e(o))})}):(ut??(ut=l.locateFile?l.locateFile("sql-wasm.wasm",Re):Re+"sql-wasm.wasm"),e((await Ur(t)).instance))})(),Nt(),k}),c)};s.exports=m,s.exports.default=m})(St)),St.exports}var kn=Dn();const Un=In(kn);let E=null,Qe="";function Mn(){const s=S.app.getPath("home"),i=Ze.join(s,".valuta");return be.existsSync(i)||be.mkdirSync(i,{recursive:!0}),Ze.join(i,"local.db")}async function Fn(){Qe=Mn();const s=await Un();if(be.existsSync(Qe)){const i=be.readFileSync(Qe);E=new s.Database(i)}else E=new s.Database;E.run("PRAGMA foreign_keys = ON;"),E.run(`
-    CREATE TABLE IF NOT EXISTS config (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL,
-      updated_at TEXT DEFAULT (datetime('now'))
+"use strict";
+var __defProp = Object.defineProperty;
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+const require$$0$5 = require("electron");
+const require$$2 = require("path");
+const require$$0$1 = require("child_process");
+const require$$1 = require("os");
+const require$$0 = require("fs");
+const require$$0$2 = require("util");
+const require$$0$3 = require("events");
+const require$$0$4 = require("http");
+const require$$1$1 = require("https");
+const path = require("node:path");
+const initSqlJs = require("sql.js");
+const fs = require("node:fs");
+const crypto = require("node:crypto");
+function getDefaultExportFromCjs(x) {
+  return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, "default") ? x["default"] : x;
+}
+var packageJson;
+var hasRequiredPackageJson;
+function requirePackageJson() {
+  if (hasRequiredPackageJson) return packageJson;
+  hasRequiredPackageJson = 1;
+  const fs2 = require$$0;
+  const path2 = require$$2;
+  packageJson = {
+    findAndReadPackageJson,
+    tryReadJsonAt
+  };
+  function findAndReadPackageJson() {
+    return tryReadJsonAt(getMainModulePath()) || tryReadJsonAt(extractPathFromArgs()) || tryReadJsonAt(process.resourcesPath, "app.asar") || tryReadJsonAt(process.resourcesPath, "app") || tryReadJsonAt(process.cwd()) || { name: void 0, version: void 0 };
+  }
+  function tryReadJsonAt(...searchPaths) {
+    if (!searchPaths[0]) {
+      return void 0;
+    }
+    try {
+      const searchPath = path2.join(...searchPaths);
+      const fileName = findUp("package.json", searchPath);
+      if (!fileName) {
+        return void 0;
+      }
+      const json = JSON.parse(fs2.readFileSync(fileName, "utf8"));
+      const name = (json == null ? void 0 : json.productName) || (json == null ? void 0 : json.name);
+      if (!name || name.toLowerCase() === "electron") {
+        return void 0;
+      }
+      if (name) {
+        return { name, version: json == null ? void 0 : json.version };
+      }
+      return void 0;
+    } catch (e) {
+      return void 0;
+    }
+  }
+  function findUp(fileName, cwd) {
+    let currentPath = cwd;
+    while (true) {
+      const parsedPath = path2.parse(currentPath);
+      const root = parsedPath.root;
+      const dir = parsedPath.dir;
+      if (fs2.existsSync(path2.join(currentPath, fileName))) {
+        return path2.resolve(path2.join(currentPath, fileName));
+      }
+      if (currentPath === root) {
+        return null;
+      }
+      currentPath = dir;
+    }
+  }
+  function extractPathFromArgs() {
+    const matchedArgs = process.argv.filter((arg) => {
+      return arg.indexOf("--user-data-dir=") === 0;
+    });
+    if (matchedArgs.length === 0 || typeof matchedArgs[0] !== "string") {
+      return null;
+    }
+    const userDataDir = matchedArgs[0];
+    return userDataDir.replace("--user-data-dir=", "");
+  }
+  function getMainModulePath() {
+    var _a;
+    try {
+      return (_a = require.main) == null ? void 0 : _a.filename;
+    } catch {
+      return void 0;
+    }
+  }
+  return packageJson;
+}
+var NodeExternalApi_1;
+var hasRequiredNodeExternalApi;
+function requireNodeExternalApi() {
+  if (hasRequiredNodeExternalApi) return NodeExternalApi_1;
+  hasRequiredNodeExternalApi = 1;
+  const childProcess = require$$0$1;
+  const os = require$$1;
+  const path2 = require$$2;
+  const packageJson2 = requirePackageJson();
+  class NodeExternalApi {
+    constructor() {
+      __publicField(this, "appName");
+      __publicField(this, "appPackageJson");
+      __publicField(this, "platform", process.platform);
+    }
+    getAppLogPath(appName = this.getAppName()) {
+      if (this.platform === "darwin") {
+        return path2.join(this.getSystemPathHome(), "Library/Logs", appName);
+      }
+      return path2.join(this.getAppUserDataPath(appName), "logs");
+    }
+    getAppName() {
+      var _a;
+      const appName = this.appName || ((_a = this.getAppPackageJson()) == null ? void 0 : _a.name);
+      if (!appName) {
+        throw new Error(
+          "electron-log can't determine the app name. It tried these methods:\n1. Use `electron.app.name`\n2. Use productName or name from the nearest package.json`\nYou can also set it through log.transports.file.setAppName()"
+        );
+      }
+      return appName;
+    }
+    /**
+     * @private
+     * @returns {undefined}
+     */
+    getAppPackageJson() {
+      if (typeof this.appPackageJson !== "object") {
+        this.appPackageJson = packageJson2.findAndReadPackageJson();
+      }
+      return this.appPackageJson;
+    }
+    getAppUserDataPath(appName = this.getAppName()) {
+      return appName ? path2.join(this.getSystemPathAppData(), appName) : void 0;
+    }
+    getAppVersion() {
+      var _a;
+      return (_a = this.getAppPackageJson()) == null ? void 0 : _a.version;
+    }
+    getElectronLogPath() {
+      return this.getAppLogPath();
+    }
+    getMacOsVersion() {
+      const release = Number(os.release().split(".")[0]);
+      if (release <= 19) {
+        return `10.${release - 4}`;
+      }
+      return release - 9;
+    }
+    /**
+     * @protected
+     * @returns {string}
+     */
+    getOsVersion() {
+      let osName = os.type().replace("_", " ");
+      let osVersion = os.release();
+      if (osName === "Darwin") {
+        osName = "macOS";
+        osVersion = this.getMacOsVersion();
+      }
+      return `${osName} ${osVersion}`;
+    }
+    /**
+     * @return {PathVariables}
+     */
+    getPathVariables() {
+      const appName = this.getAppName();
+      const appVersion = this.getAppVersion();
+      const self = this;
+      return {
+        appData: this.getSystemPathAppData(),
+        appName,
+        appVersion,
+        get electronDefaultDir() {
+          return self.getElectronLogPath();
+        },
+        home: this.getSystemPathHome(),
+        libraryDefaultDir: this.getAppLogPath(appName),
+        libraryTemplate: this.getAppLogPath("{appName}"),
+        temp: this.getSystemPathTemp(),
+        userData: this.getAppUserDataPath(appName)
+      };
+    }
+    getSystemPathAppData() {
+      const home = this.getSystemPathHome();
+      switch (this.platform) {
+        case "darwin": {
+          return path2.join(home, "Library/Application Support");
+        }
+        case "win32": {
+          return process.env.APPDATA || path2.join(home, "AppData/Roaming");
+        }
+        default: {
+          return process.env.XDG_CONFIG_HOME || path2.join(home, ".config");
+        }
+      }
+    }
+    getSystemPathHome() {
+      var _a;
+      return ((_a = os.homedir) == null ? void 0 : _a.call(os)) || process.env.HOME;
+    }
+    getSystemPathTemp() {
+      return os.tmpdir();
+    }
+    getVersions() {
+      return {
+        app: `${this.getAppName()} ${this.getAppVersion()}`,
+        electron: void 0,
+        os: this.getOsVersion()
+      };
+    }
+    isDev() {
+      return process.env.NODE_ENV === "development" || process.env.ELECTRON_IS_DEV === "1";
+    }
+    isElectron() {
+      return Boolean(process.versions.electron);
+    }
+    onAppEvent(_eventName, _handler) {
+    }
+    onAppReady(handler) {
+      handler();
+    }
+    onEveryWebContentsEvent(eventName, handler) {
+    }
+    /**
+     * Listen to async messages sent from opposite process
+     * @param {string} channel
+     * @param {function} listener
+     */
+    onIpc(channel, listener) {
+    }
+    onIpcInvoke(channel, listener) {
+    }
+    /**
+     * @param {string} url
+     * @param {Function} [logFunction]
+     */
+    openUrl(url, logFunction = console.error) {
+      const startMap = { darwin: "open", win32: "start", linux: "xdg-open" };
+      const start = startMap[process.platform] || "xdg-open";
+      childProcess.exec(`${start} ${url}`, {}, (err) => {
+        if (err) {
+          logFunction(err);
+        }
+      });
+    }
+    setAppName(appName) {
+      this.appName = appName;
+    }
+    setPlatform(platform) {
+      this.platform = platform;
+    }
+    setPreloadFileForSessions({
+      filePath,
+      // eslint-disable-line no-unused-vars
+      includeFutureSession = true,
+      // eslint-disable-line no-unused-vars
+      getSessions = () => []
+      // eslint-disable-line no-unused-vars
+    }) {
+    }
+    /**
+     * Sent a message to opposite process
+     * @param {string} channel
+     * @param {any} message
+     */
+    sendIpc(channel, message) {
+    }
+    showErrorBox(title, message) {
+    }
+  }
+  NodeExternalApi_1 = NodeExternalApi;
+  return NodeExternalApi_1;
+}
+var ElectronExternalApi_1;
+var hasRequiredElectronExternalApi;
+function requireElectronExternalApi() {
+  if (hasRequiredElectronExternalApi) return ElectronExternalApi_1;
+  hasRequiredElectronExternalApi = 1;
+  const path2 = require$$2;
+  const NodeExternalApi = requireNodeExternalApi();
+  class ElectronExternalApi extends NodeExternalApi {
+    /**
+     * @param {object} options
+     * @param {typeof Electron} [options.electron]
+     */
+    constructor({ electron } = {}) {
+      super();
+      /**
+       * @type {typeof Electron}
+       */
+      __publicField(this, "electron");
+      this.electron = electron;
+    }
+    getAppName() {
+      var _a, _b;
+      let appName;
+      try {
+        appName = this.appName || ((_a = this.electron.app) == null ? void 0 : _a.name) || ((_b = this.electron.app) == null ? void 0 : _b.getName());
+      } catch {
+      }
+      return appName || super.getAppName();
+    }
+    getAppUserDataPath(appName) {
+      return this.getPath("userData") || super.getAppUserDataPath(appName);
+    }
+    getAppVersion() {
+      var _a;
+      let appVersion;
+      try {
+        appVersion = (_a = this.electron.app) == null ? void 0 : _a.getVersion();
+      } catch {
+      }
+      return appVersion || super.getAppVersion();
+    }
+    getElectronLogPath() {
+      return this.getPath("logs") || super.getElectronLogPath();
+    }
+    /**
+     * @private
+     * @param {any} name
+     * @returns {string|undefined}
+     */
+    getPath(name) {
+      var _a;
+      try {
+        return (_a = this.electron.app) == null ? void 0 : _a.getPath(name);
+      } catch {
+        return void 0;
+      }
+    }
+    getVersions() {
+      return {
+        app: `${this.getAppName()} ${this.getAppVersion()}`,
+        electron: `Electron ${process.versions.electron}`,
+        os: this.getOsVersion()
+      };
+    }
+    getSystemPathAppData() {
+      return this.getPath("appData") || super.getSystemPathAppData();
+    }
+    isDev() {
+      var _a;
+      if (((_a = this.electron.app) == null ? void 0 : _a.isPackaged) !== void 0) {
+        return !this.electron.app.isPackaged;
+      }
+      if (typeof process.execPath === "string") {
+        const execFileName = path2.basename(process.execPath).toLowerCase();
+        return execFileName.startsWith("electron");
+      }
+      return super.isDev();
+    }
+    onAppEvent(eventName, handler) {
+      var _a;
+      (_a = this.electron.app) == null ? void 0 : _a.on(eventName, handler);
+      return () => {
+        var _a2;
+        (_a2 = this.electron.app) == null ? void 0 : _a2.off(eventName, handler);
+      };
+    }
+    onAppReady(handler) {
+      var _a, _b, _c;
+      if ((_a = this.electron.app) == null ? void 0 : _a.isReady()) {
+        handler();
+      } else if ((_b = this.electron.app) == null ? void 0 : _b.once) {
+        (_c = this.electron.app) == null ? void 0 : _c.once("ready", handler);
+      } else {
+        handler();
+      }
+    }
+    onEveryWebContentsEvent(eventName, handler) {
+      var _a, _b, _c;
+      (_b = (_a = this.electron.webContents) == null ? void 0 : _a.getAllWebContents()) == null ? void 0 : _b.forEach((webContents) => {
+        webContents.on(eventName, handler);
+      });
+      (_c = this.electron.app) == null ? void 0 : _c.on("web-contents-created", onWebContentsCreated);
+      return () => {
+        var _a2, _b2;
+        (_a2 = this.electron.webContents) == null ? void 0 : _a2.getAllWebContents().forEach((webContents) => {
+          webContents.off(eventName, handler);
+        });
+        (_b2 = this.electron.app) == null ? void 0 : _b2.off("web-contents-created", onWebContentsCreated);
+      };
+      function onWebContentsCreated(_, webContents) {
+        webContents.on(eventName, handler);
+      }
+    }
+    /**
+     * Listen to async messages sent from opposite process
+     * @param {string} channel
+     * @param {function} listener
+     */
+    onIpc(channel, listener) {
+      var _a;
+      (_a = this.electron.ipcMain) == null ? void 0 : _a.on(channel, listener);
+    }
+    onIpcInvoke(channel, listener) {
+      var _a, _b;
+      (_b = (_a = this.electron.ipcMain) == null ? void 0 : _a.handle) == null ? void 0 : _b.call(_a, channel, listener);
+    }
+    /**
+     * @param {string} url
+     * @param {Function} [logFunction]
+     */
+    openUrl(url, logFunction = console.error) {
+      var _a;
+      (_a = this.electron.shell) == null ? void 0 : _a.openExternal(url).catch(logFunction);
+    }
+    setPreloadFileForSessions({
+      filePath,
+      includeFutureSession = true,
+      getSessions = () => {
+        var _a;
+        return [(_a = this.electron.session) == null ? void 0 : _a.defaultSession];
+      }
+    }) {
+      for (const session of getSessions().filter(Boolean)) {
+        setPreload(session);
+      }
+      if (includeFutureSession) {
+        this.onAppEvent("session-created", (session) => {
+          setPreload(session);
+        });
+      }
+      function setPreload(session) {
+        if (typeof session.registerPreloadScript === "function") {
+          session.registerPreloadScript({
+            filePath,
+            id: "electron-log-preload",
+            type: "frame"
+          });
+        } else {
+          session.setPreloads([...session.getPreloads(), filePath]);
+        }
+      }
+    }
+    /**
+     * Sent a message to opposite process
+     * @param {string} channel
+     * @param {any} message
+     */
+    sendIpc(channel, message) {
+      var _a, _b;
+      (_b = (_a = this.electron.BrowserWindow) == null ? void 0 : _a.getAllWindows()) == null ? void 0 : _b.forEach((wnd) => {
+        var _a2, _b2;
+        if (((_a2 = wnd.webContents) == null ? void 0 : _a2.isDestroyed()) === false && ((_b2 = wnd.webContents) == null ? void 0 : _b2.isCrashed()) === false) {
+          wnd.webContents.send(channel, message);
+        }
+      });
+    }
+    showErrorBox(title, message) {
+      var _a;
+      (_a = this.electron.dialog) == null ? void 0 : _a.showErrorBox(title, message);
+    }
+  }
+  ElectronExternalApi_1 = ElectronExternalApi;
+  return ElectronExternalApi_1;
+}
+var electronLogPreload = { exports: {} };
+var hasRequiredElectronLogPreload;
+function requireElectronLogPreload() {
+  if (hasRequiredElectronLogPreload) return electronLogPreload.exports;
+  hasRequiredElectronLogPreload = 1;
+  (function(module2) {
+    let electron = {};
+    try {
+      electron = require("electron");
+    } catch (e) {
+    }
+    if (electron.ipcRenderer) {
+      initialize2(electron);
+    }
+    {
+      module2.exports = initialize2;
+    }
+    function initialize2({ contextBridge, ipcRenderer }) {
+      if (!ipcRenderer) {
+        return;
+      }
+      ipcRenderer.on("__ELECTRON_LOG_IPC__", (_, message) => {
+        window.postMessage({ cmd: "message", ...message });
+      });
+      ipcRenderer.invoke("__ELECTRON_LOG__", { cmd: "getOptions" }).catch((e) => console.error(new Error(
+        `electron-log isn't initialized in the main process. Please call log.initialize() before. ${e.message}`
+      )));
+      const electronLog = {
+        sendToMain(message) {
+          try {
+            ipcRenderer.send("__ELECTRON_LOG__", message);
+          } catch (e) {
+            console.error("electronLog.sendToMain ", e, "data:", message);
+            ipcRenderer.send("__ELECTRON_LOG__", {
+              cmd: "errorHandler",
+              error: { message: e == null ? void 0 : e.message, stack: e == null ? void 0 : e.stack },
+              errorName: "sendToMain"
+            });
+          }
+        },
+        log(...data) {
+          electronLog.sendToMain({ data, level: "info" });
+        }
+      };
+      for (const level of ["error", "warn", "info", "verbose", "debug", "silly"]) {
+        electronLog[level] = (...data) => electronLog.sendToMain({
+          data,
+          level
+        });
+      }
+      if (contextBridge && process.contextIsolated) {
+        try {
+          contextBridge.exposeInMainWorld("__electronLog", electronLog);
+        } catch {
+        }
+      }
+      if (typeof window === "object") {
+        window.__electronLog = electronLog;
+      } else {
+        __electronLog = electronLog;
+      }
+    }
+  })(electronLogPreload);
+  return electronLogPreload.exports;
+}
+var initialize;
+var hasRequiredInitialize;
+function requireInitialize() {
+  if (hasRequiredInitialize) return initialize;
+  hasRequiredInitialize = 1;
+  const fs2 = require$$0;
+  const os = require$$1;
+  const path2 = require$$2;
+  const preloadInitializeFn = requireElectronLogPreload();
+  let preloadInitialized = false;
+  let spyConsoleInitialized = false;
+  initialize = {
+    initialize({
+      externalApi,
+      getSessions,
+      includeFutureSession,
+      logger,
+      preload = true,
+      spyRendererConsole = false
+    }) {
+      externalApi.onAppReady(() => {
+        try {
+          if (preload) {
+            initializePreload({
+              externalApi,
+              getSessions,
+              includeFutureSession,
+              logger,
+              preloadOption: preload
+            });
+          }
+          if (spyRendererConsole) {
+            initializeSpyRendererConsole({ externalApi, logger });
+          }
+        } catch (err) {
+          logger.warn(err);
+        }
+      });
+    }
+  };
+  function initializePreload({
+    externalApi,
+    getSessions,
+    includeFutureSession,
+    logger,
+    preloadOption
+  }) {
+    let preloadPath = typeof preloadOption === "string" ? preloadOption : void 0;
+    if (preloadInitialized) {
+      logger.warn(new Error("log.initialize({ preload }) already called").stack);
+      return;
+    }
+    preloadInitialized = true;
+    try {
+      preloadPath = path2.resolve(
+        __dirname,
+        "../renderer/electron-log-preload.js"
+      );
+    } catch {
+    }
+    if (!preloadPath || !fs2.existsSync(preloadPath)) {
+      preloadPath = path2.join(
+        externalApi.getAppUserDataPath() || os.tmpdir(),
+        "electron-log-preload.js"
+      );
+      const preloadCode = `
+      try {
+        (${preloadInitializeFn.toString()})(require('electron'));
+      } catch(e) {
+        console.error(e);
+      }
+    `;
+      fs2.writeFileSync(preloadPath, preloadCode, "utf8");
+    }
+    externalApi.setPreloadFileForSessions({
+      filePath: preloadPath,
+      includeFutureSession,
+      getSessions
+    });
+  }
+  function initializeSpyRendererConsole({ externalApi, logger }) {
+    if (spyConsoleInitialized) {
+      logger.warn(
+        new Error("log.initialize({ spyRendererConsole }) already called").stack
+      );
+      return;
+    }
+    spyConsoleInitialized = true;
+    const levels = ["debug", "info", "warn", "error"];
+    externalApi.onEveryWebContentsEvent(
+      "console-message",
+      (event, level, message) => {
+        logger.processMessage({
+          data: [message],
+          level: levels[level],
+          variables: { processType: "renderer" }
+        });
+      }
     );
-  `),E.run(`
-    CREATE TABLE IF NOT EXISTS cached_rates (
-      currency_code TEXT PRIMARY KEY,
-      buy_rate REAL NOT NULL,
-      sell_rate REAL NOT NULL,
-      unit INTEGER NOT NULL DEFAULT 1,
-      updated_at TEXT NOT NULL
-    );
-  `),E.run(`
-    CREATE TABLE IF NOT EXISTS pending_transactions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      type TEXT NOT NULL CHECK(type IN ('SELL', 'BUY')),
-      currency_code TEXT NOT NULL,
-      foreign_amount REAL NOT NULL,
-      huf_amount REAL NOT NULL,
-      rounded_huf_amount REAL NOT NULL,
-      rate REAL NOT NULL,
-      customer_id INTEGER,
-      denominations TEXT,
-      created_at TEXT DEFAULT (datetime('now')),
-      synced INTEGER DEFAULT 0
-    );
-  `),E.run(`
-    CREATE TABLE IF NOT EXISTS cached_customers (
-      id INTEGER PRIMARY KEY,
-      name TEXT NOT NULL,
-      document_type TEXT NOT NULL,
-      document_number TEXT NOT NULL,
-      nationality TEXT,
-      birth_date TEXT,
-      cached_at TEXT DEFAULT (datetime('now'))
-    );
-  `),E.run(`
-    CREATE TABLE IF NOT EXISTS pending_transfers (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      target_branch_code TEXT NOT NULL,
-      currency_code TEXT NOT NULL,
-      amount REAL NOT NULL,
-      denominations TEXT,
-      note TEXT,
-      created_at TEXT DEFAULT (datetime('now')),
-      synced INTEGER DEFAULT 0
-    );
-  `),E.run(`
-    CREATE TABLE IF NOT EXISTS pending_distributions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      target_branch_code TEXT NOT NULL,
-      currency_code TEXT NOT NULL,
-      amount REAL NOT NULL,
-      denominations TEXT,
-      note TEXT,
-      created_at TEXT DEFAULT (datetime('now')),
-      synced INTEGER DEFAULT 0
-    );
-  `),E.run(`
-    CREATE TABLE IF NOT EXISTS cached_branch_status (
-      branch_code TEXT PRIMARY KEY,
-      branch_name TEXT NOT NULL,
-      company_id INTEGER,
-      last_sync_at TEXT,
-      online_status TEXT DEFAULT 'offline',
-      total_huf_value REAL DEFAULT 0,
-      daily_turnover REAL DEFAULT 0,
-      cash_balances TEXT,
-      cached_at TEXT DEFAULT (datetime('now'))
-    );
-  `),E.run(`
-    CREATE TABLE IF NOT EXISTS pending_collections (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      source_branch_code TEXT NOT NULL,
-      currency_code TEXT NOT NULL,
-      amount REAL NOT NULL,
-      note TEXT,
-      created_at TEXT DEFAULT (datetime('now')),
-      synced INTEGER DEFAULT 0
-    );
-  `),j()}function j(){if(!E)return;const s=E.export(),i=Buffer.from(s);be.writeFileSync(Qe,i)}function Rt(s){if(!E)return null;const i=E.prepare("SELECT value FROM config WHERE key = ?");if(i.bind([s]),i.step()){const c=i.getAsObject();return i.free(),c.value??null}return i.free(),null}function Cn(s,i){if(E){if(s.length>100)throw new Error(`Config key too long: ${s.length} chars (max 100)`);if(i.length>1e4)throw new Error(`Config value too long: ${i.length} chars (max 10000)`);E.run(`INSERT INTO config (key, value, updated_at) VALUES (?, ?, datetime('now'))
-     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,[s,i]),j()}}function Bn(s){E&&(E.run("DELETE FROM config WHERE key = ?",[s]),j())}function $n(s,i,c,m,p,y,C,k){if(!E)throw new Error("Database not initialized");E.run(`INSERT INTO pending_transactions (type, currency_code, foreign_amount, huf_amount, rounded_huf_amount, rate, customer_id, denominations)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,[s,i,c,m,p,y,C,k]),j();const J=E.prepare("SELECT last_insert_rowid() as id");J.step();const l=J.getAsObject();return J.free(),l.id??0}function Sr(){if(!E)return[];const s=[],i=E.prepare("SELECT * FROM pending_transactions WHERE synced = 0 ORDER BY created_at ASC");for(;i.step();){const c=i.getAsObject();s.push(c)}return i.free(),s}function Or(s){E&&(E.run("UPDATE pending_transactions SET synced = 1 WHERE id = ?",[s]),j())}function Pn(){if(!E)return 0;const s=E.prepare("SELECT COUNT(*) as cnt FROM pending_transactions WHERE synced = 0");s.step();const i=s.getAsObject();return s.free(),i.cnt??0}function Nr(){return E}function qn(s,i,c,m,p){if(!E)throw new Error("Database not initialized");E.run(`INSERT INTO pending_distributions (target_branch_code, currency_code, amount, denominations, note)
-     VALUES (?, ?, ?, ?, ?)`,[s,i,c,m,p]),j();const y=E.prepare("SELECT last_insert_rowid() as id");y.step();const C=y.getAsObject();return y.free(),C.id??0}function xn(){if(!E)return[];const s=[],i=E.prepare("SELECT * FROM pending_distributions WHERE synced = 0 ORDER BY created_at ASC");for(;i.step();)s.push(i.getAsObject());return i.free(),s}function zn(s){E&&(E.run("UPDATE pending_distributions SET synced = 1 WHERE id = ?",[s]),j())}function Xn(s,i,c,m,p){if(!E)throw new Error("Database not initialized");E.run(`INSERT INTO pending_transfers (target_branch_code, currency_code, amount, denominations, note)
-     VALUES (?, ?, ?, ?, ?)`,[s,i,c,m,p]),j();const y=E.prepare("SELECT last_insert_rowid() as id");y.step();const C=y.getAsObject();return y.free(),C.id??0}function jn(){if(!E)return[];const s=[],i=E.prepare("SELECT * FROM pending_transfers WHERE synced = 0 ORDER BY created_at ASC");for(;i.step();)s.push(i.getAsObject());return i.free(),s}function Wn(s){E&&(E.run("UPDATE pending_transfers SET synced = 1 WHERE id = ?",[s]),j())}function Hn(s,i,c,m){if(!E)throw new Error("Database not initialized");E.run(`INSERT INTO pending_collections (source_branch_code, currency_code, amount, note)
-     VALUES (?, ?, ?, ?)`,[s,i,c,m]),j();const p=E.prepare("SELECT last_insert_rowid() as id");p.step();const y=p.getAsObject();return p.free(),y.id??0}function Yn(){if(!E)return[];const s=[],i=E.prepare("SELECT * FROM pending_collections WHERE synced = 0 ORDER BY created_at ASC");for(;i.step();)s.push(i.getAsObject());return i.free(),s}function Gn(s){E&&(E.run("UPDATE pending_collections SET synced = 1 WHERE id = ?",[s]),j())}function Vn(s,i,c,m,p,y,C,k){E&&(E.run(`INSERT INTO cached_branch_status (branch_code, branch_name, company_id, last_sync_at, online_status, total_huf_value, daily_turnover, cash_balances, cached_at)
+  }
+  return initialize;
+}
+var scope;
+var hasRequiredScope;
+function requireScope() {
+  if (hasRequiredScope) return scope;
+  hasRequiredScope = 1;
+  scope = scopeFactory;
+  function scopeFactory(logger) {
+    return Object.defineProperties(scope2, {
+      defaultLabel: { value: "", writable: true },
+      labelPadding: { value: true, writable: true },
+      maxLabelLength: { value: 0, writable: true },
+      labelLength: {
+        get() {
+          switch (typeof scope2.labelPadding) {
+            case "boolean":
+              return scope2.labelPadding ? scope2.maxLabelLength : 0;
+            case "number":
+              return scope2.labelPadding;
+            default:
+              return 0;
+          }
+        }
+      }
+    });
+    function scope2(label) {
+      scope2.maxLabelLength = Math.max(scope2.maxLabelLength, label.length);
+      const newScope = {};
+      for (const level of logger.levels) {
+        newScope[level] = (...d) => logger.logData(d, { level, scope: label });
+      }
+      newScope.log = newScope.info;
+      return newScope;
+    }
+  }
+  return scope;
+}
+var Buffering_1;
+var hasRequiredBuffering;
+function requireBuffering() {
+  if (hasRequiredBuffering) return Buffering_1;
+  hasRequiredBuffering = 1;
+  class Buffering {
+    constructor({ processMessage }) {
+      this.processMessage = processMessage;
+      this.buffer = [];
+      this.enabled = false;
+      this.begin = this.begin.bind(this);
+      this.commit = this.commit.bind(this);
+      this.reject = this.reject.bind(this);
+    }
+    addMessage(message) {
+      this.buffer.push(message);
+    }
+    begin() {
+      this.enabled = [];
+    }
+    commit() {
+      this.enabled = false;
+      this.buffer.forEach((item) => this.processMessage(item));
+      this.buffer = [];
+    }
+    reject() {
+      this.enabled = false;
+      this.buffer = [];
+    }
+  }
+  Buffering_1 = Buffering;
+  return Buffering_1;
+}
+var Logger_1;
+var hasRequiredLogger;
+function requireLogger() {
+  if (hasRequiredLogger) return Logger_1;
+  hasRequiredLogger = 1;
+  const scopeFactory = requireScope();
+  const Buffering = requireBuffering();
+  const _Logger = class _Logger {
+    constructor({
+      allowUnknownLevel = false,
+      dependencies = {},
+      errorHandler,
+      eventLogger,
+      initializeFn,
+      isDev: isDev2 = false,
+      levels = ["error", "warn", "info", "verbose", "debug", "silly"],
+      logId,
+      transportFactories = {},
+      variables
+    } = {}) {
+      __publicField(this, "dependencies", {});
+      __publicField(this, "errorHandler", null);
+      __publicField(this, "eventLogger", null);
+      __publicField(this, "functions", {});
+      __publicField(this, "hooks", []);
+      __publicField(this, "isDev", false);
+      __publicField(this, "levels", null);
+      __publicField(this, "logId", null);
+      __publicField(this, "scope", null);
+      __publicField(this, "transports", {});
+      __publicField(this, "variables", {});
+      this.addLevel = this.addLevel.bind(this);
+      this.create = this.create.bind(this);
+      this.initialize = this.initialize.bind(this);
+      this.logData = this.logData.bind(this);
+      this.processMessage = this.processMessage.bind(this);
+      this.allowUnknownLevel = allowUnknownLevel;
+      this.buffering = new Buffering(this);
+      this.dependencies = dependencies;
+      this.initializeFn = initializeFn;
+      this.isDev = isDev2;
+      this.levels = levels;
+      this.logId = logId;
+      this.scope = scopeFactory(this);
+      this.transportFactories = transportFactories;
+      this.variables = variables || {};
+      for (const name of this.levels) {
+        this.addLevel(name, false);
+      }
+      this.log = this.info;
+      this.functions.log = this.log;
+      this.errorHandler = errorHandler;
+      errorHandler == null ? void 0 : errorHandler.setOptions({ ...dependencies, logFn: this.error });
+      this.eventLogger = eventLogger;
+      eventLogger == null ? void 0 : eventLogger.setOptions({ ...dependencies, logger: this });
+      for (const [name, factory] of Object.entries(transportFactories)) {
+        this.transports[name] = factory(this, dependencies);
+      }
+      _Logger.instances[logId] = this;
+    }
+    static getInstance({ logId }) {
+      return this.instances[logId] || this.instances.default;
+    }
+    addLevel(level, index = this.levels.length) {
+      if (index !== false) {
+        this.levels.splice(index, 0, level);
+      }
+      this[level] = (...args) => this.logData(args, { level });
+      this.functions[level] = this[level];
+    }
+    catchErrors(options) {
+      this.processMessage(
+        {
+          data: ["log.catchErrors is deprecated. Use log.errorHandler instead"],
+          level: "warn"
+        },
+        { transports: ["console"] }
+      );
+      return this.errorHandler.startCatching(options);
+    }
+    create(options) {
+      if (typeof options === "string") {
+        options = { logId: options };
+      }
+      return new _Logger({
+        dependencies: this.dependencies,
+        errorHandler: this.errorHandler,
+        initializeFn: this.initializeFn,
+        isDev: this.isDev,
+        transportFactories: this.transportFactories,
+        variables: { ...this.variables },
+        ...options
+      });
+    }
+    compareLevels(passLevel, checkLevel, levels = this.levels) {
+      const pass = levels.indexOf(passLevel);
+      const check = levels.indexOf(checkLevel);
+      if (check === -1 || pass === -1) {
+        return true;
+      }
+      return check <= pass;
+    }
+    initialize(options = {}) {
+      this.initializeFn({ logger: this, ...this.dependencies, ...options });
+    }
+    logData(data, options = {}) {
+      if (this.buffering.enabled) {
+        this.buffering.addMessage({ data, date: /* @__PURE__ */ new Date(), ...options });
+      } else {
+        this.processMessage({ data, ...options });
+      }
+    }
+    processMessage(message, { transports = this.transports } = {}) {
+      if (message.cmd === "errorHandler") {
+        this.errorHandler.handle(message.error, {
+          errorName: message.errorName,
+          processType: "renderer",
+          showDialog: Boolean(message.showDialog)
+        });
+        return;
+      }
+      let level = message.level;
+      if (!this.allowUnknownLevel) {
+        level = this.levels.includes(message.level) ? message.level : "info";
+      }
+      const normalizedMessage = {
+        date: /* @__PURE__ */ new Date(),
+        logId: this.logId,
+        ...message,
+        level,
+        variables: {
+          ...this.variables,
+          ...message.variables
+        }
+      };
+      for (const [transName, transFn] of this.transportEntries(transports)) {
+        if (typeof transFn !== "function" || transFn.level === false) {
+          continue;
+        }
+        if (!this.compareLevels(transFn.level, message.level)) {
+          continue;
+        }
+        try {
+          const transformedMsg = this.hooks.reduce((msg, hook) => {
+            return msg ? hook(msg, transFn, transName) : msg;
+          }, normalizedMessage);
+          if (transformedMsg) {
+            transFn({ ...transformedMsg, data: [...transformedMsg.data] });
+          }
+        } catch (e) {
+          this.processInternalErrorFn(e);
+        }
+      }
+    }
+    processInternalErrorFn(_e) {
+    }
+    transportEntries(transports = this.transports) {
+      const transportArray = Array.isArray(transports) ? transports : Object.entries(transports);
+      return transportArray.map((item) => {
+        switch (typeof item) {
+          case "string":
+            return this.transports[item] ? [item, this.transports[item]] : null;
+          case "function":
+            return [item.name, item];
+          default:
+            return Array.isArray(item) ? item : null;
+        }
+      }).filter(Boolean);
+    }
+  };
+  __publicField(_Logger, "instances", {});
+  let Logger = _Logger;
+  Logger_1 = Logger;
+  return Logger_1;
+}
+var ErrorHandler_1;
+var hasRequiredErrorHandler;
+function requireErrorHandler() {
+  if (hasRequiredErrorHandler) return ErrorHandler_1;
+  hasRequiredErrorHandler = 1;
+  class ErrorHandler {
+    constructor({
+      externalApi,
+      logFn = void 0,
+      onError = void 0,
+      showDialog = void 0
+    } = {}) {
+      __publicField(this, "externalApi");
+      __publicField(this, "isActive", false);
+      __publicField(this, "logFn");
+      __publicField(this, "onError");
+      __publicField(this, "showDialog", true);
+      this.createIssue = this.createIssue.bind(this);
+      this.handleError = this.handleError.bind(this);
+      this.handleRejection = this.handleRejection.bind(this);
+      this.setOptions({ externalApi, logFn, onError, showDialog });
+      this.startCatching = this.startCatching.bind(this);
+      this.stopCatching = this.stopCatching.bind(this);
+    }
+    handle(error, {
+      logFn = this.logFn,
+      onError = this.onError,
+      processType = "browser",
+      showDialog = this.showDialog,
+      errorName = ""
+    } = {}) {
+      var _a;
+      error = normalizeError(error);
+      try {
+        if (typeof onError === "function") {
+          const versions = ((_a = this.externalApi) == null ? void 0 : _a.getVersions()) || {};
+          const createIssue = this.createIssue;
+          const result = onError({
+            createIssue,
+            error,
+            errorName,
+            processType,
+            versions
+          });
+          if (result === false) {
+            return;
+          }
+        }
+        errorName ? logFn(errorName, error) : logFn(error);
+        if (showDialog && !errorName.includes("rejection") && this.externalApi) {
+          this.externalApi.showErrorBox(
+            `A JavaScript error occurred in the ${processType} process`,
+            error.stack
+          );
+        }
+      } catch {
+        console.error(error);
+      }
+    }
+    setOptions({ externalApi, logFn, onError, showDialog }) {
+      if (typeof externalApi === "object") {
+        this.externalApi = externalApi;
+      }
+      if (typeof logFn === "function") {
+        this.logFn = logFn;
+      }
+      if (typeof onError === "function") {
+        this.onError = onError;
+      }
+      if (typeof showDialog === "boolean") {
+        this.showDialog = showDialog;
+      }
+    }
+    startCatching({ onError, showDialog } = {}) {
+      if (this.isActive) {
+        return;
+      }
+      this.isActive = true;
+      this.setOptions({ onError, showDialog });
+      process.on("uncaughtException", this.handleError);
+      process.on("unhandledRejection", this.handleRejection);
+    }
+    stopCatching() {
+      this.isActive = false;
+      process.removeListener("uncaughtException", this.handleError);
+      process.removeListener("unhandledRejection", this.handleRejection);
+    }
+    createIssue(pageUrl, queryParams) {
+      var _a;
+      (_a = this.externalApi) == null ? void 0 : _a.openUrl(
+        `${pageUrl}?${new URLSearchParams(queryParams).toString()}`
+      );
+    }
+    handleError(error) {
+      this.handle(error, { errorName: "Unhandled" });
+    }
+    handleRejection(reason) {
+      const error = reason instanceof Error ? reason : new Error(JSON.stringify(reason));
+      this.handle(error, { errorName: "Unhandled rejection" });
+    }
+  }
+  function normalizeError(e) {
+    if (e instanceof Error) {
+      return e;
+    }
+    if (e && typeof e === "object") {
+      if (e.message) {
+        return Object.assign(new Error(e.message), e);
+      }
+      try {
+        return new Error(JSON.stringify(e));
+      } catch (serErr) {
+        return new Error(`Couldn't normalize error ${String(e)}: ${serErr}`);
+      }
+    }
+    return new Error(`Can't normalize error ${String(e)}`);
+  }
+  ErrorHandler_1 = ErrorHandler;
+  return ErrorHandler_1;
+}
+var EventLogger_1;
+var hasRequiredEventLogger;
+function requireEventLogger() {
+  if (hasRequiredEventLogger) return EventLogger_1;
+  hasRequiredEventLogger = 1;
+  class EventLogger {
+    constructor(options = {}) {
+      __publicField(this, "disposers", []);
+      __publicField(this, "format", "{eventSource}#{eventName}:");
+      __publicField(this, "formatters", {
+        app: {
+          "certificate-error": ({ args }) => {
+            return this.arrayToObject(args.slice(1, 4), [
+              "url",
+              "error",
+              "certificate"
+            ]);
+          },
+          "child-process-gone": ({ args }) => {
+            return args.length === 1 ? args[0] : args;
+          },
+          "render-process-gone": ({ args: [webContents, details] }) => {
+            return details && typeof details === "object" ? { ...details, ...this.getWebContentsDetails(webContents) } : [];
+          }
+        },
+        webContents: {
+          "console-message": ({ args: [level, message, line, sourceId] }) => {
+            if (level < 3) {
+              return void 0;
+            }
+            return { message, source: `${sourceId}:${line}` };
+          },
+          "did-fail-load": ({ args }) => {
+            return this.arrayToObject(args, [
+              "errorCode",
+              "errorDescription",
+              "validatedURL",
+              "isMainFrame",
+              "frameProcessId",
+              "frameRoutingId"
+            ]);
+          },
+          "did-fail-provisional-load": ({ args }) => {
+            return this.arrayToObject(args, [
+              "errorCode",
+              "errorDescription",
+              "validatedURL",
+              "isMainFrame",
+              "frameProcessId",
+              "frameRoutingId"
+            ]);
+          },
+          "plugin-crashed": ({ args }) => {
+            return this.arrayToObject(args, ["name", "version"]);
+          },
+          "preload-error": ({ args }) => {
+            return this.arrayToObject(args, ["preloadPath", "error"]);
+          }
+        }
+      });
+      __publicField(this, "events", {
+        app: {
+          "certificate-error": true,
+          "child-process-gone": true,
+          "render-process-gone": true
+        },
+        webContents: {
+          // 'console-message': true,
+          "did-fail-load": true,
+          "did-fail-provisional-load": true,
+          "plugin-crashed": true,
+          "preload-error": true,
+          "unresponsive": true
+        }
+      });
+      __publicField(this, "externalApi");
+      __publicField(this, "level", "error");
+      __publicField(this, "scope", "");
+      this.setOptions(options);
+    }
+    setOptions({
+      events,
+      externalApi,
+      level,
+      logger,
+      format: format2,
+      formatters,
+      scope: scope2
+    }) {
+      if (typeof events === "object") {
+        this.events = events;
+      }
+      if (typeof externalApi === "object") {
+        this.externalApi = externalApi;
+      }
+      if (typeof level === "string") {
+        this.level = level;
+      }
+      if (typeof logger === "object") {
+        this.logger = logger;
+      }
+      if (typeof format2 === "string" || typeof format2 === "function") {
+        this.format = format2;
+      }
+      if (typeof formatters === "object") {
+        this.formatters = formatters;
+      }
+      if (typeof scope2 === "string") {
+        this.scope = scope2;
+      }
+    }
+    startLogging(options = {}) {
+      this.setOptions(options);
+      this.disposeListeners();
+      for (const eventName of this.getEventNames(this.events.app)) {
+        this.disposers.push(
+          this.externalApi.onAppEvent(eventName, (...handlerArgs) => {
+            this.handleEvent({ eventSource: "app", eventName, handlerArgs });
+          })
+        );
+      }
+      for (const eventName of this.getEventNames(this.events.webContents)) {
+        this.disposers.push(
+          this.externalApi.onEveryWebContentsEvent(
+            eventName,
+            (...handlerArgs) => {
+              this.handleEvent(
+                { eventSource: "webContents", eventName, handlerArgs }
+              );
+            }
+          )
+        );
+      }
+    }
+    stopLogging() {
+      this.disposeListeners();
+    }
+    arrayToObject(array, fieldNames) {
+      const obj = {};
+      fieldNames.forEach((fieldName, index) => {
+        obj[fieldName] = array[index];
+      });
+      if (array.length > fieldNames.length) {
+        obj.unknownArgs = array.slice(fieldNames.length);
+      }
+      return obj;
+    }
+    disposeListeners() {
+      this.disposers.forEach((disposer) => disposer());
+      this.disposers = [];
+    }
+    formatEventLog({ eventName, eventSource, handlerArgs }) {
+      var _a;
+      const [event, ...args] = handlerArgs;
+      if (typeof this.format === "function") {
+        return this.format({ args, event, eventName, eventSource });
+      }
+      const formatter = (_a = this.formatters[eventSource]) == null ? void 0 : _a[eventName];
+      let formattedArgs = args;
+      if (typeof formatter === "function") {
+        formattedArgs = formatter({ args, event, eventName, eventSource });
+      }
+      if (!formattedArgs) {
+        return void 0;
+      }
+      const eventData = {};
+      if (Array.isArray(formattedArgs)) {
+        eventData.args = formattedArgs;
+      } else if (typeof formattedArgs === "object") {
+        Object.assign(eventData, formattedArgs);
+      }
+      if (eventSource === "webContents") {
+        Object.assign(eventData, this.getWebContentsDetails(event == null ? void 0 : event.sender));
+      }
+      const title = this.format.replace("{eventSource}", eventSource === "app" ? "App" : "WebContents").replace("{eventName}", eventName);
+      return [title, eventData];
+    }
+    getEventNames(eventMap) {
+      if (!eventMap || typeof eventMap !== "object") {
+        return [];
+      }
+      return Object.entries(eventMap).filter(([_, listen]) => listen).map(([eventName]) => eventName);
+    }
+    getWebContentsDetails(webContents) {
+      if (!(webContents == null ? void 0 : webContents.loadURL)) {
+        return {};
+      }
+      try {
+        return {
+          webContents: {
+            id: webContents.id,
+            url: webContents.getURL()
+          }
+        };
+      } catch {
+        return {};
+      }
+    }
+    handleEvent({ eventName, eventSource, handlerArgs }) {
+      var _a;
+      const log2 = this.formatEventLog({ eventName, eventSource, handlerArgs });
+      if (log2) {
+        const logFns = this.scope ? this.logger.scope(this.scope) : this.logger;
+        (_a = logFns == null ? void 0 : logFns[this.level]) == null ? void 0 : _a.call(logFns, ...log2);
+      }
+    }
+  }
+  EventLogger_1 = EventLogger;
+  return EventLogger_1;
+}
+var transform_1;
+var hasRequiredTransform;
+function requireTransform() {
+  if (hasRequiredTransform) return transform_1;
+  hasRequiredTransform = 1;
+  transform_1 = { transform };
+  function transform({
+    logger,
+    message,
+    transport,
+    initialData = (message == null ? void 0 : message.data) || [],
+    transforms = transport == null ? void 0 : transport.transforms
+  }) {
+    return transforms.reduce((data, trans) => {
+      if (typeof trans === "function") {
+        return trans({ data, logger, message, transport });
+      }
+      return data;
+    }, initialData);
+  }
+  return transform_1;
+}
+var format;
+var hasRequiredFormat;
+function requireFormat() {
+  if (hasRequiredFormat) return format;
+  hasRequiredFormat = 1;
+  const { transform } = requireTransform();
+  format = {
+    concatFirstStringElements,
+    formatScope,
+    formatText,
+    formatVariables,
+    timeZoneFromOffset,
+    format({ message, logger, transport, data = message == null ? void 0 : message.data }) {
+      switch (typeof transport.format) {
+        case "string": {
+          return transform({
+            message,
+            logger,
+            transforms: [formatVariables, formatScope, formatText],
+            transport,
+            initialData: [transport.format, ...data]
+          });
+        }
+        case "function": {
+          return transport.format({
+            data,
+            level: (message == null ? void 0 : message.level) || "info",
+            logger,
+            message,
+            transport
+          });
+        }
+        default: {
+          return data;
+        }
+      }
+    }
+  };
+  function concatFirstStringElements({ data }) {
+    if (typeof data[0] !== "string" || typeof data[1] !== "string") {
+      return data;
+    }
+    if (data[0].match(/%[1cdfiOos]/)) {
+      return data;
+    }
+    return [`${data[0]} ${data[1]}`, ...data.slice(2)];
+  }
+  function timeZoneFromOffset(minutesOffset) {
+    const minutesPositive = Math.abs(minutesOffset);
+    const sign = minutesOffset > 0 ? "-" : "+";
+    const hours = Math.floor(minutesPositive / 60).toString().padStart(2, "0");
+    const minutes = (minutesPositive % 60).toString().padStart(2, "0");
+    return `${sign}${hours}:${minutes}`;
+  }
+  function formatScope({ data, logger, message }) {
+    const { defaultLabel, labelLength } = (logger == null ? void 0 : logger.scope) || {};
+    const template = data[0];
+    let label = message.scope;
+    if (!label) {
+      label = defaultLabel;
+    }
+    let scopeText;
+    if (label === "") {
+      scopeText = labelLength > 0 ? "".padEnd(labelLength + 3) : "";
+    } else if (typeof label === "string") {
+      scopeText = ` (${label})`.padEnd(labelLength + 3);
+    } else {
+      scopeText = "";
+    }
+    data[0] = template.replace("{scope}", scopeText);
+    return data;
+  }
+  function formatVariables({ data, message }) {
+    let template = data[0];
+    if (typeof template !== "string") {
+      return data;
+    }
+    template = template.replace("{level}]", `${message.level}]`.padEnd(6, " "));
+    const date = message.date || /* @__PURE__ */ new Date();
+    data[0] = template.replace(/\{(\w+)}/g, (substring, name) => {
+      var _a;
+      switch (name) {
+        case "level":
+          return message.level || "info";
+        case "logId":
+          return message.logId;
+        case "y":
+          return date.getFullYear().toString(10);
+        case "m":
+          return (date.getMonth() + 1).toString(10).padStart(2, "0");
+        case "d":
+          return date.getDate().toString(10).padStart(2, "0");
+        case "h":
+          return date.getHours().toString(10).padStart(2, "0");
+        case "i":
+          return date.getMinutes().toString(10).padStart(2, "0");
+        case "s":
+          return date.getSeconds().toString(10).padStart(2, "0");
+        case "ms":
+          return date.getMilliseconds().toString(10).padStart(3, "0");
+        case "z":
+          return timeZoneFromOffset(date.getTimezoneOffset());
+        case "iso":
+          return date.toISOString();
+        default: {
+          return ((_a = message.variables) == null ? void 0 : _a[name]) || substring;
+        }
+      }
+    }).trim();
+    return data;
+  }
+  function formatText({ data }) {
+    const template = data[0];
+    if (typeof template !== "string") {
+      return data;
+    }
+    const textTplPosition = template.lastIndexOf("{text}");
+    if (textTplPosition === template.length - 6) {
+      data[0] = template.replace(/\s?{text}/, "");
+      if (data[0] === "") {
+        data.shift();
+      }
+      return data;
+    }
+    const templatePieces = template.split("{text}");
+    let result = [];
+    if (templatePieces[0] !== "") {
+      result.push(templatePieces[0]);
+    }
+    result = result.concat(data.slice(1));
+    if (templatePieces[1] !== "") {
+      result.push(templatePieces[1]);
+    }
+    return result;
+  }
+  return format;
+}
+var object = { exports: {} };
+var hasRequiredObject;
+function requireObject() {
+  if (hasRequiredObject) return object.exports;
+  hasRequiredObject = 1;
+  (function(module2) {
+    const util = require$$0$2;
+    module2.exports = {
+      serialize,
+      maxDepth({ data, transport, depth = (transport == null ? void 0 : transport.depth) ?? 6 }) {
+        if (!data) {
+          return data;
+        }
+        if (depth < 1) {
+          if (Array.isArray(data)) return "[array]";
+          if (typeof data === "object" && data) return "[object]";
+          return data;
+        }
+        if (Array.isArray(data)) {
+          return data.map((child) => module2.exports.maxDepth({
+            data: child,
+            depth: depth - 1
+          }));
+        }
+        if (typeof data !== "object") {
+          return data;
+        }
+        if (data && typeof data.toISOString === "function") {
+          return data;
+        }
+        if (data === null) {
+          return null;
+        }
+        if (data instanceof Error) {
+          return data;
+        }
+        const newJson = {};
+        for (const i in data) {
+          if (!Object.prototype.hasOwnProperty.call(data, i)) continue;
+          newJson[i] = module2.exports.maxDepth({
+            data: data[i],
+            depth: depth - 1
+          });
+        }
+        return newJson;
+      },
+      toJSON({ data }) {
+        return JSON.parse(JSON.stringify(data, createSerializer()));
+      },
+      toString({ data, transport }) {
+        const inspectOptions = (transport == null ? void 0 : transport.inspectOptions) || {};
+        const simplifiedData = data.map((item) => {
+          if (item === void 0) {
+            return void 0;
+          }
+          try {
+            const str = JSON.stringify(item, createSerializer(), "  ");
+            return str === void 0 ? void 0 : JSON.parse(str);
+          } catch (e) {
+            return item;
+          }
+        });
+        return util.formatWithOptions(inspectOptions, ...simplifiedData);
+      }
+    };
+    function createSerializer(options = {}) {
+      const seen = /* @__PURE__ */ new WeakSet();
+      return function(key, value) {
+        if (typeof value === "object" && value !== null) {
+          if (seen.has(value)) {
+            return void 0;
+          }
+          seen.add(value);
+        }
+        return serialize(key, value, options);
+      };
+    }
+    function serialize(key, value, options = {}) {
+      const serializeMapAndSet = (options == null ? void 0 : options.serializeMapAndSet) !== false;
+      if (value instanceof Error) {
+        return value.stack;
+      }
+      if (!value) {
+        return value;
+      }
+      if (typeof value === "function") {
+        return `[function] ${value.toString()}`;
+      }
+      if (value instanceof Date) {
+        return value.toISOString();
+      }
+      if (serializeMapAndSet && value instanceof Map && Object.fromEntries) {
+        return Object.fromEntries(value);
+      }
+      if (serializeMapAndSet && value instanceof Set && Array.from) {
+        return Array.from(value);
+      }
+      return value;
+    }
+  })(object);
+  return object.exports;
+}
+var style;
+var hasRequiredStyle;
+function requireStyle() {
+  if (hasRequiredStyle) return style;
+  hasRequiredStyle = 1;
+  style = {
+    transformStyles,
+    applyAnsiStyles({ data }) {
+      return transformStyles(data, styleToAnsi, resetAnsiStyle);
+    },
+    removeStyles({ data }) {
+      return transformStyles(data, () => "");
+    }
+  };
+  const ANSI_COLORS = {
+    unset: "\x1B[0m",
+    black: "\x1B[30m",
+    red: "\x1B[31m",
+    green: "\x1B[32m",
+    yellow: "\x1B[33m",
+    blue: "\x1B[34m",
+    magenta: "\x1B[35m",
+    cyan: "\x1B[36m",
+    white: "\x1B[37m",
+    gray: "\x1B[90m"
+  };
+  function styleToAnsi(style2) {
+    const color = style2.replace(/color:\s*(\w+).*/, "$1").toLowerCase();
+    return ANSI_COLORS[color] || "";
+  }
+  function resetAnsiStyle(string) {
+    return string + ANSI_COLORS.unset;
+  }
+  function transformStyles(data, onStyleFound, onStyleApplied) {
+    const foundStyles = {};
+    return data.reduce((result, item, index, array) => {
+      if (foundStyles[index]) {
+        return result;
+      }
+      if (typeof item === "string") {
+        let valueIndex = index;
+        let styleApplied = false;
+        item = item.replace(/%[1cdfiOos]/g, (match) => {
+          valueIndex += 1;
+          if (match !== "%c") {
+            return match;
+          }
+          const style2 = array[valueIndex];
+          if (typeof style2 === "string") {
+            foundStyles[valueIndex] = true;
+            styleApplied = true;
+            return onStyleFound(style2, item);
+          }
+          return match;
+        });
+        if (styleApplied && onStyleApplied) {
+          item = onStyleApplied(item);
+        }
+      }
+      result.push(item);
+      return result;
+    }, []);
+  }
+  return style;
+}
+var console_1;
+var hasRequiredConsole;
+function requireConsole() {
+  if (hasRequiredConsole) return console_1;
+  hasRequiredConsole = 1;
+  const {
+    concatFirstStringElements,
+    format: format2
+  } = requireFormat();
+  const { maxDepth, toJSON } = requireObject();
+  const {
+    applyAnsiStyles,
+    removeStyles
+  } = requireStyle();
+  const { transform } = requireTransform();
+  const consoleMethods = {
+    error: console.error,
+    warn: console.warn,
+    info: console.info,
+    verbose: console.info,
+    debug: console.debug,
+    silly: console.debug,
+    log: console.log
+  };
+  console_1 = consoleTransportFactory;
+  const separator = process.platform === "win32" ? ">" : "›";
+  const DEFAULT_FORMAT = `%c{h}:{i}:{s}.{ms}{scope}%c ${separator} {text}`;
+  Object.assign(consoleTransportFactory, {
+    DEFAULT_FORMAT
+  });
+  function consoleTransportFactory(logger) {
+    return Object.assign(transport, {
+      colorMap: {
+        error: "red",
+        warn: "yellow",
+        info: "cyan",
+        verbose: "unset",
+        debug: "gray",
+        silly: "gray",
+        default: "unset"
+      },
+      format: DEFAULT_FORMAT,
+      level: "silly",
+      transforms: [
+        addTemplateColors,
+        format2,
+        formatStyles,
+        concatFirstStringElements,
+        maxDepth,
+        toJSON
+      ],
+      useStyles: process.env.FORCE_STYLES,
+      writeFn({ message }) {
+        const consoleLogFn = consoleMethods[message.level] || consoleMethods.info;
+        consoleLogFn(...message.data);
+      }
+    });
+    function transport(message) {
+      const data = transform({ logger, message, transport });
+      transport.writeFn({
+        message: { ...message, data }
+      });
+    }
+  }
+  function addTemplateColors({ data, message, transport }) {
+    if (typeof transport.format !== "string" || !transport.format.includes("%c")) {
+      return data;
+    }
+    return [
+      `color:${levelToStyle(message.level, transport)}`,
+      "color:unset",
+      ...data
+    ];
+  }
+  function canUseStyles(useStyleValue, level) {
+    if (typeof useStyleValue === "boolean") {
+      return useStyleValue;
+    }
+    const useStderr = level === "error" || level === "warn";
+    const stream = useStderr ? process.stderr : process.stdout;
+    return stream && stream.isTTY;
+  }
+  function formatStyles(args) {
+    const { message, transport } = args;
+    const useStyles = canUseStyles(transport.useStyles, message.level);
+    const nextTransform = useStyles ? applyAnsiStyles : removeStyles;
+    return nextTransform(args);
+  }
+  function levelToStyle(level, transport) {
+    return transport.colorMap[level] || transport.colorMap.default;
+  }
+  return console_1;
+}
+var File_1;
+var hasRequiredFile$1;
+function requireFile$1() {
+  if (hasRequiredFile$1) return File_1;
+  hasRequiredFile$1 = 1;
+  const EventEmitter = require$$0$3;
+  const fs2 = require$$0;
+  const os = require$$1;
+  class File extends EventEmitter {
+    constructor({
+      path: path2,
+      writeOptions = { encoding: "utf8", flag: "a", mode: 438 },
+      writeAsync = false
+    }) {
+      super();
+      __publicField(this, "asyncWriteQueue", []);
+      __publicField(this, "bytesWritten", 0);
+      __publicField(this, "hasActiveAsyncWriting", false);
+      __publicField(this, "path", null);
+      __publicField(this, "initialSize");
+      __publicField(this, "writeOptions", null);
+      __publicField(this, "writeAsync", false);
+      this.path = path2;
+      this.writeOptions = writeOptions;
+      this.writeAsync = writeAsync;
+    }
+    get size() {
+      return this.getSize();
+    }
+    clear() {
+      try {
+        fs2.writeFileSync(this.path, "", {
+          mode: this.writeOptions.mode,
+          flag: "w"
+        });
+        this.reset();
+        return true;
+      } catch (e) {
+        if (e.code === "ENOENT") {
+          return true;
+        }
+        this.emit("error", e, this);
+        return false;
+      }
+    }
+    crop(bytesAfter) {
+      try {
+        const content = readFileSyncFromEnd(this.path, bytesAfter || 4096);
+        this.clear();
+        this.writeLine(`[log cropped]${os.EOL}${content}`);
+      } catch (e) {
+        this.emit(
+          "error",
+          new Error(`Couldn't crop file ${this.path}. ${e.message}`),
+          this
+        );
+      }
+    }
+    getSize() {
+      if (this.initialSize === void 0) {
+        try {
+          const stats = fs2.statSync(this.path);
+          this.initialSize = stats.size;
+        } catch (e) {
+          this.initialSize = 0;
+        }
+      }
+      return this.initialSize + this.bytesWritten;
+    }
+    increaseBytesWrittenCounter(text) {
+      this.bytesWritten += Buffer.byteLength(text, this.writeOptions.encoding);
+    }
+    isNull() {
+      return false;
+    }
+    nextAsyncWrite() {
+      const file2 = this;
+      if (this.hasActiveAsyncWriting || this.asyncWriteQueue.length === 0) {
+        return;
+      }
+      const text = this.asyncWriteQueue.join("");
+      this.asyncWriteQueue = [];
+      this.hasActiveAsyncWriting = true;
+      fs2.writeFile(this.path, text, this.writeOptions, (e) => {
+        file2.hasActiveAsyncWriting = false;
+        if (e) {
+          file2.emit(
+            "error",
+            new Error(`Couldn't write to ${file2.path}. ${e.message}`),
+            this
+          );
+        } else {
+          file2.increaseBytesWrittenCounter(text);
+        }
+        file2.nextAsyncWrite();
+      });
+    }
+    reset() {
+      this.initialSize = void 0;
+      this.bytesWritten = 0;
+    }
+    toString() {
+      return this.path;
+    }
+    writeLine(text) {
+      text += os.EOL;
+      if (this.writeAsync) {
+        this.asyncWriteQueue.push(text);
+        this.nextAsyncWrite();
+        return;
+      }
+      try {
+        fs2.writeFileSync(this.path, text, this.writeOptions);
+        this.increaseBytesWrittenCounter(text);
+      } catch (e) {
+        this.emit(
+          "error",
+          new Error(`Couldn't write to ${this.path}. ${e.message}`),
+          this
+        );
+      }
+    }
+  }
+  File_1 = File;
+  function readFileSyncFromEnd(filePath, bytesCount) {
+    const buffer = Buffer.alloc(bytesCount);
+    const stats = fs2.statSync(filePath);
+    const readLength = Math.min(stats.size, bytesCount);
+    const offset = Math.max(0, stats.size - bytesCount);
+    const fd = fs2.openSync(filePath, "r");
+    const totalBytes = fs2.readSync(fd, buffer, 0, readLength, offset);
+    fs2.closeSync(fd);
+    return buffer.toString("utf8", 0, totalBytes);
+  }
+  return File_1;
+}
+var NullFile_1;
+var hasRequiredNullFile;
+function requireNullFile() {
+  if (hasRequiredNullFile) return NullFile_1;
+  hasRequiredNullFile = 1;
+  const File = requireFile$1();
+  class NullFile extends File {
+    clear() {
+    }
+    crop() {
+    }
+    getSize() {
+      return 0;
+    }
+    isNull() {
+      return true;
+    }
+    writeLine() {
+    }
+  }
+  NullFile_1 = NullFile;
+  return NullFile_1;
+}
+var FileRegistry_1;
+var hasRequiredFileRegistry;
+function requireFileRegistry() {
+  if (hasRequiredFileRegistry) return FileRegistry_1;
+  hasRequiredFileRegistry = 1;
+  const EventEmitter = require$$0$3;
+  const fs2 = require$$0;
+  const path2 = require$$2;
+  const File = requireFile$1();
+  const NullFile = requireNullFile();
+  class FileRegistry extends EventEmitter {
+    constructor() {
+      super();
+      __publicField(this, "store", {});
+      this.emitError = this.emitError.bind(this);
+    }
+    /**
+     * Provide a File object corresponding to the filePath
+     * @param {string} filePath
+     * @param {WriteOptions} [writeOptions]
+     * @param {boolean} [writeAsync]
+     * @return {File}
+     */
+    provide({ filePath, writeOptions = {}, writeAsync = false }) {
+      let file2;
+      try {
+        filePath = path2.resolve(filePath);
+        if (this.store[filePath]) {
+          return this.store[filePath];
+        }
+        file2 = this.createFile({ filePath, writeOptions, writeAsync });
+      } catch (e) {
+        file2 = new NullFile({ path: filePath });
+        this.emitError(e, file2);
+      }
+      file2.on("error", this.emitError);
+      this.store[filePath] = file2;
+      return file2;
+    }
+    /**
+     * @param {string} filePath
+     * @param {WriteOptions} writeOptions
+     * @param {boolean} async
+     * @return {File}
+     * @private
+     */
+    createFile({ filePath, writeOptions, writeAsync }) {
+      this.testFileWriting({ filePath, writeOptions });
+      return new File({ path: filePath, writeOptions, writeAsync });
+    }
+    /**
+     * @param {Error} error
+     * @param {File} file
+     * @private
+     */
+    emitError(error, file2) {
+      this.emit("error", error, file2);
+    }
+    /**
+     * @param {string} filePath
+     * @param {WriteOptions} writeOptions
+     * @private
+     */
+    testFileWriting({ filePath, writeOptions }) {
+      fs2.mkdirSync(path2.dirname(filePath), { recursive: true });
+      fs2.writeFileSync(filePath, "", { flag: "a", mode: writeOptions.mode });
+    }
+  }
+  FileRegistry_1 = FileRegistry;
+  return FileRegistry_1;
+}
+var file;
+var hasRequiredFile;
+function requireFile() {
+  if (hasRequiredFile) return file;
+  hasRequiredFile = 1;
+  const fs2 = require$$0;
+  const os = require$$1;
+  const path2 = require$$2;
+  const FileRegistry = requireFileRegistry();
+  const { transform } = requireTransform();
+  const { removeStyles } = requireStyle();
+  const {
+    format: format2,
+    concatFirstStringElements
+  } = requireFormat();
+  const { toString } = requireObject();
+  file = fileTransportFactory;
+  const globalRegistry = new FileRegistry();
+  function fileTransportFactory(logger, { registry = globalRegistry, externalApi } = {}) {
+    let pathVariables;
+    if (registry.listenerCount("error") < 1) {
+      registry.on("error", (e, file2) => {
+        logConsole(`Can't write to ${file2}`, e);
+      });
+    }
+    return Object.assign(transport, {
+      fileName: getDefaultFileName(logger.variables.processType),
+      format: "[{y}-{m}-{d} {h}:{i}:{s}.{ms}] [{level}]{scope} {text}",
+      getFile,
+      inspectOptions: { depth: 5 },
+      level: "silly",
+      maxSize: 1024 ** 2,
+      readAllLogs,
+      sync: true,
+      transforms: [removeStyles, format2, concatFirstStringElements, toString],
+      writeOptions: { flag: "a", mode: 438, encoding: "utf8" },
+      archiveLogFn(file2) {
+        const oldPath = file2.toString();
+        const inf = path2.parse(oldPath);
+        try {
+          fs2.renameSync(oldPath, path2.join(inf.dir, `${inf.name}.old${inf.ext}`));
+        } catch (e) {
+          logConsole("Could not rotate log", e);
+          const quarterOfMaxSize = Math.round(transport.maxSize / 4);
+          file2.crop(Math.min(quarterOfMaxSize, 256 * 1024));
+        }
+      },
+      resolvePathFn(vars) {
+        return path2.join(vars.libraryDefaultDir, vars.fileName);
+      },
+      setAppName(name) {
+        logger.dependencies.externalApi.setAppName(name);
+      }
+    });
+    function transport(message) {
+      const file2 = getFile(message);
+      const needLogRotation = transport.maxSize > 0 && file2.size > transport.maxSize;
+      if (needLogRotation) {
+        transport.archiveLogFn(file2);
+        file2.reset();
+      }
+      const content = transform({ logger, message, transport });
+      file2.writeLine(content);
+    }
+    function initializeOnFirstAccess() {
+      if (pathVariables) {
+        return;
+      }
+      pathVariables = Object.create(
+        Object.prototype,
+        {
+          ...Object.getOwnPropertyDescriptors(
+            externalApi.getPathVariables()
+          ),
+          fileName: {
+            get() {
+              return transport.fileName;
+            },
+            enumerable: true
+          }
+        }
+      );
+      if (typeof transport.archiveLog === "function") {
+        transport.archiveLogFn = transport.archiveLog;
+        logConsole("archiveLog is deprecated. Use archiveLogFn instead");
+      }
+      if (typeof transport.resolvePath === "function") {
+        transport.resolvePathFn = transport.resolvePath;
+        logConsole("resolvePath is deprecated. Use resolvePathFn instead");
+      }
+    }
+    function logConsole(message, error = null, level = "error") {
+      const data = [`electron-log.transports.file: ${message}`];
+      if (error) {
+        data.push(error);
+      }
+      logger.transports.console({ data, date: /* @__PURE__ */ new Date(), level });
+    }
+    function getFile(msg) {
+      initializeOnFirstAccess();
+      const filePath = transport.resolvePathFn(pathVariables, msg);
+      return registry.provide({
+        filePath,
+        writeAsync: !transport.sync,
+        writeOptions: transport.writeOptions
+      });
+    }
+    function readAllLogs({ fileFilter = (f) => f.endsWith(".log") } = {}) {
+      initializeOnFirstAccess();
+      const logsPath = path2.dirname(transport.resolvePathFn(pathVariables));
+      if (!fs2.existsSync(logsPath)) {
+        return [];
+      }
+      return fs2.readdirSync(logsPath).map((fileName) => path2.join(logsPath, fileName)).filter(fileFilter).map((logPath) => {
+        try {
+          return {
+            path: logPath,
+            lines: fs2.readFileSync(logPath, "utf8").split(os.EOL)
+          };
+        } catch {
+          return null;
+        }
+      }).filter(Boolean);
+    }
+  }
+  function getDefaultFileName(processType = process.type) {
+    switch (processType) {
+      case "renderer":
+        return "renderer.log";
+      case "worker":
+        return "worker.log";
+      default:
+        return "main.log";
+    }
+  }
+  return file;
+}
+var ipc;
+var hasRequiredIpc;
+function requireIpc() {
+  if (hasRequiredIpc) return ipc;
+  hasRequiredIpc = 1;
+  const { maxDepth, toJSON } = requireObject();
+  const { transform } = requireTransform();
+  ipc = ipcTransportFactory;
+  function ipcTransportFactory(logger, { externalApi }) {
+    Object.assign(transport, {
+      depth: 3,
+      eventId: "__ELECTRON_LOG_IPC__",
+      level: logger.isDev ? "silly" : false,
+      transforms: [toJSON, maxDepth]
+    });
+    return (externalApi == null ? void 0 : externalApi.isElectron()) ? transport : void 0;
+    function transport(message) {
+      var _a;
+      if (((_a = message == null ? void 0 : message.variables) == null ? void 0 : _a.processType) === "renderer") {
+        return;
+      }
+      externalApi == null ? void 0 : externalApi.sendIpc(transport.eventId, {
+        ...message,
+        data: transform({ logger, message, transport })
+      });
+    }
+  }
+  return ipc;
+}
+var remote;
+var hasRequiredRemote;
+function requireRemote() {
+  if (hasRequiredRemote) return remote;
+  hasRequiredRemote = 1;
+  const http = require$$0$4;
+  const https = require$$1$1;
+  const { transform } = requireTransform();
+  const { removeStyles } = requireStyle();
+  const { toJSON, maxDepth } = requireObject();
+  remote = remoteTransportFactory;
+  function remoteTransportFactory(logger) {
+    return Object.assign(transport, {
+      client: { name: "electron-application" },
+      depth: 6,
+      level: false,
+      requestOptions: {},
+      transforms: [removeStyles, toJSON, maxDepth],
+      makeBodyFn({ message }) {
+        return JSON.stringify({
+          client: transport.client,
+          data: message.data,
+          date: message.date.getTime(),
+          level: message.level,
+          scope: message.scope,
+          variables: message.variables
+        });
+      },
+      processErrorFn({ error }) {
+        logger.processMessage(
+          {
+            data: [`electron-log: can't POST ${transport.url}`, error],
+            level: "warn"
+          },
+          { transports: ["console", "file"] }
+        );
+      },
+      sendRequestFn({ serverUrl, requestOptions, body }) {
+        const httpTransport = serverUrl.startsWith("https:") ? https : http;
+        const request = httpTransport.request(serverUrl, {
+          method: "POST",
+          ...requestOptions,
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Length": body.length,
+            ...requestOptions.headers
+          }
+        });
+        request.write(body);
+        request.end();
+        return request;
+      }
+    });
+    function transport(message) {
+      if (!transport.url) {
+        return;
+      }
+      const body = transport.makeBodyFn({
+        logger,
+        message: { ...message, data: transform({ logger, message, transport }) },
+        transport
+      });
+      const request = transport.sendRequestFn({
+        serverUrl: transport.url,
+        requestOptions: transport.requestOptions,
+        body: Buffer.from(body, "utf8")
+      });
+      request.on("error", (error) => transport.processErrorFn({
+        error,
+        logger,
+        message,
+        request,
+        transport
+      }));
+    }
+  }
+  return remote;
+}
+var createDefaultLogger_1;
+var hasRequiredCreateDefaultLogger;
+function requireCreateDefaultLogger() {
+  if (hasRequiredCreateDefaultLogger) return createDefaultLogger_1;
+  hasRequiredCreateDefaultLogger = 1;
+  const Logger = requireLogger();
+  const ErrorHandler = requireErrorHandler();
+  const EventLogger = requireEventLogger();
+  const transportConsole = requireConsole();
+  const transportFile = requireFile();
+  const transportIpc = requireIpc();
+  const transportRemote = requireRemote();
+  createDefaultLogger_1 = createDefaultLogger;
+  function createDefaultLogger({ dependencies, initializeFn }) {
+    var _a;
+    const defaultLogger = new Logger({
+      dependencies,
+      errorHandler: new ErrorHandler(),
+      eventLogger: new EventLogger(),
+      initializeFn,
+      isDev: (_a = dependencies.externalApi) == null ? void 0 : _a.isDev(),
+      logId: "default",
+      transportFactories: {
+        console: transportConsole,
+        file: transportFile,
+        ipc: transportIpc,
+        remote: transportRemote
+      },
+      variables: {
+        processType: "main"
+      }
+    });
+    defaultLogger.default = defaultLogger;
+    defaultLogger.Logger = Logger;
+    defaultLogger.processInternalErrorFn = (e) => {
+      defaultLogger.transports.console.writeFn({
+        message: {
+          data: ["Unhandled electron-log error", e],
+          level: "error"
+        }
+      });
+    };
+    return defaultLogger;
+  }
+  return createDefaultLogger_1;
+}
+var main;
+var hasRequiredMain$1;
+function requireMain$1() {
+  if (hasRequiredMain$1) return main;
+  hasRequiredMain$1 = 1;
+  const electron = require$$0$5;
+  const ElectronExternalApi = requireElectronExternalApi();
+  const { initialize: initialize2 } = requireInitialize();
+  const createDefaultLogger = requireCreateDefaultLogger();
+  const externalApi = new ElectronExternalApi({ electron });
+  const defaultLogger = createDefaultLogger({
+    dependencies: { externalApi },
+    initializeFn: initialize2
+  });
+  main = defaultLogger;
+  externalApi.onIpc("__ELECTRON_LOG__", (_, message) => {
+    if (message.scope) {
+      defaultLogger.Logger.getInstance(message).scope(message.scope);
+    }
+    const date = new Date(message.date);
+    processMessage({
+      ...message,
+      date: date.getTime() ? date : /* @__PURE__ */ new Date()
+    });
+  });
+  externalApi.onIpcInvoke("__ELECTRON_LOG__", (_, { cmd = "", logId }) => {
+    switch (cmd) {
+      case "getOptions": {
+        const logger = defaultLogger.Logger.getInstance({ logId });
+        return {
+          levels: logger.levels,
+          logId
+        };
+      }
+      default: {
+        processMessage({ data: [`Unknown cmd '${cmd}'`], level: "error" });
+        return {};
+      }
+    }
+  });
+  function processMessage(message) {
+    var _a;
+    (_a = defaultLogger.Logger.getInstance(message)) == null ? void 0 : _a.processMessage(message);
+  }
+  return main;
+}
+var main_1;
+var hasRequiredMain;
+function requireMain() {
+  if (hasRequiredMain) return main_1;
+  hasRequiredMain = 1;
+  const main2 = requireMain$1();
+  main_1 = main2;
+  return main_1;
+}
+var mainExports = requireMain();
+const log = /* @__PURE__ */ getDefaultExportFromCjs(mainExports);
+let db = null;
+let dbPath = "";
+function getDbPath() {
+  const userDir = require$$0$5.app.getPath("home");
+  const valutaDir = path.join(userDir, ".valuta");
+  if (!fs.existsSync(valutaDir)) {
+    try {
+      fs.mkdirSync(valutaDir, { recursive: true });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new Error(`Nem sikerült létrehozni a valuta mappát: ${valutaDir}. ${message}`);
+    }
+  }
+  return path.join(valutaDir, "local.db");
+}
+function resolveWasmPath() {
+  const candidates = [];
+  if (require$$0$5.app.isPackaged) {
+    candidates.push(path.join(process.resourcesPath, "sql-wasm.wasm"));
+    candidates.push(path.join(require$$0$5.app.getAppPath(), "resources", "sql-wasm.wasm"));
+    candidates.push(path.join(require$$0$5.app.getAppPath(), "sql-wasm.wasm"));
+    candidates.push(path.join(__dirname, "sql-wasm.wasm"));
+  } else {
+    candidates.push(path.join(__dirname, "../node_modules/sql.js/dist/sql-wasm.wasm"));
+    candidates.push(path.join(process.cwd(), "node_modules/sql.js/dist/sql-wasm.wasm"));
+  }
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  throw new Error(`sql-wasm.wasm nem található. Próbált útvonalak: ${candidates.join(" | ")}`);
+}
+async function initDatabase() {
+  try {
+    dbPath = getDbPath();
+    const wasmPath = resolveWasmPath();
+    const wasmBinary = fs.readFileSync(wasmPath);
+    const SQL = await initSqlJs({ wasmBinary });
+    if (fs.existsSync(dbPath)) {
+      const buffer = fs.readFileSync(dbPath);
+      db = new SQL.Database(buffer);
+    } else {
+      db = new SQL.Database();
+    }
+    db.run("PRAGMA foreign_keys = ON;");
+    db.run(`
+      CREATE TABLE IF NOT EXISTS config (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+    db.run(`
+      CREATE TABLE IF NOT EXISTS cached_rates (
+        currency_code TEXT PRIMARY KEY,
+        buy_rate REAL NOT NULL,
+        sell_rate REAL NOT NULL,
+        unit INTEGER NOT NULL DEFAULT 1,
+        updated_at TEXT NOT NULL
+      );
+    `);
+    db.run(`
+      CREATE TABLE IF NOT EXISTS pending_transactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        type TEXT NOT NULL CHECK(type IN ('SELL', 'BUY')),
+        currency_code TEXT NOT NULL,
+        foreign_amount REAL NOT NULL,
+        huf_amount REAL NOT NULL,
+        rounded_huf_amount REAL NOT NULL,
+        rate REAL NOT NULL,
+        customer_id INTEGER,
+        denominations TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        synced INTEGER DEFAULT 0
+      );
+    `);
+    db.run(`
+      CREATE TABLE IF NOT EXISTS cached_customers (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        document_type TEXT NOT NULL,
+        document_number TEXT NOT NULL,
+        nationality TEXT,
+        birth_date TEXT,
+        cached_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+    db.run(`
+      CREATE TABLE IF NOT EXISTS pending_transfers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        target_branch_code TEXT NOT NULL,
+        currency_code TEXT NOT NULL,
+        amount REAL NOT NULL,
+        denominations TEXT,
+        note TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        synced INTEGER DEFAULT 0
+      );
+    `);
+    db.run(`
+      CREATE TABLE IF NOT EXISTS pending_distributions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        target_branch_code TEXT NOT NULL,
+        currency_code TEXT NOT NULL,
+        amount REAL NOT NULL,
+        denominations TEXT,
+        note TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        synced INTEGER DEFAULT 0
+      );
+    `);
+    db.run(`
+      CREATE TABLE IF NOT EXISTS cached_branch_status (
+        branch_code TEXT PRIMARY KEY,
+        branch_name TEXT NOT NULL,
+        company_id INTEGER,
+        last_sync_at TEXT,
+        online_status TEXT DEFAULT 'offline',
+        total_huf_value REAL DEFAULT 0,
+        daily_turnover REAL DEFAULT 0,
+        cash_balances TEXT,
+        cached_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+    db.run(`
+      CREATE TABLE IF NOT EXISTS pending_collections (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        source_branch_code TEXT NOT NULL,
+        currency_code TEXT NOT NULL,
+        amount REAL NOT NULL,
+        note TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        synced INTEGER DEFAULT 0
+      );
+    `);
+    saveDatabase();
+  } catch (err) {
+    const error = err;
+    const errorCode = "code" in error && error.code ? String(error.code) : "unknown";
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const wasmPath = (() => {
+      try {
+        return resolveWasmPath();
+      } catch (resolveErr) {
+        const resolveMessage = resolveErr instanceof Error ? resolveErr.message : String(resolveErr);
+        return `resolve error: ${resolveMessage}`;
+      }
+    })();
+    const details = [
+      `dbPath=${dbPath || "n/a"}`,
+      `wasmPath=${wasmPath}`,
+      `resourcesPath=${process.resourcesPath}`,
+      `appPath=${require$$0$5.app.getAppPath()}`,
+      `isPackaged=${require$$0$5.app.isPackaged}`,
+      `errorCode=${errorCode}`,
+      `errorMessage=${errorMessage}`
+    ].join("\n");
+    throw new Error(`Database init failed:
+${details}`);
+  }
+}
+function saveDatabase() {
+  if (!db) return;
+  const data = db.export();
+  const buffer = Buffer.from(data);
+  fs.writeFileSync(dbPath, buffer);
+}
+function getConfig(key) {
+  if (!db) return null;
+  const stmt = db.prepare("SELECT value FROM config WHERE key = ?");
+  stmt.bind([key]);
+  if (stmt.step()) {
+    const row = stmt.getAsObject();
+    stmt.free();
+    return row["value"] ?? null;
+  }
+  stmt.free();
+  return null;
+}
+function setConfig(key, value) {
+  if (!db) return;
+  if (key.length > 100) {
+    throw new Error(`Config key too long: ${key.length} chars (max 100)`);
+  }
+  if (value.length > 1e4) {
+    throw new Error(`Config value too long: ${value.length} chars (max 10000)`);
+  }
+  db.run(
+    `INSERT INTO config (key, value, updated_at) VALUES (?, ?, datetime('now'))
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+    [key, value]
+  );
+  saveDatabase();
+}
+function deleteConfig(key) {
+  if (!db) return;
+  db.run("DELETE FROM config WHERE key = ?", [key]);
+  saveDatabase();
+}
+function savePendingTransaction(type, currencyCode, foreignAmount, hufAmount, roundedHufAmount, rate, customerId, denominations) {
+  if (!db) throw new Error("Database not initialized");
+  db.run(
+    `INSERT INTO pending_transactions (type, currency_code, foreign_amount, huf_amount, rounded_huf_amount, rate, customer_id, denominations)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [type, currencyCode, foreignAmount, hufAmount, roundedHufAmount, rate, customerId, denominations]
+  );
+  saveDatabase();
+  const stmt = db.prepare("SELECT last_insert_rowid() as id");
+  stmt.step();
+  const row = stmt.getAsObject();
+  stmt.free();
+  return row["id"] ?? 0;
+}
+function getPendingTransactions() {
+  if (!db) return [];
+  const results = [];
+  const stmt = db.prepare("SELECT * FROM pending_transactions WHERE synced = 0 ORDER BY created_at ASC");
+  while (stmt.step()) {
+    const row = stmt.getAsObject();
+    results.push(row);
+  }
+  stmt.free();
+  return results;
+}
+function markTransactionSynced(id) {
+  if (!db) return;
+  db.run("UPDATE pending_transactions SET synced = 1 WHERE id = ?", [id]);
+  saveDatabase();
+}
+function getPendingTransactionCount() {
+  if (!db) return 0;
+  const stmt = db.prepare("SELECT COUNT(*) as cnt FROM pending_transactions WHERE synced = 0");
+  stmt.step();
+  const row = stmt.getAsObject();
+  stmt.free();
+  return row["cnt"] ?? 0;
+}
+function getDb() {
+  return db;
+}
+function savePendingDistribution(targetBranchCode, currencyCode, amount, denominations, note) {
+  if (!db) throw new Error("Database not initialized");
+  db.run(
+    `INSERT INTO pending_distributions (target_branch_code, currency_code, amount, denominations, note)
+     VALUES (?, ?, ?, ?, ?)`,
+    [targetBranchCode, currencyCode, amount, denominations, note]
+  );
+  saveDatabase();
+  const stmt = db.prepare("SELECT last_insert_rowid() as id");
+  stmt.step();
+  const row = stmt.getAsObject();
+  stmt.free();
+  return row["id"] ?? 0;
+}
+function getPendingDistributions() {
+  if (!db) return [];
+  const results = [];
+  const stmt = db.prepare("SELECT * FROM pending_distributions WHERE synced = 0 ORDER BY created_at ASC");
+  while (stmt.step()) {
+    results.push(stmt.getAsObject());
+  }
+  stmt.free();
+  return results;
+}
+function markDistributionSynced(id) {
+  if (!db) return;
+  db.run("UPDATE pending_distributions SET synced = 1 WHERE id = ?", [id]);
+  saveDatabase();
+}
+function savePendingTransfer(targetBranchCode, currencyCode, amount, denominations, note) {
+  if (!db) throw new Error("Database not initialized");
+  db.run(
+    `INSERT INTO pending_transfers (target_branch_code, currency_code, amount, denominations, note)
+     VALUES (?, ?, ?, ?, ?)`,
+    [targetBranchCode, currencyCode, amount, denominations, note]
+  );
+  saveDatabase();
+  const stmt = db.prepare("SELECT last_insert_rowid() as id");
+  stmt.step();
+  const row = stmt.getAsObject();
+  stmt.free();
+  return row["id"] ?? 0;
+}
+function getPendingTransfers() {
+  if (!db) return [];
+  const results = [];
+  const stmt = db.prepare("SELECT * FROM pending_transfers WHERE synced = 0 ORDER BY created_at ASC");
+  while (stmt.step()) {
+    results.push(stmt.getAsObject());
+  }
+  stmt.free();
+  return results;
+}
+function markTransferSynced(id) {
+  if (!db) return;
+  db.run("UPDATE pending_transfers SET synced = 1 WHERE id = ?", [id]);
+  saveDatabase();
+}
+function savePendingCollection(sourceBranchCode, currencyCode, amount, note) {
+  if (!db) throw new Error("Database not initialized");
+  db.run(
+    `INSERT INTO pending_collections (source_branch_code, currency_code, amount, note)
+     VALUES (?, ?, ?, ?)`,
+    [sourceBranchCode, currencyCode, amount, note]
+  );
+  saveDatabase();
+  const stmt = db.prepare("SELECT last_insert_rowid() as id");
+  stmt.step();
+  const row = stmt.getAsObject();
+  stmt.free();
+  return row["id"] ?? 0;
+}
+function getPendingCollections() {
+  if (!db) return [];
+  const results = [];
+  const stmt = db.prepare("SELECT * FROM pending_collections WHERE synced = 0 ORDER BY created_at ASC");
+  while (stmt.step()) {
+    results.push(stmt.getAsObject());
+  }
+  stmt.free();
+  return results;
+}
+function markCollectionSynced(id) {
+  if (!db) return;
+  db.run("UPDATE pending_collections SET synced = 1 WHERE id = ?", [id]);
+  saveDatabase();
+}
+function saveCachedBranchStatus(branchCode, branchName, companyId, lastSyncAt, onlineStatus, totalHufValue, dailyTurnover, cashBalances) {
+  if (!db) return;
+  db.run(
+    `INSERT INTO cached_branch_status (branch_code, branch_name, company_id, last_sync_at, online_status, total_huf_value, daily_turnover, cash_balances, cached_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
      ON CONFLICT(branch_code) DO UPDATE SET
        branch_name = excluded.branch_name,
@@ -96,14 +2535,485 @@
        total_huf_value = excluded.total_huf_value,
        daily_turnover = excluded.daily_turnover,
        cash_balances = excluded.cash_balances,
-       cached_at = excluded.cached_at`,[s,i,c,m,p,y,C,k]),j())}function Qn(){if(!E)return[];const s=[],i=E.prepare("SELECT * FROM cached_branch_status ORDER BY branch_code ASC");for(;i.step();)s.push(i.getAsObject());return i.free(),s}function Zn(){if(!E)return null;const s=E.prepare("SELECT MAX(cached_at) as last_cached FROM cached_branch_status");s.step();const i=s.getAsObject();return s.free(),i.last_cached??null}function Kn(){if(!E)return[];const s=[],i=E.prepare("SELECT * FROM cached_rates ORDER BY currency_code ASC");for(;i.step();)s.push(i.getAsObject());return i.free(),s}const ie="\x1B",ye="",T={INIT:`${ie}@`,ALIGN_CENTER:`${ie}a`,ALIGN_LEFT:`${ie}a\0`,BOLD_ON:`${ie}E`,BOLD_OFF:`${ie}E\0`,DOUBLE_WIDTH:`${ye}!`,DOUBLE_HEIGHT:`${ye}!`,DOUBLE_BOTH:`${ye}!`,NORMAL_SIZE:`${ye}!\0`,UNDERLINE_ON:`${ie}-`,UNDERLINE_OFF:`${ie}-\0`,CUT_PAPER:`${ye}V\0`,PARTIAL_CUT:`${ye}V`,FEED_LINES:s=>`${ie}d${String.fromCharCode(s)}`,LINE:"─".repeat(42),DOUBLE_LINE:"═".repeat(42)},Ar={BEST_CHANGE:{name:"BEST CHANGE",fullName:"EXCLUSIVE BEST CHANGE ZRT.",taxNumber:"32313332-2-02",address:"Szeged, Kárász u. 5."},EXPRESSZ:{name:"EXPRESSZ",fullName:"EXPRESSZ ÉKSZERHÁZ ÉS MINIBANK KFT.",taxNumber:"14040535-2-02",address:"Szeged, Klauzál tér 3."}},Jn={sell:"ELADÁSI BIZONYLAT",buy:"VÁSÁRLÁSI BIZONYLAT",transfer:"ÁTADÁS-ÁTVÉTELI BIZONYLAT",storno:"STORNÓ BIZONYLAT",closing:"NAPI ZÁRÁS"};function ei(s){const i=Ar[s.companyType]??Ar.BEST_CHANGE,c=[];if(c.push(T.INIT),c.push(T.ALIGN_CENTER),c.push(T.BOLD_ON),c.push(T.DOUBLE_BOTH),c.push(i.name),c.push(T.NORMAL_SIZE),c.push(i.fullName),c.push(T.BOLD_OFF),c.push(i.address),c.push(`Adószám: ${i.taxNumber}`),c.push(""),c.push(T.DOUBLE_LINE),c.push(""),c.push(T.BOLD_ON),c.push(T.DOUBLE_HEIGHT),c.push(Jn[s.type]),c.push(T.NORMAL_SIZE),c.push(T.BOLD_OFF),c.push(""),c.push(T.ALIGN_LEFT),c.push(`Bizonylat: ${s.receiptNumber}`),c.push(`Dátum:     ${s.date}  ${s.time}`),c.push(`Pénztár:   ${s.branchCode}`),c.push(`Pénztáros: ${s.cashierName}`),c.push(""),c.push(T.LINE),s.type==="sell"||s.type==="buy"?c.push(...ti(s)):s.type==="transfer"?c.push(...ri(s)):s.type==="storno"?c.push(...ni(s)):s.type==="closing"&&c.push(...ii(s)),s.customerName&&(c.push(""),c.push(T.LINE),c.push(T.BOLD_ON),c.push("ÜGYFÉL ADATOK:"),c.push(T.BOLD_OFF),c.push(`Név:      ${s.customerName}`),s.customerDocType&&c.push(`Igazolv.: ${s.customerDocType}`),s.customerDocNumber&&c.push(`Szám:     ${s.customerDocNumber}`)),s.receiptNumber&&(s.type==="sell"||s.type==="buy")){c.push(""),c.push(T.LINE),c.push(T.ALIGN_CENTER),c.push(""),c.push(T.BOLD_ON),c.push("QR KÓD:"),c.push(T.BOLD_OFF);const m=[s.receiptNumber,s.date,(s.roundedHufAmount??s.hufAmount??0).toString(),s.currencyCode??"HUF",i.taxNumber,s.branchCode].join("|");c.push(`[QR:${m}]`),c.push("")}return c.push(""),c.push(T.DOUBLE_LINE),c.push(T.ALIGN_CENTER),c.push("Köszönjük, hogy minket választott!"),c.push(""),c.push(T.FEED_LINES(4)),c.push(T.PARTIAL_CUT),c.join(`
-`)}function ti(s){const i=[],c=s.type==="sell";return i.push(""),i.push(T.BOLD_ON),i.push(c?"Deviza eladás (HUF → valuta):":"Deviza vásárlás (valuta → HUF):"),i.push(T.BOLD_OFF),i.push(""),i.push(`Valutanem:   ${s.currencyCode??"—"}`),i.push(`Összeg:      ${P(s.foreignAmount)} ${s.currencyCode??""}`),i.push(`Árfolyam:    ${oi(s.rate)}`),i.push(""),i.push(T.LINE),i.push(T.BOLD_ON),i.push(`HUF összeg:  ${P(s.hufAmount)} Ft`),s.roundedHufAmount!==void 0&&s.roundingDiff!==void 0&&s.roundingDiff!==0?(i.push(`Kerekítés:   ${P(s.roundingDiff)} Ft`),i.push(T.DOUBLE_HEIGHT),i.push(`FIZETENDŐ:   ${P(s.roundedHufAmount)} Ft`),i.push(T.NORMAL_SIZE)):(i.push(T.DOUBLE_HEIGHT),i.push(`FIZETENDŐ:   ${P(s.roundedHufAmount??s.hufAmount)} Ft`),i.push(T.NORMAL_SIZE)),i.push(T.BOLD_OFF),i}function ri(s){const i=[];return i.push(""),i.push(T.BOLD_ON),i.push("Átadás-átvétel:"),i.push(T.BOLD_OFF),i.push(""),i.push(`Cél pénztár: ${s.transferTarget??"—"}`),i.push(`Valutanem:   ${s.currencyCode??"—"}`),i.push(`Összeg:      ${P(s.foreignAmount)} ${s.currencyCode??""}`),s.transferNote&&i.push(`Megjegyzés:  ${s.transferNote}`),i}function ni(s){const i=[];return i.push(""),i.push(T.BOLD_ON),i.push("STORNÓ:"),i.push(T.BOLD_OFF),i.push(""),i.push(`Eredeti biz.: ${s.originalReceiptNumber??"—"}`),i.push(`Valutanem:    ${s.currencyCode??"—"}`),i.push(`Összeg:       ${P(s.foreignAmount)} ${s.currencyCode??""}`),i.push(`HUF összeg:   ${P(s.hufAmount)} Ft`),s.stornoReason&&(i.push(""),i.push(`Indok: ${s.stornoReason}`)),i}function ii(s){const i=[],c=s.closingSummary;if(!c)return i.push(""),i.push("(Nincs zárási adat)"),i;if(i.push(""),i.push(T.BOLD_ON),i.push("FORGALMI ÖSSZESÍTŐ:"),i.push(T.BOLD_OFF),i.push(""),i.push(`Összes tranzakció: ${c.totalTransactions}`),i.push(`  - Eladás:        ${c.sellCount}`),i.push(`  - Vásárlás:      ${c.buyCount}`),i.push(""),i.push(`HUF forgalom:      ${P(c.totalHufTurnover)} Ft`),i.push(`Díjbevétel:        ${P(c.totalFees)} Ft`),i.push(""),i.push(T.LINE),i.push(`Nyitó egyenleg:    ${P(c.openingBalance)} Ft`),i.push(`Záró egyenleg:     ${P(c.closingBalance)} Ft`),c.discrepancies.length>0){i.push(""),i.push(T.BOLD_ON),i.push("ELTÉRÉSEK:"),i.push(T.BOLD_OFF);for(const m of c.discrepancies)i.push(`  ${m.currencyCode}: várt ${P(m.expected)} → tény ${P(m.actual)} (${P(m.difference)})`)}return i}function P(s){return s===void 0?"—":s.toLocaleString("hu-HU",{maximumFractionDigits:2})}function oi(s){return s===void 0?"—":s.toLocaleString("hu-HU",{minimumFractionDigits:2,maximumFractionDigits:4})}async function si(s){try{const i=ei(s);return console.log("[PRINTER] Bizonylat nyomtatás:",s.type,s.receiptNumber),console.log(i),!0}catch(i){return console.error("[PRINTER] Nyomtatási hiba:",i),!1}}async function Ot(s,i){const c={"Content-Type":"application/json"};i&&(c.Authorization=`Bearer ${i}`);const m=await fetch(s,{method:"GET",headers:c,signal:AbortSignal.timeout(1e4)});if(!m.ok)throw new Error(`HTTP ${m.status}: ${m.statusText}`);return m.json()}async function Ve(s,i,c){const m={"Content-Type":"application/json"};c&&(m.Authorization=`Bearer ${c}`);const p=await fetch(s,{method:"POST",headers:m,body:JSON.stringify(i),signal:AbortSignal.timeout(15e3)});if(!p.ok)throw new Error(`HTTP ${p.status}: ${p.statusText}`);return p.json()}class ai{constructor(){Q(this,"intervalId",null);Q(this,"status",{lastSyncAt:null,lastSyncResult:null,isRunning:!1})}getServerUrl(){return Rt("server_url")??"http://localhost:8080/api/v1"}getAuthToken(){return Rt("auth_token")}start(i=3e4){this.intervalId&&(console.log("[SyncEngine] Már fut, újraindítás..."),this.stop()),console.log(`[SyncEngine] Indítás — ${i}ms intervallum`),setTimeout(()=>{this.runSync()},5e3),this.intervalId=setInterval(()=>{this.runSync()},i)}stop(){this.intervalId&&(clearInterval(this.intervalId),this.intervalId=null,console.log("[SyncEngine] Leállítva"))}async runSync(){if(this.status.isRunning){console.log("[SyncEngine] Előző sync még fut, kihagyás");return}this.status.isRunning=!0;try{const i=await this.syncAll();this.status.lastSyncResult=i,i.synced>0&&console.log(`[SyncEngine] ${i.synced} tranzakció szinkronizálva`),i.failed>0&&console.warn(`[SyncEngine] ${i.failed} tranzakció SIKERTELEN:`,i.errors),this.getAuthToken()&&(await this.syncRates(),await this.syncCirculars(),await this.syncDistributions(),await this.syncTransfers(),await this.syncCollections(),await this.cacheBranchStatus()),this.status.lastSyncAt=new Date().toISOString()}catch(i){console.error("[SyncEngine] Sync hiba:",i)}finally{this.status.isRunning=!1}}async syncAll(){const i={synced:0,failed:0,errors:[]},c=Sr();if(c.length===0)return i;const m=this.getServerUrl(),p=this.getAuthToken();if(!p)return i.errors.push("Nincs auth token — bejelentkezés szükséges"),i.failed=c.length,i;for(const y of c)try{await this.syncTransaction(m,p,y),Or(y.id),i.synced++}catch(C){const k=C instanceof Error?C.message:String(C);if(i.failed++,i.errors.push(`TX #${y.id} (${y.type} ${y.currency_code}): ${k}`),k.includes("fetch")||k.includes("network")||k.includes("timeout")){i.errors.push("Hálózati hiba — további próbálkozások leállítva"),i.failed+=c.length-i.synced-i.failed;break}}return i}async syncTransaction(i,c,m){const p=m.type==="SELL"?`${i}/transactions/sell`:`${i}/transactions/buy`,y={currencyCode:m.currency_code,foreignAmount:m.foreign_amount,hufAmount:m.huf_amount,roundedHufAmount:m.rounded_huf_amount,rate:m.rate};if(m.customer_id!==null&&(y.customerId=m.customer_id),m.denominations!==null)try{y.denominations=JSON.parse(m.denominations)}catch{y.denominations=m.denominations}await Ve(p,y,c)}async syncRates(){try{const i=this.getServerUrl(),c=this.getAuthToken(),m=await Ot(`${i}/rates`,c),p=Nr();if(!p||!Array.isArray(m))return;for(const y of m)p.run(`INSERT INTO cached_rates (currency_code, buy_rate, sell_rate, unit, updated_at)
+       cached_at = excluded.cached_at`,
+    [branchCode, branchName, companyId, lastSyncAt, onlineStatus, totalHufValue, dailyTurnover, cashBalances]
+  );
+  saveDatabase();
+}
+function getCachedBranchStatuses() {
+  if (!db) return [];
+  const results = [];
+  const stmt = db.prepare("SELECT * FROM cached_branch_status ORDER BY branch_code ASC");
+  while (stmt.step()) {
+    results.push(stmt.getAsObject());
+  }
+  stmt.free();
+  return results;
+}
+function getCachedBranchStatusTimestamp() {
+  if (!db) return null;
+  const stmt = db.prepare("SELECT MAX(cached_at) as last_cached FROM cached_branch_status");
+  stmt.step();
+  const row = stmt.getAsObject();
+  stmt.free();
+  return row["last_cached"] ?? null;
+}
+function getCachedRates() {
+  if (!db) return [];
+  const results = [];
+  const stmt = db.prepare("SELECT * FROM cached_rates ORDER BY currency_code ASC");
+  while (stmt.step()) {
+    results.push(stmt.getAsObject());
+  }
+  stmt.free();
+  return results;
+}
+const ESC = "\x1B";
+const GS = "";
+const CMD = {
+  INIT: `${ESC}@`,
+  ALIGN_CENTER: `${ESC}a`,
+  ALIGN_LEFT: `${ESC}a\0`,
+  BOLD_ON: `${ESC}E`,
+  BOLD_OFF: `${ESC}E\0`,
+  DOUBLE_WIDTH: `${GS}!`,
+  DOUBLE_HEIGHT: `${GS}!`,
+  DOUBLE_BOTH: `${GS}!`,
+  NORMAL_SIZE: `${GS}!\0`,
+  UNDERLINE_ON: `${ESC}-`,
+  UNDERLINE_OFF: `${ESC}-\0`,
+  CUT_PAPER: `${GS}V\0`,
+  PARTIAL_CUT: `${GS}V`,
+  FEED_LINES: (n) => `${ESC}d${String.fromCharCode(n)}`,
+  LINE: "─".repeat(42),
+  DOUBLE_LINE: "═".repeat(42)
+};
+const COMPANIES = {
+  BEST_CHANGE: {
+    name: "BEST CHANGE",
+    fullName: "EXCLUSIVE BEST CHANGE ZRT.",
+    taxNumber: "32313332-2-02",
+    address: "Szeged, Kárász u. 5."
+  },
+  EXPRESSZ: {
+    name: "EXPRESSZ",
+    fullName: "EXPRESSZ ÉKSZERHÁZ ÉS MINIBANK KFT.",
+    taxNumber: "14040535-2-02",
+    address: "Szeged, Klauzál tér 3."
+  }
+};
+const JOB_TYPE_LABELS = {
+  sell: "ELADÁSI BIZONYLAT",
+  buy: "VÁSÁRLÁSI BIZONYLAT",
+  transfer: "ÁTADÁS-ÁTVÉTELI BIZONYLAT",
+  storno: "STORNÓ BIZONYLAT",
+  closing: "NAPI ZÁRÁS"
+};
+function generateReceiptContent(data) {
+  const company = COMPANIES[data.companyType] ?? COMPANIES["BEST_CHANGE"];
+  const lines = [];
+  lines.push(CMD.INIT);
+  lines.push(CMD.ALIGN_CENTER);
+  lines.push(CMD.BOLD_ON);
+  lines.push(CMD.DOUBLE_BOTH);
+  lines.push(company.name);
+  lines.push(CMD.NORMAL_SIZE);
+  lines.push(company.fullName);
+  lines.push(CMD.BOLD_OFF);
+  lines.push(company.address);
+  lines.push(`Adószám: ${company.taxNumber}`);
+  lines.push("");
+  lines.push(CMD.DOUBLE_LINE);
+  lines.push("");
+  lines.push(CMD.BOLD_ON);
+  lines.push(CMD.DOUBLE_HEIGHT);
+  lines.push(JOB_TYPE_LABELS[data.type]);
+  lines.push(CMD.NORMAL_SIZE);
+  lines.push(CMD.BOLD_OFF);
+  lines.push("");
+  lines.push(CMD.ALIGN_LEFT);
+  lines.push(`Bizonylat: ${data.receiptNumber}`);
+  lines.push(`Dátum:     ${data.date}  ${data.time}`);
+  lines.push(`Pénztár:   ${data.branchCode}`);
+  lines.push(`Pénztáros: ${data.cashierName}`);
+  lines.push("");
+  lines.push(CMD.LINE);
+  if (data.type === "sell" || data.type === "buy") {
+    lines.push(...generateTransactionLines(data));
+  } else if (data.type === "transfer") {
+    lines.push(...generateTransferLines(data));
+  } else if (data.type === "storno") {
+    lines.push(...generateStornoLines(data));
+  } else if (data.type === "closing") {
+    lines.push(...generateClosingLines(data));
+  }
+  if (data.customerName) {
+    lines.push("");
+    lines.push(CMD.LINE);
+    lines.push(CMD.BOLD_ON);
+    lines.push("ÜGYFÉL ADATOK:");
+    lines.push(CMD.BOLD_OFF);
+    lines.push(`Név:      ${data.customerName}`);
+    if (data.customerDocType) {
+      lines.push(`Igazolv.: ${data.customerDocType}`);
+    }
+    if (data.customerDocNumber) {
+      lines.push(`Szám:     ${data.customerDocNumber}`);
+    }
+  }
+  if (data.receiptNumber && (data.type === "sell" || data.type === "buy")) {
+    lines.push("");
+    lines.push(CMD.LINE);
+    lines.push(CMD.ALIGN_CENTER);
+    lines.push("");
+    lines.push(CMD.BOLD_ON);
+    lines.push("QR KÓD:");
+    lines.push(CMD.BOLD_OFF);
+    const qrContent = [
+      data.receiptNumber,
+      data.date,
+      (data.roundedHufAmount ?? data.hufAmount ?? 0).toString(),
+      data.currencyCode ?? "HUF",
+      company.taxNumber,
+      data.branchCode
+    ].join("|");
+    lines.push(`[QR:${qrContent}]`);
+    lines.push("");
+  }
+  lines.push("");
+  lines.push(CMD.DOUBLE_LINE);
+  lines.push(CMD.ALIGN_CENTER);
+  lines.push("Köszönjük, hogy minket választott!");
+  lines.push("");
+  lines.push(CMD.FEED_LINES(4));
+  lines.push(CMD.PARTIAL_CUT);
+  return lines.join("\n");
+}
+function generateTransactionLines(data) {
+  const lines = [];
+  const isSell = data.type === "sell";
+  lines.push("");
+  lines.push(CMD.BOLD_ON);
+  lines.push(isSell ? "Deviza eladás (HUF → valuta):" : "Deviza vásárlás (valuta → HUF):");
+  lines.push(CMD.BOLD_OFF);
+  lines.push("");
+  lines.push(`Valutanem:   ${data.currencyCode ?? "—"}`);
+  lines.push(`Összeg:      ${formatAmount(data.foreignAmount)} ${data.currencyCode ?? ""}`);
+  lines.push(`Árfolyam:    ${formatRate(data.rate)}`);
+  lines.push("");
+  lines.push(CMD.LINE);
+  lines.push(CMD.BOLD_ON);
+  lines.push(`HUF összeg:  ${formatAmount(data.hufAmount)} Ft`);
+  if (data.roundedHufAmount !== void 0 && data.roundingDiff !== void 0 && data.roundingDiff !== 0) {
+    lines.push(`Kerekítés:   ${formatAmount(data.roundingDiff)} Ft`);
+    lines.push(CMD.DOUBLE_HEIGHT);
+    lines.push(`FIZETENDŐ:   ${formatAmount(data.roundedHufAmount)} Ft`);
+    lines.push(CMD.NORMAL_SIZE);
+  } else {
+    lines.push(CMD.DOUBLE_HEIGHT);
+    lines.push(`FIZETENDŐ:   ${formatAmount(data.roundedHufAmount ?? data.hufAmount)} Ft`);
+    lines.push(CMD.NORMAL_SIZE);
+  }
+  lines.push(CMD.BOLD_OFF);
+  return lines;
+}
+function generateTransferLines(data) {
+  const lines = [];
+  lines.push("");
+  lines.push(CMD.BOLD_ON);
+  lines.push("Átadás-átvétel:");
+  lines.push(CMD.BOLD_OFF);
+  lines.push("");
+  lines.push(`Cél pénztár: ${data.transferTarget ?? "—"}`);
+  lines.push(`Valutanem:   ${data.currencyCode ?? "—"}`);
+  lines.push(`Összeg:      ${formatAmount(data.foreignAmount)} ${data.currencyCode ?? ""}`);
+  if (data.transferNote) {
+    lines.push(`Megjegyzés:  ${data.transferNote}`);
+  }
+  return lines;
+}
+function generateStornoLines(data) {
+  const lines = [];
+  lines.push("");
+  lines.push(CMD.BOLD_ON);
+  lines.push("STORNÓ:");
+  lines.push(CMD.BOLD_OFF);
+  lines.push("");
+  lines.push(`Eredeti biz.: ${data.originalReceiptNumber ?? "—"}`);
+  lines.push(`Valutanem:    ${data.currencyCode ?? "—"}`);
+  lines.push(`Összeg:       ${formatAmount(data.foreignAmount)} ${data.currencyCode ?? ""}`);
+  lines.push(`HUF összeg:   ${formatAmount(data.hufAmount)} Ft`);
+  if (data.stornoReason) {
+    lines.push("");
+    lines.push(`Indok: ${data.stornoReason}`);
+  }
+  return lines;
+}
+function generateClosingLines(data) {
+  const lines = [];
+  const summary = data.closingSummary;
+  if (!summary) {
+    lines.push("");
+    lines.push("(Nincs zárási adat)");
+    return lines;
+  }
+  lines.push("");
+  lines.push(CMD.BOLD_ON);
+  lines.push("FORGALMI ÖSSZESÍTŐ:");
+  lines.push(CMD.BOLD_OFF);
+  lines.push("");
+  lines.push(`Összes tranzakció: ${summary.totalTransactions}`);
+  lines.push(`  - Eladás:        ${summary.sellCount}`);
+  lines.push(`  - Vásárlás:      ${summary.buyCount}`);
+  lines.push("");
+  lines.push(`HUF forgalom:      ${formatAmount(summary.totalHufTurnover)} Ft`);
+  lines.push(`Díjbevétel:        ${formatAmount(summary.totalFees)} Ft`);
+  lines.push("");
+  lines.push(CMD.LINE);
+  lines.push(`Nyitó egyenleg:    ${formatAmount(summary.openingBalance)} Ft`);
+  lines.push(`Záró egyenleg:     ${formatAmount(summary.closingBalance)} Ft`);
+  if (summary.discrepancies.length > 0) {
+    lines.push("");
+    lines.push(CMD.BOLD_ON);
+    lines.push("ELTÉRÉSEK:");
+    lines.push(CMD.BOLD_OFF);
+    for (const d of summary.discrepancies) {
+      lines.push(`  ${d.currencyCode}: várt ${formatAmount(d.expected)} → tény ${formatAmount(d.actual)} (${formatAmount(d.difference)})`);
+    }
+  }
+  return lines;
+}
+function formatAmount(value) {
+  if (value === void 0) return "—";
+  return value.toLocaleString("hu-HU", { maximumFractionDigits: 2 });
+}
+function formatRate(value) {
+  if (value === void 0) return "—";
+  return value.toLocaleString("hu-HU", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+}
+async function printReceipt(data) {
+  try {
+    const content = generateReceiptContent(data);
+    console.log("[PRINTER] Bizonylat nyomtatás:", data.type, data.receiptNumber);
+    console.log(content);
+    return true;
+  } catch (err) {
+    console.error("[PRINTER] Nyomtatási hiba:", err);
+    return false;
+  }
+}
+async function httpGet(url, token) {
+  const headers = {
+    "Content-Type": "application/json"
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  const response = await fetch(url, {
+    method: "GET",
+    headers,
+    signal: AbortSignal.timeout(1e4)
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+  return response.json();
+}
+async function httpPost(url, body, token) {
+  const headers = {
+    "Content-Type": "application/json"
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(15e3)
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+  return response.json();
+}
+class SyncEngine {
+  constructor() {
+    __publicField(this, "intervalId", null);
+    __publicField(this, "status", {
+      lastSyncAt: null,
+      lastSyncResult: null,
+      isRunning: false
+    });
+  }
+  getServerUrl() {
+    const stored = getConfig("server_url");
+    return stored ?? "http://localhost:8080/api/v1";
+  }
+  getAuthToken() {
+    return getConfig("auth_token");
+  }
+  /**
+   * Szinkronizáció indítása — periodikus (alapértelmezetten 30s).
+   */
+  start(intervalMs = 3e4) {
+    if (this.intervalId) {
+      console.log("[SyncEngine] Már fut, újraindítás...");
+      this.stop();
+    }
+    console.log(`[SyncEngine] Indítás — ${intervalMs}ms intervallum`);
+    setTimeout(() => {
+      void this.runSync();
+    }, 5e3);
+    this.intervalId = setInterval(() => {
+      void this.runSync();
+    }, intervalMs);
+  }
+  /**
+   * Szinkronizáció leállítása.
+   */
+  stop() {
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+      console.log("[SyncEngine] Leállítva");
+    }
+  }
+  /**
+   * Teljes szinkronizálási ciklus futtatása.
+   */
+  async runSync() {
+    if (this.status.isRunning) {
+      console.log("[SyncEngine] Előző sync még fut, kihagyás");
+      return;
+    }
+    this.status.isRunning = true;
+    try {
+      const result = await this.syncAll();
+      this.status.lastSyncResult = result;
+      if (result.synced > 0) {
+        console.log(`[SyncEngine] ${result.synced} tranzakció szinkronizálva`);
+      }
+      if (result.failed > 0) {
+        console.warn(`[SyncEngine] ${result.failed} tranzakció SIKERTELEN:`, result.errors);
+      }
+      if (this.getAuthToken()) {
+        await this.syncRates();
+        await this.syncCirculars();
+        await this.syncDistributions();
+        await this.syncTransfers();
+        await this.syncCollections();
+        await this.cacheBranchStatus();
+      }
+      this.status.lastSyncAt = (/* @__PURE__ */ new Date()).toISOString();
+    } catch (err) {
+      console.error("[SyncEngine] Sync hiba:", err);
+    } finally {
+      this.status.isRunning = false;
+    }
+  }
+  /**
+   * Pending tranzakciók szinkronizálása a szerverrel.
+   */
+  async syncAll() {
+    const result = { synced: 0, failed: 0, errors: [] };
+    const pending = getPendingTransactions();
+    if (pending.length === 0) {
+      return result;
+    }
+    const serverUrl = this.getServerUrl();
+    const token = this.getAuthToken();
+    if (!token) {
+      result.errors.push("Nincs auth token — bejelentkezés szükséges");
+      result.failed = pending.length;
+      return result;
+    }
+    for (const tx of pending) {
+      try {
+        await this.syncTransaction(serverUrl, token, tx);
+        markTransactionSynced(tx.id);
+        result.synced++;
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        result.failed++;
+        result.errors.push(`TX #${tx.id} (${tx.type} ${tx.currency_code}): ${errorMsg}`);
+        if (errorMsg.includes("fetch") || errorMsg.includes("network") || errorMsg.includes("timeout")) {
+          result.errors.push("Hálózati hiba — további próbálkozások leállítva");
+          result.failed += pending.length - result.synced - result.failed;
+          break;
+        }
+      }
+    }
+    return result;
+  }
+  /**
+   * Egyedi tranzakció szinkronizálása.
+   */
+  async syncTransaction(serverUrl, token, tx) {
+    const endpoint = tx.type === "SELL" ? `${serverUrl}/transactions/sell` : `${serverUrl}/transactions/buy`;
+    const body = {
+      currencyCode: tx.currency_code,
+      foreignAmount: tx.foreign_amount,
+      hufAmount: tx.huf_amount,
+      roundedHufAmount: tx.rounded_huf_amount,
+      rate: tx.rate
+    };
+    if (tx.customer_id !== null) {
+      body["customerId"] = tx.customer_id;
+    }
+    if (tx.denominations !== null) {
+      try {
+        body["denominations"] = JSON.parse(tx.denominations);
+      } catch {
+        body["denominations"] = tx.denominations;
+      }
+    }
+    await httpPost(endpoint, body, token);
+  }
+  /**
+   * Árfolyamok letöltése és SQLite cache frissítése.
+   */
+  async syncRates() {
+    try {
+      const serverUrl = this.getServerUrl();
+      const token = this.getAuthToken();
+      const rates = await httpGet(
+        `${serverUrl}/rates`,
+        token
+      );
+      const db2 = getDb();
+      if (!db2 || !Array.isArray(rates)) return;
+      for (const rate of rates) {
+        db2.run(
+          `INSERT INTO cached_rates (currency_code, buy_rate, sell_rate, unit, updated_at)
            VALUES (?, ?, ?, ?, ?)
            ON CONFLICT(currency_code) DO UPDATE SET
              buy_rate = excluded.buy_rate,
              sell_rate = excluded.sell_rate,
              unit = excluded.unit,
-             updated_at = excluded.updated_at`,[y.currencyCode,y.buyRate,y.sellRate,y.unit,y.updatedAt]);console.log(`[SyncEngine] ${m.length} árfolyam frissítve`)}catch(i){console.warn("[SyncEngine] Árfolyam sync hiba:",i instanceof Error?i.message:i)}}async syncCirculars(){try{const i=this.getServerUrl(),c=this.getAuthToken(),m=await Ot(`${i}/circulars`,c),p=Nr();if(!p||!Array.isArray(m))return;p.run(`
+             updated_at = excluded.updated_at`,
+          [rate.currencyCode, rate.buyRate, rate.sellRate, rate.unit, rate.updatedAt]
+        );
+      }
+      console.log(`[SyncEngine] ${rates.length} árfolyam frissítve`);
+    } catch (err) {
+      console.warn("[SyncEngine] Árfolyam sync hiba:", err instanceof Error ? err.message : err);
+    }
+  }
+  /**
+   * Körlevelek letöltése és SQLite-ba mentése.
+   */
+  async syncCirculars() {
+    try {
+      const serverUrl = this.getServerUrl();
+      const token = this.getAuthToken();
+      const circulars = await httpGet(
+        `${serverUrl}/circulars`,
+        token
+      );
+      const db2 = getDb();
+      if (!db2 || !Array.isArray(circulars)) return;
+      db2.run(`
         CREATE TABLE IF NOT EXISTS cached_circulars (
           id INTEGER PRIMARY KEY,
           subject TEXT NOT NULL,
@@ -113,10 +3023,479 @@
           acknowledged INTEGER DEFAULT 0,
           cached_at TEXT DEFAULT (datetime('now'))
         )
-      `);for(const y of m)p.run(`INSERT INTO cached_circulars (id, subject, body, sender, sent_at)
+      `);
+      for (const circular of circulars) {
+        db2.run(
+          `INSERT INTO cached_circulars (id, subject, body, sender, sent_at)
            VALUES (?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              subject = excluded.subject,
              body = excluded.body,
              sender = excluded.sender,
-             sent_at = excluded.sent_at`,[y.id,y.subject,y.body,y.sender,y.sentAt]);m.length>0&&console.log(`[SyncEngine] ${m.length} körlevél szinkronizálva`)}catch(i){console.warn("[SyncEngine] Körlevél sync hiba:",i instanceof Error?i.message:i)}}async syncDistributions(){try{const i=xn();if(i.length===0)return;const c=this.getServerUrl(),m=this.getAuthToken();if(!m)return;for(const p of i)try{const y={targetBranchCode:p.target_branch_code,currencyCode:p.currency_code,amount:p.amount};if(p.denominations)try{y.denominations=JSON.parse(p.denominations)}catch{}p.note&&(y.note=p.note),await Ve(`${c}/ertektar/distribution`,y,m),zn(p.id)}catch(y){console.warn(`[SyncEngine] Distribution #${p.id} sync hiba:`,y instanceof Error?y.message:y);break}}catch(i){console.warn("[SyncEngine] Distribution sync hiba:",i instanceof Error?i.message:i)}}async syncTransfers(){try{const i=jn();if(i.length===0)return;const c=this.getServerUrl(),m=this.getAuthToken();if(!m)return;for(const p of i)try{const y={targetBranchCode:p.target_branch_code,currencyCode:p.currency_code,amount:p.amount};if(p.denominations)try{y.denominations=JSON.parse(p.denominations)}catch{}p.note&&(y.note=p.note),await Ve(`${c}/transfers`,y,m),Wn(p.id)}catch(y){console.warn(`[SyncEngine] Transfer #${p.id} sync hiba:`,y instanceof Error?y.message:y);break}}catch(i){console.warn("[SyncEngine] Transfer sync hiba:",i instanceof Error?i.message:i)}}async syncCollections(){try{const i=Yn();if(i.length===0)return;const c=this.getServerUrl(),m=this.getAuthToken();if(!m)return;for(const p of i)try{const y={sourceBranchCode:p.source_branch_code,currencyCode:p.currency_code,amount:p.amount};p.note&&(y.note=p.note),await Ve(`${c}/ertektar/collections`,y,m),Gn(p.id)}catch(y){console.warn(`[SyncEngine] Collection #${p.id} sync hiba:`,y instanceof Error?y.message:y);break}}catch(i){console.warn("[SyncEngine] Collection sync hiba:",i instanceof Error?i.message:i)}}async cacheBranchStatus(){try{const i=this.getServerUrl(),c=this.getAuthToken(),m=await Ot(`${i}/ertektar/branches/status`,c);if(!Array.isArray(m))return;for(const p of m)Vn(p.code,p.name,p.companyId,p.lastSyncAt,p.onlineStatus,p.totalHufValue,p.dailyTurnover,p.cashBalances?JSON.stringify(p.cashBalances):null);m.length>0&&console.log(`[SyncEngine] ${m.length} pénztár státusz cache-elve`)}catch(i){console.warn("[SyncEngine] Branch status cache hiba:",i instanceof Error?i.message:i)}}getStatus(){return{...this.status}}}const Ke=new ai,Lr=!S.app.isPackaged;let K=null;function Rr(){K=new S.BrowserWindow({width:1280,height:1024,resizable:Lr,fullscreen:!1,autoHideMenuBar:!0,title:"Valuta Pénztár",webPreferences:{preload:Ze.join(__dirname,"preload.js"),contextIsolation:!0,nodeIntegration:!1,sandbox:!1}}),Lr?(K.loadURL("http://localhost:5173"),K.webContents.openDevTools({mode:"detach"})):K.loadFile(Ze.join(__dirname,"../dist/index.html")),K.on("closed",()=>{K=null})}S.ipcMain.handle("print-receipt",async(s,i)=>{try{const c=JSON.parse(i);return await si(c)}catch(c){return console.error("[IPC] print-receipt hiba:",c),!1}});S.ipcMain.handle("get-config",async(s,i)=>Rt(i));S.ipcMain.handle("set-config",async(s,i,c)=>{Cn(i,c)});S.ipcMain.handle("delete-config",async(s,i)=>{Bn(i)});S.ipcMain.handle("save-pending-transaction",async(s,i,c,m,p,y,C,k,J)=>$n(i,c,m,p,y,C,k,J));S.ipcMain.handle("get-pending-transactions",async()=>Sr());S.ipcMain.handle("get-pending-transaction-count",async()=>Pn());S.ipcMain.handle("mark-transaction-synced",async(s,i)=>{Or(i)});S.ipcMain.handle("sync-offline",async()=>(await Ke.syncAll()).synced);S.ipcMain.handle("get-sync-status",async()=>JSON.stringify(Ke.getStatus()));S.ipcMain.handle("get-app-version",async()=>S.app.getVersion());S.ipcMain.handle("get-printers",async()=>K?K.webContents.getPrintersAsync():[]);S.ipcMain.handle("save-pending-distribution",async(s,i,c,m,p,y)=>qn(i,c,m,p,y));S.ipcMain.handle("save-pending-transfer",async(s,i,c,m,p,y)=>Xn(i,c,m,p,y));S.ipcMain.handle("save-pending-collection",async(s,i,c,m,p)=>Hn(i,c,m,p));S.ipcMain.handle("get-cached-branch-statuses",async()=>Qn());S.ipcMain.handle("get-cached-branch-status-timestamp",async()=>Zn());S.ipcMain.handle("get-cached-rates",async()=>Kn());S.ipcMain.handle("scan-document",async()=>(console.log("[IPC] scan-document — placeholder mód (TWAIN/WIA driver nincs implementálva)"),{imageBase64:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",fileName:`scan_${Date.now()}.png`}));S.app.whenReady().then(async()=>{await Fn(),Rr(),Ke.start(3e4),console.log("[App] SyncEngine elindítva")});S.app.on("will-quit",()=>{Ke.stop(),console.log("[App] SyncEngine leállítva")});S.app.on("window-all-closed",()=>{S.app.quit()});S.app.on("activate",()=>{K===null&&Rr()});
+             sent_at = excluded.sent_at`,
+          [circular.id, circular.subject, circular.body, circular.sender, circular.sentAt]
+        );
+      }
+      if (circulars.length > 0) {
+        console.log(`[SyncEngine] ${circulars.length} körlevél szinkronizálva`);
+      }
+    } catch (err) {
+      console.warn("[SyncEngine] Körlevél sync hiba:", err instanceof Error ? err.message : err);
+    }
+  }
+  /**
+   * Értéktár: Pending distributions szinkronizálása.
+   */
+  async syncDistributions() {
+    try {
+      const pending = getPendingDistributions();
+      if (pending.length === 0) return;
+      const serverUrl = this.getServerUrl();
+      const token = this.getAuthToken();
+      if (!token) return;
+      for (const dist of pending) {
+        try {
+          const body = {
+            targetBranchCode: dist.target_branch_code,
+            currencyCode: dist.currency_code,
+            amount: dist.amount
+          };
+          if (dist.denominations) {
+            try {
+              body["denominations"] = JSON.parse(dist.denominations);
+            } catch {
+            }
+          }
+          if (dist.note) body["note"] = dist.note;
+          await httpPost(`${serverUrl}/ertektar/distribution`, body, token);
+          markDistributionSynced(dist.id);
+        } catch (err) {
+          console.warn(`[SyncEngine] Distribution #${dist.id} sync hiba:`, err instanceof Error ? err.message : err);
+          break;
+        }
+      }
+    } catch (err) {
+      console.warn("[SyncEngine] Distribution sync hiba:", err instanceof Error ? err.message : err);
+    }
+  }
+  /**
+   * Értéktár: Pending transfers szinkronizálása.
+   */
+  async syncTransfers() {
+    try {
+      const pending = getPendingTransfers();
+      if (pending.length === 0) return;
+      const serverUrl = this.getServerUrl();
+      const token = this.getAuthToken();
+      if (!token) return;
+      for (const tx of pending) {
+        try {
+          const body = {
+            targetBranchCode: tx.target_branch_code,
+            currencyCode: tx.currency_code,
+            amount: tx.amount
+          };
+          if (tx.denominations) {
+            try {
+              body["denominations"] = JSON.parse(tx.denominations);
+            } catch {
+            }
+          }
+          if (tx.note) body["note"] = tx.note;
+          await httpPost(`${serverUrl}/transfers`, body, token);
+          markTransferSynced(tx.id);
+        } catch (err) {
+          console.warn(`[SyncEngine] Transfer #${tx.id} sync hiba:`, err instanceof Error ? err.message : err);
+          break;
+        }
+      }
+    } catch (err) {
+      console.warn("[SyncEngine] Transfer sync hiba:", err instanceof Error ? err.message : err);
+    }
+  }
+  /**
+   * Értéktár: Pending collections szinkronizálása.
+   */
+  async syncCollections() {
+    try {
+      const pending = getPendingCollections();
+      if (pending.length === 0) return;
+      const serverUrl = this.getServerUrl();
+      const token = this.getAuthToken();
+      if (!token) return;
+      for (const col of pending) {
+        try {
+          const body = {
+            sourceBranchCode: col.source_branch_code,
+            currencyCode: col.currency_code,
+            amount: col.amount
+          };
+          if (col.note) body["note"] = col.note;
+          await httpPost(`${serverUrl}/ertektar/collections`, body, token);
+          markCollectionSynced(col.id);
+        } catch (err) {
+          console.warn(`[SyncEngine] Collection #${col.id} sync hiba:`, err instanceof Error ? err.message : err);
+          break;
+        }
+      }
+    } catch (err) {
+      console.warn("[SyncEngine] Collection sync hiba:", err instanceof Error ? err.message : err);
+    }
+  }
+  /**
+   * Értéktár: Pénztár státuszok cache-elése.
+   */
+  async cacheBranchStatus() {
+    try {
+      const serverUrl = this.getServerUrl();
+      const token = this.getAuthToken();
+      const branches = await httpGet(
+        `${serverUrl}/ertektar/branches/status`,
+        token
+      );
+      if (!Array.isArray(branches)) return;
+      for (const branch of branches) {
+        saveCachedBranchStatus(
+          branch.code,
+          branch.name,
+          branch.companyId,
+          branch.lastSyncAt,
+          branch.onlineStatus,
+          branch.totalHufValue,
+          branch.dailyTurnover,
+          branch.cashBalances ? JSON.stringify(branch.cashBalances) : null
+        );
+      }
+      if (branches.length > 0) {
+        console.log(`[SyncEngine] ${branches.length} pénztár státusz cache-elve`);
+      }
+    } catch (err) {
+      console.warn("[SyncEngine] Branch status cache hiba:", err instanceof Error ? err.message : err);
+    }
+  }
+  /**
+   * Aktuális szinkronizáció státusz lekérdezése.
+   */
+  getStatus() {
+    return { ...this.status };
+  }
+}
+const syncEngine = new SyncEngine();
+const CAMERA_DIR = "C:/valuta/camera";
+function sanitizeId$1(id) {
+  const clean = id.replace(/[^a-zA-Z0-9_-]/g, "");
+  if (!clean || clean !== id) throw new Error("Invalid transactionId: " + id);
+  return clean;
+}
+function listDirectories(root) {
+  if (!fs.existsSync(root)) return [];
+  return fs.readdirSync(root).filter((entry) => {
+    const fullPath = path.join(root, entry);
+    return fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory();
+  });
+}
+function collectFiles(root) {
+  if (!fs.existsSync(root)) return [];
+  const result = [];
+  const entries = fs.readdirSync(root, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(root, entry.name);
+    if (entry.isDirectory()) {
+      result.push(...collectFiles(fullPath));
+    } else if (entry.isFile()) {
+      result.push(fullPath);
+    }
+  }
+  return result;
+}
+function copyDirectoryWithCount(sourceDir, targetDir) {
+  if (!fs.existsSync(sourceDir)) return 0;
+  fs.mkdirSync(targetDir, { recursive: true });
+  let count = 0;
+  const entries = fs.readdirSync(sourceDir, { withFileTypes: true });
+  for (const entry of entries) {
+    const src = path.join(sourceDir, entry.name);
+    const dest = path.join(targetDir, entry.name);
+    if (entry.isDirectory()) {
+      count += copyDirectoryWithCount(src, dest);
+    } else if (entry.isFile()) {
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.copyFileSync(src, dest);
+      count += 1;
+    }
+  }
+  return count;
+}
+require$$0$5.ipcMain.handle("camera-save-recording", async (_event, transactionId, videoBuffer, extension) => {
+  const date = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  const safeId = sanitizeId$1(transactionId);
+  const dir = path.join(CAMERA_DIR, date, safeId);
+  fs.mkdirSync(dir, { recursive: true });
+  const filename = `recording_${Date.now()}.${extension}`;
+  const filepath = path.join(dir, filename);
+  fs.writeFileSync(filepath, Buffer.from(videoBuffer));
+  return filepath;
+});
+require$$0$5.ipcMain.handle("camera-export-to-usb", async (_event, dateFrom, dateTo) => {
+  const result = await require$$0$5.dialog.showOpenDialog({
+    title: "Válaszd ki az USB meghajtót",
+    properties: ["openDirectory"],
+    buttonLabel: "Exportálás ide"
+  });
+  if (result.canceled || !result.filePaths[0]) {
+    return { success: false, exported: 0, error: "Megszakítva" };
+  }
+  const from = new Date(dateFrom);
+  const to = new Date(dateTo);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+    return { success: false, exported: 0, error: "Érvénytelen dátum" };
+  }
+  if (from > to) {
+    return { success: false, exported: 0, error: "A dátumtartomány hibás" };
+  }
+  try {
+    const targetDir = path.join(result.filePaths[0], "valuta_kamera_export");
+    fs.mkdirSync(targetDir, { recursive: true });
+    let exported = 0;
+    const dateDirs = listDirectories(CAMERA_DIR);
+    for (const dateDir of dateDirs) {
+      const dateValue = new Date(dateDir);
+      if (Number.isNaN(dateValue.getTime())) continue;
+      if (dateValue < from || dateValue > to) continue;
+      const sourceDir = path.join(CAMERA_DIR, dateDir);
+      const destinationDir = path.join(targetDir, dateDir);
+      exported += copyDirectoryWithCount(sourceDir, destinationDir);
+    }
+    return { success: true, exported };
+  } catch (err) {
+    return { success: false, exported: 0, error: `Írási hiba: ${err.message}` };
+  }
+});
+require$$0$5.ipcMain.handle("camera-list-recordings", async (_event, transactionId) => {
+  if (!fs.existsSync(CAMERA_DIR)) return [];
+  if (transactionId) {
+    const recordings = [];
+    const safeId = sanitizeId$1(transactionId);
+    const dateDirs = listDirectories(CAMERA_DIR);
+    for (const dateDir of dateDirs) {
+      const candidateDir = path.join(CAMERA_DIR, dateDir, safeId);
+      recordings.push(...collectFiles(candidateDir));
+    }
+    return recordings;
+  }
+  return collectFiles(CAMERA_DIR);
+});
+const SCAN_DIR = "C:/valuta/scan";
+const ENCRYPTION_KEY_FILE = "C:/valuta/.scan_key";
+function sanitizeId(id) {
+  const clean = id.replace(/[^a-zA-Z0-9_-]/g, "");
+  if (!clean || clean !== id) throw new Error("Invalid transactionId: " + id);
+  return clean;
+}
+function getOrCreateKey() {
+  if (fs.existsSync(ENCRYPTION_KEY_FILE)) {
+    const stored = fs.readFileSync(ENCRYPTION_KEY_FILE, "utf8").trim();
+    return Buffer.from(stored, "base64");
+  }
+  const key = crypto.randomBytes(32);
+  fs.writeFileSync(ENCRYPTION_KEY_FILE, key.toString("base64"), { mode: 384 });
+  return key;
+}
+function encrypt(buffer) {
+  const key = getOrCreateKey();
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+  const encrypted = Buffer.concat([cipher.update(buffer), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return { encrypted, iv: iv.toString("hex"), tag: tag.toString("hex") };
+}
+function decrypt(encrypted, iv, tag) {
+  const key = getOrCreateKey();
+  const decipher = crypto.createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "hex"));
+  decipher.setAuthTag(Buffer.from(tag, "hex"));
+  return Buffer.concat([decipher.update(encrypted), decipher.final()]);
+}
+require$$0$5.ipcMain.handle("scan-save-document", async (_event, transactionId, documentType, imageBase64) => {
+  const buffer = Buffer.from(imageBase64, "base64");
+  const { encrypted, iv, tag } = encrypt(buffer);
+  const date = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  const safeId = sanitizeId(transactionId);
+  const dir = path.join(SCAN_DIR, date, safeId);
+  fs.mkdirSync(dir, { recursive: true });
+  const filename = `${documentType}_${Date.now()}.enc`;
+  const filepath = path.join(dir, filename);
+  fs.writeFileSync(filepath, encrypted);
+  fs.writeFileSync(
+    `${filepath}.meta`,
+    JSON.stringify({ iv, tag, documentType, timestamp: (/* @__PURE__ */ new Date()).toISOString() })
+  );
+  return { path: filepath, encrypted: true };
+});
+require$$0$5.ipcMain.handle("scan-get-document", async (_event, filepath) => {
+  const resolved = path.resolve(filepath);
+  if (!resolved.startsWith(path.resolve(SCAN_DIR))) {
+    throw new Error("Érvénytelen fájlútvonal");
+  }
+  const encrypted = fs.readFileSync(resolved);
+  const metaRaw = fs.readFileSync(`${resolved}.meta`, "utf8");
+  const meta = JSON.parse(metaRaw);
+  const decrypted = decrypt(encrypted, meta.iv, meta.tag);
+  return decrypted.toString("base64");
+});
+require$$0$5.ipcMain.handle("scan-list-documents", async (_event, transactionId) => {
+  if (!fs.existsSync(SCAN_DIR)) return [];
+  const results = [];
+  const safeId = sanitizeId(transactionId);
+  const dateDirs = fs.readdirSync(SCAN_DIR);
+  for (const dateDir of dateDirs) {
+    const candidate = path.join(SCAN_DIR, dateDir, safeId);
+    if (!fs.existsSync(candidate) || !fs.statSync(candidate).isDirectory()) continue;
+    const files = fs.readdirSync(candidate);
+    for (const file2 of files) {
+      if (file2.endsWith(".enc")) {
+        results.push(path.join(candidate, file2));
+      }
+    }
+  }
+  return results;
+});
+require$$0$5.ipcMain.handle("restart-app", () => {
+  try {
+    require$$0$5.app.relaunch();
+    require$$0$5.app.exit(0);
+    return true;
+  } catch (err) {
+    log.error("[Updater] restart-app failed", err);
+    return false;
+  }
+});
+const isDev = !require$$0$5.app.isPackaged;
+log.initialize();
+log.transports.file.level = "info";
+log.transports.console.level = isDev ? "debug" : "warn";
+process.on("uncaughtException", (err) => {
+  log.error("[Process] uncaughtException", err);
+});
+process.on("unhandledRejection", (reason) => {
+  log.error("[Process] unhandledRejection", reason);
+});
+let mainWindow = null;
+function createWindow() {
+  mainWindow = new require$$0$5.BrowserWindow({
+    width: 1280,
+    height: 1024,
+    resizable: isDev,
+    fullscreen: false,
+    autoHideMenuBar: true,
+    title: "Valuta Pénztár",
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false
+    }
+  });
+  if (isDev) {
+    mainWindow.loadURL("http://localhost:5173");
+    mainWindow.webContents.openDevTools({ mode: "detach" });
+  } else {
+    mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
+  }
+  mainWindow.on("closed", () => {
+    mainWindow = null;
+  });
+}
+require$$0$5.ipcMain.handle("print-receipt", async (_event, dataJson) => {
+  try {
+    const data = JSON.parse(dataJson);
+    return await printReceipt(data);
+  } catch (err) {
+    console.error("[IPC] print-receipt hiba:", err);
+    return false;
+  }
+});
+require$$0$5.ipcMain.handle("get-config", async (_event, key) => {
+  return getConfig(key);
+});
+require$$0$5.ipcMain.handle("set-config", async (_event, key, value) => {
+  setConfig(key, value);
+});
+require$$0$5.ipcMain.handle("delete-config", async (_event, key) => {
+  deleteConfig(key);
+});
+require$$0$5.ipcMain.handle("save-pending-transaction", async (_event, type, currencyCode, foreignAmount, hufAmount, roundedHufAmount, rate, customerId, denominations) => {
+  return savePendingTransaction(type, currencyCode, foreignAmount, hufAmount, roundedHufAmount, rate, customerId, denominations);
+});
+require$$0$5.ipcMain.handle("get-pending-transactions", async () => {
+  return getPendingTransactions();
+});
+require$$0$5.ipcMain.handle("get-pending-transaction-count", async () => {
+  return getPendingTransactionCount();
+});
+require$$0$5.ipcMain.handle("mark-transaction-synced", async (_event, id) => {
+  markTransactionSynced(id);
+});
+require$$0$5.ipcMain.handle("sync-offline", async () => {
+  const result = await syncEngine.syncAll();
+  return result.synced;
+});
+require$$0$5.ipcMain.handle("get-sync-status", async () => {
+  return JSON.stringify(syncEngine.getStatus());
+});
+require$$0$5.ipcMain.handle("get-app-version", async () => {
+  return require$$0$5.app.getVersion();
+});
+require$$0$5.ipcMain.handle("get-printers", async () => {
+  if (!mainWindow) return [];
+  return mainWindow.webContents.getPrintersAsync();
+});
+require$$0$5.ipcMain.handle("save-pending-distribution", async (_event, targetBranchCode, currencyCode, amount, denominations, note) => {
+  return savePendingDistribution(targetBranchCode, currencyCode, amount, denominations, note);
+});
+require$$0$5.ipcMain.handle("save-pending-transfer", async (_event, targetBranchCode, currencyCode, amount, denominations, note) => {
+  return savePendingTransfer(targetBranchCode, currencyCode, amount, denominations, note);
+});
+require$$0$5.ipcMain.handle("save-pending-collection", async (_event, sourceBranchCode, currencyCode, amount, note) => {
+  return savePendingCollection(sourceBranchCode, currencyCode, amount, note);
+});
+require$$0$5.ipcMain.handle("get-cached-branch-statuses", async () => {
+  return getCachedBranchStatuses();
+});
+require$$0$5.ipcMain.handle("get-cached-branch-status-timestamp", async () => {
+  return getCachedBranchStatusTimestamp();
+});
+require$$0$5.ipcMain.handle("get-cached-rates", async () => {
+  return getCachedRates();
+});
+require$$0$5.app.whenReady().then(async () => {
+  try {
+    await initDatabase();
+  } catch (err) {
+    log.error("[App] initDatabase failed", err);
+    const details = err instanceof Error ? err.message : String(err);
+    require$$0$5.dialog.showErrorBox(
+      "Adatbázis hiba",
+      `A helyi adatbázist nem sikerült inicializálni.
+
+Részletek:
+${details}`
+    );
+    require$$0$5.app.quit();
+    return;
+  }
+  createWindow();
+  syncEngine.start(3e4);
+  log.info("[App] SyncEngine elindítva");
+});
+require$$0$5.app.on("will-quit", () => {
+  syncEngine.stop();
+  log.info("[App] SyncEngine leállítva");
+});
+require$$0$5.app.on("window-all-closed", () => {
+  require$$0$5.app.quit();
+});
+require$$0$5.app.on("activate", () => {
+  if (mainWindow === null) {
+    createWindow();
+  }
+});

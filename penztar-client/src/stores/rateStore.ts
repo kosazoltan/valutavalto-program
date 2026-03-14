@@ -10,6 +10,7 @@ interface RateState {
   autoRefreshIntervalId: ReturnType<typeof setInterval> | null;
 
   fetchRates: () => Promise<void>;
+  applyPublishedRates: (updates: Array<{ currencyCode?: string; buyRate: number | string; sellRate: number | string }>) => void;
   getRate: (currencyCode: CurrencyCode) => ExchangeRate | undefined;
   getBuyRate: (currencyCode: CurrencyCode) => number;
   getSellRate: (currencyCode: CurrencyCode) => number;
@@ -46,6 +47,53 @@ export const useRateStore = create<RateState>((set, get) => ({
       const message = err instanceof Error ? err.message : 'Árfolyam lekérési hiba';
       set({ error: message, isLoading: false });
     }
+  },
+
+  applyPublishedRates: (updates) => {
+    if (!updates.length) {
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const currentRates = get().rates;
+    const nextByCode = new Map(currentRates.map((rate) => [rate.currencyCode, rate]));
+
+    for (const update of updates) {
+      const code = update.currencyCode as CurrencyCode | undefined;
+      if (!code) {
+        continue;
+      }
+
+      const current = nextByCode.get(code);
+      const parsedBuy = Number(update.buyRate);
+      const parsedSell = Number(update.sellRate);
+
+      const buyRate = Number.isFinite(parsedBuy) ? parsedBuy : current?.buyRate ?? 0;
+      const sellRate = Number.isFinite(parsedSell) ? parsedSell : current?.sellRate ?? 0;
+
+      nextByCode.set(code, {
+        currencyCode: code,
+        buyRate,
+        sellRate,
+        unit: current?.unit ?? 1,
+        updatedAt: now,
+      });
+    }
+
+    const nextRates: ExchangeRate[] = [];
+    for (const rate of currentRates) {
+      const updated = nextByCode.get(rate.currencyCode);
+      if (updated) {
+        nextRates.push(updated);
+        nextByCode.delete(rate.currencyCode);
+      }
+    }
+
+    for (const extra of nextByCode.values()) {
+      nextRates.push(extra);
+    }
+
+    set({ rates: nextRates, lastUpdate: now, error: null });
   },
 
   getRate: (currencyCode) => {

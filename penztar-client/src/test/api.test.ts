@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { shouldAttachIdempotencyKey } from '@/api/client';
 
 describe('API modulok importálhatóság', () => {
   it('commissions API modul importálható', async () => {
@@ -82,5 +83,20 @@ describe('API modulok importálhatóság', () => {
     expect(mod).toBeDefined();
     expect(mod.getLicenseStatus).toBeDefined();
     expect(typeof mod.getLicenseStatus).toBe('function');
+  });
+});
+
+describe('API kliens idempotency szabalyok', () => {
+  it('write metódusokra kér idempotency kulcsot', () => {
+    expect(shouldAttachIdempotencyKey({ method: 'post' } as any)).toBe(true);
+    expect(shouldAttachIdempotencyKey({ method: 'put' } as any)).toBe(true);
+    expect(shouldAttachIdempotencyKey({ method: 'patch' } as any)).toBe(true);
+    expect(shouldAttachIdempotencyKey({ method: 'delete' } as any)).toBe(true);
+  });
+
+  it('read metódusokra nem kér idempotency kulcsot', () => {
+    expect(shouldAttachIdempotencyKey({ method: 'get' } as any)).toBe(false);
+    expect(shouldAttachIdempotencyKey({ method: 'head' } as any)).toBe(false);
+    expect(shouldAttachIdempotencyKey({ method: 'options' } as any)).toBe(false);
   });
 });

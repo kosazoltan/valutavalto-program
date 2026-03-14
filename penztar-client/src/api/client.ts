@@ -12,6 +12,22 @@ if (!API_BASE_URL) {
 
 let authToken: string | null = null;
 
+const IDEMPOTENT_METHODS = new Set(['post', 'put', 'patch', 'delete']);
+
+function generateIdempotencyKey(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  const random = Math.random().toString(36).slice(2, 14);
+  return `${Date.now()}-${random}`;
+}
+
+export function shouldAttachIdempotencyKey(config: InternalAxiosRequestConfig): boolean {
+  const method = (config.method ?? '').toLowerCase();
+  return IDEMPOTENT_METHODS.has(method);
+}
+
 export function setAuthToken(token: string | null): void {
   authToken = token;
 }
@@ -65,6 +81,11 @@ apiClient.interceptors.request.use(
     if (authToken) {
       config.headers.Authorization = `Bearer ${authToken}`;
     }
+
+    if (shouldAttachIdempotencyKey(config) && !config.headers['Idempotency-Key']) {
+      config.headers['Idempotency-Key'] = generateIdempotencyKey();
+    }
+
     return config;
   },
 );

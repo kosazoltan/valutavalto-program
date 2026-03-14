@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { setAuthToken, loadPersistedToken } from '@/api/client';
 import apiClient from '@/api/client';
 import { useAppMode } from '@/hooks/useAppMode';
+import { useRateUpdates } from '@/hooks/useRateUpdates';
 import { useUpdateNotifier } from '@/hooks/useUpdateNotifier';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import ToastContainer from '@/components/Toast';
@@ -86,6 +87,8 @@ export default function App() {
   const [isRestoring, setIsRestoring] = useState(true);
   const { mode, isLoading: isModeLoading } = useAppMode();
   const { updateAvailable, hardRequired } = useUpdateNotifier();
+
+  useRateUpdates();
 
   // M1: Token restore — betöltéskor ellenőrizzük van-e tárolt JWT
   useEffect(() => {
