@@ -16,6 +16,7 @@ import CustomerSearch from '@/components/CustomerSearch';
 import DenomGrid from '@/components/DenomGrid';
 import SanctionAlert from '@/components/SanctionAlert';
 import ReceiptPreviewModal from '@/components/ReceiptPreviewModal';
+import { supervisorAuthenticate } from '@/api/supervisor';
 import type { CurrencyCode, Customer, Denomination, SanctionScreeningResult, PrintReceiptData } from '@/types';
 
 /** Kezelési díj százalék (alapértelmezett) */
@@ -300,10 +301,15 @@ export default function BuyPage() {
     foreignAmount,
     hufNumeric,
     roundedHuf,
+    roundingDiff,
     buyRate,
     customer,
     denominations,
     sanctionChecked,
+    currencyList,
+    companyType,
+    branchCode,
+    user,
   ]);
 
   // Nyomtatás callback — Electron IPC hívás
@@ -521,7 +527,18 @@ export default function BuyPage() {
             {sanctionResult && sanctionResult.riskLevel !== 'CLEAR' && (
               <SanctionAlert
                 result={sanctionResult}
-                onSupervisorApprove={() => setSanctionApproved(true)}
+                onSupervisorApprove={async (password: string) => {
+                  try {
+                    const res = await supervisorAuthenticate(password);
+                    if (res.authenticated) {
+                      setSanctionApproved(true);
+                    } else {
+                      setError('❌ Érvénytelen supervisor jelszó!');
+                    }
+                  } catch {
+                    setError('❌ Supervisor hitelesítés sikertelen!');
+                  }
+                }}
                 onBlock={() => {
                   setCustomer(null);
                   setSanctionResult(null);

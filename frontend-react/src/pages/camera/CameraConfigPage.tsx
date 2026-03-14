@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Settings, Plus, Trash2, Save } from 'lucide-react'
+import { api } from '../../services/api'
 
 interface CameraConfigItem {
   id?: string
@@ -26,8 +27,8 @@ export default function CameraConfigPage() {
 
   const fetchConfigs = async () => {
     try {
-      const res = await fetch('/api/v1/camera/admin/configs')
-      if (res.ok) setConfigs(await res.json())
+      const res = await api.get('/camera/admin/configs')
+      setConfigs(res.data)
     } catch (err) {
       console.error('Config lekeres sikertelen:', err)
     } finally {
@@ -37,12 +38,8 @@ export default function CameraConfigPage() {
 
   const saveConfig = async (config: CameraConfigItem) => {
     try {
-      const res = await fetch('/api/v1/camera/admin/configs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config),
-      })
-      if (res.ok) {
+      const res = await api.post('/camera/admin/configs', config)
+      if (res.data) {
         setEditing(null)
         fetchConfigs()
       }
@@ -54,7 +51,7 @@ export default function CameraConfigPage() {
   const deleteConfig = async (id: string) => {
     if (!confirm('Biztosan torli a kamera konfiguraciot?')) return
     try {
-      await fetch(`/api/v1/camera/admin/configs/${id}`, { method: 'DELETE' })
+      await api.delete(`/camera/admin/configs/${id}`)
       fetchConfigs()
     } catch (err) {
       console.error('Torles sikertelen:', err)

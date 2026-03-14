@@ -19,8 +19,10 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class SellRequestDto {
 
-    @NotNull(message = "Valuta azonosító kötelező")
     private Long currencyId;
+
+    /** Valuta kód (pl. EUR, USD) — alternatíva a currencyId-hoz */
+    private String currencyCode;
 
     @NotNull(message = "Összeg kötelező")
     @DecimalMin(value = "0.01", message = "Az összegnek nagyobbnak kell lennie 0-nál")

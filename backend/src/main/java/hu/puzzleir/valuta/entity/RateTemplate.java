@@ -18,7 +18,7 @@ public class RateTemplate {
     private UUID id;
 
     @Column(name = "currency_id", nullable = false)
-    private UUID currencyId;
+    private Long currencyId;
 
     @Column(name = "workgroup_id", nullable = false)
     private UUID workgroupId;

@@ -332,6 +332,7 @@ public class InventoryService {
     /**
      * Egy iroda készlete (CashBalance lista).
      */
+    @Transactional(readOnly = true)
     public List<CashBalance> getCurrentStock(UUID branchId) {
         return cashBalanceRepository.findByBranchId(branchId);
     }
@@ -339,6 +340,7 @@ public class InventoryService {
     /**
      * Összes iroda × összes valuta mátrix.
      */
+    @Transactional(readOnly = true)
     public StockMatrixDto getStockMatrix() {
         List<CashBalance> allBalances = cashBalanceRepository.findAll();
         Map<String, Map<String, BigDecimal>> matrix = new LinkedHashMap<>();
@@ -357,6 +359,7 @@ public class InventoryService {
     /**
      * Mozgás részletei.
      */
+    @Transactional(readOnly = true)
     public InventoryMovementDto getMovement(Long id) {
         return toDto(findMovement(id));
     }
@@ -364,6 +367,7 @@ public class InventoryService {
     /**
      * Mozgás történet (paginated, filtered).
      */
+    @Transactional(readOnly = true)
     public Page<InventoryMovementDto> searchMovements(UUID branchId, LocalDate startDate,
             LocalDate endDate, MovementStatus status, MovementType type, Pageable pageable) {
         return movementRepository.search(branchId, startDate, endDate, status, type, pageable)

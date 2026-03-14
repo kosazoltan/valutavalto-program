@@ -7,7 +7,7 @@ import java.util.UUID;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class RateTemplateDto {
     private UUID id;
-    private UUID currencyId;
+    private Long currencyId;
     private String currencyCode;
     private UUID workgroupId;
     private String workgroupName;

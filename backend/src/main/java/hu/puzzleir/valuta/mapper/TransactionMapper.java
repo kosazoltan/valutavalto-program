@@ -55,6 +55,7 @@ public class TransactionMapper {
     public TransactionService.BuyRequest toBuyRequest(BuyRequestDto dto) {
         return TransactionService.BuyRequest.builder()
                 .currencyId(dto.getCurrencyId())
+                .currencyCode(dto.getCurrencyCode())
                 .currencyAmount(dto.getCurrencyAmount())
                 .discountPercent(dto.getDiscountPercent())
                 .handlingFee(dto.getHandlingFee())
@@ -70,6 +71,7 @@ public class TransactionMapper {
     public TransactionService.SellRequest toSellRequest(SellRequestDto dto) {
         return TransactionService.SellRequest.builder()
                 .currencyId(dto.getCurrencyId())
+                .currencyCode(dto.getCurrencyCode())
                 .currencyAmount(dto.getCurrencyAmount())
                 .discountPercent(dto.getDiscountPercent())
                 .handlingFee(dto.getHandlingFee())
@@ -93,11 +95,14 @@ public class TransactionMapper {
     public TransactionService.ConversionRequest toConversionRequest(ConversionRequestDto dto) {
         return TransactionService.ConversionRequest.builder()
                 .fromCurrencyId(dto.getFromCurrencyId())
+                .fromCurrencyCode(dto.getFromCurrencyCode())
                 .toCurrencyId(dto.getToCurrencyId())
+                .toCurrencyCode(dto.getToCurrencyCode())
                 .fromAmount(dto.getFromAmount())
                 .handlingFee(dto.getHandlingFee())
                 .customerId(dto.getCustomerId())
                 .customerName(dto.getCustomerName())
+                .customerDocumentNumber(dto.getCustomerDocumentNumber())
                 .build();
     }
 }

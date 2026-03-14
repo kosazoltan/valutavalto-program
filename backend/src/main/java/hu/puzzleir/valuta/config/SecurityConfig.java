@@ -58,9 +58,11 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/error-report").permitAll()
                 .requestMatchers("/api/v1/version").permitAll()
 
-                // Health check
-                .requestMatchers("/actuator/**").permitAll()
-                .requestMatchers("/api/v1/health", "/api/v1/health/**").permitAll()
+                // Health check — csak health és info, nem az összes actuator endpoint
+                .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                .requestMatchers("/actuator/**").hasRole("ADMIN")
+                .requestMatchers("/api/v1/health").permitAll()
+                .requestMatchers("/api/v1/health/**").authenticated()
 
                 // Swagger / OpenAPI docs
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/api-docs/**", "/v3/api-docs/**").permitAll()

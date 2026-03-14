@@ -2,7 +2,10 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.inventory.*;
 import hu.puzzleir.valuta.entity.*;
+import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
+import hu.puzzleir.valuta.service.BranchService;
 import hu.puzzleir.valuta.service.InventoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +33,7 @@ import java.util.UUID;
 public class InventoryController {
 
     private final InventoryService inventoryService;
+    private final BranchService branchService;
 
     // ============ STOCK QUERIES ============
 
@@ -44,6 +48,7 @@ public class InventoryController {
     @GetMapping("/stock/{branchId}")
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<CashBalance>> getStockByBranch(@PathVariable UUID branchId) {
+        validateBranchAccess(branchId);
         return ResponseEntity.ok(inventoryService.getCurrentStock(branchId));
     }
 
@@ -148,6 +153,15 @@ public class InventoryController {
         if (auth != null && auth.getDetails() instanceof WorkerAuthenticationDetails details) {
             return details.getWorkerId();
         }
-        throw new hu.puzzleir.valuta.exception.ValidationException("Hitelesítés szükséges!");
+        throw new ValidationException("Hitelesítés szükséges!");
+    }
+
+    /**
+     * IDOR védelem: ellenőrzi, hogy a megadott branchId az aktuális felhasználó cégéhez tartozik-e.
+     * A BranchService.findById már tartalmaz company-szintű IDOR védelmet.
+     */
+    private void validateBranchAccess(UUID branchId) {
+        // BranchService.findById throws ResourceNotFoundException if branch doesn't belong to current company
+        branchService.findById(branchId);
     }
 }

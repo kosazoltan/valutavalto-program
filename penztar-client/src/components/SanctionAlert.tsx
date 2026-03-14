@@ -16,7 +16,7 @@ interface SanctionAlertProps {
   /** Szűrés eredménye */
   result: SanctionScreeningResult;
   /** Supervisor jóváhagyás callback (POSSIBLE esetén) */
-  onSupervisorApprove?: () => void;
+  onSupervisorApprove?: (password: string) => void;
   /** Tiltás/elutasítás callback (CONFIRMED esetén) */
   onBlock?: () => void;
 }
@@ -150,7 +150,7 @@ export default function SanctionAlert({ result, onSupervisorApprove, onBlock }: 
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && supervisorPassword.length > 0) {
-                    onSupervisorApprove?.();
+                    onSupervisorApprove?.(supervisorPassword);
                   }
                 }}
               />
@@ -158,7 +158,7 @@ export default function SanctionAlert({ result, onSupervisorApprove, onBlock }: 
                 <button
                   onClick={() => {
                     if (supervisorPassword.length > 0) {
-                      onSupervisorApprove?.();
+                      onSupervisorApprove?.(supervisorPassword);
                     }
                   }}
                   disabled={supervisorPassword.length === 0}

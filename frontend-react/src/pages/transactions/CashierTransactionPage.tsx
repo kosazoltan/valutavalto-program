@@ -9,8 +9,9 @@ import {
 import { CashierHeader } from '../../components/cashier/CashierHeader'
 import { HotkeyBar } from '../../components/cashier/HotkeyBar'
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext'
-import { transactionApi } from '../../services/api'
-import type { BuyRequest, SellRequest } from '../../services/api'
+import { transactionApi, exchangeRateApi } from '../../services/api'
+import type { BuyRequest, SellRequest, ExchangeRate } from '../../services/api'
+import { roundHuf } from '../../utils/rounding'
 
 /**
  * Penztaros Eladas/Vetel kepernyoje — 6 soros valuta tabla.
@@ -62,6 +63,9 @@ export default function CashierTransactionPage() {
   const [handlingFee, _setHandlingFee] = useState(0)
   const [discount, _setDiscount] = useState(0)
 
+  // Exchange rates from API
+  const [exchangeRates, setExchangeRates] = useState<ExchangeRate[]>([])
+
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -81,6 +85,13 @@ export default function CashierTransactionPage() {
       quantityRefs.current[activeRow]?.focus()
     }
   }, [activeRow, activeField])
+
+  // Load exchange rates from API on mount
+  useEffect(() => {
+    exchangeRateApi.list()
+      .then((rates) => setExchangeRates(rates))
+      .catch((err) => console.error('Arfolyam betoltes sikertelen:', err))
+  }, [])
 
   // Auto focus first row on mount
   useEffect(() => {
@@ -105,40 +116,18 @@ export default function CashierTransactionPage() {
         return next
       })
 
-      // Ha 3 betus kod, arfolyam lekeres
+      // Ha 3 betus kod, arfolyam lekeres az API-bol betoltott rateekbol
       if (code.length === 3) {
-        // Mock arfolyamok (production-ben API hivas)
-        const mockRates: Record<string, number> = {
-          EUR: mode === 'buy' ? 391.5 : 398.5,
-          USD: mode === 'buy' ? 358.2 : 365.8,
-          GBP: mode === 'buy' ? 455 : 468,
-          CHF: mode === 'buy' ? 402.5 : 412.5,
-          CZK: mode === 'buy' ? 15.2 : 16.4,
-          PLN: mode === 'buy' ? 91.5 : 96.5,
-          RON: mode === 'buy' ? 78.5 : 82.5,
-          HRK: mode === 'buy' ? 52 : 55,
-          JPY: mode === 'buy' ? 260 : 275,
-          SEK: mode === 'buy' ? 34.5 : 37.2,
-          NOK: mode === 'buy' ? 33.8 : 36.5,
-          DKK: mode === 'buy' ? 52.8 : 55.4,
-          CAD: mode === 'buy' ? 265 : 275,
-          AUD: mode === 'buy' ? 238 : 248,
-          TRY: mode === 'buy' ? 10.5 : 12.8,
-          RSD: mode === 'buy' ? 3.38 : 3.68,
-          BAM: mode === 'buy' ? 200 : 210,
-          BGN: mode === 'buy' ? 202 : 212,
-          UAH: mode === 'buy' ? 9.2 : 10.5,
-          RUB: mode === 'buy' ? 3.85 : 4.35,
-        }
-        const mockRate = mockRates[code]
-        if (mockRate) {
+        const rateEntry = exchangeRates.find((r) => r.currencyCode === code && r.active)
+        if (rateEntry) {
+          const appliedRate = mode === 'buy' ? rateEntry.baseBuyRate : rateEntry.baseSellRate
           setRows((prev) => {
             const next = [...prev]
             next[rowIdx] = {
               ...next[rowIdx]!,
               currencyCode: code,
-              exchangeRate: mockRate,
-              currencyName: code,
+              exchangeRate: appliedRate,
+              currencyName: rateEntry.currencyName || code,
             }
             return next
           })
@@ -146,7 +135,7 @@ export default function CashierTransactionPage() {
         }
       }
     },
-    [mode]
+    [mode, exchangeRates]
   )
 
   const handleQuantityInput = useCallback(
@@ -157,9 +146,8 @@ export default function CashierTransactionPage() {
         const row = next[rowIdx]!
         const qtyNum = parseFloat(qty) || 0
 
-        // Legacy arfolyam szamitas: rate / 100 * bankjegy (JPY /1000)
-        const divisor = row.currencyCode === 'JPY' ? 1000 : 100
-        const hufValue = Math.round((row.exchangeRate / divisor) * qtyNum)
+        // Arfolyam szamitas: rate * mennyiseg = HUF ertek (magyar 5 Ft kerekites)
+        const hufValue = roundHuf(row.exchangeRate * qtyNum)
 
         next[rowIdx] = { ...row, quantity: qty, hufValue }
         return next
@@ -194,7 +182,7 @@ export default function CashierTransactionPage() {
 
         if (mode === 'buy') {
           const request: BuyRequest = {
-            currencyId: 0, // A backend currencyCode alapján is feldolgozza
+            currencyCode: row.currencyCode,
             currencyAmount: parseFloat(row.quantity) || 0,
             customExchangeRate: row.exchangeRate,
             handlingFee: handlingFee > 0 ? handlingFee : undefined,
@@ -205,7 +193,7 @@ export default function CashierTransactionPage() {
           receiptNumbers.push(result.receiptNumber)
         } else {
           const request: SellRequest = {
-            currencyId: 0,
+            currencyCode: row.currencyCode,
             currencyAmount: parseFloat(row.quantity) || 0,
             customExchangeRate: row.exchangeRate,
             handlingFee: handlingFee > 0 ? handlingFee : undefined,

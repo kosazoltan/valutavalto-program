@@ -52,6 +52,10 @@ public class HandlingFeeCalculator {
      */
     public BigDecimal calculate(BigDecimal hufAmount, TransactionType transactionType,
                                 BigDecimal clientHandlingFee) {
+        if (hufAmount == null || hufAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+
         // Szerver oldali számítás
         BigDecimal serverFee = handlingFeeService.calculateHandlingFee(hufAmount);
 
@@ -100,6 +104,9 @@ public class HandlingFeeCalculator {
      * @return bruttó összeg
      */
     public BigDecimal calculateSellGross(BigDecimal netAmount, BigDecimal handlingFee) {
+        if (netAmount == null) {
+            throw new ValidationException("Nettó összeg nem lehet null!");
+        }
         return netAmount.add(handlingFee != null ? handlingFee : BigDecimal.ZERO);
     }
 
@@ -112,6 +119,9 @@ public class HandlingFeeCalculator {
      * @return bruttó összeg
      */
     public BigDecimal calculateBuyGross(BigDecimal netAmount, BigDecimal handlingFee) {
+        if (netAmount == null) {
+            throw new ValidationException("Nettó összeg nem lehet null!");
+        }
         return netAmount.subtract(handlingFee != null ? handlingFee : BigDecimal.ZERO);
     }
 }

@@ -60,9 +60,9 @@ public class SecurityUtils {
     public static String getCurrentWorkerCode() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null) {
-            return (String) auth.getPrincipal();
+            return requireAuth((String) auth.getPrincipal());
         }
-        return null;
+        throw new ValidationException("Nincs bejelentkezett felhasználó!");
     }
     
     /**
@@ -71,9 +71,9 @@ public class SecurityUtils {
     public static String getCurrentRole() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getDetails() instanceof WorkerAuthenticationDetails) {
-            return ((WorkerAuthenticationDetails) auth.getDetails()).getRole();
+            return requireAuth(((WorkerAuthenticationDetails) auth.getDetails()).getRole());
         }
-        return null;
+        throw new ValidationException("Nincs bejelentkezett felhasználó!");
     }
     
     /**

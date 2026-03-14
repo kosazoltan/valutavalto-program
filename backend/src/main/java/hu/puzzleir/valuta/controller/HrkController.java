@@ -20,7 +20,6 @@ import java.util.UUID;
 @RequestMapping("/api/v1/hrk")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*")
 public class HrkController {
 
     private final HrkService hrkService;

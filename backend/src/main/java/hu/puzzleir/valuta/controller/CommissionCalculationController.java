@@ -76,7 +76,8 @@ public class CommissionCalculationController {
 
     private Integer extractCompanyId() {
         UUID companyUuid = SecurityUtils.getCurrentCompanyId();
-        // Company ID int konverzió — egyszerűsítve
-        return companyUuid.hashCode();
+        // UUID → stabil Integer konverzió (getLeastSignificantBits + abs, hashCode nem stabil!)
+        // TODO(migration): CommissionRule.companyId legyen UUID a Company.id-hoz igazítva
+        return Math.abs((int) (companyUuid.getLeastSignificantBits() % Integer.MAX_VALUE));
     }
 }

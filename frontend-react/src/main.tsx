@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
 import './index.css'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { CompanyThemeProvider } from './contexts/CompanyThemeContext'
 import './components/ErrorReporter' // auto-registers global error listeners
 
 const queryClient = new QueryClient({
@@ -46,9 +47,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
+        <CompanyThemeProvider>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </CompanyThemeProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   </React.StrictMode>,

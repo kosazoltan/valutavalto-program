@@ -18,7 +18,6 @@ import java.util.UUID;
 @RequestMapping("/api/v1/closing-control")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*")
 public class ClosingControlController {
 
     private final ClosingControlService closingControlService;

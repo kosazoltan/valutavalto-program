@@ -47,16 +47,17 @@ public class CurrencyCalculatorController {
      * POST /api/v1/calculator/reverse
      */
     @PostMapping("/reverse")
-    public ResponseEntity<Map<String, BigDecimal>> reverse(@Valid @RequestBody ReverseRequestDto request) {
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> reverse(@Valid @RequestBody ReverseRequestDto request) {
         BigDecimal foreignAmount = currencyCalculatorService.calculateReverse(
                 request.getCurrency(),
                 request.getHufAmount()
         );
-        return ResponseEntity.ok(Map.of(
-                "currency", BigDecimal.ZERO, // placeholder for code
-                "hufAmount", request.getHufAmount(),
-                "foreignAmount", foreignAmount
-        ));
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("currency", request.getCurrency());
+        result.put("hufAmount", request.getHufAmount());
+        result.put("foreignAmount", foreignAmount);
+        return ResponseEntity.ok(result);
     }
 
     /**

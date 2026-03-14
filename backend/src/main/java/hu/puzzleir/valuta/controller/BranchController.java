@@ -18,7 +18,6 @@ import java.util.UUID;
 @RequestMapping("/api/v1/branches")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*")
 public class BranchController {
 
     private final BranchService branchService;

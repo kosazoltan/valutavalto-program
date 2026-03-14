@@ -87,6 +87,7 @@ public class ProfitCalculationService {
             BigDecimal huf = t.getHufAmount() != null ? t.getHufAmount() : BigDecimal.ZERO;
             BigDecimal fee = t.getHandlingFee() != null ? t.getHandlingFee() : BigDecimal.ZERO;
 
+            if (t.getTransactionType() == null) continue;
             if (t.getTransactionType().isSellType()) {
                 totalSellHuf = totalSellHuf.add(huf);
                 cp.sellHuf = cp.sellHuf.add(huf);

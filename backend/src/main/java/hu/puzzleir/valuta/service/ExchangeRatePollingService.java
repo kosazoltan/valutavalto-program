@@ -327,9 +327,6 @@ public class ExchangeRatePollingService {
         int updatedCount = 0;
         LocalDate today = LocalDate.now();
 
-        // Egyszer töltjük be az összes árfolyamot — N+1 query megelőzés
-        List<ExchangeRate> allRates = exchangeRateRepository.findAll();
-
         for (Map.Entry<String, MnbRate> entry : mnbRates.entrySet()) {
             String currencyCode = entry.getKey();
             BigDecimal officialRate = entry.getValue().rate();
@@ -343,12 +340,9 @@ public class ExchangeRatePollingService {
 
                 Currency currency = currencyOpt.get();
 
-                // Memóriában szűrünk az előre betöltött listából
-                List<ExchangeRate> activeRates = allRates.stream()
-                    .filter(er -> er.getCurrency().getId().equals(currency.getId())
-                        && er.getActive()
-                        && er.getValidDate().equals(today))
-                    .toList();
+                // Célzott lekérdezés — csak a mai aktív árfolyamokat az adott valutához
+                List<ExchangeRate> activeRates = exchangeRateRepository
+                    .findActiveByCurrencyAndDate(currency.getId(), today);
 
                 if (activeRates.isEmpty()) {
                     log.debug("Nincs aktív mai árfolyam a(z) {} valutához — kihagyva", currencyCode);
@@ -502,11 +496,8 @@ public class ExchangeRatePollingService {
 
         LocalDate today = LocalDate.now();
 
-        List<ExchangeRate> activeRates = exchangeRateRepository.findAll().stream()
-            .filter(er -> er.getCurrency().getId().equals(currencyId)
-                && er.getActive()
-                && er.getValidDate().equals(today))
-            .toList();
+        List<ExchangeRate> activeRates = exchangeRateRepository
+            .findActiveByCurrencyAndDate(currencyId, today);
 
         if (activeRates.isEmpty()) {
             log.warn("Nincs aktív mai árfolyam a(z) {} ({}) valutához — margin nem alkalmazható",
@@ -546,11 +537,8 @@ public class ExchangeRatePollingService {
     public void snapshotDailyRates(UUID branchId, LocalDate date) {
         log.info("Napi árfolyam snapshot indítása: fiók={}, dátum={}", branchId, date);
 
-        List<ExchangeRate> activeRates = exchangeRateRepository.findAll().stream()
-            .filter(er -> er.getActive() && er.getValidDate().equals(date))
-            .filter(er -> er.getBranch() == null
-                || (er.getBranch() != null && er.getBranch().getId().equals(branchId)))
-            .toList();
+        List<ExchangeRate> activeRates = exchangeRateRepository
+            .findActiveByDateAndBranch(date, branchId);
 
         if (activeRates.isEmpty()) {
             log.warn("Nincs aktív árfolyam snapshot-hoz: fiók={}, dátum={}", branchId, date);

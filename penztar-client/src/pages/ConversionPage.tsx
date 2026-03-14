@@ -4,6 +4,8 @@ import { useAuthStore } from '@/stores/authStore';
 import apiClient from '@/api/client';
 import type { CurrencyCode, ExchangeRate, Customer } from '@/types';
 import { getCurrencyInfo } from '@/utils/currencies';
+import { roundHuf } from '@/utils/rounding';
+import { AML_IDENTIFICATION_LIMIT } from '@/utils/validation';
 
 /**
  * KonverziĂł oldal â€” valutaâ†’valuta csere.
@@ -47,7 +49,7 @@ export default function ConversionPage() {
   useEffect(() => {
     const loadRates = async () => {
       try {
-        const res = await apiClient.get('/api/rates/current');
+        const res = await apiClient.get('/rates/current');
         setRates(res.data ?? []);
       } catch (err: unknown) {
         setError('Ărfolyamok betĂ¶ltĂ©se sikertelen');
@@ -78,7 +80,7 @@ export default function ConversionPage() {
   // HUF ellenĂ©rtĂ©k (ĂˇtlĂˇthatĂłsĂˇghoz)
   const hufEquivalent = useMemo(() => {
     if (!sourceRate || sourceAmountNum <= 0) return 0;
-    return Math.round(sourceAmountNum * sourceRate.buyRate / sourceRate.unit);
+    return roundHuf(sourceAmountNum * sourceRate.buyRate / sourceRate.unit);
   }, [sourceRate, sourceAmountNum]);
 
   // ElĂ©rhetĹ‘ valutĂˇk (HUF nĂ©lkĂĽl)
@@ -100,7 +102,7 @@ export default function ConversionPage() {
   const searchCustomers = useCallback(async (query: string) => {
     if (query.length < 2) return;
     try {
-      const res = await apiClient.get(`/api/customers/search?q=${encodeURIComponent(query)}&limit=10`);
+      const res = await apiClient.get(`/customers/search?q=${encodeURIComponent(query)}&limit=10`);
       setCustomers(res.data ?? []);
     } catch (err: unknown) {
       setCustomers([]);
@@ -122,17 +124,22 @@ export default function ConversionPage() {
       return;
     }
 
+    // AML ügyfél azonosítás kötelező ellenőrzés
+    if (hufEquivalent >= AML_IDENTIFICATION_LIMIT && !customerId) {
+      setError('Ügyfél azonosítás kötelező a konverzióhoz (AML limit túllépve)!');
+      return;
+    }
+
     setIsSubmitting(true);
     setError('');
     try {
-      const res = await apiClient.post('/api/transactions/conversion', {
-        sourceCurrencyCode: sourceCurrency,
-        targetCurrencyCode: targetCurrency,
-        sourceAmount: sourceAmountNum,
-        targetAmount,
-        crossRate,
-        hufEquivalent,
-        customerId,
+      const res = await apiClient.post('/transactions/conversion', {
+        fromCurrencyCode: sourceCurrency,
+        toCurrencyCode: targetCurrency,
+        fromAmount: sourceAmountNum,
+        handlingFee: 0,
+        customerId: customerId ? String(customerId) : undefined,
+        customerName: customerName || undefined,
       });
 
       setSuccess(
@@ -335,9 +342,9 @@ export default function ConversionPage() {
               )}
             </div>
           )}
-          {hufEquivalent > 5_000_000 && !customerId && (
-            <p className="text-amber-600 text-sm mt-2">
-              âš ď¸Ź 5.000.000 Ft feletti konverziĂłnĂˇl az ĂĽgyfĂ©l azonosĂ­tĂˇs KĂ–TELEZĹ (AML)!
+          {hufEquivalent >= AML_IDENTIFICATION_LIMIT && !customerId && (
+            <p className="text-amber-600 text-sm mt-2 font-bold">
+              ⚠️ {AML_IDENTIFICATION_LIMIT.toLocaleString('hu-HU')} Ft feletti konverziónál az ügyfél azonosítás KÖTELEZŐ (AML)!
             </p>
           )}
         </div>

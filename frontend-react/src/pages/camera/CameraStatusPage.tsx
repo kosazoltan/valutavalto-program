@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { HardDrive, RefreshCw, Trash2, Camera } from 'lucide-react'
+import { api } from '../../services/api'
 
 interface StorageStats {
   totalUsageBytes: number
@@ -27,16 +28,15 @@ export default function CameraStatusPage() {
   const fetchAll = async () => {
     setLoading(true)
     try {
-      const [statsRes, cameraRes, uploadRes] = await Promise.all([
-        fetch('/api/v1/camera/admin/storage-stats'),
-        fetch('/api/v1/camera/status'),
-        fetch('/api/v1/camera/admin/upload-status'),
+      const [statsRes, cameraRes, uploadRes] = await Promise.allSettled([
+        api.get('/camera/admin/storage-stats'),
+        api.get('/camera/status'),
+        api.get('/camera/admin/upload-status'),
       ])
-      if (statsRes.ok) setStats(await statsRes.json())
-      if (cameraRes.ok) setCameras(await cameraRes.json())
-      if (uploadRes.ok) {
-        const data = await uploadRes.json()
-        setPendingUploads(data.pendingUploads)
+      if (statsRes.status === 'fulfilled') setStats(statsRes.value.data)
+      if (cameraRes.status === 'fulfilled') setCameras(cameraRes.value.data)
+      if (uploadRes.status === 'fulfilled') {
+        setPendingUploads(uploadRes.value.data.pendingUploads)
       }
     } catch (err) {
       console.error('Statusz lekeres sikertelen:', err)
@@ -48,14 +48,9 @@ export default function CameraStatusPage() {
   const triggerCleanup = async () => {
     if (!confirm('Biztosan torli a lejart felvételeket?')) return
     try {
-      const res = await fetch('/api/v1/camera/admin/cleanup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      })
-      if (res.ok) {
-        const data = await res.json()
-        alert(`${data.deletedCount} felvetel torolve`)
+      const res = await api.post('/camera/admin/cleanup', {})
+      if (res.data) {
+        alert(`${res.data.deletedCount} felvetel torolve`)
         fetchAll()
       }
     } catch (err) {

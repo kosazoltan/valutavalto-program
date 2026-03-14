@@ -18,11 +18,11 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class ConversionRequestDto {
 
-    @NotNull(message = "Forrás valuta azonosító kötelező")
     private Long fromCurrencyId;
+    private String fromCurrencyCode;
 
-    @NotNull(message = "Cél valuta azonosító kötelező")
     private Long toCurrencyId;
+    private String toCurrencyCode;
 
     @NotNull(message = "Összeg kötelező")
     @DecimalMin(value = "0.01", message = "Az összegnek nagyobbnak kell lennie 0-nál")
@@ -33,4 +33,5 @@ public class ConversionRequestDto {
 
     private String customerId;
     private String customerName;
+    private String customerDocumentNumber;
 }

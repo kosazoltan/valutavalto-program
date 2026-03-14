@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { setAuthToken, loadPersistedToken } from '@/api/client';
+import apiClient from '@/api/client';
 import { useAppMode } from '@/hooks/useAppMode';
 import { useUpdateNotifier } from '@/hooks/useUpdateNotifier';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -99,6 +100,16 @@ export default function App() {
             const now = Math.floor(Date.now() / 1000);
             if (payload.exp && payload.exp > now) {
               setAuthToken(token);
+              // Restore auth state by fetching user profile
+              try {
+                const res = await apiClient.get('/auth/me');
+                if (res.data) {
+                  useAuthStore.getState().setAuth(res.data, token, '');
+                }
+              } catch {
+                // Token invalid on server side — clear it
+                setAuthToken(null);
+              }
             }
           }
         }

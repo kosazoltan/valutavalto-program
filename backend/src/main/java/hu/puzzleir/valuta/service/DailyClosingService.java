@@ -407,26 +407,29 @@ public class DailyClosingService {
      * HIGH FIX #7: Duplikáció ellenőrzés — ne mentsen ha már van aznapi snapshot.
      */
     private void snapshotDailyRates(UUID companyId, LocalDate date) {
-        // Duplikáció ellenőrzés: ha már vannak aznapi rögzített árfolyamok, skip
-        List<ExchangeRate> existingRates = exchangeRateRepository
-            .findActiveRatesByDate(companyId, date);
-
-        if (!existingRates.isEmpty() && existingRates.stream()
-                .allMatch(r -> date.equals(r.getValidDate()))) {
-            log.info("Napi arfolyam snapshot mar letezik: datum={}, {} db — SKIP", date, existingRates.size());
-            return;
-        }
-
-        // Az aktualis aktiv arfolyamokat "befagyasztjuk" a zaras napjahoz
+        // Az aktualis aktiv arfolyamokat "befagyasztjuk" a zaras napjahoz:
+        // Active rátákat inaktiváljuk, ezzel rögzítve az aznapi záró állapotot.
         List<ExchangeRate> activeRates = exchangeRateRepository
             .findActiveRatesByDate(companyId, date);
 
+        if (activeRates.isEmpty()) {
+            log.warn("Napi arfolyam snapshot: nincs aktiv arfolyam a(z) {} napra — SKIP", date);
+            return;
+        }
+
+        // Duplikáció ellenőrzés: ha nincs aktív árfolyam (mind inaktív), már lefutott a snapshot
+        boolean allInactive = activeRates.stream().noneMatch(ExchangeRate::getActive);
+        if (allInactive) {
+            log.info("Napi arfolyam snapshot mar letezik: datum={}, {} db — SKIP", date, activeRates.size());
+            return;
+        }
+
         for (ExchangeRate rate : activeRates) {
-            rate.setValidDate(date);
+            rate.setActive(false);
             exchangeRateRepository.save(rate);
         }
 
-        log.info("Napi arfolyamok rogzitve: {} db", activeRates.size());
+        log.info("Napi arfolyamok rogzitve (befagyasztva): {} db", activeRates.size());
     }
 
     /**

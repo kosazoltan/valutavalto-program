@@ -7,6 +7,7 @@ import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.dto.transfer.*;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.*;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -149,6 +150,13 @@ public class TransferService {
         if (transfer.getStatus() != Transfer.TransferStatus.PENDING) {
             throw new ValidationException("Csak függőben lévő átadás törölhető!");
         }
+
+        // IDOR védelem: csak a küldő fiók dolgozói törölhetik
+        UUID currentBranchId = SecurityUtils.getCurrentBranchId();
+        if (!transfer.getFromBranch().getId().equals(currentBranchId)) {
+            throw new ValidationException("Csak a küldő fiók dolgozói törölhetik az átadást!");
+        }
+
         transfer.setStatus(Transfer.TransferStatus.CANCELLED);
         transferRepository.save(transfer);
     }
@@ -164,8 +172,13 @@ public class TransferService {
     }
 
     public List<TransferDto> getPending() {
+        UUID currentBranchId = SecurityUtils.getCurrentBranchId();
+        // Csak az aktuális fiókhoz tartozó bejövő pending átadások
         return transferRepository.findByStatus(Transfer.TransferStatus.PENDING)
-                .stream().map(this::toDto).collect(Collectors.toList());
+                .stream()
+                .filter(t -> t.getToBranch().getId().equals(currentBranchId)
+                        || t.getFromBranch().getId().equals(currentBranchId))
+                .map(this::toDto).collect(Collectors.toList());
     }
 
     public List<TransferDto> getOutgoing(UUID branchId) {

@@ -90,6 +90,11 @@ public class ClosingWizardService {
     public ClosingWizardDto getWizard(UUID wizardId) {
         ClosingWizard wizard = closingWizardRepository.findByIdWithSteps(wizardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Varázsló nem található: " + wizardId));
+        // IDOR protection: only allow access to wizards belonging to the current branch
+        UUID currentBranchId = SecurityUtils.getCurrentBranchId();
+        if (wizard.getBranch() != null && !wizard.getBranch().getId().equals(currentBranchId)) {
+            throw new ValidationException("Nincs jogosultság más iroda zárási varázslójához!");
+        }
         return toDto(wizard);
     }
 

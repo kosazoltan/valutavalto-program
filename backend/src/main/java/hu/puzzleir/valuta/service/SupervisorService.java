@@ -2,7 +2,9 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.dto.supervisor.SystemParamDto;
+import hu.puzzleir.valuta.entity.ExchangeRate;
 import hu.puzzleir.valuta.entity.Transaction;
+import hu.puzzleir.valuta.repository.ExchangeRateRepository;
 import hu.puzzleir.valuta.repository.SystemParameterRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -29,6 +31,7 @@ public class SupervisorService {
 
     private final SystemParameterRepository systemParameterRepository;
     private final TransactionRepository transactionRepository;
+    private final ExchangeRateRepository exchangeRateRepository;
     private final AuditLogService auditLogService;
     private final PasswordEncoder passwordEncoder;
 
@@ -63,6 +66,21 @@ public class SupervisorService {
             throw new ValidationException("Nincs supervisor jogosultság!");
         }
 
+        // Find the active rate for this currency and branch, then update it
+        List<ExchangeRate> rates = exchangeRateRepository.findActiveByDateAndBranch(
+                java.time.LocalDate.now(), branchId);
+        ExchangeRate rate = rates.stream()
+                .filter(r -> r.getCurrency().getCode().equals(currency))
+                .findFirst()
+                .orElseThrow(() -> new ValidationException(
+                        "Nincs aktív árfolyam ehhez a valutához: " + currency));
+
+        BigDecimal oldBuyRate = rate.getBaseBuyRate();
+        BigDecimal oldSellRate = rate.getBaseSellRate();
+        rate.setBaseBuyRate(newBuyRate);
+        rate.setBaseSellRate(newSellRate);
+        exchangeRateRepository.save(rate);
+
         String userId = String.valueOf(SecurityUtils.getCurrentWorkerId());
         String workerCode = SecurityUtils.getCurrentWorkerCode();
 
@@ -74,14 +92,14 @@ public class SupervisorService {
                 workerCode,
                 branchId.toString(),
                 null,
-                String.format("currency=%s, buyRate=%s, sellRate=%s, reason=%s",
-                        currency, newBuyRate, newSellRate, reason),
+                String.format("currency=%s, oldBuy=%s, newBuy=%s, oldSell=%s, newSell=%s, reason=%s",
+                        currency, oldBuyRate, newBuyRate, oldSellRate, newSellRate, reason),
                 null,
                 null
         );
 
-        log.info("[Supervisor] Árfolyam felülbírálat: {} buy={} sell={} branch={} ok={}",
-                currency, newBuyRate, newSellRate, branchId, reason);
+        log.info("[Supervisor] Árfolyam felülbírálat: {} buy={}→{} sell={}→{} branch={} reason={}",
+                currency, oldBuyRate, newBuyRate, oldSellRate, newSellRate, branchId, reason);
     }
 
     /**

@@ -14,7 +14,7 @@ public class RateUpdateMessage {
 
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
     public static class RateEntry {
-        private UUID currencyId;
+        private Long currencyId;
         private String currencyCode;
         private BigDecimal buyRate;
         private BigDecimal sellRate;

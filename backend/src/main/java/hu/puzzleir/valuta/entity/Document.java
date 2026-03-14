@@ -43,4 +43,7 @@ public class Document {
 
     @Column(name = "uploaded_by_id")
     private Long uploadedById;
+
+    @Column(name = "company_id")
+    private UUID companyId;
 }

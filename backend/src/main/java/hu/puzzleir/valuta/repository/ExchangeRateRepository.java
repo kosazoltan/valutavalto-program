@@ -84,4 +84,28 @@ public interface ExchangeRateRepository extends JpaRepository<ExchangeRate, Long
         List<ExchangeRate> rates = findCurrentRate(companyId, currencyId, branchId);
         return rates.isEmpty() ? Optional.empty() : Optional.of(rates.get(0));
     }
+
+    /**
+     * Aktív árfolyamok egy valutához adott napon (cég-független — polling használja).
+     */
+    @Query("SELECT er FROM ExchangeRate er " +
+           "WHERE er.currency.id = :currencyId " +
+           "AND er.active = true " +
+           "AND er.validDate = :date")
+    List<ExchangeRate> findActiveByCurrencyAndDate(
+        @Param("currencyId") Long currencyId,
+        @Param("date") LocalDate date
+    );
+
+    /**
+     * Aktív árfolyamok adott napon egy branch-hez (vagy branch IS NULL).
+     */
+    @Query("SELECT er FROM ExchangeRate er " +
+           "WHERE er.active = true " +
+           "AND er.validDate = :date " +
+           "AND (er.branch IS NULL OR er.branch.id = :branchId)")
+    List<ExchangeRate> findActiveByDateAndBranch(
+        @Param("date") LocalDate date,
+        @Param("branchId") UUID branchId
+    );
 }

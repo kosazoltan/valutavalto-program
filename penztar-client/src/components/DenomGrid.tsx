@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { Denomination } from '@/types';
 
 interface DenomGridProps {
@@ -31,6 +31,15 @@ export default function DenomGrid({ currencyCode, onSave, onClose }: DenomGridPr
     });
     return init;
   });
+
+  // Reset counts when currency changes
+  useEffect(() => {
+    const init: Record<number, number> = {};
+    denomValues.forEach((v) => {
+      init[v] = 0;
+    });
+    setCounts(init);
+  }, [denomValues]);
 
   const total = useMemo(() => {
     return denomValues.reduce((sum, v) => sum + v * (counts[v] ?? 0), 0);

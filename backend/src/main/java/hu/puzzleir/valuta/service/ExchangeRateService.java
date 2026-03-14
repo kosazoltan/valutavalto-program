@@ -16,10 +16,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.beans.factory.annotation.Value;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
@@ -39,6 +43,10 @@ public class ExchangeRateService {
     private final CompanyRepository companyRepository;
     private final BranchRepository branchRepository;
 
+    /** Árfolyam maximális kora órában (0 = nincs limit) */
+    @Value("${exchange-rate.max-age-hours:24}")
+    private int maxAgeHours;
+
     /**
      * Aktuális árfolyam lekérése egy valutához
      */
@@ -47,9 +55,34 @@ public class ExchangeRateService {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         UUID branchId = SecurityUtils.getCurrentBranchId();
 
-        return exchangeRateRepository.findLatestRate(companyId, currencyId, branchId)
+        ExchangeRate rate = exchangeRateRepository.findLatestRate(companyId, currencyId, branchId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                     "Nincs érvényes árfolyam ehhez a valutához: " + currencyId));
+
+        // Árfolyam frissesség ellenőrzése
+        validateRateFreshness(rate);
+
+        return rate;
+    }
+
+    /**
+     * Árfolyam frissesség validálása.
+     * Ha az árfolyam régebbi mint a konfigurált max kor, elutasítjuk.
+     */
+    private void validateRateFreshness(ExchangeRate rate) {
+        if (maxAgeHours <= 0) {
+            return; // nincs korhatár
+        }
+        LocalDateTime rateTimestamp = LocalDateTime.of(rate.getValidDate(), rate.getValidTime());
+        long hoursOld = ChronoUnit.HOURS.between(rateTimestamp, LocalDateTime.now());
+        if (hoursOld > maxAgeHours) {
+            log.warn("Lejárt árfolyam: {} — {} órás (max: {} óra)",
+                    rate.getCurrency().getCode(), hoursOld, maxAgeHours);
+            throw new ValidationException(
+                String.format("Az árfolyam lejárt! (Utolsó frissítés: %s %s, %d órája — maximum: %d óra). " +
+                              "Kérjük frissítse az árfolyamokat.",
+                    rate.getValidDate(), rate.getValidTime(), hoursOld, maxAgeHours));
+        }
     }
 
     /**
@@ -100,9 +133,27 @@ public class ExchangeRateService {
         Currency currency = currencyRepository.findById(request.getCurrencyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Valuta nem található: " + request.getCurrencyId()));
 
+        // Validáció: árfolyamok pozitívak
+        if (request.getBaseBuyRate() == null || request.getBaseBuyRate().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ValidationException("Vételi árfolyam 0-nál nagyobb kell legyen!");
+        }
+        if (request.getBaseSellRate() == null || request.getBaseSellRate().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ValidationException("Eladási árfolyam 0-nál nagyobb kell legyen!");
+        }
+
         // Validáció: eladási árfolyam > vételi árfolyam
         if (request.getBaseBuyRate().compareTo(request.getBaseSellRate()) >= 0) {
             throw new ValidationException("Az eladási árfolyamnak nagyobbnak kell lennie a vételinél!");
+        }
+
+        // Validáció: limit összegek növekvő sorrendben
+        if (request.getLimit1Amount() != null && request.getLimit2Amount() != null
+                && request.getLimit1Amount().compareTo(request.getLimit2Amount()) >= 0) {
+            throw new ValidationException("Limit1 összegnek kisebbnek kell lennie Limit2-nél!");
+        }
+        if (request.getLimit2Amount() != null && request.getLimit3Amount() != null
+                && request.getLimit2Amount().compareTo(request.getLimit3Amount()) >= 0) {
+            throw new ValidationException("Limit2 összegnek kisebbnek kell lennie Limit3-nál!");
         }
 
         Branch branch = null;
@@ -159,9 +210,10 @@ public class ExchangeRateService {
         }
 
         // Kedvezményes árfolyam számítása
-        BigDecimal multiplier = BigDecimal.ONE.subtract(discountPercent.divide(new BigDecimal("100"), 6, RoundingMode.HALF_UP));
-        BigDecimal newBuyRate = rate.getBaseBuyRate().multiply(multiplier);
-        BigDecimal newSellRate = rate.getBaseSellRate().multiply(multiplier);
+        // Kedvezmény = spread csökkentés → buy rate NŐ (ügyfél többet kap), sell rate CSÖKKEN (ügyfél kevesebbet fizet)
+        BigDecimal discountFraction = discountPercent.divide(new BigDecimal("100"), 6, RoundingMode.HALF_UP);
+        BigDecimal newBuyRate = rate.getBaseBuyRate().multiply(BigDecimal.ONE.add(discountFraction));
+        BigDecimal newSellRate = rate.getBaseSellRate().multiply(BigDecimal.ONE.subtract(discountFraction));
 
         log.info("Árfolyam kedvezmény alkalmazva: {}% - új vétel: {}, eladás: {}",
                 discountPercent, newBuyRate, newSellRate);

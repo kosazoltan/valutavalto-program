@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { History, RefreshCw } from 'lucide-react'
+import { api } from '../../services/api'
 
 interface Publication {
   id: string
@@ -22,8 +23,8 @@ export default function RatePublishHistory() {
   const fetchHistory = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/v1/rate-management/publications')
-      if (res.ok) setPublications(await res.json())
+      const { data } = await api.get<Publication[]>('/rate-management/publications')
+      setPublications(data)
     } catch (err) {
       console.error('Lekeres sikertelen:', err)
     } finally {
@@ -66,7 +67,7 @@ export default function RatePublishHistory() {
                   {pub.notes && <p className="text-sm text-muted-foreground">{pub.notes}</p>}
                 </div>
                 <div className="text-right text-sm text-muted-foreground">
-                  <p>Publikalта: #{pub.publishedBy}</p>
+                  <p>Publikálta: #{pub.publishedBy}</p>
                   <p className="text-xs">{pub.id.substring(0, 8)}...</p>
                 </div>
               </div>

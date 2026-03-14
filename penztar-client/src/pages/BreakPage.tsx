@@ -39,12 +39,12 @@ export default function BreakPage() {
     const initBreak = async () => {
       try {
         // Max szĂĽnet idĹ‘ lekĂ©rĂ©se
-        const configRes = await apiClient.get('/api/system-parameters/by-key/MAX_BREAK_MINUTES');
+        const configRes = await apiClient.get('/system-parameters/by-key/MAX_BREAK_MINUTES');
         const maxMin = parseInt(configRes.data?.parameterValue ?? '15', 10);
         setMaxBreakMinutes(maxMin);
 
         // CashDeskBreak rĂ¶gzĂ­tĂ©se
-        const res = await apiClient.post('/api/daily-sessions/break/start', {
+        const res = await apiClient.post('/daily-sessions/break/start', {
           workerId: user?.id,
           reason: 'MANUAL',
         });
@@ -84,7 +84,7 @@ export default function BreakPage() {
     setPinError('');
     try {
       // PIN validĂˇciĂł + szĂĽnet lezĂˇrĂˇsa
-      await apiClient.post('/api/daily-sessions/break/end', {
+      await apiClient.post('/daily-sessions/break/end', {
         breakId,
         pin,
         workerId: user?.id,
@@ -98,7 +98,7 @@ export default function BreakPage() {
   // Supervisor override
   const handleSupervisorOverride = useCallback(async () => {
     try {
-      await apiClient.post('/api/daily-sessions/break/supervisor-override', {
+      await apiClient.post('/daily-sessions/break/supervisor-override', {
         breakId,
         pin,
         workerId: user?.id,

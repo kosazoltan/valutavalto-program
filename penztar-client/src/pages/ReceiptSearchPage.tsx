@@ -71,8 +71,8 @@ export default function ReceiptSearchPage() {
           datum: data.transactionDate,
           osszeg: data.hufAmount,
           valuta: data.currencyCode,
-          adoszam: '32313332-2-02',
-          penztarKod: 101,
+          adoszam: data.qrData ?? '',
+          penztarKod: data.branchCode ? parseInt(data.branchCode, 10) : 0,
         });
         setQrCodeUrl(qr);
       } catch (err: unknown) {

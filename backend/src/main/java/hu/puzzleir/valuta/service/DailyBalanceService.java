@@ -73,16 +73,16 @@ public class DailyBalanceService {
         BigDecimal openingBalance = getOpeningBalance(branchId, date, currencyCode);
 
         // 2. VĂˇsĂˇrlĂˇs (BUY tĂ­pusĂş tranzakciĂłk â€” beĂ©rkezett valuta)
-        BigDecimal purchases = transactionRepository.sumDailyTurnover(
-            branchId, date, TransactionType.BUY
+        BigDecimal purchases = transactionRepository.sumDailyTurnoverByCurrency(
+            branchId, date, TransactionType.BUY, currencyCode
         );
         if (purchases == null) {
             purchases = BigDecimal.ZERO;
         }
 
         // 3. EladĂˇs (SELL tĂ­pusĂş tranzakciĂłk â€” kiadott valuta)
-        BigDecimal sales = transactionRepository.sumDailyTurnover(
-            branchId, date, TransactionType.SELL
+        BigDecimal sales = transactionRepository.sumDailyTurnoverByCurrency(
+            branchId, date, TransactionType.SELL, currencyCode
         );
         if (sales == null) {
             sales = BigDecimal.ZERO;
