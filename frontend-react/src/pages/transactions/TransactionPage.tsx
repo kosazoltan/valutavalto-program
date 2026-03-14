@@ -15,6 +15,7 @@ import { NumberInput } from '../../components/NumberInput'
 import { formatDecimal } from '../../utils/numberFormat'
 import { transactionApi, exchangeRateApi } from '../../services/api'
 import type { BuyRequest, SellRequest, ExchangeRate } from '../../services/api'
+import { roundHuf } from '../../utils/rounding'
 
 interface CurrencyRate {
   id: string
@@ -121,7 +122,7 @@ export default function TransactionPage() {
     if (lastEdited === 'foreign' && foreignAmount) {
       const amount = parseFloat(foreignAmount.replace(',', '.'))
       if (!isNaN(amount)) {
-        setHufAmount(Math.round((amount / unit) * rate).toString())
+        setHufAmount(roundHuf((amount / unit) * rate).toString())
       }
     } else if (lastEdited === 'huf' && hufAmount) {
       const amount = parseFloat(hufAmount.replace(',', '.').replace(/\s/g, ''))

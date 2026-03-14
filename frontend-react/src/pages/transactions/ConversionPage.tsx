@@ -20,6 +20,7 @@ import {
 import { NumberInput } from '../../components/NumberInput'
 import { formatDecimal, formatInteger } from '../../utils/numberFormat'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { roundHuf } from '../../utils/rounding'
 
 /**
  * Konverziós tranzakció oldal
@@ -109,7 +110,7 @@ export default function ConversionPage() {
 
     // Calculate HUF value using buy rate (customer sells this currency)
     const huf = amount * fromRate.baseBuyRate
-    setHufAmount(Math.round(huf))
+    setHufAmount(roundHuf(huf))
 
     // Calculate to amount if target currency selected
     if (toCurrencyId) {

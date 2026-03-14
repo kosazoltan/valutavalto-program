@@ -11,6 +11,7 @@ import { HotkeyBar } from '../../components/cashier/HotkeyBar'
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext'
 import { transactionApi, exchangeRateApi } from '../../services/api'
 import type { BuyRequest, SellRequest, ExchangeRate } from '../../services/api'
+import { roundHuf } from '../../utils/rounding'
 
 /**
  * Penztaros Eladas/Vetel kepernyoje — 6 soros valuta tabla.
@@ -145,8 +146,8 @@ export default function CashierTransactionPage() {
         const row = next[rowIdx]!
         const qtyNum = parseFloat(qty) || 0
 
-        // Arfolyam szamitas: rate * mennyiseg = HUF ertek
-        const hufValue = Math.round(row.exchangeRate * qtyNum)
+        // Arfolyam szamitas: rate * mennyiseg = HUF ertek (magyar 5 Ft kerekites)
+        const hufValue = roundHuf(row.exchangeRate * qtyNum)
 
         next[rowIdx] = { ...row, quantity: qty, hufValue }
         return next
