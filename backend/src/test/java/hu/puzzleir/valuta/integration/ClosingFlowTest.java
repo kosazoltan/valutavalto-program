@@ -270,7 +270,7 @@ class ClosingFlowTest {
                     .stepNumber(i)
                     .stepTitle("Lépés " + i)
                     .stepDescription("Leírás " + i)
-                    .completed(i < currentStep)
+                    .completed(i <= currentStep)
                     .canProceed(true)
                     .stepData("{}")
                     .build());

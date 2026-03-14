@@ -29,7 +29,7 @@ import static org.mockito.Mockito.*;
  * CommissionCalculationService UNIT tesztek — Mockito.
  *
  * Teszteli a jutalékszámítás tier-besorolását, bónuszt és jóváhagyást.
- * A service napról napra gyűjti a tranzakciókat (findByWorkerAndDate × hónap napjai).
+ * A service havi range query-vel gyűjti a tranzakciókat.
  */
 @ExtendWith(MockitoExtension.class)
 class CommissionCalculationServiceTest {
@@ -79,18 +79,12 @@ class CommissionCalculationServiceTest {
                 .build();
     }
 
-    /**
-     * Közös mock: tranzakciókat CSAK jan 1-re adunk, többi napra üres lista.
-     * A service napról napra iterál, ezért fontos a pontos válasz minden napra.
-     *
-     * doAnswer-t használunk egyetlen stubbal, ami belül dönti el a napot.
-     * Ez elkerüli az argThat + lenient + strict extension közötti ütközést.
-     */
-    private void mockTransactionsForDay(LocalDate day, List<Transaction> transactions) {
-        lenient().doAnswer(invocation -> {
-            LocalDate date = invocation.getArgument(1);
-            return day.equals(date) ? transactions : Collections.emptyList();
-        }).when(transactionRepository).findByWorkerAndDate(eq(WORKER_ID), any(LocalDate.class));
+        /**
+         * Közös mock: havi range query eredménye.
+         */
+        private void mockTransactionsForMonth(List<Transaction> transactions) {
+                when(transactionRepository.findByWorkerIdAndTransactionDateBetween(eq(WORKER_ID), any(LocalDate.class), any(LocalDate.class)))
+                                .thenReturn(transactions);
     }
 
     /**
@@ -117,7 +111,7 @@ class CommissionCalculationServiceTest {
             );
 
             when(commissionCalcRepo.existsByWorkerIdAndPeriod(WORKER_ID, YEAR_MONTH)).thenReturn(false);
-            mockTransactionsForDay(JAN_1, transactions);
+            mockTransactionsForMonth(transactions);
 
             // Tier 1 szabály: 0 - 1M → 1%
             CommissionRule tier1 = createRule(
@@ -156,7 +150,7 @@ class CommissionCalculationServiceTest {
             );
 
             when(commissionCalcRepo.existsByWorkerIdAndPeriod(WORKER_ID, YEAR_MONTH)).thenReturn(false);
-            mockTransactionsForDay(JAN_1, transactions);
+            mockTransactionsForMonth(transactions);
 
             // Tier 2 szabály: 1M - 5M → 1.5%
             CommissionRule tier2 = createRule(
@@ -192,7 +186,7 @@ class CommissionCalculationServiceTest {
             );
 
             when(commissionCalcRepo.existsByWorkerIdAndPeriod(WORKER_ID, YEAR_MONTH)).thenReturn(false);
-            mockTransactionsForDay(JAN_1, transactions);
+            mockTransactionsForMonth(transactions);
 
             // Tier 3 szabály: 5M+ → 2%
             CommissionRule tier3 = createRule(
@@ -228,7 +222,7 @@ class CommissionCalculationServiceTest {
             );
 
             when(commissionCalcRepo.existsByWorkerIdAndPeriod(WORKER_ID, YEAR_MONTH)).thenReturn(false);
-            mockTransactionsForDay(JAN_1, transactions);
+            mockTransactionsForMonth(transactions);
 
             // Szabály: 5M+ → 2% + bónusz 0.5% ha forgalom >= 5M
             CommissionRule ruleWithBonus = createRule(

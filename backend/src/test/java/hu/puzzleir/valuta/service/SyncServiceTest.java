@@ -1,11 +1,19 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.entity.CashBalance;
+import hu.puzzleir.valuta.entity.Company;
+import hu.puzzleir.valuta.entity.Currency;
+import hu.puzzleir.valuta.entity.ExchangeRate;
 import hu.puzzleir.valuta.repository.BranchRepository;
+import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.dto.sync.SyncLogDto;
 import hu.puzzleir.valuta.dto.sync.SyncStatusDto;
 import hu.puzzleir.valuta.entity.SyncLog;
+import hu.puzzleir.valuta.repository.DailySessionRepository;
+import hu.puzzleir.valuta.repository.ExchangeRateRepository;
 import hu.puzzleir.valuta.repository.SyncLogRepository;
+import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -35,14 +44,42 @@ class SyncServiceTest {
     @Mock
     private BranchRepository branchRepository;
 
+    @Mock
+    private ExchangeRateRepository exchangeRateRepository;
+
+    @Mock
+    private TransactionRepository transactionRepository;
+
+    @Mock
+    private CashBalanceRepository cashBalanceRepository;
+
+    @Mock
+    private DailySessionRepository dailySessionRepository;
+
     private static final UUID BRANCH_ID = UUID.randomUUID();
 
     private Branch createBranch() {
         Branch b = new Branch();
+        Company c = new Company();
+        c.setId(UUID.randomUUID());
         b.setId(BRANCH_ID);
         b.setCode("B01");
         b.setName("Teszt Iroda");
+        b.setCompany(c);
         return b;
+    }
+
+    private List<ExchangeRate> createRates(int count) {
+        return IntStream.range(0, count)
+                .mapToObj(i -> {
+                    Currency currency = new Currency();
+                    currency.setId((long) (i + 1));
+
+                    ExchangeRate rate = new ExchangeRate();
+                    rate.setCurrency(currency);
+                    return rate;
+                })
+                .toList();
     }
 
     @Test
@@ -50,6 +87,10 @@ class SyncServiceTest {
     void testSyncRatesDown() {
         Branch branch = createBranch();
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+        when(exchangeRateRepository.findAllActiveRates(any(UUID.class), eq(BRANCH_ID))).thenReturn(createRates(15));
+        when(transactionRepository.findActiveByBranchAndDate(eq(BRANCH_ID), any())).thenReturn(Collections.emptyList());
+        when(cashBalanceRepository.findByBranchId(BRANCH_ID)).thenReturn(Collections.emptyList());
+        when(dailySessionRepository.findOpenSessionsByBranch(BRANCH_ID)).thenReturn(Collections.emptyList());
         when(syncLogRepository.save(any(SyncLog.class))).thenAnswer(inv -> {
             SyncLog s = inv.getArgument(0);
             if (s.getId() == null) s.setId(UUID.randomUUID());
@@ -71,6 +112,10 @@ class SyncServiceTest {
     void testSyncTransactionsUp() {
         Branch branch = createBranch();
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+        when(exchangeRateRepository.findAllActiveRates(any(UUID.class), eq(BRANCH_ID))).thenReturn(Collections.emptyList());
+        when(transactionRepository.findActiveByBranchAndDate(eq(BRANCH_ID), any())).thenReturn(Collections.nCopies(50, new hu.puzzleir.valuta.entity.Transaction()));
+        when(cashBalanceRepository.findByBranchId(BRANCH_ID)).thenReturn(Collections.emptyList());
+        when(dailySessionRepository.findOpenSessionsByBranch(BRANCH_ID)).thenReturn(Collections.emptyList());
         when(syncLogRepository.save(any(SyncLog.class))).thenAnswer(inv -> {
             SyncLog s = inv.getArgument(0);
             if (s.getId() == null) s.setId(UUID.randomUUID());
@@ -91,6 +136,10 @@ class SyncServiceTest {
     void testSyncAll() {
         Branch branch = createBranch();
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+        when(exchangeRateRepository.findAllActiveRates(any(UUID.class), eq(BRANCH_ID))).thenReturn(createRates(15));
+        when(transactionRepository.findActiveByBranchAndDate(eq(BRANCH_ID), any())).thenReturn(Collections.nCopies(50, new hu.puzzleir.valuta.entity.Transaction()));
+        when(cashBalanceRepository.findByBranchId(BRANCH_ID)).thenReturn(Collections.nCopies(25, new CashBalance()));
+        when(dailySessionRepository.findOpenSessionsByBranch(BRANCH_ID)).thenReturn(Collections.emptyList());
         when(syncLogRepository.save(any(SyncLog.class))).thenAnswer(inv -> {
             SyncLog s = inv.getArgument(0);
             if (s.getId() == null) s.setId(UUID.randomUUID());
