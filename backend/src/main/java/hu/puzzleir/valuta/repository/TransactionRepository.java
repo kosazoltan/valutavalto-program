@@ -105,6 +105,22 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     );
 
     /**
+     * Napi forgalom összeg — adott valutához szűrve (napi mérleg számításhoz).
+     */
+    @Query("SELECT COALESCE(SUM(t.currencyAmount), 0) FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionDate = :date " +
+           "AND t.transactionType = :type " +
+           "AND t.currency.code = :currencyCode " +
+           "AND t.status = 'COMPLETED'")
+    BigDecimal sumDailyTurnoverByCurrency(
+        @Param("branchId") UUID branchId,
+        @Param("date") LocalDate date,
+        @Param("type") TransactionType type,
+        @Param("currencyCode") String currencyCode
+    );
+
+    /**
      * Következő bizonylat szám generálásához
      */
     @Query("SELECT MAX(t.receiptNumber) FROM Transaction t " +

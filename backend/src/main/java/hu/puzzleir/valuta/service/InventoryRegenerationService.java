@@ -59,7 +59,7 @@ public class InventoryRegenerationService {
         Map<String, BigDecimal> calculatedMap = new HashMap<>();
         for (Transaction t : allTransactions) {
             if (t.getTransactionType() == null || t.getCurrency() == null) continue;
-            if (t.getStatus() == TransactionStatus.CANCELLED) continue;
+            if (t.getStatus() == TransactionStatus.CANCELLED || t.getStatus() == TransactionStatus.REVERSED) continue;
 
             String code = t.getCurrency().getCode();
             BigDecimal amount = t.getCurrencyAmount() != null ? t.getCurrencyAmount() : BigDecimal.ZERO;

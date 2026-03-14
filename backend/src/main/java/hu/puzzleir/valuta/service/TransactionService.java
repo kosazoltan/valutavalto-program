@@ -63,7 +63,7 @@ public class TransactionService {
     private static final BigDecimal IDENTIFICATION_LIMIT = new BigDecimal("300000");
 
     // HUF currency ID cache — startup-kor betöltve, ne kelljen minden tranzakciónál DB-t kérdezni
-    private Long cachedHufCurrencyId;
+    private volatile Long cachedHufCurrencyId;
 
     @PostConstruct
     void initHufCurrencyId() {
@@ -109,17 +109,17 @@ public class TransactionService {
         // Árfolyam meghatározása
         ExchangeRate rate = exchangeRateService.getCurrentRate(currencyId);
 
+        // Kedvezmény validálás (ELŐBB, mielőtt bármilyen számítás történne)
+        if (request.getDiscountPercent() != null && request.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0) {
+            validateDiscount(request.getDiscountPercent());
+        }
+
         // HUF összeg számítása (helper kezeli a kedvezményt is)
         BigDecimal hufAmount = calculateBuyHufAmount(
             request.getCurrencyAmount(),
             rate,
             request.getDiscountPercent()
         );
-
-        // Kedvezmény validálás
-        if (request.getDiscountPercent() != null && request.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0) {
-            validateDiscount(request.getDiscountPercent());
-        }
 
         // Kezelési díj szerver oldali számítás (kliens értékét felülírjuk)
         BigDecimal serverHandlingFee = handlingFeeCalculator.calculate(
@@ -245,17 +245,17 @@ public class TransactionService {
         // Árfolyam meghatározása
         ExchangeRate rate = exchangeRateService.getCurrentRate(currencyId);
 
+        // Kedvezmény validálás (ELŐBB, mielőtt bármilyen számítás történne)
+        if (request.getDiscountPercent() != null && request.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0) {
+            validateDiscount(request.getDiscountPercent());
+        }
+
         // HUF összeg számítása (helper kezeli a kedvezményt is)
         BigDecimal hufAmount = calculateSellHufAmount(
             request.getCurrencyAmount(),
             rate,
             request.getDiscountPercent()
         );
-
-        // Kedvezmény validálás
-        if (request.getDiscountPercent() != null && request.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0) {
-            validateDiscount(request.getDiscountPercent());
-        }
 
         // Készlet ellenőrzése
         validateCurrencyStock(branchId, currency.getId(), request.getCurrencyAmount());
