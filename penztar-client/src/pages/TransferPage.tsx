@@ -137,7 +137,7 @@ export default function TransferPage() {
         setProcessingId(null);
       }
     },
-    [fetchData],
+    [fetchData, pendingTransfers],
   );
 
   // Elutasítás

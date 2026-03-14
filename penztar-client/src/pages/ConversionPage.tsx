@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/authStore';
 import apiClient from '@/api/client';
 import type { CurrencyCode, ExchangeRate, Customer } from '@/types';
 import { getCurrencyInfo } from '@/utils/currencies';
+import { AML_IDENTIFICATION_LIMIT } from '@/utils/validation';
 
 /**
  * KonverziĂł oldal â€” valutaâ†’valuta csere.
@@ -47,7 +48,7 @@ export default function ConversionPage() {
   useEffect(() => {
     const loadRates = async () => {
       try {
-        const res = await apiClient.get('/api/rates/current');
+        const res = await apiClient.get('/rates/current');
         setRates(res.data ?? []);
       } catch (err: unknown) {
         setError('Ărfolyamok betĂ¶ltĂ©se sikertelen');
@@ -100,7 +101,7 @@ export default function ConversionPage() {
   const searchCustomers = useCallback(async (query: string) => {
     if (query.length < 2) return;
     try {
-      const res = await apiClient.get(`/api/customers/search?q=${encodeURIComponent(query)}&limit=10`);
+      const res = await apiClient.get(`/customers/search?q=${encodeURIComponent(query)}&limit=10`);
       setCustomers(res.data ?? []);
     } catch (err: unknown) {
       setCustomers([]);
@@ -125,7 +126,7 @@ export default function ConversionPage() {
     setIsSubmitting(true);
     setError('');
     try {
-      const res = await apiClient.post('/api/transactions/conversion', {
+      const res = await apiClient.post('/transactions/conversion', {
         sourceCurrencyCode: sourceCurrency,
         targetCurrencyCode: targetCurrency,
         sourceAmount: sourceAmountNum,
@@ -335,7 +336,7 @@ export default function ConversionPage() {
               )}
             </div>
           )}
-          {hufEquivalent > 5_000_000 && !customerId && (
+          {hufEquivalent >= AML_IDENTIFICATION_LIMIT && !customerId && (
             <p className="text-amber-600 text-sm mt-2">
               âš ď¸Ź 5.000.000 Ft feletti konverziĂłnĂˇl az ĂĽgyfĂ©l azonosĂ­tĂˇs KĂ–TELEZĹ (AML)!
             </p>
