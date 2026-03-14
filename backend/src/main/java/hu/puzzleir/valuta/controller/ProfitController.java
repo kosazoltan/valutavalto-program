@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.service.BranchService;
 import hu.puzzleir.valuta.service.ProfitCalculationService;
 import hu.puzzleir.valuta.service.WacService;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ public class ProfitController {
 
     private final ProfitCalculationService service;
     private final WacService wacService;
+    private final BranchService branchService;
 
     // ============ HAGYOMÁNYOS PROFIT ENDPOINTOK ============
 
@@ -42,6 +44,7 @@ public class ProfitController {
     public ResponseEntity<ProfitCalculationService.ProfitReport> daily(
             @RequestParam UUID branchId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        branchService.findById(branchId); // IDOR védelem: cég ellenőrzés
         return ResponseEntity.ok(service.calculateDailyProfit(branchId, date));
     }
 
@@ -50,6 +53,7 @@ public class ProfitController {
     public ResponseEntity<ProfitCalculationService.ProfitReport> monthly(
             @RequestParam UUID branchId,
             @RequestParam String month) {
+        branchService.findById(branchId); // IDOR védelem: cég ellenőrzés
         return ResponseEntity.ok(service.calculateMonthlyProfit(branchId, month));
     }
 
@@ -58,7 +62,9 @@ public class ProfitController {
     public ResponseEntity<ProfitCalculationService.ProfitReport> company(
             @RequestParam UUID companyId,
             @RequestParam String month) {
-        return ResponseEntity.ok(service.calculateCompanyProfit(companyId, month));
+        // IDOR védelem: csak saját cég adatai lekérhetők
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        return ResponseEntity.ok(service.calculateCompanyProfit(currentCompanyId, month));
     }
 
     // ============ WAC-ALAPÚ PROFIT ENDPOINTOK ============
@@ -72,6 +78,7 @@ public class ProfitController {
             @PathVariable UUID branchId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        branchService.findById(branchId); // IDOR védelem: cég ellenőrzés
         if (from != null && to != null && from.isAfter(to)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A kezdő dátum nem lehet későbbi mint a záró dátum!");
         }

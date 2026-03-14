@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.dto.cashregister.CashRegisterEventDto;
 import hu.puzzleir.valuta.dto.cashregister.CashRegisterReceiptRequest;
 import hu.puzzleir.valuta.dto.cashregister.CashRegisterStornoRequest;
+import hu.puzzleir.valuta.service.BranchService;
 import hu.puzzleir.valuta.service.CashRegisterService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,16 +26,19 @@ import java.util.UUID;
 public class CashRegisterController {
 
     private final CashRegisterService cashRegisterService;
+    private final BranchService branchService;
 
     @PostMapping("/open")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<CashRegisterEventDto> openDay(@RequestParam UUID branchId) {
+        branchService.findById(branchId); // IDOR védelem: cég ellenőrzés
         return ResponseEntity.ok(cashRegisterService.openDay(branchId));
     }
 
     @PostMapping("/close")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<CashRegisterEventDto> closeDay(@RequestParam UUID branchId) {
+        branchService.findById(branchId); // IDOR védelem: cég ellenőrzés
         return ResponseEntity.ok(cashRegisterService.closeDay(branchId));
     }
 
@@ -55,6 +59,7 @@ public class CashRegisterController {
     @GetMapping("/x-report/{branchId}")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<CashRegisterEventDto> getXReport(@PathVariable UUID branchId) {
+        branchService.findById(branchId); // IDOR védelem: cég ellenőrzés
         return ResponseEntity.ok(cashRegisterService.getXReport(branchId));
     }
 
@@ -63,6 +68,7 @@ public class CashRegisterController {
     public ResponseEntity<List<CashRegisterEventDto>> getDailyEvents(
             @PathVariable UUID branchId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        branchService.findById(branchId); // IDOR védelem: cég ellenőrzés
         LocalDate effectiveDate = date != null ? date : LocalDate.now();
         return ResponseEntity.ok(cashRegisterService.getDailyEvents(branchId, effectiveDate));
     }

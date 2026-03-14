@@ -20,7 +20,6 @@ import java.util.UUID;
 @RequestMapping("/api/v1/customer-control")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*")
 public class CustomerControlController {
 
     private final CustomerControlService customerControlService;
