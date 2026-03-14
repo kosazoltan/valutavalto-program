@@ -13,20 +13,17 @@ import {
 } from 'lucide-react'
 import { NumberInput } from '../../components/NumberInput'
 import { formatDecimal } from '../../utils/numberFormat'
-import { transactionApi } from '../../services/api'
-import type { BuyRequest, SellRequest } from '../../services/api'
+import { transactionApi, exchangeRateApi } from '../../services/api'
+import type { BuyRequest, SellRequest, ExchangeRate } from '../../services/api'
 
-// Mock data
-const mockRates = [
-  { id: '1', code: 'EUR', name: 'Euró', buyRate: 391.50, sellRate: 398.50 },
-  { id: '2', code: 'USD', name: 'US Dollár', buyRate: 358.20, sellRate: 365.80 },
-  { id: '3', code: 'GBP', name: 'Angol Font', buyRate: 455.00, sellRate: 468.00 },
-  { id: '4', code: 'CHF', name: 'Svájci Frank', buyRate: 402.50, sellRate: 412.50 },
-  { id: '5', code: 'CZK', name: 'Cseh Korona', buyRate: 15.20, sellRate: 16.40 },
-  { id: '6', code: 'PLN', name: 'Lengyel Zloty', buyRate: 91.50, sellRate: 96.50 },
-  { id: '7', code: 'RON', name: 'Román Lej', buyRate: 78.50, sellRate: 82.50 },
-  { id: '8', code: 'HRK', name: 'Horvát Kuna', buyRate: 52.00, sellRate: 55.00 },
-]
+interface CurrencyRate {
+  id: string
+  code: string
+  name: string
+  buyRate: number
+  sellRate: number
+  unit: number
+}
 
 interface Customer {
   id: string
@@ -46,9 +43,38 @@ export default function TransactionPage() {
   const currencyListRef = useRef<HTMLDivElement>(null)
   const currencySelectedIndex = useRef(0)
   
+  // Exchange rates from API
+  const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>([])
+
+  useEffect(() => {
+    exchangeRateApi.list().then((rates: ExchangeRate[]) => {
+      const mapped: CurrencyRate[] = rates
+        .filter((r) => r.active && r.currencyCode !== 'HUF')
+        .map((r) => ({
+          id: String(r.currencyId),
+          code: r.currencyCode,
+          name: r.currencyName,
+          buyRate: r.baseBuyRate,
+          sellRate: r.baseSellRate,
+          unit: 1, // Default unit; backend provides rate per unit
+        }))
+      setCurrencyRates(mapped)
+    }).catch(() => {
+      // Fallback empty
+      setCurrencyRates([])
+    })
+  }, [])
+
   // Transaction state
   const [transactionType, setTransactionType] = useState<'BUY' | 'SELL'>('BUY')
-  const [selectedCurrency, setSelectedCurrency] = useState(mockRates[0])
+  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyRate | null>(null)
+
+  // Auto-select first currency when rates load
+  useEffect(() => {
+    if (currencyRates.length > 0 && !selectedCurrency) {
+      setSelectedCurrency(currencyRates[0])
+    }
+  }, [currencyRates, selectedCurrency])
   const [foreignAmount, setForeignAmount] = useState('')
   const [hufAmount, setHufAmount] = useState('')
   const [lastEdited, setLastEdited] = useState<'foreign' | 'huf'>('foreign')
@@ -90,15 +116,17 @@ export default function TransactionPage() {
       ? selectedCurrency.buyRate 
       : selectedCurrency.sellRate
     
+    const unit = selectedCurrency.unit || 1
+
     if (lastEdited === 'foreign' && foreignAmount) {
       const amount = parseFloat(foreignAmount.replace(',', '.'))
       if (!isNaN(amount)) {
-        setHufAmount(Math.round(amount * rate).toString())
+        setHufAmount(Math.round((amount / unit) * rate).toString())
       }
     } else if (lastEdited === 'huf' && hufAmount) {
       const amount = parseFloat(hufAmount.replace(',', '.').replace(/\s/g, ''))
       if (!isNaN(amount)) {
-        const result = (amount / rate).toFixed(2).replace('.', ',')
+        const result = ((amount / rate) * unit).toFixed(2).replace('.', ',')
         setForeignAmount(result)
       }
     }
@@ -132,8 +160,8 @@ export default function TransactionPage() {
         // Only handle if not typing in an input field
         if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA' && !target.isContentEditable) {
           const index = parseInt(e.key, 10) - 1
-          if (mockRates[index]) {
-            setSelectedCurrency(mockRates[index])
+          if (currencyRates[index]) {
+            setSelectedCurrency(currencyRates[index])
             // Focus on foreign amount after currency selection
             setTimeout(() => foreignAmountRef.current?.focus(), 50)
           }
@@ -151,13 +179,13 @@ export default function TransactionPage() {
   // Update selected index when currency changes
   useEffect(() => {
     if (!selectedCurrency) return
-    const index = mockRates.findIndex(c => c.id === selectedCurrency.id)
+    const index = currencyRates.findIndex(c => c.id === selectedCurrency.id)
     if (index !== -1) {
       currencySelectedIndex.current = index
     }
   }, [selectedCurrency])
 
-  const handleCurrencyClick = (currency: typeof mockRates[0]) => {
+  const handleCurrencyClick = (currency: CurrencyRate) => {
     setSelectedCurrency(currency)
     // Focus on foreign amount after currency selection
     setTimeout(() => foreignAmountRef.current?.focus(), 50)
@@ -341,14 +369,14 @@ export default function TransactionPage() {
               if (e.key === 'ArrowUp') {
                 e.preventDefault()
                 currencySelectedIndex.current = Math.max(0, currencySelectedIndex.current - 1)
-                setSelectedCurrency(mockRates[currencySelectedIndex.current])
+                setSelectedCurrency(currencyRates[currencySelectedIndex.current])
                 // Scroll into view
                 const currencyButton = currencyListRef.current?.children[currencySelectedIndex.current] as HTMLElement
                 currencyButton?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
               } else if (e.key === 'ArrowDown') {
                 e.preventDefault()
-                currencySelectedIndex.current = Math.min(mockRates.length - 1, currencySelectedIndex.current + 1)
-                setSelectedCurrency(mockRates[currencySelectedIndex.current])
+                currencySelectedIndex.current = Math.min(currencyRates.length - 1, currencySelectedIndex.current + 1)
+                setSelectedCurrency(currencyRates[currencySelectedIndex.current])
                 // Scroll into view
                 const currencyButton = currencyListRef.current?.children[currencySelectedIndex.current] as HTMLElement
                 currencyButton?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
@@ -359,7 +387,7 @@ export default function TransactionPage() {
               }
             }}
           >
-            {mockRates.map((currency, index) => (
+            {currencyRates.map((currency, index) => (
               <button
                 key={currency.id}
                 onClick={() => handleCurrencyClick(currency)}
