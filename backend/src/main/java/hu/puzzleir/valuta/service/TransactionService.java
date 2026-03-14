@@ -788,6 +788,7 @@ public class TransactionService {
     @lombok.AllArgsConstructor
     public static class BuyRequest {
         private Long currencyId;
+        private String currencyCode;
         private BigDecimal currencyAmount;
         private BigDecimal discountPercent;
         private BigDecimal handlingFee;
@@ -809,6 +810,7 @@ public class TransactionService {
     @lombok.AllArgsConstructor
     public static class SellRequest {
         private Long currencyId;
+        private String currencyCode;
         private BigDecimal currencyAmount;
         private BigDecimal discountPercent;
         private BigDecimal handlingFee;
