@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Users, Plus, Save } from 'lucide-react'
+import { api } from '../../services/api'
 
 interface Workgroup {
   id?: string
@@ -20,8 +21,8 @@ export default function WorkgroupManager() {
 
   const fetchWorkgroups = async () => {
     try {
-      const res = await fetch('/api/v1/rate-management/workgroups')
-      if (res.ok) setWorkgroups(await res.json())
+      const { data } = await api.get<Workgroup[]>('/rate-management/workgroups')
+      setWorkgroups(data)
     } catch (err) {
       console.error('Lekeres sikertelen:', err)
     } finally {
@@ -32,19 +33,13 @@ export default function WorkgroupManager() {
   const saveWorkgroup = async () => {
     if (!editing) return
     try {
-      const method = editing.id ? 'PUT' : 'POST'
-      const url = editing.id
-        ? `/api/v1/rate-management/workgroups/${editing.id}`
-        : '/api/v1/rate-management/workgroups'
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editing),
-      })
-      if (res.ok) {
-        setEditing(null)
-        fetchWorkgroups()
+      if (editing.id) {
+        await api.put(`/rate-management/workgroups/${editing.id}`, editing)
+      } else {
+        await api.post('/rate-management/workgroups', editing)
       }
+      setEditing(null)
+      fetchWorkgroups()
     } catch (err) {
       console.error('Mentes sikertelen:', err)
     }

@@ -10,6 +10,6 @@ import java.util.UUID;
 public interface RateTemplateRepository extends JpaRepository<RateTemplate, UUID> {
     List<RateTemplate> findByWorkgroupIdAndStatus(UUID workgroupId, RateTemplate.RateTemplateStatus status);
     List<RateTemplate> findByWorkgroupId(UUID workgroupId);
-    List<RateTemplate> findByCurrencyIdAndWorkgroupId(UUID currencyId, UUID workgroupId);
+    List<RateTemplate> findByCurrencyIdAndWorkgroupId(Long currencyId, UUID workgroupId);
     List<RateTemplate> findByStatus(RateTemplate.RateTemplateStatus status);
 }

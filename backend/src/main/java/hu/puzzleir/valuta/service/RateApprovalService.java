@@ -1,9 +1,11 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
+import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.dto.rateapproval.RateApprovalDto;
 import hu.puzzleir.valuta.dto.rateapproval.RequestRateChangeDto;
 import hu.puzzleir.valuta.entity.*;
@@ -23,6 +25,8 @@ import java.util.stream.Collectors;
  * Árfolyam engedélyezés service.
  *
  * Legacy: ratectrl.dll — az értéktár kontrollálja a pénztárak árfolyamait.
+ * A jóváhagyott árfolyam változtatásokat az ExchangeRateService-en
+ * keresztül érvényesíti a rendszer.
  */
 @Service
 @RequiredArgsConstructor
@@ -32,6 +36,8 @@ public class RateApprovalService {
     private final RateApprovalRepository rateApprovalRepository;
     private final BranchRepository branchRepository;
     private final WorkerRepository workerRepository;
+    private final ExchangeRateService exchangeRateService;
+    private final CurrencyRepository currencyRepository;
 
     /**
      * Új árfolyam változtatási kérelem.
@@ -63,6 +69,13 @@ public class RateApprovalService {
 
     /**
      * Árfolyam változtatás jóváhagyása.
+     *
+     * A jóváhagyás után automatikusan létrehozza az új ExchangeRate rekordot
+     * a megadott irodához, így az árfolyam azonnal érvénybe lép.
+     *
+     * Legacy: ratectrl.dll — az értéktáros jóváhagyja a pénztáros
+     * által kért árfolyam változtatást, és az új árfolyam bekerül
+     * az ARFOLYAM táblába.
      */
     @Transactional
     public RateApprovalDto approveRateChange(UUID approvalId, Long approvedById) {
@@ -81,9 +94,39 @@ public class RateApprovalService {
         approval.setApprovedAt(LocalDateTime.now());
 
         approval = rateApprovalRepository.save(approval);
-        log.info("Árfolyam változtatás jóváhagyva: id={}, branch={}, currency={}",
+
+        // Create new ExchangeRate from the approved rate change
+        applyApprovedRateChange(approval);
+
+        log.info("Árfolyam változtatás jóváhagyva és érvényesítve: id={}, branch={}, currency={}",
                 approvalId, approval.getBranch().getCode(), approval.getCurrencyCode());
         return toDto(approval);
+    }
+
+    /**
+     * Apply approved rate change by creating a new ExchangeRate record.
+     */
+    private void applyApprovedRateChange(RateApproval approval) {
+        Currency currency = currencyRepository.findByCode(approval.getCurrencyCode())
+                .orElse(null);
+
+        if (currency == null) {
+            log.warn("Valuta nem található a jóváhagyott kérelemhez: code={}", approval.getCurrencyCode());
+            return;
+        }
+
+        ExchangeRateService.CreateExchangeRateRequest request =
+                ExchangeRateService.CreateExchangeRateRequest.builder()
+                        .currencyId(currency.getId())
+                        .branchId(approval.getBranch().getId())
+                        .baseBuyRate(approval.getNewBuyRate())
+                        .baseSellRate(approval.getNewSellRate())
+                        .build();
+
+        exchangeRateService.createExchangeRate(request);
+        log.info("Új árfolyam létrehozva jóváhagyásból: currency={}, branch={}, buy={}, sell={}",
+                approval.getCurrencyCode(), approval.getBranch().getCode(),
+                approval.getNewBuyRate(), approval.getNewSellRate());
     }
 
     /**

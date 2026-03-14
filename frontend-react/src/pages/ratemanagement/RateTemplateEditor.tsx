@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Plus, Save, CheckCircle, Send, XCircle, Trash2 } from 'lucide-react'
+import { api } from '../../services/api'
 
 interface RateTemplate {
   id?: string
-  currencyId: string
+  currencyId: number | string
   workgroupId: string
   baseBuyRate: string
   baseSellRate: string
@@ -27,6 +28,7 @@ export default function RateTemplateEditor() {
   const [selectedWorkgroup, setSelectedWorkgroup] = useState<string>('')
   const [editing, setEditing] = useState<RateTemplate | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchWorkgroups()
@@ -38,24 +40,26 @@ export default function RateTemplateEditor() {
 
   const fetchWorkgroups = async () => {
     try {
-      const res = await fetch('/api/v1/rate-management/workgroups')
-      if (res.ok) {
-        const data = await res.json()
-        setWorkgroups(data)
-        if (data.length > 0) setSelectedWorkgroup(data[0].id)
-      }
+      const { data } = await api.get<Workgroup[]>('/rate-management/workgroups')
+      setWorkgroups(data)
+      if (data.length > 0) setSelectedWorkgroup(data[0].id)
     } catch (err) {
       console.error('Munkacsoport lekeres sikertelen:', err)
+      setError('Munkacsoportok lekérése sikertelen')
     }
   }
 
   const fetchTemplates = async () => {
     setLoading(true)
+    setError(null)
     try {
-      const res = await fetch(`/api/v1/rate-management/templates?workgroupId=${selectedWorkgroup}`)
-      if (res.ok) setTemplates(await res.json())
+      const { data } = await api.get<RateTemplate[]>('/rate-management/templates', {
+        params: { workgroupId: selectedWorkgroup }
+      })
+      setTemplates(data)
     } catch (err) {
       console.error('Sablon lekeres sikertelen:', err)
+      setError('Sablonok lekérése sikertelen')
     } finally {
       setLoading(false)
     }
@@ -63,59 +67,63 @@ export default function RateTemplateEditor() {
 
   const saveTemplate = async () => {
     if (!editing) return
+    setError(null)
     try {
-      const method = editing.id ? 'PUT' : 'POST'
-      const url = editing.id
-        ? `/api/v1/rate-management/templates/${editing.id}`
-        : '/api/v1/rate-management/templates'
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editing),
-      })
-      if (res.ok) {
-        setEditing(null)
-        fetchTemplates()
+      if (editing.id) {
+        await api.put(`/rate-management/templates/${editing.id}`, editing)
+      } else {
+        await api.post('/rate-management/templates', editing)
       }
+      setEditing(null)
+      fetchTemplates()
     } catch (err) {
       console.error('Mentes sikertelen:', err)
+      setError('Mentés sikertelen')
     }
   }
 
   const approveTemplate = async (id: string) => {
+    setError(null)
     try {
-      const res = await fetch(`/api/v1/rate-management/templates/${id}/approve`, { method: 'POST' })
-      if (res.ok) fetchTemplates()
+      await api.post(`/rate-management/templates/${id}/approve`)
+      fetchTemplates()
     } catch (err) {
       console.error('Jovahagyas sikertelen:', err)
+      setError('Jóváhagyás sikertelen')
     }
   }
 
   const publishTemplate = async (id: string) => {
+    setError(null)
     try {
-      const res = await fetch(`/api/v1/rate-management/templates/${id}/publish`, { method: 'POST' })
-      if (res.ok) fetchTemplates()
+      await api.post(`/rate-management/templates/${id}/publish`)
+      fetchTemplates()
     } catch (err) {
       console.error('Publikalas sikertelen:', err)
+      setError('Publikálás sikertelen')
     }
   }
 
   const revokeTemplate = async (id: string) => {
+    setError(null)
     try {
-      const res = await fetch(`/api/v1/rate-management/templates/${id}/revoke`, { method: 'POST' })
-      if (res.ok) fetchTemplates()
+      await api.post(`/rate-management/templates/${id}/revoke`)
+      fetchTemplates()
     } catch (err) {
       console.error('Visszavonas sikertelen:', err)
+      setError('Visszavonás sikertelen')
     }
   }
 
   const deleteTemplate = async (id: string) => {
     if (!confirm('Biztosan torli a sablont?')) return
+    setError(null)
     try {
-      await fetch(`/api/v1/rate-management/templates/${id}`, { method: 'DELETE' })
+      await api.delete(`/rate-management/templates/${id}`)
       fetchTemplates()
     } catch (err) {
       console.error('Torles sikertelen:', err)
+      setError('Törlés sikertelen')
     }
   }
 
@@ -135,7 +143,7 @@ export default function RateTemplateEditor() {
   }
 
   const newTemplate = (): RateTemplate => ({
-    currencyId: '',
+    currencyId: '',  // will be parsed to number before sending
     workgroupId: selectedWorkgroup,
     baseBuyRate: '',
     baseSellRate: '',
@@ -147,6 +155,13 @@ export default function RateTemplateEditor() {
 
   return (
     <div className="space-y-4">
+      {/* Error display */}
+      {error && (
+        <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
       {/* Workgroup selector */}
       <div className="flex items-center gap-3">
         <label className="font-medium text-sm">Munkacsoport:</label>
@@ -180,9 +195,10 @@ export default function RateTemplateEditor() {
                 <label className="text-sm font-medium">Valuta ID</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
+                  type="number"
                   value={editing.currencyId}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditing({ ...editing, currencyId: e.target.value })}
-                  placeholder="Currency UUID"
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditing({ ...editing, currencyId: e.target.value ? parseInt(e.target.value, 10) : '' })}
+                  placeholder="Valuta ID (szam)"
                 />
               </div>
               <div>

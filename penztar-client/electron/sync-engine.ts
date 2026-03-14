@@ -288,6 +288,10 @@ export class SyncEngine {
 
   /**
    * Árfolyamok letöltése és SQLite cache frissítése.
+   *
+   * Legacy: ArfolyamBeolvasas — FTP szerveren lévő NR*.DAT fájl letöltése
+   * és a helyi ARFOLYAM tábla frissítése.
+   * Új rendszer: REST API-n keresztül kéri le az aktuális árfolyamokat.
    */
   async syncRates(): Promise<void> {
     try {
@@ -295,7 +299,7 @@ export class SyncEngine {
       const token = this.getAuthToken();
 
       const rates = await httpGet<RateResponse[]>(
-        `${serverUrl}/rates`,
+        `${serverUrl}/exchange-rates/current`,
         token,
       );
 

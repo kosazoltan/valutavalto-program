@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Percent, Plus, Save } from 'lucide-react'
+import { api } from '../../services/api'
 
 interface Workgroup {
   id: string
@@ -34,12 +35,9 @@ export default function DiscountLevelEditor() {
 
   const fetchWorkgroups = async () => {
     try {
-      const res = await fetch('/api/v1/rate-management/workgroups')
-      if (res.ok) {
-        const data = await res.json()
-        setWorkgroups(data)
-        if (data.length > 0) setSelectedWorkgroup(data[0].id)
-      }
+      const { data } = await api.get<Workgroup[]>('/rate-management/workgroups')
+      setWorkgroups(data)
+      if (data.length > 0) setSelectedWorkgroup(data[0].id)
     } catch (err) {
       console.error('Lekeres sikertelen:', err)
     }
@@ -48,8 +46,8 @@ export default function DiscountLevelEditor() {
   const fetchDiscounts = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/v1/rate-management/discounts/${selectedWorkgroup}`)
-      if (res.ok) setDiscounts(await res.json())
+      const { data } = await api.get<Discount[]>(`/rate-management/discounts/${selectedWorkgroup}`)
+      setDiscounts(data)
     } catch (err) {
       console.error('Kedvezmeny lekeres sikertelen:', err)
     } finally {
@@ -60,19 +58,13 @@ export default function DiscountLevelEditor() {
   const saveDiscount = async () => {
     if (!editing) return
     try {
-      const method = editing.id ? 'PUT' : 'POST'
-      const url = editing.id
-        ? `/api/v1/rate-management/discounts/${editing.id}`
-        : '/api/v1/rate-management/discounts'
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editing),
-      })
-      if (res.ok) {
-        setEditing(null)
-        fetchDiscounts()
+      if (editing.id) {
+        await api.put(`/rate-management/discounts/${editing.id}`, editing)
+      } else {
+        await api.post('/rate-management/discounts', editing)
       }
+      setEditing(null)
+      fetchDiscounts()
     } catch (err) {
       console.error('Mentes sikertelen:', err)
     }

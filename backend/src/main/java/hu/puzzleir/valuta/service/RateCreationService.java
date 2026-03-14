@@ -3,7 +3,12 @@ package hu.puzzleir.valuta.service;
 import hu.puzzleir.valuta.dto.ratecreation.BankRateDTO;
 import hu.puzzleir.valuta.dto.ratecreation.CompetitorRateDTO;
 import hu.puzzleir.valuta.dto.ratecreation.GroupRateDTO;
+import hu.puzzleir.valuta.entity.CompetitorRate;
+import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.ExchangeRate;
+import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.repository.CompetitorRateRepository;
+import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.repository.ExchangeRateRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +26,9 @@ import java.util.stream.Collectors;
 /**
  * Árfolyam-készítés szolgáltatás.
  * Bank és versenytárs árfolyamok kezelése, tervezet generálás, csoportos publikálás.
+ *
+ * Legacy: arfolyamkarbantarto (arftmk DLL) — a főértéktáros által
+ * az árfolyam-készítő modulban végrehajtott műveletek.
  */
 @Service
 @RequiredArgsConstructor
@@ -29,6 +37,9 @@ import java.util.stream.Collectors;
 public class RateCreationService {
 
     private final ExchangeRateRepository exchangeRateRepository;
+    private final CompetitorRateRepository competitorRateRepository;
+    private final CurrencyRepository currencyRepository;
+    private final ExchangeRateService exchangeRateService;
 
     /**
      * Bank árfolyamok lekérése az aktuális rátákból.
@@ -55,13 +66,24 @@ public class RateCreationService {
     }
 
     /**
-     * Versenytárs árfolyamok lekérése.
-     * Placeholder — későbbi implementáció külső adatforrásból.
+     * Versenytárs árfolyamok lekérése a competitor_rates táblából.
+     *
+     * Legacy: a régi rendszerben manuálisan rögzítették a versenytársak
+     * árfolyamait az összehasonlítás és versenyképes árazás érdekében.
      */
     @Transactional(readOnly = true)
     public List<CompetitorRateDTO> getCompetitorRates() {
-        // Placeholder: versenytárs adatok későbbi integrációból jönnek
-        return Collections.emptyList();
+        List<CompetitorRate> rates = competitorRateRepository.findLatestRatesWithDetails();
+
+        return rates.stream().map(cr -> CompetitorRateDTO.builder()
+                .competitorId(cr.getCompetitor().getId())
+                .competitorName(cr.getCompetitor().getName())
+                .currencyCode(cr.getCurrency().getCode())
+                .buyRate(cr.getBuyRate())
+                .sellRate(cr.getSellRate())
+                .lastUpdated(cr.getCreatedAt())
+                .build())
+                .collect(Collectors.toList());
     }
 
     /**
@@ -106,19 +128,46 @@ public class RateCreationService {
 
     /**
      * Csoportos árfolyam publikálás.
+     *
+     * Legacy: MNBArfKikuldo — a főértéktáros által elkészített árfolyamok
+     * kiküldése a pénztáraknak. A régi rendszerben ez bináris fájlokat
+     * generált (AF100.xxx) és FTP-n küldte ki.
+     *
+     * Új rendszer: minden valutához létrehozza az ExchangeRate rekordot
+     * az ExchangeRateService-en keresztül.
      */
     public void publishGroupRate(GroupRateDTO groupRateDTO) {
+        if (groupRateDTO.getRates() == null || groupRateDTO.getRates().isEmpty()) {
+            throw new ValidationException("Nincs publikálandó árfolyam!");
+        }
+
         log.info("Csoportos árfolyam publikálás groupId={}, {} ráta",
                 groupRateDTO.getGroupId(),
-                groupRateDTO.getRates() != null ? groupRateDTO.getRates().size() : 0);
+                groupRateDTO.getRates().size());
 
-        // A tényleges publikálás a meglévő ExchangeRateService-en keresztül történik
-        // Ez a placeholder az árfolyam csoport kezelés alapja
-        if (groupRateDTO.getRates() != null) {
-            for (GroupRateDTO.RateEntry entry : groupRateDTO.getRates()) {
-                log.info("Publikálás: currencyId={}, buy={}, sell={}",
-                        entry.getCurrencyId(), entry.getBuyRate(), entry.getSellRate());
+        int created = 0;
+        for (GroupRateDTO.RateEntry entry : groupRateDTO.getRates()) {
+            if (entry.getBuyRate() == null || entry.getSellRate() == null) {
+                log.warn("Hiányzó árfolyam: currencyId={}", entry.getCurrencyId());
+                continue;
             }
+
+            if (entry.getSellRate().compareTo(entry.getBuyRate()) <= 0) {
+                throw new ValidationException(
+                        "Eladási árfolyam nagyobb kell legyen a vételinél! currencyId=" + entry.getCurrencyId());
+            }
+
+            ExchangeRateService.CreateExchangeRateRequest request =
+                    ExchangeRateService.CreateExchangeRateRequest.builder()
+                            .currencyId(entry.getCurrencyId())
+                            .baseBuyRate(entry.getBuyRate())
+                            .baseSellRate(entry.getSellRate())
+                            .build();
+
+            exchangeRateService.createExchangeRate(request);
+            created++;
         }
+
+        log.info("Csoportos árfolyam publikálva: {} ráta létrehozva", created);
     }
 }

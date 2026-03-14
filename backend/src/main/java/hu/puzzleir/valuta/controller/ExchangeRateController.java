@@ -35,8 +35,9 @@ public class ExchangeRateController {
      * Összes aktuális árfolyam
      *
      * GET /api/v1/exchange-rates
+     * GET /api/v1/exchange-rates/current (alias a pénztár kliensek számára)
      */
-    @GetMapping
+    @GetMapping({"", "/current"})
     public ResponseEntity<List<ExchangeRateDto>> getAllCurrentRates() {
         List<ExchangeRate> rates = exchangeRateService.getAllCurrentRates();
         List<ExchangeRateDto> dtos = rates.stream()
