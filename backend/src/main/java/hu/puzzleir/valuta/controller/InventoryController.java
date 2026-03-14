@@ -40,9 +40,7 @@ public class InventoryController {
     @GetMapping("/stock")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ResponseEntity<List<CashBalance>> getAllStock() {
-        // Összes iroda készlete — lekérdezés az összes CashBalance-ből
-        // Megjegyzés: éles környezetben paginated + company szűrős lenne
-        return ResponseEntity.ok(List.of()); // placeholder — a service szinten megoldott
+        return ResponseEntity.ok(inventoryService.getAllStock());
     }
 
     @GetMapping("/stock/{branchId}")

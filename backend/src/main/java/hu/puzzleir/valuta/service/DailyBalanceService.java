@@ -90,9 +90,15 @@ public class DailyBalanceService {
 
         // 4. ĂtvĂ©tel mĂˇs irodĂˇtĂłl (transfer IN)
         BigDecimal transfersIn = getTransfersIn(branchId, date, currencyCode);
+        if (transfersIn == null) {
+            transfersIn = BigDecimal.ZERO;
+        }
 
         // 5. ĂtadĂˇs mĂˇs irodĂˇba (transfer OUT)
         BigDecimal transfersOut = getTransfersOut(branchId, date, currencyCode);
+        if (transfersOut == null) {
+            transfersOut = BigDecimal.ZERO;
+        }
 
         // 6. ZĂˇrĂł kĂ©szlet szĂˇmĂ­tĂˇsa
         BigDecimal closingBalance = openingBalance

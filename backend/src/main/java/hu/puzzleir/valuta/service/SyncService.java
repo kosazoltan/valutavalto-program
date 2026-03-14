@@ -3,10 +3,14 @@ package hu.puzzleir.valuta.service;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.repository.BranchRepository;
+import hu.puzzleir.valuta.repository.CashBalanceRepository;
+import hu.puzzleir.valuta.repository.DailySessionRepository;
 import hu.puzzleir.valuta.dto.sync.SyncLogDto;
 import hu.puzzleir.valuta.dto.sync.SyncStatusDto;
 import hu.puzzleir.valuta.entity.SyncLog;
+import hu.puzzleir.valuta.repository.ExchangeRateRepository;
 import hu.puzzleir.valuta.repository.SyncLogRepository;
+import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +34,10 @@ public class SyncService {
 
     private final SyncLogRepository syncLogRepository;
     private final BranchRepository branchRepository;
+    private final ExchangeRateRepository exchangeRateRepository;
+    private final TransactionRepository transactionRepository;
+    private final CashBalanceRepository cashBalanceRepository;
+    private final DailySessionRepository dailySessionRepository;
 
     @Transactional
     public SyncLogDto syncRatesDown(UUID branchId) {
@@ -110,15 +118,33 @@ public class SyncService {
     }
 
     private int simulateSync(SyncLog.SyncType syncType, UUID branchId) {
-        // Production implementation placeholder
+        int rates = countCurrentRates(branchId);
+        int transactions = transactionRepository.findActiveByBranchAndDate(branchId, java.time.LocalDate.now()).size();
+        int inventory = cashBalanceRepository.findByBranchId(branchId).size();
+        int closing = dailySessionRepository.findOpenSessionsByBranch(branchId).size();
+
         return switch (syncType) {
-            case RATES -> 15;
-            case TRANSACTIONS -> 50;
-            case INVENTORY -> 20;
-            case CLOSING -> 5;
-            case FULL -> 90;
+            case RATES -> rates;
+            case TRANSACTIONS -> transactions;
+            case INVENTORY -> inventory;
+            case CLOSING -> closing;
+            case FULL -> rates + transactions + inventory + closing;
         };
     }
+
+        private int countCurrentRates(UUID branchId) {
+        Branch branch = branchRepository.findById(branchId)
+            .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
+
+        return exchangeRateRepository.findAllActiveRates(branch.getCompany().getId(), branchId)
+            .stream()
+            .collect(Collectors.toMap(
+                r -> r.getCurrency().getId(),
+                r -> r,
+                (first, second) -> first,
+                LinkedHashMap::new))
+            .size();
+        }
 
     private UUID resolveBranch(UUID branchId) {
         return branchId != null ? branchId : SecurityUtils.getCurrentBranchId();

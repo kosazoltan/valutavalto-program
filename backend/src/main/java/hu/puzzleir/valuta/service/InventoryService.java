@@ -330,6 +330,13 @@ public class InventoryService {
     // ============ QUERIES ============
 
     /**
+     * Összes iroda teljes készlete (CashBalance lista).
+     */
+    public List<CashBalance> getAllStock() {
+        return cashBalanceRepository.findAll();
+    }
+
+    /**
      * Egy iroda készlete (CashBalance lista).
      */
     @Transactional(readOnly = true)

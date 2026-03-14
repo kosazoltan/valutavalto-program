@@ -24,7 +24,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -96,12 +99,21 @@ public class ExchangeRateService {
     }
 
     /**
-     * Összes aktuális árfolyam lekérése
+     * Összes aktuális árfolyam lekérése — dátumtól függetlenül.
+     * Valutánként a legfrissebb aktív árfolyamot adja vissza.
      */
     @Transactional(readOnly = true)
     public List<ExchangeRate> getAllCurrentRates() {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        return exchangeRateRepository.findActiveRatesByDate(companyId, LocalDate.now());
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+        List<ExchangeRate> allActive = exchangeRateRepository.findAllActiveRates(companyId, branchId);
+
+        // Valutánként a legfrissebb (első) árfolyamot tartjuk meg
+        Map<Long, ExchangeRate> latestByCurrency = new LinkedHashMap<>();
+        for (ExchangeRate rate : allActive) {
+            latestByCurrency.putIfAbsent(rate.getCurrency().getId(), rate);
+        }
+        return new ArrayList<>(latestByCurrency.values());
     }
 
     /**
@@ -252,6 +264,13 @@ public class ExchangeRateService {
     public List<ExchangeRate> getRateHistory(Long currencyId, LocalDate startDate, LocalDate endDate) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         return exchangeRateRepository.findRateHistory(companyId, currencyId, startDate, endDate);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ExchangeRate> getRateHistoryByCode(String currencyCode, LocalDate startDate, LocalDate endDate) {
+        Currency currency = currencyRepository.findByCode(currencyCode)
+                .orElseThrow(() -> new ResourceNotFoundException("Valuta nem található: " + currencyCode));
+        return getRateHistory(currency.getId(), startDate, endDate);
     }
 
     /**

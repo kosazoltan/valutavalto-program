@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.config;
 
 import hu.puzzleir.valuta.security.JwtAuthenticationFilter;
+import hu.puzzleir.valuta.security.IdempotencyFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -28,12 +29,15 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final IdempotencyFilter idempotencyFilter;
 
     @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:5173}")
     private String corsAllowedOrigins;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          IdempotencyFilter idempotencyFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.idempotencyFilter = idempotencyFilter;
     }
     
     @Bean
@@ -89,6 +93,9 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             
+            // Idempotency header enforcement for protected write endpoints
+            .addFilterBefore(idempotencyFilter, JwtAuthenticationFilter.class)
+
             // JWT filter hozzáadás
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         

@@ -18,6 +18,7 @@ public class CameraProperties {
     private int segmentDurationMinutes = 60;
     private String localStoragePath = "C:/valuta/camera";
     private int uploadIntervalSeconds = 300;
+    private boolean mockUploadEnabled = false;
     private Encryption encryption = new Encryption();
 
     @Getter @Setter

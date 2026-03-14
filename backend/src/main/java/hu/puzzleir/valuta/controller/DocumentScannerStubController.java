@@ -3,7 +3,6 @@ package hu.puzzleir.valuta.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -51,12 +50,12 @@ public class DocumentScannerStubController {
     public ResponseEntity<Map<String, Object>> uploadScannedDocument(
             @RequestParam(required = false) Long customerId,
             @RequestParam(required = false) String documentType) {
-        // TODO: Implementálni a fájl feltöltés + tárolás logikát
-        log.info("Dokumentum feltöltés — customer: {}, type: {}", customerId, documentType);
-        return ResponseEntity.ok(Map.of(
-                "status", "PLACEHOLDER",
-                "message", "Dokumentum feltöltés fogadva. OCR feldolgozás előkészítés alatt.",
-                "customerId", customerId != null ? customerId : 0,
+        log.warn("Szkenner STUB hívás: /upload — backend fájlmentés még nincs implementálva");
+        return ResponseEntity.status(501).body(Map.of(
+                "status", "NOT_IMPLEMENTED",
+                "message", "A backend oldali dokumentum feltöltés még nincs kész. " +
+                        "A beolvasás és tárolás jelenleg az Electron kliens oldalon történik.",
+                "customerId", customerId != null ? customerId : 0L,
                 "documentType", documentType != null ? documentType : "UNKNOWN"
         ));
     }

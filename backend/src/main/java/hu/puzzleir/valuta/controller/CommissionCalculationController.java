@@ -34,10 +34,11 @@ public class CommissionCalculationController {
     @PostMapping("/calculate")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<CommissionCalculation> calculate(
+            @RequestParam(required = false) Long workerId,
             @RequestParam String month) {
         Integer companyId = extractCompanyId();
-        Long workerId = SecurityUtils.getCurrentWorkerId();
-        CommissionCalculation result = service.calculateMonthly(workerId, month, companyId);
+        Long effectiveWorkerId = workerId != null ? workerId : SecurityUtils.getCurrentWorkerId();
+        CommissionCalculation result = service.calculateMonthly(effectiveWorkerId, month, companyId);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
@@ -47,10 +48,11 @@ public class CommissionCalculationController {
     @PostMapping("/calculate-all")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<CommissionCalculation>> calculateAll(
+            @RequestParam(required = false) UUID branchId,
             @RequestParam String month) {
         Integer companyId = extractCompanyId();
-        UUID branchId = SecurityUtils.getCurrentBranchId();
-        List<CommissionCalculation> results = service.calculateAllWorkers(branchId, month, companyId);
+        UUID effectiveBranchId = branchId != null ? branchId : SecurityUtils.getCurrentBranchId();
+        List<CommissionCalculation> results = service.calculateAllWorkers(effectiveBranchId, month, companyId);
         return ResponseEntity.status(HttpStatus.CREATED).body(results);
     }
 

@@ -78,6 +78,20 @@ public interface ExchangeRateRepository extends JpaRepository<ExchangeRate, Long
     );
 
     /**
+     * Összes aktív árfolyam dátumtól függetlenül (legfrissebb előre),
+     * fiók-specifikus vagy globális
+     */
+    @Query("SELECT er FROM ExchangeRate er " +
+           "WHERE er.company.id = :companyId " +
+           "AND er.active = true " +
+           "AND (er.branch.id = :branchId OR er.branch IS NULL) " +
+           "ORDER BY er.currency.displayOrder, er.validDate DESC, er.validTime DESC")
+    List<ExchangeRate> findAllActiveRates(
+        @Param("companyId") UUID companyId,
+        @Param("branchId") UUID branchId
+    );
+
+    /**
      * Legutolsó árfolyam egy valutához
      */
     default Optional<ExchangeRate> findLatestRate(UUID companyId, Long currencyId, UUID branchId) {

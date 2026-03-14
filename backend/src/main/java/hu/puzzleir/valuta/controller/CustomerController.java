@@ -123,7 +123,30 @@ public class CustomerController {
     }
 
     /**
-     * Ügyfelek keresése név alapján
+     * Ügyfelek keresése (POS kliens kompatibilis)
+     *
+     * GET /api/v1/customers?query=...&documentNumber=...
+     */
+    @GetMapping
+    public ResponseEntity<List<CustomerDto>> findCustomers(
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) String documentNumber) {
+        if (documentNumber != null && !documentNumber.isBlank()) {
+            Customer customer = customerService.findByDocumentNumber(documentNumber);
+            return ResponseEntity.ok(customer != null ? List.of(customerMapper.toDto(customer)) : List.of());
+        }
+        if (query != null && !query.isBlank()) {
+            List<Customer> customers = customerService.searchByName(query);
+            List<CustomerDto> dtos = customers.stream()
+                    .map(customerMapper::toDto)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(dtos);
+        }
+        return ResponseEntity.ok(List.of());
+    }
+
+    /**
+     * Ügyfelek keresése név alapján (legacy)
      *
      * GET /api/v1/customers/search?name=...
      */

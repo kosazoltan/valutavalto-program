@@ -1,25 +1,40 @@
 package hu.puzzleir.valuta.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.exception.ValidationException;
-import hu.puzzleir.valuta.dto.ratehistory.RateHistoryDto;
 import hu.puzzleir.valuta.dto.ratemanagement.RateUpdateMessage;
-import hu.puzzleir.valuta.entity.*;
-import hu.puzzleir.valuta.repository.*;
+import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.entity.Currency;
+import hu.puzzleir.valuta.entity.ExchangeRate;
+import hu.puzzleir.valuta.entity.RatePublication;
+import hu.puzzleir.valuta.entity.RateTemplate;
+import hu.puzzleir.valuta.entity.RateWorkgroup;
+import hu.puzzleir.valuta.entity.SyncOutboxEvent;
+import hu.puzzleir.valuta.repository.CurrencyRepository;
+import hu.puzzleir.valuta.repository.ExchangeRateRepository;
+import hu.puzzleir.valuta.repository.RatePublicationRepository;
+import hu.puzzleir.valuta.repository.RateTemplateRepository;
+import hu.puzzleir.valuta.repository.RateWorkgroupRepository;
+import hu.puzzleir.valuta.repository.SyncOutboxRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,21 +44,13 @@ public class RatePublishService {
     private final RateTemplateRepository templateRepository;
     private final RateWorkgroupRepository workgroupRepository;
     private final RatePublicationRepository publicationRepository;
-    private final ExchangeRateRepository exchangeRateRepository;
     private final CurrencyRepository currencyRepository;
-    private final CompanyRepository companyRepository;
-    private final RateHistoryService rateHistoryService;
-    private final SimpMessagingTemplate messagingTemplate;
+    private final ExchangeRateRepository exchangeRateRepository;
+    private final SyncOutboxRepository syncOutboxRepository;
+    private final ObjectMapper objectMapper;
 
     /**
      * Publish approved rate templates for a workgroup.
-     *
-     * Üzleti logika (régi Delphi rendszer alapján):
-     * 1. Template APPROVED/DRAFT → PUBLISHED státuszra állítás
-     * 2. Munkacsoport irodáinak meghatározása
-     * 3. Minden iroda + valuta kombinációra ExchangeRate rekord létrehozása
-     * 4. Árfolyam történet (RateHistory) rögzítése
-     * 5. WebSocket broadcast a pénztáraknak
      */
     @Transactional
     public RatePublication publish(UUID workgroupId, List<UUID> templateIds, String notes) {
@@ -66,18 +73,8 @@ public class RatePublishService {
             templates.add(template);
         }
 
-        // Create ExchangeRate records for each branch in the workgroup
-        Set<Branch> branches = workgroup.getBranches();
-        int affectedBranches = branches != null ? branches.size() : 0;
-        int ratesCreated = 0;
-
-        if (branches != null && !branches.isEmpty()) {
-            for (RateTemplate template : templates) {
-                ratesCreated += createExchangeRatesFromTemplate(template, branches);
-            }
-        }
-
         // Create publication record
+        int affectedBranches = workgroup.getBranches() != null ? workgroup.getBranches().size() : 0;
         RatePublication publication = RatePublication.builder()
                 .workgroupId(workgroupId)
                 .publishedBy(SecurityUtils.getCurrentWorkerId())
@@ -89,132 +86,171 @@ public class RatePublishService {
             publication.setTemplateId(templateIds.get(0));
         }
 
+        int publishedRateCount = applyTemplatesToExchangeRates(workgroup, templates);
         publication = publicationRepository.save(publication);
 
-        // WebSocket broadcast
-        broadcastRateUpdate(workgroupId, templates);
+        // Outbox alapú terítés (idempotens, retry-képes kézbesítés).
+        enqueueRateUpdateOutboxEvent(publication.getId(), workgroupId, workgroup.getBranches(), templates);
 
-        log.info("Árfolyamok publikálva: workgroup={}, templates={}, branches={}, rates_created={}",
-                workgroup.getCode(), templates.size(), affectedBranches, ratesCreated);
+        log.info("Árfolyamok publikálva: workgroup={}, templates={}, branches={}, persistedRates={}",
+                workgroup.getCode(), templates.size(), affectedBranches, publishedRateCount);
 
         return publication;
     }
 
-    /**
-     * Create ExchangeRate records from a published template for all branches in the workgroup.
-     *
-     * Legacy: arfolyamkarbantarto (arftmk DLL) — a főértéktáros által készített
-     * árfolyamok kiküldése a pénztáraknak (irodáknak).
-     */
-    private int createExchangeRatesFromTemplate(RateTemplate template, Set<Branch> branches) {
-        Currency currency = currencyRepository.findById(template.getCurrencyId())
-                .orElse(null);
-        if (currency == null) {
-            log.warn("Valuta nem található template-hez: currencyId={}", template.getCurrencyId());
-            return 0;
+    private void enqueueRateUpdateOutboxEvent(UUID publicationId,
+                                              UUID workgroupId,
+                                              Set<Branch> branches,
+                                              List<RateTemplate> templates) {
+        RateUpdateMessage message = buildRateUpdateMessage(workgroupId, branches, templates);
+
+        String payload;
+        try {
+            payload = objectMapper.writeValueAsString(message);
+        } catch (JsonProcessingException e) {
+            throw new ValidationException("Nem sikerült serializálni a RATE_PUBLISHED payloadot: " + e.getMessage());
         }
 
-        UUID companyId = SecurityUtils.getCurrentCompanyId();
-        Company company = companyRepository.findById(companyId)
-                .orElseThrow(() -> new ValidationException("Cég nem található: " + companyId));
+        SyncOutboxEvent outboxEvent = SyncOutboxEvent.builder()
+                .aggregateType("RATE_PUBLICATION")
+                .aggregateId(publicationId.toString())
+                .eventType("RATE_PUBLISHED")
+                .idempotencyKey(UUID.randomUUID().toString())
+                .payload(payload)
+                .status(SyncOutboxEvent.SyncOutboxStatus.PENDING)
+                .build();
 
-        BigDecimal buyRate = template.getBaseBuyRate().add(
-                template.getBuySpread() != null ? template.getBuySpread() : BigDecimal.ZERO);
-        BigDecimal sellRate = template.getBaseSellRate().add(
-                template.getSellSpread() != null ? template.getSellSpread() : BigDecimal.ZERO);
-
-        // Validate: sell rate must be greater than buy rate
-        if (sellRate.compareTo(buyRate) <= 0) {
-            throw new ValidationException(
-                    "Eladási árfolyam (" + sellRate + ") nagyobb kell legyen a vételinél (" + buyRate + ") - "
-                    + currency.getCode());
-        }
-
-        int created = 0;
-        LocalDateTime now = LocalDateTime.now();
-        Long currentWorkerId = SecurityUtils.getCurrentWorkerId();
-
-        for (Branch branch : branches) {
-            // Deactivate old rates for this branch + currency
-            List<ExchangeRate> oldRates = exchangeRateRepository.findCurrentRate(
-                    companyId, currency.getId(), branch.getId());
-            for (ExchangeRate oldRate : oldRates) {
-                oldRate.setActive(false);
-                exchangeRateRepository.save(oldRate);
-            }
-
-            // Create new ExchangeRate record
-            ExchangeRate newRate = ExchangeRate.builder()
-                    .company(company)
-                    .branch(branch)
-                    .currency(currency)
-                    .validDate(LocalDate.now())
-                    .validTime(LocalTime.now())
-                    .baseBuyRate(buyRate)
-                    .baseSellRate(sellRate)
-                    .officialRate(template.getBaseBuyRate()) // MNB/base rate as official
-                    .active(true)
-                    .createdBy(SecurityUtils.getCurrentWorkerCode())
-                    .build();
-
-            exchangeRateRepository.save(newRate);
-            created++;
-
-            // Record rate history
-            RateHistoryDto historyDto = RateHistoryDto.builder()
-                    .currencyCode(currency.getCode())
-                    .buyRate(buyRate)
-                    .sellRate(sellRate)
-                    .mnbRate(template.getBaseBuyRate())
-                    .effectiveFrom(now)
-                    .setBy(currentWorkerId)
-                    .branchId(branch.getId())
-                    .companyId(companyId)
-                    .build();
-
-            rateHistoryService.recordRateChange(historyDto);
-        }
-
-        log.info("ExchangeRate rekordok létrehozva: currency={}, branches={}, count={}",
-                currency.getCode(), branches.size(), created);
-
-        return created;
+        syncOutboxRepository.save(outboxEvent);
     }
 
-    /**
-     * Broadcast rate update via WebSocket.
-     */
-    private void broadcastRateUpdate(UUID workgroupId, List<RateTemplate> templates) {
+    private RateUpdateMessage buildRateUpdateMessage(UUID workgroupId,
+                                                     Set<Branch> branches,
+                                                     List<RateTemplate> templates) {
+        Map<Long, Currency> currenciesById = resolveCurrencies(templates);
         List<RateUpdateMessage.RateEntry> entries = templates.stream()
-                .map(t -> {
-                    // Currency kód feloldása az ID-ból — a frontend-nek szüksége van rá
-                    String currencyCode = currencyRepository.findById(t.getCurrencyId())
-                            .map(c -> c.getCode())
-                            .orElse(null);
-                    return RateUpdateMessage.RateEntry.builder()
-                            .currencyId(t.getCurrencyId())
-                            .currencyCode(currencyCode)
-                            .buyRate(t.getBaseBuyRate().add(
-                                    t.getBuySpread() != null ? t.getBuySpread() : BigDecimal.ZERO))
-                            .sellRate(t.getBaseSellRate().add(
-                                    t.getSellSpread() != null ? t.getSellSpread() : BigDecimal.ZERO))
-                            .roundingRule(t.getRoundingRule())
-                            .build();
-                })
+                .map(t -> RateUpdateMessage.RateEntry.builder()
+                        .currencyId(t.getCurrencyId())
+                        .currencyCode(resolveCurrencyCode(currenciesById, t.getCurrencyId()))
+                        .buyRate(t.getBaseBuyRate().add(t.getBuySpread()))
+                        .sellRate(t.getBaseSellRate().add(t.getSellSpread()))
+                        .roundingRule(t.getRoundingRule())
+                        .build())
+                .filter(e -> e.getCurrencyCode() != null)
+                .toList();
+
+        List<String> branchCodes = branches == null
+                ? List.of()
+                : branches.stream()
+                .map(Branch::getCode)
                 .toList();
 
         RateUpdateMessage message = RateUpdateMessage.builder()
                 .workgroupId(workgroupId)
+                .branchCodes(branchCodes)
                 .publishedAt(LocalDateTime.now())
                 .rates(entries)
                 .build();
 
-        try {
-            messagingTemplate.convertAndSend("/topic/rate-updates/" + workgroupId, message);
-            log.debug("WebSocket rate update küldve: workgroup={}", workgroupId);
-        } catch (Exception e) {
-            log.warn("WebSocket rate update sikertelen: {}", e.getMessage());
+        return message;
+    }
+
+    /**
+     * A publikált sablonokat az éles exchange_rate törzsbe írja munkacsoportonként.
+     */
+    private int applyTemplatesToExchangeRates(RateWorkgroup workgroup, List<RateTemplate> templates) {
+        if (workgroup.getBranches() == null || workgroup.getBranches().isEmpty() || templates.isEmpty()) {
+            return 0;
         }
+
+        Map<Long, Currency> currenciesById = resolveCurrencies(templates);
+        LocalDate validDate = LocalDate.now();
+        LocalTime validTime = LocalTime.now();
+        int createdCount = 0;
+
+        for (Branch branch : workgroup.getBranches()) {
+            for (RateTemplate template : templates) {
+                Currency currency = currenciesById.get(template.getCurrencyId());
+                if (currency == null) {
+                    log.warn("Publikálás átugorva: currency nem található sablonhoz, templateId={}, currencyId={}",
+                            template.getId(), template.getCurrencyId());
+                    continue;
+                }
+
+                List<ExchangeRate> currentRates = exchangeRateRepository.findCurrentRate(
+                        branch.getCompany().getId(),
+                        currency.getId(),
+                        branch.getId());
+
+                ExchangeRate latestRate = currentRates.isEmpty() ? null : currentRates.get(0);
+                for (ExchangeRate currentRate : currentRates) {
+                    currentRate.setActive(false);
+                    exchangeRateRepository.save(currentRate);
+                }
+
+                BigDecimal buyRate = mergeRate(template.getBaseBuyRate(), template.getBuySpread());
+                BigDecimal sellRate = mergeRate(template.getBaseSellRate(), template.getSellSpread());
+
+                ExchangeRate newRate = ExchangeRate.builder()
+                        .company(branch.getCompany())
+                        .branch(branch)
+                        .currency(currency)
+                        .validDate(validDate)
+                        .validTime(validTime)
+                        .baseBuyRate(buyRate)
+                        .baseSellRate(sellRate)
+                        .limit1Amount(latestRate != null ? latestRate.getLimit1Amount() : null)
+                        .limit1BuyRate(latestRate != null ? latestRate.getLimit1BuyRate() : null)
+                        .limit1SellRate(latestRate != null ? latestRate.getLimit1SellRate() : null)
+                        .limit2Amount(latestRate != null ? latestRate.getLimit2Amount() : null)
+                        .limit2BuyRate(latestRate != null ? latestRate.getLimit2BuyRate() : null)
+                        .limit2SellRate(latestRate != null ? latestRate.getLimit2SellRate() : null)
+                        .limit3Amount(latestRate != null ? latestRate.getLimit3Amount() : null)
+                        .limit3BuyRate(latestRate != null ? latestRate.getLimit3BuyRate() : null)
+                        .limit3SellRate(latestRate != null ? latestRate.getLimit3SellRate() : null)
+                        .officialRate(resolveOfficialRate(latestRate, buyRate, sellRate))
+                        .active(true)
+                        .createdBy(resolveCreatedBy())
+                        .build();
+
+                exchangeRateRepository.save(newRate);
+                createdCount++;
+            }
+        }
+
+        return createdCount;
+    }
+
+    private Map<Long, Currency> resolveCurrencies(List<RateTemplate> templates) {
+        List<Long> currencyIds = templates.stream()
+                .map(RateTemplate::getCurrencyId)
+                .distinct()
+                .toList();
+
+        return currencyRepository.findAllById(currencyIds).stream()
+                .collect(Collectors.toMap(Currency::getId, c -> c, (a, b) -> a, LinkedHashMap::new));
+    }
+
+    private String resolveCurrencyCode(Map<Long, Currency> currenciesById, Long currencyId) {
+        Currency currency = currenciesById.get(currencyId);
+        return currency != null ? currency.getCode() : null;
+    }
+
+    private BigDecimal mergeRate(BigDecimal baseRate, BigDecimal spread) {
+        BigDecimal safeSpread = spread != null ? spread : BigDecimal.ZERO;
+        return baseRate.add(safeSpread).setScale(4, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal resolveOfficialRate(ExchangeRate latestRate, BigDecimal buyRate, BigDecimal sellRate) {
+        if (latestRate != null && latestRate.getOfficialRate() != null) {
+            return latestRate.getOfficialRate();
+        }
+        return buyRate.add(sellRate)
+                .divide(new BigDecimal("2"), 4, RoundingMode.HALF_UP);
+    }
+
+    private String resolveCreatedBy() {
+        String workerCode = SecurityUtils.getCurrentWorkerCode();
+        return workerCode != null && !workerCode.isBlank() ? workerCode : "RATE_PUBLISH";
     }
 
     /**

@@ -9,6 +9,7 @@ import java.util.UUID;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class RateUpdateMessage {
     private UUID workgroupId;
+    private List<String> branchCodes;
     private LocalDateTime publishedAt;
     private List<RateEntry> rates;
 

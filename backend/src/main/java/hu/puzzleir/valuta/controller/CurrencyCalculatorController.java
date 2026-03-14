@@ -6,7 +6,6 @@ import hu.puzzleir.valuta.dto.calculator.ReverseRequestDto;
 import hu.puzzleir.valuta.service.CurrencyCalculatorService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;

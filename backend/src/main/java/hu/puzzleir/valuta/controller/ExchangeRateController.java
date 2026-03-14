@@ -1,8 +1,10 @@
 package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.exchangerate.CreateExchangeRateDto;
+import hu.puzzleir.valuta.dto.exchangerate.CurrentRateDto;
 import hu.puzzleir.valuta.dto.exchangerate.ExchangeRateDto;
 import hu.puzzleir.valuta.entity.ExchangeRate;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.mapper.ExchangeRateMapper;
 import hu.puzzleir.valuta.service.ExchangeRateService;
 import jakarta.validation.Valid;
@@ -32,7 +34,7 @@ public class ExchangeRateController {
     private final ExchangeRateMapper exchangeRateMapper;
 
     /**
-     * Összes aktuális árfolyam
+     * Összes aktuális árfolyam (admin)
      *
      * GET /api/v1/exchange-rates
      * GET /api/v1/exchange-rates/current (alias a pénztár kliensek számára)
@@ -42,6 +44,20 @@ public class ExchangeRateController {
         List<ExchangeRate> rates = exchangeRateService.getAllCurrentRates();
         List<ExchangeRateDto> dtos = rates.stream()
                 .map(exchangeRateMapper::toDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
+    }
+
+    /**
+     * Aktuális árfolyamok a POS kliens számára (egyszerűsített DTO).
+     *
+     * GET /api/v1/exchange-rates/current
+     */
+    @GetMapping("/current")
+    public ResponseEntity<List<CurrentRateDto>> getCurrentRatesForPos() {
+        List<ExchangeRate> rates = exchangeRateService.getAllCurrentRates();
+        List<CurrentRateDto> dtos = rates.stream()
+                .map(exchangeRateMapper::toCurrentRateDto)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
     }
@@ -116,10 +132,28 @@ public class ExchangeRateController {
     @GetMapping("/history")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<ExchangeRateDto>> getRateHistory(
-            @RequestParam Long currencyId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        List<ExchangeRate> rates = exchangeRateService.getRateHistory(currencyId, startDate, endDate);
+            @RequestParam(required = false) Long currencyId,
+            @RequestParam(required = false) String currencyCode,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(name = "from", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(name = "to", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        LocalDate effectiveStartDate = startDate != null ? startDate : from;
+        LocalDate effectiveEndDate = endDate != null ? endDate : to;
+
+        if (effectiveStartDate == null || effectiveEndDate == null) {
+            throw new ValidationException("A kezdő és záró dátum megadása kötelező.");
+        }
+
+        List<ExchangeRate> rates;
+        if (currencyId != null) {
+            rates = exchangeRateService.getRateHistory(currencyId, effectiveStartDate, effectiveEndDate);
+        } else if (currencyCode != null && !currencyCode.isBlank()) {
+            rates = exchangeRateService.getRateHistoryByCode(currencyCode.toUpperCase(), effectiveStartDate, effectiveEndDate);
+        } else {
+            throw new ValidationException("A currencyId vagy currencyCode paraméter megadása kötelező.");
+        }
+
         List<ExchangeRateDto> dtos = rates.stream()
                 .map(exchangeRateMapper::toDto)
                 .collect(Collectors.toList());

@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.config.CameraProperties;
 import hu.puzzleir.valuta.entity.CameraRecording;
 import hu.puzzleir.valuta.repository.CameraRecordingRepository;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ import java.util.List;
 public class CameraUploadService {
 
     private final CameraRecordingRepository recordingRepository;
+    private final CameraProperties cameraProperties;
 
     /**
      * Periodically upload completed segments to the central server.
@@ -31,6 +33,11 @@ public class CameraUploadService {
                         List.of(CameraRecording.RecordingStatus.COMPLETED));
 
         if (pending.isEmpty()) return;
+
+        if (!cameraProperties.isMockUploadEnabled()) {
+            log.warn("Kamera szerver-feltöltés nincs implementálva (mockUploadEnabled=false), függő szegmensek: {} db", pending.size());
+            return;
+        }
 
         log.info("Feltoltendo szegmensek: {} db", pending.size());
 
@@ -52,14 +59,10 @@ public class CameraUploadService {
 
     /**
      * Upload a single recording to the server.
-     * TODO: Implement actual server upload (HTTP multipart, SFTP, or API call)
+     * Mock upload mode only. Real upload implementation is pending.
      */
     private void uploadToServer(CameraRecording recording) {
-        // Placeholder: In production, this would:
-        // 1. Read the local file
-        // 2. Upload via HTTPS to the central server API
-        // 3. Verify the upload with checksum
-        log.debug("Server upload placeholder: {}", recording.getLocalFilePath());
+        log.warn("Mock upload aktiv: {}", recording.getLocalFilePath());
     }
 
     /**

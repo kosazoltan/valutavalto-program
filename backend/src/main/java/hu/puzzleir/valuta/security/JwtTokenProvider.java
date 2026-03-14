@@ -3,7 +3,6 @@ package hu.puzzleir.valuta.security;
 import hu.puzzleir.valuta.entity.Worker;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
@@ -102,11 +101,11 @@ public class JwtTokenProvider {
         SecretKey key = Keys.hmacShaKeyFor(secretKey.getBytes());
         
         return Jwts.builder()
-                .setClaims(claims)
-                .setSubject(subject)
-                .setIssuedAt(now)
-                .setExpiration(expiryDate)
-                .signWith(key, SignatureAlgorithm.HS256)
+                .claims(claims)
+                .subject(subject)
+                .issuedAt(now)
+                .expiration(expiryDate)
+                .signWith(key)
                 .compact();
     }
     
@@ -116,10 +115,10 @@ public class JwtTokenProvider {
     public boolean validateToken(String token) {
         try {
             SecretKey key = Keys.hmacShaKeyFor(secretKey.getBytes());
-            Jwts.parserBuilder()
-                .setSigningKey(key)
+            Jwts.parser()
+                .verifyWith(key)
                 .build()
-                .parseClaimsJws(token);
+                .parseSignedClaims(token);
             return true;
         } catch (io.jsonwebtoken.ExpiredJwtException e) {
             log.warn("JWT token lejárt: {}", e.getMessage());
@@ -193,11 +192,11 @@ public class JwtTokenProvider {
      */
     private Claims getClaims(String token) {
         SecretKey key = Keys.hmacShaKeyFor(secretKey.getBytes());
-        return Jwts.parserBuilder()
-                .setSigningKey(key)
+        return Jwts.parser()
+                .verifyWith(key)
                 .build()
-                .parseClaimsJws(token)
-                .getBody();
+                .parseSignedClaims(token)
+                .getPayload();
     }
     
     /**

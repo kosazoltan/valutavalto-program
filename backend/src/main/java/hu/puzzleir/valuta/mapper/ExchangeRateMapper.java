@@ -1,16 +1,22 @@
 package hu.puzzleir.valuta.mapper;
 
 import hu.puzzleir.valuta.dto.exchangerate.CreateExchangeRateDto;
+import hu.puzzleir.valuta.dto.exchangerate.CurrentRateDto;
 import hu.puzzleir.valuta.dto.exchangerate.ExchangeRateDto;
 import hu.puzzleir.valuta.entity.ExchangeRate;
 import hu.puzzleir.valuta.service.ExchangeRateService;
 import org.springframework.stereotype.Component;
+
+import java.util.Set;
 
 /**
  * ExchangeRate entity <-> DTO mapper
  */
 @Component
 public class ExchangeRateMapper {
+
+    /** Valuták ahol az egység 100 (pl. JPY) */
+    private static final Set<String> UNIT_100_CURRENCIES = Set.of("JPY");
 
     public ExchangeRateDto toDto(ExchangeRate entity) {
         if (entity == null) return null;
@@ -56,6 +62,30 @@ public class ExchangeRateMapper {
                 .limit3BuyRate(dto.getLimit3BuyRate())
                 .limit3SellRate(dto.getLimit3SellRate())
                 .officialRate(dto.getOfficialRate())
+                .build();
+    }
+
+    /**
+     * POS kliens számára egyszerűsített árfolyam DTO.
+     * Pontosan a frontend ExchangeRate TypeScript típusra képez.
+     */
+    public CurrentRateDto toCurrentRateDto(ExchangeRate entity) {
+        String currencyCode = entity.getCurrency() != null ? entity.getCurrency().getCode() : null;
+        int unit = UNIT_100_CURRENCIES.contains(currencyCode) ? 100 : 1;
+
+        String updatedAt = null;
+        if (entity.getCreatedAt() != null) {
+            updatedAt = entity.getCreatedAt().toString();
+        } else if (entity.getValidDate() != null) {
+            updatedAt = entity.getValidDate().toString();
+        }
+
+        return CurrentRateDto.builder()
+                .currencyCode(currencyCode)
+                .buyRate(entity.getBaseBuyRate())
+                .sellRate(entity.getBaseSellRate())
+                .unit(unit)
+                .updatedAt(updatedAt)
                 .build();
     }
 }

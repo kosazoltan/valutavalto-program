@@ -54,6 +54,20 @@ public class DailySessionController {
     }
 
     /**
+     * Napi zárás (POS kliens kompatibilis path sessionId-val)
+     *
+     * POST /api/v1/daily-sessions/{sessionId}/close
+     */
+    @PostMapping("/{sessionId}/close")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<DailySessionDto> closeDayById(
+            @PathVariable Long sessionId,
+            @RequestParam(defaultValue = "false") boolean denominationVerified) {
+        DailySession session = dailySessionService.closeDay(denominationVerified);
+        return ResponseEntity.ok(dailySessionMapper.toDto(session));
+    }
+
+    /**
      * Aktuális session lekérdezése
      *
      * GET /api/v1/daily-sessions/current
