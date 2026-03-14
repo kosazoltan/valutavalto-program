@@ -70,6 +70,6 @@ public interface CashBalanceRepository extends JpaRepository<CashBalance, Long> 
      * Iroda osszes HUF egyenlege (napzaras ellenorzeshez).
      */
     @Query("SELECT COALESCE(SUM(cb.currentBalance), 0) FROM CashBalance cb " +
-           "WHERE cb.branch.id = :branchId")
+           "WHERE cb.branch.id = :branchId AND cb.currency.code = 'HUF'")
     java.math.BigDecimal sumCurrentBalanceHuf(@Param("branchId") UUID branchId);
 }

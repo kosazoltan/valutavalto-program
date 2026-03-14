@@ -717,8 +717,9 @@ public class TransactionService {
         if (discountPercent.compareTo(BigDecimal.ZERO) < 0) {
             throw new ValidationException("Kedvezmény nem lehet negatív!");
         }
-        if (discountPercent.compareTo(new BigDecimal("100")) >= 0) {
-            throw new ValidationException("Kedvezmény nem lehet 100% vagy több!");
+        // Abszolút felső határ — supervisor sem adhat ennél többet
+        if (discountPercent.compareTo(new BigDecimal("15")) > 0) {
+            throw new ValidationException("Maximum kedvezmény: 15%!");
         }
         if (discountPercent.compareTo(new BigDecimal("2.0")) > 0 && !SecurityUtils.isSupervisorOrAbove()) {
             throw new ValidationException("2% feletti kedvezményhez supervisor jogosultság szükséges!");
