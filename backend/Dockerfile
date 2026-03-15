@@ -5,6 +5,7 @@ WORKDIR /app
 
 COPY pom.xml ./
 COPY src/main ./src/main
+ENV MAVEN_OPTS="-Xmx512m -XX:MaxMetaspaceSize=256m"
 RUN mvn package -Dmaven.test.skip=true -B
 
 # Stage 2: Runtime
