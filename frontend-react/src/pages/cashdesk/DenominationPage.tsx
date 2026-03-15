@@ -21,7 +21,6 @@ export default function DenominationPage() {
   const [currencies, setCurrencies] = useState<Currency[]>([])
   const [selectedCurrencyId, setSelectedCurrencyId] = useState<number | null>(null)
   const [denominations, setDenominations] = useState<Denomination[]>([])
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_denominationBalances, setDenominationBalances] = useState<DenominationBalanceDTO[]>([])
   const [editingQuantities, setEditingQuantities] = useState<Record<number, number>>({})
   const [loading, setLoading] = useState(false)

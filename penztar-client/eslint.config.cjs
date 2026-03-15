@@ -15,7 +15,7 @@ module.exports = tseslint.config(
         varsIgnorePattern: '^_',
         caughtErrors: 'none'
       }],
-      'no-console': 'warn',
+      'no-console': 'off',
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
     }
