@@ -1,0 +1,18 @@
+# Prevent CRLF on shell scripts (Docker builds require LF)
+*.sh text eol=lf
+mvnw text eol=lf
+mvnw.cmd text eol=crlf
+
+# Java/XML/SQL — auto
+*.java text=auto
+*.xml text=auto
+*.sql text=auto
+*.properties text=auto
+*.yml text=auto
+*.yaml text=auto
+
+# Frontend
+*.ts text=auto
+*.tsx text=auto
+*.json text=auto
+*.md text=auto
