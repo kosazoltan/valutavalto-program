@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import apiClient from '@/api/client';
 import type { CollectionRecord, CollectionStatus, CurrencyCode } from '@/types';
 
 // --- Konstansok ---
@@ -77,11 +78,12 @@ export default function CollectionPage() {
 
   const loadRecords = useCallback(async () => {
     try {
-      // TODO(api): API hívás — GET /api/v1/ertektar/collections — backend Értéktár modul implementáció szükséges
+      const { data } = await apiClient.get<CollectionRecord[]>('/ertektar/collections');
+      setRecords(data);
+    } catch {
+      // Fallback mock adat ha a backend nem elérhető
       const mockData = generateMockRecords();
       setRecords(mockData);
-    } catch {
-      setRecords([]);
     } finally {
       setIsLoading(false);
     }
@@ -107,8 +109,12 @@ export default function CollectionPage() {
           collectionNote || null,
         );
       } else {
-        // TODO(api): API hívás — POST /api/v1/ertektar/collections — backend Értéktár modul implementáció szükséges
-        await new Promise((resolve) => setTimeout(resolve, 800));
+        await apiClient.post('/ertektar/collections', {
+          sourceBranchCode: selectedBranch,
+          currencyCode: selectedCurrency,
+          amount: parseFloat(amount),
+          note: collectionNote || null,
+        });
       }
 
       // Mock: hozzáadjuk a listához

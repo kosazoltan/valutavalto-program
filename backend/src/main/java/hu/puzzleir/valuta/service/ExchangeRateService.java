@@ -45,6 +45,7 @@ public class ExchangeRateService {
     private final CurrencyRepository currencyRepository;
     private final CompanyRepository companyRepository;
     private final BranchRepository branchRepository;
+    private final SystemParameterService systemParameterService;
 
     /** Árfolyam maximális kora órában (0 = nincs limit) */
     @Value("${exchange-rate.max-age-hours:24}")
@@ -157,6 +158,9 @@ public class ExchangeRateService {
         if (request.getBaseBuyRate().compareTo(request.getBaseSellRate()) >= 0) {
             throw new ValidationException("Az eladási árfolyamnak nagyobbnak kell lennie a vételinél!");
         }
+
+        // Validáció: MNB maximális eltérés az hivatalos (közép) árfolyamtól
+        validateMaxDeviation(currency, request.getBaseBuyRate(), request.getBaseSellRate(), request.getOfficialRate());
 
         // Validáció: limit összegek növekvő sorrendben
         if (request.getLimit1Amount() != null && request.getLimit2Amount() != null
@@ -274,6 +278,77 @@ public class ExchangeRateService {
     }
 
     /**
+     * MNB maximális eltérés validálása.
+     *
+     * Ha a valutának van beállított max_deviation_percent értéke, ellenőrzi,
+     * hogy a vételi és eladási árfolyam nem tér-e el a hivatalos (közép)
+     * árfolyamtól a megengedettnél jobban.
+     *
+     * MNB szabályozás példa: EUA (euro érme) max 20%-kal térhet el az EUR
+     * hivatalos középárfolyamtól.
+     *
+     * @param currency       a valutanem
+     * @param buyRate        vételi árfolyam
+     * @param sellRate       eladási árfolyam
+     * @param officialRate   hivatalos (közép) árfolyam — ha null, a validáció kihagyásra kerül
+     */
+    private void validateMaxDeviation(Currency currency, BigDecimal buyRate, BigDecimal sellRate, BigDecimal officialRate) {
+        // GAP 2: Raiffeisen rendszerszintű max deviation limit
+        // Ha van rendszerszintű paraméter, az a felső korlát MINDEN valutára vonatkozik.
+        // A végső limit: min(currency-szintű, rendszerszintű) — amelyik kisebb.
+        BigDecimal maxDeviation = currency.getMaxDeviationPercent();
+        BigDecimal systemMaxDeviation = getSystemMaxDeviation();
+
+        if (systemMaxDeviation != null) {
+            if (maxDeviation == null || systemMaxDeviation.compareTo(maxDeviation) < 0) {
+                maxDeviation = systemMaxDeviation;
+            }
+        }
+
+        if (maxDeviation == null) {
+            return; // nincs eltérés-korlát erre a valutára
+        }
+
+        if (officialRate == null || officialRate.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ValidationException(
+                String.format("A(z) %s valutához hivatalos (közép) árfolyam megadása kötelező, " +
+                              "mert maximum %s%% eltérési korlát van beállítva!",
+                    currency.getCode(), maxDeviation.stripTrailingZeros().toPlainString()));
+        }
+
+        BigDecimal deviationFraction = maxDeviation.divide(new BigDecimal("100"), 6, RoundingMode.HALF_UP);
+        BigDecimal maxAllowed = officialRate.multiply(BigDecimal.ONE.add(deviationFraction));
+        BigDecimal minAllowed = officialRate.multiply(BigDecimal.ONE.subtract(deviationFraction));
+
+        if (buyRate.compareTo(minAllowed) < 0 || buyRate.compareTo(maxAllowed) > 0) {
+            BigDecimal buyDeviation = buyRate.subtract(officialRate)
+                    .abs()
+                    .divide(officialRate, 4, RoundingMode.HALF_UP)
+                    .multiply(new BigDecimal("100"));
+            throw new ValidationException(
+                String.format("A(z) %s vételi árfolyam (%.4f) %.2f%%-kal tér el a hivatalos árfolyamtól (%.4f). " +
+                              "Maximum megengedett eltérés: %s%%.",
+                    currency.getCode(), buyRate, buyDeviation, officialRate,
+                    maxDeviation.stripTrailingZeros().toPlainString()));
+        }
+
+        if (sellRate.compareTo(minAllowed) < 0 || sellRate.compareTo(maxAllowed) > 0) {
+            BigDecimal sellDeviation = sellRate.subtract(officialRate)
+                    .abs()
+                    .divide(officialRate, 4, RoundingMode.HALF_UP)
+                    .multiply(new BigDecimal("100"));
+            throw new ValidationException(
+                String.format("A(z) %s eladási árfolyam (%.4f) %.2f%%-kal tér el a hivatalos árfolyamtól (%.4f). " +
+                              "Maximum megengedett eltérés: %s%%.",
+                    currency.getCode(), sellRate, sellDeviation, officialRate,
+                    maxDeviation.stripTrailingZeros().toPlainString()));
+        }
+
+        log.debug("Maximális eltérés validáció OK: {} — buy={}, sell={}, official={}, maxDev={}%",
+                currency.getCode(), buyRate, sellRate, officialRate, maxDeviation);
+    }
+
+    /**
      * Régi árfolyamok inaktiválása
      */
     private void deactivateOldRates(UUID companyId, Long currencyId) {
@@ -282,6 +357,21 @@ public class ExchangeRateService {
         for (ExchangeRate oldRate : oldRates) {
             oldRate.setActive(false);
             exchangeRateRepository.save(oldRate);
+        }
+    }
+
+    /**
+     * GAP 2: Rendszerszintű Raiffeisen max deviation lekérése.
+     * Ha a system_parameter 'raiffeisen.max.deviation.percent' létezik és aktív,
+     * visszaadja az értéket. Egyébként null.
+     */
+    private BigDecimal getSystemMaxDeviation() {
+        try {
+            String value = systemParameterService.getValue("raiffeisen.max.deviation.percent");
+            return new BigDecimal(value);
+        } catch (Exception e) {
+            // Paraméter nem létezik vagy nem parse-olható — nincs rendszerszintű limit
+            return null;
         }
     }
 

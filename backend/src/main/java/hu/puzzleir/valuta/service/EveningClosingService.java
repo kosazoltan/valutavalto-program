@@ -43,6 +43,7 @@ public class EveningClosingService {
 
     private final TransactionRepository transactionRepository;
     private final DenominationBalanceRepository denominationBalanceRepository;
+    private final DenominationRepository denominationRepository;
     private final ExchangeRateRepository exchangeRateRepository;
     private final CustomerRepository customerRepository;
     private final ReservationRepository reservationRepository;
@@ -307,10 +308,20 @@ public class EveningClosingService {
      * Jelenleg egyszerűsített — a valós implementáció a DenominationBalanceRepository-ból gyűjt.
      */
     private List<DenominationEntry> getDenominations(UUID branchId, LocalDate date) {
-        // Jelenleg üres lista — a teljes címletezés a DenominationBalance-ból építhető
-        // TODO: részletes címletezés implementálása
         log.debug("Címletezés adatok gyűjtése: branchId={}, datum={}", branchId, date);
-        return Collections.emptyList();
+
+        List<Denomination> denominations = denominationRepository.findByBranchId(branchId);
+
+        return denominations.stream()
+                .filter(d -> d.getQuantity() != null && d.getQuantity() > 0)
+                .map(d -> DenominationEntry.builder()
+                        .currencyCode(d.getCurrency() != null ? d.getCurrency().getCode() : null)
+                        .denominationType(d.getDenominationType() != null ? d.getDenominationType().name() : null)
+                        .denominationValue(d.getFaceValue())
+                        .quantity(d.getQuantity())
+                        .totalAmount(d.getTotalValue())
+                        .build())
+                .collect(Collectors.toList());
     }
 
     /**

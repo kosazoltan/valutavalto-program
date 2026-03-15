@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import DOMPurify from 'dompurify';
 import { useAuthStore } from '@/stores/authStore';
 import { getTemplates, createTemplate, updateTemplate, previewTemplate } from '@/api/printTemplates';
 import type { PrintTemplateData, PrintTemplateType } from '@/types';
@@ -316,7 +317,7 @@ export default function PrintTemplatePage() {
                 <h3 className="mb-3 text-md font-semibold text-gray-700">👁️ Előnézet</h3>
                 <div
                   className="rounded border bg-gray-50 p-4 text-sm"
-                  dangerouslySetInnerHTML={{ __html: previewHtml }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(previewHtml) }}
                 />
               </div>
             )}

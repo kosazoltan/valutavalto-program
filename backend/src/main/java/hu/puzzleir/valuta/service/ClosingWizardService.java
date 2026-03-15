@@ -372,59 +372,35 @@ public class ClosingWizardService {
 
     // ============ HELPER METHODS ============
 
+    /**
+     * Lépésszám a legacy 16 lépéses struktúra alapján (típusfüggő szűréssel).
+     * Legacy: NAPZAR.DLL + CHECKLST.DLL — 16 lépés, de nem mindegyik aktív minden típusnál.
+     * @see ClosingWizardSteps
+     */
     private int getStepCount(ClosingType type) {
-        return switch (type) {
-            case DAILY -> 5;
-            case POS -> 3;
-            case DECADE -> 6;
-            case MONTHLY -> 7;
-        };
+        return ClosingWizardSteps.getStepCountForType(type.name());
     }
 
+    /**
+     * Lépések létrehozása a legacy 16 lépéses struktúra alapján (típusfüggő szűréssel).
+     * Az adott zárástípusra nem vonatkozó lépések kihagyásra kerülnek.
+     * @see ClosingWizardSteps
+     */
     private List<ClosingWizardStep> createStepsForType(ClosingType type, ClosingWizard wizard) {
-        List<String[]> stepDefinitions = switch (type) {
-            case DAILY -> List.of(
-                new String[]{"Tranzakció összesítés", "Napi tranzakciók ellenőrzése és összesítése"},
-                new String[]{"Készpénz egyeztetés", "Kasszában lévő készpénz egyeztetése a nyilvántartással"},
-                new String[]{"Címlet számlálás", "Bankjegyek és érmék tételes számlálása"},
-                new String[]{"Bizonylatok ellenőrzése", "Napi bizonylatok teljességének ellenőrzése"},
-                new String[]{"Lezárás", "Napi zárás véglegesítése és nyomtatás"}
-            );
-            case POS -> List.of(
-                new String[]{"POS tranzakciók", "POS terminál tranzakcióinak összesítése"},
-                new String[]{"Egyeztetés", "POS forgalom egyeztetése a nyilvántartással"},
-                new String[]{"Lezárás", "POS zárás véglegesítése"}
-            );
-            case DECADE -> List.of(
-                new String[]{"Időszak összesítés", "Dekádos időszak tranzakcióinak összesítése"},
-                new String[]{"Forgalom elemzés", "Forgalmi adatok elemzése és összesítése"},
-                new String[]{"Készlet egyeztetés", "Valutakészlet egyeztetése"},
-                new String[]{"Címlet ellenőrzés", "Címletek egyeztetése a nyilvántartással"},
-                new String[]{"Jelentés generálás", "Dekádos jelentés generálása"},
-                new String[]{"Lezárás", "Dekádos zárás véglegesítése"}
-            );
-            case MONTHLY -> List.of(
-                new String[]{"Havi összesítés", "Havi tranzakciók teljes összesítése"},
-                new String[]{"Forgalom elemzés", "Havi forgalmi adatok elemzése"},
-                new String[]{"Készlet egyeztetés", "Teljes valutakészlet egyeztetése"},
-                new String[]{"Címlet ellenőrzés", "Összes címlet egyeztetése"},
-                new String[]{"NAV jelentés", "NAV felé adatszolgáltatási kötelezettség"},
-                new String[]{"Nyomtatások", "Havi jelentések nyomtatása"},
-                new String[]{"Lezárás", "Havi zárás véglegesítése"}
-            );
-        };
+        List<ClosingWizardSteps.StepDefinition> applicableSteps =
+            ClosingWizardSteps.getStepsForType(type.name());
 
         List<ClosingWizardStep> steps = new ArrayList<>();
-        for (int i = 0; i < stepDefinitions.size(); i++) {
-            String[] def = stepDefinitions.get(i);
+        for (int i = 0; i < applicableSteps.size(); i++) {
+            ClosingWizardSteps.StepDefinition def = applicableSteps.get(i);
             steps.add(ClosingWizardStep.builder()
                     .wizard(wizard)
                     .stepNumber(i + 1)
-                    .stepTitle(def[0])
-                    .stepDescription(def[1])
+                    .stepTitle(def.stepName())
+                    .stepDescription(def.description())
                     .completed(false)
                     .canProceed(true)
-                    .stepData("{}")
+                    .stepData(String.format("{\"legacyStepNumber\":%d}", def.stepNumber()))
                     .build());
         }
         return steps;

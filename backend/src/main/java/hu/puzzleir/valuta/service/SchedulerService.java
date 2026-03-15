@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
 public class SchedulerService {
 
     private final ScheduledTaskRepository scheduledTaskRepository;
+    private final ReservationService reservationService;
 
     // =====================================================================
     // Fix @Scheduled feladatok
@@ -66,6 +67,20 @@ public class SchedulerService {
         executeAndRecord("CLOSING_REMINDER", ScheduledTask.TaskType.CLOSING_REMINDER, () -> {
             // NOTE: Production integrációnál: NotificationService.broadcastClosingReminder()
             log.info("Zárás emlékeztető elküldve");
+        });
+    }
+
+    /**
+     * GAP 3: Foglaló auto-expiry — minden nap 06:00-kor.
+     * Lejárt (2+ napos) foglalókat EXPIRED státuszra állítja,
+     * letét a kezelési költség pénztárba kerül, valuta visszavezetés.
+     */
+    @Scheduled(cron = "0 0 6 * * *")
+    public void reservationAutoExpiry() {
+        log.info("Foglaló auto-expiry indítása...");
+        executeAndRecord("RESERVATION_AUTO_EXPIRY", ScheduledTask.TaskType.HEALTH_CHECK, () -> {
+            int count = reservationService.autoExpireReservations();
+            log.info("Foglaló auto-expiry kész: {} foglaló lejárt", count);
         });
     }
 

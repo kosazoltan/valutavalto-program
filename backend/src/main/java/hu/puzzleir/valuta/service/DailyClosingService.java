@@ -19,11 +19,15 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 /**
- * Napzarasi szolgaltatas — 9 lepesu ellenorzesi lanc.
+ * Napzarasi szolgaltatas — belső ellenőrzési lánc (9 technikai lépés).
  *
  * Legacy: NAPZAR.DLL + CHECKLST.DLL + CIMLCTRL.DLL + CIMLMENU.DLL + DEKAD.DLL
  *
- * A legacy rendszerben a napzaras szigoru sorrendben tortent:
+ * FONTOS: Ez a szolgáltatás a belső (backend) ellenőrzési lépéseket hajtja végre.
+ * A felhasználói 16 lépéses zárási varázsló a {@link ClosingWizardSteps} osztályban
+ * és a {@link ClosingWizardService}-ben van definiálva.
+ *
+ * Belső ellenőrzési lépések (a legacy 9 lépéses CIMLCTRL szekvencia):
  * 1. MTCN szam ellenorzes (Western Union)
  * 2. Esti cimletez es ellenorzes
  * 3. Kezelesi dij cimletez es
@@ -36,6 +40,9 @@ import java.util.*;
  *
  * Minden lepes PASS/FAIL — ha FAIL, nem mehet tovabb.
  * A rendszer CSAK akkor zarhat napot, ha minden lepes PASS.
+ *
+ * @see ClosingWizardSteps a teljes 16 lépéses legacy varázsló struktúra
+ * @see ClosingWizardService a varázsló felhasználói felületének szolgáltatása
  */
 @Service
 @RequiredArgsConstructor

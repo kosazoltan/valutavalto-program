@@ -68,8 +68,9 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/health").permitAll()
                 .requestMatchers("/api/v1/health/**").authenticated()
 
-                // Swagger / OpenAPI docs
-                .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/api-docs/**", "/v3/api-docs/**").permitAll()
+                // Swagger / OpenAPI docs — JWT autentikáció mögött (adatszivárgás elleni védelem)
+                // Production-ban a springdoc teljesen ki van kapcsolva (application-prod.properties)
+                .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/api-docs/**", "/v3/api-docs/**").authenticated()
 
                 // WebSocket endpoint
                 .requestMatchers("/ws/**").authenticated()
@@ -109,7 +110,9 @@ public class SecurityConfig {
         List<String> origins = Arrays.asList(corsAllowedOrigins.split(","));
         configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowedHeaders(Arrays.asList(
+                "Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin",
+                "Access-Control-Request-Method", "Access-Control-Request-Headers"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

@@ -1,13 +1,22 @@
 /**
- * ESC/POS Thermal Receipt Printer — Electron main process.
+ * Thermal Receipt Printer — Electron main process.
  *
- * 80mm-es hőnyomtatóra generál bizonylat szöveget ESC/POS parancsokkal.
- * Fejléc: cég adatok, bizonylat szám, tételek, összesítő, vágás.
+ * 80mm-es hőnyomtatóra generál bizonylat szöveget ESC/POS parancsokkal,
+ * illetve HTML formátumban az Electron beépített nyomtató API-ján keresztül.
+ *
+ * Nyomtatási architektúra:
+ *   1. printReceipt() — fő belépési pont, IPC-ből hívva
+ *   2. Megpróbálja printToThermalUsb()-t (ESC/POS közvetlen USB — jövőbeli)
+ *   3. Ha nincs USB nyomtató, fallback: printViaElectron() — rejtett ablakban
+ *      HTML-t renderel és a rendszer nyomtató-driverén keresztül nyomtat
  *
  * Két cég:
  *   - Best Change: Exclusive Best Change Zrt. (adószám: 32313332-2-02)
  *   - Expressz: Expressz Ékszerház és Minibank Kft. (adószám: 14040535-2-02)
  */
+
+import { BrowserWindow } from 'electron';
+import log from 'electron-log/main';
 
 // --- ESC/POS Parancsok ---
 const ESC = '\x1B';
@@ -106,10 +115,14 @@ const JOB_TYPE_LABELS: Record<PrintJobType, string> = {
   closing: 'NAPI ZÁRÁS',
 };
 
+// ============================================================================
+// ESC/POS tartalom generálás (közvetlen USB hőnyomtatóhoz — jövőbeli)
+// ============================================================================
+
 /**
  * ESC/POS bizonylat generálása stringként.
- * Ha valódi nyomtató csatlakozik, ezt közvetlenül küldjük a portjára.
- * Ha nincs nyomtató, az Electron webContents.print()-tel nyomtatunk.
+ * Közvetlen USB hőnyomtató esetén ezt közvetlenül a port-ra kell küldeni.
+ * Jelenleg a printToThermalUsb() stub használja előkészítésre.
  */
 export function generateReceiptContent(data: PrintReceiptData): string {
   const company = COMPANIES[data.companyType] ?? COMPANIES['BEST_CHANGE']!;
@@ -329,30 +342,360 @@ function formatRate(value: number | undefined): string {
   return value.toLocaleString('hu-HU', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 }
 
+// ============================================================================
+// HTML bizonylat generálás (Electron webContents.print() számára)
+// ============================================================================
+
 /**
- * Bizonylat nyomtatás — megpróbálja ESC/POS-on, ha nem megy, fallback console log.
- * Éles használathoz a node-thermal-printer vagy hasonló csomag kell.
+ * Bizonylat HTML generálása — 80mm szélességre optimalizált.
+ * Ezt rendereli a rejtett BrowserWindow a rendszer nyomtató felé.
  */
-export async function printReceipt(data: PrintReceiptData): Promise<boolean> {
+function generateReceiptHtml(data: PrintReceiptData): string {
+  const company = COMPANIES[data.companyType] ?? COMPANIES['BEST_CHANGE']!;
+  const label = JOB_TYPE_LABELS[data.type];
+
+  let bodyContent = '';
+
+  // Fejléc
+  bodyContent += `
+    <div class="center">
+      <div class="company-name">${escHtml(company.name)}</div>
+      <div class="company-full">${escHtml(company.fullName)}</div>
+      <div>${escHtml(company.address)}</div>
+      <div>Adószám: ${escHtml(company.taxNumber)}</div>
+    </div>
+    <div class="double-line"></div>
+    <div class="center receipt-type">${escHtml(label)}</div>
+    <div class="meta">
+      <div>Bizonylat: ${escHtml(data.receiptNumber)}</div>
+      <div>Dátum: ${escHtml(data.date)} &nbsp; ${escHtml(data.time)}</div>
+      <div>Pénztár: ${escHtml(data.branchCode)}</div>
+      <div>Pénztáros: ${escHtml(data.cashierName)}</div>
+    </div>
+    <div class="line"></div>
+  `;
+
+  // Típus-specifikus tartalom
+  if (data.type === 'sell' || data.type === 'buy') {
+    bodyContent += generateTransactionHtml(data);
+  } else if (data.type === 'transfer') {
+    bodyContent += generateTransferHtml(data);
+  } else if (data.type === 'storno') {
+    bodyContent += generateStornoHtml(data);
+  } else if (data.type === 'closing') {
+    bodyContent += generateClosingHtml(data);
+  }
+
+  // Ügyfél adatok
+  if (data.customerName) {
+    bodyContent += `
+      <div class="line"></div>
+      <div class="bold">ÜGYFÉL ADATOK:</div>
+      <div>Név: ${escHtml(data.customerName)}</div>
+      ${data.customerDocType ? `<div>Igazolv.: ${escHtml(data.customerDocType)}</div>` : ''}
+      ${data.customerDocNumber ? `<div>Szám: ${escHtml(data.customerDocNumber)}</div>` : ''}
+    `;
+  }
+
+  // Lábléc
+  bodyContent += `
+    <div class="double-line"></div>
+    <div class="center footer">Köszönjük, hogy minket választott!</div>
+  `;
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @page {
+      size: 80mm auto;
+      margin: 2mm;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      line-height: 1.4;
+      width: 76mm;
+      color: #000;
+    }
+    .center { text-align: center; }
+    .bold { font-weight: bold; }
+    .company-name {
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .company-full {
+      font-size: 11px;
+      font-weight: bold;
+    }
+    .receipt-type {
+      font-size: 14px;
+      font-weight: bold;
+      margin: 4px 0;
+    }
+    .meta { margin: 4px 0; }
+    .line {
+      border-top: 1px dashed #000;
+      margin: 6px 0;
+    }
+    .double-line {
+      border-top: 2px solid #000;
+      margin: 6px 0;
+    }
+    .amount-row {
+      display: flex;
+      justify-content: space-between;
+    }
+    .total {
+      font-size: 14px;
+      font-weight: bold;
+      margin-top: 4px;
+    }
+    .section { margin: 6px 0; }
+    .footer { margin-top: 8px; font-size: 10px; }
+    .discrepancy { color: #c00; font-weight: bold; }
+  </style>
+</head>
+<body>${bodyContent}</body>
+</html>`;
+}
+
+function generateTransactionHtml(data: PrintReceiptData): string {
+  const isSell = data.type === 'sell';
+  const label = isSell ? 'Deviza eladás (HUF → valuta):' : 'Deviza vásárlás (valuta → HUF):';
+
+  let html = `
+    <div class="section">
+      <div class="bold">${escHtml(label)}</div>
+      <div class="amount-row"><span>Valutanem:</span><span>${escHtml(data.currencyCode ?? '—')}</span></div>
+      <div class="amount-row"><span>Összeg:</span><span>${formatAmount(data.foreignAmount)} ${escHtml(data.currencyCode ?? '')}</span></div>
+      <div class="amount-row"><span>Árfolyam:</span><span>${formatRate(data.rate)}</span></div>
+    </div>
+    <div class="line"></div>
+    <div class="amount-row bold"><span>HUF összeg:</span><span>${formatAmount(data.hufAmount)} Ft</span></div>
+  `;
+
+  if (data.roundedHufAmount !== undefined && data.roundingDiff !== undefined && data.roundingDiff !== 0) {
+    html += `
+      <div class="amount-row"><span>Kerekítés:</span><span>${formatAmount(data.roundingDiff)} Ft</span></div>
+      <div class="amount-row total"><span>FIZETENDŐ:</span><span>${formatAmount(data.roundedHufAmount)} Ft</span></div>
+    `;
+  } else {
+    html += `
+      <div class="amount-row total"><span>FIZETENDŐ:</span><span>${formatAmount(data.roundedHufAmount ?? data.hufAmount)} Ft</span></div>
+    `;
+  }
+
+  return html;
+}
+
+function generateTransferHtml(data: PrintReceiptData): string {
+  return `
+    <div class="section">
+      <div class="bold">Átadás-átvétel:</div>
+      <div class="amount-row"><span>Cél pénztár:</span><span>${escHtml(data.transferTarget ?? '—')}</span></div>
+      <div class="amount-row"><span>Valutanem:</span><span>${escHtml(data.currencyCode ?? '—')}</span></div>
+      <div class="amount-row"><span>Összeg:</span><span>${formatAmount(data.foreignAmount)} ${escHtml(data.currencyCode ?? '')}</span></div>
+      ${data.transferNote ? `<div>Megjegyzés: ${escHtml(data.transferNote)}</div>` : ''}
+    </div>
+  `;
+}
+
+function generateStornoHtml(data: PrintReceiptData): string {
+  return `
+    <div class="section">
+      <div class="bold">STORNÓ:</div>
+      <div class="amount-row"><span>Eredeti biz.:</span><span>${escHtml(data.originalReceiptNumber ?? '—')}</span></div>
+      <div class="amount-row"><span>Valutanem:</span><span>${escHtml(data.currencyCode ?? '—')}</span></div>
+      <div class="amount-row"><span>Összeg:</span><span>${formatAmount(data.foreignAmount)} ${escHtml(data.currencyCode ?? '')}</span></div>
+      <div class="amount-row"><span>HUF összeg:</span><span>${formatAmount(data.hufAmount)} Ft</span></div>
+      ${data.stornoReason ? `<div>Indok: ${escHtml(data.stornoReason)}</div>` : ''}
+    </div>
+  `;
+}
+
+function generateClosingHtml(data: PrintReceiptData): string {
+  const summary = data.closingSummary;
+  if (!summary) return '<div class="section">(Nincs zárási adat)</div>';
+
+  let discrepancyHtml = '';
+  if (summary.discrepancies.length > 0) {
+    discrepancyHtml = `
+      <div class="bold discrepancy">ELTÉRÉSEK:</div>
+      ${summary.discrepancies
+        .map(
+          (d) =>
+            `<div class="discrepancy">&nbsp;&nbsp;${escHtml(d.currencyCode)}: várt ${formatAmount(d.expected)} → tény ${formatAmount(d.actual)} (${formatAmount(d.difference)})</div>`,
+        )
+        .join('')}
+    `;
+  }
+
+  return `
+    <div class="section">
+      <div class="bold">FORGALMI ÖSSZESÍTŐ:</div>
+      <div class="amount-row"><span>Összes tranzakció:</span><span>${summary.totalTransactions}</span></div>
+      <div class="amount-row"><span>&nbsp;&nbsp;- Eladás:</span><span>${summary.sellCount}</span></div>
+      <div class="amount-row"><span>&nbsp;&nbsp;- Vásárlás:</span><span>${summary.buyCount}</span></div>
+      <br/>
+      <div class="amount-row"><span>HUF forgalom:</span><span>${formatAmount(summary.totalHufTurnover)} Ft</span></div>
+      <div class="amount-row"><span>Díjbevétel:</span><span>${formatAmount(summary.totalFees)} Ft</span></div>
+    </div>
+    <div class="line"></div>
+    <div class="amount-row"><span>Nyitó egyenleg:</span><span>${formatAmount(summary.openingBalance)} Ft</span></div>
+    <div class="amount-row"><span>Záró egyenleg:</span><span>${formatAmount(summary.closingBalance)} Ft</span></div>
+    ${discrepancyHtml}
+  `;
+}
+
+/** Egyszerű HTML escape az XSS elkerülésére. */
+function escHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ============================================================================
+// Nyomtatási stratégiák
+// ============================================================================
+
+/** A konfig kulcs, amiben a preferált nyomtató neve van tárolva (SQLite config). */
+const _PRINTER_CONFIG_KEY = 'printer.deviceName';
+
+/**
+ * Jövőbeli USB hőnyomtató integráció.
+ * Közvetlen ESC/POS parancsokat küld a nyomtatónak USB-n vagy soros porton.
+ *
+ * Aktiváláshoz szükséges:
+ *   1. `node-thermal-printer` vagy `escpos` npm csomag telepítése
+ *   2. USB HID driver (libusb) a célgépen
+ *   3. A PRINTER_CONFIG_KEY konfigba a nyomtató USB vendor/product ID beállítása
+ *
+ * @returns true ha sikerült nyomtatni, false ha nincs USB nyomtató (fallback-re vált)
+ */
+async function printToThermalUsb(_escPosContent: string): Promise<boolean> {
+  // Natív USB nyomtató jelenleg nincs konfigurálva.
+  // Ha a jövőben szükséges, itt kell implementálni a közvetlen USB küldést.
+  return false;
+}
+
+/**
+ * Nyomtatás Electron beépített webContents.print() API-n keresztül.
+ * Rejtett BrowserWindow-ban rendereli a bizonylat HTML-t, majd a rendszer
+ * nyomtató-driverén keresztül kinyomtatja.
+ *
+ * @param html - A bizonylat HTML tartalma
+ * @param printerName - Opcionális nyomtató név; ha nincs megadva, az alapértelmezett nyomtatót használja
+ * @returns true ha a nyomtatás sikerült
+ */
+async function printViaElectron(html: string, printerName?: string): Promise<boolean> {
+  let printWindow: BrowserWindow | null = null;
+
   try {
-    const content = generateReceiptContent(data);
-    // Konzol log dev módban
-    console.log('[PRINTER] Bizonylat nyomtatás:', data.type, data.receiptNumber);
-    console.log(content);
+    // Rejtett ablak létrehozása a bizonylat rendereléshez
+    printWindow = new BrowserWindow({
+      show: false,
+      width: 302,   // ~80mm @ 96 DPI
+      height: 800,
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
 
-    // TODO: Valódi hőnyomtató integráció (node-thermal-printer / escpos-usb)
-    // A valódi implementáció:
-    // 1. USB port keresése: const device = new escpos.USB();
-    // 2. Kapcsolódás: const printer = new escpos.Printer(device);
-    // 3. Nyomtatás: printer.text(content).cut().close();
-    //
-    // Mivel a node-thermal-printer és escpos csomagok natív modulokat igényelnek
-    // (USB HID driver), azokat csak a célgépen telepítjük — itt a tartalom generálás
-    // teljes és helyes, a fizikai nyomtatást a deploy utáni lépésben kapcsoljuk be.
+    // HTML tartalom betöltése data URL-ként
+    await printWindow.loadURL(
+      `data:text/html;charset=utf-8,${encodeURIComponent(html)}`,
+    );
 
-    return true;
+    // Nyomtatási opciók — csendes nyomtatás (nincs dialógus)
+    const printOptions: Electron.WebContentsPrintOptions = {
+      silent: true,
+      printBackground: true,
+      margins: { marginType: 'none' },
+      pageSize: { width: 80000, height: 297000 }, // 80mm x 297mm mikronban
+    };
+
+    // Ha van megadott nyomtató név, azt használjuk
+    if (printerName) {
+      printOptions.deviceName = printerName;
+    }
+
+    // Nyomtatás végrehajtása
+    const success = await new Promise<boolean>((resolve) => {
+      printWindow!.webContents.print(printOptions, (success, failureReason) => {
+        if (!success) {
+          log.warn(`[PRINTER] Nyomtatás sikertelen: ${failureReason}`);
+        }
+        resolve(success);
+      });
+    });
+
+    return success;
   } catch (err) {
-    console.error('[PRINTER] Nyomtatási hiba:', err);
+    log.error('[PRINTER] printViaElectron hiba:', err);
+    return false;
+  } finally {
+    // Rejtett ablak bezárása
+    if (printWindow && !printWindow.isDestroyed()) {
+      printWindow.close();
+    }
+  }
+}
+
+// ============================================================================
+// Fő belépési pont — IPC handler-ből hívva
+// ============================================================================
+
+/**
+ * Bizonylat nyomtatás — fő belépési pont.
+ *
+ * Nyomtatási sorrend:
+ *   1. Ha USB hőnyomtató konfigurálva van → ESC/POS közvetlen nyomtatás
+ *   2. Egyébként → Electron webContents.print() rendszer nyomtatón keresztül
+ *
+ * Hibajelzések:
+ *   - Nyomtató offline / nem elérhető → false visszatérés, log üzenet
+ *   - Papír kifogyott → a rendszer driver kezeli, false visszatérés
+ *
+ * @param data - A bizonylat adatai
+ * @param printerName - Opcionális nyomtató név felülírás
+ * @returns true ha a nyomtatás sikeresen elindult
+ */
+export async function printReceipt(
+  data: PrintReceiptData,
+  printerName?: string,
+): Promise<boolean> {
+  try {
+    log.info(`[PRINTER] Nyomtatás indítása: ${data.type} ${data.receiptNumber}`);
+
+    // 1. Próbáljuk ESC/POS USB nyomtatón
+    const escPosContent = generateReceiptContent(data);
+    const usbSuccess = await printToThermalUsb(escPosContent);
+
+    if (usbSuccess) {
+      log.info(`[PRINTER] USB hőnyomtató: OK — ${data.receiptNumber}`);
+      return true;
+    }
+
+    // 2. Fallback: Electron rendszer nyomtató (HTML alapú)
+    log.info('[PRINTER] USB nyomtató nem elérhető, Electron print fallback...');
+    const html = generateReceiptHtml(data);
+    const electronSuccess = await printViaElectron(html, printerName);
+
+    if (electronSuccess) {
+      log.info(`[PRINTER] Electron print: OK — ${data.receiptNumber}`);
+    } else {
+      log.error(`[PRINTER] Nyomtatás sikertelen — ${data.receiptNumber}. Ellenőrizd a nyomtató állapotát (offline / papír kifogyott).`);
+    }
+
+    return electronSuccess;
+  } catch (err) {
+    log.error('[PRINTER] Váratlan nyomtatási hiba:', err);
     return false;
   }
 }

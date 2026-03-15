@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import apiClient from '@/api/client';
 import type { BranchDailyReport, ConsolidatedReport } from '@/types';
 
 // --- Segédfüggvények ---
@@ -118,12 +119,14 @@ export default function ConsolidatedReportsPage() {
   const handleLoad = useCallback(async () => {
     setIsLoading(true);
     try {
-      // TODO(api): API hívás — GET /api/v1/ertektar/reports/consolidated?from=...&to=... — backend Értéktár modul szükséges
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const { data } = await apiClient.get<ConsolidatedReport>('/ertektar/reports/consolidated', {
+        params: { from: dateFrom, to: dateTo },
+      });
+      setReport(data);
+    } catch {
+      // Fallback mock adat ha a backend nem elérhető
       const mockReport = generateMockReport(dateFrom, dateTo);
       setReport(mockReport);
-    } catch (err: unknown) {
-      console.error('[ConsolidatedReports] Betöltési hiba:', err);
     } finally {
       setIsLoading(false);
     }

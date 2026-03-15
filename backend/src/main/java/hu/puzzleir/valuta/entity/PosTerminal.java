@@ -35,6 +35,18 @@ public class PosTerminal {
     @Builder.Default
     private String terminalType = "MOCK";
 
+    /**
+     * Terminál IP cím (Legacy: HARDWARE.POSHOST)
+     */
+    @Column(name = "ip_address", length = 50)
+    private String ipAddress;
+
+    /**
+     * Terminál port (Legacy: HARDWARE.POSPORT)
+     */
+    @Column(name = "port")
+    private Integer port;
+
     @Column(name = "branch_id", nullable = false)
     private UUID branchId;
 

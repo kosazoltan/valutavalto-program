@@ -436,6 +436,70 @@ public class ReservationService {
         return result;
     }
 
+    // ============ GAP 3: AUTO-EXPIRY ============
+
+    /**
+     * Lejárt foglalók automatikus lezárása.
+     *
+     * Legacy üzleti szabály: ha a foglaló 2 napja lejárt és senki nem kezelte,
+     * automatikusan EXPIRED státuszra vált. A letét összeg a kezelési költség
+     * pénztárba (HUF kassza) kerül — az ügyfélnek NEM jár visszafizetés.
+     * A lefoglalt valuta visszakerül a készletbe.
+     *
+     * @return lejárt foglalók száma
+     */
+    public int autoExpireReservations() {
+        List<Reservation> expired = reservationRepository.findByStatusAndExpiresAtBefore(
+                ReservationStatus.ACTIVE, LocalDateTime.now());
+
+        int count = 0;
+        for (Reservation reservation : expired) {
+            try {
+                reservation.setStatus(ReservationStatus.EXPIRED);
+                reservation.setCancelledAt(LocalDateTime.now());
+                reservation.setRefundAmount(BigDecimal.ZERO);
+                reservation.setCancellationReason("Automatikus lejárat — 2 napos határidő letelt");
+
+                // Valuta visszavezetés a készletbe
+                restoreCurrencyStock(reservation);
+
+                // Letét összeg a kezelési költség pénztárban MARAD (HUF készlet nem változik,
+                // mert a letét már a bevételezéskor hozzáadódott a HUF kasszához).
+                // A deposit a cég bevétele lesz — nincs visszafizetés.
+
+                reservationRepository.save(reservation);
+
+                auditLogService.log(
+                        "RESERVATION_AUTO_EXPIRED",
+                        "Reservation",
+                        reservation.getId().toString(),
+                        "SYSTEM",
+                        "Automatikus lejárat",
+                        reservation.getBranch().getId().toString(),
+                        reservation.getBranch().getName(),
+                        String.format("Foglaló automatikusan lejárt: %s %s, letét: %s HUF → kezelési költség",
+                                reservation.getReservedAmount().toPlainString(),
+                                reservation.getCurrencyCode(),
+                                reservation.getDepositAmount().toPlainString()),
+                        null, null
+                );
+
+                log.info("Foglaló automatikusan lejárt: id={}, {} {}, letét={} HUF → kezelési költség",
+                        reservation.getId(), reservation.getReservedAmount(),
+                        reservation.getCurrencyCode(), reservation.getDepositAmount());
+                count++;
+            } catch (Exception e) {
+                log.error("Hiba a foglaló auto-expiry során: id={}, hiba: {}",
+                        reservation.getId(), e.getMessage(), e);
+            }
+        }
+
+        if (count > 0) {
+            log.info("Összesen {} foglaló automatikusan lejárt", count);
+        }
+        return count;
+    }
+
     // ============ PRIVATE HELPER METHODS ============
 
     /**

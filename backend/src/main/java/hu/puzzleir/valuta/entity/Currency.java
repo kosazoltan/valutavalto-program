@@ -97,6 +97,14 @@ public class Currency {
     private Integer displayOrder = 100;
 
     /**
+     * Maximális eltérés az MNB hivatalos (közép) árfolyamtól (százalék).
+     * MNB szabályozás: pl. EUA (euro érme) max 20%-kal térhet el az EUR középárfolyamtól.
+     * NULL = nincs korlát.
+     */
+    @Column(name = "max_deviation_percent", precision = 5, scale = 2)
+    private BigDecimal maxDeviationPercent;
+
+    /**
      * Zászló ikon URL (opcionális)
      */
     @Column(name = "flag_icon", length = 255)

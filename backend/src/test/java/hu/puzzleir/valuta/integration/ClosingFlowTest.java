@@ -98,9 +98,9 @@ class ClosingFlowTest {
             assertThat(result.getWizardStatus()).isEqualTo("IN_PROGRESS");
             assertThat(result.getClosingType()).isEqualTo("DAILY");
             assertThat(result.getCurrentStep()).isEqualTo(1);
-            assertThat(result.getTotalSteps()).isEqualTo(5);
+            assertThat(result.getTotalSteps()).isEqualTo(10); // Legacy 16-lépés wizard, DAILY típusra 10 aktív
             assertThat(result.getBranchName()).isEqualTo("Teszt Iroda");
-            assertThat(result.getSteps()).hasSize(5);
+            assertThat(result.getSteps()).hasSize(10);
         }
 
         @Test

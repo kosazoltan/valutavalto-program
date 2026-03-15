@@ -59,6 +59,9 @@ public class TransactionService {
     // Sztornó limit supervisor nélkül (3 db/nap)
     private static final int DAILY_REVERSAL_LIMIT = 3;
 
+    // Napi kedvezmény limit pénztárosonként (Legacy: 5 db/nap egyedi ráta kedvezmény)
+    private static final int DAILY_DISCOUNT_LIMIT = 5;
+
     // Azonosítás nélküli limit HUF-ban (300.000 Ft - NAV szabályozás)
     private static final BigDecimal IDENTIFICATION_LIMIT = new BigDecimal("300000");
 
@@ -563,17 +566,23 @@ public class TransactionService {
         BigDecimal serverHandlingFee = handlingFeeCalculator.calculate(
                 roundedHufAmount, TransactionType.CONVERSION, request.getHandlingFee());
 
-        // Bizonylat szám generálása (új szekvencia rendszer)
-        String receiptNumber = receiptSequenceService.generateReceiptNumber(branchId, TransactionType.CONVERSION);
+        // GAP 4: Magyar jogszabályi követelmény — konverzió = 2 bizonylat
+        // 1. "Konverziós vétel" bizonylat (forrás valuta → HUF)
+        // 2. "Konverziós eladás" bizonylat (HUF → cél valuta)
+        String buyReceiptNumber = receiptSequenceService.generateReceiptNumber(branchId, TransactionType.BUY);
+        String sellReceiptNumber = receiptSequenceService.generateReceiptNumber(branchId, TransactionType.SELL);
 
-        // Konverziós árfolyam számítása
+        // Konverziós árfolyam számítása (megmarad a fő CONVERSION rekordon is)
         BigDecimal conversionRate = fromRate.getBaseBuyRate().divide(toRate.getBaseSellRate(), 6, RoundingMode.HALF_UP);
+
+        // Fő konverziós tranzakció (a logikai rekord)
+        String conversionReceiptNumber = receiptSequenceService.generateReceiptNumber(branchId, TransactionType.CONVERSION);
 
         Transaction transaction = Transaction.builder()
                 .company(company)
                 .branch(branch)
                 .worker(worker)
-                .receiptNumber(receiptNumber)
+                .receiptNumber(conversionReceiptNumber)
                 .transactionType(TransactionType.CONVERSION)
                 .status(TransactionStatus.COMPLETED)
                 .transactionDate(LocalDate.now())
@@ -593,13 +602,64 @@ public class TransactionService {
 
         Transaction saved = transactionRepository.save(transaction);
 
+        // GAP 4: Konverziós vétel bizonylat (forrás valuta → HUF)
+        Transaction convBuy = Transaction.builder()
+                .company(company)
+                .branch(branch)
+                .worker(worker)
+                .receiptNumber(buyReceiptNumber)
+                .transactionType(TransactionType.BUY)
+                .status(TransactionStatus.COMPLETED)
+                .transactionDate(LocalDate.now())
+                .transactionTime(LocalTime.now())
+                .currency(fromCurrency)
+                .currencyAmount(request.getFromAmount())
+                .exchangeRate(fromRate.getBaseBuyRate())
+                .hufAmount(roundedHufAmount)
+                .handlingFee(BigDecimal.ZERO)
+                .roundingAmount(roundingDifference)
+                .linkedReceiptNumber(sellReceiptNumber)
+                .customerId(request.getCustomerId())
+                .customerName(request.getCustomerName())
+                .notes(String.format("Konverziós vétel: %s %s → %s HUF (pár: %s)",
+                    request.getFromAmount(), fromCurrency.getCode(),
+                    roundedHufAmount, sellReceiptNumber))
+                .build();
+        transactionRepository.save(convBuy);
+
+        // GAP 4: Konverziós eladás bizonylat (HUF → cél valuta)
+        Transaction convSell = Transaction.builder()
+                .company(company)
+                .branch(branch)
+                .worker(worker)
+                .receiptNumber(sellReceiptNumber)
+                .transactionType(TransactionType.SELL)
+                .status(TransactionStatus.COMPLETED)
+                .transactionDate(LocalDate.now())
+                .transactionTime(LocalTime.now())
+                .currency(toCurrency)
+                .currencyAmount(toAmount)
+                .exchangeRate(toRate.getBaseSellRate())
+                .hufAmount(roundedHufAmount)
+                .handlingFee(serverHandlingFee)
+                .roundingAmount(BigDecimal.ZERO)
+                .linkedReceiptNumber(buyReceiptNumber)
+                .customerId(request.getCustomerId())
+                .customerName(request.getCustomerName())
+                .notes(String.format("Konverziós eladás: %s HUF → %s %s (pár: %s)",
+                    roundedHufAmount, toAmount, toCurrency.getCode(),
+                    buyReceiptNumber))
+                .build();
+        transactionRepository.save(convSell);
+
         // Kassza frissítése
         updateCashBalance(branchId, fromCurrency.getId(), request.getFromAmount(), true);  // forrás valuta +
         updateCashBalance(branchId, toCurrency.getId(), toAmount.negate(), false);         // cél valuta -
 
-        log.info("Konverzió: {} - {} {} -> {} {} (HUF köztes: {}, kerekítés: {})",
-                receiptNumber, request.getFromAmount(), fromCurrency.getCode(),
-                toAmount, toCurrency.getCode(), roundedHufAmount, roundingDifference);
+        log.info("Konverzió: {} - {} {} -> {} {} (HUF köztes: {}, kerekítés: {}, bizonylatok: {} + {})",
+                conversionReceiptNumber, request.getFromAmount(), fromCurrency.getCode(),
+                toAmount, toCurrency.getCode(), roundedHufAmount, roundingDifference,
+                buyReceiptNumber, sellReceiptNumber);
 
         return saved;
     }
@@ -729,6 +789,14 @@ public class TransactionService {
         }
         if (discountPercent.compareTo(new BigDecimal("2.0")) > 0 && !SecurityUtils.isSupervisorOrAbove()) {
             throw new ValidationException("2% feletti kedvezményhez supervisor jogosultság szükséges!");
+        }
+
+        // GAP 1: Napi kedvezmény limit pénztárosonként (Legacy: 5 db/nap)
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+        long dailyDiscountCount = transactionRepository.countDailyDiscountsByWorker(workerId, LocalDate.now());
+        if (dailyDiscountCount >= DAILY_DISCOUNT_LIMIT && !SecurityUtils.isSupervisorOrAbove()) {
+            throw new ValidationException(
+                String.format("Napi kedvezmény limit (%d) elérve! Supervisor jóváhagyás szükséges.", DAILY_DISCOUNT_LIMIT));
         }
     }
 

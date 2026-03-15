@@ -25,11 +25,18 @@ import java.util.UUID;
  *   V  = Vétel (BUY)
  *   F  = Átadás (TRANSFER_OUT)
  *   U  = Átvétel (TRANSFER_IN)
- *   FF = Forint átadás
- *   UF = Forint átvétel
+ *   FF = Forint átadás (TRANSFER_OUT ha HUF)
+ *   UF = Forint átvétel (TRANSFER_IN ha HUF)
  *   K  = Konverzió (CONVERSION)
+ *   W  = Western Union (WU_SEND/WU_RECEIVE → vétel/eladás számláló)
+ *   M  = MoneyGram (MG_SEND/MG_RECEIVE → vétel/eladás számláló)
  *
  * Stornó: az EREDETI típus számlálójából kap új sorszámot (NEM külön S prefix).
+ *
+ * Legacy bizonylat szám minta: "V105007798"
+ *   V   = prefix (Vétel)
+ *   105 = pénztár szám (branch code, 3 jegyű)
+ *   007798 = sorszám (6 jegyű, 0-paddelt)
  *
  * PESSIMISTIC LOCK: SELECT FOR UPDATE az UTOLSOBLOKKOK táblán, hogy két párhuzamos
  * tranzakció ne kaphassa meg ugyanazt a sorszámot.
@@ -125,11 +132,18 @@ public class ReceiptSequenceService {
             case CONVERSION -> "K";
             case TRANSFER_OUT -> "F";
             case TRANSFER_IN -> "U";
+            // Western Union: W prefix, vétel/eladás számlálót használ (lásd incrementSequence)
+            case WESTERN_UNION_SEND -> "W";
+            case WESTERN_UNION_RECEIVE -> "W";
+            // MoneyGram: M prefix
+            case MONEYGRAM_SEND -> "M";
+            case MONEYGRAM_RECEIVE -> "M";
+            // Egyéb szolgáltatások: X prefix
+            case VIGNETTE, PHONE_TOPUP, OTHER -> "X";
             // Sztornó: SOHA nem hívódhat közvetlenül — fail-fast!
             // Használd a generateReversalReceiptNumber() metódust, ami az eredeti típust adja át.
             case REVERSAL -> throw new IllegalArgumentException(
                 "REVERSAL típushoz használd a generateReversalReceiptNumber() metódust!");
-            default -> throw new IllegalArgumentException("Nem támogatott tranzakció típus: " + type);
         };
     }
 
@@ -143,7 +157,13 @@ public class ReceiptSequenceService {
             case CONVERSION -> sequence.nextConversionSequence(); // saját számláló — NEM az eladásé!
             case TRANSFER_OUT -> sequence.nextTransferOutSequence();
             case TRANSFER_IN -> sequence.nextTransferInSequence();
-            default -> throw new IllegalArgumentException("Nem támogatott tranzakció típus szekvenciához: " + type);
+            // WU/MG: a vétel/eladás számlálóját használják (legacy kompatibilitás)
+            case WESTERN_UNION_SEND, MONEYGRAM_SEND -> sequence.nextSellSequence();
+            case WESTERN_UNION_RECEIVE, MONEYGRAM_RECEIVE -> sequence.nextBuySequence();
+            // Egyéb: az eladás számlálóját használja (fallback)
+            case VIGNETTE, PHONE_TOPUP, OTHER -> sequence.nextSellSequence();
+            case REVERSAL -> throw new IllegalArgumentException(
+                "REVERSAL típushoz használd a generateReversalReceiptNumber() metódust!");
         };
     }
 }

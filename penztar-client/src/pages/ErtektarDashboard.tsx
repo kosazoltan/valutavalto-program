@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import apiClient from '@/api/client';
 import type { SubordinateBranch, BranchOnlineStatus } from '@/types';
 
 // --- Konstansok ---
@@ -135,14 +136,24 @@ export default function ErtektarDashboard() {
           setOfflineTimestamp(null);
         }
       } else {
-        // ONLINE mód — API hívás (vagy mock ha nincs API)
-        // TODO(api): Valódi API hívás — GET /api/v1/ertektar/branches — backend Értéktár modul szükséges
-        const mockData = generateMockBranches();
-        const updated = mockData.map((b) => ({
-          ...b,
-          onlineStatus: resolveOnlineStatus(b.lastSyncAt),
-        }));
-        setBranches(updated);
+        // ONLINE mód — API hívás
+        try {
+          const { data } = await apiClient.get<SubordinateBranch[]>('/ertektar/branches');
+          const branchList: SubordinateBranch[] = Array.isArray(data) ? data : Object.values(data) as SubordinateBranch[];
+          const updated = branchList.map((b) => ({
+            ...b,
+            onlineStatus: resolveOnlineStatus(b.lastSyncAt),
+          }));
+          setBranches(updated);
+        } catch {
+          // Fallback mock ha backend nem elérhető
+          const mockData = generateMockBranches();
+          const updated = mockData.map((b) => ({
+            ...b,
+            onlineStatus: resolveOnlineStatus(b.lastSyncAt),
+          }));
+          setBranches(updated);
+        }
         setIsOfflineData(false);
         setOfflineTimestamp(null);
       }

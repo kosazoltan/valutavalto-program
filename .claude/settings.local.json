@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:api.exchangerate-api.com)",
+      "WebFetch(domain:api.frankfurter.app)",
+      "WebSearch"
+    ]
+  }
+}

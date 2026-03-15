@@ -57,4 +57,16 @@ public interface InventoryMovementRepository extends JpaRepository<InventoryMove
     List<InventoryMovement> findBankFlows(
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
+
+    @Query("SELECT m FROM InventoryMovement m WHERE " +
+           "m.movementType IN ('BANK_WITHDRAW', 'BANK_DEPOSIT') " +
+           "AND m.status = 'RECEIVED' " +
+           "AND (m.fromBranch.company.id = :companyId OR m.toBranch.company.id = :companyId) " +
+           "AND (:startDate IS NULL OR m.movementDate >= :startDate) " +
+           "AND (:endDate IS NULL OR m.movementDate <= :endDate) " +
+           "ORDER BY m.movementDate DESC")
+    List<InventoryMovement> findBankFlowsByCompanyId(
+            @Param("companyId") UUID companyId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
 }

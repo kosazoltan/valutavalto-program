@@ -24,8 +24,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -45,8 +48,12 @@ public class StornoService {
     private final TransactionService transactionService;
     private final DictionaryRepository dictionaryRepository;
 
-    // Napi sztornó limit supervisor jóváhagyás nélkül
-    private static final int DAILY_STORNO_LIMIT = 3;
+    // Napi sztornó limit supervisor jóváhagyás nélkül — iroda szinten
+    private static final int DAILY_STORNO_LIMIT_BRANCH = 3;
+
+    // Napi sztornó limit supervisor jóváhagyás nélkül — pénztáros szinten
+    // Legacy: a limit irodánként ÉS pénztárosonként is érvényes
+    private static final int DAILY_STORNO_LIMIT_CASHIER = 2;
 
     /**
      * Sztornó ellenőrzés - szükséges-e jóváhagyás?
@@ -62,7 +69,11 @@ public class StornoService {
         if (!transaction.getBranch().getId().equals(branchId)) {
             throw new ValidationException("Nincs jogosultság más iroda tranzakciójához!");
         }
-        int dailyCount = (int) transactionRepository.countReversalsByBranchAndDate(branchId, LocalDate.now());
+
+        // Napi sztornó számok — iroda szinten ÉS pénztáros szinten
+        int dailyCountBranch = (int) transactionRepository.countReversalsByBranchAndDate(branchId, LocalDate.now());
+        int dailyCountCashier = (int) transactionRepository.countReversalsByBranchAndWorkerAndDate(
+                branchId, workerId, LocalDate.now());
 
         // HIGH FIX #8: Ha a tranzakció ALREADY_REVERSED → dobjon hibát, ne engedje tovább
         if (transaction.isReversed()) {
@@ -72,19 +83,35 @@ public class StornoService {
             throw new ValidationException("Sztornó tranzakció nem sztornózható!");
         }
 
-        boolean requiresApproval = dailyCount >= DAILY_STORNO_LIMIT
-                || !transaction.getTransactionDate().equals(LocalDate.now());
+        // Legacy: a limit irodánként ÉS pénztárosonként is érvényes
+        boolean branchLimitReached = dailyCountBranch >= DAILY_STORNO_LIMIT_BRANCH;
+        boolean cashierLimitReached = dailyCountCashier >= DAILY_STORNO_LIMIT_CASHIER;
+        boolean isPreviousDay = !transaction.getTransactionDate().equals(LocalDate.now());
+
+        boolean requiresApproval = branchLimitReached || cashierLimitReached || isPreviousDay;
 
         String message;
         if (requiresApproval) {
-            message = String.format("Napi sztornó szám (%d) elérte a limitet vagy korábbi napi tranzakció. Supervisor jóváhagyás szükséges.", dailyCount);
+            List<String> reasons = new ArrayList<>();
+            if (branchLimitReached) {
+                reasons.add(String.format("irodai napi sztornó szám (%d) elérte a limitet (%d)",
+                        dailyCountBranch, DAILY_STORNO_LIMIT_BRANCH));
+            }
+            if (cashierLimitReached) {
+                reasons.add(String.format("pénztáros napi sztornó szám (%d) elérte a limitet (%d)",
+                        dailyCountCashier, DAILY_STORNO_LIMIT_CASHIER));
+            }
+            if (isPreviousDay) {
+                reasons.add("korábbi napi tranzakció");
+            }
+            message = "Supervisor jóváhagyás szükséges: " + String.join("; ", reasons) + ".";
         } else {
             message = "Sztornó végrehajtható.";
         }
 
         return StornoCheckResultDto.builder()
                 .requiresApproval(requiresApproval)
-                .dailyStornoCount(dailyCount)
+                .dailyStornoCount(dailyCountBranch)
                 .transactionId(String.valueOf(transactionId))
                 .transactionNumber(transaction.getReceiptNumber())
                 .message(message)
@@ -203,6 +230,14 @@ public class StornoService {
     public Transaction executePosStorno(String posTransactionId, Long workerId, String reason) {
         Long transactionId = Long.parseLong(posTransactionId);
 
+        // IDOR védelem: csak saját iroda tranzakcióját lehet POS-sztornózni
+        Transaction original = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tranzakció nem található: " + transactionId));
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+        if (!original.getBranch().getId().equals(branchId)) {
+            throw new ValidationException("Nincs jogosultság más iroda tranzakciójához!");
+        }
+
         TransactionService.ReversalRequest reversalRequest = TransactionService.ReversalRequest.builder()
                 .originalTransactionId(transactionId)
                 .reason(reason)
@@ -213,6 +248,129 @@ public class StornoService {
         log.info("POS sztornó végrehajtva: eredeti={}, sztornó={}", posTransactionId, reversal.getReceiptNumber());
 
         return reversal;
+    }
+
+    // ============ OTP TERMINÁL INTEGRÁCIÓ (Legacy: STORNO.DLL + OTP terminál) ============
+
+    /**
+     * OTP terminál sztornó végrehajtása.
+     * Legacy: VTEMP.OTPFUNCTYPE=100 → OtpTermStorno
+     *
+     * Ha a tranzakció bankkártyás volt (PaymentMethod.CARD),
+     * az OTP terminálon is sztornózni kell.
+     * A terminál POS referencia szám alapján azonosítja a tranzakciót.
+     */
+    public Transaction executeOtpTerminalStorno(Long transactionId, Long workerId, String reason) {
+        Transaction original = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tranzakció nem található: " + transactionId));
+
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+        if (!original.getBranch().getId().equals(branchId)) {
+            throw new ValidationException("Nincs jogosultság más iroda tranzakciójához!");
+        }
+
+        if (original.isReversed()) {
+            throw new ValidationException("Ez a tranzakció már sztornózva lett!");
+        }
+
+        // Ellenőrzés: bankkártyás tranzakció volt-e
+        if (original.getPaymentMethod() != hu.puzzleir.valuta.entity.PaymentMethod.CARD) {
+            throw new ValidationException("OTP terminál sztornó csak bankkártyás tranzakcióra alkalmazható!");
+        }
+
+        if (original.getPosAuthorizationCode() == null || original.getPosAuthorizationCode().isBlank()) {
+            throw new ValidationException("Hiányzó POS autorizációs kód — OTP terminál sztornó nem végrehajtható!");
+        }
+
+        // Napi sztornó számláló ellenőrzés (Legacy: NAPISTORNO > 2 → supervisor)
+        int dailyCount = (int) transactionRepository.countReversalsByBranchAndDate(branchId, LocalDate.now());
+        if (dailyCount >= DAILY_STORNO_LIMIT_BRANCH) {
+            log.warn("OTP terminál sztornó: napi limit ({}) elérve, supervisor jóváhagyás szükséges!",
+                    DAILY_STORNO_LIMIT_BRANCH);
+            throw new ValidationException(
+                String.format("Napi OTP sztornó limit (%d) elérve — supervisor jóváhagyás szükséges!",
+                    DAILY_STORNO_LIMIT_BRANCH));
+        }
+
+        // Sztornó végrehajtás
+        TransactionService.ReversalRequest reversalRequest = TransactionService.ReversalRequest.builder()
+                .originalTransactionId(transactionId)
+                .reason("OTP_TERMINAL_STORNO: " + reason)
+                .approvedBy(String.valueOf(workerId))
+                .build();
+
+        Transaction reversal = transactionService.executeReversal(reversalRequest);
+
+        // POS terminál adatok másolása a sztornó tranzakcióra
+        reversal.setPosAuthorizationCode(original.getPosAuthorizationCode());
+        reversal.setPosReferenceNumber(original.getPosReferenceNumber());
+        reversal.setPosTerminalId(original.getPosTerminalId());
+        reversal.setPaymentMethod(hu.puzzleir.valuta.entity.PaymentMethod.CARD);
+        transactionRepository.save(reversal);
+
+        log.info("OTP terminál sztornó végrehajtva: eredeti={}, sztornó={}, POS ref={}",
+                original.getReceiptNumber(), reversal.getReceiptNumber(), original.getPosReferenceNumber());
+
+        return reversal;
+    }
+
+    /**
+     * OTP áruvisszavét (árustornó).
+     * Legacy: VTEMP.OTPFUNCTYPE=4 → OtpAruvisszavet
+     *
+     * Különbség a normál OTP sztornóhoz:
+     * - Nem az eredeti tranzakció teljes visszafordítása, hanem részleges visszatérítés
+     * - Összeg lehet eltérő az eredetitől
+     */
+    public Transaction executeOtpRefund(Long transactionId, Long workerId,
+                                         BigDecimal refundAmount, String reason) {
+        Transaction original = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tranzakció nem található: " + transactionId));
+
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+        if (!original.getBranch().getId().equals(branchId)) {
+            throw new ValidationException("Nincs jogosultság más iroda tranzakciójához!");
+        }
+
+        if (original.getPaymentMethod() != hu.puzzleir.valuta.entity.PaymentMethod.CARD) {
+            throw new ValidationException("OTP áruvisszavét csak bankkártyás tranzakcióra alkalmazható!");
+        }
+
+        // Refund összeg nem haladhatja meg az eredetit
+        if (refundAmount != null && refundAmount.compareTo(original.getHufAmount()) > 0) {
+            throw new ValidationException(
+                String.format("Visszatérítés összege (%s Ft) nem haladhatja meg az eredeti összeget (%s Ft)!",
+                    refundAmount, original.getHufAmount()));
+        }
+
+        TransactionService.ReversalRequest reversalRequest = TransactionService.ReversalRequest.builder()
+                .originalTransactionId(transactionId)
+                .reason("OTP_ARUVISSZAVET: " + reason)
+                .approvedBy(String.valueOf(workerId))
+                .build();
+
+        Transaction reversal = transactionService.executeReversal(reversalRequest);
+
+        reversal.setPosAuthorizationCode(original.getPosAuthorizationCode());
+        reversal.setPosReferenceNumber(original.getPosReferenceNumber());
+        reversal.setPosTerminalId(original.getPosTerminalId());
+        reversal.setPaymentMethod(hu.puzzleir.valuta.entity.PaymentMethod.CARD);
+        transactionRepository.save(reversal);
+
+        log.info("OTP áruvisszavét végrehajtva: eredeti={}, sztornó={}, összeg={}",
+                original.getReceiptNumber(), reversal.getReceiptNumber(), refundAmount);
+
+        return reversal;
+    }
+
+    /**
+     * Supervisor jóváhagyás szükséges-e OTP sztornóhoz.
+     * Legacy: NAPISTORNO > 2 → supervisor jelszó kell
+     */
+    @Transactional(readOnly = true)
+    public boolean requiresOtpSupervisor(UUID branchId) {
+        int dailyCount = (int) transactionRepository.countReversalsByBranchAndDate(branchId, LocalDate.now());
+        return dailyCount >= DAILY_STORNO_LIMIT_BRANCH;
     }
 
     // ============ HELPER ============

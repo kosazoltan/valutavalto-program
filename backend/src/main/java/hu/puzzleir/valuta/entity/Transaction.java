@@ -240,6 +240,13 @@ public class Transaction {
     @Column(name = "reference_number", length = 100)
     private String referenceNumber;
 
+    /**
+     * Kapcsolt bizonylat szám (konverziónál: a pár bizonylata).
+     * GAP 4: Magyar jogszabály szerint konverzió = 2 bizonylat (konverziós vétel + konverziós eladás).
+     */
+    @Column(name = "linked_receipt_number", length = 20)
+    private String linkedReceiptNumber;
+
     // ============ POS TERMINÁL / BANKKÁRTYA ============
 
     /**

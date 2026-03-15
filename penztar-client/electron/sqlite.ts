@@ -14,7 +14,7 @@ function getDbPath(): string {
       fs.mkdirSync(valutaDir, { recursive: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      throw new Error(`Nem sikerült létrehozni a valuta mappát: ${valutaDir}. ${message}`);
+      throw new Error(`Nem sikerült létrehozni a valuta mappát: ${valutaDir}. ${message}`, { cause: err });
     }
   }
   return path.join(valutaDir, 'local.db');
@@ -187,7 +187,7 @@ export async function initDatabase(): Promise<void> {
       `errorMessage=${errorMessage}`,
     ].join('\n');
 
-    throw new Error(`Database init failed:\n${details}`);
+    throw new Error(`Database init failed:\n${details}`, { cause: err });
   }
 }
 

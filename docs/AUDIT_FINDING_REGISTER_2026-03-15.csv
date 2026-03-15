@@ -1,0 +1,21 @@
+ID,Modul,Kategoria,Sev,Statusz,Leiras,ErintettFajl,Javitas
+F-001,TreasuryDashboard,Tenancy/Security,Sev-1,FIXED,getCompanyWideSummary nincs companyId szures,TreasuryDashboardService.java:39,companyId szures hozzaadva
+F-002,TreasuryDashboard,Tenancy/Security,Sev-1,FIXED,getBranchComparison nincs companyId szures,TreasuryDashboardService.java:91,companyId szures hozzaadva
+F-003,TreasuryDashboard,Tenancy/Security,Sev-1,FIXED,getSubmissionStatus nincs companyId szures,TreasuryDashboardService.java:148,companyId szures hozzaadva
+F-004,TreasuryDashboard,Tenancy/Security,Sev-1,FIXED,getBranchGroupSummary nincs companyId szures,TreasuryDashboardService.java:175,companyId szures hozzaadva
+F-005,TreasuryDashboard,Tenancy/Security,Sev-1,FIXED,getCompanySummary nincs companyId szures,TreasuryDashboardService.java:278,companyId szures hozzaadva
+F-006,TreasuryDashboard,Tenancy/Security,Sev-1,FIXED,getBankFlowSummary nincs companyId szures,TreasuryDashboardService.java:116,companyId szuros query hozzaadva
+F-007,TreasuryDashboard,Tenancy/Security,Sev-2,FIXED,cashBalanceRepository.findAll() mas ceg egyenlegeit is osszesiti,TreasuryDashboardService.java:57,findByCompanyId hasznalata
+F-008,DecadeReport,IDOR/Security,Sev-1,FIXED,branchId parameter nincs validalva - IDOR,DecadeReportService.java:45,companyId ellenorzes hozzaadva
+F-009,DecadeReport,IDOR/Security,Sev-2,FIXED,closeDecade reportId nincs companyId-re validalva,DecadeReportService.java:103,companyId ellenorzes hozzaadva
+F-010,Denomination,Authorization,Sev-2,FIXED,6 GET endpoint vedelem nelkul,DenominationController.java,class-level PreAuthorize hozzaadva
+F-011,CORS,Security/Config,Sev-3,FIXED,allowedHeaders wildcard,SecurityConfig.java:112,explicit header lista
+F-012,Rounding,Uzleti logika,Sev-2,FIXED,penztar-client roundHuf Math.round hiany,penztar-client/src/utils/rounding.ts,Math.round hozzaadva
+F-013,TransactionService,Uzleti logika,Sev-4,ACCEPTED_RISK,Helper setScale(0) koztes szamitas,TransactionService.java:688,Koztes ertek - vegso kerekites korrekt
+F-014,NAV,Integracio,Sev-2,OPEN,NAV integracio placeholder/mock,NavReportService.java,Valos NAV tesztet igenyel
+F-015,CompanyId,Tenancy,Sev-3,OPEN,Formalis companyId audit nem keszult,Teljes backend,Fo muveleti utak OK
+F-016,Dekad riport,Parity,Sev-3,OPEN,Output parity UAT nincs bizonyitva,DecadeReportService.java,UAT szukseges
+F-017,Foglalas,Parity,Sev-3,OPEN,Foglalo keszlet-elkulonites UAT nincs bizonyitva,ReservationService.java,UAT szukseges
+F-018,Mockito,Teszt infra,Sev-3,OPEN,Java 21 + Mockito inkompatibilitas,pom.xml,Mockito 5.x frissites
+F-019,Swagger,Security/Info,Sev-4,OPEN,Swagger UI produkcioban elerheto,application.properties,Profilhoz kotes ajanlott
+F-020,XSS,Security,Sev-3,OPEN,dangerouslySetInnerHTML sanitizalas nelkul,PrintTemplatePage.tsx,DOMPurify szukseges

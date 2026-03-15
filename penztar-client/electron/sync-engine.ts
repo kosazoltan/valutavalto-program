@@ -15,7 +15,6 @@ import {
   getPendingTransactions,
   markTransactionSynced,
   getConfig,
-  setConfig,
   getDb,
   getPendingDistributions,
   markDistributionSynced,
@@ -25,9 +24,6 @@ import {
   markCollectionSynced,
   saveCachedBranchStatus,
   type PendingTransactionRow,
-  type PendingDistributionRow,
-  type PendingTransferRow,
-  type PendingCollectionRow,
 } from './sqlite';
 
 // --- Típusok ---

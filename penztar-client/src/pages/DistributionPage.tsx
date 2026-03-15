@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import apiClient from '@/api/client';
 import type { CurrencyCode, DistributionItem, Denomination } from '@/types';
 
 // --- Konstansok ---
@@ -108,8 +109,10 @@ export default function DistributionPage() {
         });
       } else {
         // ONLINE mód — API hívás
-        // TODO(api): API hívás — POST /api/v1/ertektar/distribution — backend Értéktár modul szükséges
-        await new Promise((resolve) => setTimeout(resolve, 1_000));
+        await apiClient.post('/ertektar/distribution', {
+          items: _items,
+          note: note || null,
+        });
 
         setResult({
           success: true,

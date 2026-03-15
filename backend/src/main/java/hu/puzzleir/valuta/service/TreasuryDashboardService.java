@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import hu.puzzleir.valuta.security.SecurityUtils;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -35,8 +37,9 @@ public class TreasuryDashboardService {
      */
     @Transactional(readOnly = true)
     public TreasuryDashboardDto getCompanyWideSummary() {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         LocalDate today = LocalDate.now();
-        List<DailyReport> reports = dailyReportRepository.findAllByReportDate(today);
+        List<DailyReport> reports = dailyReportRepository.findByCompanyIdAndReportDate(companyId, today);
 
         Map<String, CurrencyTotalsDto> currencyTotals = new LinkedHashMap<>();
         BigDecimal totalBuyHuf = BigDecimal.ZERO;
@@ -46,15 +49,15 @@ public class TreasuryDashboardService {
         int totalTransactions = 0;
 
         for (DailyReport report : reports) {
-            totalBuyHuf = totalBuyHuf.add(report.getTotalBuyHuf());
-            totalSellHuf = totalSellHuf.add(report.getTotalSellHuf());
-            totalFeeHuf = totalFeeHuf.add(report.getTotalFeeHuf());
-            totalProfit = totalProfit.add(report.getTotalProfit());
-            totalTransactions += report.getTransactionCount();
+            totalBuyHuf = totalBuyHuf.add(nz(report.getTotalBuyHuf()));
+            totalSellHuf = totalSellHuf.add(nz(report.getTotalSellHuf()));
+            totalFeeHuf = totalFeeHuf.add(nz(report.getTotalFeeHuf()));
+            totalProfit = totalProfit.add(nz(report.getTotalProfit()));
+            totalTransactions += report.getTransactionCount() != null ? report.getTransactionCount() : 0;
         }
 
-        // Aktuális készlet összesítés valutánként
-        List<CashBalance> allBalances = cashBalanceRepository.findAll();
+        // Aktuális készlet összesítés valutánként — csak a saját céghez tartozó egyenlegek
+        List<CashBalance> allBalances = cashBalanceRepository.findByCompanyId(companyId);
         for (CashBalance cb : allBalances) {
             String code = cb.getCurrency().getCode();
             CurrencyTotalsDto totals = currencyTotals.computeIfAbsent(code,
@@ -69,7 +72,7 @@ public class TreasuryDashboardService {
                     .add(cb.getCurrentBalance()).setScale(4, RoundingMode.HALF_UP));
         }
 
-        List<Branch> activeBranches = branchRepository.findByIsActiveTrue();
+        List<Branch> activeBranches = branchRepository.findByCompanyId(companyId);
 
         return TreasuryDashboardDto.builder()
                 .currencyTotals(currencyTotals)
@@ -87,8 +90,9 @@ public class TreasuryDashboardService {
      */
     @Transactional(readOnly = true)
     public List<BranchComparisonDto> getBranchComparison() {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         LocalDate today = LocalDate.now();
-        List<DailyReport> reports = dailyReportRepository.findAllByReportDate(today);
+        List<DailyReport> reports = dailyReportRepository.findByCompanyIdAndReportDate(companyId, today);
 
         return reports.stream()
                 .map(r -> BranchComparisonDto.builder()
@@ -110,7 +114,8 @@ public class TreasuryDashboardService {
      */
     @Transactional(readOnly = true)
     public List<BankFlowDto> getBankFlowSummary(LocalDate startDate, LocalDate endDate) {
-        List<InventoryMovement> bankFlows = movementRepository.findBankFlows(startDate, endDate);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<InventoryMovement> bankFlows = movementRepository.findBankFlowsByCompanyId(companyId, startDate, endDate);
 
         Map<String, BankFlowDto> flowMap = new LinkedHashMap<>();
         for (InventoryMovement m : bankFlows) {
@@ -143,9 +148,10 @@ public class TreasuryDashboardService {
      */
     @Transactional(readOnly = true)
     public List<SubmissionStatusDto> getSubmissionStatus() {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         LocalDate today = LocalDate.now();
-        List<Branch> activeBranches = branchRepository.findByIsActiveTrue();
-        List<DailyReport> reports = dailyReportRepository.findAllByReportDate(today);
+        List<Branch> activeBranches = branchRepository.findByCompanyId(companyId);
+        List<DailyReport> reports = dailyReportRepository.findByCompanyIdAndReportDate(companyId, today);
 
         Map<String, DailyReport> reportMap = reports.stream()
                 .collect(Collectors.toMap(
@@ -173,8 +179,9 @@ public class TreasuryDashboardService {
          */
         @Transactional(readOnly = true)
         public List<TreasuryAggregateDto> getBranchGroupSummary(LocalDate date) {
+                UUID companyId = SecurityUtils.getCurrentCompanyId();
                 LocalDate targetDate = date != null ? date : LocalDate.now();
-                List<DailyReport> reports = dailyReportRepository.findAllByReportDate(targetDate);
+                List<DailyReport> reports = dailyReportRepository.findByCompanyIdAndReportDate(companyId, targetDate);
                 List<BranchGroup> groups = branchGroupRepository.findByIsActiveTrue();
 
                 Map<UUID, TreasuryAggregateDto.TreasuryAggregateDtoBuilder> aggregates = new LinkedHashMap<>();
@@ -276,8 +283,9 @@ public class TreasuryDashboardService {
          */
         @Transactional(readOnly = true)
         public List<TreasuryAggregateDto> getCompanySummary(LocalDate date) {
+                UUID companyId = SecurityUtils.getCurrentCompanyId();
                 LocalDate targetDate = date != null ? date : LocalDate.now();
-                List<DailyReport> reports = dailyReportRepository.findAllByReportDate(targetDate);
+                List<DailyReport> reports = dailyReportRepository.findByCompanyIdAndReportDate(companyId, targetDate);
 
                 Map<UUID, TreasuryAggregateDto.TreasuryAggregateDtoBuilder> builders = new LinkedHashMap<>();
                 Map<UUID, Set<UUID>> branchSets = new HashMap<>();
@@ -285,11 +293,11 @@ public class TreasuryDashboardService {
                 for (DailyReport report : reports) {
                         Branch branch = report.getBranch();
                         Company company = branch.getCompany();
-                        UUID companyId = company.getId();
+                        UUID reportCompanyId = company.getId();
 
-                        TreasuryAggregateDto.TreasuryAggregateDtoBuilder builder = builders.computeIfAbsent(companyId,
+                        TreasuryAggregateDto.TreasuryAggregateDtoBuilder builder = builders.computeIfAbsent(reportCompanyId,
                                         id -> TreasuryAggregateDto.builder()
-                                                        .id(companyId.toString())
+                                                        .id(reportCompanyId.toString())
                                                         .code(company.getCode())
                                                         .name(company.getName())
                                                         .totalBuyHuf(BigDecimal.ZERO)
@@ -306,8 +314,8 @@ public class TreasuryDashboardService {
                                         .totalProfit(current.getTotalProfit().add(nz(report.getTotalProfit())).setScale(2, RoundingMode.HALF_UP))
                                         .transactionCount(current.getTransactionCount() + (report.getTransactionCount() != null ? report.getTransactionCount() : 0));
 
-                        branchSets.computeIfAbsent(companyId, k -> new HashSet<>()).add(branch.getId());
-                        builder.branchCount(branchSets.get(companyId).size());
+                        branchSets.computeIfAbsent(reportCompanyId, k -> new HashSet<>()).add(branch.getId());
+                        builder.branchCount(branchSets.get(reportCompanyId).size());
                 }
 
                 return builders.values().stream()

@@ -72,6 +72,12 @@ public interface BranchRepository extends JpaRepository<Branch, UUID> {
     List<Branch> findByCompanyId(@Param("companyId") UUID companyId);
 
     /**
+     * Fiók keresése cégen belül kód alapján (Értéktár modul)
+     */
+    @Query("SELECT b FROM Branch b WHERE b.company.id = :companyId AND b.code = :code")
+    Optional<Branch> findByCompanyIdAndCode(@Param("companyId") UUID companyId, @Param("code") String code);
+
+    /**
      * Rekurzív lekérdezés: összes leszármazott
      * PostgreSQL WITH RECURSIVE használata
      */

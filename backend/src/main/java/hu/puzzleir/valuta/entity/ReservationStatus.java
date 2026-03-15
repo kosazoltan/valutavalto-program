@@ -21,5 +21,8 @@ public enum ReservationStatus {
     CANCELLED_BY_CUSTOMER,
 
     /** EBC miatt semmis — dupla visszafizetés (fizetendő = 2 × letét) */
-    CANCELLED_BY_COMPANY
+    CANCELLED_BY_COMPANY,
+
+    /** Automatikusan lejárt — 2 nap után a scheduler zárta le, letét → kezelési költség pénztár */
+    EXPIRED
 }

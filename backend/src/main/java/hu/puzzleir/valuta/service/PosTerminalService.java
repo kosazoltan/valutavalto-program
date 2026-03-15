@@ -30,6 +30,7 @@ public class PosTerminalService {
 
     private final PosTerminalRepository repository;
     private final SystemParameterService systemParameterService;
+    private final OtpTerminalProtocolService otpProtocol;
 
     /**
      * Terminál típusok.
@@ -302,25 +303,90 @@ public class PosTerminalService {
         return PosClosingResult.success(0, BigDecimal.ZERO);
     }
 
-    // ============ OTP IMPLEMENTÁCIÓ (TODO: éles driver) ============
+    // ============ OTP IMPLEMENTÁCIÓ ============
 
+    /**
+     * OTP terminál kártyás fizetés.
+     * Legacy: OTPFUNCTYPE=0 → Vasarlas() — TCP/IP kommunikáció a POS terminállal.
+     */
     private PosTransactionResult executeOtpPayment(BigDecimal amount, String currency, String terminalId) {
-        // TODO: OTP terminál protokoll implementálása (ISO 8583 vagy saját OTP protokoll)
-        // Legacy: otpterminal DLL hívás
-        log.warn("OTP terminál fizetés: NEM IMPLEMENTÁLT — fallback MOCK módra. Terminál={}", terminalId);
-        return executeMockPayment(amount, currency, terminalId);
+        PosTerminal terminal = repository.findByTerminalId(terminalId).orElse(null);
+        if (terminal == null) {
+            return PosTransactionResult.error("OTP terminál nem található: " + terminalId);
+        }
+
+        String host = resolveOtpHost(terminal);
+        int port = resolveOtpPort(terminal);
+        String receiptNumber = terminalId + "-" + System.currentTimeMillis();
+
+        log.info("OTP terminál fizetés: {} {} → {}:{}", amount, currency, host, port);
+        return otpProtocol.executePayment(host, port, amount, receiptNumber);
     }
 
+    /**
+     * OTP terminál sztornó.
+     * Legacy: OTPFUNCTYPE=100 → Storno() — utolsó bizonylat érvénytelenítése.
+     */
     private PosTransactionResult executeOtpReversal(String originalRef, String terminalId) {
-        // TODO: OtpTermStorno / OtpAruvisszavet ekvivalens
-        log.warn("OTP terminál sztornó: NEM IMPLEMENTÁLT — fallback MOCK módra. Terminál={}", terminalId);
-        return executeMockReversal(originalRef, terminalId);
+        PosTerminal terminal = repository.findByTerminalId(terminalId).orElse(null);
+        if (terminal == null) {
+            return PosTransactionResult.error("OTP terminál nem található: " + terminalId);
+        }
+
+        String host = resolveOtpHost(terminal);
+        int port = resolveOtpPort(terminal);
+
+        log.info("OTP terminál sztornó: ref={} → {}:{}", originalRef, host, port);
+        return otpProtocol.executeStorno(host, port, originalRef);
     }
 
+    /**
+     * OTP terminál napi zárás.
+     * Legacy: OTPFUNCTYPE=60 → TerminalZaras()
+     */
     private PosClosingResult executeOtpDailyClose(String terminalId) {
-        // TODO: otpterminal DLL ekvivalens — napzáráskor hívva
-        log.warn("OTP terminál napi zárás: NEM IMPLEMENTÁLT — fallback MOCK módra. Terminál={}", terminalId);
-        return executeMockDailyClose(terminalId);
+        PosTerminal terminal = repository.findByTerminalId(terminalId).orElse(null);
+        if (terminal == null) {
+            return PosClosingResult.failure("OTP terminál nem található: " + terminalId);
+        }
+
+        String host = resolveOtpHost(terminal);
+        int port = resolveOtpPort(terminal);
+
+        log.info("OTP terminál napi zárás: terminál={} → {}:{}", terminalId, host, port);
+        return otpProtocol.dailyClose(host, port);
+    }
+
+    /**
+     * OTP terminál host IP cím meghatározása.
+     * Legacy: HARDWARE.POSHOST
+     */
+    private String resolveOtpHost(PosTerminal terminal) {
+        // Először a terminál saját konfigjából
+        if (terminal.getIpAddress() != null && !terminal.getIpAddress().isBlank()) {
+            return terminal.getIpAddress();
+        }
+        // Fallback: rendszerparaméter
+        try {
+            return systemParameterService.getValue("pos.otp.host");
+        } catch (Exception e) {
+            return "127.0.0.1";
+        }
+    }
+
+    /**
+     * OTP terminál port meghatározása.
+     * Legacy: HARDWARE.POSPORT
+     */
+    private int resolveOtpPort(PosTerminal terminal) {
+        if (terminal.getPort() != null && terminal.getPort() > 0) {
+            return terminal.getPort();
+        }
+        try {
+            return Integer.parseInt(systemParameterService.getValue("pos.otp.port"));
+        } catch (Exception e) {
+            return 5000; // default OTP port
+        }
     }
 
     // ============ BORGUN IMPLEMENTÁCIÓ (TODO: éles driver) ============

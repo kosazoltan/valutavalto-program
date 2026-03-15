@@ -79,7 +79,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     );
 
     /**
-     * Napi sztornók száma
+     * Napi sztornók száma — iroda szinten.
      */
     @Query("SELECT COUNT(t) FROM Transaction t " +
            "WHERE t.branch.id = :branchId " +
@@ -87,6 +87,21 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "AND t.transactionType = 'REVERSAL'")
     long countReversalsByBranchAndDate(
         @Param("branchId") UUID branchId,
+        @Param("date") LocalDate date
+    );
+
+    /**
+     * Napi sztornók száma — pénztáros (cashier/worker) szinten.
+     * Legacy: a sztornó limit irodánként ÉS pénztárosonként is érvényes.
+     */
+    @Query("SELECT COUNT(t) FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionDate = :date " +
+           "AND t.worker.id = :workerId " +
+           "AND t.transactionType = 'REVERSAL'")
+    long countReversalsByBranchAndWorkerAndDate(
+        @Param("branchId") UUID branchId,
+        @Param("workerId") Long workerId,
         @Param("date") LocalDate date
     );
 
@@ -175,6 +190,21 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     List<Transaction> findActiveByBranchAndDate(
         @Param("branchId") UUID branchId,
         @Param("date") LocalDate date
+    );
+
+    /**
+     * Aktív tranzakciók lekérése irodához, dátumtartományra.
+     * NAV PTGSZLAH havi jelentéshez szükséges.
+     */
+    @Query("SELECT t FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
+           "AND t.status = 'COMPLETED' " +
+           "ORDER BY t.transactionDate ASC, t.transactionTime ASC")
+    List<Transaction> findActiveByBranchAndDateRange(
+        @Param("branchId") UUID branchId,
+        @Param("dateFrom") LocalDate dateFrom,
+        @Param("dateTo") LocalDate dateTo
     );
 
     /**
@@ -386,6 +416,22 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("date") LocalDate date
     );
 
+    // ============ GAP 1: NAPI KEDVEZMÉNY LIMIT ============
+
+    /**
+     * Pénztáros napi kedvezményes tranzakcióinak száma.
+     * Legacy: napi 5 db egyedi ráta kedvezmény limit pénztárosonként.
+     */
+    @Query("SELECT COUNT(t) FROM Transaction t " +
+           "WHERE t.worker.id = :workerId " +
+           "AND t.transactionDate = :date " +
+           "AND t.discountPercent > 0 " +
+           "AND t.status = 'COMPLETED'")
+    long countDailyDiscountsByWorker(
+        @Param("workerId") Long workerId,
+        @Param("date") LocalDate date
+    );
+
     // ============ NAPZARAS QUERY-K ============
 
     /**
@@ -443,39 +489,39 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Query("SELECT COALESCE(SUM(t.hufAmount), 0) FROM Transaction t " +
            "WHERE t.branch.id = :branchId " +
            "AND CAST(t.transactionType AS string) = :txType " +
-           "AND t.createdAt BETWEEN :from AND :to " +
+           "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
            "AND t.status = 'COMPLETED'")
     BigDecimal sumHufAmountByBranchAndTypeAndPeriod(
         @Param("branchId") UUID branchId,
         @Param("txType") String txType,
-        @Param("from") LocalDateTime from,
-        @Param("to") LocalDateTime to
+        @Param("dateFrom") LocalDate dateFrom,
+        @Param("dateTo") LocalDate dateTo
     );
 
     /**
-     * Batch 3: Kezelési díj összeg branch + időszak (DateTime).
+     * Batch 3: Kezelési díj összeg branch + időszak (transactionDate).
      */
     @Query("SELECT COALESCE(SUM(t.handlingFee), 0) FROM Transaction t " +
            "WHERE t.branch.id = :branchId " +
-           "AND t.createdAt BETWEEN :from AND :to " +
+           "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
            "AND t.status = 'COMPLETED'")
     BigDecimal sumFeeByBranchAndPeriod(
         @Param("branchId") UUID branchId,
-        @Param("from") LocalDateTime from,
-        @Param("to") LocalDateTime to
+        @Param("dateFrom") LocalDate dateFrom,
+        @Param("dateTo") LocalDate dateTo
     );
 
     /**
-     * Batch 3: Tranzakció szám branch + időszak (DateTime).
+     * Batch 3: Tranzakció szám branch + időszak (transactionDate).
      */
     @Query("SELECT COUNT(t) FROM Transaction t " +
            "WHERE t.branch.id = :branchId " +
-           "AND t.createdAt BETWEEN :from AND :to " +
+           "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
            "AND t.status = 'COMPLETED'")
     long countByBranchAndPeriod(
         @Param("branchId") UUID branchId,
-        @Param("from") LocalDateTime from,
-        @Param("to") LocalDateTime to
+        @Param("dateFrom") LocalDate dateFrom,
+        @Param("dateTo") LocalDate dateTo
     );
 
     /**
@@ -632,5 +678,53 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("companyId") UUID companyId,
         @Param("monthStart") LocalDate monthStart,
         @Param("monthEnd") LocalDate monthEnd
+    );
+
+    // ============ ÉRTÉKTÁR MODUL — KONSZOLIDÁLT RIPORT QUERY-K ============
+
+    /**
+     * Tranzakciószám branch + típus + dátum intervallum.
+     * Értéktár konszolidált riporthoz.
+     */
+    @Query("SELECT COUNT(t) FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionType = :type " +
+           "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
+           "AND t.status = 'COMPLETED'")
+    int countByBranchIdAndTransactionTypeAndTransactionDateBetween(
+        @Param("branchId") UUID branchId,
+        @Param("type") TransactionType type,
+        @Param("dateFrom") LocalDate dateFrom,
+        @Param("dateTo") LocalDate dateTo
+    );
+
+    /**
+     * HUF összeg branch + típus + dátum intervallum.
+     * Értéktár konszolidált riporthoz.
+     */
+    @Query("SELECT COALESCE(SUM(t.hufAmount), 0) FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionType = :type " +
+           "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
+           "AND t.status = 'COMPLETED'")
+    BigDecimal sumHufAmountByBranchIdAndTypeAndDateBetween(
+        @Param("branchId") UUID branchId,
+        @Param("type") TransactionType type,
+        @Param("dateFrom") LocalDate dateFrom,
+        @Param("dateTo") LocalDate dateTo
+    );
+
+    /**
+     * Kezelési díj összeg branch + dátum intervallum.
+     * Értéktár konszolidált riporthoz.
+     */
+    @Query("SELECT COALESCE(SUM(t.handlingFee), 0) FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
+           "AND t.status = 'COMPLETED'")
+    BigDecimal sumFeesByBranchIdAndDateBetween(
+        @Param("branchId") UUID branchId,
+        @Param("dateFrom") LocalDate dateFrom,
+        @Param("dateTo") LocalDate dateTo
     );
 }
