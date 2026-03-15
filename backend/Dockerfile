@@ -6,7 +6,7 @@ WORKDIR /app
 COPY pom.xml ./
 RUN mvn dependency:go-offline -B -q
 
-COPY src ./src
+COPY src/main ./src/main
 RUN mvn package -Dmaven.test.skip=true -B -q
 
 # Stage 2: Runtime
