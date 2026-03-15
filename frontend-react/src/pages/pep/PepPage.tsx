@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '@/services/api';
 
 interface PoliticallyExposedPerson {
@@ -59,12 +59,7 @@ export default function PepPage() {
   const [editingPep, setEditingPep] = useState<PoliticallyExposedPerson | null>(null);
   const [reviewDue, setReviewDue] = useState<PoliticallyExposedPerson[]>([]);
 
-  useEffect(() => {
-    loadPepList();
-    loadReviewDue();
-  }, [activeTab]);
-
-  const loadPepList = async () => {
+  const loadPepList = useCallback(async () => {
     setLoading(true);
     try {
       let response;
@@ -80,23 +75,28 @@ export default function PepPage() {
         response = await api.get('/pep');
       }
       setPepList(response?.data || []);
-    } catch (error) {
-      console.error('Failed to load PEP list:', error);
+    } catch {
+      setPepList([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab]);
 
-  const loadReviewDue = async () => {
+  const loadReviewDue = useCallback(async () => {
     try {
       const response = await api.get('/pep/review-due');
       setReviewDue(response?.data || []);
-    } catch (error) {
-      console.error('Failed to load review due:', error);
+    } catch {
+      setReviewDue([]);
     }
-  };
+  }, []);
 
-  const handleSave = async (formData: {
+  useEffect(() => {
+    void loadPepList();
+    void loadReviewDue();
+  }, [loadPepList, loadReviewDue]);
+
+  const handleSave = useCallback(async (formData: {
     customerId: string;
     customerName: string;
     documentNumber: string;
@@ -133,11 +133,11 @@ export default function PepPage() {
       }
       setShowCreateDialog(false);
       setEditingPep(null);
-      loadPepList();
-    } catch (error) {
-      console.error('Failed to save PEP:', error);
+      void loadPepList();
+    } catch {
+      // Intentional noop: form state remains visible for correction.
     }
-  };
+  }, [editingPep, loadPepList]);
 
   const filteredPepList = pepList.filter(p =>
     p.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||

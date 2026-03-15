@@ -109,7 +109,6 @@ export default function DistributionPage() {
       } else {
         // ONLINE mód — API hívás
         // TODO(api): API hívás — POST /api/v1/ertektar/distribution — backend Értéktár modul szükséges
-        console.log('[Distribution] Batch küldés:', _items, 'Megjegyzés:', note);
         await new Promise((resolve) => setTimeout(resolve, 1_000));
 
         setResult({
@@ -131,7 +130,7 @@ export default function DistributionPage() {
     } finally {
       setIsSending(false);
     }
-  }, [selectedItems, totalAmount, currencyCode, note]);
+  }, [selectedItems, totalAmount, currencyCode, note, isOnline]);
 
   return (
     <div className="flex h-screen flex-col">

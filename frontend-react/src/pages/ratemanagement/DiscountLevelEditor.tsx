@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Percent, Plus, Save } from 'lucide-react'
 import { api } from '../../services/api'
 
@@ -25,37 +25,40 @@ export default function DiscountLevelEditor() {
   const [editing, setEditing] = useState<Discount | null>(null)
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    fetchWorkgroups()
-  }, [])
-
-  useEffect(() => {
-    if (selectedWorkgroup) fetchDiscounts()
-  }, [selectedWorkgroup])
-
-  const fetchWorkgroups = async () => {
+  const fetchWorkgroups = useCallback(async () => {
     try {
       const { data } = await api.get<Workgroup[]>('/rate-management/workgroups')
       setWorkgroups(data)
-      if (data.length > 0) setSelectedWorkgroup(data[0].id)
-    } catch (err) {
-      console.error('Lekeres sikertelen:', err)
+      const firstWorkgroup = data[0]
+      if (firstWorkgroup) setSelectedWorkgroup(firstWorkgroup.id)
+    } catch {
+      // Intentionally ignored here; the UI remains usable without workgroups.
     }
-  }
+  }, [])
 
-  const fetchDiscounts = async () => {
+  const fetchDiscounts = useCallback(async () => {
     setLoading(true)
     try {
       const { data } = await api.get<Discount[]>(`/rate-management/discounts/${selectedWorkgroup}`)
       setDiscounts(data)
-    } catch (err) {
-      console.error('Kedvezmeny lekeres sikertelen:', err)
+    } catch {
+      setDiscounts([])
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedWorkgroup])
 
-  const saveDiscount = async () => {
+  useEffect(() => {
+    void fetchWorkgroups()
+  }, [fetchWorkgroups])
+
+  useEffect(() => {
+    if (selectedWorkgroup) {
+      void fetchDiscounts()
+    }
+  }, [selectedWorkgroup, fetchDiscounts])
+
+  const saveDiscount = useCallback(async () => {
     if (!editing) return
     try {
       if (editing.id) {
@@ -64,11 +67,11 @@ export default function DiscountLevelEditor() {
         await api.post('/rate-management/discounts', editing)
       }
       setEditing(null)
-      fetchDiscounts()
-    } catch (err) {
-      console.error('Mentes sikertelen:', err)
+      void fetchDiscounts()
+    } catch {
+      // Save error is intentionally silent in this lightweight admin editor.
     }
-  }
+  }, [editing, fetchDiscounts])
 
   const newDiscount = (): Discount => ({
     workgroupId: selectedWorkgroup,

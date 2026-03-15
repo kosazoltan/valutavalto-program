@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Camera, RefreshCw, Wifi, WifiOff } from 'lucide-react'
 import { api } from '../../services/api'
 
@@ -17,12 +17,27 @@ export default function CameraLivePage() {
   const imgRef = useRef<HTMLImageElement>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  const fetchCameraStatus = useCallback(async () => {
+    try {
+      const res = await api.get('/camera/status')
+      if (res.data) {
+        const data = res.data
+        setCameras(data)
+        if (data.length > 0 && !selectedCamera) {
+          setSelectedCamera(data[0].cameraId)
+        }
+      }
+    } finally {
+      setLoading(false)
+    }
+  }, [selectedCamera])
+
   useEffect(() => {
-    fetchCameraStatus()
+    void fetchCameraStatus()
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
-  }, [])
+  }, [fetchCameraStatus])
 
   useEffect(() => {
     if (selectedCamera) {
@@ -38,23 +53,6 @@ export default function CameraLivePage() {
     }
   }, [selectedCamera])
 
-  const fetchCameraStatus = async () => {
-    try {
-      const res = await api.get('/camera/status')
-      if (res.data) {
-        const data = res.data
-        setCameras(data)
-        if (data.length > 0 && !selectedCamera) {
-          setSelectedCamera(data[0].cameraId)
-        }
-      }
-    } catch (err) {
-      console.error('Kamera statusz lekeres sikertelen:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -64,7 +62,7 @@ export default function CameraLivePage() {
         </h1>
         <button
           className="inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
-          onClick={fetchCameraStatus}
+          onClick={() => void fetchCameraStatus()}
         >
           <RefreshCw className="h-4 w-4 mr-2" />
           Frissites

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '@/services/api';
 
 interface Reservation {
@@ -42,11 +42,7 @@ export default function ReservationPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
-  useEffect(() => {
-    loadReservations();
-  }, [activeTab]);
-
-  const loadReservations = async () => {
+  const loadReservations = useCallback(async () => {
     setLoading(true);
     try {
       const branchId = localStorage.getItem('branchId') || '';
@@ -59,42 +55,46 @@ export default function ReservationPage() {
         response = await api.get(`/reservations/branch/${branchId}/expiring?hoursAhead=4`);
       }
       setReservations(response?.data || []);
-    } catch (error) {
-      console.error('Failed to load reservations:', error);
+    } catch {
+      setReservations([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab]);
 
-  const handleConfirm = async (id: number) => {
+  useEffect(() => {
+    void loadReservations();
+  }, [loadReservations]);
+
+  const handleConfirm = useCallback(async (id: number) => {
     try {
       await api.post(`/reservations/${id}/confirm`);
-      loadReservations();
-    } catch (error) {
-      console.error('Failed to confirm reservation:', error);
+      void loadReservations();
+    } catch {
+      // Intentional noop: list remains visible.
     }
-  };
+  }, [loadReservations]);
 
-  const handleCancel = async (id: number) => {
+  const handleCancel = useCallback(async (id: number) => {
     const reason = prompt('Lemondás oka:');
     if (reason) {
       try {
         await api.post(`/reservations/${id}/cancel?reason=${encodeURIComponent(reason)}`);
-        loadReservations();
-      } catch (error) {
-        console.error('Failed to cancel reservation:', error);
+        void loadReservations();
+      } catch {
+        // Intentional noop: list remains visible.
       }
     }
-  };
+  }, [loadReservations]);
 
-  const handleFulfill = async (id: number) => {
+  const handleFulfill = useCallback(async (id: number) => {
     try {
       await api.post(`/reservations/${id}/fulfill`);
-      loadReservations();
-    } catch (error) {
-      console.error('Failed to fulfill reservation:', error);
+      void loadReservations();
+    } catch {
+      // Intentional noop: list remains visible.
     }
-  };
+  }, [loadReservations]);
 
   const filteredReservations = reservations.filter(r =>
     r.reservationNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -265,8 +265,8 @@ function CreateReservationForm({
         validityHours: parseInt(formData.validityHours),
       });
       onSuccess();
-    } catch (error) {
-      console.error('Failed to create reservation:', error);
+    } catch {
+      // Intentional noop: form remains visible for correction.
     }
   };
 

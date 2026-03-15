@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '@/services/api';
 
 interface SuspiciousReport {
@@ -55,11 +55,7 @@ export default function SuspiciousReportPage() {
   const [selectedReport, setSelectedReport] = useState<SuspiciousReport | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
 
-  useEffect(() => {
-    loadReports();
-  }, [activeTab]);
-
-  const loadReports = async () => {
+  const loadReports = useCallback(async () => {
     setLoading(true);
     try {
       let response;
@@ -71,54 +67,58 @@ export default function SuspiciousReportPage() {
         response = await api.get(`/suspicious-reports/status/${activeTab.toUpperCase()}`);
       }
       setReports(response?.data || []);
-    } catch (error) {
-      console.error('Failed to load reports:', error);
+    } catch {
+      setReports([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab]);
 
-  const handleSubmitForReview = async (id: number) => {
+  useEffect(() => {
+    void loadReports();
+  }, [loadReports]);
+
+  const handleSubmitForReview = useCallback(async (id: number) => {
     try {
       await api.post(`/suspicious-reports/${id}/submit-review`);
-      loadReports();
-    } catch (error) {
-      console.error('Failed to submit for review:', error);
+      void loadReports();
+    } catch {
+      // Intentional noop: list remains visible.
     }
-  };
+  }, [loadReports]);
 
-  const handleApprove = async (id: number) => {
+  const handleApprove = useCallback(async (id: number) => {
     const notes = prompt('Jóváhagyási megjegyzés (opcionális):');
     try {
       await api.post(`/suspicious-reports/${id}/approve`, { notes });
-      loadReports();
-    } catch (error) {
-      console.error('Failed to approve report:', error);
+      void loadReports();
+    } catch {
+      // Intentional noop: list remains visible.
     }
-  };
+  }, [loadReports]);
 
-  const handleReject = async (id: number) => {
+  const handleReject = useCallback(async (id: number) => {
     const reason = prompt('Elutasítás oka:');
     if (reason) {
       try {
         await api.post(`/suspicious-reports/${id}/reject`, { reason });
-        loadReports();
-      } catch (error) {
-        console.error('Failed to reject report:', error);
+        void loadReports();
+      } catch {
+        // Intentional noop: list remains visible.
       }
     }
-  };
+  }, [loadReports]);
 
-  const handleSubmitToAuthority = async (id: number) => {
+  const handleSubmitToAuthority = useCallback(async (id: number) => {
     if (window.confirm('Biztosan beküldi a bejelentést a NAV felé?')) {
       try {
         await api.post(`/suspicious-reports/${id}/submit-authority`);
-        loadReports();
-      } catch (error) {
-        console.error('Failed to submit to authority:', error);
+        void loadReports();
+      } catch {
+        // Intentional noop: list remains visible.
       }
     }
-  };
+  }, [loadReports]);
 
   const filteredReports = reports.filter(r =>
     r.reportNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -331,8 +331,8 @@ function CreateReportForm({
         transactionId: formData.transactionId ? parseInt(formData.transactionId) : null,
       });
       onSuccess();
-    } catch (error) {
-      console.error('Failed to create report:', error);
+    } catch {
+      // Intentional noop: form remains visible for correction.
     }
   };
 

@@ -72,8 +72,9 @@ export default function TransactionPage() {
 
   // Auto-select first currency when rates load
   useEffect(() => {
-    if (currencyRates.length > 0 && !selectedCurrency) {
-      setSelectedCurrency(currencyRates[0])
+    const firstCurrency = currencyRates[0]
+    if (firstCurrency && !selectedCurrency) {
+      setSelectedCurrency(firstCurrency)
     }
   }, [currencyRates, selectedCurrency])
   const [foreignAmount, setForeignAmount] = useState('')
@@ -172,8 +173,7 @@ export default function TransactionPage() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [currencyRates, navigate])
 
   // Currency navigation is now handled directly in the onKeyDown of the currency list div
 
@@ -184,7 +184,7 @@ export default function TransactionPage() {
     if (index !== -1) {
       currencySelectedIndex.current = index
     }
-  }, [selectedCurrency])
+  }, [selectedCurrency, currencyRates])
 
   const handleCurrencyClick = (currency: CurrencyRate) => {
     setSelectedCurrency(currency)
@@ -370,14 +370,20 @@ export default function TransactionPage() {
               if (e.key === 'ArrowUp') {
                 e.preventDefault()
                 currencySelectedIndex.current = Math.max(0, currencySelectedIndex.current - 1)
-                setSelectedCurrency(currencyRates[currencySelectedIndex.current])
+                const nextCurrency = currencyRates[currencySelectedIndex.current]
+                if (nextCurrency) {
+                  setSelectedCurrency(nextCurrency)
+                }
                 // Scroll into view
                 const currencyButton = currencyListRef.current?.children[currencySelectedIndex.current] as HTMLElement
                 currencyButton?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
               } else if (e.key === 'ArrowDown') {
                 e.preventDefault()
                 currencySelectedIndex.current = Math.min(currencyRates.length - 1, currencySelectedIndex.current + 1)
-                setSelectedCurrency(currencyRates[currencySelectedIndex.current])
+                const nextCurrency = currencyRates[currencySelectedIndex.current]
+                if (nextCurrency) {
+                  setSelectedCurrency(nextCurrency)
+                }
                 // Scroll into view
                 const currencyButton = currencyListRef.current?.children[currencySelectedIndex.current] as HTMLElement
                 currencyButton?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })

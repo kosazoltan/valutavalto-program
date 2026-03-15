@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
+import type { InternalAxiosRequestConfig } from 'axios';
 import { shouldAttachIdempotencyKey } from '@/api/client';
+
+function configWithMethod(method: string): InternalAxiosRequestConfig {
+  return { method } as InternalAxiosRequestConfig;
+}
 
 describe('API modulok importálhatóság', () => {
   it('commissions API modul importálható', async () => {
@@ -88,15 +93,15 @@ describe('API modulok importálhatóság', () => {
 
 describe('API kliens idempotency szabalyok', () => {
   it('write metódusokra kér idempotency kulcsot', () => {
-    expect(shouldAttachIdempotencyKey({ method: 'post' } as any)).toBe(true);
-    expect(shouldAttachIdempotencyKey({ method: 'put' } as any)).toBe(true);
-    expect(shouldAttachIdempotencyKey({ method: 'patch' } as any)).toBe(true);
-    expect(shouldAttachIdempotencyKey({ method: 'delete' } as any)).toBe(true);
+    expect(shouldAttachIdempotencyKey(configWithMethod('post'))).toBe(true);
+    expect(shouldAttachIdempotencyKey(configWithMethod('put'))).toBe(true);
+    expect(shouldAttachIdempotencyKey(configWithMethod('patch'))).toBe(true);
+    expect(shouldAttachIdempotencyKey(configWithMethod('delete'))).toBe(true);
   });
 
   it('read metódusokra nem kér idempotency kulcsot', () => {
-    expect(shouldAttachIdempotencyKey({ method: 'get' } as any)).toBe(false);
-    expect(shouldAttachIdempotencyKey({ method: 'head' } as any)).toBe(false);
-    expect(shouldAttachIdempotencyKey({ method: 'options' } as any)).toBe(false);
+    expect(shouldAttachIdempotencyKey(configWithMethod('get'))).toBe(false);
+    expect(shouldAttachIdempotencyKey(configWithMethod('head'))).toBe(false);
+    expect(shouldAttachIdempotencyKey(configWithMethod('options'))).toBe(false);
   });
 });

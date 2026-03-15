@@ -116,7 +116,7 @@ export default function ClosingPage() {
     } finally {
       setIsCompleting(false);
     }
-  }, [wizardState]);
+  }, [wizardState, user?.id]);
 
   // ESC → vissza
   useEffect(() => {

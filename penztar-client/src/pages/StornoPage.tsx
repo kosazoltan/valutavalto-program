@@ -59,7 +59,7 @@ export default function StornoPage() {
     } finally {
       setIsSearching(false);
     }
-  }, [receiptSearch]);
+  }, [receiptSearch, user?.id]);
 
   // Stornó végrehajtás
   const handleExecute = useCallback(async () => {
@@ -102,8 +102,8 @@ export default function StornoPage() {
           penztarKod: parseInt(branchCode, 10),
         });
         setQrCodeDataUrl(qrData);
-      } catch (qrErr) {
-        console.error('[StornoPage] QR kód generálás hiba:', qrErr);
+      } catch {
+        setQrCodeDataUrl(null);
       }
 
       // Stornó bizonylat adatok összeállítása
@@ -140,22 +140,19 @@ export default function StornoPage() {
     } finally {
       setIsExecuting(false);
     }
-  }, [stornoCheck, reason, supervisorPassword, companyType, branchCode, user]);
+  }, [stornoCheck, reason, supervisorPassword, companyType, branchCode, user?.id, user?.fullName]);
 
   // Nyomtatás callback
   const handlePrint = useCallback(async () => {
     if (!pendingReceiptData || !window.electronAPI) {
-      console.error('[StornoPage] Nincs bizonylat adat vagy Electron API nem elérhető');
       toast.error('Nyomtatási hiba: Electron API nem elérhető');
       return;
     }
 
     try {
       await window.electronAPI.printReceipt(JSON.stringify(pendingReceiptData));
-      console.log('[StornoPage] Stornó bizonylat nyomtatás sikeres:', pendingReceiptData.receiptNumber);
       toast.success('Stornó bizonylat nyomtatva!');
     } catch (err: unknown) {
-      console.error('[StornoPage] Nyomtatási hiba:', err);
       const errorMessage = err instanceof Error ? err.message : 'Ismeretlen hiba';
       toast.error(`Nyomtatási hiba: ${errorMessage}`);
     }

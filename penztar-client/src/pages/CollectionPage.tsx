@@ -80,8 +80,8 @@ export default function CollectionPage() {
       // TODO(api): API hívás — GET /api/v1/ertektar/collections — backend Értéktár modul implementáció szükséges
       const mockData = generateMockRecords();
       setRecords(mockData);
-    } catch (err: unknown) {
-      console.error('[CollectionPage] Betöltési hiba:', err);
+    } catch {
+      setRecords([]);
     } finally {
       setIsLoading(false);
     }
@@ -108,12 +108,6 @@ export default function CollectionPage() {
         );
       } else {
         // TODO(api): API hívás — POST /api/v1/ertektar/collections — backend Értéktár modul implementáció szükséges
-        console.log('[Collection] Begyűjtés indítása:', {
-          sourceBranchCode: selectedBranch,
-          currencyCode: selectedCurrency,
-          amount: parseFloat(amount),
-          note: collectionNote,
-        });
         await new Promise((resolve) => setTimeout(resolve, 800));
       }
 
@@ -149,7 +143,7 @@ export default function CollectionPage() {
     } finally {
       setIsSending(false);
     }
-  }, [selectedBranch, selectedCurrency, amount, collectionNote]);
+  }, [selectedBranch, selectedCurrency, amount, collectionNote, isOnline]);
 
   if (isLoading) {
     return (

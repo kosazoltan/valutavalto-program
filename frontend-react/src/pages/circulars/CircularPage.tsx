@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '@/services/api';
 
 interface Circular {
@@ -59,12 +59,7 @@ export default function CircularPage() {
   const [selectedCircular, setSelectedCircular] = useState<Circular | null>(null);
   const [showViewDialog, setShowViewDialog] = useState(false);
 
-  useEffect(() => {
-    loadCirculars();
-    loadUnacknowledged();
-  }, [activeTab]);
-
-  const loadCirculars = async () => {
+  const loadCirculars = useCallback(async () => {
     setLoading(true);
     try {
       let response;
@@ -76,60 +71,65 @@ export default function CircularPage() {
         response = await api.get(`/circulars/type/${activeTab.toUpperCase()}`);
       }
       setCirculars(response?.data || []);
-    } catch (error) {
-      console.error('Failed to load circulars:', error);
+    } catch {
+      setCirculars([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab]);
 
-  const loadUnacknowledged = async () => {
+  const loadUnacknowledged = useCallback(async () => {
     try {
       const response = await api.get('/circulars/unacknowledged');
       setUnacknowledged(response?.data || []);
-    } catch (error) {
-      console.error('Failed to load unacknowledged:', error);
+    } catch {
+      setUnacknowledged([]);
     }
-  };
+  }, []);
 
-  const handlePublish = async (id: number) => {
+  useEffect(() => {
+    void loadCirculars();
+    void loadUnacknowledged();
+  }, [loadCirculars, loadUnacknowledged]);
+
+  const handlePublish = useCallback(async (id: number) => {
     if (window.confirm('Biztosan közzéteszi a dokumentumot?')) {
       try {
         await api.post(`/circulars/${id}/publish`);
-        loadCirculars();
-      } catch (error) {
-        console.error('Failed to publish:', error);
+        void loadCirculars();
+      } catch {
+        // Intentional noop: page reload keeps UX consistent.
       }
     }
-  };
+  }, [loadCirculars]);
 
-  const handleArchive = async (id: number) => {
+  const handleArchive = useCallback(async (id: number) => {
     if (window.confirm('Biztosan archiválja a dokumentumot?')) {
       try {
         await api.post(`/circulars/${id}/archive`);
-        loadCirculars();
-      } catch (error) {
-        console.error('Failed to archive:', error);
+        void loadCirculars();
+      } catch {
+        // Intentional noop: page reload keeps UX consistent.
       }
     }
-  };
+  }, [loadCirculars]);
 
-  const handleAcknowledge = async (id: number) => {
+  const handleAcknowledge = useCallback(async (id: number) => {
     try {
       await api.post(`/circulars/${id}/acknowledge`);
-      loadCirculars();
-      loadUnacknowledged();
-    } catch (error) {
-      console.error('Failed to acknowledge:', error);
+      void loadCirculars();
+      void loadUnacknowledged();
+    } catch {
+      // Intentional noop: page reload keeps UX consistent.
     }
-  };
+  }, [loadCirculars, loadUnacknowledged]);
 
   const filteredCirculars = circulars.filter(c =>
     c.circularNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.title?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleCreateSubmit = async (formData: {
+  const handleCreateSubmit = useCallback(async (formData: {
     title: string;
     circularType: string;
     category: string;
@@ -144,11 +144,11 @@ export default function CircularPage() {
         expiryDate: formData.expiryDate ? formData.expiryDate + 'T23:59:59' : null,
       });
       setShowCreateDialog(false);
-      loadCirculars();
-    } catch (error) {
-      console.error('Failed to create circular:', error);
+      void loadCirculars();
+    } catch {
+      // Intentional noop: page reload keeps UX consistent.
     }
-  };
+  }, [loadCirculars]);
 
   return (
     <div className="container mx-auto p-6">

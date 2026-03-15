@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Plus, Save, CheckCircle, Send, XCircle, Trash2 } from 'lucide-react'
 import { api } from '../../services/api'
 
@@ -37,27 +37,18 @@ export default function RateTemplateEditor() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchWorkgroups()
-    fetchCurrencies()
-  }, [])
-
-  useEffect(() => {
-    if (selectedWorkgroup) fetchTemplates()
-  }, [selectedWorkgroup])
-
-  const fetchWorkgroups = async () => {
+  const fetchWorkgroups = useCallback(async () => {
     try {
       const { data } = await api.get<Workgroup[]>('/rate-management/workgroups')
       setWorkgroups(data)
-      if (data.length > 0) setSelectedWorkgroup(data[0].id)
-    } catch (err) {
-      console.error('Munkacsoport lekeres sikertelen:', err)
+      const firstWorkgroup = data[0]
+      if (firstWorkgroup) setSelectedWorkgroup(firstWorkgroup.id)
+    } catch {
       setError('Munkacsoportok lekérése sikertelen')
     }
-  }
+  }, [])
 
-  const fetchTemplates = async () => {
+  const fetchTemplates = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
@@ -65,27 +56,37 @@ export default function RateTemplateEditor() {
         params: { workgroupId: selectedWorkgroup }
       })
       setTemplates(data)
-    } catch (err) {
-      console.error('Sablon lekeres sikertelen:', err)
+    } catch {
       setError('Sablonok lekérése sikertelen')
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedWorkgroup])
 
-  const fetchCurrencies = async () => {
+  const fetchCurrencies = useCallback(async () => {
     try {
       const res = await fetch('/api/v1/currencies')
       if (res.ok) {
         const data = (await res.json()) as CurrencyOption[]
         setCurrencies(data)
       }
-    } catch (err) {
-      console.error('Valutak lekerese sikertelen:', err)
+    } catch {
+      setCurrencies([])
     }
-  }
+  }, [])
 
-  const saveTemplate = async () => {
+  useEffect(() => {
+    void fetchWorkgroups()
+    void fetchCurrencies()
+  }, [fetchWorkgroups, fetchCurrencies])
+
+  useEffect(() => {
+    if (selectedWorkgroup) {
+      void fetchTemplates()
+    }
+  }, [selectedWorkgroup, fetchTemplates])
+
+  const saveTemplate = useCallback(async () => {
     if (!editing) return
     setError(null)
     if (!editing.currencyId || editing.currencyId <= 0) return
@@ -96,57 +97,52 @@ export default function RateTemplateEditor() {
         await api.post('/rate-management/templates', editing)
       }
       setEditing(null)
-      fetchTemplates()
-    } catch (err) {
-      console.error('Mentes sikertelen:', err)
+      void fetchTemplates()
+    } catch {
       setError('Mentés sikertelen')
     }
-  }
+  }, [editing, fetchTemplates])
 
-  const approveTemplate = async (id: string) => {
+  const approveTemplate = useCallback(async (id: string) => {
     setError(null)
     try {
       await api.post(`/rate-management/templates/${id}/approve`)
-      fetchTemplates()
-    } catch (err) {
-      console.error('Jovahagyas sikertelen:', err)
+      void fetchTemplates()
+    } catch {
       setError('Jóváhagyás sikertelen')
     }
-  }
+  }, [fetchTemplates])
 
-  const publishTemplate = async (id: string) => {
+  const publishTemplate = useCallback(async (id: string) => {
     setError(null)
     try {
       await api.post(`/rate-management/templates/${id}/publish`)
-      fetchTemplates()
-    } catch (err) {
-      console.error('Publikalas sikertelen:', err)
+      void fetchTemplates()
+    } catch {
       setError('Publikálás sikertelen')
     }
-  }
+  }, [fetchTemplates])
 
-  const revokeTemplate = async (id: string) => {
+  const revokeTemplate = useCallback(async (id: string) => {
     setError(null)
     try {
       await api.post(`/rate-management/templates/${id}/revoke`)
-      fetchTemplates()
-    } catch (err) {
-      console.error('Visszavonas sikertelen:', err)
+      void fetchTemplates()
+    } catch {
       setError('Visszavonás sikertelen')
     }
-  }
+  }, [fetchTemplates])
 
-  const deleteTemplate = async (id: string) => {
+  const deleteTemplate = useCallback(async (id: string) => {
     if (!confirm('Biztosan torli a sablont?')) return
     setError(null)
     try {
       await api.delete(`/rate-management/templates/${id}`)
-      fetchTemplates()
-    } catch (err) {
-      console.error('Torles sikertelen:', err)
+      void fetchTemplates()
+    } catch {
       setError('Törlés sikertelen')
     }
-  }
+  }, [fetchTemplates])
 
   const statusBadge = (status: string) => {
     switch (status) {

@@ -72,10 +72,9 @@ export default function EmployeePage() {
       if (filterActive !== '') params.active = filterActive === 'true';
       if (filterName) params.name = filterName;
 
-      const data = await getEmployees(params as any);
+      const data = await getEmployees(params);
       setEmployees(data);
-    } catch (err: unknown) {
-      console.error('[Employee] Betöltés hiba:', err);
+    } catch {
       setError('Dolgozók betöltése sikertelen.');
     } finally {
       setIsLoading(false);

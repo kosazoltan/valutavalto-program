@@ -155,7 +155,7 @@ export default function ConversionPage() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [sourceAmountNum, sourceCurrency, targetCurrency, sourceRate, targetRate, crossRate, targetAmount, hufEquivalent, customerId]);
+  }, [sourceAmountNum, sourceCurrency, targetCurrency, sourceRate, targetRate, crossRate, targetAmount, hufEquivalent, customerId, customerName]);
 
   // Valuta kivĂˇlasztĂł komponens
   const CurrencySelect = ({ value, onChange, label }: {
