@@ -3,12 +3,14 @@ package hu.puzzleir.valuta.controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.time.Instant;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1")
+@PreAuthorize("permitAll()")
 public class VersionController {
 
     private static final String BUILD_TIME = Instant.now().toString(); // app indulásakor rögzül

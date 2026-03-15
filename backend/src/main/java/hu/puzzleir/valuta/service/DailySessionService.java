@@ -219,6 +219,17 @@ public class DailySessionService {
      * Nyitó egyenleg számítása
      */
     private BigDecimal calculateOpeningBalance(UUID branchId) {
+        // Legacy-parity: ha van lezart elozo napi session, annak zaro egyenlege lesz a nyito.
+        var latestSessionOpt = dailySessionRepository.findLatest(branchId);
+        if (latestSessionOpt.isPresent()) {
+            DailySession latestSession = latestSessionOpt.get();
+            if (latestSession.getStatus() == DailySessionStatus.CLOSED
+                    && latestSession.getClosingBalanceHuf() != null) {
+                return latestSession.getClosingBalanceHuf();
+            }
+        }
+
+        // Fallback: aktualis kasszaegyenlegbol szamolunk.
         List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
         // Csak HUF egyenleg (currency_id = 1 feltételezve, vagy code = 'HUF')
         return balances.stream()

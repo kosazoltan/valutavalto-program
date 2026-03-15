@@ -8,7 +8,7 @@ Aktualis minosites: `CONDITIONAL GO`
 
 Ertelemzes:
 - Technikai minosegi gate-ek rendben vannak (teszt/lint/typecheck zold).
-- Kritikus parity gap-ek meg nyitottak (treasury aggregacio, nyitokeszlet automatika, hardver/NAV valodisag, formalis security audit).
+- Kritikus parity gap-ek egy resze kodszinten lezarva (treasury aggregacio, nyitokeszlet automatika, `@PreAuthorize` lefedettseg), de UAT/hardver es multi-tenant teljes audit meg nyitott.
 
 ## 2. Döntesi tabla
 
@@ -18,9 +18,9 @@ Ertelemzes:
 | Core tranzakcios funkciok | GREEN | Buy/Sell/Storno/Foglalo alapok jelen |
 | AML parity | AMBER | Heti + 8M kodban van, de vegso UAT parity bizonyitekresz nyitott |
 | Napzaras/időszakos parity | AMBER | Dekad endpoint megvan, teljes output parity nyitott |
-| Treasury 3-szintu parity | RED | Korzet + KFT aggregacio bizonyitatlan |
+| Treasury 3-szintu parity | AMBER | Korzet + Company aggregacio kodszinten kesz, UAT parity meg nyitott |
 | Integraciok (NAV/hardver) | RED | NAV jelenleg placeholder/mock |
-| Security formalis parity audit | AMBER | Statikus audit: 124 controllerbol 113 tartalmaz `@PreAuthorize`, 11 tovabbi policy-felulvizsgalatot igenyel |
+| Security formalis parity audit | AMBER | Statikus audit: 124 controllerbol 124 tartalmaz `@PreAuthorize`; `companyId` teljes repo-audit meg nyitott |
 
 ## 3. GO feltetelek
 

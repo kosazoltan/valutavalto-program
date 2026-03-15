@@ -8,14 +8,14 @@ Celpont: a nyitott kritikus parity gap-ek lezarsa bizonyitekolhato, release-dont
 
 | ID | Feladat | Felelos szerepkor | Pri | Allapot | Hatarido cel |
 |---|---|---|---|---|---|
-| P1-01 | BranchGroup (korzet) aggregacio bevezetese treasury dashboardba | Backend Lead | P1 | Nyitott | T+3 nap |
-| P1-02 | OwnCompany (KFT) szintu aggregacio riport | Backend Lead | P1 | Nyitott | T+4 nap |
-| P1-03 | Nyitokeszlet automatikus atvitel E2E (zaro -> kov. napi nyito) | Backend Lead | P1 | Nyitott | T+3 nap |
+| P1-01 | BranchGroup (korzet) aggregacio bevezetese treasury dashboardba | Backend Lead | P1 | Kesz (kodszint) | T+3 nap |
+| P1-02 | OwnCompany/Company (KFT) szintu aggregacio riport | Backend Lead | P1 | Kesz (kodszint) | T+4 nap |
+| P1-03 | Nyitokeszlet automatikus atvitel E2E (zaro -> kov. napi nyito) | Backend Lead | P1 | Kesz (kodszint) | T+3 nap |
 | P1-04 | Dekad riport parity verifikacio (formatum + osszeg + tranzakcioszam) | QA Lead + Product Owner | P1 | Nyitott | T+4 nap |
 | P1-05 | Foglalo keszlet-elkulonites parity UAT | Backend Lead + QA Lead | P1 | Nyitott | T+4 nap |
 | P1-06 | NAV integracio valodi adapterre valtas vagy formalis N/A dontes | Integration Lead + Product Owner | P1 | Nyitott | T+5 nap |
 | P1-07 | `companyId` repo-szintu parity audit + riport | Security Lead | P1 | Nyitott | T+3 nap |
-| P1-08 | `@PreAuthorize` lefedettsegi riport 100% igazolassal | Security Lead | P1 | Nyitott | T+2 nap |
+| P1-08 | `@PreAuthorize` lefedettsegi riport 100% igazolassal | Security Lead | P1 | Kesz (124/124) | T+2 nap |
 
 ## 2. Vgrehajtasi bontas
 

@@ -45,4 +45,16 @@ public class TreasuryController {
     public ResponseEntity<List<SubmissionStatusDto>> getSubmissionStatus() {
         return ResponseEntity.ok(treasuryDashboardService.getSubmissionStatus());
     }
+
+    @GetMapping("/branch-group-summary")
+    public ResponseEntity<List<TreasuryAggregateDto>> getBranchGroupSummary(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ResponseEntity.ok(treasuryDashboardService.getBranchGroupSummary(date));
+    }
+
+    @GetMapping("/company-summary")
+    public ResponseEntity<List<TreasuryAggregateDto>> getCompanySummary(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ResponseEntity.ok(treasuryDashboardService.getCompanySummary(date));
+    }
 }

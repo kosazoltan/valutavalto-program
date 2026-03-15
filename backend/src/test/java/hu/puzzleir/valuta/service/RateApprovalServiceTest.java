@@ -6,9 +6,11 @@ import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.dto.rateapproval.RateApprovalDto;
 import hu.puzzleir.valuta.dto.rateapproval.RequestRateChangeDto;
+import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.RateApproval;
 import hu.puzzleir.valuta.entity.RateApprovalStatus;
 import hu.puzzleir.valuta.entity.Worker;
+import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.repository.RateApprovalRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -44,6 +46,12 @@ class RateApprovalServiceTest {
 
     @Mock
     private WorkerRepository workerRepository;
+
+        @Mock
+        private ExchangeRateService exchangeRateService;
+
+        @Mock
+        private CurrencyRepository currencyRepository;
 
     private final UUID BRANCH_ID = UUID.randomUUID();
     private final Long WORKER_ID = 1L;
@@ -133,6 +141,10 @@ class RateApprovalServiceTest {
         when(workerRepository.findById(2L)).thenReturn(Optional.of(approver));
         when(rateApprovalRepository.save(any(RateApproval.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
+        Currency usd = new Currency();
+        usd.setId(2L);
+        usd.setCode("USD");
+        when(currencyRepository.findByCode("USD")).thenReturn(Optional.of(usd));
 
         // Act
         RateApprovalDto result = service.approveRateChange(approvalId, 2L);
@@ -189,6 +201,7 @@ class RateApprovalServiceTest {
 
         // Assert
         assertThat(result.getStatus()).isEqualTo("REJECTED");
-        assertThat(result.getReason()).isEqualTo("Túl nagy eltérés a piaci árfolyamtól");
+                assertThat(result.getReason()).contains("ELUTASÍTVA:");
+                assertThat(result.getReason()).contains("Túl nagy eltérés a piaci árfolyamtól");
     }
 }

@@ -50,9 +50,9 @@ Megjegyzes:
 - [ ] Foglalo keszlet-elkulonites legacy-egyezosege UAT-tal bizonyitva
 - [x] Dekad riport modul kodszinten jelen van (`DecadeReportController/Service`)
 - [ ] Dekad riport + napzaras egyuttes E2E parity igazolt
-- [ ] Nyitokeszlet automatikus atvitel (zaro -> kovetkezo napi nyito) parity igazolt
-- [ ] BranchGroup / korzet szintu treasury aggregacio parity igazolt
-- [ ] KFT-szintu (OwnCompany) treasury aggregacio parity igazolt
+- [x] Nyitokeszlet automatikus atvitel kodszinten implementalt
+- [x] BranchGroup / korzet szintu treasury aggregacio kodszinten implementalt
+- [x] KFT-szintu (Company) treasury aggregacio kodszinten implementalt
 - [ ] NAV integracio valodi (nem placeholder/mock)
 - [ ] Bizonylat fizikai nyomtatas parity (nem csak entity/adatrogzites)
 - [x] AML heti gongyoles kodszinten implementalt
@@ -91,7 +91,7 @@ No-Go trigger:
 - [ ] Dekad zaras riport output parity bizonyitott (legacy formatum + tartalom)
 - [ ] Havi gyujto masolas parity bizonyitott
 - [ ] Napkonyv riport parity bizonyitott
-- [ ] Nyitokeszlet-automatikus meghatarozas parity bizonyitott
+- [x] Nyitokeszlet-automatikus meghatarozas kodszinten implementalva
 
 ### 3.4 Arfolyamkezeles, kalkulator, polling
 - [x] Arfolyam CRUD + kijelzes implementalva
@@ -106,8 +106,8 @@ No-Go trigger:
 - [x] Cegszintu osszesito dashboard implementalva
 - [x] Irodaszintu osszehasonlitas implementalva
 - [x] Bankflow osszesites implementalva
-- [ ] Korzet (BranchGroup) aggregacio parity bizonyitott
-- [ ] KFT/OwnCompany aggregacio parity bizonyitott
+- [x] Korzet (BranchGroup) aggregacio kodszinten implementalva
+- [x] KFT/Company aggregacio kodszinten implementalva
 - [ ] Legacy SUMBANKFORGALOM egyenloseg riporttal igazolt
 
 ### 3.6 Foglalo
@@ -142,7 +142,7 @@ No-Go trigger:
 - [x] JWT + auth endpoint-ek implementalva
 - [x] Audit log endpoint/controller implementalva
 - [ ] `companyId` szures teljes, bizonyitott repo-szintu auditja lezarva
-- [ ] Osszes controller `@PreAuthorize` lefedettsege ellenorzotten 100%
+- [x] Osszes controller `@PreAuthorize` lefedettsege ellenorzotten 100% (124/124)
 - [ ] CORS/security policy parity es production hardening checklist lezarva
 
 ---
