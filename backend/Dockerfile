@@ -1,12 +1,16 @@
 # Stage 1: Maven Build
-FROM maven:3.9.9-eclipse-temurin-21 AS build
+FROM eclipse-temurin:21-jdk AS build
 
 WORKDIR /app
 
-COPY pom.xml ./
-COPY src/main ./src/main
-ENV MAVEN_OPTS="-Xmx512m -XX:MaxMetaspaceSize=256m"
-RUN mvn package -Dmaven.test.skip=true -B
+COPY mvnw mvnw.cmd pom.xml ./
+COPY .mvn .mvn
+
+RUN chmod +x mvnw && ./mvnw dependency:go-offline -B
+
+COPY src ./src
+
+RUN ./mvnw package -DskipTests -B
 
 # Stage 2: Runtime
 FROM eclipse-temurin:21-jre
