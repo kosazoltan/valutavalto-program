@@ -123,4 +123,22 @@ public interface BranchRepository extends JpaRepository<Branch, UUID> {
         ORDER BY level DESC
         """, nativeQuery = true)
     List<Branch> findPathToRoot(@Param("branchId") UUID branchId);
+
+    /**
+     * Aktív irodák körzet kód és cég szerint (KESZLEX készlet export).
+     */
+    @Query("SELECT b FROM Branch b WHERE b.company.id = :companyId " +
+           "AND b.regionCode = :regionCode AND b.isActive = true " +
+           "ORDER BY b.code")
+    List<Branch> findActiveByCompanyIdAndRegionCode(
+            @Param("companyId") UUID companyId,
+            @Param("regionCode") String regionCode);
+
+    /**
+     * Aktív irodák cég szerint, körzet kóddal rendelkezők (KESZLEX).
+     */
+    @Query("SELECT b FROM Branch b WHERE b.company.id = :companyId " +
+           "AND b.regionCode IS NOT NULL AND b.isActive = true " +
+           "ORDER BY b.regionCode, b.code")
+    List<Branch> findActiveWithRegionByCompanyId(@Param("companyId") UUID companyId);
 }

@@ -44,4 +44,12 @@ public interface CurrencyStockRepository extends JpaRepository<CurrencyStock, Lo
     Optional<CurrencyStock> findByBranchIdAndCurrencyCode(
         @Param("branchId") String branchId,
         @Param("currencyCode") String currencyCode);
+
+    /**
+     * Több iroda készlete egyben (KESZLEX batch lekérdezés, N+1 elkerülés).
+     */
+    @Query("SELECT cs FROM CurrencyStock cs " +
+           "WHERE cs.entityType = 'CASHIER' " +
+           "AND cs.entityId IN :branchIds")
+    List<CurrencyStock> findAllByBranchIds(@Param("branchIds") List<String> branchIds);
 }

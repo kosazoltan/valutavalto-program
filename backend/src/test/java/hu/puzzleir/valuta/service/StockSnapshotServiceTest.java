@@ -1,0 +1,240 @@
+package hu.puzzleir.valuta.service;
+
+import hu.puzzleir.valuta.dto.stocksnapshot.*;
+import hu.puzzleir.valuta.entity.*;
+import hu.puzzleir.valuta.repository.*;
+import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.*;
+
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
+class StockSnapshotServiceTest {
+
+    @InjectMocks
+    private StockSnapshotService service;
+
+    @Mock
+    private BranchRepository branchRepository;
+    @Mock
+    private CurrencyStockRepository currencyStockRepository;
+    @Mock
+    private WuBalanceRepository wuBalanceRepository;
+    @Mock
+    private ReservationRepository reservationRepository;
+    @Mock
+    private TransactionRepository transactionRepository;
+
+    private static final UUID COMPANY_ID = UUID.randomUUID();
+    private static final UUID BRANCH_1_ID = UUID.randomUUID();
+    private static final UUID BRANCH_2_ID = UUID.randomUUID();
+
+    @BeforeEach
+    void setUp() {
+        WorkerAuthenticationDetails details = new WorkerAuthenticationDetails(
+                1L, COMPANY_ID, BRANCH_1_ID, "ADMIN");
+        TestingAuthenticationToken auth = new TestingAuthenticationToken("admin", "password", "ROLE_ADMIN");
+        auth.setDetails(details);
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        // Default mocks for transaction queries (return zero)
+        when(transactionRepository.sumDailyTurnoverByCurrency(any(), any(), any(), anyString()))
+                .thenReturn(BigDecimal.ZERO);
+        // Default mocks for reservations (return empty)
+        when(reservationRepository.getReservedStockByBranch(any())).thenReturn(List.of());
+    }
+
+    // ===== HELPER =====
+
+    private Branch createBranch(UUID id, String code, String name, String regionCode) {
+        Company company = Company.builder().id(COMPANY_ID).code("TEST").name("Test Company").build();
+        return Branch.builder()
+                .id(id).code(code).name(name)
+                .regionCode(regionCode)
+                .company(company)
+                .isActive(true)
+                .build();
+    }
+
+    // ===== TESTS =====
+
+    @Test
+    @DisplayName("getFullSnapshot - 1 branch EUR készlettel - stock=500, stockHuf=500*395.50=197750")
+    void getFullSnapshot_singleBranch_returnsCurrencyData() {
+        Branch branch = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");
+        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of(branch));
+
+        CurrencyStock eurStock = CurrencyStock.builder()
+                .entityType("CASHIER")
+                .entityId(BRANCH_1_ID.toString())
+                .currencyCode("EUR")
+                .quantity(new BigDecimal("500"))
+                .weightedAvgCost(new BigDecimal("395.50"))
+                .lastUpdated(LocalDateTime.now())
+                .build();
+        when(currencyStockRepository.findAllByBranchIds(anyList())).thenReturn(List.of(eurStock));
+        when(wuBalanceRepository.findByBranchIds(anyList())).thenReturn(List.of());
+
+        StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getCompanyId()).isEqualTo(COMPANY_ID);
+        assertThat(result.getRegions()).hasSize(1);
+        assertThat(result.getRegions().get(0).getRegionCode()).isEqualTo("10");
+
+        BranchSnapshotDto branchDto = result.getRegions().get(0).getBranches().get(0);
+        CurrencyStockDetailDto eurDetail = branchDto.getCurrencies().stream()
+                .filter(c -> "EUR".equals(c.getCurrencyCode())).findFirst().orElseThrow();
+        assertThat(eurDetail.getStock()).isEqualTo(500);
+        // 500 * 395.50 = 197750
+        assertThat(eurDetail.getStockHuf()).isEqualTo(197750);
+    }
+
+    @Test
+    @DisplayName("getFullSnapshot - 2 branch ugyanabban a körzettben - régió összesítés helyes")
+    void getFullSnapshot_multipleBranchesInSameRegion_aggregatesTotals() {
+        Branch branch1 = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");
+        Branch branch2 = createBranch(BRANCH_2_ID, "B02", "Iroda 2", "10");
+        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of(branch1, branch2));
+
+        CurrencyStock eurStock1 = CurrencyStock.builder()
+                .entityType("CASHIER").entityId(BRANCH_1_ID.toString())
+                .currencyCode("EUR").quantity(new BigDecimal("300"))
+                .weightedAvgCost(new BigDecimal("400")).lastUpdated(LocalDateTime.now()).build();
+        CurrencyStock eurStock2 = CurrencyStock.builder()
+                .entityType("CASHIER").entityId(BRANCH_2_ID.toString())
+                .currencyCode("EUR").quantity(new BigDecimal("200"))
+                .weightedAvgCost(new BigDecimal("390")).lastUpdated(LocalDateTime.now()).build();
+        when(currencyStockRepository.findAllByBranchIds(anyList())).thenReturn(List.of(eurStock1, eurStock2));
+        when(wuBalanceRepository.findByBranchIds(anyList())).thenReturn(List.of());
+
+        StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
+
+        assertThat(result.getRegions()).hasSize(1);
+        RegionSnapshotDto region = result.getRegions().get(0);
+        assertThat(region.getBranches()).hasSize(2);
+
+        CurrencyStockDetailDto eurTotal = region.getTotals().getCurrencies().stream()
+                .filter(c -> "EUR".equals(c.getCurrencyCode())).findFirst().orElseThrow();
+        // 300 + 200 = 500
+        assertThat(eurTotal.getStock()).isEqualTo(500);
+        // 300*400 + 200*390 = 120000 + 78000 = 198000
+        assertThat(eurTotal.getStockHuf()).isEqualTo(198000);
+    }
+
+    @Test
+    @DisplayName("getFullSnapshot - 2 branch eltero korzetben - cegszintu osszesites")
+    void getFullSnapshot_companyTotals_sumsAcrossRegions() {
+        Branch branch1 = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");
+        Branch branch2 = createBranch(BRANCH_2_ID, "B02", "Iroda 2", "20");
+        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of(branch1, branch2));
+
+        CurrencyStock usdStock1 = CurrencyStock.builder()
+                .entityType("CASHIER").entityId(BRANCH_1_ID.toString())
+                .currencyCode("USD").quantity(new BigDecimal("1000"))
+                .weightedAvgCost(new BigDecimal("360")).lastUpdated(LocalDateTime.now()).build();
+        CurrencyStock usdStock2 = CurrencyStock.builder()
+                .entityType("CASHIER").entityId(BRANCH_2_ID.toString())
+                .currencyCode("USD").quantity(new BigDecimal("500"))
+                .weightedAvgCost(new BigDecimal("365")).lastUpdated(LocalDateTime.now()).build();
+        when(currencyStockRepository.findAllByBranchIds(anyList())).thenReturn(List.of(usdStock1, usdStock2));
+        when(wuBalanceRepository.findByBranchIds(anyList())).thenReturn(List.of());
+
+        StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
+
+        assertThat(result.getRegions()).hasSize(2);
+
+        CurrencyStockDetailDto usdCompanyTotal = result.getCompanyTotals().getCurrencies().stream()
+                .filter(c -> "USD".equals(c.getCurrencyCode())).findFirst().orElseThrow();
+        // 1000 + 500 = 1500
+        assertThat(usdCompanyTotal.getStock()).isEqualTo(1500);
+        // 1000*360 + 500*365 = 360000 + 182500 = 542500
+        assertThat(usdCompanyTotal.getStockHuf()).isEqualTo(542500);
+    }
+
+    @Test
+    @DisplayName("getFullSnapshot - WU egyenleg megjelenik")
+    void getFullSnapshot_withWuBalance_includesWuData() {
+        Branch branch = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");
+        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of(branch));
+        when(currencyStockRepository.findAllByBranchIds(anyList())).thenReturn(List.of());
+
+        WuBalance wuBalance = WuBalance.builder()
+                .branch(branch)
+                .usdBalance(new BigDecimal("2500"))
+                .hufBalance(new BigDecimal("150000"))
+                .build();
+        when(wuBalanceRepository.findByBranchIds(anyList())).thenReturn(List.of(wuBalance));
+
+        StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
+
+        BranchSnapshotDto branchDto = result.getRegions().get(0).getBranches().get(0);
+        assertThat(branchDto.getWuBalance().getWuUsd()).isEqualTo(2500);
+        assertThat(branchDto.getWuBalance().getWuHuf()).isEqualTo(150000);
+
+        // Company totals too
+        assertThat(result.getCompanyTotals().getWuBalance().getWuUsd()).isEqualTo(2500);
+        assertThat(result.getCompanyTotals().getWuBalance().getWuHuf()).isEqualTo(150000);
+    }
+
+    @Test
+    @DisplayName("getFullSnapshot - foglalasok megjelennek")
+    void getFullSnapshot_withReservations_includesReservationData() {
+        Branch branch = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");
+        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of(branch));
+        when(currencyStockRepository.findAllByBranchIds(anyList())).thenReturn(List.of());
+        when(wuBalanceRepository.findByBranchIds(anyList())).thenReturn(List.of());
+
+        // Override reservation mock for this branch
+        when(reservationRepository.getReservedStockByBranch(BRANCH_1_ID)).thenReturn(List.of(
+                new Object[]{"EUR", new BigDecimal("100")},
+                new Object[]{"USD", new BigDecimal("250")}
+        ));
+
+        StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
+
+        BranchSnapshotDto branchDto = result.getRegions().get(0).getBranches().get(0);
+        assertThat(branchDto.getReservations()).hasSize(2);
+
+        ReservationSummaryDto eurRes = branchDto.getReservations().stream()
+                .filter(r -> "EUR".equals(r.getCurrencyCode())).findFirst().orElseThrow();
+        assertThat(eurRes.getTotalAmount()).isEqualTo(100);
+
+        ReservationSummaryDto usdRes = branchDto.getReservations().stream()
+                .filter(r -> "USD".equals(r.getCurrencyCode())).findFirst().orElseThrow();
+        assertThat(usdRes.getTotalAmount()).isEqualTo(250);
+    }
+
+    @Test
+    @DisplayName("getFullSnapshot - ures branch lista - ures, de valid DTO")
+    void getFullSnapshot_emptyBranches_returnsEmptySnapshot() {
+        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of());
+
+        StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getCompanyId()).isEqualTo(COMPANY_ID);
+        assertThat(result.getRegions()).isEmpty();
+        assertThat(result.getCompanyTotals()).isNotNull();
+        assertThat(result.getCompanyTotals().getCurrencies()).hasSize(27);
+        assertThat(result.getCompanyTotals().getReservations()).isEmpty();
+    }
+}
