@@ -11,11 +11,13 @@ import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.repository.CustomerRepository;
+import hu.puzzleir.valuta.repository.NotificationRepository;
 import hu.puzzleir.valuta.repository.ReservationRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,6 +55,7 @@ public class ReservationService {
     private final CompanyRepository companyRepository;
     private final BranchRepository branchRepository;
     private final AuditLogService auditLogService;
+    private final NotificationRepository notificationRepository;
 
     /** 5-re kerekítés (legacy Kerekito) */
     private static final BigDecimal FIVE = new BigDecimal("5");
@@ -192,7 +195,15 @@ public class ReservationService {
         validateActive(reservation);
         validateBranch(reservation, branchId);
 
-        // Idő előtti teljesítés ellenőrzés — NEM szükséges supervisor, mert ez normál teljesítés
+        // Bug #1 fix: maradékfizetés számítás és HUF egyenleg növelés
+        // A valuta már a createReservation()-ban kivonásra került — csak a pénzmozgást kell rendezni.
+        BigDecimal fullPrice = roundToFive(
+                reservation.getReservedAmount().multiply(reservation.getExchangeRate()));
+        BigDecimal remainingPayment = fullPrice.subtract(reservation.getDepositAmount());
+        if (remainingPayment.compareTo(BigDecimal.ZERO) > 0) {
+            addHufBalance(branchId, remainingPayment);
+        }
+
         reservation.setStatus(ReservationStatus.FULFILLED);
         reservation.setFulfilledAt(LocalDateTime.now());
         reservation.setRefundAmount(reservation.getDepositAmount());
@@ -420,11 +431,8 @@ public class ReservationService {
             String code = (String) row[0];
             BigDecimal totalAmount = (BigDecimal) row[1];
 
-            // Aktív foglalók száma ehhez a valutához
-            long count = reservationRepository.countByBranchAndStatusAndCreatedAtBetween(
-                    branchId, ReservationStatus.ACTIVE,
-                    LocalDateTime.of(2000, 1, 1, 0, 0),
-                    LocalDateTime.now().plusYears(100));
+            // Bug #2 fix: currency-specifikus aktív count (nem az összes valuta összesített száma)
+            long count = reservationRepository.countActiveByCurrencyAndBranch(branchId, code);
 
             result.add(ReservedStockDto.builder()
                     .currencyCode(code)
@@ -455,6 +463,18 @@ public class ReservationService {
         int count = 0;
         for (Reservation reservation : expired) {
             try {
+                // Bug #3 fix: idempotency — újra-lekérdezés PESSIMISTIC_WRITE lock-kal,
+                // majd státusz ellenőrzés. Ha közben már nem ACTIVE, kihagyjuk.
+                Reservation locked = reservationRepository
+                        .findByIdForUpdate(reservation.getId()).orElse(null);
+                if (locked == null || locked.getStatus() != ReservationStatus.ACTIVE) {
+                    log.debug("Foglaló már nem aktív, kihagyva: id={}, státusz={}",
+                            reservation.getId(),
+                            locked != null ? locked.getStatus() : "NOT_FOUND");
+                    continue;
+                }
+                reservation = locked;
+
                 reservation.setStatus(ReservationStatus.EXPIRED);
                 reservation.setCancelledAt(LocalDateTime.now());
                 reservation.setRefundAmount(BigDecimal.ZERO);
@@ -498,6 +518,61 @@ public class ReservationService {
             log.info("Összesen {} foglaló automatikusan lejárt", count);
         }
         return count;
+    }
+
+    // ============ GAP 4: PRE-EXPIRY WARNING ============
+
+    /**
+     * Előfigyelmeztetés 1 nappal a lejárat előtt (Bug #4 — új feature).
+     *
+     * 30 percenként fut. Minden olyan aktív foglalóhoz, amelyik a következő 24 órán belül lejár,
+     * egyszer létrehoz egy Notification-t. Idempotens: ha már létezik, kihagyja.
+     */
+    @Scheduled(fixedDelay = 30 * 60 * 1000)
+    @Transactional
+    public void sendPreExpiryWarnings() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime in24h = now.plusHours(24);
+
+        List<Reservation> expiringSoon = reservationRepository.findActiveExpiringBetween(now, in24h);
+
+        int created = 0;
+        for (Reservation reservation : expiringSoon) {
+            String entityType = "Reservation";
+            String entityId = reservation.getId().toString();
+            String notificationType = "PRE_EXPIRY_WARNING";
+
+            // Idempotency: ha már van ilyen értesítés, kihagyjuk
+            if (notificationRepository.existsByEntityTypeAndEntityIdAndNotificationType(
+                    entityType, entityId, notificationType)) {
+                continue;
+            }
+
+            Notification notification = Notification.builder()
+                    .title("Foglaló hamarosan lejár")
+                    .message(String.format(
+                            "A(z) %s %s foglaló (ID: %d, ügyfél: %s) %s-kor jár le — kevesebb mint 24 óra van hátra.",
+                            reservation.getReservedAmount().toPlainString(),
+                            reservation.getCurrencyCode(),
+                            reservation.getId(),
+                            reservation.getCustomer().getName(),
+                            reservation.getExpiresAt()))
+                    .type("WARNING")
+                    .entityType(entityType)
+                    .entityId(entityId)
+                    .notificationType(notificationType)
+                    .build();
+
+            notificationRepository.save(notification);
+            created++;
+
+            log.info("Pre-expiry warning értesítés létrehozva: foglaló id={}, lejárat={}",
+                    reservation.getId(), reservation.getExpiresAt());
+        }
+
+        if (created > 0) {
+            log.info("Összesen {} pre-expiry warning értesítés létrehozva", created);
+        }
     }
 
     // ============ PRIVATE HELPER METHODS ============

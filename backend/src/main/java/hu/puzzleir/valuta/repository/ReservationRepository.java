@@ -91,6 +91,30 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             @Param("companyId") UUID companyId);
 
     /**
+     * Aktív foglalók száma egy irodában, valutanemre szűrve (Bug #2 fix).
+     * getReservedStock() currency-specifikus count-hoz.
+     */
+    @Query("SELECT COUNT(r) FROM Reservation r " +
+           "WHERE r.branch.id = :branchId " +
+           "AND r.status = 'ACTIVE' " +
+           "AND r.currencyCode = :currencyCode")
+    long countActiveByCurrencyAndBranch(
+            @Param("branchId") UUID branchId,
+            @Param("currencyCode") String currencyCode);
+
+    /**
+     * Aktív foglalók amelyek egy időablakban járnak le (pre-expiry warning-hoz).
+     */
+    @Query("SELECT r FROM Reservation r " +
+           "WHERE r.status = 'ACTIVE' " +
+           "AND r.expiresAt >= :from " +
+           "AND r.expiresAt < :to " +
+           "ORDER BY r.expiresAt ASC")
+    List<Reservation> findActiveExpiringBetween(
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to);
+
+    /**
      * Adott iroda adott napon létrehozott aktív foglalói (esti záráshoz).
      * Csak az adott napon keletkezett ACTIVE foglalókat adja vissza.
      */

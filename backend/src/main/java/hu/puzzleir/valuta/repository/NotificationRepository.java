@@ -22,4 +22,11 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
     @Transactional
     @Query("UPDATE Notification n SET n.isRead = true WHERE n.userId = :userId AND n.isRead = false")
     void markAllAsRead(@Param("userId") String userId);
+
+    /**
+     * Idempotency ellenőrzés: létezik-e már ilyen típusú értesítés az adott entitáshoz?
+     * ReservationService.sendPreExpiryWarnings() duplikáció-védelemhez.
+     */
+    boolean existsByEntityTypeAndEntityIdAndNotificationType(
+            String entityType, String entityId, String notificationType);
 }

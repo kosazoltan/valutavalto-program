@@ -40,6 +40,25 @@ public class Notification {
     @Builder.Default
     private Boolean isRead = false;
 
+    /**
+     * Idempotency: az értesítés forrás-entitás típusa (pl. "Reservation").
+     * Az existsByEntityTypeAndEntityIdAndNotificationType lekérdezéshez szükséges.
+     */
+    @Column(name = "entity_type", length = 100)
+    private String entityType;
+
+    /**
+     * Idempotency: az értesítés forrás-entitás azonosítója (pl. foglaló ID string-ként).
+     */
+    @Column(name = "entity_id", length = 100)
+    private String entityId;
+
+    /**
+     * Idempotency: az értesítés típusa (pl. "PRE_EXPIRY_WARNING").
+     */
+    @Column(name = "notification_type", length = 100)
+    private String notificationType;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
