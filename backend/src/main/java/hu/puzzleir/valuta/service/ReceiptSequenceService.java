@@ -244,6 +244,8 @@ public class ReceiptSequenceService {
             case MONEYGRAM_RECEIVE -> "M";
             // Egyéb szolgáltatások: X prefix
             case VIGNETTE, PHONE_TOPUP, OTHER -> "X";
+            // Részleges visszatérítés: PR prefix
+            case PARTIAL_REFUND -> "PR";
             // Sztornó: SOHA nem hívódhat közvetlenül — fail-fast!
             // Használd a generateReversalReceiptNumber() metódust, ami az eredeti típust adja át.
             case REVERSAL -> throw new IllegalArgumentException(
@@ -266,6 +268,8 @@ public class ReceiptSequenceService {
             case WESTERN_UNION_RECEIVE, MONEYGRAM_RECEIVE -> sequence.nextBuySequence();
             // Egyéb: az eladás számlálóját használja (fallback)
             case VIGNETTE, PHONE_TOPUP, OTHER -> sequence.nextSellSequence();
+            // Részleges visszatérítés: eladás számlálóját használja
+            case PARTIAL_REFUND -> sequence.nextSellSequence();
             case REVERSAL -> throw new IllegalArgumentException(
                 "REVERSAL típushoz használd a generateReversalReceiptNumber() metódust!");
         };
