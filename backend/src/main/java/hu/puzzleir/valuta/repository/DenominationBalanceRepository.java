@@ -87,4 +87,17 @@ public interface DenominationBalanceRepository extends JpaRepository<Denominatio
         @Param("date") java.time.LocalDate date,
         @Param("type") String type
     );
+
+    /**
+     * Adott iroda/pénztárgép aznapi (módosított) cimlet egyenlegei az esti záráshoz.
+     * Az adott naptól (éjféltől) módosított rekordokat adja vissza.
+     */
+    @Query("SELECT db FROM DenominationBalance db " +
+           "WHERE db.cashDeskId = :branchId " +
+           "AND db.updatedAt >= CAST(:date AS timestamp) " +
+           "AND db.quantity > 0")
+    List<DenominationBalance> findByBranchIdAndDate(
+        @Param("branchId") UUID branchId,
+        @Param("date") java.time.LocalDate date
+    );
 }

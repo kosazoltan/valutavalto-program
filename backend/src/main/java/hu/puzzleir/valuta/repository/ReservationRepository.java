@@ -89,4 +89,19 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<Reservation> findActiveByCustomerAndCompany(
             @Param("customerId") Long customerId,
             @Param("companyId") UUID companyId);
+
+    /**
+     * Adott iroda adott napon létrehozott aktív foglalói (esti záráshoz).
+     * Csak az adott napon keletkezett ACTIVE foglalókat adja vissza.
+     */
+    @Query("SELECT r FROM Reservation r " +
+           "WHERE r.branch.id = :branchId " +
+           "AND r.status = 'ACTIVE' " +
+           "AND r.createdAt >= :dayStart " +
+           "AND r.createdAt < :dayEnd " +
+           "ORDER BY r.expiresAt ASC")
+    List<Reservation> findActiveByBranchAndDate(
+            @Param("branchId") UUID branchId,
+            @Param("dayStart") java.time.LocalDateTime dayStart,
+            @Param("dayEnd") java.time.LocalDateTime dayEnd);
 }

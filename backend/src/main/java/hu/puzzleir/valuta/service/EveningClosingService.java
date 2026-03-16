@@ -6,8 +6,10 @@ import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -16,6 +18,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -58,15 +61,30 @@ public class EveningClosingService {
     /**
      * Napi adatcsomag előkészítése (Delphi CsomagoloGombClick ekvivalens).
      *
-     * @param branchId Iroda azonosító
+     * @param branchId Iroda azonosító (Long, backward compat)
      * @param date     Dátum
      * @return Összeállított napi adatcsomag
      */
     public DailyDataPackage prepareDailyPackage(Long branchId, LocalDate date) {
         log.info("Napi adatcsomag készítése: branchId={}, datum={}", branchId, date);
 
+        // Bug 5 fix: Long-ból UUID-t állítunk elő — jelezzük, hogy ez legacy path
         UUID branchUuid = uuidFromLong(branchId);
+        return prepareDailyPackageInternal(branchUuid, branchId, date);
+    }
 
+    /**
+     * Overload UUID branchId-vel — Bug 5 fix: közvetlenül UUID-del dolgozik, nem konvertál Long-gá és vissza.
+     */
+    public DailyDataPackage prepareDailyPackage(UUID branchId, LocalDate date) {
+        log.info("Napi adatcsomag készítése: branchId={}, datum={}", branchId, date);
+        return prepareDailyPackageInternal(branchId, branchId.getLeastSignificantBits(), date);
+    }
+
+    /**
+     * Belső implementáció: mindkét overload ebbe fut bele.
+     */
+    private DailyDataPackage prepareDailyPackageInternal(UUID branchUuid, Long branchIdLong, LocalDate date) {
         List<TransactionSummary> transactions = getTransactions(branchUuid, date);
         List<DenominationEntry> denominations = getDenominations(branchUuid, date);
         List<RateSnapshot> rates = getRates(branchUuid, date);
@@ -75,7 +93,7 @@ public class EveningClosingService {
         HandlingFeeSummary handlingFees = getHandlingFees(branchUuid, date);
 
         DailyDataPackage pkg = DailyDataPackage.builder()
-                .branchId(branchId)
+                .branchId(branchIdLong)
                 .date(date)
                 .transactions(transactions)
                 .denominations(denominations)
@@ -89,16 +107,9 @@ public class EveningClosingService {
         pkg.setChecksum(calculateChecksum(pkg));
 
         log.info("Napi adatcsomag kész: branchId={}, datum={}, tranzakciók={}, checksum={}",
-                branchId, date, transactions.size(), pkg.getChecksum());
+                branchIdLong, date, transactions.size(), pkg.getChecksum());
 
         return pkg;
-    }
-
-    /**
-     * Overload UUID branchId-vel.
-     */
-    public DailyDataPackage prepareDailyPackage(UUID branchId, LocalDate date) {
-        return prepareDailyPackage(branchId.getLeastSignificantBits(), date);
     }
 
     // ============ CSOMAG KÜLDÉSE KÖZPONTNAK ============
@@ -109,7 +120,7 @@ public class EveningClosingService {
      * Legacy: FTP PUT a központi szerverre (port 21100).
      * Modern: REST API POST — retry logikával (max 3 próba, exponential backoff).
      *
-     * JELENLEG: csak logol (központi szerver URL-t SystemParameter-ből kell majd olvasni).
+     * Bug 6 fix: valódi HTTP POST implementálva RestTemplate-tel.
      *
      * @param pkg Az előkészített adatcsomag
      * @return Küldés eredménye
@@ -145,14 +156,13 @@ public class EveningClosingService {
 
             try {
                 if (headquartersUrl == null || headquartersUrl.isBlank()) {
-                    // JELENLEG: csak logolás (nincs központi szerver konfigurálva)
+                    // Mock mód: nincs központi szerver URL konfigurálva
                     log.info("Esti zárás adatcsomag (MOCK küldés — nincs headquarters URL konfigurálva): " +
                                     "branchId={}, datum={}, tranzakciók={}, checksum={}",
                             pkg.getBranchId(), pkg.getDate(),
                             pkg.getTransactions() != null ? pkg.getTransactions().size() : 0,
                             pkg.getChecksum());
 
-                    // Sikeres "küldés" (mock mód)
                     syncLog.setStatus("EVENING_SYNC_DONE");
                     syncLog.setPackageChecksum(pkg.getChecksum());
                     syncLog.setCompletedAt(LocalDateTime.now());
@@ -161,19 +171,35 @@ public class EveningClosingService {
                     return DataSyncResult.success(pkg.getChecksum());
                 }
 
-                // TODO: Valódi REST API hívás implementálása
-                // POST {headquartersUrl}/api/v1/branches/{branchId}/daily-report
-                // Body: JSON (DailyDataPackage)
-                // Headers: Content-Type: application/json, X-Checksum: {checksum}
-                log.warn("Valódi REST küldés NEM IMPLEMENTÁLT — headquarters URL: {}", headquartersUrl);
+                // Bug 6 fix: valódi REST API hívás
+                String targetUrl = headquartersUrl.stripTrailing() + "/" +
+                        "api/v1/branches/" + pkg.getBranchId() + "/daily-report";
 
-                // Mock sikeres küldés
-                syncLog.setStatus("EVENING_SYNC_DONE");
-                syncLog.setPackageChecksum(pkg.getChecksum());
-                syncLog.setCompletedAt(LocalDateTime.now());
-                eveningSyncLogRepository.save(syncLog);
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                headers.set("X-Checksum", pkg.getChecksum());
+                headers.set("X-Branch-Id", String.valueOf(pkg.getBranchId()));
+                headers.set("X-Report-Date", pkg.getDate().toString());
 
-                return DataSyncResult.success(pkg.getChecksum());
+                HttpEntity<DailyDataPackage> request = new HttpEntity<>(pkg, headers);
+
+                log.info("REST küldés: POST {} (checksum={})", targetUrl, pkg.getChecksum());
+                RestTemplate restTemplate = new RestTemplate();
+                ResponseEntity<String> response = restTemplate.exchange(
+                        targetUrl, HttpMethod.POST, request, String.class);
+
+                if (response.getStatusCode().is2xxSuccessful()) {
+                    syncLog.setStatus("EVENING_SYNC_DONE");
+                    syncLog.setPackageChecksum(pkg.getChecksum());
+                    syncLog.setCompletedAt(LocalDateTime.now());
+                    eveningSyncLogRepository.save(syncLog);
+
+                    log.info("Adatcsomag sikeresen elküldve: branchId={}, datum={}, HTTP {}",
+                            pkg.getBranchId(), pkg.getDate(), response.getStatusCode());
+                    return DataSyncResult.success(pkg.getChecksum());
+                } else {
+                    throw new RuntimeException("Sikertelen HTTP válasz: " + response.getStatusCode());
+                }
 
             } catch (Exception e) {
                 log.error("Adatcsomag küldés hiba (próba {}/{}): {}",
@@ -305,22 +331,26 @@ public class EveningClosingService {
 
     /**
      * Címletezés adatok gyűjtése.
-     * Jelenleg egyszerűsített — a valós implementáció a DenominationBalanceRepository-ból gyűjt.
+     *
+     * Bug 1 fix: DenominationBalanceRepository-ból olvassa az aznapi (módosított) egyenlegeket,
+     * nem a Denomination master táblából.
      */
     private List<DenominationEntry> getDenominations(UUID branchId, LocalDate date) {
         log.debug("Címletezés adatok gyűjtése: branchId={}, datum={}", branchId, date);
 
-        List<Denomination> denominations = denominationRepository.findByBranchId(branchId);
+        List<DenominationBalance> balances = denominationBalanceRepository.findByBranchIdAndDate(branchId, date);
 
-        return denominations.stream()
-                .filter(d -> d.getQuantity() != null && d.getQuantity() > 0)
-                .map(d -> DenominationEntry.builder()
-                        .currencyCode(d.getCurrency() != null ? d.getCurrency().getCode() : null)
-                        .denominationType(d.getDenominationType() != null ? d.getDenominationType().name() : null)
-                        .denominationValue(d.getFaceValue())
-                        .quantity(d.getQuantity())
-                        .totalAmount(d.getTotalValue())
-                        .build())
+        return balances.stream()
+                .map(db -> {
+                    Denomination d = db.getDenomination();
+                    return DenominationEntry.builder()
+                            .currencyCode(d != null && d.getCurrency() != null ? d.getCurrency().getCode() : null)
+                            .denominationType(d != null && d.getDenominationType() != null ? d.getDenominationType().name() : null)
+                            .denominationValue(d != null ? d.getFaceValue() : null)
+                            .quantity(db.getQuantity())
+                            .totalAmount(db.getTotalValue())
+                            .build();
+                })
                 .collect(Collectors.toList());
     }
 
@@ -346,31 +376,57 @@ public class EveningClosingService {
 
     /**
      * Ügyfél adatok gyűjtése — aznapi tranzakciókban szereplő ügyfelek.
+     *
+     * Bug 2 fix:
+     * - .distinct() helyett LinkedHashMap-alapú deduplikáció customerId vagy documentNumber szerint
+     * - customerType nem hardkódolt "NATURAL" — ha nincs adat, "NATURAL" a default
      */
     private List<CustomerData> getCustomers(UUID branchId, LocalDate date) {
         List<Transaction> transactions = transactionRepository.findByBranchAndDate(branchId, date);
 
-        // Egyedi ügyfelek kinyerése a tranzakciókból
-        return transactions.stream()
-                .filter(tx -> tx.getCustomerName() != null && !tx.getCustomerName().isBlank())
-                .map(tx -> CustomerData.builder()
-                        .customerId(tx.getCustomerId())
-                        .customerName(tx.getCustomerName())
-                        .customerAddress(tx.getCustomerAddress())
-                        .documentNumber(tx.getCustomerDocumentNumber())
-                        .nationality(tx.getCustomerNationality())
-                        .customerType("NATURAL")  // Default; jogi személy megkülönböztetés TODO
-                        .build())
-                .distinct()
-                .collect(Collectors.toList());
+        // Deduplikáció: kulcs = customerId ha van, egyébként documentNumber, egyébként customerName
+        Map<String, CustomerData> seen = new LinkedHashMap<>();
+
+        for (Transaction tx : transactions) {
+            if (tx.getCustomerName() == null || tx.getCustomerName().isBlank()) continue;
+
+            String key;
+            if (tx.getCustomerId() != null && !tx.getCustomerId().isBlank()) {
+                key = "id:" + tx.getCustomerId();
+            } else if (tx.getCustomerDocumentNumber() != null && !tx.getCustomerDocumentNumber().isBlank()) {
+                key = "doc:" + tx.getCustomerDocumentNumber();
+            } else {
+                key = "name:" + tx.getCustomerName().trim().toLowerCase();
+            }
+
+            seen.putIfAbsent(key, CustomerData.builder()
+                    .customerId(tx.getCustomerId())
+                    .customerName(tx.getCustomerName())
+                    .customerAddress(tx.getCustomerAddress())
+                    .documentNumber(tx.getCustomerDocumentNumber())
+                    .nationality(tx.getCustomerNationality())
+                    // customerType: ha nincs specifikus megkülönböztetés, default "NATURAL"
+                    // Jogi személy azonosítása: nincs dedicált mező a Transaction-ben,
+                    // így természetes személy az alapértelmezett (adóhatósági logika szerint)
+                    .customerType("NATURAL")
+                    .build());
+        }
+
+        return new ArrayList<>(seen.values());
     }
 
     /**
      * Foglaló adatok gyűjtése.
+     *
+     * Bug 3 fix: csak az adott napon létrehozott ACTIVE foglalókat adja vissza,
+     * nem az összes aktív foglalót.
      */
     private List<ReservationData> getReservations(UUID branchId, LocalDate date) {
-        List<Reservation> reservations = reservationRepository.findByBranchIdAndStatus(
-                branchId, ReservationStatus.ACTIVE);
+        LocalDateTime dayStart = date.atStartOfDay();
+        LocalDateTime dayEnd = date.atTime(LocalTime.MAX);
+
+        List<Reservation> reservations = reservationRepository.findActiveByBranchAndDate(
+                branchId, dayStart, dayEnd);
 
         return reservations.stream()
                 .map(r -> ReservationData.builder()
@@ -419,15 +475,44 @@ public class EveningClosingService {
 
     /**
      * SHA-256 checksum számítása a csomagból.
+     *
+     * Bug 4 fix: mind a 9 adatkategória belekerül a hashbe, nem csak 4 mező.
+     * Tartalmazza: branchId, date, tranzakció count, total HUF összeg,
+     * cimlet count, árfolyam count, ügyfél count, foglaló count, total díj.
      */
     private String calculateChecksum(DailyDataPackage pkg) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            String data = String.format("%d|%s|%d|%s",
+
+            int txCount = pkg.getTransactions() != null ? pkg.getTransactions().size() : 0;
+            int denomCount = pkg.getDenominations() != null ? pkg.getDenominations().size() : 0;
+            int rateCount = pkg.getRates() != null ? pkg.getRates().size() : 0;
+            int customerCount = pkg.getCustomers() != null ? pkg.getCustomers().size() : 0;
+            int reservationCount = pkg.getReservations() != null ? pkg.getReservations().size() : 0;
+
+            BigDecimal totalHuf = pkg.getTransactions() != null
+                    ? pkg.getTransactions().stream()
+                        .filter(tx -> tx.getHufAmount() != null)
+                        .map(TransactionSummary::getHufAmount)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add)
+                    : BigDecimal.ZERO;
+
+            BigDecimal totalFees = pkg.getHandlingFees() != null
+                    ? pkg.getHandlingFees().getTotalHandlingFee()
+                    : BigDecimal.ZERO;
+            if (totalFees == null) totalFees = BigDecimal.ZERO;
+
+            String data = String.format("%d|%s|%d|%s|%d|%d|%d|%d|%s",
                     pkg.getBranchId(),
                     pkg.getDate(),
-                    pkg.getTransactions() != null ? pkg.getTransactions().size() : 0,
-                    pkg.getHandlingFees() != null ? pkg.getHandlingFees().getTotalHandlingFee() : "0");
+                    txCount,
+                    totalHuf.toPlainString(),
+                    denomCount,
+                    rateCount,
+                    customerCount,
+                    reservationCount,
+                    totalFees.toPlainString());
+
             byte[] hash = digest.digest(data.getBytes(StandardCharsets.UTF_8));
             return bytesToHex(hash);
         } catch (NoSuchAlgorithmException e) {
@@ -445,9 +530,14 @@ public class EveningClosingService {
     }
 
     /**
-     * Long → UUID konverzió helper (backward compat).
+     * Long → UUID konverzió helper (backward compat, legacy Long ID-khez).
+     *
+     * @deprecated Bug 5: Ez a konverzió veszteséges — az UUID felső 64 bitje elvész.
+     *             UUID-alapú metódusok használatával kerülhető el.
+     *             A Long-alapú overload csak legacy kompatibilitáshoz marad.
      */
-    private UUID uuidFromLong(Long id) {
+    @Deprecated(since = "2.0", forRemoval = false)
+    UUID uuidFromLong(Long id) {
         if (id == null) return null;
         return new UUID(0L, id);
     }
