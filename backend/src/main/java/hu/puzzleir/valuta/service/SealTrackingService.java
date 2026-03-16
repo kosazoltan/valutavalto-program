@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.SealTracking;
 import hu.puzzleir.valuta.entity.SealTransitStatus;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.SealTrackingRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -131,11 +132,12 @@ public class SealTrackingService {
      */
     @Transactional(readOnly = true)
     public boolean validateSealIntegrity(String transferType, Long transferId, String expectedSealNumber) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         Optional<SealTracking> tracking = sealTrackingRepository
                 .findByTransferTypeAndTransferId(transferType, transferId);
-        return tracking
-                .map(t -> t.getSealNumber().equals(expectedSealNumber))
-                .orElse(false);
+        return tracking.isPresent()
+                && tracking.get().getCompanyId().equals(companyId)
+                && tracking.get().getSealNumber().equals(expectedSealNumber);
     }
 
     /**
@@ -150,26 +152,38 @@ public class SealTrackingService {
     }
 
     /**
-     * Keresés plomba szám alapján.
+     * Keresés plomba szám alapján — csak az aktuális cég rekordjait adja vissza.
      */
     @Transactional(readOnly = true)
     public Optional<SealTracking> getBySealNumber(String sealNumber) {
-        return sealTrackingRepository.findBySealNumber(sealNumber);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return sealTrackingRepository.findBySealNumber(sealNumber)
+                .filter(t -> t.getCompanyId().equals(companyId));
     }
 
     /**
-     * Keresés transfer alapján.
+     * Keresés transfer alapján — csak az aktuális cég rekordjait adja vissza.
      */
     @Transactional(readOnly = true)
     public Optional<SealTracking> getByTransfer(String transferType, Long transferId) {
-        return sealTrackingRepository.findByTransferTypeAndTransferId(transferType, transferId);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return sealTrackingRepository.findByTransferTypeAndTransferId(transferType, transferId)
+                .filter(t -> t.getCompanyId().equals(companyId));
     }
 
     // --- private ---
 
     private SealTracking findByTransferOrThrow(String transferType, Long transferId) {
-        return sealTrackingRepository.findByTransferTypeAndTransferId(transferType, transferId)
-                .orElseThrow(() -> new ValidationException(
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        SealTracking tracking = sealTrackingRepository
+                .findByTransferTypeAndTransferId(transferType, transferId)
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Nem található plomba rekord: " + transferType + "/" + transferId));
+        if (!tracking.getCompanyId().equals(companyId)) {
+            // Ne fedjük fel más cég rekordjainak létezését
+            throw new ResourceNotFoundException(
+                    "Nem található plomba rekord: " + transferType + "/" + transferId);
+        }
+        return tracking;
     }
 }

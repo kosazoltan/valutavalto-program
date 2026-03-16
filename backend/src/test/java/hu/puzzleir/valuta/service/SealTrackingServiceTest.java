@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.SealTracking;
 import hu.puzzleir.valuta.entity.SealTransitStatus;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.SealTrackingRepository;
 import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
@@ -212,12 +213,77 @@ class SealTrackingServiceTest {
                 .containsExactlyInAnyOrder(SealTransitStatus.SEALED, SealTransitStatus.IN_TRANSIT);
     }
 
+    // ─── 9. getBySealNumber: más cég rekordja nem látható ───
+
+    @Test
+    @DisplayName("getBySealNumber: más cég plombája üres Optional-t ad vissza")
+    void getBySealNumber_otherCompany_returnsEmpty() {
+        UUID otherCompanyId = UUID.randomUUID();
+        SealTracking otherTracking = buildTrackingForCompany(SealTransitStatus.SEALED, otherCompanyId);
+        when(sealTrackingRepository.findBySealNumber(SEAL_NUMBER))
+                .thenReturn(Optional.of(otherTracking));
+
+        Optional<SealTracking> result = sealTrackingService.getBySealNumber(SEAL_NUMBER);
+
+        assertThat(result).isEmpty();
+    }
+
+    // ─── 10. getByTransfer: más cég rekordja nem látható ───
+
+    @Test
+    @DisplayName("getByTransfer: más cég transfer rekordja üres Optional-t ad vissza")
+    void getByTransfer_otherCompany_returnsEmpty() {
+        UUID otherCompanyId = UUID.randomUUID();
+        SealTracking otherTracking = buildTrackingForCompany(SealTransitStatus.SEALED, otherCompanyId);
+        when(sealTrackingRepository.findByTransferTypeAndTransferId(TRANSFER_TYPE, TRANSFER_ID))
+                .thenReturn(Optional.of(otherTracking));
+
+        Optional<SealTracking> result = sealTrackingService.getByTransfer(TRANSFER_TYPE, TRANSFER_ID);
+
+        assertThat(result).isEmpty();
+    }
+
+    // ─── 11. validateSealIntegrity: más cég rekordja false-t ad vissza ───
+
+    @Test
+    @DisplayName("validateSealIntegrity: más cég rekordja false-t ad vissza (ne szivárogjon ki az integritás)")
+    void validateSealIntegrity_otherCompany_returnsFalse() {
+        UUID otherCompanyId = UUID.randomUUID();
+        SealTracking otherTracking = buildTrackingForCompany(SealTransitStatus.SEALED, otherCompanyId);
+        when(sealTrackingRepository.findByTransferTypeAndTransferId(TRANSFER_TYPE, TRANSFER_ID))
+                .thenReturn(Optional.of(otherTracking));
+
+        boolean result = sealTrackingService.validateSealIntegrity(TRANSFER_TYPE, TRANSFER_ID, SEAL_NUMBER);
+
+        assertThat(result).isFalse();
+    }
+
+    // ─── 12. startTransit: más cég rekordja ResourceNotFoundException-t dob ───
+
+    @Test
+    @DisplayName("startTransit: más cég rekordján ResourceNotFoundException-t dob")
+    void startTransit_otherCompany_throwsResourceNotFoundException() {
+        UUID otherCompanyId = UUID.randomUUID();
+        SealTracking otherTracking = buildTrackingForCompany(SealTransitStatus.SEALED, otherCompanyId);
+        when(sealTrackingRepository.findByTransferTypeAndTransferId(TRANSFER_TYPE, TRANSFER_ID))
+                .thenReturn(Optional.of(otherTracking));
+
+        assertThatThrownBy(() -> sealTrackingService.startTransit(TRANSFER_TYPE, TRANSFER_ID))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(sealTrackingRepository, never()).save(any());
+    }
+
     // --- helper ---
 
     private SealTracking buildTracking(SealTransitStatus status) {
+        return buildTrackingForCompany(status, COMPANY_ID);
+    }
+
+    private SealTracking buildTrackingForCompany(SealTransitStatus status, UUID companyId) {
         return SealTracking.builder()
                 .id(1L)
-                .companyId(COMPANY_ID)
+                .companyId(companyId)
                 .transferType(TRANSFER_TYPE)
                 .transferId(TRANSFER_ID)
                 .sealNumber(SEAL_NUMBER)

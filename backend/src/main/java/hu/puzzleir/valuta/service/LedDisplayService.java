@@ -13,6 +13,7 @@ import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.ExchangeRateRepository;
 import hu.puzzleir.valuta.repository.LedDisplayConfigRepository;
 import hu.puzzleir.valuta.repository.LedDisplayRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.led.LedProtocolEncoder;
 import hu.puzzleir.valuta.service.led.LedSerialPortDriver;
 import lombok.RequiredArgsConstructor;
@@ -187,6 +188,7 @@ public class LedDisplayService {
      */
     @Transactional(readOnly = true)
     public void refreshDisplay(UUID branchId) {
+        verifyBranchOwnership(branchId);
         LedDisplayConfig config = ledDisplayConfigRepository.findByBranchId(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "LED konfiguráció nem található: branchId=" + branchId));
@@ -258,6 +260,7 @@ public class LedDisplayService {
      */
     @Transactional(readOnly = true)
     public LedDisplayConfigDto getConfig(UUID branchId) {
+        verifyBranchOwnership(branchId);
         return getDisplayConfig(branchId);
     }
 
@@ -266,6 +269,7 @@ public class LedDisplayService {
      */
     @Transactional
     public LedDisplayConfigDto updateConfig(UUID branchId, LedDisplayConfigDto dto) {
+        verifyBranchOwnership(branchId);
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
 
@@ -326,6 +330,7 @@ public class LedDisplayService {
      */
     @Transactional(readOnly = true)
     public void sendCustomText(UUID branchId, String text) {
+        verifyBranchOwnership(branchId);
         LedDisplayConfig config = ledDisplayConfigRepository.findByBranchId(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "LED konfiguráció nem található: branchId=" + branchId));
@@ -358,6 +363,18 @@ public class LedDisplayService {
     }
 
     // ============ HELPERS ============
+
+    /**
+     * Ellenőrzi, hogy a megadott iroda az aktuális céghez tartozik-e.
+     * Ha nem, ResourceNotFoundException-t dob (nem fedünk fel más cég adatait).
+     */
+    private void verifyBranchOwnership(UUID branchId) {
+        Branch branch = branchRepository.findById(branchId)
+                .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
+        if (!branch.getCompany().getId().equals(SecurityUtils.getCurrentCompanyId())) {
+            throw new ResourceNotFoundException("Iroda nem található: " + branchId);
+        }
+    }
 
     /**
      * Árfolyamok összegyűjtése egy branchhoz, valutakód → [vétel, eladás] formátumban.
