@@ -68,13 +68,19 @@ echo.
 goto error
 
 :OkJHome
-if exist "%JAVA_HOME%\bin\java.exe" goto init
+if exist "%JAVA_HOME%\bin\java.exe" if exist "%JAVA_HOME%\bin\javac.exe" goto init
+
+@REM Fallback: JAVA_HOME often points to JRE; if javac is on PATH, derive JDK home from it.
+for %%i in (javac.exe) do set "JAVAC_EXE=%%~$PATH:i"
+if not "%JAVAC_EXE%" == "" (
+    for %%i in ("%JAVAC_EXE%\..\..") do set "JAVA_HOME=%%~fi"
+)
+if exist "%JAVA_HOME%\bin\java.exe" if exist "%JAVA_HOME%\bin\javac.exe" goto init
 
 echo.
-echo Error: JAVA_HOME is set to an invalid directory. >&2
+echo Error: JAVA_HOME is set to a JRE or invalid directory. >&2
 echo JAVA_HOME = "%JAVA_HOME%" >&2
-echo Please set the JAVA_HOME variable in your environment to match the >&2
-echo location of your Java installation. >&2
+echo Please set JAVA_HOME to a JDK installation (javac required). >&2
 echo.
 goto error
 
