@@ -498,7 +498,7 @@ public class WesternUnionService {
     }
 
     private WuBalance getOrCreateBalance(UUID branchId) {
-        return wuBalanceRepository.findByBranchId(branchId)
+        return wuBalanceRepository.findByBranchIdForUpdate(branchId)
                 .orElseGet(() -> {
                     Branch branch = findBranch(branchId);
                     return WuBalance.builder()

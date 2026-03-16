@@ -47,7 +47,7 @@ class WesternUnionServiceTest {
         when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
         when(amlService.checkTransaction(any(), any(), any(), any()))
                 .thenReturn(AmlService.AmlBasicCheckResult.builder().approved(true).build());
-        when(wuBalanceRepository.findByBranchId(branchId))
+        when(wuBalanceRepository.findByBranchIdForUpdate(branchId))
                 .thenReturn(Optional.of(WuBalance.builder()
                         .branch(branch)
                         .usdBalance(BigDecimal.ZERO)
@@ -125,7 +125,7 @@ class WesternUnionServiceTest {
         when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
         when(amlService.checkTransaction(any(), any(), any(), any()))
                 .thenReturn(AmlService.AmlBasicCheckResult.builder().approved(true).build());
-        when(wuBalanceRepository.findByBranchId(branchId))
+        when(wuBalanceRepository.findByBranchIdForUpdate(branchId))
                 .thenReturn(Optional.of(WuBalance.builder()
                         .branch(branch).usdBalance(BigDecimal.ZERO).hufBalance(BigDecimal.ZERO).build()));
         when(wuTransactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -157,7 +157,7 @@ class WesternUnionServiceTest {
                 .build();
 
         when(wuTransactionRepository.findById(originalId)).thenReturn(Optional.of(original));
-        when(wuBalanceRepository.findByBranchId(branchId))
+        when(wuBalanceRepository.findByBranchIdForUpdate(branchId))
                 .thenReturn(Optional.of(WuBalance.builder()
                         .branch(branch).usdBalance(BigDecimal.ZERO).hufBalance(BigDecimal.ZERO).build()));
         when(wuTransactionRepository.save(any())).thenAnswer(inv -> {

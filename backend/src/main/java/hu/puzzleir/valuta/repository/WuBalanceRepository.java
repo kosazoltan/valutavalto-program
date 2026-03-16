@@ -1,7 +1,9 @@
 package hu.puzzleir.valuta.repository;
 
 import hu.puzzleir.valuta.entity.WuBalance;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -22,4 +24,11 @@ public interface WuBalanceRepository extends JpaRepository<WuBalance, UUID> {
      */
     @Query("SELECT wb FROM WuBalance wb WHERE wb.branch.id IN :branchIds")
     List<WuBalance> findByBranchIds(@Param("branchIds") List<UUID> branchIds);
+
+    /**
+     * Pesszimista írási zárolással tölti be az egyenleget — konkurens pénztáros műveletek ellen.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT wb FROM WuBalance wb WHERE wb.branch.id = :branchId")
+    Optional<WuBalance> findByBranchIdForUpdate(@Param("branchId") UUID branchId);
 }
