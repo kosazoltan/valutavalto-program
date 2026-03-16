@@ -328,6 +328,55 @@ class WesternUnionServiceTest {
         verify(wuCustomerRepository).save(any());
     }
 
+    // ============ NEGATIVE BALANCE ============
+
+    @Test
+    void recordSend_insufficientUsdBalance_throws() {
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+        when(amlService.checkTransaction(any(), any(), any(), any()))
+                .thenReturn(AmlService.AmlBasicCheckResult.builder().approved(true).build());
+        // Egyenleg: 50 USD — küldés: 100 USD → negatívba menne
+        when(wuBalanceRepository.findByBranchIdForUpdate(branchId))
+                .thenReturn(Optional.of(WuBalance.builder()
+                        .branch(branch).company(company)
+                        .usdBalance(new BigDecimal("50"))
+                        .hufBalance(new BigDecimal("5000000")).build()));
+
+        WuTransactionDto dto = WuTransactionDto.builder()
+                .branchId(branchId)
+                .mtcn("1234567890")
+                .amountUsd(new BigDecimal("100"))
+                .amountHuf(new BigDecimal("36000"))
+                .build();
+
+        assertThatThrownBy(() -> service.recordSend(dto))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("egyenleg");
+    }
+
+    // ============ CROSS-TENANT ============
+
+    @Test
+    void reverseWuTransaction_crossTenant_throwsNotFound() {
+        UUID originalId = UUID.randomUUID();
+        Company otherCompany = new Company();
+        otherCompany.setId(UUID.randomUUID());
+
+        WuTransaction original = WuTransaction.builder()
+                .id(originalId)
+                .branch(branch)
+                .company(otherCompany)  // Más cég tranzakciója!
+                .transactionType("SEND")
+                .status(WuTransactionStatus.COMPLETED)
+                .build();
+
+        when(wuTransactionRepository.findById(originalId)).thenReturn(Optional.of(original));
+
+        assertThatThrownBy(() -> service.reverseWuTransaction(originalId, "reason"))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("nem található");
+    }
+
     // ============ AML BLOCK ============
 
     @Test
