@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.dto.pos.PosClosingResult;
 import hu.puzzleir.valuta.dto.pos.PosTransactionResult;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -12,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.UUID;
 
 /**
  * OTP POS terminál TCP/IP kommunikációs protokoll.
@@ -57,7 +59,10 @@ import java.time.format.DateTimeFormatter;
  */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class OtpTerminalProtocolService {
+
+    private final PosTerminalConfigService posTerminalConfigService;
 
     // Protokoll karakterek (Legacy: Unit2.pas konstansok)
     private static final char STX = (char) 0x02;
@@ -73,6 +78,7 @@ public class OtpTerminalProtocolService {
     private static final String CMD_PARAM_LOAD   = "A090";  // Paraméter letöltés
     private static final String CMD_COMM_CHECK   = "A095";  // Kommunikáció ellenőrzés
     private static final String CMD_STORNO       = "A100";  // Sztornó
+    private static final String CMD_RETRY        = "A101";  // Válasz újrapróbálás
     private static final String CMD_REPRINT      = "A102";  // Újranyomtatás
 
     // Protokoll verzió (Legacy: _verzio = '2900')
@@ -130,6 +136,40 @@ public class OtpTerminalProtocolService {
     }
 
     /**
+     * Válasz újrapróbálás (utolsó tranzakció eredményének ismételt lekérése).
+     * Legacy: — CMD_RETRY (A101)
+     *
+     * Üzenet: A101 + FS + Y[bizonylat_verzió] + ETX
+     */
+    public PosTransactionResult executeRetry(String host, int port, String receiptNumber) {
+        if (receiptNumber == null || receiptNumber.isBlank()) {
+            return PosTransactionResult.error("Nincs bizonylatszám");
+        }
+
+        String yField = receiptNumber + "_" + PROTOCOL_VERSION;
+        String message = CMD_RETRY + FS + "Y" + yField + ETX;
+
+        return executeTransaction(host, port, CMD_RETRY, "", yField, message);
+    }
+
+    /**
+     * Bizonylat újranyomtatás.
+     * Legacy: Ujranyomtatas() procedure — CMD_REPRINT (A102)
+     *
+     * Üzenet: A102 + FS + Y[bizonylat_verzió] + ETX
+     */
+    public PosTransactionResult executeReprint(String host, int port, String receiptNumber) {
+        if (receiptNumber == null || receiptNumber.isBlank()) {
+            return PosTransactionResult.error("Nincs bizonylatszám");
+        }
+
+        String yField = receiptNumber + "_" + PROTOCOL_VERSION;
+        String message = CMD_REPRINT + FS + "Y" + yField + ETX;
+
+        return executeTransaction(host, port, CMD_REPRINT, "", yField, message);
+    }
+
+    /**
      * Áruvisszavét (visszatérítés kártyára).
      * Legacy: Aruvisszavet() procedure — CMD_REFUND (A004)
      *
@@ -166,12 +206,98 @@ public class OtpTerminalProtocolService {
     }
 
     /**
-     * Pénztáros kilépés és terminál zárás.
+     * Pénztáros kilépés és terminál zárás — cashierId-vel (M mező).
      * Legacy: PenztarosKilepAndClose() procedure — CMD_LOGOUT_CLOSE (A051)
+     *
+     * Üzenet: A051 + FS + M[cashierId] + ETX
      */
+    public PosTransactionResult logoutCashier(String host, int port, String cashierId) {
+        String message = CMD_LOGOUT_CLOSE + FS + "M" + cashierId + ETX;
+        return executeTransaction(host, port, CMD_LOGOUT_CLOSE, "", "", message);
+    }
+
+    /**
+     * Pénztáros kilépés M mező nélkül — visszafelé kompatibilis overload.
+     * @deprecated Használd a {@link #logoutCashier(String, int, String)} változatot cashierId-vel.
+     */
+    @Deprecated
     public PosTransactionResult logoutCashier(String host, int port) {
         String message = CMD_LOGOUT_CLOSE + ETX;
         return executeTransaction(host, port, CMD_LOGOUT_CLOSE, "", "", message);
+    }
+
+    // ---- UUID-alapú convenience overloadok ----
+
+    /**
+     * Kártyás fizetés — terminál UUID alapján (host/port a DB-ből).
+     */
+    public PosTransactionResult executePayment(UUID terminalId, BigDecimal amountHuf, String receiptNumber) {
+        PosTerminalConfigService.TerminalAddress addr = posTerminalConfigService.resolve(terminalId);
+        return executePayment(addr.host(), addr.port(), amountHuf, receiptNumber);
+    }
+
+    /**
+     * Sztornó — terminál UUID alapján.
+     */
+    public PosTransactionResult executeStorno(UUID terminalId, String receiptNumber) {
+        PosTerminalConfigService.TerminalAddress addr = posTerminalConfigService.resolve(terminalId);
+        return executeStorno(addr.host(), addr.port(), receiptNumber);
+    }
+
+    /**
+     * Áruvisszavét — terminál UUID alapján.
+     */
+    public PosTransactionResult executeRefund(UUID terminalId, BigDecimal amountHuf, String receiptNumber) {
+        PosTerminalConfigService.TerminalAddress addr = posTerminalConfigService.resolve(terminalId);
+        return executeRefund(addr.host(), addr.port(), amountHuf, receiptNumber);
+    }
+
+    /**
+     * Retry (A101) — terminál UUID alapján.
+     */
+    public PosTransactionResult executeRetry(UUID terminalId, String receiptNumber) {
+        PosTerminalConfigService.TerminalAddress addr = posTerminalConfigService.resolve(terminalId);
+        return executeRetry(addr.host(), addr.port(), receiptNumber);
+    }
+
+    /**
+     * Újranyomtatás (A102) — terminál UUID alapján.
+     */
+    public PosTransactionResult executeReprint(UUID terminalId, String receiptNumber) {
+        PosTerminalConfigService.TerminalAddress addr = posTerminalConfigService.resolve(terminalId);
+        return executeReprint(addr.host(), addr.port(), receiptNumber);
+    }
+
+    /**
+     * Pénztáros belépés — terminál UUID alapján.
+     */
+    public PosTransactionResult loginCashier(UUID terminalId, String cashierId) {
+        PosTerminalConfigService.TerminalAddress addr = posTerminalConfigService.resolve(terminalId);
+        return loginCashier(addr.host(), addr.port(), cashierId);
+    }
+
+    /**
+     * Pénztáros kilépés — terminál UUID alapján.
+     */
+    public PosTransactionResult logoutCashier(UUID terminalId, String cashierId) {
+        PosTerminalConfigService.TerminalAddress addr = posTerminalConfigService.resolve(terminalId);
+        return logoutCashier(addr.host(), addr.port(), cashierId);
+    }
+
+    /**
+     * Napi zárás — terminál UUID alapján.
+     */
+    public PosClosingResult dailyClose(UUID terminalId) {
+        PosTerminalConfigService.TerminalAddress addr = posTerminalConfigService.resolve(terminalId);
+        return dailyClose(addr.host(), addr.port());
+    }
+
+    /**
+     * Kommunikáció ellenőrzés — terminál UUID alapján.
+     */
+    public boolean checkConnection(UUID terminalId) {
+        PosTerminalConfigService.TerminalAddress addr = posTerminalConfigService.resolve(terminalId);
+        return checkConnection(addr.host(), addr.port());
     }
 
     /**
@@ -255,8 +381,10 @@ public class OtpTerminalProtocolService {
             OtpResponse response = parseResponse(reply);
 
             // Ellenőrzések (Legacy: FildSelector)
-            // 1. A mező egyezik-e?
-            if (!sendA.substring(1).equals(response.aField)) {
+            // 1. A mező egyezik-e? — mindkét oldalt normalizáljuk: vezető 'A' prefix eltávolítása
+            String sentCmdCode = sendA.replaceAll("^A", "");
+            String rcvdCmdCode = response.aField != null ? response.aField.replaceAll("^A", "") : "";
+            if (!sentCmdCode.equals(rcvdCmdCode)) {
                 log.warn("OTP: A mező nem egyezik! Küldött={}, kapott={}", sendA, response.aField);
                 // Retry lehetőség — de most error
                 return PosTransactionResult.error("OTP protokoll hiba: A mező nem egyezik");
