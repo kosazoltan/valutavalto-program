@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -127,4 +128,13 @@ public interface ExchangeRateRepository extends JpaRepository<ExchangeRate, Long
         @Param("date") LocalDate date,
         @Param("branchId") UUID branchId
     );
+
+    /**
+     * Legfrissebb közép-árfolyam egy valuta kódjához (HUF érték számításhoz).
+     * Közép = (baseBuyRate + baseSellRate) / 2
+     */
+    @Query("SELECT (er.baseBuyRate + er.baseSellRate) / 2 FROM ExchangeRate er " +
+           "WHERE er.currency.code = :code AND er.active = true " +
+           "ORDER BY er.validDate DESC, er.validTime DESC LIMIT 1")
+    Optional<BigDecimal> findLatestMidRateByCurrencyCode(@Param("code") String code);
 }

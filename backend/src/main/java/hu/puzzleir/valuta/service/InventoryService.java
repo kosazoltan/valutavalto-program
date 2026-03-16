@@ -9,6 +9,8 @@ import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -33,12 +35,15 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class InventoryService {
 
+    private static final Logger log = LoggerFactory.getLogger(InventoryService.class);
+
     private final InventoryMovementRepository movementRepository;
     private final BranchRepository branchRepository;
     private final CurrencyRepository currencyRepository;
     private final WorkerRepository workerRepository;
     private final CashBalanceRepository cashBalanceRepository;
     private final AuditLogRepository auditLogRepository;
+    private final ExchangeRateRepository exchangeRateRepository;
 
     private static final DateTimeFormatter REF_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
 
@@ -58,7 +63,7 @@ public class InventoryService {
                 .toBranch(branch)
                 .currency(currency)
                 .amount(dto.getAmount())
-                .hufValue(BigDecimal.ZERO)
+                .hufValue(calculateHufValue(currency, dto.getAmount()))
                 .movementType(MovementType.BANK_WITHDRAW)
                 .status(MovementStatus.PENDING)
                 .initiatedBy(worker)
@@ -73,7 +78,8 @@ public class InventoryService {
     }
 
     /**
-     * Pénztár → bank befizetés (APPROVED azonnal).
+     * Pénztár → bank befizetés (PENDING státusz — négy-szem elv).
+     * A CashBalance csökkentés csak jóváhagyáskor (approveMovement) történik.
      */
     @Transactional
     public InventoryMovementDto depositToBank(BankDepositRequestDto dto, Long workerId) {
@@ -93,21 +99,16 @@ public class InventoryService {
                     + ", kért: " + dto.getAmount());
         }
 
-        // Készlet csökkentés
-        balance.subtractBalance(dto.getAmount());
-        cashBalanceRepository.save(balance);
-
+        // Négy-szem elv: PENDING státusz, CashBalance csökkentés NEM történik most
         InventoryMovement movement = InventoryMovement.builder()
                 .fromBranch(branch)
                 .toBranch(null) // bank = null
                 .currency(currency)
                 .amount(dto.getAmount())
-                .hufValue(BigDecimal.ZERO)
+                .hufValue(calculateHufValue(currency, dto.getAmount()))
                 .movementType(MovementType.BANK_DEPOSIT)
-                .status(MovementStatus.APPROVED)
+                .status(MovementStatus.PENDING)
                 .initiatedBy(worker)
-                .approvedBy(worker)
-                .approvedAt(LocalDateTime.now())
                 .referenceNumber(generateReferenceNumber())
                 .notes(dto.getNotes())
                 .movementDate(LocalDate.now())
@@ -134,12 +135,24 @@ public class InventoryService {
             throw new ValidationException("A forrás és cél iroda nem lehet azonos!");
         }
 
+        // Forrás iroda készlet ellenőrzés
+        CashBalance sourceBalance = cashBalanceRepository.findByBranchIdAndCurrencyId(
+                fromBranch.getId(), currency.getId())
+                .orElseThrow(() -> new ValidationException(
+                        "Nincs kassza egyenleg a forrás irodánál ehhez a valutához: " + currency.getCode()));
+
+        if (sourceBalance.getCurrentBalance().compareTo(dto.getAmount()) < 0) {
+            throw new ValidationException("Nincs elegendő készlet a forrás irodánál! Egyenleg: "
+                    + sourceBalance.getCurrentBalance().setScale(4, RoundingMode.HALF_UP)
+                    + ", kért: " + dto.getAmount());
+        }
+
         InventoryMovement movement = InventoryMovement.builder()
                 .fromBranch(fromBranch)
                 .toBranch(toBranch)
                 .currency(currency)
                 .amount(dto.getAmount())
-                .hufValue(BigDecimal.ZERO)
+                .hufValue(calculateHufValue(currency, dto.getAmount()))
                 .movementType(MovementType.BRANCH_TRANSFER)
                 .status(MovementStatus.PENDING)
                 .initiatedBy(worker)
@@ -176,7 +189,16 @@ public class InventoryService {
         movement.setApprovedBy(worker);
         movement.setApprovedAt(LocalDateTime.now());
 
-        // Bank kivét jóváhagyáskor automatikusan IN_TRANSIT
+        // Bank befizetés jóváhagyásakor CashBalance csökkentés (négy-szem elv)
+        if (movement.getMovementType() == MovementType.BANK_DEPOSIT) {
+            if (movement.getFromBranch() == null) {
+                throw new ValidationException("Bank befizetés mozgásnál a forrás iroda (fromBranch) nem lehet null!");
+            }
+            updateCashBalance(movement.getFromBranch().getId(),
+                    movement.getCurrency().getId(), movement.getAmount(), false);
+        }
+
+        // Bank kivét és irodák közti szállítás jóváhagyáskor automatikusan IN_TRANSIT
         if (movement.getMovementType() == MovementType.BANK_WITHDRAW
                 || movement.getMovementType() == MovementType.BRANCH_TRANSFER) {
             movement.setStatus(MovementStatus.IN_TRANSIT);
@@ -307,7 +329,7 @@ public class InventoryService {
                 .toBranch(branch)
                 .currency(currency)
                 .amount(correctionDiff.abs())
-                .hufValue(BigDecimal.ZERO)
+                .hufValue(calculateHufValue(currency, correctionDiff.abs()))
                 .movementType(MovementType.CORRECTION)
                 .status(MovementStatus.RECEIVED) // korrekció azonnal RECEIVED
                 .initiatedBy(worker)
@@ -332,6 +354,7 @@ public class InventoryService {
     /**
      * Összes iroda teljes készlete (CashBalance lista).
      */
+    @Transactional(readOnly = true)
     public List<CashBalance> getAllStock() {
         return cashBalanceRepository.findAll();
     }
@@ -382,6 +405,24 @@ public class InventoryService {
     }
 
     // ============ HELPERS ============
+
+    /**
+     * HUF értéket számít egy adott valuta összegéhez a legfrissebb közép-árfolyam alapján.
+     * HUF esetén az összeget adja vissza változtatás nélkül.
+     * Ha nincs elérhető árfolyam, ZERO-t ad vissza és figyelmeztetést naplóz.
+     */
+    private BigDecimal calculateHufValue(Currency currency, BigDecimal amount) {
+        if ("HUF".equals(currency.getCode())) {
+            return amount.setScale(0, RoundingMode.HALF_UP);
+        }
+        Optional<BigDecimal> midRate = exchangeRateRepository
+                .findLatestMidRateByCurrencyCode(currency.getCode());
+        if (midRate.isEmpty()) {
+            log.warn("Nem található árfolyam a HUF érték számításhoz: currency={}", currency.getCode());
+            return BigDecimal.ZERO;
+        }
+        return amount.multiply(midRate.get()).setScale(0, RoundingMode.HALF_UP);
+    }
 
     private void updateCashBalance(UUID branchId, Long currencyId, BigDecimal amount, boolean isIncoming) {
         CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyId(branchId, currencyId)
