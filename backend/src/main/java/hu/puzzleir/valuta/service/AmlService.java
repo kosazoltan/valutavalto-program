@@ -737,6 +737,21 @@ public class AmlService {
             .build();
     }
 
+    // ============ NAPI CACHE RESET (NAPZÁRÁS) ============
+
+    /**
+     * Napi AML ügyfél gyűjtők nullázása napzáráskor.
+     * Legacy: NAPZAR.DLL — ugyfel napi gyujtok nullazasa.
+     *
+     * Az AmlService jelenleg nem tart in-memory cache-t (minden lekérdezés DB-ből fut);
+     * ha a jövőben ConcurrentHashMap alapú napi cache kerül be, itt kell üríteni.
+     */
+    public void resetDailyCache() {
+        log.info("AML napi cache reset: napi ügyfél gyűjtők nullázva (napzárás)");
+        // Nincs in-memory cache jelenleg — DB alapú lekérdezések, a reset implicit
+        // (az új napon a tranzactionDate = ma szűrő automatikusan üres lesz).
+    }
+
     // ============ GÖNGYÖLÉS VISSZAVONÁS (STORNÓ AML) ============
 
     /**

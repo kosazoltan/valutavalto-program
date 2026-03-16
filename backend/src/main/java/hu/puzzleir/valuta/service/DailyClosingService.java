@@ -63,6 +63,10 @@ public class DailyClosingService {
     private final PosTerminalService posTerminalService;
     private final PosTerminalRepository posTerminalRepository;
     private final EveningClosingService eveningClosingService;
+    private final MonthlyArchiveService monthlyArchiveService;
+    private final DecadeReportService decadeReportService;
+    private final AmlService amlService;
+    private final ReceiptSequenceService receiptSequenceService;
 
     /** Max lep esek szama */
     private static final int TOTAL_STEPS = 9;
@@ -381,6 +385,33 @@ public class DailyClosingService {
     private void executeClosing(UUID branchId, UUID companyId, LocalDate closingDate) {
         log.info("Napzaras vegrehajtasa: datum={}", closingDate);
 
+        // 0. Bizonylat folytonossági ellenőrzés (gap detektálás) — MUNKAMENET ZÁRÁS ELŐTT
+        try {
+            List<String> gaps = receiptSequenceService.checkReceiptContinuity(branchId, closingDate);
+            if (!gaps.isEmpty()) {
+                String gapList = String.join(", ", gaps.subList(0, Math.min(gaps.size(), 10)));
+                auditLogService.log(
+                    "RECEIPT_GAP_DETECTED",
+                    "DailyClosing",
+                    branchId.toString(),
+                    SecurityUtils.getCurrentWorkerId() != null ? SecurityUtils.getCurrentWorkerId().toString() : null,
+                    null,
+                    branchId.toString(),
+                    null,
+                    String.format("{\"date\":\"%s\",\"gapCount\":%d,\"gaps\":\"%s%s\"}",
+                        closingDate, gaps.size(), gapList, gaps.size() > 10 ? "..." : ""),
+                    null,
+                    null
+                );
+                log.warn("Bizonylat gap detektálva napzáráskor: datum={}, iroda={}, {} hiányzó bizonylat",
+                    closingDate, branchId, gaps.size());
+            }
+        } catch (Exception e) {
+            log.error("Bizonylat gap check hiba: datum={}, iroda={}, hiba={}",
+                closingDate, branchId, e.getMessage(), e);
+            // NEM dobunk kivételt — ne akadjon meg a zárás
+        }
+
         // 1. Napi arfolyamok rogzitese (snapshot a zaraskor ervenyes arfolyamokrol)
         snapshotDailyRates(companyId, closingDate);
 
@@ -392,7 +423,7 @@ public class DailyClosingService {
             dailyBalanceService.calculateAllCurrenciesForDay(branchId, closingDate);
             log.info("Napi mérleg számítás sikeres: datum={}, iroda={}", closingDate, branchId);
         } catch (Exception e) {
-            log.error("Napi mérleg számítás hiba: datum={}, iroda={}, hiba={}", 
+            log.error("Napi mérleg számítás hiba: datum={}, iroda={}, hiba={}",
                 closingDate, branchId, e.getMessage(), e);
             // NEM dobunk kivételt — ne akadjon meg a zárás, csak logoljuk
         }
@@ -403,7 +434,27 @@ public class DailyClosingService {
         // 5. Esti zárás adatcsomag küldés a központnak (legacy ESTIZAR ekvivalens)
         executeEveningSync(branchId, closingDate);
 
-        // 6. Dekad kontroll (10 napos idoszak zaras)
+        // 6. Napi tranzakciók archiválása (legacy CopyTables)
+        try {
+            int archivedCount = monthlyArchiveService.archiveDailyTransactions(branchId, closingDate);
+            log.info("Napi archiválás kész: datum={}, iroda={}, archivált={}", closingDate, branchId, archivedCount);
+        } catch (Exception e) {
+            log.error("Napi archiválás hiba: datum={}, iroda={}, hiba={}",
+                closingDate, branchId, e.getMessage(), e);
+            // NEM dobunk kivételt — ne akadjon meg a zárás
+        }
+
+        // 7. AML napi ügyfél gyűjtők nullázása
+        try {
+            amlService.resetDailyCache();
+            log.info("AML napi cache reset kész: datum={}, iroda={}", closingDate, branchId);
+        } catch (Exception e) {
+            log.error("AML napi cache reset hiba: datum={}, iroda={}, hiba={}",
+                closingDate, branchId, e.getMessage(), e);
+            // NEM dobunk kivételt — ne akadjon meg a zárás
+        }
+
+        // 8. Dekad kontroll (10 napos idoszak zaras) — most már valódi generateDecadeReport hívással
         checkDecadeClosing(branchId, closingDate);
 
         log.info("Napzaras vegrehajtva: datum={}, iroda={}", closingDate, branchId);
@@ -510,17 +561,33 @@ public class DailyClosingService {
     private void checkDecadeClosing(UUID branchId, LocalDate date) {
         int dayOfMonth = date.getDayOfMonth();
         if (dayOfMonth == 10 || dayOfMonth == 20 || dayOfMonth == date.lengthOfMonth()) {
+            // Dekád számítás: (hónap-1)*3 + dekádInHónap
+            // dekádInHónap: 10. nap→1, 20. nap→2, hó vége→3
+            int month = date.getMonthValue();
+            int decadeInMonth = (dayOfMonth == 10) ? 1 : (dayOfMonth == 20) ? 2 : 3;
+            int globalDecade = (month - 1) * 3 + decadeInMonth; // 1-36
+
             String decadePeriod;
-            if (dayOfMonth == 10) {
+            if (decadeInMonth == 1) {
                 decadePeriod = "1-10";
-            } else if (dayOfMonth == 20) {
+            } else if (decadeInMonth == 2) {
                 decadePeriod = "11-20";
             } else {
                 decadePeriod = "21-" + dayOfMonth;
             }
-            log.info("Dekad zaras vegrehajtva: nap={}, idoszak={}", dayOfMonth, decadePeriod);
+            log.info("Dekad zaras: nap={}, idoszak={}, globalDekad={}", dayOfMonth, decadePeriod, globalDecade);
 
-            // Dekád riport record létrehozása az AuditLog-ba
+            // Dekádjelentés generálása (legacy DekzarCtrl)
+            try {
+                decadeReportService.generateDecadeReport(branchId, date.getYear(), globalDecade);
+                log.info("Dekadjelentes generálva: branchId={}, ev={}, dekad={}", branchId, date.getYear(), globalDecade);
+            } catch (Exception e) {
+                log.error("Dekadjelentes generálás hiba: branchId={}, ev={}, dekad={}, hiba={}",
+                    branchId, date.getYear(), globalDecade, e.getMessage(), e);
+                // NEM dobunk kivételt — ne akadjon meg a zárás
+            }
+
+            // Audit log
             auditLogService.log(
                 "DECADE_CLOSING",
                 "DailyClosing",
@@ -529,7 +596,8 @@ public class DailyClosingService {
                 null,
                 branchId.toString(),
                 null,
-                String.format("{\"date\":\"%s\",\"dayOfMonth\":%d,\"decadePeriod\":\"%s\"}", date, dayOfMonth, decadePeriod),
+                String.format("{\"date\":\"%s\",\"dayOfMonth\":%d,\"decadePeriod\":\"%s\",\"globalDecade\":%d}",
+                    date, dayOfMonth, decadePeriod, globalDecade),
                 null,
                 null
             );

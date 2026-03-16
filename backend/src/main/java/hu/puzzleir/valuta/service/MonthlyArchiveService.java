@@ -127,6 +127,73 @@ public class MonthlyArchiveService {
     }
 
     /**
+     * Napi tranzakciók archiválása (napzárás részeként).
+     * Legacy: NAPZAR.DLL — CopyTables napi szintű változata.
+     *
+     * @param branchId    Iroda ID
+     * @param closingDate A zárt nap dátuma
+     * @return Archivált tranzakciók száma (duplikátumokat kihagyva)
+     */
+    public int archiveDailyTransactions(UUID branchId, LocalDate closingDate) {
+        String archiveMonth = YearMonth.from(closingDate).format(MONTH_FORMAT);
+
+        log.info("Napi archiválás: branchId={}, date={}, archiveMonth={}", branchId, closingDate, archiveMonth);
+
+        List<Transaction> transactions = transactionRepository.findByBranchAndMonth(
+            branchId, closingDate, closingDate
+        );
+
+        if (transactions.isEmpty()) {
+            log.info("Napi archiválás: nincs archiválandó tranzakció: branchId={}, date={}", branchId, closingDate);
+            return 0;
+        }
+
+        int archivedCount = 0;
+        for (Transaction tx : transactions) {
+            // Duplikáció ellenőrzés bizonylat szám alapján
+            if (tx.getReceiptNumber() != null
+                    && archivedTransactionRepository.existsByReceiptNumberAndArchiveMonth(
+                        tx.getReceiptNumber(), archiveMonth)) {
+                log.debug("Napi archiválás: már archivált bizonylat kihagyva: {}", tx.getReceiptNumber());
+                continue;
+            }
+            // Eredeti ID alapú duplikáció ellenőrzés
+            if (tx.getId() != null && archivedTransactionRepository.existsByOriginalId(tx.getId())) {
+                log.debug("Napi archiválás: már archivált tranzakció kihagyva (id={})", tx.getId());
+                continue;
+            }
+
+            ArchivedTransaction archived = ArchivedTransaction.builder()
+                .archiveMonth(archiveMonth)
+                .originalId(tx.getId())
+                .receiptNumber(tx.getReceiptNumber())
+                .transactionType(tx.getTransactionType().name())
+                .currencyCode(tx.getCurrency() != null ? tx.getCurrency().getCode() : null)
+                .amount(tx.getCurrencyAmount() != null ? tx.getCurrencyAmount() : java.math.BigDecimal.ZERO)
+                .exchangeRate(tx.getExchangeRate() != null ? tx.getExchangeRate() : java.math.BigDecimal.ZERO)
+                .hufAmount(tx.getHufAmount())
+                .handlingFee(tx.getHandlingFee())
+                .roundingAmount(java.math.BigDecimal.ZERO)
+                .originalDate(tx.getCreatedAt())
+                .branchId(tx.getBranch().getId())
+                .workerId(tx.getWorker().getId())
+                .customerName("")
+                .customerId(null)
+                .documentNumber("")
+                .archivedBy(SecurityUtils.getCurrentWorkerCode())
+                .company(null)
+                .archiveStatus("ARCHIVED")
+                .build();
+
+            archivedTransactionRepository.save(archived);
+            archivedCount++;
+        }
+
+        log.info("Napi archiválás kész: branchId={}, date={}, count={}", branchId, closingDate, archivedCount);
+        return archivedCount;
+    }
+
+    /**
      * Archivált tranzakciók lekérdezése.
      */
     @Transactional(readOnly = true)

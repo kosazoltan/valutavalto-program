@@ -35,6 +35,11 @@ public interface ArchivedTransactionRepository extends JpaRepository<ArchivedTra
     boolean existsByOriginalId(Long originalId);
 
     /**
+     * Bizonylat szám + archív hónap duplikáció ellenőrzés (napi archiváláshoz).
+     */
+    boolean existsByReceiptNumberAndArchiveMonth(String receiptNumber, String archiveMonth);
+
+    /**
      * Időszak szerinti lekérdezés
      */
     @Query("SELECT a FROM ArchivedTransaction a WHERE a.originalDate BETWEEN :start AND :end ORDER BY a.originalDate")
