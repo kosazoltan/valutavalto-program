@@ -80,6 +80,14 @@ public class Branch {
     @Column(name = "vault_territory_id")
     private Integer vaultTerritoryId;
 
+    /**
+     * Legacy körzet kód (KESZLEX készlet export).
+     * Értékek: 10 (Szekszárd), 20 (Szeged), 40 (Kecskemét), 50 (Debrecen),
+     * 63 (Nyíregyháza), 75 (Békéscsaba), 120 (Pécs), 145 (Kaposvár)
+     */
+    @Column(name = "region_code", length = 10)
+    private String regionCode;
+
     @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = true;
