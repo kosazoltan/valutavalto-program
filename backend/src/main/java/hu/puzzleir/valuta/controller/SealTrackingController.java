@@ -36,6 +36,7 @@ public class SealTrackingController {
                 .openedBy(entity.getOpenedBy())
                 .transitStatus(entity.getTransitStatus())
                 .notes(entity.getNotes())
+                .version(entity.getVersion())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
@@ -76,7 +77,7 @@ public class SealTrackingController {
     }
 
     @GetMapping("/by-seal/{sealNumber}")
-    public ResponseEntity<SealTrackingDto> getBySealNumber(@PathVariable String sealNumber) {
+    public ResponseEntity<SealTrackingDto> getBySealNumber(@PathVariable @NotBlank String sealNumber) {
         Optional<SealTracking> result = sealTrackingService.getBySealNumber(sealNumber);
         return result.map(entity -> ResponseEntity.ok(toDto(entity)))
                 .orElse(ResponseEntity.notFound().build());

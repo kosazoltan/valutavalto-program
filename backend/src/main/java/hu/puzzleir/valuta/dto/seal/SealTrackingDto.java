@@ -22,6 +22,7 @@ public class SealTrackingDto {
     private Long openedBy;
     private SealTransitStatus transitStatus;
     private String notes;
+    private Long version;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
