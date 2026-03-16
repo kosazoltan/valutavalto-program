@@ -130,6 +130,13 @@ public class WesternUnionService {
 
         if (dto.getWuCustomerId() != null) {
             WuCustomer customer = wuCustomerRepository.findById(dto.getWuCustomerId()).orElse(null);
+            // Multi-tenant: csak saját cég ügyfele rendelhető hozzá
+            if (customer != null && customer.getCompany() != null
+                    && !customer.getCompany().getId().equals(branch.getCompany().getId())) {
+                log.warn("WuCustomer cross-tenant hozzárendelés megakadályozva: customerId={}, branchCompanyId={}",
+                        dto.getWuCustomerId(), branch.getCompany().getId());
+                customer = null;
+            }
             tx.setWuCustomer(customer);
         }
 
@@ -169,6 +176,13 @@ public class WesternUnionService {
 
         if (dto.getWuCustomerId() != null) {
             WuCustomer customer = wuCustomerRepository.findById(dto.getWuCustomerId()).orElse(null);
+            // Multi-tenant: csak saját cég ügyfele rendelhető hozzá
+            if (customer != null && customer.getCompany() != null
+                    && !customer.getCompany().getId().equals(branch.getCompany().getId())) {
+                log.warn("WuCustomer cross-tenant hozzárendelés megakadályozva: customerId={}, branchCompanyId={}",
+                        dto.getWuCustomerId(), branch.getCompany().getId());
+                customer = null;
+            }
             tx.setWuCustomer(customer);
         }
 
@@ -256,6 +270,12 @@ public class WesternUnionService {
     public WuTransaction reverseWuTransaction(UUID originalId, String reason) {
         WuTransaction original = wuTransactionRepository.findById(originalId)
                 .orElseThrow(() -> new ResourceNotFoundException("WU tranzakció nem található: " + originalId));
+
+        // Multi-tenant ellenőrzés: más cég tranzakciója nem sztornózható
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        if (original.getCompany() == null || !original.getCompany().getId().equals(currentCompanyId)) {
+            throw new ResourceNotFoundException("WU tranzakció nem található: " + originalId);
+        }
 
         // Dupla sztornó megakadályozása
         if (original.getStatus() == WuTransactionStatus.REVERSED) {
@@ -437,7 +457,10 @@ public class WesternUnionService {
                             type, tx.getId());
                 }
             }
-            if (tx.getFeeAmount() != null) totalFees = totalFees.add(tx.getFeeAmount());
+            // STORNO fee ne számítson bele (az eredeti REVERSED rekord már kihagyva)
+            if (tx.getFeeAmount() != null && !"STORNO".equals(type)) {
+                totalFees = totalFees.add(tx.getFeeAmount());
+            }
         }
 
         return WuDailyReportDto.builder()

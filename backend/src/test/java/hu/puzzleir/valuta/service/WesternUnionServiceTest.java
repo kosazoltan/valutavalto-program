@@ -219,6 +219,7 @@ class WesternUnionServiceTest {
         WuTransaction original = WuTransaction.builder()
                 .id(originalId)
                 .branch(branch)
+                .company(company)
                 .transactionType("SEND")
                 .status(WuTransactionStatus.REVERSED)
                 .build();
@@ -236,6 +237,7 @@ class WesternUnionServiceTest {
         WuTransaction storno = WuTransaction.builder()
                 .id(stornoId)
                 .branch(branch)
+                .company(company)
                 .transactionType("STORNO")
                 .status(WuTransactionStatus.COMPLETED)
                 .build();

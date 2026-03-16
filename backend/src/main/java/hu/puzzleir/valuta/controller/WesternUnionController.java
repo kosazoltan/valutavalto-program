@@ -92,6 +92,40 @@ public class WesternUnionController {
         return ResponseEntity.ok(balances.stream().map(this::toBalanceDto).collect(Collectors.toList()));
     }
 
+    /**
+     * Irodák közötti bejövő USD (IC_IN).
+     * POST /api/v1/western-union/ic-in
+     */
+    @PostMapping("/ic-in")
+    public ResponseEntity<WuTransactionDto> recordIcIn(
+            @Valid @RequestBody WuTransactionDto request) {
+        WuTransaction tx = westernUnionService.recordIcIn(request);
+        return ResponseEntity.ok(toDto(tx));
+    }
+
+    /**
+     * Irodák közötti kimenő USD (IC_OUT).
+     * POST /api/v1/western-union/ic-out
+     */
+    @PostMapping("/ic-out")
+    public ResponseEntity<WuTransactionDto> recordIcOut(
+            @Valid @RequestBody WuTransactionDto request) {
+        WuTransaction tx = westernUnionService.recordIcOut(request);
+        return ResponseEntity.ok(toDto(tx));
+    }
+
+    /**
+     * WU tranzakció sztornózása.
+     * POST /api/v1/western-union/storno/{originalId}
+     */
+    @PostMapping("/storno/{originalId}")
+    public ResponseEntity<WuTransactionDto> reverseTransaction(
+            @PathVariable UUID originalId,
+            @RequestParam(required = false) String reason) {
+        WuTransaction storno = westernUnionService.reverseWuTransaction(originalId, reason != null ? reason : "");
+        return ResponseEntity.ok(toDto(storno));
+    }
+
     // ============ DTO KONVERZIÓ ============
 
     private WuTransactionDto toDto(WuTransaction tx) {
