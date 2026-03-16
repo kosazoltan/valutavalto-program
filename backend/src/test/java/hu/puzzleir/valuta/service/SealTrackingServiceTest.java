@@ -103,7 +103,7 @@ class SealTrackingServiceTest {
     @DisplayName("startTransit: SEALED állapotból IN_TRANSIT-ba vált")
     void startTransit_fromSealed_changesStatusToInTransit() {
         SealTracking existing = buildTracking(SealTransitStatus.SEALED);
-        when(sealTrackingRepository.findByTransferTypeAndTransferId(TRANSFER_TYPE, TRANSFER_ID))
+        when(sealTrackingRepository.findByCompanyIdAndTransferTypeAndTransferId(COMPANY_ID, TRANSFER_TYPE, TRANSFER_ID))
                 .thenReturn(Optional.of(existing));
         when(sealTrackingRepository.save(any(SealTracking.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
@@ -120,7 +120,7 @@ class SealTrackingServiceTest {
     @DisplayName("confirmArrival: IN_TRANSIT állapotból ARRIVED-ba vált")
     void confirmArrival_fromInTransit_changesStatusToArrived() {
         SealTracking existing = buildTracking(SealTransitStatus.IN_TRANSIT);
-        when(sealTrackingRepository.findByTransferTypeAndTransferId(TRANSFER_TYPE, TRANSFER_ID))
+        when(sealTrackingRepository.findByCompanyIdAndTransferTypeAndTransferId(COMPANY_ID, TRANSFER_TYPE, TRANSFER_ID))
                 .thenReturn(Optional.of(existing));
         when(sealTrackingRepository.save(any(SealTracking.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
@@ -137,7 +137,7 @@ class SealTrackingServiceTest {
     @DisplayName("openSeal: ARRIVED állapotból OPENED-be vált és rögzíti a megnyitó workert")
     void openSeal_fromArrived_changesStatusToOpenedAndRecordsOpener() {
         SealTracking existing = buildTracking(SealTransitStatus.ARRIVED);
-        when(sealTrackingRepository.findByTransferTypeAndTransferId(TRANSFER_TYPE, TRANSFER_ID))
+        when(sealTrackingRepository.findByCompanyIdAndTransferTypeAndTransferId(COMPANY_ID, TRANSFER_TYPE, TRANSFER_ID))
                 .thenReturn(Optional.of(existing));
         when(sealTrackingRepository.save(any(SealTracking.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
@@ -156,7 +156,7 @@ class SealTrackingServiceTest {
     @DisplayName("startTransit: nem SEALED státuszból indítva ValidationException-t dob")
     void startTransit_fromWrongStatus_throwsValidationException() {
         SealTracking existing = buildTracking(SealTransitStatus.IN_TRANSIT);
-        when(sealTrackingRepository.findByTransferTypeAndTransferId(TRANSFER_TYPE, TRANSFER_ID))
+        when(sealTrackingRepository.findByCompanyIdAndTransferTypeAndTransferId(COMPANY_ID, TRANSFER_TYPE, TRANSFER_ID))
                 .thenReturn(Optional.of(existing));
 
         assertThatThrownBy(() -> sealTrackingService.startTransit(TRANSFER_TYPE, TRANSFER_ID))
@@ -172,7 +172,7 @@ class SealTrackingServiceTest {
     @DisplayName("validateSealIntegrity: egyező szám true-t ad vissza")
     void validateSealIntegrity_matchingNumber_returnsTrue() {
         SealTracking existing = buildTracking(SealTransitStatus.SEALED);
-        when(sealTrackingRepository.findByTransferTypeAndTransferId(TRANSFER_TYPE, TRANSFER_ID))
+        when(sealTrackingRepository.findByCompanyIdAndTransferTypeAndTransferId(COMPANY_ID, TRANSFER_TYPE, TRANSFER_ID))
                 .thenReturn(Optional.of(existing));
 
         boolean result = sealTrackingService.validateSealIntegrity(TRANSFER_TYPE, TRANSFER_ID, SEAL_NUMBER);
@@ -184,7 +184,7 @@ class SealTrackingServiceTest {
     @DisplayName("validateSealIntegrity: eltérő szám false-t ad vissza")
     void validateSealIntegrity_mismatchedNumber_returnsFalse() {
         SealTracking existing = buildTracking(SealTransitStatus.SEALED);
-        when(sealTrackingRepository.findByTransferTypeAndTransferId(TRANSFER_TYPE, TRANSFER_ID))
+        when(sealTrackingRepository.findByCompanyIdAndTransferTypeAndTransferId(COMPANY_ID, TRANSFER_TYPE, TRANSFER_ID))
                 .thenReturn(Optional.of(existing));
 
         boolean result = sealTrackingService.validateSealIntegrity(TRANSFER_TYPE, TRANSFER_ID, "WRONG-NUMBER");
@@ -233,10 +233,9 @@ class SealTrackingServiceTest {
     @Test
     @DisplayName("getByTransfer: más cég transfer rekordja üres Optional-t ad vissza")
     void getByTransfer_otherCompany_returnsEmpty() {
-        UUID otherCompanyId = UUID.randomUUID();
-        SealTracking otherTracking = buildTrackingForCompany(SealTransitStatus.SEALED, otherCompanyId);
-        when(sealTrackingRepository.findByTransferTypeAndTransferId(TRANSFER_TYPE, TRANSFER_ID))
-                .thenReturn(Optional.of(otherTracking));
+        // A companyId szűrés a query-ben van, így más cég rekordja nem jön vissza
+        when(sealTrackingRepository.findByCompanyIdAndTransferTypeAndTransferId(COMPANY_ID, TRANSFER_TYPE, TRANSFER_ID))
+                .thenReturn(Optional.empty());
 
         Optional<SealTracking> result = sealTrackingService.getByTransfer(TRANSFER_TYPE, TRANSFER_ID);
 
@@ -248,10 +247,9 @@ class SealTrackingServiceTest {
     @Test
     @DisplayName("validateSealIntegrity: más cég rekordja false-t ad vissza (ne szivárogjon ki az integritás)")
     void validateSealIntegrity_otherCompany_returnsFalse() {
-        UUID otherCompanyId = UUID.randomUUID();
-        SealTracking otherTracking = buildTrackingForCompany(SealTransitStatus.SEALED, otherCompanyId);
-        when(sealTrackingRepository.findByTransferTypeAndTransferId(TRANSFER_TYPE, TRANSFER_ID))
-                .thenReturn(Optional.of(otherTracking));
+        // A companyId szűrés a query-ben van, így más cég rekordja nem jön vissza
+        when(sealTrackingRepository.findByCompanyIdAndTransferTypeAndTransferId(COMPANY_ID, TRANSFER_TYPE, TRANSFER_ID))
+                .thenReturn(Optional.empty());
 
         boolean result = sealTrackingService.validateSealIntegrity(TRANSFER_TYPE, TRANSFER_ID, SEAL_NUMBER);
 
@@ -263,10 +261,9 @@ class SealTrackingServiceTest {
     @Test
     @DisplayName("startTransit: más cég rekordján ResourceNotFoundException-t dob")
     void startTransit_otherCompany_throwsResourceNotFoundException() {
-        UUID otherCompanyId = UUID.randomUUID();
-        SealTracking otherTracking = buildTrackingForCompany(SealTransitStatus.SEALED, otherCompanyId);
-        when(sealTrackingRepository.findByTransferTypeAndTransferId(TRANSFER_TYPE, TRANSFER_ID))
-                .thenReturn(Optional.of(otherTracking));
+        // A companyId szűrés a query-ben van, így más cég rekordja nem jön vissza
+        when(sealTrackingRepository.findByCompanyIdAndTransferTypeAndTransferId(COMPANY_ID, TRANSFER_TYPE, TRANSFER_ID))
+                .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> sealTrackingService.startTransit(TRANSFER_TYPE, TRANSFER_ID))
                 .isInstanceOf(ResourceNotFoundException.class);

@@ -140,9 +140,8 @@ public class SealTrackingService {
     public boolean validateSealIntegrity(String transferType, Long transferId, String expectedSealNumber) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Optional<SealTracking> tracking = sealTrackingRepository
-                .findByTransferTypeAndTransferId(transferType, transferId);
+                .findByCompanyIdAndTransferTypeAndTransferId(companyId, transferType, transferId);
         return tracking.isPresent()
-                && tracking.get().getCompanyId().equals(companyId)
                 && tracking.get().getSealNumber().equals(expectedSealNumber);
     }
 
@@ -173,23 +172,16 @@ public class SealTrackingService {
     @Transactional(readOnly = true)
     public Optional<SealTracking> getByTransfer(String transferType, Long transferId) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        return sealTrackingRepository.findByTransferTypeAndTransferId(transferType, transferId)
-                .filter(t -> t.getCompanyId().equals(companyId));
+        return sealTrackingRepository.findByCompanyIdAndTransferTypeAndTransferId(companyId, transferType, transferId);
     }
 
     // --- private ---
 
     private SealTracking findByTransferOrThrow(String transferType, Long transferId) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        SealTracking tracking = sealTrackingRepository
-                .findByTransferTypeAndTransferId(transferType, transferId)
+        return sealTrackingRepository
+                .findByCompanyIdAndTransferTypeAndTransferId(companyId, transferType, transferId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Nem található plomba rekord: " + transferType + "/" + transferId));
-        if (!tracking.getCompanyId().equals(companyId)) {
-            // Ne fedjük fel más cég rekordjainak létezését
-            throw new ResourceNotFoundException(
-                    "Nem található plomba rekord: " + transferType + "/" + transferId);
-        }
-        return tracking;
     }
 }

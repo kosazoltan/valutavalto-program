@@ -91,7 +91,7 @@ class StockSnapshotServiceTest {
                 .lastUpdated(LocalDateTime.now())
                 .build();
         when(currencyStockRepository.findAllByBranchIds(anyList())).thenReturn(List.of(eurStock));
-        when(wuBalanceRepository.findByBranchIds(anyList())).thenReturn(List.of());
+        when(wuBalanceRepository.findByBranchIdsAndCompanyId(anyList(), eq(COMPANY_ID))).thenReturn(List.of());
 
         StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
 
@@ -124,7 +124,7 @@ class StockSnapshotServiceTest {
                 .currencyCode("EUR").quantity(new BigDecimal("200"))
                 .weightedAvgCost(new BigDecimal("390")).lastUpdated(LocalDateTime.now()).build();
         when(currencyStockRepository.findAllByBranchIds(anyList())).thenReturn(List.of(eurStock1, eurStock2));
-        when(wuBalanceRepository.findByBranchIds(anyList())).thenReturn(List.of());
+        when(wuBalanceRepository.findByBranchIdsAndCompanyId(anyList(), eq(COMPANY_ID))).thenReturn(List.of());
 
         StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
 
@@ -156,7 +156,7 @@ class StockSnapshotServiceTest {
                 .currencyCode("USD").quantity(new BigDecimal("500"))
                 .weightedAvgCost(new BigDecimal("365")).lastUpdated(LocalDateTime.now()).build();
         when(currencyStockRepository.findAllByBranchIds(anyList())).thenReturn(List.of(usdStock1, usdStock2));
-        when(wuBalanceRepository.findByBranchIds(anyList())).thenReturn(List.of());
+        when(wuBalanceRepository.findByBranchIdsAndCompanyId(anyList(), eq(COMPANY_ID))).thenReturn(List.of());
 
         StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
 
@@ -182,7 +182,7 @@ class StockSnapshotServiceTest {
                 .usdBalance(new BigDecimal("2500"))
                 .hufBalance(new BigDecimal("150000"))
                 .build();
-        when(wuBalanceRepository.findByBranchIds(anyList())).thenReturn(List.of(wuBalance));
+        when(wuBalanceRepository.findByBranchIdsAndCompanyId(anyList(), eq(COMPANY_ID))).thenReturn(List.of(wuBalance));
 
         StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
 
@@ -201,7 +201,7 @@ class StockSnapshotServiceTest {
         Branch branch = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");
         when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of(branch));
         when(currencyStockRepository.findAllByBranchIds(anyList())).thenReturn(List.of());
-        when(wuBalanceRepository.findByBranchIds(anyList())).thenReturn(List.of());
+        when(wuBalanceRepository.findByBranchIdsAndCompanyId(anyList(), eq(COMPANY_ID))).thenReturn(List.of());
 
         // Override reservation mock for this branch
         when(reservationRepository.getReservedStockByBranch(BRANCH_1_ID)).thenReturn(List.of(

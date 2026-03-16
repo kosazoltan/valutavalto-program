@@ -13,6 +13,7 @@ import java.util.UUID;
 public interface SealTrackingRepository extends JpaRepository<SealTracking, Long> {
     Optional<SealTracking> findBySealNumber(String sealNumber);
     Optional<SealTracking> findByTransferTypeAndTransferId(String transferType, Long transferId);
+    Optional<SealTracking> findByCompanyIdAndTransferTypeAndTransferId(UUID companyId, String transferType, Long transferId);
     List<SealTracking> findByCompanyIdAndTransitStatusIn(UUID companyId, List<SealTransitStatus> statuses);
     boolean existsBySealNumber(String sealNumber);
     boolean existsByCompanyIdAndSealNumber(UUID companyId, String sealNumber);

@@ -16,19 +16,23 @@ import java.util.UUID;
 public interface WuTransactionRepository extends JpaRepository<WuTransaction, UUID> {
 
     @Query("SELECT t FROM WuTransaction t WHERE t.branch.id = :branchId " +
+           "AND t.branch.company.id = :companyId " +
            "AND (:from IS NULL OR t.transactionDate >= :from) " +
            "AND (:to IS NULL OR t.transactionDate <= :to) " +
            "ORDER BY t.transactionDate DESC")
     Page<WuTransaction> findByBranchAndDateRange(
             @Param("branchId") UUID branchId,
+            @Param("companyId") UUID companyId,
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to,
             Pageable pageable);
 
     @Query("SELECT t FROM WuTransaction t WHERE t.branch.id = :branchId " +
+           "AND t.branch.company.id = :companyId " +
            "AND t.transactionDate >= :from AND t.transactionDate <= :to")
     List<WuTransaction> findAllByBranchAndDateRange(
             @Param("branchId") UUID branchId,
+            @Param("companyId") UUID companyId,
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to);
 }

@@ -219,6 +219,10 @@ public class LedDisplayService {
             Map<String, BigDecimal[]> rates = getRatesForBranch(branchId, config.getCurrencyArray());
             byte[][] packets = encoder.encodeMultiDisplay(config, rates);
             String[] ports = config.getComPortArray();
+            if (ports == null || ports.length == 0) {
+                log.warn("LED konfiguráció portok üresek: branchId={}", branchId);
+                return;
+            }
 
             boolean allOk = true;
             for (int i = 0; i < ports.length && i < packets.length; i++) {
@@ -412,7 +416,7 @@ public class LedDisplayService {
     private void verifyBranchOwnership(UUID branchId) {
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
-        if (!branch.getCompany().getId().equals(SecurityUtils.getCurrentCompanyId())) {
+        if (branch.getCompany() == null || !branch.getCompany().getId().equals(SecurityUtils.getCurrentCompanyId())) {
             throw new ResourceNotFoundException("Iroda nem található: " + branchId);
         }
     }

@@ -25,6 +25,9 @@ public interface WuBalanceRepository extends JpaRepository<WuBalance, UUID> {
     @Query("SELECT wb FROM WuBalance wb WHERE wb.branch.id IN :branchIds")
     List<WuBalance> findByBranchIds(@Param("branchIds") List<UUID> branchIds);
 
+    @Query("SELECT wb FROM WuBalance wb WHERE wb.branch.id IN :branchIds AND wb.branch.company.id = :companyId")
+    List<WuBalance> findByBranchIdsAndCompanyId(@Param("branchIds") List<UUID> branchIds, @Param("companyId") UUID companyId);
+
     /**
      * Pesszimista írási zárolással tölti be az egyenleget — konkurens pénztáros műveletek ellen.
      * Multi-tenant: branchId egyedi constraint branch_id + company_id, de a branch->company reláció

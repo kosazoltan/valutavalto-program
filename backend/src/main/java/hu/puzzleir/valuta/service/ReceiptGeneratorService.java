@@ -44,7 +44,9 @@ public class ReceiptGeneratorService {
      * az egyediséget újraindítás után is: System.currentTimeMillis() % 10000 az alap,
      * az AtomicLong pedig a tranzakción belüli szekvenciát tartja.
      */
-    private static final AtomicLong SEQUENCE = new AtomicLong(System.currentTimeMillis() % 10000);
+    private static final AtomicLong SEQUENCE = new AtomicLong(
+        (System.currentTimeMillis() / 1000) % 100000  // 5 digits, changes every second — minimizes restart collision
+    );
 
     /**
      * Eladási bizonylat generálása (ügyfélnek eladunk valutát)
@@ -362,7 +364,7 @@ public class ReceiptGeneratorService {
     private String generateReceiptNumber(String prefix) {
         String datePart = LocalDate.now().format(RECEIPT_DATE_FORMAT);
         long seq = SEQUENCE.getAndIncrement();
-        return String.format("%s-%s-%04d", prefix, datePart, seq);
+        return String.format("%s-%s-%05d", prefix, datePart, seq);
     }
 
     /**

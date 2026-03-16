@@ -71,7 +71,7 @@ public class StockSnapshotService {
                 .collect(Collectors.groupingBy(CurrencyStock::getEntityId));
 
         Map<UUID, WuBalance> wuByBranch = wuBalanceRepository
-                .findByBranchIds(branchUuids).stream()
+                .findByBranchIdsAndCompanyId(branchUuids, companyId).stream()
                 .collect(Collectors.toMap(wb -> wb.getBranch().getId(), wb -> wb));
 
         // Build per-branch snapshots grouped by region

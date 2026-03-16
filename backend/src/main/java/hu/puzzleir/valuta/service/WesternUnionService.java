@@ -386,7 +386,7 @@ public class WesternUnionService {
         verifyBranchOwnership(branchId);
         LocalDateTime fromDt = from != null ? from.atStartOfDay() : null;
         LocalDateTime toDt = to != null ? to.atTime(LocalTime.MAX) : null;
-        return wuTransactionRepository.findByBranchAndDateRange(branchId, fromDt, toDt, pageable);
+        return wuTransactionRepository.findByBranchAndDateRange(branchId, SecurityUtils.getCurrentCompanyId(), fromDt, toDt, pageable);
     }
 
     // ============ NAPI RIPORT ============
@@ -400,7 +400,7 @@ public class WesternUnionService {
         verifyBranchOwnership(branchId);
         LocalDateTime from = date.atStartOfDay();
         LocalDateTime to = date.atTime(LocalTime.MAX);
-        List<WuTransaction> transactions = wuTransactionRepository.findAllByBranchAndDateRange(branchId, from, to);
+        List<WuTransaction> transactions = wuTransactionRepository.findAllByBranchAndDateRange(branchId, SecurityUtils.getCurrentCompanyId(), from, to);
 
         int sendCount = 0;
         int receiveCount = 0;
@@ -526,16 +526,29 @@ public class WesternUnionService {
     private void updateBalance(Branch branch, BigDecimal amountUsd, BigDecimal amountHuf, boolean isSend) {
         WuBalance balance = getOrCreateBalance(branch);
 
+        BigDecimal newUsd = balance.getUsdBalance();
+        BigDecimal newHuf = balance.getHufBalance();
+
         if (isSend) {
             // Küldés: USD csökken (kifolyik), HUF nő (ügyfél befizeti HUF-ban)
-            if (amountUsd != null) balance.setUsdBalance(balance.getUsdBalance().subtract(amountUsd));
-            if (amountHuf != null) balance.setHufBalance(balance.getHufBalance().add(amountHuf));
+            if (amountUsd != null) newUsd = newUsd.subtract(amountUsd);
+            if (amountHuf != null) newHuf = newHuf.add(amountHuf);
         } else {
             // Fogadás: USD nő (befolyik), HUF csökken (ügyfélnek kifizetjük HUF-ban)
-            if (amountUsd != null) balance.setUsdBalance(balance.getUsdBalance().add(amountUsd));
-            if (amountHuf != null) balance.setHufBalance(balance.getHufBalance().subtract(amountHuf));
+            if (amountUsd != null) newUsd = newUsd.add(amountUsd);
+            if (amountHuf != null) newHuf = newHuf.subtract(amountHuf);
         }
 
+        // Negatív egyenleg megelőzése
+        if (newUsd.compareTo(BigDecimal.ZERO) < 0 || newHuf.compareTo(BigDecimal.ZERO) < 0) {
+            throw new ValidationException(String.format(
+                    "Nincs elegendő WU egyenleg: USD=%s, HUF=%s (művelet után USD=%s, HUF=%s lenne)",
+                    balance.getUsdBalance().toPlainString(), balance.getHufBalance().toPlainString(),
+                    newUsd.toPlainString(), newHuf.toPlainString()));
+        }
+
+        balance.setUsdBalance(newUsd);
+        balance.setHufBalance(newHuf);
         balance.setUpdatedAt(LocalDateTime.now());
         wuBalanceRepository.save(balance);
     }
@@ -547,12 +560,21 @@ public class WesternUnionService {
         if (amountUsd == null) return;
         WuBalance balance = getOrCreateBalance(branch);
 
+        BigDecimal newUsd;
         if (isIncrease) {
-            balance.setUsdBalance(balance.getUsdBalance().add(amountUsd));
+            newUsd = balance.getUsdBalance().add(amountUsd);
         } else {
-            balance.setUsdBalance(balance.getUsdBalance().subtract(amountUsd));
+            newUsd = balance.getUsdBalance().subtract(amountUsd);
         }
 
+        // Negatív egyenleg megelőzése
+        if (newUsd.compareTo(BigDecimal.ZERO) < 0) {
+            throw new ValidationException(String.format(
+                    "Nincs elegendő WU egyenleg: USD=%s (művelet után USD=%s lenne)",
+                    balance.getUsdBalance().toPlainString(), newUsd.toPlainString()));
+        }
+
+        balance.setUsdBalance(newUsd);
         balance.setUpdatedAt(LocalDateTime.now());
         wuBalanceRepository.save(balance);
     }

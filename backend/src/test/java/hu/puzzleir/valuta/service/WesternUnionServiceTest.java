@@ -73,8 +73,8 @@ class WesternUnionServiceTest {
                 .thenReturn(Optional.of(WuBalance.builder()
                         .branch(branch)
                         .company(company)
-                        .usdBalance(BigDecimal.ZERO)
-                        .hufBalance(BigDecimal.ZERO)
+                        .usdBalance(new BigDecimal("10000"))
+                        .hufBalance(new BigDecimal("5000000"))
                         .build()));
         WuTransaction saved = WuTransaction.builder()
                 .id(UUID.randomUUID())
@@ -151,7 +151,7 @@ class WesternUnionServiceTest {
         when(wuBalanceRepository.findByBranchIdForUpdate(branchId))
                 .thenReturn(Optional.of(WuBalance.builder()
                         .branch(branch).company(company)
-                        .usdBalance(BigDecimal.ZERO).hufBalance(BigDecimal.ZERO).build()));
+                        .usdBalance(new BigDecimal("10000")).hufBalance(new BigDecimal("5000000")).build()));
         when(wuTransactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         WuTransactionDto dto = WuTransactionDto.builder()
@@ -182,10 +182,11 @@ class WesternUnionServiceTest {
                 .build();
 
         when(wuTransactionRepository.findById(originalId)).thenReturn(Optional.of(original));
+        // A SEND sztornó visszafordítja: USD nő, HUF csökken — elegendő HUF egyenleg kell
         when(wuBalanceRepository.findByBranchIdForUpdate(branchId))
                 .thenReturn(Optional.of(WuBalance.builder()
                         .branch(branch).company(company)
-                        .usdBalance(BigDecimal.ZERO).hufBalance(BigDecimal.ZERO).build()));
+                        .usdBalance(new BigDecimal("10000")).hufBalance(new BigDecimal("5000000")).build()));
         when(wuTransactionRepository.save(any())).thenAnswer(inv -> {
             WuTransaction t = inv.getArgument(0);
             if (t.getId() == null) t = WuTransaction.builder()
