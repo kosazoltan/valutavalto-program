@@ -72,4 +72,20 @@ public interface CashBalanceRepository extends JpaRepository<CashBalance, Long> 
     @Query("SELECT COALESCE(SUM(cb.currentBalance), 0) FROM CashBalance cb " +
            "WHERE cb.branch.id = :branchId AND cb.currency.code = 'HUF'")
     java.math.BigDecimal sumCurrentBalanceHuf(@Param("branchId") UUID branchId);
+
+    /**
+     * Egyenleg keresése fiók és valuta kód szerint (egyeztetéshez).
+     */
+    @Query("SELECT cb FROM CashBalance cb " +
+           "WHERE cb.branch.id = :branchId AND cb.currency.code = :currencyCode")
+    Optional<CashBalance> findByBranchIdAndCurrencyCode(
+        @Param("branchId") UUID branchId,
+        @Param("currencyCode") String currencyCode);
+
+    /**
+     * Összes egyenleg egy fiókhoz a napi egyeztetéshez (currency code-dal).
+     */
+    @Query("SELECT cb FROM CashBalance cb " +
+           "WHERE cb.branch.id = :branchId")
+    List<CashBalance> findAllByBranchId(@Param("branchId") UUID branchId);
 }

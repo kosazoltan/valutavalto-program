@@ -35,4 +35,16 @@ public interface MonthlyClosingSummaryRepository extends JpaRepository<MonthlyCl
      * Létezik-e már a havi zárás.
      */
     boolean existsByBranchIdAndYearMonth(UUID branchId, String yearMonth);
+
+    /**
+     * Adott branch + év + hónap lezárt összesítője (nyitó egyenleg fallback).
+     *
+     * A yearMonth mező "YYYY-MM" formátumú, pl. "2026-02".
+     */
+    @Query("SELECT m FROM MonthlyClosingSummary m " +
+           "WHERE m.branch.id = :branchId " +
+           "AND m.yearMonth = :yearMonth")
+    Optional<MonthlyClosingSummary> findClosingByBranchAndYearMonth(
+        @Param("branchId") UUID branchId,
+        @Param("yearMonth") String yearMonth);
 }

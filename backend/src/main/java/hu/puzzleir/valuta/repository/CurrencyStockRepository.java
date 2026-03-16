@@ -31,4 +31,17 @@ public interface CurrencyStockRepository extends JpaRepository<CurrencyStock, Lo
     List<CurrencyStock> findByEntityTypeAndEntityId(String entityType, String entityId);
 
     List<CurrencyStock> findByCompanyIdAndEntityType(UUID companyId, String entityType);
+
+    /**
+     * Iroda (CASHIER típusú entitás) készlete valutanem szerint (nyitó egyenleg fallback).
+     *
+     * Az entityId a branch UUID string-je.
+     */
+    @Query("SELECT cs FROM CurrencyStock cs " +
+           "WHERE cs.entityType = 'CASHIER' " +
+           "AND cs.entityId = :branchId " +
+           "AND cs.currencyCode = :currencyCode")
+    Optional<CurrencyStock> findByBranchIdAndCurrencyCode(
+        @Param("branchId") String branchId,
+        @Param("currencyCode") String currencyCode);
 }
