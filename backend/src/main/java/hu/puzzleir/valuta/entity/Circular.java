@@ -6,6 +6,9 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * Körlevél entity (központi utasítás a pénztáraknak).
@@ -145,4 +148,48 @@ public class Circular {
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    // === V88: Legacy paritás mezők ===
+
+    /**
+     * Company szűrés (multi-tenant)
+     */
+    @Column(name = "company_id")
+    private UUID companyId;
+
+    /**
+     * Archivált-e
+     * Legacy: LASTYEAR/ARCHIVE mappák
+     */
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean archived = false;
+
+    @Column(name = "archived_at")
+    private LocalDateTime archivedAt;
+
+    @Column(name = "archive_year")
+    private Integer archiveYear;
+
+    /**
+     * Kategória: GENERAL, VIP, ZALOG
+     * Legacy: almappák a KORLEVEL mappán belül
+     */
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private String category = "GENERAL";
+
+    /**
+     * Csatolmány mérete (byte)
+     */
+    @Column(name = "attachment_size")
+    private Long attachmentSize;
+
+    /**
+     * Per-worker nyugtázások
+     * Legacy: AT.xxx fájlok
+     */
+    @OneToMany(mappedBy = "circular", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<CircularAcknowledgment> acknowledgments = new ArrayList<>();
 }

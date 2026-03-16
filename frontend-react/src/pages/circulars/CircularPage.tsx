@@ -80,10 +80,17 @@ export default function CircularPage() {
 
   const loadUnacknowledged = useCallback(async () => {
     try {
-      const response = await api.get('/circulars/unacknowledged');
+      // Per-worker: saját nem nyugtázott körlevelek (legacy paritás)
+      const response = await api.get('/circulars/my-unacknowledged');
       setUnacknowledged(response?.data || []);
     } catch {
-      setUnacknowledged([]);
+      // Fallback: régi endpoint
+      try {
+        const response = await api.get('/circulars/unacknowledged');
+        setUnacknowledged(response?.data || []);
+      } catch {
+        setUnacknowledged([]);
+      }
     }
   }, []);
 
@@ -116,11 +123,19 @@ export default function CircularPage() {
 
   const handleAcknowledge = useCallback(async (id: number) => {
     try {
-      await api.post(`/circulars/${id}/acknowledge`);
+      // Per-worker nyugtázás (legacy AT.xxx fájl megfelelő)
+      await api.post(`/circulars/${id}/acknowledge-worker`);
       void loadCirculars();
       void loadUnacknowledged();
     } catch {
-      // Intentional noop: page reload keeps UX consistent.
+      // Fallback: régi acknowledge endpoint
+      try {
+        await api.post(`/circulars/${id}/acknowledge`);
+        void loadCirculars();
+        void loadUnacknowledged();
+      } catch {
+        // Intentional noop
+      }
     }
   }, [loadCirculars, loadUnacknowledged]);
 

@@ -13,7 +13,7 @@ public class CircularDto {
     private Boolean acknowledged;
     private String acknowledgedAt;
     private String createdAt;
-    // Sprint 3 — típus rendszer
+    // Típus rendszer
     private String circularType;
     private String circularTypeDescription;
     private String target;
@@ -22,4 +22,10 @@ public class CircularDto {
     private String attachmentFilename;
     private String validFrom;
     private String validTo;
+    // V88: Legacy paritás
+    private String category;
+    private Boolean archived;
+    private Integer archiveYear;
+    private Long attachmentSize;
+    private Long acknowledgmentCount;
 }
