@@ -6,6 +6,7 @@ package hu.puzzleir.valuta.entity;
 public enum MnbReportStatus {
     DRAFT("Vázlat"),
     SUBMITTED("Beküldve"),
+    ACKNOWLEDGED("Nyugtázva"),
     ACCEPTED("Elfogadva"),
     REJECTED("Elutasítva");
 

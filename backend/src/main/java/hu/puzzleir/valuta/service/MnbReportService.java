@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
@@ -38,10 +39,13 @@ import java.util.stream.Collectors;
 @Slf4j
 public class MnbReportService {
 
+    static final int MAX_RETRY_COUNT = 3;
+
     private final MnbReportRepository mnbReportRepository;
     private final TransactionRepository transactionRepository;
     private final BranchRepository branchRepository;
     private final OwnCompanyService ownCompanyService;
+    private final MnbApiClient mnbApiClient;
 
     /**
      * Napi MNB riport generálása egy irodához.
@@ -197,7 +201,8 @@ public class MnbReportService {
 
     /**
      * Riport beküldése az MNB-nek.
-     * Placeholder — a valós MNB API integráció későbbi fejlesztés.
+     *
+     * Státuszfolyamat: DRAFT → SUBMITTED → ACKNOWLEDGED (siker) | REJECTED (hiba)
      */
     public MnbSubmissionResult submitReport(UUID reportId) {
         MnbReport report = mnbReportRepository.findById(reportId)
@@ -207,17 +212,169 @@ public class MnbReportService {
             throw new ValidationException("Csak DRAFT státuszú riport küldhető be! Jelenlegi: " + report.getStatus());
         }
 
-        log.info("MNB riport beküldés (placeholder): reportId={}", reportId);
+        log.info("MNB riport beküldés: reportId={}, type={}", reportId, report.getReportType());
 
-        // Placeholder: szimulált sikeres beküldés
+        // Átmenet SUBMITTED-re
         report.setStatus(MnbReportStatus.SUBMITTED);
         report.setSubmittedAt(LocalDateTime.now());
         mnbReportRepository.save(report);
 
-        return MnbSubmissionResult.builder()
-            .success(true)
-            .referenceNumber("MNB-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+        // Valós HTTP beküldés
+        MnbSubmissionResult result = mnbApiClient.submitXml(
+            report.getXmlContent(), report.getReportType().name());
+
+        if (result.isSuccess()) {
+            report.setStatus(MnbReportStatus.ACKNOWLEDGED);
+            report.setAcknowledgedAt(LocalDateTime.now());
+            report.setMnbReferenceNumber(result.getReferenceNumber());
+            report.setSubmissionError(null);
+            log.info("MNB riport beküldés sikeres: reportId={}, ref={}", reportId, result.getReferenceNumber());
+        } else {
+            report.setStatus(MnbReportStatus.REJECTED);
+            report.setRejectedAt(LocalDateTime.now());
+            report.setSubmissionError(result.getErrorMessage());
+            report.setRejectionReasonDetail(result.getErrorMessage());
+            log.warn("MNB riport beküldés sikertelen: reportId={}, hiba={}", reportId, result.getErrorMessage());
+        }
+
+        mnbReportRepository.save(report);
+        return result;
+    }
+
+    /**
+     * Sikertelen riport újraküldése (max {@value MAX_RETRY_COUNT} kísérlet).
+     *
+     * Csak REJECTED státuszú riport kísérelhető újra.
+     * Exponenciális várakozás validáció: minden kísérlet között legalább
+     * 2^(retryCount-1) perc kell (1 / 2 / 4 perc).
+     */
+    public MnbSubmissionResult retrySubmission(UUID reportId) {
+        MnbReport report = mnbReportRepository.findById(reportId)
+            .orElseThrow(() -> new ResourceNotFoundException("MNB riport nem található: " + reportId));
+
+        if (report.getStatus() != MnbReportStatus.REJECTED) {
+            throw new ValidationException("Csak REJECTED státuszú riport küldhető újra! Jelenlegi: " + report.getStatus());
+        }
+
+        int currentRetry = report.getRetryCount() == null ? 0 : report.getRetryCount();
+        if (currentRetry >= MAX_RETRY_COUNT) {
+            throw new ValidationException(
+                "Maximális újraküldési kísérletek száma elérve (" + MAX_RETRY_COUNT + "): reportId=" + reportId);
+        }
+
+        // Exponenciális várakozás validáció
+        if (report.getLastRetryAt() != null) {
+            long requiredMinutes = (long) Math.pow(2, currentRetry - 1);
+            LocalDateTime earliest = report.getLastRetryAt().plusMinutes(requiredMinutes);
+            if (LocalDateTime.now().isBefore(earliest)) {
+                throw new ValidationException(
+                    "Korai újraküldési kísérlet! Legkorábban: " + earliest + " (exponenciális backoff)");
+            }
+        }
+
+        log.info("MNB riport újraküldés: reportId={}, kísérlet={}/{}", reportId, currentRetry + 1, MAX_RETRY_COUNT);
+
+        report.setRetryCount(currentRetry + 1);
+        report.setLastRetryAt(LocalDateTime.now());
+        report.setStatus(MnbReportStatus.SUBMITTED);
+        mnbReportRepository.save(report);
+
+        MnbSubmissionResult result = mnbApiClient.submitXml(
+            report.getXmlContent(), report.getReportType().name());
+
+        if (result.isSuccess()) {
+            report.setStatus(MnbReportStatus.ACKNOWLEDGED);
+            report.setAcknowledgedAt(LocalDateTime.now());
+            report.setMnbReferenceNumber(result.getReferenceNumber());
+            report.setSubmissionError(null);
+            log.info("MNB újraküldés sikeres: reportId={}, ref={}", reportId, result.getReferenceNumber());
+        } else {
+            report.setStatus(MnbReportStatus.REJECTED);
+            report.setRejectedAt(LocalDateTime.now());
+            report.setSubmissionError(result.getErrorMessage());
+            report.setRejectionReasonDetail(result.getErrorMessage());
+            log.warn("MNB újraküldés sikertelen: reportId={}, hiba={}", reportId, result.getErrorMessage());
+        }
+
+        mnbReportRepository.save(report);
+        return result;
+    }
+
+    /**
+     * Heti MNB riport generálása (ISO hét: hétfő–vasárnap).
+     *
+     * @param branchId  iroda azonosítója
+     * @param weekStart hét első napja (hétfő)
+     */
+    public MnbReport generateWeeklyReport(UUID branchId, LocalDate weekStart) {
+        // Normalizálás: ha nem hétfő, kerekítjük a hét elejére
+        LocalDate monday = weekStart.with(DayOfWeek.MONDAY);
+        LocalDate sunday = monday.plusDays(6);
+
+        log.info("MNB heti riport generálás: branchId={}, hét={} – {}", branchId, monday, sunday);
+
+        Branch branch = branchRepository.findById(branchId)
+            .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
+
+        // Ellenőrzés: létezik-e már erre a hétre riport
+        Optional<MnbReport> existing = mnbReportRepository
+            .findByReportTypeAndReportDateAndBranchId(MnbReportType.WEEKLY, sunday, branchId);
+        if (existing.isPresent()) {
+            throw new ValidationException("Már létezik MNB heti riport erre a hétre: " + monday + " – " + sunday);
+        }
+
+        List<Transaction> transactions = transactionRepository
+            .findActiveByBranchAndDateRange(branchId, monday, sunday);
+
+        MnbReport report = MnbReport.builder()
+            .reportType(MnbReportType.WEEKLY)
+            .reportDate(sunday)
+            .branch(branch)
+            .status(MnbReportStatus.DRAFT)
             .build();
+
+        Map<String, CurrencyAggregation> aggregations = aggregateTransactions(transactions);
+
+        BigDecimal totalBuyHuf = BigDecimal.ZERO;
+        BigDecimal totalSellHuf = BigDecimal.ZERO;
+        int totalTxCount = 0;
+
+        for (Map.Entry<String, CurrencyAggregation> entry : aggregations.entrySet()) {
+            CurrencyAggregation agg = entry.getValue();
+
+            MnbReportLine line = MnbReportLine.builder()
+                .currencyCode(entry.getKey())
+                .buyAmount(agg.buyAmount)
+                .sellAmount(agg.sellAmount)
+                .buyRate(agg.getBuyCount() > 0
+                    ? agg.buyRateSum.divide(BigDecimal.valueOf(agg.getBuyCount()), 4, RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO)
+                .sellRate(agg.getSellCount() > 0
+                    ? agg.sellRateSum.divide(BigDecimal.valueOf(agg.getSellCount()), 4, RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO)
+                .transactionCount(agg.totalCount)
+                .build();
+
+            report.addLine(line);
+
+            totalBuyHuf = totalBuyHuf.add(agg.buyHufTotal);
+            totalSellHuf = totalSellHuf.add(agg.sellHufTotal);
+            totalTxCount += agg.totalCount;
+        }
+
+        report.setTotalBuyHuf(totalBuyHuf);
+        report.setTotalSellHuf(totalSellHuf);
+        report.setTotalTransactions(totalTxCount);
+
+        String xml = generateMnbXml(report, branch);
+        report.setXmlContent(xml);
+
+        MnbReport saved = mnbReportRepository.save(report);
+
+        log.info("MNB heti riport létrehozva: id={}, hét={}-{}, tranzakciók={}",
+            saved.getId(), monday, sunday, totalTxCount);
+
+        return saved;
     }
 
     /**
@@ -274,13 +431,15 @@ public class MnbReportService {
     }
 
     /**
-     * MNB-kompatibilis XML generálása.
+     * MNB XSD-kompatibilis XML generálása.
      *
-     * Legacy: MNB gyűjtő DLL XML formátum.
+     * Namespace: http://www.mnb.hu/penzvaltok/2010
+     * Magyar elemnevek: Jelentes, Devizanem, Vetel, Eladas, Osszeg, Arfolyam
+     *
+     * Legacy: MNB gyűjtő DLL XML formátum (mnbgyujto/unit2.pas) alapján.
      */
     private String generateMnbXml(MnbReport report, Branch branch) {
-        // Saját cég adatainak lekérése (adószám, stb.)
-        String taxId = "00000000-0-00"; // default placeholder
+        String taxId = "00000000-0-00";
         try {
             List<OwnCompany> companies = ownCompanyService.listActive();
             if (!companies.isEmpty()) {
@@ -293,37 +452,42 @@ public class MnbReportService {
 
         StringBuilder xml = new StringBuilder();
         xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-        xml.append("<MNBReport>\n");
+        xml.append("<Jelentes xmlns=\"http://www.mnb.hu/penzvaltok/2010\"");
+        xml.append(" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n");
 
-        // Header
-        xml.append("  <Header>\n");
-        xml.append("    <ReportType>").append(report.getReportType().name()).append("</ReportType>\n");
-        xml.append("    <ReportDate>").append(report.getReportDate()).append("</ReportDate>\n");
-        xml.append("    <CompanyTaxId>").append(escapeXml(taxId)).append("</CompanyTaxId>\n");
-        xml.append("    <BranchCode>").append(escapeXml(branch.getCode())).append("</BranchCode>\n");
-        xml.append("  </Header>\n");
+        // Fejléc
+        xml.append("  <Fejlec>\n");
+        xml.append("    <RiportTipus>").append(report.getReportType().name()).append("</RiportTipus>\n");
+        xml.append("    <RiportDatum>").append(report.getReportDate()).append("</RiportDatum>\n");
+        xml.append("    <AdoSzam>").append(escapeXml(taxId)).append("</AdoSzam>\n");
+        xml.append("    <IrodaKod>").append(escapeXml(branch.getCode())).append("</IrodaKod>\n");
+        xml.append("  </Fejlec>\n");
 
-        // Transactions
-        xml.append("  <Transactions>\n");
+        // Forgalom — valutánként
+        xml.append("  <Forgalom>\n");
         for (MnbReportLine line : report.getLines()) {
-            xml.append("    <Currency code=\"").append(escapeXml(line.getCurrencyCode())).append("\">\n");
-            xml.append("      <BuyAmount>").append(line.getBuyAmount().setScale(2, RoundingMode.HALF_UP)).append("</BuyAmount>\n");
-            xml.append("      <SellAmount>").append(line.getSellAmount().setScale(2, RoundingMode.HALF_UP)).append("</SellAmount>\n");
-            xml.append("      <AvgBuyRate>").append(line.getBuyRate().setScale(2, RoundingMode.HALF_UP)).append("</AvgBuyRate>\n");
-            xml.append("      <AvgSellRate>").append(line.getSellRate().setScale(2, RoundingMode.HALF_UP)).append("</AvgSellRate>\n");
-            xml.append("      <TransactionCount>").append(line.getTransactionCount()).append("</TransactionCount>\n");
-            xml.append("    </Currency>\n");
+            xml.append("    <Devizanem kod=\"").append(escapeXml(line.getCurrencyCode())).append("\">\n");
+            xml.append("      <Vetel>\n");
+            xml.append("        <Osszeg>").append(line.getBuyAmount().setScale(2, RoundingMode.HALF_UP)).append("</Osszeg>\n");
+            xml.append("        <Arfolyam>").append(line.getBuyRate().setScale(4, RoundingMode.HALF_UP)).append("</Arfolyam>\n");
+            xml.append("      </Vetel>\n");
+            xml.append("      <Eladas>\n");
+            xml.append("        <Osszeg>").append(line.getSellAmount().setScale(2, RoundingMode.HALF_UP)).append("</Osszeg>\n");
+            xml.append("        <Arfolyam>").append(line.getSellRate().setScale(4, RoundingMode.HALF_UP)).append("</Arfolyam>\n");
+            xml.append("      </Eladas>\n");
+            xml.append("      <TranzakcioSzam>").append(line.getTransactionCount()).append("</TranzakcioSzam>\n");
+            xml.append("    </Devizanem>\n");
         }
-        xml.append("  </Transactions>\n");
+        xml.append("  </Forgalom>\n");
 
-        // Summary
-        xml.append("  <Summary>\n");
-        xml.append("    <TotalBuyHuf>").append(report.getTotalBuyHuf().setScale(0, RoundingMode.HALF_UP)).append("</TotalBuyHuf>\n");
-        xml.append("    <TotalSellHuf>").append(report.getTotalSellHuf().setScale(0, RoundingMode.HALF_UP)).append("</TotalSellHuf>\n");
-        xml.append("    <TotalTransactions>").append(report.getTotalTransactions()).append("</TotalTransactions>\n");
-        xml.append("  </Summary>\n");
+        // Összesítő
+        xml.append("  <Osszesito>\n");
+        xml.append("    <OsszesBvetelHuf>").append(report.getTotalBuyHuf().setScale(0, RoundingMode.HALF_UP)).append("</OsszesBvetelHuf>\n");
+        xml.append("    <OsszesBEladasHuf>").append(report.getTotalSellHuf().setScale(0, RoundingMode.HALF_UP)).append("</OsszesBEladasHuf>\n");
+        xml.append("    <OsszesTranzakcio>").append(report.getTotalTransactions()).append("</OsszesTranzakcio>\n");
+        xml.append("  </Osszesito>\n");
 
-        xml.append("</MNBReport>");
+        xml.append("</Jelentes>");
 
         return xml.toString();
     }
@@ -467,33 +631,38 @@ public class MnbReportService {
 
         StringBuilder xml = new StringBuilder();
         xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-        xml.append("<MNBReport>\n");
-        xml.append("  <Header>\n");
-        xml.append("    <ReportType>DAILY</ReportType>\n");
-        xml.append("    <ReportDate>").append(date).append("</ReportDate>\n");
-        xml.append("    <CompanyTaxId>").append(escapeXml(taxId)).append("</CompanyTaxId>\n");
-        xml.append("  </Header>\n");
-        xml.append("  <Transactions>\n");
+        xml.append("<Jelentes xmlns=\"http://www.mnb.hu/penzvaltok/2010\"");
+        xml.append(" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n");
+        xml.append("  <Fejlec>\n");
+        xml.append("    <RiportTipus>DAILY</RiportTipus>\n");
+        xml.append("    <RiportDatum>").append(date).append("</RiportDatum>\n");
+        xml.append("    <AdoSzam>").append(escapeXml(taxId)).append("</AdoSzam>\n");
+        xml.append("  </Fejlec>\n");
+        xml.append("  <Forgalom>\n");
 
         for (hu.puzzleir.valuta.dto.mnb.MnbCurrencyLineDto line : report.getCurrencyLines()) {
-            xml.append("    <Currency code=\"").append(escapeXml(line.getCurrencyCode())).append("\">\n");
-            xml.append("      <BuyAmount>").append(line.getBuyAmount().setScale(2, RoundingMode.HALF_UP)).append("</BuyAmount>\n");
-            xml.append("      <SellAmount>").append(line.getSellAmount().setScale(2, RoundingMode.HALF_UP)).append("</SellAmount>\n");
-            xml.append("      <BuyHuf>").append(line.getBuyHuf().setScale(0, RoundingMode.HALF_UP)).append("</BuyHuf>\n");
-            xml.append("      <SellHuf>").append(line.getSellHuf().setScale(0, RoundingMode.HALF_UP)).append("</SellHuf>\n");
-            xml.append("      <AvgBuyRate>").append(line.getAvgBuyRate().setScale(2, RoundingMode.HALF_UP)).append("</AvgBuyRate>\n");
-            xml.append("      <AvgSellRate>").append(line.getAvgSellRate().setScale(2, RoundingMode.HALF_UP)).append("</AvgSellRate>\n");
-            xml.append("      <TransactionCount>").append(line.getTransactionCount()).append("</TransactionCount>\n");
-            xml.append("    </Currency>\n");
+            xml.append("    <Devizanem kod=\"").append(escapeXml(line.getCurrencyCode())).append("\">\n");
+            xml.append("      <Vetel>\n");
+            xml.append("        <Osszeg>").append(line.getBuyAmount().setScale(2, RoundingMode.HALF_UP)).append("</Osszeg>\n");
+            xml.append("        <HufOsszeg>").append(line.getBuyHuf().setScale(0, RoundingMode.HALF_UP)).append("</HufOsszeg>\n");
+            xml.append("        <Arfolyam>").append(line.getAvgBuyRate().setScale(4, RoundingMode.HALF_UP)).append("</Arfolyam>\n");
+            xml.append("      </Vetel>\n");
+            xml.append("      <Eladas>\n");
+            xml.append("        <Osszeg>").append(line.getSellAmount().setScale(2, RoundingMode.HALF_UP)).append("</Osszeg>\n");
+            xml.append("        <HufOsszeg>").append(line.getSellHuf().setScale(0, RoundingMode.HALF_UP)).append("</HufOsszeg>\n");
+            xml.append("        <Arfolyam>").append(line.getAvgSellRate().setScale(4, RoundingMode.HALF_UP)).append("</Arfolyam>\n");
+            xml.append("      </Eladas>\n");
+            xml.append("      <TranzakcioSzam>").append(line.getTransactionCount()).append("</TranzakcioSzam>\n");
+            xml.append("    </Devizanem>\n");
         }
 
-        xml.append("  </Transactions>\n");
-        xml.append("  <Summary>\n");
-        xml.append("    <TotalBuyHuf>").append(report.getTotalBuyHuf().setScale(0, RoundingMode.HALF_UP)).append("</TotalBuyHuf>\n");
-        xml.append("    <TotalSellHuf>").append(report.getTotalSellHuf().setScale(0, RoundingMode.HALF_UP)).append("</TotalSellHuf>\n");
-        xml.append("    <TotalTransactions>").append(report.getTotalTransactions()).append("</TotalTransactions>\n");
-        xml.append("  </Summary>\n");
-        xml.append("</MNBReport>");
+        xml.append("  </Forgalom>\n");
+        xml.append("  <Osszesito>\n");
+        xml.append("    <OsszesBvetelHuf>").append(report.getTotalBuyHuf().setScale(0, RoundingMode.HALF_UP)).append("</OsszesBvetelHuf>\n");
+        xml.append("    <OsszesBEladasHuf>").append(report.getTotalSellHuf().setScale(0, RoundingMode.HALF_UP)).append("</OsszesBEladasHuf>\n");
+        xml.append("    <OsszesTranzakcio>").append(report.getTotalTransactions()).append("</OsszesTranzakcio>\n");
+        xml.append("  </Osszesito>\n");
+        xml.append("</Jelentes>");
 
         return xml.toString();
     }

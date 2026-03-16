@@ -106,6 +106,49 @@ public class MnbReport {
     private String rejectionReason;
 
     /**
+     * MNB által visszaadott hivatkozási szám
+     */
+    @Column(name = "mnb_reference_number", length = 100)
+    private String mnbReferenceNumber;
+
+    /**
+     * Utolsó beküldési hiba szövege
+     */
+    @Column(name = "submission_error", columnDefinition = "TEXT")
+    private String submissionError;
+
+    /**
+     * Újraküldési kísérletek száma
+     */
+    @Column(name = "retry_count", nullable = false)
+    @Builder.Default
+    private Integer retryCount = 0;
+
+    /**
+     * Utolsó újraküldési kísérlet időpontja
+     */
+    @Column(name = "last_retry_at")
+    private LocalDateTime lastRetryAt;
+
+    /**
+     * MNB nyugtázás időpontja
+     */
+    @Column(name = "acknowledged_at")
+    private LocalDateTime acknowledgedAt;
+
+    /**
+     * MNB elutasítás időpontja
+     */
+    @Column(name = "rejected_at")
+    private LocalDateTime rejectedAt;
+
+    /**
+     * MNB elutasítási indoklás (részletes)
+     */
+    @Column(name = "rejection_reason_detail", columnDefinition = "TEXT")
+    private String rejectionReasonDetail;
+
+    /**
      * Generált XML tartalom
      */
     @Column(name = "xml_content", columnDefinition = "TEXT")
