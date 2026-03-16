@@ -3,12 +3,15 @@ package hu.puzzleir.valuta.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.entity.ArchivedMonthlyTransaction;
 import hu.puzzleir.valuta.entity.CurrencyStock;
 import hu.puzzleir.valuta.entity.MnbExchangeRateCache;
 import hu.puzzleir.valuta.entity.MonthlyClosingSummary;
 import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.entity.Worker;
+import hu.puzzleir.valuta.repository.ArchivedMonthlyTransactionRepository;
 import hu.puzzleir.valuta.repository.CurrencyStockRepository;
+import hu.puzzleir.valuta.repository.DailySessionRepository;
 import hu.puzzleir.valuta.repository.MonthlyClosingSummaryRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
@@ -36,7 +39,7 @@ import java.util.*;
  * — Havi tábla neve: prefix + ÉÉVHH (pl. BF2603)
  *
  * Modern: MonthlyClosingSummary entity-be összesít, JSON currency
- * breakdown-nal.
+ * breakdown-nal + archivált tranzakciók táblája.
  */
 @Service
 @RequiredArgsConstructor
@@ -50,6 +53,8 @@ public class MonthlyClosingService {
     private final ObjectMapper objectMapper;
     private final MnbExchangeRateService mnbExchangeRateService;
     private final CurrencyStockRepository currencyStockRepository;
+    private final DailySessionRepository dailySessionRepository;
+    private final ArchivedMonthlyTransactionRepository archivedMonthlyTransactionRepository;
 
     /**
      * Havi zárás végrehajtása.
@@ -76,15 +81,25 @@ public class MonthlyClosingService {
             throw new ValidationException("A(z) " + yearMonth + " hónap már le van zárva ennél az irodánál!");
         }
 
+        LocalDate monthStart = ym.atDay(1);
+        LocalDate monthEnd = ym.atEndOfMonth();
+
+        // 3. Nyitott napi sessionök ellenőrzése — BLOCK guard
+        // Legacy: NAPZAR.DLL — havi zárás előtt minden napi zárásnak meg kell történnie
+        long openSessions = dailySessionRepository.countOpenSessionsInRange(branchId, monthStart, monthEnd);
+        if (openSessions > 0) {
+            throw new ValidationException(
+                "Havi zárás nem végezhető el: " + openSessions +
+                " nyitott napi session van a(z) " + yearMonth + " hónapban! " +
+                "Először zárd le az összes napi munkamenetet.");
+        }
+
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ValidationException("Iroda nem található: " + branchId));
 
         Long currentWorkerId = SecurityUtils.getCurrentWorkerId();
         Worker worker = workerRepository.findById(currentWorkerId)
                 .orElseThrow(() -> new ValidationException("Dolgozó nem található: " + currentWorkerId));
-
-        LocalDate monthStart = ym.atDay(1);
-        LocalDate monthEnd = ym.atEndOfMonth();
 
         // Összesítő adatok
         BigDecimal totalBuyHuf = transactionRepository.sumMonthlyBuyHuf(branchId, monthStart, monthEnd);
@@ -105,8 +120,10 @@ public class MonthlyClosingService {
             stockMap.put(cs.getCurrencyCode(), cs);
         }
 
-        // Valutánkénti bontás (forgalom + MNB készletértékelés)
-        String currencyBreakdown = buildCurrencyBreakdown(branchId, monthStart, monthEnd, mnbRates, stockMap);
+        // Valutánkénti bontás (forgalom + MNB készletértékelés + realizált eredmény)
+        List<Transaction> monthTransactions = transactionRepository.findByBranchAndMonth(
+                branchId, monthStart, monthEnd);
+        String currencyBreakdown = buildCurrencyBreakdown(monthTransactions, mnbRates, stockMap);
 
         MonthlyClosingSummary summary = MonthlyClosingSummary.builder()
                 .branch(branch)
@@ -123,6 +140,9 @@ public class MonthlyClosingService {
         MonthlyClosingSummary saved = monthlyClosingSummaryRepository.save(summary);
         log.info("Havi zárás elvégezve: branch={}, yearMonth={}, tranzakciók={}, vétel={}, eladás={}, MNB dátum={}",
                 branchId, yearMonth, transactionCount, totalBuyHuf, totalSellHuf, lastBusinessDay);
+
+        // Tranzakciók archiválása (legacy: CopyTables)
+        archiveTransactions(saved, monthTransactions, yearMonth);
 
         return saved;
     }
@@ -172,34 +192,161 @@ public class MonthlyClosingService {
     }
 
     /**
-     * Hónap utolsó munkanapjának meghatározása.
-     * Ha a hónap utolsó napja hétvégére esik, visszalép az utolsó péntekre.
+     * Hónap utolsó munkanapjának meghatározása — magyar ünnepnapok figyelembevételével.
+     *
+     * Legacy: HAVIZAR.DLL — holiday-aware last-business-day számítás.
+     *
+     * Fix ünnepnapok: jan.1, márc.15, máj.1, aug.20, okt.23, nov.1, dec.25, dec.26
+     * Változó ünnepnapok: Húsvét hétfő (Meeus algoritmus alapján)
      */
-    private LocalDate getLastBusinessDay(LocalDate monthEnd) {
+    LocalDate getLastBusinessDay(LocalDate monthEnd) {
         LocalDate d = monthEnd;
-        while (d.getDayOfWeek() == DayOfWeek.SATURDAY || d.getDayOfWeek() == DayOfWeek.SUNDAY) {
+        while (d.getDayOfWeek() == DayOfWeek.SATURDAY
+                || d.getDayOfWeek() == DayOfWeek.SUNDAY
+                || isHungarianHoliday(d)) {
             d = d.minusDays(1);
         }
         return d;
     }
 
     /**
-     * Valutánkénti bontás JSON-ként — forgalom + MNB készletértékelés.
+     * Magyar munkaszüneti nap-e az adott dátum?
+     *
+     * Fix ünnepnapok:
+     *   jan.1  — Újév
+     *   márc.15 — Nemzeti ünnep
+     *   máj.1  — A munka ünnepe
+     *   aug.20 — Államalapítás ünnepe (Szent István)
+     *   okt.23 — Nemzeti ünnep
+     *   nov.1  — Mindenszentek
+     *   dec.25 — Karácsony
+     *   dec.26 — Karácsony 2. napja
+     *
+     * Változó ünnepnapok (Húsvét hétfő):
+     *   Húsvét hétfő = Húsvét vasárnap + 1 nap
+     *   Húsvét vasárnap: Meeus/Jones/Butcher algoritmus
+     *   Nagypéntek: Húsvét vasárnap - 2 nap (Magyarországon 2017-től munkaszüneti nap)
+     */
+    boolean isHungarianHoliday(LocalDate date) {
+        int month = date.getMonthValue();
+        int day = date.getDayOfMonth();
+
+        // Fix ünnepnapok
+        if (month == 1  && day == 1)  return true;  // Újév
+        if (month == 3  && day == 15) return true;  // Nemzeti ünnep
+        if (month == 5  && day == 1)  return true;  // A munka ünnepe
+        if (month == 8  && day == 20) return true;  // Államalapítás
+        if (month == 10 && day == 23) return true;  // Nemzeti ünnep
+        if (month == 11 && day == 1)  return true;  // Mindenszentek
+        if (month == 12 && day == 25) return true;  // Karácsony
+        if (month == 12 && day == 26) return true;  // Karácsony 2.
+
+        // Húsvét-alapú ünnepnapok (Meeus/Jones/Butcher algoritmus)
+        LocalDate easter = calculateEaster(date.getYear());
+        LocalDate goodFriday = easter.minusDays(2);   // Nagypéntek (2017-től)
+        LocalDate easterMonday = easter.plusDays(1);  // Húsvét hétfő
+
+        if (date.equals(goodFriday) && date.getYear() >= 2017) return true;
+        if (date.equals(easterMonday)) return true;
+
+        return false;
+    }
+
+    /**
+     * Húsvét vasárnap kiszámítása — Meeus/Jones/Butcher algoritmus.
+     *
+     * Referencia: Jean Meeus, "Astronomical Algorithms", 1991.
+     * Pontosság: 1900–2099 közötti évekre érvényes.
+     *
+     * 2025 → április 20.
+     * 2026 → április 5.
+     */
+    LocalDate calculateEaster(int year) {
+        int a = year % 19;
+        int b = year / 100;
+        int c = year % 100;
+        int d = b / 4;
+        int e = b % 4;
+        int f = (b + 8) / 25;
+        int g = (b - f + 1) / 3;
+        int h = (19 * a + b - d - g + 15) % 30;
+        int i = c / 4;
+        int k = c % 4;
+        int l = (32 + 2 * e + 2 * i - h - k) % 7;
+        int m = (a + 11 * h + 22 * l) / 451;
+        int month = (h + l - 7 * m + 114) / 31;
+        int day = ((h + l - 7 * m + 114) % 31) + 1;
+        return LocalDate.of(year, month, day);
+    }
+
+    /**
+     * Tranzakciók archiválása havi záráskor.
+     *
+     * Legacy: NAPZAR.DLL CopyTables() — a napi TRAD+MMDD táblák tartalmát
+     * havi gyűjtő táblákba (BF2603 stb.) másolta mezőnév+típus alapján.
+     *
+     * Modern: ArchivedMonthlyTransaction entity-kbe másol batch-ben.
+     */
+    private void archiveTransactions(MonthlyClosingSummary saved,
+                                      List<Transaction> transactions,
+                                      String yearMonth) {
+        if (transactions.isEmpty()) {
+            log.info("Nincs archiválandó tranzakció: branch={}, yearMonth={}", saved.getBranch().getId(), yearMonth);
+            return;
+        }
+
+        List<ArchivedMonthlyTransaction> archives = new ArrayList<>(transactions.size());
+        LocalDateTime now = LocalDateTime.now();
+
+        for (Transaction t : transactions) {
+            String currencyCode = t.getCurrency() != null ? t.getCurrency().getCode() : "UNKNOWN";
+            Long workerId = t.getWorker() != null ? t.getWorker().getId() : null;
+
+            ArchivedMonthlyTransaction archive = ArchivedMonthlyTransaction.builder()
+                    .monthlyClosingId(saved.getId())
+                    .branchId(saved.getBranch().getId())
+                    .companyId(t.getCompany() != null ? t.getCompany().getId() : null)
+                    .originalTxId(t.getId())
+                    .transactionDate(t.getTransactionDate())
+                    .transactionType(t.getTransactionType() != null ? t.getTransactionType().name() : "UNKNOWN")
+                    .currencyCode(currencyCode)
+                    .currencyAmount(t.getCurrencyAmount())
+                    .hufAmount(t.getHufAmount())
+                    .exchangeRate(t.getExchangeRate())
+                    .handlingFee(t.getHandlingFee())
+                    .customerId(t.getCustomerId())
+                    .workerId(workerId)
+                    .archivedAt(now)
+                    .yearMonth(yearMonth)
+                    .build();
+
+            archives.add(archive);
+        }
+
+        archivedMonthlyTransactionRepository.saveAll(archives);
+        log.info("Tranzakciók archiválva: branch={}, yearMonth={}, db={}",
+                saved.getBranch().getId(), yearMonth, archives.size());
+    }
+
+    /**
+     * Valutánkénti bontás JSON-ként — forgalom + MNB készletértékelés + realizált eredmény.
      *
      * Az MNB árfolyammal felértékelt készlet és a WAC-értékelt készlet
-     * különbségéből
-     * számítjuk a nem realizált hasznot (unrealizedPnl).
+     * különbségéből számítjuk a nem realizált hasznot (unrealizedPnl).
      *
-     * Képlet:
-     * stockValueMnb = stockQuantity × mnbOfficialRate (1 egységre vetítve)
-     * stockValueWac = stockQuantity × weightedAvgCost
-     * unrealizedPnl = stockValueMnb − stockValueWac
+     * Realizált eredmény (realizedPnl):
+     *   BUY esetén: hufAmount − (currencyAmount × WAC)  → ha olcsóbban vettük mint WAC
+     *   SELL esetén: hufAmount − (currencyAmount × WAC) → ha drágábban adtuk el mint WAC
+     *   Képlet: realizedPnl = Σ(eladási HUF − eladott mennyiség × WAC)
+     *
+     * Képlet (unrealizedPnl):
+     *   stockValueMnb = stockQuantity × mnbOfficialRate
+     *   stockValueWac = stockQuantity × weightedAvgCost
+     *   unrealizedPnl = stockValueMnb − stockValueWac
      */
-    private String buildCurrencyBreakdown(UUID branchId, LocalDate monthStart, LocalDate monthEnd,
+    private String buildCurrencyBreakdown(List<Transaction> transactions,
             Map<String, MnbExchangeRateCache> mnbRates,
             Map<String, CurrencyStock> stockMap) {
-        List<Transaction> transactions = transactionRepository.findByBranchAndMonth(
-                branchId, monthStart, monthEnd);
 
         Map<String, CurrencyBreakdownEntry> breakdownMap = new LinkedHashMap<>();
 
@@ -224,8 +371,7 @@ public class MonthlyClosingService {
         }
 
         // MNB készletértékelés hozzáadása
-        // Azokat a valutákat is felvesszük, amelyekből van készlet, de nem volt
-        // tranzakció
+        // Azokat a valutákat is felvesszük, amelyekből van készlet, de nem volt tranzakció
         for (Map.Entry<String, CurrencyStock> stockEntry : stockMap.entrySet()) {
             String currCode = stockEntry.getKey();
             if ("HUF".equals(currCode))
@@ -233,7 +379,7 @@ public class MonthlyClosingService {
             breakdownMap.computeIfAbsent(currCode, k -> new CurrencyBreakdownEntry(k));
         }
 
-        // Készlet + MNB értékelés feltöltése
+        // Készlet + MNB értékelés + realizált PnL feltöltése
         for (CurrencyBreakdownEntry entry : breakdownMap.values()) {
             String currCode = entry.currencyCode;
             if ("HUF".equals(currCode) || "UNKNOWN".equals(currCode))
@@ -265,6 +411,19 @@ public class MonthlyClosingService {
                             .subtract(entry.stockValueWac)
                             .setScale(2, RoundingMode.HALF_UP);
                 }
+
+                // Realizált PnL számítása WAC alapján
+                // SELL: kapott HUF − (eladott mennyiség × WAC) → pozitív ha jól adtuk el
+                if (entry.sellAmount.compareTo(BigDecimal.ZERO) > 0
+                        && entry.weightedAvgCost != null
+                        && entry.weightedAvgCost.compareTo(BigDecimal.ZERO) > 0) {
+                    BigDecimal sellCostAtWac = entry.sellAmount
+                            .multiply(entry.weightedAvgCost)
+                            .setScale(2, RoundingMode.HALF_UP);
+                    entry.realizedPnl = entry.sellHuf
+                            .subtract(sellCostAtWac)
+                            .setScale(2, RoundingMode.HALF_UP);
+                }
             }
         }
 
@@ -279,7 +438,8 @@ public class MonthlyClosingService {
     /**
      * Belső segéd-osztály a valutánkénti bontáshoz.
      *
-     * Tartalmazza a forgalmi adatokat ÉS az MNB készletértékelést.
+     * Tartalmazza a forgalmi adatokat, az MNB készletértékelést
+     * és a realizált/nem realizált eredményt.
      */
     private static class CurrencyBreakdownEntry {
         // --- Forgalmi adatok ---
@@ -293,72 +453,33 @@ public class MonthlyClosingService {
         BigDecimal handlingFee = BigDecimal.ZERO;
 
         // --- MNB készletértékelés ---
-        BigDecimal mnbOfficialRate; // MNB hivatalos középárfolyam (1 egységre)
-        BigDecimal stockQuantity; // Aktuális készlet mennyiség
-        BigDecimal weightedAvgCost; // WAC (súlyozott átlagár)
-        BigDecimal stockValueMnb; // Készlet × MNB árfolyam (HUF)
-        BigDecimal stockValueWac; // Készlet × WAC (HUF)
-        BigDecimal unrealizedPnl; // Nem realizált eredmény = MNB − WAC
+        BigDecimal mnbOfficialRate;    // MNB hivatalos középárfolyam (1 egységre)
+        BigDecimal stockQuantity;      // Aktuális készlet mennyiség
+        BigDecimal weightedAvgCost;    // WAC (súlyozott átlagár)
+        BigDecimal stockValueMnb;      // Készlet × MNB árfolyam (HUF)
+        BigDecimal stockValueWac;      // Készlet × WAC (HUF)
+        BigDecimal unrealizedPnl;      // Nem realizált eredmény = MNB − WAC
+        BigDecimal realizedPnl;        // Realizált eredmény = eladási HUF − (eladott qty × WAC)
 
         CurrencyBreakdownEntry(String currencyCode) {
             this.currencyCode = currencyCode;
         }
 
         // Jackson szerializáláshoz kell getter
-        public String getCurrencyCode() {
-            return currencyCode;
-        }
-
-        public int getBuyCount() {
-            return buyCount;
-        }
-
-        public BigDecimal getBuyAmount() {
-            return buyAmount;
-        }
-
-        public BigDecimal getBuyHuf() {
-            return buyHuf;
-        }
-
-        public int getSellCount() {
-            return sellCount;
-        }
-
-        public BigDecimal getSellAmount() {
-            return sellAmount;
-        }
-
-        public BigDecimal getSellHuf() {
-            return sellHuf;
-        }
-
-        public BigDecimal getHandlingFee() {
-            return handlingFee;
-        }
-
-        public BigDecimal getMnbOfficialRate() {
-            return mnbOfficialRate;
-        }
-
-        public BigDecimal getStockQuantity() {
-            return stockQuantity;
-        }
-
-        public BigDecimal getWeightedAvgCost() {
-            return weightedAvgCost;
-        }
-
-        public BigDecimal getStockValueMnb() {
-            return stockValueMnb;
-        }
-
-        public BigDecimal getStockValueWac() {
-            return stockValueWac;
-        }
-
-        public BigDecimal getUnrealizedPnl() {
-            return unrealizedPnl;
-        }
+        public String getCurrencyCode() { return currencyCode; }
+        public int getBuyCount() { return buyCount; }
+        public BigDecimal getBuyAmount() { return buyAmount; }
+        public BigDecimal getBuyHuf() { return buyHuf; }
+        public int getSellCount() { return sellCount; }
+        public BigDecimal getSellAmount() { return sellAmount; }
+        public BigDecimal getSellHuf() { return sellHuf; }
+        public BigDecimal getHandlingFee() { return handlingFee; }
+        public BigDecimal getMnbOfficialRate() { return mnbOfficialRate; }
+        public BigDecimal getStockQuantity() { return stockQuantity; }
+        public BigDecimal getWeightedAvgCost() { return weightedAvgCost; }
+        public BigDecimal getStockValueMnb() { return stockValueMnb; }
+        public BigDecimal getStockValueWac() { return stockValueWac; }
+        public BigDecimal getUnrealizedPnl() { return unrealizedPnl; }
+        public BigDecimal getRealizedPnl() { return realizedPnl; }
     }
 }

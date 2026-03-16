@@ -61,6 +61,33 @@ public interface DailySessionRepository extends JpaRepository<DailySession, Long
     List<DailySession> findOpenSessionsByCompany(@Param("companyId") UUID companyId);
 
     /**
+     * Branch sessionök dátumtartományban.
+     */
+    @Query("SELECT ds FROM DailySession ds " +
+           "WHERE ds.branch.id = :branchId " +
+           "AND ds.sessionDate BETWEEN :startDate AND :endDate " +
+           "ORDER BY ds.sessionDate ASC")
+    List<DailySession> findByBranchAndDateRange(
+        @Param("branchId") UUID branchId,
+        @Param("startDate") LocalDate startDate,
+        @Param("endDate") LocalDate endDate
+    );
+
+    /**
+     * Nyitott sessionök száma egy branch dátumtartományán belül.
+     * Havi zárás előtt 0-nak kell lennie!
+     */
+    @Query("SELECT COUNT(ds) FROM DailySession ds " +
+           "WHERE ds.branch.id = :branchId " +
+           "AND ds.sessionDate BETWEEN :startDate AND :endDate " +
+           "AND ds.status = 'OPEN'")
+    long countOpenSessionsInRange(
+        @Param("branchId") UUID branchId,
+        @Param("startDate") LocalDate startDate,
+        @Param("endDate") LocalDate endDate
+    );
+
+    /**
      * Van-e nyitott session
      */
     default boolean hasOpenSession(UUID branchId) {
