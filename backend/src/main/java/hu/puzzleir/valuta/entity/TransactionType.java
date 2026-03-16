@@ -13,11 +13,13 @@ package hu.puzzleir.valuta.entity;
  * - G = Gongytáska - pénztárak közötti transzfer
  * - T = Telefon töltés
  * - A = Autópálya matrica
+ * - PR = Részleges visszatérítés (OTP áruvisszavét részleges összegre)
  */
 public enum TransactionType {
     BUY("Vétel", "V"),           // Ügyfél valutát ad, HUF-ot kap
     SELL("Eladás", "E"),         // Ügyfél HUF-ot ad, valutát kap
     REVERSAL("Sztornó", "S"),    // Korábbi tranzakció sztornózása
+    PARTIAL_REFUND("Részleges visszatérítés", "PR"), // OTP áruvisszavét részleges összegre
     CONVERSION("Konverzió", "K"), // Valuta-valuta csere
     TRANSFER_OUT("Átutalás", "GO"), // Pénztárból ki
     TRANSFER_IN("Átvétel", "GI"),   // Pénztárba be
@@ -76,5 +78,13 @@ public enum TransactionType {
      */
     public boolean affectsCashRegister() {
         return this != VIGNETTE && this != PHONE_TOPUP;
+    }
+
+    /**
+     * Visszavonás/visszatérítés típusú tranzakció?
+     * (Sztornó vagy részleges visszatérítés)
+     */
+    public boolean isReversalType() {
+        return this == REVERSAL || this == PARTIAL_REFUND;
     }
 }

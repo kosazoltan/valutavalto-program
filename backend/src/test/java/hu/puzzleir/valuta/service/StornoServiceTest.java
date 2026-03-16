@@ -1,0 +1,229 @@
+package hu.puzzleir.valuta.service;
+
+import hu.puzzleir.valuta.entity.*;
+import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.repository.*;
+import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.*;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+/**
+ * StornoService.executeOtpRefund() unit tesztek.
+ *
+ * P3-15: Részleges visszatérítés — a refundAmount paraméter alapján
+ * teljes sztornó (executeReversal) vagy részleges visszatérítés (executePartialRefund) fut le.
+ */
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
+class StornoServiceTest {
+
+    @InjectMocks
+    private StornoService stornoService;
+
+    @Mock private TransactionRepository transactionRepository;
+    @Mock private StornoApprovalRepository stornoApprovalRepository;
+    @Mock private WorkerRepository workerRepository;
+    @Mock private BranchRepository branchRepository;
+    @Mock private TransactionService transactionService;
+    @Mock private DictionaryRepository dictionaryRepository;
+
+    private static final UUID BRANCH_ID = UUID.randomUUID();
+    private static final UUID COMPANY_ID = UUID.randomUUID();
+    private static final Long WORKER_ID = 1L;
+    private static final Long TRANSACTION_ID = 100L;
+
+    private Transaction originalCardTransaction;
+
+    @BeforeEach
+    void setUp() {
+        // SecurityContext beállítása
+        WorkerAuthenticationDetails details =
+                new WorkerAuthenticationDetails(WORKER_ID, COMPANY_ID, BRANCH_ID, "CASHIER");
+        TestingAuthenticationToken auth =
+                new TestingAuthenticationToken("test", "pass", "ROLE_CASHIER");
+        auth.setDetails(details);
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        // Alap bankkártyás tranzakció (BUY, 100 000 Ft)
+        Branch branch = new Branch();
+        branch.setId(BRANCH_ID);
+
+        Currency eur = new Currency();
+        eur.setId(2L);
+        eur.setCode("EUR");
+
+        originalCardTransaction = Transaction.builder()
+                .id(TRANSACTION_ID)
+                .branch(branch)
+                .transactionType(TransactionType.BUY)
+                .status(TransactionStatus.COMPLETED)
+                .paymentMethod(PaymentMethod.CARD)
+                .hufAmount(new BigDecimal("100000"))
+                .currencyAmount(new BigDecimal("250.00"))
+                .exchangeRate(new BigDecimal("400.00"))
+                .currency(eur)
+                .receiptNumber("V0316-00001")
+                .transactionDate(LocalDate.now())
+                .transactionTime(LocalTime.now())
+                .posAuthorizationCode("AUTH123")
+                .posReferenceNumber("REF123")
+                .posTerminalId("TERM001")
+                .build();
+
+        when(transactionRepository.findById(TRANSACTION_ID))
+                .thenReturn(Optional.of(originalCardTransaction));
+    }
+
+    // ─── 1. 50% visszatérítés → executePartialRefund hívódik, NEM executeReversal ───
+
+    @Test
+    @DisplayName("50% részleges visszatérítés esetén executePartialRefund hívódik, nem executeReversal")
+    void halfRefund_callsExecutePartialRefund_notExecuteReversal() {
+        BigDecimal refundAmount = new BigDecimal("50000"); // 50% of 100 000
+
+        Transaction fakePartial = Transaction.builder()
+                .id(200L)
+                .transactionType(TransactionType.PARTIAL_REFUND)
+                .receiptNumber("PR0316-00001")
+                .build();
+        when(transactionService.executePartialRefund(any())).thenReturn(fakePartial);
+        when(transactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Transaction result = stornoService.executeOtpRefund(TRANSACTION_ID, WORKER_ID, refundAmount, "teszt");
+
+        verify(transactionService, times(1)).executePartialRefund(argThat(req ->
+                req.getOriginalTransactionId().equals(TRANSACTION_ID)
+                && req.getRefundHufAmount().compareTo(refundAmount) == 0));
+        verify(transactionService, never()).executeReversal(any());
+        assertThat(result.getTransactionType()).isEqualTo(TransactionType.PARTIAL_REFUND);
+    }
+
+    // ─── 2. Összeg > original → ValidationException ───
+
+    @Test
+    @DisplayName("Visszatérítési összeg meghaladja az eredetit → ValidationException")
+    void refundAmountExceedsOriginal_throwsValidationException() {
+        BigDecimal tooMuch = new BigDecimal("150000");
+
+        assertThatThrownBy(() ->
+                stornoService.executeOtpRefund(TRANSACTION_ID, WORKER_ID, tooMuch, "teszt"))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("nem haladhatja meg");
+
+        verify(transactionService, never()).executePartialRefund(any());
+        verify(transactionService, never()).executeReversal(any());
+    }
+
+    // ─── 3. null összeg → teljes sztornó (backward compat) ───
+
+    @Test
+    @DisplayName("null refundAmount esetén teljes sztornó fut (executeReversal)")
+    void nullRefundAmount_callsFullReversal() {
+        Transaction fakeReversal = Transaction.builder()
+                .id(201L)
+                .transactionType(TransactionType.REVERSAL)
+                .receiptNumber("S0316-00001")
+                .build();
+        when(transactionService.executeReversal(any())).thenReturn(fakeReversal);
+        when(transactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Transaction result = stornoService.executeOtpRefund(TRANSACTION_ID, WORKER_ID, null, "teszt");
+
+        verify(transactionService, times(1)).executeReversal(any());
+        verify(transactionService, never()).executePartialRefund(any());
+        assertThat(result.getTransactionType()).isEqualTo(TransactionType.REVERSAL);
+    }
+
+    // ─── 4. Teljes összeg → teljes sztornó ───
+
+    @Test
+    @DisplayName("refundAmount == originalHufAmount esetén teljes sztornó fut (executeReversal)")
+    void fullAmountRefund_callsFullReversal() {
+        BigDecimal fullAmount = new BigDecimal("100000");
+
+        Transaction fakeReversal = Transaction.builder()
+                .id(202L)
+                .transactionType(TransactionType.REVERSAL)
+                .receiptNumber("S0316-00002")
+                .build();
+        when(transactionService.executeReversal(any())).thenReturn(fakeReversal);
+        when(transactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Transaction result = stornoService.executeOtpRefund(TRANSACTION_ID, WORKER_ID, fullAmount, "teszt");
+
+        verify(transactionService, times(1)).executeReversal(any());
+        verify(transactionService, never()).executePartialRefund(any());
+        assertThat(result.getTransactionType()).isEqualTo(TransactionType.REVERSAL);
+    }
+
+    // ─── 5. 0 összeg → ValidationException ───
+
+    @Test
+    @DisplayName("0 összeg esetén ValidationException dobódik")
+    void zeroRefundAmount_throwsValidationException() {
+        assertThatThrownBy(() ->
+                stornoService.executeOtpRefund(TRANSACTION_ID, WORKER_ID, BigDecimal.ZERO, "teszt"))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("pozitív");
+
+        verify(transactionService, never()).executePartialRefund(any());
+        verify(transactionService, never()).executeReversal(any());
+    }
+
+    // ─── 6. Nem kártyás fizetés → ValidationException ───
+
+    @Test
+    @DisplayName("Nem bankkártyás tranzakcióra OTP visszatérítés → ValidationException")
+    void cashTransaction_throwsValidationException() {
+        originalCardTransaction.setPaymentMethod(PaymentMethod.CASH);
+
+        assertThatThrownBy(() ->
+                stornoService.executeOtpRefund(TRANSACTION_ID, WORKER_ID,
+                        new BigDecimal("50000"), "teszt"))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("bankkártyás");
+
+        verify(transactionService, never()).executePartialRefund(any());
+        verify(transactionService, never()).executeReversal(any());
+    }
+
+    // ─── 7. PARTIAL_REFUND típus a visszatérített tranzakción ───
+
+    @Test
+    @DisplayName("Részleges visszatérítés eredménye PARTIAL_REFUND típusú tranzakció")
+    void partialRefund_resultHasPartialRefundType() {
+        BigDecimal refundAmount = new BigDecimal("30000");
+
+        Transaction partialResult = Transaction.builder()
+                .id(203L)
+                .transactionType(TransactionType.PARTIAL_REFUND)
+                .partialRefundAmount(refundAmount)
+                .receiptNumber("PR0316-00002")
+                .build();
+        when(transactionService.executePartialRefund(any())).thenReturn(partialResult);
+        when(transactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Transaction result = stornoService.executeOtpRefund(TRANSACTION_ID, WORKER_ID, refundAmount, "visszatérítés");
+
+        assertThat(result.getTransactionType()).isEqualTo(TransactionType.PARTIAL_REFUND);
+        assertThat(result.getPartialRefundAmount()).isEqualByComparingTo(refundAmount);
+    }
+}

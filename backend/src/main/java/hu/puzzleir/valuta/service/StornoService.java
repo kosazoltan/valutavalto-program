@@ -319,8 +319,11 @@ public class StornoService {
      * Legacy: VTEMP.OTPFUNCTYPE=4 → OtpAruvisszavet
      *
      * Különbség a normál OTP sztornóhoz:
-     * - Nem az eredeti tranzakció teljes visszafordítása, hanem részleges visszatérítés
-     * - Összeg lehet eltérő az eredetitől
+     * - Ha refundAmount == null VAGY refundAmount == originalHufAmount → teljes sztornó (backward compat)
+     * - Ha 0 < refundAmount < originalHufAmount → részleges visszatérítés (PARTIAL_REFUND)
+     *
+     * P3-15 fix: a régi implementáció mindig executeReversal()-t hívott, figyelmen kívül hagyva
+     * a refundAmount paramétert részleges esetben.
      */
     public Transaction executeOtpRefund(Long transactionId, Long workerId,
                                          BigDecimal refundAmount, String reason) {
@@ -336,31 +339,65 @@ public class StornoService {
             throw new ValidationException("OTP áruvisszavét csak bankkártyás tranzakcióra alkalmazható!");
         }
 
+        // 0 összeg nem megengedett
+        if (refundAmount != null && refundAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ValidationException("Visszatérítés összege pozitív kell legyen!");
+        }
+
         // Refund összeg nem haladhatja meg az eredetit
         if (refundAmount != null && refundAmount.compareTo(original.getHufAmount()) > 0) {
             throw new ValidationException(
                 String.format("Visszatérítés összege (%s Ft) nem haladhatja meg az eredeti összeget (%s Ft)!",
-                    refundAmount, original.getHufAmount()));
+                    refundAmount.toPlainString(), original.getHufAmount().toPlainString()));
         }
 
-        TransactionService.ReversalRequest reversalRequest = TransactionService.ReversalRequest.builder()
-                .originalTransactionId(transactionId)
-                .reason("OTP_ARUVISSZAVET: " + reason)
-                .approvedBy(String.valueOf(workerId))
-                .build();
+        boolean isPartial = refundAmount != null
+                && refundAmount.compareTo(original.getHufAmount()) < 0;
 
-        Transaction reversal = transactionService.executeReversal(reversalRequest);
+        if (isPartial) {
+            // Részleges visszatérítés: PARTIAL_REFUND tranzakció, kassza csak részleges korrekcióval,
+            // az eredeti tranzakció NEM kerül REVERSED státuszba
+            TransactionService.PartialRefundRequest partialRequest = TransactionService.PartialRefundRequest.builder()
+                    .originalTransactionId(transactionId)
+                    .refundHufAmount(refundAmount)
+                    .reason("OTP_ARUVISSZAVET_RESZLEGES: " + reason)
+                    .approvedBy(String.valueOf(workerId))
+                    .build();
 
-        reversal.setPosAuthorizationCode(original.getPosAuthorizationCode());
-        reversal.setPosReferenceNumber(original.getPosReferenceNumber());
-        reversal.setPosTerminalId(original.getPosTerminalId());
-        reversal.setPaymentMethod(hu.puzzleir.valuta.entity.PaymentMethod.CARD);
-        transactionRepository.save(reversal);
+            Transaction partialRefundTx = transactionService.executePartialRefund(partialRequest);
 
-        log.info("OTP áruvisszavét végrehajtva: eredeti={}, sztornó={}, összeg={}",
-                original.getReceiptNumber(), reversal.getReceiptNumber(), refundAmount);
+            partialRefundTx.setPosAuthorizationCode(original.getPosAuthorizationCode());
+            partialRefundTx.setPosReferenceNumber(original.getPosReferenceNumber());
+            partialRefundTx.setPosTerminalId(original.getPosTerminalId());
+            partialRefundTx.setPaymentMethod(hu.puzzleir.valuta.entity.PaymentMethod.CARD);
+            transactionRepository.save(partialRefundTx);
 
-        return reversal;
+            log.info("OTP részleges áruvisszavét végrehajtva: eredeti={}, visszatérítés={}, összeg={} Ft",
+                    original.getReceiptNumber(), partialRefundTx.getReceiptNumber(), refundAmount.toPlainString());
+
+            return partialRefundTx;
+        } else {
+            // Teljes sztornó (refundAmount == null VAGY refundAmount == originalHufAmount)
+            TransactionService.ReversalRequest reversalRequest = TransactionService.ReversalRequest.builder()
+                    .originalTransactionId(transactionId)
+                    .reason("OTP_ARUVISSZAVET: " + reason)
+                    .approvedBy(String.valueOf(workerId))
+                    .build();
+
+            Transaction reversal = transactionService.executeReversal(reversalRequest);
+
+            reversal.setPosAuthorizationCode(original.getPosAuthorizationCode());
+            reversal.setPosReferenceNumber(original.getPosReferenceNumber());
+            reversal.setPosTerminalId(original.getPosTerminalId());
+            reversal.setPaymentMethod(hu.puzzleir.valuta.entity.PaymentMethod.CARD);
+            transactionRepository.save(reversal);
+
+            log.info("OTP teljes áruvisszavét végrehajtva: eredeti={}, sztornó={}, összeg={}",
+                    original.getReceiptNumber(), reversal.getReceiptNumber(),
+                    refundAmount != null ? refundAmount.toPlainString() : "teljes");
+
+            return reversal;
+        }
     }
 
     /**

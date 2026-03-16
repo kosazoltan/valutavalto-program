@@ -192,14 +192,20 @@ public class Transaction {
     @Column(name = "customer_nationality", length = 3)
     private String customerNationality;
 
-    // ============ SZTORNÓ KAPCSOLAT ============
+    // ============ SZTORNÓ / VISSZATÉRÍTÉS KAPCSOLAT ============
 
     /**
-     * Eredeti tranzakció (ha ez sztornó)
+     * Eredeti tranzakció (ha ez sztornó vagy részleges visszatérítés)
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "original_transaction_id")
     private Transaction originalTransaction;
+
+    /**
+     * Részleges visszatérítés összege HUF-ban (csak PARTIAL_REFUND típusnál)
+     */
+    @Column(name = "partial_refund_amount", precision = 18, scale = 4)
+    private BigDecimal partialRefundAmount;
 
     /**
      * Sztornó oka
@@ -374,6 +380,13 @@ public class Transaction {
      */
     public boolean isReversal() {
         return transactionType == TransactionType.REVERSAL;
+    }
+
+    /**
+     * Ez részleges visszatérítés tranzakció?
+     */
+    public boolean isPartialRefund() {
+        return transactionType == TransactionType.PARTIAL_REFUND;
     }
 
     /**

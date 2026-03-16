@@ -507,6 +507,125 @@ public class TransactionService {
     }
 
     /**
+     * Részleges visszatérítés végrehajtása.
+     *
+     * Különbség a teljes sztornótól:
+     * - Csak részleges HUF/valuta egyenleg-korrekció történik
+     * - Az eredeti tranzakció NEM kerül REVERSED státuszba
+     * - Új PARTIAL_REFUND típusú tranzakció jön létre, linkkel az eredetire
+     *
+     * Legacy: OtpAruvisszavet részleges eset (VTEMP.OTPFUNCTYPE=4, refundAmount < originalAmount)
+     */
+    public Transaction executePartialRefund(PartialRefundRequest request) {
+        validateOpenSession();
+
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+
+        // Eredeti tranzakció lekérése
+        Transaction original = transactionRepository.findById(request.getOriginalTransactionId())
+                .orElseThrow(() -> new ResourceNotFoundException("Eredeti tranzakció nem található"));
+
+        // Validációk
+        if (original.isReversed()) {
+            throw new ValidationException("Ez a tranzakció már sztornózva lett — részleges visszatérítés nem lehetséges!");
+        }
+        if (original.isReversal() || original.isPartialRefund()) {
+            throw new ValidationException("Visszavonási tranzakció nem vonható vissza részlegesen!");
+        }
+        if (!original.getBranch().getId().equals(branchId)) {
+            throw new ValidationException("Csak saját iroda tranzakcióját lehet visszatéríteni!");
+        }
+
+        BigDecimal refundHuf = request.getRefundHufAmount();
+        if (refundHuf == null || refundHuf.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ValidationException("Visszatérítés összege pozitív kell legyen!");
+        }
+        if (refundHuf.compareTo(original.getHufAmount()) > 0) {
+            throw new ValidationException(
+                String.format("Visszatérítés összege (%s Ft) nem haladhatja meg az eredeti összeget (%s Ft)!",
+                    refundHuf.toPlainString(), original.getHufAmount().toPlainString()));
+        }
+
+        // Arányos valutaösszeg kiszámítása, ha nem adták meg
+        BigDecimal refundCurrency = request.getRefundCurrencyAmount();
+        if (refundCurrency == null || refundCurrency.compareTo(BigDecimal.ZERO) <= 0) {
+            if (original.getHufAmount().compareTo(BigDecimal.ZERO) > 0) {
+                // arány: refundCurrency = originalCurrency * (refundHuf / originalHuf)
+                refundCurrency = original.getCurrencyAmount()
+                        .multiply(refundHuf)
+                        .divide(original.getHufAmount(), 4, RoundingMode.HALF_UP);
+            } else {
+                refundCurrency = BigDecimal.ZERO;
+            }
+        }
+
+        // Entitások betöltése
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Company nem található"));
+        Branch branch = branchRepository.findById(branchId)
+                .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található"));
+        Worker worker = workerRepository.findById(workerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található"));
+
+        // Bizonylat szám generálása (az eredeti típus számlálójából)
+        String receiptNumber = receiptSequenceService.generateReversalReceiptNumber(
+                branchId, original.getTransactionType());
+
+        // Részleges visszatérítési tranzakció létrehozása
+        Transaction partialRefund = Transaction.builder()
+                .company(company)
+                .branch(branch)
+                .worker(worker)
+                .receiptNumber(receiptNumber)
+                .transactionType(TransactionType.PARTIAL_REFUND)
+                .status(TransactionStatus.COMPLETED)
+                .transactionDate(LocalDate.now())
+                .transactionTime(LocalTime.now())
+                .currency(original.getCurrency())
+                .currencyAmount(refundCurrency)
+                .exchangeRate(original.getExchangeRate())
+                .hufAmount(refundHuf)
+                .paymentMethod(original.getPaymentMethod())
+                .originalTransaction(original)
+                .partialRefundAmount(refundHuf)
+                .reversalReason(request.getReason())
+                .approvedBy(request.getApprovedBy())
+                .customerName(original.getCustomerName())
+                .customerDocumentNumber(original.getCustomerDocumentNumber())
+                .notes("Részleges visszatérítés: " + original.getReceiptNumber()
+                        + " - " + refundHuf.toPlainString() + " Ft - " + request.getReason())
+                .build();
+
+        Transaction saved = transactionRepository.save(partialRefund);
+
+        // Kassza korrekció: csak a visszatérített összeggel
+        Long currencyId = original.getCurrency().getId();
+        if (original.getTransactionType() == TransactionType.BUY) {
+            // Eredeti vétel részleges visszavonása: valuta -, HUF +
+            updateCashBalance(branchId, currencyId, refundCurrency.negate(), false);
+            updateCashBalance(branchId, getHufCurrencyId(), refundHuf, true);
+        } else if (original.getTransactionType() == TransactionType.SELL) {
+            // Eredeti eladás részleges visszavonása: valuta +, HUF -
+            updateCashBalance(branchId, currencyId, refundCurrency, true);
+            updateCashBalance(branchId, getHufCurrencyId(), refundHuf.negate(), false);
+        }
+
+        // Napi statisztika frissítése
+        dailySessionService.updateSessionStats(
+            TransactionType.PARTIAL_REFUND,
+            refundHuf,
+            BigDecimal.ZERO
+        );
+
+        log.info("Részleges visszatérítés: {} - eredeti: {} - összeg: {} Ft - ok: {}",
+                receiptNumber, original.getReceiptNumber(), refundHuf.toPlainString(), request.getReason());
+
+        return saved;
+    }
+
+    /**
      * Konverzió végrehajtása (valuta-valuta csere)
      *
      * Legacy: KONVERZIO funkció
@@ -985,6 +1104,20 @@ public class TransactionService {
     @lombok.AllArgsConstructor
     public static class ReversalRequest {
         private Long originalTransactionId;
+        private String reason;
+        private String approvedBy;
+    }
+
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class PartialRefundRequest {
+        private Long originalTransactionId;
+        /** Visszatérítendő HUF összeg */
+        private BigDecimal refundHufAmount;
+        /** Visszatérítendő valutaösszeg — ha null, arányosan számítjuk */
+        private BigDecimal refundCurrencyAmount;
         private String reason;
         private String approvedBy;
     }
