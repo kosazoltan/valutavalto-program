@@ -18,12 +18,17 @@ export const api = axios.create({
   },
 })
 
-// Request interceptor - add auth token
+// Request interceptor - add auth token + Idempotency-Key for write requests
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = useAuthStore.getState().token
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`
+    }
+    // Idempotency-Key header for write methods (required by backend IdempotencyFilter)
+    const method = (config.method ?? '').toUpperCase()
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && config.headers) {
+      config.headers['Idempotency-Key'] = crypto.randomUUID()
     }
     return config
   },
@@ -3056,4 +3061,221 @@ export const organizationalSystemParameterApi = {
   delete: async (id: string): Promise<void> => {
     await api.delete(`/organizational-system-parameters/${id}`)
   }
+}
+
+// ============================================================
+// Ertektar (Vault/Treasury) API — banki tranzakciók, áttételek, bizonylatok, korrekciók
+// ============================================================
+
+export interface BankTransaction {
+  id: number
+  transactionType: 'BUY' | 'SELL'
+  currencyCode: string
+  amount: number
+  exchangeRate: number
+  hufAmount: number
+  bankName?: string
+  bankReference?: string
+  status: string
+  note?: string
+  createdAt: string
+  completedAt?: string
+  vaultTerritoryId?: number
+  vaultTerritoryName?: string
+}
+
+export interface BankTransactionRequest {
+  transactionType: 'BUY' | 'SELL'
+  currencyCode: string
+  amount: number
+  exchangeRate: number
+  vaultTerritoryId?: number
+  bankName?: string
+  bankReference?: string
+  note?: string
+}
+
+export interface VaultTransferItem {
+  id: number
+  transferNumber: string
+  sourceVaultId?: number
+  sourceVaultName?: string
+  targetVaultId?: number
+  targetVaultName?: string
+  sourceBranchCode?: string
+  targetBranchCode?: string
+  currencyCode: string
+  amount: number
+  wacAtTransfer?: number
+  status: string
+  requiresSupervisor: boolean
+  note?: string
+  createdAt: string
+  completedAt?: string
+  receivedAt?: string
+}
+
+export interface VaultTransferRequest {
+  sourceVaultId?: number
+  targetVaultId?: number
+  sourceBranchCode?: string
+  targetBranchCode?: string
+  currencyCode: string
+  amount: number
+  note?: string
+}
+
+export interface MaterialReceiptItem {
+  id: number
+  receiptNumber: string
+  receiptType: 'B' | 'K'
+  vaultTerritoryId?: number
+  vaultTerritoryName?: string
+  branchCode?: string
+  counterpartName?: string
+  note?: string
+  status: string
+  createdAt: string
+  finalizedAt?: string
+  lines: MaterialReceiptLine[]
+}
+
+export interface MaterialReceiptLine {
+  currencyCode: string
+  amount: number
+  exchangeRate?: number
+  hufEquivalent?: number
+}
+
+export interface MaterialReceiptRequest {
+  receiptType: 'B' | 'K'
+  vaultTerritoryId?: number
+  branchCode?: string
+  counterpartName?: string
+  note?: string
+  lines: MaterialReceiptLine[]
+}
+
+export interface StockCorrectionItem {
+  id: number
+  entityType: string
+  entityId: string
+  currencyCode: string
+  oldQuantity: number
+  newQuantity: number
+  difference: number
+  reason: string
+  status: string
+  createdAt: string
+  approvedAt?: string
+}
+
+export interface StockCorrectionRequest {
+  entityType: string
+  entityId: string
+  currencyCode: string
+  newQuantity: number
+  reason: string
+}
+
+export const ertektarApi = {
+  // --- Bank transactions ---
+  getBankTransactions: async (): Promise<BankTransaction[]> => {
+    const response = await api.get<BankTransaction[]>('/ertektar/bank-transactions')
+    return response.data
+  },
+  getBankTransactionsByType: async (type: string): Promise<BankTransaction[]> => {
+    const response = await api.get<BankTransaction[]>('/ertektar/bank-transactions/by-type', { params: { type } })
+    return response.data
+  },
+  createBankTransaction: async (data: BankTransactionRequest): Promise<BankTransaction> => {
+    const response = await api.post<BankTransaction>('/ertektar/bank-transactions', data)
+    return response.data
+  },
+
+  // --- Vault transfers ---
+  getTransfers: async (): Promise<VaultTransferItem[]> => {
+    const response = await api.get<VaultTransferItem[]>('/ertektar/transfers')
+    return response.data
+  },
+  getPendingTransfers: async (): Promise<VaultTransferItem[]> => {
+    const response = await api.get<VaultTransferItem[]>('/ertektar/transfers/pending')
+    return response.data
+  },
+  createTransfer: async (data: VaultTransferRequest): Promise<VaultTransferItem> => {
+    const response = await api.post<VaultTransferItem>('/ertektar/transfers', data)
+    return response.data
+  },
+  supervisorApproveTransfer: async (id: number): Promise<VaultTransferItem> => {
+    const response = await api.post<VaultTransferItem>(`/ertektar/transfers/${id}/supervisor-approve`)
+    return response.data
+  },
+  completeTransfer: async (id: number): Promise<VaultTransferItem> => {
+    const response = await api.post<VaultTransferItem>(`/ertektar/transfers/${id}/complete`)
+    return response.data
+  },
+  rejectTransfer: async (id: number): Promise<VaultTransferItem> => {
+    const response = await api.post<VaultTransferItem>(`/ertektar/transfers/${id}/reject`)
+    return response.data
+  },
+
+  // --- Material receipts ---
+  getReceipts: async (): Promise<MaterialReceiptItem[]> => {
+    const response = await api.get<MaterialReceiptItem[]>('/ertektar/receipts')
+    return response.data
+  },
+  getReceiptsByType: async (type: string): Promise<MaterialReceiptItem[]> => {
+    const response = await api.get<MaterialReceiptItem[]>('/ertektar/receipts/by-type', { params: { type } })
+    return response.data
+  },
+  createReceipt: async (data: MaterialReceiptRequest): Promise<MaterialReceiptItem> => {
+    const response = await api.post<MaterialReceiptItem>('/ertektar/receipts', data)
+    return response.data
+  },
+  finalizeReceipt: async (id: number): Promise<MaterialReceiptItem> => {
+    const response = await api.post<MaterialReceiptItem>(`/ertektar/receipts/${id}/finalize`)
+    return response.data
+  },
+
+  // --- Stock corrections ---
+  getCorrections: async (): Promise<StockCorrectionItem[]> => {
+    const response = await api.get<StockCorrectionItem[]>('/ertektar/corrections')
+    return response.data
+  },
+  getPendingCorrections: async (): Promise<StockCorrectionItem[]> => {
+    const response = await api.get<StockCorrectionItem[]>('/ertektar/corrections/pending')
+    return response.data
+  },
+  createCorrection: async (data: StockCorrectionRequest): Promise<StockCorrectionItem> => {
+    const response = await api.post<StockCorrectionItem>('/ertektar/corrections', data)
+    return response.data
+  },
+  approveCorrection: async (id: number): Promise<StockCorrectionItem> => {
+    const response = await api.post<StockCorrectionItem>(`/ertektar/corrections/${id}/approve`)
+    return response.data
+  },
+  rejectCorrection: async (id: number): Promise<StockCorrectionItem> => {
+    const response = await api.post<StockCorrectionItem>(`/ertektar/corrections/${id}/reject`)
+    return response.data
+  },
+
+  // --- Collections (existing) ---
+  getCollections: async () => {
+    const response = await api.get('/ertektar/collections')
+    return response.data
+  },
+  createCollection: async (data: { sourceBranchCode: string; currencyCode: string; amount: number; note?: string }) => {
+    const response = await api.post('/ertektar/collections', data)
+    return response.data
+  },
+
+  // --- Distributions (existing) ---
+  getDistributions: async () => {
+    const response = await api.get('/ertektar/distribution')
+    return response.data
+  },
+  createDistribution: async (data: { items: Array<{ targetBranchCode: string; currencyCode: string; amount: number }>; note?: string }) => {
+    const response = await api.post('/ertektar/distribution', data)
+    return response.data
+  },
 }

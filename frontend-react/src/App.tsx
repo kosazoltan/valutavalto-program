@@ -79,6 +79,7 @@ import StockMatrix from './pages/treasury/StockMatrix'
 import MovementManager from './pages/treasury/MovementManager'
 import RatePanel from './pages/treasury/RatePanel'
 import ReportsCirculars from './pages/treasury/ReportsCirculars'
+import BankTransactions from './pages/treasury/BankTransactions'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
@@ -249,6 +250,7 @@ export default function App() {
             <Route index element={<TreasuryDashboard />} />
             <Route path="matrix" element={<StockMatrix />} />
             <Route path="movements" element={<MovementManager />} />
+            <Route path="bank" element={<BankTransactions />} />
             <Route path="rates" element={<RatePanel />} />
             <Route path="reports" element={<ReportsCirculars />} />
           </Route>
