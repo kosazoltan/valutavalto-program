@@ -66,6 +66,7 @@ public class LedDisplayService {
      */
     @Transactional
     public LedDisplayDto updateRateBoard(UUID branchId) {
+        verifyBranchOwnership(branchId);
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
 
@@ -90,6 +91,7 @@ public class LedDisplayService {
      */
     @Transactional
     public LedDisplayDto updateScrollingText(UUID branchId, String text) {
+        verifyBranchOwnership(branchId);
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
 
@@ -115,6 +117,7 @@ public class LedDisplayService {
      */
     @Transactional(readOnly = true)
     public List<LedDisplayDto> getStatus(UUID branchId) {
+        verifyBranchOwnership(branchId);
         return ledDisplayRepository.findByBranchId(branchId)
                 .stream()
                 .map(this::toDto)
@@ -128,6 +131,7 @@ public class LedDisplayService {
      */
     @Transactional(readOnly = true)
     public LedDisplayConfigDto getDisplayConfig(UUID branchId) {
+        verifyBranchOwnership(branchId);
         LedDisplayConfig config = ledDisplayConfigRepository.findByBranchId(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "LED kijelző konfiguráció nem található: branchId=" + branchId));
@@ -173,20 +177,30 @@ public class LedDisplayService {
     }
 
     /**
-     * LED kijelző aktuális tartalom (mock árfolyamok).
+     * LED kijelző aktuális tartalom — valós árfolyamok az ExchangeRateRepository-ból.
      */
     @Transactional(readOnly = true)
     public List<LedDisplayLineDto> getDisplayContent(UUID branchId) {
+        verifyBranchOwnership(branchId);
+
+        // Konfiguráció alapján szűrt valuták (ha van konfiguráció)
+        String[] currencies = ledDisplayConfigRepository.findByBranchId(branchId)
+                .map(LedDisplayConfig::getCurrencyArray)
+                .orElse(null);
+
+        Map<String, BigDecimal[]> rates = getRatesForBranch(branchId, currencies);
+
         List<LedDisplayLineDto> lines = new ArrayList<>();
-        lines.add(LedDisplayLineDto.builder()
-                .currencyCode("EUR").buyRate(new BigDecimal("395.50")).sellRate(new BigDecimal("399.50")).unit(1).build());
-        lines.add(LedDisplayLineDto.builder()
-                .currencyCode("USD").buyRate(new BigDecimal("365.00")).sellRate(new BigDecimal("369.00")).unit(1).build());
-        lines.add(LedDisplayLineDto.builder()
-                .currencyCode("GBP").buyRate(new BigDecimal("460.00")).sellRate(new BigDecimal("466.00")).unit(1).build());
-        lines.add(LedDisplayLineDto.builder()
-                .currencyCode("CHF").buyRate(new BigDecimal("415.00")).sellRate(new BigDecimal("420.00")).unit(1).build());
-        log.debug("LED kijelző tartalom lekérdezve: branch={}", branchId);
+        for (Map.Entry<String, BigDecimal[]> entry : rates.entrySet()) {
+            lines.add(LedDisplayLineDto.builder()
+                    .currencyCode(entry.getKey())
+                    .buyRate(entry.getValue()[0])
+                    .sellRate(entry.getValue()[1])
+                    .unit(1)
+                    .build());
+        }
+
+        log.debug("LED kijelző tartalom lekérdezve: branch={}, valuták={}", branchId, rates.size());
         return lines;
     }
 

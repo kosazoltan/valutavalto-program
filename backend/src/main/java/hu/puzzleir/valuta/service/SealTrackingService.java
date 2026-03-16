@@ -49,7 +49,12 @@ public class SealTrackingService {
                 .transitStatus(SealTransitStatus.SEALED)
                 .build();
 
-        SealTracking saved = sealTrackingRepository.save(tracking);
+        SealTracking saved;
+        try {
+            saved = sealTrackingRepository.save(tracking);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            throw new ValidationException("A plomba szám már használatban van: " + sealNumber);
+        }
 
         auditLogService.log("SEAL_CREATED",
                 "Plomba felhelyezve: " + sealNumber + " (" + transferType + "/" + transferId + ")",
