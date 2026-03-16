@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.controller;
 
+import hu.puzzleir.valuta.dto.seal.SealTrackingDto;
 import hu.puzzleir.valuta.entity.SealTracking;
 import hu.puzzleir.valuta.service.SealTrackingService;
 import lombok.RequiredArgsConstructor;
@@ -18,53 +19,71 @@ public class SealTrackingController {
 
     private final SealTrackingService sealTrackingService;
 
+    private SealTrackingDto toDto(SealTracking entity) {
+        return SealTrackingDto.builder()
+                .id(entity.getId())
+                .companyId(entity.getCompanyId())
+                .transferType(entity.getTransferType())
+                .transferId(entity.getTransferId())
+                .sealNumber(entity.getSealNumber())
+                .sealedAt(entity.getSealedAt())
+                .sealedBy(entity.getSealedBy())
+                .openedAt(entity.getOpenedAt())
+                .openedBy(entity.getOpenedBy())
+                .transitStatus(entity.getTransitStatus())
+                .notes(entity.getNotes())
+                .createdAt(entity.getCreatedAt())
+                .updatedAt(entity.getUpdatedAt())
+                .build();
+    }
+
     @PostMapping("/seal")
-    public ResponseEntity<SealTracking> seal(
+    public ResponseEntity<SealTrackingDto> seal(
             @RequestParam String transferType,
             @RequestParam Long transferId,
             @RequestParam String sealNumber) {
-        return ResponseEntity.ok(sealTrackingService.seal(transferType, transferId, sealNumber));
+        return ResponseEntity.ok(toDto(sealTrackingService.seal(transferType, transferId, sealNumber)));
     }
 
     @PostMapping("/start-transit")
-    public ResponseEntity<SealTracking> startTransit(
+    public ResponseEntity<SealTrackingDto> startTransit(
             @RequestParam String transferType,
             @RequestParam Long transferId) {
-        return ResponseEntity.ok(sealTrackingService.startTransit(transferType, transferId));
+        return ResponseEntity.ok(toDto(sealTrackingService.startTransit(transferType, transferId)));
     }
 
     @PostMapping("/confirm-arrival")
-    public ResponseEntity<SealTracking> confirmArrival(
+    public ResponseEntity<SealTrackingDto> confirmArrival(
             @RequestParam String transferType,
             @RequestParam Long transferId) {
-        return ResponseEntity.ok(sealTrackingService.confirmArrival(transferType, transferId));
+        return ResponseEntity.ok(toDto(sealTrackingService.confirmArrival(transferType, transferId)));
     }
 
     @PostMapping("/open")
-    public ResponseEntity<SealTracking> openSeal(
+    public ResponseEntity<SealTrackingDto> openSeal(
             @RequestParam String transferType,
             @RequestParam Long transferId) {
-        return ResponseEntity.ok(sealTrackingService.openSeal(transferType, transferId));
+        return ResponseEntity.ok(toDto(sealTrackingService.openSeal(transferType, transferId)));
     }
 
     @GetMapping("/active")
-    public ResponseEntity<List<SealTracking>> getActive() {
-        return ResponseEntity.ok(sealTrackingService.getActiveTransits());
+    public ResponseEntity<List<SealTrackingDto>> getActive() {
+        return ResponseEntity.ok(sealTrackingService.getActiveTransits().stream().map(this::toDto).toList());
     }
 
     @GetMapping("/by-seal/{sealNumber}")
-    public ResponseEntity<SealTracking> getBySealNumber(@PathVariable String sealNumber) {
+    public ResponseEntity<SealTrackingDto> getBySealNumber(@PathVariable String sealNumber) {
         Optional<SealTracking> result = sealTrackingService.getBySealNumber(sealNumber);
-        return result.map(ResponseEntity::ok)
+        return result.map(entity -> ResponseEntity.ok(toDto(entity)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/by-transfer")
-    public ResponseEntity<SealTracking> getByTransfer(
+    public ResponseEntity<SealTrackingDto> getByTransfer(
             @RequestParam String transferType,
             @RequestParam Long transferId) {
         Optional<SealTracking> result = sealTrackingService.getByTransfer(transferType, transferId);
-        return result.map(ResponseEntity::ok)
+        return result.map(entity -> ResponseEntity.ok(toDto(entity)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
