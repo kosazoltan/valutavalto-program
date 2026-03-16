@@ -73,6 +73,9 @@ public class DecadeReportService {
         LocalDate periodStart = period[0];
         LocalDate periodEnd = period[1];
 
+        // Napzárás teljességi ellenőrzés: a dekád utolsó napjának le kell lennie zárva
+        validateDailyClosingCompleteness(branchId, periodStart, periodEnd);
+
         // Meglévő ellenőrzés
         DecadeReport existing = decadeReportRepository
             .findByBranchIdAndYearAndDecade(branchId, year, decade)
@@ -224,9 +227,9 @@ public class DecadeReportService {
             BigDecimal openingBal = openingMap.getOrDefault(currency, BigDecimal.ZERO);
             BigDecimal closingBal = closingMap.getOrDefault(currency, BigDecimal.ZERO);
 
-            // MNB árfolyam lekérés (1 egységre vetítve)
-            BigDecimal openingRate = getUnitRate(openingRates, currency);
-            BigDecimal closingRate = getUnitRate(closingRates, currency);
+            // MNB árfolyam lekérés (1 egységre vetítve) — fallback-kel ha nincs adott napra
+            BigDecimal openingRate = getUnitRate(openingRates, currency, periodStart);
+            BigDecimal closingRate = getUnitRate(closingRates, currency, periodEnd);
 
             // Felértékelés HUF-ra
             BigDecimal openingValueHuf = openingBal.multiply(openingRate)
@@ -264,17 +267,33 @@ public class DecadeReportService {
 
     /**
      * MNB árfolyam kinyerése 1 egységre vetítve.
-     * Ha nincs elérhető árfolyam, BigDecimal.ZERO-t ad vissza (log-gal jelezve).
+     * Ha az adott nap térképében nincs árfolyam (pl. hétvége, ünnepnap),
+     * legfeljebb 7 nappal visszamegy és onnan tölti be az árfolyamot.
+     * Csak akkor dob kivételt, ha 7 napos visszalépés után sem talál adatot.
      */
-    private BigDecimal getUnitRate(Map<String, MnbExchangeRateCache> rates, String currency) {
+    private BigDecimal getUnitRate(Map<String, MnbExchangeRateCache> rates, String currency, LocalDate date) {
         MnbExchangeRateCache rate = rates.get(currency);
-        if (rate == null) {
-            throw new ValidationException(
-                "Hiányzó MNB árfolyam a dekádjelentés generálásához: " + currency +
-                ". Ellenőrizze, hogy az MNB árfolyamok be vannak-e töltve az adott időszakra!"
-            );
+        if (rate != null) {
+            return rate.getRatePerUnit();
         }
-        return rate.getRatePerUnit();
+
+        // Fallback: legfeljebb 7 nappal visszamenő keresés
+        for (int i = 1; i <= 7; i++) {
+            Map<String, MnbExchangeRateCache> fallbackRates =
+                mnbExchangeRateService.getRatesForDate(date.minusDays(i));
+            MnbExchangeRateCache fallbackRate = fallbackRates.get(currency);
+            if (fallbackRate != null) {
+                log.info("MNB árfolyam fallback: {} dátumra nincs {} árfolyam, {} napot visszalépve ({})",
+                    date, currency, i, date.minusDays(i));
+                return fallbackRate.getRatePerUnit();
+            }
+        }
+
+        throw new ValidationException(
+            "Hiányzó MNB árfolyam a dekádjelentés generálásához: " + currency +
+            " (dátum: " + date + ", 7 napos visszalépés után sem elérhető). " +
+            "Ellenőrizze, hogy az MNB árfolyamok be vannak-e töltve az adott időszakra!"
+        );
     }
 
     // ============ FORINT KONTROLL (DEKRUTIN.DLL) ============
@@ -347,11 +366,16 @@ public class DecadeReportService {
 
             // Bevétel/kiadás szétválasztás
             if (tx.getTransactionType().isSellType()) {
-                // Eladás: HUF bejön az ügyféltől → bevétel
+                // Eladás: HUF bejön az ügyféltől → bevétel (kezelési díj már benne van a hufAmount-ban)
                 totalIncome = totalIncome.add(huf);
             } else if (tx.getTransactionType().isBuyType()) {
                 // Vétel: HUF kimegy az ügyfélnek → kiadás
                 totalExpense = totalExpense.add(huf);
+                // Vétel kezelési díja: különálló bevétel, NINCS benne a hufAmount-ban
+                BigDecimal fee = tx.getHandlingFee();
+                if (fee != null && fee.compareTo(BigDecimal.ZERO) != 0) {
+                    totalIncome = totalIncome.add(fee);
+                }
             } else if (tx.getTransactionType() == TransactionType.TRANSFER_IN) {
                 totalIncome = totalIncome.add(huf);
             } else if (tx.getTransactionType() == TransactionType.TRANSFER_OUT) {
@@ -370,6 +394,8 @@ public class DecadeReportService {
         report.setForintClosing(forintClosing);
         report.setForintControlValid(valid);
         report.setForintControlDiff(diff);
+        // Bug 3 fix: printControlFlag beállítása — korábban mindig false maradt
+        report.setPrintControlFlag(valid);
         report.setFirstReceiptNumber(firstReceipt);
         report.setLastReceiptNumber(lastReceipt);
         report.setCardPaymentTotal(cardTotal);
@@ -417,6 +443,20 @@ public class DecadeReportService {
         }
 
         return new LocalDate[]{start, end};
+    }
+
+    /**
+     * Napzárás teljességi ellenőrzés: a dekád utolsó napjának lezárt napi mérleggel kell rendelkeznie.
+     * Ha nem, ValidationException-t dob.
+     */
+    private void validateDailyClosingCompleteness(UUID branchId, LocalDate periodStart, LocalDate periodEnd) {
+        List<LocalDate> closedDates = dailyBalanceRepository.findClosedDates(branchId, periodStart, periodEnd);
+        if (!closedDates.contains(periodEnd)) {
+            throw new ValidationException(
+                "A dekádjelentés nem generálható: a dekád utolsó napja (" + periodEnd +
+                ") még nincs lezárva (nincs napzárás). Előbb végezze el a napzárást!"
+            );
+        }
     }
 
     private DecadeReportDto toDto(DecadeReport entity) {

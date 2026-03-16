@@ -65,4 +65,14 @@ public interface DailyBalanceRepository extends JpaRepository<DailyBalance, Long
         @Param("currencyCode") String currencyCode,
         @Param("year") int year,
         @Param("month") int month);
+
+    /**
+     * Lezárt napok dátumainak lekérdezése egy időszakban (dekádjelentés teljességi ellenőrzéshez).
+     */
+    @Query("SELECT DISTINCT db.balanceDate FROM DailyBalance db WHERE db.branchId = :branchId " +
+           "AND db.balanceDate BETWEEN :from AND :to ORDER BY db.balanceDate")
+    List<LocalDate> findClosedDates(
+        @Param("branchId") UUID branchId,
+        @Param("from") LocalDate from,
+        @Param("to") LocalDate to);
 }
