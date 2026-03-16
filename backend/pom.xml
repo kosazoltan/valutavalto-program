@@ -204,6 +204,13 @@
             <artifactId>pdfbox</artifactId>
             <version>3.0.4</version>
         </dependency>
+
+        <!-- Serial port communication for LED displays -->
+        <dependency>
+            <groupId>com.fazecast</groupId>
+            <artifactId>jSerialComm</artifactId>
+            <version>2.10.4</version>
+        </dependency>
     </dependencies>
     
     <build>

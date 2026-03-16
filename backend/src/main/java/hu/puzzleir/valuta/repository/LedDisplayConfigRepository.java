@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.entity.LedDisplayConfig;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -11,4 +12,7 @@ import java.util.UUID;
 public interface LedDisplayConfigRepository extends JpaRepository<LedDisplayConfig, UUID> {
 
     Optional<LedDisplayConfig> findByBranchId(UUID branchId);
+
+    /** Összes aktív LED konfiguráció (scheduled refresh használja). */
+    List<LedDisplayConfig> findByIsActiveTrue();
 }
