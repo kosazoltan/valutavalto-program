@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.dto.receipt.ReceiptData;
 import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.entity.Transfer;
 import hu.puzzleir.valuta.entity.TransactionType;
+import hu.puzzleir.valuta.entity.WuTransaction;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +36,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class ReceiptGeneratorService {
 
     private final TransactionRepository transactionRepository;
+    private final ReceiptPdfService receiptPdfService;
 
     private static final DateTimeFormatter RECEIPT_DATE_FORMAT = DateTimeFormatter.ofPattern("yyMMdd");
     private static final AtomicLong SEQUENCE = new AtomicLong(1);
@@ -215,45 +217,55 @@ public class ReceiptGeneratorService {
     }
 
     /**
-     * PDF formátum generálása (egyszerűsített text-based)
+     * PDF formátum generálása — Apache PDFBox alapú valódi PDF.
      */
     public byte[] formatForPdf(ReceiptData data) {
-        // Egyszerűsített: szöveges PDF tartalom generálása
-        // Éles környezetben iText/OpenPDF/Apache PDFBox lenne
-        StringBuilder sb = new StringBuilder();
+        return receiptPdfService.generatePdf(data);
+    }
 
-        sb.append("=== BIZONYLAT ===\n\n");
-        sb.append(data.getCompanyName() != null ? data.getCompanyName() : "").append("\n");
-        sb.append(data.getBranchName() != null ? data.getBranchName() : "").append("\n\n");
+    /**
+     * Western Union bizonylat generálása
+     * Prefix: W
+     */
+    public ReceiptData generateWuReceipt(WuTransaction wuTx) {
+        String receiptNumber = generateReceiptNumber("W");
 
-        sb.append("Bizonylat szám: ").append(data.getReceiptNumber()).append("\n");
-        sb.append("Típus: ").append(data.getReceiptType()).append("\n");
-        sb.append("Dátum: ").append(data.getDate() != null ?
-                data.getDate().format(DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm:ss")) : "").append("\n");
-        sb.append("Pénztáros: ").append(data.getWorkerName() != null ? data.getWorkerName() : "").append("\n\n");
-
-        if (data.getCurrencyCode() != null) {
-            sb.append("Valuta: ").append(data.getCurrencyCode()).append("\n");
-            sb.append("Összeg: ").append(data.getForeignAmount() != null ? data.getForeignAmount().toPlainString() : "0").append("\n");
-            sb.append("Árfolyam: ").append(data.getRate() != null ? data.getRate().toPlainString() : "0").append("\n");
-            sb.append("HUF összeg: ").append(data.getHufAmount() != null ? data.getHufAmount().toPlainString() : "0").append(" Ft\n\n");
+        List<ReceiptData.ReceiptLineData> lines = new ArrayList<>();
+        lines.add(ReceiptData.ReceiptLineData.builder()
+                .label("MTCN").value(wuTx.getMtcn()).build());
+        lines.add(ReceiptData.ReceiptLineData.builder()
+                .label("Tipus").value(wuTx.getTransactionType()).build());
+        if (wuTx.getSenderName() != null) {
+            lines.add(ReceiptData.ReceiptLineData.builder()
+                    .label("Kuldo").value(wuTx.getSenderName()).build());
+        }
+        if (wuTx.getReceiverName() != null) {
+            lines.add(ReceiptData.ReceiptLineData.builder()
+                    .label("Cimzett").value(wuTx.getReceiverName()).build());
+        }
+        if (wuTx.getDestinationCountry() != null) {
+            lines.add(ReceiptData.ReceiptLineData.builder()
+                    .label("Cel orszag").value(wuTx.getDestinationCountry()).build());
+        }
+        if (wuTx.getFeeAmount() != null) {
+            lines.add(ReceiptData.ReceiptLineData.builder()
+                    .label("WU dij").value(wuTx.getFeeAmount().toPlainString() + " USD").build());
         }
 
-        if (data.getCustomerName() != null) {
-            sb.append("Ügyfél: ").append(data.getCustomerName()).append("\n");
-        }
-        if (data.getCustomerIdNumber() != null) {
-            sb.append("Okmányszám: ").append(data.getCustomerIdNumber()).append("\n");
-        }
-
-        sb.append("\n");
-        for (ReceiptData.ReceiptLineData line : data.getLines()) {
-            sb.append(line.getLabel()).append(": ").append(line.getValue()).append("\n");
-        }
-
-        sb.append("\n").append(data.getSignatureLine()).append("\n");
-
-        return sb.toString().getBytes(StandardCharsets.UTF_8);
+        return ReceiptData.builder()
+                .receiptNumber(receiptNumber)
+                .receiptType("WU_" + wuTx.getTransactionType())
+                .companyName("")
+                .branchName("")
+                .workerName("")
+                .date(LocalDateTime.now())
+                .currencyCode("USD")
+                .foreignAmount(wuTx.getAmountUsd())
+                .rate(wuTx.getExchangeRate())
+                .hufAmount(wuTx.getAmountHuf())
+                .lines(lines)
+                .qrCode(receiptNumber)
+                .build();
     }
 
     // ============ Tranzakció ID → Receipt ============

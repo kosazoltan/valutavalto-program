@@ -4,15 +4,20 @@ import hu.puzzleir.valuta.dto.receipt.ReceiptData;
 import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.repository.TransactionRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.Mockito;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 /**
  * ReceiptGeneratorService UNIT tesztek — Mockito.
@@ -25,6 +30,17 @@ class ReceiptGeneratorServiceTest {
 
     @Mock
     private TransactionRepository transactionRepository;
+
+    @Mock
+    private ReceiptPdfService receiptPdfService;
+
+    @BeforeEach
+    void setUpPdfMock() {
+        // Mock PDF bytes so formatForPdf works in tests without a real PDFBox render.
+        // lenient() used because only testFormatForPdf calls formatForPdf; the rest do not.
+        byte[] fakePdf = "%PDF-1.4 fake".getBytes(StandardCharsets.UTF_8);
+        Mockito.lenient().when(receiptPdfService.generatePdf(any())).thenReturn(fakePdf);
+    }
 
     private Transaction createTestTransaction(TransactionType type) {
         return Transaction.builder()
@@ -92,7 +108,7 @@ class ReceiptGeneratorServiceTest {
     }
 
     @Test
-    @DisplayName("formatForPdf → nem üres byte tömb, tartalmazza az adatokat")
+    @DisplayName("formatForPdf → PDFBox-ba delegál, %PDF magic byte-okkal tér vissza")
     void testFormatForPdf() {
         ReceiptData data = ReceiptData.builder()
                 .receiptNumber("V-260306-0002")
@@ -110,10 +126,10 @@ class ReceiptGeneratorServiceTest {
         byte[] result = service.formatForPdf(data);
 
         assertThat(result).isNotNull();
-        String content = new String(result);
-        assertThat(content).contains("V-260306-0002");
-        assertThat(content).contains("Vevő Béla");
-        assertThat(content).contains("USD");
+        assertThat(result.length).isGreaterThan(0);
+        // Delegáció a receiptPdfService.generatePdf()-re
+        String content = new String(result, StandardCharsets.UTF_8);
+        assertThat(content).startsWith("%PDF");
     }
 
     @Test
