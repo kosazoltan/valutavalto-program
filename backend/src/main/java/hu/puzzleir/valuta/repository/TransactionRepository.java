@@ -727,4 +727,74 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("dateFrom") LocalDate dateFrom,
         @Param("dateTo") LocalDate dateTo
     );
+
+    // ============ TURNOVER BREAKDOWN QUERY-K ============
+
+    /**
+     * Valuta + típus szerinti bontás — forgalom riporthoz.
+     * Sztornózott (REVERSED, CANCELLED) tranzakciókat kizárja.
+     * Visszaad: [currencyCode, transactionType, SUM(currencyAmount), SUM(hufAmount), SUM(handlingFee), COUNT(id)]
+     */
+    @Query("SELECT t.currency.code, CAST(t.transactionType AS string), " +
+           "SUM(t.currencyAmount), SUM(t.hufAmount), SUM(t.handlingFee), COUNT(t.id) " +
+           "FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
+           "AND t.status NOT IN ('REVERSED', 'CANCELLED') " +
+           "GROUP BY t.currency.code, t.transactionType " +
+           "ORDER BY t.currency.code, t.transactionType")
+    List<Object[]> groupByCurrencyAndTypeForBranch(
+        @Param("branchId") UUID branchId,
+        @Param("dateFrom") LocalDate dateFrom,
+        @Param("dateTo") LocalDate dateTo
+    );
+
+    /**
+     * Pénztáros szerinti bontás — forgalom riporthoz.
+     * Sztornózott (REVERSED, CANCELLED) tranzakciókat kizárja.
+     * Visszaad: [workerId, workerName, SUM(hufAmount), SUM(handlingFee), COUNT(id)]
+     */
+    @Query("SELECT t.worker.id, t.worker.name, " +
+           "SUM(t.hufAmount), SUM(t.handlingFee), COUNT(t.id) " +
+           "FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
+           "AND t.status NOT IN ('REVERSED', 'CANCELLED') " +
+           "GROUP BY t.worker.id, t.worker.name " +
+           "ORDER BY t.worker.name")
+    List<Object[]> groupByWorkerForBranch(
+        @Param("branchId") UUID branchId,
+        @Param("dateFrom") LocalDate dateFrom,
+        @Param("dateTo") LocalDate dateTo
+    );
+
+    /**
+     * HUF összeg branch + típus + időszak, sztornókat kizárva.
+     * Turnover riport főösszegekhez (REVERSED/CANCELLED nélkül).
+     */
+    @Query("SELECT COALESCE(SUM(t.hufAmount), 0) FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND CAST(t.transactionType AS string) = :txType " +
+           "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
+           "AND t.status NOT IN ('REVERSED', 'CANCELLED')")
+    BigDecimal sumHufAmountByBranchAndTypeAndPeriodExcludingReversals(
+        @Param("branchId") UUID branchId,
+        @Param("txType") String txType,
+        @Param("dateFrom") LocalDate dateFrom,
+        @Param("dateTo") LocalDate dateTo
+    );
+
+    /**
+     * Kezelési díj összeg branch + időszak, sztornókat kizárva.
+     * Turnover riport főösszegekhez (REVERSED/CANCELLED nélkül).
+     */
+    @Query("SELECT COALESCE(SUM(t.handlingFee), 0) FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
+           "AND t.status NOT IN ('REVERSED', 'CANCELLED')")
+    BigDecimal sumFeeByBranchAndPeriodExcludingReversals(
+        @Param("branchId") UUID branchId,
+        @Param("dateFrom") LocalDate dateFrom,
+        @Param("dateTo") LocalDate dateTo
+    );
 }

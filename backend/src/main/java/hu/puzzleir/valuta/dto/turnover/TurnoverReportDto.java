@@ -26,6 +26,7 @@ public class TurnoverReportDto {
         private BigDecimal sellVolume;
         private BigDecimal buyHuf;
         private BigDecimal sellHuf;
+        private BigDecimal fee;
         private Integer transactionCount;
     }
 
@@ -34,6 +35,7 @@ public class TurnoverReportDto {
         private Long workerId;
         private String workerName;
         private BigDecimal totalVolume;
+        private BigDecimal fee;
         private Integer transactionCount;
     }
 }
