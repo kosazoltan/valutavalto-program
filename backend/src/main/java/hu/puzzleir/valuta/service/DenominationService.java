@@ -56,6 +56,50 @@ public class DenominationService {
         new BigDecimal("1")
     };
 
+    // Külföldi valuta bankjegy és érme címletek
+    private static final Map<String, BigDecimal[]> FOREIGN_DENOMINATIONS;
+
+    static {
+        FOREIGN_DENOMINATIONS = new LinkedHashMap<>();
+        // EUR
+        FOREIGN_DENOMINATIONS.put("EUR", new BigDecimal[]{
+            new BigDecimal("500"), new BigDecimal("200"), new BigDecimal("100"),
+            new BigDecimal("50"), new BigDecimal("20"), new BigDecimal("10"),
+            new BigDecimal("5"), new BigDecimal("2"), new BigDecimal("1"),
+            new BigDecimal("0.50"), new BigDecimal("0.20"), new BigDecimal("0.10"),
+            new BigDecimal("0.05"), new BigDecimal("0.02"), new BigDecimal("0.01")
+        });
+        // USD
+        FOREIGN_DENOMINATIONS.put("USD", new BigDecimal[]{
+            new BigDecimal("100"), new BigDecimal("50"), new BigDecimal("20"),
+            new BigDecimal("10"), new BigDecimal("5"), new BigDecimal("2"),
+            new BigDecimal("1"), new BigDecimal("0.50"), new BigDecimal("0.25"),
+            new BigDecimal("0.10"), new BigDecimal("0.05"), new BigDecimal("0.01")
+        });
+        // GBP
+        FOREIGN_DENOMINATIONS.put("GBP", new BigDecimal[]{
+            new BigDecimal("50"), new BigDecimal("20"), new BigDecimal("10"),
+            new BigDecimal("5"), new BigDecimal("2"), new BigDecimal("1"),
+            new BigDecimal("0.50"), new BigDecimal("0.20"), new BigDecimal("0.10"),
+            new BigDecimal("0.05"), new BigDecimal("0.02"), new BigDecimal("0.01")
+        });
+        // CHF
+        FOREIGN_DENOMINATIONS.put("CHF", new BigDecimal[]{
+            new BigDecimal("1000"), new BigDecimal("200"), new BigDecimal("100"),
+            new BigDecimal("50"), new BigDecimal("20"), new BigDecimal("10"),
+            new BigDecimal("5"), new BigDecimal("2"), new BigDecimal("1"),
+            new BigDecimal("0.50"), new BigDecimal("0.20"), new BigDecimal("0.10"),
+            new BigDecimal("0.05")
+        });
+        // CZK
+        FOREIGN_DENOMINATIONS.put("CZK", new BigDecimal[]{
+            new BigDecimal("5000"), new BigDecimal("2000"), new BigDecimal("1000"),
+            new BigDecimal("500"), new BigDecimal("200"), new BigDecimal("100"),
+            new BigDecimal("50"), new BigDecimal("20"), new BigDecimal("10"),
+            new BigDecimal("5"), new BigDecimal("2"), new BigDecimal("1")
+        });
+    }
+
     /**
      * Címletek lekérdezése az aktuális irodához és valutához
      */
@@ -99,6 +143,10 @@ public class DenominationService {
      * Legacy: CIMLET frissítés
      */
     public Denomination updateDenominationQuantity(UpdateDenominationRequest request) {
+        if (request.getNewQuantity() < 0) {
+            throw new ValidationException("A darabszám nem lehet negatív: " + request.getNewQuantity());
+        }
+
         UUID branchId = SecurityUtils.getCurrentBranchId();
 
         Denomination denomination = denominationRepository
@@ -167,6 +215,29 @@ public class DenominationService {
     }
 
     /**
+     * HUF címlet típus meghatározása.
+     *
+     * Bug fix: a küszöb 1000 Ft — 100 Ft és 200 Ft érmék, nem bankjegyek.
+     * >= 1000 → BANKNOTE, < 1000 → COIN
+     */
+    DenominationType classifyHufDenomination(BigDecimal faceValue) {
+        return faceValue.compareTo(new BigDecimal("1000")) >= 0
+                ? DenominationType.BANKNOTE
+                : DenominationType.COIN;
+    }
+
+    /**
+     * Külföldi valuta (pl. EUR) névérték típus meghatározása.
+     *
+     * >= 1 → BANKNOTE, < 1 → COIN (fillér/cent szintű érmék)
+     */
+    DenominationType classifyForeignDenomination(BigDecimal faceValue) {
+        return faceValue.compareTo(BigDecimal.ONE) >= 0
+                ? DenominationType.BANKNOTE
+                : DenominationType.COIN;
+    }
+
+    /**
      * Címletek inicializálása új irodához
      */
     public void initializeBranchDenominations(UUID branchId) {
@@ -183,16 +254,12 @@ public class DenominationService {
 
         for (BigDecimal faceValue : HUF_DENOMINATIONS) {
             if (denominationRepository.findByBranchIdAndCurrencyIdAndFaceValue(branchId, huf.getId(), faceValue).isEmpty()) {
-                DenominationType type = faceValue.compareTo(new BigDecimal("100")) >= 0
-                        ? DenominationType.BANKNOTE
-                        : DenominationType.COIN;
-
                 Denomination denomination = Denomination.builder()
                         .company(company)
                         .branch(branch)
                         .currency(huf)
                         .faceValue(faceValue)
-                        .denominationType(type)
+                        .denominationType(classifyHufDenomination(faceValue))
                         .quantity(0)
                         .active(true)
                         .build();
@@ -201,6 +268,29 @@ public class DenominationService {
         }
 
         log.info("HUF címletek inicializálva irodához: {}", branch.getName());
+
+        // Külföldi valuta címletek inicializálása (idempotens — meglévő bejegyzések kihagyva)
+        for (Map.Entry<String, BigDecimal[]> entry : FOREIGN_DENOMINATIONS.entrySet()) {
+            String currencyCode = entry.getKey();
+            currencyRepository.findByCode(currencyCode).ifPresent(foreignCurrency -> {
+                for (BigDecimal faceValue : entry.getValue()) {
+                    if (denominationRepository.findByBranchIdAndCurrencyIdAndFaceValue(
+                            branchId, foreignCurrency.getId(), faceValue).isEmpty()) {
+                        Denomination denomination = Denomination.builder()
+                                .company(company)
+                                .branch(branch)
+                                .currency(foreignCurrency)
+                                .faceValue(faceValue)
+                                .denominationType(classifyForeignDenomination(faceValue))
+                                .quantity(0)
+                                .active(true)
+                                .build();
+                        denominationRepository.save(denomination);
+                    }
+                }
+                log.info("{} címletek inicializálva irodához: {}", currencyCode, branch.getName());
+            });
+        }
     }
 
     /**
@@ -251,12 +341,18 @@ public class DenominationService {
         UUID branchId = SecurityUtils.getCurrentBranchId();
 
         List<Denomination> denominations = denominationRepository.findByBranchAndCurrency(branchId, currencyId);
+
+        // Bug fix: explicit DESC rendezés névérték szerint — nem támaszkodunk az adatbázis sorrendjére
+        List<Denomination> sorted = denominations.stream()
+                .sorted(Comparator.comparing(Denomination::getFaceValue).reversed())
+                .collect(Collectors.toList());
+
         Map<BigDecimal, Integer> result = new LinkedHashMap<>();
 
         BigDecimal remaining = amount;
 
-        // Nagyobb címletektől kezdve
-        for (Denomination denom : denominations) {
+        // Nagyobb címletektől kezdve (greedy)
+        for (Denomination denom : sorted) {
             if (denom.getQuantity() > 0 && remaining.compareTo(denom.getFaceValue()) >= 0) {
                 int needed = remaining.divideToIntegralValue(denom.getFaceValue()).intValue();
                 int available = Math.min(needed, denom.getQuantity());
