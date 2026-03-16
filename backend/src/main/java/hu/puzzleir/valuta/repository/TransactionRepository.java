@@ -728,6 +728,26 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("dateTo") LocalDate dateTo
     );
 
+    // ============ REPORT OPTIMIZATION QUERY-K ============
+
+    /**
+     * P2-14: Kezelési díj összesítő GROUP BY lekérdezés (N+1 kiváltása).
+     * Visszaad: [transactionDate, currencyCode, SUM(handlingFee), COUNT(id)]
+     */
+    @Query("SELECT t.transactionDate, t.currency.code, SUM(t.handlingFee), COUNT(t) " +
+           "FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionDate BETWEEN :startDate AND :endDate " +
+           "AND t.status = 'COMPLETED' " +
+           "AND t.handlingFee > 0 " +
+           "GROUP BY t.transactionDate, t.currency.code " +
+           "ORDER BY t.transactionDate ASC")
+    List<Object[]> findHandlingFeeSummaryByBranchAndDateRange(
+        @Param("branchId") UUID branchId,
+        @Param("startDate") LocalDate startDate,
+        @Param("endDate") LocalDate endDate
+    );
+
     // ============ TURNOVER BREAKDOWN QUERY-K ============
 
     /**

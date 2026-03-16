@@ -10,6 +10,7 @@ import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.entity.Transfer;
 import hu.puzzleir.valuta.entity.Transfer.TransferStatus;
 import hu.puzzleir.valuta.entity.Worker;
+import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +48,7 @@ public class ReportService {
     private final WorkerRepository workerRepository;
     private final TransferRepository transferRepository;
     private final MonthlyClosingRepository monthlyClosingRepository;
+    private final BranchRepository branchRepository;
 
     /**
      * Napi zĂ„â€šĂ‹â€ˇrĂ„â€šĂ‹â€ˇs riport
@@ -182,12 +184,9 @@ public class ReportService {
         Worker worker = workerRepository.findById(workerId)
                 .orElseThrow(() -> new RuntimeException("PĂ„â€šĂ‚Â©nztĂ„â€šĂ‹â€ˇros nem talĂ„â€šĂ‹â€ˇlhatĂ„â€šÄąâ€š"));
 
-        List<Transaction> transactions = new ArrayList<>();
-        LocalDate current = startDate;
-        while (!current.isAfter(endDate)) {
-            transactions.addAll(transactionRepository.findByWorkerAndDate(workerId, current));
-            current = current.plusDays(1);
-        }
+        // P2-14: egyetlen date-range query az N+1 while-loop helyett
+        List<Transaction> transactions = transactionRepository
+                .findByWorkerIdAndTransactionDateBetween(workerId, startDate, endDate);
 
         BigDecimal totalBuy = transactions.stream()
                 .filter(t -> t.getTransactionType() == TransactionType.BUY && t.isActive())
@@ -345,6 +344,11 @@ public class ReportService {
         int totalSellCount = 0;
         int totalReversals = 0;
 
+        // P2-14: iroda neveket előzetesen betöltjük (1 lekérdezés a ciklus helyett)
+        Set<UUID> branchIds = closings.stream().map(MonthlyClosing::getBranchId).collect(Collectors.toSet());
+        Map<UUID, String> branchNames = branchRepository.findAllById(branchIds).stream()
+                .collect(Collectors.toMap(Branch::getId, Branch::getName));
+
         List<BranchMonthlyData> branchData = new ArrayList<>();
 
         for (MonthlyClosing closing : closings) {
@@ -356,9 +360,12 @@ public class ReportService {
             totalSellCount += closing.getSellCount() != null ? closing.getSellCount() : 0;
             totalReversals += closing.getReversalCount() != null ? closing.getReversalCount() : 0;
 
+            String branchName = branchNames.getOrDefault(closing.getBranchId(),
+                    "Iroda-" + closing.getBranchId().toString().substring(0, 8));
+
             branchData.add(BranchMonthlyData.builder()
                     .branchId(closing.getBranchId())
-                    .branchName("Iroda-" + closing.getBranchId().toString().substring(0,8))
+                    .branchName(branchName)
                     .transactionCount(closing.getTotalTransactionCount())
                     .buyCount(closing.getBuyCount())
                     .sellCount(closing.getSellCount())
@@ -486,22 +493,23 @@ public class ReportService {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         UUID branchId = SecurityUtils.getCurrentBranchId();
 
+        // P2-14: GROUP BY aggregált lekérdezés az N+1 napi ciklus helyett
+        List<Object[]> rows = transactionRepository
+                .findHandlingFeeSummaryByBranchAndDateRange(branchId, startDate, endDate);
+
         BigDecimal totalFees = BigDecimal.ZERO;
-        int transactionsWithFee = 0;
+        long transactionsWithFee = 0;
         Map<String, BigDecimal> feesByCurrency = new LinkedHashMap<>();
 
-        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
-            List<Transaction> transactions = transactionRepository.findActiveByBranchAndDate(branchId, date);
+        for (Object[] row : rows) {
+            // row: [transactionDate, currencyCode, SUM(handlingFee), COUNT(t)]
+            BigDecimal feeSum = row[2] != null ? (BigDecimal) row[2] : BigDecimal.ZERO;
+            long count = row[3] != null ? ((Number) row[3]).longValue() : 0L;
+            String currencyCode = (String) row[1];
 
-            for (Transaction t : transactions) {
-                if (t.getHandlingFee() != null && t.getHandlingFee().compareTo(BigDecimal.ZERO) > 0) {
-                    totalFees = totalFees.add(t.getHandlingFee());
-                    transactionsWithFee++;
-
-                    String currencyCode = t.getCurrency().getCode();
-                    feesByCurrency.merge(currencyCode, t.getHandlingFee(), BigDecimal::add);
-                }
-            }
+            totalFees = totalFees.add(feeSum);
+            transactionsWithFee += count;
+            feesByCurrency.merge(currencyCode, feeSum, BigDecimal::add);
         }
 
         List<CurrencyFeeData> currencyFeeList = feesByCurrency.entrySet().stream()
@@ -513,7 +521,7 @@ public class ReportService {
                 .endDate(endDate)
                 .generatedAt(LocalDateTime.now())
                 .totalHandlingFees(totalFees)
-                .transactionsWithFee(transactionsWithFee)
+                .transactionsWithFee((int) transactionsWithFee)
                 .feesByCurrency(currencyFeeList)
                 .build();
     }
