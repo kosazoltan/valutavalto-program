@@ -100,11 +100,13 @@ public class TurnoverService {
 
     private TurnoverReportDto buildReport(UUID branchId, String period,
                                            LocalDateTime from, LocalDateTime to) {
+        LocalDate dateFrom = from.toLocalDate();
+        LocalDate dateTo = to.toLocalDate();
         BigDecimal totalBuy = transactionRepository.sumHufAmountByBranchAndTypeAndPeriod(
-            branchId, "BUY", from, to);
+            branchId, "BUY", dateFrom, dateTo);
         BigDecimal totalSell = transactionRepository.sumHufAmountByBranchAndTypeAndPeriod(
-            branchId, "SELL", from, to);
-        BigDecimal fees = transactionRepository.sumFeeByBranchAndPeriod(branchId, from, to);
+            branchId, "SELL", dateFrom, dateTo);
+        BigDecimal fees = transactionRepository.sumFeeByBranchAndPeriod(branchId, dateFrom, dateTo);
 
         totalBuy = totalBuy != null ? totalBuy : BigDecimal.ZERO;
         totalSell = totalSell != null ? totalSell : BigDecimal.ZERO;

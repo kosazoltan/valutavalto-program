@@ -330,6 +330,10 @@ public class OtpTerminalProtocolService {
     /**
      * TCP/IP küldés és válasz olvasása.
      * Legacy: Csatlakozas() + CsomagKuldes() + idTcpClient1.AllData
+     *
+     * A válasz formátuma: [4 byte hossz prefix][tartalom]
+     * A 4 byte-os hossz megmondja, hány bájtnyi tartalom következik.
+     * Így biztosan az egész választ beolvassuk, még ha több TCP csomagban is jön.
      */
     private String sendAndReceive(String host, int port, String fullMessage) throws IOException {
         log.debug("OTP → {}:{} : {}", host, port, escapeForLog(fullMessage));
@@ -344,27 +348,29 @@ public class OtpTerminalProtocolService {
             out.write(messageBytes);
             out.flush();
 
-            // Válasz olvasása
+            // Válasz olvasása — hossz prefix alapján
             InputStream in = socket.getInputStream();
-            byte[] buffer = new byte[4096];
-            StringBuilder sb = new StringBuilder();
-            int bytesRead;
 
-            // Első olvasás — a terminál válaszol
-            bytesRead = in.read(buffer);
-            if (bytesRead > 0) {
-                sb.append(new String(buffer, 0, bytesRead, StandardCharsets.ISO_8859_1));
+            // 1. Első 4 bájt: hossz prefix (decimális string, pl. "0042")
+            byte[] lenBytes = readExact(in, 4);
+            String lenStr = new String(lenBytes, StandardCharsets.ISO_8859_1);
+            int contentLength;
+            try {
+                contentLength = Integer.parseInt(lenStr.trim());
+            } catch (NumberFormatException e) {
+                throw new IOException("Érvénytelen hossz prefix a válaszban: '" + lenStr + "'");
             }
 
-            // Kis várakozás és még egy olvasás (ha van folytatás)
-            if (in.available() > 0) {
-                bytesRead = in.read(buffer);
-                if (bytesRead > 0) {
-                    sb.append(new String(buffer, 0, bytesRead, StandardCharsets.ISO_8859_1));
-                }
+            if (contentLength <= 0 || contentLength > 8192) {
+                throw new IOException("Érvénytelen válasz hossz: " + contentLength);
             }
 
-            String reply = sb.toString().trim();
+            // 2. Tartalom beolvasása a megadott hossznak megfelelően
+            byte[] contentBytes = readExact(in, contentLength);
+            String content = new String(contentBytes, StandardCharsets.ISO_8859_1);
+
+            // Teljes válasz összeállítása (prefix + tartalom — parseResponse STX-et keres)
+            String reply = lenStr + content;
             log.debug("OTP ← {}:{} : {}", host, port, escapeForLog(reply));
 
             if (reply.isEmpty()) {
@@ -376,10 +382,28 @@ public class OtpTerminalProtocolService {
     }
 
     /**
-     * OTP válasz feldolgozása — mezőkre bontás.
+     * Pontosan N bájt beolvasása az input stream-ből.
+     * Több olvasási ciklussal biztosítja, hogy minden bájt megérkezik.
+     */
+    private byte[] readExact(InputStream in, int count) throws IOException {
+        byte[] buffer = new byte[count];
+        int totalRead = 0;
+        while (totalRead < count) {
+            int bytesRead = in.read(buffer, totalRead, count - totalRead);
+            if (bytesRead == -1) {
+                throw new IOException(String.format(
+                    "Váratlan stream vége: %d/%d bájt olvasva", totalRead, count));
+            }
+            totalRead += bytesRead;
+        }
+        return buffer;
+    }
+
+    /**
+     * OTP válasz feldolgozása — mezőkre bontás + LRC validáció.
      * Legacy: FildSelector() — mező szeparálás FS (0x1C) karakter alapján.
      *
-     * A válasz formátuma: [4 digit hossz][STX][A mezőkód][adat][FS][B mezőkód][adat]...[ETX][LRC]
+     * A válasz formátuma: [4 digit hossz][STX][A mezőkód][adat][FS][B mezőkód][adat]...[ETX][LRC_hi][LRC_lo]
      * A mezőkód az első karakter: 'A'=1, 'B'=2, ..., 'Z'=26
      */
     private OtpResponse parseResponse(String reply) {
@@ -395,6 +419,28 @@ public class OtpTerminalProtocolService {
         if (stxPos < 0) {
             response.errorMessage = "Nincs STX a válaszban";
             return response;
+        }
+
+        // LRC validáció: a válasz utolsó 2 karaktere a hex-kódolt LRC
+        int etxPos = reply.indexOf(ETX, stxPos);
+        if (etxPos > 0 && etxPos + 2 < reply.length()) {
+            // LRC kiszámítása a STX utáni tartalomra (ETX-ig bezárólag)
+            String messageContent = reply.substring(stxPos + 1, etxPos + 1);
+            int expectedLrc = calculateLrc(messageContent);
+            int expectedHi = expectedLrc / 16;
+            int expectedLo = expectedLrc % 16;
+            char expectedHiChar = (char) (expectedHi + 48 + (expectedHi > 9 ? 7 : 0));
+            char expectedLoChar = (char) (expectedLo + 48 + (expectedLo > 9 ? 7 : 0));
+
+            char actualHiChar = reply.charAt(etxPos + 1);
+            char actualLoChar = reply.charAt(etxPos + 2);
+
+            if (actualHiChar != expectedHiChar || actualLoChar != expectedLoChar) {
+                log.warn("OTP LRC hiba! Kapott: {}{}, Várt: {}{}", actualHiChar, actualLoChar,
+                    expectedHiChar, expectedLoChar);
+                response.errorMessage = "LRC checksum hiba — sérült válasz a terminálról";
+                return response;
+            }
         }
 
         // Mező értékek kinyerése (Legacy: _fild[1..100] tömb)
@@ -529,10 +575,13 @@ public class OtpTerminalProtocolService {
         /**
          * Sikeres-e a válasz?
          * Legacy: if (leftstr(_fMezo,2)='00') or (_fMezo='L00') then result := true
+         *
+         * FONTOS: "880" NEM általános sikerkód — csak paraméter letöltésnél (A090) érvényes!
+         * Lásd: downloadParameters() metódus.
          */
         boolean isSuccessful() {
             if (fField == null) return false;
-            return fField.startsWith("00") || "L00".equals(fField) || "880".equals(fField);
+            return fField.startsWith("00") || "L00".equals(fField);
         }
     }
 }
