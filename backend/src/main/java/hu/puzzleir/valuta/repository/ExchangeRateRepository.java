@@ -22,6 +22,7 @@ public interface ExchangeRateRepository extends JpaRepository<ExchangeRate, Long
      * Aktuális árfolyam egy valutához (legutolsó aktív)
      */
     @Query("SELECT er FROM ExchangeRate er " +
+           "JOIN FETCH er.currency " +
            "WHERE er.company.id = :companyId " +
            "AND er.currency.id = :currencyId " +
            "AND er.active = true " +
@@ -37,6 +38,7 @@ public interface ExchangeRateRepository extends JpaRepository<ExchangeRate, Long
      * Összes aktív árfolyam egy céghez
      */
     @Query("SELECT er FROM ExchangeRate er " +
+           "JOIN FETCH er.currency " +
            "WHERE er.company.id = :companyId " +
            "AND er.active = true " +
            "AND er.validDate = :date " +
@@ -50,6 +52,7 @@ public interface ExchangeRateRepository extends JpaRepository<ExchangeRate, Long
      * Árfolyam adott időpontra
      */
     @Query("SELECT er FROM ExchangeRate er " +
+           "JOIN FETCH er.currency " +
            "WHERE er.company.id = :companyId " +
            "AND er.currency.id = :currencyId " +
            "AND er.validDate = :date " +
@@ -66,6 +69,7 @@ public interface ExchangeRateRepository extends JpaRepository<ExchangeRate, Long
      * Árfolyam történet egy valutához
      */
     @Query("SELECT er FROM ExchangeRate er " +
+           "JOIN FETCH er.currency " +
            "WHERE er.company.id = :companyId " +
            "AND er.currency.id = :currencyId " +
            "AND er.validDate BETWEEN :startDate AND :endDate " +
@@ -82,6 +86,7 @@ public interface ExchangeRateRepository extends JpaRepository<ExchangeRate, Long
      * fiók-specifikus vagy globális
      */
     @Query("SELECT er FROM ExchangeRate er " +
+           "JOIN FETCH er.currency " +
            "WHERE er.company.id = :companyId " +
            "AND er.active = true " +
            "AND (er.branch.id = :branchId OR er.branch IS NULL) " +

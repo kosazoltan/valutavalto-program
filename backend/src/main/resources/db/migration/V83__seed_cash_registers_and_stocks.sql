@@ -64,7 +64,7 @@ JOIN (
     ('KORUT', 'USD',    4100::DECIMAL(15,2),    3600::DECIMAL(15,2),    1500::DECIMAL(15,2),    9000::DECIMAL(15,2))
 ) AS seed(branch_code, currency_code, current_balance, opening_balance, min_balance, max_balance)
   ON seed.branch_code = b.code
-JOIN currency cur ON cur.code = seed.currency_code AND cur.active = true
+JOIN currency cur ON cur.code = seed.currency_code AND cur.is_active = true
 WHERE c.code = 'EBC'
 ON CONFLICT (branch_id, currency_id) DO UPDATE SET
   current_balance = EXCLUDED.current_balance,
@@ -108,7 +108,7 @@ INSERT INTO exchange_rate (
   base_buy_rate, base_sell_rate,
   limit1_amount, limit1_buy_rate, limit1_sell_rate,
   limit2_amount, limit2_buy_rate, limit2_sell_rate,
-  official_rate, active, created_by, created_at
+  official_rate, is_active, created_by, created_at
 )
 SELECT
   c.id,
@@ -136,7 +136,8 @@ JOIN (
     ('USD', 342.47, 335.62, 349.31, 1000, 336.90, 347.95, 5000, 338.20, 346.60),
     ('GBP', 454.55, 443.18, 465.91,  500, 445.00, 464.00, 2000, 447.00, 462.00)
 ) AS seed(currency_code, middle_rate, buy_rate, sell_rate, limit1_amount, limit1_buy, limit1_sell, limit2_amount, limit2_buy, limit2_sell)
-JOIN currency cur ON cur.code = seed.currency_code AND cur.active = true
+  ON true
+JOIN currency cur ON cur.code = seed.currency_code AND cur.is_active = true
 WHERE c.code = 'EBC'
   AND b.code IN ('TISZA', 'KORUT')
   AND NOT EXISTS (

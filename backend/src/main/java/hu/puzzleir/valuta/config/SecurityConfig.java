@@ -94,11 +94,11 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             
-            // Idempotency header enforcement for protected write endpoints
-            .addFilterBefore(idempotencyFilter, JwtAuthenticationFilter.class)
+            // JWT filter hozzáadás (UsernamePasswordAuthenticationFilter előtt)
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
 
-            // JWT filter hozzáadás
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            // Idempotency header enforcement (JWT után, de UsernamePassword előtt)
+            .addFilterBefore(idempotencyFilter, UsernamePasswordAuthenticationFilter.class);
         
         return http.build();
     }
@@ -112,7 +112,8 @@ public class SecurityConfig {
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList(
                 "Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin",
-                "Access-Control-Request-Method", "Access-Control-Request-Headers"));
+                "Access-Control-Request-Method", "Access-Control-Request-Headers",
+                "Idempotency-Key"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

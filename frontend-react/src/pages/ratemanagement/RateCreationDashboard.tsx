@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { BarChart3 } from 'lucide-react'
+import SettlementRateEntry from './SettlementRateEntry'
 import RateTemplateEditor from './RateTemplateEditor'
 import WorkgroupManager from './WorkgroupManager'
 import DiscountLevelEditor from './DiscountLevelEditor'
 import RatePublishHistory from './RatePublishHistory'
 
 const tabs = [
-  { key: 'templates', label: 'Arfolyam sablonok' },
+  { key: 'settlement', label: 'Arfolyam rogzites' },
+  { key: 'templates', label: 'Sablonok' },
   { key: 'workgroups', label: 'Munkacsoportok' },
   { key: 'discounts', label: 'Kedvezmenyek' },
   { key: 'history', label: 'Publikalasi naplo' },
@@ -15,7 +17,7 @@ const tabs = [
 type TabKey = (typeof tabs)[number]['key']
 
 export default function RateCreationDashboard() {
-  const [activeTab, setActiveTab] = useState<TabKey>('templates')
+  const [activeTab, setActiveTab] = useState<TabKey>('settlement')
 
   return (
     <div className="space-y-6">
@@ -45,6 +47,7 @@ export default function RateCreationDashboard() {
 
       {/* Tab content */}
       <div className="mt-4">
+        {activeTab === 'settlement' && <SettlementRateEntry />}
         {activeTab === 'templates' && <RateTemplateEditor />}
         {activeTab === 'workgroups' && <WorkgroupManager />}
         {activeTab === 'discounts' && <DiscountLevelEditor />}

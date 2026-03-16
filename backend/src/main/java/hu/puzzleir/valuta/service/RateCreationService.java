@@ -162,6 +162,16 @@ public class RateCreationService {
                             .currencyId(entry.getCurrencyId())
                             .baseBuyRate(entry.getBuyRate())
                             .baseSellRate(entry.getSellRate())
+                            .officialRate(entry.getOfficialRate())
+                            .limit1Amount(entry.getLimit1Amount())
+                            .limit1BuyRate(entry.getLimit1BuyRate())
+                            .limit1SellRate(entry.getLimit1SellRate())
+                            .limit2Amount(entry.getLimit2Amount())
+                            .limit2BuyRate(entry.getLimit2BuyRate())
+                            .limit2SellRate(entry.getLimit2SellRate())
+                            .limit3Amount(entry.getLimit3Amount())
+                            .limit3BuyRate(entry.getLimit3BuyRate())
+                            .limit3SellRate(entry.getLimit3SellRate())
                             .build();
 
             exchangeRateService.createExchangeRate(request);

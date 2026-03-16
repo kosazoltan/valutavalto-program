@@ -17,13 +17,38 @@ public class GroupRateDTO {
     private UUID groupId;
     private List<RateEntry> rates;
 
+    /**
+     * Egy valuta arfolyam-bejegyzese.
+     * Legacy: arfdata.dat egy sora — ALAPVETEL, ALAPELADAS, ELSZAMOLASIARFOLYAM,
+     * LIMIT1, LIM1VETEL, LIM1ELADAS, stb.
+     */
     @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
     public static class RateEntry {
         private Long currencyId;
+
+        /** Alap veteli arfolyam (Legacy: ALAPVETEL) */
         private BigDecimal buyRate;
+
+        /** Alap eladasi arfolyam (Legacy: ALAPELADAS) */
         private BigDecimal sellRate;
+
+        /** MNB hivatalos / elszamolasi arfolyam (Legacy: ELSZAMOLASIARFOLYAM) */
+        private BigDecimal officialRate;
+
+        // ====== LIMIT SZINTEK ======
+        private BigDecimal limit1Amount;
+        private BigDecimal limit1BuyRate;
+        private BigDecimal limit1SellRate;
+
+        private BigDecimal limit2Amount;
+        private BigDecimal limit2BuyRate;
+        private BigDecimal limit2SellRate;
+
+        private BigDecimal limit3Amount;
+        private BigDecimal limit3BuyRate;
+        private BigDecimal limit3SellRate;
     }
 }

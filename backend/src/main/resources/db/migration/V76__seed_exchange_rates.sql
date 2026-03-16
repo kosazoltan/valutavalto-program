@@ -15,7 +15,7 @@ INSERT INTO exchange_rate (
     base_buy_rate, base_sell_rate,
     limit1_amount, limit1_buy_rate, limit1_sell_rate,
     limit2_amount, limit2_buy_rate, limit2_sell_rate,
-    official_rate, active, created_by, created_at
+    official_rate, is_active, created_by, created_at
 )
 SELECT
     c.id,
@@ -51,7 +51,7 @@ CROSS JOIN (VALUES
     ('UAH',    7.7519,      7.3643,    8.1395,  10000,         7.4200,     8.0840,   50000,         7.4750,     8.0280),
     ('TRY',    7.7190,      7.3331,    8.1050,  10000,         7.3880,     8.0500,   50000,         7.4430,     7.9950)
 ) AS v(code, middle_rate, buy_rate, sell_rate, limit1_amount, limit1_buy, limit1_sell, limit2_amount, limit2_buy, limit2_sell)
-JOIN currency cur ON cur.code = v.code AND cur.active = true
+JOIN currency cur ON cur.code = v.code AND cur.is_active = true
 WHERE c.code = 'EBC';
 
 -- Seed MNB official rates into cache for monthly closing revaluation

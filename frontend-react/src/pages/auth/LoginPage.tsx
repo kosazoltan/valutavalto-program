@@ -195,7 +195,7 @@ export default function LoginPage() {
 
       {/* Demo credentials hint */}
       <div className="mt-4 bg-yellow-50 border border-yellow-200 p-2 text-xs text-yellow-800 rounded">
-        <strong>Demo belépés:</strong> Cég: BEST, Pénztáros: P001, Jelszó: 1234
+        <strong>Demo belépés:</strong> Cég: EBC, Pénztáros: ADMIN1, Jelszó: 1234
       </div>
     </div>
   )
