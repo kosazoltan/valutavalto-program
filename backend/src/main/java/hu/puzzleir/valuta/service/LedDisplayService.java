@@ -236,7 +236,7 @@ public class LedDisplayService {
                     .lastRefresh(LocalDateTime.now())
                     .lastError(allOk ? null : "Küldési hiba egy vagy több porton")
                     .build();
-            statusMap.put(branchId, status);
+            putStatusBounded(branchId, status);
 
             log.info("LED frissítve: branchId={}, portok={}, OK={}", branchId, ports.length, allOk);
 
@@ -249,8 +249,20 @@ public class LedDisplayService {
                     .lastRefresh(LocalDateTime.now())
                     .lastError(e.getMessage())
                     .build();
-            statusMap.put(branchId, errStatus);
+            putStatusBounded(branchId, errStatus);
         }
+    }
+
+    /**
+     * Korlátozott méretű statusMap frissítés — megakadályozza a memória szivárgást.
+     */
+    private void putStatusBounded(UUID branchId, LedDisplayStatusDto status) {
+        if (statusMap.size() >= MAX_STATUS_CACHE_SIZE && !statusMap.containsKey(branchId)) {
+            log.warn("LED statusMap elérte a max méretet ({}), új bejegyzés kihagyva: {}",
+                    MAX_STATUS_CACHE_SIZE, branchId);
+            return;
+        }
+        statusMap.put(branchId, status);
     }
 
     /**

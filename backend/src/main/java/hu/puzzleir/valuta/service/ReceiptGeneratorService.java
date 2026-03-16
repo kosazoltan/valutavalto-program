@@ -208,12 +208,15 @@ public class ReceiptGeneratorService {
         }
 
         // Extra sorok
-        for (ReceiptData.ReceiptLineData line : data.getLines()) {
-            sb.append(line.getLabel()).append(": ").append(line.getValue()).append("\n");
+        if (data.getLines() != null) {
+            for (ReceiptData.ReceiptLineData line : data.getLines()) {
+                sb.append(line.getLabel()).append(": ").append(line.getValue()).append("\n");
+            }
         }
 
         sb.append("================================\n");
-        sb.append(data.getSignatureLine()).append("\n\n\n");
+        sb.append(data.getSignatureLine() != null ? data.getSignatureLine() : "Aláírás: ____________________")
+                .append("\n\n\n");
 
         // Paper cut
         sb.append("\u001DVA\u0003"); // Partial cut
@@ -263,10 +266,10 @@ public class ReceiptGeneratorService {
 
         return ReceiptData.builder()
                 .receiptNumber(receiptNumber)
-                .receiptType("WU_" + wuTx.getTransactionType())
-                .companyName("")
-                .branchName("")
-                .workerName("")
+                .receiptType("WU_" + (wuTx.getTransactionType() != null ? wuTx.getTransactionType() : "UNKNOWN"))
+                .companyName(wuTx.getCompany() != null ? wuTx.getCompany().getName() : "")
+                .branchName(wuTx.getBranch() != null ? wuTx.getBranch().getName() : "")
+                .workerName(wuTx.getWorker() != null ? wuTx.getWorker().getName() : "")
                 .date(LocalDateTime.now())
                 .currencyCode("USD")
                 .foreignAmount(wuTx.getAmountUsd())

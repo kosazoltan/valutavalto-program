@@ -29,6 +29,11 @@ public class WuCustomer {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    /** Multi-tenant: a céghez tartozó WU ügyfél. Nullable (legacy orphan rekordok). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id")
+    private Company company;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id")
     private Customer customer;

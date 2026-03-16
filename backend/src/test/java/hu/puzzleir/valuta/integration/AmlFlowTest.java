@@ -36,8 +36,19 @@ class AmlFlowTest {
     @Mock private CustomerRepository customerRepository;
     @Mock private hu.puzzleir.valuta.repository.AmlReportRepository amlReportRepository;
     @Mock private hu.puzzleir.valuta.repository.AmlThresholdRepository amlThresholdRepository;
+    @Mock private hu.puzzleir.valuta.service.SanctionScreeningService sanctionScreeningService;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();
+
+    @BeforeEach
+    void setUp() {
+        // SanctionScreeningService mock: alapértelmezett "nincs találat" válasz
+        lenient().when(sanctionScreeningService.screenCustomer(any(), any(), any(), any(), any(), any()))
+            .thenReturn(hu.puzzleir.valuta.dto.sanction.SanctionScreeningResult.builder()
+                .matched(false)
+                .riskLevel("CLEAR")
+                .build());
+    }
 
     @Nested
     @DisplayName("AML Basic Check — azonosítási küszöbök")

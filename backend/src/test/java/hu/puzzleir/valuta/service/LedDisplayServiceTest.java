@@ -5,8 +5,10 @@ import hu.puzzleir.valuta.dto.led.LedDisplayStatusDto;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.repository.*;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.led.LedProtocolEncoder;
 import hu.puzzleir.valuta.service.led.LedSerialPortDriver;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,7 +24,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
- * LedDisplayService egységtesztek — mock-olt függőségekkel.
+ * LedDisplayService egysgtesztek  mockolt fggsgekkel.
  */
 @ExtendWith(MockitoExtension.class)
 class LedDisplayServiceTest {
@@ -41,6 +43,7 @@ class LedDisplayServiceTest {
     private Branch branch;
     private Company company;
     private LedDisplayConfig config;
+    private MockedStatic<SecurityUtils> securityUtilsMock;
 
     @BeforeEach
     void setUp() {
@@ -69,18 +72,26 @@ class LedDisplayServiceTest {
         config.setDecimalSeparator(',');
         config.setShowBankCard(false);
         config.setDisplayType(LedDisplayConnectionType.SERIAL);
+
+        securityUtilsMock = mockStatic(SecurityUtils.class);
+        securityUtilsMock.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+    }
+
+    @AfterEach
+    void tearDown() {
+        securityUtilsMock.close();
     }
 
     // ---------- refreshDisplay ----------
 
     @Test
-    @DisplayName("1. refreshDisplay: kódolt adatot küld COM portra")
+    @DisplayName("1. refreshDisplay: kodolt adatot kuld COM portra")
     void refreshDisplaySendsEncodedData() {
         byte[] packet = new byte[]{21, 18, 5, (byte) 254};
         byte[][] packets = new byte[][]{packet};
 
-        when(ledDisplayConfigRepository.findByBranchId(branchId)).thenReturn(Optional.of(config));
         when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+        when(ledDisplayConfigRepository.findByBranchId(branchId)).thenReturn(Optional.of(config));
         when(exchangeRateRepository.findAllActiveRates(eq(companyId), eq(branchId)))
                 .thenReturn(List.of());
         when(encoder.encodeMultiDisplay(any(), any())).thenReturn(packets);
@@ -92,9 +103,10 @@ class LedDisplayServiceTest {
     }
 
     @Test
-    @DisplayName("2. refreshDisplay: inaktív konfiguráció esetén kihagyja a küldést")
+    @DisplayName("2. refreshDisplay: inaktiv konfiguracio eseten kihagyja a kuldest")
     void refreshDisplaySkipsInactive() {
         config.setIsActive(false);
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
         when(ledDisplayConfigRepository.findByBranchId(branchId)).thenReturn(Optional.of(config));
 
         service.refreshDisplay(branchId);
@@ -104,8 +116,9 @@ class LedDisplayServiceTest {
     }
 
     @Test
-    @DisplayName("3. refreshDisplay: hiányzó konfiguráció ResourceNotFoundException-t dob")
+    @DisplayName("3. refreshDisplay: hianyzo konfiguracio ResourceNotFoundException-t dob")
     void refreshDisplayThrowsWhenConfigMissing() {
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
         when(ledDisplayConfigRepository.findByBranchId(branchId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.refreshDisplay(branchId))
@@ -115,7 +128,7 @@ class LedDisplayServiceTest {
     // ---------- refreshAllActive ----------
 
     @Test
-    @DisplayName("4. refreshAllActive: összes aktív kijelzőt frissíti")
+    @DisplayName("4. refreshAllActive: osszes aktiv kijelzot frissiti")
     void refreshAllActiveSendsToAllActive() {
         UUID branchId2 = UUID.randomUUID();
         Company company2 = new Company();
@@ -139,10 +152,6 @@ class LedDisplayServiceTest {
         config2.setShowBankCard(false);
 
         when(ledDisplayConfigRepository.findByIsActiveTrue()).thenReturn(List.of(config, config2));
-
-        // Mindkét branch konfigurációs lekérdezésre válasz
-        when(ledDisplayConfigRepository.findByBranchId(branchId)).thenReturn(Optional.of(config));
-        when(ledDisplayConfigRepository.findByBranchId(branchId2)).thenReturn(Optional.of(config2));
         when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
         when(branchRepository.findById(branchId2)).thenReturn(Optional.of(branch2));
         when(exchangeRateRepository.findAllActiveRates(any(), eq(branchId))).thenReturn(List.of());
@@ -158,8 +167,9 @@ class LedDisplayServiceTest {
     // ---------- getConfig ----------
 
     @Test
-    @DisplayName("5. getConfig: DTO-t ad vissza a branchId alapján")
+    @DisplayName("5. getConfig: DTO-t ad vissza a branchId alapjan")
     void getConfigReturnsDto() {
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
         when(ledDisplayConfigRepository.findByBranchId(branchId)).thenReturn(Optional.of(config));
 
         LedDisplayConfigDto dto = service.getConfig(branchId);
@@ -171,7 +181,7 @@ class LedDisplayServiceTest {
     // ---------- updateConfig ----------
 
     @Test
-    @DisplayName("6. updateConfig: elmenti és visszaadja a frissített konfigurációt")
+    @DisplayName("6. updateConfig: elmenti es visszaadja a frissitett konfiguraciot")
     void updateConfigSavesAndReturns() {
         LedDisplayConfigDto dto = LedDisplayConfigDto.builder()
                 .comPorts("COM3")
@@ -195,9 +205,10 @@ class LedDisplayServiceTest {
     // ---------- sendCustomText ----------
 
     @Test
-    @DisplayName("7. sendCustomText: kódolja és elküldi a szöveget")
+    @DisplayName("7. sendCustomText: kodolja es elkuldi a szoveget")
     void sendCustomTextEncodesAndSends() {
         byte[] textPacket = new byte[]{21, 18, 5, 'H', 'I', (byte) 254};
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
         when(ledDisplayConfigRepository.findByBranchId(branchId)).thenReturn(Optional.of(config));
         when(encoder.encodeText(eq(config), eq("HELLO"))).thenReturn(textPacket);
         when(serialDriver.send(eq("COM1"), eq(textPacket))).thenReturn(true);
@@ -211,7 +222,7 @@ class LedDisplayServiceTest {
     // ---------- DUAL_SAME ----------
 
     @Test
-    @DisplayName("8. DUAL_SAME: mindkét COM portra küld")
+    @DisplayName("8. DUAL_SAME: mindket COM portra kuld")
     void dualSameSendsToBothPorts() {
         config.setSerialDisplayType(LedSerialDisplayType.DUAL_SAME);
         config.setComPorts("COM1,COM2");
@@ -219,8 +230,8 @@ class LedDisplayServiceTest {
         byte[] packet = new byte[]{21, 18, 5, (byte) 254};
         byte[][] packets = new byte[][]{packet, packet};
 
-        when(ledDisplayConfigRepository.findByBranchId(branchId)).thenReturn(Optional.of(config));
         when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+        when(ledDisplayConfigRepository.findByBranchId(branchId)).thenReturn(Optional.of(config));
         when(exchangeRateRepository.findAllActiveRates(eq(companyId), eq(branchId)))
                 .thenReturn(List.of());
         when(encoder.encodeMultiDisplay(any(), any())).thenReturn(packets);

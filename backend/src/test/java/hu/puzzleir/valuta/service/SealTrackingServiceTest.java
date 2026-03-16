@@ -61,7 +61,7 @@ class SealTrackingServiceTest {
     @Test
     @DisplayName("seal: SEALED rekord jön létre helyes companyId-val és workerId-vel")
     void seal_createsSealedRecordWithCorrectCompanyAndWorker() {
-        when(sealTrackingRepository.existsBySealNumber(SEAL_NUMBER)).thenReturn(false);
+        when(sealTrackingRepository.existsByCompanyIdAndSealNumber(COMPANY_ID, SEAL_NUMBER)).thenReturn(false);
         when(sealTrackingRepository.save(any(SealTracking.class)))
                 .thenAnswer(inv -> {
                     SealTracking st = inv.getArgument(0);
@@ -88,7 +88,7 @@ class SealTrackingServiceTest {
     @Test
     @DisplayName("seal: duplikált plomba szám ValidationException-t dob")
     void seal_duplicateSealNumber_throwsValidationException() {
-        when(sealTrackingRepository.existsBySealNumber(SEAL_NUMBER)).thenReturn(true);
+        when(sealTrackingRepository.existsByCompanyIdAndSealNumber(COMPANY_ID, SEAL_NUMBER)).thenReturn(true);
 
         assertThatThrownBy(() -> sealTrackingService.seal(TRANSFER_TYPE, TRANSFER_ID, SEAL_NUMBER))
                 .isInstanceOf(ValidationException.class)

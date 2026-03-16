@@ -44,6 +44,9 @@ class AmlServiceTest {
     @Mock
     private AmlThresholdRepository amlThresholdRepository;
 
+    @Mock
+    private SanctionScreeningService sanctionScreeningService;
+
     private static final UUID TEST_COMPANY_ID = UUID.randomUUID();
     private static final UUID TEST_BRANCH_ID = UUID.randomUUID();
 
@@ -56,6 +59,13 @@ class AmlServiceTest {
         TestingAuthenticationToken auth = new TestingAuthenticationToken("test", "pass", "ROLE_CASHIER");
         auth.setDetails(details);
         SecurityContextHolder.getContext().setAuthentication(auth);
+
+        // SanctionScreeningService mock: alapértelmezett "nincs találat" válasz
+        when(sanctionScreeningService.screenCustomer(any(), any(), any(), any(), any(), any()))
+            .thenReturn(hu.puzzleir.valuta.dto.sanction.SanctionScreeningResult.builder()
+                .matched(false)
+                .riskLevel("CLEAR")
+                .build());
     }
 
     // ============ checkTransaction tesztek ============

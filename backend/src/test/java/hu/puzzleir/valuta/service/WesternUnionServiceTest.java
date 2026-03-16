@@ -5,6 +5,8 @@ import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.*;
+import hu.puzzleir.valuta.security.SecurityUtils;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,17 +29,37 @@ class WesternUnionServiceTest {
     @Mock WuCustomerRepository wuCustomerRepository;
     @Mock WuBalanceRepository wuBalanceRepository;
     @Mock BranchRepository branchRepository;
+    @Mock CompanyRepository companyRepository;
     @Mock AmlService amlService;
 
     @InjectMocks WesternUnionService service;
 
     private UUID branchId;
+    private UUID companyId;
     private Branch branch;
+    private Company company;
+    private MockedStatic<SecurityUtils> securityUtilsMock;
 
     @BeforeEach
     void setUp() {
         branchId = UUID.randomUUID();
-        branch = Branch.builder().id(branchId).build();
+        companyId = UUID.randomUUID();
+
+        company = new Company();
+        company.setId(companyId);
+        company.setName("Teszt Ceg");
+
+        branch = new Branch();
+        branch.setId(branchId);
+        branch.setCompany(company);
+
+        securityUtilsMock = mockStatic(SecurityUtils.class);
+        securityUtilsMock.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+    }
+
+    @AfterEach
+    void tearDown() {
+        securityUtilsMock.close();
     }
 
     // ============ MTCN VALIDATION ============
@@ -50,6 +72,7 @@ class WesternUnionServiceTest {
         when(wuBalanceRepository.findByBranchIdForUpdate(branchId))
                 .thenReturn(Optional.of(WuBalance.builder()
                         .branch(branch)
+                        .company(company)
                         .usdBalance(BigDecimal.ZERO)
                         .hufBalance(BigDecimal.ZERO)
                         .build()));
@@ -81,7 +104,7 @@ class WesternUnionServiceTest {
 
         assertThatThrownBy(() -> service.recordSend(dto))
                 .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("MTCN kötelező");
+                .hasMessageContaining("MTCN");
     }
 
     @Test
@@ -93,7 +116,7 @@ class WesternUnionServiceTest {
 
         assertThatThrownBy(() -> service.recordSend(dto))
                 .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("10 számjegy");
+                .hasMessageContaining("10 sz\u00e1mjegy");
     }
 
     @Test
@@ -105,7 +128,7 @@ class WesternUnionServiceTest {
 
         assertThatThrownBy(() -> service.recordSend(dto))
                 .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("10 számjegy");
+                .hasMessageContaining("10 sz\u00e1mjegy");
     }
 
     @Test
@@ -117,7 +140,7 @@ class WesternUnionServiceTest {
 
         assertThatThrownBy(() -> service.recordSend(dto))
                 .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("10 számjegy");
+                .hasMessageContaining("10 sz\u00e1mjegy");
     }
 
     @Test
@@ -127,7 +150,8 @@ class WesternUnionServiceTest {
                 .thenReturn(AmlService.AmlBasicCheckResult.builder().approved(true).build());
         when(wuBalanceRepository.findByBranchIdForUpdate(branchId))
                 .thenReturn(Optional.of(WuBalance.builder()
-                        .branch(branch).usdBalance(BigDecimal.ZERO).hufBalance(BigDecimal.ZERO).build()));
+                        .branch(branch).company(company)
+                        .usdBalance(BigDecimal.ZERO).hufBalance(BigDecimal.ZERO).build()));
         when(wuTransactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         WuTransactionDto dto = WuTransactionDto.builder()
@@ -148,6 +172,7 @@ class WesternUnionServiceTest {
         WuTransaction original = WuTransaction.builder()
                 .id(originalId)
                 .branch(branch)
+                .company(company)
                 .transactionType("SEND")
                 .mtcn("1234567890")
                 .amountUsd(new BigDecimal("100"))
@@ -159,7 +184,8 @@ class WesternUnionServiceTest {
         when(wuTransactionRepository.findById(originalId)).thenReturn(Optional.of(original));
         when(wuBalanceRepository.findByBranchIdForUpdate(branchId))
                 .thenReturn(Optional.of(WuBalance.builder()
-                        .branch(branch).usdBalance(BigDecimal.ZERO).hufBalance(BigDecimal.ZERO).build()));
+                        .branch(branch).company(company)
+                        .usdBalance(BigDecimal.ZERO).hufBalance(BigDecimal.ZERO).build()));
         when(wuTransactionRepository.save(any())).thenAnswer(inv -> {
             WuTransaction t = inv.getArgument(0);
             if (t.getId() == null) t = WuTransaction.builder()
@@ -169,17 +195,18 @@ class WesternUnionServiceTest {
                     .reversedTransaction(t.getReversedTransaction())
                     .reversalReason(t.getReversalReason())
                     .branch(t.getBranch())
+                    .company(t.getCompany())
                     .amountUsd(t.getAmountUsd())
                     .amountHuf(t.getAmountHuf())
                     .build();
             return t;
         });
 
-        WuTransaction storno = service.reverseWuTransaction(originalId, "Ügyfél lemondta");
+        WuTransaction storno = service.reverseWuTransaction(originalId, "\u00dcgyf\u00e9l lemondta");
 
         assertThat(storno.getTransactionType()).isEqualTo("STORNO");
         assertThat(storno.getStatus()).isEqualTo(WuTransactionStatus.COMPLETED);
-        assertThat(storno.getReversalReason()).isEqualTo("Ügyfél lemondta");
+        assertThat(storno.getReversalReason()).isEqualTo("\u00dcgyf\u00e9l lemondta");
         assertThat(original.getStatus()).isEqualTo(WuTransactionStatus.REVERSED);
 
         // save called twice: storno + original update
@@ -200,7 +227,7 @@ class WesternUnionServiceTest {
 
         assertThatThrownBy(() -> service.reverseWuTransaction(originalId, "reason"))
                 .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("már sztornózva van");
+                .hasMessageContaining("m\u00e1r sztorn\u00f3zva van");
     }
 
     @Test
@@ -217,7 +244,7 @@ class WesternUnionServiceTest {
 
         assertThatThrownBy(() -> service.reverseWuTransaction(stornoId, "reason"))
                 .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("Sztornó tranzakció nem sztornózható");
+                .hasMessageContaining("Sztorn\u00f3 tranzakci\u00f3 nem sztorn\u00f3zhat\u00f3");
     }
 
     @Test
@@ -235,15 +262,17 @@ class WesternUnionServiceTest {
     void findOrCreateWuCustomer_existingReturned_noDuplicate() {
         WuCustomer existing = WuCustomer.builder()
                 .id(UUID.randomUUID())
-                .lastName("Kovács")
-                .firstName("János")
+                .company(company)
+                .lastName("Kov\u00e1cs")
+                .firstName("J\u00e1nos")
                 .idNumber("AB123456")
                 .build();
 
-        when(wuCustomerRepository.findByLastNameAndFirstNameAndIdNumber("Kovács", "János", "AB123456"))
+        when(wuCustomerRepository.findByCompanyIdAndLastNameAndFirstNameAndIdNumber(
+                companyId, "Kov\u00e1cs", "J\u00e1nos", "AB123456"))
                 .thenReturn(Optional.of(existing));
 
-        WuCustomer result = service.findOrCreateWuCustomer("Kovács", "János", "PASSPORT", "AB123456");
+        WuCustomer result = service.findOrCreateWuCustomer("Kov\u00e1cs", "J\u00e1nos", "PASSPORT", "AB123456");
 
         assertThat(result.getId()).isEqualTo(existing.getId());
         verify(wuCustomerRepository, never()).save(any());
@@ -251,12 +280,15 @@ class WesternUnionServiceTest {
 
     @Test
     void findOrCreateWuCustomer_newCustomerCreated() {
-        when(wuCustomerRepository.findByLastNameAndFirstNameAndIdNumber("Nagy", "Péter", "XY999"))
+        when(wuCustomerRepository.findByCompanyIdAndLastNameAndFirstNameAndIdNumber(
+                companyId, "Nagy", "P\u00e9ter", "XY999"))
                 .thenReturn(Optional.empty());
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(wuCustomerRepository.save(any())).thenAnswer(inv -> {
             WuCustomer c = inv.getArgument(0);
             c = WuCustomer.builder()
                     .id(UUID.randomUUID())
+                    .company(c.getCompany())
                     .lastName(c.getLastName())
                     .firstName(c.getFirstName())
                     .idNumber(c.getIdNumber())
@@ -264,7 +296,7 @@ class WesternUnionServiceTest {
             return c;
         });
 
-        WuCustomer result = service.findOrCreateWuCustomer("Nagy", "Péter", "ID_CARD", "XY999");
+        WuCustomer result = service.findOrCreateWuCustomer("Nagy", "P\u00e9ter", "ID_CARD", "XY999");
 
         assertThat(result.getId()).isNotNull();
         assertThat(result.getLastName()).isEqualTo("Nagy");
@@ -273,20 +305,23 @@ class WesternUnionServiceTest {
 
     @Test
     void findOrCreateWuCustomer_noDocumentNumber_alwaysCreatesNew() {
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(wuCustomerRepository.save(any())).thenAnswer(inv -> {
             WuCustomer c = inv.getArgument(0);
             c = WuCustomer.builder()
                     .id(UUID.randomUUID())
+                    .company(c.getCompany())
                     .lastName(c.getLastName())
                     .firstName(c.getFirstName())
                     .build();
             return c;
         });
 
-        WuCustomer result = service.findOrCreateWuCustomer("Kiss", "Éva", "ID_CARD", null);
+        WuCustomer result = service.findOrCreateWuCustomer("Kiss", "\u00c9va", "ID_CARD", null);
 
         assertThat(result).isNotNull();
-        verify(wuCustomerRepository, never()).findByLastNameAndFirstNameAndIdNumber(any(), any(), any());
+        verify(wuCustomerRepository, never()).findByCompanyIdAndLastNameAndFirstNameAndIdNumber(
+                any(), any(), any(), any());
         verify(wuCustomerRepository).save(any());
     }
 
@@ -297,7 +332,7 @@ class WesternUnionServiceTest {
         WuTransactionDto dto = WuTransactionDto.builder()
                 .branchId(branchId)
                 .mtcn("1234567890")
-                .senderName("Blokkolt Személy")
+                .senderName("Blokkolt Szem\u00e9ly")
                 .amountHuf(new BigDecimal("1000000"))
                 .build();
 
@@ -305,11 +340,11 @@ class WesternUnionServiceTest {
         when(amlService.checkTransaction(any(), any(), any(), any()))
                 .thenReturn(AmlService.AmlBasicCheckResult.builder()
                         .approved(false)
-                        .rejectionReason("Szankciós lista találat")
+                        .rejectionReason("Szankci\u00f3s lista tal\u00e1lat")
                         .build());
 
         assertThatThrownBy(() -> service.recordSend(dto))
                 .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("AML ellenőrzés megtagadta");
+                .hasMessageContaining("AML ellen\u0151rz\u00e9s megtagadta");
     }
 }

@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.entity.WuTransactionStatus;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
+import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.dto.wu.WuDailyReportDto;
 import hu.puzzleir.valuta.dto.wu.WuTransactionDto;
 import hu.puzzleir.valuta.entity.WuBalance;
@@ -13,6 +14,7 @@ import hu.puzzleir.valuta.entity.WuTransaction;
 import hu.puzzleir.valuta.repository.WuBalanceRepository;
 import hu.puzzleir.valuta.repository.WuCustomerRepository;
 import hu.puzzleir.valuta.repository.WuTransactionRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -42,6 +44,7 @@ public class WesternUnionService {
     private final WuCustomerRepository wuCustomerRepository;
     private final WuBalanceRepository wuBalanceRepository;
     private final BranchRepository branchRepository;
+    private final CompanyRepository companyRepository;
     private final AmlService amlService;
 
     // ============ MTCN VALIDATION ============
@@ -325,25 +328,30 @@ public class WesternUnionService {
     @Transactional
     public WuCustomer findOrCreateWuCustomer(String lastName, String firstName,
                                               String idType, String idNumber) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         if (idNumber != null && !idNumber.isBlank()) {
             return wuCustomerRepository
-                    .findByLastNameAndFirstNameAndIdNumber(lastName, firstName, idNumber)
-                    .orElseGet(() -> createWuCustomer(lastName, firstName, idType, idNumber));
+                    .findByCompanyIdAndLastNameAndFirstNameAndIdNumber(companyId, lastName, firstName, idNumber)
+                    .orElseGet(() -> createWuCustomer(companyId, lastName, firstName, idType, idNumber));
         }
         // Ha nincs dokumentumszám, mindig új rekord
-        return createWuCustomer(lastName, firstName, idType, idNumber);
+        return createWuCustomer(companyId, lastName, firstName, idType, idNumber);
     }
 
-    private WuCustomer createWuCustomer(String lastName, String firstName,
+    private WuCustomer createWuCustomer(UUID companyId, String lastName, String firstName,
                                          String idType, String idNumber) {
+        hu.puzzleir.valuta.entity.Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cég nem található: " + companyId));
+
         WuCustomer customer = WuCustomer.builder()
+                .company(company)
                 .lastName(lastName)
                 .firstName(firstName)
                 .idType(idType)
                 .idNumber(idNumber)
                 .build();
         WuCustomer saved = wuCustomerRepository.save(customer);
-        log.info("WuCustomer created: id={}, name='{} {}'", saved.getId(), firstName, lastName);
+        log.info("WuCustomer created: id={}, companyId={}", saved.getId(), companyId);
         return saved;
     }
 
@@ -351,9 +359,11 @@ public class WesternUnionService {
 
     /**
      * WU tranzakciók lekérdezése irodánként és dátum tartomány szerint.
+     * Multi-tenant: ellenőrzi, hogy a branch az aktuális céghez tartozik.
      */
     @Transactional(readOnly = true)
     public Page<WuTransaction> getTransactions(UUID branchId, LocalDate from, LocalDate to, Pageable pageable) {
+        verifyBranchOwnership(branchId);
         LocalDateTime fromDt = from != null ? from.atStartOfDay() : null;
         LocalDateTime toDt = to != null ? to.atTime(LocalTime.MAX) : null;
         return wuTransactionRepository.findByBranchAndDateRange(branchId, fromDt, toDt, pageable);
@@ -363,9 +373,11 @@ public class WesternUnionService {
 
     /**
      * WU napi riport — SEND, RECEIVE, IC_IN, IC_OUT, CUSTOMER_IN, CUSTOMER_OUT, STORNO típusokra bontva.
+     * Multi-tenant: ellenőrzi, hogy a branch az aktuális céghez tartozik.
      */
     @Transactional(readOnly = true)
     public WuDailyReportDto getDailyReport(UUID branchId, LocalDate date) {
+        verifyBranchOwnership(branchId);
         LocalDateTime from = date.atStartOfDay();
         LocalDateTime to = date.atTime(LocalTime.MAX);
         List<WuTransaction> transactions = wuTransactionRepository.findAllByBranchAndDateRange(branchId, from, to);
@@ -420,10 +432,9 @@ public class WesternUnionService {
                     if (tx.getAmountUsd() != null) totalStornoUsd = totalStornoUsd.add(tx.getAmountUsd());
                 }
                 default -> {
-                    // ismeretlen típus: receiveCount-ba sorolás (legacy fallback)
-                    receiveCount++;
-                    if (tx.getAmountUsd() != null) totalReceiveUsd = totalReceiveUsd.add(tx.getAmountUsd());
-                    if (tx.getAmountHuf() != null) totalReceiveHuf = totalReceiveHuf.add(tx.getAmountHuf());
+                    // Ismeretlen típus: logoljuk, de NEM számoljuk bele egyetlen kategóriába sem
+                    log.warn("WU napi riport: ismeretlen tranzakció típus kihagyva: '{}', txId={}",
+                            type, tx.getId());
                 }
             }
             if (tx.getFeeAmount() != null) totalFees = totalFees.add(tx.getFeeAmount());
@@ -453,13 +464,28 @@ public class WesternUnionService {
 
     /**
      * WU egyenleg lekérdezése.
+     * Multi-tenant: ellenőrzi, hogy a branch az aktuális céghez tartozik.
      */
     @Transactional(readOnly = true)
     public List<WuBalance> getBalance(UUID branchId) {
+        verifyBranchOwnership(branchId);
         return wuBalanceRepository.findAllByBranchId(branchId);
     }
 
     // ============ PRIVATE HELPERS ============
+
+    /**
+     * Ellenőrzi, hogy a megadott iroda az aktuális céghez tartozik-e.
+     * Ha nem, ResourceNotFoundException-t dob (nem fedünk fel más cég adatait).
+     */
+    private void verifyBranchOwnership(UUID branchId) {
+        Branch branch = branchRepository.findById(branchId)
+                .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        if (branch.getCompany() == null || !branch.getCompany().getId().equals(currentCompanyId)) {
+            throw new ResourceNotFoundException("Iroda nem található: " + branchId);
+        }
+    }
 
     private Branch findBranch(UUID branchId) {
         Branch branch = branchRepository.findById(branchId)

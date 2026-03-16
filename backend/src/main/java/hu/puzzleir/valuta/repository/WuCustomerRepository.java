@@ -15,7 +15,15 @@ public interface WuCustomerRepository extends JpaRepository<WuCustomer, UUID> {
     /**
      * Deduplikáció: azonos vezéknév + keresztnév + dokumentumszám kombinációra keres.
      * Segít elkerülni a duplikált WuCustomer rekordokat.
+     * @deprecated Nem multi-tenant safe! Használd a companyId-s változatot.
      */
+    @Deprecated
     Optional<WuCustomer> findByLastNameAndFirstNameAndIdNumber(
             String lastName, String firstName, String idNumber);
+
+    /**
+     * Multi-tenant safe deduplikáció: cégszintű egyediség ellenőrzés.
+     */
+    Optional<WuCustomer> findByCompanyIdAndLastNameAndFirstNameAndIdNumber(
+            UUID companyId, String lastName, String firstName, String idNumber);
 }
