@@ -7,7 +7,9 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "seal_tracking")
+@Table(name = "seal_tracking", uniqueConstraints = {
+    @UniqueConstraint(name = "uq_seal_tracking_company_seal", columnNames = {"company_id", "seal_number"})
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,6 +21,10 @@ public class SealTracking {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Version
+    @Column(name = "version")
+    private Long version;
+
     @Column(name = "company_id", nullable = false)
     private UUID companyId;
 
@@ -28,7 +34,7 @@ public class SealTracking {
     @Column(name = "transfer_id", nullable = false)
     private Long transferId;
 
-    @Column(name = "seal_number", nullable = false, unique = true, length = 50)
+    @Column(name = "seal_number", nullable = false, length = 50)
     private String sealNumber;
 
     @Column(name = "sealed_at", nullable = false)

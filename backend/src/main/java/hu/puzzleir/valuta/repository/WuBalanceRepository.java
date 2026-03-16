@@ -27,6 +27,8 @@ public interface WuBalanceRepository extends JpaRepository<WuBalance, UUID> {
 
     /**
      * Pesszimista írási zárolással tölti be az egyenleget — konkurens pénztáros műveletek ellen.
+     * Multi-tenant: branchId egyedi constraint branch_id + company_id, de a branch->company reláció
+     * biztosítja, hogy egy branch csak egy céghez tartozhat, így branchId szűrés elegendő.
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT wb FROM WuBalance wb WHERE wb.branch.id = :branchId")

@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.entity;
 
 import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.entity.Company;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -19,7 +20,8 @@ import java.util.UUID;
 @Table(name = "wu_transactions", indexes = {
     @Index(name = "idx_wu_transactions_branch", columnList = "branch_id"),
     @Index(name = "idx_wu_transactions_date", columnList = "transaction_date"),
-    @Index(name = "idx_wu_transactions_mtcn", columnList = "mtcn")
+    @Index(name = "idx_wu_transactions_mtcn", columnList = "mtcn"),
+    @Index(name = "idx_wu_transactions_company", columnList = "company_id")
 })
 @EntityListeners(AuditingEntityListener.class)
 @Getter
@@ -36,6 +38,10 @@ public class WuTransaction {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "branch_id", nullable = false)
     private Branch branch;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id", nullable = false)
+    private Company company;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "wu_customer_id")

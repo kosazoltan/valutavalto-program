@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.entity;
 
 import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.entity.Company;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -16,7 +17,7 @@ import java.util.UUID;
  */
 @Entity
 @Table(name = "wu_balances", uniqueConstraints = {
-    @UniqueConstraint(name = "uq_wu_balances_branch", columnNames = {"branch_id"})
+    @UniqueConstraint(name = "uq_wu_balances_branch_company", columnNames = {"branch_id", "company_id"})
 })
 @EntityListeners(AuditingEntityListener.class)
 @Getter
@@ -33,6 +34,10 @@ public class WuBalance {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "branch_id", nullable = false)
     private Branch branch;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id", nullable = false)
+    private Company company;
 
     @Column(name = "usd_balance", precision = 18, scale = 2, nullable = false)
     @Builder.Default

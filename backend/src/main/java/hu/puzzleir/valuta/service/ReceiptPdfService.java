@@ -171,7 +171,7 @@ public class ReceiptPdfService {
                 Math.toRadians(45),
                 PAGE_WIDTH / 2f - 80,
                 PAGE_HEIGHT / 2f - 30));
-        cs.showText("MÁSOLAT");
+        cs.showText(sanitize("MÁSOLAT"));
         cs.endText();
         cs.restoreGraphicsState();
     }

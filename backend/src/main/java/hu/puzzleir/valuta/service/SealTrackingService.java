@@ -29,12 +29,15 @@ public class SealTrackingService {
      */
     @Transactional
     public SealTracking seal(String transferType, Long transferId, String sealNumber) {
-        if (sealTrackingRepository.existsBySealNumber(sealNumber)) {
-            throw new ValidationException("A plomba szám már foglalt: " + sealNumber);
-        }
-
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Long workerId = SecurityUtils.getCurrentWorkerId();
+        if (workerId == null) {
+            throw new ValidationException("Worker ID nem elérhető a security kontextusból");
+        }
+
+        if (sealTrackingRepository.existsByCompanyIdAndSealNumber(companyId, sealNumber)) {
+            throw new ValidationException("A plomba szám már foglalt: " + sealNumber);
+        }
 
         SealTracking tracking = SealTracking.builder()
                 .companyId(companyId)
@@ -115,6 +118,9 @@ public class SealTrackingService {
         }
 
         Long workerId = SecurityUtils.getCurrentWorkerId();
+        if (workerId == null) {
+            throw new ValidationException("Worker ID nem elérhető a security kontextusból");
+        }
         tracking.setTransitStatus(SealTransitStatus.OPENED);
         tracking.setOpenedBy(workerId);
         tracking.setOpenedAt(LocalDateTime.now());

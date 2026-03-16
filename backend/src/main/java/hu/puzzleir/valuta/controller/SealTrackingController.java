@@ -3,9 +3,12 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.dto.seal.SealTrackingDto;
 import hu.puzzleir.valuta.entity.SealTracking;
 import hu.puzzleir.valuta.service.SealTrackingService;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,6 +18,7 @@ import java.util.Optional;
 @RequestMapping("/api/v1/seal-tracking")
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+@Validated
 public class SealTrackingController {
 
     private final SealTrackingService sealTrackingService;
@@ -39,30 +43,30 @@ public class SealTrackingController {
 
     @PostMapping("/seal")
     public ResponseEntity<SealTrackingDto> seal(
-            @RequestParam String transferType,
-            @RequestParam Long transferId,
-            @RequestParam String sealNumber) {
+            @RequestParam @NotBlank String transferType,
+            @RequestParam @NotNull Long transferId,
+            @RequestParam @NotBlank String sealNumber) {
         return ResponseEntity.ok(toDto(sealTrackingService.seal(transferType, transferId, sealNumber)));
     }
 
     @PostMapping("/start-transit")
     public ResponseEntity<SealTrackingDto> startTransit(
-            @RequestParam String transferType,
-            @RequestParam Long transferId) {
+            @RequestParam @NotBlank String transferType,
+            @RequestParam @NotNull Long transferId) {
         return ResponseEntity.ok(toDto(sealTrackingService.startTransit(transferType, transferId)));
     }
 
     @PostMapping("/confirm-arrival")
     public ResponseEntity<SealTrackingDto> confirmArrival(
-            @RequestParam String transferType,
-            @RequestParam Long transferId) {
+            @RequestParam @NotBlank String transferType,
+            @RequestParam @NotNull Long transferId) {
         return ResponseEntity.ok(toDto(sealTrackingService.confirmArrival(transferType, transferId)));
     }
 
     @PostMapping("/open")
     public ResponseEntity<SealTrackingDto> openSeal(
-            @RequestParam String transferType,
-            @RequestParam Long transferId) {
+            @RequestParam @NotBlank String transferType,
+            @RequestParam @NotNull Long transferId) {
         return ResponseEntity.ok(toDto(sealTrackingService.openSeal(transferType, transferId)));
     }
 
@@ -80,8 +84,8 @@ public class SealTrackingController {
 
     @GetMapping("/by-transfer")
     public ResponseEntity<SealTrackingDto> getByTransfer(
-            @RequestParam String transferType,
-            @RequestParam Long transferId) {
+            @RequestParam @NotBlank String transferType,
+            @RequestParam @NotNull Long transferId) {
         Optional<SealTracking> result = sealTrackingService.getByTransfer(transferType, transferId);
         return result.map(entity -> ResponseEntity.ok(toDto(entity)))
                 .orElse(ResponseEntity.notFound().build());
@@ -89,9 +93,9 @@ public class SealTrackingController {
 
     @GetMapping("/validate")
     public ResponseEntity<Boolean> validateIntegrity(
-            @RequestParam String transferType,
-            @RequestParam Long transferId,
-            @RequestParam String expectedSealNumber) {
+            @RequestParam @NotBlank String transferType,
+            @RequestParam @NotNull Long transferId,
+            @RequestParam @NotBlank String expectedSealNumber) {
         boolean valid = sealTrackingService.validateSealIntegrity(transferType, transferId, expectedSealNumber);
         return ResponseEntity.ok(valid);
     }

@@ -39,7 +39,12 @@ public class ReceiptGeneratorService {
     private final ReceiptPdfService receiptPdfService;
 
     private static final DateTimeFormatter RECEIPT_DATE_FORMAT = DateTimeFormatter.ofPattern("yyMMdd");
-    private static final AtomicLong SEQUENCE = new AtomicLong(1);
+    /**
+     * Bizonylat sorszám — a nap + milliszekundum + AtomicLong kombináció biztosítja
+     * az egyediséget újraindítás után is: System.currentTimeMillis() % 10000 az alap,
+     * az AtomicLong pedig a tranzakción belüli szekvenciát tartja.
+     */
+    private static final AtomicLong SEQUENCE = new AtomicLong(System.currentTimeMillis() % 10000);
 
     /**
      * Eladási bizonylat generálása (ügyfélnek eladunk valutát)
@@ -231,10 +236,14 @@ public class ReceiptGeneratorService {
         String receiptNumber = generateReceiptNumber("W");
 
         List<ReceiptData.ReceiptLineData> lines = new ArrayList<>();
-        lines.add(ReceiptData.ReceiptLineData.builder()
-                .label("MTCN").value(wuTx.getMtcn()).build());
-        lines.add(ReceiptData.ReceiptLineData.builder()
-                .label("Tipus").value(wuTx.getTransactionType()).build());
+        if (wuTx.getMtcn() != null) {
+            lines.add(ReceiptData.ReceiptLineData.builder()
+                    .label("MTCN").value(wuTx.getMtcn()).build());
+        }
+        if (wuTx.getTransactionType() != null) {
+            lines.add(ReceiptData.ReceiptLineData.builder()
+                    .label("Tipus").value(wuTx.getTransactionType()).build());
+        }
         if (wuTx.getSenderName() != null) {
             lines.add(ReceiptData.ReceiptLineData.builder()
                     .label("Kuldo").value(wuTx.getSenderName()).build());

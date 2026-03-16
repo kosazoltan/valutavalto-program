@@ -9,6 +9,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 /**
@@ -77,7 +78,7 @@ public class LedProtocolEncoder {
                 writeSpeed(buf, config.getSpeed());
             }
             if (text != null) {
-                buf.write(text.getBytes());
+                buf.write(text.getBytes(StandardCharsets.US_ASCII));
             }
             writeEndMarkers(buf, config.getEndMarkerBytes());
             return buf.toByteArray();
@@ -137,6 +138,16 @@ public class LedProtocolEncoder {
      * @param decimalSeparator  ',' vagy '.'
      * @return pontosan 6 karakter hosszú string
      */
+    /**
+     * Árfolyam formázása jobbra igazított mezőbe.
+     *
+     * Normál árfolyamok (≤ 999.99) → 6 karakter széles mező.
+     * Nagyobb árfolyamok (pl. 1234.56) → dinamikusan szélesebb mező, legalább 6.
+     *
+     * @param rate              árfolyam érték
+     * @param decimalSeparator  ',' vagy '.'
+     * @return legalább 6 karakter hosszú, jobbra igazított string
+     */
     public String formatRate(BigDecimal rate, char decimalSeparator) {
         if (rate == null) return "      ";
 
@@ -146,8 +157,9 @@ public class LedProtocolEncoder {
         if (decimalSeparator != '.') {
             formatted = formatted.replace('.', decimalSeparator);
         }
-        // Jobbra igazítás, 6 karakter
-        return String.format("%6s", formatted);
+        // Jobbra igazítás, minimum 6 karakter (nem csonkítjuk a nagyobb számokat)
+        int width = Math.max(6, formatted.length());
+        return String.format("%" + width + "s", formatted);
     }
 
     // -------------------------------------------------------------------
@@ -176,17 +188,17 @@ public class LedProtocolEncoder {
         char sep = config.getDecimalSeparator();
         for (String currency : config.getCurrencyArray()) {
             BigDecimal[] pair = rates.get(currency);
-            if (pair == null || pair.length < 2) {
-                log.debug("Hiányzó árfolyam: {}", currency);
+            if (pair == null || pair.length < 2 || pair[0] == null || pair[1] == null) {
+                log.debug("Hiányzó vagy hiányos árfolyam: {}", currency);
                 continue;
             }
             String buyStr  = formatRate(pair[0], sep);
             String sellStr = formatRate(pair[1], sep);
             // Formátum: "EUR 402,50 408,00 "  (currency + space + buy + space + sell + space)
-            buf.write((currency + " " + buyStr + " " + sellStr + " ").getBytes());
+            buf.write((currency + " " + buyStr + " " + sellStr + " ").getBytes(StandardCharsets.US_ASCII));
         }
         if (config.isShowBankCard()) {
-            buf.write("BANKKARTYA ".getBytes());
+            buf.write("BANKKARTYA ".getBytes(StandardCharsets.US_ASCII));
         }
     }
 

@@ -90,8 +90,8 @@ public class WesternUnionService {
         }
 
         if (result.isRequiresDetailedId()) {
-            log.warn("WU AML: Részletes azonosítás szükséges — összeg={} HUF, ügyfél='{}'",
-                    hufForCheck, customerName);
+            log.warn("WU AML: Részletes azonosítás szükséges — összeg={} HUF",
+                    hufForCheck);
         } else if (result.isRequiresIdentification()) {
             log.info("WU AML: Azonosítás szükséges — összeg={} HUF", hufForCheck);
         }
@@ -110,6 +110,7 @@ public class WesternUnionService {
 
         WuTransaction tx = WuTransaction.builder()
                 .branch(branch)
+                .company(branch.getCompany())
                 .transactionType("SEND")
                 .mtcn(dto.getMtcn())
                 .amountUsd(dto.getAmountUsd())
@@ -130,7 +131,7 @@ public class WesternUnionService {
         }
 
         WuTransaction saved = wuTransactionRepository.save(tx);
-        updateBalance(dto.getBranchId(), dto.getAmountUsd(), dto.getAmountHuf(), true);
+        updateBalance(branch, dto.getAmountUsd(), dto.getAmountHuf(), true);
 
         log.info("WU SEND recorded: MTCN={}, amount={} USD, branch={}",
                 dto.getMtcn(), dto.getAmountUsd(), dto.getBranchId());
@@ -148,6 +149,7 @@ public class WesternUnionService {
 
         WuTransaction tx = WuTransaction.builder()
                 .branch(branch)
+                .company(branch.getCompany())
                 .transactionType("RECEIVE")
                 .mtcn(dto.getMtcn())
                 .amountUsd(dto.getAmountUsd())
@@ -169,7 +171,7 @@ public class WesternUnionService {
 
         WuTransaction saved = wuTransactionRepository.save(tx);
         // Fogadásnál ellentétes irány: USD nő, HUF csökken
-        updateBalance(dto.getBranchId(), dto.getAmountUsd(), dto.getAmountHuf(), false);
+        updateBalance(branch, dto.getAmountUsd(), dto.getAmountHuf(), false);
 
         log.info("WU RECEIVE recorded: MTCN={}, amount={} USD, branch={}",
                 dto.getMtcn(), dto.getAmountUsd(), dto.getBranchId());
@@ -188,6 +190,7 @@ public class WesternUnionService {
 
         WuTransaction tx = WuTransaction.builder()
                 .branch(branch)
+                .company(branch.getCompany())
                 .transactionType("IC_IN")
                 .amountUsd(dto.getAmountUsd())
                 .amountHuf(dto.getAmountHuf())
@@ -199,7 +202,7 @@ public class WesternUnionService {
 
         WuTransaction saved = wuTransactionRepository.save(tx);
         // IC_IN: USD egyenleg nő (beérkezés)
-        updateBalanceUsdOnly(dto.getBranchId(), dto.getAmountUsd(), true);
+        updateBalanceUsdOnly(branch, dto.getAmountUsd(), true);
 
         log.info("WU IC_IN recorded: amount={} USD, branch={}", dto.getAmountUsd(), dto.getBranchId());
         return saved;
@@ -215,6 +218,7 @@ public class WesternUnionService {
 
         WuTransaction tx = WuTransaction.builder()
                 .branch(branch)
+                .company(branch.getCompany())
                 .transactionType("IC_OUT")
                 .amountUsd(dto.getAmountUsd())
                 .amountHuf(dto.getAmountHuf())
@@ -226,7 +230,7 @@ public class WesternUnionService {
 
         WuTransaction saved = wuTransactionRepository.save(tx);
         // IC_OUT: USD egyenleg csökken (kimenés)
-        updateBalanceUsdOnly(dto.getBranchId(), dto.getAmountUsd(), false);
+        updateBalanceUsdOnly(branch, dto.getAmountUsd(), false);
 
         log.info("WU IC_OUT recorded: amount={} USD, branch={}", dto.getAmountUsd(), dto.getBranchId());
         return saved;
@@ -261,6 +265,7 @@ public class WesternUnionService {
         // STORNO rekord létrehozása
         WuTransaction storno = WuTransaction.builder()
                 .branch(original.getBranch())
+                .company(original.getCompany())
                 .wuCustomer(original.getWuCustomer())
                 .transactionType("STORNO")
                 .mtcn(original.getMtcn())
@@ -285,15 +290,16 @@ public class WesternUnionService {
         wuTransactionRepository.save(original);
 
         // Egyenleg visszaállítása (ellentétes irány)
+        Branch branch = original.getBranch();
         boolean wasSend = "SEND".equals(original.getTransactionType())
                 || "IC_OUT".equals(original.getTransactionType())
                 || "CUSTOMER_OUT".equals(original.getTransactionType());
 
         if ("IC_IN".equals(original.getTransactionType()) || "IC_OUT".equals(original.getTransactionType())) {
-            updateBalanceUsdOnly(original.getBranch().getId(), original.getAmountUsd(), wasSend);
+            updateBalanceUsdOnly(branch, original.getAmountUsd(), wasSend);
         } else {
-            // SEND sztornó: fordított updateBalance (receive irány = false→isSend=false de wasSend=true, tehát !wasSend)
-            updateBalance(original.getBranch().getId(), original.getAmountUsd(), original.getAmountHuf(), !wasSend);
+            // SEND sztornó: fordított updateBalance
+            updateBalance(branch, original.getAmountUsd(), original.getAmountHuf(), !wasSend);
         }
 
         log.info("WU STORNO created: originalId={}, stornoId={}, reason='{}'",
@@ -456,15 +462,20 @@ public class WesternUnionService {
     // ============ PRIVATE HELPERS ============
 
     private Branch findBranch(UUID branchId) {
-        return branchRepository.findById(branchId)
+        Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Branch not found: " + branchId));
+        if (branch.getCompany() == null) {
+            throw new ValidationException("Az iroda nincs céghez rendelve: " + branchId);
+        }
+        return branch;
     }
 
     /**
      * WU egyenleg frissítése USD + HUF mozgással.
+     * Branch-et veszi paraméterül, hogy a company referencia elérhető legyen.
      */
-    private void updateBalance(UUID branchId, BigDecimal amountUsd, BigDecimal amountHuf, boolean isSend) {
-        WuBalance balance = getOrCreateBalance(branchId);
+    private void updateBalance(Branch branch, BigDecimal amountUsd, BigDecimal amountHuf, boolean isSend) {
+        WuBalance balance = getOrCreateBalance(branch);
 
         if (isSend) {
             // Küldés: USD csökken (kifolyik), HUF nő (ügyfél befizeti HUF-ban)
@@ -483,9 +494,9 @@ public class WesternUnionService {
     /**
      * WU egyenleg frissítése csak USD mozgással (IC tranzakciókhoz).
      */
-    private void updateBalanceUsdOnly(UUID branchId, BigDecimal amountUsd, boolean isIncrease) {
+    private void updateBalanceUsdOnly(Branch branch, BigDecimal amountUsd, boolean isIncrease) {
         if (amountUsd == null) return;
-        WuBalance balance = getOrCreateBalance(branchId);
+        WuBalance balance = getOrCreateBalance(branch);
 
         if (isIncrease) {
             balance.setUsdBalance(balance.getUsdBalance().add(amountUsd));
@@ -497,15 +508,17 @@ public class WesternUnionService {
         wuBalanceRepository.save(balance);
     }
 
-    private WuBalance getOrCreateBalance(UUID branchId) {
-        return wuBalanceRepository.findByBranchIdForUpdate(branchId)
-                .orElseGet(() -> {
-                    Branch branch = findBranch(branchId);
-                    return WuBalance.builder()
-                            .branch(branch)
-                            .usdBalance(BigDecimal.ZERO)
-                            .hufBalance(BigDecimal.ZERO)
-                            .build();
-                });
+    /**
+     * WU egyenleg betöltése pesszimista zárolással, vagy létrehozása ha nem létezik.
+     * A Branch objektumot kapja, így a company referencia mindig elérhető.
+     */
+    private WuBalance getOrCreateBalance(Branch branch) {
+        return wuBalanceRepository.findByBranchIdForUpdate(branch.getId())
+                .orElseGet(() -> WuBalance.builder()
+                        .branch(branch)
+                        .company(branch.getCompany())
+                        .usdBalance(BigDecimal.ZERO)
+                        .hufBalance(BigDecimal.ZERO)
+                        .build());
     }
 }

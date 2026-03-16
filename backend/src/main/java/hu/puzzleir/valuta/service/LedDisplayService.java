@@ -51,8 +51,13 @@ public class LedDisplayService {
     private final LedProtocolEncoder encoder;
     private final LedSerialPortDriver serialDriver;
 
-    /** Valós idejű státusz cache (branch-enkénti) */
+    /**
+     * Valós idejű státusz cache (branch-enkénti).
+     * Bounded by branch count — pénzváltó rendszerben max néhány száz iroda,
+     * így ez nem okoz memory leak-et.
+     */
     private final ConcurrentHashMap<UUID, LedDisplayStatusDto> statusMap = new ConcurrentHashMap<>();
+    private static final int MAX_STATUS_CACHE_SIZE = 500;
 
     // ============ DISPLAY CONTROL (V38) ============
 
@@ -141,7 +146,12 @@ public class LedDisplayService {
                 .orElse(LedDisplayConfig.builder().branch(branch).build());
 
         if (request.getDisplayType() != null) {
-            config.setDisplayType(LedDisplayConnectionType.valueOf(request.getDisplayType()));
+            try {
+                config.setDisplayType(LedDisplayConnectionType.valueOf(request.getDisplayType()));
+            } catch (IllegalArgumentException e) {
+                throw new hu.puzzleir.valuta.exception.ValidationException(
+                        "Érvénytelen kijelző típus: " + request.getDisplayType());
+            }
         }
         if (request.getConnectionString() != null) {
             config.setConnectionString(request.getConnectionString());
@@ -184,7 +194,7 @@ public class LedDisplayService {
 
     /**
      * LED kijelző frissítése egy irodán (soros port protokoll).
-     * Betölti a konfigurációt, lekéri az árfolyamokat, kódolja és elküldi COM-on.
+     * REST API-ból hívható — ellenőrzi a branch ownership-et.
      */
     @Transactional(readOnly = true)
     public void refreshDisplay(UUID branchId) {
@@ -192,7 +202,14 @@ public class LedDisplayService {
         LedDisplayConfig config = ledDisplayConfigRepository.findByBranchId(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "LED konfiguráció nem található: branchId=" + branchId));
+        refreshDisplayInternal(branchId, config);
+    }
 
+    /**
+     * Belső LED frissítés — ownership ellenőrzés nélkül.
+     * Scheduled kontextusból és REST-ből is hívható.
+     */
+    private void refreshDisplayInternal(UUID branchId, LedDisplayConfig config) {
         if (!Boolean.TRUE.equals(config.getIsActive())) {
             log.debug("LED konfiguráció inaktív, kihagyva: branchId={}", branchId);
             return;
@@ -238,6 +255,8 @@ public class LedDisplayService {
 
     /**
      * Összes aktív LED kijelző frissítése — 60 másodpercenként fut.
+     * Scheduled kontextusban nincs SecurityContext, ezért közvetlenül refreshelünk
+     * ownership ellenőrzés nélkül (a config DB-ből jön, nem user inputból).
      */
     @Scheduled(fixedRate = 60_000)
     public void refreshAllActive() {
@@ -246,7 +265,7 @@ public class LedDisplayService {
         for (LedDisplayConfig config : activeConfigs) {
             if (config.getBranch() != null) {
                 try {
-                    refreshDisplay(config.getBranch().getId());
+                    refreshDisplayInternal(config.getBranch().getId(), config);
                 } catch (Exception e) {
                     log.error("LED auto-frissítési hiba: branchId={}",
                             config.getBranch().getId(), e);
@@ -278,7 +297,12 @@ public class LedDisplayService {
 
         // V38 mezők
         if (dto.getDisplayType() != null) {
-            config.setDisplayType(LedDisplayConnectionType.valueOf(dto.getDisplayType()));
+            try {
+                config.setDisplayType(LedDisplayConnectionType.valueOf(dto.getDisplayType()));
+            } catch (IllegalArgumentException e) {
+                throw new hu.puzzleir.valuta.exception.ValidationException(
+                        "Érvénytelen kijelző típus: " + dto.getDisplayType());
+            }
         }
         if (dto.getConnectionString() != null) {
             config.setConnectionString(dto.getConnectionString());
@@ -295,7 +319,12 @@ public class LedDisplayService {
 
         // V98 soros port mezők
         if (dto.getSerialDisplayType() != null) {
-            config.setSerialDisplayType(LedSerialDisplayType.valueOf(dto.getSerialDisplayType()));
+            try {
+                config.setSerialDisplayType(LedSerialDisplayType.valueOf(dto.getSerialDisplayType()));
+            } catch (IllegalArgumentException e) {
+                throw new hu.puzzleir.valuta.exception.ValidationException(
+                        "Érvénytelen soros kijelző típus: " + dto.getSerialDisplayType());
+            }
         }
         if (dto.getComPorts() != null) {
             config.setComPorts(dto.getComPorts());

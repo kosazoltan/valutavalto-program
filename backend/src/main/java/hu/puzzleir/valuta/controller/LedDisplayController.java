@@ -108,7 +108,7 @@ public class LedDisplayController {
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
     public ResponseEntity<LedDisplayConfigDto> updateConfig(
             @PathVariable UUID branchId,
-            @RequestBody LedDisplayConfigDto dto) {
+            @Valid @RequestBody LedDisplayConfigDto dto) {
         return ResponseEntity.ok(ledDisplayService.updateConfig(branchId, dto));
     }
 

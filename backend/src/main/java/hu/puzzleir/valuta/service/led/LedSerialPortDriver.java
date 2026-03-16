@@ -38,9 +38,12 @@ public class LedSerialPortDriver {
             throw new IllegalArgumentException("Az adat nem lehet üres!");
         }
 
-        SerialPort port = SerialPort.getCommPort(portName);
-        if (port == null) {
-            log.warn("Soros port nem található: {}", portName);
+        SerialPort port;
+        try {
+            port = SerialPort.getCommPort(portName);
+        } catch (Exception e) {
+            // jSerialComm throws SerialPortInvalidPortException (unchecked) for invalid ports
+            log.warn("Soros port nem található vagy érvénytelen: {} — {}", portName, e.getMessage());
             return false;
         }
 
