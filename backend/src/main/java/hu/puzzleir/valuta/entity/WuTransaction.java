@@ -41,8 +41,9 @@ public class WuTransaction {
     @JoinColumn(name = "wu_customer_id")
     private WuCustomer wuCustomer;
 
-    @Column(name = "transaction_type", nullable = false, length = 10)
-    private String transactionType;  // SEND, RECEIVE
+    /** SEND, RECEIVE, IC_IN, IC_OUT, CUSTOMER_IN, CUSTOMER_OUT, STORNO */
+    @Column(name = "transaction_type", nullable = false, length = 20)
+    private String transactionType;
 
     @Column(name = "mtcn", length = 20)
     private String mtcn;
@@ -71,9 +72,19 @@ public class WuTransaction {
     @Column(name = "receipt_number", length = 50)
     private String receiptNumber;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     @Builder.Default
-    private String status = "COMPLETED";
+    private WuTransactionStatus status = WuTransactionStatus.COMPLETED;
+
+    /** Sztornó link: az a tranzakció, amelyet ez a sztornó visszavon. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reversed_transaction_id")
+    private WuTransaction reversedTransaction;
+
+    /** Sztornó indoklás. */
+    @Column(name = "reversal_reason", length = 500)
+    private String reversalReason;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "worker_id")

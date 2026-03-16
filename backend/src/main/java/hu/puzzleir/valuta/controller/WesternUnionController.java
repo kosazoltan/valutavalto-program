@@ -113,7 +113,7 @@ public class WesternUnionController {
                 .receiverName(tx.getReceiverName())
                 .destinationCountry(tx.getDestinationCountry())
                 .receiptNumber(tx.getReceiptNumber())
-                .status(tx.getStatus())
+                .status(tx.getStatus() != null ? tx.getStatus().name() : null)
                 .workerId(tx.getWorker() != null ? tx.getWorker().getId() : null)  // Worker.id is Long
                 .transactionDate(tx.getTransactionDate())
                 .createdAt(tx.getCreatedAt())
