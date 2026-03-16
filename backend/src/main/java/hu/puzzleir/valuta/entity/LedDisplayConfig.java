@@ -164,12 +164,17 @@ public class LedDisplayConfig {
         String[] parts = endMarkers.split(",");
         int[] result = new int[parts.length];
         for (int i = 0; i < parts.length; i++) {
-            int value = Integer.parseInt(parts[i].trim());
-            if (value < 0 || value > 255) {
+            try {
+                int value = Integer.parseInt(parts[i].trim());
+                if (value < 0 || value > 255) {
+                    throw new IllegalArgumentException(
+                            "Záró bájt érték 0-255 között kell legyen, kapott: " + value);
+                }
+                result[i] = value;
+            } catch (NumberFormatException e) {
                 throw new IllegalArgumentException(
-                        "Záró bájt érték 0-255 között kell legyen, kapott: " + value);
+                        "Érvénytelen záró bájt érték: '" + parts[i].trim() + "' — egész szám szükséges (0-255)");
             }
-            result[i] = value;
         }
         return result;
     }

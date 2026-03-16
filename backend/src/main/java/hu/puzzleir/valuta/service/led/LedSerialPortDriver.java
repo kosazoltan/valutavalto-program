@@ -4,10 +4,16 @@ import com.fazecast.jSerialComm.SerialPort;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
+
 /**
  * Soros port (RS-232 / USB-serial) kommunikáció LED kijelzőkhöz.
  *
  * Beállítások: 9600 baud, 8 adatbit, 1 stopbit, nincs paritás.
+ * Thread-safe: per-port ReentrantLock biztosítja, hogy egyidejű @Scheduled
+ * és manuális frissítés ne ütközzön ugyanazon COM porton.
  *
  * Legacy: a Delphi rendszer közvetlenül COM portot nyitott, küldött, zárt.
  * Ez az osztály ugyanezt csinálja jSerialComm könyvtárral.
@@ -22,8 +28,12 @@ public class LedSerialPortDriver {
     private static final int PARITY       = SerialPort.NO_PARITY;
     private static final int WRITE_TIMEOUT_MS = 2000;
 
+    /** Per-port zárolás — megakadályozza két thread egyidejű COM port hozzáférését. */
+    private final Map<String, ReentrantLock> portLocks = new ConcurrentHashMap<>();
+
     /**
      * Adatok küldése a megadott soros porton.
+     * Thread-safe: per-port lock biztosítja, hogy egyidejű hívások ne ütközzenek.
      *
      * @param portName port neve, pl. "COM1" vagy "/dev/ttyS0"
      * @param data     küldendő bájt tömb
@@ -38,6 +48,16 @@ public class LedSerialPortDriver {
             throw new IllegalArgumentException("Az adat nem lehet üres!");
         }
 
+        ReentrantLock lock = portLocks.computeIfAbsent(portName, k -> new ReentrantLock());
+        lock.lock();
+        try {
+            return sendInternal(portName, data);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private boolean sendInternal(String portName, byte[] data) {
         SerialPort port;
         try {
             port = SerialPort.getCommPort(portName);
@@ -60,7 +80,7 @@ public class LedSerialPortDriver {
             }
             int written = port.writeBytes(data, data.length);
             if (written < 0) {
-                log.warn("Soros port írási hiba: {}, írva: {}", portName, written);
+                log.warn("Soros port írási hiba: {}, írva: {} (elvárt: {})", portName, written, data.length);
                 return false;
             }
             log.debug("Soros port küldés OK: {} — {} bájt", portName, written);
