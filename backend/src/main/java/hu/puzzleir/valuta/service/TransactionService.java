@@ -278,6 +278,9 @@ public class TransactionService {
         BigDecimal payableAmount = HungarianRounding.roundToFive(grossAmount);
         BigDecimal roundingDifference = payableAmount.subtract(grossAmount);
 
+        // 300K+ tranzakció esetén ügyfél-azonosítás kötelező (NAV jogi követelmény).
+        validateIdentification(payableAmount, request.getCustomerName(), request.getCustomerDocumentNumber());
+
         // AML ellenőrzés (Pmt. 2017. évi LIII. tv.)
         performAmlCheck(payableAmount, request.getCustomerId(), request.getCustomerName(),
                 request.getCustomerDocumentNumber(), currency.getCode());
@@ -553,7 +556,8 @@ public class TransactionService {
         BigDecimal roundedHufAmount = HungarianRounding.roundToFive(hufAmount);
         BigDecimal roundingDifference = roundedHufAmount.subtract(hufAmount);
 
-        BigDecimal toAmount = roundedHufAmount.divide(toRate.getBaseSellRate(), 2, RoundingMode.HALF_UP);
+        BigDecimal toAmountRaw = roundedHufAmount.divide(toRate.getBaseSellRate(), 2, RoundingMode.HALF_UP);
+        BigDecimal toAmount = toAmountRaw.setScale(2, RoundingMode.FLOOR);
 
         // AML ellenőrzés konverziónál is (HUF egyenértéken)
         performAmlCheck(roundedHufAmount, request.getCustomerId(), request.getCustomerName(),
