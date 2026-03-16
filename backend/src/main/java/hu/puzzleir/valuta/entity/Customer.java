@@ -234,6 +234,26 @@ public class Customer {
     private Boolean isPep = false;
 
     /**
+     * Magas kockázatú ügyfél jelölés (AML göngyölési limit elérése után)
+     * Legacy: BIGCTRL.DLL "nagy ügyfél" státusz
+     */
+    @Column(name = "high_risk_flag")
+    @Builder.Default
+    private Boolean highRiskFlag = false;
+
+    /**
+     * Magas kockázat oka
+     */
+    @Column(name = "high_risk_reason", length = 500)
+    private String highRiskReason;
+
+    /**
+     * Magas kockázat beállításának időpontja
+     */
+    @Column(name = "high_risk_set_at")
+    private LocalDateTime highRiskSetAt;
+
+    /**
      * Megjegyzések
      */
     @Column(length = 1000)

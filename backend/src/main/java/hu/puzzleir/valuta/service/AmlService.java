@@ -2,9 +2,11 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.dto.aml.AmlDailySummaryDto;
+import hu.puzzleir.valuta.dto.aml.AmlDailyExportDto;
 import hu.puzzleir.valuta.dto.aml.AmlReportDto;
 import hu.puzzleir.valuta.dto.aml.CreateAmlReportDto;
 import hu.puzzleir.valuta.dto.aml.CustomerRiskProfileDto;
+import hu.puzzleir.valuta.dto.sanction.SanctionScreeningResult;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.AmlReportRepository;
 import hu.puzzleir.valuta.repository.AmlThresholdRepository;
@@ -53,6 +55,7 @@ public class AmlService {
     private final AmlReportRepository amlReportRepository;
     private final AmlThresholdRepository amlThresholdRepository;
     private final AuditLogService auditLogService;
+    private final SanctionScreeningService sanctionScreeningService;
 
     /** Azonositas nelkuli limit (NAV) */
     private static final BigDecimal IDENTIFICATION_LIMIT = new BigDecimal("300000");
@@ -77,6 +80,23 @@ public class AmlService {
             String customerId,
             String customerName,
             String documentNumber) {
+
+        // 0. Szankciós szűrés — KÖTELEZŐ, mindig az első ellenőrzés
+        if (customerName != null && !customerName.isBlank()) {
+            SanctionScreeningResult sanctionResult = sanctionScreeningService.screenCustomer(
+                customerName, documentNumber, null, null, null, null);
+            if (sanctionResult.isMatched()) {
+                log.warn("AML: Szankciós lista találat — ügyfél: '{}', kockázat: {}",
+                    customerName, sanctionResult.getRiskLevel());
+                return AmlBasicCheckResult.builder()
+                    .approved(false)
+                    .rejectionReason("Szankciós lista találat (" + sanctionResult.getRiskLevel()
+                        + "): " + customerName + " — tranzakció megtagadva")
+                    .build();
+            } else {
+                log.debug("AML: Szankciós szűrés: TISZTA — ügyfél: '{}'", customerName);
+            }
+        }
 
         // Input validacio
         if (hufAmount == null || hufAmount.compareTo(BigDecimal.ZERO) < 0) {
@@ -710,6 +730,163 @@ public class AmlService {
         return nearLimitCount >= STRUCTURING_MIN_TRANSACTIONS;
     }
 
+    // ============ HIGH RISK FLAG KEZELÉS ============
+
+    /**
+     * Ügyfél highRiskFlag beállítása, ha az éves göngyölt összeg eléri a limitet.
+     * Meghívandó minden sikeres tranzakció könyvelésekor.
+     *
+     * @param customerId ügyfél azonosító
+     * @param newAnnualTotal tranzakció utáni új éves összeg
+     */
+    public void setHighRiskFlagIfNeeded(String customerId, BigDecimal newAnnualTotal) {
+        if (customerId == null || customerId.isBlank()) return;
+        if (newAnnualTotal == null) return;
+
+        if (newAnnualTotal.compareTo(ANNUAL_ROLLING_LIMIT) < 0) return;
+
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Optional<Customer> customerOpt = customerRepository.findByCustomerCodeAndCompanyId(customerId, companyId);
+        if (customerOpt.isEmpty()) return;
+
+        Customer customer = customerOpt.get();
+        if (Boolean.TRUE.equals(customer.getHighRiskFlag())) return; // már be van állítva
+
+        customer.setHighRiskFlag(true);
+        customer.setHighRiskReason("Éves göngyölt összeg elérte a " + ANNUAL_ROLLING_LIMIT.toPlainString() + " Ft limitet (aktuális: " + newAnnualTotal.toPlainString() + " Ft)");
+        customer.setHighRiskSetAt(LocalDateTime.now());
+        customerRepository.save(customer);
+
+        log.warn("AML: Ügyfél highRiskFlag beállítva — customerId={}, éves összeg={} Ft",
+            customerId, newAnnualTotal);
+        auditLogService.log("AML_HIGH_RISK_SET",
+            "Ügyfél magas kockázatú jelölés beállítva: éves göngyölt=" + newAnnualTotal.toPlainString() + " Ft",
+            customerId);
+    }
+
+    // ============ BEJELENTÉS ÉLETCIKLUS ============
+
+    /**
+     * AML bejelentés benyújtása hatósághoz: DRAFT → SUBMITTED.
+     *
+     * @param reportId AML bejelentés azonosítója
+     * @param externalReference hatósági referenciaszám
+     * @return frissített bejelentés DTO
+     */
+    public AmlReportDto submitToAuthority(UUID reportId, String externalReference) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+
+        AmlReport report = amlReportRepository.findById(reportId)
+            .orElseThrow(() -> new ValidationException("AML bejelentés nem található: " + reportId));
+
+        if (!report.getCompany().getId().equals(companyId)) {
+            throw new ValidationException("Hozzáférés megtagadva: másik cég AML bejelentése");
+        }
+
+        if (report.getStatus() != AmlReportStatus.DRAFT) {
+            throw new ValidationException("Csak DRAFT státuszú bejelentés nyújtható be (aktuális: " + report.getStatus() + ")");
+        }
+
+        report.setStatus(AmlReportStatus.SUBMITTED);
+        report.setSubmittedAt(LocalDateTime.now());
+        if (externalReference != null && !externalReference.isBlank()) {
+            report.setExternalReference(externalReference);
+        }
+
+        AmlReport saved = amlReportRepository.save(report);
+
+        auditLogService.log("AML_REPORT_SUBMITTED",
+            "AML bejelentés benyújtva hatósághoz: id=" + reportId + ", ref=" + externalReference,
+            reportId.toString());
+
+        log.info("AML bejelentés benyújtva: id={}, ref={}", reportId, externalReference);
+        return toDto(saved);
+    }
+
+    /**
+     * AML bejelentés visszaigazolása: SUBMITTED → ACKNOWLEDGED.
+     *
+     * @param reportId AML bejelentés azonosítója
+     * @param externalReference hatósági visszaigazolási szám
+     * @return frissített bejelentés DTO
+     */
+    public AmlReportDto acknowledgeReport(UUID reportId, String externalReference) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+
+        AmlReport report = amlReportRepository.findById(reportId)
+            .orElseThrow(() -> new ValidationException("AML bejelentés nem található: " + reportId));
+
+        if (!report.getCompany().getId().equals(companyId)) {
+            throw new ValidationException("Hozzáférés megtagadva: másik cég AML bejelentése");
+        }
+
+        if (report.getStatus() != AmlReportStatus.SUBMITTED) {
+            throw new ValidationException("Csak SUBMITTED státuszú bejelentés nyugtázható (aktuális: " + report.getStatus() + ")");
+        }
+
+        report.setStatus(AmlReportStatus.ACKNOWLEDGED);
+        report.setAcknowledgedAt(LocalDateTime.now());
+        if (externalReference != null && !externalReference.isBlank()) {
+            report.setExternalReference(externalReference);
+        }
+
+        AmlReport saved = amlReportRepository.save(report);
+
+        auditLogService.log("AML_REPORT_ACKNOWLEDGED",
+            "AML bejelentés visszaigazolva: id=" + reportId + ", ref=" + externalReference,
+            reportId.toString());
+
+        log.info("AML bejelentés visszaigazolva: id={}, ref={}", reportId, externalReference);
+        return toDto(saved);
+    }
+
+    // ============ NAPI EXPORT ============
+
+    /**
+     * Napi AML export generálása (hatóságnak küldendő összesítő).
+     *
+     * @param date exportálandó nap
+     * @return napi export DTO
+     */
+    @Transactional(readOnly = true)
+    public AmlDailyExportDto generateDailyExport(LocalDate date) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        LocalDateTime from = date.atStartOfDay();
+        LocalDateTime to = date.atTime(LocalTime.MAX);
+
+        List<AmlReport> reports = amlReportRepository.findByCompanyIdAndDateRange(companyId, from, to);
+
+        int draftCount = 0, submittedCount = 0, acknowledgedCount = 0, flaggedCount = 0;
+        BigDecimal totalAmount = BigDecimal.ZERO;
+
+        for (AmlReport r : reports) {
+            switch (r.getStatus()) {
+                case DRAFT -> draftCount++;
+                case SUBMITTED -> submittedCount++;
+                case ACKNOWLEDGED -> acknowledgedCount++;
+                case FLAGGED -> flaggedCount++;
+            }
+            totalAmount = totalAmount.add(r.getAmountHuf() != null ? r.getAmountHuf() : BigDecimal.ZERO);
+        }
+
+        List<AmlReportDto> reportDtos = reports.stream().map(this::toDto).toList();
+
+        log.info("AML napi export generálva: dátum={}, összesen={} bejelentés", date, reports.size());
+
+        return AmlDailyExportDto.builder()
+            .exportDate(date)
+            .companyId(companyId)
+            .totalReports(reports.size())
+            .draftCount(draftCount)
+            .submittedCount(submittedCount)
+            .acknowledgedCount(acknowledgedCount)
+            .flaggedCount(flaggedCount)
+            .totalAmountHuf(totalAmount)
+            .reports(reportDtos)
+            .generatedAt(LocalDateTime.now())
+            .build();
+    }
+
     // ============ DTO KONVERZIÓ ============
 
     private AmlReportDto toDto(AmlReport r) {
@@ -801,15 +978,19 @@ public class AmlService {
             log.info("Ügyfél visszalép a göngyölési limit alá: customerId={}, newTotal={}",
                 customerId, newYearTotal);
 
-            // Customer entitás frissítése (ha van "highRisk" vagy "requiresEnhancedDueDiligence" flag)
+            // Customer entitás frissítése — highRiskFlag törlése
             Optional<Customer> customerOpt = customerRepository.findByCustomerCodeAndCompanyId(customerId, companyId);
             if (customerOpt.isPresent()) {
                 Customer customer = customerOpt.get();
-                // Példa: ha van ilyen mező a Customer entitásban
-                // customer.setHighRiskFlag(false);
-                // customerRepository.save(customer);
-                
-                log.info("Ügyfél 'nagy ügyfél' státusz törölve: {}", customerId);
+                if (Boolean.TRUE.equals(customer.getHighRiskFlag())) {
+                    customer.setHighRiskFlag(false);
+                    customer.setHighRiskReason(null);
+                    customer.setHighRiskSetAt(null);
+                    customerRepository.save(customer);
+                    log.info("Ügyfél highRiskFlag törölve (göngyölési limit alá visszaesett): {}", customerId);
+                } else {
+                    log.info("Ügyfél 'nagy ügyfél' státusz törölve (már nem volt jelölve): {}", customerId);
+                }
             }
         }
 
