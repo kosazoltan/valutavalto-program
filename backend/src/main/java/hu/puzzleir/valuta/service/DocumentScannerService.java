@@ -39,7 +39,9 @@ public class DocumentScannerService {
             String documentType,
             String notes) {
 
-        String fileName = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unnamed";
+        String rawFileName = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unnamed";
+        // Sanitize: strip path separators to prevent path traversal
+        String fileName = rawFileName.replaceAll("[/\\\\]", "_").replaceAll("\\.\\.", "_");
         String storagePath = "documents/" + UUID.randomUUID() + "/" + fileName;
 
         ScannedDocument doc = ScannedDocument.builder()

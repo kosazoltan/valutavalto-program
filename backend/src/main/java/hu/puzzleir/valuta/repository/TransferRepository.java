@@ -21,6 +21,11 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
 
     List<Transfer> findByStatus(Transfer.TransferStatus status);
 
+    @Query("SELECT t FROM Transfer t WHERE " +
+           "(t.fromBranch.company.id = :companyId OR t.toBranch.company.id = :companyId) " +
+           "AND t.status = :status")
+    List<Transfer> findByCompanyAndStatus(@Param("companyId") UUID companyId, @Param("status") Transfer.TransferStatus status);
+
     @Query("SELECT t FROM Transfer t WHERE t.fromBranch.id = :branchId AND t.status IN ('PENDING', 'IN_TRANSIT')")
     List<Transfer> findOutgoingByBranch(@Param("branchId") UUID branchId);
 

@@ -11,4 +11,6 @@ import java.util.UUID;
 public interface RateWorkgroupRepository extends JpaRepository<RateWorkgroup, UUID> {
     Optional<RateWorkgroup> findByCode(String code);
     List<RateWorkgroup> findByActiveTrue();
+    List<RateWorkgroup> findByCompanyIdAndActiveTrue(UUID companyId);
+    List<RateWorkgroup> findByCompanyId(UUID companyId);
 }

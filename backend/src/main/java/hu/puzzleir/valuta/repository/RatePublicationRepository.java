@@ -9,5 +9,8 @@ import java.util.UUID;
 @Repository
 public interface RatePublicationRepository extends JpaRepository<RatePublication, UUID> {
     List<RatePublication> findByWorkgroupIdOrderByPublishedAtDesc(UUID workgroupId);
+    List<RatePublication> findByCompanyIdAndWorkgroupIdOrderByPublishedAtDesc(UUID companyId, UUID workgroupId);
     List<RatePublication> findTop20ByOrderByPublishedAtDesc();
+    List<RatePublication> findByCompanyIdOrderByPublishedAtDesc(UUID companyId);
+    List<RatePublication> findTop20ByCompanyIdOrderByPublishedAtDesc(UUID companyId);
 }

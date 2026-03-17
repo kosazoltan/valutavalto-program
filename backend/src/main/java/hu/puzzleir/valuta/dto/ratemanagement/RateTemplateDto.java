@@ -16,5 +16,17 @@ public class RateTemplateDto {
     private BigDecimal buySpread;
     private BigDecimal sellSpread;
     private Integer roundingRule;
+    private BigDecimal officialRate;
+    private BigDecimal limit1Amount;
+    private BigDecimal limit1BuyRate;
+    private BigDecimal limit1SellRate;
+    private BigDecimal limit2Amount;
+    private BigDecimal limit2BuyRate;
+    private BigDecimal limit2SellRate;
+    private BigDecimal limit3Amount;
+    private BigDecimal limit3BuyRate;
+    private BigDecimal limit3SellRate;
     private String status;
+    private String createdAt;
+    private String publishedAt;
 }

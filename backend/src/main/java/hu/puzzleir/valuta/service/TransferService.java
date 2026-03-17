@@ -174,7 +174,8 @@ public class TransferService {
     public List<TransferDto> getPending() {
         UUID currentBranchId = SecurityUtils.getCurrentBranchId();
         // Csak az aktuális fiókhoz tartozó bejövő pending átadások
-        return transferRepository.findByStatus(Transfer.TransferStatus.PENDING)
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return transferRepository.findByCompanyAndStatus(companyId, Transfer.TransferStatus.PENDING)
                 .stream()
                 .filter(t -> t.getToBranch().getId().equals(currentBranchId)
                         || t.getFromBranch().getId().equals(currentBranchId))

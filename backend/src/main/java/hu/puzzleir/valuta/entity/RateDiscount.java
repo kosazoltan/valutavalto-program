@@ -8,12 +8,18 @@ import java.util.UUID;
 @Entity
 @Table(name = "rate_discount", uniqueConstraints = {
     @UniqueConstraint(columnNames = {"workgroup_id", "level"})
+}, indexes = {
+    @Index(name = "idx_rate_discount_company_id", columnList = "company_id")
 })
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class RateDiscount {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id", nullable = false)
+    private Company company;
 
     @Column(name = "workgroup_id", nullable = false)
     private UUID workgroupId;

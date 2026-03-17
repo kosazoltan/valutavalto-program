@@ -23,4 +23,14 @@ public class CurrentRateDto {
     private BigDecimal sellRate;
     private int unit;
     private String updatedAt;
+    private BigDecimal officialRate;
+    private BigDecimal limit1Amount;
+    private BigDecimal limit1BuyRate;
+    private BigDecimal limit1SellRate;
+    private BigDecimal limit2Amount;
+    private BigDecimal limit2BuyRate;
+    private BigDecimal limit2SellRate;
+    private BigDecimal limit3Amount;
+    private BigDecimal limit3BuyRate;
+    private BigDecimal limit3SellRate;
 }

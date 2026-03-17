@@ -415,8 +415,15 @@ public class InventoryService {
         if ("HUF".equals(currency.getCode())) {
             return amount.setScale(0, RoundingMode.HALF_UP);
         }
+        UUID companyId = null;
+        try {
+            companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
+        } catch (hu.puzzleir.valuta.exception.ValidationException ex) {
+            // SecurityContext nem elérhető (pl. scheduled task) — global rate lookup
+            log.debug("CompanyId nem elérhető HUF számításhoz — global rate lookup: {}", ex.getMessage());
+        }
         Optional<BigDecimal> midRate = exchangeRateRepository
-                .findLatestMidRateByCurrencyCode(currency.getCode());
+                .findLatestMidRateByCurrencyCode(companyId, currency.getCode());
         if (midRate.isEmpty()) {
             log.warn("Nem található árfolyam a HUF érték számításhoz: currency={}", currency.getCode());
             return BigDecimal.ZERO;

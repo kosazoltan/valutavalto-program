@@ -86,6 +86,16 @@ public class ExchangeRateMapper {
                 .sellRate(entity.getBaseSellRate())
                 .unit(unit)
                 .updatedAt(updatedAt)
+                .officialRate(entity.getOfficialRate())
+                .limit1Amount(entity.getLimit1Amount())
+                .limit1BuyRate(entity.getLimit1BuyRate())
+                .limit1SellRate(entity.getLimit1SellRate())
+                .limit2Amount(entity.getLimit2Amount())
+                .limit2BuyRate(entity.getLimit2BuyRate())
+                .limit2SellRate(entity.getLimit2SellRate())
+                .limit3Amount(entity.getLimit3Amount())
+                .limit3BuyRate(entity.getLimit3BuyRate())
+                .limit3SellRate(entity.getLimit3SellRate())
                 .build();
     }
 }

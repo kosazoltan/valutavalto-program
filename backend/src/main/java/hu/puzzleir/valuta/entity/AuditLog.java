@@ -9,7 +9,9 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "audit_log")
+@Table(name = "audit_log", indexes = {
+    @Index(name = "idx_audit_log_company_id", columnList = "company_id")
+})
 @EntityListeners(AuditingEntityListener.class)
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class AuditLog {
@@ -17,6 +19,9 @@ public class AuditLog {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    @Column(name = "company_id")
+    private UUID companyId;
 
     @Column(nullable = false, length = 50)
     private String action;

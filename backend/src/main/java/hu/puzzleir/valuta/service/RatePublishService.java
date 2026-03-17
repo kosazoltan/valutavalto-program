@@ -76,6 +76,7 @@ public class RatePublishService {
         // Create publication record
         int affectedBranches = workgroup.getBranches() != null ? workgroup.getBranches().size() : 0;
         RatePublication publication = RatePublication.builder()
+                .companyId(SecurityUtils.getCurrentCompanyId())
                 .workgroupId(workgroupId)
                 .publishedBy(SecurityUtils.getCurrentWorkerId())
                 .affectedBranches(affectedBranches)
@@ -134,6 +135,16 @@ public class RatePublishService {
                         .buyRate(t.getBaseBuyRate().add(t.getBuySpread()))
                         .sellRate(t.getBaseSellRate().add(t.getSellSpread()))
                         .roundingRule(t.getRoundingRule())
+                        .officialRate(t.getOfficialRate())
+                        .limit1Amount(t.getLimit1Amount())
+                        .limit1BuyRate(t.getLimit1BuyRate())
+                        .limit1SellRate(t.getLimit1SellRate())
+                        .limit2Amount(t.getLimit2Amount())
+                        .limit2BuyRate(t.getLimit2BuyRate())
+                        .limit2SellRate(t.getLimit2SellRate())
+                        .limit3Amount(t.getLimit3Amount())
+                        .limit3BuyRate(t.getLimit3BuyRate())
+                        .limit3SellRate(t.getLimit3SellRate())
                         .build())
                 .filter(e -> e.getCurrencyCode() != null)
                 .toList();
@@ -198,16 +209,18 @@ public class RatePublishService {
                         .validTime(validTime)
                         .baseBuyRate(buyRate)
                         .baseSellRate(sellRate)
-                        .limit1Amount(latestRate != null ? latestRate.getLimit1Amount() : null)
-                        .limit1BuyRate(latestRate != null ? latestRate.getLimit1BuyRate() : null)
-                        .limit1SellRate(latestRate != null ? latestRate.getLimit1SellRate() : null)
-                        .limit2Amount(latestRate != null ? latestRate.getLimit2Amount() : null)
-                        .limit2BuyRate(latestRate != null ? latestRate.getLimit2BuyRate() : null)
-                        .limit2SellRate(latestRate != null ? latestRate.getLimit2SellRate() : null)
-                        .limit3Amount(latestRate != null ? latestRate.getLimit3Amount() : null)
-                        .limit3BuyRate(latestRate != null ? latestRate.getLimit3BuyRate() : null)
-                        .limit3SellRate(latestRate != null ? latestRate.getLimit3SellRate() : null)
-                        .officialRate(resolveOfficialRate(latestRate, buyRate, sellRate))
+                        .limit1Amount(template.getLimit1Amount())
+                        .limit1BuyRate(template.getLimit1BuyRate())
+                        .limit1SellRate(template.getLimit1SellRate())
+                        .limit2Amount(template.getLimit2Amount())
+                        .limit2BuyRate(template.getLimit2BuyRate())
+                        .limit2SellRate(template.getLimit2SellRate())
+                        .limit3Amount(template.getLimit3Amount())
+                        .limit3BuyRate(template.getLimit3BuyRate())
+                        .limit3SellRate(template.getLimit3SellRate())
+                        .officialRate(template.getOfficialRate() != null
+                                ? template.getOfficialRate()
+                                : resolveOfficialRate(latestRate, buyRate, sellRate))
                         .active(true)
                         .createdBy(resolveCreatedBy())
                         .build();
@@ -258,9 +271,10 @@ public class RatePublishService {
      */
     @Transactional(readOnly = true)
     public List<RatePublication> getPublicationHistory(UUID workgroupId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         if (workgroupId != null) {
-            return publicationRepository.findByWorkgroupIdOrderByPublishedAtDesc(workgroupId);
+            return publicationRepository.findByCompanyIdAndWorkgroupIdOrderByPublishedAtDesc(companyId, workgroupId);
         }
-        return publicationRepository.findTop20ByOrderByPublishedAtDesc();
+        return publicationRepository.findTop20ByCompanyIdOrderByPublishedAtDesc(companyId);
     }
 }

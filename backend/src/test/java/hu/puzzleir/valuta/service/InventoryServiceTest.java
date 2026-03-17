@@ -107,7 +107,7 @@ class InventoryServiceTest {
         when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
         when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, CURRENCY_ID))
                 .thenReturn(Optional.of(balance));
-        when(exchangeRateRepository.findLatestMidRateByCurrencyCode("EUR"))
+        when(exchangeRateRepository.findLatestMidRateByCurrencyCode(any(), eq("EUR")))
                 .thenReturn(Optional.of(new BigDecimal("390")));
 
         InventoryMovement savedMovement = buildMovement(MovementType.BANK_DEPOSIT, MovementStatus.PENDING, eurCurrency, branch, null);
@@ -269,7 +269,7 @@ class InventoryServiceTest {
         when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
         when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, CURRENCY_ID))
                 .thenReturn(Optional.of(sourceBalance));
-        when(exchangeRateRepository.findLatestMidRateByCurrencyCode("EUR"))
+        when(exchangeRateRepository.findLatestMidRateByCurrencyCode(any(), eq("EUR")))
                 .thenReturn(Optional.of(new BigDecimal("390")));
         when(movementRepository.findMaxReferenceNumber(anyString())).thenReturn(0L);
 
@@ -343,7 +343,7 @@ class InventoryServiceTest {
         when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
         when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, CURRENCY_ID))
                 .thenReturn(Optional.of(balance));
-        when(exchangeRateRepository.findLatestMidRateByCurrencyCode("EUR"))
+        when(exchangeRateRepository.findLatestMidRateByCurrencyCode(any(), eq("EUR")))
                 .thenReturn(Optional.of(new BigDecimal("390")));
         when(movementRepository.findMaxReferenceNumber(anyString())).thenReturn(0L);
 
@@ -382,7 +382,7 @@ class InventoryServiceTest {
         when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
         when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, CURRENCY_ID))
                 .thenReturn(Optional.of(balance));
-        when(exchangeRateRepository.findLatestMidRateByCurrencyCode("EUR"))
+        when(exchangeRateRepository.findLatestMidRateByCurrencyCode(any(), eq("EUR")))
                 .thenReturn(Optional.empty());
         when(movementRepository.findMaxReferenceNumber(anyString())).thenReturn(0L);
 
@@ -432,7 +432,7 @@ class InventoryServiceTest {
         inventoryService.depositToBank(dto, WORKER_ID);
 
         // Assert: HUF esetén nincs árfolyam lookup, hufValue == amount
-        verify(exchangeRateRepository, never()).findLatestMidRateByCurrencyCode(anyString());
+        verify(exchangeRateRepository, never()).findLatestMidRateByCurrencyCode(any(), anyString());
         assertThat(captor.getValue().getHufValue()).isEqualByComparingTo(new BigDecimal("50000"));
     }
 

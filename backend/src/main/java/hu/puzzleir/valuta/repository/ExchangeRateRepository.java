@@ -106,7 +106,7 @@ public interface ExchangeRateRepository extends JpaRepository<ExchangeRate, Long
     }
 
     /**
-     * Aktív árfolyamok egy valutához adott napon (cég-független — polling használja).
+     * Aktív árfolyamok egy valutához adott napon — ÖSSZES cég (rendszerszintű, MNB polling).
      */
     @Query("SELECT er FROM ExchangeRate er " +
            "WHERE er.currency.id = :currencyId " +
@@ -118,7 +118,22 @@ public interface ExchangeRateRepository extends JpaRepository<ExchangeRate, Long
     );
 
     /**
+     * Aktív árfolyamok egy valutához adott napon — multi-tenant szűréssel.
+     */
+    @Query("SELECT er FROM ExchangeRate er " +
+           "WHERE er.company.id = :companyId " +
+           "AND er.currency.id = :currencyId " +
+           "AND er.active = true " +
+           "AND er.validDate = :date")
+    List<ExchangeRate> findActiveByCurrencyAndDateForCompany(
+        @Param("companyId") UUID companyId,
+        @Param("currencyId") Long currencyId,
+        @Param("date") LocalDate date
+    );
+
+    /**
      * Aktív árfolyamok adott napon egy branch-hez (vagy branch IS NULL).
+     * Branch implicit company szűrést biztosít.
      */
     @Query("SELECT er FROM ExchangeRate er " +
            "WHERE er.active = true " +
@@ -130,11 +145,35 @@ public interface ExchangeRateRepository extends JpaRepository<ExchangeRate, Long
     );
 
     /**
-     * Legfrissebb közép-árfolyam egy valuta kódjához (HUF érték számításhoz).
-     * Közép = (baseBuyRate + baseSellRate) / 2
+     * Legfrissebb közép-árfolyam — company-specific.
      */
-    @Query("SELECT (er.baseBuyRate + er.baseSellRate) / 2 FROM ExchangeRate er " +
-           "WHERE er.currency.code = :code AND er.active = true " +
-           "ORDER BY er.validDate DESC, er.validTime DESC LIMIT 1")
-    Optional<BigDecimal> findLatestMidRateByCurrencyCode(@Param("code") String code);
+    @Query(value = "SELECT (er.base_buy_rate + er.base_sell_rate) / 2 FROM exchange_rate er " +
+           "WHERE er.company_id = :companyId " +
+           "AND er.currency_id = (SELECT c.id FROM currency c WHERE c.code = :code) " +
+           "AND er.active = true " +
+           "ORDER BY er.valid_date DESC, er.valid_time DESC LIMIT 1",
+           nativeQuery = true)
+    Optional<BigDecimal> findLatestMidRateByCompanyAndCode(
+        @Param("companyId") UUID companyId,
+        @Param("code") String code
+    );
+
+    /**
+     * Legfrissebb közép-árfolyam — global (company-független).
+     */
+    @Query(value = "SELECT (er.base_buy_rate + er.base_sell_rate) / 2 FROM exchange_rate er " +
+           "WHERE er.currency_id = (SELECT c.id FROM currency c WHERE c.code = :code) " +
+           "AND er.active = true " +
+           "ORDER BY er.valid_date DESC, er.valid_time DESC LIMIT 1",
+           nativeQuery = true)
+    Optional<BigDecimal> findLatestMidRateByCodeGlobal(@Param("code") String code);
+
+    /**
+     * Legfrissebb közép-árfolyam — nullable companyId wrapper (index-barát).
+     */
+    default Optional<BigDecimal> findLatestMidRateByCurrencyCode(UUID companyId, String code) {
+        return companyId != null
+                ? findLatestMidRateByCompanyAndCode(companyId, code)
+                : findLatestMidRateByCodeGlobal(code);
+    }
 }

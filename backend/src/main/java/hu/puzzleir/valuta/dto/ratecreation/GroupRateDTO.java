@@ -1,5 +1,9 @@
 package hu.puzzleir.valuta.dto.ratecreation;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,6 +19,9 @@ import java.util.UUID;
 @AllArgsConstructor
 public class GroupRateDTO {
     private UUID groupId;
+
+    @NotEmpty(message = "Legalább egy árfolyam bejegyzés szükséges")
+    @Valid
     private List<RateEntry> rates;
 
     /**
@@ -27,12 +34,17 @@ public class GroupRateDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class RateEntry {
+        @NotNull(message = "Valuta azonosító kötelező")
         private Long currencyId;
 
         /** Alap veteli arfolyam (Legacy: ALAPVETEL) */
+        @NotNull(message = "Vételi árfolyam kötelező")
+        @Positive(message = "Vételi árfolyamnak pozitívnak kell lennie")
         private BigDecimal buyRate;
 
         /** Alap eladasi arfolyam (Legacy: ALAPELADAS) */
+        @NotNull(message = "Eladási árfolyam kötelező")
+        @Positive(message = "Eladási árfolyamnak pozitívnak kell lennie")
         private BigDecimal sellRate;
 
         /** MNB hivatalos / elszamolasi arfolyam (Legacy: ELSZAMOLASIARFOLYAM) */

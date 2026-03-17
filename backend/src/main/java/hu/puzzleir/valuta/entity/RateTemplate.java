@@ -9,13 +9,18 @@ import java.util.UUID;
 @Entity
 @Table(name = "rate_template", indexes = {
     @Index(name = "idx_rate_template_wg_status", columnList = "workgroup_id, status"),
-    @Index(name = "idx_rate_template_currency", columnList = "currency_id")
+    @Index(name = "idx_rate_template_currency", columnList = "currency_id"),
+    @Index(name = "idx_rate_template_company", columnList = "company_id")
 })
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class RateTemplate {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id", nullable = false)
+    private Company company;
 
     @Column(name = "currency_id", nullable = false)
     private Long currencyId;
@@ -40,6 +45,34 @@ public class RateTemplate {
     @Column(name = "rounding_rule")
     @Builder.Default
     private Integer roundingRule = 0;
+
+    @Column(name = "official_rate", precision = 18, scale = 6)
+    private BigDecimal officialRate;
+
+    // ============ LIMIT SZINTEK (régi rendszer 3 keretértéke) ============
+
+    @Column(name = "limit1_amount", precision = 15, scale = 2)
+    private BigDecimal limit1Amount;
+    @Column(name = "limit1_buy_rate", precision = 18, scale = 6)
+    private BigDecimal limit1BuyRate;
+    @Column(name = "limit1_sell_rate", precision = 18, scale = 6)
+    private BigDecimal limit1SellRate;
+
+    @Column(name = "limit2_amount", precision = 15, scale = 2)
+    private BigDecimal limit2Amount;
+    @Column(name = "limit2_buy_rate", precision = 18, scale = 6)
+    private BigDecimal limit2BuyRate;
+    @Column(name = "limit2_sell_rate", precision = 18, scale = 6)
+    private BigDecimal limit2SellRate;
+
+    @Column(name = "limit3_amount", precision = 15, scale = 2)
+    private BigDecimal limit3Amount;
+    @Column(name = "limit3_buy_rate", precision = 18, scale = 6)
+    private BigDecimal limit3BuyRate;
+    @Column(name = "limit3_sell_rate", precision = 18, scale = 6)
+    private BigDecimal limit3SellRate;
+
+    // ============ WORKFLOW ============
 
     @Enumerated(EnumType.STRING)
     @Builder.Default

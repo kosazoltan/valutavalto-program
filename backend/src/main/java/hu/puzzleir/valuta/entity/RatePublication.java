@@ -7,7 +7,8 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "rate_publication", indexes = {
-    @Index(name = "idx_rate_publication_wg", columnList = "workgroup_id")
+    @Index(name = "idx_rate_publication_wg", columnList = "workgroup_id"),
+    @Index(name = "idx_rate_publication_company", columnList = "company_id")
 })
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class RatePublication {
@@ -17,6 +18,9 @@ public class RatePublication {
 
     @Column(name = "template_id")
     private UUID templateId;
+
+    @Column(name = "company_id", nullable = false)
+    private UUID companyId;
 
     @Column(name = "workgroup_id", nullable = false)
     private UUID workgroupId;

@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.dto.ratemanagement.RatePublishRequestDto;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.RateDiscountRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.RateTemplateApprovalService;
 import hu.puzzleir.valuta.service.RateTemplateService;
 import hu.puzzleir.valuta.service.RatePublishService;
@@ -110,7 +111,8 @@ public class RateManagementController {
 
     @GetMapping("/discounts/{workgroupId}")
     public ResponseEntity<List<RateDiscount>> getDiscounts(@PathVariable UUID workgroupId) {
-        return ResponseEntity.ok(discountRepository.findByWorkgroupIdOrderByLevel(workgroupId));
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return ResponseEntity.ok(discountRepository.findByCompanyIdAndWorkgroupIdOrderByLevel(companyId, workgroupId));
     }
 
     @PostMapping("/discounts")

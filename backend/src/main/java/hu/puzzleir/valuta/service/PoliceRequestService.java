@@ -9,6 +9,7 @@ import hu.puzzleir.valuta.repository.CustomerRepository;
 import hu.puzzleir.valuta.repository.PoliceRequestRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -84,13 +85,14 @@ public class PoliceRequestService {
 
         if (request.getCustomerName() != null || request.getDocumentNumber() != null) {
             // Ügyfelek keresése
+            UUID companyId = SecurityUtils.getCurrentCompanyId();
             List<Customer> customers;
             if (request.getDocumentNumber() != null && !request.getDocumentNumber().isBlank()) {
-                customers = customerRepository.findByDocumentNumberContainingIgnoreCase(
-                        request.getDocumentNumber());
+                customers = customerRepository.findByCompanyIdAndDocumentNumberContainingIgnoreCase(
+                        companyId, request.getDocumentNumber());
             } else {
-                customers = customerRepository.findByNameContainingIgnoreCase(
-                        request.getCustomerName());
+                customers = customerRepository.findByCompanyIdAndNameContainingIgnoreCase(
+                        companyId, request.getCustomerName());
             }
 
             for (Customer c : customers) {

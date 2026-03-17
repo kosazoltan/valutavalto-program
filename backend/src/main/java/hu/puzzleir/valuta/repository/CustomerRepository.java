@@ -62,12 +62,12 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
     List<Customer> findByCompanyIdAndActiveTrue(UUID companyId);
 
     /**
-     * Keresés név alapján (rendőrségi adatkéréshez)
+     * Keresés név alapján (rendőrségi adatkéréshez) — company szűréssel
      */
-    List<Customer> findByNameContainingIgnoreCase(String name);
+    List<Customer> findByCompanyIdAndNameContainingIgnoreCase(UUID companyId, String name);
 
     /**
-     * Keresés okmányszám alapján (rendőrségi adatkéréshez)
+     * Keresés okmányszám alapján (rendőrségi adatkéréshez) — company szűréssel
      */
-    List<Customer> findByDocumentNumberContainingIgnoreCase(String documentNumber);
+    List<Customer> findByCompanyIdAndDocumentNumberContainingIgnoreCase(UUID companyId, String documentNumber);
 }

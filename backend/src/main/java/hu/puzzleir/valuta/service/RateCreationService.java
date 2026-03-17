@@ -1,15 +1,27 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.dto.ratecreation.BankRateDTO;
+import hu.puzzleir.valuta.dto.ratecreation.BranchListDTO;
 import hu.puzzleir.valuta.dto.ratecreation.CompetitorRateDTO;
 import hu.puzzleir.valuta.dto.ratecreation.GroupRateDTO;
+import hu.puzzleir.valuta.dto.ratecreation.RateCreationResponseDTO;
+import hu.puzzleir.valuta.dto.ratecreation.RateOverviewDTO;
+import hu.puzzleir.valuta.dto.ratecreation.WorkgroupDetailDTO;
+import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.CompetitorRate;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.ExchangeRate;
+import hu.puzzleir.valuta.entity.RateTemplate;
+import hu.puzzleir.valuta.entity.RateWorkgroup;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.repository.BranchRepository;
+import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.repository.CompetitorRateRepository;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.repository.ExchangeRateRepository;
+import hu.puzzleir.valuta.repository.RateTemplateRepository;
+import hu.puzzleir.valuta.repository.RateWorkgroupRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,10 +48,14 @@ import java.util.stream.Collectors;
 @Slf4j
 public class RateCreationService {
 
+    private final BranchRepository branchRepository;
     private final ExchangeRateRepository exchangeRateRepository;
     private final CompetitorRateRepository competitorRateRepository;
     private final CurrencyRepository currencyRepository;
-    private final ExchangeRateService exchangeRateService;
+    private final CompanyRepository companyRepository;
+    private final RateTemplateRepository rateTemplateRepository;
+    private final RateWorkgroupRepository rateWorkgroupRepository;
+    private final RatePublishService ratePublishService;
 
     /**
      * Bank árfolyamok lekérése az aktuális rátákból.
@@ -54,13 +70,22 @@ public class RateCreationService {
                     .add(rate.getBaseSellRate())
                     .divide(BigDecimal.valueOf(2), 4, RoundingMode.HALF_UP);
 
+            String branchName = rate.getBranch() != null ? rate.getBranch().getName() : "EBC";
+            String branchCode = rate.getBranch() != null
+                    ? rate.getBranch().getId().toString().substring(0, 6).toUpperCase()
+                    : "EBC";
+
             return BankRateDTO.builder()
+                    .id(rate.getId())
+                    .bankName(branchName)
+                    .bankCode(branchCode)
                     .currencyId(rate.getCurrency().getId())
                     .currencyCode(rate.getCurrency().getCode())
-                    .bankBuyRate(rate.getBaseBuyRate())
-                    .bankSellRate(rate.getBaseSellRate())
+                    .buyRate(rate.getBaseBuyRate())
+                    .sellRate(rate.getBaseSellRate())
                     .middleRate(middleRate)
-                    .lastUpdated(rate.getCreatedAt())
+                    .validFrom(rate.getCreatedAt())
+                    .source("MANUAL")
                     .build();
         }).collect(Collectors.toList());
     }
@@ -75,15 +100,260 @@ public class RateCreationService {
     public List<CompetitorRateDTO> getCompetitorRates() {
         List<CompetitorRate> rates = competitorRateRepository.findLatestRatesWithDetails();
 
-        return rates.stream().map(cr -> CompetitorRateDTO.builder()
-                .competitorId(cr.getCompetitor().getId())
+        return rates.stream().map(cr -> buildCompetitorRateDTO(cr)).collect(Collectors.toList());
+    }
+
+    /**
+     * Árfolyam-készítés előkészítése egy adott valutához.
+     * GET /api/v1/rate-creation/prepare/{currencyId}
+     *
+     * Összegyűjti a bank (exchange_rate) és versenytárs árfolyamokat,
+     * kiszámítja a min/max/avg statisztikákat és ajánlott rátákat.
+     */
+    @Transactional(readOnly = true)
+    public RateCreationResponseDTO prepareRateCreation(Long currencyId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+
+        Currency currency = currencyRepository.findById(currencyId)
+                .orElseThrow(() -> new ValidationException("Valuta nem található: " + currencyId));
+
+        // Bank ráták: exchange_rate tábla aktuális bejegyzései az adott valutához
+        List<ExchangeRate> exchangeRates = exchangeRateRepository
+                .findActiveByCurrencyAndDateForCompany(companyId, currencyId, LocalDate.now());
+
+        List<BankRateDTO> bankRates = exchangeRates.stream().map(rate -> {
+            BigDecimal middleRate = rate.getBaseBuyRate()
+                    .add(rate.getBaseSellRate())
+                    .divide(BigDecimal.valueOf(2), 4, RoundingMode.HALF_UP);
+
+            String branchName = rate.getBranch() != null ? rate.getBranch().getName() : "EBC";
+            String branchCode = rate.getBranch() != null
+                    ? rate.getBranch().getId().toString().substring(0, 6).toUpperCase()
+                    : "EBC";
+
+            return BankRateDTO.builder()
+                    .id(rate.getId())
+                    .bankName(branchName)
+                    .bankCode(branchCode)
+                    .currencyId(rate.getCurrency().getId())
+                    .currencyCode(rate.getCurrency().getCode())
+                    .buyRate(rate.getBaseBuyRate())
+                    .sellRate(rate.getBaseSellRate())
+                    .middleRate(middleRate)
+                    .validFrom(rate.getCreatedAt())
+                    .source("MANUAL")
+                    .build();
+        }).collect(Collectors.toList());
+
+        // Versenytárs ráták
+        List<CompetitorRate> competitorRateEntities =
+                competitorRateRepository.findLatestRatesByCurrencyId(currencyId);
+        List<CompetitorRateDTO> competitorRates = competitorRateEntities.stream()
+                .map(this::buildCompetitorRateDTO)
+                .collect(Collectors.toList());
+
+        // Összes vételi és eladási ráta összegyűjtése a statisztikához
+        List<BigDecimal> allBuyRates = new ArrayList<>();
+        List<BigDecimal> allSellRates = new ArrayList<>();
+
+        bankRates.forEach(b -> {
+            if (b.getBuyRate() != null) allBuyRates.add(b.getBuyRate());
+            if (b.getSellRate() != null) allSellRates.add(b.getSellRate());
+        });
+        competitorRates.forEach(c -> {
+            if (c.getBuyRate() != null) allBuyRates.add(c.getBuyRate());
+            if (c.getSellRate() != null) allSellRates.add(c.getSellRate());
+        });
+
+        BigDecimal minBuy  = allBuyRates.stream().min(BigDecimal::compareTo).orElse(null);
+        BigDecimal maxBuy  = allBuyRates.stream().max(BigDecimal::compareTo).orElse(null);
+        BigDecimal avgBuy  = allBuyRates.isEmpty() ? null :
+                allBuyRates.stream().reduce(BigDecimal.ZERO, BigDecimal::add)
+                        .divide(BigDecimal.valueOf(allBuyRates.size()), 4, RoundingMode.HALF_UP);
+
+        BigDecimal minSell = allSellRates.stream().min(BigDecimal::compareTo).orElse(null);
+        BigDecimal maxSell = allSellRates.stream().max(BigDecimal::compareTo).orElse(null);
+        BigDecimal avgSell = allSellRates.isEmpty() ? null :
+                allSellRates.stream().reduce(BigDecimal.ZERO, BigDecimal::add)
+                        .divide(BigDecimal.valueOf(allSellRates.size()), 4, RoundingMode.HALF_UP);
+
+        // Ajánlott ráták: a cég aktuális exchange_rate bejegyzéséből (legfrissebb)
+        BigDecimal recommendedBuy  = exchangeRates.isEmpty() ? avgBuy  : exchangeRates.get(0).getBaseBuyRate();
+        BigDecimal recommendedSell = exchangeRates.isEmpty() ? avgSell : exchangeRates.get(0).getBaseSellRate();
+        BigDecimal recommendedMiddle = (recommendedBuy != null && recommendedSell != null)
+                ? recommendedBuy.add(recommendedSell).divide(BigDecimal.valueOf(2), 4, RoundingMode.HALF_UP)
+                : null;
+
+        return RateCreationResponseDTO.builder()
+                .currencyId(currency.getId())
+                .currencyCode(currency.getCode())
+                .currencyName(currency.getName())
+                .bankRates(bankRates)
+                .competitorRates(competitorRates)
+                .recommendedBuyRate(recommendedBuy)
+                .recommendedSellRate(recommendedSell)
+                .recommendedMiddleRate(recommendedMiddle)
+                .minBuyRate(minBuy)
+                .maxBuyRate(maxBuy)
+                .avgBuyRate(avgBuy)
+                .minSellRate(minSell)
+                .maxSellRate(maxSell)
+                .avgSellRate(avgSell)
+                .notes(null)
+                .build();
+    }
+
+    /** Segédmetódus: CompetitorRate entity → CompetitorRateDTO */
+    private CompetitorRateDTO buildCompetitorRateDTO(CompetitorRate cr) {
+        BigDecimal middleRate = null;
+        if (cr.getBuyRate() != null && cr.getSellRate() != null) {
+            middleRate = cr.getBuyRate().add(cr.getSellRate())
+                    .divide(BigDecimal.valueOf(2), 4, RoundingMode.HALF_UP);
+        }
+        // Versenytárs kód: a neve alapján generált rövidítés (első 6 karakter, nagybetű)
+        String competitorCode = cr.getCompetitor().getName() != null
+                ? cr.getCompetitor().getName().replaceAll("[^A-Za-z0-9]", "")
+                        .toUpperCase()
+                        .substring(0, Math.min(6, cr.getCompetitor().getName().replaceAll("[^A-Za-z0-9]", "").length()))
+                : "COMP";
+
+        return CompetitorRateDTO.builder()
+                .id(cr.getId())
                 .competitorName(cr.getCompetitor().getName())
+                .competitorCode(competitorCode)
                 .currencyCode(cr.getCurrency().getCode())
                 .buyRate(cr.getBuyRate())
                 .sellRate(cr.getSellRate())
-                .lastUpdated(cr.getCreatedAt())
-                .build())
+                .middleRate(middleRate)
+                .recordedAt(cr.getCreatedAt())
+                .source(cr.getSource() != null ? cr.getSource() : "MANUAL")
+                .build();
+    }
+
+    /**
+     * Munkacsoport részletek lekérése — branch hozzárendelésekkel.
+     */
+    @Transactional(readOnly = true)
+    public List<WorkgroupDetailDTO> getWorkgroupDetails() {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<RateWorkgroup> workgroups = rateWorkgroupRepository.findByCompanyIdAndActiveTrue(companyId);
+
+        return workgroups.stream().map(wg -> {
+            List<WorkgroupDetailDTO.BranchInfo> branchInfos = wg.getBranches().stream()
+                    .map(b -> WorkgroupDetailDTO.BranchInfo.builder()
+                            .id(b.getId())
+                            .code(b.getCode())
+                            .name(b.getName())
+                            .build())
+                    .sorted((a, b) -> a.getName().compareToIgnoreCase(b.getName()))
+                    .collect(Collectors.toList());
+
+            // Limit boundaries: az entity-ből, ha nincs beállítva → default értékek
+            BigDecimal limit1Boundary = wg.getLimit1Boundary() != null ? wg.getLimit1Boundary() : BigDecimal.valueOf(50000);
+            BigDecimal limit2Boundary = wg.getLimit2Boundary() != null ? wg.getLimit2Boundary() : BigDecimal.valueOf(300000);
+            BigDecimal limit3Boundary = wg.getLimit3Boundary() != null ? wg.getLimit3Boundary() : BigDecimal.valueOf(1000000);
+
+            return WorkgroupDetailDTO.builder()
+                    .id(wg.getId())
+                    .code(wg.getCode())
+                    .name(wg.getName())
+                    .legacyGroupNumber(wg.getLegacyGroupNumber())
+                    .active(wg.getActive())
+                    .branches(branchInfos)
+                    .limit1Boundary(limit1Boundary)
+                    .limit2Boundary(limit2Boundary)
+                    .limit3Boundary(limit3Boundary)
+                    .build();
+        }).collect(Collectors.toList());
+    }
+
+    /**
+     * Árfolyam áttekintő — ÖSSZES aktív valuta jelenlegi árfolyamokkal.
+     * A főértéktáros áttekintő nézetéhez.
+     */
+    @Transactional(readOnly = true)
+    public RateOverviewDTO getRateOverview() {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        LocalDate today = LocalDate.now();
+
+        // Összes aktív valuta
+        List<Currency> activeCurrencies = currencyRepository.findByActiveTrueOrderByDisplayOrderAsc();
+
+        // Aktuális exchange_rate-ek (company + dátum szűrés)
+        List<ExchangeRate> currentRates = exchangeRateRepository.findActiveRatesByDate(companyId, today);
+
+        // Map: currencyId → legfrissebb ExchangeRate
+        Map<Long, ExchangeRate> rateMap = new LinkedHashMap<>();
+        for (ExchangeRate rate : currentRates) {
+            Long cid = rate.getCurrency().getId();
+            if (!rateMap.containsKey(cid)) {
+                rateMap.put(cid, rate);
+            }
+        }
+
+        List<RateOverviewDTO.CurrencyRateItem> items = activeCurrencies.stream()
+                .filter(c -> !"HUF".equals(c.getCode())) // HUF-ot kiszűrjük
+                .map(currency -> {
+                    ExchangeRate rate = rateMap.get(currency.getId());
+
+                    RateOverviewDTO.CurrencyRateItem.CurrencyRateItemBuilder builder =
+                            RateOverviewDTO.CurrencyRateItem.builder()
+                                    .currencyId(currency.getId())
+                                    .currencyCode(currency.getCode())
+                                    .currencyName(currency.getName())
+                                    .displayOrder(currency.getDisplayOrder())
+                                    .hasRate(rate != null);
+
+                    if (rate != null) {
+                        builder.currentBuyRate(rate.getBaseBuyRate())
+                                .currentSellRate(rate.getBaseSellRate())
+                                .officialRate(rate.getOfficialRate())
+                                .limit1Amount(rate.getLimit1Amount())
+                                .limit1BuyRate(rate.getLimit1BuyRate())
+                                .limit1SellRate(rate.getLimit1SellRate())
+                                .limit2Amount(rate.getLimit2Amount())
+                                .limit2BuyRate(rate.getLimit2BuyRate())
+                                .limit2SellRate(rate.getLimit2SellRate())
+                                .limit3Amount(rate.getLimit3Amount())
+                                .limit3BuyRate(rate.getLimit3BuyRate())
+                                .limit3SellRate(rate.getLimit3SellRate())
+                                .lastUpdated(rate.getCreatedAt());
+
+                        // Középárfolyam
+                        BigDecimal middle = rate.getBaseBuyRate()
+                                .add(rate.getBaseSellRate())
+                                .divide(BigDecimal.valueOf(2), 4, RoundingMode.HALF_UP);
+                        builder.middleRate(middle);
+
+                        // Spread %
+                        if (rate.getBaseBuyRate().compareTo(BigDecimal.ZERO) > 0) {
+                            BigDecimal spread = rate.getBaseSellRate().subtract(rate.getBaseBuyRate())
+                                    .divide(rate.getBaseBuyRate(), 4, RoundingMode.HALF_UP)
+                                    .multiply(BigDecimal.valueOf(100));
+                            builder.spreadPercent(spread);
+                        }
+
+                        // MNB margin %
+                        if (rate.getOfficialRate() != null && rate.getOfficialRate().compareTo(BigDecimal.ZERO) > 0) {
+                            BigDecimal buyMargin = rate.getOfficialRate().subtract(rate.getBaseBuyRate())
+                                    .divide(rate.getOfficialRate(), 6, RoundingMode.HALF_UP)
+                                    .multiply(BigDecimal.valueOf(100));
+                            BigDecimal sellMargin = rate.getBaseSellRate().subtract(rate.getOfficialRate())
+                                    .divide(rate.getOfficialRate(), 6, RoundingMode.HALF_UP)
+                                    .multiply(BigDecimal.valueOf(100));
+                            builder.buyMarginPercent(buyMargin);
+                            builder.sellMarginPercent(sellMargin);
+                        }
+                    }
+
+                    return builder.build();
+                })
                 .collect(Collectors.toList());
+
+        return RateOverviewDTO.builder()
+                .generatedAt(LocalDateTime.now())
+                .currencies(items)
+                .build();
     }
 
     /**
@@ -127,25 +397,42 @@ public class RateCreationService {
     }
 
     /**
-     * Csoportos árfolyam publikálás.
+     * Csoportos árfolyam publikálás a template → publish pipeline-on keresztül.
      *
      * Legacy: MNBArfKikuldo — a főértéktáros által elkészített árfolyamok
-     * kiküldése a pénztáraknak. A régi rendszerben ez bináris fájlokat
-     * generált (AF100.xxx) és FTP-n küldte ki.
+     * kiküldése a pénztáraknak. A régi rendszerben bináris fájlokat generált
+     * (ARFDATA.DAT) és FTP-n küldte ki.
      *
-     * Új rendszer: minden valutához létrehozza az ExchangeRate rekordot
-     * az ExchangeRateService-en keresztül.
+     * Új rendszer: RateTemplate rekordokat hoz létre (auto-APPROVED),
+     * majd a RatePublishService.publish()-on keresztül menti az exchange_rate-be
+     * ÉS outbox event-et hoz létre a WebSocket push-hoz.
      */
     public void publishGroupRate(GroupRateDTO groupRateDTO) {
         if (groupRateDTO.getRates() == null || groupRateDTO.getRates().isEmpty()) {
             throw new ValidationException("Nincs publikálandó árfolyam!");
         }
 
-        log.info("Csoportos árfolyam publikálás groupId={}, {} ráta",
-                groupRateDTO.getGroupId(),
-                groupRateDTO.getRates().size());
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new ValidationException("Cég nem található"));
 
-        int created = 0;
+        // Munkacsoport meghatározás
+        UUID workgroupId = groupRateDTO.getGroupId();
+        if (workgroupId == null) {
+            workgroupId = rateWorkgroupRepository.findByCompanyIdAndActiveTrue(companyId)
+                    .stream().findFirst()
+                    .map(RateWorkgroup::getId)
+                    .orElseThrow(() -> new ValidationException(
+                            "Nincs aktív munkacsoport! Hozzon létre egyet az Árfolyam kezelés > Munkacsoportok menüben."));
+        }
+
+        log.info("Csoportos árfolyam publikálás pipeline-on: groupId={}, {} ráta",
+                workgroupId, groupRateDTO.getRates().size());
+
+        List<UUID> templateIds = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+
         for (GroupRateDTO.RateEntry entry : groupRateDTO.getRates()) {
             if (entry.getBuyRate() == null || entry.getSellRate() == null) {
                 log.warn("Hiányzó árfolyam: currencyId={}", entry.getCurrencyId());
@@ -157,27 +444,134 @@ public class RateCreationService {
                         "Eladási árfolyam nagyobb kell legyen a vételinél! currencyId=" + entry.getCurrencyId());
             }
 
-            ExchangeRateService.CreateExchangeRateRequest request =
-                    ExchangeRateService.CreateExchangeRateRequest.builder()
-                            .currencyId(entry.getCurrencyId())
-                            .baseBuyRate(entry.getBuyRate())
-                            .baseSellRate(entry.getSellRate())
-                            .officialRate(entry.getOfficialRate())
-                            .limit1Amount(entry.getLimit1Amount())
-                            .limit1BuyRate(entry.getLimit1BuyRate())
-                            .limit1SellRate(entry.getLimit1SellRate())
-                            .limit2Amount(entry.getLimit2Amount())
-                            .limit2BuyRate(entry.getLimit2BuyRate())
-                            .limit2SellRate(entry.getLimit2SellRate())
-                            .limit3Amount(entry.getLimit3Amount())
-                            .limit3BuyRate(entry.getLimit3BuyRate())
-                            .limit3SellRate(entry.getLimit3SellRate())
-                            .build();
+            RateTemplate template = RateTemplate.builder()
+                    .company(company)
+                    .currencyId(entry.getCurrencyId())
+                    .workgroupId(workgroupId)
+                    .baseBuyRate(entry.getBuyRate())
+                    .baseSellRate(entry.getSellRate())
+                    .buySpread(BigDecimal.ZERO)
+                    .sellSpread(BigDecimal.ZERO)
+                    .officialRate(entry.getOfficialRate())
+                    .limit1Amount(entry.getLimit1Amount())
+                    .limit1BuyRate(entry.getLimit1BuyRate())
+                    .limit1SellRate(entry.getLimit1SellRate())
+                    .limit2Amount(entry.getLimit2Amount())
+                    .limit2BuyRate(entry.getLimit2BuyRate())
+                    .limit2SellRate(entry.getLimit2SellRate())
+                    .limit3Amount(entry.getLimit3Amount())
+                    .limit3BuyRate(entry.getLimit3BuyRate())
+                    .limit3SellRate(entry.getLimit3SellRate())
+                    .status(RateTemplate.RateTemplateStatus.APPROVED)
+                    .createdBy(workerId)
+                    .approvedBy(workerId)
+                    .createdAt(now)
+                    .approvedAt(now)
+                    .build();
 
-            exchangeRateService.createExchangeRate(request);
-            created++;
+            template = rateTemplateRepository.save(template);
+            templateIds.add(template.getId());
         }
 
-        log.info("Csoportos árfolyam publikálva: {} ráta létrehozva", created);
+        if (templateIds.isEmpty()) {
+            throw new ValidationException("Nem sikerült egyetlen árfolyam sablont sem létrehozni!");
+        }
+
+        // Publish: exchange_rate INSERT + outbox event → WebSocket push a pénztáraknak
+        ratePublishService.publish(workgroupId, templateIds, "Árfolyam rögzítés publikálás");
+
+        log.info("Csoportos árfolyam publikálva pipeline-on: {} sablon → exchange_rate + WebSocket push", templateIds.size());
+    }
+
+    // ====== BRANCH MANAGEMENT ======
+
+    /**
+     * Összes aktív iroda lekérése, jelölve hogy melyik van hozzárendelve a megadott munkacsoporthoz.
+     */
+    @Transactional(readOnly = true)
+    public List<BranchListDTO> getAllBranchesForWorkgroup(UUID workgroupId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+
+        RateWorkgroup workgroup = rateWorkgroupRepository.findById(workgroupId)
+                .orElseThrow(() -> new ValidationException("Munkacsoport nem található: " + workgroupId));
+
+        if (!workgroup.getCompany().getId().equals(companyId)) {
+            throw new ValidationException("Munkacsoport nem tartozik az aktuális céghez");
+        }
+
+        Set<UUID> assignedBranchIds = workgroup.getBranches().stream()
+                .map(Branch::getId)
+                .collect(Collectors.toSet());
+
+        List<Branch> allActiveBranches = branchRepository.findByCompanyIdAndIsActiveTrue(companyId);
+
+        return allActiveBranches.stream()
+                .map(b -> BranchListDTO.builder()
+                        .id(b.getId())
+                        .code(b.getCode())
+                        .name(b.getName())
+                        .city(b.getCity())
+                        .assignedToCurrentWorkgroup(assignedBranchIds.contains(b.getId()))
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Munkacsoport iroda-hozzárendelések frissítése (teljes csere).
+     */
+    public void updateWorkgroupBranches(UUID workgroupId, List<UUID> branchIds) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+
+        RateWorkgroup workgroup = rateWorkgroupRepository.findById(workgroupId)
+                .orElseThrow(() -> new ValidationException("Munkacsoport nem található: " + workgroupId));
+
+        if (!workgroup.getCompany().getId().equals(companyId)) {
+            throw new ValidationException("Munkacsoport nem tartozik az aktuális céghez");
+        }
+
+        // Meglévő hozzárendelések törlése
+        workgroup.getBranches().clear();
+
+        // Új hozzárendelések
+        if (branchIds != null && !branchIds.isEmpty()) {
+            List<Branch> branches = branchRepository.findAllById(branchIds);
+
+            // Ellenőrzés: minden branch a céghez tartozik-e és aktív-e
+            for (Branch branch : branches) {
+                if (!branch.getCompany().getId().equals(companyId)) {
+                    throw new ValidationException("Iroda nem tartozik az aktuális céghez: " + branch.getCode());
+                }
+                if (!Boolean.TRUE.equals(branch.getIsActive())) {
+                    throw new ValidationException("Inaktív iroda nem rendelhető hozzá: " + branch.getCode());
+                }
+            }
+
+            workgroup.getBranches().addAll(branches);
+        }
+
+        rateWorkgroupRepository.save(workgroup);
+        log.info("Munkacsoport iroda-hozzárendelés frissítve: workgroupId={}, {} iroda", workgroupId, workgroup.getBranches().size());
+    }
+
+    /**
+     * Munkacsoport limit határok frissítése.
+     */
+    public void updateWorkgroupLimits(UUID workgroupId, BigDecimal limit1Boundary, BigDecimal limit2Boundary, BigDecimal limit3Boundary) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+
+        RateWorkgroup workgroup = rateWorkgroupRepository.findById(workgroupId)
+                .orElseThrow(() -> new ValidationException("Munkacsoport nem található: " + workgroupId));
+
+        if (!workgroup.getCompany().getId().equals(companyId)) {
+            throw new ValidationException("Munkacsoport nem tartozik az aktuális céghez");
+        }
+
+        workgroup.setLimit1Boundary(limit1Boundary);
+        workgroup.setLimit2Boundary(limit2Boundary);
+        workgroup.setLimit3Boundary(limit3Boundary);
+
+        rateWorkgroupRepository.save(workgroup);
+        log.info("Munkacsoport limit határok frissítve: workgroupId={}, l1={}, l2={}, l3={}",
+                workgroupId, limit1Boundary, limit2Boundary, limit3Boundary);
     }
 }

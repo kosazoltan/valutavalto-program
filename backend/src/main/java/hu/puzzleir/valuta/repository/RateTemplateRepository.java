@@ -12,4 +12,6 @@ public interface RateTemplateRepository extends JpaRepository<RateTemplate, UUID
     List<RateTemplate> findByWorkgroupId(UUID workgroupId);
     List<RateTemplate> findByCurrencyIdAndWorkgroupId(Long currencyId, UUID workgroupId);
     List<RateTemplate> findByStatus(RateTemplate.RateTemplateStatus status);
+    List<RateTemplate> findByCompanyIdAndWorkgroupId(UUID companyId, UUID workgroupId);
+    List<RateTemplate> findByCompanyIdAndStatus(UUID companyId, RateTemplate.RateTemplateStatus status);
 }

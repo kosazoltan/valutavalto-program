@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.dto.audit.AuditLogEntryDto;
 import hu.puzzleir.valuta.dto.audit.AuditSearchCriteria;
 import hu.puzzleir.valuta.entity.AuditLog;
 import hu.puzzleir.valuta.repository.AuditLogRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -24,6 +25,15 @@ import java.util.UUID;
 public class AuditLogService {
 
     private final AuditLogRepository auditLogRepository;
+
+    /** Resolve current company ID from security context (nullable for system/background tasks). */
+    private UUID resolveCompanyId() {
+        try {
+            return SecurityUtils.getCurrentCompanyId();
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
     /**
      * Egyszerűsített audit log — action + message + entityId (String).
@@ -49,6 +59,7 @@ public class AuditLogService {
                     String userId, String userName, String branchId, String branchName,
                     String changes, String ipAddress, String userAgent) {
         AuditLog entry = AuditLog.builder()
+                .companyId(resolveCompanyId())
                 .action(action)
                 .entityType(entityType)
                 .entityId(entityId)
@@ -72,6 +83,7 @@ public class AuditLogService {
                                String oldValue, String newValue, String reason,
                                String ipAddress) {
         AuditLog entry = AuditLog.builder()
+                .companyId(resolveCompanyId())
                 .action(action)
                 .entityType(entityType)
                 .entityId(entityId)
@@ -88,32 +100,39 @@ public class AuditLogService {
     }
 
     public List<AuditLog> getByEntity(String entityId) {
-        return auditLogRepository.findByEntityIdOrderByCreatedAtDesc(entityId);
+        UUID companyId = resolveCompanyId();
+        return auditLogRepository.findByCompanyIdAndEntityIdOrderByCreatedAtDesc(companyId, entityId);
     }
 
     public Page<AuditLog> getByWorker(String workerId, LocalDateTime from, LocalDateTime to, Pageable pageable) {
-        return auditLogRepository.findByWorker(workerId, from, to, pageable);
+        UUID companyId = resolveCompanyId();
+        return auditLogRepository.findByWorker(companyId, workerId, from, to, pageable);
     }
 
     public Page<AuditLog> getByBranch(String branchId, LocalDateTime from, LocalDateTime to, Pageable pageable) {
-        return auditLogRepository.findByBranch(branchId, from, to, pageable);
+        UUID companyId = resolveCompanyId();
+        return auditLogRepository.findByBranch(companyId, branchId, from, to, pageable);
     }
 
     public Page<AuditLog> getByAction(String action, LocalDateTime from, LocalDateTime to, Pageable pageable) {
-        return auditLogRepository.findByAction(action, from, to, pageable);
+        UUID companyId = resolveCompanyId();
+        return auditLogRepository.findByAction(companyId, action, from, to, pageable);
     }
 
     public Page<AuditLog> getSystemLogs(LocalDateTime from, LocalDateTime to, Pageable pageable) {
-        return auditLogRepository.findByDateRange(from, to, pageable);
+        UUID companyId = resolveCompanyId();
+        return auditLogRepository.findByDateRange(companyId, from, to, pageable);
     }
 
     // POS and NAV logs use the same table with different entityType filters
     public Page<AuditLog> getPosLogs(LocalDateTime from, LocalDateTime to, Pageable pageable) {
-        return auditLogRepository.findByDateRange(from, to, pageable);
+        UUID companyId = resolveCompanyId();
+        return auditLogRepository.findByDateRange(companyId, from, to, pageable);
     }
 
     public Page<AuditLog> getNavLogs(LocalDateTime from, LocalDateTime to, Pageable pageable) {
-        return auditLogRepository.findByDateRange(from, to, pageable);
+        UUID companyId = resolveCompanyId();
+        return auditLogRepository.findByDateRange(companyId, from, to, pageable);
     }
 
     /**
@@ -121,7 +140,8 @@ public class AuditLogService {
      */
     @Transactional(readOnly = true)
     public byte[] exportLogsCsv(LocalDateTime from, LocalDateTime to) {
-        List<AuditLog> logs = auditLogRepository.findAllByDateRange(from, to);
+        UUID companyId = resolveCompanyId();
+        List<AuditLog> logs = auditLogRepository.findAllByDateRange(companyId, from, to);
         StringBuilder csv = new StringBuilder();
         csv.append("id,action,entityType,entityId,userId,userName,branchId,branchName,changes,ipAddress,userAgent,createdAt\n");
 
@@ -226,7 +246,8 @@ public class AuditLogService {
      */
     @Transactional(readOnly = true)
     public List<AuditLogEntryDto> getAuditTrail(String entityType, String entityId) {
-        List<AuditLog> logs = auditLogRepository.findByEntityTypeAndEntityIdOrderByCreatedAtDesc(entityType, entityId);
+        UUID companyId = resolveCompanyId();
+        List<AuditLog> logs = auditLogRepository.findByCompanyIdAndEntityTypeAndEntityIdOrderByCreatedAtDesc(companyId, entityType, entityId);
         return logs.stream().map(this::toDto).toList();
     }
 
@@ -235,7 +256,9 @@ public class AuditLogService {
      */
     @Transactional(readOnly = true)
     public Page<AuditLogEntryDto> searchAuditLog(AuditSearchCriteria criteria, Pageable pageable) {
+        UUID companyId = resolveCompanyId();
         return auditLogRepository.searchAuditLog(
+                companyId,
                 criteria.getDateFrom(),
                 criteria.getDateTo(),
                 criteria.getWorkerId(),
@@ -251,7 +274,8 @@ public class AuditLogService {
      */
     @Transactional(readOnly = true)
     public Page<AuditLogEntryDto> getByWorkerDto(String workerId, LocalDateTime from, LocalDateTime to, Pageable pageable) {
-        return auditLogRepository.findByWorker(workerId, from, to, pageable).map(this::toDto);
+        UUID companyId = resolveCompanyId();
+        return auditLogRepository.findByWorker(companyId, workerId, from, to, pageable).map(this::toDto);
     }
 
     /**
@@ -259,7 +283,8 @@ public class AuditLogService {
      */
     @Transactional(readOnly = true)
     public byte[] exportFullCsv(LocalDateTime from, LocalDateTime to) {
-        List<AuditLog> logs = auditLogRepository.findAllByDateRange(from, to);
+        UUID companyId = resolveCompanyId();
+        List<AuditLog> logs = auditLogRepository.findAllByDateRange(companyId, from, to);
         StringBuilder csv = new StringBuilder();
         csv.append("id,action,entityType,entityId,userId,userName,branchId,branchName,changes,oldValue,newValue,reason,ipAddress,createdAt\n");
 

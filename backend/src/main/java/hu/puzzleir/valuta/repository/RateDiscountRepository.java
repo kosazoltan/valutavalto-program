@@ -10,4 +10,6 @@ import java.util.UUID;
 public interface RateDiscountRepository extends JpaRepository<RateDiscount, UUID> {
     List<RateDiscount> findByWorkgroupIdAndActiveTrue(UUID workgroupId);
     List<RateDiscount> findByWorkgroupIdOrderByLevel(UUID workgroupId);
+    List<RateDiscount> findByCompanyIdAndWorkgroupIdAndActiveTrue(UUID companyId, UUID workgroupId);
+    List<RateDiscount> findByCompanyIdAndWorkgroupIdOrderByLevel(UUID companyId, UUID workgroupId);
 }

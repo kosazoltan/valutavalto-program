@@ -26,4 +26,15 @@ public interface CompetitorRateRepository extends JpaRepository<CompetitorRate, 
            "WHERE cr.rateDate = (SELECT MAX(cr2.rateDate) FROM CompetitorRate cr2) " +
            "ORDER BY cr.competitor.name, cr.currency.displayOrder")
     List<CompetitorRate> findLatestRatesWithDetails();
+
+    /**
+     * Legfrissebb versenytárs árfolyamok adott valutához.
+     */
+    @Query("SELECT cr FROM CompetitorRate cr " +
+           "JOIN FETCH cr.competitor " +
+           "JOIN FETCH cr.currency " +
+           "WHERE cr.currency.id = :currencyId " +
+           "AND cr.rateDate = (SELECT MAX(cr2.rateDate) FROM CompetitorRate cr2 WHERE cr2.currency.id = :currencyId) " +
+           "ORDER BY cr.competitor.name")
+    List<CompetitorRate> findLatestRatesByCurrencyId(@Param("currencyId") Long currencyId);
 }

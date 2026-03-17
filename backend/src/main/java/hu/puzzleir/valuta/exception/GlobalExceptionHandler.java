@@ -138,7 +138,14 @@ public class GlobalExceptionHandler {
             }
         }
 
-        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "Váratlan belső hiba történt");
+        String rootCause = ex.getMessage();
+        Throwable cause = ex.getCause();
+        while (cause != null) {
+            rootCause = cause.getClass().getSimpleName() + ": " + cause.getMessage();
+            cause = cause.getCause();
+        }
+        String devMessage = ex.getClass().getSimpleName() + " — " + rootCause;
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", devMessage);
     }
 
     private String stackTraceToString(Exception ex) {

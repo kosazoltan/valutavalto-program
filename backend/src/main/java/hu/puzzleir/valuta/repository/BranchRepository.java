@@ -72,6 +72,12 @@ public interface BranchRepository extends JpaRepository<Branch, UUID> {
     List<Branch> findByCompanyId(@Param("companyId") UUID companyId);
 
     /**
+     * Aktív fiókok cégen belül (árfolyam munkacsoport kezeléshez)
+     */
+    @Query("SELECT b FROM Branch b WHERE b.company.id = :companyId AND b.isActive = true ORDER BY b.name")
+    List<Branch> findByCompanyIdAndIsActiveTrue(@Param("companyId") UUID companyId);
+
+    /**
      * Fiók keresése cégen belül kód alapján (Értéktár modul)
      */
     @Query("SELECT b FROM Branch b WHERE b.company.id = :companyId AND b.code = :code")

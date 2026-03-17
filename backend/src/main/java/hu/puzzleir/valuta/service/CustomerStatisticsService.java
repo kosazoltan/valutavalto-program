@@ -204,7 +204,7 @@ public class CustomerStatisticsService {
                             .orElse(entry.getKey());
 
                     // Próbáljuk megtalálni a Customer entity-t
-                    Long custId = customerRepository.findByDocumentNumberContainingIgnoreCase(entry.getKey())
+                    Long custId = customerRepository.findByCompanyIdAndDocumentNumberContainingIgnoreCase(companyId, entry.getKey())
                             .stream().findFirst().map(Customer::getId).orElse(null);
 
                     return CustomerRankingDto.builder()
