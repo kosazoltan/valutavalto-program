@@ -1,13 +1,25 @@
 import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import { useAuthStore } from '../stores/authStore'
 
+// API base URL meghatározása — priorizálás:
+// 1. VITE_API_URL env var (build-time)
+// 2. Electron: SQLite config 'server_url' (runtime, felhasználó által állítható)
+// 3. DEV mód: localhost
+// 4. Web production: relatív URL
 let API_BASE_URL = import.meta.env.VITE_API_URL
 if (!API_BASE_URL) {
   if (import.meta.env.DEV) {
     API_BASE_URL = 'http://localhost:8080/api/v1'
   } else if (window.electronAPI) {
-    // Electron production — env var nincs, fallback a production szerverre
+    // Electron production — SQLite-ból olvassa a server_url-t, fallback a prod szerverre
     API_BASE_URL = 'https://valutavalto-api.onrender.com/api/v1'
+    // Aszinkron felülírás: ha SQLite-ban van beállítva server_url, használjuk azt
+    window.electronAPI.getConfig?.('server_url').then((url: string | null) => {
+      if (url) {
+        const normalized = url.endsWith('/api/v1') ? url : `${url.replace(/\/$/, '')}/api/v1`
+        api.defaults.baseURL = normalized
+      }
+    }).catch(() => { /* SQLite nem elérhető — marad a default */ })
   } else {
     // Webes production — relatív URL (proxy mögött) vagy env var kötelező
     API_BASE_URL = '/api/v1'

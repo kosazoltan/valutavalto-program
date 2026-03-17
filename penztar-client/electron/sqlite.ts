@@ -114,10 +114,18 @@ export async function initDatabase(): Promise<void> {
         rate REAL NOT NULL,
         customer_id INTEGER,
         denominations TEXT,
+        idempotency_key TEXT,
         created_at TEXT DEFAULT (datetime('now')),
         synced INTEGER DEFAULT 0
       );
     `);
+
+    // Migrate: add idempotency_key column for existing installations
+    try {
+      db.run('ALTER TABLE pending_transactions ADD COLUMN idempotency_key TEXT');
+    } catch {
+      // Column already exists — ignore
+    }
 
     db.run(`
       CREATE TABLE IF NOT EXISTS cached_customers (
@@ -215,11 +223,32 @@ export async function initDatabase(): Promise<void> {
   }
 }
 
+/**
+ * Atomi adatbázis mentés — temp fájl + rename pattern.
+ *
+ * Ez véd az áramszünet/crash közbeni korrupció ellen:
+ * 1. Írás temp fájlba (dbPath + '.tmp')
+ * 2. Rename temp → végleges (atomi művelet a legtöbb fájlrendszeren)
+ * Ha a rename sikertelen, a temp fájl marad, az eredeti DB érintetlen.
+ */
 export function saveDatabase(): void {
   if (!db) return;
   const data = db.export();
   const buffer = Buffer.from(data);
-  fs.writeFileSync(dbPath, buffer);
+  const tmpPath = dbPath + '.tmp';
+
+  try {
+    fs.writeFileSync(tmpPath, buffer);
+    fs.renameSync(tmpPath, dbPath);
+  } catch (err) {
+    // Fallback: ha a rename nem működik (pl. cross-device), közvetlen írás
+    try {
+      fs.unlinkSync(tmpPath);
+    } catch {
+      // tmp cleanup hiba nem blokkoló
+    }
+    fs.writeFileSync(dbPath, buffer);
+  }
 }
 
 export function getConfig(key: string): string | null {
@@ -272,6 +301,7 @@ export interface PendingTransactionRow {
   rate: number;
   customer_id: number | null;
   denominations: string | null;
+  idempotency_key: string | null;
   created_at: string;
   synced: number;
 }
@@ -288,10 +318,13 @@ export function savePendingTransaction(
 ): number {
   if (!db) throw new Error('Database not initialized');
 
+  // Stabil idempotency key — retry-nál is ugyanazt küldjük a szervernek
+  const idempotencyKey = crypto.randomUUID();
+
   db.run(
-    `INSERT INTO pending_transactions (type, currency_code, foreign_amount, huf_amount, rounded_huf_amount, rate, customer_id, denominations)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [type, currencyCode, foreignAmount, hufAmount, roundedHufAmount, rate, customerId, denominations],
+    `INSERT INTO pending_transactions (type, currency_code, foreign_amount, huf_amount, rounded_huf_amount, rate, customer_id, denominations, idempotency_key)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [type, currencyCode, foreignAmount, hufAmount, roundedHufAmount, rate, customerId, denominations, idempotencyKey],
   );
   saveDatabase();
 

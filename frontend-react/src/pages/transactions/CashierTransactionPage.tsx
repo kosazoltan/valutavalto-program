@@ -190,8 +190,23 @@ export default function CashierTransactionPage() {
             discountPercent: discount > 0 ? discount : undefined,
             ...customerData,
           }
-          const result = await transactionApi.buy(request)
-          receiptNumbers.push(result.receiptNumber)
+          try {
+            const result = await transactionApi.buy(request)
+            receiptNumbers.push(result.receiptNumber)
+          } catch (networkErr) {
+            // Electron offline fallback: mentés SQLite-ba, sync engine feltölti később
+            if (window.electronAPI?.savePendingTransaction) {
+              await window.electronAPI.savePendingTransaction(
+                'BUY', row.currencyCode,
+                parseFloat(row.quantity) || 0, row.hufValue,
+                roundHuf(row.hufValue), row.exchangeRate,
+                null, null,
+              )
+              receiptNumbers.push(`PENDING-${Date.now()}`)
+            } else {
+              throw networkErr // Böngészőben nincs offline fallback
+            }
+          }
         } else {
           const request: SellRequest = {
             currencyCode: row.currencyCode,
@@ -201,12 +216,35 @@ export default function CashierTransactionPage() {
             discountPercent: discount > 0 ? discount : undefined,
             ...customerData,
           }
-          const result = await transactionApi.sell(request)
-          receiptNumbers.push(result.receiptNumber)
+          try {
+            const result = await transactionApi.sell(request)
+            receiptNumbers.push(result.receiptNumber)
+          } catch (networkErr) {
+            // Electron offline fallback: mentés SQLite-ba, sync engine feltölti később
+            if (window.electronAPI?.savePendingTransaction) {
+              await window.electronAPI.savePendingTransaction(
+                'SELL', row.currencyCode,
+                parseFloat(row.quantity) || 0, row.hufValue,
+                roundHuf(row.hufValue), row.exchangeRate,
+                null, null,
+              )
+              receiptNumbers.push(`PENDING-${Date.now()}`)
+            } else {
+              throw networkErr // Böngészőben nincs offline fallback
+            }
+          }
         }
       }
 
-      toast.success('Bizonylat(ok) sikeresen keszitve!', `${filledRows.length} tetel, ${total.toLocaleString('hu-HU')} Ft | Bizonylat szamok: ${receiptNumbers.join(', ')}`)
+      const pendingCount = receiptNumbers.filter(r => r.startsWith('PENDING-')).length
+      if (pendingCount > 0) {
+        toast.warning(
+          'Offline mód — tranzakció(k) mentve',
+          `${pendingCount} tranzakció helyi tárolásba került. Az internet visszatérésekor automatikusan szinkronizálódik.`,
+        )
+      } else {
+        toast.success('Bizonylat(ok) sikeresen készítve!', `${filledRows.length} tétel, ${total.toLocaleString('hu-HU')} Ft | Bizonylat számok: ${receiptNumbers.join(', ')}`)
+      }
 
       // Reset
       setRows(Array.from({ length: MAX_LINES }, emptyRow))
@@ -219,7 +257,7 @@ export default function CashierTransactionPage() {
       const message = error instanceof Error ? error.message : 'Ismeretlen hiba'
       const axiosError = error as { response?: { data?: { message?: string } } }
       const serverMessage = axiosError?.response?.data?.message
-      toast.error('Hiba a tranzakcio mentes soran!', serverMessage || message)
+      toast.error('Hiba a tranzakció mentés során!', serverMessage || message)
     } finally {
       setIsSubmitting(false)
     }

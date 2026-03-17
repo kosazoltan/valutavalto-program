@@ -101,9 +101,11 @@ async function httpGet<T>(url: string, token: string | null): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-async function httpPost<T>(url: string, body: Record<string, unknown>, token: string | null): Promise<T> {
+async function httpPost<T>(url: string, body: Record<string, unknown>, token: string | null, idempotencyKey?: string): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    // Idempotency-Key: megakadályozza a duplikált tranzakciókat újrapróbálkozás esetén
+    'Idempotency-Key': idempotencyKey ?? crypto.randomUUID(),
   };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -290,7 +292,8 @@ export class SyncEngine {
       }
     }
 
-    await httpPost(endpoint, body, token);
+    // A tárolt idempotency_key-t használjuk — retry-nál is ugyanazt küldjük
+    await httpPost(endpoint, body, token, tx.idempotency_key ?? undefined);
   }
 
   /**
