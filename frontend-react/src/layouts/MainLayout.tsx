@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
+import { dailySessionApi } from '../services/api'
 import {
   Home,
   ArrowLeftRight,
@@ -19,6 +20,8 @@ import {
   Building2,
   LayoutDashboard,
   Shield,
+  Sun,
+  Loader2,
 } from 'lucide-react'
 
 // Menüpontok csoportosítva (professzionális sidebar struktúra)
@@ -66,10 +69,73 @@ const menuGroups = [
   }
 ]
 
+interface SessionInfo {
+  id: number
+  sessionDate: string
+  status: string
+  openedAt?: string
+  openedByWorkerName?: string
+  openingBalanceHuf: number
+  transactionCount: number
+}
+
 export default function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sessionChecking, setSessionChecking] = useState(true)
+  const [sessionReady, setSessionReady] = useState(false)
+  const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null)
+  const [showSessionDialog, setShowSessionDialog] = useState(false)
+  const [sessionError, setSessionError] = useState<string | null>(null)
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
+
+  const initSession = useCallback(async () => {
+    try {
+      setSessionChecking(true)
+      setSessionError(null)
+
+      // 1. Ellenőrizzük van-e nyitott session
+      const isOpen = await dailySessionApi.isOpen()
+
+      if (isOpen) {
+        // Már nyitott — lekérjük az infót és folytatjuk
+        try {
+          const current = await dailySessionApi.getCurrent()
+          setSessionInfo(current as unknown as SessionInfo)
+        } catch { /* session info nem kritikus */ }
+        setSessionReady(true)
+        return
+      }
+
+      // 2. Nincs nyitott session — automatikusan megnyitjuk
+      try {
+        const newSession = await dailySessionApi.open()
+        setSessionInfo(newSession as unknown as SessionInfo)
+        setSessionReady(true)
+      } catch (err: any) {
+        // Ha a napnyitás nem sikerült (pl. előző nap nincs lezárva)
+        const msg = err?.response?.data?.message || err?.message || 'Hiba a napnyitás során'
+        setSessionError(msg)
+        setShowSessionDialog(true)
+      }
+    } catch {
+      // Backend nem elérhető
+      setSessionError('A szerver nem elérhető. Ellenőrizze a kapcsolatot!')
+      setShowSessionDialog(true)
+    } finally {
+      setSessionChecking(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    initSession()
+  }, [initSession])
+
+  const handleRetryOpen = async () => {
+    setShowSessionDialog(false)
+    setSessionChecking(true)
+    await initSession()
+  }
 
   const handleLogout = () => {
     logout()
@@ -78,6 +144,57 @@ export default function MainLayout() {
 
   return (
     <div className="min-h-screen bg-form-bg flex">
+      {/* Napnyitás hiba dialógus — csak ha az automatikus nyitás nem sikerült */}
+      {showSessionDialog && !sessionReady && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 bg-danger-100 rounded-xl flex items-center justify-center">
+                <Sun size={28} className="text-danger-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-secondary-900">Napnyitás sikertelen</h2>
+                <p className="text-sm text-secondary-500">
+                  {new Date().toLocaleDateString('hu-HU', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}
+                </p>
+              </div>
+            </div>
+            {sessionError && (
+              <div className="mb-4 p-3 bg-danger-50 border border-danger-200 rounded-lg text-danger-700 text-sm">
+                {sessionError}
+              </div>
+            )}
+            <p className="text-secondary-600 mb-6 text-sm">
+              Az automatikus napnyitás nem sikerült. Kérjük, ellenőrizze a hibaüzenetet és próbálja újra.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleLogout}
+                className="flex-1 px-4 py-3 border border-secondary-300 text-secondary-700 rounded-lg hover:bg-secondary-50 transition-colors font-medium"
+              >
+                Kijelentkezés
+              </button>
+              <button
+                onClick={handleRetryOpen}
+                className="flex-1 px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium flex items-center justify-center gap-2"
+              >
+                <Sun size={18} />
+                Újrapróbálás
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Loading spinner amíg a session check fut */}
+      {sessionChecking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-form-bg">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 size={48} className="animate-spin text-primary-600" />
+            <p className="text-secondary-600 font-medium">Munkamenet ellenőrzése...</p>
+          </div>
+        </div>
+      )}
       {/* MODERN Sidebar */}
       <aside
         className={`${
@@ -163,6 +280,15 @@ export default function MainLayout() {
             <div className="text-sm text-secondary-600">
               {new Date().toLocaleDateString('hu-HU', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}
             </div>
+            {sessionInfo && (
+              <>
+                <div className="h-6 w-px bg-secondary-200"></div>
+                <div className="flex items-center gap-1.5 text-sm">
+                  <span className="w-2 h-2 bg-success-500 rounded-full"></span>
+                  <span className="text-success-700 font-medium">Nap nyitva</span>
+                </div>
+              </>
+            )}
           </div>
           
           <div className="flex items-center gap-4">
@@ -187,7 +313,7 @@ export default function MainLayout() {
         </header>
 
         {/* Page content */}
-        <div className="flex-1 p-6 overflow-auto">
+        <div className="flex-1 p-6 overflow-auto min-h-0">
           <Outlet />
         </div>
 
