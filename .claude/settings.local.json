@@ -3,7 +3,8 @@
     "allow": [
       "WebFetch(domain:api.exchangerate-api.com)",
       "WebFetch(domain:api.frankfurter.app)",
-      "WebSearch"
+      "WebSearch",
+      "mcp__Claude_Preview__preview_start"
     ]
   }
 }
