@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
 import { Toaster } from './components/ui/toaster'
+import { api, loadPersistedToken } from './services/api'
 
 // Layouts
 import MainLayout from './layouts/MainLayout'
@@ -92,6 +94,52 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const [isRestoring, setIsRestoring] = useState(!!window.electronAPI)
+
+  // Electron: token restore — betöltéskor ellenőrizzük van-e tárolt JWT
+  useEffect(() => {
+    if (!window.electronAPI) return
+
+    const restoreToken = async () => {
+      try {
+        const token = await loadPersistedToken()
+        if (token) {
+          const parts = token.split('.')
+          if (parts.length === 3 && parts[1]) {
+            const payload = JSON.parse(atob(parts[1])) as { exp?: number }
+            const now = Math.floor(Date.now() / 1000)
+            if (payload.exp && payload.exp > now) {
+              // Token érvényes → restore auth state
+              try {
+                const res = await api.get('/workers/me', {
+                  headers: { Authorization: `Bearer ${token}` },
+                })
+                if (res.data) {
+                  useAuthStore.getState().login(res.data, token, 'Bearer', new Date(payload.exp * 1000).toISOString())
+                }
+              } catch {
+                // Token szerver oldalon érvénytelen
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[App] Token restore hiba:', err)
+      } finally {
+        setIsRestoring(false)
+      }
+    }
+    void restoreToken()
+  }, [])
+
+  if (isRestoring) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p className="text-gray-500">Betöltés...</p>
+      </div>
+    )
+  }
+
   return (
     <>
       <Routes>

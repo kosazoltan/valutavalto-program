@@ -1,12 +1,10 @@
 import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
 import electron from 'vite-plugin-electron';
-import renderer from 'vite-plugin-electron-renderer';
-import path from 'node:path';
 
+// A penztar-client-nek nincs saját renderer-je — a frontend-react build outputját tölti be.
+// Ez a Vite config CSAK az electron main + preload buildelését végzi.
 export default defineConfig({
   plugins: [
-    react(),
     electron([
       {
         entry: 'electron/main.ts',
@@ -31,11 +29,5 @@ export default defineConfig({
         },
       },
     ]),
-    renderer(),
   ],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, 'src'),
-    },
-  },
 });

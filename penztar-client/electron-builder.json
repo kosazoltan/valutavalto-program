@@ -22,6 +22,7 @@
   "nsis": {
     "oneClick": false,
     "allowToChangeInstallationDirectory": true,
+    "deleteAppDataOnUninstall": true,
     "language": "1038",
     "installerIcon": "build/icons/app-icon-bestchange.ico",
     "uninstallerIcon": "build/icons/app-icon-bestchange.ico",

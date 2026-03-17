@@ -1,6 +1,7 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, protocol, net } from 'electron';
 import log from 'electron-log/main';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import {
   initDatabase,
   getConfig,
@@ -24,6 +25,21 @@ import './scanner';
 import './updater';
 
 const isDev = !app.isPackaged;
+
+// Custom 'app' protocol regisztráció — MUSZÁJ app.whenReady() ELŐTT lennie!
+// Ez megoldja a file:// + ES module CORS problémát, ami üres képernyőt okoz.
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'app',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      stream: true,
+    },
+  },
+]);
 
 log.initialize();
 log.transports.file.level = 'info';
@@ -56,11 +72,36 @@ function createWindow(): void {
   });
 
   if (isDev) {
-    mainWindow.loadURL('http://localhost:5173');
+    mainWindow.loadURL('http://localhost:3000');
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    // Custom 'app' protocol-on keresztül töltjük be — NEM file://-al!
+    // A file:// + type="module" (ES module) Chromium CORS policy miatt üres képernyőt ad.
+    mainWindow.loadURL('app://localhost/index.html');
   }
+
+  // Renderer process hibák logolása — production-ben is lássuk mi történik
+  mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    if (level >= 2) { // warning és error
+      log.warn(`[Renderer] L${level} ${sourceId}:${line} — ${message}`);
+    }
+  });
+
+  // Ha a renderer process crash-el, jelenjen meg hibaüzenet
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    log.error('[Renderer] Process gone:', details.reason);
+    dialog.showErrorBox(
+      'Megjelenítési hiba',
+      `A program megjelenítő folyamata leállt.\nOk: ${details.reason}\n\nKérjük, indítsa újra az alkalmazást.`,
+    );
+  });
+
+  // F12 → DevTools bármikor (hibakereséshez)
+  mainWindow.webContents.on('before-input-event', (_event, input) => {
+    if (input.key === 'F12' && input.type === 'keyDown') {
+      mainWindow?.webContents.toggleDevTools();
+    }
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -185,6 +226,30 @@ ipcMain.handle('get-cached-rates', async () => {
 // --- App Lifecycle ---
 
 app.whenReady().then(async () => {
+  // Custom 'app' protocol handler regisztráció
+  // Ez a dist/ mappából szolgálja ki a fájlokat, mint egy webszerver
+  const distPath = path.join(__dirname, '../dist');
+  protocol.handle('app', (req) => {
+    const url = new URL(req.url);
+    let filePath = path.join(distPath, decodeURIComponent(url.pathname));
+
+    // Ha gyökér kérés, index.html-t adjunk vissza
+    if (url.pathname === '/' || url.pathname === '') {
+      filePath = path.join(distPath, 'index.html');
+    }
+
+    // SPA fallback: ha nincs fájl kiterjesztés → index.html (React Router route)
+    // Assets-nek mindig van kiterjesztése: .js, .css, .png, .svg stb.
+    const hasExtension = path.extname(filePath) !== '';
+    if (!hasExtension) {
+      filePath = path.join(distPath, 'index.html');
+    }
+
+    log.info(`[Protocol] ${req.url} → ${filePath}`);
+    return net.fetch(pathToFileURL(filePath).toString());
+  });
+  log.info('[App] Custom "app" protocol regisztrálva, distPath:', distPath);
+
   try {
     await initDatabase();
   } catch (err) {

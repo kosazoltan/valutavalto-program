@@ -5,8 +5,12 @@ let API_BASE_URL = import.meta.env.VITE_API_URL
 if (!API_BASE_URL) {
   if (import.meta.env.DEV) {
     API_BASE_URL = 'http://localhost:8080/api/v1'
+  } else if (window.electronAPI) {
+    // Electron production — env var nincs, fallback a production szerverre
+    API_BASE_URL = 'https://valutavalto-api.onrender.com/api/v1'
   } else {
-    throw new Error('VITE_API_URL environment variable is not set!')
+    // Webes production — relatív URL (proxy mögött) vagy env var kötelező
+    API_BASE_URL = '/api/v1'
   }
 }
 
@@ -1348,7 +1352,92 @@ export interface GroupRateDTO {
   isCurrent: boolean
 }
 
+export interface GroupRateEntryDTO {
+  currencyId: number
+  buyRate: number
+  sellRate: number
+  officialRate?: number | null
+  limit1Amount?: number | null
+  limit1BuyRate?: number | null
+  limit1SellRate?: number | null
+  limit2Amount?: number | null
+  limit2BuyRate?: number | null
+  limit2SellRate?: number | null
+  limit3Amount?: number | null
+  limit3BuyRate?: number | null
+  limit3SellRate?: number | null
+}
+
+export interface PublishGroupRateRequest {
+  groupId: string
+  rates: GroupRateEntryDTO[]
+}
+
+export interface RateOverviewDTO {
+  generatedAt: string
+  currencies: RateOverviewItem[]
+}
+
+export interface RateOverviewItem {
+  currencyId: number
+  currencyCode: string
+  currencyName: string
+  displayOrder: number
+  currentBuyRate: number | null
+  currentSellRate: number | null
+  officialRate: number | null
+  limit1Amount: number | null
+  limit1BuyRate: number | null
+  limit1SellRate: number | null
+  limit2Amount: number | null
+  limit2BuyRate: number | null
+  limit2SellRate: number | null
+  limit3Amount: number | null
+  limit3BuyRate: number | null
+  limit3SellRate: number | null
+  buyMarginPercent: number | null
+  sellMarginPercent: number | null
+  spreadPercent: number | null
+  middleRate: number | null
+  lastUpdated: string | null
+  hasRate: boolean
+}
+
+export interface WorkgroupDetailDTO {
+  id: string
+  code: string
+  name: string
+  legacyGroupNumber: number | null
+  active: boolean
+  branches: WorkgroupBranchInfo[]
+  limit1Boundary: number
+  limit2Boundary: number
+  limit3Boundary: number
+}
+
+export interface WorkgroupBranchInfo {
+  id: string
+  code: string
+  name: string
+}
+
+export interface BranchListItem {
+  id: string
+  code: string
+  name: string
+  city: string
+  assignedToCurrentWorkgroup: boolean
+}
+
 export const rateCreationApi = {
+  getOverview: async (): Promise<RateOverviewDTO> => {
+    const response = await api.get<RateOverviewDTO>('/rate-creation/overview')
+    return response.data
+  },
+  getWorkgroupDetails: async (): Promise<WorkgroupDetailDTO[]> => {
+    const response = await api.get<WorkgroupDetailDTO[]>('/rate-creation/workgroups')
+    return response.data
+  },
   prepareRateCreation: async (currencyId: string): Promise<RateCreationDTO> => {
     const response = await api.get<RateCreationDTO>(`/rate-creation/prepare/${currencyId}`)
     return response.data
@@ -1378,14 +1467,18 @@ export const rateCreationApi = {
     const response = await api.post<BankRateDTO>('/rate-creation/bank-rates', data)
     return response.data
   },
-  publishGroupRate: async (data: {
-    currencyGroupId: string
-    currencyId: string
-    buyRate: number
-    sellRate: number
-  }): Promise<GroupRateDTO> => {
-    const response = await api.post<GroupRateDTO>('/rate-creation/publish-group-rate', data)
+  publishGroupRate: async (data: PublishGroupRateRequest): Promise<void> => {
+    await api.post('/rate-creation/publish-group-rate', data)
+  },
+  getBranches: async (workgroupId: string): Promise<BranchListItem[]> => {
+    const response = await api.get<BranchListItem[]>(`/rate-creation/branches?workgroupId=${workgroupId}`)
     return response.data
+  },
+  updateWorkgroupBranches: async (workgroupId: string, branchIds: string[]): Promise<void> => {
+    await api.post(`/rate-creation/workgroups/${workgroupId}/branches`, { branchIds })
+  },
+  updateWorkgroupLimits: async (workgroupId: string, limits: { limit1Boundary: number; limit2Boundary: number; limit3Boundary: number }): Promise<void> => {
+    await api.put(`/rate-creation/workgroups/${workgroupId}/limits`, limits)
   }
 }
 
@@ -1407,6 +1500,27 @@ export const currencyGroupApi = {
   },
   getById: async (id: string): Promise<CurrencyGroupDTO> => {
     const response = await api.get<CurrencyGroupDTO>(`/currency-groups/${id}`)
+    return response.data
+  }
+}
+
+// ================== RATE WORKGROUPS API ==================
+
+export interface RateWorkgroupDTO {
+  id: string
+  code: string
+  name: string
+  legacyGroupNumber?: number
+  active: boolean
+}
+
+export const rateWorkgroupApi = {
+  list: async (): Promise<RateWorkgroupDTO[]> => {
+    const response = await api.get<RateWorkgroupDTO[]>('/rate-management/workgroups')
+    return response.data
+  },
+  getById: async (id: string): Promise<RateWorkgroupDTO> => {
+    const response = await api.get<RateWorkgroupDTO>(`/rate-management/workgroups/${id}`)
     return response.data
   }
 }
@@ -2383,28 +2497,28 @@ export const loggingApi = {
 
 export const auditLogApi = {
   getByEntity: async (entityId: string): Promise<AuditLog[]> => {
-    const response = await api.get<AuditLog[]>('/audit-log', { params: { entityId } })
+    const response = await api.get<AuditLog[]>('/audit', { params: { entityId } })
     return response.data
   },
   getByWorker: async (workerId: string, from?: string, to?: string, page = 0, size = 50): Promise<{ content: AuditLog[]; totalElements: number }> => {
     const params: Record<string, string | number> = { page, size }
     if (from) params.from = from
     if (to) params.to = to
-    const response = await api.get(`/audit-log/worker/${workerId}`, { params })
+    const response = await api.get(`/audit/worker/${workerId}`, { params })
     return response.data
   },
   getByBranch: async (branchId: string, from?: string, to?: string, page = 0, size = 50): Promise<{ content: AuditLog[]; totalElements: number }> => {
     const params: Record<string, string | number> = { page, size }
     if (from) params.from = from
     if (to) params.to = to
-    const response = await api.get(`/audit-log/branch/${branchId}`, { params })
+    const response = await api.get(`/audit/branch/${branchId}`, { params })
     return response.data
   },
   getByAction: async (action: string, from?: string, to?: string, page = 0, size = 50): Promise<{ content: AuditLog[]; totalElements: number }> => {
     const params: Record<string, string | number> = { page, size }
     if (from) params.from = from
     if (to) params.to = to
-    const response = await api.get(`/audit-log/action/${action}`, { params })
+    const response = await api.get(`/audit/action/${action}`, { params })
     return response.data
   },
   getAll: async (from?: string, to?: string, page = 0, size = 50): Promise<{ content: AuditLog[]; totalElements: number }> => {
@@ -3278,4 +3392,28 @@ export const ertektarApi = {
     const response = await api.post('/ertektar/distribution', data)
     return response.data
   },
+}
+
+// --- Electron token persist (ha Electron-ban fut) ---
+
+/** Token mentése Electron config store-ba (offline login restore-hoz) */
+export async function persistToken(token: string): Promise<void> {
+  if (window.electronAPI) {
+    await window.electronAPI.setConfig('auth_token', token)
+  }
+}
+
+/** Token törlése Electron config store-ból */
+export async function clearPersistedToken(): Promise<void> {
+  if (window.electronAPI) {
+    await window.electronAPI.deleteConfig('auth_token')
+  }
+}
+
+/** Token betöltése Electron config store-ból (app induláskor) */
+export async function loadPersistedToken(): Promise<string | null> {
+  if (window.electronAPI) {
+    return window.electronAPI.getConfig('auth_token')
+  }
+  return null
 }

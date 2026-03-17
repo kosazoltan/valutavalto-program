@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persistToken, clearPersistedToken } from '../services/api'
 
 export interface Worker {
   id: number
@@ -45,6 +46,8 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       expiresAt,
       isAuthenticated: true,
     })
+    // Electron: token mentése SQLite-ba (offline login restore-hoz)
+    void persistToken(token)
   },
 
   logout: () => {
@@ -55,6 +58,8 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       expiresAt: null,
       isAuthenticated: false,
     })
+    // Electron: token törlése SQLite-ból
+    void clearPersistedToken()
   },
 
   hasRole: (role: string) => {
