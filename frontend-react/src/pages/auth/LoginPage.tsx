@@ -90,6 +90,36 @@ export default function LoginPage() {
             <div className="text-xs text-gray-500">Pénzváltó Rendszer v2.0</div>
           </div>
 
+          {/* Google OAuth — elsődleges belépés */}
+          {googleClientId && (
+            <div className="mb-3">
+              <GoogleOAuthProvider clientId={googleClientId}>
+                <div className="flex justify-center">
+                  <GoogleLogin
+                    onSuccess={handleGoogleSuccess}
+                    onError={() => setError('Google bejelentkezés sikertelen')}
+                    useOneTap={false}
+                    width="300"
+                  />
+                </div>
+              </GoogleOAuthProvider>
+            </div>
+          )}
+
+          {/* Elválasztó */}
+          <div className="flex items-center gap-2 my-3">
+            <div className="flex-1 border-t border-form-border" />
+            <span className="text-xs text-gray-400">vagy kóddal</span>
+            <div className="flex-1 border-t border-form-border" />
+          </div>
+
+          {/* Error message */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-2 rounded mb-3">
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-3">
             {/* Company code field */}
             <div className="form-group-box pt-4">
@@ -101,7 +131,6 @@ export default function LoginPage() {
                   value={companyCode}
                   onChange={(e) => setCompanyCode(e.target.value.toUpperCase())}
                   className="form-input flex-1"
-                  placeholder="Pl. BEST"
                 />
               </div>
             </div>
@@ -116,7 +145,6 @@ export default function LoginPage() {
                   value={workerCode}
                   onChange={(e) => setWorkerCode(e.target.value.toUpperCase())}
                   className="form-input flex-1"
-                  placeholder="Pl. P001"
                   autoFocus
                 />
               </div>
@@ -132,7 +160,6 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="form-input flex-1"
-                  placeholder="Adja meg a jelszót"
                 />
                 <button
                   type="button"
@@ -143,13 +170,6 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
-
-            {/* Error message */}
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-2 rounded">
-                {error}
-              </div>
-            )}
 
             {/* Buttons */}
             <div className="flex justify-end gap-2 pt-2">
@@ -171,31 +191,14 @@ export default function LoginPage() {
                 {loading ? 'Bejelentkezés...' : 'Bejelentkezés'}
               </button>
             </div>
-
-            {googleClientId && (
-              <div className="pt-3 flex justify-center">
-                <GoogleOAuthProvider clientId={googleClientId}>
-                  <GoogleLogin
-                    onSuccess={handleGoogleSuccess}
-                    onError={() => setError('Google bejelentkezés sikertelen')}
-                    useOneTap={false}
-                  />
-                </GoogleOAuthProvider>
-              </div>
-            )}
           </form>
 
           {/* Footer info */}
           <div className="mt-4 pt-3 border-t border-form-border text-xs text-gray-500 text-center">
-            <div>© 2025 RepZtecH Exclusive Best Change Zrt.</div>
+            <div>© 2026 RepZtecH Exclusive Best Change Zrt.</div>
             <div>Minden jog fenntartva.</div>
           </div>
         </div>
-      </div>
-
-      {/* Demo credentials hint */}
-      <div className="mt-4 bg-yellow-50 border border-yellow-200 p-2 text-xs text-yellow-800 rounded">
-        <strong>Demo belépés:</strong> Cég: EBC, Pénztáros: ADMIN1, Jelszó: 1234
       </div>
     </div>
   )
