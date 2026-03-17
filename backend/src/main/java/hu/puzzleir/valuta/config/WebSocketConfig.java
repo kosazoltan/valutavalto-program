@@ -22,7 +22,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
-    @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:5173,https://excbesttest.com,https://www.excbesttest.com,https://valuta-frontend.vercel.app}")
+    @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:5173,https://excbesttest.com,https://www.excbesttest.com,https://valuta-frontend.vercel.app}")
     private String corsAllowedOrigins;
 
     private final WebSocketAuthInterceptor webSocketAuthInterceptor;
@@ -35,7 +35,17 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        List<String> origins = new ArrayList<>(Arrays.asList(corsAllowedOrigins.split(",")));
+        List<String> origins = new ArrayList<>(
+                Arrays.stream(corsAllowedOrigins.split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .toList()
+        );
+
+        // Electron production kliens app:// custom protocol-on fut
+        if (!origins.contains("app://localhost")) {
+            origins.add("app://localhost");
+        }
 
         registry.addEndpoint("/ws")
                 .setAllowedOrigins(origins.toArray(new String[0]))

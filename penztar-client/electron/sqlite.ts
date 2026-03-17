@@ -75,9 +75,33 @@ export async function initDatabase(): Promise<void> {
         buy_rate REAL NOT NULL,
         sell_rate REAL NOT NULL,
         unit INTEGER NOT NULL DEFAULT 1,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        official_rate REAL,
+        limit1_amount REAL,
+        limit1_buy_rate REAL,
+        limit1_sell_rate REAL,
+        limit2_amount REAL,
+        limit2_buy_rate REAL,
+        limit2_sell_rate REAL,
+        limit3_amount REAL,
+        limit3_buy_rate REAL,
+        limit3_sell_rate REAL
       );
     `);
+
+    // Migrate: add limit columns if they don't exist (for existing installations)
+    const limitColumns = [
+      'official_rate', 'limit1_amount', 'limit1_buy_rate', 'limit1_sell_rate',
+      'limit2_amount', 'limit2_buy_rate', 'limit2_sell_rate',
+      'limit3_amount', 'limit3_buy_rate', 'limit3_sell_rate',
+    ];
+    for (const col of limitColumns) {
+      try {
+        db.run(`ALTER TABLE cached_rates ADD COLUMN ${col} REAL`);
+      } catch {
+        // Column already exists — ignore
+      }
+    }
 
     db.run(`
       CREATE TABLE IF NOT EXISTS pending_transactions (
@@ -191,7 +215,7 @@ export async function initDatabase(): Promise<void> {
   }
 }
 
-function saveDatabase(): void {
+export function saveDatabase(): void {
   if (!db) return;
   const data = db.export();
   const buffer = Buffer.from(data);
@@ -539,6 +563,16 @@ export interface CachedRateRow {
   sell_rate: number;
   unit: number;
   updated_at: string;
+  official_rate?: number | null;
+  limit1_amount?: number | null;
+  limit1_buy_rate?: number | null;
+  limit1_sell_rate?: number | null;
+  limit2_amount?: number | null;
+  limit2_buy_rate?: number | null;
+  limit2_sell_rate?: number | null;
+  limit3_amount?: number | null;
+  limit3_buy_rate?: number | null;
+  limit3_sell_rate?: number | null;
 }
 
 export function getCachedRates(): CachedRateRow[] {

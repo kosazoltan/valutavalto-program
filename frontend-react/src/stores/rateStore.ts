@@ -9,16 +9,36 @@ import type { ExchangeRate } from '../services/api'
  */
 const LIMIT_TIERS = [3, 2, 1] as const
 
+/** Type-safe limit field accessor to avoid `as keyof` casts. */
+function getLimitField(
+  rate: ExchangeRate,
+  tier: 1 | 2 | 3,
+  field: 'Amount' | 'BuyRate' | 'SellRate',
+): number | undefined {
+  if (tier === 3) {
+    if (field === 'Amount') return rate.limit3Amount
+    if (field === 'BuyRate') return rate.limit3BuyRate
+    return rate.limit3SellRate
+  }
+  if (tier === 2) {
+    if (field === 'Amount') return rate.limit2Amount
+    if (field === 'BuyRate') return rate.limit2BuyRate
+    return rate.limit2SellRate
+  }
+  if (field === 'Amount') return rate.limit1Amount
+  if (field === 'BuyRate') return rate.limit1BuyRate
+  return rate.limit1SellRate
+}
+
 function resolveEffectiveRate(
   rate: ExchangeRate,
   foreignAmount: number,
   side: 'buy' | 'sell',
 ): number {
+  const rateField = side === 'buy' ? 'BuyRate' : 'SellRate'
   for (const tier of LIMIT_TIERS) {
-    const amount = rate[`limit${tier}Amount` as keyof ExchangeRate] as number | null | undefined
-    const tierRate = rate[
-      `limit${tier}${side === 'buy' ? 'BuyRate' : 'SellRate'}` as keyof ExchangeRate
-    ] as number | null | undefined
+    const amount = getLimitField(rate, tier, 'Amount')
+    const tierRate = getLimitField(rate, tier, rateField)
     if (amount != null && tierRate != null && foreignAmount >= amount) {
       return tierRate
     }

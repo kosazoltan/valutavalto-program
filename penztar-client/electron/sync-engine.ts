@@ -16,6 +16,7 @@ import {
   markTransactionSynced,
   getConfig,
   getDb,
+  saveDatabase,
   getPendingDistributions,
   markDistributionSynced,
   getPendingTransfers,
@@ -46,6 +47,16 @@ interface RateResponse {
   sellRate: number;
   unit: number;
   updatedAt: string;
+  officialRate?: number | null;
+  limit1Amount?: number | null;
+  limit1BuyRate?: number | null;
+  limit1SellRate?: number | null;
+  limit2Amount?: number | null;
+  limit2BuyRate?: number | null;
+  limit2SellRate?: number | null;
+  limit3Amount?: number | null;
+  limit3BuyRate?: number | null;
+  limit3SellRate?: number | null;
 }
 
 interface CircularResponse {
@@ -295,7 +306,7 @@ export class SyncEngine {
       const token = this.getAuthToken();
 
       const rates = await httpGet<RateResponse[]>(
-        `${serverUrl}/exchange-rates/current`,
+        `${serverUrl}/exchange-rates/pos-current`,
         token,
       );
 
@@ -304,17 +315,37 @@ export class SyncEngine {
 
       for (const rate of rates) {
         db.run(
-          `INSERT INTO cached_rates (currency_code, buy_rate, sell_rate, unit, updated_at)
-           VALUES (?, ?, ?, ?, ?)
+          `INSERT INTO cached_rates (currency_code, buy_rate, sell_rate, unit, updated_at,
+             official_rate, limit1_amount, limit1_buy_rate, limit1_sell_rate,
+             limit2_amount, limit2_buy_rate, limit2_sell_rate,
+             limit3_amount, limit3_buy_rate, limit3_sell_rate)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(currency_code) DO UPDATE SET
              buy_rate = excluded.buy_rate,
              sell_rate = excluded.sell_rate,
              unit = excluded.unit,
-             updated_at = excluded.updated_at`,
-          [rate.currencyCode, rate.buyRate, rate.sellRate, rate.unit, rate.updatedAt],
+             updated_at = excluded.updated_at,
+             official_rate = excluded.official_rate,
+             limit1_amount = excluded.limit1_amount,
+             limit1_buy_rate = excluded.limit1_buy_rate,
+             limit1_sell_rate = excluded.limit1_sell_rate,
+             limit2_amount = excluded.limit2_amount,
+             limit2_buy_rate = excluded.limit2_buy_rate,
+             limit2_sell_rate = excluded.limit2_sell_rate,
+             limit3_amount = excluded.limit3_amount,
+             limit3_buy_rate = excluded.limit3_buy_rate,
+             limit3_sell_rate = excluded.limit3_sell_rate`,
+          [
+            rate.currencyCode, rate.buyRate, rate.sellRate, rate.unit, rate.updatedAt,
+            rate.officialRate ?? null, rate.limit1Amount ?? null, rate.limit1BuyRate ?? null,
+            rate.limit1SellRate ?? null, rate.limit2Amount ?? null, rate.limit2BuyRate ?? null,
+            rate.limit2SellRate ?? null, rate.limit3Amount ?? null, rate.limit3BuyRate ?? null,
+            rate.limit3SellRate ?? null,
+          ],
         );
       }
 
+      saveDatabase();
       console.log(`[SyncEngine] ${rates.length} árfolyam frissítve`);
     } catch (err) {
       // Nem kritikus hiba — legközelebb újrapróbáljuk
@@ -365,6 +396,7 @@ export class SyncEngine {
       }
 
       if (circulars.length > 0) {
+        saveDatabase();
         console.log(`[SyncEngine] ${circulars.length} körlevél szinkronizálva`);
       }
     } catch (err) {

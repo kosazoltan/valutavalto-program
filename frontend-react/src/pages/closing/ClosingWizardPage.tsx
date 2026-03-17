@@ -2,20 +2,15 @@ import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Lock, Check, X, Loader2, Minus, ChevronLeft } from 'lucide-react'
 import { CashierHeader } from '../../components/cashier/CashierHeader'
+import { toast } from '../../components/ui/toaster'
+import { closingWizardApi } from '../../services/api'
+import { useAuthStore } from '../../stores/authStore'
 
 /**
- * Napzaras wizard — 9 lepesu ellenorzesi lanc.
+ * Napzaras wizard — backend-driven ellenorzesi lanc.
  *
  * Legacy: NAPZAR.DLL
- * 1. MTCN szam ellenorzes (Western Union)
- * 2. Esti cimletez es
- * 3. Kezelesi dij cimletezes
- * 4. Western Union cimletezes
- * 5. AFA cimletezes
- * 6. Foglalo cimletezes
- * 7. E-kereskedelem cimletezes
- * 8. Egyeb cimletezesek (AXA/MoneyGram)
- * 9. NAV kontroll es napi jelentes
+ * A backend closingWizardApi vezérli a lépéseket — NINCS lokális szimuláció.
  */
 
 type StepStatus = 'pending' | 'running' | 'done' | 'failed' | 'skipped'
@@ -29,21 +24,23 @@ interface ClosingStep {
 }
 
 const INITIAL_STEPS: ClosingStep[] = [
-  { id: 1, label: 'MTCN szam ellenorzes (Western Union)', status: 'pending' },
-  { id: 2, label: 'Esti penztar cimletezese', status: 'pending' },
-  { id: 3, label: 'Kezelesi dij cimletezes', status: 'pending' },
-  { id: 4, label: 'Western Union cimletezes', status: 'pending' },
-  { id: 5, label: 'AFA cimletezes', status: 'pending' },
-  { id: 6, label: 'Foglalo cimletezes', status: 'pending' },
-  { id: 7, label: 'E-kereskedelem cimletezes', status: 'pending' },
-  { id: 8, label: 'Egyeb cimletezesek (AXA/MoneyGram)', status: 'pending' },
-  { id: 9, label: 'NAV kontroll es napi jelentes', status: 'pending' },
+  { id: 1, label: 'MTCN szám ellenőrzés (Western Union)', status: 'pending' },
+  { id: 2, label: 'Esti pénztár címletezése', status: 'pending' },
+  { id: 3, label: 'Kezelési díj címletezés', status: 'pending' },
+  { id: 4, label: 'Western Union címletezés', status: 'pending' },
+  { id: 5, label: 'ÁFA címletezés', status: 'pending' },
+  { id: 6, label: 'Foglaló címletezés', status: 'pending' },
+  { id: 7, label: 'E-kereskedelem címletezés', status: 'pending' },
+  { id: 8, label: 'Egyéb címletezések (AXA/MoneyGram)', status: 'pending' },
+  { id: 9, label: 'NAV kontroll és napi jelentés', status: 'pending' },
 ]
 
 export default function ClosingWizardPage() {
   const navigate = useNavigate()
+  const worker = useAuthStore((s) => s.worker)
   const [steps, setSteps] = useState<ClosingStep[]>(INITIAL_STEPS)
   const [isRunning, setIsRunning] = useState(false)
+  const [wizardId, setWizardId] = useState<string | null>(null)
 
   const completedCount = steps.filter((s) => s.status === 'done' || s.status === 'skipped').length
   const failedCount = steps.filter((s) => s.status === 'failed').length
@@ -51,49 +48,103 @@ export default function ClosingWizardPage() {
   const canFinalize = completedCount === steps.length && failedCount === 0
 
   const runClosing = useCallback(async () => {
+    if (!worker) {
+      toast.error('Hiba', 'Nincs bejelentkezett felhasználó!')
+      return
+    }
+
     setIsRunning(true)
 
-    for (let i = 0; i < steps.length; i++) {
-      // Lepes inditasa
-      setSteps((prev) =>
-        prev.map((s, idx) => (idx === i ? { ...s, status: 'running' as StepStatus } : s))
+    try {
+      // Wizard indítása a backend-en
+      const wizard = await closingWizardApi.start(
+        worker.branchId,
+        undefined, // cashDeskId — opcionális
+        'DAILY',
+        String(worker.id),
       )
+      setWizardId(wizard.id)
 
-      // Szimulalt var (production-ben API hivas)
-      await new Promise((r) => setTimeout(r, 800 + Math.random() * 400))
-
-      // Szimulalt eredmeny (production-ben a backend adja)
-      const now = new Date().toLocaleTimeString('hu-HU')
-      const passed = Math.random() > 0.1 // 90% PASS
-
-      setSteps((prev) =>
-        prev.map((s, idx) =>
-          idx === i
-            ? {
-                ...s,
-                status: passed ? 'done' : 'failed',
-                message: passed ? 'Rendben' : 'Elter es talalva!',
-                completedAt: now,
-              }
-            : s
+      // Lépések végrehajtása a backend-en
+      for (let i = 0; i < steps.length; i++) {
+        // Lépés indítása (UI frissítés)
+        setSteps((prev) =>
+          prev.map((s, idx) => (idx === i ? { ...s, status: 'running' as StepStatus } : s))
         )
-      )
 
-      // Ha FAIL, megallunk
-      if (!passed) {
-        setIsRunning(false)
-        return
+        try {
+          // Backend lépés végrehajtása — navigate a következő step-re
+          const result = await closingWizardApi.navigate(wizard.id, i + 1)
+          const stepData = result.steps?.find((s) => s.stepNumber === i + 1)
+
+          const now = new Date().toLocaleTimeString('hu-HU')
+          const passed = stepData ? stepData.completed : true
+
+          setSteps((prev) =>
+            prev.map((s, idx) =>
+              idx === i
+                ? {
+                    ...s,
+                    status: passed ? 'done' : 'failed',
+                    message: passed ? 'Rendben' : (stepData?.stepDescription ?? 'Eltérés találva!'),
+                    completedAt: now,
+                  }
+                : s
+            )
+          )
+
+          // Ha FAIL, megállunk
+          if (!passed) {
+            setIsRunning(false)
+            return
+          }
+        } catch (stepError) {
+          const now = new Date().toLocaleTimeString('hu-HU')
+          const errorMsg = stepError instanceof Error ? stepError.message : 'Ismeretlen hiba'
+
+          setSteps((prev) =>
+            prev.map((s, idx) =>
+              idx === i
+                ? { ...s, status: 'failed', message: errorMsg, completedAt: now }
+                : s
+            )
+          )
+          setIsRunning(false)
+          return
+        }
       }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Nem sikerült a napzárás wizard indítása'
+      toast.error('Napzárás hiba', errorMsg)
     }
 
     setIsRunning(false)
-  }, [steps.length])
+  }, [steps.length, worker])
 
-  const handleFinalize = useCallback(() => {
-    if (!canFinalize) return
-    alert('Napzaras vegrehajtva! A nap lezarva.')
-    navigate('/')
-  }, [canFinalize, navigate])
+  const handleFinalize = useCallback(async () => {
+    if (!canFinalize || !wizardId || !worker) return
+
+    try {
+      await closingWizardApi.complete(wizardId, String(worker.id))
+      toast.success('Napzárás végrehajtva', 'A nap lezárva.')
+      navigate('/')
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Napzárás véglegesítés sikertelen'
+      toast.error('Hiba', errorMsg)
+    }
+  }, [canFinalize, wizardId, worker, navigate])
+
+  const handleCancel = useCallback(async () => {
+    if (wizardId) {
+      try {
+        await closingWizardApi.cancel(wizardId)
+      } catch {
+        // Wizard cancel hiba nem blokkoló
+      }
+    }
+    setSteps(INITIAL_STEPS)
+    setWizardId(null)
+  }, [wizardId])
 
   const statusIcon = (status: StepStatus) => {
     switch (status) {
@@ -121,7 +172,7 @@ export default function ClosingWizardPage() {
       case 'skipped':
         return <span className="text-gray-400">KIHAGYVA</span>
       default:
-        return <span className="text-gray-400">VAR</span>
+        return <span className="text-gray-400">VÁR</span>
     }
   }
 
@@ -130,7 +181,7 @@ export default function ClosingWizardPage() {
       <CashierHeader />
 
       <div className="max-w-4xl mx-auto p-8">
-        {/* FEJLEC */}
+        {/* FEJLÉC */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <button
@@ -140,17 +191,17 @@ export default function ClosingWizardPage() {
               <ChevronLeft className="w-6 h-6" />
             </button>
             <Lock className="w-8 h-8 text-[var(--primary)]" />
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">NAPZARAS WIZARD</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">NAPZÁRÁS WIZARD</h1>
           </div>
           <span className="text-lg font-semibold bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded-lg">
-            {completedCount} / {steps.length} kesz
+            {completedCount} / {steps.length} kész
           </span>
         </div>
 
         {/* PROGRESS BAR */}
         <div className="mb-8">
           <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
-            <span>Elorehaladas</span>
+            <span>Előrehaladás</span>
             <span>{Math.round(progress)}%</span>
           </div>
           <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
@@ -161,7 +212,7 @@ export default function ClosingWizardPage() {
           </div>
         </div>
 
-        {/* ELLENORZESI LISTA */}
+        {/* ELLENŐRZÉSI LISTA */}
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden mb-8">
           {steps.map((step) => (
             <div
@@ -189,18 +240,16 @@ export default function ClosingWizardPage() {
               onClick={runClosing}
               className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white text-xl font-bold rounded-xl shadow-lg transition-colors"
             >
-              ELLENORZES INDITASA
+              ELLENŐRZÉS INDÍTÁSA
             </button>
           )}
 
           {failedCount > 0 && !isRunning && (
             <button
-              onClick={() => {
-                setSteps(INITIAL_STEPS)
-              }}
+              onClick={handleCancel}
               className="px-8 py-4 bg-gray-600 hover:bg-gray-700 text-white text-xl font-bold rounded-xl shadow-lg transition-colors"
             >
-              UJRA
+              ÚJRA
             </button>
           )}
 
@@ -216,10 +265,10 @@ export default function ClosingWizardPage() {
             {canFinalize ? (
               <span className="flex items-center gap-3">
                 <Check className="w-6 h-6" />
-                RENDBEN — Napzaras vegrehajtasa
+                RENDBEN — Napzárás végrehajtása
               </span>
             ) : (
-              'Minden lepes szukseges a napzarashoz'
+              'Minden lépés szükséges a napzáráshoz'
             )}
           </button>
         </div>

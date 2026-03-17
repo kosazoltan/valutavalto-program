@@ -245,6 +245,14 @@ app.whenReady().then(async () => {
       filePath = path.join(distPath, 'index.html');
     }
 
+    // Path traversal védelem — a resolved path MUSZÁJ distPath-on belül maradjon
+    const resolved = path.resolve(filePath);
+    const resolvedDist = path.resolve(distPath);
+    if (!resolved.startsWith(resolvedDist + path.sep) && resolved !== resolvedDist) {
+      log.warn(`[Protocol] Path traversal blokkolva: ${req.url} → ${resolved}`);
+      filePath = path.join(distPath, 'index.html');
+    }
+
     log.info(`[Protocol] ${req.url} → ${filePath}`);
     return net.fetch(pathToFileURL(filePath).toString());
   });

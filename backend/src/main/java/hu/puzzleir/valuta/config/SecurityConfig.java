@@ -106,8 +106,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // CORS origins kornyezeti valtozobol (vesszovel elvalasztva)
-        List<String> origins = Arrays.asList(corsAllowedOrigins.split(","));
+        // CORS origins kornyezeti valtozobol (vesszovel elvalasztva, whitespace trim)
+        List<String> origins = Arrays.stream(corsAllowedOrigins.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
         configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList(

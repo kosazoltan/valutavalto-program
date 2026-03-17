@@ -12,18 +12,27 @@
 
 import type { QRData } from '@/types/receipt';
 
-// Dynamic import to avoid breaking the build if qrcode is not installed yet.
-// Once `npm install qrcode @types/qrcode` is run in frontend-react, replace with:
-//   import QRCode from 'qrcode';
-let QRCode: typeof import('qrcode') | null = null;
-(async () => {
-  try {
-    QRCode = await import('qrcode');
-  } catch {
-    // qrcode not installed — generateQRCode will return a placeholder
-    console.warn('[qrcode] npm package "qrcode" not installed. Run: npm install qrcode @types/qrcode');
+// Lazy-loaded QR code module — import happens on first use, not at module load time.
+// This avoids a race condition where a top-level IIFE could still be pending
+// when generateQRCode is called right after page load.
+let QRCodeModule: typeof import('qrcode') | null = null;
+let loadPromise: Promise<typeof import('qrcode') | null> | null = null;
+
+async function getQRCodeModule(): Promise<typeof import('qrcode') | null> {
+  if (QRCodeModule) return QRCodeModule;
+  if (!loadPromise) {
+    loadPromise = import('qrcode')
+      .then((mod) => {
+        QRCodeModule = mod;
+        return mod;
+      })
+      .catch(() => {
+        console.warn('[qrcode] npm package "qrcode" not installed. Run: npm install qrcode @types/qrcode');
+        return null;
+      });
   }
-})();
+  return loadPromise;
+}
 
 /**
  * QR kód generálás — base64 data URL-t ad vissza (PNG).
@@ -34,13 +43,12 @@ let QRCode: typeof import('qrcode') | null = null;
 export async function generateQRCode(data: QRData): Promise<string> {
   const content = buildQRContent(data);
 
-  if (!QRCode) {
-    // Fallback: return empty transparent PNG placeholder
-    console.warn('[qrcode] QR kód generálás nem elérhető — telepítsd: npm install qrcode @types/qrcode');
+  const mod = await getQRCodeModule();
+  if (!mod) {
     return '';
   }
 
-  return QRCode.toDataURL(content, {
+  return mod.toDataURL(content, {
     width: 200,
     margin: 1,
     errorCorrectionLevel: 'M',

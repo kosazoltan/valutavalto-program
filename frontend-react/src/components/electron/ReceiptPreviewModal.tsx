@@ -11,7 +11,7 @@
  * - Újranyomtatás lehetőség
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PrintReceiptData } from '@/types/receipt';
 
 interface ReceiptPreviewModalProps {
@@ -30,6 +30,16 @@ export default function ReceiptPreviewModal({
   onPrint,
 }: ReceiptPreviewModalProps) {
   const [isPrinting, setIsPrinting] = useState(false);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup timer on unmount to prevent setState on unmounted component
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+      }
+    };
+  }, []);
 
   // ESC to close
   useEffect(() => {
@@ -45,14 +55,12 @@ export default function ReceiptPreviewModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen || !receiptData) return null;
-
-  const handlePrint = async () => {
+  const handlePrint = useCallback(async () => {
     setIsPrinting(true);
     try {
       await onPrint();
       // Wait 2s after print, then close
-      setTimeout(() => {
+      closeTimerRef.current = setTimeout(() => {
         setIsPrinting(false);
         onClose();
       }, 2000);
@@ -60,7 +68,9 @@ export default function ReceiptPreviewModal({
       console.error('[ReceiptPreviewModal] Nyomtatás hiba:', err);
       setIsPrinting(false);
     }
-  };
+  }, [onPrint, onClose]);
+
+  if (!isOpen || !receiptData) return null;
 
   const company =
     receiptData.companyType === 'BEST_CHANGE'

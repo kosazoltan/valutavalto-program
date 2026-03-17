@@ -19,6 +19,12 @@
     "sql.js": "^1.11.0"
   },
   "devDependencies": {
-    "shx": "^0.3.4"
+    "@types/sql.js": "^1.4.9",
+    "electron": "^33.3.1",
+    "electron-builder": "^25.1.8",
+    "shx": "^0.3.4",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.7",
+    "vite-plugin-electron": "^0.28.8"
   }
 }
