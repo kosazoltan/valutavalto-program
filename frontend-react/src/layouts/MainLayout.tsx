@@ -112,9 +112,10 @@ export default function MainLayout() {
         const newSession = await dailySessionApi.open()
         setSessionInfo(newSession as unknown as SessionInfo)
         setSessionReady(true)
-      } catch (err: any) {
+      } catch (err: unknown) {
         // Ha a napnyitás nem sikerült (pl. előző nap nincs lezárva)
-        const msg = err?.response?.data?.message || err?.message || 'Hiba a napnyitás során'
+        const axErr = err as { response?: { data?: { message?: string } }; message?: string }
+        const msg = axErr?.response?.data?.message || axErr?.message || 'Hiba a napnyitás során'
         setSessionError(msg)
         setShowSessionDialog(true)
       }

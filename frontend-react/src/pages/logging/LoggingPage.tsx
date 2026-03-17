@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { FileText, Download, Search } from 'lucide-react'
 import { loggingApi, AuditLog } from '../../services/api'
+import { toast } from '../../components/ui/toaster'
 
 export default function LoggingPage() {
   const [logs, setLogs] = useState<AuditLog[]>([])
@@ -47,7 +48,7 @@ export default function LoggingPage() {
       a.click()
     } catch (error) {
       console.error('Hiba az exportálásnál:', error)
-      alert('Hiba történt az exportálás során')
+      toast.error('Exportálási hiba', 'Hiba történt az exportálás során')
     }
   }
 

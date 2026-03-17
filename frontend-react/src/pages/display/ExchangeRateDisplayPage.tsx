@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Monitor, RefreshCw } from 'lucide-react'
 import { exchangeRateDisplayApi, ExchangeRateDisplay } from '../../services/api'
+import { toast } from '../../components/ui/toaster'
 
 export default function ExchangeRateDisplayPage() {
   const [displays, setDisplays] = useState<ExchangeRateDisplay[]>([])
@@ -28,7 +29,7 @@ export default function ExchangeRateDisplayPage() {
     try {
       setError(null)
       await exchangeRateDisplayApi.updateDisplay(id, {})
-      alert('Kijelző frissítve')
+      toast.success('Kijelző frissítve')
     } catch (err) {
       console.error('Kijelző frissítési hiba:', err)
       setError('Hiba történt a kijelző frissítésekor')

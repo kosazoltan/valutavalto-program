@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { Printer, X, QrCode as QrCodeIcon } from 'lucide-react'
 import { Transaction } from '../services/api'
 import { formatDecimal, formatInteger } from '../utils/numberFormat'
+import { toast } from './ui/toaster'
 
 interface ReceiptPrintProps {
   transaction: Transaction
@@ -61,7 +62,7 @@ export default function ReceiptPrint({
 
     const printWindow = window.open('', '_blank')
     if (!printWindow) {
-      alert('Engedélyezze a felugró ablakokat a nyomtatáshoz!')
+      toast.warning('Nyomtatás sikertelen', 'Engedélyezze a felugró ablakokat a nyomtatáshoz!')
       return
     }
 

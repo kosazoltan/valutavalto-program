@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Users, Plus, Edit, Trash2, Search, X, Save, Key } from 'lucide-react'
 import { userApi, UserDetail, UserCreateRequest, UserUpdateRequest, roleApi, Role } from '../../services/api'
+import { toast } from '../../components/ui/toaster'
 
 export default function UserPage() {
   const [users, setUsers] = useState<UserDetail[]>([])
@@ -101,32 +102,32 @@ export default function UserPage() {
     if (!editingUser) {
       // Új felhasználó validáció
       if (!formData.username || !formData.username.trim()) {
-        alert('A felhasználónév megadása kötelező!')
+        toast.warning('Hiányzó adat', 'A felhasználónév megadása kötelező!')
         return
       }
       if (!formData.password || formData.password.length < 8) {
-        alert('A jelszónak minimum 8 karakternek kell lennie!')
+        toast.warning('Érvénytelen jelszó', 'A jelszónak minimum 8 karakternek kell lennie!')
         return
       }
       if (!formData.email || !formData.email.trim()) {
-        alert('Az email megadása kötelező!')
+        toast.warning('Hiányzó adat', 'Az email megadása kötelező!')
         return
       }
       // Email formátum ellenőrzése
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!emailRegex.test(formData.email)) {
-        alert('Kérjük, adjon meg egy érvényes email címet!')
+        toast.warning('Érvénytelen email', 'Kérjük, adjon meg egy érvényes email címet!')
         return
       }
     } else {
       // Szerkesztés validáció
       if (!formData.email || !formData.email.trim()) {
-        alert('Az email megadása kötelező!')
+        toast.warning('Hiányzó adat', 'Az email megadása kötelező!')
         return
       }
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!emailRegex.test(formData.email)) {
-        alert('Kérjük, adjon meg egy érvényes email címet!')
+        toast.warning('Érvénytelen email', 'Kérjük, adjon meg egy érvényes email címet!')
         return
       }
     }
@@ -140,7 +141,7 @@ export default function UserPage() {
           branchId: formData.branchId || undefined
         }
         await userApi.update(editingUser.id, updateData)
-        alert('Felhasználó sikeresen frissítve!')
+        toast.success('Felhasználó sikeresen frissítve!')
       } else {
         const createData: UserCreateRequest = {
           username: formData.username.trim(),
@@ -151,7 +152,7 @@ export default function UserPage() {
           branchId: formData.branchId || undefined
         }
         await userApi.create(createData)
-        alert('Felhasználó sikeresen létrehozva!')
+        toast.success('Felhasználó sikeresen létrehozva!')
       }
       await loadData()
       setShowForm(false)
@@ -167,13 +168,13 @@ export default function UserPage() {
                              ? error.response.data.error
                              : 'Hiba történt a mentés során')
                           : error instanceof Error ? error.message : 'Hiba történt a mentés során'
-      alert(`Hiba: ${errorMessage}`)
+      toast.error('Hiba', errorMessage)
     }
   }
 
   const handleSavePassword = async () => {
     if (!selectedUser || !newPassword) {
-      alert('Kérjük, adja meg az új jelszót')
+      toast.warning('Hiányzó adat', 'Kérjük, adja meg az új jelszót')
       return
     }
 
@@ -183,7 +184,7 @@ export default function UserPage() {
       setShowPasswordModal(false)
       setSelectedUser(null)
       setNewPassword('')
-      alert('Jelszó sikeresen megváltoztatva')
+      toast.success('Jelszó sikeresen megváltoztatva')
     } catch (err) {
       console.error('Jelszó módosítási hiba:', err)
       setError('Hiba történt a jelszó módosítása során')

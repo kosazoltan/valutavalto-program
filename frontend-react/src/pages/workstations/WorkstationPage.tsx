@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Monitor, Plus, Edit, Trash2, Search, X, Save } from 'lucide-react'
 import { workstationApi, Workstation, WorkstationCreateRequest } from '../../services/api'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { toast } from '../../components/ui/toaster'
 
 export default function WorkstationPage() {
   const [workstations, setWorkstations] = useState<Workstation[]>([])
@@ -48,7 +49,7 @@ export default function WorkstationPage() {
     } catch (err) {
       const errorMessage = getErrorMessage(err)
       console.error('Failed to load workstations:', err)
-      alert(`Hiba történt a betöltés során: ${errorMessage}`)
+      toast.error('Betöltési hiba', `Hiba történt a betöltés során: ${errorMessage}`)
     } finally {
       setLoading(false)
     }
@@ -105,7 +106,7 @@ export default function WorkstationPage() {
       setEditingWorkstation(null)
     } catch (err) {
       const errorMessage = getErrorMessage(err)
-      alert(`Hiba történt a mentés során: ${errorMessage}`)
+      toast.error('Mentési hiba', `Hiba történt a mentés során: ${errorMessage}`)
       console.error('Failed to save workstation:', err)
     }
   }
@@ -117,7 +118,7 @@ export default function WorkstationPage() {
       await loadData()
     } catch (err) {
       const errorMessage = getErrorMessage(err)
-      alert(`Hiba történt a törlés során: ${errorMessage}`)
+      toast.error('Törlési hiba', `Hiba történt a törlés során: ${errorMessage}`)
       console.error('Failed to delete workstation:', err)
     }
   }

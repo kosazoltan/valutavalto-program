@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { HardDrive, RefreshCw, Trash2, Camera } from 'lucide-react'
 import { api } from '../../services/api'
+import { toast } from '../../components/ui/toaster'
 
 interface StorageStats {
   totalUsageBytes: number
@@ -50,7 +51,7 @@ export default function CameraStatusPage() {
     try {
       const res = await api.post('/camera/admin/cleanup', {})
       if (res.data) {
-        alert(`${res.data.deletedCount} felvetel torolve`)
+        toast.success(`${res.data.deletedCount} felvétel törölve`)
         fetchAll()
       }
     } catch (err) {

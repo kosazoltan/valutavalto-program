@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { FileText, Plus, Printer, CheckCircle, Search } from 'lucide-react'
 import { handoverSheetApi, HandoverSheet, cashDeskApi, CashDesk } from '../../services/api'
+import { toast } from '../../components/ui/toaster'
 
 export default function HandoverSheetPage() {
   const [sheets, setSheets] = useState<HandoverSheet[]>([])
@@ -72,7 +73,7 @@ export default function HandoverSheetPage() {
       )
       await loadData()
       setShowForm(false)
-      alert('Átadó lap sikeresen létrehozva')
+      toast.success('Átadó lap sikeresen létrehozva')
     } catch (err) {
       console.error('Generálási hiba:', err)
       setError('Hiba történt a generálás során')
@@ -83,7 +84,7 @@ export default function HandoverSheetPage() {
     try {
       setError(null)
       await handoverSheetApi.print(id)
-      alert('Átadó lap nyomtatása elindítva')
+      toast.success('Átadó lap nyomtatása elindítva')
     } catch (err) {
       console.error('Nyomtatási hiba:', err)
       setError('Hiba történt a nyomtatás során')
@@ -95,7 +96,7 @@ export default function HandoverSheetPage() {
       setError(null)
       await handoverSheetApi.complete(id)
       await loadData()
-      alert('Átadó lap sikeresen befejezve')
+      toast.success('Átadó lap sikeresen befejezve')
     } catch (err) {
       console.error('Befejezési hiba:', err)
       setError('Hiba történt a befejezés során')

@@ -9,6 +9,7 @@ import {
   Currency
 } from '../../services/api'
 import { NumberInput } from '../../components/NumberInput'
+import { toast } from '../../components/ui/toaster'
 import { formatInteger, formatDecimal } from '../../utils/numberFormat'
 
 interface DenominationQuantityUpdateRequest {
@@ -120,7 +121,7 @@ export default function DenominationPage() {
 
   const handleSave = async () => {
     if (!selectedCashDeskId) {
-      alert('Válassz pénztárat!')
+      toast.warning('Hiányzó adat', 'Válassz pénztárat!')
       return
     }
 
@@ -133,11 +134,11 @@ export default function DenominationPage() {
         }))
 
       await denominationBalanceApi.setDenominationQuantities(selectedCashDeskId, updates)
-      alert('Címletezés sikeresen mentve!')
+      toast.success('Címletezés sikeresen mentve!')
       void loadDenominationBalances()
     } catch (error) {
       console.error('Mentés sikertelen:', error)
-      alert('Hiba történt a mentés során')
+      toast.error('Hiba történt a mentés során')
     }
   }
 

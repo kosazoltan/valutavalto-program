@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Clock, Play, Square } from 'lucide-react'
 import { cashDeskBreakApi, CashDeskBreak, cashDeskApi, CashDesk } from '../../services/api'
+import { toast } from '../../components/ui/toaster'
 
 export default function CashDeskBreakPage() {
   const [breaks, setBreaks] = useState<CashDeskBreak[]>([])
@@ -48,7 +49,7 @@ export default function CashDeskBreakPage() {
 
   const handleStartBreak = async () => {
     if (!selectedCashDeskId) {
-      alert('Kérjük, válasszon pénztárat')
+      toast.warning('Hiányzó adat', 'Kérjük, válasszon pénztárat')
       return
     }
     const breakType = prompt('Szünet típusa (pl: LUNCH, BREAK):')

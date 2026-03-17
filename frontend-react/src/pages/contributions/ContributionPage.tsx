@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Calculator, Search, Calendar } from 'lucide-react'
 import { contributionApi, Contribution } from '../../services/api'
 import { formatInteger } from '../../utils/numberFormat'
+import { toast } from '../../components/ui/toaster'
 
 export default function ContributionPage() {
   const [contributions, setContributions] = useState<Contribution[]>([])
@@ -45,7 +46,7 @@ export default function ContributionPage() {
 
   const handleFilterByPeriod = async () => {
     if (!startDate || !endDate) {
-      alert('Kérjük, adja meg az időszakot')
+      toast.warning('Hiányzó adatok', 'Kérjük, adja meg az időszakot')
       return
     }
     try {

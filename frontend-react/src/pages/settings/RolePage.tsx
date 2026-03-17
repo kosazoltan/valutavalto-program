@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Users, Plus, Edit, Trash2, Search, X, Save, Shield } from 'lucide-react'
 import { roleApi, Role, RoleCreateRequest, permissionApi, Permission } from '../../services/api'
+import { toast } from '../../components/ui/toaster'
 
 export default function RolePage() {
   const [roles, setRoles] = useState<Role[]>([])
@@ -156,7 +157,7 @@ export default function RolePage() {
         ['ADMIN', 'DEPOSITORY', 'TERRITORIAL_MANAGER', 'CONTROLLER', 'CASHIER'].includes(r.code)
       ).length
 
-      alert(`Alapértelmezett szerepkörök ellenőrizve. Összesen ${created} alapértelmezett szerepkör elérhető.`)
+      toast.success('Szerepkörök ellenőrizve', `Összesen ${created} alapértelmezett szerepkör elérhető.`)
     } catch (err) {
       console.error('Alapértelmezett szerepkörök létrehozási hiba:', err)
       setError('Hiba történt az alapértelmezett szerepkörök létrehozása során')

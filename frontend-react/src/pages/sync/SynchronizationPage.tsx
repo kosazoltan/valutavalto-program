@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { synchronizationApi } from '../../services/api'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { toast } from '../../components/ui/toaster'
 
 interface SyncResult {
   recordsSynced: number
@@ -17,17 +18,17 @@ export default function SynchronizationPage() {
 
   const handleSync = async (): Promise<void> => {
     if (!branchId || !workerId) {
-      alert('Kérjük, adja meg a fiók és dolgozó ID-t')
+      toast.warning('Hiányzó adatok', 'Kérjük, adja meg a fiók és dolgozó ID-t')
       return
     }
     try {
       setLoading(true)
       const res = await synchronizationApi.synchronize(branchId, workerId)
       setResult(res as SyncResult)
-      alert(`Szinkronizáció kész: ${res.recordsSynced} rekord`)
+      toast.success('Szinkronizáció kész', `${res.recordsSynced} rekord szinkronizálva`)
     } catch (err) {
       const errorMessage = getErrorMessage(err)
-      alert(`Hiba történt: ${errorMessage}`)
+      toast.error('Szinkronizációs hiba', `Hiba történt: ${errorMessage}`)
       console.error('Failed to synchronize:', err)
     } finally {
       setLoading(false)

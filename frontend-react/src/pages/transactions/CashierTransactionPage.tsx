@@ -12,6 +12,7 @@ import { useCompanyTheme } from '../../contexts/CompanyThemeContext'
 import { transactionApi, exchangeRateApi } from '../../services/api'
 import type { BuyRequest, SellRequest, ExchangeRate } from '../../services/api'
 import { roundHuf } from '../../utils/rounding'
+import { toast } from '../../components/ui/toaster'
 
 /**
  * Penztaros Eladas/Vetel kepernyoje — 6 soros valuta tabla.
@@ -163,7 +164,7 @@ export default function CashierTransactionPage() {
     // AML ellenorzes
     if (total >= IDENTIFICATION_LIMIT) {
       if (!customerName.trim() || !customerDocNumber.trim()) {
-        alert(`${IDENTIFICATION_LIMIT.toLocaleString('hu-HU')} Ft feletti tranzakciohoz ugyfel azonositas KOTELEZO!`)
+        toast.warning('Ügyfél azonosítás kötelező', `${IDENTIFICATION_LIMIT.toLocaleString('hu-HU')} Ft feletti tranzakciohoz ugyfel azonositas KOTELEZO!`)
         return
       }
     }
@@ -205,11 +206,7 @@ export default function CashierTransactionPage() {
         }
       }
 
-      alert(
-        `Bizonylat(ok) sikeresen keszitve!\n` +
-        `${filledRows.length} tetel, ${total.toLocaleString('hu-HU')} Ft\n` +
-        `Bizonylat szamok: ${receiptNumbers.join(', ')}`
-      )
+      toast.success('Bizonylat(ok) sikeresen keszitve!', `${filledRows.length} tetel, ${total.toLocaleString('hu-HU')} Ft | Bizonylat szamok: ${receiptNumbers.join(', ')}`)
 
       // Reset
       setRows(Array.from({ length: MAX_LINES }, emptyRow))
@@ -222,7 +219,7 @@ export default function CashierTransactionPage() {
       const message = error instanceof Error ? error.message : 'Ismeretlen hiba'
       const axiosError = error as { response?: { data?: { message?: string } } }
       const serverMessage = axiosError?.response?.data?.message
-      alert(`Hiba a tranzakcio mentes soran!\n${serverMessage || message}`)
+      toast.error('Hiba a tranzakcio mentes soran!', serverMessage || message)
     } finally {
       setIsSubmitting(false)
     }

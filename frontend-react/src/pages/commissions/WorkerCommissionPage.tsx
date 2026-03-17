@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Users, Search, Calendar, Download } from 'lucide-react'
 import { workerCommissionApi, WorkerCommission } from '../../services/api'
 import { formatInteger, formatDecimal } from '../../utils/numberFormat'
+import { toast } from '../../components/ui/toaster'
 
 export default function WorkerCommissionPage() {
   const [commissions, setCommissions] = useState<WorkerCommission[]>([])
@@ -48,7 +49,7 @@ export default function WorkerCommissionPage() {
 
   const handleFilterByPeriod = async () => {
     if (!startDate || !endDate) {
-      alert('Kérjük, adja meg az időszakot')
+      toast.warning('Hiányzó adatok', 'Kérjük, adja meg az időszakot')
       return
     }
     try {
@@ -63,7 +64,7 @@ export default function WorkerCommissionPage() {
 
   const handleExportAccountingList = async () => {
     if (!startDate || !endDate) {
-      alert('Kérjük, adja meg az időszakot')
+      toast.warning('Hiányzó adatok', 'Kérjük, adja meg az időszakot')
       return
     }
     try {

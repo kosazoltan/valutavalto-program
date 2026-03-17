@@ -10,6 +10,16 @@ interface RateTemplate {
   baseSellRate: string
   buySpread: string
   sellSpread: string
+  officialRate: string
+  limit1Amount: string
+  limit1BuyRate: string
+  limit1SellRate: string
+  limit2Amount: string
+  limit2BuyRate: string
+  limit2SellRate: string
+  limit3Amount: string
+  limit3BuyRate: string
+  limit3SellRate: string
   roundingRule: number
   status: string
   createdAt?: string
@@ -65,11 +75,8 @@ export default function RateTemplateEditor() {
 
   const fetchCurrencies = useCallback(async () => {
     try {
-      const res = await fetch('/api/v1/currencies')
-      if (res.ok) {
-        const data = (await res.json()) as CurrencyOption[]
-        setCurrencies(data)
-      }
+      const { data } = await api.get<CurrencyOption[]>('/currencies')
+      setCurrencies(data)
     } catch {
       setCurrencies([])
     }
@@ -89,7 +96,24 @@ export default function RateTemplateEditor() {
   const saveTemplate = useCallback(async () => {
     if (!editing) return
     setError(null)
-    if (!editing.currencyId || editing.currencyId <= 0) return
+    if (!editing.currencyId || editing.currencyId <= 0) {
+      setError('Valuta kiválasztása kötelező')
+      return
+    }
+    const buyNum = parseFloat(editing.baseBuyRate)
+    const sellNum = parseFloat(editing.baseSellRate)
+    if (isNaN(buyNum) || buyNum <= 0) {
+      setError('Érvényes vételi árfolyam szükséges')
+      return
+    }
+    if (isNaN(sellNum) || sellNum <= 0) {
+      setError('Érvényes eladási árfolyam szükséges')
+      return
+    }
+    if (sellNum <= buyNum) {
+      setError('Az eladási árfolyamnak nagyobbnak kell lennie a vételinél')
+      return
+    }
     try {
       if (editing.id) {
         await api.put(`/rate-management/templates/${editing.id}`, editing)
@@ -166,6 +190,16 @@ export default function RateTemplateEditor() {
     baseSellRate: '',
     buySpread: '0',
     sellSpread: '0',
+    officialRate: '',
+    limit1Amount: '',
+    limit1BuyRate: '',
+    limit1SellRate: '',
+    limit2Amount: '',
+    limit2BuyRate: '',
+    limit2SellRate: '',
+    limit3Amount: '',
+    limit3BuyRate: '',
+    limit3SellRate: '',
     roundingRule: 0,
     status: 'DRAFT',
   })
@@ -266,6 +300,59 @@ export default function RateTemplateEditor() {
                   value={editing.roundingRule}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditing({ ...editing, roundingRule: parseInt(e.target.value, 10) || 0 })}
                 />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Hivatalos (MNB) arfolyam</label>
+                <input
+                  className="flex h-10 w-full rounded-md border px-3 py-2 text-sm bg-blue-50 dark:bg-blue-950/30"
+                  value={editing.officialRate}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditing({ ...editing, officialRate: e.target.value })}
+                  placeholder="pl. 390.00"
+                />
+              </div>
+            </div>
+
+            {/* Limit szintek */}
+            <div className="mt-4">
+              <h4 className="text-sm font-medium mb-2">Limit szintek</h4>
+              <div className="grid grid-cols-3 gap-4">
+                {([1, 2, 3] as const).map(level => {
+                  const amountKey = `limit${level}Amount` as keyof RateTemplate
+                  const buyKey = `limit${level}BuyRate` as keyof RateTemplate
+                  const sellKey = `limit${level}SellRate` as keyof RateTemplate
+                  return (
+                    <div key={level} className="space-y-2 rounded-md border p-3">
+                      <h5 className="text-xs font-semibold text-muted-foreground uppercase">Limit {level}</h5>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Osszeg (Ft)</label>
+                        <input
+                          className="flex h-8 w-full rounded-md border px-2 py-1 text-xs font-mono"
+                          value={editing[amountKey] as string}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditing({ ...editing, [amountKey]: e.target.value })}
+                          placeholder={`pl. ${level * 100000}`}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-xs text-muted-foreground">Vetel</label>
+                          <input
+                            className="flex h-8 w-full rounded-md border px-2 py-1 text-xs font-mono"
+                            value={editing[buyKey] as string}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditing({ ...editing, [buyKey]: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">Eladas</label>
+                          <input
+                            className="flex h-8 w-full rounded-md border px-2 py-1 text-xs font-mono"
+                            value={editing[sellKey] as string}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditing({ ...editing, [sellKey]: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
             <div className="flex gap-2 mt-4">

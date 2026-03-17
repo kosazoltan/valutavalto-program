@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { AlertCircle } from 'lucide-react'
 import { anonymousReportApi, AnonymousReport } from '../../services/api'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { toast } from '../../components/ui/toaster'
 
 export default function AnonymousReportPage() {
   const [reports, setReports] = useState<AnonymousReport[]>([])
@@ -32,7 +33,7 @@ export default function AnonymousReportPage() {
     } catch (err) {
       const errorMessage = getErrorMessage(err)
       console.error('Failed to load reports:', err)
-      alert(`Hiba történt a betöltés során: ${errorMessage}`)
+      toast.error('Betöltési hiba', errorMessage)
     } finally {
       setLoading(false)
     }

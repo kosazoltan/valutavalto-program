@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Printer, Send } from 'lucide-react'
 import { navIntegrationApi } from '../../services/api'
+import { toast } from '../../components/ui/toaster'
 
 interface NavResult {
   success: boolean
@@ -16,7 +17,7 @@ export default function NavIntegrationPage() {
 
   const handleSend = async () => {
     if (!transactionId || !comPort) {
-      alert('Kérjük, adja meg a tranzakció ID-t és COM portot')
+      toast.warning('Hiányzó adatok', 'Kérjük, adja meg a tranzakció ID-t és COM portot')
       return
     }
     try {
@@ -24,7 +25,7 @@ export default function NavIntegrationPage() {
       const res = await navIntegrationApi.sendTransaction(transactionId, comPort)
       setResult(res)
       if (res.success) {
-        alert(`Sikeres küldés! Bizonylatszám: ${res.receiptNumber}`)
+        toast.success('Sikeres küldés', `Bizonylatszám: ${res.receiptNumber}`)
       } else {
         setError(`NAV hiba: ${res.error}`)
       }

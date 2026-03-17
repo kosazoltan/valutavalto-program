@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Receipt as ReceiptIcon, Search, Printer, Eye } from 'lucide-react'
 import { receiptApi, Receipt } from '../../services/api'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { toast } from '../../components/ui/toaster'
 
 export default function ReceiptPage() {
   const [receipts, setReceipts] = useState<Receipt[]>([])
@@ -41,7 +42,7 @@ export default function ReceiptPage() {
     } catch (err) {
       const errorMessage = getErrorMessage(err)
       console.error('Failed to load receipts:', err)
-      alert(`Hiba történt a betöltés során: ${errorMessage}`)
+      toast.error('Hiba történt a betöltés során', errorMessage)
     } finally {
       setLoading(false)
     }
@@ -62,10 +63,10 @@ export default function ReceiptPage() {
     try {
       await receiptApi.print(id)
       await loadData()
-      alert('Bizonylat nyomtatása elindítva')
+      toast.success('Bizonylat nyomtatása elindítva')
     } catch (err) {
       const errorMessage = getErrorMessage(err)
-      alert(`Hiba történt a nyomtatás során: ${errorMessage}`)
+      toast.error('Hiba történt a nyomtatás során', errorMessage)
       console.error('Failed to print receipt:', err)
     }
   }

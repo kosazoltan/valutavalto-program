@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Shield, Plus, Edit, Trash2, Search, X, Save } from 'lucide-react'
 import { permissionApi, Permission, PermissionCreateRequest } from '../../services/api'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { toast } from '../../components/ui/toaster'
 
 export default function PermissionPage() {
   const [permissions, setPermissions] = useState<Permission[]>([])
@@ -53,7 +54,7 @@ export default function PermissionPage() {
     } catch (err) {
       const errorMessage = getErrorMessage(err)
       console.error('Failed to load permissions:', err)
-      alert(`Hiba történt a betöltés során: ${errorMessage}`)
+      toast.error('Hiba történt a betöltés során', errorMessage)
     } finally {
       setLoading(false)
     }
@@ -115,7 +116,7 @@ export default function PermissionPage() {
       setEditingPermission(null)
     } catch (error) {
       console.error('Hiba a jogosultság mentésekor:', error)
-      alert('Hiba történt a mentés során')
+      toast.error('Hiba történt a mentés során')
     }
   }
 
@@ -129,7 +130,7 @@ export default function PermissionPage() {
       await loadPermissions()
     } catch (error) {
       console.error('Hiba a jogosultság törlésekor:', error)
-      alert('Hiba történt a törlés során')
+      toast.error('Hiba történt a törlés során')
     }
   }
 
@@ -139,7 +140,7 @@ export default function PermissionPage() {
       await loadPermissions()
     } catch (error) {
       console.error('Hiba a jogosultság állapotváltásakor:', error)
-      alert('Hiba történt az állapotváltás során')
+      toast.error('Hiba történt az állapotváltás során')
     }
   }
 

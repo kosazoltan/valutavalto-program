@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { RefreshCw, Send, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react'
+import { RefreshCw, Send, AlertTriangle, ChevronDown, ChevronRight, Users } from 'lucide-react'
 import { api } from '../../services/api'
 
 /**
@@ -62,6 +62,12 @@ function toStr(val: number | null | undefined): string {
   return val != null ? String(val) : ''
 }
 
+interface WorkgroupInfo {
+  id: string
+  name: string
+  code: string
+}
+
 function toNum(val: string): number | null {
   const trimmed = val.trim()
   if (!trimmed) return null
@@ -71,36 +77,50 @@ function toNum(val: string): number | null {
 
 export default function SettlementRateEntry() {
   const [rates, setRates] = useState<ExchangeRateData[]>([])
-  const [_currencies, setCurrencies] = useState<CurrencyInfo[]>([])
+  const [workgroups, setWorkgroups] = useState<WorkgroupInfo[]>([])
+  const [currencies, setCurrencies] = useState<CurrencyInfo[]>([])
+  const [selectedWorkgroup, setSelectedWorkgroup] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [expandedLimits, setExpandedLimits] = useState<Set<number>>(new Set())
 
-  const fetchData = useCallback(async () => {
+  // Egyszeri betöltés: valuták + munkacsoportok (nem változnak workgroup váltáskor)
+  useEffect(() => {
+    Promise.all([
+      api.get<CurrencyInfo[]>('/currencies'),
+      api.get<WorkgroupInfo[]>('/rate-management/workgroups'),
+    ])
+      .then(([currRes, wgRes]) => {
+        const sorted = currRes.data
+          .filter((c: CurrencyInfo) => c.code !== 'HUF')
+          .sort((a: CurrencyInfo, b: CurrencyInfo) => (a.displayOrder ?? 100) - (b.displayOrder ?? 100))
+        setCurrencies(sorted)
+        setWorkgroups(wgRes.data)
+        if (wgRes.data[0]) {
+          setSelectedWorkgroup(wgRes.data[0].id)
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load reference data:', err)
+        setError('Referencia adatok betöltése sikertelen')
+      })
+  }, [])
+
+  // Árfolyamok frissítése (csak rates API) — selectedWorkgroup vagy currencies változásakor
+  const fetchRates = useCallback(async () => {
+    if (currencies.length === 0) return
     setLoading(true)
     setError(null)
     try {
-      // Parallel fetch: currencies + current rates
-      const [currRes, rateRes] = await Promise.all([
-        api.get<CurrencyInfo[]>('/currencies'),
-        api.get<CurrentRateFromApi[]>('/exchange-rates/current'),
-      ])
-
-      const activeCurrencies = currRes.data
-        .filter((c: CurrencyInfo) => c.code !== 'HUF')
-        .sort((a: CurrencyInfo, b: CurrencyInfo) => (a.displayOrder ?? 100) - (b.displayOrder ?? 100))
-      setCurrencies(activeCurrencies)
-
-      // Build rate map from current rates
+      const rateRes = await api.get<CurrentRateFromApi[]>('/exchange-rates/current')
       const rateMap = new Map<number, CurrentRateFromApi>()
       for (const r of rateRes.data) {
         rateMap.set(r.currencyId, r)
       }
 
-      // Create rate entry for each active currency, pre-filled from current rates
-      const rateEntries: ExchangeRateData[] = activeCurrencies.map((c: CurrencyInfo) => {
+      const rateEntries: ExchangeRateData[] = currencies.map((c: CurrencyInfo) => {
         const existing = rateMap.get(c.id)
         return {
           currencyId: c.id,
@@ -123,16 +143,16 @@ export default function SettlementRateEntry() {
 
       setRates(rateEntries)
     } catch (err) {
-      console.error('Failed to load data:', err)
-      setError('Arfolyam adatok betoltese sikertelen')
+      console.error('Failed to load rates:', err)
+      setError('Árfolyam adatok betöltése sikertelen')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [currencies])
 
   useEffect(() => {
-    void fetchData()
-  }, [fetchData])
+    void fetchRates()
+  }, [fetchRates])
 
   type EditableField = Exclude<keyof ExchangeRateData, 'id' | 'currencyId' | 'currencyCode' | 'currencyName'>
 
@@ -193,7 +213,7 @@ export default function SettlementRateEntry() {
     setSaving(true)
     try {
       const payload = {
-        groupId: null,
+        groupId: selectedWorkgroup,
         rates: validRates.map(r => ({
           currencyId: r.currencyId,
           buyRate: toNum(r.baseBuyRate),
@@ -215,7 +235,7 @@ export default function SettlementRateEntry() {
       setSuccess(`Sikeres publikalas! ${validRates.length} valuta arfolyama frissiteve.`)
 
       // Reload data to show updated values
-      await fetchData()
+      await fetchRates()
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } }
       const msg = axiosErr?.response?.data?.message || 'Publikalas sikertelen'
@@ -236,6 +256,23 @@ export default function SettlementRateEntry() {
 
   return (
     <div className="space-y-4">
+      {/* Workgroup selector */}
+      {workgroups.length > 0 && (
+        <div className="flex items-center gap-3 rounded-lg border bg-card p-3 shadow-sm">
+          <Users className="h-4 w-4 text-muted-foreground" />
+          <label className="text-sm font-medium">Munkacsoport:</label>
+          <select
+            className="border rounded px-3 py-1.5 text-sm bg-background"
+            value={selectedWorkgroup ?? ''}
+            onChange={e => setSelectedWorkgroup(e.target.value || null)}
+          >
+            {workgroups.map(wg => (
+              <option key={wg.id} value={wg.id}>{wg.name} ({wg.code})</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
@@ -244,7 +281,7 @@ export default function SettlementRateEntry() {
         <div className="flex gap-2">
           <button
             className="inline-flex items-center justify-center rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
-            onClick={fetchData}
+            onClick={fetchRates}
             disabled={saving}
           >
             <RefreshCw className="h-4 w-4 mr-2" />

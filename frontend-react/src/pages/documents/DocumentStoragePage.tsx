@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { FileText, Upload, Download } from 'lucide-react'
 import { documentStorageApi, Document } from '../../services/api'
+import { toast } from '../../components/ui/toaster'
 
 export default function DocumentStoragePage() {
   const [documents, setDocuments] = useState<Document[]>([])
@@ -31,7 +32,7 @@ export default function DocumentStoragePage() {
       setError(null)
       await documentStorageApi.upload(file)
       await loadData()
-      alert('Feltöltés sikeres')
+      toast.success('Feltöltés sikeres')
     } catch (err) {
       console.error('Feltöltési hiba:', err)
       setError('Hiba a feltöltésnél. Kérjük ellenőrizze a fájlt.')

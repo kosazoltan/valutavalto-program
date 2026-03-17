@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Building, Plus, Edit, Trash2, Search, X, Save } from 'lucide-react'
 import { ownCompanyApi, OwnCompany } from '../../services/api'
+import { toast } from '../../components/ui/toaster'
 
 export default function OwnCompanyPage() {
   const [companies, setCompanies] = useState<OwnCompany[]>([])
@@ -79,7 +80,7 @@ export default function OwnCompanyPage() {
       setEditingCompany(null)
     } catch (error) {
       console.error('Hiba a mentéskor:', error)
-      alert('Hiba történt a mentés során')
+      toast.error('Mentési hiba', 'Hiba történt a mentés során')
     }
   }
 
@@ -90,7 +91,7 @@ export default function OwnCompanyPage() {
       await loadData()
     } catch (error) {
       console.error('Hiba a törléskor:', error)
-      alert('Hiba történt a törlés során')
+      toast.error('Törlési hiba', 'Hiba történt a törlés során')
     }
   }
 

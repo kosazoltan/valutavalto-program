@@ -16,6 +16,7 @@ import { formatDecimal } from '../../utils/numberFormat'
 import { transactionApi, exchangeRateApi } from '../../services/api'
 import type { BuyRequest, SellRequest, ExchangeRate } from '../../services/api'
 import { roundHuf } from '../../utils/rounding'
+import { toast } from '../../components/ui/toaster'
 
 interface CurrencyRate {
   id: string
@@ -255,13 +256,13 @@ export default function TransactionPage() {
     const foreignNum = parseFloat(foreignAmount.replace(',', '.')) || 0
     const hufNum = parseFloat(hufAmount.replace(/\s/g, '').replace(',', '.')) || 0
     if (foreignNum <= 0 || hufNum <= 0) {
-      alert('Kérem adjon meg érvényes összeget!')
+      toast.warning('Érvénytelen összeg', 'Kérem adjon meg érvényes összeget!')
       return
     }
 
     // Ügyfél azonosítás ellenőrzése
     if (identificationLevel !== 'SIMPLE' && !customer) {
-      alert('Ügyfél azonosítás szükséges ehhez az összeghez!')
+      toast.warning('Azonosítás szükséges', 'Ügyfél azonosítás szükséges ehhez az összeghez!')
       return
     }
 
@@ -286,7 +287,7 @@ export default function TransactionPage() {
           ...customerData,
         }
         const result = await transactionApi.buy(request)
-        alert(`Vétel tranzakció sikeresen mentve!\nBizonylat szám: ${result.receiptNumber}`)
+        toast.success('Vétel tranzakció sikeresen mentve!', `Bizonylat szám: ${result.receiptNumber}`)
       } else {
         const request: SellRequest = {
           currencyId: parseInt(selectedCurrency.id),
@@ -295,7 +296,7 @@ export default function TransactionPage() {
           ...customerData,
         }
         const result = await transactionApi.sell(request)
-        alert(`Eladás tranzakció sikeresen mentve!\nBizonylat szám: ${result.receiptNumber}`)
+        toast.success('Eladás tranzakció sikeresen mentve!', `Bizonylat szám: ${result.receiptNumber}`)
       }
 
       navigate('/transactions')
@@ -303,7 +304,7 @@ export default function TransactionPage() {
       const message = error instanceof Error ? error.message : 'Ismeretlen hiba'
       const axiosError = error as { response?: { data?: { message?: string } } }
       const serverMessage = axiosError?.response?.data?.message
-      alert(`Hiba a tranzakció mentése során!\n${serverMessage || message}`)
+      toast.error('Hiba a tranzakció mentése során!', serverMessage || message)
     } finally {
       setIsSubmitting(false)
     }
@@ -311,7 +312,7 @@ export default function TransactionPage() {
 
   const handlePrint = () => {
     // TODO: Print receipt
-    alert('Bizonylat nyomtatása...')
+    toast.info('Bizonylat nyomtatása...')
   }
 
   const currentRate = selectedCurrency 
