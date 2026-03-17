@@ -7,7 +7,7 @@ import { Eye, EyeOff, User, Lock, Building2 } from 'lucide-react'
 import { getErrorMessage } from '../../utils/errorHandling'
 
 export default function LoginPage() {
-  const [companyCode, setCompanyCode] = useState('BEST')
+  const [companyCode, setCompanyCode] = useState('EBC')
   const [workerCode, setWorkerCode] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)

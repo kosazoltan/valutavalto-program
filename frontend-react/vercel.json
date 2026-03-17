@@ -36,8 +36,5 @@
         }
       ]
     }
-  ],
-  "env": {
-    "VITE_API_URL": "https://valuta-backend-spbx.onrender.com/api/v1"
-  }
+  ]
 }
