@@ -92,52 +92,52 @@ jobs:
           status, body = request("https://api.render.com/v1/services")
           services = json.loads(body)
 
-            def unwrap(item):
+          def unwrap(item):
               service = item.get("service") or item
               details = service.get("serviceDetails") or item.get("serviceDetails") or {}
               url = details.get("url") or service.get("url") or item.get("url") or ""
               host = urlparse(url).netloc.lower() if url else ""
               return {
-                "id": service.get("id") or item.get("id") or "",
-                "name": (service.get("name") or item.get("name") or "").strip(),
-                "slug": (service.get("slug") or item.get("slug") or "").strip(),
-                "url": url,
-                "host": host,
+                  "id": service.get("id") or item.get("id") or "",
+                  "name": (service.get("name") or item.get("name") or "").strip(),
+                  "slug": (service.get("slug") or item.get("slug") or "").strip(),
+                  "url": url,
+                  "host": host,
               }
 
-            ranked = []
-            for raw_service in services:
+          ranked = []
+          for raw_service in services:
               service = unwrap(raw_service)
               score = 0
               if backend_host and service["host"] == backend_host:
-                score += 100
+                  score += 100
               if service["slug"].lower() in candidate_names:
-                score += 50
+                  score += 50
               if service["name"].lower() in candidate_names:
-                score += 40
+                  score += 40
               if score > 0:
-                ranked.append((score, service))
+                  ranked.append((score, service))
 
-            ranked.sort(key=lambda item: item[0], reverse=True)
+          ranked.sort(key=lambda item: item[0], reverse=True)
 
-            if not ranked:
+          if not ranked:
               print(
-                f"Render target not found for host={backend_host or '-'} candidates={candidate_names}",
-                file=sys.stderr,
+                  f"Render target not found for host={backend_host or '-'} candidates={candidate_names}",
+                  file=sys.stderr,
               )
               for service in map(unwrap, services):
-                print(
-                  f"Available Render service: name={service['name']} slug={service['slug']} host={service['host']}",
-                  file=sys.stderr,
-                )
+                  print(
+                      f"Available Render service: name={service['name']} slug={service['slug']} host={service['host']}",
+                      file=sys.stderr,
+                  )
               raise SystemExit(1)
 
-            selected = ranked[0][1]
-            print(
+          selected = ranked[0][1]
+          print(
               f"Selected Render service: name={selected['name']} slug={selected['slug']} host={selected['host']}"
-            )
+          )
 
-            service_id = selected["id"]
+          service_id = selected["id"]
           if not service_id:
               print("Render service ID missing", file=sys.stderr)
               raise SystemExit(1)
