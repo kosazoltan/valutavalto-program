@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import hu.puzzleir.valuta.service.TokenBlacklistService;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -18,14 +19,18 @@ import java.util.UUID;
 
 /**
  * JWT Authentication Filter - minden request-nél ellenőrzi a token-t.
+ * Blacklist ellenőrzés: kijelentkeztetett tokeneket elutasítja.
  */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
-    
+
     private final JwtTokenProvider jwtTokenProvider;
-    
-    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider) {
+    private final TokenBlacklistService tokenBlacklistService;
+
+    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider,
+                                   TokenBlacklistService tokenBlacklistService) {
         this.jwtTokenProvider = jwtTokenProvider;
+        this.tokenBlacklistService = tokenBlacklistService;
     }
     
     @Override
@@ -38,6 +43,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String jwt = getJwtFromRequest(request);
             
             if (StringUtils.hasText(jwt) && jwtTokenProvider.validateToken(jwt)) {
+                // 🔴 Blacklist ellenőrzés — kijelentkeztetett token elutasítása
+                String tokenId = jwtTokenProvider.getTokenIdFromToken(jwt);
+                if (tokenBlacklistService.isBlacklisted(tokenId)) {
+                    logger.warn("Blacklisted token used: tokenId=" + tokenId);
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
                 Long workerId = jwtTokenProvider.getWorkerIdFromToken(jwt);
                 String workerCode = jwtTokenProvider.getWorkerCodeFromToken(jwt);
                 String role = jwtTokenProvider.getRoleFromToken(jwt);

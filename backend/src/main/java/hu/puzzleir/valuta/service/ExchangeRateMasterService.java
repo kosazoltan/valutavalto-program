@@ -53,7 +53,7 @@ public class ExchangeRateMasterService {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Long workerId = SecurityUtils.getCurrentWorkerId();
 
-        Currency currency = currencyRepository.findById(request.getCurrencyId())
+        hu.puzzleir.valuta.entity.Currency currency = currencyRepository.findById(request.getCurrencyId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                     "Valuta nem található: " + request.getCurrencyId()));
 
@@ -148,13 +148,17 @@ public class ExchangeRateMasterService {
                 + master.getStatus());
         }
 
-        Currency currency = currencyRepository.findById(master.getCurrencyId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                    "Valuta nem található: " + master.getCurrencyId()));
+        // Lokális final referenciák a lambda-khoz (master lentebb reassigned)
+        final Long currencyId = master.getCurrencyId();
+        final UUID companyIdForLookup = master.getCompanyId();
 
-        Company company = companyRepository.findById(master.getCompanyId())
+        hu.puzzleir.valuta.entity.Currency currency = currencyRepository.findById(currencyId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                    "Cég nem található: " + master.getCompanyId()));
+                    "Valuta nem található: " + currencyId));
+
+        Company company = companyRepository.findById(companyIdForLookup)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                    "Cég nem található: " + companyIdForLookup));
 
         // Korábbi aktív törzs árfolyamok inaktiválása ugyanerre a valutára
         List<ExchangeRateMaster> oldMasters = masterRepository.findOtherActiveRates(
@@ -321,7 +325,7 @@ public class ExchangeRateMasterService {
      * Inaktiválja a korábbi árfolyamokat.
      */
     private ExchangeRate createExchangeRateForBranch(
-            ExchangeRateMaster master, Currency currency, Company company, Branch branch) {
+            ExchangeRateMaster master, hu.puzzleir.valuta.entity.Currency currency, Company company, Branch branch) {
 
         // Korábbi árfolyamok inaktiválása ennél a pénztárnál
         List<ExchangeRate> oldRates = exchangeRateRepository.findCurrentRate(
@@ -361,7 +365,7 @@ public class ExchangeRateMasterService {
      * WebSocket értesítés küldése az árfolyam frissítésről.
      */
     private void broadcastRateDistribution(
-            ExchangeRateMaster master, Currency currency, int branchCount, UUID workgroupId) {
+            ExchangeRateMaster master, hu.puzzleir.valuta.entity.Currency currency, int branchCount, UUID workgroupId) {
         try {
             Map<String, Object> message = new LinkedHashMap<>();
             message.put("type", "RATE_DISTRIBUTED");

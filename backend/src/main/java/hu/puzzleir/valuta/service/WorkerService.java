@@ -48,6 +48,7 @@ public class WorkerService {
     private final JwtTokenProvider jwtTokenProvider;
     private final WorkerRoleAssignmentRepository roleAssignmentRepository;
     private final WorkerRolePermissionRepository rolePermissionRepository;
+    private final TokenBlacklistService tokenBlacklistService;
 
     // HIGH FIX #16: Brute force védelem — max 5 sikertelen próba, utána 15 perc lock
     private static final int MAX_FAILED_ATTEMPTS = 5;
@@ -405,17 +406,38 @@ public class WorkerService {
     }
     
     /**
-     * Logout
+     * Logout — session bezárás + token blacklisting.
+     *
+     * @param jwtToken  Az aktuális JWT token (ha elérhető) — blacklisting-hez
      */
-    public void logout() {
+    public void logout(String jwtToken) {
         Long workerId = SecurityUtils.getCurrentWorkerId();
-        
+
         // Aktív session bezárás
         sessionRepository.findByWorkerIdAndLogoutAtIsNull(workerId)
                 .ifPresent(session -> {
                     session.setLogoutAt(LocalDateTime.now());
                     sessionRepository.save(session);
                 });
+
+        // 🔴 Token blacklisting — a JWT tokenId-t visszavonjuk
+        if (jwtToken != null) {
+            try {
+                String tokenId = jwtTokenProvider.getTokenIdFromToken(jwtToken);
+                // JWT lejárat: 24 óra a generálástól
+                LocalDateTime expiresAt = LocalDateTime.now().plusHours(24);
+                tokenBlacklistService.blacklistToken(tokenId, workerId, "LOGOUT", expiresAt);
+            } catch (Exception e) {
+                // Ha a token parse sikertelen, nem gond — a session már lezárva
+            }
+        }
+    }
+
+    /**
+     * Logout — backwards compatible (token nélkül).
+     */
+    public void logout() {
+        logout(null);
     }
 
     // ============ HIGH FIX #16: BRUTE FORCE HELPER METHODS ============

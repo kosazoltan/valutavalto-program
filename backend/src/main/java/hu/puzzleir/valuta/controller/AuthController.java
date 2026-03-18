@@ -59,8 +59,14 @@ public class AuthController {
      * Headers: Authorization: Bearer {token}
      */
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout() {
-        workerService.logout();
+    public ResponseEntity<Void> logout(HttpServletRequest request) {
+        // JWT kinyerése a headerből — blacklisting-hez
+        String token = null;
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7);
+        }
+        workerService.logout(token);
         return ResponseEntity.noContent().build();
     }
     

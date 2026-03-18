@@ -34,8 +34,13 @@ export default function LoginPage() {
         response.worker,
         response.token,
         response.tokenType,
-        response.expiresAt
+        response.expiresAt,
+        response.activeRole,
+        response.permissions,
+        response.roles,
+        response.roleSelectionRequired,
       )
+      // TODO: ha roleSelectionRequired, akkor role-választó oldalra irányítás
       navigate('/dashboard')
     } catch (err: unknown) {
       setError(getErrorMessage(err))
@@ -62,7 +67,11 @@ export default function LoginPage() {
         response.worker,
         response.token,
         response.tokenType,
-        response.expiresAt
+        response.expiresAt,
+        response.activeRole,
+        response.permissions,
+        response.roles,
+        response.roleSelectionRequired,
       )
       navigate('/dashboard')
     } catch (err: unknown) {

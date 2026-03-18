@@ -105,7 +105,8 @@ api.interceptors.response.use(
         const newToken = response.data.token
         const authStore = useAuthStore.getState()
         if (authStore.worker) {
-          authStore.login(authStore.worker, newToken, authStore.tokenType ?? 'Bearer', authStore.expiresAt ?? '')
+          authStore.login(authStore.worker, newToken, authStore.tokenType ?? 'Bearer', authStore.expiresAt ?? '',
+            authStore.activeRole, authStore.permissions, authStore.roles)
         }
         processQueue(null, newToken)
         if (originalRequest.headers) {
