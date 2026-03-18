@@ -1,0 +1,16 @@
+{
+  "name": "security-gate",
+  "description": "Run mandatory repository security gate and generate reports.",
+  "type": "shell",
+  "command": "powershell -ExecutionPolicy Bypass -File scripts/security/run-security-gate.ps1 -BackendDependencyCheckTimeoutSec 600 -ScannerTimeoutSec 180",
+  "outputs": [
+    "security-reports/latest/summary.json",
+    "security-reports/latest/summary.txt"
+  ],
+  "blockingPolicy": {
+    "blockOnGateStatuses": [
+      "FAILED",
+      "BLOCKED"
+    ]
+  }
+}

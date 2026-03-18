@@ -69,6 +69,14 @@ cd penztar-client && npm test
 - **Exchange rate freshness:** 24-hour TTL — never allow transactions with stale rates
 - **Security:** `@PreAuthorize` annotation required on every controller, JWT auth, CORS must NOT be wildcard (`*`)
 
+## Mandatory security gate for all agents
+- **Always-on rule:** Every coding agent must apply `.cursor/rules/mandatory-security-gate.mdc`.
+- **Mandatory skill:** Every coding task must use `.cursor/skills/security-deploy-gate/SKILL.md` automatically (no trigger words required).
+- **Baseline version:** Mandatory baseline is `.cursor/skills/security-deploy-gate/SECURITY_BASELINE_V3.md` (Java + Electron + React + Python + Node.js).
+- **Pre-deploy gate:** Before any deploy recommendation, run `powershell -ExecutionPolicy Bypass -File scripts/security/run-security-gate.ps1`.
+- **Hard stop:** `FAILED` or `BLOCKED` gate status always blocks deployment.
+- **Evidence-first:** Agents must provide command evidence from `security-reports/latest/` and must not claim unverified success.
+
 ## Database
 - PostgreSQL (server), SQLite (offline client)
 - Flyway migrations: `backend/src/main/resources/db/migration/`

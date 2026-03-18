@@ -4,7 +4,8 @@
       "WebFetch(domain:api.exchangerate-api.com)",
       "WebFetch(domain:api.frankfurter.app)",
       "WebSearch",
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "Bash(powershell -ExecutionPolicy Bypass -File scripts/security/run-security-gate.ps1)"
     ]
   }
 }

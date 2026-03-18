@@ -243,6 +243,22 @@
                     </annotationProcessorPaths>
                 </configuration>
             </plugin>
+
+            <!-- Security gate integration: make OWASP dependency scanning available in the build lifecycle. -->
+            <plugin>
+                <groupId>org.owasp</groupId>
+                <artifactId>dependency-check-maven</artifactId>
+                <version>12.2.0</version>
+                <executions>
+                    <execution>
+                        <id>security-dependency-check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 </project>

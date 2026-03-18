@@ -69,6 +69,14 @@ cd penztar-client && npm test
 - **Árfolyam frissesség:** 24 órás TTL — lejárt rátával nem szabad tranzakciót engedni
 - **Security:** `@PreAuthorize` annotáció minden controlleren, JWT auth, CORS nem lehet wildcard (`*`)
 
+## Kötelező security gate minden agentnek
+- **Always-on szabály:** Kötelező alkalmazni `.cursor/rules/mandatory-security-gate.mdc`.
+- **Kötelező skill:** Minden programozási feladatnál kötelező a `.cursor/skills/security-deploy-gate/SKILL.md`.
+- **Kötelező baseline:** `.cursor/skills/security-deploy-gate/SECURITY_BASELINE_V3.md` (multi-stack: Java, Electron, React, Python, Node.js).
+- **Deploy előtti gate:** Kötelező futtatás: `powershell -ExecutionPolicy Bypass -File scripts/security/run-security-gate.ps1`.
+- **Blokkolás:** `FAILED` vagy `BLOCKED` gate státusz esetén deploy tiltott.
+- **Bizonyíték-kötelezettség:** Eredményeket `security-reports/latest/` útvonalról kell jelenteni.
+
 ## Adatbázis
 - PostgreSQL (szerver), SQLite (offline kliens)
 - Flyway migrációk: `backend/src/main/resources/db/migration/`
