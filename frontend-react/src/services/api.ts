@@ -1,6 +1,8 @@
 import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import { useAuthStore } from '../stores/authStore'
 
+const WEB_AUTH_TOKEN_KEY = 'auth_token'
+
 // API base URL meghatározása — priorizálás:
 // 1. VITE_API_URL env var (build-time)
 // 2. Electron: SQLite config 'server_url' (runtime, felhasználó által állítható)
@@ -3496,7 +3498,10 @@ export async function persistToken(token: string): Promise<void> {
     } else {
       await window.electronAPI.setConfig('auth_token', token)
     }
+    return
   }
+
+  window.localStorage.setItem(WEB_AUTH_TOKEN_KEY, token)
 }
 
 /** Token törlése Electron-ból (titkosított + plaintext is) */
@@ -3507,7 +3512,10 @@ export async function clearPersistedToken(): Promise<void> {
     } else {
       await window.electronAPI.deleteConfig('auth_token')
     }
+    return
   }
+
+  window.localStorage.removeItem(WEB_AUTH_TOKEN_KEY)
 }
 
 /** Token betöltése Electron-ból — titkosított (safeStorage) elsőbbséggel */
@@ -3518,5 +3526,14 @@ export async function loadPersistedToken(): Promise<string | null> {
     }
     return window.electronAPI.getConfig('auth_token')
   }
-  return null
+
+  return window.localStorage.getItem(WEB_AUTH_TOKEN_KEY)
+}
+
+export function hasPersistedToken(): boolean {
+  if (window.electronAPI) {
+    return true
+  }
+
+  return Boolean(window.localStorage.getItem(WEB_AUTH_TOKEN_KEY))
 }

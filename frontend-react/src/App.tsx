@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
 import { Toaster } from './components/ui/toaster'
-import { api, loadPersistedToken } from './services/api'
+import { api, clearPersistedToken, hasPersistedToken, loadPersistedToken } from './services/api'
 
 // Layouts
 import MainLayout from './layouts/MainLayout'
@@ -94,12 +94,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const [isRestoring, setIsRestoring] = useState(!!window.electronAPI)
+  const [isRestoring, setIsRestoring] = useState(() => hasPersistedToken())
 
-  // Electron: token restore — betöltéskor ellenőrizzük van-e tárolt JWT
+  // Desktopon és weben is megpróbáljuk visszatölteni a tárolt JWT-t.
   useEffect(() => {
-    if (!window.electronAPI) return
-
     const restoreToken = async () => {
       try {
         const token = await loadPersistedToken()
@@ -129,8 +127,13 @@ export default function App() {
                 }
               } catch {
                 // Token szerver oldalon érvénytelen
+                await clearPersistedToken()
               }
+            } else {
+              await clearPersistedToken()
             }
+          } else {
+            await clearPersistedToken()
           }
         }
       } catch (err) {
