@@ -48,11 +48,20 @@ public class RateLimitFilter extends OncePerRequestFilter {
     @Value("${rate-limit.transaction.window-ms:60000}")
     private long transactionWindowMs;
 
+    /** POS fizetés: max kérés / ablak */
+    @Value("${rate-limit.payment.max-requests:120}")
+    private int paymentMaxRequests;
+
+    /** POS fizetés: időablak ms-ban (alapértelmezett: 60 sec) */
+    @Value("${rate-limit.payment.window-ms:60000}")
+    private long paymentWindowMs;
+
     /** Cleanup: bejegyzések ennyi ms után törölhetők (alapértelmezett: 10 perc) */
     private static final long CLEANUP_THRESHOLD_MS = 600_000L;
 
     private final Map<String, RateLimitEntry> loginLimits = new ConcurrentHashMap<>();
     private final Map<String, RateLimitEntry> transactionLimits = new ConcurrentHashMap<>();
+    private final Map<String, RateLimitEntry> paymentLimits = new ConcurrentHashMap<>();
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -81,12 +90,23 @@ public class RateLimitFilter extends OncePerRequestFilter {
             }
         }
 
+        // POS fizetés endpoint — magasabb limit (kártyás fizetésekhez)
+        if (path.startsWith("/api/v1/pos-terminal/process-transaction")) {
+            if (isRateLimited(clientIp, paymentLimits, paymentMaxRequests, paymentWindowMs)) {
+                log.warn("Rate limit elérve: fizetés — IP: {}", clientIp);
+                response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+                response.setContentType("application/json");
+                response.getWriter().write(
+                        "{\"error\":\"Túl sok fizetési kérés. Kérjük próbálja újra később.\"}");
+                return;
+            }
+        }
+
         // Tranzakciós endpointok
         if (path.startsWith("/api/v1/transactions/buy")
                 || path.startsWith("/api/v1/transactions/sell")
                 || path.startsWith("/api/v1/transactions/conversion")
-                || path.startsWith("/api/v1/transactions/reversal")
-                || path.startsWith("/api/v1/pos-terminal/process-transaction")) {
+                || path.startsWith("/api/v1/transactions/reversal")) {
             if (isRateLimited(clientIp, transactionLimits, transactionMaxRequests, transactionWindowMs)) {
                 log.warn("Rate limit elérve: tranzakció — IP: {}", clientIp);
                 response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
@@ -121,10 +141,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
         long now = System.currentTimeMillis();
         int loginRemoved = removeExpired(loginLimits, now);
         int txRemoved = removeExpired(transactionLimits, now);
-        if (loginRemoved > 0 || txRemoved > 0) {
-            log.debug("Rate limit cleanup: {} login + {} tranzakció bejegyzés törölve. " +
-                    "Aktív: {} login, {} tranzakció",
-                    loginRemoved, txRemoved, loginLimits.size(), transactionLimits.size());
+        int paymentRemoved = removeExpired(paymentLimits, now);
+        if (loginRemoved > 0 || txRemoved > 0 || paymentRemoved > 0) {
+            log.debug("Rate limit cleanup: {} login + {} tranzakció + {} fizetés bejegyzés törölve. " +
+                            "Aktív: {} login, {} tranzakció, {} fizetés",
+                    loginRemoved, txRemoved, paymentRemoved,
+                    loginLimits.size(), transactionLimits.size(), paymentLimits.size());
         }
     }
 
