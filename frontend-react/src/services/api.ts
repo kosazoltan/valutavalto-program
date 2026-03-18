@@ -4,12 +4,12 @@ import { useAuthStore } from '../stores/authStore'
 // API base URL meghatározása — priorizálás:
 // 1. VITE_API_URL env var (build-time)
 // 2. Electron: SQLite config 'server_url' (runtime, felhasználó által állítható)
-// 3. DEV mód: localhost
+// 3. DEV mód: relatív URL (Vite proxy-n keresztül → nincs CORS probléma)
 // 4. Web production: relatív URL
 let API_BASE_URL = import.meta.env.VITE_API_URL
 if (!API_BASE_URL) {
   if (import.meta.env.DEV) {
-    API_BASE_URL = 'http://localhost:8080/api/v1'
+    API_BASE_URL = '/api/v1'
   } else if (window.electronAPI) {
     // Electron production — SQLite-ból olvassa a server_url-t, fallback a prod szerverre
     API_BASE_URL = 'https://valutavalto-api.onrender.com/api/v1'
