@@ -106,7 +106,11 @@ export default function App() {
         if (token) {
           const parts = token.split('.')
           if (parts.length === 3 && parts[1]) {
-            const payload = JSON.parse(atob(parts[1])) as { exp?: number }
+            const payload = JSON.parse(atob(parts[1])) as {
+              exp?: number
+              activeRole?: string
+              permissions?: string[]
+            }
             const now = Math.floor(Date.now() / 1000)
             if (payload.exp && payload.exp > now) {
               // Token érvényes → restore auth state
@@ -115,7 +119,13 @@ export default function App() {
                   headers: { Authorization: `Bearer ${token}` },
                 })
                 if (res.data) {
-                  useAuthStore.getState().login(res.data, token, 'Bearer', new Date(payload.exp * 1000).toISOString())
+                  // V57: activeRole + permissions restore a JWT payload-ból
+                  useAuthStore.getState().login(
+                    res.data, token, 'Bearer',
+                    new Date(payload.exp * 1000).toISOString(),
+                    payload.activeRole ?? null,
+                    payload.permissions ?? [],
+                  )
                 }
               } catch {
                 // Token szerver oldalon érvénytelen

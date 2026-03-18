@@ -208,6 +208,10 @@ export const authApi = {
   refreshToken: async (): Promise<{ token: string }> => {
     const response = await api.post<{ token: string }>('/auth/refresh')
     return response.data
+  },
+  selectRole: async (data: { token: string; roleCode: string }): Promise<LoginResponse> => {
+    const response = await api.post<LoginResponse>('/auth/login/select-role', data)
+    return response.data
   }
 }
 

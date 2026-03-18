@@ -411,20 +411,30 @@ public class WorkerService {
      * @param jwtToken  Az aktuális JWT token (ha elérhető) — blacklisting-hez
      */
     public void logout(String jwtToken) {
-        Long workerId = SecurityUtils.getCurrentWorkerId();
+        // 🔴 NPE védelem: ha a SecurityContext üres (blacklisted token),
+        // a workerId-t a JWT-ből nyerjük ki
+        Long workerId;
+        try {
+            workerId = SecurityUtils.getCurrentWorkerId();
+        } catch (Exception e) {
+            // SecurityContext üres → workerId kinyerése tokenből
+            workerId = jwtToken != null ? jwtTokenProvider.getWorkerIdFromToken(jwtToken) : null;
+        }
 
         // Aktív session bezárás
-        sessionRepository.findByWorkerIdAndLogoutAtIsNull(workerId)
-                .ifPresent(session -> {
-                    session.setLogoutAt(LocalDateTime.now());
-                    sessionRepository.save(session);
-                });
+        if (workerId != null) {
+            final Long wId = workerId;
+            sessionRepository.findByWorkerIdAndLogoutAtIsNull(wId)
+                    .ifPresent(session -> {
+                        session.setLogoutAt(LocalDateTime.now());
+                        sessionRepository.save(session);
+                    });
+        }
 
         // 🔴 Token blacklisting — a JWT tokenId-t visszavonjuk
         if (jwtToken != null) {
             try {
                 String tokenId = jwtTokenProvider.getTokenIdFromToken(jwtToken);
-                // JWT lejárat: 24 óra a generálástól
                 LocalDateTime expiresAt = LocalDateTime.now().plusHours(24);
                 tokenBlacklistService.blacklistToken(tokenId, workerId, "LOGOUT", expiresAt);
             } catch (Exception e) {

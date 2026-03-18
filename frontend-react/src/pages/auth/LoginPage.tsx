@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { CredentialResponse, GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google'
 import { useAuthStore } from '../../stores/authStore'
 import { authApi } from '../../services/api'
-import { Eye, EyeOff, User, Lock, Building2 } from 'lucide-react'
+import { Eye, EyeOff, User, Lock, Building2, Shield } from 'lucide-react'
 import { getErrorMessage } from '../../utils/errorHandling'
 
 export default function LoginPage() {
@@ -14,9 +14,63 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // V57: Role-választó modal state
+  const [showRoleSelector, setShowRoleSelector] = useState(false)
+  const [pendingLoginResponse, setPendingLoginResponse] = useState<Awaited<ReturnType<typeof authApi.login>> | null>(null)
+  const [selectedRole, setSelectedRole] = useState<string | null>(null)
+  const [roleLoading, setRoleLoading] = useState(false)
+
   const login = useAuthStore((state) => state.login)
+  const selectRole = useAuthStore((state) => state.selectRole)
   const navigate = useNavigate()
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+
+  /** Login eredmény feldolgozása — ha multi-role, role-választó megjelenítése */
+  const handleLoginResponse = (response: Awaited<ReturnType<typeof authApi.login>>) => {
+    login(
+      response.worker,
+      response.token,
+      response.tokenType,
+      response.expiresAt,
+      response.activeRole,
+      response.permissions,
+      response.roles,
+      response.roleSelectionRequired,
+    )
+
+    if (response.roleSelectionRequired && response.roles && response.roles.length > 1) {
+      // Multi-role worker → role-választó modal megjelenítése
+      setPendingLoginResponse(response)
+      setShowRoleSelector(true)
+    } else {
+      navigate('/dashboard')
+    }
+  }
+
+  /** Role kiválasztása a modalból */
+  const handleRoleSelect = async () => {
+    if (!selectedRole || !pendingLoginResponse) return
+
+    setRoleLoading(true)
+    setError('')
+
+    try {
+      const response = await authApi.selectRole({
+        token: pendingLoginResponse.token,
+        roleCode: selectedRole,
+      })
+
+      // Új token a kiválasztott role-lal
+      selectRole(response.token, response.activeRole!, response.permissions ?? [])
+      setShowRoleSelector(false)
+      setPendingLoginResponse(null)
+      navigate('/dashboard')
+    } catch (err: unknown) {
+      setError(getErrorMessage(err))
+    } finally {
+      setRoleLoading(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -29,19 +83,7 @@ export default function LoginPage() {
         workerCode,
         password
       })
-
-      login(
-        response.worker,
-        response.token,
-        response.tokenType,
-        response.expiresAt,
-        response.activeRole,
-        response.permissions,
-        response.roles,
-        response.roleSelectionRequired,
-      )
-      // TODO: ha roleSelectionRequired, akkor role-választó oldalra irányítás
-      navigate('/dashboard')
+      handleLoginResponse(response)
     } catch (err: unknown) {
       setError(getErrorMessage(err))
     } finally {
@@ -62,23 +104,75 @@ export default function LoginPage() {
       const response = await authApi.googleLogin({
         idToken: credentialResponse.credential
       })
-
-      login(
-        response.worker,
-        response.token,
-        response.tokenType,
-        response.expiresAt,
-        response.activeRole,
-        response.permissions,
-        response.roles,
-        response.roleSelectionRequired,
-      )
-      navigate('/dashboard')
+      handleLoginResponse(response)
     } catch (err: unknown) {
       setError(getErrorMessage(err))
     } finally {
       setLoading(false)
     }
+  }
+
+  // V57: Role-választó modal
+  if (showRoleSelector && pendingLoginResponse) {
+    return (
+      <div className="w-[340px]">
+        <div className="bg-form-bg border border-form-border shadow-lg">
+          <div className="header-bar flex items-center gap-2 h-8">
+            <Shield size={16} />
+            <span>Szerepkör kiválasztása</span>
+          </div>
+          <div className="p-4">
+            <p className="text-sm text-gray-600 mb-3">
+              Több szerepköre is van. Kérjük válassza ki, melyikkel szeretne belépni:
+            </p>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-2 rounded mb-3">
+                {error}
+              </div>
+            )}
+
+            <div className="space-y-2 mb-4">
+              {pendingLoginResponse.roles?.map((role) => (
+                <button
+                  key={role}
+                  onClick={() => setSelectedRole(role)}
+                  className={`w-full text-left p-2 border rounded text-sm ${
+                    selectedRole === role
+                      ? 'border-primary bg-blue-50 font-semibold'
+                      : 'border-form-border hover:bg-gray-50'
+                  }`}
+                >
+                  {role}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="form-button"
+                onClick={() => {
+                  setShowRoleSelector(false)
+                  setPendingLoginResponse(null)
+                  useAuthStore.getState().logout()
+                }}
+              >
+                Mégsem
+              </button>
+              <button
+                type="button"
+                className="form-button-primary px-4"
+                disabled={!selectedRole || roleLoading}
+                onClick={handleRoleSelect}
+              >
+                {roleLoading ? 'Betöltés...' : 'Belépés'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

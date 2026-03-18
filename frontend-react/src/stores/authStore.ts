@@ -97,29 +97,34 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   },
 
   hasRole: (role: string) => {
-    const { worker } = get()
+    const { worker, activeRole } = get()
     if (!worker) return false
-    return worker.role === role || worker.role === 'ADMIN'
+    // V57: activeRole az elsődleges, fallback worker.role-ra
+    const effectiveRole = activeRole || worker.role
+    return effectiveRole === role || effectiveRole === 'ADMIN'
   },
 
   hasPermission: (permission: string) => {
-    const { permissions, worker } = get()
+    const { permissions, worker, activeRole } = get()
     if (!worker) return false
     // ADMIN-nak mindenhez van jogosultsága
-    if (worker.role === 'ADMIN') return true
+    const effectiveRole = activeRole || worker.role
+    if (effectiveRole === 'ADMIN') return true
     return permissions.includes(permission)
   },
 
   isManagerOrAbove: () => {
-    const { worker } = get()
+    const { worker, activeRole } = get()
     if (!worker) return false
-    return ['MANAGER', 'ADMIN'].includes(worker.role)
+    const effectiveRole = activeRole || worker.role
+    return ['MANAGER', 'ADMIN'].includes(effectiveRole)
   },
 
   isSupervisorOrAbove: () => {
-    const { worker } = get()
+    const { worker, activeRole } = get()
     if (!worker) return false
-    return ['SUPERVISOR', 'MANAGER', 'ADMIN'].includes(worker.role)
+    const effectiveRole = activeRole || worker.role
+    return ['SUPERVISOR', 'MANAGER', 'ADMIN'].includes(effectiveRole)
   },
 
   // Legacy compatibility getter
