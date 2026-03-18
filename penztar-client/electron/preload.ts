@@ -139,6 +139,28 @@ contextBridge.exposeInMainWorld('electronAPI', {
   cameraListRecordings: (transactionId?: string): Promise<string[]> =>
     ipcRenderer.invoke('camera-list-recordings', transactionId),
 
+  cameraLocalStorageStats: (): Promise<{
+    totalUsageBytes: number;
+    availableSpaceBytes: number;
+    totalRecordings: number;
+    oldestDate: string | null;
+    newestDate: string | null;
+  }> => ipcRenderer.invoke('camera-local-storage-stats'),
+
+  cameraLocalRecordingsByDate: (dateFrom: string, dateTo: string): Promise<Array<{
+    date: string;
+    transactionId: string;
+    filePath: string;
+    fileSizeBytes: number;
+    createdAt: string;
+  }>> => ipcRenderer.invoke('camera-local-recordings-by-date', dateFrom, dateTo),
+
+  cameraLocalReadFile: (filePath: string): Promise<string | null> =>
+    ipcRenderer.invoke('camera-local-read-file', filePath),
+
+  cameraLocalCleanup: (retentionDays: number): Promise<{ deletedCount: number }> =>
+    ipcRenderer.invoke('camera-local-cleanup', retentionDays),
+
   // Okmány scan
   scanSaveDocument: (
     transactionId: string,
@@ -152,6 +174,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   scanListDocuments: (transactionId: string): Promise<string[]> =>
     ipcRenderer.invoke('scan-list-documents', transactionId),
+
+  // --- Secure Token Storage (DPAPI/Keychain titkosított) ---
+  secureStoreToken: (token: string): Promise<boolean> =>
+    ipcRenderer.invoke('secure-store-token', token),
+
+  secureLoadToken: (): Promise<string | null> =>
+    ipcRenderer.invoke('secure-load-token'),
+
+  secureClearToken: (): Promise<void> =>
+    ipcRenderer.invoke('secure-clear-token'),
 
   platform: process.platform,
 });

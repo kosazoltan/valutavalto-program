@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -22,6 +23,9 @@ import java.util.concurrent.atomic.AtomicLong;
  *
  * Védi a login endpointot brute force támadás ellen,
  * és a tranzakciós endpointokat túlzott terhelés ellen.
+ * Per-IP alapú limitálás — minden pénztár/kliens külön számlálót kap.
+ *
+ * Cleanup: 5 percenként törli a lejárt bejegyzéseket (memory leak megelőzés).
  */
 @Component
 @Order(0)
@@ -43,6 +47,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
     /** Tranzakciók: időablak ms-ban (alapértelmezett: 60 sec) */
     @Value("${rate-limit.transaction.window-ms:60000}")
     private long transactionWindowMs;
+
+    /** Cleanup: bejegyzések ennyi ms után törölhetők (alapértelmezett: 10 perc) */
+    private static final long CLEANUP_THRESHOLD_MS = 600_000L;
 
     private final Map<String, RateLimitEntry> loginLimits = new ConcurrentHashMap<>();
     private final Map<String, RateLimitEntry> transactionLimits = new ConcurrentHashMap<>();
@@ -103,6 +110,32 @@ public class RateLimitFilter extends OncePerRequestFilter {
             return existing;
         });
         return entry.counter.incrementAndGet() > maxRequests;
+    }
+
+    /**
+     * Lejárt bejegyzések törlése — 5 percenként fut.
+     * Megelőzi a ConcurrentHashMap korlátlan növekedését (memory leak).
+     */
+    @Scheduled(fixedDelay = 300_000L) // 5 perc
+    public void cleanupExpiredEntries() {
+        long now = System.currentTimeMillis();
+        int loginRemoved = removeExpired(loginLimits, now);
+        int txRemoved = removeExpired(transactionLimits, now);
+        if (loginRemoved > 0 || txRemoved > 0) {
+            log.debug("Rate limit cleanup: {} login + {} tranzakció bejegyzés törölve. " +
+                    "Aktív: {} login, {} tranzakció",
+                    loginRemoved, txRemoved, loginLimits.size(), transactionLimits.size());
+        }
+    }
+
+    private int removeExpired(Map<String, RateLimitEntry> limits, long now) {
+        int[] removed = {0};
+        limits.entrySet().removeIf(entry -> {
+            boolean expired = now - entry.getValue().windowStart.get() > CLEANUP_THRESHOLD_MS;
+            if (expired) removed[0]++;
+            return expired;
+        });
+        return removed[0];
     }
 
     private String resolveClientIp(HttpServletRequest request) {

@@ -1,7 +1,19 @@
 import { useState } from 'react'
-import { Search, PlayCircle, Calendar, FileVideo, Receipt } from 'lucide-react'
+import { Search, PlayCircle, Calendar, FileVideo } from 'lucide-react'
 import { api } from '../../services/api'
 
+const isElectron = () => !!window.electronAPI
+
+// Lokalis (Electron) felvetel bejegyzes
+interface LocalRecordingEntry {
+  date: string
+  transactionId: string
+  filePath: string
+  fileSizeBytes: number
+  createdAt: string
+}
+
+// Szerver oldali felvetel metadata
 interface RecordingMetadata {
   id: string
   branchId: string
@@ -15,36 +27,35 @@ interface RecordingMetadata {
   linkedTransactions: number
 }
 
-interface TransactionLink {
-  id: string
-  transactionId: string
-  receiptNumber: string
-  transactionTime: string
-  frameOffsetSeconds: number
-}
-
 export default function CameraPlaybackPage() {
-  const [searchMode, setSearchMode] = useState<'date' | 'receipt'>('date')
-  const [branchId, setBranchId] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [receiptNumber, setReceiptNumber] = useState('')
-  const [recordings, setRecordings] = useState<RecordingMetadata[]>([])
-  const [links, setLinks] = useState<TransactionLink[]>([])
+  const [localRecordings, setLocalRecordings] = useState<LocalRecordingEntry[]>([])
+  const [serverRecordings, setServerRecordings] = useState<RecordingMetadata[]>([])
+  const [selectedVideo, setSelectedVideo] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   const searchByDate = async () => {
-    if (!branchId || !startDate || !endDate) return
+    if (!startDate || !endDate) return
     setLoading(true)
+    setSelectedVideo(null)
     try {
-      const params = new URLSearchParams({
-        branchId,
-        start: startDate + 'T00:00:00',
-        end: endDate + 'T23:59:59',
-      })
-      const res = await api.get(`/camera/recordings?${params}`)
-      setRecordings(res.data)
-      setLinks([])
+      if (isElectron() && window.electronAPI?.cameraLocalRecordingsByDate) {
+        // Electron: lokalis fajlrendszerben keres
+        const results = await window.electronAPI.cameraLocalRecordingsByDate(startDate, endDate)
+        setLocalRecordings(results)
+        setServerRecordings([])
+      } else {
+        // Bongeszo: szerver API — branchId-t nem kerdezzuk (admin lekeres)
+        const params = new URLSearchParams({
+          branchId: '', // TODO: branch selector
+          start: startDate + 'T00:00:00',
+          end: endDate + 'T23:59:59',
+        })
+        const res = await api.get(`/camera/recordings?${params}`)
+        setServerRecordings(res.data)
+        setLocalRecordings([])
+      }
     } catch (err) {
       console.error('Kereses sikertelen:', err)
     } finally {
@@ -52,17 +63,15 @@ export default function CameraPlaybackPage() {
     }
   }
 
-  const searchByReceipt = async () => {
-    if (!receiptNumber) return
-    setLoading(true)
+  const playLocalFile = async (filePath: string) => {
+    if (!window.electronAPI?.cameraLocalReadFile) return
     try {
-      const res = await api.get(`/camera/recordings/by-receipt/${receiptNumber}`)
-      setLinks(res.data)
-      setRecordings([])
+      const base64 = await window.electronAPI.cameraLocalReadFile(filePath)
+      if (base64) {
+        setSelectedVideo(`data:video/webm;base64,${base64}`)
+      }
     } catch (err) {
-      console.error('Kereses sikertelen:', err)
-    } finally {
-      setLoading(false)
+      console.error('Lejatszas sikertelen:', err)
     }
   }
 
@@ -77,134 +86,130 @@ export default function CameraPlaybackPage() {
     return new Date(dateStr).toLocaleString('hu-HU')
   }
 
-  const statusBadgeClass = (status: string) => {
-    if (status === 'COMPLETED') return 'bg-primary text-primary-foreground'
-    if (status === 'RECORDING') return 'bg-destructive text-destructive-foreground'
-    return 'bg-secondary text-secondary-foreground'
-  }
+  const hasResults = localRecordings.length > 0 || serverRecordings.length > 0
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold flex items-center gap-2">
         <PlayCircle className="h-6 w-6" />
         Felvetel visszajatszas
+        {isElectron() && <span className="text-sm font-normal text-muted-foreground">(lokalis)</span>}
       </h1>
 
       {/* Search controls */}
       <div className="rounded-lg border bg-card shadow-sm">
         <div className="p-4 pb-2">
-          <h3 className="text-lg font-semibold">Kereses</h3>
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Kereses datum szerint
+          </h3>
         </div>
-        <div className="p-4 space-y-4">
-          <div className="flex gap-2">
+        <div className="p-4">
+          <div className="flex gap-3 items-end">
+            <div>
+              <label className="text-sm font-medium">Kezdo datum</label>
+              <input
+                className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
+                type="date"
+                value={startDate}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setStartDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Zaro datum</label>
+              <input
+                className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
+                type="date"
+                value={endDate}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEndDate(e.target.value)}
+              />
+            </div>
             <button
-              className={`inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium ${
-                searchMode === 'date'
-                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                  : 'border hover:bg-muted'
-              } disabled:opacity-50`}
-              onClick={() => setSearchMode('date')}
+              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              onClick={searchByDate}
+              disabled={loading || !startDate || !endDate}
             >
-              <Calendar className="h-4 w-4 mr-2" />
-              Datum szerint
-            </button>
-            <button
-              className={`inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium ${
-                searchMode === 'receipt'
-                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                  : 'border hover:bg-muted'
-              } disabled:opacity-50`}
-              onClick={() => setSearchMode('receipt')}
-            >
-              <Receipt className="h-4 w-4 mr-2" />
-              Bizonylatszam szerint
+              <Search className="h-4 w-4 mr-2" />
+              Kereses
             </button>
           </div>
-
-          {searchMode === 'date' ? (
-            <div className="flex gap-3 items-end">
-              <div>
-                <label className="text-sm font-medium">Iroda ID</label>
-                <input
-                  className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
-                  value={branchId}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBranchId(e.target.value)}
-                  placeholder="Branch UUID"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Kezdo datum</label>
-                <input
-                  className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
-                  type="date"
-                  value={startDate}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setStartDate(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Zaro datum</label>
-                <input
-                  className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
-                  type="date"
-                  value={endDate}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEndDate(e.target.value)}
-                />
-              </div>
-              <button
-                className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                onClick={searchByDate}
-                disabled={loading}
-              >
-                <Search className="h-4 w-4 mr-2" />
-                Kereses
-              </button>
-            </div>
-          ) : (
-            <div className="flex gap-3 items-end">
-              <div className="flex-1">
-                <label className="text-sm font-medium">Bizonylatszam</label>
-                <input
-                  className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
-                  value={receiptNumber}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setReceiptNumber(e.target.value)}
-                  placeholder="pl. BIZ-2026-001234"
-                />
-              </div>
-              <button
-                className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                onClick={searchByReceipt}
-                disabled={loading}
-              >
-                <Search className="h-4 w-4 mr-2" />
-                Kereses
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Results */}
-      {recordings.length > 0 && (
+      {/* Video player */}
+      {selectedVideo && (
+        <div className="rounded-lg border bg-card shadow-sm">
+          <div className="p-4 pb-2">
+            <h3 className="text-lg font-semibold">Lejatszas</h3>
+          </div>
+          <div className="p-4">
+            <video
+              src={selectedVideo}
+              controls
+              className="w-full rounded-lg bg-black"
+              style={{ maxHeight: '480px' }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Lokalis felvetelek (Electron) */}
+      {localRecordings.length > 0 && (
         <div className="rounded-lg border bg-card shadow-sm">
           <div className="p-4 pb-2">
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <FileVideo className="h-5 w-5" />
-              Felvetelek ({recordings.length})
+              Lokalis felvetelek ({localRecordings.length})
             </h3>
           </div>
           <div className="p-4">
             <div className="space-y-2">
-              {recordings.map((rec) => (
+              {localRecordings.map((rec, i) => (
+                <div key={i} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <div className="space-y-1">
+                    <p className="font-medium">Tranzakcio: {rec.transactionId}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {rec.date} -- {formatDate(rec.createdAt)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <p className="text-sm text-muted-foreground">{formatFileSize(rec.fileSizeBytes)}</p>
+                    <button
+                      className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                      onClick={() => playLocalFile(rec.filePath)}
+                    >
+                      <PlayCircle className="h-4 w-4 mr-1" />
+                      Lejatszas
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Szerver felvetelek (bongeszo) */}
+      {serverRecordings.length > 0 && (
+        <div className="rounded-lg border bg-card shadow-sm">
+          <div className="p-4 pb-2">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <FileVideo className="h-5 w-5" />
+              Szerveren tarolt felvetelek ({serverRecordings.length})
+            </h3>
+          </div>
+          <div className="p-4">
+            <div className="space-y-2">
+              {serverRecordings.map((rec) => (
                 <div key={rec.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{rec.cameraId}</span>
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadgeClass(rec.status)}`}>
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        rec.status === 'COMPLETED' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
+                      }`}>
                         {rec.status}
                       </span>
-                      {rec.uploadedToServer && (
-                        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border bg-transparent">Feltoltve</span>
-                      )}
                     </div>
                     <p className="text-sm text-muted-foreground">
                       {formatDate(rec.startTime)} -- {formatDate(rec.endTime)}
@@ -213,7 +218,6 @@ export default function CameraPlaybackPage() {
                   <div className="text-right">
                     <p className="text-sm">{formatFileSize(rec.fileSizeBytes)}</p>
                     <p className="text-xs text-muted-foreground">{rec.linkedTransactions} tranzakcio</p>
-                    <p className="text-xs text-muted-foreground">Lejar: {rec.expiresAt}</p>
                   </div>
                 </div>
               ))}
@@ -222,32 +226,9 @@ export default function CameraPlaybackPage() {
         </div>
       )}
 
-      {links.length > 0 && (
-        <div className="rounded-lg border bg-card shadow-sm">
-          <div className="p-4 pb-2">
-            <h3 className="text-lg font-semibold">Tranzakcio linkek ({links.length})</h3>
-          </div>
-          <div className="p-4">
-            <div className="space-y-2">
-              {links.map((link) => (
-                <div key={link.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div>
-                    <p className="font-medium">Bizonylat: {link.receiptNumber}</p>
-                    <p className="text-sm text-muted-foreground">{formatDate(link.transactionTime)}</p>
-                  </div>
-                  <div className="text-right text-sm text-muted-foreground">
-                    Frame offset: {link.frameOffsetSeconds}s
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {!loading && recordings.length === 0 && links.length === 0 && (
+      {!loading && !hasResults && (
         <div className="text-center py-12 text-muted-foreground">
-          Hasznalja a keresot felvetelek megjelenitisehez
+          Hasznalja a keresot felvetelek megjelenitesehez
         </div>
       )}
     </div>

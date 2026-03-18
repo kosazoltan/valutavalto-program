@@ -54,16 +54,80 @@ api.interceptors.request.use(
   }
 )
 
-// Response interceptor - handle errors
+// Token refresh state — megakadályozza a párhuzamos refresh kéréseket
+let isRefreshing = false
+let failedQueue: Array<{
+  resolve: (token: string) => void
+  reject: (error: unknown) => void
+}> = []
+
+function processQueue(error: unknown, token: string | null) {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (token) resolve(token)
+    else reject(error)
+  })
+  failedQueue = []
+}
+
+// Response interceptor - handle errors + token refresh + 403 kezelés
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
-  (error: AxiosError) => {
-    if (error.response?.status === 401) {
-      // Token expired or invalid
-      useAuthStore.getState().logout()
-      window.location.href = '/login'
+  async (error: AxiosError) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
+
+    // 401 — token lejárt: próbáljuk refreshelni
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      // Login endpoint-ra ne próbáljunk refresh-t
+      if (originalRequest.url?.includes('/auth/login')) {
+        return Promise.reject(error)
+      }
+
+      if (isRefreshing) {
+        // Már fut egy refresh — várakozunk rá
+        return new Promise((resolve, reject) => {
+          failedQueue.push({
+            resolve: (token: string) => {
+              if (originalRequest.headers) {
+                originalRequest.headers.Authorization = `Bearer ${token}`
+              }
+              resolve(api(originalRequest))
+            },
+            reject,
+          })
+        })
+      }
+
+      originalRequest._retry = true
+      isRefreshing = true
+
+      try {
+        const response = await api.post<{ token: string }>('/auth/refresh')
+        const newToken = response.data.token
+        const authStore = useAuthStore.getState()
+        if (authStore.worker) {
+          authStore.login(authStore.worker, newToken, authStore.tokenType ?? 'Bearer', authStore.expiresAt ?? '')
+        }
+        processQueue(null, newToken)
+        if (originalRequest.headers) {
+          originalRequest.headers.Authorization = `Bearer ${newToken}`
+        }
+        return api(originalRequest)
+      } catch (refreshError) {
+        processQueue(refreshError, null)
+        // Refresh is sikertelen — kijelentkeztetés
+        useAuthStore.getState().logout()
+        window.location.href = '/login'
+        return Promise.reject(refreshError)
+      } finally {
+        isRefreshing = false
+      }
     }
-    
+
+    // 403 — jogosultság hiány (NEM logout, hanem informatív hiba)
+    if (error.response?.status === 403) {
+      console.warn('403 Forbidden:', originalRequest.url, '— Nincs jogosultság ehhez a művelethez')
+    }
+
     // Log error for debugging
     console.error('API Error:', {
       url: error.config?.url,
@@ -71,7 +135,7 @@ api.interceptors.response.use(
       status: error.response?.status,
       message: error.message,
     })
-    
+
     return Promise.reject(error)
   }
 )
@@ -3408,23 +3472,35 @@ export const ertektarApi = {
 
 // --- Electron token persist (ha Electron-ban fut) ---
 
-/** Token mentése Electron config store-ba (offline login restore-hoz) */
+/** Token mentése Electron-ban — DPAPI/Keychain titkosítással (ha elérhető) */
 export async function persistToken(token: string): Promise<void> {
   if (window.electronAPI) {
-    await window.electronAPI.setConfig('auth_token', token)
+    // Titkosított tárolás (safeStorage) — fallback: config store
+    if (window.electronAPI.secureStoreToken) {
+      await window.electronAPI.secureStoreToken(token)
+    } else {
+      await window.electronAPI.setConfig('auth_token', token)
+    }
   }
 }
 
-/** Token törlése Electron config store-ból */
+/** Token törlése Electron-ból (titkosított + plaintext is) */
 export async function clearPersistedToken(): Promise<void> {
   if (window.electronAPI) {
-    await window.electronAPI.deleteConfig('auth_token')
+    if (window.electronAPI.secureClearToken) {
+      await window.electronAPI.secureClearToken()
+    } else {
+      await window.electronAPI.deleteConfig('auth_token')
+    }
   }
 }
 
-/** Token betöltése Electron config store-ból (app induláskor) */
+/** Token betöltése Electron-ból — titkosított (safeStorage) elsőbbséggel */
 export async function loadPersistedToken(): Promise<string | null> {
   if (window.electronAPI) {
+    if (window.electronAPI.secureLoadToken) {
+      return window.electronAPI.secureLoadToken()
+    }
     return window.electronAPI.getConfig('auth_token')
   }
   return null

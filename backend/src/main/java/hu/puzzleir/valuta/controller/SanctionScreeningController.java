@@ -38,9 +38,11 @@ public class SanctionScreeningController {
     private final SanctionEntryRepository sanctionEntryRepository;
 
     /**
-     * Ügyfél szűrés — tranzakció előtt KÖTELEZŐ.
+     * Ügyfél szűrés — tranzakció előtt KÖTELEZŐ (AML compliance).
+     * Minden bejelentkezett pénztáros végrehajthatja.
      */
     @PostMapping("/screen")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<SanctionScreeningResult> screenCustomer(
             @Valid @RequestBody SanctionScreeningRequest request,
             Principal principal
@@ -96,6 +98,7 @@ public class SanctionScreeningController {
      * Szankciós lista státusz — utolsó frissítés + aktív bejegyzések száma.
      */
     @GetMapping("/status")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<SanctionStatusResponse> getStatus() {
         LocalDate lastUpdate = screeningService.getLastUpdateDate();
         long activeCount = screeningService.getActiveCount();

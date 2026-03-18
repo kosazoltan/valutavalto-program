@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, protocol, net } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, protocol, net, safeStorage } from 'electron';
 import log from 'electron-log/main';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -67,7 +67,10 @@ function createWindow(): void {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: false, // TODO: sandbox: true — jelenleg az app:// protocol és sql.js WASM miatt szükséges false
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      experimentalFeatures: false,
     },
   });
 
@@ -101,6 +104,21 @@ function createWindow(): void {
     if (input.key === 'F12' && input.type === 'keyDown') {
       mainWindow?.webContents.toggleDevTools();
     }
+  });
+
+  // Security: blokkolja az ismeretlen URL-ekre való navigálást (XSS/phishing védelem)
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    const allowed = ['app://localhost', 'http://localhost:3000'];
+    if (!allowed.some(origin => url.startsWith(origin))) {
+      log.warn(`[Security] Blocked navigation to: ${url}`);
+      event.preventDefault();
+    }
+  });
+
+  // Security: blokkolja a popup ablakokat (XSS redirect védelem)
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    log.warn(`[Security] Blocked popup window: ${url}`);
+    return { action: 'deny' };
   });
 
   mainWindow.on('closed', () => {
@@ -221,6 +239,57 @@ ipcMain.handle('get-cached-branch-status-timestamp', async () => {
 
 ipcMain.handle('get-cached-rates', async () => {
   return getCachedRates();
+});
+
+// --- Secure Token Storage (safeStorage — Windows DPAPI / macOS Keychain / Linux libsecret) ---
+
+ipcMain.handle('secure-store-token', async (_event, token: string): Promise<boolean> => {
+  try {
+    if (!safeStorage.isEncryptionAvailable()) {
+      log.warn('[SafeStorage] Encryption not available, falling back to config store');
+      setConfig('auth_token', token);
+      return true;
+    }
+    const encrypted = safeStorage.encryptString(token);
+    setConfig('auth_token_encrypted', encrypted.toString('base64'));
+    // Régi plaintext token törlése (migráció)
+    deleteConfig('auth_token');
+    return true;
+  } catch (err) {
+    log.error('[SafeStorage] store-token error:', err);
+    return false;
+  }
+});
+
+ipcMain.handle('secure-load-token', async (): Promise<string | null> => {
+  try {
+    // Először a titkosított tokent próbáljuk
+    const encrypted = getConfig('auth_token_encrypted');
+    if (encrypted && safeStorage.isEncryptionAvailable()) {
+      const buffer = Buffer.from(encrypted, 'base64');
+      return safeStorage.decryptString(buffer);
+    }
+    // Fallback: régi plaintext token (migráció)
+    const plaintext = getConfig('auth_token');
+    if (plaintext) {
+      log.info('[SafeStorage] Migrating plaintext token to encrypted storage');
+      if (safeStorage.isEncryptionAvailable()) {
+        const enc = safeStorage.encryptString(plaintext);
+        setConfig('auth_token_encrypted', enc.toString('base64'));
+        deleteConfig('auth_token');
+      }
+      return plaintext;
+    }
+    return null;
+  } catch (err) {
+    log.error('[SafeStorage] load-token error:', err);
+    return null;
+  }
+});
+
+ipcMain.handle('secure-clear-token', async (): Promise<void> => {
+  deleteConfig('auth_token_encrypted');
+  deleteConfig('auth_token');
 });
 
 // --- App Lifecycle ---

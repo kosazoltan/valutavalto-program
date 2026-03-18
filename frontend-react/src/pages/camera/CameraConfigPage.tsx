@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { Settings, Plus, Trash2, Save } from 'lucide-react'
 import { api } from '../../services/api'
 
+const isElectron = () => !!window.electronAPI
+
 interface CameraConfigItem {
   id?: string
   branchId: string
@@ -20,15 +22,32 @@ export default function CameraConfigPage() {
   const [configs, setConfigs] = useState<CameraConfigItem[]>([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<CameraConfigItem | null>(null)
+  const [localDevices, setLocalDevices] = useState<MediaDeviceInfo[]>([])
 
   useEffect(() => {
     fetchConfigs()
+    if (isElectron()) {
+      // Lokalis kamerak detektalasa
+      navigator.mediaDevices.enumerateDevices().then(devices => {
+        setLocalDevices(devices.filter(d => d.kind === 'videoinput'))
+      })
+    }
   }, [])
 
   const fetchConfigs = async () => {
     try {
-      const res = await api.get('/camera/admin/configs')
-      setConfigs(res.data)
+      if (isElectron()) {
+        // Electron: lokalis konfiguracio a config store-bol
+        const configJson = await window.electronAPI!.getConfig('camera_configs')
+        if (configJson) {
+          setConfigs(JSON.parse(configJson))
+        } else {
+          setConfigs([])
+        }
+      } else {
+        const res = await api.get('/camera/admin/configs')
+        setConfigs(res.data)
+      }
     } catch (err) {
       console.error('Config lekeres sikertelen:', err)
     } finally {
@@ -38,11 +57,23 @@ export default function CameraConfigPage() {
 
   const saveConfig = async (config: CameraConfigItem) => {
     try {
-      const res = await api.post('/camera/admin/configs', config)
-      if (res.data) {
-        setEditing(null)
+      if (isElectron()) {
+        // Electron: lokalis mentes
+        const existing = [...configs]
+        if (config.id) {
+          const idx = existing.findIndex(c => c.id === config.id)
+          if (idx >= 0) existing[idx] = config
+        } else {
+          config.id = crypto.randomUUID()
+          existing.push(config)
+        }
+        await window.electronAPI!.setConfig('camera_configs', JSON.stringify(existing))
+        setConfigs(existing)
+      } else {
+        await api.post('/camera/admin/configs', config)
         fetchConfigs()
       }
+      setEditing(null)
     } catch (err) {
       console.error('Mentes sikertelen:', err)
     }
@@ -51,8 +82,14 @@ export default function CameraConfigPage() {
   const deleteConfig = async (id: string) => {
     if (!confirm('Biztosan torli a kamera konfiguraciot?')) return
     try {
-      await api.delete(`/camera/admin/configs/${id}`)
-      fetchConfigs()
+      if (isElectron()) {
+        const updated = configs.filter(c => c.id !== id)
+        await window.electronAPI!.setConfig('camera_configs', JSON.stringify(updated))
+        setConfigs(updated)
+      } else {
+        await api.delete(`/camera/admin/configs/${id}`)
+        fetchConfigs()
+      }
     } catch (err) {
       console.error('Torles sikertelen:', err)
     }
@@ -60,8 +97,8 @@ export default function CameraConfigPage() {
 
   const newConfig = (): CameraConfigItem => ({
     branchId: '',
-    cameraId: '',
-    cameraName: '',
+    cameraId: localDevices[0]?.deviceId || '',
+    cameraName: localDevices[0]?.label || 'Kamera 1',
     deviceIndex: 0,
     resolutionWidth: 640,
     resolutionHeight: 480,
@@ -77,6 +114,7 @@ export default function CameraConfigPage() {
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Settings className="h-6 w-6" />
           Kamera konfiguracio
+          {isElectron() && <span className="text-sm font-normal text-muted-foreground">(lokalis)</span>}
         </h1>
         <button
           className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
@@ -87,6 +125,24 @@ export default function CameraConfigPage() {
         </button>
       </div>
 
+      {/* Electron: lokalis kamerak listaja */}
+      {isElectron() && localDevices.length > 0 && (
+        <div className="rounded-lg border bg-card shadow-sm">
+          <div className="p-4 pb-2">
+            <h3 className="text-lg font-semibold">Eszlelt lokalis kamerak</h3>
+          </div>
+          <div className="p-4">
+            <div className="space-y-1">
+              {localDevices.map((d, i) => (
+                <p key={d.deviceId || i} className="text-sm text-muted-foreground">
+                  {d.label || `Kamera ${i + 1}`} <span className="text-xs">({d.deviceId?.slice(0, 12)}...)</span>
+                </p>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Edit form */}
       {editing && (
         <div className="rounded-lg border bg-card shadow-sm">
@@ -96,23 +152,6 @@ export default function CameraConfigPage() {
           <div className="p-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium">Iroda ID (Branch UUID)</label>
-                <input
-                  className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
-                  value={editing.branchId}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditing({ ...editing, branchId: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Kamera ID</label>
-                <input
-                  className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
-                  value={editing.cameraId}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditing({ ...editing, cameraId: e.target.value })}
-                  placeholder="pl. cam1"
-                />
-              </div>
-              <div>
                 <label className="text-sm font-medium">Kamera neve</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
@@ -121,12 +160,12 @@ export default function CameraConfigPage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Eszkoz index</label>
+                <label className="text-sm font-medium">FPS</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   type="number"
-                  value={editing.deviceIndex}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditing({ ...editing, deviceIndex: parseInt(e.target.value, 10) || 0 })}
+                  value={editing.fps}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditing({ ...editing, fps: parseInt(e.target.value, 10) || 5 })}
                 />
               </div>
               <div>
@@ -145,24 +184,6 @@ export default function CameraConfigPage() {
                   type="number"
                   value={editing.resolutionHeight}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditing({ ...editing, resolutionHeight: parseInt(e.target.value, 10) || 480 })}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">FPS</label>
-                <input
-                  className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
-                  type="number"
-                  value={editing.fps}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditing({ ...editing, fps: parseInt(e.target.value, 10) || 5 })}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">JPEG minoseg (%)</label>
-                <input
-                  className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
-                  type="number"
-                  value={editing.jpegQuality}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditing({ ...editing, jpegQuality: parseInt(e.target.value, 10) || 70 })}
                 />
               </div>
               <div className="col-span-2">
@@ -213,7 +234,7 @@ export default function CameraConfigPage() {
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    {config.resolutionWidth}x{config.resolutionHeight} @ {config.fps} FPS | JPEG: {config.jpegQuality}%
+                    {config.resolutionWidth}x{config.resolutionHeight} @ {config.fps} FPS
                   </p>
                   <p className="text-xs text-muted-foreground">Utvonal: {config.localStoragePath}</p>
                 </div>

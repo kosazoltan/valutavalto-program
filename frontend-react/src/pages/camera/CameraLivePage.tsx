@@ -2,29 +2,48 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Camera, RefreshCw, Wifi, WifiOff } from 'lucide-react'
 import { api } from '../../services/api'
 
+const isElectron = () => !!window.electronAPI
+
 interface CameraStatus {
   cameraId: string
   cameraName?: string
   recording: boolean
   connected: boolean
-  currentSegmentFile?: string
 }
 
 export default function CameraLivePage() {
   const [cameras, setCameras] = useState<CameraStatus[]>([])
   const [selectedCamera, setSelectedCamera] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
   const imgRef = useRef<HTMLImageElement>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchCameraStatus = useCallback(async () => {
     try {
-      const res = await api.get('/camera/status')
-      if (res.data) {
-        const data = res.data
-        setCameras(data)
-        if (data.length > 0 && !selectedCamera) {
-          setSelectedCamera(data[0].cameraId)
+      if (isElectron()) {
+        // Electron: lokalis kamerak listazasa WebRTC-n keresztul
+        const devices = await navigator.mediaDevices.enumerateDevices()
+        const videoCams = devices.filter(d => d.kind === 'videoinput')
+        setCameras(videoCams.map((d, i) => ({
+          cameraId: d.deviceId || `cam-${i}`,
+          cameraName: d.label || `Kamera ${i + 1}`,
+          recording: false,
+          connected: true,
+        })))
+        if (videoCams.length > 0 && !selectedCamera) {
+          const first = videoCams[0]
+          if (first) setSelectedCamera(first.deviceId || 'cam-0')
+        }
+      } else {
+        // Bongeszo: szerver API
+        const res = await api.get('/camera/status')
+        if (res.data) {
+          setCameras(res.data)
+          if (res.data.length > 0 && !selectedCamera) {
+            setSelectedCamera(res.data[0].cameraId)
+          }
         }
       }
     } finally {
@@ -36,18 +55,51 @@ export default function CameraLivePage() {
     void fetchCameraStatus()
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
+      if (localStream) localStream.getTracks().forEach(t => t.stop())
     }
   }, [fetchCameraStatus])
 
+  // Electron: lokalis kamerakep WebRTC-n keresztul
   useEffect(() => {
-    if (selectedCamera) {
-      // Refresh frame every 200ms (5 FPS)
-      intervalRef.current = setInterval(() => {
-        if (imgRef.current) {
-          imgRef.current.src = `/api/v1/camera/stream/${selectedCamera}?t=${Date.now()}`
+    if (!isElectron() || !selectedCamera) return
+
+    let stream: MediaStream | null = null
+    const startStream = async () => {
+      try {
+        // Elozo stream leallitasa
+        if (localStream) localStream.getTracks().forEach(t => t.stop())
+
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: selectedCamera.startsWith('cam-')
+            ? true
+            : { deviceId: { exact: selectedCamera } },
+        })
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
         }
-      }, 200)
+        setLocalStream(stream)
+      } catch (err) {
+        console.error('Kamera stream hiba:', err)
+      }
     }
+    startStream()
+
+    return () => {
+      if (stream) stream.getTracks().forEach(t => t.stop())
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCamera])
+
+  // Bongeszo: szerver stream (JPEG polling)
+  useEffect(() => {
+    if (isElectron() || !selectedCamera) return
+
+    intervalRef.current = setInterval(() => {
+      if (imgRef.current) {
+        imgRef.current.src = `/api/v1/camera/stream/${selectedCamera}?t=${Date.now()}`
+      }
+    }, 200)
+
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
@@ -59,6 +111,7 @@ export default function CameraLivePage() {
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Camera className="h-6 w-6" />
           Elo kamerakep
+          {isElectron() && <span className="text-sm font-normal text-muted-foreground">(lokalis)</span>}
         </h1>
         <button
           className="inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
@@ -89,16 +142,12 @@ export default function CameraLivePage() {
                 <div className="p-3 flex items-center justify-between">
                   <div>
                     <p className="font-medium">{cam.cameraName || cam.cameraId}</p>
-                    <p className="text-xs text-muted-foreground">{cam.cameraId}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     {cam.connected ? (
                       <Wifi className="h-4 w-4 text-green-500" />
                     ) : (
                       <WifiOff className="h-4 w-4 text-red-500" />
-                    )}
-                    {cam.recording && (
-                      <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-destructive text-destructive-foreground">REC</span>
                     )}
                   </div>
                 </div>
@@ -115,7 +164,7 @@ export default function CameraLivePage() {
                 {selectedCamera ? (
                   <>
                     <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-                    ELO -- {selectedCamera}
+                    ELO
                   </>
                 ) : (
                   'Valasszon kamerat'
@@ -125,15 +174,27 @@ export default function CameraLivePage() {
             <div className="p-4">
               {selectedCamera ? (
                 <div className="relative bg-black rounded-lg overflow-hidden" style={{ aspectRatio: '4/3' }}>
-                  <img
-                    ref={imgRef}
-                    src={`/api/v1/camera/stream/${selectedCamera}?t=${Date.now()}`}
-                    alt="Elo kamerakep"
-                    className="w-full h-full object-contain"
-                    onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-                      (e.target as HTMLImageElement).style.display = 'none'
-                    }}
-                  />
+                  {isElectron() ? (
+                    // Electron: WebRTC video stream
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    // Bongeszo: JPEG polling
+                    <img
+                      ref={imgRef}
+                      src={`/api/v1/camera/stream/${selectedCamera}?t=${Date.now()}`}
+                      alt="Elo kamerakep"
+                      className="w-full h-full object-contain"
+                      onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                        (e.target as HTMLImageElement).style.display = 'none'
+                      }}
+                    />
+                  )}
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-64 bg-muted rounded-lg">

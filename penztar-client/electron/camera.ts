@@ -133,3 +133,131 @@ ipcMain.handle('camera-list-recordings', async (
 
   return collectFiles(CAMERA_DIR);
 });
+
+// --- Lokális kamera statisztikák és keresés ---
+
+function getDirSize(dirPath: string): number {
+  if (!fs.existsSync(dirPath)) return 0;
+  let size = 0;
+  const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dirPath, entry.name);
+    if (entry.isDirectory()) {
+      size += getDirSize(fullPath);
+    } else if (entry.isFile()) {
+      try { size += fs.statSync(fullPath).size; } catch { /* skip */ }
+    }
+  }
+  return size;
+}
+
+// Lokális tárhely statisztika
+ipcMain.handle('camera-local-storage-stats', async () => {
+  if (!fs.existsSync(CAMERA_DIR)) {
+    return { totalUsageBytes: 0, availableSpaceBytes: 0, totalRecordings: 0, oldestDate: null, newestDate: null };
+  }
+
+  const totalUsageBytes = getDirSize(CAMERA_DIR);
+  const allFiles = collectFiles(CAMERA_DIR);
+  const dateDirs = listDirectories(CAMERA_DIR).sort();
+
+  let availableSpaceBytes = 0;
+  try {
+    const stats = fs.statfsSync(CAMERA_DIR);
+    availableSpaceBytes = Number(stats.bavail) * Number(stats.bsize);
+  } catch {
+    // statfsSync nem minden platformon elérhető
+  }
+
+  return {
+    totalUsageBytes,
+    availableSpaceBytes,
+    totalRecordings: allFiles.length,
+    oldestDate: dateDirs.length > 0 ? dateDirs[0] : null,
+    newestDate: dateDirs.length > 0 ? dateDirs[dateDirs.length - 1] : null,
+  };
+});
+
+// Felvételek listázása dátumtartomány szerint
+ipcMain.handle('camera-local-recordings-by-date', async (
+  _event,
+  dateFrom: string,
+  dateTo: string,
+) => {
+  if (!fs.existsSync(CAMERA_DIR)) return [];
+
+  const from = new Date(dateFrom);
+  const to = new Date(dateTo);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return [];
+
+  const results: Array<{
+    date: string;
+    transactionId: string;
+    filePath: string;
+    fileSizeBytes: number;
+    createdAt: string;
+  }> = [];
+
+  const dateDirs = listDirectories(CAMERA_DIR);
+  for (const dateDir of dateDirs) {
+    const dirDate = new Date(dateDir);
+    if (Number.isNaN(dirDate.getTime())) continue;
+    if (dirDate < from || dirDate > to) continue;
+
+    const txDirs = listDirectories(path.join(CAMERA_DIR, dateDir));
+    for (const txDir of txDirs) {
+      const files = collectFiles(path.join(CAMERA_DIR, dateDir, txDir));
+      for (const filePath of files) {
+        try {
+          const stat = fs.statSync(filePath);
+          results.push({
+            date: dateDir,
+            transactionId: txDir,
+            filePath,
+            fileSizeBytes: stat.size,
+            createdAt: stat.birthtime.toISOString(),
+          });
+        } catch { /* skip */ }
+      }
+    }
+  }
+
+  return results;
+});
+
+// Felvétel olvasása base64-ben (lejátszáshoz / távoli megtekintéshez)
+ipcMain.handle('camera-local-read-file', async (
+  _event,
+  filePath: string,
+): Promise<string | null> => {
+  const resolved = path.resolve(filePath);
+  if (!resolved.startsWith(path.resolve(CAMERA_DIR))) return null; // path traversal védelem
+  if (!fs.existsSync(resolved)) return null;
+  return fs.readFileSync(resolved).toString('base64');
+});
+
+// Lejárt felvételek takarítása (retentionDays napnál régebbiek)
+ipcMain.handle('camera-local-cleanup', async (
+  _event,
+  retentionDays: number,
+): Promise<{ deletedCount: number }> => {
+  if (!fs.existsSync(CAMERA_DIR)) return { deletedCount: 0 };
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - retentionDays);
+  let deletedCount = 0;
+
+  for (const dateDir of listDirectories(CAMERA_DIR)) {
+    const dirDate = new Date(dateDir);
+    if (Number.isNaN(dirDate.getTime()) || dirDate >= cutoff) continue;
+
+    const dirPath = path.join(CAMERA_DIR, dateDir);
+    const fileCount = collectFiles(dirPath).length;
+    try {
+      fs.rmSync(dirPath, { recursive: true, force: true });
+      deletedCount += fileCount;
+    } catch { /* skip */ }
+  }
+
+  return { deletedCount };
+});

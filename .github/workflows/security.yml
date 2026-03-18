@@ -5,6 +5,9 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  schedule:
+    # Heti biztonsagi scan (hetfo 06:00 UTC)
+    - cron: '0 6 * * 1'
 
 jobs:
   gitleaks:
@@ -32,6 +35,48 @@ jobs:
 
       - name: Build backend
         run: cd backend && mvn -B package --no-transfer-progress -DskipTests
+
+  backend-dependency-check:
+    name: Backend OWASP Dependency Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - name: OWASP Dependency Check
+        run: |
+          cd backend && mvn -B org.owasp:dependency-check-maven:check \
+            -DfailBuildOnCVSS=9 \
+            -DsuppressionFile=owasp-suppressions.xml \
+            --no-transfer-progress || true
+      - name: Upload OWASP Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: owasp-report
+          path: backend/target/dependency-check-report.html
+          retention-days: 14
+
+  npm-audit:
+    name: npm audit (frontend + penztar-client)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Frontend npm audit
+        run: |
+          cd frontend-react && npm ci --legacy-peer-deps
+          npm audit --audit-level=high || true
+
+      - name: Penztar-client npm audit
+        run: |
+          cd penztar-client && npm ci --legacy-peer-deps
+          npm audit --audit-level=high || true
 
   penztar-lint:
     name: penztar-client Test + Lint + TypeCheck + IPC Contract

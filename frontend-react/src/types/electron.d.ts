@@ -83,10 +83,26 @@ export interface ElectronAPI {
     updated_at: string;
   }>>;
 
-  // --- Kamera ---
+  // --- Kamera (lokális Electron rögzítés + keresés) ---
   cameraSaveRecording(transactionId: string, buffer: ArrayBuffer, ext: string): Promise<string>;
   cameraExportToUsb(dateFrom: string, dateTo: string): Promise<{ success: boolean; exported: number; error?: string }>;
   cameraListRecordings(transactionId?: string): Promise<string[]>;
+  cameraLocalStorageStats?(): Promise<{
+    totalUsageBytes: number;
+    availableSpaceBytes: number;
+    totalRecordings: number;
+    oldestDate: string | null;
+    newestDate: string | null;
+  }>;
+  cameraLocalRecordingsByDate?(dateFrom: string, dateTo: string): Promise<Array<{
+    date: string;
+    transactionId: string;
+    filePath: string;
+    fileSizeBytes: number;
+    createdAt: string;
+  }>>;
+  cameraLocalReadFile?(filePath: string): Promise<string | null>;
+  cameraLocalCleanup?(retentionDays: number): Promise<{ deletedCount: number }>;
 
   // --- Okmány szkenner ---
   scanSaveDocument(
@@ -96,6 +112,11 @@ export interface ElectronAPI {
   ): Promise<{ path: string; encrypted: boolean }>;
   scanGetDocument(filepath: string): Promise<string>;
   scanListDocuments(transactionId: string): Promise<string[]>;
+
+  // --- Secure Token Storage (DPAPI/Keychain titkositott) ---
+  secureStoreToken?(token: string): Promise<boolean>;
+  secureLoadToken?(): Promise<string | null>;
+  secureClearToken?(): Promise<void>;
 
   // --- App ---
   getAppVersion(): Promise<string>;

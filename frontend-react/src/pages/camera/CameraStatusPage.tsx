@@ -1,43 +1,37 @@
 import { useState, useEffect } from 'react'
-import { HardDrive, RefreshCw, Trash2, Camera } from 'lucide-react'
+import { HardDrive, RefreshCw, Trash2 } from 'lucide-react'
 import { api } from '../../services/api'
 import { toast } from '../../components/ui/toaster'
+
+const isElectron = () => !!window.electronAPI
 
 interface StorageStats {
   totalUsageBytes: number
   availableSpaceBytes: number
   totalRecordings: number
-}
-
-interface CameraStatus {
-  cameraId: string
-  cameraName?: string
-  recording: boolean
-  connected: boolean
+  oldestDate?: string | null
+  newestDate?: string | null
 }
 
 export default function CameraStatusPage() {
   const [stats, setStats] = useState<StorageStats | null>(null)
-  const [cameras, setCameras] = useState<CameraStatus[]>([])
-  const [pendingUploads, setPendingUploads] = useState(0)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchAll()
+    fetchStats()
   }, [])
 
-  const fetchAll = async () => {
+  const fetchStats = async () => {
     setLoading(true)
     try {
-      const [statsRes, cameraRes, uploadRes] = await Promise.allSettled([
-        api.get('/camera/admin/storage-stats'),
-        api.get('/camera/status'),
-        api.get('/camera/admin/upload-status'),
-      ])
-      if (statsRes.status === 'fulfilled') setStats(statsRes.value.data)
-      if (cameraRes.status === 'fulfilled') setCameras(cameraRes.value.data)
-      if (uploadRes.status === 'fulfilled') {
-        setPendingUploads(uploadRes.value.data.pendingUploads)
+      if (isElectron() && window.electronAPI?.cameraLocalStorageStats) {
+        // Electron: lokalis fajlrendszer statisztika
+        const localStats = await window.electronAPI.cameraLocalStorageStats()
+        setStats(localStats)
+      } else {
+        // Bongeszo: szerver API
+        const res = await api.get('/camera/admin/storage-stats')
+        setStats(res.data)
       }
     } catch (err) {
       console.error('Statusz lekeres sikertelen:', err)
@@ -47,13 +41,19 @@ export default function CameraStatusPage() {
   }
 
   const triggerCleanup = async () => {
-    if (!confirm('Biztosan torli a lejart felvételeket?')) return
+    const retentionDays = 50
+    if (!confirm(`Biztosan torli az ${retentionDays} napnal regebbi felveteleket?`)) return
     try {
-      const res = await api.post('/camera/admin/cleanup', {})
-      if (res.data) {
-        toast.success(`${res.data.deletedCount} felvétel törölve`)
-        fetchAll()
+      if (isElectron() && window.electronAPI?.cameraLocalCleanup) {
+        const result = await window.electronAPI.cameraLocalCleanup(retentionDays)
+        toast.success(`${result.deletedCount} felvetel torolve`)
+      } else {
+        const res = await api.post('/camera/admin/cleanup', {})
+        if (res.data) {
+          toast.success(`${res.data.deletedCount} felvetel torolve`)
+        }
       }
+      fetchStats()
     } catch (err) {
       console.error('Takaritas sikertelen:', err)
     }
@@ -65,7 +65,7 @@ export default function CameraStatusPage() {
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
   }
 
-  const usagePercent = stats
+  const usagePercent = stats && (stats.totalUsageBytes + stats.availableSpaceBytes) > 0
     ? ((stats.totalUsageBytes / (stats.totalUsageBytes + stats.availableSpaceBytes)) * 100)
     : 0
 
@@ -75,11 +75,12 @@ export default function CameraStatusPage() {
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <HardDrive className="h-6 w-6" />
           Kamera rendszer allapot
+          {isElectron() && <span className="text-sm font-normal text-muted-foreground">(lokalis)</span>}
         </h1>
         <div className="flex gap-2">
           <button
             className="inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
-            onClick={fetchAll}
+            onClick={fetchStats}
           >
             <RefreshCw className="h-4 w-4 mr-2" />
             Frissites
@@ -98,15 +99,7 @@ export default function CameraStatusPage() {
         <p>Betoltes...</p>
       ) : (
         <>
-          {/* Stats cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="rounded-lg border bg-card shadow-sm">
-              <div className="p-4">
-                <p className="text-sm text-muted-foreground">Aktiv kamerak</p>
-                <p className="text-3xl font-bold">{cameras.filter(c => c.connected).length}</p>
-                <p className="text-xs text-muted-foreground">{cameras.length} konfigurqlva</p>
-              </div>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="rounded-lg border bg-card shadow-sm">
               <div className="p-4">
                 <p className="text-sm text-muted-foreground">Felvetelek</p>
@@ -124,14 +117,14 @@ export default function CameraStatusPage() {
             </div>
             <div className="rounded-lg border bg-card shadow-sm">
               <div className="p-4">
-                <p className="text-sm text-muted-foreground">Feltoltesre var</p>
-                <p className="text-3xl font-bold">{pendingUploads}</p>
-                <p className="text-xs text-muted-foreground">szegmens</p>
+                <p className="text-sm text-muted-foreground">Idoszak</p>
+                <p className="text-lg font-bold">
+                  {stats?.oldestDate ?? '-'} -- {stats?.newestDate ?? '-'}
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Usage bar */}
           {stats && (
             <div className="rounded-lg border bg-card shadow-sm">
               <div className="p-4 pb-2">
@@ -150,41 +143,6 @@ export default function CameraStatusPage() {
               </div>
             </div>
           )}
-
-          {/* Camera list */}
-          <div className="rounded-lg border bg-card shadow-sm">
-            <div className="p-4 pb-2">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <Camera className="h-5 w-5" />
-                Kamerak allapota
-              </h3>
-            </div>
-            <div className="p-4">
-              {cameras.length === 0 ? (
-                <p className="text-muted-foreground">Nincs csatlakoztatott kamera</p>
-              ) : (
-                <div className="space-y-2">
-                  {cameras.map((cam) => (
-                    <div key={cam.cameraId} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                      <div>
-                        <p className="font-medium">{cam.cameraName || cam.cameraId}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          cam.connected ? 'bg-primary text-primary-foreground' : 'bg-destructive text-destructive-foreground'
-                        }`}>
-                          {cam.connected ? 'Csatlakozva' : 'Nincs kapcsolat'}
-                        </span>
-                        {cam.recording && (
-                          <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-destructive text-destructive-foreground">Rogzit</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
         </>
       )}
     </div>
