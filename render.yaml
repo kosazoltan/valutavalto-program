@@ -44,7 +44,7 @@ services:
 
       # CORS - Vercel frontend URL
       - key: CORS_ALLOWED_ORIGINS
-        value: "https://valutavalto.vercel.app,https://*.vercel.app"
+        value: "https://excvaluta.com,https://www.excvaluta.com,https://valutavalto.vercel.app,https://*.vercel.app"
 
       # Logging
       - key: LOG_LEVEL

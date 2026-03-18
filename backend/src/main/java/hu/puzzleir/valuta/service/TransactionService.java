@@ -117,12 +117,10 @@ public class TransactionService {
             validateDiscount(request.getDiscountPercent());
         }
 
-        // HUF összeg számítása (helper kezeli a kedvezményt is)
-        BigDecimal hufAmount = calculateBuyHufAmount(
-            request.getCurrencyAmount(),
-            rate,
-            request.getDiscountPercent()
-        );
+        BigDecimal appliedRate = resolveBuyRate(rate, request.getCurrencyAmount(), request.getCustomExchangeRate());
+        BigDecimal fullHufBeforeDiscount = request.getCurrencyAmount()
+            .multiply(appliedRate).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal hufAmount = applyBuyDiscount(fullHufBeforeDiscount, request.getDiscountPercent());
 
         // Kezelési díj szerver oldali számítás (kliens értékét felülírjuk)
         BigDecimal serverHandlingFee = handlingFeeCalculator.calculate(
@@ -145,14 +143,7 @@ public class TransactionService {
         // Bizonylat szám generálása (új szekvencia rendszer)
         String receiptNumber = receiptSequenceService.generateReceiptNumber(branchId, TransactionType.BUY);
 
-        // Alkalmazott árfolyam (discount NÉLKÜL a pre-discount hufAmount alapján)
-        BigDecimal preDiscountHufAmount = request.getCurrencyAmount()
-                .multiply(rate.getBaseBuyRate()).setScale(0, RoundingMode.HALF_UP);
-        BigDecimal appliedRate = rate.getBuyRateForAmount(preDiscountHufAmount);
-
         // Kedvezmény összeg a PRE-DISCOUNT értékből (nem a már csökkentett hufAmount-ból!)
-        BigDecimal fullHufBeforeDiscount = request.getCurrencyAmount()
-                .multiply(appliedRate).setScale(0, RoundingMode.HALF_UP);
         BigDecimal discountAmount = calculateDiscountAmount(fullHufBeforeDiscount, request.getDiscountPercent());
 
         // POS terminál integráció — bankkártyás fizetésnél
@@ -257,12 +248,10 @@ public class TransactionService {
             validateDiscount(request.getDiscountPercent());
         }
 
-        // HUF összeg számítása (helper kezeli a kedvezményt is)
-        BigDecimal hufAmount = calculateSellHufAmount(
-            request.getCurrencyAmount(),
-            rate,
-            request.getDiscountPercent()
-        );
+        BigDecimal appliedRate = resolveSellRate(rate, request.getCurrencyAmount(), request.getCustomExchangeRate());
+        BigDecimal fullHufBeforeDiscount = request.getCurrencyAmount()
+            .multiply(appliedRate).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal hufAmount = applySellDiscount(fullHufBeforeDiscount, request.getDiscountPercent());
 
         // Készlet ellenőrzése
         validateCurrencyStock(branchId, currency.getId(), request.getCurrencyAmount());
@@ -288,14 +277,7 @@ public class TransactionService {
         // Bizonylat szám generálása (új szekvencia rendszer)
         String receiptNumber = receiptSequenceService.generateReceiptNumber(branchId, TransactionType.SELL);
 
-        // Alkalmazott árfolyam (discount NÉLKÜL a pre-discount hufAmount alapján)
-        BigDecimal preDiscountHufAmount = request.getCurrencyAmount()
-                .multiply(rate.getBaseSellRate()).setScale(0, RoundingMode.HALF_UP);
-        BigDecimal appliedRate = rate.getSellRateForAmount(preDiscountHufAmount);
-
         // Kedvezmény összeg a PRE-DISCOUNT értékből (nem a már csökkentett hufAmount-ból!)
-        BigDecimal fullHufBeforeDiscount = request.getCurrencyAmount()
-                .multiply(appliedRate).setScale(0, RoundingMode.HALF_UP);
         BigDecimal discountAmount = calculateDiscountAmount(fullHufBeforeDiscount, request.getDiscountPercent());
 
         // POS terminál integráció — bankkártyás fizetésnél
@@ -880,6 +862,50 @@ public class TransactionService {
         return hufAmount;
     }
 
+    private BigDecimal resolveBuyRate(ExchangeRate rate, BigDecimal currencyAmount, BigDecimal customExchangeRate) {
+        if (customExchangeRate != null) {
+            if (customExchangeRate.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new ValidationException("Az egyedi vételi árfolyamnak pozitívnak kell lennie!");
+            }
+            return customExchangeRate;
+        }
+
+        BigDecimal baseAmount = currencyAmount.multiply(rate.getBaseBuyRate());
+        return rate.getBuyRateForAmount(baseAmount);
+    }
+
+    private BigDecimal resolveSellRate(ExchangeRate rate, BigDecimal currencyAmount, BigDecimal customExchangeRate) {
+        if (customExchangeRate != null) {
+            if (customExchangeRate.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new ValidationException("Az egyedi eladási árfolyamnak pozitívnak kell lennie!");
+            }
+            return customExchangeRate;
+        }
+
+        BigDecimal baseAmount = currencyAmount.multiply(rate.getBaseSellRate());
+        return rate.getSellRateForAmount(baseAmount);
+    }
+
+    private BigDecimal applyBuyDiscount(BigDecimal fullHufAmount, BigDecimal discountPercent) {
+        if (discountPercent == null || discountPercent.compareTo(BigDecimal.ZERO) <= 0) {
+            return fullHufAmount;
+        }
+
+        BigDecimal discount = fullHufAmount.multiply(discountPercent)
+                .divide(new BigDecimal("100"), 0, RoundingMode.HALF_UP);
+        return fullHufAmount.add(discount);
+    }
+
+    private BigDecimal applySellDiscount(BigDecimal fullHufAmount, BigDecimal discountPercent) {
+        if (discountPercent == null || discountPercent.compareTo(BigDecimal.ZERO) <= 0) {
+            return fullHufAmount;
+        }
+
+        BigDecimal discount = fullHufAmount.multiply(discountPercent)
+                .divide(new BigDecimal("100"), 0, RoundingMode.HALF_UP);
+        return fullHufAmount.subtract(discount);
+    }
+
     private BigDecimal calculateSellHufAmount(BigDecimal currencyAmount, ExchangeRate rate, BigDecimal discountPercent) {
         // Alap hufAmount discount NÉLKÜL (tier meghatározáshoz)
         BigDecimal baseAmount = currencyAmount.multiply(rate.getBaseSellRate());
@@ -1064,6 +1090,7 @@ public class TransactionService {
         private BigDecimal currencyAmount;
         private BigDecimal discountPercent;
         private BigDecimal handlingFee;
+        private BigDecimal customExchangeRate;
         private String customerId;
         private String customerName;
         private String customerAddress;
@@ -1086,6 +1113,7 @@ public class TransactionService {
         private BigDecimal currencyAmount;
         private BigDecimal discountPercent;
         private BigDecimal handlingFee;
+        private BigDecimal customExchangeRate;
         private String customerId;
         private String customerName;
         private String customerAddress;

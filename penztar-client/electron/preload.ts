@@ -20,12 +20,25 @@ contextBridge.exposeInMainWorld('electronAPI', {
     hufAmount: number,
     roundedHufAmount: number,
     rate: number,
-    customerId: number | null,
+    customerIdentifier: string | null,
+    customerName: string | null,
+    customerDocumentNumber: string | null,
+    customerAddress: string | null,
     denominations: string | null,
   ): Promise<number> =>
     ipcRenderer.invoke(
       'save-pending-transaction',
-      type, currencyCode, foreignAmount, hufAmount, roundedHufAmount, rate, customerId, denominations,
+      type,
+      currencyCode,
+      foreignAmount,
+      hufAmount,
+      roundedHufAmount,
+      rate,
+      customerIdentifier,
+      customerName,
+      customerDocumentNumber,
+      customerAddress,
+      denominations,
     ),
 
   getPendingTransactions: (): Promise<Array<{
@@ -36,7 +49,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     huf_amount: number;
     rounded_huf_amount: number;
     rate: number;
-    customer_id: number | null;
+    customer_id: string | number | null;
+    customer_identifier: string | null;
+    customer_name: string | null;
+    customer_document_number: string | null;
+    customer_address: string | null;
     denominations: string | null;
     created_at: string;
     synced: number;

@@ -273,14 +273,25 @@ export class SyncEngine {
 
     const body: Record<string, unknown> = {
       currencyCode: tx.currency_code,
-      foreignAmount: tx.foreign_amount,
-      hufAmount: tx.huf_amount,
-      roundedHufAmount: tx.rounded_huf_amount,
-      rate: tx.rate,
+      currencyAmount: tx.foreign_amount,
     };
 
-    if (tx.customer_id !== null) {
-      body['customerId'] = tx.customer_id;
+    const customerIdentifier = tx.customer_identifier
+      ?? (typeof tx.customer_id === 'string' ? tx.customer_id : null);
+    if (customerIdentifier && customerIdentifier.trim().length > 0) {
+      body['customerId'] = customerIdentifier;
+    }
+
+    if (tx.customer_name && tx.customer_name.trim().length > 0) {
+      body['customerName'] = tx.customer_name;
+    }
+
+    if (tx.customer_document_number && tx.customer_document_number.trim().length > 0) {
+      body['customerDocumentNumber'] = tx.customer_document_number;
+    }
+
+    if (tx.customer_address && tx.customer_address.trim().length > 0) {
+      body['customerAddress'] = tx.customer_address;
     }
 
     if (tx.denominations !== null) {

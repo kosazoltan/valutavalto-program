@@ -191,4 +191,37 @@ class TransactionServiceIdentificationTest {
         // Tranzakció mentésre kerül
         verify(transactionRepository, atLeastOnce()).save(any(Transaction.class));
     }
+
+        @Test
+        @DisplayName("executeSell: customExchangeRate megadva → egyedi árfolyam kerül alkalmazásra")
+        void executeSell_customExchangeRate_applied() {
+                TransactionService.SellRequest request = TransactionService.SellRequest.builder()
+                                .currencyId(2L)
+                                .currencyAmount(new BigDecimal("100"))
+                                .customExchangeRate(new BigDecimal("500.00"))
+                                .build();
+
+                transactionService.executeSell(request);
+
+                ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
+                verify(transactionRepository, atLeastOnce()).save(transactionCaptor.capture());
+                Transaction saved = transactionCaptor.getValue();
+
+                assertThat(saved.getExchangeRate()).isEqualByComparingTo("500.00");
+                assertThat(saved.getHufAmount()).isEqualByComparingTo("50000");
+        }
+
+        @Test
+        @DisplayName("executeSell: customExchangeRate <= 0 → ValidationException")
+        void executeSell_customExchangeRate_nonPositive_throws() {
+                TransactionService.SellRequest request = TransactionService.SellRequest.builder()
+                                .currencyId(2L)
+                                .currencyAmount(new BigDecimal("100"))
+                                .customExchangeRate(BigDecimal.ZERO)
+                                .build();
+
+                assertThatThrownBy(() -> transactionService.executeSell(request))
+                                .isInstanceOf(ValidationException.class)
+                                .hasMessageContaining("egyedi eladási árfolyamnak pozitívnak kell lennie");
+        }
 }

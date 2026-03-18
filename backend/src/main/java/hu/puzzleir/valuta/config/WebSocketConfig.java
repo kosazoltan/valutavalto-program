@@ -22,7 +22,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
-    @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:5173,https://excbesttest.com,https://www.excbesttest.com,https://valuta-frontend.vercel.app}")
+    @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:5173,https://excvaluta.com,https://www.excvaluta.com,https://excbesttest.com,https://www.excbesttest.com,https://valutavalto.vercel.app,https://valuta-frontend.vercel.app,app://localhost}")
     private String corsAllowedOrigins;
 
     private final WebSocketAuthInterceptor webSocketAuthInterceptor;
@@ -35,20 +35,36 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        List<String> origins = new ArrayList<>(
+        List<String> configuredOrigins = new ArrayList<>(
                 Arrays.stream(corsAllowedOrigins.split(","))
                         .map(String::trim)
                         .filter(s -> !s.isEmpty())
                         .toList()
         );
 
-        // Electron production kliens app:// custom protocol-on fut
-        if (!origins.contains("app://localhost")) {
-            origins.add("app://localhost");
+        List<String> mandatoryOrigins = List.of(
+            "https://excvaluta.com",
+            "https://www.excvaluta.com",
+            "https://valutavalto.vercel.app",
+            "app://localhost"
+        );
+        for (String mandatoryOrigin : mandatoryOrigins) {
+            if (!configuredOrigins.contains(mandatoryOrigin)) {
+            configuredOrigins.add(mandatoryOrigin);
+            }
         }
 
+        List<String> originPatterns = configuredOrigins.stream()
+            .filter(origin -> origin.contains("*"))
+            .toList();
+
         registry.addEndpoint("/ws")
-                .setAllowedOrigins(origins.toArray(new String[0]))
+            .setAllowedOriginPatterns(originPatterns.toArray(new String[0]))
+            .setAllowedOrigins(
+                configuredOrigins.stream()
+                    .filter(origin -> !origin.contains("*"))
+                    .toArray(String[]::new)
+            )
                 .withSockJS();
     }
 

@@ -200,7 +200,11 @@ export default function CashierTransactionPage() {
                 'BUY', row.currencyCode,
                 parseFloat(row.quantity) || 0, row.hufValue,
                 roundHuf(row.hufValue), row.exchangeRate,
-                null, null,
+                null,
+                customerName.trim() || null,
+                customerDocNumber.trim() || null,
+                customerAddress.trim() || null,
+                null,
               )
               receiptNumbers.push(`PENDING-${Date.now()}`)
             } else {
@@ -226,7 +230,11 @@ export default function CashierTransactionPage() {
                 'SELL', row.currencyCode,
                 parseFloat(row.quantity) || 0, row.hufValue,
                 roundHuf(row.hufValue), row.exchangeRate,
-                null, null,
+                null,
+                customerName.trim() || null,
+                customerDocNumber.trim() || null,
+                customerAddress.trim() || null,
+                null,
               )
               receiptNumbers.push(`PENDING-${Date.now()}`)
             } else {

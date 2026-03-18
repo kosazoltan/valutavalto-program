@@ -158,10 +158,25 @@ ipcMain.handle('save-pending-transaction', async (
   hufAmount: number,
   roundedHufAmount: number,
   rate: number,
-  customerId: number | null,
+  customerIdentifier: string | null,
+  customerName: string | null,
+  customerDocumentNumber: string | null,
+  customerAddress: string | null,
   denominations: string | null,
 ): Promise<number> => {
-  return savePendingTransaction(type, currencyCode, foreignAmount, hufAmount, roundedHufAmount, rate, customerId, denominations);
+  return savePendingTransaction(
+    type,
+    currencyCode,
+    foreignAmount,
+    hufAmount,
+    roundedHufAmount,
+    rate,
+    customerIdentifier,
+    customerName,
+    customerDocumentNumber,
+    customerAddress,
+    denominations,
+  );
 });
 
 ipcMain.handle('get-pending-transactions', async (): Promise<ReturnType<typeof getPendingTransactions>> => {

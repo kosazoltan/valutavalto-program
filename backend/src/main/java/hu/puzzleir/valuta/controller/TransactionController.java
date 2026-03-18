@@ -8,6 +8,7 @@ import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.TransactionService;
 import hu.puzzleir.valuta.util.IdempotencyGuard;
 import hu.puzzleir.valuta.util.OptimisticLockRetry;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -22,6 +23,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.util.StringUtils;
 
 /**
  * Tranzakció controller - vétel/eladás/sztornó/konverzió
@@ -46,7 +48,8 @@ public class TransactionController {
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<TransactionDto> executeBuy(
             @Valid @RequestBody BuyRequestDto dto,
-            @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey) {
+            HttpServletRequest request) {
+        String idempotencyKey = resolveIdempotencyKey(request);
         TransactionDto cached = idempotencyGuard.tryAcquire(idempotencyKey);
         if (cached != null) {
             return ResponseEntity.status(HttpStatus.CREATED).body(cached);
@@ -73,7 +76,8 @@ public class TransactionController {
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<TransactionDto> executeSell(
             @Valid @RequestBody SellRequestDto dto,
-            @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey) {
+            HttpServletRequest request) {
+        String idempotencyKey = resolveIdempotencyKey(request);
         TransactionDto cached = idempotencyGuard.tryAcquire(idempotencyKey);
         if (cached != null) {
             return ResponseEntity.status(HttpStatus.CREATED).body(cached);
@@ -100,7 +104,8 @@ public class TransactionController {
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<TransactionDto> executeReversal(
             @Valid @RequestBody ReversalRequestDto dto,
-            @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey) {
+            HttpServletRequest request) {
+        String idempotencyKey = resolveIdempotencyKey(request);
         TransactionDto cached = idempotencyGuard.tryAcquire(idempotencyKey);
         if (cached != null) {
             return ResponseEntity.status(HttpStatus.CREATED).body(cached);
@@ -127,7 +132,8 @@ public class TransactionController {
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<TransactionDto> executeConversion(
             @Valid @RequestBody ConversionRequestDto dto,
-            @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey) {
+            HttpServletRequest request) {
+        String idempotencyKey = resolveIdempotencyKey(request);
         TransactionDto cached = idempotencyGuard.tryAcquire(idempotencyKey);
         if (cached != null) {
             return ResponseEntity.status(HttpStatus.CREATED).body(cached);
@@ -199,5 +205,13 @@ public class TransactionController {
     public ResponseEntity<TransactionService.DailyTurnoverSummary> getDailyTurnover() {
         TransactionService.DailyTurnoverSummary summary = transactionService.getDailyTurnover();
         return ResponseEntity.ok(summary);
+    }
+
+    private String resolveIdempotencyKey(HttpServletRequest request) {
+        String key = request.getHeader("Idempotency-Key");
+        if (StringUtils.hasText(key)) {
+            return key;
+        }
+        return request.getHeader("X-Idempotency-Key");
     }
 }

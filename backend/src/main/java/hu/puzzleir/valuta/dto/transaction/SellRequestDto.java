@@ -34,6 +34,9 @@ public class SellRequestDto {
     @DecimalMin(value = "0", message = "A kezelési díj nem lehet negatív")
     private BigDecimal handlingFee;
 
+    @DecimalMin(value = "0.0001", message = "Az egyedi árfolyamnak pozitívnak kell lennie")
+    private BigDecimal customExchangeRate;
+
     // Ügyfél adatok (300.000 Ft felett kötelező)
     private String customerId;
     private String customerName;

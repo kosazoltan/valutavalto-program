@@ -1,8 +1,9 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 // https://vitejs.dev/config/
-export default defineConfig({
+var config = {
     plugins: [react()],
     resolve: {
         alias: {
@@ -22,8 +23,15 @@ export default defineConfig({
         outDir: 'dist',
         sourcemap: false,
     },
+    test: {
+        environment: 'jsdom',
+        globals: true,
+        setupFiles: './src/test/setup.ts',
+        css: true,
+    },
     // API URL beállítása build időben
     envPrefix: 'VITE_',
     // Disable Vite error overlay (hide vite-error-overlay element)
     clearScreen: false,
-});
+};
+export default defineConfig(config);

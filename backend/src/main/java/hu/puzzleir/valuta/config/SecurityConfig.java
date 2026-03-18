@@ -17,6 +17,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -31,7 +32,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final IdempotencyFilter idempotencyFilter;
 
-    @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:5173,app://localhost}")
+    @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:5173,https://excvaluta.com,https://www.excvaluta.com,https://valutavalto.vercel.app,app://localhost}")
     private String corsAllowedOrigins;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
@@ -106,12 +107,38 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
+
         // CORS origins kornyezeti valtozobol (vesszovel elvalasztva, whitespace trim)
-        List<String> origins = Arrays.stream(corsAllowedOrigins.split(","))
+        // A kritikus production originok mindig engedelyezettek maradnak akkor is,
+        // ha a runtime CORS_ALLOWED_ORIGINS valtozo hianyos.
+        List<String> configuredOrigins = Arrays.stream(corsAllowedOrigins.split(","))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .toList();
-        configuration.setAllowedOrigins(origins);
+
+        List<String> allowedOrigins = new ArrayList<>();
+        List<String> allowedOriginPatterns = new ArrayList<>();
+
+        for (String origin : configuredOrigins) {
+            if (origin.contains("*")) {
+                allowedOriginPatterns.add(origin);
+            } else {
+                allowedOrigins.add(origin);
+            }
+        }
+
+        for (String mandatoryOrigin : List.of(
+                "https://excvaluta.com",
+                "https://www.excvaluta.com",
+                "https://valutavalto.vercel.app"
+        )) {
+            if (!allowedOrigins.contains(mandatoryOrigin)) {
+                allowedOrigins.add(mandatoryOrigin);
+            }
+        }
+
+        configuration.setAllowedOrigins(allowedOrigins);
+        configuration.setAllowedOriginPatterns(allowedOriginPatterns);
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList(
                 "Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin",

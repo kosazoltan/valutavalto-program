@@ -23,6 +23,7 @@ import java.util.Set;
 public class IdempotencyFilter extends OncePerRequestFilter {
 
     private static final String IDEMPOTENCY_HEADER = "Idempotency-Key";
+    private static final String LEGACY_IDEMPOTENCY_HEADER = "X-Idempotency-Key";
 
     private static final Set<String> WRITE_METHODS = Set.of("POST", "PUT", "PATCH", "DELETE");
 
@@ -64,6 +65,9 @@ public class IdempotencyFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
 
         String idempotencyKey = request.getHeader(IDEMPOTENCY_HEADER);
+        if (!StringUtils.hasText(idempotencyKey)) {
+            idempotencyKey = request.getHeader(LEGACY_IDEMPOTENCY_HEADER);
+        }
         if (!StringUtils.hasText(idempotencyKey)) {
             writeMissingIdempotencyResponse(response);
             return;

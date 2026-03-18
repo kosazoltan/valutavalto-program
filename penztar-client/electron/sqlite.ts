@@ -113,6 +113,10 @@ export async function initDatabase(): Promise<void> {
         rounded_huf_amount REAL NOT NULL,
         rate REAL NOT NULL,
         customer_id INTEGER,
+        customer_identifier TEXT,
+        customer_name TEXT,
+        customer_document_number TEXT,
+        customer_address TEXT,
         denominations TEXT,
         idempotency_key TEXT,
         created_at TEXT DEFAULT (datetime('now')),
@@ -125,6 +129,20 @@ export async function initDatabase(): Promise<void> {
       db.run('ALTER TABLE pending_transactions ADD COLUMN idempotency_key TEXT');
     } catch {
       // Column already exists — ignore
+    }
+
+    const pendingTxColumns = [
+      'customer_identifier TEXT',
+      'customer_name TEXT',
+      'customer_document_number TEXT',
+      'customer_address TEXT',
+    ];
+    for (const colDef of pendingTxColumns) {
+      try {
+        db.run(`ALTER TABLE pending_transactions ADD COLUMN ${colDef}`);
+      } catch {
+        // Column already exists — ignore
+      }
     }
 
     db.run(`
@@ -299,7 +317,11 @@ export interface PendingTransactionRow {
   huf_amount: number;
   rounded_huf_amount: number;
   rate: number;
-  customer_id: number | null;
+  customer_id: string | number | null;
+  customer_identifier: string | null;
+  customer_name: string | null;
+  customer_document_number: string | null;
+  customer_address: string | null;
   denominations: string | null;
   idempotency_key: string | null;
   created_at: string;
@@ -313,7 +335,10 @@ export function savePendingTransaction(
   hufAmount: number,
   roundedHufAmount: number,
   rate: number,
-  customerId: number | null,
+  customerIdentifier: string | null,
+  customerName: string | null,
+  customerDocumentNumber: string | null,
+  customerAddress: string | null,
   denominations: string | null,
 ): number {
   if (!db) throw new Error('Database not initialized');
@@ -321,10 +346,43 @@ export function savePendingTransaction(
   // Stabil idempotency key — retry-nál is ugyanazt küldjük a szervernek
   const idempotencyKey = crypto.randomUUID();
 
+  const normalizedCustomerIdentifier = customerIdentifier?.trim() || null;
+  const normalizedCustomerName = customerName?.trim() || null;
+  const normalizedCustomerDocumentNumber = customerDocumentNumber?.trim() || null;
+  const normalizedCustomerAddress = customerAddress?.trim() || null;
+
   db.run(
-    `INSERT INTO pending_transactions (type, currency_code, foreign_amount, huf_amount, rounded_huf_amount, rate, customer_id, denominations, idempotency_key)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [type, currencyCode, foreignAmount, hufAmount, roundedHufAmount, rate, customerId, denominations, idempotencyKey],
+    `INSERT INTO pending_transactions (
+      type,
+      currency_code,
+      foreign_amount,
+      huf_amount,
+      rounded_huf_amount,
+      rate,
+      customer_id,
+      customer_identifier,
+      customer_name,
+      customer_document_number,
+      customer_address,
+      denominations,
+      idempotency_key
+    )
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      type,
+      currencyCode,
+      foreignAmount,
+      hufAmount,
+      roundedHufAmount,
+      rate,
+      null,
+      normalizedCustomerIdentifier,
+      normalizedCustomerName,
+      normalizedCustomerDocumentNumber,
+      normalizedCustomerAddress,
+      denominations,
+      idempotencyKey,
+    ],
   );
   saveDatabase();
 
