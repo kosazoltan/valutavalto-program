@@ -52,66 +52,77 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Render deploy
-      env:
-        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-        RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
-      run: |
-        python - <<'PY'
-        import json
-        import os
-        import sys
-        import urllib.error
-        import urllib.request
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+          import urllib.request
 
-        api_key = os.environ.get("RENDER_API_KEY", "").strip()
-        deploy_hook = os.environ.get("RENDER_DEPLOY_HOOK_URL", "").strip()
+          api_key = os.environ.get("RENDER_API_KEY", "").strip()
+          deploy_hook = os.environ.get("RENDER_DEPLOY_HOOK_URL", "").strip()
 
-        if deploy_hook:
-          req = urllib.request.Request(deploy_hook, method="POST")
-          try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
-              if 200 <= resp.status < 300:
-                print("Render deploy triggered via deploy hook")
-                raise SystemExit(0)
-          except Exception:
-            print("Deploy hook failed, falling back to Render API")
+          if deploy_hook:
+              req = urllib.request.Request(deploy_hook, method="POST")
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as resp:
+                      if 200 <= resp.status < 300:
+                          print("Render deploy triggered via deploy hook")
+                          raise SystemExit(0)
+              except Exception:
+                  print("Deploy hook failed, falling back to Render API")
 
-        if not api_key:
-          print("Missing Render API key", file=sys.stderr)
+          if not api_key:
+              print("Missing Render API key", file=sys.stderr)
+              raise SystemExit(1)
+
+          headers = {
+              "Authorization": f"Bearer {api_key}",
+              "Accept": "application/json",
+              "Content-Type": "application/json",
+          }
+
+          def request(url, method="GET", data=None):
+              req = urllib.request.Request(url, data=data, headers=headers, method=method)
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  return resp.status, resp.read().decode("utf-8")
+
+          status, body = request("https://api.render.com/v1/services")
+          services = json.loads(body)
+
+          service = next(
+              (
+                  item
+                  for item in services
+                  if item.get("service", {}).get("name") == "valuta-backend"
+                  or item.get("name") == "valuta-backend"
+              ),
+              None,
+          )
+          if service is None:
+              print("Render service valuta-backend not found", file=sys.stderr)
+              raise SystemExit(1)
+
+          service_id = service.get("service", {}).get("id") or service.get("id")
+          if not service_id:
+              print("Render service ID missing", file=sys.stderr)
+              raise SystemExit(1)
+
+          status, _ = request(
+              f"https://api.render.com/v1/services/{service_id}/deploys",
+              method="POST",
+              data=b"{}",
+          )
+          if 200 <= status < 300:
+              print("Render deploy triggered via API")
+              raise SystemExit(0)
+
+          print(f"Render deploy failed with status {status}", file=sys.stderr)
           raise SystemExit(1)
-
-        headers = {
-          "Authorization": f"Bearer {api_key}",
-          "Accept": "application/json",
-          "Content-Type": "application/json",
-        }
-
-        def request(url: str, method: str = "GET", data: bytes | None = None):
-          req = urllib.request.Request(url, data=data, headers=headers, method=method)
-          with urllib.request.urlopen(req, timeout=30) as resp:
-            return resp.status, resp.read().decode("utf-8")
-
-        status, body = request("https://api.render.com/v1/services")
-        services = json.loads(body)
-
-        service = next((item for item in services if item.get("service", {}).get("name") == "valuta-backend" or item.get("name") == "valuta-backend"), None)
-        if service is None:
-          print("Render service valuta-backend not found", file=sys.stderr)
-          raise SystemExit(1)
-
-        service_id = service.get("service", {}).get("id") or service.get("id")
-        if not service_id:
-          print("Render service ID missing", file=sys.stderr)
-          raise SystemExit(1)
-
-        status, _ = request(f"https://api.render.com/v1/services/{service_id}/deploys", method="POST", data=b"{}")
-        if 200 <= status < 300:
-          print("Render deploy triggered via API")
-          raise SystemExit(0)
-
-        print(f"Render deploy failed with status {status}", file=sys.stderr)
-        raise SystemExit(1)
-        PY
+          PY
 
   deployment-summary:
     name: Deployment Summary
