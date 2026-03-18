@@ -233,8 +233,8 @@ public class DailySessionService {
         List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
         // Csak HUF egyenleg (currency_id = 1 feltételezve, vagy code = 'HUF')
         return balances.stream()
-                .filter(cb -> "HUF".equals(cb.getCurrency().getCode()))
-                .map(CashBalance::getCurrentBalance)
+                .filter(this::isHufBalance)
+                .map(cb -> cb.getCurrentBalance() != null ? cb.getCurrentBalance() : BigDecimal.ZERO)
                 .findFirst()
                 .orElse(BigDecimal.ZERO);
     }
@@ -248,8 +248,8 @@ public class DailySessionService {
     private BigDecimal calculateClosingBalance(UUID branchId) {
         List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
         return balances.stream()
-                .filter(cb -> "HUF".equals(cb.getCurrency().getCode()))
-                .map(CashBalance::getCurrentBalance)
+                .filter(this::isHufBalance)
+                .map(cb -> cb.getCurrentBalance() != null ? cb.getCurrentBalance() : BigDecimal.ZERO)
                 .findFirst()
                 .orElse(BigDecimal.ZERO);
     }
@@ -260,9 +260,21 @@ public class DailySessionService {
     private void updateCashBalancesForOpening(UUID branchId) {
         List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
         for (CashBalance balance : balances) {
+            if (balance.getCurrentBalance() == null) {
+                String currencyCode = balance.getCurrency() != null ? balance.getCurrency().getCode() : "UNKNOWN";
+                log.warn("CashBalance currentBalance null nyitáskor, null-safe korrekció: branchId={}, currency={}",
+                        branchId, currencyCode);
+                balance.setCurrentBalance(BigDecimal.ZERO);
+            }
             balance.setDailyOpening();
             cashBalanceRepository.save(balance);
         }
+    }
+
+    private boolean isHufBalance(CashBalance cashBalance) {
+        return cashBalance != null
+                && cashBalance.getCurrency() != null
+                && "HUF".equalsIgnoreCase(cashBalance.getCurrency().getCode());
     }
 
     /**
