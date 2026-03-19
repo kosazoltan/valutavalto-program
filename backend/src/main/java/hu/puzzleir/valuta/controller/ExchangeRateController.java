@@ -3,10 +3,12 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.dto.exchangerate.CreateExchangeRateDto;
 import hu.puzzleir.valuta.dto.exchangerate.CurrentRateDto;
 import hu.puzzleir.valuta.dto.exchangerate.ExchangeRateDto;
+import hu.puzzleir.valuta.dto.rate.ParsedRateFile;
 import hu.puzzleir.valuta.entity.ExchangeRate;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.mapper.ExchangeRateMapper;
 import hu.puzzleir.valuta.service.ExchangeRateService;
+import hu.puzzleir.valuta.service.RateFileParserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -14,7 +16,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -32,6 +36,7 @@ public class ExchangeRateController {
 
     private final ExchangeRateService exchangeRateService;
     private final ExchangeRateMapper exchangeRateMapper;
+    private final RateFileParserService rateFileParserService;
 
     /**
      * Összes aktuális árfolyam (admin + pénztáros)
@@ -158,5 +163,66 @@ public class ExchangeRateController {
                 .map(exchangeRateMapper::toDto)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
+    }
+
+    /**
+     * Legacy GETARF árfolyamfájl feltöltése és feldolgozása.
+     *
+     * Csak feldolgozza és visszaadja a parse-olt adatokat (nem importálja automatikusan).
+     *
+     * POST /api/v1/exchange-rates/upload-rate-file
+     */
+    @PostMapping("/upload-rate-file")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
+    public ResponseEntity<ParsedRateFile> uploadRateFile(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            throw new ValidationException("Az árfolyamfájl nem lehet üres!");
+        }
+
+        try {
+            byte[] content = file.getBytes();
+            ParsedRateFile parsed = rateFileParserService.parseRateFile(content);
+
+            if (parsed.getRates().isEmpty()) {
+                throw new ValidationException("Az árfolyamfájl nem tartalmaz érvényes árfolyamokat!");
+            }
+
+            return ResponseEntity.ok(parsed);
+        } catch (IOException e) {
+            throw new ValidationException("Hiba az árfolyamfájl olvasásakor: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Legacy GETARF árfolyamfájl feltöltése és azonnali importálása.
+     *
+     * Feldolgozza a fájlt, majd az összes érvényes árfolyamot importálja a rendszerbe.
+     *
+     * POST /api/v1/exchange-rates/import-rate-file
+     */
+    @PostMapping("/import-rate-file")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
+    public ResponseEntity<List<ExchangeRateDto>> importRateFile(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            throw new ValidationException("Az árfolyamfájl nem lehet üres!");
+        }
+
+        try {
+            byte[] content = file.getBytes();
+            ParsedRateFile parsed = rateFileParserService.parseRateFile(content);
+
+            if (parsed.getRates().isEmpty()) {
+                throw new ValidationException("Az árfolyamfájl nem tartalmaz érvényes árfolyamokat!");
+            }
+
+            List<ExchangeRate> imported = exchangeRateService.importRatesFromParsedFile(parsed);
+            List<ExchangeRateDto> dtos = imported.stream()
+                    .map(exchangeRateMapper::toDto)
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(dtos);
+        } catch (IOException e) {
+            throw new ValidationException("Hiba az árfolyamfájl olvasásakor: " + e.getMessage());
+        }
     }
 }

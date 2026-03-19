@@ -2,8 +2,13 @@ package hu.puzzleir.valuta.mapper;
 
 import hu.puzzleir.valuta.dto.transaction.*;
 import hu.puzzleir.valuta.entity.Transaction;
+import hu.puzzleir.valuta.entity.TransactionLine;
 import hu.puzzleir.valuta.service.TransactionService;
 import org.springframework.stereotype.Component;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Transaction entity <-> DTO mapper
@@ -13,6 +18,14 @@ public class TransactionMapper {
 
     public TransactionDto toDto(Transaction entity) {
         if (entity == null) return null;
+
+        // Multi-line sorok mappolasa ha multiLine=true es vannak sorok
+        List<TransactionLineDto> lineDtos = null;
+        if (Boolean.TRUE.equals(entity.getMultiLine()) && entity.getLines() != null && !entity.getLines().isEmpty()) {
+            lineDtos = entity.getLines().stream()
+                    .map(this::toLineDto)
+                    .collect(Collectors.toList());
+        }
 
         return TransactionDto.builder()
                 .id(entity.getId())
@@ -49,6 +62,27 @@ public class TransactionMapper {
                 .mtcn(entity.getMtcn())
                 .referenceNumber(entity.getReferenceNumber())
                 .createdAt(entity.getCreatedAt())
+                .multiLine(entity.getMultiLine())
+                .lineCount(entity.getLineCount())
+                .lines(lineDtos)
+                .build();
+    }
+
+    public TransactionLineDto toLineDto(TransactionLine line) {
+        if (line == null) return null;
+
+        return TransactionLineDto.builder()
+                .id(line.getId())
+                .lineNumber(line.getLineNumber())
+                .currencyId(line.getCurrency() != null ? line.getCurrency().getId() : null)
+                .currencyCode(line.getCurrency() != null ? line.getCurrency().getCode() : null)
+                .currencyName(line.getCurrency() != null ? line.getCurrency().getName() : null)
+                .appliedRate(line.getAppliedRate())
+                .originalRate(line.getOriginalRate())
+                .banknoteCount(line.getBanknoteCount())
+                .hufValue(line.getHufValue())
+                .lineDiscount(line.getLineDiscount())
+                .discountType(line.getDiscountType())
                 .build();
     }
 
@@ -66,6 +100,7 @@ public class TransactionMapper {
                 .customerDocumentNumber(dto.getCustomerDocumentNumber())
                 .customerNationality(dto.getCustomerNationality())
                 .notes(dto.getNotes())
+                .lines(toLineRequests(dto.getLines()))
                 .build();
     }
 
@@ -83,7 +118,23 @@ public class TransactionMapper {
                 .customerDocumentNumber(dto.getCustomerDocumentNumber())
                 .customerNationality(dto.getCustomerNationality())
                 .notes(dto.getNotes())
+                .lines(toLineRequests(dto.getLines()))
                 .build();
+    }
+
+    private List<TransactionService.LineRequest> toLineRequests(List<TransactionLineRequestDto> dtos) {
+        if (dtos == null || dtos.isEmpty()) {
+            return null;
+        }
+        return dtos.stream()
+                .map(d -> TransactionService.LineRequest.builder()
+                        .currencyId(d.getCurrencyId())
+                        .currencyCode(d.getCurrencyCode())
+                        .banknoteCount(d.getBanknoteCount())
+                        .customExchangeRate(d.getCustomExchangeRate())
+                        .discountType(d.getDiscountType())
+                        .build())
+                .collect(Collectors.toList());
     }
 
     public TransactionService.ReversalRequest toReversalRequest(ReversalRequestDto dto) {

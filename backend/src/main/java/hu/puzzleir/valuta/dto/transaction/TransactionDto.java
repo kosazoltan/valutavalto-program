@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 
 /**
  * Tranzakció DTO - válasz
@@ -68,4 +69,9 @@ public class TransactionDto {
     private String mtcn;
     private String referenceNumber;
     private LocalDateTime createdAt;
+
+    // Multi-line bizonylat
+    private Boolean multiLine;
+    private Integer lineCount;
+    private List<TransactionLineDto> lines;
 }

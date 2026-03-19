@@ -9,6 +9,7 @@ import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TransferService {
 
     private final TransferRepository transferRepository;
@@ -31,6 +33,9 @@ public class TransferService {
     private final CurrencyRepository currencyRepository;
     private final WorkerRepository workerRepository;
     private final CashBalanceRepository cashBalanceRepository;
+    private final TransactionRepository transactionRepository;
+    private final ReceiptSequenceService receiptSequenceService;
+    private final AuditLogService auditLogService;
 
     @Transactional
     public TransferDto create(CreateTransferDto dto, Long workerId) {
@@ -51,6 +56,17 @@ public class TransferService {
             throw new ValidationException("A forrás és cél fiók nem lehet azonos!");
         }
 
+        // Direction meghatározása (default: UF)
+        Transfer.TransferDirection direction = Transfer.TransferDirection.UF;
+        if (dto.getDirection() != null && !dto.getDirection().isBlank()) {
+            try {
+                direction = Transfer.TransferDirection.valueOf(dto.getDirection());
+            } catch (IllegalArgumentException e) {
+                throw new ValidationException("Érvénytelen átadás irány: " + dto.getDirection()
+                        + ". Lehetséges értékek: F, U, UF, FF");
+            }
+        }
+
         String transferNumber = generateTransferNumber();
 
         Transfer transfer = Transfer.builder()
@@ -65,12 +81,24 @@ public class TransferService {
                 .currency(currency)
                 .amount(dto.getAmount())
                 .hufValue(dto.getHufValue())
+                .direction(direction)
                 .handoverPrinted(false)
                 .receiptPrinted(false)
                 .notes(dto.getNotes())
                 .build();
 
         transfer = transferRepository.save(transfer);
+
+        // Counter-tranzakciók létrehozása a direction alapján
+        createCounterTransactions(transfer, fromWorker, direction);
+
+        // Audit log
+        auditLogService.log("TRANSFER_CREATED",
+                String.format("Átadás létrehozva: %s, irány: %s, összeg: %s %s, %s -> %s",
+                        transferNumber, direction, dto.getAmount(), currency.getCode(),
+                        fromBranch.getCode(), toBranch.getCode()),
+                transfer.getId());
+
         return toDto(transfer);
     }
 
@@ -102,28 +130,33 @@ public class TransferService {
             transfer.setNotes((transfer.getNotes() != null ? transfer.getNotes() + "\n" : "") + dto.getNotes());
         }
 
-        // Kassza egyenleg frissítés: küldő fióknál csökkentés, fogadó fióknál növelés
-        CashBalance fromBalance = cashBalanceRepository.findByBranchIdAndCurrencyId(
-                transfer.getFromBranch().getId(), transfer.getCurrency().getId())
-                .orElseThrow(() -> new ValidationException("Küldő fiók kassza egyenlege nem található!"));
+        Transfer.TransferDirection direction = transfer.getDirection() != null
+                ? transfer.getDirection() : Transfer.TransferDirection.UF;
 
-        // H-5: Negatív kassza védelem — ellenőrzés csökkentés ELŐTT
-        if (fromBalance.getCurrentBalance().compareTo(transfer.getAmount()) < 0) {
-            throw new ValidationException("Küldő fiók egyenlege nem elegendő! Elérhető: "
-                    + fromBalance.getCurrentBalance() + ", szükséges: " + transfer.getAmount());
+        // Kassza egyenleg frissítés PESSIMISTIC LOCK-kal, direction alapján
+        updateCashBalancesOnReceive(transfer, dto.getReceivedAmount(), direction);
+
+        // TRANSFER_IN tranzakció létrehozása a fogadó fióknál (U és FF módot a create már kezelte)
+        // Receive-nél csak F és UF módban kell TRANSFER_IN-t létrehozni
+        // F mód: a create-nál TRANSFER_OUT jött létre, receive-nél nincs TRANSFER_IN (csak kassza frissül)
+        // U mód: a create-nál nincs TRANSFER_OUT, receive-nél TRANSFER_IN jön létre — DE a create-nál már létrejött
+        // Valójában: receive-nél nincs új tranzakció, a create-nál már minden létrejött direction szerint
+        // KIVÉVE: F mód esetén a fogadó oldal tranzakciója a receive-nél jön létre
+        if (direction == Transfer.TransferDirection.F) {
+            // F mód: receive-nél a fogadó oldali TRANSFER_IN tranzakció
+            createTransferInTransaction(transfer, toWorker);
+            log.info("TRANSFER_IN tranzakció létrehozva receive-nél (F mód): {}", transfer.getTransferNumber());
         }
 
-        fromBalance.updateBalance(transfer.getAmount(), false); // outgoing — küldött összeg
-
-        CashBalance toBalance = cashBalanceRepository.findByBranchIdAndCurrencyId(
-                transfer.getToBranch().getId(), transfer.getCurrency().getId())
-                .orElseThrow(() -> new ValidationException("Fogadó fiók kassza egyenlege nem található!"));
-        toBalance.updateBalance(dto.getReceivedAmount(), true); // incoming — ténylegesen fogadott összeg
-
-        cashBalanceRepository.save(fromBalance);
-        cashBalanceRepository.save(toBalance);
-
         transfer = transferRepository.save(transfer);
+
+        // Audit log
+        auditLogService.log("TRANSFER_RECEIVED",
+                String.format("Átadás fogadva: %s, irány: %s, fogadott összeg: %s, különbözet: %s",
+                        transfer.getTransferNumber(), direction,
+                        dto.getReceivedAmount(), transfer.getDifference()),
+                transfer.getId());
+
         return toDto(transfer);
     }
 
@@ -202,6 +235,220 @@ public class TransferService {
         return transferRepository.countPendingByBranch(branchId);
     }
 
+    // --- Counter-transaction logic ---
+
+    /**
+     * Counter-tranzakciók létrehozása a direction alapján a transfer LÉTREHOZÁSAKOR.
+     *
+     * F  = Feladó: TRANSFER_OUT a küldő fióknál + kassza csökkentés
+     * U  = Vevő: TRANSFER_IN a fogadó fióknál + kassza növelés (fogadó-indítás)
+     * UF = Teljes: TRANSFER_OUT + TRANSFER_IN egyszerre + mindkét kassza frissítés
+     * FF = Korrekció: két TRANSFER_OUT (mindkét fióknál csökkentés)
+     */
+    private void createCounterTransactions(Transfer transfer, Worker fromWorker,
+                                            Transfer.TransferDirection direction) {
+        switch (direction) {
+            case F -> {
+                // Csak TRANSFER_OUT a küldő fióknál
+                createTransferOutTransaction(transfer, fromWorker);
+                decreaseCashBalance(transfer.getFromBranch(), transfer.getCurrency(), transfer.getAmount());
+                log.info("F mód — TRANSFER_OUT létrehozva: {} ({} {})",
+                        transfer.getTransferNumber(), transfer.getAmount(), transfer.getCurrency().getCode());
+            }
+            case U -> {
+                // Csak TRANSFER_IN a fogadó fióknál (fogadó-indított átadás)
+                // Fogadó fiók worker-je nincs még beállítva, fromWorker-t használjuk mint indító
+                createTransferInTransaction(transfer, fromWorker);
+                increaseCashBalance(transfer.getToBranch(), transfer.getCurrency(), transfer.getAmount());
+                log.info("U mód — TRANSFER_IN létrehozva: {} ({} {})",
+                        transfer.getTransferNumber(), transfer.getAmount(), transfer.getCurrency().getCode());
+            }
+            case UF -> {
+                // Mindkét tranzakció egyszerre
+                createTransferOutTransaction(transfer, fromWorker);
+                createTransferInTransaction(transfer, fromWorker);
+                decreaseCashBalance(transfer.getFromBranch(), transfer.getCurrency(), transfer.getAmount());
+                increaseCashBalance(transfer.getToBranch(), transfer.getCurrency(), transfer.getAmount());
+                // UF módban az átadás azonnal COMPLETED
+                transfer.setStatus(Transfer.TransferStatus.COMPLETED);
+                transfer.setReceivedAmount(transfer.getAmount());
+                transfer.setReceivedDate(LocalDate.now());
+                transfer.setReceivedTime(LocalTime.now());
+                transfer.setDifference(BigDecimal.ZERO);
+                log.info("UF mód — TRANSFER_OUT + TRANSFER_IN létrehozva: {} ({} {})",
+                        transfer.getTransferNumber(), transfer.getAmount(), transfer.getCurrency().getCode());
+            }
+            case FF -> {
+                // Két TRANSFER_OUT (korrekciós — mindkét fióknál csökken)
+                createTransferOutTransaction(transfer, fromWorker);
+                createCorrectionTransferOutTransaction(transfer, fromWorker);
+                decreaseCashBalance(transfer.getFromBranch(), transfer.getCurrency(), transfer.getAmount());
+                decreaseCashBalance(transfer.getToBranch(), transfer.getCurrency(), transfer.getAmount());
+                log.info("FF mód — 2x TRANSFER_OUT létrehozva: {} ({} {})",
+                        transfer.getTransferNumber(), transfer.getAmount(), transfer.getCurrency().getCode());
+            }
+        }
+    }
+
+    /**
+     * TRANSFER_OUT tranzakció létrehozása a küldő fióknál.
+     */
+    private Transaction createTransferOutTransaction(Transfer transfer, Worker worker) {
+        Branch fromBranch = transfer.getFromBranch();
+        String receiptNumber = receiptSequenceService.generateReceiptNumber(
+                fromBranch.getId(), TransactionType.TRANSFER_OUT);
+
+        Transaction tx = Transaction.builder()
+                .company(fromBranch.getCompany())
+                .branch(fromBranch)
+                .worker(worker)
+                .receiptNumber(receiptNumber)
+                .transactionType(TransactionType.TRANSFER_OUT)
+                .status(TransactionStatus.COMPLETED)
+                .transactionDate(LocalDate.now())
+                .transactionTime(LocalTime.now())
+                .currency(transfer.getCurrency())
+                .currencyAmount(transfer.getAmount())
+                .exchangeRate(BigDecimal.ONE) // Átadásnál nincs árfolyam
+                .hufAmount(transfer.getHufValue() != null ? transfer.getHufValue() : BigDecimal.ZERO)
+                .referenceNumber(transfer.getTransferNumber())
+                .notes(String.format("Átadás (%s): %s -> %s [%s]",
+                        transfer.getDirection(),
+                        fromBranch.getCode(),
+                        transfer.getToBranch().getCode(),
+                        transfer.getTransferNumber()))
+                .build();
+
+        tx = transactionRepository.save(tx);
+        log.debug("TRANSFER_OUT tx létrehozva: receipt={}, transfer={}", receiptNumber, transfer.getTransferNumber());
+        return tx;
+    }
+
+    /**
+     * TRANSFER_IN tranzakció létrehozása a fogadó fióknál.
+     */
+    private Transaction createTransferInTransaction(Transfer transfer, Worker worker) {
+        Branch toBranch = transfer.getToBranch();
+        String receiptNumber = receiptSequenceService.generateReceiptNumber(
+                toBranch.getId(), TransactionType.TRANSFER_IN);
+
+        Transaction tx = Transaction.builder()
+                .company(toBranch.getCompany())
+                .branch(toBranch)
+                .worker(worker)
+                .receiptNumber(receiptNumber)
+                .transactionType(TransactionType.TRANSFER_IN)
+                .status(TransactionStatus.COMPLETED)
+                .transactionDate(LocalDate.now())
+                .transactionTime(LocalTime.now())
+                .currency(transfer.getCurrency())
+                .currencyAmount(transfer.getAmount())
+                .exchangeRate(BigDecimal.ONE) // Átadásnál nincs árfolyam
+                .hufAmount(transfer.getHufValue() != null ? transfer.getHufValue() : BigDecimal.ZERO)
+                .referenceNumber(transfer.getTransferNumber())
+                .notes(String.format("Átvétel (%s): %s <- %s [%s]",
+                        transfer.getDirection(),
+                        toBranch.getCode(),
+                        transfer.getFromBranch().getCode(),
+                        transfer.getTransferNumber()))
+                .build();
+
+        tx = transactionRepository.save(tx);
+        log.debug("TRANSFER_IN tx létrehozva: receipt={}, transfer={}", receiptNumber, transfer.getTransferNumber());
+        return tx;
+    }
+
+    /**
+     * FF korrekciós TRANSFER_OUT a fogadó fióknál (második kimenő tranzakció).
+     */
+    private Transaction createCorrectionTransferOutTransaction(Transfer transfer, Worker worker) {
+        Branch toBranch = transfer.getToBranch();
+        String receiptNumber = receiptSequenceService.generateReceiptNumber(
+                toBranch.getId(), TransactionType.TRANSFER_OUT);
+
+        Transaction tx = Transaction.builder()
+                .company(toBranch.getCompany())
+                .branch(toBranch)
+                .worker(worker)
+                .receiptNumber(receiptNumber)
+                .transactionType(TransactionType.TRANSFER_OUT)
+                .status(TransactionStatus.COMPLETED)
+                .transactionDate(LocalDate.now())
+                .transactionTime(LocalTime.now())
+                .currency(transfer.getCurrency())
+                .currencyAmount(transfer.getAmount())
+                .exchangeRate(BigDecimal.ONE)
+                .hufAmount(transfer.getHufValue() != null ? transfer.getHufValue() : BigDecimal.ZERO)
+                .referenceNumber(transfer.getTransferNumber())
+                .notes(String.format("Korrekciós átadás (FF): %s [%s]",
+                        toBranch.getCode(), transfer.getTransferNumber()))
+                .build();
+
+        tx = transactionRepository.save(tx);
+        log.debug("FF korrekciós TRANSFER_OUT tx létrehozva: receipt={}, transfer={}",
+                receiptNumber, transfer.getTransferNumber());
+        return tx;
+    }
+
+    // --- Cash balance updates with pessimistic locking ---
+
+    /**
+     * Kassza egyenleg csökkentése PESSIMISTIC LOCK-kal.
+     */
+    private void decreaseCashBalance(Branch branch, Currency currency, BigDecimal amount) {
+        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(
+                branch.getId(), currency.getId())
+                .orElseThrow(() -> new ValidationException(
+                        String.format("Kassza egyenleg nem található: %s / %s",
+                                branch.getCode(), currency.getCode())));
+
+        // Negatív kassza védelem
+        if (balance.getCurrentBalance().compareTo(amount) < 0) {
+            throw new ValidationException(String.format(
+                    "Fiók egyenlege nem elegendő! Iroda: %s, valuta: %s, elérhető: %s, szükséges: %s",
+                    branch.getCode(), currency.getCode(), balance.getCurrentBalance(), amount));
+        }
+
+        balance.updateBalance(amount, false);
+        cashBalanceRepository.save(balance);
+        log.debug("Kassza csökkentve: {} {} -= {}", branch.getCode(), currency.getCode(), amount);
+    }
+
+    /**
+     * Kassza egyenleg növelése PESSIMISTIC LOCK-kal.
+     */
+    private void increaseCashBalance(Branch branch, Currency currency, BigDecimal amount) {
+        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(
+                branch.getId(), currency.getId())
+                .orElseThrow(() -> new ValidationException(
+                        String.format("Kassza egyenleg nem található: %s / %s",
+                                branch.getCode(), currency.getCode())));
+
+        balance.updateBalance(amount, true);
+        cashBalanceRepository.save(balance);
+        log.debug("Kassza növelve: {} {} += {}", branch.getCode(), currency.getCode(), amount);
+    }
+
+    /**
+     * Kassza egyenleg frissítés a receive (fogadás) művelet során.
+     * Az F módnál a create-nál már megtörtént a fromBranch csökkentés,
+     * itt a fogadó oldal történik.
+     */
+    private void updateCashBalancesOnReceive(Transfer transfer, BigDecimal receivedAmount,
+                                              Transfer.TransferDirection direction) {
+        switch (direction) {
+            case F -> {
+                // F mód: a küldő oldal a create-nál már csökkent, itt a fogadó oldal növekszik
+                increaseCashBalance(transfer.getToBranch(), transfer.getCurrency(), receivedAmount);
+            }
+            case U, UF, FF -> {
+                // U/UF/FF: a create-nál már mindkét oldal kassza frissült, receive-nél nincs kassza módosítás
+                log.debug("Receive: {} módban nincs további kassza módosítás: {}",
+                        direction, transfer.getTransferNumber());
+            }
+        }
+    }
+
     // --- Helpers ---
 
     private Transfer findOrThrow(Long id) {
@@ -231,6 +478,8 @@ public class TransferService {
                 .toWorkerName(t.getToWorker() != null ? t.getToWorker().getName() : null)
                 .transferType(t.getTransferType().name())
                 .transferTypeDisplay(getTransferTypeDisplay(t.getTransferType()))
+                .direction(t.getDirection() != null ? t.getDirection().name() : "UF")
+                .directionDisplay(getDirectionDisplay(t.getDirection()))
                 .status(t.getStatus().name())
                 .statusDisplay(getStatusDisplay(t.getStatus()))
                 .transferDate(t.getTransferDate().toString())
@@ -263,6 +512,16 @@ public class TransferService {
             case VAULT_WITHDRAW -> "Széf kivét";
             case CORRECTION -> "Korrekció";
             case OTHER -> "Egyéb";
+        };
+    }
+
+    private String getDirectionDisplay(Transfer.TransferDirection direction) {
+        if (direction == null) return "Teljes (UF)";
+        return switch (direction) {
+            case F -> "Feladó (F)";
+            case U -> "Vevő (U)";
+            case UF -> "Teljes (UF)";
+            case FF -> "Korrekció (FF)";
         };
     }
 

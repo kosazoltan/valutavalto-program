@@ -59,6 +59,15 @@ public class DenominationBalance {
     @Builder.Default
     private BigDecimal totalValue = BigDecimal.ZERO;
 
+    /**
+     * Címletezési kategória — melyik kasszatípushoz tartozik az egyenleg.
+     * Legacy: CIMLET.CIMLETSORSZAM (1=esti, 2=kezelési díj, 3=WU, 4=ÁFA, stb.)
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "denomination_category", nullable = false, length = 30)
+    @Builder.Default
+    private DenominationCategory denominationCategory = DenominationCategory.EVENING;
+
     @LastModifiedDate
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;

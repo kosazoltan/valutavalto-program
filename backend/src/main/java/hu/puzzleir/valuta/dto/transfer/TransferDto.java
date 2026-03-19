@@ -19,6 +19,8 @@ public class TransferDto {
     private String toWorkerName;
     private String transferType;
     private String transferTypeDisplay;
+    private String direction;
+    private String directionDisplay;
     private String status;
     private String statusDisplay;
     private String transferDate;

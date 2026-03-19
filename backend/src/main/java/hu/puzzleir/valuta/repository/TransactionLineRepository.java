@@ -12,4 +12,6 @@ public interface TransactionLineRepository extends JpaRepository<TransactionLine
     List<TransactionLine> findByTransactionIdOrderByLineNumber(Long transactionId);
 
     int countByTransactionId(Long transactionId);
+
+    void deleteByTransactionId(Long transactionId);
 }

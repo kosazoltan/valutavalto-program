@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import hu.puzzleir.valuta.entity.DenominationCategory;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -63,12 +65,13 @@ public interface DenominationBalanceRepository extends JpaRepository<Denominatio
     );
 
     /**
-     * Van-e adott tipusu cimletez es?
+     * Van-e adott kategóriájú cimletez es?
+     * A DailyClosingService String-ként adja át a kategóriát (pl. "HANDLING_FEE", "WESTERN_UNION").
      */
     @Query("SELECT COUNT(db) > 0 FROM DenominationBalance db " +
            "WHERE db.cashDeskId = :branchId " +
            "AND db.updatedAt >= CAST(:date AS timestamp) " +
-           "AND db.denomination.currency.code = :type")
+           "AND CAST(db.denominationCategory AS string) = :type")
     boolean existsByBranchIdAndDateAndType(
         @Param("branchId") UUID branchId,
         @Param("date") java.time.LocalDate date,
@@ -76,16 +79,42 @@ public interface DenominationBalanceRepository extends JpaRepository<Denominatio
     );
 
     /**
-     * Cimletezett osszeg a napzarashoz.
+     * Van-e adott kategóriájú cimletez es? (enum típusú paraméterrel)
+     */
+    @Query("SELECT COUNT(db) > 0 FROM DenominationBalance db " +
+           "WHERE db.cashDeskId = :branchId " +
+           "AND db.updatedAt >= CAST(:date AS timestamp) " +
+           "AND db.denominationCategory = :category")
+    boolean existsByBranchIdAndDateAndCategory(
+        @Param("branchId") UUID branchId,
+        @Param("date") java.time.LocalDate date,
+        @Param("category") DenominationCategory category
+    );
+
+    /**
+     * Cimletezett osszeg a napzarashoz (String kategória — backwards compatible).
      */
     @Query("SELECT COALESCE(SUM(db.totalValue), 0) FROM DenominationBalance db " +
            "WHERE db.cashDeskId = :branchId " +
            "AND db.updatedAt >= CAST(:date AS timestamp) " +
-           "AND db.denomination.currency.code = :type")
+           "AND CAST(db.denominationCategory AS string) = :type")
     BigDecimal sumDenominatedAmount(
         @Param("branchId") UUID branchId,
         @Param("date") java.time.LocalDate date,
         @Param("type") String type
+    );
+
+    /**
+     * Cimletezett osszeg a napzarashoz (enum kategória).
+     */
+    @Query("SELECT COALESCE(SUM(db.totalValue), 0) FROM DenominationBalance db " +
+           "WHERE db.cashDeskId = :branchId " +
+           "AND db.updatedAt >= CAST(:date AS timestamp) " +
+           "AND db.denominationCategory = :category")
+    BigDecimal sumDenominatedAmountByCategory(
+        @Param("branchId") UUID branchId,
+        @Param("date") java.time.LocalDate date,
+        @Param("category") DenominationCategory category
     );
 
     /**
@@ -99,5 +128,19 @@ public interface DenominationBalanceRepository extends JpaRepository<Denominatio
     List<DenominationBalance> findByBranchIdAndDate(
         @Param("branchId") UUID branchId,
         @Param("date") java.time.LocalDate date
+    );
+
+    /**
+     * Adott iroda aznapi adott kategóriájú cimlet egyenlegei.
+     */
+    @Query("SELECT db FROM DenominationBalance db " +
+           "WHERE db.cashDeskId = :branchId " +
+           "AND db.updatedAt >= CAST(:date AS timestamp) " +
+           "AND db.denominationCategory = :category " +
+           "AND db.quantity > 0")
+    List<DenominationBalance> findByBranchIdAndDateAndCategory(
+        @Param("branchId") UUID branchId,
+        @Param("date") java.time.LocalDate date,
+        @Param("category") DenominationCategory category
     );
 }

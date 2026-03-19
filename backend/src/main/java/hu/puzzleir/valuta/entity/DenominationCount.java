@@ -51,6 +51,15 @@ public class DenominationCount {
     @Builder.Default
     private String countType = "CLOSING";
 
+    /**
+     * Címletezési kategória — melyik kasszatípushoz tartozik a számlálás.
+     * Legacy: CIMLET.CIMLETSORSZAM (1=esti, 2=kezelési díj, 3=WU, 4=ÁFA, stb.)
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "denomination_category", nullable = false, length = 30)
+    @Builder.Default
+    private DenominationCategory denominationCategory = DenominationCategory.EVENING;
+
     @Column(name = "worker_id")
     private Long workerId;
 

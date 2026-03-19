@@ -78,6 +78,11 @@ public class Transfer {
     @Column(name = "difference", precision = 18, scale = 4)
     private BigDecimal difference;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "direction", length = 2)
+    @Builder.Default
+    private TransferDirection direction = TransferDirection.UF;
+
     @Column(columnDefinition = "TEXT")
     private String notes;
 
@@ -102,5 +107,20 @@ public class Transfer {
 
     public enum TransferStatus {
         PENDING, IN_TRANSIT, RECEIVED, COMPLETED, REJECTED, CANCELLED
+    }
+
+    /**
+     * Átadás iránya (legacy Delphi kompatibilis).
+     *
+     * F  = Feladó (Sender only): TRANSFER_OUT tx a küldő fióknál
+     * U  = Vevő (Receiver only): TRANSFER_IN tx a fogadó fióknál
+     * UF = Teljes körforgás: mindkét oldal tranzakciója egyszerre (küldő + fogadó)
+     * FF = Dupla feladó (korrekció): két TRANSFER_OUT tx (adminisztratív javítás)
+     */
+    public enum TransferDirection {
+        F,   // Feladó — csak kimenő tranzakció
+        U,   // Vevő — csak bejövő tranzakció
+        UF,  // Mindkét irány egyszerre
+        FF   // Korrekció — két kimenő
     }
 }

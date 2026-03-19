@@ -12,5 +12,7 @@ public class CreateTransferDto {
     @NotNull @Positive private BigDecimal amount;
     private BigDecimal hufValue;
     @NotNull private String transferType;
+    /** Átadás iránya: F, U, UF, FF (default: UF) */
+    private String direction;
     private String notes;
 }

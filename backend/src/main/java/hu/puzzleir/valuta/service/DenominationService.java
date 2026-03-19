@@ -8,8 +8,11 @@ import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.Denomination;
+import hu.puzzleir.valuta.entity.DenominationCategory;
+import hu.puzzleir.valuta.entity.DenominationCount;
 import hu.puzzleir.valuta.entity.DenominationType;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
+import hu.puzzleir.valuta.repository.DenominationCountRepository;
 import hu.puzzleir.valuta.repository.DenominationRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +37,7 @@ import java.util.stream.Collectors;
 public class DenominationService {
 
     private final DenominationRepository denominationRepository;
+    private final DenominationCountRepository denominationCountRepository;
     private final CurrencyRepository currencyRepository;
     private final CompanyRepository companyRepository;
     private final BranchRepository branchRepository;
@@ -373,6 +377,85 @@ public class DenominationService {
         }
 
         return result;
+    }
+
+    // ============ KATEGÓRIA ALAPÚ CÍMLETEZÉS ============
+
+    /**
+     * Címletezés rögzítése adott kategóriával.
+     *
+     * Legacy: CIMLETSZAM rekord felvétele a napi zárás során,
+     * az egyes kasszatípusokhoz (esti, kezelési díj, WU, ÁFA, stb.)
+     *
+     * @param branchId iroda
+     * @param sessionId munkamenet
+     * @param category címletezési kategória
+     * @param denomCounts Map: currencyCode -> Map(faceValue darabszám -> quantity)
+     * @return rögzített DenominationCount lista
+     */
+    public List<DenominationCount> recordDenomination(
+            UUID branchId,
+            UUID sessionId,
+            DenominationCategory category,
+            Map<String, Map<Integer, Integer>> denomCounts) {
+
+        if (denomCounts == null || denomCounts.isEmpty()) {
+            throw new ValidationException("Üres címletezési adat!");
+        }
+
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+
+        List<DenominationCount> saved = new ArrayList<>();
+
+        for (Map.Entry<String, Map<Integer, Integer>> currencyEntry : denomCounts.entrySet()) {
+            String currencyCode = currencyEntry.getKey();
+            Map<Integer, Integer> faceValueCounts = currencyEntry.getValue();
+
+            for (Map.Entry<Integer, Integer> fvEntry : faceValueCounts.entrySet()) {
+                BigDecimal faceValue = new BigDecimal(fvEntry.getKey());
+                int quantity = fvEntry.getValue();
+
+                if (quantity < 0) {
+                    throw new ValidationException(
+                        String.format("Negatív darabszám nem megengedett: %s %s = %d",
+                            currencyCode, faceValue.toPlainString(), quantity));
+                }
+
+                DenominationCount count = DenominationCount.builder()
+                    .branchId(branchId)
+                    .sessionId(sessionId)
+                    .currencyCode(currencyCode)
+                    .faceValue(faceValue)
+                    .quantity(quantity)
+                    .countType("CLOSING")
+                    .denominationCategory(category)
+                    .workerId(workerId)
+                    .build();
+
+                saved.add(denominationCountRepository.save(count));
+            }
+        }
+
+        log.info("Címletezés rögzítve: iroda={}, kategória={}, {} tétel",
+            branchId, category.getDisplayName(), saved.size());
+
+        return saved;
+    }
+
+    /**
+     * Kategória alapú címletezés összesítés.
+     */
+    @Transactional(readOnly = true)
+    public BigDecimal getCategoryDenominatedTotal(UUID branchId, java.time.LocalDate date, DenominationCategory category) {
+        return denominationCountRepository.sumDenominatedAmountByCategory(branchId, date, category);
+    }
+
+    /**
+     * Ellenőrzi, hogy adott kategória címletezése megtörtént-e az adott napon.
+     */
+    @Transactional(readOnly = true)
+    public boolean isCategoryDenominated(UUID branchId, java.time.LocalDate date, DenominationCategory category) {
+        return denominationCountRepository.existsByBranchIdAndDateAndCategory(branchId, date, category);
     }
 
     // ============ REQUEST/RESPONSE DTO-k ============

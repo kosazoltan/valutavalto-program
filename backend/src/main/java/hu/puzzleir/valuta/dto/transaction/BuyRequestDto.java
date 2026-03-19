@@ -1,13 +1,16 @@
 package hu.puzzleir.valuta.dto.transaction;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * Vétel request DTO
@@ -45,4 +48,13 @@ public class BuyRequestDto {
     private String customerNationality;
 
     private String notes;
+
+    /**
+     * Multi-line bizonylat tetelsorai (max 6 sor).
+     * Ha megadva, a currencyId/currencyCode/currencyAmount mezok figyelmen kivul maradnak
+     * — a fejlec a sorok aggregaltjabol szamitodik.
+     */
+    @Valid
+    @Size(max = 6, message = "Egy bizonylaton maximum 6 tetelsor lehet (BLOKKTETEL limit)")
+    private List<TransactionLineRequestDto> lines;
 }

@@ -43,6 +43,7 @@ import java.util.UUID;
 public class TransactionService {
 
     private final TransactionRepository transactionRepository;
+    private final TransactionLineRepository transactionLineRepository;
     private final CurrencyRepository currencyRepository;
     private final ExchangeRateRepository exchangeRateRepository;
     private final CashBalanceRepository cashBalanceRepository;
@@ -64,6 +65,9 @@ public class TransactionService {
 
     // Azonosítás nélküli limit HUF-ban (300.000 Ft - NAV szabályozás)
     private static final BigDecimal IDENTIFICATION_LIMIT = new BigDecimal("300000");
+
+    // Max tetelsorok szama bizonylaton (Legacy: BLOKKTETEL limit)
+    private static final int MAX_TRANSACTION_LINES = 6;
 
     // HUF currency ID cache — startup-kor betöltve, ne kelljen minden tranzakciónál DB-t kérdezni
     private volatile Long cachedHufCurrencyId;
@@ -92,6 +96,11 @@ public class TransactionService {
      * Legacy: VASARLAS.DLL - VETEL funkció
      */
     public Transaction executeBuy(BuyRequest request) {
+        // Multi-line delegalas ha vannak tetelsorok
+        if (request.getLines() != null && !request.getLines().isEmpty()) {
+            return executeMultiLineBuy(request);
+        }
+
         validateOpenSession();
 
         UUID companyId = SecurityUtils.getCurrentCompanyId();
@@ -223,6 +232,11 @@ public class TransactionService {
      * Legacy: ELADAS.DLL - ELADAS funkció
      */
     public Transaction executeSell(SellRequest request) {
+        // Multi-line delegalas ha vannak tetelsorok
+        if (request.getLines() != null && !request.getLines().isEmpty()) {
+            return executeMultiLineSell(request);
+        }
+
         validateOpenSession();
 
         UUID companyId = SecurityUtils.getCurrentCompanyId();
@@ -773,6 +787,376 @@ public class TransactionService {
         return saved;
     }
 
+    // ============ MULTI-LINE TRANZAKCIÓK ============
+
+    /**
+     * Multi-line vetel tranzakcio (tobb valutasor egy bizonylaton).
+     * Legacy: BLOKKTETEL tabla — max 6 kulonbozo valutasor.
+     *
+     * A fejlec (Transaction) az elso sor valutajaval jon letre, de a fo osszegek
+     * (hufAmount, currencyAmount) a sorok aggregaltjai.
+     */
+    private Transaction executeMultiLineBuy(BuyRequest request) {
+        validateOpenSession();
+        validateMultiLineRequest(request.getLines());
+
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Company nem található"));
+        Branch branch = branchRepository.findById(branchId)
+                .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található"));
+        Worker worker = workerRepository.findById(workerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található"));
+
+        // Kedvezmeny validalas
+        if (request.getDiscountPercent() != null && request.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0) {
+            validateDiscount(request.getDiscountPercent());
+        }
+
+        // Elso sor valutaja a fejlec valutaja (legacy konvencio)
+        LineRequest firstLine = request.getLines().get(0);
+        Long firstCurrencyId = resolveCurrencyId(firstLine.getCurrencyId(), firstLine.getCurrencyCode());
+        Currency firstCurrency = currencyRepository.findById(firstCurrencyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Valuta nem található"));
+
+        // Soronkenti feldolgozas: arfolyam + HUF szamitas
+        BigDecimal totalHuf = BigDecimal.ZERO;
+        BigDecimal totalCurrencyAmount = BigDecimal.ZERO;
+        java.util.List<TransactionLine> transactionLines = new java.util.ArrayList<>();
+
+        for (int i = 0; i < request.getLines().size(); i++) {
+            final int lineIdx = i;
+            LineRequest lineReq = request.getLines().get(i);
+            Long lineCurrencyId = resolveCurrencyId(lineReq.getCurrencyId(), lineReq.getCurrencyCode());
+            Currency lineCurrency = currencyRepository.findById(lineCurrencyId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Valuta nem található: sor " + (lineIdx + 1)));
+
+            ExchangeRate lineRate = exchangeRateService.getCurrentRate(lineCurrencyId);
+            BigDecimal appliedRate = resolveBuyRate(lineRate, lineReq.getBanknoteCount(), lineReq.getCustomExchangeRate());
+
+            TransactionLine line = TransactionLine.builder()
+                    .lineNumber(lineIdx + 1)
+                    .currency(lineCurrency)
+                    .appliedRate(appliedRate)
+                    .originalRate(lineRate.getBaseBuyRate())
+                    .settlementRate(lineRate.getBaseBuyRate())
+                    .banknoteCount(lineReq.getBanknoteCount())
+                    .discountType(lineReq.getDiscountType() != null ? lineReq.getDiscountType() : 0)
+                    .build();
+
+            // Forint ertek szamitas (calculateHufValue hasznalja a currency entity-t)
+            BigDecimal lineHuf = line.calculateHufValue();
+            line.setHufValue(lineHuf);
+
+            totalHuf = totalHuf.add(lineHuf);
+            totalCurrencyAmount = totalCurrencyAmount.add(lineReq.getBanknoteCount());
+            transactionLines.add(line);
+        }
+
+        // Kedvezmeny az osszes sorra
+        BigDecimal hufAfterDiscount = applyBuyDiscount(totalHuf, request.getDiscountPercent());
+
+        // Kezelesi dij
+        BigDecimal serverHandlingFee = handlingFeeCalculator.calculate(
+                hufAfterDiscount, TransactionType.BUY, request.getHandlingFee());
+        BigDecimal grossAmount = handlingFeeCalculator.calculateBuyGross(hufAfterDiscount, serverHandlingFee);
+
+        // Magyar 5 Ft kerekites
+        BigDecimal payableAmount = HungarianRounding.roundToFive(grossAmount);
+        BigDecimal roundingDifference = payableAmount.subtract(grossAmount);
+
+        // 300K+ ugyfelazonositas
+        validateIdentification(payableAmount, request.getCustomerName(), request.getCustomerDocumentNumber());
+
+        // AML ellenorzes az aggregalt osszegre
+        performAmlCheck(payableAmount, request.getCustomerId(), request.getCustomerName(),
+                request.getCustomerDocumentNumber(), firstCurrency.getCode());
+
+        // Bizonylat szam generalas
+        String receiptNumber = receiptSequenceService.generateReceiptNumber(branchId, TransactionType.BUY);
+
+        BigDecimal discountAmount = calculateDiscountAmount(totalHuf, request.getDiscountPercent());
+
+        // POS terminal kezeles
+        PaymentMethod paymentMethod = request.getPaymentMethod() != null ? request.getPaymentMethod() : PaymentMethod.CASH;
+        String posAuthCode = null;
+        String posRefNumber = null;
+        String posTerminalId = request.getPosTerminalId();
+
+        if (paymentMethod == PaymentMethod.CARD) {
+            if (posTerminalId == null || posTerminalId.isBlank()) {
+                throw new ValidationException("Bankkártyás fizetéshez POS terminál azonosító kötelező!");
+            }
+            PosTransactionResult posResult = posTerminalService.initiatePayment(
+                    payableAmount, "HUF", posTerminalId);
+            if (!posResult.approved()) {
+                throw new ValidationException("Bankkártyás fizetés elutasítva: " + posResult.errorMessage());
+            }
+            posAuthCode = posResult.authorizationCode();
+            posRefNumber = posResult.referenceNumber();
+        }
+
+        // Atlagos arfolyam a fejlechez (sulyozott atlag)
+        BigDecimal avgRate = totalCurrencyAmount.compareTo(BigDecimal.ZERO) > 0
+                ? totalHuf.divide(totalCurrencyAmount, 4, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        // Tranzakcio fejlec letrehozasa
+        Transaction transaction = Transaction.builder()
+                .company(company)
+                .branch(branch)
+                .worker(worker)
+                .receiptNumber(receiptNumber)
+                .transactionType(TransactionType.BUY)
+                .status(TransactionStatus.COMPLETED)
+                .transactionDate(LocalDate.now())
+                .transactionTime(LocalTime.now())
+                .currency(firstCurrency)
+                .currencyAmount(totalCurrencyAmount)
+                .exchangeRate(avgRate)
+                .hufAmount(payableAmount)
+                .handlingFee(serverHandlingFee)
+                .discountPercent(request.getDiscountPercent() != null ? request.getDiscountPercent() : BigDecimal.ZERO)
+                .discountAmount(discountAmount)
+                .roundingAmount(roundingDifference)
+                .multiLine(true)
+                .lineCount(request.getLines().size())
+                .paymentMethod(paymentMethod)
+                .posAuthorizationCode(posAuthCode)
+                .posReferenceNumber(posRefNumber)
+                .posTerminalId(posTerminalId)
+                .customerId(request.getCustomerId())
+                .customerName(request.getCustomerName())
+                .customerAddress(request.getCustomerAddress())
+                .customerDocumentNumber(request.getCustomerDocumentNumber())
+                .customerNationality(request.getCustomerNationality())
+                .notes(request.getNotes())
+                .build();
+
+        Transaction saved = transactionRepository.save(transaction);
+
+        // Tetelsorok mentese
+        for (TransactionLine line : transactionLines) {
+            line.setTransaction(saved);
+        }
+        saved.getLines().addAll(transactionLines);
+        saved = transactionRepository.save(saved);
+
+        // Kassza frissites — soronkent valuta +, ossz HUF -
+        for (TransactionLine line : transactionLines) {
+            updateCashBalance(branchId, line.getCurrency().getId(), line.getBanknoteCount(), true);
+        }
+        updateCashBalance(branchId, getHufCurrencyId(), payableAmount.negate(), false);
+
+        // Napi statisztika
+        dailySessionService.updateSessionStats(TransactionType.BUY, payableAmount, serverHandlingFee);
+
+        log.info("Multi-line vétel: {} - {} sor, összesen {} HUF (kerekítés: {} Ft, díj: {} Ft)",
+                receiptNumber, request.getLines().size(), payableAmount, roundingDifference, serverHandlingFee);
+
+        return saved;
+    }
+
+    /**
+     * Multi-line eladas tranzakcio (tobb valutasor egy bizonylaton).
+     */
+    private Transaction executeMultiLineSell(SellRequest request) {
+        validateOpenSession();
+        validateMultiLineRequest(request.getLines());
+
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Company nem található"));
+        Branch branch = branchRepository.findById(branchId)
+                .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található"));
+        Worker worker = workerRepository.findById(workerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található"));
+
+        // Kedvezmeny validalas
+        if (request.getDiscountPercent() != null && request.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0) {
+            validateDiscount(request.getDiscountPercent());
+        }
+
+        // Elso sor valutaja a fejlec valutaja
+        LineRequest firstLine = request.getLines().get(0);
+        Long firstCurrencyId = resolveCurrencyId(firstLine.getCurrencyId(), firstLine.getCurrencyCode());
+        Currency firstCurrency = currencyRepository.findById(firstCurrencyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Valuta nem található"));
+
+        BigDecimal totalHuf = BigDecimal.ZERO;
+        BigDecimal totalCurrencyAmount = BigDecimal.ZERO;
+        java.util.List<TransactionLine> transactionLines = new java.util.ArrayList<>();
+
+        for (int i = 0; i < request.getLines().size(); i++) {
+            final int lineIdx = i;
+            LineRequest lineReq = request.getLines().get(i);
+            Long lineCurrencyId = resolveCurrencyId(lineReq.getCurrencyId(), lineReq.getCurrencyCode());
+            Currency lineCurrency = currencyRepository.findById(lineCurrencyId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Valuta nem található: sor " + (lineIdx + 1)));
+
+            ExchangeRate lineRate = exchangeRateService.getCurrentRate(lineCurrencyId);
+            BigDecimal appliedRate = resolveSellRate(lineRate, lineReq.getBanknoteCount(), lineReq.getCustomExchangeRate());
+
+            // Keszlet ellenorzes soronkent
+            validateCurrencyStock(branchId, lineCurrency.getId(), lineReq.getBanknoteCount());
+
+            TransactionLine line = TransactionLine.builder()
+                    .lineNumber(lineIdx + 1)
+                    .currency(lineCurrency)
+                    .appliedRate(appliedRate)
+                    .originalRate(lineRate.getBaseSellRate())
+                    .settlementRate(lineRate.getBaseSellRate())
+                    .banknoteCount(lineReq.getBanknoteCount())
+                    .discountType(lineReq.getDiscountType() != null ? lineReq.getDiscountType() : 0)
+                    .build();
+
+            BigDecimal lineHuf = line.calculateHufValue();
+            line.setHufValue(lineHuf);
+
+            totalHuf = totalHuf.add(lineHuf);
+            totalCurrencyAmount = totalCurrencyAmount.add(lineReq.getBanknoteCount());
+            transactionLines.add(line);
+        }
+
+        // Kedvezmeny az osszes sorra
+        BigDecimal hufAfterDiscount = applySellDiscount(totalHuf, request.getDiscountPercent());
+
+        // Kezelesi dij
+        BigDecimal serverHandlingFee = handlingFeeCalculator.calculate(
+                hufAfterDiscount, TransactionType.SELL, request.getHandlingFee());
+        BigDecimal grossAmount = handlingFeeCalculator.calculateSellGross(hufAfterDiscount, serverHandlingFee);
+
+        // Magyar 5 Ft kerekites
+        BigDecimal payableAmount = HungarianRounding.roundToFive(grossAmount);
+        BigDecimal roundingDifference = payableAmount.subtract(grossAmount);
+
+        // 300K+ ugyfelazonositas
+        validateIdentification(payableAmount, request.getCustomerName(), request.getCustomerDocumentNumber());
+
+        // AML ellenorzes
+        performAmlCheck(payableAmount, request.getCustomerId(), request.getCustomerName(),
+                request.getCustomerDocumentNumber(), firstCurrency.getCode());
+
+        String receiptNumber = receiptSequenceService.generateReceiptNumber(branchId, TransactionType.SELL);
+        BigDecimal discountAmount = calculateDiscountAmount(totalHuf, request.getDiscountPercent());
+
+        // POS terminal kezeles
+        PaymentMethod paymentMethod = request.getPaymentMethod() != null ? request.getPaymentMethod() : PaymentMethod.CASH;
+        String posAuthCode = null;
+        String posRefNumber = null;
+        String posTerminalId = request.getPosTerminalId();
+
+        if (paymentMethod == PaymentMethod.CARD) {
+            if (posTerminalId == null || posTerminalId.isBlank()) {
+                throw new ValidationException("Bankkártyás fizetéshez POS terminál azonosító kötelező!");
+            }
+            PosTransactionResult posResult = posTerminalService.initiatePayment(
+                    payableAmount, "HUF", posTerminalId);
+            if (!posResult.approved()) {
+                throw new ValidationException("Bankkártyás fizetés elutasítva: " + posResult.errorMessage());
+            }
+            posAuthCode = posResult.authorizationCode();
+            posRefNumber = posResult.referenceNumber();
+        }
+
+        BigDecimal avgRate = totalCurrencyAmount.compareTo(BigDecimal.ZERO) > 0
+                ? totalHuf.divide(totalCurrencyAmount, 4, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        Transaction transaction = Transaction.builder()
+                .company(company)
+                .branch(branch)
+                .worker(worker)
+                .receiptNumber(receiptNumber)
+                .transactionType(TransactionType.SELL)
+                .status(TransactionStatus.COMPLETED)
+                .transactionDate(LocalDate.now())
+                .transactionTime(LocalTime.now())
+                .currency(firstCurrency)
+                .currencyAmount(totalCurrencyAmount)
+                .exchangeRate(avgRate)
+                .hufAmount(payableAmount)
+                .handlingFee(serverHandlingFee)
+                .discountPercent(request.getDiscountPercent() != null ? request.getDiscountPercent() : BigDecimal.ZERO)
+                .discountAmount(discountAmount)
+                .roundingAmount(roundingDifference)
+                .multiLine(true)
+                .lineCount(request.getLines().size())
+                .paymentMethod(paymentMethod)
+                .posAuthorizationCode(posAuthCode)
+                .posReferenceNumber(posRefNumber)
+                .posTerminalId(posTerminalId)
+                .customerId(request.getCustomerId())
+                .customerName(request.getCustomerName())
+                .customerAddress(request.getCustomerAddress())
+                .customerDocumentNumber(request.getCustomerDocumentNumber())
+                .customerNationality(request.getCustomerNationality())
+                .notes(request.getNotes())
+                .build();
+
+        Transaction saved = transactionRepository.save(transaction);
+
+        for (TransactionLine line : transactionLines) {
+            line.setTransaction(saved);
+        }
+        saved.getLines().addAll(transactionLines);
+        saved = transactionRepository.save(saved);
+
+        // Kassza frissites — soronkent valuta -, ossz HUF +
+        for (TransactionLine line : transactionLines) {
+            updateCashBalance(branchId, line.getCurrency().getId(), line.getBanknoteCount().negate(), false);
+        }
+        updateCashBalance(branchId, getHufCurrencyId(), payableAmount, true);
+
+        // Napi statisztika
+        dailySessionService.updateSessionStats(TransactionType.SELL, payableAmount, serverHandlingFee);
+
+        log.info("Multi-line eladás: {} - {} sor, összesen {} HUF (kerekítés: {} Ft, díj: {} Ft)",
+                receiptNumber, request.getLines().size(), payableAmount, roundingDifference, serverHandlingFee);
+
+        return saved;
+    }
+
+    /**
+     * Multi-line request validacio.
+     * Legacy: BLOKKTETEL — max 6 kulonbozo valutasor bizonylaton.
+     */
+    private void validateMultiLineRequest(java.util.List<LineRequest> lines) {
+        if (lines == null || lines.isEmpty()) {
+            throw new ValidationException("Multi-line bizonylathoz legalabb egy tetelsor szukseges!");
+        }
+        if (lines.size() > MAX_TRANSACTION_LINES) {
+            throw new ValidationException(
+                String.format("Egy bizonylaton maximum %d tetelsor lehet (BLOKKTETEL limit)!", MAX_TRANSACTION_LINES));
+        }
+        for (int i = 0; i < lines.size(); i++) {
+            LineRequest line = lines.get(i);
+            if (line.getBanknoteCount() == null || line.getBanknoteCount().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new ValidationException(
+                    String.format("Tetelsor %d: bankjegy darabszam kotelezo es pozitiv kell legyen!", i + 1));
+            }
+            if ((line.getCurrencyId() == null || line.getCurrencyId() <= 0)
+                    && (line.getCurrencyCode() == null || line.getCurrencyCode().isBlank())) {
+                throw new ValidationException(
+                    String.format("Tetelsor %d: valuta azonosito (currencyId) vagy kod (currencyCode) kotelezo!", i + 1));
+            }
+        }
+    }
+
+    /**
+     * Tranzakcio tetelsorainak lekerdezese.
+     */
+    @Transactional(readOnly = true)
+    public java.util.List<TransactionLine> getTransactionLines(Long transactionId) {
+        return transactionLineRepository.findByTransactionIdOrderByLineNumber(transactionId);
+    }
+
     // ============ LEKÉRDEZÉSEK ============
 
     /**
@@ -1100,6 +1484,8 @@ public class TransactionService {
         private PaymentMethod paymentMethod;
         /** POS terminál azonosító (csak CARD fizetésnél kötelező) */
         private String posTerminalId;
+        /** Multi-line bizonylat tetelsorai (max 6). Ha nem ures, multi-line feldolgozas. */
+        private java.util.List<LineRequest> lines;
     }
 
     @lombok.Data
@@ -1123,6 +1509,8 @@ public class TransactionService {
         private PaymentMethod paymentMethod;
         /** POS terminál azonosító (csak CARD fizetésnél kötelező) */
         private String posTerminalId;
+        /** Multi-line bizonylat tetelsorai (max 6). Ha nem ures, multi-line feldolgozas. */
+        private java.util.List<LineRequest> lines;
     }
 
     @lombok.Data
@@ -1163,6 +1551,24 @@ public class TransactionService {
         private String customerId;
         private String customerName;
         private String customerDocumentNumber;
+    }
+
+    /**
+     * Egy tetelsor request multi-line bizonylathoz.
+     */
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class LineRequest {
+        private Long currencyId;
+        private String currencyCode;
+        /** Bankjegy darabszam / valuta osszeg */
+        private BigDecimal banknoteCount;
+        /** Egyedi arfolyam (opcionalis) */
+        private BigDecimal customExchangeRate;
+        /** Sor kedvezmeny tipus (0=nincs, 4=VIP, stb.) */
+        private Integer discountType;
     }
 
     @lombok.Data

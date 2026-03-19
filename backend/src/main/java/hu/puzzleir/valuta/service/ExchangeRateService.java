@@ -18,6 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import org.springframework.beans.factory.annotation.Value;
 
+import hu.puzzleir.valuta.dto.rate.ParsedCurrencyRate;
+import hu.puzzleir.valuta.dto.rate.ParsedRateFile;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -373,6 +376,83 @@ public class ExchangeRateService {
             // Paraméter nem létezik vagy nem parse-olható — nincs rendszerszintű limit
             return null;
         }
+    }
+
+    /**
+     * Legacy GETARF fájlból importált árfolyamok alkalmazása.
+     *
+     * A ParsedRateFile-ból létrehozza az árfolyamokat a rendszerben.
+     * Csak a rendszerben létező valutákhoz hoz létre árfolyamot.
+     *
+     * @param parsedFile a feldolgozott árfolyamfájl
+     * @return az újonnan létrehozott árfolyamok listája
+     */
+    public List<ExchangeRate> importRatesFromParsedFile(ParsedRateFile parsedFile) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Company nem található"));
+
+        Branch branch = null;
+        try {
+            UUID branchId = SecurityUtils.getCurrentBranchId();
+            branch = branchRepository.findById(branchId)
+                    .orElse(null);
+        } catch (Exception e) {
+            log.debug("Nincs aktív branch a session-ben, company-szintű import");
+        }
+
+        List<ExchangeRate> importedRates = new ArrayList<>();
+
+        for (ParsedCurrencyRate parsedRate : parsedFile.getRates()) {
+            try {
+                Currency currency = currencyRepository.findByCode(parsedRate.getCurrencyCode())
+                        .orElse(null);
+
+                if (currency == null) {
+                    log.debug("Valuta nem található a rendszerben, kihagyva: {}", parsedRate.getCurrencyCode());
+                    continue;
+                }
+
+                // Csak akkor importáljuk, ha van érvényes vételi és eladási árfolyam
+                if (parsedRate.getBuyRate() == null || parsedRate.getBuyRate().compareTo(BigDecimal.ZERO) <= 0
+                        || parsedRate.getSellRate() == null || parsedRate.getSellRate().compareTo(BigDecimal.ZERO) <= 0) {
+                    log.warn("Érvénytelen vételi/eladási árfolyam, kihagyva: {}", parsedRate.getCurrencyCode());
+                    continue;
+                }
+
+                // Régi árfolyamok inaktiválása
+                deactivateOldRates(companyId, currency.getId());
+
+                ExchangeRate rate = ExchangeRate.builder()
+                        .company(company)
+                        .branch(branch)
+                        .currency(currency)
+                        .validDate(LocalDate.now())
+                        .validTime(LocalTime.now())
+                        .baseBuyRate(parsedRate.getBuyRate())
+                        .baseSellRate(parsedRate.getSellRate())
+                        .officialRate(parsedRate.getMnbRate())
+                        .active(true)
+                        .createdBy(SecurityUtils.getCurrentWorkerCode())
+                        .build();
+
+                ExchangeRate saved = exchangeRateRepository.save(rate);
+                importedRates.add(saved);
+
+                log.info("Árfolyam importálva fájlból: {} — vétel: {}, eladás: {}, MNB: {}",
+                        parsedRate.getCurrencyCode(),
+                        parsedRate.getBuyRate(), parsedRate.getSellRate(), parsedRate.getMnbRate());
+
+            } catch (Exception e) {
+                log.error("Hiba az árfolyam importálásakor: {} — {}", parsedRate.getCurrencyCode(), e.getMessage());
+            }
+        }
+
+        log.info("Árfolyam fájl import kész: {} valuta importálva a(z) {} feldolgozottból",
+                importedRates.size(), parsedFile.getRates().size());
+
+        return importedRates;
     }
 
     /**
