@@ -3,6 +3,7 @@ import { TrendingUp, RefreshCw, Edit, Save, X, Clock, Download } from 'lucide-re
 import { exchangeRateApi, ExchangeRate } from '../../services/api'
 import { NumberInput } from '../../components/NumberInput'
 import { formatDecimal } from '../../utils/numberFormat'
+import { recordLocalAuditEvent } from '../../utils/electronTransactions'
 
 interface RateRow {
   id: number
@@ -77,6 +78,26 @@ export default function RatesPage() {
         baseBuyRate: editValues.buyRate,
         baseSellRate: editValues.sellRate,
         officialRate: rate.mnbRate || undefined,
+      })
+      await recordLocalAuditEvent({
+        entityType: 'EXCHANGE_RATE',
+        eventType: 'UPDATE',
+        entityId: String(rate.currencyId),
+        referenceNumber: rate.code,
+        payload: {
+          currencyId: rate.currencyId,
+          currencyCode: rate.code,
+          baseBuyRate: editValues.buyRate,
+          baseSellRate: editValues.sellRate,
+          officialRate: rate.mnbRate || null,
+        },
+        rateSnapshot: {
+          currencyCode: rate.code,
+          buyRate: editValues.buyRate,
+          sellRate: editValues.sellRate,
+          officialRate: rate.mnbRate || null,
+        },
+        status: 'SERVER_FORWARDED',
       })
       setEditingCode(null)
       void loadRates()

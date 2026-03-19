@@ -1,15 +1,26 @@
-import { useState, useEffect } from 'react'
-import { Receipt as ReceiptIcon, Search, Printer, Eye } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Receipt as ReceiptIcon, Search, Printer, Eye, Clock } from 'lucide-react'
 import { receiptApi, Receipt } from '../../services/api'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
+import { useAuthStore } from '../../stores/authStore'
+import ReceiptPreviewModal from '../../components/electron/ReceiptPreviewModal'
+import {
+  getPendingReceiptDrafts,
+  printPendingReceiptDraft,
+  type PendingReceiptDraft,
+} from '../../utils/localQueue'
+import { isElectron } from '../../utils/electron'
 
 export default function ReceiptPage() {
+  const worker = useAuthStore((state) => state.worker)
   const [receipts, setReceipts] = useState<Receipt[]>([])
   const [filteredReceipts, setFilteredReceipts] = useState<Receipt[]>([])
+  const [localDrafts, setLocalDrafts] = useState<PendingReceiptDraft[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null)
+  const [selectedDraft, setSelectedDraft] = useState<PendingReceiptDraft | null>(null)
 
   useEffect(() => {
     let mounted = true
@@ -37,8 +48,12 @@ export default function ReceiptPage() {
   const loadData = async (): Promise<void> => {
     try {
       setLoading(true)
-      const data = await receiptApi.list()
+      const [data, drafts] = await Promise.all([
+        receiptApi.list(),
+        isElectron() ? getPendingReceiptDrafts(worker) : Promise.resolve([]),
+      ])
       setReceipts(data)
+      setLocalDrafts(drafts)
     } catch (err) {
       const errorMessage = getErrorMessage(err)
       console.error('Failed to load receipts:', err)
@@ -71,6 +86,19 @@ export default function ReceiptPage() {
     }
   }
 
+  const filteredDrafts = useMemo(() => {
+    if (!searchTerm) {
+      return localDrafts
+    }
+
+    const lowered = searchTerm.toLowerCase()
+    return localDrafts.filter((draft) =>
+      draft.referenceNumber.toLowerCase().includes(lowered)
+      || draft.title.toLowerCase().includes(lowered)
+      || draft.receiptData.customerName?.toLowerCase().includes(lowered),
+    )
+  }, [localDrafts, searchTerm])
+
   if (loading) {
     return <div className="flex items-center justify-center h-64">Betöltés...</div>
   }
@@ -93,6 +121,39 @@ export default function ReceiptPage() {
           </div>
         </div>
       </div>
+
+      {filteredDrafts.length > 0 && (
+        <div className="form-panel">
+          <div className="mb-4 flex items-center gap-2 text-amber-800">
+            <Clock size={18} />
+            <h2 className="text-lg font-bold">Helyi, függő bizonylatok</h2>
+          </div>
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Ezek a bizonylatok már mentve vannak Electronban, de még nem kaptak végleges szerveres bizonylatszámot.
+          </div>
+          <table className="data-grid w-full">
+            <thead>
+              <tr><th>Helyi referencia</th><th>Típus</th><th>Létrehozva</th><th>Állapot</th><th>Műveletek</th></tr>
+            </thead>
+            <tbody>
+              {filteredDrafts.map((draft) => (
+                <tr key={draft.id}>
+                  <td className="font-mono">{draft.referenceNumber}</td>
+                  <td>{draft.title}</td>
+                  <td>{new Date(draft.createdAt).toLocaleString('hu-HU')}</td>
+                  <td><span className="badge badge-yellow">{draft.statusLabel}</span></td>
+                  <td>
+                    <div className="flex gap-2">
+                      <button onClick={() => setSelectedDraft(draft)} className="form-button text-xs"><Eye size={12} />Előnézet</button>
+                      <button onClick={() => setSelectedDraft(draft)} className="form-button text-xs"><Printer size={12} />Vázlat nyomtatás</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <div className="form-panel">
         <table className="data-grid w-full">
@@ -146,6 +207,26 @@ export default function ReceiptPage() {
           </div>
         </div>
       )}
+
+      <ReceiptPreviewModal
+        isOpen={Boolean(selectedDraft)}
+        onClose={() => setSelectedDraft(null)}
+        receiptData={selectedDraft?.receiptData ?? null}
+        qrCodeDataUrl={null}
+        variant="draft"
+        statusMessage="Ez helyi vázlat. A hivatalos bizonylat csak a szerveres szinkron és a végleges bizonylatszám kiosztása után tekinthető lezártnak."
+        onPrint={async () => {
+          if (!selectedDraft) {
+            return
+          }
+
+          const printed = await printPendingReceiptDraft(selectedDraft.receiptData)
+          if (!printed) {
+            throw new Error('A vázlat nyomtatása nem érhető el ebben a környezetben')
+          }
+          toast.success('A helyi bizonylatvázlat nyomtatása elindítva')
+        }}
+      />
     </div>
   )
 }

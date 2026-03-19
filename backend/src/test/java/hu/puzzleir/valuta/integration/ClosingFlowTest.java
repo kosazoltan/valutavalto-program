@@ -8,6 +8,7 @@ import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.service.ClosingWizardService;
+import hu.puzzleir.valuta.service.DailyClosingService;
 import hu.puzzleir.valuta.dto.closingwizard.ClosingWizardDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -52,6 +53,7 @@ class ClosingFlowTest {
     @Mock private BranchRepository branchRepository;
     @Mock private CashBalanceRepository cashBalanceRepository;
     @Mock private DailySessionRepository dailySessionRepository;
+    @Mock private DailyClosingService dailyClosingService;
 
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -104,18 +106,22 @@ class ClosingFlowTest {
         }
 
         @Test
-        @DisplayName("testClosingWizard_navigate — lépés navigáció")
+        @DisplayName("testClosingWizard_navigate — lépés navigáció + ellenőrzés végrehajtás")
         void testClosingWizard_navigate() {
             UUID wizardId = UUID.randomUUID();
             ClosingWizard wizard = createWizard(wizardId, 1, WizardStatus.IN_PROGRESS);
 
             when(closingWizardRepository.findByIdWithSteps(wizardId)).thenReturn(Optional.of(wizard));
             when(closingWizardRepository.save(any(ClosingWizard.class))).thenAnswer(inv -> inv.getArgument(0));
+            // A navigate most végrehajtja az adott lépés ellenőrzését a DailyClosingService-en keresztül
+            when(dailyClosingService.executeStepCheck(eq(3), any(UUID.class), any(LocalDate.class)))
+                    .thenReturn(DailyClosingService.StepCheckResult.passed("Teszt rendben"));
 
             ClosingWizardDto dto = closingWizardService.navigate(wizardId, 3);
 
             assertThat(dto.getCurrentStep()).isEqualTo(3);
             verify(closingWizardRepository).save(any(ClosingWizard.class));
+            verify(dailyClosingService).executeStepCheck(eq(3), any(UUID.class), any(LocalDate.class));
         }
 
         @Test

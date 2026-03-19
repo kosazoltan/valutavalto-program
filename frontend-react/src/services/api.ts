@@ -405,11 +405,14 @@ export interface ReversalRequest {
 }
 
 export interface ConversionRequest {
-  fromCurrencyId: number
-  toCurrencyId: number
+  fromCurrencyId?: number
+  fromCurrencyCode?: string
+  toCurrencyId?: number
+  toCurrencyCode?: string
   fromAmount: number
   customerId?: string
   customerName?: string
+  customerDocumentNumber?: string
   notes?: string
 }
 
@@ -862,6 +865,12 @@ export const closingWizardApi = {
   },
   cancel: async (wizardId: string): Promise<ClosingWizard> => {
     const response = await api.post<ClosingWizard>(`/closing-wizard/${wizardId}/cancel`)
+    return response.data
+  },
+  finalize: async (wizardId: string, workerId: string): Promise<{ success: boolean; message: string }> => {
+    const response = await api.post<{ success: boolean; message: string }>(`/closing-wizard/${wizardId}/finalize`, null, {
+      params: { workerId }
+    })
     return response.data
   }
 }

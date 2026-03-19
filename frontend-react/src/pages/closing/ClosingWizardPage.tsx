@@ -125,7 +125,9 @@ export default function ClosingWizardPage() {
     if (!canFinalize || !wizardId || !worker) return
 
     try {
-      await closingWizardApi.complete(wizardId, String(worker.id))
+      // A finalize endpoint futtatja a DailyClosingService teljes zárási láncot
+      // (árfolyam snapshot, session lezárás, archiválás, AML reset, dekád stb.)
+      await closingWizardApi.finalize(wizardId, String(worker.id))
       toast.success('Napzárás végrehajtva', 'A nap lezárva.')
       navigate('/')
     } catch (err) {

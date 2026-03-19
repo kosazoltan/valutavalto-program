@@ -4,12 +4,18 @@ import { AlertCircle, CheckCircle, XCircle, ArrowLeft, Save } from 'lucide-react
 import { stornoApi, transactionApi, StornoRequest, StornoCheckResult, StornoApproval, Transaction } from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
 import { getErrorMessage } from '../../utils/errorHandling'
+import {
+  isElectronQueueAvailable,
+  recordLocalAuditEvent,
+  saveAndSyncPendingStorno,
+} from '../../utils/electronTransactions'
 
 export default function StornoPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const worker = useAuthStore((state) => state.worker)
   const workerId = worker?.id ? String(worker.id) : ''
+  const electronQueueAvailable = isElectronQueueAvailable()
 
   const [transaction, setTransaction] = useState<Transaction | null>(null)
   const [checkResult, setCheckResult] = useState<StornoCheckResult | null>(null)
@@ -85,6 +91,18 @@ export default function StornoPage() {
       setLoading(true)
       const result = await stornoApi.requestApproval(id, workerId, reason)
       setApproval(result)
+      await recordLocalAuditEvent({
+        entityType: 'STORNO',
+        eventType: 'REQUEST_APPROVAL',
+        entityId: id,
+        referenceNumber: transaction?.receiptNumber ?? id ?? null,
+        payload: {
+          transactionId: id,
+          reason,
+          approvalId: result.id,
+        },
+        status: 'SERVER_FORWARDED',
+      })
       setError(null)
     } catch (err) {
       const errorMessage = getErrorMessage(err)
@@ -115,9 +133,34 @@ export default function StornoPage() {
         customExchangeRate: customRate ? parseFloat(customRate) : undefined,
         paymentMethodDid: paymentMethod
       }
-      
-      await stornoApi.execute(request, workerId)
-      navigate('/transactions', { state: { message: 'Sztornó sikeresen végrehajtva' } })
+
+      if (electronQueueAvailable && transaction) {
+        const outcome = await saveAndSyncPendingStorno({
+          transactionId: transaction.id,
+          originalReceiptNumber: transaction.receiptNumber,
+          originalTransactionType: transaction.transactionType,
+          currencyCode: transaction.currencyCode,
+          foreignAmount: transaction.currencyAmount ?? null,
+          hufAmount: transaction.hufAmount,
+          exchangeRate: transaction.exchangeRate ?? null,
+          reason,
+          approvalId: approval?.id ?? null,
+          customExchangeRate: customRate ? parseFloat(customRate) : null,
+          paymentMethod,
+          customerName: transaction.customerName ?? null,
+          customerDocumentNumber: transaction.customerDocumentNumber ?? null,
+        })
+        navigate('/transactions', {
+          state: {
+            message: outcome.allSavedSynced
+              ? 'Sztornó helyileg rögzítve és azonnal szinkronizálva'
+              : 'Sztornó helyileg rögzítve. A feltöltés az Electron queue-ból folytatódik.',
+          },
+        })
+      } else {
+        await stornoApi.execute(request, workerId)
+        navigate('/transactions', { state: { message: 'Sztornó sikeresen végrehajtva' } })
+      }
     } catch (err) {
       const errorMessage = getErrorMessage(err)
       setError(errorMessage)

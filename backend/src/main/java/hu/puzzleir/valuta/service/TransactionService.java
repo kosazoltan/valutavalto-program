@@ -761,6 +761,10 @@ public class TransactionService {
         updateCashBalance(branchId, fromCurrency.getId(), request.getFromAmount(), true);  // forrás valuta +
         updateCashBalance(branchId, toCurrency.getId(), toAmount.negate(), false);         // cél valuta -
 
+        // Konverzió napi statisztikája a két valós pénzmozgó lábon jelenjen meg.
+        dailySessionService.updateSessionStats(TransactionType.BUY, roundedHufAmount, BigDecimal.ZERO);
+        dailySessionService.updateSessionStats(TransactionType.SELL, roundedHufAmount, serverHandlingFee);
+
         log.info("Konverzió: {} - {} {} -> {} {} (HUF köztes: {}, kerekítés: {}, bizonylatok: {} + {})",
                 conversionReceiptNumber, request.getFromAmount(), fromCurrency.getCode(),
                 toAmount, toCurrency.getCode(), roundedHufAmount, roundingDifference,
@@ -962,14 +966,9 @@ public class TransactionService {
         AmlService.AmlBasicCheckResult basicResult = amlService.checkTransaction(
                 hufAmount, customerId, customerName, documentNumber);
 
-        // Egyes teszt/mock környezetek null-lal térhetnek vissza; ilyenkor default PASS.
         if (basicResult == null) {
-            log.warn("AML checkTransaction null eredmenyt adott, default PASS alkalmazva");
-            basicResult = AmlService.AmlBasicCheckResult.builder()
-                .approved(true)
-                .requiresApproval(false)
-                .requiresDetailedId(false)
-                .build();
+            log.error("AML checkTransaction null eredmenyt adott, tranzakcio blokkolva");
+            throw new ValidationException("AML ellenőrzés nem elérhető, a tranzakció nem hajtható végre!");
         }
 
         if (!basicResult.isApproved()) {
@@ -1017,7 +1016,7 @@ public class TransactionService {
     }
 
     private void validateCurrencyStock(UUID branchId, Long currencyId, BigDecimal amount) {
-        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyId(branchId, currencyId)
+        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(branchId, currencyId)
                 .orElse(null);
 
         if (balance == null || balance.getCurrentBalance().compareTo(amount) < 0) {

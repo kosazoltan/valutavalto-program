@@ -8,12 +8,26 @@ import {
   setConfig,
   deleteConfig,
   savePendingTransaction,
+  savePendingConversion,
+  savePendingBankTransaction,
+  savePendingStorno,
   getPendingTransactions,
+  getPendingConversions,
+  getPendingBankTransactions,
+  getPendingStornos,
   markTransactionSynced,
+  markConversionSynced,
+  markBankTransactionSynced,
+  markStornoSynced,
   getPendingTransactionCount,
   savePendingDistribution,
   savePendingTransfer,
   savePendingCollection,
+  getPendingTransfers,
+  savePendingHandoverOperation,
+  getPendingHandoverOperations,
+  saveLocalAuditEvent,
+  getLocalAuditEvents,
   getCachedBranchStatuses,
   getCachedBranchStatusTimestamp,
   getCachedRates,
@@ -158,6 +172,8 @@ ipcMain.handle('save-pending-transaction', async (
   hufAmount: number,
   roundedHufAmount: number,
   rate: number,
+  handlingFee: number | null,
+  discountPercent: number | null,
   customerIdentifier: string | null,
   customerName: string | null,
   customerDocumentNumber: string | null,
@@ -171,6 +187,8 @@ ipcMain.handle('save-pending-transaction', async (
     hufAmount,
     roundedHufAmount,
     rate,
+    handlingFee,
+    discountPercent,
     customerIdentifier,
     customerName,
     customerDocumentNumber,
@@ -183,12 +201,112 @@ ipcMain.handle('get-pending-transactions', async (): Promise<ReturnType<typeof g
   return getPendingTransactions();
 });
 
+ipcMain.handle('save-pending-conversion', async (
+  _event,
+  fromCurrencyId: number | null,
+  fromCurrencyCode: string,
+  toCurrencyId: number | null,
+  toCurrencyCode: string,
+  fromAmount: number,
+  calculatedHufAmount: number,
+  calculatedToAmount: number,
+  conversionRate: number,
+  handlingFee: number | null,
+  customerId: string | null,
+  customerName: string | null,
+  customerDocumentNumber: string | null,
+  note: string | null,
+): Promise<number> => {
+  return savePendingConversion(
+    fromCurrencyId,
+    fromCurrencyCode,
+    toCurrencyId,
+    toCurrencyCode,
+    fromAmount,
+    calculatedHufAmount,
+    calculatedToAmount,
+    conversionRate,
+    handlingFee,
+    customerId,
+    customerName,
+    customerDocumentNumber,
+    note,
+  );
+});
+
+ipcMain.handle('get-pending-conversions', async (): Promise<ReturnType<typeof getPendingConversions>> => {
+  return getPendingConversions();
+});
+
+ipcMain.handle('save-pending-bank-transaction', async (
+  _event,
+  transactionType: 'BUY' | 'SELL',
+  currencyCode: string,
+  amount: number,
+  exchangeRate: number,
+  hufAmount: number,
+  vaultTerritoryId: number | null,
+  bankName: string | null,
+  bankReference: string | null,
+  note: string | null,
+): Promise<number> => {
+  return savePendingBankTransaction(
+    transactionType,
+    currencyCode,
+    amount,
+    exchangeRate,
+    hufAmount,
+    vaultTerritoryId,
+    bankName,
+    bankReference,
+    note,
+  );
+});
+
+ipcMain.handle('get-pending-bank-transactions', async (): Promise<ReturnType<typeof getPendingBankTransactions>> => {
+  return getPendingBankTransactions();
+});
+
+ipcMain.handle('save-pending-storno', async (_event, payload: {
+  transactionId: number;
+  originalReceiptNumber: string;
+  originalTransactionType: string;
+  currencyCode: string;
+  foreignAmount: number | null;
+  hufAmount: number;
+  exchangeRate: number | null;
+  reason: string;
+  approvalId?: string | null;
+  customExchangeRate?: number | null;
+  paymentMethod?: string | null;
+  customerName?: string | null;
+  customerDocumentNumber?: string | null;
+}): Promise<number> => {
+  return savePendingStorno(payload);
+});
+
+ipcMain.handle('get-pending-stornos', async (): Promise<ReturnType<typeof getPendingStornos>> => {
+  return getPendingStornos();
+});
+
 ipcMain.handle('get-pending-transaction-count', async (): Promise<number> => {
   return getPendingTransactionCount();
 });
 
 ipcMain.handle('mark-transaction-synced', async (_event, id: number): Promise<void> => {
   markTransactionSynced(id);
+});
+
+ipcMain.handle('mark-conversion-synced', async (_event, id: number): Promise<void> => {
+  markConversionSynced(id);
+});
+
+ipcMain.handle('mark-bank-transaction-synced', async (_event, id: number): Promise<void> => {
+  markBankTransactionSynced(id);
+});
+
+ipcMain.handle('mark-storno-synced', async (_event, id: number): Promise<void> => {
+  markStornoSynced(id);
 });
 
 ipcMain.handle('sync-offline', async (): Promise<number> => {
@@ -225,13 +343,21 @@ ipcMain.handle('save-pending-distribution', async (
 
 ipcMain.handle('save-pending-transfer', async (
   _event,
+  targetBranchId: string | null,
   targetBranchCode: string,
+  currencyId: number | null,
   currencyCode: string,
   amount: number,
+  hufValue: number | null,
+  transferType: string | null,
   denominations: string | null,
   note: string | null,
 ): Promise<number> => {
-  return savePendingTransfer(targetBranchCode, currencyCode, amount, denominations, note);
+  return savePendingTransfer(targetBranchId, targetBranchCode, currencyId, currencyCode, amount, hufValue, transferType, denominations, note);
+});
+
+ipcMain.handle('get-pending-transfers', async (): Promise<ReturnType<typeof getPendingTransfers>> => {
+  return getPendingTransfers();
 });
 
 ipcMain.handle('save-pending-collection', async (
@@ -244,6 +370,22 @@ ipcMain.handle('save-pending-collection', async (
   return savePendingCollection(sourceBranchCode, currencyCode, amount, note);
 });
 
+ipcMain.handle('save-pending-handover-operation', async (_event, payload: {
+  operationType: 'GENERATE' | 'PRINT' | 'COMPLETE';
+  sheetId?: string | null;
+  fromCashDeskId?: string | null;
+  toCashDeskId?: string | null;
+  transferDate?: string | null;
+  amounts?: unknown;
+  note?: string | null;
+}): Promise<number> => {
+  return savePendingHandoverOperation(payload);
+});
+
+ipcMain.handle('get-pending-handover-operations', async (): Promise<ReturnType<typeof getPendingHandoverOperations>> => {
+  return getPendingHandoverOperations();
+});
+
 ipcMain.handle('get-cached-branch-statuses', async () => {
   return getCachedBranchStatuses();
 });
@@ -254,6 +396,25 @@ ipcMain.handle('get-cached-branch-status-timestamp', async () => {
 
 ipcMain.handle('get-cached-rates', async () => {
   return getCachedRates();
+});
+
+ipcMain.handle('save-local-audit-event', async (_event, payload: {
+  entityType: string;
+  eventType: string;
+  referenceNumber?: string | null;
+  entityId?: string | null;
+  payload: unknown;
+  customerSnapshot?: unknown;
+  identificationSnapshot?: unknown;
+  rateSnapshot?: unknown;
+  status?: string;
+  retentionDays?: number;
+}): Promise<number> => {
+  return saveLocalAuditEvent(payload);
+});
+
+ipcMain.handle('get-local-audit-events', async (_event, limit?: number) => {
+  return getLocalAuditEvents(limit ?? 200);
 });
 
 // --- Secure Token Storage (safeStorage — Windows DPAPI / macOS Keychain / Linux libsecret) ---

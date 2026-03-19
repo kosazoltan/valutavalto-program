@@ -2,6 +2,7 @@ import initSqlJs, { type Database } from 'sql.js';
 import path from 'node:path';
 import { app } from 'electron';
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 
 let db: Database | null = null;
 let dbPath = '';
@@ -112,15 +113,117 @@ export async function initDatabase(): Promise<void> {
         huf_amount REAL NOT NULL,
         rounded_huf_amount REAL NOT NULL,
         rate REAL NOT NULL,
+        handling_fee REAL,
+        discount_percent REAL,
         customer_id INTEGER,
         customer_identifier TEXT,
         customer_name TEXT,
         customer_document_number TEXT,
         customer_address TEXT,
         denominations TEXT,
+        local_reference_number TEXT,
         idempotency_key TEXT,
         created_at TEXT DEFAULT (datetime('now')),
         synced INTEGER DEFAULT 0
+      );
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS pending_conversions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        from_currency_id INTEGER,
+        from_currency_code TEXT NOT NULL,
+        to_currency_id INTEGER,
+        to_currency_code TEXT NOT NULL,
+        from_amount REAL NOT NULL,
+        calculated_huf_amount REAL NOT NULL,
+        calculated_to_amount REAL NOT NULL,
+        conversion_rate REAL NOT NULL,
+        handling_fee REAL,
+        customer_id TEXT,
+        customer_name TEXT,
+        customer_document_number TEXT,
+        note TEXT,
+        local_reference_number TEXT,
+        idempotency_key TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        synced INTEGER DEFAULT 0
+      );
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS pending_bank_transactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        transaction_type TEXT NOT NULL CHECK(transaction_type IN ('BUY', 'SELL')),
+        currency_code TEXT NOT NULL,
+        amount REAL NOT NULL,
+        exchange_rate REAL NOT NULL,
+        huf_amount REAL NOT NULL,
+        vault_territory_id INTEGER,
+        bank_name TEXT,
+        bank_reference TEXT,
+        note TEXT,
+        local_reference_number TEXT,
+        idempotency_key TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        synced INTEGER DEFAULT 0
+      );
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS pending_stornos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        transaction_id INTEGER NOT NULL,
+        original_receipt_number TEXT NOT NULL,
+        original_transaction_type TEXT NOT NULL,
+        currency_code TEXT NOT NULL,
+        foreign_amount REAL,
+        huf_amount REAL NOT NULL,
+        exchange_rate REAL,
+        reason TEXT NOT NULL,
+        approval_id TEXT,
+        custom_exchange_rate REAL,
+        payment_method TEXT,
+        customer_name TEXT,
+        customer_document_number TEXT,
+        local_reference_number TEXT,
+        idempotency_key TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        synced INTEGER DEFAULT 0
+      );
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS pending_handover_operations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        operation_type TEXT NOT NULL CHECK(operation_type IN ('GENERATE', 'PRINT', 'COMPLETE')),
+        sheet_id TEXT,
+        from_cash_desk_id TEXT,
+        to_cash_desk_id TEXT,
+        transfer_date TEXT,
+        amounts_json TEXT,
+        note TEXT,
+        local_reference_number TEXT,
+        idempotency_key TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        synced INTEGER DEFAULT 0
+      );
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS local_audit_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        entity_type TEXT NOT NULL,
+        event_type TEXT NOT NULL,
+        reference_number TEXT,
+        entity_id TEXT,
+        payload_json TEXT NOT NULL,
+        customer_snapshot_json TEXT,
+        identification_snapshot_json TEXT,
+        rate_snapshot_json TEXT,
+        status TEXT NOT NULL DEFAULT 'LOCAL_RECORDED',
+        retention_until TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now'))
       );
     `);
 
@@ -132,10 +235,13 @@ export async function initDatabase(): Promise<void> {
     }
 
     const pendingTxColumns = [
+      'handling_fee REAL',
+      'discount_percent REAL',
       'customer_identifier TEXT',
       'customer_name TEXT',
       'customer_document_number TEXT',
       'customer_address TEXT',
+      'local_reference_number TEXT',
     ];
     for (const colDef of pendingTxColumns) {
       try {
@@ -161,11 +267,17 @@ export async function initDatabase(): Promise<void> {
     db.run(`
       CREATE TABLE IF NOT EXISTS pending_transfers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        target_branch_id TEXT,
         target_branch_code TEXT NOT NULL,
+        currency_id INTEGER,
         currency_code TEXT NOT NULL,
         amount REAL NOT NULL,
+        huf_value REAL,
+        transfer_type TEXT,
         denominations TEXT,
         note TEXT,
+        local_reference_number TEXT,
+        idempotency_key TEXT,
         created_at TEXT DEFAULT (datetime('now')),
         synced INTEGER DEFAULT 0
       );
@@ -180,6 +292,8 @@ export async function initDatabase(): Promise<void> {
         amount REAL NOT NULL,
         denominations TEXT,
         note TEXT,
+        local_reference_number TEXT,
+        idempotency_key TEXT,
         created_at TEXT DEFAULT (datetime('now')),
         synced INTEGER DEFAULT 0
       );
@@ -208,10 +322,89 @@ export async function initDatabase(): Promise<void> {
         currency_code TEXT NOT NULL,
         amount REAL NOT NULL,
         note TEXT,
+        local_reference_number TEXT,
+        idempotency_key TEXT,
         created_at TEXT DEFAULT (datetime('now')),
         synced INTEGER DEFAULT 0
       );
     `);
+
+    const pendingTransferColumns = [
+      'target_branch_id TEXT',
+      'currency_id INTEGER',
+      'huf_value REAL',
+      'transfer_type TEXT',
+      'local_reference_number TEXT',
+      'idempotency_key TEXT',
+    ];
+    for (const colDef of pendingTransferColumns) {
+      try {
+        db.run(`ALTER TABLE pending_transfers ADD COLUMN ${colDef}`);
+      } catch {
+        // Column already exists — ignore
+      }
+    }
+
+    const pendingDistributionColumns = [
+      'local_reference_number TEXT',
+      'idempotency_key TEXT',
+    ];
+    for (const colDef of pendingDistributionColumns) {
+      try {
+        db.run(`ALTER TABLE pending_distributions ADD COLUMN ${colDef}`);
+      } catch {
+        // Column already exists — ignore
+      }
+    }
+
+    const pendingCollectionColumns = [
+      'local_reference_number TEXT',
+      'idempotency_key TEXT',
+    ];
+    for (const colDef of pendingCollectionColumns) {
+      try {
+        db.run(`ALTER TABLE pending_collections ADD COLUMN ${colDef}`);
+      } catch {
+        // Column already exists — ignore
+      }
+    }
+
+    const pendingStornoColumns = [
+      'approval_id TEXT',
+      'custom_exchange_rate REAL',
+      'payment_method TEXT',
+      'customer_name TEXT',
+      'customer_document_number TEXT',
+      'local_reference_number TEXT',
+      'idempotency_key TEXT',
+    ];
+    for (const colDef of pendingStornoColumns) {
+      try {
+        db.run(`ALTER TABLE pending_stornos ADD COLUMN ${colDef}`);
+      } catch {
+        // Column already exists — ignore
+      }
+    }
+
+    const pendingHandoverColumns = [
+      'sheet_id TEXT',
+      'from_cash_desk_id TEXT',
+      'to_cash_desk_id TEXT',
+      'transfer_date TEXT',
+      'amounts_json TEXT',
+      'note TEXT',
+      'local_reference_number TEXT',
+      'idempotency_key TEXT',
+    ];
+    for (const colDef of pendingHandoverColumns) {
+      try {
+        db.run(`ALTER TABLE pending_handover_operations ADD COLUMN ${colDef}`);
+      } catch {
+        // Column already exists — ignore
+      }
+    }
+
+    cleanupLocalAuditEvents();
 
     saveDatabase();
   } catch (err) {
@@ -269,6 +462,112 @@ export function saveDatabase(): void {
   }
 }
 
+function computeRetentionUntil(days: number = 31): string {
+  const retentionDate = new Date();
+  retentionDate.setDate(retentionDate.getDate() + days);
+  return retentionDate.toISOString();
+}
+
+function generateLocalReference(prefix: string): string {
+  const stamp = new Date().toISOString().replace(/\D/g, '').slice(0, 14);
+  const suffix = crypto.randomBytes(2).toString('hex').toUpperCase();
+  return `${prefix}-${stamp}-${suffix}`;
+}
+
+function toJsonOrNull(value: unknown): string | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  return JSON.stringify(value);
+}
+
+export interface LocalAuditEventRow {
+  id: number;
+  entity_type: string;
+  event_type: string;
+  reference_number: string | null;
+  entity_id: string | null;
+  payload_json: string;
+  customer_snapshot_json: string | null;
+  identification_snapshot_json: string | null;
+  rate_snapshot_json: string | null;
+  status: string;
+  retention_until: string;
+  created_at: string;
+}
+
+export function saveLocalAuditEvent(params: {
+  entityType: string;
+  eventType: string;
+  referenceNumber?: string | null;
+  entityId?: string | null;
+  payload: unknown;
+  customerSnapshot?: unknown;
+  identificationSnapshot?: unknown;
+  rateSnapshot?: unknown;
+  status?: string;
+  retentionDays?: number;
+}): number {
+  if (!db) throw new Error('Database not initialized');
+
+  db.run(
+    `INSERT INTO local_audit_events (
+      entity_type,
+      event_type,
+      reference_number,
+      entity_id,
+      payload_json,
+      customer_snapshot_json,
+      identification_snapshot_json,
+      rate_snapshot_json,
+      status,
+      retention_until
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      params.entityType,
+      params.eventType,
+      params.referenceNumber ?? null,
+      params.entityId ?? null,
+      JSON.stringify(params.payload),
+      toJsonOrNull(params.customerSnapshot),
+      toJsonOrNull(params.identificationSnapshot),
+      toJsonOrNull(params.rateSnapshot),
+      params.status ?? 'LOCAL_RECORDED',
+      computeRetentionUntil(params.retentionDays ?? 31),
+    ],
+  );
+  saveDatabase();
+
+  const stmt = db.prepare('SELECT last_insert_rowid() as id');
+  stmt.step();
+  const row = stmt.getAsObject();
+  stmt.free();
+  return (row['id'] as number) ?? 0;
+}
+
+export function getLocalAuditEvents(limit: number = 200): LocalAuditEventRow[] {
+  if (!db) return [];
+
+  const results: LocalAuditEventRow[] = [];
+  const stmt = db.prepare('SELECT * FROM local_audit_events ORDER BY created_at DESC LIMIT ?');
+  stmt.bind([limit]);
+  while (stmt.step()) {
+    results.push(stmt.getAsObject() as unknown as LocalAuditEventRow);
+  }
+  stmt.free();
+  return results;
+}
+
+export function cleanupLocalAuditEvents(retentionDays: number = 31): void {
+  if (!db) return;
+  db.run(
+    `DELETE FROM local_audit_events
+     WHERE datetime(created_at) < datetime('now', ?)` ,
+    [`-${retentionDays} days`],
+  );
+}
+
 export function getConfig(key: string): string | null {
   if (!db) return null;
   const stmt = db.prepare('SELECT value FROM config WHERE key = ?');
@@ -317,12 +616,89 @@ export interface PendingTransactionRow {
   huf_amount: number;
   rounded_huf_amount: number;
   rate: number;
+  handling_fee: number | null;
+  discount_percent: number | null;
   customer_id: string | number | null;
   customer_identifier: string | null;
   customer_name: string | null;
   customer_document_number: string | null;
   customer_address: string | null;
   denominations: string | null;
+  local_reference_number: string | null;
+  idempotency_key: string | null;
+  created_at: string;
+  synced: number;
+}
+
+export interface PendingConversionRow {
+  id: number;
+  from_currency_id: number | null;
+  from_currency_code: string;
+  to_currency_id: number | null;
+  to_currency_code: string;
+  from_amount: number;
+  calculated_huf_amount: number;
+  calculated_to_amount: number;
+  conversion_rate: number;
+  handling_fee: number | null;
+  customer_id: string | null;
+  customer_name: string | null;
+  customer_document_number: string | null;
+  note: string | null;
+  local_reference_number: string | null;
+  idempotency_key: string | null;
+  created_at: string;
+  synced: number;
+}
+
+export interface PendingBankTransactionRow {
+  id: number;
+  transaction_type: 'BUY' | 'SELL';
+  currency_code: string;
+  amount: number;
+  exchange_rate: number;
+  huf_amount: number;
+  vault_territory_id: number | null;
+  bank_name: string | null;
+  bank_reference: string | null;
+  note: string | null;
+  local_reference_number: string | null;
+  idempotency_key: string | null;
+  created_at: string;
+  synced: number;
+}
+
+export interface PendingStornoRow {
+  id: number;
+  transaction_id: number;
+  original_receipt_number: string;
+  original_transaction_type: string;
+  currency_code: string;
+  foreign_amount: number | null;
+  huf_amount: number;
+  exchange_rate: number | null;
+  reason: string;
+  approval_id: string | null;
+  custom_exchange_rate: number | null;
+  payment_method: string | null;
+  customer_name: string | null;
+  customer_document_number: string | null;
+  local_reference_number: string | null;
+  idempotency_key: string | null;
+  created_at: string;
+  synced: number;
+}
+
+export interface PendingHandoverOperationRow {
+  id: number;
+  operation_type: 'GENERATE' | 'PRINT' | 'COMPLETE';
+  sheet_id: string | null;
+  from_cash_desk_id: string | null;
+  to_cash_desk_id: string | null;
+  transfer_date: string | null;
+  amounts_json: string | null;
+  note: string | null;
+  local_reference_number: string | null;
   idempotency_key: string | null;
   created_at: string;
   synced: number;
@@ -335,6 +711,8 @@ export function savePendingTransaction(
   hufAmount: number,
   roundedHufAmount: number,
   rate: number,
+  handlingFee: number | null,
+  discountPercent: number | null,
   customerIdentifier: string | null,
   customerName: string | null,
   customerDocumentNumber: string | null,
@@ -345,6 +723,7 @@ export function savePendingTransaction(
 
   // Stabil idempotency key — retry-nál is ugyanazt küldjük a szervernek
   const idempotencyKey = crypto.randomUUID();
+  const localReferenceNumber = generateLocalReference(type === 'BUY' ? 'LB' : 'LS');
 
   const normalizedCustomerIdentifier = customerIdentifier?.trim() || null;
   const normalizedCustomerName = customerName?.trim() || null;
@@ -359,15 +738,18 @@ export function savePendingTransaction(
       huf_amount,
       rounded_huf_amount,
       rate,
+      handling_fee,
+      discount_percent,
       customer_id,
       customer_identifier,
       customer_name,
       customer_document_number,
       customer_address,
       denominations,
+      local_reference_number,
       idempotency_key
     )
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       type,
       currencyCode,
@@ -375,12 +757,15 @@ export function savePendingTransaction(
       hufAmount,
       roundedHufAmount,
       rate,
+      handlingFee,
+      discountPercent,
       null,
       normalizedCustomerIdentifier,
       normalizedCustomerName,
       normalizedCustomerDocumentNumber,
       normalizedCustomerAddress,
       denominations,
+      localReferenceNumber,
       idempotencyKey,
     ],
   );
@@ -391,7 +776,44 @@ export function savePendingTransaction(
   stmt.step();
   const row = stmt.getAsObject();
   stmt.free();
-  return (row['id'] as number) ?? 0;
+  const insertedId = (row['id'] as number) ?? 0;
+
+  saveLocalAuditEvent({
+    entityType: 'TRANSACTION',
+    eventType: type,
+    referenceNumber: localReferenceNumber,
+    entityId: String(insertedId),
+    payload: {
+      type,
+      currencyCode,
+      foreignAmount,
+      hufAmount,
+      roundedHufAmount,
+      rate,
+      handlingFee,
+      discountPercent,
+      denominations,
+      idempotencyKey,
+    },
+    customerSnapshot: {
+      customerIdentifier: normalizedCustomerIdentifier,
+      customerName: normalizedCustomerName,
+      customerDocumentNumber: normalizedCustomerDocumentNumber,
+      customerAddress: normalizedCustomerAddress,
+    },
+    identificationSnapshot: {
+      customerIdentifier: normalizedCustomerIdentifier,
+      customerDocumentNumber: normalizedCustomerDocumentNumber,
+    },
+    rateSnapshot: {
+      currencyCode,
+      rate,
+      roundedHufAmount,
+    },
+    status: 'PENDING_UPLOAD',
+  });
+
+  return insertedId;
 }
 
 export function getPendingTransactions(): PendingTransactionRow[] {
@@ -405,6 +827,129 @@ export function getPendingTransactions(): PendingTransactionRow[] {
   }
   stmt.free();
   return results;
+}
+
+export function savePendingConversion(
+  fromCurrencyId: number | null,
+  fromCurrencyCode: string,
+  toCurrencyId: number | null,
+  toCurrencyCode: string,
+  fromAmount: number,
+  calculatedHufAmount: number,
+  calculatedToAmount: number,
+  conversionRate: number,
+  handlingFee: number | null,
+  customerId: string | null,
+  customerName: string | null,
+  customerDocumentNumber: string | null,
+  note: string | null,
+): number {
+  if (!db) throw new Error('Database not initialized');
+
+  const idempotencyKey = crypto.randomUUID();
+  const localReferenceNumber = generateLocalReference('LC');
+
+  db.run(
+    `INSERT INTO pending_conversions (
+      from_currency_id,
+      from_currency_code,
+      to_currency_id,
+      to_currency_code,
+      from_amount,
+      calculated_huf_amount,
+      calculated_to_amount,
+      conversion_rate,
+      handling_fee,
+      customer_id,
+      customer_name,
+      customer_document_number,
+      note,
+      local_reference_number,
+      idempotency_key
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      fromCurrencyId,
+      fromCurrencyCode,
+      toCurrencyId,
+      toCurrencyCode,
+      fromAmount,
+      calculatedHufAmount,
+      calculatedToAmount,
+      conversionRate,
+      handlingFee,
+      customerId?.trim() || null,
+      customerName?.trim() || null,
+      customerDocumentNumber?.trim() || null,
+      note?.trim() || null,
+      localReferenceNumber,
+      idempotencyKey,
+    ],
+  );
+  saveDatabase();
+
+  const stmt = db.prepare('SELECT last_insert_rowid() as id');
+  stmt.step();
+  const row = stmt.getAsObject();
+  stmt.free();
+  const insertedId = (row['id'] as number) ?? 0;
+
+  saveLocalAuditEvent({
+    entityType: 'CONVERSION',
+    eventType: 'CREATE',
+    referenceNumber: localReferenceNumber,
+    entityId: String(insertedId),
+    payload: {
+      fromCurrencyId,
+      fromCurrencyCode,
+      toCurrencyId,
+      toCurrencyCode,
+      fromAmount,
+      calculatedHufAmount,
+      calculatedToAmount,
+      conversionRate,
+      handlingFee,
+      note: note?.trim() || null,
+      idempotencyKey,
+    },
+    customerSnapshot: {
+      customerId: customerId?.trim() || null,
+      customerName: customerName?.trim() || null,
+      customerDocumentNumber: customerDocumentNumber?.trim() || null,
+    },
+    identificationSnapshot: {
+      customerId: customerId?.trim() || null,
+      customerDocumentNumber: customerDocumentNumber?.trim() || null,
+    },
+    rateSnapshot: {
+      fromCurrencyCode,
+      toCurrencyCode,
+      conversionRate,
+      calculatedHufAmount,
+      calculatedToAmount,
+    },
+    status: 'PENDING_UPLOAD',
+  });
+
+  return insertedId;
+}
+
+export function getPendingConversions(): PendingConversionRow[] {
+  if (!db) return [];
+
+  const results: PendingConversionRow[] = [];
+  const stmt = db.prepare('SELECT * FROM pending_conversions WHERE synced = 0 ORDER BY created_at ASC');
+  while (stmt.step()) {
+    const row = stmt.getAsObject() as unknown as PendingConversionRow;
+    results.push(row);
+  }
+  stmt.free();
+  return results;
+}
+
+export function markConversionSynced(id: number): void {
+  if (!db) return;
+  db.run('UPDATE pending_conversions SET synced = 1 WHERE id = ?', [id]);
+  saveDatabase();
 }
 
 export function markTransactionSynced(id: number): void {
@@ -435,6 +980,8 @@ export interface PendingDistributionRow {
   amount: number;
   denominations: string | null;
   note: string | null;
+  local_reference_number: string | null;
+  idempotency_key: string | null;
   created_at: string;
   synced: number;
 }
@@ -447,11 +994,20 @@ export function savePendingDistribution(
   note: string | null,
 ): number {
   if (!db) throw new Error('Database not initialized');
+  const localReferenceNumber = generateLocalReference('LD');
+  const idempotencyKey = crypto.randomUUID();
 
   db.run(
-    `INSERT INTO pending_distributions (target_branch_code, currency_code, amount, denominations, note)
-     VALUES (?, ?, ?, ?, ?)`,
-    [targetBranchCode, currencyCode, amount, denominations, note],
+    `INSERT INTO pending_distributions (
+      target_branch_code,
+      currency_code,
+      amount,
+      denominations,
+      note,
+      local_reference_number,
+      idempotency_key
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [targetBranchCode, currencyCode, amount, denominations, note, localReferenceNumber, idempotencyKey],
   );
   saveDatabase();
 
@@ -459,7 +1015,26 @@ export function savePendingDistribution(
   stmt.step();
   const row = stmt.getAsObject();
   stmt.free();
-  return (row['id'] as number) ?? 0;
+  const insertedId = (row['id'] as number) ?? 0;
+
+  saveLocalAuditEvent({
+    entityType: 'TREASURY_DISTRIBUTION',
+    eventType: 'CREATE',
+    referenceNumber: localReferenceNumber,
+    entityId: String(insertedId),
+    payload: {
+      targetBranchCode,
+      currencyCode,
+      amount,
+      denominations,
+      note,
+      idempotencyKey,
+    },
+    rateSnapshot: { currencyCode },
+    status: 'PENDING_UPLOAD',
+  });
+
+  return insertedId;
 }
 
 export function getPendingDistributions(): PendingDistributionRow[] {
@@ -483,28 +1058,63 @@ export function markDistributionSynced(id: number): void {
 
 export interface PendingTransferRow {
   id: number;
+  target_branch_id: string | null;
   target_branch_code: string;
+  currency_id: number | null;
   currency_code: string;
   amount: number;
+  huf_value: number | null;
+  transfer_type: string | null;
   denominations: string | null;
   note: string | null;
+  local_reference_number: string | null;
+  idempotency_key: string | null;
   created_at: string;
   synced: number;
 }
 
 export function savePendingTransfer(
+  targetBranchId: string | null,
   targetBranchCode: string,
+  currencyId: number | null,
   currencyCode: string,
   amount: number,
+  hufValue: number | null,
+  transferType: string | null,
   denominations: string | null,
   note: string | null,
 ): number {
   if (!db) throw new Error('Database not initialized');
+  const localReferenceNumber = generateLocalReference('LT');
+  const idempotencyKey = crypto.randomUUID();
 
   db.run(
-    `INSERT INTO pending_transfers (target_branch_code, currency_code, amount, denominations, note)
-     VALUES (?, ?, ?, ?, ?)`,
-    [targetBranchCode, currencyCode, amount, denominations, note],
+    `INSERT INTO pending_transfers (
+      target_branch_id,
+      target_branch_code,
+      currency_id,
+      currency_code,
+      amount,
+      huf_value,
+      transfer_type,
+      denominations,
+      note,
+      local_reference_number,
+      idempotency_key
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      targetBranchId,
+      targetBranchCode,
+      currencyId,
+      currencyCode,
+      amount,
+      hufValue,
+      transferType,
+      denominations,
+      note,
+      localReferenceNumber,
+      idempotencyKey,
+    ],
   );
   saveDatabase();
 
@@ -512,7 +1122,33 @@ export function savePendingTransfer(
   stmt.step();
   const row = stmt.getAsObject();
   stmt.free();
-  return (row['id'] as number) ?? 0;
+  const insertedId = (row['id'] as number) ?? 0;
+
+  saveLocalAuditEvent({
+    entityType: 'TRANSFER',
+    eventType: transferType ?? 'CREATE',
+    referenceNumber: localReferenceNumber,
+    entityId: String(insertedId),
+    payload: {
+      targetBranchId,
+      targetBranchCode,
+      currencyId,
+      currencyCode,
+      amount,
+      hufValue,
+      transferType,
+      denominations,
+      note,
+      idempotencyKey,
+    },
+    rateSnapshot: {
+      currencyCode,
+      hufValue,
+    },
+    status: 'PENDING_UPLOAD',
+  });
+
+  return insertedId;
 }
 
 export function getPendingTransfers(): PendingTransferRow[] {
@@ -540,6 +1176,8 @@ export interface PendingCollectionRow {
   currency_code: string;
   amount: number;
   note: string | null;
+  local_reference_number: string | null;
+  idempotency_key: string | null;
   created_at: string;
   synced: number;
 }
@@ -551,11 +1189,19 @@ export function savePendingCollection(
   note: string | null,
 ): number {
   if (!db) throw new Error('Database not initialized');
+  const localReferenceNumber = generateLocalReference('LCOL');
+  const idempotencyKey = crypto.randomUUID();
 
   db.run(
-    `INSERT INTO pending_collections (source_branch_code, currency_code, amount, note)
-     VALUES (?, ?, ?, ?)`,
-    [sourceBranchCode, currencyCode, amount, note],
+    `INSERT INTO pending_collections (
+      source_branch_code,
+      currency_code,
+      amount,
+      note,
+      local_reference_number,
+      idempotency_key
+    ) VALUES (?, ?, ?, ?, ?, ?)`,
+    [sourceBranchCode, currencyCode, amount, note, localReferenceNumber, idempotencyKey],
   );
   saveDatabase();
 
@@ -563,7 +1209,325 @@ export function savePendingCollection(
   stmt.step();
   const row = stmt.getAsObject();
   stmt.free();
-  return (row['id'] as number) ?? 0;
+  const insertedId = (row['id'] as number) ?? 0;
+
+  saveLocalAuditEvent({
+    entityType: 'TREASURY_COLLECTION',
+    eventType: 'CREATE',
+    referenceNumber: localReferenceNumber,
+    entityId: String(insertedId),
+    payload: {
+      sourceBranchCode,
+      currencyCode,
+      amount,
+      note,
+      idempotencyKey,
+    },
+    rateSnapshot: { currencyCode },
+    status: 'PENDING_UPLOAD',
+  });
+
+  return insertedId;
+}
+
+export function savePendingBankTransaction(
+  transactionType: 'BUY' | 'SELL',
+  currencyCode: string,
+  amount: number,
+  exchangeRate: number,
+  hufAmount: number,
+  vaultTerritoryId: number | null,
+  bankName: string | null,
+  bankReference: string | null,
+  note: string | null,
+): number {
+  if (!db) throw new Error('Database not initialized');
+
+  const localReferenceNumber = generateLocalReference('LBANK');
+  const idempotencyKey = crypto.randomUUID();
+
+  db.run(
+    `INSERT INTO pending_bank_transactions (
+      transaction_type,
+      currency_code,
+      amount,
+      exchange_rate,
+      huf_amount,
+      vault_territory_id,
+      bank_name,
+      bank_reference,
+      note,
+      local_reference_number,
+      idempotency_key
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      transactionType,
+      currencyCode,
+      amount,
+      exchangeRate,
+      hufAmount,
+      vaultTerritoryId,
+      bankName?.trim() || null,
+      bankReference?.trim() || null,
+      note?.trim() || null,
+      localReferenceNumber,
+      idempotencyKey,
+    ],
+  );
+  saveDatabase();
+
+  const stmt = db.prepare('SELECT last_insert_rowid() as id');
+  stmt.step();
+  const row = stmt.getAsObject();
+  stmt.free();
+  const insertedId = (row['id'] as number) ?? 0;
+
+  saveLocalAuditEvent({
+    entityType: 'BANK_TRANSACTION',
+    eventType: transactionType,
+    referenceNumber: localReferenceNumber,
+    entityId: String(insertedId),
+    payload: {
+      transactionType,
+      currencyCode,
+      amount,
+      exchangeRate,
+      hufAmount,
+      vaultTerritoryId,
+      bankName: bankName?.trim() || null,
+      bankReference: bankReference?.trim() || null,
+      note: note?.trim() || null,
+      idempotencyKey,
+    },
+    rateSnapshot: {
+      currencyCode,
+      exchangeRate,
+      hufAmount,
+    },
+    status: 'PENDING_UPLOAD',
+  });
+
+  return insertedId;
+}
+
+export function getPendingBankTransactions(): PendingBankTransactionRow[] {
+  if (!db) return [];
+  const results: PendingBankTransactionRow[] = [];
+  const stmt = db.prepare('SELECT * FROM pending_bank_transactions WHERE synced = 0 ORDER BY created_at ASC');
+  while (stmt.step()) {
+    results.push(stmt.getAsObject() as unknown as PendingBankTransactionRow);
+  }
+  stmt.free();
+  return results;
+}
+
+export function markBankTransactionSynced(id: number): void {
+  if (!db) return;
+  db.run('UPDATE pending_bank_transactions SET synced = 1 WHERE id = ?', [id]);
+  saveDatabase();
+}
+
+export function savePendingStorno(params: {
+  transactionId: number;
+  originalReceiptNumber: string;
+  originalTransactionType: string;
+  currencyCode: string;
+  foreignAmount: number | null;
+  hufAmount: number;
+  exchangeRate: number | null;
+  reason: string;
+  approvalId?: string | null;
+  customExchangeRate?: number | null;
+  paymentMethod?: string | null;
+  customerName?: string | null;
+  customerDocumentNumber?: string | null;
+}): number {
+  if (!db) throw new Error('Database not initialized');
+
+  const localReferenceNumber = generateLocalReference('LST');
+  const idempotencyKey = crypto.randomUUID();
+
+  db.run(
+    `INSERT INTO pending_stornos (
+      transaction_id,
+      original_receipt_number,
+      original_transaction_type,
+      currency_code,
+      foreign_amount,
+      huf_amount,
+      exchange_rate,
+      reason,
+      approval_id,
+      custom_exchange_rate,
+      payment_method,
+      customer_name,
+      customer_document_number,
+      local_reference_number,
+      idempotency_key
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      params.transactionId,
+      params.originalReceiptNumber,
+      params.originalTransactionType,
+      params.currencyCode,
+      params.foreignAmount,
+      params.hufAmount,
+      params.exchangeRate,
+      params.reason.trim(),
+      params.approvalId ?? null,
+      params.customExchangeRate ?? null,
+      params.paymentMethod ?? null,
+      params.customerName?.trim() || null,
+      params.customerDocumentNumber?.trim() || null,
+      localReferenceNumber,
+      idempotencyKey,
+    ],
+  );
+  saveDatabase();
+
+  const stmt = db.prepare('SELECT last_insert_rowid() as id');
+  stmt.step();
+  const row = stmt.getAsObject();
+  stmt.free();
+  const insertedId = (row['id'] as number) ?? 0;
+
+  saveLocalAuditEvent({
+    entityType: 'STORNO',
+    eventType: 'EXECUTE',
+    referenceNumber: localReferenceNumber,
+    entityId: String(insertedId),
+    payload: {
+      transactionId: params.transactionId,
+      originalReceiptNumber: params.originalReceiptNumber,
+      originalTransactionType: params.originalTransactionType,
+      currencyCode: params.currencyCode,
+      foreignAmount: params.foreignAmount,
+      hufAmount: params.hufAmount,
+      exchangeRate: params.exchangeRate,
+      reason: params.reason.trim(),
+      approvalId: params.approvalId ?? null,
+      customExchangeRate: params.customExchangeRate ?? null,
+      paymentMethod: params.paymentMethod ?? null,
+      idempotencyKey,
+    },
+    customerSnapshot: {
+      customerName: params.customerName?.trim() || null,
+      customerDocumentNumber: params.customerDocumentNumber?.trim() || null,
+    },
+    identificationSnapshot: {
+      customerDocumentNumber: params.customerDocumentNumber?.trim() || null,
+    },
+    rateSnapshot: {
+      currencyCode: params.currencyCode,
+      exchangeRate: params.customExchangeRate ?? params.exchangeRate,
+      hufAmount: params.hufAmount,
+    },
+    status: 'PENDING_UPLOAD',
+  });
+
+  return insertedId;
+}
+
+export function getPendingStornos(): PendingStornoRow[] {
+  if (!db) return [];
+  const results: PendingStornoRow[] = [];
+  const stmt = db.prepare('SELECT * FROM pending_stornos WHERE synced = 0 ORDER BY created_at ASC');
+  while (stmt.step()) {
+    results.push(stmt.getAsObject() as unknown as PendingStornoRow);
+  }
+  stmt.free();
+  return results;
+}
+
+export function markStornoSynced(id: number): void {
+  if (!db) return;
+  db.run('UPDATE pending_stornos SET synced = 1 WHERE id = ?', [id]);
+  saveDatabase();
+}
+
+export function savePendingHandoverOperation(params: {
+  operationType: 'GENERATE' | 'PRINT' | 'COMPLETE';
+  sheetId?: string | null;
+  fromCashDeskId?: string | null;
+  toCashDeskId?: string | null;
+  transferDate?: string | null;
+  amounts?: unknown;
+  note?: string | null;
+}): number {
+  if (!db) throw new Error('Database not initialized');
+
+  const localReferenceNumber = generateLocalReference(
+    params.operationType === 'GENERATE' ? 'LHS' : `LHS-${params.operationType}`,
+  );
+  const idempotencyKey = crypto.randomUUID();
+
+  db.run(
+    `INSERT INTO pending_handover_operations (
+      operation_type,
+      sheet_id,
+      from_cash_desk_id,
+      to_cash_desk_id,
+      transfer_date,
+      amounts_json,
+      note,
+      local_reference_number,
+      idempotency_key
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      params.operationType,
+      params.sheetId ?? null,
+      params.fromCashDeskId ?? null,
+      params.toCashDeskId ?? null,
+      params.transferDate ?? null,
+      toJsonOrNull(params.amounts),
+      params.note?.trim() || null,
+      localReferenceNumber,
+      idempotencyKey,
+    ],
+  );
+  saveDatabase();
+
+  const stmt = db.prepare('SELECT last_insert_rowid() as id');
+  stmt.step();
+  const row = stmt.getAsObject();
+  stmt.free();
+  const insertedId = (row['id'] as number) ?? 0;
+
+  saveLocalAuditEvent({
+    entityType: 'HANDOVER_SHEET',
+    eventType: params.operationType,
+    referenceNumber: localReferenceNumber,
+    entityId: String(insertedId),
+    payload: {
+      sheetId: params.sheetId ?? null,
+      fromCashDeskId: params.fromCashDeskId ?? null,
+      toCashDeskId: params.toCashDeskId ?? null,
+      transferDate: params.transferDate ?? null,
+      amounts: params.amounts ?? null,
+      note: params.note?.trim() || null,
+      idempotencyKey,
+    },
+    status: 'PENDING_UPLOAD',
+  });
+
+  return insertedId;
+}
+
+export function getPendingHandoverOperations(): PendingHandoverOperationRow[] {
+  if (!db) return [];
+  const results: PendingHandoverOperationRow[] = [];
+  const stmt = db.prepare('SELECT * FROM pending_handover_operations WHERE synced = 0 ORDER BY created_at ASC');
+  while (stmt.step()) {
+    results.push(stmt.getAsObject() as unknown as PendingHandoverOperationRow);
+  }
+  stmt.free();
+  return results;
+}
+
+export function markHandoverOperationSynced(id: number): void {
+  if (!db) return;
+  db.run('UPDATE pending_handover_operations SET synced = 1 WHERE id = ?', [id]);
+  saveDatabase();
 }
 
 export function getPendingCollections(): PendingCollectionRow[] {

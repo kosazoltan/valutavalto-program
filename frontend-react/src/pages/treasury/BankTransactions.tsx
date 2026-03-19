@@ -13,8 +13,14 @@ import { ertektarApi, currencyApi } from '../../services/api'
 import type { BankTransaction, BankTransactionRequest, Currency } from '../../services/api'
 import { formatInteger, formatDateTime, currencyColorClass } from './treasuryUtils'
 import { TableSkeleton } from './LoadingSkeleton'
+import {
+  isElectronQueueAvailable,
+  saveAndSyncPendingBankTransaction,
+} from '../../utils/electronTransactions'
+import { getLocalPendingBankTransactions } from '../../utils/localQueue'
 
 export default function BankTransactions() {
+  const electronQueueAvailable = isElectronQueueAvailable()
   const [loading, setLoading] = useState(true)
   const [transactions, setTransactions] = useState<BankTransaction[]>([])
   const [currencies, setCurrencies] = useState<Currency[]>([])
@@ -34,18 +40,19 @@ export default function BankTransactions() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [txData, currData] = await Promise.all([
+      const [txData, currData, localPending] = await Promise.all([
         ertektarApi.getBankTransactions().catch(() => [] as BankTransaction[]),
         currencyApi.list().catch(() => [] as Currency[]),
+        electronQueueAvailable ? getLocalPendingBankTransactions() : Promise.resolve([] as BankTransaction[]),
       ])
-      setTransactions(txData)
+      setTransactions([...localPending, ...txData])
       setCurrencies(currData)
     } catch (err) {
       console.error('BankTransactions fetch error:', err)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [electronQueueAvailable])
 
   useEffect(() => {
     void fetchData()
@@ -59,6 +66,7 @@ export default function BankTransactions() {
     if (!currencyCode || !amount || !exchangeRate) return
     setSubmitting(true)
     try {
+      const computedHufAmount = (parseFloat(amount) * parseFloat(exchangeRate)) || 0
       const request: BankTransactionRequest = {
         transactionType: txType,
         currencyCode,
@@ -68,7 +76,23 @@ export default function BankTransactions() {
         bankReference: bankRef || undefined,
         note: note || undefined,
       }
-      await ertektarApi.createBankTransaction(request)
+
+      if (electronQueueAvailable) {
+        await saveAndSyncPendingBankTransaction({
+          transactionType: txType,
+          currencyCode,
+          amount: parseFloat(amount),
+          exchangeRate: parseFloat(exchangeRate),
+          hufAmount: computedHufAmount,
+          vaultTerritoryId: null,
+          bankName: bankName || null,
+          bankReference: bankRef || null,
+          note: note || null,
+        })
+      } else {
+        await ertektarApi.createBankTransaction(request)
+      }
+
       setShowNewModal(false)
       resetForm()
       void fetchData()
@@ -77,7 +101,7 @@ export default function BankTransactions() {
     } finally {
       setSubmitting(false)
     }
-  }, [txType, currencyCode, amount, exchangeRate, bankName, bankRef, note, fetchData])
+  }, [txType, currencyCode, amount, exchangeRate, bankName, bankRef, note, fetchData, electronQueueAvailable])
 
   const resetForm = () => {
     setCurrencyCode('')

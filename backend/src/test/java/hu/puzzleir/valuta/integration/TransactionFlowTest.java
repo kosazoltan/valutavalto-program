@@ -139,6 +139,12 @@ class TransactionFlowTest {
                 java.math.BigDecimal fee = inv.getArgument(1);
                 return net != null && fee != null ? net.add(fee) : net;
             });
+                AmlService.AmlBasicCheckResult amlOk = AmlService.AmlBasicCheckResult.builder()
+                                .approved(true)
+                                .requiresApproval(false)
+                                .requiresDetailedId(false)
+                                .build();
+                when(amlService.checkTransaction(any(), any(), any(), any())).thenReturn(amlOk);
         // Default mock: ReceiptSequenceService
         when(receiptSequenceService.generateReceiptNumber(any(), any()))
             .thenReturn("TEST-001");

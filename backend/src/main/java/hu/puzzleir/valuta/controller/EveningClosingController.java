@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 /**
  * Esti zárás REST controller.
@@ -31,7 +32,7 @@ public class EveningClosingController {
      */
     @GetMapping("/{branchId}/{date}/preview")
     public ResponseEntity<DailyDataPackage> previewPackage(
-            @PathVariable Long branchId,
+            @PathVariable UUID branchId,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         log.info("Esti zárás preview: branchId={}, datum={}", branchId, date);
         DailyDataPackage pkg = eveningClosingService.prepareDailyPackage(branchId, date);
@@ -45,7 +46,7 @@ public class EveningClosingController {
      */
     @PostMapping("/{branchId}/{date}/send")
     public ResponseEntity<DataSyncResult> sendPackage(
-            @PathVariable Long branchId,
+            @PathVariable UUID branchId,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         log.info("Esti zárás küldés: branchId={}, datum={}", branchId, date);
 
@@ -64,7 +65,7 @@ public class EveningClosingController {
      */
     @GetMapping("/{branchId}/{date}/report")
     public ResponseEntity<hu.puzzleir.valuta.dto.eveningclosing.DailyReport> getDailyReport(
-            @PathVariable Long branchId,
+            @PathVariable UUID branchId,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         log.info("Napi jelentés lekérés: branchId={}, datum={}", branchId, date);
         hu.puzzleir.valuta.dto.eveningclosing.DailyReport report =

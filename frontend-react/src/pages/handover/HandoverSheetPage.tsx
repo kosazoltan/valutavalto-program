@@ -2,11 +2,23 @@ import { useState, useEffect } from 'react'
 import { FileText, Plus, Printer, CheckCircle, Search } from 'lucide-react'
 import { handoverSheetApi, HandoverSheet, cashDeskApi, CashDesk } from '../../services/api'
 import { toast } from '../../components/ui/toaster'
+import {
+  isElectronQueueAvailable,
+  recordLocalAuditEvent,
+  saveAndSyncPendingHandoverOperation,
+} from '../../utils/electronTransactions'
+import {
+  getLocalPendingHandoverOperations,
+  mapPendingHandoverGeneratesToSheets,
+  type LocalPendingHandoverOperation,
+} from '../../utils/localQueue'
 
 export default function HandoverSheetPage() {
+  const electronQueueAvailable = isElectronQueueAvailable()
   const [sheets, setSheets] = useState<HandoverSheet[]>([])
   const [cashDesks, setCashDesks] = useState<CashDesk[]>([])
   const [filteredSheets, setFilteredSheets] = useState<HandoverSheet[]>([])
+  const [localPendingOperations, setLocalPendingOperations] = useState<LocalPendingHandoverOperation[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -26,7 +38,7 @@ export default function HandoverSheetPage() {
   useEffect(() => {
     filterSheets()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sheets, searchTerm])
+  }, [sheets, searchTerm, localPendingOperations, cashDesks])
 
   const loadData = async () => {
     try {
@@ -34,6 +46,9 @@ export default function HandoverSheetPage() {
       setError(null)
       const data = await handoverSheetApi.list()
       setSheets(data)
+      if (electronQueueAvailable) {
+        setLocalPendingOperations(await getLocalPendingHandoverOperations())
+      }
     } catch (err) {
       console.error('Átadó lapok betöltési hiba:', err)
       setError('Hiba az átadó lapok betöltésekor')
@@ -53,7 +68,9 @@ export default function HandoverSheetPage() {
   }
 
   const filterSheets = () => {
-    let filtered = sheets
+    const cashDeskNames = new Map(cashDesks.map((desk) => [desk.id, desk.name]))
+    const localGenerated = mapPendingHandoverGeneratesToSheets(localPendingOperations, cashDeskNames)
+    let filtered = [...localGenerated, ...sheets]
     if (searchTerm) {
       filtered = filtered.filter(s =>
         s.sheetNumber?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -65,15 +82,43 @@ export default function HandoverSheetPage() {
   const handleGenerate = async () => {
     try {
       setError(null)
-      await handoverSheetApi.generate(
-        formData.fromCashDeskId || '',
-        formData.toCashDeskId || '',
-        (formData.transferDate || new Date().toISOString().split('T')[0]) as string,
-        formData.amounts
-      )
+      if (electronQueueAvailable) {
+        const outcome = await saveAndSyncPendingHandoverOperation({
+          operationType: 'GENERATE',
+          fromCashDeskId: formData.fromCashDeskId || '',
+          toCashDeskId: formData.toCashDeskId || '',
+          transferDate: (formData.transferDate || new Date().toISOString().split('T')[0]) as string,
+          amounts: formData.amounts,
+        })
+        toast.success(
+          outcome.allSavedSynced
+            ? 'Átadó lap helyileg rögzítve és azonnal szinkronizálva'
+            : 'Átadó lap helyileg rögzítve. A feltöltés az Electron queue-ból folytatódik.',
+        )
+      } else {
+        await handoverSheetApi.generate(
+          formData.fromCashDeskId || '',
+          formData.toCashDeskId || '',
+          (formData.transferDate || new Date().toISOString().split('T')[0]) as string,
+          formData.amounts
+        )
+        await recordLocalAuditEvent({
+          entityType: 'HANDOVER_SHEET',
+          eventType: 'GENERATE',
+          payload: {
+            fromCashDeskId: formData.fromCashDeskId || '',
+            toCashDeskId: formData.toCashDeskId || '',
+            transferDate: formData.transferDate,
+            amounts: formData.amounts,
+          },
+          status: 'SERVER_FORWARDED',
+        })
+      }
       await loadData()
       setShowForm(false)
-      toast.success('Átadó lap sikeresen létrehozva')
+      if (!electronQueueAvailable) {
+        toast.success('Átadó lap sikeresen létrehozva')
+      }
     } catch (err) {
       console.error('Generálási hiba:', err)
       setError('Hiba történt a generálás során')
@@ -83,8 +128,28 @@ export default function HandoverSheetPage() {
   const handlePrint = async (id: string) => {
     try {
       setError(null)
-      await handoverSheetApi.print(id)
-      toast.success('Átadó lap nyomtatása elindítva')
+      if (electronQueueAvailable) {
+        const outcome = await saveAndSyncPendingHandoverOperation({
+          operationType: 'PRINT',
+          sheetId: id,
+        })
+        toast.success(
+          outcome.allSavedSynced
+            ? 'Nyomtatási kérés azonnal továbbítva'
+            : 'Nyomtatási kérés helyileg mentve. Szinkron után kerül továbbításra.',
+        )
+      } else {
+        await handoverSheetApi.print(id)
+        await recordLocalAuditEvent({
+          entityType: 'HANDOVER_SHEET',
+          eventType: 'PRINT',
+          entityId: id,
+          payload: { id },
+          status: 'SERVER_FORWARDED',
+        })
+        toast.success('Átadó lap nyomtatása elindítva')
+      }
+      await loadData()
     } catch (err) {
       console.error('Nyomtatási hiba:', err)
       setError('Hiba történt a nyomtatás során')
@@ -94,9 +159,30 @@ export default function HandoverSheetPage() {
   const handleComplete = async (id: string) => {
     try {
       setError(null)
-      await handoverSheetApi.complete(id)
+      if (electronQueueAvailable) {
+        const outcome = await saveAndSyncPendingHandoverOperation({
+          operationType: 'COMPLETE',
+          sheetId: id,
+        })
+        toast.success(
+          outcome.allSavedSynced
+            ? 'Befejezési kérés azonnal továbbítva'
+            : 'Befejezési kérés helyileg mentve. Szinkron után kerül továbbításra.',
+        )
+      } else {
+        await handoverSheetApi.complete(id)
+        await recordLocalAuditEvent({
+          entityType: 'HANDOVER_SHEET',
+          eventType: 'COMPLETE',
+          entityId: id,
+          payload: { id },
+          status: 'SERVER_FORWARDED',
+        })
+      }
       await loadData()
-      toast.success('Átadó lap sikeresen befejezve')
+      if (!electronQueueAvailable) {
+        toast.success('Átadó lap sikeresen befejezve')
+      }
     } catch (err) {
       console.error('Befejezési hiba:', err)
       setError('Hiba történt a befejezés során')
@@ -172,6 +258,11 @@ export default function HandoverSheetPage() {
       )}
 
       <div className="form-panel">
+        {localPendingOperations.length > 0 && (
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            {localPendingOperations.length} helyi handover művelet vár még szerveres visszaigazolásra.
+          </div>
+        )}
         <table className="data-grid w-full">
           <thead>
             <tr><th>Lapszám</th><th>Küldő</th><th>Fogadó</th><th>Dátum</th><th>Státusz</th><th>Műveletek</th></tr>
@@ -186,11 +277,11 @@ export default function HandoverSheetPage() {
                   <td>{s.fromCashDeskName}</td>
                   <td>{s.toCashDeskName}</td>
                   <td>{new Date(s.transferDate).toLocaleDateString('hu-HU')}</td>
-                  <td><span className={`badge ${s.status === 'COMPLETED' ? 'badge-green' : 'badge-yellow'}`}>{s.status}</span></td>
+                  <td><span className={`badge ${s.status === 'COMPLETED' ? 'badge-green' : s.status === 'PENDING_SYNC' ? 'badge-yellow' : 'badge-yellow'}`}>{s.status === 'PENDING_SYNC' ? 'HELYBEN MENTVE' : s.status}</span></td>
                   <td>
                     <div className="flex gap-2">
-                      <button type="button" onClick={() => handlePrint(s.id)} className="form-button text-xs"><Printer size={12} />Nyomtatás</button>
-                      {s.status !== 'COMPLETED' && <button type="button" onClick={() => handleComplete(s.id)} className="form-button text-xs"><CheckCircle size={12} />Befejezés</button>}
+                      <button type="button" onClick={() => handlePrint(s.id)} disabled={s.status === 'PENDING_SYNC'} className="form-button text-xs disabled:opacity-50"><Printer size={12} />Nyomtatás</button>
+                      {s.status !== 'COMPLETED' && <button type="button" onClick={() => handleComplete(s.id)} disabled={s.status === 'PENDING_SYNC'} className="form-button text-xs disabled:opacity-50"><CheckCircle size={12} />Befejezés</button>}
                     </div>
                   </td>
                 </tr>

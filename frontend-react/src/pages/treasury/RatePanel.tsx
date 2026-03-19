@@ -13,6 +13,7 @@ import { exchangeRateApi, currencyApi } from '../../services/api'
 import type { ExchangeRate, Currency, CreateExchangeRateRequest } from '../../services/api'
 import { formatAmount, currencyColorClass } from './treasuryUtils'
 import { TableSkeleton } from './LoadingSkeleton'
+import { recordLocalAuditEvent } from '../../utils/electronTransactions'
 
 interface RateRow {
   currency: Currency
@@ -93,6 +94,25 @@ export default function RatePanel() {
         baseSellRate: parseFloat(manualSellRate),
       }
       await exchangeRateApi.create(request)
+      const selectedCurrency = rateRows.find((row) => row.currency.id === manualCurrencyId)?.currency
+      await recordLocalAuditEvent({
+        entityType: 'EXCHANGE_RATE',
+        eventType: 'CREATE',
+        entityId: String(manualCurrencyId),
+        referenceNumber: selectedCurrency?.code ?? null,
+        payload: {
+          currencyId: manualCurrencyId,
+          currencyCode: selectedCurrency?.code ?? null,
+          baseBuyRate: parseFloat(manualBuyRate),
+          baseSellRate: parseFloat(manualSellRate),
+        },
+        rateSnapshot: {
+          currencyCode: selectedCurrency?.code ?? null,
+          buyRate: parseFloat(manualBuyRate),
+          sellRate: parseFloat(manualSellRate),
+        },
+        status: 'SERVER_FORWARDED',
+      })
       setShowManualModal(false)
       setManualBuyRate('')
       setManualSellRate('')

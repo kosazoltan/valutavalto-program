@@ -21,6 +21,14 @@ import { NumberInput } from '../../components/NumberInput'
 import { formatDecimal, formatInteger } from '../../utils/numberFormat'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { roundHuf } from '../../utils/rounding'
+import {
+  buildConversionRequestFromSelection,
+  buildFallbackCurrenciesFromCachedRates,
+  getElectronCachedRates,
+  isElectronQueueAvailable,
+  mapCachedRatesToExchangeRates,
+  saveAndSyncPendingConversion,
+} from '../../utils/electronTransactions'
 
 /**
  * Konverziós tranzakció oldal
@@ -34,6 +42,7 @@ import { roundHuf } from '../../utils/rounding'
  */
 export default function ConversionPage() {
   const navigate = useNavigate()
+  const electronQueueAvailable = isElectronQueueAvailable()
 
   // State
   const [currencies, setCurrencies] = useState<Currency[]>([])
@@ -62,17 +71,49 @@ export default function ConversionPage() {
     const loadData = async () => {
       try {
         setLoading(true)
+        if (electronQueueAvailable) {
+          const cachedRates = await getElectronCachedRates()
+          if (cachedRates.length > 0) {
+            let activeCurrencies: Currency[] = []
+
+            try {
+              activeCurrencies = await currencyApi.getActive()
+            } catch {
+              activeCurrencies = []
+            }
+
+            const fallbackCurrencies = buildFallbackCurrenciesFromCachedRates(cachedRates)
+            const currencyByCode = new Map(
+              activeCurrencies
+                .filter((currency) => currency.code !== 'HUF')
+                .map((currency) => [currency.code, currency]),
+            )
+
+            const filteredCurrencies = fallbackCurrencies.map((currency) => {
+              const matched = currencyByCode.get(currency.code)
+              return matched ?? currency
+            })
+
+            setCurrencies(filteredCurrencies)
+            setRates(mapCachedRatesToExchangeRates(cachedRates, activeCurrencies))
+
+            if (filteredCurrencies.length >= 2 && filteredCurrencies[0] && filteredCurrencies[1]) {
+              setFromCurrencyId(filteredCurrencies[0].id)
+              setToCurrencyId(filteredCurrencies[1].id)
+            }
+            return
+          }
+        }
+
         const [currencyData, rateData] = await Promise.all([
           currencyApi.getActive(),
           exchangeRateApi.list()
         ])
 
-        // Filter out HUF from conversion currencies
         const filteredCurrencies = currencyData.filter((c: Currency) => c.code !== 'HUF')
         setCurrencies(filteredCurrencies)
         setRates(rateData)
 
-        // Select first currency as default
         if (filteredCurrencies.length >= 2 && filteredCurrencies[0] && filteredCurrencies[1]) {
           setFromCurrencyId(filteredCurrencies[0].id)
           setToCurrencyId(filteredCurrencies[1].id)
@@ -85,7 +126,7 @@ export default function ConversionPage() {
     }
 
     void loadData()
-  }, [])
+  }, [electronQueueAvailable])
 
   // Get rate for a currency
   const getRate = (currencyId: number | null): ExchangeRate | undefined => {
@@ -173,17 +214,49 @@ export default function ConversionPage() {
       setLoading(true)
       setError(null)
 
-      const request: ConversionRequest = {
-        fromCurrencyId,
-        toCurrencyId,
-        fromAmount: amount,
-        customerName: customerName || undefined,
-        notes: notes || undefined
+      const fromCurrency = getCurrency(fromCurrencyId)
+      const toCurrency = getCurrency(toCurrencyId)
+      if (!fromCurrency || !toCurrency) {
+        setError('A kiválasztott valuták nem érvényesek!')
+        return
       }
 
-      const result = await transactionApi.conversion(request)
+      if (electronQueueAvailable) {
+        const outcome = await saveAndSyncPendingConversion({
+          fromCurrencyId,
+          fromCurrencyCode: fromCurrency.code,
+          toCurrencyId,
+          toCurrencyCode: toCurrency.code,
+          fromAmount: amount,
+          calculatedHufAmount: hufAmount,
+          calculatedToAmount: parseFloat(toAmount.replace(',', '.').replace(/\s/g, '')) || 0,
+          conversionRate,
+          handlingFee: null,
+          customerId: null,
+          customerName: customerName || null,
+          customerDocumentNumber: null,
+          note: notes || null,
+        })
 
-      setSuccess(`Konverzió sikeres! Bizonylat: ${result.receiptNumber}`)
+        if (outcome.allSavedSynced) {
+          setSuccess('Konverzió sikeresen rögzítve és szinkronizálva!')
+        } else {
+          setSuccess('Konverzió helyben mentve. A szinkron a háttérben folytatódik.')
+        }
+      } else {
+        const request: ConversionRequest = buildConversionRequestFromSelection({
+          fromCurrencyId,
+          fromCurrencyCode: fromCurrency.code,
+          toCurrencyId,
+          toCurrencyCode: toCurrency.code,
+          fromAmount: amount,
+          customerName: customerName || undefined,
+          notes: notes || undefined,
+        })
+
+        const result = await transactionApi.conversion(request)
+        setSuccess(`Konverzió sikeres! Bizonylat: ${result.receiptNumber}`)
+      }
 
       // Reset after 2 seconds
       setTimeout(() => {

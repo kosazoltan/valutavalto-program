@@ -168,6 +168,25 @@ public class DailyClosingService {
         }
     }
 
+    /**
+     * Egy adott lepes ellenorzeset futtatja — a ClosingWizardService hivja navigate()-bol.
+     * Igy a wizard UI egyenkent tudja futtatni es megjeleníteni az ellenorzeseket.
+     */
+    public StepCheckResult executeStepCheck(int stepNumber, UUID branchId, LocalDate closingDate) {
+        return switch (stepNumber) {
+            case 1 -> checkMtcnNumbers(branchId, closingDate);
+            case 2 -> checkEveningDenomination(branchId, closingDate);
+            case 3 -> checkHandlingFeeDenomination(branchId, closingDate);
+            case 4 -> checkWesternUnionDenomination(branchId, closingDate);
+            case 5 -> checkVatDenomination(branchId, closingDate);
+            case 6 -> checkDepositDenomination(branchId, closingDate);
+            case 7 -> checkEcommerceDenomination(branchId, closingDate);
+            case 8 -> checkOtherDenominations(branchId, closingDate);
+            case 9 -> checkNavControlAndReport(branchId, closingDate);
+            default -> StepCheckResult.failed("Ismeretlen lepes szam: " + stepNumber);
+        };
+    }
+
     // ============ ELLENORZESI LEPESEK ============
 
     /**

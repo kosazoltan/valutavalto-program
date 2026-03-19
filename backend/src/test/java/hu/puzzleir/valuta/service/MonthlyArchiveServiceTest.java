@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.config.FinancialRetentionProperties;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.exception.ValidationException;
@@ -48,6 +49,9 @@ class MonthlyArchiveServiceTest {
     @Mock
     private AuditLogService auditLogService;
 
+    @Mock
+    private FinancialRetentionProperties financialRetentionProperties;
+
     private static final UUID TEST_COMPANY_ID = UUID.randomUUID();
     private static final UUID TEST_BRANCH_ID = UUID.randomUUID();
 
@@ -59,6 +63,9 @@ class MonthlyArchiveServiceTest {
         TestingAuthenticationToken auth = new TestingAuthenticationToken("test", "pass", "ROLE_ADMIN");
         auth.setDetails(details);
         SecurityContextHolder.getContext().setAuthentication(auth);
+
+        when(financialRetentionProperties.getYears()).thenReturn(8);
+        when(financialRetentionProperties.isHardDeleteEnabled()).thenReturn(false);
     }
 
     @Test

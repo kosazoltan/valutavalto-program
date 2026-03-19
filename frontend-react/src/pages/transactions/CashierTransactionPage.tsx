@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
 import {
   AlertTriangle,
@@ -13,6 +13,12 @@ import { transactionApi, exchangeRateApi } from '../../services/api'
 import type { BuyRequest, SellRequest, ExchangeRate } from '../../services/api'
 import { roundHuf } from '../../utils/rounding'
 import { toast } from '../../components/ui/toaster'
+import {
+  getElectronCachedRates,
+  isElectronQueueAvailable,
+  mapCachedRatesToExchangeRates,
+  saveAndSyncPendingBuySell,
+} from '../../utils/electronTransactions'
 
 /**
  * Penztaros Eladas/Vetel kepernyoje — 6 soros valuta tabla.
@@ -45,7 +51,9 @@ const emptyRow = (): TransactionRow => ({
 
 export default function CashierTransactionPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { theme: _theme } = useCompanyTheme()
+  const electronQueueAvailable = isElectronQueueAvailable()
 
   // Transaction state
   const [mode, setMode] = useState<'buy' | 'sell'>('buy')
@@ -87,12 +95,49 @@ export default function CashierTransactionPage() {
     }
   }, [activeRow, activeField])
 
-  // Load exchange rates from API on mount
   useEffect(() => {
-    exchangeRateApi.list()
-      .then((rates) => setExchangeRates(rates))
-      .catch((err) => console.error('Arfolyam betoltes sikertelen:', err))
-  }, [])
+    const requestedMode = searchParams.get('mode')
+    if (requestedMode === 'buy' || requestedMode === 'sell') {
+      setMode(requestedMode)
+    }
+  }, [searchParams])
+
+  // Load exchange rates with Electron cached-rates priority
+  useEffect(() => {
+    let cancelled = false
+
+    const loadRates = async () => {
+      if (electronQueueAvailable) {
+        try {
+          const cachedRates = await getElectronCachedRates()
+          if (!cancelled && cachedRates.length > 0) {
+            setExchangeRates(mapCachedRatesToExchangeRates(cachedRates))
+            return
+          }
+        } catch (err) {
+          console.error('Helyi arfolyam cache betoltes sikertelen:', err)
+        }
+      }
+
+      try {
+        const rates = await exchangeRateApi.list()
+        if (!cancelled) {
+          setExchangeRates(rates)
+        }
+      } catch (err) {
+        console.error('Arfolyam betoltes sikertelen:', err)
+        if (!cancelled && electronQueueAvailable) {
+          toast.error('Árfolyam nem elérhető', 'Nincs használható helyi vagy szerver oldali árfolyam adat.')
+        }
+      }
+    }
+
+    void loadRates()
+
+    return () => {
+      cancelled = true
+    }
+  }, [electronQueueAvailable])
 
   // Auto focus first row on mount
   useEffect(() => {
@@ -170,87 +215,70 @@ export default function CashierTransactionPage() {
     }
 
     setIsSubmitting(true)
-    const receiptNumbers: string[] = []
 
     try {
-      // Minden kitoltott sort kulon tranzakciokent kuldunk
-      for (const row of filledRows) {
-        const customerData = total >= IDENTIFICATION_LIMIT ? {
-          customerName: customerName.trim() || undefined,
-          customerDocumentNumber: customerDocNumber.trim() || undefined,
-          customerAddress: customerAddress.trim() || undefined,
-        } : {}
+      const customerData = total >= IDENTIFICATION_LIMIT ? {
+        customerName: customerName.trim() || undefined,
+        customerDocumentNumber: customerDocNumber.trim() || undefined,
+        customerAddress: customerAddress.trim() || undefined,
+      } : {}
 
-        if (mode === 'buy') {
-          const request: BuyRequest = {
+      if (electronQueueAvailable) {
+        const outcome = await saveAndSyncPendingBuySell(
+          filledRows.map((row) => ({
+            type: mode === 'buy' ? 'BUY' : 'SELL',
             currencyCode: row.currencyCode,
-            currencyAmount: parseFloat(row.quantity) || 0,
-            customExchangeRate: row.exchangeRate,
-            handlingFee: handlingFee > 0 ? handlingFee : undefined,
-            discountPercent: discount > 0 ? discount : undefined,
-            ...customerData,
-          }
-          try {
+            foreignAmount: parseFloat(row.quantity) || 0,
+            hufAmount: row.hufValue,
+            roundedHufAmount: roundHuf(row.hufValue),
+            rate: row.exchangeRate,
+            handlingFee: handlingFee > 0 ? handlingFee : null,
+            discountPercent: discount > 0 ? discount : null,
+            customerIdentifier: customerDocNumber.trim() || null,
+            customerName: customerName.trim() || null,
+            customerDocumentNumber: customerDocNumber.trim() || null,
+            customerAddress: customerAddress.trim() || null,
+            denominations: null,
+          })),
+        )
+
+        if (outcome.allSavedSynced) {
+          toast.success('Bizonylat(ok) sikeresen rögzítve!', `${filledRows.length} tétel azonnal szinkronizálva.`)
+        } else {
+          toast.warning(
+            'Offline mentés megtörtént',
+            `${outcome.pendingCount} tétel helyi queue-ba került, ${outcome.syncedCount} tétel azonnal feltöltve.`,
+          )
+        }
+      } else {
+        const receiptNumbers: string[] = []
+
+        for (const row of filledRows) {
+          if (mode === 'buy') {
+            const request: BuyRequest = {
+              currencyCode: row.currencyCode,
+              currencyAmount: parseFloat(row.quantity) || 0,
+              customExchangeRate: row.exchangeRate,
+              handlingFee: handlingFee > 0 ? handlingFee : undefined,
+              discountPercent: discount > 0 ? discount : undefined,
+              ...customerData,
+            }
             const result = await transactionApi.buy(request)
             receiptNumbers.push(result.receiptNumber)
-          } catch (networkErr) {
-            // Electron offline fallback: mentés SQLite-ba, sync engine feltölti később
-            if (window.electronAPI?.savePendingTransaction) {
-              await window.electronAPI.savePendingTransaction(
-                'BUY', row.currencyCode,
-                parseFloat(row.quantity) || 0, row.hufValue,
-                roundHuf(row.hufValue), row.exchangeRate,
-                null,
-                customerName.trim() || null,
-                customerDocNumber.trim() || null,
-                customerAddress.trim() || null,
-                null,
-              )
-              receiptNumbers.push(`PENDING-${Date.now()}`)
-            } else {
-              throw networkErr // Böngészőben nincs offline fallback
+          } else {
+            const request: SellRequest = {
+              currencyCode: row.currencyCode,
+              currencyAmount: parseFloat(row.quantity) || 0,
+              customExchangeRate: row.exchangeRate,
+              handlingFee: handlingFee > 0 ? handlingFee : undefined,
+              discountPercent: discount > 0 ? discount : undefined,
+              ...customerData,
             }
-          }
-        } else {
-          const request: SellRequest = {
-            currencyCode: row.currencyCode,
-            currencyAmount: parseFloat(row.quantity) || 0,
-            customExchangeRate: row.exchangeRate,
-            handlingFee: handlingFee > 0 ? handlingFee : undefined,
-            discountPercent: discount > 0 ? discount : undefined,
-            ...customerData,
-          }
-          try {
             const result = await transactionApi.sell(request)
             receiptNumbers.push(result.receiptNumber)
-          } catch (networkErr) {
-            // Electron offline fallback: mentés SQLite-ba, sync engine feltölti később
-            if (window.electronAPI?.savePendingTransaction) {
-              await window.electronAPI.savePendingTransaction(
-                'SELL', row.currencyCode,
-                parseFloat(row.quantity) || 0, row.hufValue,
-                roundHuf(row.hufValue), row.exchangeRate,
-                null,
-                customerName.trim() || null,
-                customerDocNumber.trim() || null,
-                customerAddress.trim() || null,
-                null,
-              )
-              receiptNumbers.push(`PENDING-${Date.now()}`)
-            } else {
-              throw networkErr // Böngészőben nincs offline fallback
-            }
           }
         }
-      }
 
-      const pendingCount = receiptNumbers.filter(r => r.startsWith('PENDING-')).length
-      if (pendingCount > 0) {
-        toast.warning(
-          'Offline mód — tranzakció(k) mentve',
-          `${pendingCount} tranzakció helyi tárolásba került. Az internet visszatérésekor automatikusan szinkronizálódik.`,
-        )
-      } else {
         toast.success('Bizonylat(ok) sikeresen készítve!', `${filledRows.length} tétel, ${total.toLocaleString('hu-HU')} Ft | Bizonylat számok: ${receiptNumbers.join(', ')}`)
       }
 
@@ -269,7 +297,7 @@ export default function CashierTransactionPage() {
     } finally {
       setIsSubmitting(false)
     }
-  }, [rows, mode, total, handlingFee, discount, customerName, customerDocNumber, customerAddress])
+  }, [rows, mode, total, handlingFee, discount, customerName, customerDocNumber, customerAddress, electronQueueAvailable])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent, rowIdx: number, field: 'currency' | 'quantity') => {

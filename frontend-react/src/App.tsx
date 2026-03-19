@@ -47,6 +47,7 @@ import CommissionRatePage from './pages/commissions/CommissionRatePage'
 import ArchivingPage from './pages/archiving/ArchivingPage'
 import ExchangeRateDisplayPage from './pages/display/ExchangeRateDisplayPage'
 import SynchronizationPage from './pages/sync/SynchronizationPage'
+import LocalQueuePage from './pages/sync/LocalQueuePage'
 import PosTerminalPage from './pages/pos/PosTerminalPage'
 import NavIntegrationPage from './pages/nav/NavIntegrationPage'
 import DocumentStoragePage from './pages/documents/DocumentStoragePage'
@@ -260,6 +261,7 @@ export default function App() {
           
           {/* Synchronization */}
           <Route path="/synchronization" element={<SynchronizationPage />} />
+          <Route path="/local-queue" element={<LocalQueuePage />} />
           
           {/* POS Terminal */}
           <Route path="/pos-terminal" element={<PosTerminalPage />} />

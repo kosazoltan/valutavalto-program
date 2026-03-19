@@ -498,7 +498,7 @@ public class Transaction {
 **Compliance Rules:**
 - Tranzakció > 5000 EUR → Customer required
 - Terror list check minden ügyfélnél
-- Adatok megőrzése 5 évig (GDPR + AML)
+- Penzugyi tranzakciok, bizonylatok es AML-hez kotott azonositas szerveroldali archiv megorzese minimum 8 evig, hard delete nelkul
 
 ---
 

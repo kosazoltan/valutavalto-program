@@ -32,11 +32,12 @@ Kapcsolodo gepileg feldolgozhato task graph:
 1. Offline mukodes kotelezo minden penztari kritikus tranzakciohoz.
 2. Kamera rogzitese folyamatos a nyitvatartasi idoben, helyi tarolassal.
 3. Kameraadat legalabb 50 nap retention helyben + kozpontban.
-4. Arfolyam kozponti szerkesztes + publikacio + irodakra terites.
-5. Vetel/eladas/ertektar/foertektar uzleti logika nem serulhet.
-6. Idempotens szinkron kotelezo (duplikalt vegrehajtas tilos).
-7. Audit trail kotelezo minden kritikus muveletre.
-8. Rollback-kepes release folyamat kotelezo.
+4. Penzugyi tranzakcios adatok helyi pending masolata minimum 31 napig, szerveroldali archivuma minimum 8 evig megorzendo.
+5. Arfolyam kozponti szerkesztes + publikacio + irodakra terites.
+6. Vetel/eladas/ertektar/foertektar uzleti logika nem serulhet.
+7. Idempotens szinkron kotelezo (duplikalt vegrehajtas tilos).
+8. Audit trail kotelezo minden kritikus muveletre.
+9. Rollback-kepes release folyamat kotelezo.
 
 ---
 
@@ -149,6 +150,7 @@ AI vegrehajtas sorren:
 5. Egy valuta + workgroup + aktiv idointervallum kombinacio csak egy aktiv arfolyam lehet.
 6. Kamera felvetel torles csak retention policy altal.
 7. Audit event nem modosithato, csak append.
+8. Penzugyi tranzakcio, bizonylat es archiv rekord hard delete nem engedett; csak soft-archive vagy append-only naplozas megengedett.
 
 ---
 

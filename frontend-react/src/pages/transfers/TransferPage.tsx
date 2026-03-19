@@ -23,6 +23,12 @@ import { useAuthStore } from '../../stores/authStore'
 import { NumberInput } from '../../components/NumberInput'
 import { formatDecimal, formatInteger } from '../../utils/numberFormat'
 import { getErrorMessage } from '../../utils/errorHandling'
+import {
+  isElectronQueueAvailable,
+  recordLocalAuditEvent,
+  saveAndSyncPendingTransfer,
+} from '../../utils/electronTransactions'
+import { getLocalPendingTransfers } from '../../utils/localQueue'
 
 type TabType = 'outgoing' | 'incoming' | 'pending'
 
@@ -37,6 +43,7 @@ type TabType = 'outgoing' | 'incoming' | 'pending'
 export default function TransferPage() {
   const navigate = useNavigate()
   const worker = useAuthStore((state) => state.worker)
+  const electronQueueAvailable = isElectronQueueAvailable()
 
   // Tab state
   const [activeTab, setActiveTab] = useState<TabType>('pending')
@@ -78,18 +85,19 @@ export default function TransferPage() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [outgoing, incoming, pending, count, currencyData] = await Promise.all([
+      const [outgoing, incoming, pending, count, currencyData, localPending] = await Promise.all([
         transferApi.getOutgoing(),
         transferApi.getIncoming(),
         transferApi.getPending(),
         transferApi.countPending(),
-        currencyApi.getActive()
+        currencyApi.getActive(),
+        electronQueueAvailable ? getLocalPendingTransfers(worker) : Promise.resolve([]),
       ])
 
-      setOutgoingTransfers(outgoing)
+      setOutgoingTransfers([...localPending, ...outgoing])
       setIncomingTransfers(incoming)
-      setPendingTransfers(pending)
-      setPendingCount(count)
+      setPendingTransfers([...localPending, ...pending])
+      setPendingCount(count + localPending.length)
       setCurrencies(currencyData)
 
       // TODO: Load branches from API
@@ -130,8 +138,35 @@ export default function TransferPage() {
         notes: notes || undefined
       }
 
-      const result = await transferApi.create(request)
-      setSuccess(`Átadás létrehozva: ${result.transferNumber}`)
+      if (electronQueueAvailable) {
+        const branch = branches.find((item) => item.id === toBranchId)
+        const currency = currencies.find((item) => item.id === currencyId)
+        if (!branch || !currency) {
+          setError('Az átadáshoz érvényes cél iroda és valuta szükséges!')
+          return
+        }
+
+        const outcome = await saveAndSyncPendingTransfer({
+          targetBranchId: toBranchId,
+          targetBranchCode: branch.code,
+          currencyId,
+          currencyCode: currency.code,
+          amount: amountValue,
+          hufValue: null,
+          transferType,
+          denominations: null,
+          note: notes || null,
+        })
+
+        setSuccess(
+          outcome.allSavedSynced
+            ? 'Átadás helyileg rögzítve és azonnal szinkronizálva'
+            : 'Átadás helyileg rögzítve. A feltöltés az Electron queue-ból folytatódik.',
+        )
+      } else {
+        const result = await transferApi.create(request)
+        setSuccess(`Átadás létrehozva: ${result.transferNumber}`)
+      }
       setShowNewTransfer(false)
 
       // Reset form
@@ -167,6 +202,19 @@ export default function TransferPage() {
         notes: receiveNotes || undefined
       })
 
+      await recordLocalAuditEvent({
+        entityType: 'TRANSFER',
+        eventType: 'RECEIVE',
+        entityId: String(selectedTransfer.id),
+        referenceNumber: selectedTransfer.transferNumber,
+        payload: {
+          transferId: selectedTransfer.id,
+          receivedAmount: amountValue,
+          notes: receiveNotes || null,
+        },
+        status: 'SERVER_FORWARDED',
+      })
+
       setSuccess('Átvétel sikeres!')
       setShowReceiveModal(false)
       setSelectedTransfer(null)
@@ -189,6 +237,17 @@ export default function TransferPage() {
     try {
       setLoading(true)
       await transferApi.reject(transfer.id, reason)
+      await recordLocalAuditEvent({
+        entityType: 'TRANSFER',
+        eventType: 'REJECT',
+        entityId: String(transfer.id),
+        referenceNumber: transfer.transferNumber,
+        payload: {
+          transferId: transfer.id,
+          reason,
+        },
+        status: 'SERVER_FORWARDED',
+      })
       setSuccess('Átadás visszautasítva')
       await loadData()
     } catch (err) {
@@ -205,6 +264,16 @@ export default function TransferPage() {
     try {
       setLoading(true)
       await transferApi.cancel(transfer.id)
+      await recordLocalAuditEvent({
+        entityType: 'TRANSFER',
+        eventType: 'CANCEL',
+        entityId: String(transfer.id),
+        referenceNumber: transfer.transferNumber,
+        payload: {
+          transferId: transfer.id,
+        },
+        status: 'SERVER_FORWARDED',
+      })
       setSuccess('Átadás törölve')
       await loadData()
     } catch (err) {

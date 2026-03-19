@@ -20,6 +20,10 @@ interface ReceiptPreviewModalProps {
   receiptData: PrintReceiptData | null;
   qrCodeDataUrl: string | null;
   onPrint: () => Promise<void>;
+  variant?: 'official' | 'draft';
+  statusMessage?: string | null;
+  printLabel?: string;
+  allowPrint?: boolean;
 }
 
 export default function ReceiptPreviewModal({
@@ -28,6 +32,10 @@ export default function ReceiptPreviewModal({
   receiptData,
   qrCodeDataUrl,
   onPrint,
+  variant = 'official',
+  statusMessage = null,
+  printLabel,
+  allowPrint = true,
 }: ReceiptPreviewModalProps) {
   const [isPrinting, setIsPrinting] = useState(false);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -92,6 +100,7 @@ export default function ReceiptPreviewModal({
     buy: 'VÁSÁRLÁSI BIZONYLAT',
     transfer: 'ÁTADÁS-ÁTVÉTELI BIZONYLAT',
     storno: 'STORNÓ BIZONYLAT',
+    conversion: 'KONVERZIÓS BIZONYLAT',
     closing: 'NAPI ZÁRÁS',
   };
 
@@ -120,6 +129,11 @@ export default function ReceiptPreviewModal({
 
         {/* Receipt content — 80mm thermal printer format */}
         <div className="max-h-[600px] overflow-y-auto p-6">
+          {(variant === 'draft' || statusMessage) && (
+            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              {statusMessage ?? 'Ez helyi, függő bizonylatvázlat. A hivatalos bizonylatszám és végleges nyomtatási életciklus csak szerveres szinkron után érvényes.'}
+            </div>
+          )}
           <div
             className="mx-auto w-[300px] rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-4 font-mono text-xs leading-relaxed text-gray-800"
             style={{ fontFamily: 'Courier New, monospace' }}
@@ -192,6 +206,29 @@ export default function ReceiptPreviewModal({
                   FIZETENDŐ: {formatAmount(receiptData.roundedHufAmount ?? receiptData.hufAmount)}{' '}
                   Ft
                 </p>
+              </div>
+            )}
+
+            {receiptData.type === 'conversion' && (
+              <div className="space-y-2">
+                <p className="font-semibold">KONVERZIÓ</p>
+                <p>
+                  <span>Forrás:</span> {formatAmount(receiptData.sourceAmount)} {receiptData.sourceCurrencyCode ?? ''}
+                </p>
+                <p>
+                  <span>Cél:</span> {formatAmount(receiptData.targetAmount)} {receiptData.targetCurrencyCode ?? ''}
+                </p>
+                <p>
+                  <span>Köztes HUF:</span> {formatAmount(receiptData.hufAmount)} Ft
+                </p>
+                <p>
+                  <span>Árfolyam:</span> {formatRate(receiptData.rate)}
+                </p>
+                {receiptData.note && (
+                  <p>
+                    <span className="font-semibold">Megjegyzés:</span> {receiptData.note}
+                  </p>
+                )}
               </div>
             )}
 
@@ -270,6 +307,7 @@ export default function ReceiptPreviewModal({
             {qrCodeDataUrl &&
               (receiptData.type === 'sell' ||
                 receiptData.type === 'buy' ||
+                receiptData.type === 'conversion' ||
                 receiptData.type === 'storno') && (
                 <>
                   <div className="my-3 border-t border-gray-300" />
@@ -299,10 +337,10 @@ export default function ReceiptPreviewModal({
         <div className="flex gap-3 border-t px-6 py-4">
           <button
             onClick={handlePrint}
-            disabled={isPrinting}
+            disabled={isPrinting || !allowPrint}
             className="flex-1 rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
           >
-            {isPrinting ? 'Nyomtatás...' : 'Nyomtatás'}
+            {isPrinting ? 'Nyomtatás...' : (printLabel ?? (variant === 'draft' ? 'Vázlat nyomtatása' : 'Nyomtatás'))}
           </button>
 
           <button

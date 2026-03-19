@@ -15,6 +15,8 @@ import hu.puzzleir.valuta.repository.ClosingWizardRepository;
 import hu.puzzleir.valuta.repository.DailySessionRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.service.DailyClosingService.ClosingWizardResult;
+import hu.puzzleir.valuta.service.DailyClosingService.ClosingStepResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -40,6 +42,7 @@ public class ClosingWizardService {
     private final BranchRepository branchRepository;
     private final CashBalanceRepository cashBalanceRepository;
     private final DailySessionRepository dailySessionRepository;
+    private final DailyClosingService dailyClosingService;
     private final ObjectMapper objectMapper;
 
     /**
@@ -114,7 +117,11 @@ public class ClosingWizardService {
     }
 
     /**
-     * Navigáció adott lépésre
+     * Navigáció adott lépésre — végrehajtja az adott lépés ellenőrzését is.
+     *
+     * A navigate() most már nem csak a currentStep-et lépteti, hanem
+     * a DailyClosingService 9 lépéses ellenőrzési láncát is futtatja.
+     * Ha a lépés PASS → completed=true, ha FAIL → completed=false.
      */
     public ClosingWizardDto navigate(UUID wizardId, int targetStep) {
         ClosingWizard wizard = closingWizardRepository.findByIdWithSteps(wizardId)
@@ -129,6 +136,31 @@ public class ClosingWizardService {
         }
 
         wizard.setCurrentStep(targetStep);
+
+        // A lépés ellenőrzésének végrehajtása a DailyClosingService-en keresztül
+        ClosingWizardStep step = wizard.getSteps().stream()
+                .filter(s -> s.getStepNumber().equals(targetStep))
+                .findFirst()
+                .orElse(null);
+
+        if (step != null) {
+            DailyClosingService.StepCheckResult checkResult =
+                    dailyClosingService.executeStepCheck(targetStep, wizard.getBranch().getId(), wizard.getClosingDate());
+            step.setCompleted(checkResult.isPassed());
+
+            // Lépés adatok frissítése az ellenőrzés eredményével
+            String statusJson = String.format(
+                    "{\"passed\":%b,\"skipped\":%b,\"message\":\"%s\"}",
+                    checkResult.isPassed(),
+                    checkResult.isSkipped(),
+                    checkResult.getMessage() != null ? checkResult.getMessage().replace("\"", "\\\"") : "");
+            step.setStepData(statusJson);
+
+            if (!checkResult.isPassed()) {
+                step.setCanProceed(false);
+            }
+        }
+
         ClosingWizard saved = closingWizardRepository.save(wizard);
 
         return toDto(saved);
@@ -329,7 +361,11 @@ public class ClosingWizardService {
     }
 
     /**
-     * Step 5: Zárás véglegesítése és session lezárása.
+     * Step 5: Zárás véglegesítése — DailyClosingService 9 lépéses ellenőrzési lánc + session lezárás.
+     *
+     * 1. Ellenőrzi, hogy minden wizard lépés completed=true
+     * 2. Futtatja a DailyClosingService.startDailyClosing()-ot (valódi zárás: snapshot, archív, AML reset stb.)
+     * 3. Lezárja a wizard-ot
      */
     public boolean finalizeClosing(UUID wizardId, Long workerId) {
         ClosingWizard wizard = closingWizardRepository.findByIdWithSteps(wizardId)
@@ -342,30 +378,39 @@ public class ClosingWizardService {
         Worker worker = workerRepository.findById(workerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található: " + workerId));
 
-        UUID branchId = wizard.getBranch().getId();
+        // Ellenőrzés: minden wizard lépés completed kell legyen
+        if (wizard.getSteps() != null && !wizard.getSteps().isEmpty()) {
+            boolean allStepsCompleted = wizard.getSteps().stream()
+                    .allMatch(s -> Boolean.TRUE.equals(s.getCompleted()));
+            if (!allStepsCompleted) {
+                List<String> incomplete = wizard.getSteps().stream()
+                        .filter(s -> !Boolean.TRUE.equals(s.getCompleted()))
+                        .map(s -> "Lépés " + s.getStepNumber())
+                        .collect(Collectors.toList());
+                throw new ValidationException("Nem minden lépés lett végrehajtva: " + String.join(", ", incomplete));
+            }
+        }
 
-        // Session lezárása
-        DailySession session = dailySessionRepository.findByBranchIdAndSessionDate(branchId, LocalDate.now())
-                .orElse(null);
-        if (session != null && session.isOpen()) {
-            BigDecimal closingBalance = cashBalanceRepository.sumCurrentBalanceHuf(branchId);
-            session.setStatus(DailySessionStatus.CLOSED);
-            session.setClosedByWorker(worker);
-            session.setClosedAt(LocalDateTime.now());
-            session.setClosingBalanceHuf(closingBalance);
-            session.setDenominationVerified(true);
-            dailySessionRepository.save(session);
+        // Valódi napzárás végrehajtása a DailyClosingService-en keresztül
+        LocalDate closingDate = wizard.getClosingDate() != null ? wizard.getClosingDate() : LocalDate.now();
+        ClosingWizardResult closingResult = dailyClosingService.startDailyClosing(closingDate);
+
+        if (!closingResult.isAllPassed()) {
+            // Ha a belső ellenőrzés valamelyik lépése elbukik
+            String failedSteps = closingResult.getSteps().stream()
+                    .filter(s -> !s.isPassed())
+                    .map(s -> s.getStepName() + ": " + s.getMessage())
+                    .collect(Collectors.joining("; "));
+            throw new ValidationException("Napzárás belső ellenőrzés sikertelen: " + failedSteps);
         }
 
         // Wizard lezárása
-        wizard.getSteps().forEach(step -> step.setCompleted(true));
         wizard.setWizardStatus(WizardStatus.COMPLETED);
         wizard.setCompletedByWorker(worker);
         wizard.setCompletedAt(LocalDateTime.now());
         closingWizardRepository.save(wizard);
 
-        log.info("Zárás véglegesítve: wizard={}, session={}", wizardId,
-                session != null ? session.getId() : "none");
+        log.info("Zárás véglegesítve: wizard={}, closingDate={}", wizardId, closingDate);
 
         return true;
     }

@@ -65,7 +65,7 @@ const COMPANIES: Record<string, CompanyInfo> = {
 };
 
 // --- Típusok ---
-export type PrintJobType = 'sell' | 'buy' | 'transfer' | 'storno' | 'closing';
+export type PrintJobType = 'sell' | 'buy' | 'transfer' | 'storno' | 'conversion' | 'closing';
 
 export interface PrintReceiptData {
   type: PrintJobType;
@@ -86,6 +86,11 @@ export interface PrintReceiptData {
   customerDocNumber?: string;
   stornoReason?: string;
   originalReceiptNumber?: string;
+  sourceCurrencyCode?: string;
+  sourceAmount?: number;
+  targetCurrencyCode?: string;
+  targetAmount?: number;
+  note?: string;
   transferTarget?: string;
   transferNote?: string;
   closingSummary?: ClosingPrintData;
@@ -112,6 +117,7 @@ const JOB_TYPE_LABELS: Record<PrintJobType, string> = {
   buy: 'VÁSÁRLÁSI BIZONYLAT',
   transfer: 'ÁTADÁS-ÁTVÉTELI BIZONYLAT',
   storno: 'STORNÓ BIZONYLAT',
+  conversion: 'KONVERZIÓS BIZONYLAT',
   closing: 'NAPI ZÁRÁS',
 };
 
@@ -163,6 +169,8 @@ export function generateReceiptContent(data: PrintReceiptData): string {
   // Típus-specifikus rész
   if (data.type === 'sell' || data.type === 'buy') {
     lines.push(...generateTransactionLines(data));
+  } else if (data.type === 'conversion') {
+    lines.push(...generateConversionLines(data));
   } else if (data.type === 'transfer') {
     lines.push(...generateTransferLines(data));
   } else if (data.type === 'storno') {
@@ -188,7 +196,7 @@ export function generateReceiptContent(data: PrintReceiptData): string {
   }
 
   // QR kód szekció (ha van bizonylat szám — KÖTELEZŐ a bizonylaton)
-  if (data.receiptNumber && (data.type === 'sell' || data.type === 'buy')) {
+  if (data.receiptNumber && (data.type === 'sell' || data.type === 'buy' || data.type === 'conversion')) {
     lines.push('');
     lines.push(CMD.LINE);
     lines.push(CMD.ALIGN_CENTER);
@@ -267,6 +275,26 @@ function generateTransferLines(data: PrintReceiptData): string[] {
 
   if (data.transferNote) {
     lines.push(`Megjegyzés:  ${data.transferNote}`);
+  }
+
+  return lines;
+}
+
+function generateConversionLines(data: PrintReceiptData): string[] {
+  const lines: string[] = [];
+
+  lines.push('');
+  lines.push(CMD.BOLD_ON);
+  lines.push('Konverzió:');
+  lines.push(CMD.BOLD_OFF);
+  lines.push('');
+  lines.push(`Forrás:      ${formatAmount(data.sourceAmount)} ${data.sourceCurrencyCode ?? '—'}`);
+  lines.push(`Cél:         ${formatAmount(data.targetAmount)} ${data.targetCurrencyCode ?? '—'}`);
+  lines.push(`Köztes HUF:  ${formatAmount(data.hufAmount)} Ft`);
+  lines.push(`Árfolyam:    ${formatRate(data.rate)}`);
+
+  if (data.note) {
+    lines.push(`Megjegyzés:  ${data.note}`);
   }
 
   return lines;

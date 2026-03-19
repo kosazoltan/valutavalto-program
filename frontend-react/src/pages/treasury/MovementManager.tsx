@@ -24,6 +24,13 @@ import {
   MOVEMENT_STATUS_LABELS,
 } from './treasuryUtils'
 import { TableSkeleton } from './LoadingSkeleton'
+import {
+  isElectronQueueAvailable,
+  recordLocalAuditEvent,
+  saveAndSyncPendingTransfer,
+} from '../../utils/electronTransactions'
+import { getLocalPendingTransfers } from '../../utils/localQueue'
+import { useAuthStore } from '../../stores/authStore'
 
 const MOVEMENT_TYPES = [
   { value: 'VAULT_WITHDRAW' as const, label: 'Bank kivét', description: 'Értéktárból bankba szállítás', icon: Banknote },
@@ -33,6 +40,8 @@ const MOVEMENT_TYPES = [
 ] as const
 
 export default function MovementManager() {
+  const electronQueueAvailable = isElectronQueueAvailable()
+  const worker = useAuthStore((state) => state.worker)
   const [loading, setLoading] = useState(true)
   const [pendingTransfers, setPendingTransfers] = useState<Transfer[]>([])
   const [allTransfers, setAllTransfers] = useState<Transfer[]>([])
@@ -51,20 +60,21 @@ export default function MovementManager() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [pending, all, currData] = await Promise.all([
+      const [pending, all, currData, localPending] = await Promise.all([
         transferApi.getPending().catch(() => [] as Transfer[]),
         transferApi.search({ page: 0, size: 50 }).catch(() => ({ content: [] as Transfer[], totalElements: 0, totalPages: 0, size: 50, number: 0 })),
         currencyApi.list().catch(() => [] as Currency[]),
+        electronQueueAvailable ? getLocalPendingTransfers(worker) : Promise.resolve([] as Transfer[]),
       ])
-      setPendingTransfers(pending)
-      setAllTransfers(all.content)
+      setPendingTransfers([...localPending, ...pending])
+      setAllTransfers([...localPending, ...all.content])
       setCurrencies(currData)
     } catch (err) {
       console.error('MovementManager fetch error:', err)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [electronQueueAvailable, worker])
 
   useEffect(() => {
     void fetchData()
@@ -81,6 +91,14 @@ export default function MovementManager() {
       const transfer = pendingTransfers.find(t => t.id === id) ?? allTransfers.find(t => t.id === id)
       const receivedAmount = transfer?.amount ?? 0
       await transferApi.receive(id, { receivedAmount })
+      await recordLocalAuditEvent({
+        entityType: 'TREASURY_MOVEMENT',
+        eventType: 'RECEIVE',
+        entityId: String(id),
+        referenceNumber: transfer?.transferNumber ?? null,
+        payload: { transferId: id, receivedAmount },
+        status: 'SERVER_FORWARDED',
+      })
       void fetchData()
     } catch (err) {
       console.error('Approve error:', err)
@@ -90,6 +108,13 @@ export default function MovementManager() {
   const handleReject = useCallback(async (id: number) => {
     try {
       await transferApi.reject(id, 'Értéktáros által elutasítva')
+      await recordLocalAuditEvent({
+        entityType: 'TREASURY_MOVEMENT',
+        eventType: 'REJECT',
+        entityId: String(id),
+        payload: { transferId: id, reason: 'Értéktáros által elutasítva' },
+        status: 'SERVER_FORWARDED',
+      })
       void fetchData()
     } catch (err) {
       console.error('Reject error:', err)
@@ -100,13 +125,33 @@ export default function MovementManager() {
     e.preventDefault()
     if (!currencyId || !amount) return
     try {
-      await transferApi.create({
-        toBranchId,
-        currencyId,
-        amount: parseFloat(amount),
-        transferType: movementType,
-        notes: notes || undefined,
-      })
+      const parsedAmount = parseFloat(amount)
+      const selectedCurrency = currencies.find((currency) => currency.id === currencyId)
+      if (!selectedCurrency) {
+        return
+      }
+
+      if (electronQueueAvailable) {
+        await saveAndSyncPendingTransfer({
+          targetBranchId: toBranchId || null,
+          targetBranchCode: toBranchId || 'TREASURY',
+          currencyId,
+          currencyCode: selectedCurrency.code,
+          amount: parsedAmount,
+          hufValue: null,
+          transferType: movementType,
+          denominations: null,
+          note: notes || null,
+        })
+      } else {
+        await transferApi.create({
+          toBranchId,
+          currencyId,
+          amount: parsedAmount,
+          transferType: movementType,
+          notes: notes || undefined,
+        })
+      }
       setShowNewModal(false)
       setAmount('')
       setNotes('')
@@ -114,7 +159,7 @@ export default function MovementManager() {
     } catch (err) {
       console.error('Create movement error:', err)
     }
-  }, [toBranchId, currencyId, amount, movementType, notes, fetchData])
+  }, [toBranchId, currencyId, amount, movementType, notes, fetchData, currencies, electronQueueAvailable])
 
   // Filtered history
   const filteredTransfers = allTransfers.filter((t) => {

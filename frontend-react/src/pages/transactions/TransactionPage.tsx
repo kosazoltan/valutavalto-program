@@ -17,6 +17,12 @@ import { transactionApi, exchangeRateApi } from '../../services/api'
 import type { BuyRequest, SellRequest, ExchangeRate } from '../../services/api'
 import { roundHuf } from '../../utils/rounding'
 import { toast } from '../../components/ui/toaster'
+import {
+  getElectronCachedRates,
+  isElectronQueueAvailable,
+  mapCachedRatesToExchangeRates,
+  saveAndSyncPendingBuySell,
+} from '../../utils/electronTransactions'
 
 interface CurrencyRate {
   id: string
@@ -37,6 +43,7 @@ interface Customer {
 
 export default function TransactionPage() {
   const navigate = useNavigate()
+  const electronQueueAvailable = isElectronQueueAvailable()
   
   // Refs for keyboard navigation
   const foreignAmountRef = useRef<HTMLInputElement>(null)
@@ -49,23 +56,39 @@ export default function TransactionPage() {
   const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>([])
 
   useEffect(() => {
-    exchangeRateApi.list().then((rates: ExchangeRate[]) => {
-      const mapped: CurrencyRate[] = rates
-        .filter((r) => r.active && r.currencyCode !== 'HUF')
-        .map((r) => ({
-          id: String(r.currencyId),
-          code: r.currencyCode,
-          name: r.currencyName,
-          buyRate: r.baseBuyRate,
-          sellRate: r.baseSellRate,
-          unit: 1, // Default unit; backend provides rate per unit
-        }))
-      setCurrencyRates(mapped)
-    }).catch(() => {
-      // Fallback empty
-      setCurrencyRates([])
-    })
-  }, [])
+    const loadRates = async () => {
+      try {
+        let sourceRates: ExchangeRate[] = []
+
+        if (electronQueueAvailable) {
+          const cachedRates = await getElectronCachedRates()
+          if (cachedRates.length > 0) {
+            sourceRates = mapCachedRatesToExchangeRates(cachedRates)
+          }
+        }
+
+        if (sourceRates.length === 0) {
+          sourceRates = await exchangeRateApi.list()
+        }
+
+        const mapped: CurrencyRate[] = sourceRates
+          .filter((r) => r.active && r.currencyCode !== 'HUF')
+          .map((r) => ({
+            id: String(r.currencyId),
+            code: r.currencyCode,
+            name: r.currencyName,
+            buyRate: r.baseBuyRate,
+            sellRate: r.baseSellRate,
+            unit: 1,
+          }))
+        setCurrencyRates(mapped)
+      } catch {
+        setCurrencyRates([])
+      }
+    }
+
+    void loadRates()
+  }, [electronQueueAvailable])
 
   // Transaction state
   const [transactionType, setTransactionType] = useState<'BUY' | 'SELL'>('BUY')
@@ -279,24 +302,50 @@ export default function TransactionPage() {
         ? selectedCurrency.buyRate
         : selectedCurrency.sellRate
 
-      if (transactionType === 'BUY') {
-        const request: BuyRequest = {
-          currencyId: parseInt(selectedCurrency.id),
-          currencyAmount: foreignNum,
-          customExchangeRate: rate,
-          ...customerData,
+      if (electronQueueAvailable) {
+        const outcome = await saveAndSyncPendingBuySell([
+          {
+            type: transactionType,
+            currencyCode: selectedCurrency.code,
+            foreignAmount: foreignNum,
+            hufAmount: hufNum,
+            roundedHufAmount: roundHuf(hufNum),
+            rate,
+            handlingFee: null,
+            discountPercent: null,
+            customerIdentifier: customer?.documentNumber ?? null,
+            customerName: customer?.name ?? null,
+            customerDocumentNumber: customer?.documentNumber ?? null,
+            customerAddress: customerAddress || null,
+            denominations: null,
+          },
+        ])
+
+        if (outcome.allSavedSynced) {
+          toast.success('Tranzakció sikeresen rögzítve!', 'A tétel azonnal szinkronizálva lett.')
+        } else {
+          toast.warning('Offline mentés megtörtént', 'A tranzakció helyi queue-ba került, később szinkronizálódik.')
         }
-        const result = await transactionApi.buy(request)
-        toast.success('Vétel tranzakció sikeresen mentve!', `Bizonylat szám: ${result.receiptNumber}`)
       } else {
-        const request: SellRequest = {
-          currencyId: parseInt(selectedCurrency.id),
-          currencyAmount: foreignNum,
-          customExchangeRate: rate,
-          ...customerData,
+        if (transactionType === 'BUY') {
+          const request: BuyRequest = {
+            currencyId: parseInt(selectedCurrency.id),
+            currencyAmount: foreignNum,
+            customExchangeRate: rate,
+            ...customerData,
+          }
+          const result = await transactionApi.buy(request)
+          toast.success('Vétel tranzakció sikeresen mentve!', `Bizonylat szám: ${result.receiptNumber}`)
+        } else {
+          const request: SellRequest = {
+            currencyId: parseInt(selectedCurrency.id),
+            currencyAmount: foreignNum,
+            customExchangeRate: rate,
+            ...customerData,
+          }
+          const result = await transactionApi.sell(request)
+          toast.success('Eladás tranzakció sikeresen mentve!', `Bizonylat szám: ${result.receiptNumber}`)
         }
-        const result = await transactionApi.sell(request)
-        toast.success('Eladás tranzakció sikeresen mentve!', `Bizonylat szám: ${result.receiptNumber}`)
       }
 
       navigate('/transactions')

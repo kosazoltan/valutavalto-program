@@ -22,12 +22,55 @@ export interface ElectronAPI {
     hufAmount: number,
     roundedHufAmount: number,
     rate: number,
+    handlingFee: number | null,
+    discountPercent: number | null,
     customerIdentifier: string | null,
     customerName: string | null,
     customerDocumentNumber: string | null,
     customerAddress: string | null,
     denominations: string | null,
   ): Promise<number>;
+  savePendingConversion(
+    fromCurrencyId: number | null,
+    fromCurrencyCode: string,
+    toCurrencyId: number | null,
+    toCurrencyCode: string,
+    fromAmount: number,
+    calculatedHufAmount: number,
+    calculatedToAmount: number,
+    conversionRate: number,
+    handlingFee: number | null,
+    customerId: string | null,
+    customerName: string | null,
+    customerDocumentNumber: string | null,
+    note: string | null,
+  ): Promise<number>;
+  savePendingBankTransaction(
+    transactionType: 'BUY' | 'SELL',
+    currencyCode: string,
+    amount: number,
+    exchangeRate: number,
+    hufAmount: number,
+    vaultTerritoryId: number | null,
+    bankName: string | null,
+    bankReference: string | null,
+    note: string | null,
+  ): Promise<number>;
+  savePendingStorno(payload: {
+    transactionId: number;
+    originalReceiptNumber: string;
+    originalTransactionType: string;
+    currencyCode: string;
+    foreignAmount: number | null;
+    hufAmount: number;
+    exchangeRate: number | null;
+    reason: string;
+    approvalId?: string | null;
+    customExchangeRate?: number | null;
+    paymentMethod?: string | null;
+    customerName?: string | null;
+    customerDocumentNumber?: string | null;
+  }): Promise<number>;
   getPendingTransactions(): Promise<Array<{
     id: number;
     type: string;
@@ -36,12 +79,72 @@ export interface ElectronAPI {
     huf_amount: number;
     rounded_huf_amount: number;
     rate: number;
+    handling_fee: number | null;
+    discount_percent: number | null;
     customer_id: string | number | null;
     customer_identifier: string | null;
     customer_name: string | null;
     customer_document_number: string | null;
     customer_address: string | null;
     denominations: string | null;
+    local_reference_number: string | null;
+    idempotency_key: string | null;
+    created_at: string;
+    synced: number;
+  }>>;
+  getPendingConversions(): Promise<Array<{
+    id: number;
+    from_currency_id: number | null;
+    from_currency_code: string;
+    to_currency_id: number | null;
+    to_currency_code: string;
+    from_amount: number;
+    calculated_huf_amount: number;
+    calculated_to_amount: number;
+    conversion_rate: number;
+    handling_fee: number | null;
+    customer_id: string | null;
+    customer_name: string | null;
+    customer_document_number: string | null;
+    note: string | null;
+    local_reference_number: string | null;
+    idempotency_key: string | null;
+    created_at: string;
+    synced: number;
+  }>>;
+  getPendingBankTransactions(): Promise<Array<{
+    id: number;
+    transaction_type: 'BUY' | 'SELL';
+    currency_code: string;
+    amount: number;
+    exchange_rate: number;
+    huf_amount: number;
+    vault_territory_id: number | null;
+    bank_name: string | null;
+    bank_reference: string | null;
+    note: string | null;
+    local_reference_number: string | null;
+    idempotency_key: string | null;
+    created_at: string;
+    synced: number;
+  }>>;
+  getPendingStornos(): Promise<Array<{
+    id: number;
+    transaction_id: number;
+    original_receipt_number: string;
+    original_transaction_type: string;
+    currency_code: string;
+    foreign_amount: number | null;
+    huf_amount: number;
+    exchange_rate: number | null;
+    reason: string;
+    approval_id: string | null;
+    custom_exchange_rate: number | null;
+    payment_method: string | null;
+    customer_name: string | null;
+    customer_document_number: string | null;
+    local_reference_number: string | null;
+    idempotency_key: string | null;
     created_at: string;
     synced: number;
   }>>;
@@ -58,18 +161,61 @@ export interface ElectronAPI {
     note: string | null,
   ): Promise<number>;
   savePendingTransfer(
+    targetBranchId: string | null,
     targetBranchCode: string,
+    currencyId: number | null,
     currencyCode: string,
     amount: number,
+    hufValue: number | null,
+    transferType: string | null,
     denominations: string | null,
     note: string | null,
   ): Promise<number>;
+  getPendingTransfers(): Promise<Array<{
+    id: number;
+    target_branch_id: string | null;
+    target_branch_code: string;
+    currency_id: number | null;
+    currency_code: string;
+    amount: number;
+    huf_value: number | null;
+    transfer_type: string | null;
+    denominations: string | null;
+    note: string | null;
+    local_reference_number: string | null;
+    idempotency_key: string | null;
+    created_at: string;
+    synced: number;
+  }>>;
   savePendingCollection(
     sourceBranchCode: string,
     currencyCode: string,
     amount: number,
     note: string | null,
   ): Promise<number>;
+  savePendingHandoverOperation(payload: {
+    operationType: 'GENERATE' | 'PRINT' | 'COMPLETE';
+    sheetId?: string | null;
+    fromCashDeskId?: string | null;
+    toCashDeskId?: string | null;
+    transferDate?: string | null;
+    amounts?: unknown;
+    note?: string | null;
+  }): Promise<number>;
+  getPendingHandoverOperations(): Promise<Array<{
+    id: number;
+    operation_type: 'GENERATE' | 'PRINT' | 'COMPLETE';
+    sheet_id: string | null;
+    from_cash_desk_id: string | null;
+    to_cash_desk_id: string | null;
+    transfer_date: string | null;
+    amounts_json: string | null;
+    note: string | null;
+    local_reference_number: string | null;
+    idempotency_key: string | null;
+    created_at: string;
+    synced: number;
+  }>>;
   getCachedBranchStatuses(): Promise<Array<{
     branch_code: string;
     branch_name: string;
@@ -88,6 +234,32 @@ export interface ElectronAPI {
     sell_rate: number;
     unit: number;
     updated_at: string;
+  }>>;
+  saveLocalAuditEvent(payload: {
+    entityType: string;
+    eventType: string;
+    referenceNumber?: string | null;
+    entityId?: string | null;
+    payload: unknown;
+    customerSnapshot?: unknown;
+    identificationSnapshot?: unknown;
+    rateSnapshot?: unknown;
+    status?: string;
+    retentionDays?: number;
+  }): Promise<number>;
+  getLocalAuditEvents(limit?: number): Promise<Array<{
+    id: number;
+    entity_type: string;
+    event_type: string;
+    reference_number: string | null;
+    entity_id: string | null;
+    payload_json: string;
+    customer_snapshot_json: string | null;
+    identification_snapshot_json: string | null;
+    rate_snapshot_json: string | null;
+    status: string;
+    retention_until: string;
+    created_at: string;
   }>>;
 
   // --- Kamera (lokális Electron rögzítés + keresés) ---

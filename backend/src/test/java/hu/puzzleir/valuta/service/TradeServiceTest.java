@@ -1,9 +1,14 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.entity.CashBalance;
+import hu.puzzleir.valuta.entity.Company;
+import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
+import hu.puzzleir.valuta.repository.CashBalanceRepository;
+import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.dto.trade.ProposeTradeDto;
 import hu.puzzleir.valuta.dto.trade.TradeDto;
 import hu.puzzleir.valuta.entity.Trade;
@@ -39,16 +44,36 @@ class TradeServiceTest {
     @Mock
     private BranchRepository branchRepository;
 
+    @Mock
+    private CashBalanceRepository cashBalanceRepository;
+
+    @Mock
+    private CurrencyRepository currencyRepository;
+
+    private static final UUID COMPANY_ID = UUID.randomUUID();
     private static final UUID FROM_BRANCH_ID = UUID.randomUUID();
     private static final UUID TO_BRANCH_ID = UUID.randomUUID();
     private static final Long WORKER_ID = 42L;
 
     private Branch createBranch(UUID id, String code, String name) {
+        Company company = new Company();
+        company.setId(COMPANY_ID);
+
         Branch b = new Branch();
         b.setId(id);
         b.setCode(code);
         b.setName(name);
+        b.setCompany(company);
         return b;
+    }
+
+    private CashBalance createBalance(Branch branch, Currency currency, String amount) {
+        CashBalance balance = new CashBalance();
+        balance.setBranch(branch);
+        balance.setCompany(branch.getCompany());
+        balance.setCurrency(currency);
+        balance.setCurrentBalance(new BigDecimal(amount));
+        return balance;
     }
 
     private Trade createTrade(UUID id, Trade.TradeStatus status) {
@@ -76,6 +101,7 @@ class TradeServiceTest {
         try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
             secUtils.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
             secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(FROM_BRANCH_ID);
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
 
             Branch from = createBranch(FROM_BRANCH_ID, "B01", "Iroda 1");
             Branch to = createBranch(TO_BRANCH_ID, "B02", "Iroda 2");
@@ -115,17 +141,22 @@ class TradeServiceTest {
     @Test
     @DisplayName("acceptTrade → ACCEPTED státusz, acceptedBy kitöltve")
     void testAcceptTrade() {
-        UUID tradeId = UUID.randomUUID();
-        Trade trade = createTrade(tradeId, Trade.TradeStatus.PROPOSED);
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(FROM_BRANCH_ID);
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
 
-        when(tradeRepository.findById(tradeId)).thenReturn(Optional.of(trade));
-        when(tradeRepository.save(any(Trade.class))).thenAnswer(inv -> inv.getArgument(0));
+            UUID tradeId = UUID.randomUUID();
+            Trade trade = createTrade(tradeId, Trade.TradeStatus.PROPOSED);
 
-        TradeDto result = service.acceptTrade(tradeId, WORKER_ID);
+            when(tradeRepository.findById(tradeId)).thenReturn(Optional.of(trade));
+            when(tradeRepository.save(any(Trade.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        assertThat(result.getStatus()).isEqualTo("ACCEPTED");
-        assertThat(result.getAcceptedBy()).isEqualTo(WORKER_ID);
-        verify(tradeRepository).save(any(Trade.class));
+            TradeDto result = service.acceptTrade(tradeId, WORKER_ID);
+
+            assertThat(result.getStatus()).isEqualTo("ACCEPTED");
+            assertThat(result.getAcceptedBy()).isEqualTo(WORKER_ID);
+            verify(tradeRepository).save(any(Trade.class));
+        }
     }
 
     // =====================================================================
@@ -134,35 +165,56 @@ class TradeServiceTest {
     @Test
     @DisplayName("rejectTrade → REJECTED, reason kitöltve")
     void testRejectTrade() {
-        UUID tradeId = UUID.randomUUID();
-        Trade trade = createTrade(tradeId, Trade.TradeStatus.PROPOSED);
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(FROM_BRANCH_ID);
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
 
-        when(tradeRepository.findById(tradeId)).thenReturn(Optional.of(trade));
-        when(tradeRepository.save(any(Trade.class))).thenAnswer(inv -> inv.getArgument(0));
+            UUID tradeId = UUID.randomUUID();
+            Trade trade = createTrade(tradeId, Trade.TradeStatus.PROPOSED);
 
-        TradeDto result = service.rejectTrade(tradeId, "Túl magas árfolyam");
+            when(tradeRepository.findById(tradeId)).thenReturn(Optional.of(trade));
+            when(tradeRepository.save(any(Trade.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        assertThat(result.getStatus()).isEqualTo("REJECTED");
-        assertThat(result.getNotes()).contains("Elutasítás: Túl magas árfolyam");
-        verify(tradeRepository).save(any(Trade.class));
+            TradeDto result = service.rejectTrade(tradeId, "Túl magas árfolyam");
+
+            assertThat(result.getStatus()).isEqualTo("REJECTED");
+            assertThat(result.getNotes()).contains("Elutasítás: Túl magas árfolyam");
+            verify(tradeRepository).save(any(Trade.class));
+        }
     }
 
     // =====================================================================
     // completeTrade
     // =====================================================================
     @Test
-    @DisplayName("completeTrade → COMPLETED státusz")
+    @DisplayName("completeTrade → COMPLETED státusz és készletmozgatás")
     void testCompleteTrade() {
-        UUID tradeId = UUID.randomUUID();
-        Trade trade = createTrade(tradeId, Trade.TradeStatus.ACCEPTED);
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(FROM_BRANCH_ID);
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
 
-        when(tradeRepository.findById(tradeId)).thenReturn(Optional.of(trade));
-        when(tradeRepository.save(any(Trade.class))).thenAnswer(inv -> inv.getArgument(0));
+            UUID tradeId = UUID.randomUUID();
+            Trade trade = createTrade(tradeId, Trade.TradeStatus.ACCEPTED);
+            Branch from = trade.getFromBranch();
+            Branch to = trade.getToBranch();
+            Currency eur = new Currency();
+            eur.setId(1L);
+            eur.setCode("EUR");
 
-        TradeDto result = service.completeTrade(tradeId);
+            when(tradeRepository.findById(tradeId)).thenReturn(Optional.of(trade));
+            when(tradeRepository.save(any(Trade.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(currencyRepository.findByCode("EUR")).thenReturn(Optional.of(eur));
+            when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(FROM_BRANCH_ID, 1L))
+                    .thenReturn(Optional.of(createBalance(from, eur, "1000")));
+            when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(TO_BRANCH_ID, 1L))
+                    .thenReturn(Optional.of(createBalance(to, eur, "100")));
 
-        assertThat(result.getStatus()).isEqualTo("COMPLETED");
-        verify(tradeRepository).save(any(Trade.class));
+            TradeDto result = service.completeTrade(tradeId);
+
+            assertThat(result.getStatus()).isEqualTo("COMPLETED");
+            verify(tradeRepository).save(any(Trade.class));
+            verify(cashBalanceRepository, times(2)).save(any(CashBalance.class));
+        }
     }
 
     // =====================================================================
@@ -171,13 +223,18 @@ class TradeServiceTest {
     @Test
     @DisplayName("acceptTrade — COMPLETED státuszú → ValidationException")
     void testAcceptTrade_alreadyCompleted() {
-        UUID tradeId = UUID.randomUUID();
-        Trade trade = createTrade(tradeId, Trade.TradeStatus.COMPLETED);
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(FROM_BRANCH_ID);
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
 
-        when(tradeRepository.findById(tradeId)).thenReturn(Optional.of(trade));
+            UUID tradeId = UUID.randomUUID();
+            Trade trade = createTrade(tradeId, Trade.TradeStatus.COMPLETED);
 
-        assertThatThrownBy(() -> service.acceptTrade(tradeId, WORKER_ID))
-                .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("PROPOSED");
+            when(tradeRepository.findById(tradeId)).thenReturn(Optional.of(trade));
+
+            assertThatThrownBy(() -> service.acceptTrade(tradeId, WORKER_ID))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("PROPOSED");
+        }
     }
 }

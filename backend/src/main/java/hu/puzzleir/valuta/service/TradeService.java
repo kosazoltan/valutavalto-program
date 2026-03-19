@@ -1,9 +1,13 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.entity.CashBalance;
+import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
+import hu.puzzleir.valuta.repository.CashBalanceRepository;
+import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.dto.trade.ProposeTradeDto;
 import hu.puzzleir.valuta.dto.trade.TradeDto;
 import hu.puzzleir.valuta.entity.Trade;
@@ -34,6 +38,8 @@ public class TradeService {
 
     private final TradeRepository tradeRepository;
     private final BranchRepository branchRepository;
+    private final CashBalanceRepository cashBalanceRepository;
+    private final CurrencyRepository currencyRepository;
 
     @Transactional
     public TradeDto proposeTrade(ProposeTradeDto dto) {
@@ -41,6 +47,8 @@ public class TradeService {
                 .orElseThrow(() -> new ResourceNotFoundException("Forrás iroda nem található: " + dto.getFromBranchId()));
         Branch toBranch = branchRepository.findById(dto.getToBranchId())
                 .orElseThrow(() -> new ResourceNotFoundException("Cél iroda nem található: " + dto.getToBranchId()));
+
+        validateTradeProposalAccess(fromBranch, toBranch);
 
         if (dto.getFromBranchId().equals(dto.getToBranchId())) {
             throw new ValidationException("A forrás és cél iroda nem lehet azonos!");
@@ -70,6 +78,7 @@ public class TradeService {
     @Transactional
     public TradeDto acceptTrade(UUID tradeId, Long workerId) {
         Trade trade = findOrThrow(tradeId);
+        validateTradeAccess(trade);
         validateStatus(trade, Trade.TradeStatus.PROPOSED);
 
         trade.setStatus(Trade.TradeStatus.ACCEPTED);
@@ -83,6 +92,7 @@ public class TradeService {
     @Transactional
     public TradeDto rejectTrade(UUID tradeId, String reason) {
         Trade trade = findOrThrow(tradeId);
+        validateTradeAccess(trade);
         validateStatus(trade, Trade.TradeStatus.PROPOSED);
 
         trade.setStatus(Trade.TradeStatus.REJECTED);
@@ -97,19 +107,22 @@ public class TradeService {
     @Transactional
     public TradeDto completeTrade(UUID tradeId) {
         Trade trade = findOrThrow(tradeId);
+        validateTradeAccess(trade);
         validateStatus(trade, Trade.TradeStatus.ACCEPTED);
+
+        moveTradeInventory(trade);
 
         trade.setStatus(Trade.TradeStatus.COMPLETED);
         trade.setCompletedAt(LocalDateTime.now());
         trade = tradeRepository.save(trade);
         log.info("Trade teljesítve: id={}", tradeId);
-        // NOTE: Inventory mozgatás a production verzióban implementálandó
         return toDto(trade);
     }
 
     @Transactional
     public TradeDto cancelTrade(UUID tradeId) {
         Trade trade = findOrThrow(tradeId);
+        validateTradeAccess(trade);
         if (trade.getStatus() == Trade.TradeStatus.COMPLETED) {
             throw new ValidationException("Befejezett trade nem törölhető!");
         }
@@ -120,13 +133,13 @@ public class TradeService {
     }
 
     public List<TradeDto> getPendingTrades(UUID branchId) {
-        UUID effectiveBranch = branchId != null ? branchId : SecurityUtils.getCurrentBranchId();
+        UUID effectiveBranch = validateRequestedBranchAccess(branchId != null ? branchId : SecurityUtils.getCurrentBranchId()).getId();
         return tradeRepository.findPendingByBranch(effectiveBranch)
                 .stream().map(this::toDto).collect(Collectors.toList());
     }
 
     public Page<TradeDto> getTradeHistory(UUID branchId, LocalDate from, LocalDate to, Pageable pageable) {
-        UUID effectiveBranch = branchId != null ? branchId : SecurityUtils.getCurrentBranchId();
+        UUID effectiveBranch = validateRequestedBranchAccess(branchId != null ? branchId : SecurityUtils.getCurrentBranchId()).getId();
         LocalDateTime fromDt = from.atStartOfDay();
         LocalDateTime toDt = to.plusDays(1).atStartOfDay();
         return tradeRepository.findHistoryByBranch(effectiveBranch, fromDt, toDt, pageable)
@@ -143,6 +156,84 @@ public class TradeService {
             throw new ValidationException(
                     String.format("Trade státusz '%s', de '%s' volt várva!", trade.getStatus(), expected));
         }
+    }
+
+    private Branch validateRequestedBranchAccess(UUID branchId) {
+        Branch branch = branchRepository.findById(branchId)
+                .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
+
+        validateBranchCompany(branch, SecurityUtils.getCurrentCompanyId(), "Iroda");
+
+        UUID currentBranchId = SecurityUtils.getCurrentBranchId();
+        if (!branchId.equals(currentBranchId) && !SecurityUtils.isManagerOrAbove()) {
+            throw new ValidationException("Csak a saját iroda trade-jei érhetők el!");
+        }
+
+        return branch;
+    }
+
+    private void validateTradeProposalAccess(Branch fromBranch, Branch toBranch) {
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        UUID currentBranchId = SecurityUtils.getCurrentBranchId();
+
+        validateBranchCompany(fromBranch, currentCompanyId, "Forrás iroda");
+        validateBranchCompany(toBranch, currentCompanyId, "Cél iroda");
+
+        if (!currentBranchId.equals(fromBranch.getId())) {
+            throw new ValidationException("Trade ajánlatot csak a saját irodából lehet indítani!");
+        }
+    }
+
+    private void validateTradeAccess(Trade trade) {
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        UUID currentBranchId = SecurityUtils.getCurrentBranchId();
+
+        validateBranchCompany(trade.getFromBranch(), currentCompanyId, "Forrás iroda");
+        validateBranchCompany(trade.getToBranch(), currentCompanyId, "Cél iroda");
+
+        boolean currentBranchInvolved = currentBranchId.equals(trade.getFromBranch().getId())
+                || currentBranchId.equals(trade.getToBranch().getId());
+
+        if (!currentBranchInvolved && !SecurityUtils.isManagerOrAbove()) {
+            throw new ValidationException("Nincs hozzáférés ehhez a trade-hez!");
+        }
+    }
+
+    private void validateBranchCompany(Branch branch, UUID currentCompanyId, String label) {
+        if (branch.getCompany() == null || branch.getCompany().getId() == null
+                || !currentCompanyId.equals(branch.getCompany().getId())) {
+            throw new ValidationException(label + " nem érhető el az aktuális cégen belül!");
+        }
+    }
+
+    private void moveTradeInventory(Trade trade) {
+        Currency currency = currencyRepository.findByCode(trade.getCurrencyCode())
+                .orElseThrow(() -> new ResourceNotFoundException("Valuta nem található: " + trade.getCurrencyCode()));
+
+        CashBalance sourceBalance = cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(
+                        trade.getFromBranch().getId(), currency.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Forrás kassza egyenleg nem található"));
+
+        if (sourceBalance.getCurrentBalance() == null
+                || sourceBalance.getCurrentBalance().compareTo(trade.getAmount()) < 0) {
+            throw new ValidationException("Nincs elegendő készlet a trade teljesítéséhez!");
+        }
+
+        CashBalance targetBalance = cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(
+                        trade.getToBranch().getId(), currency.getId())
+                .orElseGet(() -> CashBalance.builder()
+                        .company(trade.getToBranch().getCompany())
+                        .branch(trade.getToBranch())
+                        .currency(currency)
+                        .currentBalance(BigDecimal.ZERO)
+                        .openingBalance(BigDecimal.ZERO)
+                        .build());
+
+        sourceBalance.updateBalance(trade.getAmount(), false);
+        targetBalance.updateBalance(trade.getAmount(), true);
+
+        cashBalanceRepository.save(sourceBalance);
+        cashBalanceRepository.save(targetBalance);
     }
 
     private TradeDto toDto(Trade t) {

@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.config.FinancialRetentionProperties;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.entity.ArchivedTransaction;
 import hu.puzzleir.valuta.entity.Transaction;
@@ -42,6 +43,7 @@ public class MonthlyArchiveService {
     private final TransactionRepository transactionRepository;
     private final ArchivedTransactionRepository archivedTransactionRepository;
     private final AuditLogService auditLogService;
+    private final FinancialRetentionProperties financialRetentionProperties;
 
     private static final DateTimeFormatter MONTH_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM");
 
@@ -55,7 +57,11 @@ public class MonthlyArchiveService {
     public int archiveMonth(UUID branchId, YearMonth yearMonth) {
         String archiveMonth = yearMonth.format(MONTH_FORMAT);
         
-        log.info("Havi archiválás kezdése: branchId={}, month={}", branchId, archiveMonth);
+        log.info("Havi archiválás kezdése: branchId={}, month={}, retentionYears={}, hardDeleteEnabled={}",
+            branchId,
+            archiveMonth,
+            financialRetentionProperties.getYears(),
+            financialRetentionProperties.isHardDeleteEnabled());
 
         // 1. Ellenőrzés: már archivált-e ez a hónap
         long existingCount = archivedTransactionRepository.countByMonthAndBranch(archiveMonth, branchId);
@@ -118,7 +124,11 @@ public class MonthlyArchiveService {
         // 5. Audit log
         auditLogService.log(
             "MONTHLY_ARCHIVE",
-            String.format("Havi archiválás: %s - %d tranzakció archivált", archiveMonth, archivedCount),
+            String.format("Havi archiválás: %s - %d tranzakció archivált, retention=%d év, hardDelete=%s",
+                    archiveMonth,
+                    archivedCount,
+                    financialRetentionProperties.getYears(),
+                    financialRetentionProperties.isHardDeleteEnabled()),
             branchId.toString()
         );
 
@@ -137,7 +147,12 @@ public class MonthlyArchiveService {
     public int archiveDailyTransactions(UUID branchId, LocalDate closingDate) {
         String archiveMonth = YearMonth.from(closingDate).format(MONTH_FORMAT);
 
-        log.info("Napi archiválás: branchId={}, date={}, archiveMonth={}", branchId, closingDate, archiveMonth);
+        log.info("Napi archiválás: branchId={}, date={}, archiveMonth={}, retentionYears={}, hardDeleteEnabled={}",
+            branchId,
+            closingDate,
+            archiveMonth,
+            financialRetentionProperties.getYears(),
+            financialRetentionProperties.isHardDeleteEnabled());
 
         List<Transaction> transactions = transactionRepository.findByBranchAndMonth(
             branchId, closingDate, closingDate

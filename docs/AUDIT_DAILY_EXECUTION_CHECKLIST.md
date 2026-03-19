@@ -39,6 +39,7 @@ Nap 2 kimenet:
 
 - [ ] NAV/POS/nyomtatas/scanner in-scope tesztek lefutottak vagy N/A formalizalt.
 - [ ] Offline/szinkron konfliktus es helyreallitas tesztek lefutottak.
+- [ ] Electron cashier manualis smoke checklist lefutott: docs/ELECTRON_CASHIER_SMOKE_CHECKLIST.md
 - [ ] Legacy parity delta lista veglegesitve.
 - [ ] Finding register veglegesitve.
 - [ ] GO/CONDITIONAL GO/NO-GO javaslat letrehozva.

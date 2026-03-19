@@ -22,6 +22,7 @@ import {
   Shield,
   Sun,
   Loader2,
+  HardDrive,
 } from 'lucide-react'
 
 // Menüpontok csoportosítva (professzionális sidebar struktúra)
@@ -64,6 +65,7 @@ const menuGroups = [
     label: 'Adminisztráció',
     items: [
       { path: '/audit-log', label: 'Audit Log', icon: Shield },
+      { path: '/local-queue', label: 'Helyi Queue', icon: HardDrive },
       { path: '/settings', label: 'Rendszer beállítások', icon: Settings },
     ]
   }

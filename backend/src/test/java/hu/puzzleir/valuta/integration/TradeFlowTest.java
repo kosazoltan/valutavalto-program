@@ -1,9 +1,14 @@
 package hu.puzzleir.valuta.integration;
 
 import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.entity.CashBalance;
+import hu.puzzleir.valuta.entity.Company;
+import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
+import hu.puzzleir.valuta.repository.CashBalanceRepository;
+import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.dto.trade.ProposeTradeDto;
 import hu.puzzleir.valuta.dto.trade.TradeDto;
 import hu.puzzleir.valuta.entity.Trade;
@@ -38,7 +43,10 @@ class TradeFlowTest {
 
     @Mock private TradeRepository tradeRepository;
     @Mock private BranchRepository branchRepository;
+    @Mock private CashBalanceRepository cashBalanceRepository;
+    @Mock private CurrencyRepository currencyRepository;
 
+    private static final UUID COMPANY_ID = UUID.randomUUID();
     private static final UUID FROM_BRANCH_ID = UUID.randomUUID();
     private static final UUID TO_BRANCH_ID = UUID.randomUUID();
     private static final Long WORKER_ID = 42L;
@@ -48,15 +56,20 @@ class TradeFlowTest {
 
     @BeforeEach
     void setUp() {
+        Company company = new Company();
+        company.setId(COMPANY_ID);
+
         fromBranch = new Branch();
         fromBranch.setId(FROM_BRANCH_ID);
         fromBranch.setCode("B01");
         fromBranch.setName("Iroda 1");
+        fromBranch.setCompany(company);
 
         toBranch = new Branch();
         toBranch.setId(TO_BRANCH_ID);
         toBranch.setCode("B02");
         toBranch.setName("Iroda 2");
+        toBranch.setCompany(company);
     }
 
     @Nested
@@ -69,6 +82,7 @@ class TradeFlowTest {
             try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
                 secUtils.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
                 secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(FROM_BRANCH_ID);
+                secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
 
                 when(branchRepository.findById(FROM_BRANCH_ID)).thenReturn(Optional.of(fromBranch));
                 when(branchRepository.findById(TO_BRANCH_ID)).thenReturn(Optional.of(toBranch));
@@ -110,12 +124,21 @@ class TradeFlowTest {
 
                 // 3. Complete
                 Trade acceptedEntity = createTradeEntity(tradeId, Trade.TradeStatus.ACCEPTED);
+                Currency eur = new Currency();
+                eur.setId(1L);
+                eur.setCode("EUR");
                 when(tradeRepository.findById(tradeId)).thenReturn(Optional.of(acceptedEntity));
+                when(currencyRepository.findByCode("EUR")).thenReturn(Optional.of(eur));
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(FROM_BRANCH_ID, 1L))
+                    .thenReturn(Optional.of(createBalance(fromBranch, eur, "10000")));
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(TO_BRANCH_ID, 1L))
+                    .thenReturn(Optional.of(createBalance(toBranch, eur, "0")));
 
                 TradeDto completed = tradeService.completeTrade(tradeId);
 
                 assertThat(completed.getStatus()).isEqualTo("COMPLETED");
                 verify(tradeRepository, atLeast(3)).save(any(Trade.class));
+                verify(cashBalanceRepository, times(2)).save(any(CashBalance.class));
             }
         }
     }
@@ -130,6 +153,7 @@ class TradeFlowTest {
             try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
                 secUtils.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
                 secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(FROM_BRANCH_ID);
+                secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
 
                 when(branchRepository.findById(FROM_BRANCH_ID)).thenReturn(Optional.of(fromBranch));
                 when(branchRepository.findById(TO_BRANCH_ID)).thenReturn(Optional.of(toBranch));
@@ -175,6 +199,7 @@ class TradeFlowTest {
             try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
                 secUtils.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
                 secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(FROM_BRANCH_ID);
+                secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
 
                 when(branchRepository.findById(FROM_BRANCH_ID)).thenReturn(Optional.of(fromBranch));
 
@@ -197,6 +222,7 @@ class TradeFlowTest {
             try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
                 secUtils.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
                 secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(FROM_BRANCH_ID);
+                secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
 
                 when(branchRepository.findById(FROM_BRANCH_ID)).thenReturn(Optional.of(fromBranch));
                 when(branchRepository.findById(TO_BRANCH_ID)).thenReturn(Optional.of(toBranch));
@@ -217,17 +243,31 @@ class TradeFlowTest {
         @Test
         @DisplayName("testTradeFlow_acceptNonProposed — nem PROPOSED trade elfogadása → hiba")
         void testTradeFlow_acceptNonProposed() {
-            UUID tradeId = UUID.randomUUID();
-            Trade completedTrade = createTradeEntity(tradeId, Trade.TradeStatus.COMPLETED);
-            when(tradeRepository.findById(tradeId)).thenReturn(Optional.of(completedTrade));
+            try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+                secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(FROM_BRANCH_ID);
+                secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
 
-            assertThatThrownBy(() -> tradeService.acceptTrade(tradeId, WORKER_ID))
-                    .isInstanceOf(ValidationException.class)
-                    .hasMessageContaining("PROPOSED");
+                UUID tradeId = UUID.randomUUID();
+                Trade completedTrade = createTradeEntity(tradeId, Trade.TradeStatus.COMPLETED);
+                when(tradeRepository.findById(tradeId)).thenReturn(Optional.of(completedTrade));
+
+                assertThatThrownBy(() -> tradeService.acceptTrade(tradeId, WORKER_ID))
+                        .isInstanceOf(ValidationException.class)
+                        .hasMessageContaining("PROPOSED");
+            }
         }
     }
 
     // ===== HELPER =====
+
+    private CashBalance createBalance(Branch branch, Currency currency, String amount) {
+        CashBalance balance = new CashBalance();
+        balance.setBranch(branch);
+        balance.setCompany(branch.getCompany());
+        balance.setCurrency(currency);
+        balance.setCurrentBalance(new BigDecimal(amount));
+        return balance;
+    }
 
     private Trade createTradeEntity(UUID id, Trade.TradeStatus status) {
         return Trade.builder()
