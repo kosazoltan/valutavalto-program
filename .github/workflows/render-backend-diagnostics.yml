@@ -12,9 +12,9 @@ jobs:
     name: Diagnose Render Backend
     runs-on: ubuntu-latest
     env:
-            RENDER_API_KEY: "${{ secrets.RENDER_API_KEY }}"
-            RENDER_BACKEND_HOST: "valuta-backend-spbx.onrender.com"
-            RENDER_BACKEND_SERVICE_CANDIDATES: "valuta-backend-spbx,valuta-backend"
+      RENDER_API_KEY: "${{ secrets.RENDER_API_KEY }}"
+      RENDER_BACKEND_HOST: "valuta-backend-spbx.onrender.com"
+      RENDER_BACKEND_SERVICE_CANDIDATES: "valuta-backend-spbx,valuta-backend"
     steps:
       - name: Query Render service and deploy state
         run: |
@@ -22,7 +22,7 @@ jobs:
           import json
           import os
           import sys
-                    import urllib.error
+          import urllib.error
           import urllib.request
           from urllib.parse import urlparse
 
@@ -55,7 +55,7 @@ jobs:
                   print(payload, file=sys.stderr)
                   raise
 
-          def deploy_payload(item):
+          def deploy_item(item):
               return item.get("deploy") or item
 
           def unwrap(item):
@@ -90,23 +90,34 @@ jobs:
           if not ranked:
               print("No matching Render service found", file=sys.stderr)
               for service in map(unwrap, services):
-                  print(json.dumps({
-                      "name": service["name"],
-                      "slug": service["slug"],
-                      "host": service["host"],
-                  }, ensure_ascii=False))
+                  print(
+                      json.dumps(
+                          {
+                              "name": service["name"],
+                              "slug": service["slug"],
+                              "host": service["host"],
+                          },
+                          ensure_ascii=False,
+                      )
+                  )
               raise SystemExit(1)
 
           selected = ranked[0][1]
           service_id = selected["id"]
           print("Selected service:")
-          print(json.dumps({
-              "id": service_id,
-              "name": selected["name"],
-              "slug": selected["slug"],
-              "host": selected["host"],
-              "url": selected["url"],
-          }, indent=2, ensure_ascii=False))
+          print(
+              json.dumps(
+                  {
+                      "id": service_id,
+                      "name": selected["name"],
+                      "slug": selected["slug"],
+                      "host": selected["host"],
+                      "url": selected["url"],
+                  },
+                  indent=2,
+                  ensure_ascii=False,
+              )
+          )
 
           service_details = request(f"https://api.render.com/v1/services/{service_id}")
           print("\nService details:")
@@ -114,11 +125,17 @@ jobs:
 
           recent_deploys = request(f"https://api.render.com/v1/services/{service_id}/deploys")
           print("\nRecent deploys:")
-          print(json.dumps(recent_deploys[:10] if isinstance(recent_deploys, list) else recent_deploys, indent=2, ensure_ascii=False))
+          print(
+              json.dumps(
+                  recent_deploys[:10] if isinstance(recent_deploys, list) else recent_deploys,
+                  indent=2,
+                  ensure_ascii=False,
+              )
+          )
 
           if isinstance(recent_deploys, list):
               for entry in recent_deploys[:5]:
-                  deploy = deploy_payload(entry)
+                  deploy = deploy_item(entry)
                   deploy_id = deploy.get("id")
                   if not deploy_id:
                       continue
