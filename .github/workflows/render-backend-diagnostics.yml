@@ -1,0 +1,108 @@
+name: Render Backend Diagnostics
+
+on:
+  workflow_dispatch:
+
+env:
+  RENDER_BACKEND_HOST: valuta-backend-spbx.onrender.com
+  RENDER_BACKEND_SERVICE_CANDIDATES: valuta-backend-spbx,valuta-backend
+
+jobs:
+  diagnose-render-backend:
+    name: Diagnose Render Backend
+    runs-on: ubuntu-latest
+    env:
+            RENDER_API_KEY: "${{ secrets.RENDER_API_KEY }}"
+            RENDER_BACKEND_HOST: "valuta-backend-spbx.onrender.com"
+            RENDER_BACKEND_SERVICE_CANDIDATES: "valuta-backend-spbx,valuta-backend"
+    steps:
+      - name: Query Render service and deploy state
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+          import urllib.request
+          from urllib.parse import urlparse
+
+          api_key = os.environ.get("RENDER_API_KEY", "").strip()
+          backend_host = os.environ.get("RENDER_BACKEND_HOST", "").strip().lower()
+          candidate_names = [
+              item.strip().lower()
+              for item in os.environ.get("RENDER_BACKEND_SERVICE_CANDIDATES", "").split(",")
+              if item.strip()
+          ]
+
+          if not api_key:
+              print("Missing Render API key", file=sys.stderr)
+              raise SystemExit(1)
+
+          headers = {
+              "Authorization": f"Bearer {api_key}",
+              "Accept": "application/json",
+              "Content-Type": "application/json",
+          }
+
+          def request(url):
+              req = urllib.request.Request(url, headers=headers, method="GET")
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  return json.loads(resp.read().decode("utf-8"))
+
+          def unwrap(item):
+              service = item.get("service") or item
+              details = service.get("serviceDetails") or item.get("serviceDetails") or {}
+              url = details.get("url") or service.get("url") or item.get("url") or ""
+              host = urlparse(url).netloc.lower() if url else ""
+              return {
+                  "id": service.get("id") or item.get("id") or "",
+                  "name": (service.get("name") or item.get("name") or "").strip(),
+                  "slug": (service.get("slug") or item.get("slug") or "").strip(),
+                  "url": url,
+                  "host": host,
+                  "raw": item,
+              }
+
+          services = request("https://api.render.com/v1/services")
+          ranked = []
+          for raw_service in services:
+              service = unwrap(raw_service)
+              score = 0
+              if backend_host and service["host"] == backend_host:
+                  score += 100
+              if service["slug"].lower() in candidate_names:
+                  score += 50
+              if service["name"].lower() in candidate_names:
+                  score += 40
+              if score > 0:
+                  ranked.append((score, service))
+
+          ranked.sort(key=lambda item: item[0], reverse=True)
+          if not ranked:
+              print("No matching Render service found", file=sys.stderr)
+              for service in map(unwrap, services):
+                  print(json.dumps({
+                      "name": service["name"],
+                      "slug": service["slug"],
+                      "host": service["host"],
+                  }, ensure_ascii=False))
+              raise SystemExit(1)
+
+          selected = ranked[0][1]
+          service_id = selected["id"]
+          print("Selected service:")
+          print(json.dumps({
+              "id": service_id,
+              "name": selected["name"],
+              "slug": selected["slug"],
+              "host": selected["host"],
+              "url": selected["url"],
+          }, indent=2, ensure_ascii=False))
+
+          service_details = request(f"https://api.render.com/v1/services/{service_id}")
+          print("\nService details:")
+          print(json.dumps(service_details, indent=2, ensure_ascii=False))
+
+          recent_deploys = request(f"https://api.render.com/v1/services/{service_id}/deploys")
+          print("\nRecent deploys:")
+          print(json.dumps(recent_deploys[:10] if isinstance(recent_deploys, list) else recent_deploys, indent=2, ensure_ascii=False))
+          PY
