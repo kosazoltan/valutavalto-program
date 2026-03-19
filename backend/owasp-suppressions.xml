@@ -1,10 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
-    <!-- Ide keruljetek a false positive OWASP CVE-k -->
-    <!-- Pelda:
     <suppress>
-        <notes>False positive — nem erinti a projektet</notes>
-        <cve>CVE-2024-XXXXX</cve>
+        <notes><![CDATA[
+            CVE-2025-68161 a Log4j Core Socket Appender TLS hostname verification hibaja.
+            A projekt dependency-fajaban csak a poi-ooxml altal behuzott log4j-api jar van jelen,
+            log4j-core nincs, es nincs Socket Appender hasznalat.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.apache\.logging\.log4j/log4j-api@.*$</packageUrl>
+        <cve>CVE-2025-68161</cve>
     </suppress>
-    -->
+
+    <suppress>
+        <notes><![CDATA[
+            CVE-2026-23907 az Apache PDFBox ExtractEmbeddedFiles example path traversal sebezhetosegere vonatkozik.
+            A projekt ReceiptPdfService osztalya csak uj PDF dokumentumokat general PDDocument/PDPage API-val,
+            nem dolgoz fel felhasznaloi PDF-et es nem hasznalja az erintett example extraction kodot.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.apache\.pdfbox/pdfbox@.*$</packageUrl>
+        <cve>CVE-2026-23907</cve>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+            Ugyanez a CVE a pdfbox-io transitiv artifacton is megjelenik ugyanazzal az apache:pdfbox CPE-vel.
+            A projekt tovabbra sem hasznal embedded file extraction vagy erintett example kodot; csak szerveroldali PDF generalas tortenik.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.apache\.pdfbox/pdfbox-io@.*$</packageUrl>
+        <cve>CVE-2026-23907</cve>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+            A swagger-ui bundle-ben jelzett DOMPurify CVE-k production-ben nem exponaltak.
+            Az application-production.properties explicit tiltja a springdoc.api-docs es springdoc.swagger-ui endpointokat.
+            A dependency kizarolag fejlesztoi dokumentaciohoz marad bent.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:javascript/DOMPurify@.*$</packageUrl>
+        <cve>CVE-2025-15599</cve>
+        <cve>CVE-2026-0540</cve>
+    </suppress>
 </suppressions>

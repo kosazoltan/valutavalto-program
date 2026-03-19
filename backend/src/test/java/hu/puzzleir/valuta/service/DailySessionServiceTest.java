@@ -125,5 +125,6 @@ class DailySessionServiceTest {
         assertEquals(BigDecimal.ZERO, result.getOpeningBalanceHuf());
         assertEquals(BigDecimal.ZERO, brokenBalance.getCurrentBalance());
         assertEquals(BigDecimal.ZERO, brokenBalance.getOpeningBalance());
+        assertEquals(0L, brokenBalance.getVersion());
     }
 }

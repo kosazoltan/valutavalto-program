@@ -266,6 +266,12 @@ public class DailySessionService {
                         branchId, currencyCode);
                 balance.setCurrentBalance(BigDecimal.ZERO);
             }
+            if (balance.getVersion() == null) {
+                String currencyCode = balance.getCurrency() != null ? balance.getCurrency().getCode() : "UNKNOWN";
+                log.warn("CashBalance version null nyitáskor, optimistic-lock null-safe korrekció: branchId={}, currency={}",
+                        branchId, currencyCode);
+                balance.setVersion(0L);
+            }
             balance.setDailyOpening();
             cashBalanceRepository.save(balance);
         }

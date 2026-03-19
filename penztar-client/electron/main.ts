@@ -67,7 +67,7 @@ function createWindow(): void {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false, // TODO: sandbox: true — jelenleg az app:// protocol és sql.js WASM miatt szükséges false
+      sandbox: true,
       webSecurity: true,
       allowRunningInsecureContent: false,
       experimentalFeatures: false,

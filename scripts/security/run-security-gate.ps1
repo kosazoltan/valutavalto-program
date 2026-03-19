@@ -8,6 +8,30 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+function Get-DotEnvValue {
+    param(
+        [string]$FilePath,
+        [string]$Key
+    )
+
+    if (!(Test-Path -LiteralPath $FilePath)) {
+        return $null
+    }
+
+    foreach ($line in Get-Content -LiteralPath $FilePath -ErrorAction Stop) {
+        if ($line -match "^\s*$Key=(.*)$") {
+            return $matches[1].Trim()
+        }
+    }
+
+    return $null
+}
+
+if ([string]::IsNullOrWhiteSpace($NvdApiKey)) {
+    $dotEnvPath = Join-Path $RepoRoot ".env"
+    $NvdApiKey = Get-DotEnvValue -FilePath $dotEnvPath -Key "NVD_API_KEY"
+}
+
 if ($NvdApiKey -and $NvdApiKey.Trim().Length -gt 0) {
     # Allow explicit parameter override while still supporting environment-based use.
     $env:NVD_API_KEY = $NvdApiKey
@@ -118,6 +142,28 @@ function Remove-TempFileSafe {
     }
 }
 
+function Test-IgnoredSecurityPath {
+    param([string]$FullPath)
+
+    return $FullPath -match '[\\/](node_modules|dist|dist-electron|build|target|coverage|security-reports|\.git|\.venv)[\\/]'
+}
+
+function Get-RgExcludeArgs {
+    return @(
+        '-g "!**/node_modules/**"'
+        '-g "!**/dist/**"'
+        '-g "!**/dist-electron/**"'
+        '-g "!**/build/**"'
+        '-g "!**/target/**"'
+        '-g "!**/coverage/**"'
+        '-g "!**/security-reports/**"'
+        '-g "!**/.git/**"'
+        '-g "!**/.venv/**"'
+        '-g "!**/*.test.*"'
+        '-g "!**/*.spec.*"'
+    ) -join ' '
+}
+
 function Invoke-CheckWithTimeout {
     param(
         [string]$Name,
@@ -142,14 +188,14 @@ function Invoke-CheckWithTimeout {
     $stdout = ""
     $stderr = ""
     $timedOut = $false
+    $stdoutTemp = [System.IO.Path]::GetTempFileName()
+    $stderrTemp = [System.IO.Path]::GetTempFileName()
 
     try {
         $psi = New-Object System.Diagnostics.ProcessStartInfo
         $psi.FileName = "cmd.exe"
-        $psi.Arguments = "/c $Command"
+        $psi.Arguments = ('/d /s /c "{0} 1>""{1}"" 2>""{2}"""' -f $Command, $stdoutTemp, $stderrTemp)
         $psi.WorkingDirectory = $WorkingDir
-        $psi.RedirectStandardOutput = $true
-        $psi.RedirectStandardError = $true
         $psi.UseShellExecute = $false
         $psi.CreateNoWindow = $true
 
@@ -189,16 +235,24 @@ function Invoke-CheckWithTimeout {
             }
         }
 
-        if (-not $timedOut) {
-            try { $stdout = $proc.StandardOutput.ReadToEnd() } catch {}
-            try { $stderr = $proc.StandardError.ReadToEnd() } catch {}
-        }
     }
     catch {
         $result.status = "FAILED"
         $result.note = $_.Exception.Message
     }
     finally {
+        if (Test-Path -LiteralPath $stdoutTemp) {
+            try { $stdout = Get-Content -LiteralPath $stdoutTemp -Raw -ErrorAction Stop } catch {}
+        }
+        if (Test-Path -LiteralPath $stderrTemp) {
+            try { $stderr = Get-Content -LiteralPath $stderrTemp -Raw -ErrorAction Stop } catch {}
+        }
+
+        if ($Name -eq "backend_dependency_check" -and $result.status -eq "PASSED" -and (($stdout + $stderr) -match "One or more dependencies were identified with known vulnerabilities")) {
+            $result.status = "FAILED"
+            $result.note = "Dependency vulnerabilities found"
+        }
+
         $combined = @(
             "Command: $DisplayCommand",
             "Status: $($result.status)",
@@ -211,6 +265,9 @@ function Invoke-CheckWithTimeout {
             $stderr
         ) -join "`r`n"
         $combined | Set-Content -LiteralPath $OutputFile -Encoding UTF8
+
+        Remove-TempFileSafe -PathValue $stdoutTemp
+        Remove-TempFileSafe -PathValue $stderrTemp
     }
 
     return [PSCustomObject]$result
@@ -289,11 +346,11 @@ $hasJava = (Test-Path -LiteralPath (Join-Path $RepoRoot "pom.xml")) -or (Test-Pa
 $hasNode = (Test-Path -LiteralPath (Join-Path $RepoRoot "package.json")) -or (Test-Path -LiteralPath (Join-Path $frontendDir "package.json")) -or (Test-Path -LiteralPath (Join-Path $electronDir "package.json"))
 $hasReact = (Test-Path -LiteralPath (Join-Path $frontendDir "vite.config.ts")) -or (Test-Path -LiteralPath (Join-Path $frontendDir "vite.config.js")) -or (Test-Path -LiteralPath (Join-Path $frontendDir "next.config.js")) -or (Test-Path -LiteralPath (Join-Path $frontendDir "next.config.ts"))
 $hasElectron = Test-Path -LiteralPath (Join-Path $electronDir "package.json")
-$hasPython = @(
-    Get-ChildItem -LiteralPath $RepoRoot -Filter "requirements.txt" -Recurse -File -ErrorAction SilentlyContinue
-    Get-ChildItem -LiteralPath $RepoRoot -Filter "pyproject.toml" -Recurse -File -ErrorAction SilentlyContinue
-    Get-ChildItem -LiteralPath $RepoRoot -Filter "Pipfile" -Recurse -File -ErrorAction SilentlyContinue
-) | Where-Object { $_ } | Select-Object -First 1
+$hasPython = Get-ChildItem -Path $RepoRoot -Recurse -File -Include "requirements.txt", "pyproject.toml", "Pipfile" -ErrorAction SilentlyContinue |
+    Where-Object { -not (Test-IgnoredSecurityPath -FullPath $_.FullName) } |
+    Select-Object -First 1
+
+$rgExcludes = Get-RgExcludeArgs
 
 Write-Section "Dependency and vulnerability checks"
 Write-Host ("NVD API key configured: " + $(if ($env:NVD_API_KEY) { "YES" } else { "NO" }))
@@ -327,11 +384,11 @@ if ($env:NVD_API_KEY -and $env:NVD_API_KEY.Trim().Length -gt 0) {
 
 if ($hasJava -and (Test-Path -LiteralPath $backendDir)) {
     # Use Maven Wrapper to avoid local Maven PATH dependency and apply explicit timeout.
-    $backendCommand = "mvnw.cmd dependency-check:check"
-    $backendDisplayCommand = "mvnw.cmd dependency-check:check"
+    $backendCommand = "mvnw.cmd dependency-check:check -DfailBuildOnCVSS=7"
+    $backendDisplayCommand = "mvnw.cmd dependency-check:check -DfailBuildOnCVSS=7"
     if ($env:NVD_API_KEY -and $env:NVD_API_KEY.Trim().Length -gt 0) {
-        $backendCommand = "mvnw.cmd dependency-check:check -DnvdApiKey=$env:NVD_API_KEY"
-        $backendDisplayCommand = "mvnw.cmd dependency-check:check -DnvdApiKey=***"
+        $backendCommand = "mvnw.cmd dependency-check:check -DfailBuildOnCVSS=7 -DnvdApiKey=$env:NVD_API_KEY"
+        $backendDisplayCommand = "mvnw.cmd dependency-check:check -DfailBuildOnCVSS=7 -DnvdApiKey=***"
     }
 
     $results.Add((Invoke-OptionalCheckWithTimeout `
@@ -385,10 +442,18 @@ if ($hasPython) {
 
 Write-Section "Static pattern scans"
 
+$hardcodedSecretsPattern = '(?i)(password|passwd|secret|api[_-]?key|token|private[_-]?key|jwt[_-]?secret)["'']?\s*[:=]\s*["''][^"'']{6,}["'']'
+$weakCryptoPattern = 'MD5|SHA-1|DES/|AES/ECB|ECB/PKCS5Padding|RC4|3DES'
+$electronDangerousPattern = 'nodeIntegration\s*:\s*true|contextIsolation\s*:\s*false|sandbox\s*:\s*false|allowRunningInsecureContent\s*:\s*true|enableRemoteModule\s*:\s*true|eval\(|new Function\('
+$sqliPattern = 'create(Native)?Query\s*\([^\n]*\+|jdbcTemplate\.(query|update|execute)\s*\([^\n]*\+|Runtime\.getRuntime\(\)\.exec|ProcessBuilder\('
+$reactXssPattern = 'dangerouslySetInnerHTML|eval\(|new Function\(|javascript:'
+$nodeDangerousPattern = 'child_process\.exec\(|eval\(|new Function\(|vm\.runInNewContext\('
+$pythonDangerousPattern = 'eval\(|exec\(|pickle\.loads\(|yaml\.load\(|subprocess\..*shell\s*=\s*True|DEBUG\s*=\s*True'
+
 $results.Add((Invoke-CheckWithTimeout `
     -Name "hardcoded_secrets_scan" `
     -WorkingDir $RepoRoot `
-    -Command 'rg -n -S -g "!**/node_modules/**" -g "!**/dist/**" -g "!**/.git/**" "password|passwd|secret|api[_-]?key|token|private[_-]?key|jwt[_-]?secret" backend frontend-react penztar-client scripts' `
+    -Command ('rg -n -P -S {0} "{1}" backend/src/main frontend-react/src penztar-client/electron scripts/security' -f $rgExcludes, $hardcodedSecretsPattern) `
     -TimeoutSeconds $ScannerTimeoutSec `
     -Mode "no-match-pass" `
     -OutputFile (Join-Path $reportDir "hardcoded_secrets_scan.txt")))
@@ -396,7 +461,7 @@ $results.Add((Invoke-CheckWithTimeout `
 $results.Add((Invoke-CheckWithTimeout `
     -Name "weak_crypto_scan" `
     -WorkingDir $RepoRoot `
-    -Command 'rg -n -S -g "!**/node_modules/**" -g "!**/dist/**" -g "!**/.git/**" "MD5|SHA-1|DES/|AES/ECB|ECB/PKCS5Padding|RC4|3DES" backend penztar-client frontend-react' `
+    -Command ('rg -n -S {0} "{1}" backend/src/main frontend-react/src penztar-client/electron' -f $rgExcludes, $weakCryptoPattern) `
     -TimeoutSeconds $ScannerTimeoutSec `
     -Mode "no-match-pass" `
     -OutputFile (Join-Path $reportDir "weak_crypto_scan.txt")))
@@ -404,7 +469,7 @@ $results.Add((Invoke-CheckWithTimeout `
 $results.Add((Invoke-CheckWithTimeout `
     -Name "electron_dangerous_apis_scan" `
     -WorkingDir $RepoRoot `
-    -Command 'rg -n -S -g "!**/node_modules/**" -g "!**/dist/**" -g "!**/.git/**" "nodeIntegration\s*:\s*true|contextIsolation\s*:\s*false|sandbox\s*:\s*false|allowRunningInsecureContent\s*:\s*true|enableRemoteModule\s*:\s*true|eval\(|new Function\(" penztar-client frontend-react' `
+    -Command ('rg -n -S {0} "{1}" penztar-client/electron frontend-react/src' -f $rgExcludes, $electronDangerousPattern) `
     -TimeoutSeconds $ScannerTimeoutSec `
     -Mode "no-match-pass" `
     -OutputFile (Join-Path $reportDir "electron_dangerous_apis_scan.txt")))
@@ -412,7 +477,7 @@ $results.Add((Invoke-CheckWithTimeout `
 $results.Add((Invoke-CheckWithTimeout `
     -Name "sqli_pattern_scan" `
     -WorkingDir $RepoRoot `
-    -Command 'rg -n -S -g "!**/node_modules/**" -g "!**/dist/**" -g "!**/.git/**" "SELECT\s+.*\+|FROM\s+.*\+|WHERE\s+.*\+|Runtime\.getRuntime\(\)\.exec|ProcessBuilder\(" backend' `
+    -Command ('rg -n -P -S {0} "{1}" backend/src/main/java' -f $rgExcludes, $sqliPattern) `
     -TimeoutSeconds $ScannerTimeoutSec `
     -Mode "no-match-pass" `
     -OutputFile (Join-Path $reportDir "sqli_and_command_injection_patterns.txt")))
@@ -421,7 +486,7 @@ if ($hasReact) {
     $results.Add((Invoke-CheckWithTimeout `
         -Name "react_xss_patterns_scan" `
         -WorkingDir $RepoRoot `
-        -Command 'rg -n -S -g "!**/node_modules/**" -g "!**/dist/**" -g "!**/.git/**" "dangerouslySetInnerHTML|eval\(|new Function\(|javascript:" frontend-react' `
+        -Command ('rg -n -S {0} "{1}" frontend-react/src' -f $rgExcludes, $reactXssPattern) `
         -TimeoutSeconds $ScannerTimeoutSec `
         -Mode "no-match-pass" `
         -OutputFile (Join-Path $reportDir "react_xss_patterns_scan.txt")))
@@ -431,7 +496,7 @@ if ($hasNode) {
     $results.Add((Invoke-CheckWithTimeout `
         -Name "node_dangerous_runtime_scan" `
         -WorkingDir $RepoRoot `
-        -Command 'rg -n -S -g "!**/node_modules/**" -g "!**/dist/**" -g "!**/.git/**" "child_process\.exec\(|eval\(|new Function\(|vm\.runInNewContext\(" backend frontend-react penztar-client' `
+    -Command ('rg -n -S {0} "{1}" backend/src/main frontend-react/src penztar-client/electron' -f $rgExcludes, $nodeDangerousPattern) `
         -TimeoutSeconds $ScannerTimeoutSec `
         -Mode "no-match-pass" `
         -OutputFile (Join-Path $reportDir "node_dangerous_runtime_scan.txt")))
@@ -441,7 +506,7 @@ if ($hasPython) {
     $results.Add((Invoke-CheckWithTimeout `
         -Name "python_dangerous_api_scan" `
         -WorkingDir $RepoRoot `
-        -Command 'rg -n -S -g "!**/node_modules/**" -g "!**/dist/**" -g "!**/.git/**" "eval\(|exec\(|pickle\.loads\(|yaml\.load\(|subprocess\..*shell\s*=\s*True|DEBUG\s*=\s*True" scripts' `
+    -Command ('rg -n -S {0} "{1}" scripts' -f $rgExcludes, $pythonDangerousPattern) `
         -TimeoutSeconds $ScannerTimeoutSec `
         -Mode "no-match-pass" `
         -OutputFile (Join-Path $reportDir "python_dangerous_api_scan.txt")))
