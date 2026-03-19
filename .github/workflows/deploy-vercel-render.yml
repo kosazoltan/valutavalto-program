@@ -62,8 +62,10 @@ jobs:
           python - <<'PY'
           import json
           import os
+          import time
           import sys
           from urllib.parse import urlparse
+          import urllib.error
           import urllib.request
 
           api_key = os.environ.get("RENDER_API_KEY", "").strip()
@@ -86,10 +88,29 @@ jobs:
 
           def request(url, method="GET", data=None):
               req = urllib.request.Request(url, data=data, headers=headers, method=method)
-              with urllib.request.urlopen(req, timeout=30) as resp:
+              try:
+                with urllib.request.urlopen(req, timeout=30) as resp:
                   return resp.status, resp.read().decode("utf-8")
+              except urllib.error.HTTPError as exc:
+                return exc.code, exc.read().decode("utf-8")
+
+            def parse_json(body):
+              if not body:
+                return {}
+              try:
+                return json.loads(body)
+              except json.JSONDecodeError:
+                return {"raw": body}
+
+            def deploy_payload(item):
+              return item.get("deploy") or item
 
           status, body = request("https://api.render.com/v1/services")
+            if not 200 <= status < 300:
+              print(f"Render service list failed with status {status}", file=sys.stderr)
+              print(body, file=sys.stderr)
+              raise SystemExit(1)
+
           services = json.loads(body)
 
           def unwrap(item):
@@ -144,17 +165,89 @@ jobs:
 
           deploy_payload = json.dumps({"clearCache": "clear"}).encode("utf-8")
 
-          status, _ = request(
+            status, body = request(
               f"https://api.render.com/v1/services/{service_id}/deploys",
               method="POST",
               data=deploy_payload,
           )
-          if 200 <= status < 300:
-              print("Render deploy triggered via API")
-              raise SystemExit(0)
+            if not 200 <= status < 300:
+              print(f"Render deploy failed with status {status}", file=sys.stderr)
+              print(body, file=sys.stderr)
+              raise SystemExit(1)
 
-          print(f"Render deploy failed with status {status}", file=sys.stderr)
-          raise SystemExit(1)
+            created_deploy = parse_json(body)
+            deploy = deploy_payload(created_deploy)
+            deploy_id = deploy.get("id")
+            print("Render deploy triggered via API")
+            print(json.dumps(created_deploy, indent=2))
+
+            if not deploy_id:
+              print("Render deploy response did not include a deploy id", file=sys.stderr)
+              raise SystemExit(1)
+
+            terminal_failure_statuses = {
+              "build_failed",
+              "canceled",
+              "cancelled",
+              "deactivated",
+              "failed",
+              "pre_deploy_failed",
+              "timed_out",
+              "update_failed",
+            }
+            running_statuses = {
+              "build_in_progress",
+              "created",
+              "in_progress",
+              "pre_deploy_in_progress",
+              "queued",
+              "starting",
+              "triggered",
+              "update_in_progress",
+            }
+
+            detail_url = f"https://api.render.com/v1/services/{service_id}/deploys/{deploy_id}"
+            last_status = None
+            last_detail = None
+
+            for attempt in range(80):
+              status, body = request(detail_url)
+              if not 200 <= status < 300:
+                print(f"Render deploy status lookup failed with status {status}", file=sys.stderr)
+                print(body, file=sys.stderr)
+                raise SystemExit(1)
+
+              last_detail = parse_json(body)
+              deploy = deploy_payload(last_detail)
+              deploy_status = (deploy.get("status") or "unknown").lower()
+
+              if deploy_status != last_status:
+                print(
+                  f"Render deploy status changed: {last_status or 'initial'} -> {deploy_status}"
+                )
+                print(json.dumps(last_detail, indent=2))
+                last_status = deploy_status
+
+              if deploy_status == "live":
+                print("Render deploy reached live state")
+                raise SystemExit(0)
+
+              if deploy_status in terminal_failure_statuses:
+                print(f"Render deploy ended with failure status: {deploy_status}", file=sys.stderr)
+                print(json.dumps(last_detail, indent=2), file=sys.stderr)
+                raise SystemExit(1)
+
+              if deploy_status not in running_statuses:
+                print(f"Render deploy ended with unexpected status: {deploy_status}", file=sys.stderr)
+                print(json.dumps(last_detail, indent=2), file=sys.stderr)
+                raise SystemExit(1)
+
+              time.sleep(15)
+
+            print("Render deploy polling timed out", file=sys.stderr)
+            if last_detail is not None:
+              print(json.dumps(last_detail, indent=2), file=sys.stderr)
+            raise SystemExit(1)
           PY
 
   deployment-summary:
