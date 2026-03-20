@@ -82,6 +82,7 @@ public class NavAbevXmlGenerator {
     private final TransactionRepository transactionRepository;
     private final BranchRepository branchRepository;
     private final CompanyRepository companyRepository;
+    private final SystemParameterService systemParameterService;
 
     private static final int MAX_TRANSACTIONS_PER_PAGE = 30;
     private static final String PTGSZLAH_ID = "PTGSZLAH";
@@ -128,9 +129,11 @@ public class NavAbevXmlGenerator {
         appendField(xml, "27751", taxNumber.length() > 8 ? taxNumber.substring(0, 8) : taxNumber);
         appendField(xml, "0A0001C001A", taxNumber);
         appendField(xml, "0A0001C004A", company.getName());
-        // Ügyvivő — a Company-ból vagy config-ból
-        appendField(xml, "0A0001C027A", ""); // TODO: ügyvivő név a cég konfigból
-        appendField(xml, "0A0001C028A", ""); // TODO: ügyvivő telefon a cég konfigból
+        // Ügyvivő — SystemParameter-ből (NAV_AGENT_NAME, NAV_AGENT_PHONE)
+        String agentName = safeParam("NAV_AGENT_NAME");
+        String agentPhone = safeParam("NAV_AGENT_PHONE");
+        appendField(xml, "0A0001C027A", agentName != null ? agentName : company.getName());
+        appendField(xml, "0A0001C028A", agentPhone != null ? agentPhone : (company.getPhone() != null ? company.getPhone() : ""));
 
         // Időszak
         appendField(xml, "0A0001D001A", dateFrom.format(ABEV_DATE_FMT));
@@ -406,5 +409,14 @@ public class NavAbevXmlGenerator {
 
     private String safe(String value) {
         return value != null ? value : "Ismeretlen";
+    }
+
+    private String safeParam(String key) {
+        try {
+            String val = systemParameterService.getValue(key);
+            return (val != null && !val.isBlank()) ? val : null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

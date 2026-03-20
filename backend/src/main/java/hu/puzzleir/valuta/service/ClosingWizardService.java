@@ -13,6 +13,7 @@ import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.ClosingWizardRepository;
 import hu.puzzleir.valuta.repository.DailySessionRepository;
+import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.DailyClosingService.ClosingWizardResult;
@@ -42,6 +43,7 @@ public class ClosingWizardService {
     private final BranchRepository branchRepository;
     private final CashBalanceRepository cashBalanceRepository;
     private final DailySessionRepository dailySessionRepository;
+    private final TransactionRepository transactionRepository;
     private final DailyClosingService dailyClosingService;
     private final ObjectMapper objectMapper;
 
@@ -244,8 +246,10 @@ public class ClosingWizardService {
             errors.add("A nap zárás alatt van, várjon a folyamat befejezésére!");
         }
 
-        // TODO(integration): Tranzakció repository ellenőrzés (ha van PENDING státuszú tranzakció)
-        // A valós implementációban a TransactionRepository.findByBranchIdAndStatus(PENDING) szükséges
+        // PENDING tranzakció ellenőrzés — nem szabad zárni, amíg van feldolgozás alatt álló tranzakció
+        if (transactionRepository.existsByBranchIdAndStatus(branchId, TransactionStatus.PENDING)) {
+            errors.add("Van folyamatban lévő (PENDING) tranzakció! Várjon a befejezésükre a napi zárás előtt.");
+        }
 
         return errors;
     }

@@ -817,4 +817,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("dateFrom") LocalDate dateFrom,
         @Param("dateTo") LocalDate dateTo
     );
+
+    /**
+     * Napi zárás ellenőrzés: van-e PENDING státuszú tranzakció az adott irodában.
+     */
+    boolean existsByBranchIdAndStatus(UUID branchId, TransactionStatus status);
 }

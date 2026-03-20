@@ -32,6 +32,7 @@ public class CurrencyCalculatorService {
     private final ExchangeRateRepository exchangeRateRepository;
     private final CurrencyRepository currencyRepository;
     private final RoundingRuleService roundingRuleService;
+    private final HandlingFeeService handlingFeeService;
 
     /**
      * Deviza átváltás kalkuláció.
@@ -190,7 +191,8 @@ public class CurrencyCalculatorService {
                 .toAmount(toAmount)
                 .appliedRate(appliedRate)
                 .spread(spread)
-                .commission(BigDecimal.ZERO) // TODO(integration): CommissionCalculationService integráció a jutalék kalkulációhoz
+                .commission(handlingFeeService.calculateHandlingFee(
+                    "HUF".equals(fromCurrency) ? fromAmount : toAmount))
                 .direction(direction)
                 .roundingInfo("Kerekítés: " + foreignCode + " szabály alkalmazva")
                 .build();
