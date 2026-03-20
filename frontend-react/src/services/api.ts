@@ -3572,3 +3572,65 @@ export function hasPersistedToken(): boolean {
 
   return Boolean(window.localStorage.getItem(WEB_AUTH_TOKEN_KEY))
 }
+
+// === DARIUS ===
+export interface DariusReportLine {
+  id: string; branchId: string; branchCode: string; currencyCode: string
+  buyCount: number; buyCurrencyAmount: number; buyHufAmount: number
+  sellCount: number; sellCurrencyAmount: number; sellHufAmount: number
+  avgBuyRate: number; avgSellRate: number; handlingFeeHuf: number
+}
+export interface DariusDailyReport {
+  id: string; reportDate: string; status: string; companyId: string
+  totalBuyHuf: number; totalSellHuf: number; totalHandlingFeeHuf: number
+  transactionCount: number; branchCount: number
+  payloadHash?: string; payloadFormat?: string
+  submittedAt?: string; submittedBy?: string; ackReference?: string; ackAt?: string
+  errorMessage?: string; retryCount: number; maxRetries: number; nextRetryAt?: string
+  approvedBy?: string; approvedAt?: string; notes?: string
+  lines?: DariusReportLine[]
+}
+export interface DariusMonthlyDto {
+  year: number; month: number; totalReports: number
+  acknowledgedCount: number; failedCount: number; pendingCount: number
+  totalBuyHuf: number; totalSellHuf: number; totalHandlingFeeHuf: number
+  totalTransactionCount: number; dailyReports: DariusDailyReport[]
+}
+export const dariusApi = {
+  generate: (date: string) => api.post<DariusDailyReport>(`/darius/generate?date=${date}`),
+  approve: (id: string) => api.post<DariusDailyReport>(`/darius/${id}/approve`),
+  submit: (id: string) => api.post<DariusDailyReport>(`/darius/${id}/submit`),
+  acknowledge: (id: string, ref: string) => api.post<DariusDailyReport>(`/darius/${id}/acknowledge?ackReference=${encodeURIComponent(ref)}`),
+  retryFailed: () => api.post<DariusDailyReport[]>('/darius/retry-failed'),
+  getByDate: (date: string) => api.get<DariusDailyReport>(`/darius/by-date?date=${date}`),
+  getRange: (from: string, to: string) => api.get<DariusDailyReport[]>(`/darius/range?startDate=${from}&endDate=${to}`),
+  getMonthly: (year: number, month: number) => api.get<DariusMonthlyDto>(`/darius/monthly?year=${year}&month=${month}`),
+  getMissingDates: (from: string, to: string) => api.get<string[]>(`/darius/missing-dates?startDate=${from}&endDate=${to}`),
+}
+
+// === CAMERA EXPORT ===
+export interface CameraExportRequest {
+  id: string; branchId: string; cameraId?: string
+  periodFrom: string; periodTo: string; reason: string; referenceNumber?: string
+  status: string; requestedBy: string; createdAt: string
+  approvedBy?: string; approvedAt?: string; rejectionReason?: string
+  exportPath?: string; exportSizeBytes?: number; manifestHash?: string; completedAt?: string; errorMessage?: string
+}
+export interface ChainOfCustodyRecord {
+  id: string; exportRequestId?: string; branchId: string; cameraId?: string
+  eventType: string; actor: string; eventTimestamp: string; details?: string
+  periodFrom?: string; periodTo?: string; manifestHash?: string
+}
+export const cameraExportApi = {
+  createRequest: (p: { branchId: string; cameraId?: string; from: string; to: string; reason: string; referenceNumber?: string }) =>
+    api.post<CameraExportRequest>(`/camera/export/request`, null, { params: { ...p } }),
+  approve: (id: string) => api.post<CameraExportRequest>(`/camera/export/${id}/approve`),
+  reject: (id: string, reason: string) => api.post<CameraExportRequest>(`/camera/export/${id}/reject?reason=${encodeURIComponent(reason)}`),
+  execute: (id: string) => api.post<CameraExportRequest>(`/camera/export/${id}/execute`),
+  getById: (id: string) => api.get<CameraExportRequest>(`/camera/export/${id}`),
+  getPending: () => api.get<CameraExportRequest[]>('/camera/export/pending'),
+  getByBranch: (branchId: string) => api.get<CameraExportRequest[]>(`/camera/export/branch/${branchId}`),
+  getCustody: (id: string) => api.get<ChainOfCustodyRecord[]>(`/camera/export/${id}/custody`),
+  verifyChain: (branchId: string, cameraId: string) =>
+    api.post<{ branchId: string; cameraId: string; chainIntact: boolean; verifiedAt: string }>('/camera/export/verify-chain', null, { params: { branchId, cameraId } }),
+}

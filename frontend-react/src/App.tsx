@@ -71,6 +71,8 @@ import CameraLivePage from './pages/camera/CameraLivePage'
 import CameraPlaybackPage from './pages/camera/CameraPlaybackPage'
 import CameraConfigPage from './pages/camera/CameraConfigPage'
 import CameraStatusPage from './pages/camera/CameraStatusPage'
+import CameraExportPage from './pages/camera/CameraExportPage'
+import DariusReportPage from './pages/darius/DariusReportPage'
 
 // === Árfolyam-kezelés modul ===
 import RateCreationDashboard from './pages/ratemanagement/RateCreationDashboard'
@@ -323,6 +325,8 @@ export default function App() {
           <Route path="/camera/playback" element={<CameraPlaybackPage />} />
           <Route path="/camera/config" element={<CameraConfigPage />} />
           <Route path="/camera/status" element={<CameraStatusPage />} />
+          <Route path="/camera/export" element={<CameraExportPage />} />
+          <Route path="/darius" element={<DariusReportPage />} />
 
           {/* === Árfolyam-kezelés Routes === */}
           <Route path="/rate-management" element={<RateCreationDashboard />} />
