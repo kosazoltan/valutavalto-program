@@ -1,4 +1,4 @@
--- V104: Denomination category support
+-- V105: Denomination category support
 -- A napi zárás különböző kasszatípusokra (EVENING, HANDLING_FEE, WU, stb.)
 -- külön-külön címletezést igényel. Eddig ez nem volt nyilvántartva oszlop szinten.
 

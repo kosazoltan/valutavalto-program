@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.dto.transfer;
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import lombok.*;
 import java.math.BigDecimal;
@@ -13,6 +14,7 @@ public class CreateTransferDto {
     private BigDecimal hufValue;
     @NotNull private String transferType;
     /** Átadás iránya: F, U, UF, FF (default: UF) */
+    @Pattern(regexp = "^(F|U|UF|FF)$", message = "Az irány csak F, U, UF vagy FF lehet!")
     private String direction;
     private String notes;
 }

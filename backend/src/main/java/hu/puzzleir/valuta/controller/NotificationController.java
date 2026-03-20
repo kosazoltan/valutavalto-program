@@ -25,34 +25,40 @@ public class NotificationController {
     private final NotificationService service;
 
     @GetMapping
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<Notification>> list(Authentication auth) {
         return ResponseEntity.ok(service.listByUser(getUserId(auth)));
     }
 
     @GetMapping("/unread")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<Notification>> getUnread(Authentication auth) {
         return ResponseEntity.ok(service.getUnread(getUserId(auth)));
     }
 
     @GetMapping("/unread-count")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Integer>> getUnreadCount(Authentication auth) {
         int count = service.getUnreadCount(getUserId(auth));
         return ResponseEntity.ok(Map.of("count", count));
     }
 
     @PostMapping("/{id}/mark-read")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> markAsRead(@PathVariable UUID id) {
         service.markAsRead(id);
         return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/{id}/read")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> markRead(@PathVariable UUID id) {
         service.markAsRead(id);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/mark-all-read")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> markAllAsRead(Authentication auth) {
         service.markAllAsRead(getUserId(auth));
         return ResponseEntity.noContent().build();

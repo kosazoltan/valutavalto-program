@@ -45,6 +45,7 @@ public class ExchangeRateController {
      * GET /api/v1/exchange-rates/current
      */
     @GetMapping({"", "/current"})
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<ExchangeRateDto>> getAllCurrentRates() {
         List<ExchangeRate> rates = exchangeRateService.getAllCurrentRates();
         List<ExchangeRateDto> dtos = rates.stream()
@@ -59,6 +60,7 @@ public class ExchangeRateController {
      * GET /api/v1/exchange-rates/pos-current
      */
     @GetMapping("/pos-current")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<CurrentRateDto>> getCurrentRatesForPos() {
         List<ExchangeRate> rates = exchangeRateService.getAllCurrentRates();
         List<CurrentRateDto> dtos = rates.stream()
@@ -73,6 +75,7 @@ public class ExchangeRateController {
      * GET /api/v1/exchange-rates/currency/{currencyId}
      */
     @GetMapping("/currency/{currencyId}")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<ExchangeRateDto> getRateByCurrencyId(@PathVariable Long currencyId) {
         ExchangeRate rate = exchangeRateService.getCurrentRate(currencyId);
         return ResponseEntity.ok(exchangeRateMapper.toDto(rate));
@@ -84,6 +87,7 @@ public class ExchangeRateController {
      * GET /api/v1/exchange-rates/code/{currencyCode}
      */
     @GetMapping("/code/{currencyCode}")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<ExchangeRateDto> getRateByCurrencyCode(@PathVariable String currencyCode) {
         ExchangeRate rate = exchangeRateService.getCurrentRateByCode(currencyCode);
         return ResponseEntity.ok(exchangeRateMapper.toDto(rate));
@@ -95,6 +99,7 @@ public class ExchangeRateController {
      * GET /api/v1/exchange-rates/buy-rate?currencyId=...&hufAmount=...
      */
     @GetMapping("/buy-rate")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<BigDecimal> getBuyRateForAmount(
             @RequestParam Long currencyId,
             @RequestParam BigDecimal hufAmount) {
@@ -108,6 +113,7 @@ public class ExchangeRateController {
      * GET /api/v1/exchange-rates/sell-rate?currencyId=...&hufAmount=...
      */
     @GetMapping("/sell-rate")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<BigDecimal> getSellRateForAmount(
             @RequestParam Long currencyId,
             @RequestParam BigDecimal hufAmount) {
