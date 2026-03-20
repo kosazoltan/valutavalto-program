@@ -23,6 +23,9 @@ import {
   Sun,
   Loader2,
   HardDrive,
+  FileSpreadsheet,
+  Camera,
+  Download,
 } from 'lucide-react'
 
 // Menüpontok csoportosítva (professzionális sidebar struktúra)
@@ -53,12 +56,22 @@ const menuGroups = [
     items: [
       { path: '/cashdesk', label: 'Pénztár', icon: Wallet },
       { path: '/reports', label: 'Riportok', icon: FileText },
+      { path: '/darius', label: 'Darius jelentések', icon: FileSpreadsheet },
     ]
   },
   {
     label: 'Értéktár',
     items: [
       { path: '/treasury', label: 'Értéktári Dashboard', icon: LayoutDashboard },
+    ]
+  },
+  {
+    label: 'Kamera',
+    items: [
+      { path: '/camera/live', label: 'Élő kép', icon: Camera },
+      { path: '/camera/playback', label: 'Visszajátszás', icon: Camera },
+      { path: '/camera/export', label: 'Export & Custody', icon: Download },
+      { path: '/camera/status', label: 'Állapot', icon: Camera },
     ]
   },
   {
