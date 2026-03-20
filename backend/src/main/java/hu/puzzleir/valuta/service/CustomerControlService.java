@@ -8,12 +8,15 @@ import hu.puzzleir.valuta.entity.CustomerScreeningLog;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.repository.CustomerRestrictionRepository;
 import hu.puzzleir.valuta.repository.CustomerScreeningLogRepository;
+import hu.puzzleir.valuta.repository.TransactionRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -27,6 +30,7 @@ public class CustomerControlService {
 
     private final CustomerRestrictionRepository restrictionRepository;
     private final CustomerScreeningLogRepository screeningLogRepository;
+    private final TransactionRepository transactionRepository;
 
     // 15M HUF/év limit
     private static final BigDecimal ANNUAL_LIMIT_HUF = new BigDecimal("15000000");
@@ -88,14 +92,29 @@ public class CustomerControlService {
     }
 
     /**
-     * Éves tranzakció összeg lekérdezése (HUF)
-     * TODO(integration): Integráció a Transaction repository-val — TransactionRepository.sumHufByCustomerAndYear() szükséges
+     * Éves tranzakció összeg lekérdezése (HUF).
+     *
+     * Legacy: BIGCTRL.DLL — éves kumulatív összeg.
+     * A TransactionRepository.sumCustomerAnnualTotal() JPQL lekérdezést használja,
+     * amely COMPLETED státuszú tranzakciókat összegzi a megadott évre.
      */
     @Transactional(readOnly = true)
     public BigDecimal getAnnualTransactionTotal(Long customerId, int year) {
         log.debug("Éves összeg lekérdezés - ügyfél: {}, év: {}", customerId, year);
-        // TODO(integration): SELECT SUM(huf_amount) FROM transaction WHERE customer_id = :customerId AND YEAR(transaction_date) = :year
-        return BigDecimal.ZERO;
+
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        LocalDate startDate = LocalDate.of(year, 1, 1);
+        LocalDate endDate = LocalDate.of(year, 12, 31);
+
+        BigDecimal total = transactionRepository.sumCustomerAnnualTotal(
+                companyId,
+                String.valueOf(customerId),
+                startDate,
+                endDate
+        );
+
+        log.debug("Éves összeg: ügyfél={}, év={}, összeg={} HUF", customerId, year, total);
+        return total != null ? total : BigDecimal.ZERO;
     }
 
     /**
