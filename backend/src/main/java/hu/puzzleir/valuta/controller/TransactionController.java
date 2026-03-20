@@ -184,6 +184,7 @@ public class TransactionController {
      * GET /api/v1/transactions?branchId=...&startDate=...&endDate=...&type=...
      */
     @GetMapping
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Page<TransactionDto>> searchTransactions(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,

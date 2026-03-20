@@ -195,10 +195,12 @@ class TransactionServiceIdentificationTest {
         @Test
         @DisplayName("executeSell: customExchangeRate megadva → egyedi árfolyam kerül alkalmazásra")
         void executeSell_customExchangeRate_applied() {
+                // Legacy ARFVALT szabály: eladásnál az egyedi árfolyam ALACSONYABB kell legyen
+                // az aktív eladási árfolyamnál (400.00), tehát 350.00 érvényes
                 TransactionService.SellRequest request = TransactionService.SellRequest.builder()
                                 .currencyId(2L)
                                 .currencyAmount(new BigDecimal("100"))
-                                .customExchangeRate(new BigDecimal("500.00"))
+                                .customExchangeRate(new BigDecimal("350.00"))
                                 .build();
 
                 transactionService.executeSell(request);
@@ -207,8 +209,8 @@ class TransactionServiceIdentificationTest {
                 verify(transactionRepository, atLeastOnce()).save(transactionCaptor.capture());
                 Transaction saved = transactionCaptor.getValue();
 
-                assertThat(saved.getExchangeRate()).isEqualByComparingTo("500.00");
-                assertThat(saved.getHufAmount()).isEqualByComparingTo("50000");
+                assertThat(saved.getExchangeRate()).isEqualByComparingTo("350.00");
+                assertThat(saved.getHufAmount()).isEqualByComparingTo("35000");
         }
 
         @Test

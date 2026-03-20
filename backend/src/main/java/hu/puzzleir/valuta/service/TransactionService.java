@@ -1255,6 +1255,20 @@ public class TransactionService {
             if (customExchangeRate.compareTo(BigDecimal.ZERO) <= 0) {
                 throw new ValidationException("Az egyedi vételi árfolyamnak pozitívnak kell lennie!");
             }
+            // Legacy ARFVALT szabály: vételnél az egyedi árfolyam
+            // NAGYOBB kell legyen az aktív vételi árfolyamnál (ügyfélnek előnyösebb)
+            // ÉS KISEBB kell legyen az elszámolási (MNB) árfolyamnál (cégnek ne legyen veszteséges)
+            BigDecimal activeBuyRate = rate.getBaseBuyRate();
+            if (customExchangeRate.compareTo(activeBuyRate) < 0) {
+                throw new ValidationException(
+                    String.format("Az egyedi vételi árfolyam (%s) nem lehet alacsonyabb az aktív vételi árfolyamnál (%s)!",
+                        customExchangeRate, activeBuyRate));
+            }
+            if (rate.getOfficialRate() != null && customExchangeRate.compareTo(rate.getOfficialRate()) > 0) {
+                throw new ValidationException(
+                    String.format("Az egyedi vételi árfolyam (%s) nem lépheti túl az MNB elszámolási árfolyamot (%s)!",
+                        customExchangeRate, rate.getOfficialRate()));
+            }
             return customExchangeRate;
         }
 
@@ -1266,6 +1280,20 @@ public class TransactionService {
         if (customExchangeRate != null) {
             if (customExchangeRate.compareTo(BigDecimal.ZERO) <= 0) {
                 throw new ValidationException("Az egyedi eladási árfolyamnak pozitívnak kell lennie!");
+            }
+            // Legacy ARFVALT szabály: eladásnál az egyedi árfolyam
+            // KISEBB kell legyen az aktív eladási árfolyamnál (ügyfélnek előnyösebb)
+            // ÉS NAGYOBB kell legyen az elszámolási (MNB) árfolyamnál (cégnek ne legyen veszteséges)
+            BigDecimal activeSellRate = rate.getBaseSellRate();
+            if (customExchangeRate.compareTo(activeSellRate) > 0) {
+                throw new ValidationException(
+                    String.format("Az egyedi eladási árfolyam (%s) nem lehet magasabb az aktív eladási árfolyamnál (%s)!",
+                        customExchangeRate, activeSellRate));
+            }
+            if (rate.getOfficialRate() != null && customExchangeRate.compareTo(rate.getOfficialRate()) < 0) {
+                throw new ValidationException(
+                    String.format("Az egyedi eladási árfolyam (%s) nem lehet alacsonyabb az MNB elszámolási árfolyamnál (%s)!",
+                        customExchangeRate, rate.getOfficialRate()));
             }
             return customExchangeRate;
         }

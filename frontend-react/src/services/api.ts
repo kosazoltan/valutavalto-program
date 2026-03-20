@@ -3539,6 +3539,32 @@ export async function loadPersistedToken(): Promise<string | null> {
   return window.localStorage.getItem(WEB_AUTH_TOKEN_KEY)
 }
 
+// ================== BRANCH API ==================
+
+export interface BranchInfo {
+  id: string
+  code: string
+  name: string
+  companyId?: string
+  city?: string
+  isActive?: boolean
+}
+
+export const branchApi = {
+  list: async (): Promise<BranchInfo[]> => {
+    const response = await api.get<BranchInfo[]>('/branches')
+    return response.data
+  },
+  listActive: async (): Promise<BranchInfo[]> => {
+    const response = await api.get<BranchInfo[]>('/branches?activeOnly=true')
+    return response.data
+  },
+  getById: async (id: string): Promise<BranchInfo> => {
+    const response = await api.get<BranchInfo>(`/branches/${id}`)
+    return response.data
+  },
+}
+
 export function hasPersistedToken(): boolean {
   if (window.electronAPI) {
     return true

@@ -15,6 +15,7 @@ import {
 import {
   transferApi,
   currencyApi,
+  branchApi,
   Transfer,
   CreateTransferRequest,
   Currency
@@ -100,12 +101,8 @@ export default function TransferPage() {
       setPendingCount(count + localPending.length)
       setCurrencies(currencyData)
 
-      // TODO: Load branches from API
-      setBranches([
-        { id: 'branch-1', code: 'BP01', name: 'Budapest Központi' },
-        { id: 'branch-2', code: 'BP02', name: 'Budapest Nyugati' },
-        { id: 'branch-3', code: 'BP03', name: 'Budapest Keleti' }
-      ])
+      const branchData = await branchApi.listActive()
+      setBranches(branchData.map(b => ({ id: b.id, code: b.code, name: b.name })))
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {
