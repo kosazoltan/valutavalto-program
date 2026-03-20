@@ -49,7 +49,7 @@ export async function initDatabase(): Promise<void> {
 
     const wasmPath = resolveWasmPath();
 
-    const wasmBinary = fs.readFileSync(wasmPath);
+    const wasmBinary = fs.readFileSync(wasmPath) as unknown as ArrayBuffer;
     const SQL = await initSqlJs({ wasmBinary });
 
     // Ha létezik a DB fájl, betöltjük

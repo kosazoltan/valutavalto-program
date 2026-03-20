@@ -592,7 +592,7 @@ function escHtml(str: string): string {
 // ============================================================================
 
 /** A konfig kulcs, amiben a preferált nyomtató neve van tárolva (SQLite config). */
-const _PRINTER_CONFIG_KEY = 'printer.deviceName';
+export const PRINTER_CONFIG_KEY = 'printer.deviceName';
 
 /**
  * Jövőbeli USB hőnyomtató integráció.

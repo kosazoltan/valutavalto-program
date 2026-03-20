@@ -19,6 +19,5 @@
     "resolveJsonModule": true,
     "baseUrl": "."
   },
-  "include": ["electron"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["electron"]
 }
