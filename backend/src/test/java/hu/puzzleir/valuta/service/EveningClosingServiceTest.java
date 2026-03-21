@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.config.IntegrationTransportProperties;
 import hu.puzzleir.valuta.dto.eveningclosing.*;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.entity.Currency;
@@ -46,6 +47,8 @@ class EveningClosingServiceTest {
     @Mock private ReservationRepository reservationRepository;
     @Mock private EveningSyncLogRepository eveningSyncLogRepository;
     @Mock private SystemParameterService systemParameterService;
+    @Mock private IntegrationTransportProperties integrationTransportProperties;
+    @Mock private FileTransportService fileTransportService;
 
     private static final UUID BRANCH_UUID = UUID.randomUUID();
     private static final UUID COMPANY_UUID = UUID.randomUUID();

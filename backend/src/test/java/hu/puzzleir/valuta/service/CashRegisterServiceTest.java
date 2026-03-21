@@ -4,9 +4,11 @@ import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.dto.cashregister.CashRegisterEventDto;
 import hu.puzzleir.valuta.dto.cashregister.CashRegisterReceiptRequest;
+import hu.puzzleir.valuta.dto.nav.NavSendResult;
 import hu.puzzleir.valuta.entity.CashRegisterEvent;
 import hu.puzzleir.valuta.entity.CashRegisterEventType;
 import hu.puzzleir.valuta.repository.CashRegisterEventRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,7 +40,21 @@ class CashRegisterServiceTest {
     @Mock
     private BranchRepository branchRepository;
 
+    @Mock
+    private NavIntegrationService navIntegrationService;
+
+    @Mock
+    private SystemParameterService systemParameterService;
+
     private static final UUID BRANCH_ID = UUID.randomUUID();
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(systemParameterService.getValue("nav.com-port")).thenReturn("COM1");
+        lenient().when(navIntegrationService.sendQrCode(anyString(), anyString())).thenReturn(true);
+        lenient().when(navIntegrationService.sendTransaction(anyLong(), anyString())).thenReturn(
+                NavSendResult.builder().success(true).receiptNumber("R-2026-0001").build());
+    }
 
     private Branch createBranch() {
         Branch b = new Branch();

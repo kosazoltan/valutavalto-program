@@ -187,7 +187,6 @@ function Invoke-CheckWithTimeout {
     $timeoutMs = [Math]::Max(1, $TimeoutSeconds) * 1000
     $stdout = ""
     $stderr = ""
-    $timedOut = $false
     $stdoutTemp = [System.IO.Path]::GetTempFileName()
     $stderrTemp = [System.IO.Path]::GetTempFileName()
 
@@ -205,7 +204,6 @@ function Invoke-CheckWithTimeout {
 
         if (-not $proc.WaitForExit($timeoutMs)) {
             try { $proc.Kill($true) } catch {}
-            $timedOut = $true
             $result.status = "BLOCKED"
             $result.note = "Timeout after $TimeoutSeconds seconds"
         }
@@ -349,6 +347,7 @@ $hasElectron = Test-Path -LiteralPath (Join-Path $electronDir "package.json")
 $hasPython = Get-ChildItem -Path $RepoRoot -Recurse -File -Include "requirements.txt", "pyproject.toml", "Pipfile" -ErrorAction SilentlyContinue |
     Where-Object { -not (Test-IgnoredSecurityPath -FullPath $_.FullName) } |
     Select-Object -First 1
+$pythonDependencyFile = if ($hasPython) { $hasPython.FullName } else { $null }
 
 $rgExcludes = Get-RgExcludeArgs
 
@@ -423,20 +422,25 @@ if (Test-Path -LiteralPath $electronDir) {
 }
 
 if ($hasPython) {
+    $pythonDependencyFileForCmd = $pythonDependencyFile -replace '"', '""'
+    $pythonProbeCommand = "`$env:PYTHONIOENCODING='utf-8'; python -m pip_audit --version"
+
     $results.Add((Invoke-OptionalCheckWithTimeout `
         -Name "python_pip_audit" `
         -WorkingDir $RepoRoot `
-        -Command "pip-audit --desc --format=json" `
-        -ProbeCommand "pip-audit --version" `
+        -Command ('set PYTHONIOENCODING=utf-8 && python -m pip_audit --desc --format=json -r "{0}"' -f $pythonDependencyFileForCmd) `
+        -ProbeCommand $pythonProbeCommand `
         -TimeoutSeconds $ScannerTimeoutSec `
+        -DisplayCommand ('python -m pip_audit --desc --format=json -r "{0}"' -f $pythonDependencyFileForCmd) `
         -OutputFile (Join-Path $reportDir "python_pip_audit.txt")))
 
     $results.Add((Invoke-OptionalCheckWithTimeout `
         -Name "python_safety_check" `
         -WorkingDir $RepoRoot `
-        -Command "safety check --json" `
-        -ProbeCommand "safety --version" `
+        -Command ('set PYTHONIOENCODING=utf-8 && python -m safety check -r "{0}" --json' -f $pythonDependencyFileForCmd) `
+        -ProbeCommand "python -m safety --version" `
         -TimeoutSeconds $ScannerTimeoutSec `
+        -DisplayCommand ('python -m safety check -r "{0}" --json' -f $pythonDependencyFileForCmd) `
         -OutputFile (Join-Path $reportDir "python_safety_check.txt")))
 }
 

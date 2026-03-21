@@ -196,8 +196,9 @@ public class CameraExportService {
                         hash.getSequenceNumber(), hash.getFileHash().substring(0, 12));
                     Path targetFile = exportDir.resolve(targetFileName);
 
-                    // Visszafejtés
-                    if (encryptionService.isEncryptionEnabled()) {
+                    // Visszafejtés csak titkosított forrás esetén; vegyes állománykészletet is kezelünk.
+                    boolean encryptedSource = sourceFile.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".enc");
+                    if (encryptionService.isEncryptionEnabled() && encryptedSource) {
                         encryptionService.decryptFile(sourceFile, targetFile);
                     } else {
                         Files.copy(sourceFile, targetFile);

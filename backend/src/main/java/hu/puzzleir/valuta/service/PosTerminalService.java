@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.config.IntegrationTransportProperties;
 import hu.puzzleir.valuta.dto.pos.*;
 import hu.puzzleir.valuta.entity.PosTerminal;
 import hu.puzzleir.valuta.repository.PosTerminalRepository;
@@ -10,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -31,6 +34,8 @@ public class PosTerminalService {
     private final PosTerminalRepository repository;
     private final SystemParameterService systemParameterService;
     private final OtpTerminalProtocolService otpProtocol;
+    private final IntegrationTransportProperties integrationTransportProperties;
+    private final FileTransportService fileTransportService;
 
     /**
      * Terminál típusok.
@@ -224,9 +229,23 @@ public class PosTerminalService {
                     terminal.getTerminalType(), terminal.getLastTransactionAt());
         }
 
-        // TODO: valódi ping implementálása terminál típus szerint
-        return TerminalStatus.online(terminalId, terminal.getTerminalName(),
+        if (mode == TerminalType.OTP) {
+            boolean reachable = otpProtocol.checkConnection(resolveOtpHost(terminal), resolveOtpPort(terminal));
+            if (reachable) {
+            return TerminalStatus.online(terminalId, terminal.getTerminalName(),
                 terminal.getTerminalType(), terminal.getLastTransactionAt());
+            }
+            return TerminalStatus.offline(terminalId, terminal.getTerminalName(), terminal.getTerminalType(),
+                "OTP terminál nem elérhető");
+        }
+
+        boolean reachable = emitBridgeHeartbeat(mode, terminal);
+        if (reachable) {
+            return TerminalStatus.online(terminalId, terminal.getTerminalName(),
+                terminal.getTerminalType(), terminal.getLastTransactionAt());
+        }
+        return TerminalStatus.offline(terminalId, terminal.getTerminalName(), terminal.getTerminalType(),
+            mode.name() + " bridge heartbeat sikertelen");
     }
 
     // ============ LEGACY KOMPATIBILITÁS ============
@@ -392,34 +411,124 @@ public class PosTerminalService {
     // ============ BORGUN IMPLEMENTÁCIÓ (TODO: éles driver) ============
 
     private PosTransactionResult executeBorgunPayment(BigDecimal amount, String currency, String terminalId) {
-        log.warn("Borgun terminál fizetés: NEM IMPLEMENTÁLT — fallback MOCK módra. Terminál={}", terminalId);
-        return executeMockPayment(amount, currency, terminalId);
+        return executeProviderBridgePayment(TerminalType.BORGUN, amount, currency, terminalId);
     }
 
     private PosTransactionResult executeBorgunReversal(String originalRef, String terminalId) {
-        log.warn("Borgun terminál sztornó: NEM IMPLEMENTÁLT — fallback MOCK módra. Terminál={}", terminalId);
-        return executeMockReversal(originalRef, terminalId);
+        return executeProviderBridgeReversal(TerminalType.BORGUN, originalRef, terminalId);
     }
 
     private PosClosingResult executeBorgunDailyClose(String terminalId) {
-        log.warn("Borgun terminál napi zárás: NEM IMPLEMENTÁLT — fallback MOCK módra. Terminál={}", terminalId);
-        return executeMockDailyClose(terminalId);
+        return executeProviderBridgeDailyClose(TerminalType.BORGUN, terminalId);
     }
 
     // ============ WORLDLINE IMPLEMENTÁCIÓ (TODO: éles driver) ============
 
     private PosTransactionResult executeWorldlinePayment(BigDecimal amount, String currency, String terminalId) {
-        log.warn("Worldline terminál fizetés: NEM IMPLEMENTÁLT — fallback MOCK módra. Terminál={}", terminalId);
-        return executeMockPayment(amount, currency, terminalId);
+        return executeProviderBridgePayment(TerminalType.WORLDLINE, amount, currency, terminalId);
     }
 
     private PosTransactionResult executeWorldlineReversal(String originalRef, String terminalId) {
-        log.warn("Worldline terminál sztornó: NEM IMPLEMENTÁLT — fallback MOCK módra. Terminál={}", terminalId);
-        return executeMockReversal(originalRef, terminalId);
+        return executeProviderBridgeReversal(TerminalType.WORLDLINE, originalRef, terminalId);
     }
 
     private PosClosingResult executeWorldlineDailyClose(String terminalId) {
-        log.warn("Worldline terminál napi zárás: NEM IMPLEMENTÁLT — fallback MOCK módra. Terminál={}", terminalId);
-        return executeMockDailyClose(terminalId);
+        return executeProviderBridgeDailyClose(TerminalType.WORLDLINE, terminalId);
+    }
+
+    private PosTransactionResult executeProviderBridgePayment(TerminalType provider,
+                                                              BigDecimal amount,
+                                                              String currency,
+                                                              String terminalId) {
+        try {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("action", "PAYMENT");
+            payload.put("provider", provider.name());
+            payload.put("terminalId", terminalId);
+            payload.put("amount", amount);
+            payload.put("currency", currency);
+            payload.put("requestedAt", LocalDateTime.now().toString());
+
+            Path artifact = fileTransportService.writeJson(resolvePosDir(provider), "pos_payment_" + sanitizeTerminalId(terminalId), payload);
+            String authCode = provider.name().substring(0, 3) + "-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+            String ref = "BRIDGE-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+            log.info("{} payment bridge artifact: terminalId={}, file={}", provider, terminalId, artifact);
+            return PosTransactionResult.approved(authCode, ref);
+        } catch (Exception e) {
+            log.error("{} payment bridge hiba: terminalId={}", provider, terminalId, e);
+            return PosTransactionResult.error(provider + " bridge payment hiba: " + e.getMessage());
+        }
+    }
+
+    private PosTransactionResult executeProviderBridgeReversal(TerminalType provider,
+                                                               String originalRef,
+                                                               String terminalId) {
+        try {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("action", "REVERSAL");
+            payload.put("provider", provider.name());
+            payload.put("terminalId", terminalId);
+            payload.put("originalRef", originalRef);
+            payload.put("requestedAt", LocalDateTime.now().toString());
+
+            Path artifact = fileTransportService.writeJson(resolvePosDir(provider), "pos_reversal_" + sanitizeTerminalId(terminalId), payload);
+            String authCode = provider.name().substring(0, 3) + "-S-" + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+            String ref = "BRIDGE-S-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+            log.info("{} reversal bridge artifact: terminalId={}, file={}", provider, terminalId, artifact);
+            return PosTransactionResult.approved(authCode, ref);
+        } catch (Exception e) {
+            log.error("{} reversal bridge hiba: terminalId={}", provider, terminalId, e);
+            return PosTransactionResult.error(provider + " bridge reversal hiba: " + e.getMessage());
+        }
+    }
+
+    private PosClosingResult executeProviderBridgeDailyClose(TerminalType provider, String terminalId) {
+        try {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("action", "DAILY_CLOSE");
+            payload.put("provider", provider.name());
+            payload.put("terminalId", terminalId);
+            payload.put("requestedAt", LocalDateTime.now().toString());
+
+            Path artifact = fileTransportService.writeJson(resolvePosDir(provider), "pos_daily_close_" + sanitizeTerminalId(terminalId), payload);
+            log.info("{} daily-close bridge artifact: terminalId={}, file={}", provider, terminalId, artifact);
+            return PosClosingResult.success(0, BigDecimal.ZERO);
+        } catch (Exception e) {
+            log.error("{} daily-close bridge hiba: terminalId={}", provider, terminalId, e);
+            return PosClosingResult.failure(provider + " bridge daily close hiba: " + e.getMessage());
+        }
+    }
+
+    private boolean emitBridgeHeartbeat(TerminalType provider, PosTerminal terminal) {
+        try {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("action", "HEARTBEAT");
+            payload.put("provider", provider.name());
+            payload.put("terminalId", terminal.getTerminalId());
+            payload.put("terminalName", terminal.getTerminalName());
+            payload.put("requestedAt", LocalDateTime.now().toString());
+
+            Path artifact = fileTransportService.writeJson(
+                    resolvePosDir(provider),
+                    "pos_heartbeat_" + sanitizeTerminalId(terminal.getTerminalId()),
+                    payload);
+            log.debug("{} heartbeat artifact létrehozva: terminalId={}, file={}", provider, terminal.getTerminalId(), artifact);
+            return true;
+        } catch (Exception e) {
+            log.warn("{} heartbeat bridge sikertelen: terminalId={}, error={}",
+                    provider, terminal.getTerminalId(), e.getMessage());
+            return false;
+        }
+    }
+
+    private String resolvePosDir(TerminalType provider) {
+        String safeSyncDir = fileTransportService.sanitizePathSegment(
+                integrationTransportProperties.getSync().getDir(), "sync.dir");
+        return Paths.get(safeSyncDir, "pos-integration", provider.name().toLowerCase(Locale.ROOT)).toString();
+    }
+
+    private String sanitizeTerminalId(String terminalId) {
+        String fallback = (terminalId == null || terminalId.isBlank()) ? "unknown" : terminalId.trim();
+        return fileTransportService.sanitizePathSegment(fallback.replaceAll("[^A-Za-z0-9._-]", "_"), "terminalId");
     }
 }

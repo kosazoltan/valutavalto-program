@@ -18,6 +18,7 @@ import jakarta.annotation.PreDestroy;
 import java.awt.Dimension;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -36,6 +37,8 @@ public class CameraRecordingService {
     private final CameraConfigRepository cameraConfigRepository;
     private final CameraRecordingRepository recordingRepository;
     private final CameraStorageService storageService;
+    private final CameraEncryptionService encryptionService;
+    private final CameraHashChainService hashChainService;
 
     private final Map<String, Webcam> activeWebcams = new ConcurrentHashMap<>();
     private final Map<String, CameraRecording> activeRecordings = new ConcurrentHashMap<>();
@@ -204,12 +207,42 @@ public class CameraRecordingService {
     @Transactional
     public void finalizeRecording(CameraRecording recording) {
         recording.setEndTime(LocalDateTime.now());
-        recording.setStatus(CameraRecording.RecordingStatus.COMPLETED);
-        if (recording.getLocalFilePath() != null) {
-            recording.setFileSizeBytes(storageService.getFileSize(Path.of(recording.getLocalFilePath())));
+        if (recording.getLocalFilePath() == null || recording.getLocalFilePath().isBlank()) {
+            recording.setStatus(CameraRecording.RecordingStatus.ERROR);
+            recordingRepository.save(recording);
+            log.error("Szegmens lezárás sikertelen, hiányzó fájlútvonal: id={}", recording.getId());
+            return;
         }
-        recordingRepository.save(recording);
-        log.info("Szegmens lezarva: {} ({} bytes)", recording.getCameraId(), recording.getFileSizeBytes());
+
+        Path plainPath = Path.of(recording.getLocalFilePath());
+        Path finalizedPath = plainPath;
+
+        try {
+            if (!Files.exists(plainPath)) {
+                throw new IllegalStateException("Kamera szegmens fájl nem található: " + plainPath);
+            }
+
+            if (encryptionService.isEncryptionEnabled()
+                    && !plainPath.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".enc")) {
+                Path encryptedPath = plainPath.resolveSibling(plainPath.getFileName() + ".enc");
+                encryptionService.encryptFile(plainPath, encryptedPath);
+                Files.deleteIfExists(plainPath);
+                finalizedPath = encryptedPath;
+            }
+
+            recording.setLocalFilePath(finalizedPath.toString());
+            recording.setFileSizeBytes(storageService.getFileSize(finalizedPath));
+            recording.setStatus(CameraRecording.RecordingStatus.COMPLETED);
+            CameraRecording saved = recordingRepository.save(recording);
+
+            hashChainService.addToChain(saved, finalizedPath);
+            log.info("Szegmens lezarva: {} ({} bytes), hash-lánchoz hozzáadva",
+                    saved.getCameraId(), saved.getFileSizeBytes());
+        } catch (Exception e) {
+            recording.setStatus(CameraRecording.RecordingStatus.ERROR);
+            recordingRepository.save(recording);
+            log.error("Szegmens lezárás/kriptó/hash sikertelen: id={}", recording.getId(), e);
+        }
     }
 
     /**

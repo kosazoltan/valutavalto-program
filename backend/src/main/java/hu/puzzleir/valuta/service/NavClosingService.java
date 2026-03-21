@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.dto.nav.NavSendResult;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
@@ -39,6 +40,8 @@ public class NavClosingService {
     private final NavClosingRepository navClosingRepository;
     private final TransactionRepository transactionRepository;
     private final BranchRepository branchRepository;
+    private final NavIntegrationService navIntegrationService;
+    private final SystemParameterService systemParameterService;
 
     /**
      * ÁFA kulcs (27% — magyar szabályozás).
@@ -151,7 +154,6 @@ public class NavClosingService {
 
     /**
      * NAV zárás beküldése.
-     * Placeholder — a valós NAV API integráció későbbi fejlesztés.
      */
     public NavSubmissionResult submitToNav(UUID closingId) {
         NavClosing closing = navClosingRepository.findById(closingId)
@@ -162,13 +164,30 @@ public class NavClosingService {
                 "Csak CLOSED státuszú zárás küldhető be! Jelenlegi: " + closing.getStatus());
         }
 
-        log.info("NAV zárás beküldés (placeholder): closingId={}", closingId);
+        String comPort = resolveNavComPort();
+        long syntheticTransactionId = Math.abs(closingId.getLeastSignificantBits());
 
-        // Placeholder: szimulált sikeres beküldés
-        String refNumber = "NAV-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        NavSendResult sendResult = navIntegrationService.sendTransaction(syntheticTransactionId, comPort);
+        if (!sendResult.isSuccess()) {
+            throw new ValidationException("NAV beküldés sikertelen: " + sendResult.getError());
+        }
+
+        String qrPayload = buildNavQrPayload(closing);
+        boolean qrSent = navIntegrationService.sendQrCode(qrPayload, comPort);
+        if (!qrSent) {
+            throw new ValidationException("NAV QR payload küldés sikertelen");
+        }
+
+        String refNumber = sendResult.getReceiptNumber();
+        if (refNumber == null || refNumber.isBlank()) {
+            refNumber = navIntegrationService.receiveReceiptNumber(comPort);
+        }
+
         closing.setStatus(NavClosingStatus.SUBMITTED);
         closing.setNavReferenceNumber(refNumber);
         navClosingRepository.save(closing);
+
+        log.info("NAV zárás beküldve: closingId={}, comPort={}, ref={}", closingId, comPort, refNumber);
 
         return NavSubmissionResult.builder()
             .success(true)
@@ -243,5 +262,30 @@ public class NavClosingService {
         BigDecimal sellHuf = BigDecimal.ZERO;
         BigDecimal handlingFee = BigDecimal.ZERO;
         int txCount = 0;
+    }
+
+    private String resolveNavComPort() {
+        try {
+            String configured = systemParameterService.getValue("nav.com-port");
+            if (configured != null && !configured.isBlank()) {
+                return configured.trim();
+            }
+        } catch (Exception ignored) {
+            // Fallback handled below.
+        }
+        return "COM1";
+    }
+
+    private String buildNavQrPayload(NavClosing closing) {
+        return String.format(
+            Locale.ROOT,
+            "NAVCLOSE|id=%s|date=%s|type=%s|revenue=%s|expense=%s|fee=%s|vat=%s",
+            closing.getId(),
+            closing.getClosingDate(),
+            closing.getClosingType(),
+            closing.getTotalRevenue(),
+            closing.getTotalExpense(),
+            closing.getHandlingFeeTotal(),
+            closing.getVatAmount());
     }
 }

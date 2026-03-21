@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.config.IntegrationTransportProperties;
 import hu.puzzleir.valuta.dto.eveningclosing.*;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.*;
@@ -13,6 +14,8 @@ import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -52,6 +55,8 @@ public class EveningClosingService {
     private final ReservationRepository reservationRepository;
     private final EveningSyncLogRepository eveningSyncLogRepository;
     private final SystemParameterService systemParameterService;
+    private final IntegrationTransportProperties integrationTransportProperties;
+    private final FileTransportService fileTransportService;
 
     /** Maximum küldési próbálkozás */
     private static final int MAX_SEND_ATTEMPTS = 3;
@@ -156,16 +161,19 @@ public class EveningClosingService {
 
             try {
                 if (headquartersUrl == null || headquartersUrl.isBlank()) {
-                    // Mock mód: nincs központi szerver URL konfigurálva
-                    log.info("Esti zárás adatcsomag (MOCK küldés — nincs headquarters URL konfigurálva): " +
-                                    "branchId={}, datum={}, tranzakciók={}, checksum={}",
-                            pkg.getBranchId(), pkg.getDate(),
-                            pkg.getTransactions() != null ? pkg.getTransactions().size() : 0,
-                            pkg.getChecksum());
+                        Path artifact = writeEveningPackageArtifact(pkg);
+                        log.info("Esti zárás bridge artifact létrehozva (HQ URL nincs konfigurálva): " +
+                                        "branchId={}, datum={}, tranzakciók={}, checksum={}, artifact={}",
+                                pkg.getBranchId(),
+                                pkg.getDate(),
+                                pkg.getTransactions() != null ? pkg.getTransactions().size() : 0,
+                                pkg.getChecksum(),
+                                artifact);
 
                     syncLog.setStatus("EVENING_SYNC_DONE");
                     syncLog.setPackageChecksum(pkg.getChecksum());
                     syncLog.setCompletedAt(LocalDateTime.now());
+                        syncLog.setErrorMessage("BRIDGED_TO_MANAGED_ARTIFACT");
                     eveningSyncLogRepository.save(syncLog);
 
                     return DataSyncResult.success(pkg.getChecksum());
@@ -540,5 +548,26 @@ public class EveningClosingService {
     UUID uuidFromLong(Long id) {
         if (id == null) return null;
         return new UUID(0L, id);
+    }
+
+    private Path writeEveningPackageArtifact(DailyDataPackage pkg) throws Exception {
+        String safeSyncDir = fileTransportService.sanitizePathSegment(
+                integrationTransportProperties.getSync().getDir(), "sync.dir");
+        String branchSegment = fileTransportService.sanitizePathSegment(
+                String.valueOf(pkg.getBranchId()), "branchId");
+        String dateSegment = fileTransportService.sanitizePathSegment(
+                pkg.getDate().toString(), "reportDate");
+        String relativeDir = Paths.get(safeSyncDir, "evening-closing", branchSegment, dateSegment).toString();
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("action", "DAILY_REPORT");
+        payload.put("checksum", pkg.getChecksum());
+        payload.put("branchId", pkg.getBranchId());
+        payload.put("date", pkg.getDate());
+        payload.put("transactionCount", pkg.getTransactions() != null ? pkg.getTransactions().size() : 0);
+        payload.put("package", pkg);
+        payload.put("createdAt", LocalDateTime.now().toString());
+
+        return fileTransportService.writeJson(relativeDir, "evening_daily_report", payload);
     }
 }
