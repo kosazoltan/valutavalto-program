@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -35,4 +36,6 @@ public interface WuTransactionRepository extends JpaRepository<WuTransaction, UU
             @Param("companyId") UUID companyId,
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to);
+
+    Optional<WuTransaction> findFirstByMtcnAndCompanyIdOrderByTransactionDateDesc(String mtcn, UUID companyId);
 }

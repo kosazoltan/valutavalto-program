@@ -1,71 +1,63 @@
 package hu.puzzleir.valuta.controller;
 
+import hu.puzzleir.valuta.dto.wu.stub.WuStubRateResponse;
+import hu.puzzleir.valuta.dto.wu.stub.WuStubStatusResponse;
+import hu.puzzleir.valuta.dto.wu.stub.WuStubTransferRequest;
+import hu.puzzleir.valuta.entity.WuTransaction;
+import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.service.WesternUnionStubService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
+import java.util.List;
 
-/**
- * Western Union API stub â€” placeholder a WU integrĂˇciĂł szĂˇmĂˇra.
- *
- * Legacy: WUNION DLL â€” Western Union pĂ©nzĂˇtutalĂˇs kezelĂ©s.
- * A partner mĂˇr NEM aktĂ­v, de a kĂłd-struktĂşra fennmarad
- * arra az esetre, ha Ăşjra aktivĂˇlnĂˇk vagy mĂˇs ĂˇtutalĂˇsi
- * partnert integrĂˇlnak (MoneyGram, Ria, stb.).
- *
- * ĂLLAPOT: STUB â€” nincs Ă©lĹ‘ integrĂˇciĂł, minden endpoint
- * HTTP 501 Not Implemented vĂˇlaszt ad.
- */
 @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
 @RestController
 @RequestMapping("/api/v1/western-union-stub")
-@Tag(name = "Western Union (STUB)", description = "Western Union integrĂˇciĂł â€” jelenleg inaktĂ­v")
-@Slf4j
+@Tag(name = "Western Union (Compatibility)", description = "Western Union kompatibilitási endpointok adapteres belső flow-val")
+@Validated
+@RequiredArgsConstructor
 public class WesternUnionStubController {
 
+    private final WesternUnionStubService westernUnionStubService;
+
     @PostMapping("/send")
-    @Operation(summary = "[STUB] PĂ©nzkĂĽldĂ©s indĂ­tĂˇsa")
-    public ResponseEntity<Map<String, Object>> sendMoney(@Valid @RequestBody Map<String, Object> request) {
-        log.warn("Western Union STUB hĂ­vĂˇs: /send â€” partner inaktĂ­v");
-        return ResponseEntity.status(501).body(Map.of(
-                "status", "NOT_IMPLEMENTED",
-                "message", "Western Union integrĂˇciĂł jelenleg inaktĂ­v. Partner megszĹ±ntette az egyĂĽttmĹ±kĂ¶dĂ©st.",
-                "legacyModule", "WUNION.DLL"
-        ));
+    @Operation(summary = "[COMPAT] Pénzküldés indítása")
+    public WuTransaction sendMoney(@Valid @RequestBody WuStubTransferRequest request) {
+        return westernUnionStubService.send(request);
     }
 
     @PostMapping("/receive")
-    @Operation(summary = "[STUB] PĂ©nz ĂˇtvĂ©tel")
-    public ResponseEntity<Map<String, Object>> receiveMoney(@Valid @RequestBody Map<String, Object> request) {
-        log.warn("Western Union STUB hĂ­vĂˇs: /receive â€” partner inaktĂ­v");
-        return ResponseEntity.status(501).body(Map.of(
-                "status", "NOT_IMPLEMENTED",
-                "message", "Western Union integrĂˇciĂł jelenleg inaktĂ­v."
-        ));
+    @Operation(summary = "[COMPAT] Pénz átvétel")
+    public WuTransaction receiveMoney(@Valid @RequestBody WuStubTransferRequest request) {
+        return westernUnionStubService.receive(request);
     }
 
     @GetMapping("/status/{mtcn}")
-    @Operation(summary = "[STUB] TranzakciĂł stĂˇtusz lekĂ©rdezĂ©s")
-    public ResponseEntity<Map<String, Object>> getStatus(@PathVariable String mtcn) {
-        log.warn("Western Union STUB hĂ­vĂˇs: /status/{} â€” partner inaktĂ­v", mtcn);
-        return ResponseEntity.status(501).body(Map.of(
-                "status", "NOT_IMPLEMENTED",
-                "mtcn", mtcn,
-                "message", "Western Union integrĂˇciĂł jelenleg inaktĂ­v."
-        ));
+    @Operation(summary = "[COMPAT] Tranzakció státusz lekérdezés")
+    public WuStubStatusResponse getStatus(
+            @PathVariable
+            @Pattern(regexp = "\\d{10}", message = "Az MTCN pontosan 10 számjegy lehet") String mtcn) {
+        if (mtcn == null || !mtcn.matches("\\d{10}")) {
+            throw new ValidationException("Az MTCN pontosan 10 számjegy lehet");
+        }
+        return westernUnionStubService.status(mtcn);
     }
 
     @GetMapping("/rates")
-    @Operation(summary = "[STUB] WU Ăˇrfolyamok lekĂ©rdezĂ©se")
-    public ResponseEntity<Map<String, Object>> getRates() {
-        return ResponseEntity.status(501).body(Map.of(
-                "status", "NOT_IMPLEMENTED",
-                "message", "Western Union Ăˇrfolyam szolgĂˇltatĂˇs nem elĂ©rhetĹ‘."
-        ));
+    @Operation(summary = "[COMPAT] WU árfolyamok lekérdezése")
+    public List<WuStubRateResponse> getRates() {
+        return westernUnionStubService.rates();
     }
 }
