@@ -1,0 +1,1 @@
+﻿Skipped: prerequisite missing for [python_pip_audit]. Probe: pip-audit --version

@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.service;
 import hu.puzzleir.valuta.config.IntegrationTransportProperties;
 import hu.puzzleir.valuta.dto.pos.*;
 import hu.puzzleir.valuta.entity.PosTerminal;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.repository.PosTerminalRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -56,7 +57,7 @@ public class PosTerminalService {
 
     public PosTerminal findById(UUID id) {
         return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("PosTerminal not found: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("PosTerminal not found: " + id));
     }
 
     public Optional<PosTerminal> findByTerminalId(String terminalId) {
@@ -82,7 +83,7 @@ public class PosTerminalService {
 
         // 1. Terminál konfiguráció lekérés
         PosTerminal terminal = repository.findByTerminalId(terminalId)
-                .orElseThrow(() -> new RuntimeException("POS terminál nem található: " + terminalId));
+                .orElseThrow(() -> new ResourceNotFoundException("POS terminál nem található: " + terminalId));
 
         if (!Boolean.TRUE.equals(terminal.getIsActive())) {
             return PosTransactionResult.error("POS terminál inaktív: " + terminalId);
@@ -133,7 +134,7 @@ public class PosTerminalService {
         log.info("POS sztornó indítása: eredeti ref={}, terminál={}", originalTransactionRef, terminalId);
 
         PosTerminal terminal = repository.findByTerminalId(terminalId)
-                .orElseThrow(() -> new RuntimeException("POS terminál nem található: " + terminalId));
+                .orElseThrow(() -> new ResourceNotFoundException("POS terminál nem található: " + terminalId));
 
         if (!Boolean.TRUE.equals(terminal.getIsActive())) {
             return PosTransactionResult.error("POS terminál inaktív: " + terminalId);
@@ -178,7 +179,7 @@ public class PosTerminalService {
         log.info("POS napi zárás indítása: terminál={}", terminalId);
 
         PosTerminal terminal = repository.findByTerminalId(terminalId)
-                .orElseThrow(() -> new RuntimeException("POS terminál nem található: " + terminalId));
+                .orElseThrow(() -> new ResourceNotFoundException("POS terminál nem található: " + terminalId));
 
         if (!Boolean.TRUE.equals(terminal.getIsActive())) {
             return PosClosingResult.failure("POS terminál inaktív: " + terminalId);

@@ -1,0 +1,1 @@
+﻿Skipped: prerequisite missing for [python_pip_audit]. Probe: $env:PYTHONIOENCODING='utf-8'; pip-audit --version

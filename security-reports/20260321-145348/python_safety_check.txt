@@ -1,0 +1,1 @@
+﻿Skipped: prerequisite missing for [python_safety_check]. Probe: safety --version

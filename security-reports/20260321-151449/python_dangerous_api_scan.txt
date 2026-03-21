@@ -1,0 +1,9 @@
+﻿Command: rg -n -S -g "!**/node_modules/**" -g "!**/dist/**" -g "!**/dist-electron/**" -g "!**/build/**" -g "!**/target/**" -g "!**/coverage/**" -g "!**/security-reports/**" -g "!**/.git/**" -g "!**/.venv/**" -g "!**/*.test.*" -g "!**/*.spec.*" "eval\(|exec\(|pickle\.loads\(|yaml\.load\(|subprocess\..*shell\s*=\s*True|DEBUG\s*=\s*True" scripts
+Status: PASSED
+Note: No matches found
+
+--- STDOUT ---
+
+
+--- STDERR ---
+

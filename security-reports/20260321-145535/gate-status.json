@@ -1,6 +1,6 @@
 ﻿{
-    "timestamp":  "2026-03-21T15:17:12.4873335+01:00",
-    "status":  "PASSED",
+    "timestamp":  "2026-03-21T14:56:01.4821448+01:00",
+    "status":  "FAILED",
     "stacks":  {
                    "java":  true,
                    "node":  true,
@@ -13,91 +13,91 @@
                        "check":  "nvd_api_key_check",
                        "status":  "PASSED",
                        "command":  "NVD API v2 test",
-                       "output":  "D:\\repo\\valutavalto-program\\security-reports\\20260321-151642\\nvd_api_key_check.txt",
+                       "output":  "D:\\repo\\valutavalto-program\\security-reports\\20260321-145535\\nvd_api_key_check.txt",
                        "note":  "HTTP 200"
                    },
                    {
                        "check":  "backend_dependency_check",
                        "status":  "PASSED",
                        "command":  "mvnw.cmd dependency-check:check -DfailBuildOnCVSS=7 -DnvdApiKey=***",
-                       "output":  "D:\\repo\\valutavalto-program\\security-reports\\20260321-151642\\backend_dependency_check.txt",
+                       "output":  "D:\\repo\\valutavalto-program\\security-reports\\20260321-145535\\backend_dependency_check.txt",
                        "note":  ""
                    },
                    {
                        "check":  "frontend_npm_audit_prod",
                        "status":  "PASSED",
                        "command":  "npm audit --omit=dev --audit-level=high",
-                       "output":  "D:\\repo\\valutavalto-program\\security-reports\\20260321-151642\\frontend_npm_audit_prod.txt",
+                       "output":  "D:\\repo\\valutavalto-program\\security-reports\\20260321-145535\\frontend_npm_audit_prod.txt",
                        "note":  ""
                    },
                    {
                        "check":  "electron_npm_audit_prod",
                        "status":  "PASSED",
                        "command":  "npm audit --omit=dev --audit-level=high",
-                       "output":  "D:\\repo\\valutavalto-program\\security-reports\\20260321-151642\\electron_npm_audit_prod.txt",
+                       "output":  "D:\\repo\\valutavalto-program\\security-reports\\20260321-145535\\electron_npm_audit_prod.txt",
                        "note":  ""
                    },
                    {
                        "check":  "python_pip_audit",
-                       "status":  "PASSED",
-                       "command":  "python -m pip_audit --desc --format=json -r \"D:\\repo\\valutavalto-program\\tools\\ztype\\requirements.txt\"",
-                       "output":  "D:\\repo\\valutavalto-program\\security-reports\\20260321-151642\\python_pip_audit.txt",
-                       "note":  ""
+                       "status":  "BLOCKED",
+                       "command":  "pip-audit --desc --format=json",
+                       "output":  "D:\\repo\\valutavalto-program\\security-reports\\20260321-145535\\python_pip_audit.txt",
+                       "note":  "Missing prerequisite"
                    },
                    {
                        "check":  "python_safety_check",
-                       "status":  "PASSED",
-                       "command":  "python -m safety check -r \"D:\\repo\\valutavalto-program\\tools\\ztype\\requirements.txt\" --json",
-                       "output":  "D:\\repo\\valutavalto-program\\security-reports\\20260321-151642\\python_safety_check.txt",
-                       "note":  ""
+                       "status":  "FAILED",
+                       "command":  "safety check --json",
+                       "output":  "D:\\repo\\valutavalto-program\\security-reports\\20260321-145535\\python_safety_check.txt",
+                       "note":  "Exit code 64"
                    },
                    {
                        "check":  "hardcoded_secrets_scan",
                        "status":  "PASSED",
                        "command":  "rg -n -P -S -g \"!**/node_modules/**\" -g \"!**/dist/**\" -g \"!**/dist-electron/**\" -g \"!**/build/**\" -g \"!**/target/**\" -g \"!**/coverage/**\" -g \"!**/security-reports/**\" -g \"!**/.git/**\" -g \"!**/.venv/**\" -g \"!**/*.test.*\" -g \"!**/*.spec.*\" \"(?i)(password|passwd|secret|api[_-]?key|token|private[_-]?key|jwt[_-]?secret)[\"\u0027]?\\s*[:=]\\s*[\"\u0027][^\"\u0027]{6,}[\"\u0027]\" backend/src/main frontend-react/src penztar-client/electron scripts/security",
-                       "output":  "D:\\repo\\valutavalto-program\\security-reports\\20260321-151642\\hardcoded_secrets_scan.txt",
+                       "output":  "D:\\repo\\valutavalto-program\\security-reports\\20260321-145535\\hardcoded_secrets_scan.txt",
                        "note":  "No matches found"
                    },
                    {
                        "check":  "weak_crypto_scan",
                        "status":  "PASSED",
                        "command":  "rg -n -S -g \"!**/node_modules/**\" -g \"!**/dist/**\" -g \"!**/dist-electron/**\" -g \"!**/build/**\" -g \"!**/target/**\" -g \"!**/coverage/**\" -g \"!**/security-reports/**\" -g \"!**/.git/**\" -g \"!**/.venv/**\" -g \"!**/*.test.*\" -g \"!**/*.spec.*\" \"MD5|SHA-1|DES/|AES/ECB|ECB/PKCS5Padding|RC4|3DES\" backend/src/main frontend-react/src penztar-client/electron",
-                       "output":  "D:\\repo\\valutavalto-program\\security-reports\\20260321-151642\\weak_crypto_scan.txt",
+                       "output":  "D:\\repo\\valutavalto-program\\security-reports\\20260321-145535\\weak_crypto_scan.txt",
                        "note":  "No matches found"
                    },
                    {
                        "check":  "electron_dangerous_apis_scan",
                        "status":  "PASSED",
                        "command":  "rg -n -S -g \"!**/node_modules/**\" -g \"!**/dist/**\" -g \"!**/dist-electron/**\" -g \"!**/build/**\" -g \"!**/target/**\" -g \"!**/coverage/**\" -g \"!**/security-reports/**\" -g \"!**/.git/**\" -g \"!**/.venv/**\" -g \"!**/*.test.*\" -g \"!**/*.spec.*\" \"nodeIntegration\\s*:\\s*true|contextIsolation\\s*:\\s*false|sandbox\\s*:\\s*false|allowRunningInsecureContent\\s*:\\s*true|enableRemoteModule\\s*:\\s*true|eval\\(|new Function\\(\" penztar-client/electron frontend-react/src",
-                       "output":  "D:\\repo\\valutavalto-program\\security-reports\\20260321-151642\\electron_dangerous_apis_scan.txt",
+                       "output":  "D:\\repo\\valutavalto-program\\security-reports\\20260321-145535\\electron_dangerous_apis_scan.txt",
                        "note":  "No matches found"
                    },
                    {
                        "check":  "sqli_pattern_scan",
                        "status":  "PASSED",
                        "command":  "rg -n -P -S -g \"!**/node_modules/**\" -g \"!**/dist/**\" -g \"!**/dist-electron/**\" -g \"!**/build/**\" -g \"!**/target/**\" -g \"!**/coverage/**\" -g \"!**/security-reports/**\" -g \"!**/.git/**\" -g \"!**/.venv/**\" -g \"!**/*.test.*\" -g \"!**/*.spec.*\" \"create(Native)?Query\\s*\\([^\\n]*\\+|jdbcTemplate\\.(query|update|execute)\\s*\\([^\\n]*\\+|Runtime\\.getRuntime\\(\\)\\.exec|ProcessBuilder\\(\" backend/src/main/java",
-                       "output":  "D:\\repo\\valutavalto-program\\security-reports\\20260321-151642\\sqli_and_command_injection_patterns.txt",
+                       "output":  "D:\\repo\\valutavalto-program\\security-reports\\20260321-145535\\sqli_and_command_injection_patterns.txt",
                        "note":  "No matches found"
                    },
                    {
                        "check":  "react_xss_patterns_scan",
                        "status":  "PASSED",
                        "command":  "rg -n -S -g \"!**/node_modules/**\" -g \"!**/dist/**\" -g \"!**/dist-electron/**\" -g \"!**/build/**\" -g \"!**/target/**\" -g \"!**/coverage/**\" -g \"!**/security-reports/**\" -g \"!**/.git/**\" -g \"!**/.venv/**\" -g \"!**/*.test.*\" -g \"!**/*.spec.*\" \"dangerouslySetInnerHTML|eval\\(|new Function\\(|javascript:\" frontend-react/src",
-                       "output":  "D:\\repo\\valutavalto-program\\security-reports\\20260321-151642\\react_xss_patterns_scan.txt",
+                       "output":  "D:\\repo\\valutavalto-program\\security-reports\\20260321-145535\\react_xss_patterns_scan.txt",
                        "note":  "No matches found"
                    },
                    {
                        "check":  "node_dangerous_runtime_scan",
                        "status":  "PASSED",
                        "command":  "rg -n -S -g \"!**/node_modules/**\" -g \"!**/dist/**\" -g \"!**/dist-electron/**\" -g \"!**/build/**\" -g \"!**/target/**\" -g \"!**/coverage/**\" -g \"!**/security-reports/**\" -g \"!**/.git/**\" -g \"!**/.venv/**\" -g \"!**/*.test.*\" -g \"!**/*.spec.*\" \"child_process\\.exec\\(|eval\\(|new Function\\(|vm\\.runInNewContext\\(\" backend/src/main frontend-react/src penztar-client/electron",
-                       "output":  "D:\\repo\\valutavalto-program\\security-reports\\20260321-151642\\node_dangerous_runtime_scan.txt",
+                       "output":  "D:\\repo\\valutavalto-program\\security-reports\\20260321-145535\\node_dangerous_runtime_scan.txt",
                        "note":  "No matches found"
                    },
                    {
                        "check":  "python_dangerous_api_scan",
                        "status":  "PASSED",
                        "command":  "rg -n -S -g \"!**/node_modules/**\" -g \"!**/dist/**\" -g \"!**/dist-electron/**\" -g \"!**/build/**\" -g \"!**/target/**\" -g \"!**/coverage/**\" -g \"!**/security-reports/**\" -g \"!**/.git/**\" -g \"!**/.venv/**\" -g \"!**/*.test.*\" -g \"!**/*.spec.*\" \"eval\\(|exec\\(|pickle\\.loads\\(|yaml\\.load\\(|subprocess\\..*shell\\s*=\\s*True|DEBUG\\s*=\\s*True\" scripts",
-                       "output":  "D:\\repo\\valutavalto-program\\security-reports\\20260321-151642\\python_dangerous_api_scan.txt",
+                       "output":  "D:\\repo\\valutavalto-program\\security-reports\\20260321-145535\\python_dangerous_api_scan.txt",
                        "note":  "No matches found"
                    }
                ]

@@ -1,0 +1,9 @@
+﻿Command: rg -n -S -g "!**/node_modules/**" -g "!**/dist/**" -g "!**/dist-electron/**" -g "!**/build/**" -g "!**/target/**" -g "!**/coverage/**" -g "!**/security-reports/**" -g "!**/.git/**" -g "!**/.venv/**" -g "!**/*.test.*" -g "!**/*.spec.*" "dangerouslySetInnerHTML|eval\(|new Function\(|javascript:" frontend-react/src
+Status: PASSED
+Note: No matches found
+
+--- STDOUT ---
+
+
+--- STDERR ---
+

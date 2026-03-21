@@ -1,0 +1,12 @@
+﻿Command: pip-audit --desc --format=json -r "D:\repo\valutavalto-program\tools\ztype\requirements.txt"
+Status: FAILED
+Note: Exit code 1
+
+--- STDOUT ---
+
+
+--- STDERR ---
+Fatal Python error: preconfig_init_utf8_mode: invalid PYTHONUTF8 environment variable value
+Python runtime state: preinitializing
+
+
