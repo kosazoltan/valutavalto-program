@@ -1,0 +1,9 @@
+﻿Command: rg -n -S -g "!**/node_modules/**" -g "!**/dist/**" -g "!**/dist-electron/**" -g "!**/build/**" -g "!**/target/**" -g "!**/coverage/**" -g "!**/security-reports/**" -g "!**/.git/**" -g "!**/.venv/**" -g "!**/*.test.*" -g "!**/*.spec.*" "MD5|SHA-1|DES/|AES/ECB|ECB/PKCS5Padding|RC4|3DES" backend/src/main frontend-react/src penztar-client/electron
+Status: PASSED
+Note: No matches found
+
+--- STDOUT ---
+
+
+--- STDERR ---
+

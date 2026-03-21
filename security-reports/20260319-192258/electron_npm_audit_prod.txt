@@ -1,0 +1,10 @@
+﻿Command: npm audit --omit=dev --audit-level=high
+Status: PASSED
+Note: 
+
+--- STDOUT ---
+found 0 vulnerabilities
+
+
+--- STDERR ---
+
