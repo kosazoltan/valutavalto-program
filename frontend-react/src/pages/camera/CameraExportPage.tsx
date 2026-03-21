@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Download, Shield, CheckCircle, XCircle, Clock, Eye, AlertTriangle, ShieldCheck, FileText } from 'lucide-react'
 import { cameraExportApi, CameraExportRequest, ChainOfCustodyRecord, branchApi, BranchInfo } from '../../services/api'
+import { getErrorMessage } from '../../utils/errorHandling'
 
 const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
   REQUESTED: { label: 'Jóváhagyásra vár', color: 'bg-yellow-100 text-yellow-700', icon: Clock },
@@ -43,7 +44,7 @@ export default function CameraExportPage() {
     try {
       const res = await cameraExportApi.getByBranch(branchId)
       setRequests(res.data)
-    } catch (e: any) { setError(e?.response?.data?.message || e.message) }
+    } catch (err) { setError(getErrorMessage(err)) }
     finally { setLoading(false) }
   }, [])
 
@@ -70,14 +71,14 @@ export default function CameraExportPage() {
       setShowNewForm(false)
       loadPending()
       if (form.branchId) loadByBranch(form.branchId)
-    } catch (e: any) { setError(e?.response?.data?.message || e.message) }
+    } catch (err) { setError(getErrorMessage(err)) }
   }
 
   const handleApprove = async (id: string) => {
     try {
       const res = await cameraExportApi.approve(id)
       setSelected(res.data); loadPending(); loadCustody(id)
-    } catch (e: any) { setError(e?.response?.data?.message || e.message) }
+    } catch (err) { setError(getErrorMessage(err)) }
   }
 
   const handleReject = async (id: string) => {
@@ -86,14 +87,14 @@ export default function CameraExportPage() {
     try {
       const res = await cameraExportApi.reject(id, reason)
       setSelected(res.data); loadPending(); loadCustody(id)
-    } catch (e: any) { setError(e?.response?.data?.message || e.message) }
+    } catch (err) { setError(getErrorMessage(err)) }
   }
 
   const handleExecute = async (id: string) => {
     try {
       const res = await cameraExportApi.execute(id)
       setSelected(res.data); loadCustody(id)
-    } catch (e: any) { setError(e?.response?.data?.message || e.message) }
+    } catch (err) { setError(getErrorMessage(err)) }
   }
 
   const handleVerifyChain = async () => {
@@ -101,7 +102,7 @@ export default function CameraExportPage() {
     try {
       const res = await cameraExportApi.verifyChain(selected.branchId, selected.cameraId || '')
       setChainResult(res.data)
-    } catch (e: any) { setError(e?.response?.data?.message || e.message) }
+    } catch (err) { setError(getErrorMessage(err)) }
   }
 
   const StatusBadge = ({ status }: { status: string }) => {

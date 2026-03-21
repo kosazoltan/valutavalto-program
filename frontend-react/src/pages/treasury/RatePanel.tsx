@@ -121,7 +121,7 @@ export default function RatePanel() {
     } catch (err) {
       console.error('Manual rate submit error:', err)
     }
-  }, [manualCurrencyId, manualBuyRate, manualSellRate, fetchData])
+  }, [manualCurrencyId, manualBuyRate, manualSellRate, fetchData, rateRows])
 
   const handleEditRate = useCallback((code: string) => {
     setEditCurrency(code)

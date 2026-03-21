@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { FileSpreadsheet, CheckCircle, XCircle, Clock, RefreshCw, Send, ThumbsUp, AlertTriangle, Calendar } from 'lucide-react'
 import { dariusApi, DariusDailyReport, DariusMonthlyDto } from '../../services/api'
+import { getErrorMessage } from '../../utils/errorHandling'
 
 type Tab = 'daily' | 'monthly' | 'missing'
 
@@ -34,7 +35,7 @@ export default function DariusReportPage() {
     try {
       const res = await dariusApi.getRange(dateFrom, dateTo)
       setReports(res.data)
-    } catch (e: any) { setError(e?.response?.data?.message || e.message) }
+    } catch (err) { setError(getErrorMessage(err)) }
     finally { setLoading(false) }
   }, [dateFrom, dateTo])
 
@@ -44,7 +45,7 @@ export default function DariusReportPage() {
       const d = new Date(dateFrom)
       const res = await dariusApi.getMonthly(d.getFullYear(), d.getMonth() + 1)
       setMonthly(res.data)
-    } catch (e: any) { setError(e?.response?.data?.message || e.message) }
+    } catch (err) { setError(getErrorMessage(err)) }
     finally { setLoading(false) }
   }, [dateFrom])
 
@@ -53,7 +54,7 @@ export default function DariusReportPage() {
     try {
       const res = await dariusApi.getMissingDates(dateFrom, dateTo)
       setMissingDates(res.data)
-    } catch (e: any) { setError(e?.response?.data?.message || e.message) }
+    } catch (err) { setError(getErrorMessage(err)) }
     finally { setLoading(false) }
   }, [dateFrom, dateTo])
 
@@ -69,7 +70,7 @@ export default function DariusReportPage() {
       const res = await dariusApi.generate(generateDate)
       setSelected(res.data)
       loadReports()
-    } catch (e: any) { setError(e?.response?.data?.message || e.message) }
+    } catch (err) { setError(getErrorMessage(err)) }
     finally { setLoading(false) }
   }
 
@@ -77,21 +78,21 @@ export default function DariusReportPage() {
     try {
       const res = await dariusApi.approve(id)
       setSelected(res.data); loadReports()
-    } catch (e: any) { setError(e?.response?.data?.message || e.message) }
+    } catch (err) { setError(getErrorMessage(err)) }
   }
 
   const handleSubmit = async (id: string) => {
     try {
       const res = await dariusApi.submit(id)
       setSelected(res.data); loadReports()
-    } catch (e: any) { setError(e?.response?.data?.message || e.message) }
+    } catch (err) { setError(getErrorMessage(err)) }
   }
 
   const handleRetry = async () => {
     try {
       await dariusApi.retryFailed()
       loadReports()
-    } catch (e: any) { setError(e?.response?.data?.message || e.message) }
+    } catch (err) { setError(getErrorMessage(err)) }
   }
 
   const StatusBadge = ({ status }: { status: string }) => {

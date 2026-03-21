@@ -75,12 +75,14 @@ public class ErrorLog {
     private Instant lastSeenAt = Instant.now();
 
     @Column(name = "email_sent", nullable = false)
+    @Builder.Default
     private boolean emailSent = false;
 
     @Column(name = "email_sent_at")
     private Instant emailSentAt;
 
     @Column(name = "resolved", nullable = false)
+    @Builder.Default
     private boolean resolved = false;
 
     @Column(name = "resolved_at")

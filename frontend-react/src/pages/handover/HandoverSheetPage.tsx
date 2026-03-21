@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { FileText, Plus, Printer, CheckCircle, Search } from 'lucide-react'
 import { handoverSheetApi, HandoverSheet, cashDeskApi, CashDesk } from '../../services/api'
 import { toast } from '../../components/ui/toaster'
@@ -30,17 +30,7 @@ export default function HandoverSheetPage() {
     amounts: {}
   })
 
-  useEffect(() => {
-    void loadData()
-    void loadCashDesks()
-  }, [])
-
-  useEffect(() => {
-    filterSheets()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sheets, searchTerm, localPendingOperations, cashDesks])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -55,9 +45,9 @@ export default function HandoverSheetPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [electronQueueAvailable])
 
-  const loadCashDesks = async () => {
+  const loadCashDesks = useCallback(async () => {
     try {
       const data = await cashDeskApi.list()
       setCashDesks(data)
@@ -65,7 +55,17 @@ export default function HandoverSheetPage() {
       console.error('Pénztárak betöltési hiba:', err)
       setError('Hiba a pénztárak betöltésekor')
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    void loadData()
+    void loadCashDesks()
+  }, [loadData, loadCashDesks])
+
+  useEffect(() => {
+    filterSheets()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sheets, searchTerm, localPendingOperations, cashDesks])
 
   const filterSheets = () => {
     const cashDeskNames = new Map(cashDesks.map((desk) => [desk.id, desk.name]))

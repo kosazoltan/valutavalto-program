@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.repository;
 
 import hu.puzzleir.valuta.entity.Transaction;
+import hu.puzzleir.valuta.entity.TransactionStatus;
 import hu.puzzleir.valuta.entity.TransactionType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

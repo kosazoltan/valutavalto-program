@@ -15,10 +15,10 @@ export default function CameraLivePage() {
   const [cameras, setCameras] = useState<CameraStatus[]>([])
   const [selectedCamera, setSelectedCamera] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const imgRef = useRef<HTMLImageElement>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const localStreamRef = useRef<MediaStream | null>(null)
 
   const fetchCameraStatus = useCallback(async () => {
     try {
@@ -55,7 +55,7 @@ export default function CameraLivePage() {
     void fetchCameraStatus()
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
-      if (localStream) localStream.getTracks().forEach(t => t.stop())
+      if (localStreamRef.current) localStreamRef.current.getTracks().forEach(t => t.stop())
     }
   }, [fetchCameraStatus])
 
@@ -67,7 +67,7 @@ export default function CameraLivePage() {
     const startStream = async () => {
       try {
         // Elozo stream leallitasa
-        if (localStream) localStream.getTracks().forEach(t => t.stop())
+        if (localStreamRef.current) localStreamRef.current.getTracks().forEach(t => t.stop())
 
         stream = await navigator.mediaDevices.getUserMedia({
           video: selectedCamera.startsWith('cam-')
@@ -77,7 +77,7 @@ export default function CameraLivePage() {
         if (videoRef.current) {
           videoRef.current.srcObject = stream
         }
-        setLocalStream(stream)
+        localStreamRef.current = stream
       } catch (err) {
         console.error('Kamera stream hiba:', err)
       }
@@ -87,7 +87,6 @@ export default function CameraLivePage() {
     return () => {
       if (stream) stream.getTracks().forEach(t => t.stop())
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCamera])
 
   // Bongeszo: szerver stream (JPEG polling)

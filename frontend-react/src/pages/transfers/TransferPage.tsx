@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowRightLeft,
@@ -79,11 +79,7 @@ export default function TransferPage() {
   const [success, setSuccess] = useState<string | null>(null)
 
   // Load data
-  useEffect(() => {
-    void loadData()
-  }, [])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true)
       const [outgoing, incoming, pending, count, currencyData, localPending] = await Promise.all([
@@ -108,7 +104,11 @@ export default function TransferPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [electronQueueAvailable, worker])
+
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
 
   // Create new transfer
   const handleCreateTransfer = async () => {

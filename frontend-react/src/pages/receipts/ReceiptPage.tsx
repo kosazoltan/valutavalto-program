@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Receipt as ReceiptIcon, Search, Printer, Eye, Clock } from 'lucide-react'
 import { receiptApi, Receipt } from '../../services/api'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -22,30 +22,7 @@ export default function ReceiptPage() {
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null)
   const [selectedDraft, setSelectedDraft] = useState<PendingReceiptDraft | null>(null)
 
-  useEffect(() => {
-    let mounted = true
-
-    const load = async (): Promise<void> => {
-      await loadData()
-    }
-
-    load().catch(err => {
-      if (mounted) {
-        console.error('Failed to load receipts:', err)
-      }
-    })
-
-    return () => {
-      mounted = false
-    }
-  }, [])
-
-  useEffect(() => {
-    filterReceipts()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [receipts, searchTerm])
-
-  const loadData = async (): Promise<void> => {
+  const loadData = useCallback(async (): Promise<void> => {
     try {
       setLoading(true)
       const [data, drafts] = await Promise.all([
@@ -61,7 +38,16 @@ export default function ReceiptPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [worker])
+
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
+
+  useEffect(() => {
+    filterReceipts()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [receipts, searchTerm])
 
   const filterReceipts = (): void => {
     let filtered = receipts
