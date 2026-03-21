@@ -24,6 +24,7 @@ public class ErrorLog {
     private String errorType;
 
     @Column(name = "severity", length = 10, nullable = false)
+    @Builder.Default
     private String severity = "ERROR";
 
     @Column(name = "message", columnDefinition = "TEXT", nullable = false)
@@ -36,12 +37,15 @@ public class ErrorLog {
     private String commitSha;
 
     @Column(name = "app_name", length = 50, nullable = false)
+    @Builder.Default
     private String appName = "Valutaváltó ERP";
 
     @Column(name = "repo_path", length = 100, nullable = false)
+    @Builder.Default
     private String repoPath = "D:/repo/valutavalto-program";
 
     @Column(name = "environment", length = 20, nullable = false)
+    @Builder.Default
     private String environment = "production";
 
     @Column(name = "url", length = 500)
@@ -66,12 +70,15 @@ public class ErrorLog {
     private String browser;
 
     @Column(name = "occurrence_count", nullable = false)
+    @Builder.Default
     private int occurrenceCount = 1;
 
     @Column(name = "first_seen_at", nullable = false)
+    @Builder.Default
     private Instant firstSeenAt = Instant.now();
 
     @Column(name = "last_seen_at", nullable = false)
+    @Builder.Default
     private Instant lastSeenAt = Instant.now();
 
     @Column(name = "email_sent", nullable = false)
@@ -92,5 +99,6 @@ public class ErrorLog {
     private String resolvedCommit;
 
     @Column(name = "created_at", nullable = false, updatable = false)
+    @Builder.Default
     private Instant createdAt = Instant.now();
 }
