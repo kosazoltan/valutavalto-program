@@ -1,7 +1,9 @@
 package hu.puzzleir.valuta.controller;
 
+import hu.puzzleir.valuta.dto.document.DocumentScanUploadRequest;
 import hu.puzzleir.valuta.dto.document.ScannedDocumentDto;
 import hu.puzzleir.valuta.service.DocumentScannerService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -27,12 +29,8 @@ public class DocumentScannerController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ScannedDocumentDto> uploadDocument(
             @RequestParam("file") MultipartFile file,
-            @RequestParam(required = false) UUID customerId,
-            @RequestParam(required = false) UUID transactionId,
-            @RequestParam(required = false, defaultValue = "OTHER") String documentType,
-            @RequestParam(required = false) String notes) {
-        return ResponseEntity.ok(
-                documentScannerService.saveScannedDocument(file, customerId, transactionId, documentType, notes));
+            @Valid @ModelAttribute DocumentScanUploadRequest request) {
+        return ResponseEntity.ok(documentScannerService.saveScannedDocument(file, request));
     }
 
     @GetMapping("/customer/{customerId}")
