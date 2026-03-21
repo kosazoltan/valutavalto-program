@@ -7,8 +7,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.*;
 import java.nio.file.attribute.PosixFilePermission;
+import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
@@ -51,8 +54,11 @@ public class FileTransportService {
     public String sha256(Path path) throws IOException {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(Files.readAllBytes(path));
-            return HexFormat.of().formatHex(hash);
+            try (InputStream inputStream = Files.newInputStream(path);
+                 DigestInputStream digestStream = new DigestInputStream(inputStream, digest)) {
+                digestStream.transferTo(OutputStream.nullOutputStream());
+            }
+            return HexFormat.of().formatHex(digest.digest());
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 nem érhető el", e);
         }
@@ -60,7 +66,7 @@ public class FileTransportService {
 
     public Map<String, Object> buildArtifactMeta(Path path) throws IOException {
         return Map.of(
-                "path", path.toString(),
+                "fileName", Files.exists(path) ? path.getFileName().toString() : "",
                 "sizeBytes", Files.exists(path) ? Files.size(path) : 0L,
                 "sha256", Files.exists(path) ? sha256(path) : ""
         );

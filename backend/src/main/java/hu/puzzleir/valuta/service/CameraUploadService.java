@@ -67,9 +67,18 @@ public class CameraUploadService {
             throw new IllegalStateException("Hiányzó localFilePath a kamera szegmenshez: " + recording.getId());
         }
 
-        Path source = Paths.get(recording.getLocalFilePath());
+        Path source = Paths.get(recording.getLocalFilePath()).toAbsolutePath().normalize();
+        Path expectedRoot = Paths.get(cameraProperties.getLocalStoragePath()).toAbsolutePath().normalize();
         if (!Files.exists(source)) {
             throw new IllegalStateException("A kamera szegmens fájl nem található: " + source);
+        }
+        Path realRoot = expectedRoot.toRealPath();
+        Path realSource = source.toRealPath();
+        if (!realSource.startsWith(realRoot)) {
+            throw new IllegalStateException("A kamera szegmens forrásfájl kilép a megengedett gyökérből: " + realSource);
+        }
+        if (Files.isSymbolicLink(source)) {
+            throw new IllegalStateException("A kamera szegmens forrásfájl nem lehet symlink: " + source);
         }
 
         String baseDir = fileTransportService.sanitizePathSegment(
