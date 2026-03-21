@@ -317,4 +317,13 @@ public class ErtektarController {
     public ResponseEntity<Map<UUID, BranchStatusResponse>> getBranches() {
         return ResponseEntity.ok(branchMonitoringService.getBranchDashboard());
     }
+
+    /**
+     * Backward-compatible alias az Electron SyncEngine klienshez.
+     * GET /api/v1/ertektar/branches/status
+     */
+    @GetMapping("/branches/status")
+    public ResponseEntity<Map<UUID, BranchStatusResponse>> getBranchesStatus() {
+        return ResponseEntity.ok(branchMonitoringService.getBranchDashboard());
+    }
 }

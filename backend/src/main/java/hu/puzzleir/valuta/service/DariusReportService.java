@@ -228,8 +228,7 @@ public class DariusReportService {
             throw new ValidationException("A jelentést először jóvá kell hagyni (4-eyes)!");
         }
 
-        // Transport (adapter placeholder)
-        // A tényleges implementáció a DariusAdapter-ben lesz
+        // Managed outbox transport (repo-n belül teljesíthető scope)
         try {
             String reference = submitToDarius(report);
             report.setStatus(DariusReportStatus.SUBMITTED);
@@ -284,6 +283,8 @@ public class DariusReportService {
         envelope.put("payloadFormat", report.getPayloadFormat());
         envelope.put("payloadHash", report.getPayloadHash());
         envelope.put("payloadSizeBytes", report.getPayload() != null ? report.getPayload().getBytes(StandardCharsets.UTF_8).length : 0);
+        envelope.put("payload", report.getPayload());
+        envelope.put("transportMode", "managed-outbox");
         envelope.put("submittedAt", LocalDateTime.now().toString());
 
         var artifact = fileTransportService.writeJson(

@@ -227,6 +227,8 @@ Ez a repository mar tartalmaz mukodo tranzakcios, offline es kamera alapokat, ez
 
 ### 11.4 Delta Definition of Done
 
+Megjegyzés (valós állapot): ez egy célállapot definíció, jelenleg még NEM teljesül teljeskörűen.
+
 1. Nincs mock/simplified komponens a kritikus (P0) folyamokban.
 2. Darius napi riport allapotgep valos, visszakeresheto audit trail-lel.
 3. Kamera evidence lanc (rogzites -> titkositas -> retention -> upload -> visszakereses) vegig igazolhato.

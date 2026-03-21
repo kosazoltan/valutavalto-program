@@ -24,7 +24,7 @@ import java.util.UUID;
  * - Integritás ellenőrzés: VIDEO_VIEW_LOCAL, COMPLIANCE_OFFICER, IT_ADMIN
  */
 @RestController
-@RequestMapping("/api/camera/export")
+@RequestMapping({"/api/v1/camera/export", "/api/camera/export"})
 @RequiredArgsConstructor
 public class CameraExportController {
 

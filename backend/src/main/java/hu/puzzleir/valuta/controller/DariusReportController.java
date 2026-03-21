@@ -20,7 +20,7 @@ import java.util.UUID;
  * A pénztárosok és értéktárosok NEM látják a Darius jelentéseket.
  */
 @RestController
-@RequestMapping("/api/darius")
+@RequestMapping({"/api/v1/darius", "/api/darius"})
 @RequiredArgsConstructor
 public class DariusReportController {
 

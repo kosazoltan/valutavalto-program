@@ -133,11 +133,16 @@ public class CameraHashChainService {
             }
 
             // Chain hash újraszámítás és ellenőrzés
+            String recordingStartTime = recordingRepository.findById(entry.getRecordingId())
+                .map(CameraRecording::getStartTime)
+                .map(LocalDateTime::toString)
+                .orElse("null");
+
             String metadata = String.format("%s|%s|%s|%s|%d",
                 entry.getRecordingId(),
                 entry.getBranchId(),
                 entry.getCameraId(),
-                "null", // startTime nem elérhető a hash entry-ből, de konzisztens
+                recordingStartTime,
                 entry.getFileSizeBytes());
 
             String recomputedChainHash;

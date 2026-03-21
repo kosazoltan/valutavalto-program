@@ -7,7 +7,7 @@
 - **DB:** Neon PostgreSQL (ep-polished-morning-altxohe7, EU Central)
 - **GitHub:** kosazoltan/valutavalto-program
 - **CÃ©g:** Exclusive Best Change Zrt. (~90 iroda, 4 cÃ©g)
-- **Ãllapot:** ~98% Delphi lefedettsÃ©g
+- **Ãllapot:** RÃ©szben kÃ©sz; tÃ¶bb modul mÅ±kÃ¶dik, de kritikus P0 terÃ¼leteken mÃ©g vannak nyitott tÃ©telek (lÃ¡sd docs/VALOS_ALLAPOT_JELENTES_2026-03-21.md)
 
 ## ğŸ“Š MÃ‰RET
 | Elem | Darab |
@@ -42,30 +42,30 @@ database/                      â”œâ”€â”€ src/
 5. **DekÃ¡d = NAPTÃRI nap** (1-10, 11-20, 21-hÃ³nap vÃ©ge), NEM nyitvatartÃ¡si
 6. **KKTG pÃ©nztÃ¡r elkÃ¼lÃ¶nÃ­tÃ©s** â€” tÃ¶rvÃ©nyi kÃ¶telezettsÃ©g
 7. **Dual package:** com.puzzleir + hu.puzzleir â€” figyelni import-okra
-8. **Darius integrÃ¡ciÃ³ NEM KELL** â€” kÃ¼lsÅ‘ rendszer (Raiffeisen)
+8. **Darius/Raiffeisen scope:** Ã¼zleti dÃ¶ntÃ©s szerint kÃ¶telezÅ‘ napi riport modul, de a kÃ¼lsÅ‘ transport jelenleg rÃ©szben kÃ©sz (outbox artifact + stÃ¡tuszok, teljes adapter/E2E mÃ©g nyitott)
 9. **Neon DB:** ddl-auto=update (SOHA NE create!)
 10. **SecurityUtils:** getCurrentWorkerCode() (NINCS getCurrentUsername)
 
 ## ğŸ¯ FEJLESZTÃ‰SI ÃLLAPOT
-### KÃ©sz (98%) âœ…
-- Teljes ERP funkciÃ³k: napi nyitÃ¡s/zÃ¡rÃ¡s, tranzakciÃ³k, mÃ©rleg
+### BizonyÃ­tottan mÅ±kÃ¶dÅ‘ fÅ‘ elemek âœ…
+- Napi nyitÃ¡s/zÃ¡rÃ¡s, tranzakciÃ³k, mÃ©rleg fÅ‘folyamatok
 - ÃrfolyamkezelÃ©s (MNBâ†’ECBâ†’CACHED fallback)
 - FelhasznÃ¡lÃ³/jogosultsÃ¡g kezelÃ©s
 - Riportok, nyomtatÃ¡s
-- 245+ teszt
+- 245+ teszt (historikus Ã¡llapot, nem teljes regressziÃ³s garancia)
 
-### HiÃ¡nyzÃ³ (~2%) âš ï¸
-- KKTG pÃ©nztÃ¡r elkÃ¼lÃ¶nÃ­tÃ©s (12-16h)
-- ÃtadÃ³lap bÅ‘vÃ­tÃ©s (4-8h)
-- DekÃ¡d naptÃ¡ri logika (2-4h)
-- SzÃ¡llÃ­tmÃ¡ny bÅ‘vÃ­tÃ©s (8-12h)
-- ValidÃ¡ciÃ³ sprint (8-12h)
-- **Ã–sszesen: 37-56 Ã³ra**
+### Nyitott / rÃ©szben kÃ©sz elemek âš ï¸
+- KKTG pÃ©nztÃ¡r elkÃ¼lÃ¶nÃ­tÃ©s
+- ÃtadÃ³lap bÅ‘vÃ­tÃ©s
+- DekÃ¡d naptÃ¡ri logika
+- SzÃ¡llÃ­tmÃ¡ny bÅ‘vÃ­tÃ©s
+- ValidÃ¡ciÃ³ sprint
+- Darius kÃ¼lsÅ‘ transport + vÃ©gponttÃ³l-vÃ©gpontig Ã¼zleti bizonyÃ­tÃ¡s
+- Kamera evidence E2E bizonyÃ­tÃ¡s (titkosÃ­tÃ¡s/hash/transport lÃ¡nc)
 
-### NEM kell
+### Scope-bÃ³l kivett / nem cÃ©l
 - Western Union, Tesco/Metro (megszÅ±nt partnerek)
 - OTP terminÃ¡l
-- Darius integrÃ¡ciÃ³
 
 ## ğŸ“ PARANCSSOR
 ```bash
@@ -92,31 +92,31 @@ cd penztar-client && npm run build
 - Gmail integrÃ¡ciÃ³ Sprint 1+2 (kÃ¼lÃ¶n repo: gmail-client)
 - Teljes audit: 3 batch + 2 kÃ¶r reaudit (134 fÃ¡jl, +5505 sor)
 
-## ?? BEÉPÍTETT AI RENDSZER (17. törvény) — TERVEZETT
-### Implementálandó (konzílium szükséges)
-1. **Fõértéktáros AI Asszisztens**
-   - Természetes nyelvû lekérdezés: "Mai EUR forgalom irodánként" › SQL › táblázat
-   - Kimutatás/riport generálás tetszõleges adatkombinációból
-   - Árfolyam javaslat: MNB + ECB + piaci trend › optimális eladási/vételi ár
-   - Banki beszállítás/kiszállítás optimalizálás (készlet + árfolyam elemzés)
+## ?? BEï¿½Pï¿½TETT AI RENDSZER (17. tï¿½rvï¿½ny) ï¿½ TERVEZETT
+### Implementï¿½landï¿½ (konzï¿½lium szï¿½ksï¿½ges)
+1. **Fï¿½ï¿½rtï¿½ktï¿½ros AI Asszisztens**
+   - Termï¿½szetes nyelvï¿½ lekï¿½rdezï¿½s: "Mai EUR forgalom irodï¿½nkï¿½nt" ï¿½ SQL ï¿½ tï¿½blï¿½zat
+   - Kimutatï¿½s/riport generï¿½lï¿½s tetszï¿½leges adatkombinï¿½ciï¿½bï¿½l
+   - ï¿½rfolyam javaslat: MNB + ECB + piaci trend ï¿½ optimï¿½lis eladï¿½si/vï¿½teli ï¿½r
+   - Banki beszï¿½llï¿½tï¿½s/kiszï¿½llï¿½tï¿½s optimalizï¿½lï¿½s (kï¿½szlet + ï¿½rfolyam elemzï¿½s)
 
-2. **Adaptív Import AI**
-   - PDF/Excel/CSV feltöltés › AI értelmezi › megfelelõ DB tábla
-   - Banki kivonatok automatikus feldolgozás
-   - Szállítólevelek, bizonylatok import
-   - Preview + jóváhagyás KÖTELEZÕ
+2. **Adaptï¿½v Import AI**
+   - PDF/Excel/CSV feltï¿½ltï¿½s ï¿½ AI ï¿½rtelmezi ï¿½ megfelelï¿½ DB tï¿½bla
+   - Banki kivonatok automatikus feldolgozï¿½s
+   - Szï¿½llï¿½tï¿½levelek, bizonylatok import
+   - Preview + jï¿½vï¿½hagyï¿½s Kï¿½TELEZï¿½
 
-3. **Napi Operatív AI**
-   - Napi nyitás asszisztens (ellenõrzõlista, hiányzó adatok)
-   - Eltérés detektálás (pénztár › mérleg › riport)
-   - Audit támogatás (MNB/NAV megfelelõség ellenõrzés)
+3. **Napi Operatï¿½v AI**
+   - Napi nyitï¿½s asszisztens (ellenï¿½rzï¿½lista, hiï¿½nyzï¿½ adatok)
+   - Eltï¿½rï¿½s detektï¿½lï¿½s (pï¿½nztï¿½r ï¿½ mï¿½rleg ï¿½ riport)
+   - Audit tï¿½mogatï¿½s (MNB/NAV megfelelï¿½sï¿½g ellenï¿½rzï¿½s)
 
-### Modell stratégia
-- Haiku 4.5: Osztályozás, egyszerû SQL, routing
-- Sonnet 4.6: Elemzés, javaslat, komplex lekérdezés, import
+### Modell stratï¿½gia
+- Haiku 4.5: Osztï¿½lyozï¿½s, egyszerï¿½ SQL, routing
+- Sonnet 4.6: Elemzï¿½s, javaslat, komplex lekï¿½rdezï¿½s, import
 
-### Biztonsági korlátok
-- Read-only SQL sandbox alapértelmezetten
-- Mutáció › supervisor jóváhagyás
-- Jogosultság: munkakör-alapú (pénztáros/supervisor/manager/admin)
-- Audit trail: minden AI mûvelet naplózva
+### Biztonsï¿½gi korlï¿½tok
+- Read-only SQL sandbox alapï¿½rtelmezetten
+- Mutï¿½ciï¿½ ï¿½ supervisor jï¿½vï¿½hagyï¿½s
+- Jogosultsï¿½g: munkakï¿½r-alapï¿½ (pï¿½nztï¿½ros/supervisor/manager/admin)
+- Audit trail: minden AI mï¿½velet naplï¿½zva
