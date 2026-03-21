@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.entity.CameraRecording;
 import hu.puzzleir.valuta.entity.CameraTransactionLink;
 import hu.puzzleir.valuta.repository.CameraRecordingRepository;
 import hu.puzzleir.valuta.repository.CameraTransactionLinkRepository;
+import hu.puzzleir.valuta.util.TransactionIdentityCodec;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import lombok.extern.slf4j.Slf4j;
@@ -29,8 +30,23 @@ public class CameraTransactionLinker {
      * Called when a transaction is created.
      */
     @Transactional
+    public void linkTransaction(Long transactionId, UUID branchId,
+                                 LocalDateTime transactionTime, String receiptNumber) {
+        linkTransaction(TransactionIdentityCodec.toUuid(transactionId), branchId, transactionTime, receiptNumber);
+    }
+
+    /**
+     * UUID-alapú linkelés kamera modul belső referenciához.
+     */
+    @Transactional
     public void linkTransaction(UUID transactionId, UUID branchId,
                                  LocalDateTime transactionTime, String receiptNumber) {
+        if (transactionId == null || branchId == null || transactionTime == null) {
+            log.debug("Kamera linkeles kihagyva hianyzo adat miatt: tx={}, branch={}, time={}",
+                    transactionId, branchId, transactionTime);
+            return;
+        }
+
         // Find active recordings for this branch at the transaction time
         List<CameraRecording> recordings = recordingRepository
                 .findByBranchIdAndStartTimeBetween(branchId,

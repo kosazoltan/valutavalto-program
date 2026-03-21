@@ -183,6 +183,12 @@ public class TreasuryDashboardService {
                 LocalDate targetDate = date != null ? date : LocalDate.now();
                 List<DailyReport> reports = dailyReportRepository.findByCompanyIdAndReportDate(companyId, targetDate);
                 List<BranchGroup> groups = branchGroupRepository.findByIsActiveTrue();
+                Set<UUID> reportBranchIds = reports.stream()
+                                .map(DailyReport::getBranch)
+                                .filter(Objects::nonNull)
+                                .map(Branch::getId)
+                                .filter(Objects::nonNull)
+                                .collect(Collectors.toSet());
 
                 Map<UUID, TreasuryAggregateDto.TreasuryAggregateDtoBuilder> aggregates = new LinkedHashMap<>();
                 Set<UUID> groupedBranchIds = new HashSet<>();
@@ -190,6 +196,13 @@ public class TreasuryDashboardService {
                 for (BranchGroup group : groups) {
                         List<UUID> branchIds = group.getBranchIds();
                         if (branchIds == null || branchIds.isEmpty()) {
+                                continue;
+                        }
+
+                        Set<UUID> scopedBranchIds = branchIds.stream()
+                                        .filter(reportBranchIds::contains)
+                                        .collect(Collectors.toCollection(LinkedHashSet::new));
+                        if (scopedBranchIds.isEmpty()) {
                                 continue;
                         }
 
@@ -205,7 +218,6 @@ public class TreasuryDashboardService {
                                                         .transactionCount(0)
                                                         .branchCount(0));
 
-                        int branchCount = 0;
                         BigDecimal buy = BigDecimal.ZERO;
                         BigDecimal sell = BigDecimal.ZERO;
                         BigDecimal fee = BigDecimal.ZERO;
@@ -214,12 +226,11 @@ public class TreasuryDashboardService {
 
                         for (DailyReport report : reports) {
                                 UUID branchId = report.getBranch().getId();
-                                if (!branchIds.contains(branchId)) {
+                                if (!scopedBranchIds.contains(branchId)) {
                                         continue;
                                 }
 
                                 groupedBranchIds.add(branchId);
-                                branchCount++;
                                 buy = buy.add(nz(report.getTotalBuyHuf()));
                                 sell = sell.add(nz(report.getTotalSellHuf()));
                                 fee = fee.add(nz(report.getTotalFeeHuf()));
@@ -227,7 +238,7 @@ public class TreasuryDashboardService {
                                 txCount += report.getTransactionCount() != null ? report.getTransactionCount() : 0;
                         }
 
-                        builder.branchCount(branchCount)
+                        builder.branchCount(scopedBranchIds.size())
                                         .totalBuyHuf(buy.setScale(2, RoundingMode.HALF_UP))
                                         .totalSellHuf(sell.setScale(2, RoundingMode.HALF_UP))
                                         .totalFeeHuf(fee.setScale(2, RoundingMode.HALF_UP))

@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.entity.CommissionCalculation;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.CommissionCalculationService;
+import hu.puzzleir.valuta.util.LegacyCompanyIdentityCodec;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -78,8 +79,7 @@ public class CommissionCalculationController {
 
     private Integer extractCompanyId() {
         UUID companyUuid = SecurityUtils.getCurrentCompanyId();
-        // UUID → stabil Integer konverzió (getLeastSignificantBits + abs, hashCode nem stabil!)
         // TODO(migration): CommissionRule.companyId legyen UUID a Company.id-hoz igazítva
-        return Math.abs((int) (companyUuid.getLeastSignificantBits() % Integer.MAX_VALUE));
+        return LegacyCompanyIdentityCodec.toLegacyInt(companyUuid);
     }
 }

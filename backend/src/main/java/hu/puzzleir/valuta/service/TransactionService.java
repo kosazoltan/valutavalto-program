@@ -14,6 +14,7 @@ import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.util.HungarianRounding;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -56,6 +57,7 @@ public class TransactionService {
     private final HandlingFeeCalculator handlingFeeCalculator;
     private final AmlService amlService;
     private final PosTerminalService posTerminalService;
+    private final ObjectProvider<CameraTransactionLinker> cameraTransactionLinkerProvider;
 
     // Sztornó limit supervisor nélkül (3 db/nap)
     private static final int DAILY_REVERSAL_LIMIT = 3;
@@ -69,7 +71,7 @@ public class TransactionService {
     // Max tetelsorok szama bizonylaton (Legacy: BLOKKTETEL limit)
     private static final int MAX_TRANSACTION_LINES = 6;
 
-    // HUF currency ID cache — startup-kor betöltve, ne kelljen minden tranzakciónál DB-t kérdezni
+    // HUF currency ID cache - startup-kor betöltve, ne kelljen minden tranzakciónál DB-t kérdezni
     private volatile Long cachedHufCurrencyId;
 
     @PostConstruct
@@ -81,11 +83,40 @@ public class TransactionService {
             if (cachedHufCurrencyId != null) {
                 log.info("HUF currency ID cached: {}", cachedHufCurrencyId);
             } else {
-                log.warn("HUF currency not found in DB — cash balance operations may fail until seeded");
+                log.warn("HUF currency not found in DB - cash balance operations may fail until seeded");
             }
         } catch (Exception e) {
             log.error("Failed to cache HUF currency ID (DB type mismatch?): {}", e.getMessage());
             cachedHufCurrencyId = null;
+        }
+    }
+
+    private void linkCameraEvidence(Transaction transaction) {
+        if (cameraTransactionLinkerProvider == null) {
+            return;
+        }
+
+        CameraTransactionLinker linker = cameraTransactionLinkerProvider.getIfAvailable();
+        if (linker == null || transaction == null || transaction.getId() == null || transaction.getBranch() == null) {
+            return;
+        }
+
+        LocalDate txDate = transaction.getTransactionDate();
+        LocalTime txTime = transaction.getTransactionTime();
+        if (txDate == null || txTime == null) {
+            log.debug("Kamera linkeles kihagyva hianyzo datum/ido miatt: tx={}", transaction.getId());
+            return;
+        }
+
+        try {
+            linker.linkTransaction(
+                    transaction.getId(),
+                    transaction.getBranch().getId(),
+                    txDate.atTime(txTime),
+                    transaction.getReceiptNumber());
+        } catch (Exception e) {
+            log.error("Kamera-tranzakcio linkeles sikertelen: tx={}, receipt={}",
+                    transaction.getId(), transaction.getReceiptNumber(), e);
         }
     }
 
@@ -155,7 +186,7 @@ public class TransactionService {
         // Kedvezmény összeg a PRE-DISCOUNT értékből (nem a már csökkentett hufAmount-ból!)
         BigDecimal discountAmount = calculateDiscountAmount(fullHufBeforeDiscount, request.getDiscountPercent());
 
-        // POS terminál integráció — bankkártyás fizetésnél
+        // POS terminál integráció - bankkártyás fizetésnél
         PaymentMethod paymentMethod = request.getPaymentMethod() != null ? request.getPaymentMethod() : PaymentMethod.CASH;
         String posAuthCode = null;
         String posRefNumber = null;
@@ -206,6 +237,7 @@ public class TransactionService {
                 .build();
 
         Transaction saved = transactionRepository.save(transaction);
+        linkCameraEvidence(saved);
 
         // Kassza frissítése - HUF csökken, valuta nő
         updateCashBalance(branchId, currency.getId(), request.getCurrencyAmount(), true);  // valuta +
@@ -294,7 +326,7 @@ public class TransactionService {
         // Kedvezmény összeg a PRE-DISCOUNT értékből (nem a már csökkentett hufAmount-ból!)
         BigDecimal discountAmount = calculateDiscountAmount(fullHufBeforeDiscount, request.getDiscountPercent());
 
-        // POS terminál integráció — bankkártyás fizetésnél
+        // POS terminál integráció - bankkártyás fizetésnél
         PaymentMethod paymentMethod = request.getPaymentMethod() != null ? request.getPaymentMethod() : PaymentMethod.CASH;
         String posAuthCode = null;
         String posRefNumber = null;
@@ -345,6 +377,7 @@ public class TransactionService {
                 .build();
 
         Transaction saved = transactionRepository.save(transaction);
+        linkCameraEvidence(saved);
 
         // Kassza frissítése - HUF nő, valuta csökken
         updateCashBalance(branchId, currency.getId(), request.getCurrencyAmount().negate(), false); // valuta -
@@ -410,7 +443,7 @@ public class TransactionService {
         Worker worker = workerRepository.findById(workerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található"));
 
-        // POS terminál sztornó — ha az eredeti tranzakció bankkártyás volt
+        // POS terminál sztornó - ha az eredeti tranzakció bankkártyás volt
         String posAuthCode = null;
         String posRefNumber = null;
         if (original.getPaymentMethod() == PaymentMethod.CARD
@@ -428,7 +461,7 @@ public class TransactionService {
             log.info("POS sztornó elfogadva: auth={}, ref={}", posAuthCode, posRefNumber);
         }
 
-        // Bizonylat szám generálása — az EREDETI típus számlálójából (NEM külön S prefix!)
+        // Bizonylat szám generálása - az EREDETI típus számlálójából (NEM külön S prefix!)
         String receiptNumber = receiptSequenceService.generateReversalReceiptNumber(
                 branchId, original.getTransactionType());
 
@@ -463,6 +496,7 @@ public class TransactionService {
                 .build();
 
         Transaction savedReversal = transactionRepository.save(reversal);
+        linkCameraEvidence(savedReversal);
 
         // Eredeti tranzakció státuszának frissítése
         original.setStatus(TransactionStatus.REVERSED);
@@ -525,7 +559,7 @@ public class TransactionService {
 
         // Validációk
         if (original.isReversed()) {
-            throw new ValidationException("Ez a tranzakció már sztornózva lett — részleges visszatérítés nem lehetséges!");
+            throw new ValidationException("Ez a tranzakció már sztornózva lett - részleges visszatérítés nem lehetséges!");
         }
         if (original.isReversal() || original.isPartialRefund()) {
             throw new ValidationException("Visszavonási tranzakció nem vonható vissza részlegesen!");
@@ -595,6 +629,7 @@ public class TransactionService {
                 .build();
 
         Transaction saved = transactionRepository.save(partialRefund);
+        linkCameraEvidence(saved);
 
         // Kassza korrekció: csak a visszatérített összeggel
         Long currencyId = original.getCurrency().getId();
@@ -654,7 +689,7 @@ public class TransactionService {
             throw new ValidationException("Azonos valutanemek közötti konverzió nem lehetséges!");
         }
 
-        // HUF konverzió tiltása — HUF-ra/HUF-ról vétel/eladás használandó
+        // HUF konverzió tiltása - HUF-ra/HUF-ról vétel/eladás használandó
         if ("HUF".equals(fromCurrency.getCode()) || "HUF".equals(toCurrency.getCode())) {
             throw new ValidationException("HUF konverzió nem lehetséges! Használja a vétel/eladás funkciót.");
         }
@@ -685,7 +720,7 @@ public class TransactionService {
         BigDecimal serverHandlingFee = handlingFeeCalculator.calculate(
                 roundedHufAmount, TransactionType.CONVERSION, request.getHandlingFee());
 
-        // GAP 4: Magyar jogszabályi követelmény — konverzió = 2 bizonylat
+        // GAP 4: Magyar jogszabályi követelmény - konverzió = 2 bizonylat
         // 1. "Konverziós vétel" bizonylat (forrás valuta → HUF)
         // 2. "Konverziós eladás" bizonylat (HUF → cél valuta)
         String buyReceiptNumber = receiptSequenceService.generateReceiptNumber(branchId, TransactionType.BUY);
@@ -720,6 +755,7 @@ public class TransactionService {
                 .build();
 
         Transaction saved = transactionRepository.save(transaction);
+        linkCameraEvidence(saved);
 
         // GAP 4: Konverziós vétel bizonylat (forrás valuta → HUF)
         Transaction convBuy = Transaction.builder()
@@ -744,7 +780,8 @@ public class TransactionService {
                     request.getFromAmount(), fromCurrency.getCode(),
                     roundedHufAmount, sellReceiptNumber))
                 .build();
-        transactionRepository.save(convBuy);
+        convBuy = transactionRepository.save(convBuy);
+        linkCameraEvidence(convBuy);
 
         // GAP 4: Konverziós eladás bizonylat (HUF → cél valuta)
         Transaction convSell = Transaction.builder()
@@ -769,7 +806,8 @@ public class TransactionService {
                     roundedHufAmount, toAmount, toCurrency.getCode(),
                     buyReceiptNumber))
                 .build();
-        transactionRepository.save(convSell);
+        convSell = transactionRepository.save(convSell);
+        linkCameraEvidence(convSell);
 
         // Kassza frissítése
         updateCashBalance(branchId, fromCurrency.getId(), request.getFromAmount(), true);  // forrás valuta +
@@ -791,7 +829,7 @@ public class TransactionService {
 
     /**
      * Multi-line vetel tranzakcio (tobb valutasor egy bizonylaton).
-     * Legacy: BLOKKTETEL tabla — max 6 kulonbozo valutasor.
+     * Legacy: BLOKKTETEL tabla - max 6 kulonbozo valutasor.
      *
      * A fejlec (Transaction) az elso sor valutajaval jon letre, de a fo osszegek
      * (hufAmount, currencyAmount) a sorok aggregaltjai.
@@ -944,8 +982,9 @@ public class TransactionService {
         }
         saved.getLines().addAll(transactionLines);
         saved = transactionRepository.save(saved);
+        linkCameraEvidence(saved);
 
-        // Kassza frissites — soronkent valuta +, ossz HUF -
+        // Kassza frissites - soronkent valuta +, ossz HUF -
         for (TransactionLine line : transactionLines) {
             updateCashBalance(branchId, line.getCurrency().getId(), line.getBanknoteCount(), true);
         }
@@ -1107,8 +1146,9 @@ public class TransactionService {
         }
         saved.getLines().addAll(transactionLines);
         saved = transactionRepository.save(saved);
+        linkCameraEvidence(saved);
 
-        // Kassza frissites — soronkent valuta -, ossz HUF +
+        // Kassza frissites - soronkent valuta -, ossz HUF +
         for (TransactionLine line : transactionLines) {
             updateCashBalance(branchId, line.getCurrency().getId(), line.getBanknoteCount().negate(), false);
         }
@@ -1125,7 +1165,7 @@ public class TransactionService {
 
     /**
      * Multi-line request validacio.
-     * Legacy: BLOKKTETEL — max 6 kulonbozo valutasor bizonylaton.
+     * Legacy: BLOKKTETEL - max 6 kulonbozo valutasor bizonylaton.
      */
     private void validateMultiLineRequest(java.util.List<LineRequest> lines) {
         if (lines == null || lines.isEmpty()) {
@@ -1348,7 +1388,7 @@ public class TransactionService {
         if (discountPercent.compareTo(BigDecimal.ZERO) < 0) {
             throw new ValidationException("Kedvezmény nem lehet negatív!");
         }
-        // Abszolút felső határ — supervisor sem adhat ennél többet
+        // Abszolút felső határ - supervisor sem adhat ennél többet
         if (discountPercent.compareTo(new BigDecimal("15")) > 0) {
             throw new ValidationException("Maximum kedvezmény: 15%!");
         }
@@ -1395,7 +1435,7 @@ public class TransactionService {
                     : "Supervisor jóváhagyás szükséges (AML limit)!");
         }
 
-        // 2. Legacy BIGCTRL.DLL klasszifikáció — blokkoló TranzTipus -1 ellenőrzés
+        // 2. Legacy BIGCTRL.DLL klasszifikáció - blokkoló TranzTipus -1 ellenőrzés
         if (customerId != null && !customerId.isBlank()) {
             var thresholdResult = amlService.checkAllThresholds(customerId, hufAmount, currencyCode);
             if (thresholdResult != null && thresholdResult.isBlocked()) {
@@ -1408,7 +1448,7 @@ public class TransactionService {
 
         // 3. Részletes azonosítás logolása (1.5M+ Ft)
         if (basicResult.isRequiresDetailedId()) {
-            log.warn("AML: Részletes azonosítás szükséges — {} Ft, ügyfél: {}", hufAmount, customerId);
+            log.warn("AML: Részletes azonosítás szükséges - {} Ft, ügyfél: {}", hufAmount, customerId);
         }
     }
 
@@ -1447,7 +1487,7 @@ public class TransactionService {
 
     /**
      * @deprecated Használd a {@link ReceiptSequenceService#generateReceiptNumber} metódust.
-     * Ez a metódus a régi E+MMDD+5szám formátumot generálja — csak backward compatibility-hez.
+     * Ez a metódus a régi E+MMDD+5szám formátumot generálja - csak backward compatibility-hez.
      */
     @Deprecated
     private String generateReceiptNumber(UUID branchId, String prefix) {
@@ -1559,7 +1599,7 @@ public class TransactionService {
         private Long originalTransactionId;
         /** Visszatérítendő HUF összeg */
         private BigDecimal refundHufAmount;
-        /** Visszatérítendő valutaösszeg — ha null, arányosan számítjuk */
+        /** Visszatérítendő valutaösszeg - ha null, arányosan számítjuk */
         private BigDecimal refundCurrencyAmount;
         private String reason;
         private String approvedBy;
@@ -1609,7 +1649,7 @@ public class TransactionService {
         private BigDecimal sellTotal;
         private BigDecimal netTotal;
         private long reversalCount;
-        // Bővített mezők — frontend kompatibilitás
+        // Bővített mezők - frontend kompatibilitás
         private long totalBuyCount;
         private long totalSellCount;
         private BigDecimal totalBuyHuf;

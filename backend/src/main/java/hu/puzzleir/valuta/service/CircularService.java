@@ -6,6 +6,7 @@ import hu.puzzleir.valuta.dto.circular.*;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.util.LegacyCompanyIdentityCodec;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -124,8 +125,8 @@ public class CircularService {
     @Transactional(readOnly = true)
     public List<CircularDto> findRelevantForCurrentBranch() {
         UUID branchId = SecurityUtils.getCurrentBranchId();
-        // companyId-t a branch-ból lehetne de egyszerűsítve null-t küldünk
-        return circularRepository.findRelevantForBranch(branchId, null).stream()
+        Integer legacyCompanyId = LegacyCompanyIdentityCodec.toLegacyInt(SecurityUtils.getCurrentCompanyId());
+        return circularRepository.findRelevantForBranch(branchId, legacyCompanyId).stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
     }
