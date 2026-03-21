@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.config.IntegrationTransportProperties;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.repository.BranchRepository;
@@ -19,6 +20,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.file.Paths;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -38,6 +41,8 @@ public class SyncService {
     private final TransactionRepository transactionRepository;
     private final CashBalanceRepository cashBalanceRepository;
     private final DailySessionRepository dailySessionRepository;
+    private final IntegrationTransportProperties integrationTransportProperties;
+    private final FileTransportService fileTransportService;
 
     @Transactional
     public SyncLogDto syncRatesDown(UUID branchId) {
@@ -98,8 +103,7 @@ public class SyncService {
         syncLog = syncLogRepository.save(syncLog);
 
         try {
-            // Simplified sync — production implementation would do actual data transfer
-            int recordCount = simulateSync(syncType, effectiveBranch);
+            int recordCount = executeSync(syncType, effectiveBranch, branch.getCode(), direction);
 
             syncLog.setStatus(SyncLog.SyncStatus.COMPLETED);
             syncLog.setCompletedAt(LocalDateTime.now());
@@ -117,11 +121,37 @@ public class SyncService {
         return toDto(syncLog);
     }
 
-    private int simulateSync(SyncLog.SyncType syncType, UUID branchId) {
+    private int executeSync(SyncLog.SyncType syncType, UUID branchId, String branchCode, SyncLog.SyncDirection direction) {
         int rates = countCurrentRates(branchId);
-        int transactions = transactionRepository.findActiveByBranchAndDate(branchId, java.time.LocalDate.now()).size();
+        int transactions = transactionRepository.findActiveByBranchAndDate(branchId, LocalDate.now()).size();
         int inventory = cashBalanceRepository.findByBranchId(branchId).size();
         int closing = dailySessionRepository.findOpenSessionsByBranch(branchId).size();
+
+        String safeBranchCode = fileTransportService.sanitizePathSegment(branchCode, "branchCode");
+        String safeSyncDir = fileTransportService.sanitizePathSegment(
+                integrationTransportProperties.getSync().getDir(), "sync.dir");
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("branchId", branchId);
+        payload.put("branchCode", safeBranchCode);
+        payload.put("syncType", syncType.name());
+        payload.put("direction", direction.name());
+        payload.put("generatedAt", LocalDateTime.now().toString());
+        payload.put("rates", rates);
+        payload.put("transactions", transactions);
+        payload.put("inventory", inventory);
+        payload.put("openClosings", closing);
+
+        try {
+            fileTransportService.writeJson(Paths.get(
+                            safeSyncDir,
+                            safeBranchCode,
+                            fileTransportService.sanitizePathSegment(syncType.name().toLowerCase(), "syncType"))
+                    .toString(),
+                    "sync", payload);
+        } catch (Exception e) {
+            throw new IllegalStateException("Szinkron artifact írás sikertelen", e);
+        }
 
         return switch (syncType) {
             case RATES -> rates;

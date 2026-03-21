@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.config.IntegrationTransportProperties;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.CashBalance;
 import hu.puzzleir.valuta.entity.Company;
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.IntStream;
@@ -56,6 +58,15 @@ class SyncServiceTest {
     @Mock
     private DailySessionRepository dailySessionRepository;
 
+    @Mock
+    private IntegrationTransportProperties integrationTransportProperties;
+
+    @Mock
+    private IntegrationTransportProperties.Sync syncProperties;
+
+    @Mock
+    private FileTransportService fileTransportService;
+
     private static final UUID BRANCH_ID = UUID.randomUUID();
 
     private Branch createBranch() {
@@ -84,7 +95,7 @@ class SyncServiceTest {
 
     @Test
     @DisplayName("syncRatesDown → COMPLETED status")
-    void testSyncRatesDown() {
+    void testSyncRatesDown() throws Exception {
         Branch branch = createBranch();
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
         when(exchangeRateRepository.findAllActiveRates(any(UUID.class), eq(BRANCH_ID))).thenReturn(createRates(15));
@@ -96,6 +107,10 @@ class SyncServiceTest {
             if (s.getId() == null) s.setId(UUID.randomUUID());
             return s;
         });
+        when(integrationTransportProperties.getSync()).thenReturn(syncProperties);
+        when(syncProperties.getDir()).thenReturn("branch-sync");
+        when(fileTransportService.sanitizePathSegment(anyString(), anyString())).thenAnswer(inv -> inv.getArgument(0));
+        when(fileTransportService.writeJson(anyString(), anyString(), any())).thenReturn(Path.of("sync.json"));
 
         SyncLogDto result = service.syncRatesDown(BRANCH_ID);
 
@@ -109,7 +124,7 @@ class SyncServiceTest {
 
     @Test
     @DisplayName("syncTransactionsUp → COMPLETED status")
-    void testSyncTransactionsUp() {
+    void testSyncTransactionsUp() throws Exception {
         Branch branch = createBranch();
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
         when(exchangeRateRepository.findAllActiveRates(any(UUID.class), eq(BRANCH_ID))).thenReturn(Collections.emptyList());
@@ -121,6 +136,10 @@ class SyncServiceTest {
             if (s.getId() == null) s.setId(UUID.randomUUID());
             return s;
         });
+        when(integrationTransportProperties.getSync()).thenReturn(syncProperties);
+        when(syncProperties.getDir()).thenReturn("branch-sync");
+        when(fileTransportService.sanitizePathSegment(anyString(), anyString())).thenAnswer(inv -> inv.getArgument(0));
+        when(fileTransportService.writeJson(anyString(), anyString(), any())).thenReturn(Path.of("sync.json"));
 
         SyncLogDto result = service.syncTransactionsUp(BRANCH_ID);
 
@@ -133,7 +152,7 @@ class SyncServiceTest {
 
     @Test
     @DisplayName("syncAll → COMPLETED status, FULL type")
-    void testSyncAll() {
+    void testSyncAll() throws Exception {
         Branch branch = createBranch();
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
         when(exchangeRateRepository.findAllActiveRates(any(UUID.class), eq(BRANCH_ID))).thenReturn(createRates(15));
@@ -145,6 +164,10 @@ class SyncServiceTest {
             if (s.getId() == null) s.setId(UUID.randomUUID());
             return s;
         });
+        when(integrationTransportProperties.getSync()).thenReturn(syncProperties);
+        when(syncProperties.getDir()).thenReturn("branch-sync");
+        when(fileTransportService.sanitizePathSegment(anyString(), anyString())).thenAnswer(inv -> inv.getArgument(0));
+        when(fileTransportService.writeJson(anyString(), anyString(), any())).thenReturn(Path.of("sync.json"));
 
         SyncLogDto result = service.syncAll(BRANCH_ID);
 

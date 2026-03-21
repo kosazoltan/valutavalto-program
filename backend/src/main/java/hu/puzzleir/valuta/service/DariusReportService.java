@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.config.IntegrationTransportProperties;
 import hu.puzzleir.valuta.dto.darius.DariusDailyReportDto;
 import hu.puzzleir.valuta.dto.darius.DariusMonthlyDto;
 import hu.puzzleir.valuta.dto.darius.DariusReportLineDto;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
@@ -47,6 +49,8 @@ public class DariusReportService {
     private final TransactionRepository transactionRepository;
     private final BranchRepository branchRepository;
     private final AuditLogService auditLogService;
+    private final IntegrationTransportProperties integrationTransportProperties;
+    private final FileTransportService fileTransportService;
 
     // === 1. GENERÁLÁS ===
 
@@ -265,17 +269,30 @@ public class DariusReportService {
     }
 
     /**
-     * Adapter placeholder — a tényleges Darius API hívás ide kerül.
-     * A bank specifikáció alapján JSON/XML payload POST + credential signing.
+     * Darius transport: payload outbox artifact létrehozása auditálható referenciával.
      */
-    private String submitToDarius(DariusDailyReport report) {
-        // Placeholder: sikeres beküldés szimulálás
-        // Az éles implementáció a DariusAdapter osztályban lesz
-        log.info("Darius transport placeholder — payload: {} byte, hash: {}",
-            report.getPayload() != null ? report.getPayload().length() : 0,
-            report.getPayloadHash());
+    private String submitToDarius(DariusDailyReport report) throws Exception {
+        String reference = "DARIUS-" + report.getReportDate() + "-" + UUID.randomUUID().toString().substring(0, 8);
+        String safeOutboxDir = fileTransportService.sanitizePathSegment(
+                integrationTransportProperties.getDarius().getOutboxDir(), "darius.outboxDir");
+        String safeCompanyId = fileTransportService.sanitizePathSegment(report.getCompanyId().toString(), "companyId");
 
-        return "DARIUS-" + report.getReportDate() + "-" + UUID.randomUUID().toString().substring(0, 8);
+        Map<String, Object> envelope = new LinkedHashMap<>();
+        envelope.put("reference", reference);
+        envelope.put("companyId", report.getCompanyId());
+        envelope.put("reportDate", report.getReportDate());
+        envelope.put("payloadFormat", report.getPayloadFormat());
+        envelope.put("payloadHash", report.getPayloadHash());
+        envelope.put("payloadSizeBytes", report.getPayload() != null ? report.getPayload().getBytes(StandardCharsets.UTF_8).length : 0);
+        envelope.put("submittedAt", LocalDateTime.now().toString());
+
+        var artifact = fileTransportService.writeJson(
+                Paths.get(safeOutboxDir, safeCompanyId).toString(),
+                "daily_report_" + report.getReportDate(),
+                envelope);
+
+        log.info("Darius outbox artifact elkészült: ref={}, file={}", reference, artifact);
+        return reference;
     }
 
     // === 4. RETRY ===

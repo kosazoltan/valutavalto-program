@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.config.CameraProperties;
+import hu.puzzleir.valuta.config.IntegrationTransportProperties;
 import hu.puzzleir.valuta.entity.CameraRecording;
 import hu.puzzleir.valuta.repository.CameraRecordingRepository;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +11,9 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 @ConditionalOnProperty(name = "camera.enabled", havingValue = "true")
@@ -20,6 +24,8 @@ public class CameraUploadService {
 
     private final CameraRecordingRepository recordingRepository;
     private final CameraProperties cameraProperties;
+    private final IntegrationTransportProperties integrationTransportProperties;
+    private final FileTransportService fileTransportService;
 
     /**
      * Periodically upload completed segments to the central server.
@@ -34,18 +40,14 @@ public class CameraUploadService {
 
         if (pending.isEmpty()) return;
 
-        if (!cameraProperties.isMockUploadEnabled()) {
-            log.warn("Kamera szerver-feltöltés nincs implementálva (mockUploadEnabled=false), függő szegmensek: {} db", pending.size());
-            return;
-        }
-
-        log.info("Feltoltendo szegmensek: {} db", pending.size());
+        log.info("Feltöltendő szegmensek: {} db", pending.size());
 
         for (CameraRecording recording : pending) {
             try {
-                uploadToServer(recording);
+                String serverPath = uploadToServer(recording);
                 recording.setUploadedToServer(true);
-                recording.setServerFilePath(generateServerPath(recording));
+                recording.setServerFilePath(serverPath);
+                recording.setStatus(CameraRecording.RecordingStatus.UPLOADED);
                 recordingRepository.save(recording);
                 log.info("Szegmens feltoltve: {} ({})", recording.getCameraId(), recording.getId());
             } catch (Exception e) {
@@ -58,21 +60,27 @@ public class CameraUploadService {
     }
 
     /**
-     * Upload a single recording to the server.
-     * Mock upload mode only. Real upload implementation is pending.
+     * Upload a single recording to managed storage.
      */
-    private void uploadToServer(CameraRecording recording) {
-        log.warn("Mock upload aktiv: {}", recording.getLocalFilePath());
-    }
+    private String uploadToServer(CameraRecording recording) throws Exception {
+        if (recording.getLocalFilePath() == null || recording.getLocalFilePath().isBlank()) {
+            throw new IllegalStateException("Hiányzó localFilePath a kamera szegmenshez: " + recording.getId());
+        }
 
-    /**
-     * Generate the server-side path for a recording.
-     */
-    private String generateServerPath(CameraRecording recording) {
-        return String.format("/camera-storage/%s/%s/%s",
-                recording.getBranchId(),
-                recording.getStartTime().toLocalDate(),
-                recording.getId());
+        Path source = Paths.get(recording.getLocalFilePath());
+        if (!Files.exists(source)) {
+            throw new IllegalStateException("A kamera szegmens fájl nem található: " + source);
+        }
+
+        String baseDir = fileTransportService.sanitizePathSegment(
+                integrationTransportProperties.getCamera().getUploadDir(), "camera.uploadDir");
+        String relativeDir = Paths.get(baseDir,
+                fileTransportService.sanitizePathSegment(recording.getBranchId().toString(), "branchId"),
+                fileTransportService.sanitizePathSegment(recording.getStartTime().toLocalDate().toString(), "recordingDate")).toString();
+        String targetFileName = fileTransportService.sanitizeFileName(recording.getId() + "_" + source.getFileName());
+        Path uploaded = fileTransportService.copyToManagedStorage(source, relativeDir, targetFileName);
+        log.info("Kamera szegmens feltöltve managed storage-be: {} -> {}", source, uploaded);
+        return uploaded.toString();
     }
 
     /**
