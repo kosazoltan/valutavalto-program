@@ -3,7 +3,6 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.entity.CommissionCalculation;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.CommissionCalculationService;
-import hu.puzzleir.valuta.util.LegacyCompanyIdentityCodec;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -37,7 +36,7 @@ public class CommissionCalculationController {
     public ResponseEntity<CommissionCalculation> calculate(
             @RequestParam(required = false) Long workerId,
             @RequestParam String month) {
-        Integer companyId = extractCompanyId();
+        UUID companyId = extractCompanyId();
         Long effectiveWorkerId = workerId != null ? workerId : SecurityUtils.getCurrentWorkerId();
         CommissionCalculation result = service.calculateMonthly(effectiveWorkerId, month, companyId);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
@@ -51,7 +50,7 @@ public class CommissionCalculationController {
     public ResponseEntity<List<CommissionCalculation>> calculateAll(
             @RequestParam(required = false) UUID branchId,
             @RequestParam String month) {
-        Integer companyId = extractCompanyId();
+        UUID companyId = extractCompanyId();
         UUID effectiveBranchId = branchId != null ? branchId : SecurityUtils.getCurrentBranchId();
         List<CommissionCalculation> results = service.calculateAllWorkers(effectiveBranchId, month, companyId);
         return ResponseEntity.status(HttpStatus.CREATED).body(results);
@@ -77,9 +76,7 @@ public class CommissionCalculationController {
         return ResponseEntity.ok(service.getCommissionReport(branchId, month));
     }
 
-    private Integer extractCompanyId() {
-        UUID companyUuid = SecurityUtils.getCurrentCompanyId();
-        // TODO(migration): CommissionRule.companyId legyen UUID a Company.id-hoz igazítva
-        return LegacyCompanyIdentityCodec.toLegacyInt(companyUuid);
+    private UUID extractCompanyId() {
+        return SecurityUtils.getCurrentCompanyId();
     }
 }

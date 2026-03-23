@@ -41,7 +41,7 @@ public class CommissionCalculationService {
      * Egyetlen pénztáros havi jutalékának számítása.
      */
     @Transactional
-    public CommissionCalculation calculateMonthly(Long workerId, String yearMonth, Integer companyId) {
+    public CommissionCalculation calculateMonthly(Long workerId, String yearMonth, UUID companyId) {
         YearMonth ym = parseYearMonth(yearMonth);
 
         // Már létezik?
@@ -130,7 +130,7 @@ public class CommissionCalculationService {
      * Iroda összes pénztárosának jutalék számítása.
      */
     @Transactional
-    public List<CommissionCalculation> calculateAllWorkers(UUID branchId, String yearMonth, Integer companyId) {
+    public List<CommissionCalculation> calculateAllWorkers(UUID branchId, String yearMonth, UUID companyId) {
         YearMonth ym = parseYearMonth(yearMonth);
         LocalDate monthStart = ym.atDay(1);
         LocalDate monthEnd = ym.atEndOfMonth();

@@ -92,7 +92,7 @@ class CommissionControllerTest {
             sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
 
             CommissionCalculation calc = createTestCalc();
-            when(service.calculateMonthly(eq(1L), eq("2026-01"), anyInt()))
+            when(service.calculateMonthly(eq(1L), eq("2026-01"), any(UUID.class)))
                     .thenReturn(calc);
 
             mockMvc.perform(post("/api/v1/commissions/calculate")
@@ -115,7 +115,7 @@ class CommissionControllerTest {
             sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
 
             List<CommissionCalculation> calcs = List.of(createTestCalc(), createTestCalc());
-            when(service.calculateAllWorkers(any(UUID.class), eq("2026-01"), anyInt()))
+            when(service.calculateAllWorkers(any(UUID.class), eq("2026-01"), any(UUID.class)))
                     .thenReturn(calcs);
 
             mockMvc.perform(post("/api/v1/commissions/calculate-all")

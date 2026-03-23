@@ -36,7 +36,7 @@ public class CommissionRule {
     private UUID id;
 
     @Column(name = "company_id", nullable = false)
-    private Integer companyId;
+    private UUID companyId;
 
     /**
      * Tier szint (1, 2, 3...)

@@ -22,6 +22,6 @@ public interface CommissionRuleRepository extends JpaRepository<CommissionRule, 
            "AND (r.validTo IS NULL OR r.validTo >= :date) " +
            "ORDER BY r.tier ASC")
     List<CommissionRule> findActiveRules(
-            @Param("companyId") Integer companyId,
+            @Param("companyId") UUID companyId,
             @Param("date") LocalDate date);
 }

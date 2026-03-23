@@ -48,7 +48,7 @@ class CommissionCalculationServiceTest {
 
     private static final Long WORKER_ID = 1L;
     private static final String YEAR_MONTH = "2026-01";
-    private static final Integer COMPANY_ID = 42;
+    private static final UUID COMPANY_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
     // 2026 január 1. (a mocks egyetlen napra adnak tranzakciót)
     private static final LocalDate JAN_1 = LocalDate.of(2026, 1, 1);
