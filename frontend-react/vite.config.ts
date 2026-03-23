@@ -30,6 +30,7 @@ const config: UserConfig & { test: InlineConfig } = {
     globals: true,
     setupFiles: './src/test/setup.ts',
     css: true,
+    exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
   },
   // API URL beállítása build időben
   envPrefix: 'VITE_',

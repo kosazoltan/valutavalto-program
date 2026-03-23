@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
 import { Toaster } from './components/ui/toaster'
@@ -10,81 +10,90 @@ import AuthLayout from './layouts/AuthLayout'
 
 // Pages
 import LoginPage from './pages/auth/LoginPage'
-import DashboardPage from './pages/DashboardPage'
-import TransactionPage from './pages/transactions/TransactionPage'
-import TransactionListPage from './pages/transactions/TransactionListPage'
-import ConversionPage from './pages/transactions/ConversionPage'
-import CashierTransactionPage from './pages/transactions/CashierTransactionPage'
-import CashierMainMenu from './pages/CashierMainMenu'
-import ClosingWizardPage from './pages/closing/ClosingWizardPage'
-import TransferPage from './pages/transfers/TransferPage'
-import CustomerListPage from './pages/customers/CustomerListPage'
-import CustomerDetailPage from './pages/customers/CustomerDetailPage'
-import CustomerCreatePage from './pages/customers/CustomerCreatePage'
-import RatesPage from './pages/rates/RatesPage'
-import RateCreationPage from './pages/rates/RateCreationPage'
-import CashDeskPage from './pages/cashdesk/CashDeskPage'
-import DenominationPage from './pages/cashdesk/DenominationPage'
-import ReportsPage from './pages/reports/ReportsPage'
-import SettingsPage from './pages/settings/SettingsPage'
-import StornoPage from './pages/stornos/StornoPage'
-import RepresentativeListPage from './pages/representatives/RepresentativeListPage'
-import ShipmentListPage from './pages/shipments/ShipmentListPage'
-import WorkerCommissionPage from './pages/commissions/WorkerCommissionPage'
-import WorkstationPage from './pages/workstations/WorkstationPage'
-import ContributionPage from './pages/contributions/ContributionPage'
-import CashDeskBreakPage from './pages/cashdesk/CashDeskBreakPage'
-import LoggingPage from './pages/logging/LoggingPage'
-import OrganizationPage from './pages/organizations/OrganizationPage'
-import OwnCompanyPage from './pages/company/OwnCompanyPage'
-import ReceiptPage from './pages/receipts/ReceiptPage'
-import HandoverSheetPage from './pages/handover/HandoverSheetPage'
-import ExtendedReportsPage from './pages/reports/ExtendedReportsPage'
-import FeePage from './pages/fees/FeePage'
-import BlacklistPage from './pages/blacklist/BlacklistPage'
-import AnonymousReportPage from './pages/reports/AnonymousReportPage'
-import CommissionRatePage from './pages/commissions/CommissionRatePage'
-import ArchivingPage from './pages/archiving/ArchivingPage'
-import ExchangeRateDisplayPage from './pages/display/ExchangeRateDisplayPage'
-import SynchronizationPage from './pages/sync/SynchronizationPage'
-import LocalQueuePage from './pages/sync/LocalQueuePage'
-import PosTerminalPage from './pages/pos/PosTerminalPage'
-import NavIntegrationPage from './pages/nav/NavIntegrationPage'
-import DocumentStoragePage from './pages/documents/DocumentStoragePage'
-import NotificationPage from './pages/notifications/NotificationPage'
-import OrganizationalSystemParameterPage from './pages/organizations/OrganizationalSystemParameterPage'
-import BranchGroupPage from './pages/branches/BranchGroupPage'
-import AuditLogPage from './pages/audit/AuditLogPage'
-import CircularPage from './pages/circulars/CircularPage'
-import FeePackagePage from './pages/fees/FeePackagePage'
-import PepPage from './pages/pep/PepPage'
-import RateGroupPage from './pages/rates/RateGroupPage'
-import ReservationPage from './pages/reservations/ReservationPage'
-import SuspiciousReportPage from './pages/suspicious/SuspiciousReportPage'
-import PermissionPage from './pages/settings/PermissionPage'
-import RolePage from './pages/settings/RolePage'
-import SystemParameterPage from './pages/settings/SystemParameterPage'
-import UserPage from './pages/settings/UserPage'
+
+const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+const TransactionPage = lazy(() => import('./pages/transactions/TransactionPage'))
+const TransactionListPage = lazy(() => import('./pages/transactions/TransactionListPage'))
+const ConversionPage = lazy(() => import('./pages/transactions/ConversionPage'))
+const CashierTransactionPage = lazy(() => import('./pages/transactions/CashierTransactionPage'))
+const CashierMainMenu = lazy(() => import('./pages/CashierMainMenu'))
+const ClosingWizardPage = lazy(() => import('./pages/closing/ClosingWizardPage'))
+const TransferPage = lazy(() => import('./pages/transfers/TransferPage'))
+const CustomerListPage = lazy(() => import('./pages/customers/CustomerListPage'))
+const CustomerDetailPage = lazy(() => import('./pages/customers/CustomerDetailPage'))
+const CustomerCreatePage = lazy(() => import('./pages/customers/CustomerCreatePage'))
+const RatesPage = lazy(() => import('./pages/rates/RatesPage'))
+const RateCreationPage = lazy(() => import('./pages/rates/RateCreationPage'))
+const CashDeskPage = lazy(() => import('./pages/cashdesk/CashDeskPage'))
+const DenominationPage = lazy(() => import('./pages/cashdesk/DenominationPage'))
+const ReportsPage = lazy(() => import('./pages/reports/ReportsPage'))
+const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'))
+const StornoPage = lazy(() => import('./pages/stornos/StornoPage'))
+const RepresentativeListPage = lazy(() => import('./pages/representatives/RepresentativeListPage'))
+const ShipmentListPage = lazy(() => import('./pages/shipments/ShipmentListPage'))
+const WorkerCommissionPage = lazy(() => import('./pages/commissions/WorkerCommissionPage'))
+const WorkstationPage = lazy(() => import('./pages/workstations/WorkstationPage'))
+const ContributionPage = lazy(() => import('./pages/contributions/ContributionPage'))
+const CashDeskBreakPage = lazy(() => import('./pages/cashdesk/CashDeskBreakPage'))
+const LoggingPage = lazy(() => import('./pages/logging/LoggingPage'))
+const OrganizationPage = lazy(() => import('./pages/organizations/OrganizationPage'))
+const OwnCompanyPage = lazy(() => import('./pages/company/OwnCompanyPage'))
+const ReceiptPage = lazy(() => import('./pages/receipts/ReceiptPage'))
+const HandoverSheetPage = lazy(() => import('./pages/handover/HandoverSheetPage'))
+const ExtendedReportsPage = lazy(() => import('./pages/reports/ExtendedReportsPage'))
+const FeePage = lazy(() => import('./pages/fees/FeePage'))
+const BlacklistPage = lazy(() => import('./pages/blacklist/BlacklistPage'))
+const AnonymousReportPage = lazy(() => import('./pages/reports/AnonymousReportPage'))
+const CommissionRatePage = lazy(() => import('./pages/commissions/CommissionRatePage'))
+const ArchivingPage = lazy(() => import('./pages/archiving/ArchivingPage'))
+const ExchangeRateDisplayPage = lazy(() => import('./pages/display/ExchangeRateDisplayPage'))
+const SynchronizationPage = lazy(() => import('./pages/sync/SynchronizationPage'))
+const LocalQueuePage = lazy(() => import('./pages/sync/LocalQueuePage'))
+const PosTerminalPage = lazy(() => import('./pages/pos/PosTerminalPage'))
+const NavIntegrationPage = lazy(() => import('./pages/nav/NavIntegrationPage'))
+const DocumentStoragePage = lazy(() => import('./pages/documents/DocumentStoragePage'))
+const NotificationPage = lazy(() => import('./pages/notifications/NotificationPage'))
+const OrganizationalSystemParameterPage = lazy(() => import('./pages/organizations/OrganizationalSystemParameterPage'))
+const BranchGroupPage = lazy(() => import('./pages/branches/BranchGroupPage'))
+const AuditLogPage = lazy(() => import('./pages/audit/AuditLogPage'))
+const CircularPage = lazy(() => import('./pages/circulars/CircularPage'))
+const FeePackagePage = lazy(() => import('./pages/fees/FeePackagePage'))
+const PepPage = lazy(() => import('./pages/pep/PepPage'))
+const RateGroupPage = lazy(() => import('./pages/rates/RateGroupPage'))
+const ReservationPage = lazy(() => import('./pages/reservations/ReservationPage'))
+const SuspiciousReportPage = lazy(() => import('./pages/suspicious/SuspiciousReportPage'))
+const PermissionPage = lazy(() => import('./pages/settings/PermissionPage'))
+const RolePage = lazy(() => import('./pages/settings/RolePage'))
+const SystemParameterPage = lazy(() => import('./pages/settings/SystemParameterPage'))
+const UserPage = lazy(() => import('./pages/settings/UserPage'))
 
 // === Kamera modul ===
-import CameraLivePage from './pages/camera/CameraLivePage'
-import CameraPlaybackPage from './pages/camera/CameraPlaybackPage'
-import CameraConfigPage from './pages/camera/CameraConfigPage'
-import CameraStatusPage from './pages/camera/CameraStatusPage'
-import CameraExportPage from './pages/camera/CameraExportPage'
-import DariusReportPage from './pages/darius/DariusReportPage'
+const CameraLivePage = lazy(() => import('./pages/camera/CameraLivePage'))
+const CameraPlaybackPage = lazy(() => import('./pages/camera/CameraPlaybackPage'))
+const CameraConfigPage = lazy(() => import('./pages/camera/CameraConfigPage'))
+const CameraStatusPage = lazy(() => import('./pages/camera/CameraStatusPage'))
+const CameraExportPage = lazy(() => import('./pages/camera/CameraExportPage'))
+const DariusReportPage = lazy(() => import('./pages/darius/DariusReportPage'))
 
 // === Árfolyam-kezelés modul ===
-import RateCreationDashboard from './pages/ratemanagement/RateCreationDashboard'
+const RateCreationDashboard = lazy(() => import('./pages/ratemanagement/RateCreationDashboard'))
 
 // === Treasury (Értéktári) modul ===
-import TreasuryLayout from './pages/treasury/TreasuryLayout'
-import TreasuryDashboard from './pages/treasury/TreasuryDashboard'
-import StockMatrix from './pages/treasury/StockMatrix'
-import MovementManager from './pages/treasury/MovementManager'
-import RatePanel from './pages/treasury/RatePanel'
-import ReportsCirculars from './pages/treasury/ReportsCirculars'
-import BankTransactions from './pages/treasury/BankTransactions'
+const TreasuryLayout = lazy(() => import('./pages/treasury/TreasuryLayout'))
+const TreasuryDashboard = lazy(() => import('./pages/treasury/TreasuryDashboard'))
+const StockMatrix = lazy(() => import('./pages/treasury/StockMatrix'))
+const MovementManager = lazy(() => import('./pages/treasury/MovementManager'))
+const RatePanel = lazy(() => import('./pages/treasury/RatePanel'))
+const ReportsCirculars = lazy(() => import('./pages/treasury/ReportsCirculars'))
+const BankTransactions = lazy(() => import('./pages/treasury/BankTransactions'))
+
+function RouteLoadingFallback() {
+  return (
+    <div className="flex h-full min-h-[240px] items-center justify-center">
+      <p className="text-sm text-gray-500">Oldal betöltése...</p>
+    </div>
+  )
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
@@ -158,22 +167,23 @@ export default function App() {
 
   return (
     <>
-      <Routes>
-        {/* Auth routes */}
-        <Route element={<AuthLayout />}>
-          <Route path="/login" element={<LoginPage />} />
-        </Route>
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <Routes>
+          {/* Auth routes */}
+          <Route element={<AuthLayout />}>
+            <Route path="/login" element={<LoginPage />} />
+          </Route>
 
-        {/* Protected routes */}
-        <Route
-          element={
-            <ProtectedRoute>
-              <MainLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
+          {/* Protected routes */}
+          <Route
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
           
           {/* Cashier (penztaros) routes */}
           <Route path="/cashier" element={<CashierMainMenu />} />
@@ -331,8 +341,9 @@ export default function App() {
           {/* === Árfolyam-kezelés Routes === */}
           <Route path="/rate-management" element={<RateCreationDashboard />} />
 
-        </Route>
-      </Routes>
+          </Route>
+        </Routes>
+      </Suspense>
       <Toaster />
     </>
   )
