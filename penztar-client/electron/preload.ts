@@ -337,6 +337,38 @@ contextBridge.exposeInMainWorld('electronAPI', {
   }>> =>
     ipcRenderer.invoke('get-cached-rates'),
 
+  getCachedCashDesks: (): Promise<Array<{
+    id: string;
+    code: string;
+    name: string;
+    company_id: string | null;
+    city: string | null;
+    is_active: number;
+    cached_at: string;
+  }>> =>
+    ipcRenderer.invoke('get-cached-cash-desks'),
+
+  getCachedCashDeskTimestamp: (): Promise<string | null> =>
+    ipcRenderer.invoke('get-cached-cash-desk-timestamp'),
+
+  getCachedWorkers: (): Promise<Array<{
+    id: number;
+    worker_code: string | null;
+    full_name: string;
+    role: string | null;
+    branch_id: string | null;
+    branch_code: string | null;
+    branch_name: string | null;
+    company_id: string | null;
+    company_code: string | null;
+    active: number;
+    cached_at: string;
+  }>> =>
+    ipcRenderer.invoke('get-cached-workers'),
+
+  getCachedWorkerTimestamp: (): Promise<string | null> =>
+    ipcRenderer.invoke('get-cached-worker-timestamp'),
+
   saveLocalAuditEvent: (payload: {
     entityType: string;
     eventType: string;

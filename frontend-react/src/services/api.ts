@@ -668,13 +668,74 @@ export interface CashDeskStatus {
 // Legacy alias
 export const cashDeskApi = {
   list: async (): Promise<CashDesk[]> => {
-    // Cash desks are now branches in the new architecture
-    return []
+    try {
+      const branches = await branchApi.listActive()
+      return branches.map((branch) => ({
+        id: branch.id,
+        code: branch.code,
+        name: branch.name,
+        branchId: branch.id,
+        branchName: branch.name,
+        isActive: branch.isActive ?? true,
+      }))
+    } catch {
+      if (!window.electronAPI?.getCachedCashDesks) return []
+      const cached = await window.electronAPI.getCachedCashDesks()
+      return cached
+        .filter((cashDesk) => cashDesk.is_active === 1)
+        .map((cashDesk) => ({
+          id: cashDesk.id,
+          code: cashDesk.code,
+          name: cashDesk.name,
+          branchId: cashDesk.id,
+          branchName: cashDesk.name,
+          isActive: cashDesk.is_active === 1,
+        }))
+    }
   },
   getStatus: async (): Promise<CashDeskStatus> => {
     const balances = await cashBalanceApi.list()
     return { isOpen: true, balances }
   }
+}
+
+export interface WorkerMaster {
+  id: number
+  workerCode: string | null
+  fullName: string
+  role: string | null
+  branchId: string | null
+  branchCode: string | null
+  branchName: string | null
+  companyId: string | null
+  companyCode: string | null
+  active: boolean
+}
+
+export const workerMasterApi = {
+  listActive: async (): Promise<WorkerMaster[]> => {
+    try {
+      const response = await api.get<WorkerMaster[]>('/workers/active')
+      return response.data
+    } catch {
+      if (!window.electronAPI?.getCachedWorkers) return []
+      const cached = await window.electronAPI.getCachedWorkers()
+      return cached
+        .filter((worker) => worker.active === 1)
+        .map((worker) => ({
+          id: worker.id,
+          workerCode: worker.worker_code,
+          fullName: worker.full_name,
+          role: worker.role,
+          branchId: worker.branch_id,
+          branchCode: worker.branch_code,
+          branchName: worker.branch_name,
+          companyId: worker.company_id,
+          companyCode: worker.company_code,
+          active: worker.active === 1,
+        }))
+    }
+  },
 }
 
 // ================== DAILY SESSION API ==================

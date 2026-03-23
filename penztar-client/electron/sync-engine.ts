@@ -34,6 +34,8 @@ import {
   getPendingHandoverOperations,
   markHandoverOperationSynced,
   saveCachedBranchStatus,
+  saveCachedCashDesk,
+  saveCachedWorker,
   type PendingBankTransactionRow,
   type PendingConversionRow,
   type PendingHandoverOperationRow,
@@ -91,6 +93,28 @@ interface BranchStatusResponse {
   totalHufValue: number;
   dailyTurnover: number;
   cashBalances: unknown[];
+}
+
+interface WorkerResponse {
+  id: number;
+  workerCode?: string | null;
+  fullName: string;
+  role?: string | null;
+  branchId?: string | null;
+  branchCode?: string | null;
+  branchName?: string | null;
+  companyId?: string | null;
+  companyCode?: string | null;
+  active?: boolean | null;
+}
+
+interface CashDeskResponse {
+  id: string;
+  code: string;
+  name: string;
+  companyId?: string | null;
+  city?: string | null;
+  isActive?: boolean | null;
 }
 
 interface LoginResponse {
@@ -374,6 +398,8 @@ export class SyncEngine {
         await this.syncTransfers();
         await this.syncCollections();
         await this.cacheBranchStatus();
+        await this.syncCashDeskMasterData();
+        await this.syncWorkerMasterData();
       }
 
       this.status.lastSyncAt = new Date().toISOString();
@@ -1163,6 +1189,88 @@ export class SyncEngine {
         return;
       }
       console.warn('[SyncEngine] Branch status cache hiba:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  /**
+   * Pénztár törzs (branch master) cache-elése.
+   */
+  async syncCashDeskMasterData(): Promise<void> {
+    try {
+      const serverUrl = this.getServerUrl();
+      const token = this.getAuthToken();
+
+      const cashDesks = await httpGet<CashDeskResponse[]>(
+        `${serverUrl}/branches?activeOnly=true`,
+        token,
+      );
+
+      if (!Array.isArray(cashDesks)) return;
+
+      for (const cashDesk of cashDesks) {
+        saveCachedCashDesk(
+          cashDesk.id,
+          cashDesk.code,
+          cashDesk.name,
+          cashDesk.companyId ?? null,
+          cashDesk.city ?? null,
+          cashDesk.isActive ?? true,
+        );
+      }
+
+      if (cashDesks.length > 0) {
+        console.log(`[SyncEngine] ${cashDesks.length} pénztár törzs rekord cache-elve`);
+      }
+    } catch (err) {
+      if (isAuthStatusError(err)) {
+        this.clearStoredAuthToken();
+        console.warn('[SyncEngine] Pénztár törzs sync auth hiba (401/403), session újra-bootstrap szükséges.');
+        return;
+      }
+      console.warn('[SyncEngine] Pénztár törzs sync hiba:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  /**
+   * Dolgozó törzs cache-elése.
+   */
+  async syncWorkerMasterData(): Promise<void> {
+    try {
+      const serverUrl = this.getServerUrl();
+      const token = this.getAuthToken();
+
+      const workers = await httpGet<WorkerResponse[]>(
+        `${serverUrl}/workers/active`,
+        token,
+      );
+
+      if (!Array.isArray(workers)) return;
+
+      for (const worker of workers) {
+        saveCachedWorker(
+          worker.id,
+          worker.workerCode ?? null,
+          worker.fullName,
+          worker.role ?? null,
+          worker.branchId ?? null,
+          worker.branchCode ?? null,
+          worker.branchName ?? null,
+          worker.companyId ?? null,
+          worker.companyCode ?? null,
+          worker.active ?? true,
+        );
+      }
+
+      if (workers.length > 0) {
+        console.log(`[SyncEngine] ${workers.length} dolgozó törzs rekord cache-elve`);
+      }
+    } catch (err) {
+      if (isAuthStatusError(err)) {
+        this.clearStoredAuthToken();
+        console.warn('[SyncEngine] Dolgozó törzs sync auth hiba (401/403), session újra-bootstrap szükséges.');
+        return;
+      }
+      console.warn('[SyncEngine] Dolgozó törzs sync hiba:', err instanceof Error ? err.message : err);
     }
   }
 

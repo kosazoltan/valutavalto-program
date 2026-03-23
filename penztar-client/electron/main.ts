@@ -31,6 +31,10 @@ import {
   getCachedBranchStatuses,
   getCachedBranchStatusTimestamp,
   getCachedRates,
+  getCachedCashDesks,
+  getCachedCashDeskTimestamp,
+  getCachedWorkers,
+  getCachedWorkerTimestamp,
 } from './sqlite';
 import { printReceipt, type PrintReceiptData } from './printer';
 import { syncEngine } from './sync-engine';
@@ -396,6 +400,22 @@ ipcMain.handle('get-cached-branch-status-timestamp', async () => {
 
 ipcMain.handle('get-cached-rates', async () => {
   return getCachedRates();
+});
+
+ipcMain.handle('get-cached-cash-desks', async () => {
+  return getCachedCashDesks();
+});
+
+ipcMain.handle('get-cached-cash-desk-timestamp', async () => {
+  return getCachedCashDeskTimestamp();
+});
+
+ipcMain.handle('get-cached-workers', async () => {
+  return getCachedWorkers();
+});
+
+ipcMain.handle('get-cached-worker-timestamp', async () => {
+  return getCachedWorkerTimestamp();
 });
 
 ipcMain.handle('save-local-audit-event', async (_event, payload: {

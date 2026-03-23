@@ -314,6 +314,34 @@ export async function initDatabase(): Promise<void> {
       );
     `);
 
+    db.run(`
+      CREATE TABLE IF NOT EXISTS cached_cash_desks (
+        id TEXT PRIMARY KEY,
+        code TEXT NOT NULL,
+        name TEXT NOT NULL,
+        company_id TEXT,
+        city TEXT,
+        is_active INTEGER DEFAULT 1,
+        cached_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS cached_workers (
+        id INTEGER PRIMARY KEY,
+        worker_code TEXT,
+        full_name TEXT NOT NULL,
+        role TEXT,
+        branch_id TEXT,
+        branch_code TEXT,
+        branch_name TEXT,
+        company_id TEXT,
+        company_code TEXT,
+        active INTEGER DEFAULT 1,
+        cached_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+
     // Értéktár offline mód — pending_collections
     db.run(`
       CREATE TABLE IF NOT EXISTS pending_collections (
@@ -1604,6 +1632,132 @@ export function getCachedBranchStatuses(): CachedBranchStatusRow[] {
 export function getCachedBranchStatusTimestamp(): string | null {
   if (!db) return null;
   const stmt = db.prepare('SELECT MAX(cached_at) as last_cached FROM cached_branch_status');
+  stmt.step();
+  const row = stmt.getAsObject();
+  stmt.free();
+  return (row['last_cached'] as string) ?? null;
+}
+
+// --- Master Cache: Cash desks (branch master) ---
+
+export interface CachedCashDeskRow {
+  id: string;
+  code: string;
+  name: string;
+  company_id: string | null;
+  city: string | null;
+  is_active: number;
+  cached_at: string;
+}
+
+export function saveCachedCashDesk(
+  id: string,
+  code: string,
+  name: string,
+  companyId: string | null,
+  city: string | null,
+  isActive: boolean,
+): void {
+  if (!db) return;
+
+  db.run(
+    `INSERT INTO cached_cash_desks (id, code, name, company_id, city, is_active, cached_at)
+     VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+     ON CONFLICT(id) DO UPDATE SET
+       code = excluded.code,
+       name = excluded.name,
+       company_id = excluded.company_id,
+       city = excluded.city,
+       is_active = excluded.is_active,
+       cached_at = excluded.cached_at`,
+    [id, code, name, companyId, city, isActive ? 1 : 0],
+  );
+  saveDatabase();
+}
+
+export function getCachedCashDesks(): CachedCashDeskRow[] {
+  if (!db) return [];
+  const results: CachedCashDeskRow[] = [];
+  const stmt = db.prepare('SELECT * FROM cached_cash_desks ORDER BY code ASC');
+  while (stmt.step()) {
+    results.push(stmt.getAsObject() as unknown as CachedCashDeskRow);
+  }
+  stmt.free();
+  return results;
+}
+
+export function getCachedCashDeskTimestamp(): string | null {
+  if (!db) return null;
+  const stmt = db.prepare('SELECT MAX(cached_at) as last_cached FROM cached_cash_desks');
+  stmt.step();
+  const row = stmt.getAsObject();
+  stmt.free();
+  return (row['last_cached'] as string) ?? null;
+}
+
+// --- Master Cache: Workers ---
+
+export interface CachedWorkerRow {
+  id: number;
+  worker_code: string | null;
+  full_name: string;
+  role: string | null;
+  branch_id: string | null;
+  branch_code: string | null;
+  branch_name: string | null;
+  company_id: string | null;
+  company_code: string | null;
+  active: number;
+  cached_at: string;
+}
+
+export function saveCachedWorker(
+  id: number,
+  workerCode: string | null,
+  fullName: string,
+  role: string | null,
+  branchId: string | null,
+  branchCode: string | null,
+  branchName: string | null,
+  companyId: string | null,
+  companyCode: string | null,
+  active: boolean,
+): void {
+  if (!db) return;
+
+  db.run(
+    `INSERT INTO cached_workers (id, worker_code, full_name, role, branch_id, branch_code, branch_name, company_id, company_code, active, cached_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+     ON CONFLICT(id) DO UPDATE SET
+       worker_code = excluded.worker_code,
+       full_name = excluded.full_name,
+       role = excluded.role,
+       branch_id = excluded.branch_id,
+       branch_code = excluded.branch_code,
+       branch_name = excluded.branch_name,
+       company_id = excluded.company_id,
+       company_code = excluded.company_code,
+       active = excluded.active,
+       cached_at = excluded.cached_at`,
+    [id, workerCode, fullName, role, branchId, branchCode, branchName, companyId, companyCode, active ? 1 : 0],
+  );
+  saveDatabase();
+}
+
+export function getCachedWorkers(): CachedWorkerRow[] {
+  if (!db) return [];
+  const results: CachedWorkerRow[] = [];
+  const stmt = db.prepare('SELECT * FROM cached_workers ORDER BY full_name ASC');
+  while (stmt.step()) {
+    results.push(stmt.getAsObject() as unknown as CachedWorkerRow);
+  }
+  stmt.free();
+  return results;
+}
+
+export function getCachedWorkerTimestamp(): string | null {
+  if (!db) return null;
+  const stmt = db.prepare('SELECT MAX(cached_at) as last_cached FROM cached_workers');
   stmt.step();
   const row = stmt.getAsObject();
   stmt.free();

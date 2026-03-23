@@ -235,6 +235,30 @@ export interface ElectronAPI {
     unit: number;
     updated_at: string;
   }>>;
+  getCachedCashDesks(): Promise<Array<{
+    id: string;
+    code: string;
+    name: string;
+    company_id: string | null;
+    city: string | null;
+    is_active: number;
+    cached_at: string;
+  }>>;
+  getCachedCashDeskTimestamp(): Promise<string | null>;
+  getCachedWorkers(): Promise<Array<{
+    id: number;
+    worker_code: string | null;
+    full_name: string;
+    role: string | null;
+    branch_id: string | null;
+    branch_code: string | null;
+    branch_name: string | null;
+    company_id: string | null;
+    company_code: string | null;
+    active: number;
+    cached_at: string;
+  }>>;
+  getCachedWorkerTimestamp(): Promise<string | null>;
   saveLocalAuditEvent(payload: {
     entityType: string;
     eventType: string;
