@@ -182,7 +182,22 @@ jobs:
           print(json.dumps(created_deploy, indent=2))
 
           if not deploy_id:
-              print("Render deploy response did not include a deploy id", file=sys.stderr)
+              print("Render deploy response did not include a deploy id; falling back to latest deploy lookup")
+              status, body = request(f"https://api.render.com/v1/services/{service_id}/deploys")
+              if not 200 <= status < 300:
+                  print("Fallback deploy lookup failed", file=sys.stderr)
+                  print(body, file=sys.stderr)
+                  raise SystemExit(1)
+
+              deploys = parse_json(body)
+              if isinstance(deploys, list) and deploys:
+                  deploy = deploy_item(deploys[0])
+                  deploy_id = deploy.get("id")
+                  print(f"Fallback selected deploy id: {deploy_id}")
+                  print(json.dumps(deploys[0], indent=2))
+
+          if not deploy_id:
+              print("Unable to resolve deploy id after fallback lookup", file=sys.stderr)
               raise SystemExit(1)
 
           terminal_failure_statuses = {
