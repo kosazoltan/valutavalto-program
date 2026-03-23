@@ -55,6 +55,13 @@ jobs:
                   print(payload, file=sys.stderr)
                   raise
 
+          def request_optional(url, label):
+              try:
+                  return request(url)
+              except Exception as exc:
+                  print(f"\n{label} unavailable: {exc}")
+                  return None
+
           def deploy_item(item):
               return item.get("deploy") or item
 
@@ -131,6 +138,27 @@ jobs:
           service_details = request(f"https://api.render.com/v1/services/{service_id}")
           print("\nService details:")
           print(json.dumps(service_details, indent=2, ensure_ascii=False))
+
+          owner_id = service_details.get("ownerId")
+          if owner_id:
+              logs_url = (
+                  "https://api.render.com/v1/logs"
+                  f"?ownerId={owner_id}"
+                  f"&resource={service_id}"
+                  "&direction=backward"
+                  "&limit=200"
+              )
+              recent_logs = request_optional(logs_url, "Recent logs")
+              print("\nRecent logs (resource scoped):")
+              print(
+                  json.dumps(
+                      recent_logs,
+                      indent=2,
+                      ensure_ascii=False,
+                  )
+              )
+          else:
+              print("\nRecent logs skipped: ownerId is missing from service details.")
 
           recent_deploys = request(f"https://api.render.com/v1/services/{service_id}/deploys")
           print("\nRecent deploys:")
