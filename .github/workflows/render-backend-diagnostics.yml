@@ -58,6 +58,15 @@ jobs:
           def deploy_item(item):
               return item.get("deploy") or item
 
+          def deep_contains(value, needle):
+              if value == needle:
+                  return True
+              if isinstance(value, dict):
+                  return any(deep_contains(v, needle) for v in value.values())
+              if isinstance(value, list):
+                  return any(deep_contains(v, needle) for v in value)
+              return False
+
           def unwrap(item):
               service = item.get("service") or item
               details = service.get("serviceDetails") or item.get("serviceDetails") or {}
@@ -133,6 +142,19 @@ jobs:
               )
           )
 
+          # Pull recent service events to extract build/deploy failure reasons.
+          recent_events = request(
+              f"https://api.render.com/v1/services/{service_id}/events?limit=100"
+          )
+          print("\nRecent service events (top 100):")
+          print(
+              json.dumps(
+                  recent_events[:25] if isinstance(recent_events, list) else recent_events,
+                  indent=2,
+                  ensure_ascii=False,
+              )
+          )
+
           if isinstance(recent_deploys, list):
               for entry in recent_deploys[:5]:
                   deploy = deploy_item(entry)
@@ -145,4 +167,31 @@ jobs:
                   )
                   print(f"\nDeploy details for {deploy_id}:")
                   print(json.dumps(deploy_details, indent=2, ensure_ascii=False))
+
+                  if isinstance(recent_events, list):
+                      matched_events = []
+                      for evt in recent_events:
+                          event_payload = evt.get("event") if isinstance(evt, dict) else None
+                          if not isinstance(event_payload, dict):
+                              continue
+
+                          event_details = event_payload.get("details")
+                          if deep_contains(event_details, deploy_id):
+                              matched_events.append(evt)
+                              continue
+
+                          # Fallback heuristic: if this deploy is failed, keep terminal failure-ish events.
+                          if deploy.get("status") in {"update_failed", "build_failed", "failed"}:
+                              event_type = str(event_payload.get("type", "")).lower()
+                              if any(token in event_type for token in ("fail", "error", "build", "deploy")):
+                                  matched_events.append(evt)
+
+                      print(f"\nFailure event candidates for deploy {deploy_id}:")
+                      print(
+                          json.dumps(
+                              matched_events[:20],
+                              indent=2,
+                              ensure_ascii=False,
+                          )
+                      )
           PY
