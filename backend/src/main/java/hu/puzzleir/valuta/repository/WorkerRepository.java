@@ -23,6 +23,7 @@ public interface WorkerRepository extends JpaRepository<Worker, Long> {
      * Keresés code alapján (company-n belül egyedi)
      */
     Optional<Worker> findByCompanyIdAndCode(UUID companyId, String code);
+    Optional<Worker> findByCompanyIdAndCodeIgnoreCase(UUID companyId, String code);
     
     /**
      * Összes dolgozó egy céghez

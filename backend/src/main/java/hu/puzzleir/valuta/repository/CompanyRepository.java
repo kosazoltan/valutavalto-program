@@ -14,6 +14,7 @@ public interface CompanyRepository extends JpaRepository<Company, UUID> {
      * Keresés code alapján
      */
     Optional<Company> findByCode(String code);
+    Optional<Company> findByCodeIgnoreCase(String code);
 
     /**
      * Code létezik-e

@@ -25,8 +25,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -304,16 +306,24 @@ public class WorkerService {
      * Login — HIGH FIX #16: Brute force védelemmel (max 5 sikertelen, 15 perc lock).
      */
     public LoginResponseDto login(LoginRequestDto dto, String ipAddress, String userAgent) {
+        String normalizedCompanyCode = normalizeCode(dto.getCompanyCode());
+        String normalizedWorkerCode = normalizeCode(dto.getWorkerCode());
+
         // HIGH FIX #16: Brute force ellenőrzés ELŐSZÖR
-        String loginKey = dto.getCompanyCode() + ":" + dto.getWorkerCode();
+        String loginKey = normalizedCompanyCode + ":" + normalizedWorkerCode;
         checkBruteForceLock(loginKey);
 
         // Company keresés
-        Company company = companyRepository.findByCode(dto.getCompanyCode())
+        Company company = companyRepository.findByCode(normalizedCompanyCode)
+                .or(() -> companyRepository.findByCodeIgnoreCase(normalizedCompanyCode))
                 .orElseThrow(() -> new ValidationException("Hibás cégkód!"));
         
         // Worker keresés
-        Worker worker = workerRepository.findByCompanyIdAndCode(company.getId(), dto.getWorkerCode())
+        Worker worker = workerRepository.findByCompanyIdAndCode(company.getId(), normalizedWorkerCode)
+                .or(() -> workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), normalizedWorkerCode))
+                .or(() -> workerRepository.findByCompanyId(company.getId()).stream()
+                        .filter(w -> normalizeLoginCode(w.getCode()).equals(normalizeLoginCode(normalizedWorkerCode)))
+                        .findFirst())
                 .orElseThrow(() -> {
                     recordFailedAttempt(loginKey);
                     return new ValidationException("Hibás pénztáros kód vagy jelszó!");
@@ -483,5 +493,16 @@ public class WorkerService {
             }
             return state;
         });
+    }
+
+    private String normalizeCode(String value) {
+        return value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private String normalizeLoginCode(String value) {
+        String base = normalizeCode(value);
+        String ascii = Normalizer.normalize(base, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "");
+        return ascii.replaceAll("[^A-Z0-9]", "");
     }
 }
