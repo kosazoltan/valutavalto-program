@@ -74,6 +74,7 @@ public class SecurityConfig {
 
                 // Worker self-profile - minden bejelentkezett user
                 .requestMatchers("/api/v1/workers/me").authenticated()
+                .requestMatchers("/api/v1/workers/active").authenticated()
 
                 // Worker management - csak SUPERVISOR és feljebb (a többi endpoint)
                 .requestMatchers("/api/v1/workers/**").hasAnyRole("SUPERVISOR", "MANAGER", "ADMIN")
