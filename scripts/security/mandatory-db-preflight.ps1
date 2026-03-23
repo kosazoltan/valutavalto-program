@@ -4,11 +4,10 @@ param(
     [string]$RemoteConnectionString,
     [string]$MigrationTable = "flyway_schema_history"
 )
-# Távoli Flyway paritás:
-#   strict (alap) — kötelező a public.flyway_schema_history + egyezés a lokállal
-#   optional      — ha a távoli DB elérhető, de nincs Flyway tábla (üres Neon stb.),
-#                   csak a lokális vs repo egyezést nézzük; WARN + kilépés 0
-# Állítható: $env:DB_PREFLIGHT_REMOTE_MODE = "optional"
+# Remote Flyway parity:
+#   strict (default): require public.flyway_schema_history + parity with local
+#   optional: if remote reachable but no Flyway table, only local vs repo; WARN then exit 0
+# Set: $env:DB_PREFLIGHT_REMOTE_MODE = "optional"
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
@@ -314,7 +313,7 @@ try {
 catch {
     $msg = $_.Exception.Message
     if ($remoteMode -eq "optional" -and $msg -match "does not exist") {
-        Write-Status "Remote/Neon: nincs Flyway tábla (flyway_schema_history) — optional mód: távoli paritás kihagyva. Éles előtt: flyway migrate + strict mód." "WARN"
+        Write-Status "Remote/Neon: no Flyway table (flyway_schema_history). optional mode: remote parity skipped. Use flyway migrate + strict for prod." "WARN"
         $skipRemoteParity = $true
     }
     else {
@@ -379,7 +378,7 @@ if ($hasMismatch) {
 Write-Status ("Versioned migrations in repo: " + $expectedVersionSet.Count) "OK"
 Write-Status ("Applied migrations (local): " + $localSet.Count) "OK"
 if ($skipRemoteParity) {
-    Write-Status "Applied migrations (remote/Neon): (nem ellenőrizve — optional mód)" "WARN"
+    Write-Status "Applied migrations (remote/Neon): (skipped - optional mode)" "WARN"
 }
 else {
     Write-Status ("Applied migrations (remote/Neon): " + $remoteSet.Count) "OK"

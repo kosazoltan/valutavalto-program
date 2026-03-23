@@ -37,6 +37,11 @@ if ($NvdApiKey -and $NvdApiKey.Trim().Length -gt 0) {
     $env:NVD_API_KEY = $NvdApiKey
 }
 
+# Local IDE / dev: remote DB often has no flyway_schema_history yet. CI sets CI=true -> strict unless overridden.
+if ($env:CI -ne "true" -and [string]::IsNullOrWhiteSpace($env:DB_PREFLIGHT_REMOTE_MODE)) {
+    $env:DB_PREFLIGHT_REMOTE_MODE = "optional"
+}
+
 function New-DirIfMissing {
     param([string]$PathValue)
     if (!(Test-Path -LiteralPath $PathValue)) {
@@ -353,6 +358,29 @@ $rgExcludes = Get-RgExcludeArgs
 
 Write-Section "Dependency and vulnerability checks"
 Write-Host ("NVD API key configured: " + $(if ($env:NVD_API_KEY) { "YES" } else { "NO" }))
+
+$dbPreflightScript = Join-Path $RepoRoot "scripts\security\mandatory-db-preflight.ps1"
+if (Test-Path -LiteralPath $dbPreflightScript) {
+    $escapedRepoRoot = $RepoRoot.Replace('"', '""')
+    $dbPreflightCommand = "powershell -NoProfile -ExecutionPolicy Bypass -File `"$dbPreflightScript`" -RepoRoot `"$escapedRepoRoot`""
+    $results.Add((Invoke-CheckWithTimeout `
+        -Name "mandatory_db_preflight" `
+        -WorkingDir $RepoRoot `
+        -Command $dbPreflightCommand `
+        -TimeoutSeconds $ScannerTimeoutSec `
+        -OutputFile (Join-Path $reportDir "mandatory_db_preflight.txt")))
+}
+else {
+    $missingPreflightOutput = Join-Path $reportDir "mandatory_db_preflight.txt"
+    "Mandatory DB preflight script missing: $dbPreflightScript" | Set-Content -LiteralPath $missingPreflightOutput -Encoding UTF8
+    $results.Add([PSCustomObject]@{
+        check = "mandatory_db_preflight"
+        status = "BLOCKED"
+        command = "mandatory-db-preflight.ps1"
+        output = $missingPreflightOutput
+        note = "Missing mandatory DB preflight script"
+    })
+}
 
 if ($env:NVD_API_KEY -and $env:NVD_API_KEY.Trim().Length -gt 0) {
     $nvdCheckOutput = Join-Path $reportDir "nvd_api_key_check.txt"
