@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+pwsh ./scripts/security/check-utf8-guardrail.ps1

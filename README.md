@@ -144,6 +144,29 @@ npx tsc --noEmit
 # Eredmény: 0 hiba
 ```
 
+## UTF-8 hardening guardrail
+
+- CI guardrail workflow: `.github/workflows/utf8-guardrail.yml`
+- Opcionális pre-commit hook:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+- Lokális ellenőrzés:
+
+```bash
+pwsh ./scripts/security/check-utf8-guardrail.ps1
+```
+
+- Diff alapú futtatás (PR/branch compare):
+
+```bash
+pwsh ./scripts/security/check-utf8-guardrail.ps1 -BaseRef <base-commit> -HeadRef HEAD
+```
+
+A check fail-el, ha nem UTF-8 dekódolható fájl vagy mojibake mintázat kerül a diffbe.
+
 ## Összesítő Statisztikák
 
 | Metrika                  | Szám          |
