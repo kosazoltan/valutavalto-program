@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Valutaváltó ERP — Lokális fejlesztői környezet
 # Használat: docker-compose up -d
 # Majd: backend → ./mvnw spring-boot:run
