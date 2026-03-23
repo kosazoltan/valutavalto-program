@@ -23,6 +23,18 @@ public interface DailySessionRepository extends JpaRepository<DailySession, Long
     Optional<DailySession> findByBranchIdAndSessionDate(UUID branchId, LocalDate sessionDate);
 
     /**
+     * Napi session részletekkel (lazy proxy hiba elkerüléséhez DTO map előtt).
+     */
+    @Query("SELECT ds FROM DailySession ds " +
+           "LEFT JOIN FETCH ds.branch " +
+           "LEFT JOIN FETCH ds.openedByWorker " +
+           "LEFT JOIN FETCH ds.closedByWorker " +
+           "WHERE ds.branch.id = :branchId AND ds.sessionDate = :sessionDate")
+    Optional<DailySession> findByBranchIdAndSessionDateWithDetails(
+            @Param("branchId") UUID branchId,
+            @Param("sessionDate") LocalDate sessionDate);
+
+    /**
      * Aktuális nyitott session egy fiókhoz
      */
     @Query("SELECT ds FROM DailySession ds " +

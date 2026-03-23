@@ -154,7 +154,7 @@ public class DailySessionService {
         UUID branchId = SecurityUtils.getCurrentBranchId();
         LocalDate today = LocalDate.now();
 
-        return dailySessionRepository.findByBranchIdAndSessionDate(branchId, today)
+        return dailySessionRepository.findByBranchIdAndSessionDateWithDetails(branchId, today)
                 .filter(s -> s.getStatus() == DailySessionStatus.OPEN)
                 .orElseThrow(() -> new ValidationException("Nincs nyitott napi munkamenet!"));
     }
