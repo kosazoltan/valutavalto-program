@@ -1,5 +1,16 @@
 import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import { useAuthStore } from '../stores/authStore'
+import { toast } from '../components/ui/toaster'
+
+// Extend AxiosRequestConfig to support _skipGlobal403Toast flag
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    _skipGlobal403Toast?: boolean
+  }
+  interface InternalAxiosRequestConfig {
+    _skipGlobal403Toast?: boolean
+  }
+}
 
 const WEB_AUTH_TOKEN_KEY = 'auth_token'
 
@@ -138,7 +149,15 @@ api.interceptors.response.use(
 
     // 403 — jogosultság hiány (NEM logout, hanem informatív hiba)
     if (error.response?.status === 403) {
-      console.warn('403 Forbidden:', originalRequest.url, '— Nincs jogosultság ehhez a művelethez')
+      if (originalRequest._skipGlobal403Toast) {
+        console.warn('403 Forbidden (global toast skipped):', originalRequest.url)
+      } else {
+        console.warn('403 Forbidden:', originalRequest.url, '— Nincs jogosultság ehhez a művelethez')
+        toast.error(
+          'Hozzáférés megtagadva',
+          'Nincs jogosultságod ehhez a művelethez. Kérj hozzáférést az adminisztrátortól.'
+        )
+      }
     }
 
     // Log error for debugging
@@ -1638,10 +1657,10 @@ export const rateCreationApi = {
     return response.data
   },
   updateWorkgroupBranches: async (workgroupId: string, branchIds: string[]): Promise<void> => {
-    await api.post(`/rate-creation/workgroups/${workgroupId}/branches`, { branchIds })
+    await api.post(`/rate-creation/workgroups/${workgroupId}/branches`, { branchIds }, { _skipGlobal403Toast: true })
   },
   updateWorkgroupLimits: async (workgroupId: string, limits: { limit1Boundary: number; limit2Boundary: number; limit3Boundary: number }): Promise<void> => {
-    await api.put(`/rate-creation/workgroups/${workgroupId}/limits`, limits)
+    await api.put(`/rate-creation/workgroups/${workgroupId}/limits`, limits, { _skipGlobal403Toast: true })
   }
 }
 
