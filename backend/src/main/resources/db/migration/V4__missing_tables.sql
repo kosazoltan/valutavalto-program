@@ -59,13 +59,13 @@ CREATE TABLE IF NOT EXISTS bank_cash_journal (
     entry_type VARCHAR(20) NOT NULL, -- 'DEPOSIT', 'WITHDRAWAL', 'INVOICE_PAYMENT'
     bank_name VARCHAR(100),
     bank_account VARCHAR(50),
-    currency_id UUID NOT NULL REFERENCES currency(id),
+    currency_id BIGINT NOT NULL REFERENCES currency(id),
     amount DECIMAL(18,2) NOT NULL,
     huf_amount DECIMAL(18,2),
     invoice_number VARCHAR(50),
     description TEXT,
     receipt_number VARCHAR(50),
-    worker_id UUID REFERENCES worker(id),
+    worker_id BIGINT REFERENCES worker(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS decade_reports (
     decade_end DATE NOT NULL,
     report_data JSONB NOT NULL, -- teljes dekád összesítő
     printed_at TIMESTAMP,
-    printed_by UUID REFERENCES worker(id),
+    printed_by BIGINT REFERENCES worker(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS stamp_receipts (
     receipt_date DATE NOT NULL,
     stamp_type VARCHAR(20) NOT NULL, -- 'PURCHASE', 'SALE', 'RETURN'
     total_amount DECIMAL(18,2) NOT NULL,
-    worker_id UUID REFERENCES worker(id),
+    worker_id BIGINT REFERENCES worker(id),
     notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -126,7 +126,7 @@ CREATE TABLE IF NOT EXISTS wu_balances (
 -- WU ügyfelek (WUGYFEL)
 CREATE TABLE IF NOT EXISTS wu_customers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    customer_id UUID REFERENCES customer(id),
+    customer_id BIGINT REFERENCES customer(id),
     wu_customer_code VARCHAR(50),
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
@@ -156,7 +156,7 @@ CREATE TABLE IF NOT EXISTS wu_transactions (
     destination_country VARCHAR(100),
     receipt_number VARCHAR(50),
     status VARCHAR(20) NOT NULL DEFAULT 'COMPLETED',
-    worker_id UUID REFERENCES worker(id),
+    worker_id BIGINT REFERENCES worker(id),
     transaction_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
