@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { AxiosError } from 'axios'
 import { RefreshCw, AlertTriangle, Send, Plus, X, Building2, Clock } from 'lucide-react'
 import {
   rateCreationApi,
@@ -9,6 +10,7 @@ import {
 } from '../../services/api'
 import { toast } from '../../components/ui/toaster'
 import { formatDecimal } from '../../utils/numberFormat'
+import { useAuthStore } from '../../stores/authStore'
 
 // ===================== Types =====================
 
@@ -46,6 +48,7 @@ function fmtAmount(val: number | null | undefined): string {
 // ===================== Main Component =====================
 
 export default function RateCreationPage() {
+  const canWriteRateCreation = useAuthStore((state) => state.isSupervisorOrAbove())
   const [overview, setOverview] = useState<RateOverviewDTO | null>(null)
   const [workgroups, setWorkgroups] = useState<WorkgroupDetailDTO[]>([])
   const [rates, setRates] = useState<EditableRate[]>([])
@@ -132,6 +135,10 @@ export default function RateCreationPage() {
 
   const handleSaveLimits = async () => {
     if (!selectedWg) return
+    if (!canWriteRateCreation) {
+      toast.error('Nincs jogosultság', 'A határok mentéséhez supervisor vagy magasabb szerepkör kell')
+      return
+    }
     setSavingLimits(true)
     try {
       await rateCreationApi.updateWorkgroupLimits(selectedWg.id, {
@@ -142,8 +149,12 @@ export default function RateCreationPage() {
       toast.success('Mentve', 'Kedvezmény határok frissítve')
       setLimitsModified(false)
       void loadData()
-    } catch {
-      toast.error('Hiba', 'Nem sikerült a határok mentése')
+    } catch (err) {
+      if (err instanceof AxiosError && err.response?.status === 403) {
+        toast.error('Nincs jogosultság', 'A határok mentéséhez supervisor vagy magasabb szerepkör kell')
+      } else {
+        toast.error('Hiba', 'Nem sikerült a határok mentése')
+      }
     } finally {
       setSavingLimits(false)
     }
@@ -171,14 +182,22 @@ export default function RateCreationPage() {
 
   const handleSaveBranches = async () => {
     if (!selectedWg) return
+    if (!canWriteRateCreation) {
+      toast.error('Nincs jogosultság', 'Irodák mentéséhez supervisor vagy magasabb szerepkör kell')
+      return
+    }
     setSavingBranches(true)
     try {
       await rateCreationApi.updateWorkgroupBranches(selectedWg.id, Array.from(selectedBranchIds))
       toast.success('Mentve', 'Irodák frissítve')
       setBranchModalOpen(false)
       void loadData()
-    } catch {
-      toast.error('Hiba', 'Nem sikerült az irodák mentése')
+    } catch (err) {
+      if (err instanceof AxiosError && err.response?.status === 403) {
+        toast.error('Nincs jogosultság', 'Irodák mentéséhez supervisor vagy magasabb szerepkör kell')
+      } else {
+        toast.error('Hiba', 'Nem sikerült az irodák mentése')
+      }
     } finally {
       setSavingBranches(false)
     }
@@ -186,13 +205,21 @@ export default function RateCreationPage() {
 
   const removeBranch = async (branchId: string) => {
     if (!selectedWg) return
+    if (!canWriteRateCreation) {
+      toast.error('Nincs jogosultság', 'Iroda eltávolításához supervisor vagy magasabb szerepkör kell')
+      return
+    }
     const newIds = selectedWg.branches.filter(b => b.id !== branchId).map(b => b.id)
     try {
       await rateCreationApi.updateWorkgroupBranches(selectedWg.id, newIds)
       toast.success('Eltávolítva', 'Iroda eltávolítva a csoportból')
       void loadData()
-    } catch {
-      toast.error('Hiba', 'Nem sikerült az iroda eltávolítása')
+    } catch (err) {
+      if (err instanceof AxiosError && err.response?.status === 403) {
+        toast.error('Nincs jogosultság', 'Iroda eltávolításához supervisor vagy magasabb szerepkör kell')
+      } else {
+        toast.error('Hiba', 'Nem sikerült az iroda eltávolítása')
+      }
     }
   }
 
@@ -210,6 +237,10 @@ export default function RateCreationPage() {
   const handlePublish = async () => {
     if (!selectedWg) {
       toast.warning('Munkacsoport szükséges', 'Válasszon munkacsoportot!')
+      return
+    }
+    if (!canWriteRateCreation) {
+      toast.error('Nincs jogosultság', 'Publikáláshoz supervisor vagy magasabb szerepkör kell')
       return
     }
 
@@ -449,6 +480,7 @@ export default function RateCreationPage() {
                 Irodák ({selectedWg?.branches.length ?? 0})
               </span>
               <button onClick={() => void openBranchPicker()}
+                disabled={!canWriteRateCreation}
                 className="w-5 h-5 rounded bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center"
                 title="Iroda hozzáadása">
                 <Plus size={12} />
@@ -460,6 +492,7 @@ export default function RateCreationPage() {
                   <div key={b.id} className="flex items-center justify-between px-1.5 py-0.5 bg-gray-50 rounded border border-gray-200 text-[11px] text-gray-700 group">
                     <span className="truncate">{b.name}</span>
                     <button onClick={() => void removeBranch(b.id)}
+                      disabled={!canWriteRateCreation}
                       className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 flex-shrink-0 ml-1"
                       title="Eltávolítás">
                       <X size={12} />
@@ -487,12 +520,13 @@ export default function RateCreationPage() {
                     type="text"
                     value={editLimits[key]}
                     onChange={e => handleLimitChange(key, e.target.value)}
+                    disabled={!canWriteRateCreation}
                     className="flex-1 px-1.5 py-0.5 text-right font-mono text-[11px] font-bold border rounded bg-gray-50 focus:bg-white focus:border-blue-400 focus:outline-none"
                   />
                 </div>
               ))}
             </div>
-            {limitsModified && (
+            {limitsModified && canWriteRateCreation && (
               <button onClick={() => void handleSaveLimits()} disabled={savingLimits}
                 className="w-full mt-1 px-2 py-0.5 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white text-[10px] font-bold rounded">
                 {savingLimits ? 'Mentés...' : 'Határok mentése'}
@@ -503,7 +537,7 @@ export default function RateCreationPage() {
           {/* Publish button - always visible */}
           <button
             onClick={() => void handlePublish()}
-            disabled={publishing || !selectedWg}
+            disabled={publishing || !selectedWg || !canWriteRateCreation}
             className="w-full bg-green-700 hover:bg-green-800 disabled:bg-gray-400 text-white font-bold py-2.5 px-3 rounded shadow flex items-center justify-center gap-2 transition-colors flex-shrink-0"
           >
             {publishing ? (
@@ -575,7 +609,7 @@ export default function RateCreationPage() {
                   className="px-3 py-1.5 text-xs border rounded hover:bg-gray-100">
                   Mégse
                 </button>
-                <button onClick={() => void handleSaveBranches()} disabled={savingBranches}
+                <button onClick={() => void handleSaveBranches()} disabled={savingBranches || !canWriteRateCreation}
                   className="px-3 py-1.5 text-xs bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded font-bold">
                   {savingBranches ? 'Mentés...' : 'Mentés'}
                 </button>
