@@ -13,4 +13,7 @@ public interface AuthorizedRepresentativeRepository extends JpaRepository<Author
     List<AuthorizedRepresentative> findByCustomerId(Long customerId);
 
     List<AuthorizedRepresentative> findByIsActiveTrue();
+
+    List<AuthorizedRepresentative> findAllByCompanyId(UUID companyId);
+    List<AuthorizedRepresentative> findByCompanyIdAndCustomerId(UUID companyId, Long customerId);
 }

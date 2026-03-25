@@ -36,6 +36,9 @@ public class AnonymousReport {
     @Builder.Default
     private AnonymousReportStatus status = AnonymousReportStatus.NEW;
 
+    @Column(name = "company_id")
+    private UUID companyId;
+
     @Column(name = "assigned_to_id")
     private Long assignedToId;
 

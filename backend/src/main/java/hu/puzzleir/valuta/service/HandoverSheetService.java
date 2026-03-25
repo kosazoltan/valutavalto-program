@@ -20,7 +20,8 @@ public class HandoverSheetService {
     private final HandoverSheetRepository repo;
 
     public List<HandoverSheet> listAll() {
-        return repo.findAll();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return repo.findAllByCompanyId(companyId);
     }
 
     public HandoverSheet getById(UUID id) {
@@ -28,23 +29,24 @@ public class HandoverSheetService {
                 .orElseThrow(() -> new ResourceNotFoundException("Átadás-átvételi lap nem található: " + id));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public HandoverSheet generate(HandoverSheet entity) {
         entity.setId(null);
         entity.setStatus(HandoverSheetStatus.DRAFT);
         entity.setTransferDate(LocalDate.now());
         entity.setCreatedById(SecurityUtils.getCurrentWorkerId());
+        entity.setCompanyId(SecurityUtils.getCurrentCompanyId());
         return repo.save(entity);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public HandoverSheet print(UUID id) {
         HandoverSheet sheet = getById(id);
         sheet.setStatus(HandoverSheetStatus.PRINTED);
         return repo.save(sheet);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public HandoverSheet complete(UUID id) {
         HandoverSheet sheet = getById(id);
         sheet.setStatus(HandoverSheetStatus.COMPLETED);

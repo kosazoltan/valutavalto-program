@@ -11,4 +11,7 @@ import java.util.UUID;
 public interface OrganizationRepository extends JpaRepository<Organization, UUID> {
     List<Organization> findByIsActiveTrue();
     List<Organization> findByParentIdIsNull();
+    List<Organization> findAllByCompanyId(UUID companyId);
+    List<Organization> findByCompanyIdAndIsActiveTrue(UUID companyId);
+    List<Organization> findByCompanyIdAndParentIdIsNull(UUID companyId);
 }

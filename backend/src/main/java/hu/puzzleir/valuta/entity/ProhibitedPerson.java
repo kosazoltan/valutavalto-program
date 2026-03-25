@@ -20,6 +20,9 @@ public class ProhibitedPerson {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Column(name = "company_id")
+    private UUID companyId;
+
     @Column(name = "full_name", nullable = false, length = 300)
     private String fullName;
 

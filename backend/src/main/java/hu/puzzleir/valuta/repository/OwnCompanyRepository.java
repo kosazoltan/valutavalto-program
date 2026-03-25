@@ -10,4 +10,6 @@ import java.util.UUID;
 @Repository
 public interface OwnCompanyRepository extends JpaRepository<OwnCompany, UUID> {
     List<OwnCompany> findByIsActiveTrue();
+    List<OwnCompany> findAllByCompanyId(UUID companyId);
+    List<OwnCompany> findByCompanyIdAndIsActiveTrue(UUID companyId);
 }

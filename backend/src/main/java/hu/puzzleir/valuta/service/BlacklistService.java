@@ -1,10 +1,12 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.exception.BusinessException;
 import hu.puzzleir.valuta.entity.ProhibitedCompany;
 import hu.puzzleir.valuta.entity.ProhibitedPerson;
 import hu.puzzleir.valuta.repository.ProhibitedCompanyRepository;
 import hu.puzzleir.valuta.repository.ProhibitedPersonRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,17 +30,18 @@ public class BlacklistService {
     // --- Persons ---
 
     public List<ProhibitedPerson> listPersons() {
-        return personRepo.findAll();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return personRepo.findAllByCompanyId(companyId);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ProhibitedPerson createPerson(ProhibitedPerson entity) {
         entity.setId(null);
         if (entity.getIsActive() == null) entity.setIsActive(true);
         return personRepo.save(entity);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ProhibitedPerson updatePerson(UUID id, ProhibitedPerson entity) {
         ProhibitedPerson existing = personRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Tiltott személy nem található: " + id));
@@ -55,12 +58,12 @@ public class BlacklistService {
         return personRepo.save(existing);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deletePerson(UUID id) {
         personRepo.deleteById(id);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public List<ProhibitedPerson> importPersonsCsv(MultipartFile file) {
         List<ProhibitedPerson> imported = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(
@@ -86,7 +89,7 @@ public class BlacklistService {
                 imported.add(personRepo.save(p));
             }
         } catch (Exception e) {
-            throw new RuntimeException("CSV import hiba: " + e.getMessage(), e);
+            throw new BusinessException("CSV import hiba: " + e.getMessage(), "CSV_IMPORT_FAILED");
         }
         return imported;
     }
@@ -94,17 +97,18 @@ public class BlacklistService {
     // --- Companies ---
 
     public List<ProhibitedCompany> listCompanies() {
-        return companyRepo.findAll();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return companyRepo.findAllByCompanyId(companyId);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ProhibitedCompany createCompany(ProhibitedCompany entity) {
         entity.setId(null);
         if (entity.getIsActive() == null) entity.setIsActive(true);
         return companyRepo.save(entity);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ProhibitedCompany updateCompany(UUID id, ProhibitedCompany entity) {
         ProhibitedCompany existing = companyRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Tiltott cég nem található: " + id));
@@ -118,12 +122,12 @@ public class BlacklistService {
         return companyRepo.save(existing);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteCompany(UUID id) {
         companyRepo.deleteById(id);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public List<ProhibitedCompany> importCompaniesCsv(MultipartFile file) {
         List<ProhibitedCompany> imported = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(
@@ -146,7 +150,7 @@ public class BlacklistService {
                 imported.add(companyRepo.save(c));
             }
         } catch (Exception e) {
-            throw new RuntimeException("CSV import hiba: " + e.getMessage(), e);
+            throw new BusinessException("CSV import hiba: " + e.getMessage(), "CSV_IMPORT_FAILED");
         }
         return imported;
     }

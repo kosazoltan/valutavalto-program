@@ -10,4 +10,6 @@ import java.util.UUID;
 @Repository
 public interface ReceiptRepository extends JpaRepository<Receipt, UUID> {
     List<Receipt> findByTransactionId(UUID transactionId);
+    List<Receipt> findAllByCompanyId(UUID companyId);
+    List<Receipt> findByCompanyIdAndTransactionId(UUID companyId, UUID transactionId);
 }

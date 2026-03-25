@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.service;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.entity.OwnCompany;
 import hu.puzzleir.valuta.repository.OwnCompanyRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,11 +18,13 @@ public class OwnCompanyService {
     private final OwnCompanyRepository repo;
 
     public List<OwnCompany> listAll() {
-        return repo.findAll();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return repo.findAllByCompanyId(companyId);
     }
 
     public List<OwnCompany> listActive() {
-        return repo.findByIsActiveTrue();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return repo.findByCompanyIdAndIsActiveTrue(companyId);
     }
 
     public OwnCompany getById(UUID id) {
@@ -29,14 +32,15 @@ public class OwnCompanyService {
                 .orElseThrow(() -> new ResourceNotFoundException("Saját cég nem található: " + id));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public OwnCompany create(OwnCompany entity) {
         entity.setId(null);
+        entity.setCompanyId(SecurityUtils.getCurrentCompanyId());
         if (entity.getIsActive() == null) entity.setIsActive(true);
         return repo.save(entity);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public OwnCompany update(UUID id, OwnCompany entity) {
         OwnCompany existing = getById(id);
         existing.setName(entity.getName());
@@ -53,7 +57,7 @@ public class OwnCompanyService {
         return repo.save(existing);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void delete(UUID id) {
         repo.deleteById(id);
     }

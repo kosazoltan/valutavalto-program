@@ -44,7 +44,7 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Transactional(rollbackFor = Exception.class)
 public class WorkerService {
     
     private final WorkerRepository workerRepository;
@@ -529,9 +529,9 @@ public class WorkerService {
         }
 
         // Single-tenant fallback: ha csak egy cég van, engedjük a bejelentkezést rá.
-        List<Company> companies = companyRepository.findAll();
-        if (companies.size() == 1) {
-            return Optional.of(companies.get(0));
+        long companyCount = companyRepository.count();
+        if (companyCount == 1) {
+            return companyRepository.findAll().stream().findFirst();
         }
         return Optional.empty();
     }

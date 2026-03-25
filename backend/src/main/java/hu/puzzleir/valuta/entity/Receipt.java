@@ -19,6 +19,9 @@ public class Receipt {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Column(name = "company_id")
+    private UUID companyId;
+
     @Column(name = "receipt_number", nullable = false, unique = true, length = 50)
     private String receiptNumber;
 

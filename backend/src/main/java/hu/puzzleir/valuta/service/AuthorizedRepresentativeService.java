@@ -29,10 +29,11 @@ public class AuthorizedRepresentativeService {
 
     @Transactional(readOnly = true)
     public List<AuthorizedRepresentative> findAll(Long customerId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         if (customerId != null) {
-            return representativeRepository.findByCustomerId(customerId);
+            return representativeRepository.findByCompanyIdAndCustomerId(companyId, customerId);
         }
-        return representativeRepository.findAll();
+        return representativeRepository.findAllByCompanyId(companyId);
     }
 
     @Transactional(readOnly = true)
@@ -42,6 +43,7 @@ public class AuthorizedRepresentativeService {
     }
 
     public AuthorizedRepresentative create(AuthorizedRepresentative representative) {
+        representative.setCompanyId(SecurityUtils.getCurrentCompanyId());
         log.info("Új meghatalmazott létrehozása: {} (ügyfél: {})",
                 representative.getRepresentativeName(), representative.getCustomerId());
         return representativeRepository.save(representative);

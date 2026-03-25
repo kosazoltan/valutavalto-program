@@ -29,6 +29,9 @@ public class AuthorizedRepresentative {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Column(name = "company_id")
+    private UUID companyId;
+
     @Column(name = "customer_id", nullable = false)
     private Long customerId;
 

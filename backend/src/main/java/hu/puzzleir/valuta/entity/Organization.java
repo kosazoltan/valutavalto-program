@@ -19,6 +19,9 @@ public class Organization {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Column(name = "company_id")
+    private UUID companyId;
+
     @Column(nullable = false, unique = true, length = 50)
     private String code;
 
