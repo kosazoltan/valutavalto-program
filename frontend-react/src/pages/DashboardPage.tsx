@@ -140,7 +140,7 @@ export default function DashboardPage() {
             </Link>
             <Link to="/cashdesk" className="form-button justify-start">
               <Wallet size={18} />
-              <span>Pénztár zárás</span>
+              <span>Napi zárás</span>
             </Link>
           </div>
         </div>

@@ -32,21 +32,21 @@ interface MenuItem {
 const PAGE1: MenuItem[] = [
   { key: '1', label: 'VETEL', icon: Banknote, color: 'from-emerald-500 to-emerald-600', route: '/transactions/cashier?mode=buy' },
   { key: '2', label: 'ELADAS', icon: Coins, color: 'from-blue-500 to-blue-600', route: '/transactions/cashier?mode=sell' },
-  { key: '3', label: 'KONVERZIO', icon: Repeat, color: 'from-purple-500 to-purple-600', route: '/transactions/conversion' },
-  { key: '4', label: 'ATADAS', icon: ArrowRight, color: 'from-orange-500 to-orange-600', route: '/transfers' },
+  { key: '3', label: 'KONVERZIÓ', icon: Repeat, color: 'from-purple-500 to-purple-600', route: '/transactions/conversion' },
+  { key: '4', label: 'ÁTADÁS', icon: ArrowRight, color: 'from-orange-500 to-orange-600', route: '/transfers' },
   { key: '5', label: '', icon: null, color: '', route: '' },
-  { key: '6', label: 'STORNO', icon: XCircle, color: 'from-red-500 to-red-600', route: '/transactions' },
-  { key: '7', label: 'ARFOLYAM', icon: TrendingUp, color: 'from-cyan-500 to-cyan-600', route: '/rates' },
-  { key: '8', label: 'KESZLET', icon: Wallet, color: 'from-teal-500 to-teal-600', route: '/cashdesk' },
+  { key: '6', label: 'STORNÓ', icon: XCircle, color: 'from-red-500 to-red-600', route: '/transactions' },
+  { key: '7', label: 'ÁRFOLYAM', icon: TrendingUp, color: 'from-cyan-500 to-cyan-600', route: '/rates' },
+  { key: '8', label: 'KÉSZLET', icon: Wallet, color: 'from-teal-500 to-teal-600', route: '/cashdesk' },
   { key: '9', label: 'FORGALOM', icon: BarChart3, color: 'from-indigo-500 to-indigo-600', route: '/reports' },
 ]
 
 const PAGE2: MenuItem[] = [
-  { key: '1', label: 'ZARAS', icon: Lock, color: 'from-red-500 to-red-600', route: '/closing/wizard' },
+  { key: '1', label: 'NAPI ZÁRÁS', icon: Lock, color: 'from-red-500 to-red-600', route: '/closing/wizard' },
   { key: '2', label: 'BIZONYLATOK', icon: FileText, color: 'from-blue-500 to-blue-600', route: '/receipts' },
-  { key: '3', label: 'TARSPENZTARAK', icon: Building2, color: 'from-purple-500 to-purple-600', route: '/branch-groups' },
-  { key: '4', label: 'LISTAK', icon: List, color: 'from-gray-500 to-gray-600', route: '/transactions' },
-  { key: '5', label: 'PENZTAROSOK', icon: Users, color: 'from-emerald-500 to-emerald-600', route: '/settings/users' },
+  { key: '3', label: 'TÁRSPÉNZTÁRAK', icon: Building2, color: 'from-purple-500 to-purple-600', route: '/branch-groups' },
+  { key: '4', label: 'LISTÁK', icon: List, color: 'from-gray-500 to-gray-600', route: '/transactions' },
+  { key: '5', label: 'PÉNZTÁROSOK', icon: Users, color: 'from-emerald-500 to-emerald-600', route: '/settings/users' },
   { key: '6', label: 'NAPI FORGALOM', icon: Calendar, color: 'from-orange-500 to-orange-600', route: '/reports/extended' },
   { key: '7', label: 'REGI ZARAS', icon: Archive, color: 'from-amber-500 to-amber-600', route: '/archiving' },
   { key: '8', label: 'REGENERALAS', icon: RefreshCw, color: 'from-cyan-500 to-cyan-600', route: '/cashdesk/denominations' },
@@ -115,7 +115,7 @@ export default function CashierMainMenu() {
             className="flex items-center gap-2 px-5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors"
           >
             <ChevronLeft className="w-5 h-5" />
-            Elozo
+            Előző
           </button>
 
           <div className="flex gap-2">
