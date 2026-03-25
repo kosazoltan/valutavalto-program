@@ -71,6 +71,7 @@ class TransactionServiceBusinessLogicTest {
     @Mock private HandlingFeeCalculator handlingFeeCalculator;
     @Mock private AmlService amlService;
     @Mock private PosTerminalService posTerminalService;
+    @Mock private TransactionCalculationService calculationService;
 
     private Currency huf;
     private Currency eur;
@@ -109,6 +110,20 @@ class TransactionServiceBusinessLogicTest {
 
         when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(rate(eur, "395.00", "400.00"));
         when(exchangeRateService.getCurrentRate(USD_ID)).thenReturn(rate(usd, "360.00", "365.00"));
+
+        when(calculationService.resolveBuyRate(any(), any(), any()))
+                .thenAnswer(inv -> {
+                    ExchangeRate r = inv.getArgument(0);
+                    return r.getBaseBuyRate();
+                });
+        when(calculationService.resolveSellRate(any(), any(), any()))
+                .thenAnswer(inv -> {
+                    ExchangeRate r = inv.getArgument(0);
+                    return r.getBaseSellRate();
+                });
+        when(calculationService.applyBuyDiscount(any(), any())).thenAnswer(inv -> inv.getArgument(0));
+        when(calculationService.applySellDiscount(any(), any())).thenAnswer(inv -> inv.getArgument(0));
+        when(calculationService.calculateDiscountAmount(any(), any())).thenReturn(BigDecimal.ZERO);
 
         when(handlingFeeCalculator.calculate(any(), any(), any())).thenReturn(BigDecimal.ZERO);
         when(handlingFeeCalculator.calculateSellGross(any(), any())).thenAnswer(inv -> inv.getArgument(0));

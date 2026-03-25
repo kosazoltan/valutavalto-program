@@ -4,7 +4,7 @@ import hu.puzzleir.valuta.entity.CameraRecording;
 import hu.puzzleir.valuta.entity.CameraTransactionLink;
 import hu.puzzleir.valuta.repository.CameraRecordingRepository;
 import hu.puzzleir.valuta.repository.CameraTransactionLinkRepository;
-import hu.puzzleir.valuta.util.TransactionIdentityCodec;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -56,7 +56,7 @@ class CameraTransactionLinkerTest {
         ArgumentCaptor<CameraTransactionLink> captor = ArgumentCaptor.forClass(CameraTransactionLink.class);
         verify(linkRepository).save(captor.capture());
 
-        assertThat(captor.getValue().getTransactionId()).isEqualTo(TransactionIdentityCodec.toUuid(42L));
+        assertThat(captor.getValue().getTransactionId()).isEqualTo(42L);
         assertThat(captor.getValue().getReceiptNumber()).isEqualTo("V00042");
     }
 }

@@ -51,6 +51,7 @@ class TransactionServiceCameraLinkingTest {
     @Mock private HandlingFeeCalculator handlingFeeCalculator;
     @Mock private AmlService amlService;
     @Mock private PosTerminalService posTerminalService;
+    @Mock private TransactionCalculationService calculationService;
     @Mock private ObjectProvider<CameraTransactionLinker> cameraTransactionLinkerProvider;
     @Mock private CameraTransactionLinker cameraTransactionLinker;
 
@@ -93,6 +94,13 @@ class TransactionServiceCameraLinkingTest {
         when(receiptSequenceService.generateReceiptNumber(BRANCH_ID, TransactionType.BUY)).thenReturn("V00001");
         when(handlingFeeCalculator.calculate(any(), eq(TransactionType.BUY), any())).thenReturn(BigDecimal.ZERO);
         when(handlingFeeCalculator.calculateBuyGross(any(), any())).thenAnswer(inv -> inv.getArgument(0));
+        when(calculationService.resolveBuyRate(any(), any(), any()))
+                .thenAnswer(inv -> {
+                    ExchangeRate r = inv.getArgument(0);
+                    return r.getBaseBuyRate();
+                });
+        when(calculationService.applyBuyDiscount(any(), any())).thenAnswer(inv -> inv.getArgument(0));
+        when(calculationService.calculateDiscountAmount(any(), any())).thenReturn(BigDecimal.ZERO);
         when(cameraTransactionLinkerProvider.getIfAvailable()).thenReturn(cameraTransactionLinker);
 
         CashBalance eurBalance = new CashBalance();

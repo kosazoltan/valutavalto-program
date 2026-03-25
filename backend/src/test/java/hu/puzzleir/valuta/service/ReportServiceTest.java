@@ -27,7 +27,10 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
- * ReportService UNIT tesztek — P2-14 N+1 fix + branch name fix.
+ * ReportService UNIT tesztek — Facade delegálás tesztelése.
+ *
+ * A ReportService delegál a generátorokra (DailyReportGenerator,
+ * MonthlyReportGenerator, NbReportGenerator), ezért azokat mock-oljuk.
  */
 @ExtendWith(MockitoExtension.class)
 @org.mockito.junit.jupiter.MockitoSettings(strictness = org.mockito.quality.Strictness.LENIENT)
@@ -36,15 +39,9 @@ class ReportServiceTest {
     @InjectMocks
     private ReportService reportService;
 
-    @Mock private TransactionRepository transactionRepository;
-    @Mock private DailySessionRepository dailySessionRepository;
-    @Mock private CashBalanceRepository cashBalanceRepository;
-    @Mock private DenominationRepository denominationRepository;
-    @Mock private CurrencyRepository currencyRepository;
-    @Mock private WorkerRepository workerRepository;
-    @Mock private TransferRepository transferRepository;
-    @Mock private MonthlyClosingRepository monthlyClosingRepository;
-    @Mock private BranchRepository branchRepository;
+    @Mock private DailyReportGenerator dailyReportGenerator;
+    @Mock private MonthlyReportGenerator monthlyReportGenerator;
+    @Mock private NbReportGenerator nbReportGenerator;
 
     private static final UUID TEST_COMPANY_ID = UUID.randomUUID();
     private static final UUID TEST_BRANCH_ID = UUID.randomUUID();
@@ -58,55 +55,59 @@ class ReportServiceTest {
         SecurityContextHolder.getContext().setAuthentication(auth);
     }
 
-    // ============ TASK 1: Worker N+1 fix ============
+    // ============ TASK 1: Worker N+1 fix — delegálás NbReportGenerator-ra ============
 
     @Test
-    @DisplayName("generateWorkerPerformanceReport: single date-range query használata (nem N+1)")
-    void workerPerformance_usesSingleQuery_notNPlusOne() {
+    @DisplayName("generateWorkerPerformanceReport: delegál NbReportGenerator-ra")
+    void workerPerformance_delegatesToNbReportGenerator() {
         LocalDate start = LocalDate.of(2024, 1, 1);
         LocalDate end = LocalDate.of(2024, 1, 31);
         Long workerId = 5L;
 
-        Worker worker = new Worker();
-        worker.setId(workerId);
-        worker.setCode("P001");
-        worker.setName("Teszt Pénztáros");
+        ReportService.WorkerPerformanceReport expected = new ReportService.WorkerPerformanceReport();
+        expected.setWorkerCode("P001");
+        expected.setTotalTransactions(10);
+        expected.setBuyTransactions(6);
+        expected.setSellTransactions(4);
+        expected.setTotalBuyHuf(new BigDecimal("600000"));
+        expected.setTotalSellHuf(new BigDecimal("400000"));
+        expected.setTotalTurnoverHuf(new BigDecimal("1000000"));
 
-        when(workerRepository.findById(workerId)).thenReturn(Optional.of(worker));
-        when(transactionRepository.findByWorkerIdAndTransactionDateBetween(workerId, start, end))
-                .thenReturn(Collections.emptyList());
+        when(nbReportGenerator.generateWorkerPerformanceReport(workerId, start, end))
+                .thenReturn(expected);
 
-        reportService.generateWorkerPerformanceReport(workerId, start, end);
+        ReportService.WorkerPerformanceReport result =
+                reportService.generateWorkerPerformanceReport(workerId, start, end);
 
-        // Egyetlen date-range query, nem napi ciklus
-        verify(transactionRepository, times(1))
-                .findByWorkerIdAndTransactionDateBetween(workerId, start, end);
-        // A régi napi query nem hívódik meg
-        verify(transactionRepository, never())
-                .findByWorkerAndDate(anyLong(), any(LocalDate.class));
+        verify(nbReportGenerator, times(1))
+                .generateWorkerPerformanceReport(workerId, start, end);
+        assertThat(result.getTotalTransactions()).isEqualTo(10);
+        assertThat(result.getBuyTransactions()).isEqualTo(6);
+        assertThat(result.getSellTransactions()).isEqualTo(4);
+        assertThat(result.getTotalBuyHuf()).isEqualByComparingTo("600000");
+        assertThat(result.getTotalSellHuf()).isEqualByComparingTo("400000");
+        assertThat(result.getTotalTurnoverHuf()).isEqualByComparingTo("1000000");
+        assertThat(result.getWorkerCode()).isEqualTo("P001");
     }
 
     @Test
-    @DisplayName("generateWorkerPerformanceReport: helyes összesítés tranzakciókból")
+    @DisplayName("generateWorkerPerformanceReport: helyes összesítés visszaadva")
     void workerPerformance_correctAggregation() {
         LocalDate start = LocalDate.of(2024, 3, 1);
         LocalDate end = LocalDate.of(2024, 3, 31);
         Long workerId = 7L;
 
-        Worker worker = new Worker();
-        worker.setId(workerId);
-        worker.setCode("P007");
-        worker.setName("Kovács Pénztáros");
+        ReportService.WorkerPerformanceReport expected = new ReportService.WorkerPerformanceReport();
+        expected.setWorkerCode("P007");
+        expected.setTotalTransactions(2);
+        expected.setBuyTransactions(1);
+        expected.setSellTransactions(1);
+        expected.setTotalBuyHuf(new BigDecimal("100000"));
+        expected.setTotalSellHuf(new BigDecimal("50000"));
+        expected.setTotalTurnoverHuf(new BigDecimal("150000"));
 
-        Currency eur = new Currency();
-        eur.setCode("EUR");
-
-        Transaction buy1 = buildTransaction(TransactionType.BUY, new BigDecimal("100000"), eur);
-        Transaction sell1 = buildTransaction(TransactionType.SELL, new BigDecimal("50000"), eur);
-
-        when(workerRepository.findById(workerId)).thenReturn(Optional.of(worker));
-        when(transactionRepository.findByWorkerIdAndTransactionDateBetween(workerId, start, end))
-                .thenReturn(List.of(buy1, sell1));
+        when(nbReportGenerator.generateWorkerPerformanceReport(workerId, start, end))
+                .thenReturn(expected);
 
         ReportService.WorkerPerformanceReport result =
                 reportService.generateWorkerPerformanceReport(workerId, start, end);
@@ -120,24 +121,26 @@ class ReportServiceTest {
         assertThat(result.getWorkerCode()).isEqualTo("P007");
     }
 
-    // ============ TASK 2: HandlingFee N+1 fix ============
+    // ============ TASK 2: HandlingFee N+1 fix — delegálás MonthlyReportGenerator-ra ============
 
     @Test
-    @DisplayName("generateHandlingFeeReport: GROUP BY aggregált query használata (nem N+1)")
-    void handlingFee_usesAggregateQuery_notNPlusOne() {
+    @DisplayName("generateHandlingFeeReport: delegál MonthlyReportGenerator-ra")
+    void handlingFee_delegatesToMonthlyReportGenerator() {
         LocalDate start = LocalDate.of(2024, 2, 1);
         LocalDate end = LocalDate.of(2024, 2, 29);
 
-        when(transactionRepository.findHandlingFeeSummaryByBranchAndDateRange(TEST_BRANCH_ID, start, end))
-                .thenReturn(Collections.emptyList());
+        ReportService.HandlingFeeReport expected = new ReportService.HandlingFeeReport();
+        expected.setTotalHandlingFees(BigDecimal.ZERO);
+        expected.setTransactionsWithFee(0);
+        expected.setFeesByCurrency(Collections.emptyList());
+
+        when(monthlyReportGenerator.generateHandlingFeeReport(start, end))
+                .thenReturn(expected);
 
         reportService.generateHandlingFeeReport(start, end);
 
-        verify(transactionRepository, times(1))
-                .findHandlingFeeSummaryByBranchAndDateRange(TEST_BRANCH_ID, start, end);
-        // A régi napi query nem hívódik meg
-        verify(transactionRepository, never())
-                .findActiveByBranchAndDate(any(UUID.class), any(LocalDate.class));
+        verify(monthlyReportGenerator, times(1))
+                .generateHandlingFeeReport(start, end);
     }
 
     @Test
@@ -146,13 +149,20 @@ class ReportServiceTest {
         LocalDate start = LocalDate.of(2024, 1, 1);
         LocalDate end = LocalDate.of(2024, 1, 31);
 
-        // row: [transactionDate, currencyCode, SUM(handlingFee), COUNT(t)]
-        Object[] rowEur = {LocalDate.of(2024, 1, 5), "EUR", new BigDecimal("500"), 3L};
-        Object[] rowUsd = {LocalDate.of(2024, 1, 6), "USD", new BigDecimal("300"), 2L};
-        Object[] rowEur2 = {LocalDate.of(2024, 1, 7), "EUR", new BigDecimal("200"), 1L};
+        ReportService.CurrencyFeeData eurFee = new ReportService.CurrencyFeeData();
+        eurFee.setCurrencyCode("EUR");
+        eurFee.setTotalFees(new BigDecimal("700"));
+        ReportService.CurrencyFeeData usdFee = new ReportService.CurrencyFeeData();
+        usdFee.setCurrencyCode("USD");
+        usdFee.setTotalFees(new BigDecimal("300"));
 
-        when(transactionRepository.findHandlingFeeSummaryByBranchAndDateRange(TEST_BRANCH_ID, start, end))
-                .thenReturn(List.of(rowEur, rowUsd, rowEur2));
+        ReportService.HandlingFeeReport expected = new ReportService.HandlingFeeReport();
+        expected.setTotalHandlingFees(new BigDecimal("1000"));
+        expected.setTransactionsWithFee(6);
+        expected.setFeesByCurrency(List.of(eurFee, usdFee));
+
+        when(monthlyReportGenerator.generateHandlingFeeReport(start, end))
+                .thenReturn(expected);
 
         ReportService.HandlingFeeReport result = reportService.generateHandlingFeeReport(start, end);
 
@@ -166,22 +176,23 @@ class ReportServiceTest {
         assertThat(feeMap.get("USD")).isEqualByComparingTo("300");
     }
 
-    // ============ TASK 3: Branch name fix ============
+    // ============ TASK 3: Branch name fix — delegálás MonthlyReportGenerator-ra ============
 
     @Test
-    @DisplayName("generateMonthlyTurnoverReport: valódi iroda nevet mutat (nem UUID prefix)")
-    void monthlyTurnover_realBranchName_notUuidPrefix() {
-        UUID branchId = UUID.randomUUID();
-        MonthlyClosing closing = buildMonthlyClosing(branchId);
+    @DisplayName("generateMonthlyTurnoverReport: valódi iroda nevet mutat (delegálás)")
+    void monthlyTurnover_realBranchName_delegated() {
+        ReportService.BranchMonthlyData branchData = new ReportService.BranchMonthlyData();
+        branchData.setBranchName("Budapest I. kerület fiók");
+        branchData.setBuyHuf(new BigDecimal("1000000"));
+        branchData.setSellHuf(new BigDecimal("1200000"));
 
-        Branch branch = new Branch();
-        branch.setId(branchId);
-        branch.setName("Budapest I. kerület fiók");
+        ReportService.MonthlyTurnoverReport expected = new ReportService.MonthlyTurnoverReport();
+        expected.setBranchData(List.of(branchData));
+        expected.setYear(2024);
+        expected.setMonth(3);
 
-        when(monthlyClosingRepository.findByCompanyIdAndClosingYearOrderByClosingMonthDesc(TEST_COMPANY_ID, 2024))
-                .thenReturn(List.of(closing));
-        when(branchRepository.findAllById(Set.of(branchId)))
-                .thenReturn(List.of(branch));
+        when(monthlyReportGenerator.generateMonthlyTurnoverReport(2024, 3))
+                .thenReturn(expected);
 
         ReportService.MonthlyTurnoverReport result =
                 reportService.generateMonthlyTurnoverReport(2024, 3);
@@ -195,14 +206,16 @@ class ReportServiceTest {
     @Test
     @DisplayName("generateMonthlyTurnoverReport: ismeretlen branch esetén fallback UUID prefix")
     void monthlyTurnover_unknownBranch_fallbackPrefix() {
-        UUID unknownBranchId = UUID.randomUUID();
-        MonthlyClosing closing = buildMonthlyClosing(unknownBranchId);
+        ReportService.BranchMonthlyData branchData = new ReportService.BranchMonthlyData();
+        branchData.setBranchName("Iroda-" + UUID.randomUUID().toString().substring(0, 8));
 
-        when(monthlyClosingRepository.findByCompanyIdAndClosingYearOrderByClosingMonthDesc(TEST_COMPANY_ID, 2024))
-                .thenReturn(List.of(closing));
-        // Nem találja az irodát
-        when(branchRepository.findAllById(any()))
-                .thenReturn(Collections.emptyList());
+        ReportService.MonthlyTurnoverReport expected = new ReportService.MonthlyTurnoverReport();
+        expected.setBranchData(List.of(branchData));
+        expected.setYear(2024);
+        expected.setMonth(3);
+
+        when(monthlyReportGenerator.generateMonthlyTurnoverReport(2024, 3))
+                .thenReturn(expected);
 
         ReportService.MonthlyTurnoverReport result =
                 reportService.generateMonthlyTurnoverReport(2024, 3);
@@ -213,59 +226,17 @@ class ReportServiceTest {
     }
 
     @Test
-    @DisplayName("generateMonthlyTurnoverReport: branchRepository csak egyszer hívódik (nem ciklusonként)")
-    void monthlyTurnover_branchRepository_calledOnce() {
-        UUID branchId1 = UUID.randomUUID();
-        UUID branchId2 = UUID.randomUUID();
+    @DisplayName("generateMonthlyTurnoverReport: MonthlyReportGenerator csak egyszer hívódik")
+    void monthlyTurnover_generatorCalledOnce() {
+        ReportService.MonthlyTurnoverReport expected = new ReportService.MonthlyTurnoverReport();
+        expected.setBranchData(Collections.emptyList());
 
-        MonthlyClosing c1 = buildMonthlyClosing(branchId1);
-        MonthlyClosing c2 = buildMonthlyClosing(branchId2);
-
-        Branch b1 = new Branch();
-        b1.setId(branchId1);
-        b1.setName("Iroda 1");
-        Branch b2 = new Branch();
-        b2.setId(branchId2);
-        b2.setName("Iroda 2");
-
-        when(monthlyClosingRepository.findByCompanyIdAndClosingYearOrderByClosingMonthDesc(TEST_COMPANY_ID, 2024))
-                .thenReturn(List.of(c1, c2));
-        when(branchRepository.findAllById(any()))
-                .thenReturn(List.of(b1, b2));
+        when(monthlyReportGenerator.generateMonthlyTurnoverReport(2024, 3))
+                .thenReturn(expected);
 
         reportService.generateMonthlyTurnoverReport(2024, 3);
 
-        // Csak egy batch findAllById, nem 2 findById hívás
-        verify(branchRepository, times(1)).findAllById(any());
-        verify(branchRepository, never()).findById(any(UUID.class));
-    }
-
-    // ============ HELPER METHODS ============
-
-    private Transaction buildTransaction(TransactionType type, BigDecimal hufAmount, Currency currency) {
-        Transaction t = new Transaction();
-        t.setTransactionType(type);
-        t.setHufAmount(hufAmount);
-        t.setCurrencyAmount(hufAmount.divide(BigDecimal.valueOf(400)));
-        t.setCurrency(currency);
-        t.setHandlingFee(BigDecimal.ZERO);
-        t.setStatus(TransactionStatus.COMPLETED);
-        return t;
-    }
-
-    private MonthlyClosing buildMonthlyClosing(UUID branchId) {
-        MonthlyClosing mc = new MonthlyClosing();
-        mc.setBranchId(branchId);
-        mc.setClosingYear(2024);
-        mc.setClosingMonth(3);
-        mc.setTotalBuyHuf(new BigDecimal("1000000"));
-        mc.setTotalSellHuf(new BigDecimal("1200000"));
-        mc.setTotalHandlingFees(new BigDecimal("5000"));
-        mc.setTotalTransactionCount(50);
-        mc.setBuyCount(25);
-        mc.setSellCount(25);
-        mc.setReversalCount(0);
-        mc.setStatus("CLOSED");
-        return mc;
+        verify(monthlyReportGenerator, times(1)).generateMonthlyTurnoverReport(2024, 3);
     }
 }
+

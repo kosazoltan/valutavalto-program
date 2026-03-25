@@ -98,12 +98,12 @@ class CameraControllerSecurityTest {
         CameraTransactionLink ownLink = CameraTransactionLink.builder()
                 .id(UUID.randomUUID())
                 .recording(CameraRecording.builder().id(UUID.randomUUID()).branchId(OWN_BRANCH_ID).cameraId("cam-own").build())
-                .transactionId(new UUID(0L, 123L))
+                .transactionId(123L)
                 .build();
         CameraTransactionLink foreignLink = CameraTransactionLink.builder()
                 .id(UUID.randomUUID())
                 .recording(CameraRecording.builder().id(UUID.randomUUID()).branchId(FOREIGN_BRANCH_ID).cameraId("cam-foreign").build())
-                .transactionId(new UUID(0L, 123L))
+                .transactionId(123L)
                 .build();
 
         when(transactionLinker.findByTransactionId(any())).thenReturn(List.of(ownLink, foreignLink));

@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.*;
+import hu.puzzleir.valuta.entity.ExchangeRate;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
@@ -87,6 +88,9 @@ class TransactionServiceMultiLineTest {
     @Mock
     private PosTerminalService posTerminalService;
 
+    @Mock
+    private TransactionCalculationService calculationService;
+
     private Company company;
     private Branch branch;
     private Worker worker;
@@ -160,6 +164,21 @@ class TransactionServiceMultiLineTest {
         when(handlingFeeCalculator.calculate(any(), any(), any())).thenReturn(BigDecimal.ZERO);
         when(handlingFeeCalculator.calculateBuyGross(any(), any())).thenAnswer(inv -> inv.getArgument(0));
         when(handlingFeeCalculator.calculateSellGross(any(), any())).thenAnswer(inv -> inv.getArgument(0));
+
+        // CalculationService mock — rate resolve + discount
+        when(calculationService.resolveBuyRate(any(), any(), any()))
+                .thenAnswer(inv -> {
+                    ExchangeRate r = inv.getArgument(0);
+                    return r.getBaseBuyRate();
+                });
+        when(calculationService.resolveSellRate(any(), any(), any()))
+                .thenAnswer(inv -> {
+                    ExchangeRate r = inv.getArgument(0);
+                    return r.getBaseSellRate();
+                });
+        when(calculationService.applyBuyDiscount(any(), any())).thenAnswer(inv -> inv.getArgument(0));
+        when(calculationService.applySellDiscount(any(), any())).thenAnswer(inv -> inv.getArgument(0));
+        when(calculationService.calculateDiscountAmount(any(), any())).thenReturn(BigDecimal.ZERO);
 
         // AML mock — approved
         AmlService.AmlBasicCheckResult amlOk = new AmlService.AmlBasicCheckResult();

@@ -67,6 +67,7 @@ class TransactionFlowTest {
     @Mock private HandlingFeeCalculator handlingFeeCalculator;
     @Mock private AmlService amlService;
     @Mock private PosTerminalService posTerminalService;
+    @Mock private hu.puzzleir.valuta.service.TransactionCalculationService calculationService;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();
     private static final UUID BRANCH_ID = UUID.randomUUID();
@@ -123,6 +124,23 @@ class TransactionFlowTest {
         hufBalance.setId(2L);
         hufBalance.setCurrentBalance(new BigDecimal("10000000"));
         hufBalance.setOpeningBalance(new BigDecimal("10000000"));
+
+        // Default mock: CalculationService
+        when(calculationService.resolveBuyRate(any(), any(), any()))
+                .thenAnswer(inv -> {
+                    ExchangeRate r = inv.getArgument(0);
+                    return r.getBaseBuyRate();
+                });
+        when(calculationService.resolveSellRate(any(), any(), any()))
+                .thenAnswer(inv -> {
+                    ExchangeRate r = inv.getArgument(0);
+                    return r.getBaseSellRate();
+                });
+        when(calculationService.applyBuyDiscount(any(), any())).thenAnswer(inv -> inv.getArgument(0));
+        when(calculationService.applySellDiscount(any(), any())).thenAnswer(inv -> inv.getArgument(0));
+        when(calculationService.calculateDiscountAmount(any(), any())).thenReturn(BigDecimal.ZERO);
+        // validateDiscount: by default no-op (Mockito void methods do nothing)
+        // For excessive discount, we override in the specific test
 
         // Default mock: HandlingFeeCalculator returns 0 (no fee)
         when(handlingFeeCalculator.calculate(any(), any(), any()))
@@ -431,6 +449,10 @@ class TransactionFlowTest {
                 when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
                 when(currencyRepository.findById(EUR_ID)).thenReturn(Optional.of(eurCurrency));
                 when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
+
+                // 2%+ kedvezmény supervisor nélkül → hiba
+                doThrow(new ValidationException("2% feletti kedvezmenyhez supervisor jogosultsag szukseges!"))
+                        .when(calculationService).validateDiscount(eq(new BigDecimal("5.0")));
 
                 TransactionService.BuyRequest request = TransactionService.BuyRequest.builder()
                         .currencyId(EUR_ID)

@@ -51,6 +51,7 @@ class TransactionServiceIdentificationTest {
     @Mock private HandlingFeeCalculator handlingFeeCalculator;
     @Mock private AmlService amlService;
     @Mock private PosTerminalService posTerminalService;
+    @Mock private TransactionCalculationService calculationService;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();
     private static final UUID BRANCH_ID = UUID.randomUUID();
@@ -99,6 +100,29 @@ class TransactionServiceIdentificationTest {
                 .validDate(LocalDate.now())
                 .build();
         when(exchangeRateService.getCurrentRate(2L)).thenReturn(rate);
+
+        // CalculationService mock — rate validation + resolve
+        when(calculationService.resolveSellRate(any(), any(), any()))
+                .thenAnswer(inv -> {
+                    ExchangeRate r = inv.getArgument(0);
+                    BigDecimal custom = inv.getArgument(2);
+                    if (custom != null) {
+                        if (custom.compareTo(BigDecimal.ZERO) <= 0) {
+                            throw new hu.puzzleir.valuta.exception.ValidationException(
+                                "Az egyedi eladási árfolyamnak pozitívnak kell lennie!");
+                        }
+                        return custom;
+                    }
+                    return r.getBaseSellRate();
+                });
+        when(calculationService.resolveBuyRate(any(), any(), any()))
+                .thenAnswer(inv -> {
+                    ExchangeRate r = inv.getArgument(0);
+                    return r.getBaseBuyRate();
+                });
+        when(calculationService.applySellDiscount(any(), any())).thenAnswer(inv -> inv.getArgument(0));
+        when(calculationService.applyBuyDiscount(any(), any())).thenAnswer(inv -> inv.getArgument(0));
+        when(calculationService.calculateDiscountAmount(any(), any())).thenReturn(BigDecimal.ZERO);
 
         // Kezelési díj: 0 Ft
         when(handlingFeeCalculator.calculate(any(), any(), any())).thenReturn(BigDecimal.ZERO);
