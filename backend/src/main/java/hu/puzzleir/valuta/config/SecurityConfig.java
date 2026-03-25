@@ -86,6 +86,19 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
 
+            // Security response headers (OWASP best practices)
+            .headers(headers -> headers
+                .contentTypeOptions(contentType -> {})  // X-Content-Type-Options: nosniff
+                .frameOptions(frame -> frame.deny())     // X-Frame-Options: DENY
+                .httpStrictTransportSecurity(hsts -> hsts
+                    .includeSubDomains(true)
+                    .maxAgeInSeconds(31536000))           // HSTS 1 year
+                .referrerPolicy(referrer -> referrer
+                    .policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                .permissionsPolicy(permissions -> permissions
+                    .policy("camera=(), microphone=(), geolocation=()"))
+            )
+
             .addFilterBefore(productionCorsFilter, UsernamePasswordAuthenticationFilter.class)
             
             // JWT filter hozzáadás (UsernamePasswordAuthenticationFilter előtt)

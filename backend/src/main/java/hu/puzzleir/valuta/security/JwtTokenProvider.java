@@ -8,6 +8,8 @@ import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
+
+import java.nio.charset.StandardCharsets;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -44,8 +46,8 @@ public class JwtTokenProvider {
             throw new IllegalStateException("FATAL: JWT_SECRET env var NINCS konfigurálva! Production-ban KÖTELEZŐ random 256-bit kulcsot használni.");
         }
         // Kulcs hossz ellenőrzés minden profilban
-        if (secretKey != null && secretKey.getBytes().length < 32) {
-            throw new IllegalStateException("FATAL: JWT_SECRET túl rövid! Minimum 32 byte (256 bit) szükséges. Jelenlegi: " + secretKey.getBytes().length + " byte.");
+        if (secretKey != null && secretKey.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalStateException("FATAL: JWT_SECRET túl rövid! Minimum 32 byte (256 bit) szükséges. Jelenlegi: " + secretKey.getBytes(StandardCharsets.UTF_8).length + " byte.");
         }
     }
     
@@ -98,7 +100,7 @@ public class JwtTokenProvider {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiration);
         
-        SecretKey key = Keys.hmacShaKeyFor(secretKey.getBytes());
+        SecretKey key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
         
         return Jwts.builder()
                 .claims(claims)
@@ -114,7 +116,7 @@ public class JwtTokenProvider {
      */
     public boolean validateToken(String token) {
         try {
-            SecretKey key = Keys.hmacShaKeyFor(secretKey.getBytes());
+            SecretKey key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
             Jwts.parser()
                 .verifyWith(key)
                 .build()
@@ -191,7 +193,7 @@ public class JwtTokenProvider {
      * Claims parse
      */
     private Claims getClaims(String token) {
-        SecretKey key = Keys.hmacShaKeyFor(secretKey.getBytes());
+        SecretKey key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
         return Jwts.parser()
                 .verifyWith(key)
                 .build()
@@ -226,3 +228,4 @@ public class JwtTokenProvider {
         return java.util.Collections.emptyList();
     }
 }
+
