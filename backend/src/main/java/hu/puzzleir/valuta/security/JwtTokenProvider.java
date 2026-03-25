@@ -31,7 +31,7 @@ public class JwtTokenProvider {
         this.environment = environment;
     }
     
-    @Value("${jwt.secret:valuta-secret-key-change-in-production-must-be-at-least-256-bits-long}")
+    @Value("${jwt.secret}")
     private String secretKey;
     
     @Value("${jwt.expiration:86400000}") // 24 óra

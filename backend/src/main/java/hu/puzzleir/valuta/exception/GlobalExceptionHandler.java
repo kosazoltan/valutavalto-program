@@ -43,7 +43,7 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage());
     }
 
-    @ExceptionHandler(ResourceNotFoundException.class)
+    @ExceptionHandler({ResourceNotFoundException.class, NotFoundException.class})
     public ResponseEntity<ErrorResponse> handleResourceNotFound(ResourceNotFoundException ex) {
         log.warn("Resource not found: {}", ex.getMessage());
         return buildResponse(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage());
@@ -138,6 +138,13 @@ public class GlobalExceptionHandler {
                 "Az adatot időközben módosította valaki más. Kérjük, frissítse és próbálja újra.");
     }
 
+    // --- 409 Conflict (custom) ---
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ErrorResponse> handleConflictException(ConflictException ex) {
+        log.warn("Conflict: {}", ex.getMessage());
+        return buildResponse(HttpStatus.CONFLICT, "CONFLICT", ex.getMessage());
+    }
+
     // --- 422 Business Exception ---
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException ex) {
@@ -166,14 +173,8 @@ public class GlobalExceptionHandler {
             }
         }
 
-        String rootCause = ex.getMessage();
-        Throwable cause = ex.getCause();
-        while (cause != null) {
-            rootCause = cause.getClass().getSimpleName() + ": " + cause.getMessage();
-            cause = cause.getCause();
-        }
-        String devMessage = ex.getClass().getSimpleName() + " — " + rootCause;
-        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", devMessage);
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR",
+                "Belső szerverhiba történt. Kérjük, próbálja újra később.");
     }
 
     private String stackTraceToString(Exception ex) {
