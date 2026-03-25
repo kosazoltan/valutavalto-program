@@ -13,6 +13,9 @@ id_rsa_*
 *.sql.gz
 *.dump
 database/backups/*.sql
+render-prod-dump.sql
+*-prod-dump*
+drop-all.sql
 
 # Nagy fÃ¡jlok / Tananyagok / ArchÃ­vumok
 Tananyagok/
@@ -87,8 +90,8 @@ docs/legacy-drive/
 
 Anti/
 
-Felmérés/
+Felmï¿½rï¿½s/
 
-# Nagy fájlok kizárása
+# Nagy fï¿½jlok kizï¿½rï¿½sa
 *.m4a
-Felmérés/
+Felmï¿½rï¿½s/
