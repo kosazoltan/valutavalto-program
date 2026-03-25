@@ -14,7 +14,7 @@ public class ErrorReportController {
     private final ErrorMailerService errorMailerService;
 
     @PostMapping
-    public ResponseEntity<Map<String, Object>> reportError(@RequestBody ErrorReportRequest req) {
+    public ResponseEntity<Map<String, Object>> reportError(@jakarta.validation.Valid @RequestBody ErrorReportRequest req) {
         try {
             errorMailerService.sendErrorReport(req);
             return ResponseEntity.ok(Map.of("ok", true));

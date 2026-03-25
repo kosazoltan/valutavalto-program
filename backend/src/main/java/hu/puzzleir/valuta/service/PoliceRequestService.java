@@ -40,7 +40,7 @@ public class PoliceRequestService {
     /**
      * Új rendőrségi adatkérés létrehozása.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public PoliceRequestDto createRequest(CreatePoliceRequestDto dto, Long createdById) {
         Worker creator = workerRepository.findById(createdById)
                 .orElseThrow(() -> new ResourceNotFoundException("Dolgozó nem található: " + createdById));
@@ -66,7 +66,7 @@ public class PoliceRequestService {
     /**
      * Adatkérés feldolgozása — automatikus tranzakció keresés.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public PoliceRequestDto processRequest(UUID requestId) {
         PoliceRequest request = policeRequestRepository.findById(requestId)
                 .orElseThrow(() -> new ResourceNotFoundException("Adatkérés nem található: " + requestId));

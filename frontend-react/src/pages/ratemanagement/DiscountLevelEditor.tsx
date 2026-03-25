@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Percent, Plus, Save } from 'lucide-react'
-import { api } from '../../services/api'
+import { api } from '../../services/api/index'
 
 interface Workgroup {
   id: string

@@ -4,9 +4,12 @@ import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.entity.FeeDiscount;
 import hu.puzzleir.valuta.entity.FeeRate;
 import hu.puzzleir.valuta.entity.FeeType;
+import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.FeeDiscountRepository;
 import hu.puzzleir.valuta.repository.FeeRateRepository;
 import hu.puzzleir.valuta.repository.FeeTypeRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +24,7 @@ public class FeeService {
     private final FeeTypeRepository feeTypeRepo;
     private final FeeRateRepository feeRateRepo;
     private final FeeDiscountRepository feeDiscountRepo;
+    private final BranchRepository branchRepository;
 
     // --- FeeType ---
 
@@ -28,14 +32,14 @@ public class FeeService {
         return feeTypeRepo.findAll();
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public FeeType createType(FeeType entity) {
         entity.setId(null);
         if (entity.getIsActive() == null) entity.setIsActive(true);
         return feeTypeRepo.save(entity);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public FeeType updateType(UUID id, FeeType entity) {
         FeeType existing = feeTypeRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Díjtípus nem található: " + id));
@@ -47,7 +51,7 @@ public class FeeService {
         return feeTypeRepo.save(existing);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteType(UUID id) {
         feeTypeRepo.deleteById(id);
     }
@@ -55,17 +59,24 @@ public class FeeService {
     // --- FeeRate ---
 
     public List<FeeRate> listRates() {
-        return feeRateRepo.findAll();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<UUID> branchIds = branchRepository.findByCompanyId(companyId).stream()
+                .map(Branch::getId)
+                .toList();
+        if (branchIds.isEmpty()) {
+            return List.of();
+        }
+        return feeRateRepo.findByBranchIdIn(branchIds);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public FeeRate createRate(FeeRate entity) {
         entity.setId(null);
         if (entity.getIsActive() == null) entity.setIsActive(true);
         return feeRateRepo.save(entity);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public FeeRate updateRate(UUID id, FeeRate entity) {
         FeeRate existing = feeRateRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Díjráta nem található: " + id));
@@ -82,7 +93,7 @@ public class FeeService {
         return feeRateRepo.save(existing);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteRate(UUID id) {
         feeRateRepo.deleteById(id);
     }
@@ -93,14 +104,14 @@ public class FeeService {
         return feeDiscountRepo.findAll();
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public FeeDiscount createDiscount(FeeDiscount entity) {
         entity.setId(null);
         if (entity.getIsActive() == null) entity.setIsActive(true);
         return feeDiscountRepo.save(entity);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public FeeDiscount updateDiscount(UUID id, FeeDiscount entity) {
         FeeDiscount existing = feeDiscountRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Díjkedvezmény nem található: " + id));
@@ -115,7 +126,7 @@ public class FeeService {
         return feeDiscountRepo.save(existing);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteDiscount(UUID id) {
         feeDiscountRepo.deleteById(id);
     }

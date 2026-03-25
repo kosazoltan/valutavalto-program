@@ -17,6 +17,6 @@ public interface EmployeeAddressRepository extends JpaRepository<EmployeeAddress
     List<EmployeeAddress> findByEmployeeId(Long employeeId);
 
     /** Dolgozó címeinek törlése */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     void deleteByEmployeeId(Long employeeId);
 }

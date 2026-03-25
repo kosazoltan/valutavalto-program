@@ -10,4 +10,6 @@ import java.util.UUID;
 @Repository
 public interface WorkstationRepository extends JpaRepository<Workstation, UUID> {
     List<Workstation> findByIsActiveTrue();
+    List<Workstation> findByBranchIdIn(List<UUID> branchIds);
+    List<Workstation> findByBranchIdInAndIsActiveTrue(List<UUID> branchIds);
 }

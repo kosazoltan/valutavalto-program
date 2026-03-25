@@ -49,7 +49,7 @@ public class FtpSyncService {
     /**
      * Árfolyam fájl letöltése (FTP DOWNLOAD).
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public FtpSyncResultDto syncRateFile(UUID branchId) {
         Branch branch = findBranch(branchId);
         LocalDate date = LocalDate.now();
@@ -129,7 +129,7 @@ public class FtpSyncService {
     /**
      * Napi jelentés feltöltése (FTP UPLOAD).
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public FtpSyncResultDto uploadDailyReport(UUID branchId, LocalDate date) {
         Branch branch = findBranch(branchId);
         LocalDate effectiveDate = date != null ? date : LocalDate.now();
@@ -198,7 +198,7 @@ public class FtpSyncService {
     /**
      * Tranzakció batch feltöltése (FTP UPLOAD).
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public FtpSyncResultDto uploadTransactionBatch(UUID branchId) {
         Branch branch = findBranch(branchId);
         LocalDateTime startedAt = LocalDateTime.now();

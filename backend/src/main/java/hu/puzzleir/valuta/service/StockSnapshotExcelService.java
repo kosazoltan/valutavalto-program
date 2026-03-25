@@ -1,5 +1,7 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.exception.BusinessException;
+
 import hu.puzzleir.valuta.dto.stocksnapshot.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
@@ -71,7 +73,7 @@ public class StockSnapshotExcelService {
             workbook.write(baos);
             return baos.toByteArray();
         } catch (IOException e) {
-            throw new RuntimeException("Failed to generate Excel workbook", e);
+            throw new BusinessException("Failed to generate Excel workbook", "EXCEL_GENERATION_FAILED");
         }
     }
 

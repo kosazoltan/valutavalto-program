@@ -1,0 +1,43 @@
+{
+  "route": "/rate-management",
+  "loaded": true,
+  "title": "RepZtecH Exclusive Best Change - Pénztári Rendszer",
+  "clicked": 7,
+  "disabled": 0,
+  "errors": 0,
+  "skipped": 1,
+  "buttons": [
+    {
+      "label": "[no-label]",
+      "state": "clicked"
+    },
+    {
+      "label": "Kijelentkezés",
+      "state": "skip"
+    },
+    {
+      "label": "[no-label]",
+      "state": "clicked"
+    },
+    {
+      "label": "Arfolyam rogzites",
+      "state": "clicked"
+    },
+    {
+      "label": "Sablonok",
+      "state": "clicked"
+    },
+    {
+      "label": "Munkacsoportok",
+      "state": "clicked"
+    },
+    {
+      "label": "Kedvezmenyek",
+      "state": "clicked"
+    },
+    {
+      "label": "Publikalasi naplo",
+      "state": "clicked"
+    }
+  ]
+}

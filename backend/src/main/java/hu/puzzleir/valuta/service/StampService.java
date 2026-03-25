@@ -44,7 +44,7 @@ public class StampService {
     /**
      * Új matrica batch felvétele.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public StampBatchDto receiveBatch(CreateStampBatchRequest request) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
 
@@ -87,7 +87,7 @@ public class StampService {
     /**
      * Matrica hozzárendelés tranzakcióhoz.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public StampAssignmentDto assignStamp(AssignStampRequest request) {
         // Ellenőrzés: nincs-e már hozzárendelve
         if (assignmentRepository.existsBySerialNumber(request.getSerialNumber())) {

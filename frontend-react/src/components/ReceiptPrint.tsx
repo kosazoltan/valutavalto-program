@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { Printer, X, QrCode as QrCodeIcon } from 'lucide-react'
-import { Transaction } from '../services/api'
+import { Transaction } from '../services/api/index'
 import { formatDecimal, formatInteger } from '../utils/numberFormat'
 import { toast } from './ui/toaster'
 

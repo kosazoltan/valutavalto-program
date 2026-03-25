@@ -21,7 +21,7 @@ public class CameraTransactionLink {
     private CameraRecording recording;
 
     @Column(name = "transaction_id")
-    private UUID transactionId;
+    private Long transactionId;
 
     @Column(name = "receipt_number", length = 50)
     private String receiptNumber;

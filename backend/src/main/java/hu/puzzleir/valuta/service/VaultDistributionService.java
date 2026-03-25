@@ -39,7 +39,7 @@ public class VaultDistributionService {
                 .collect(Collectors.toList());
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public DistributionResponseDto createDistribution(DistributionRequestDto request) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
 
@@ -75,7 +75,7 @@ public class VaultDistributionService {
         return toDto(saved);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public DistributionResponseDto updateStatus(Long id, VaultOperationStatus newStatus) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         VaultDistribution distribution = vaultDistributionRepository.findById(id)

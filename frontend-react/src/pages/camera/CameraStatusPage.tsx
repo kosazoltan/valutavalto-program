@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { HardDrive, RefreshCw, Trash2 } from 'lucide-react'
-import { api } from '../../services/api'
+import { api } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
+import { logger } from '../../utils/logger';
 
 const isElectron = () => !!window.electronAPI
 
@@ -34,7 +35,7 @@ export default function CameraStatusPage() {
         setStats(res.data)
       }
     } catch (err) {
-      console.error('Statusz lekeres sikertelen:', err)
+      logger.error('CameraStatusPage', 'Statusz lekeres sikertelen:', err)
     } finally {
       setLoading(false)
     }
@@ -55,7 +56,7 @@ export default function CameraStatusPage() {
       }
       fetchStats()
     } catch (err) {
-      console.error('Takaritas sikertelen:', err)
+      logger.error('CameraStatusPage', 'Takaritas sikertelen:', err)
     }
   }
 

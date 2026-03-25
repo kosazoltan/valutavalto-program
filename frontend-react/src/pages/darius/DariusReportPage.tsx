@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { FileSpreadsheet, CheckCircle, XCircle, Clock, RefreshCw, Send, ThumbsUp, AlertTriangle, Calendar } from 'lucide-react'
-import { dariusApi, DariusDailyReport, DariusMonthlyDto } from '../../services/api'
+import { dariusApi, DariusDailyReport, DariusMonthlyDto } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 
 type Tab = 'daily' | 'monthly' | 'missing'

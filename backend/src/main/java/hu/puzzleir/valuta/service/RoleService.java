@@ -31,7 +31,7 @@ public class RoleService {
         return toRoleDto(findRoleOrThrow(id));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public RoleDto createRole(String code, String name, String description, List<String> permissionIds) {
         Role role = Role.builder()
                 .code(code).name(name).description(description)
@@ -46,7 +46,7 @@ public class RoleService {
         return toRoleDto(roleRepository.save(role));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public RoleDto updateRole(UUID id, String name, String description, Boolean active, List<String> permissionIds) {
         Role role = findRoleOrThrow(id);
         if (name != null) role.setName(name);
@@ -63,7 +63,7 @@ public class RoleService {
         return toRoleDto(roleRepository.save(role));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public RoleDto addPermissionToRole(UUID roleId, UUID permissionId) {
         Role role = findRoleOrThrow(roleId);
         Permission p = permissionRepository.findById(permissionId)
@@ -72,21 +72,21 @@ public class RoleService {
         return toRoleDto(roleRepository.save(role));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void removePermissionFromRole(UUID roleId, UUID permissionId) {
         Role role = findRoleOrThrow(roleId);
         role.getPermissions().removeIf(p -> p.getId().equals(permissionId));
         roleRepository.save(role);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public RoleDto toggleRoleActive(UUID id) {
         Role role = findRoleOrThrow(id);
         role.setIsActive(!role.getIsActive());
         return toRoleDto(roleRepository.save(role));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteRole(UUID id) {
         roleRepository.deleteById(id);
     }
@@ -109,7 +109,7 @@ public class RoleService {
         return toPermissionDto(findPermissionOrThrow(id));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public PermissionDto createPermission(String code, String name, String description, String module, Boolean isSystem) {
         Permission p = Permission.builder()
                 .code(code).name(name).description(description).module(module)
@@ -117,7 +117,7 @@ public class RoleService {
         return toPermissionDto(permissionRepository.save(p));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public PermissionDto updatePermission(UUID id, String name, String description, String module) {
         Permission p = findPermissionOrThrow(id);
         if (name != null) p.setName(name);
@@ -126,14 +126,14 @@ public class RoleService {
         return toPermissionDto(permissionRepository.save(p));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public PermissionDto togglePermissionActive(UUID id) {
         Permission p = findPermissionOrThrow(id);
         p.setIsActive(!p.getIsActive());
         return toPermissionDto(permissionRepository.save(p));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deletePermission(UUID id) {
         permissionRepository.deleteById(id);
     }

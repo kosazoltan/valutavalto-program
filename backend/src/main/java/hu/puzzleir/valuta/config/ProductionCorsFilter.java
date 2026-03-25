@@ -39,7 +39,7 @@ public class ProductionCorsFilter extends OncePerRequestFilter {
     private final List<String> allowedOriginPatterns;
 
     public ProductionCorsFilter(
-            @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:5173,https://excvaluta.com,https://www.excvaluta.com,https://valutavalto.vercel.app,app://localhost}")
+            @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:5173,https://excvaluta.com}")
             String corsAllowedOrigins
     ) {
         List<String> configuredOrigins = Arrays.stream(corsAllowedOrigins.split(","))
@@ -59,10 +59,9 @@ public class ProductionCorsFilter extends OncePerRequestFilter {
         }
 
         for (String mandatoryOrigin : List.of(
-                "https://excvaluta.com",
-                "https://www.excvaluta.com",
-                "https://valutavalto.vercel.app",
-                "app://localhost"
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "https://excvaluta.com"
         )) {
             if (!allowedOrigins.contains(mandatoryOrigin)) {
                 allowedOrigins.add(mandatoryOrigin);
@@ -86,12 +85,9 @@ public class ProductionCorsFilter extends OncePerRequestFilter {
         response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS, "true");
         response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, String.join(", ", DEFAULT_ALLOWED_METHODS));
 
-        String requestedHeaders = request.getHeader(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS);
-        if (requestedHeaders == null || requestedHeaders.isBlank()) {
-            response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, String.join(", ", DEFAULT_ALLOWED_HEADERS));
-        } else {
-            response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, requestedHeaders);
-        }
+        // Always use fixed whitelist — never reflect request headers
+        response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, String.join(", ", DEFAULT_ALLOWED_HEADERS));
+        response.setHeader(HttpHeaders.ACCESS_CONTROL_MAX_AGE, "3600");
 
         if (HttpMethod.OPTIONS.matches(request.getMethod())) {
             response.setStatus(HttpServletResponse.SC_OK);

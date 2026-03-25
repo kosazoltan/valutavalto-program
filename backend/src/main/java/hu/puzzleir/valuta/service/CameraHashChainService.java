@@ -52,7 +52,7 @@ public class CameraHashChainService {
      * @param segmentFile A szegmens fájl elérési útja
      * @return A generált hash entity
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CameraSegmentHash addToChain(CameraRecording recording, Path segmentFile) throws Exception {
         UUID branchId = recording.getBranchId();
         String cameraId = recording.getCameraId();

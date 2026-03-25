@@ -20,4 +20,9 @@ public interface BranchStatusRepository extends JpaRepository<BranchStatus, UUID
 
     @Query("SELECT b FROM BranchStatus b WHERE b.lastHeartbeat IS NULL OR b.lastHeartbeat < :threshold")
     List<BranchStatus> findOfflineBranches(@Param("threshold") LocalDateTime threshold);
+
+    /**
+     * BranchStatus lekerese branch ID lista alapjan (multi-tenant szures).
+     */
+    List<BranchStatus> findByBranchIdIn(List<UUID> branchIds);
 }

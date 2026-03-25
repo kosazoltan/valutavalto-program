@@ -35,7 +35,7 @@ public class SyncInboundEventService {
     private final SimpMessagingTemplate messagingTemplate;
     private final ObjectMapper objectMapper;
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SyncInboundEventResponse receive(String idempotencyKey, SyncInboundEventRequest request) {
         if (!StringUtils.hasText(idempotencyKey)) {
             throw new ValidationException("Hiányzó Idempotency-Key header");

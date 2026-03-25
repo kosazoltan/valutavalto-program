@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Download, Shield, CheckCircle, XCircle, Clock, Eye, AlertTriangle, ShieldCheck, FileText } from 'lucide-react'
-import { cameraExportApi, CameraExportRequest, ChainOfCustodyRecord, branchApi, BranchInfo } from '../../services/api'
+import { cameraExportApi, CameraExportRequest, ChainOfCustodyRecord, branchApi, BranchInfo } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 
 const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {

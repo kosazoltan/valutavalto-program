@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Percent } from 'lucide-react'
-import { commissionRateApi, CommissionRate } from '../../services/api'
+import { commissionRateApi, CommissionRate } from '../../services/api/index'
+import { logger } from '../../utils/logger';
 
 export default function CommissionRatePage() {
   const [rates, setRates] = useState<CommissionRate[]>([])
@@ -15,7 +16,7 @@ export default function CommissionRatePage() {
       setLoading(true)
       setRates(await commissionRateApi.list())
     } catch (error) {
-      console.error('Hiba:', error)
+      logger.error('CommissionRatePage', 'Hiba:', error)
     } finally {
       setLoading(false)
     }

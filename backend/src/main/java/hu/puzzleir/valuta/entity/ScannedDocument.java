@@ -27,10 +27,10 @@ public class ScannedDocument {
     private UUID id;
 
     @Column(name = "customer_id")
-    private UUID customerId;
+    private Long customerId;
 
     @Column(name = "transaction_id")
-    private UUID transactionId;
+    private Long transactionId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "document_type", nullable = false, length = 30)

@@ -31,7 +31,7 @@ public class TokenBlacklistService {
      * @param reason    Oka (LOGOUT, FORCED, ROLE_CHANGE stb.)
      * @param expiresAt A JWT lejárati ideje — ennél tovább nem kell tárolni
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void blacklistToken(String tokenId, Long workerId, String reason, LocalDateTime expiresAt) {
         if (tokenId == null || tokenBlacklistRepository.existsByTokenId(tokenId)) {
             return; // Már blacklistelve van vagy nincs tokenId
@@ -62,7 +62,7 @@ public class TokenBlacklistService {
      * A JWT max 24 órás, tehát a lejárt bejegyzések már feleslegesek.
      */
     @Scheduled(fixedDelay = 6 * 60 * 60 * 1000L) // 6 óra
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void cleanupExpiredEntries() {
         int deleted = tokenBlacklistRepository.deleteExpiredEntries(LocalDateTime.now());
         if (deleted > 0) {

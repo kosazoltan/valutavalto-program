@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Search, PlayCircle, Calendar, FileVideo } from 'lucide-react'
-import { api } from '../../services/api'
+import { api } from '../../services/api/index'
+import { logger } from '../../utils/logger';
 
 const isElectron = () => !!window.electronAPI
 
@@ -57,7 +58,7 @@ export default function CameraPlaybackPage() {
         setLocalRecordings([])
       }
     } catch (err) {
-      console.error('Kereses sikertelen:', err)
+      logger.error('CameraPlaybackPage', 'Kereses sikertelen:', err)
     } finally {
       setLoading(false)
     }
@@ -71,7 +72,7 @@ export default function CameraPlaybackPage() {
         setSelectedVideo(`data:video/webm;base64,${base64}`)
       }
     } catch (err) {
-      console.error('Lejatszas sikertelen:', err)
+      logger.error('CameraPlaybackPage', 'Lejatszas sikertelen:', err)
     }
   }
 
@@ -164,8 +165,8 @@ export default function CameraPlaybackPage() {
           </div>
           <div className="p-4">
             <div className="space-y-2">
-              {localRecordings.map((rec, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+              {localRecordings.map((rec) => (
+                <div key={rec.transactionId} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <div className="space-y-1">
                     <p className="font-medium">Tranzakcio: {rec.transactionId}</p>
                     <p className="text-sm text-muted-foreground">

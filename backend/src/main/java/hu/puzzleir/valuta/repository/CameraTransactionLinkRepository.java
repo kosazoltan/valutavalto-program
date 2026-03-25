@@ -9,6 +9,6 @@ import java.util.UUID;
 @Repository
 public interface CameraTransactionLinkRepository extends JpaRepository<CameraTransactionLink, UUID> {
     List<CameraTransactionLink> findByReceiptNumber(String receiptNumber);
-    List<CameraTransactionLink> findByTransactionId(UUID transactionId);
+    List<CameraTransactionLink> findByTransactionId(Long transactionId);
     List<CameraTransactionLink> findByRecordingId(UUID recordingId);
 }

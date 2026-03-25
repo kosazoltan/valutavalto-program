@@ -13,6 +13,7 @@ import hu.puzzleir.valuta.repository.WorkerCompetitionEntryRepository;
 import hu.puzzleir.valuta.repository.WorkerCompetitionRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.entity.Worker;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -38,7 +39,7 @@ public class CompetitionService {
     private final TransactionRepository transactionRepository;
     private final WorkerRepository workerRepository;
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CompetitionDto createCompetition(CreateCompetitionDto dto) {
         if (dto.getEndDate().isBefore(dto.getStartDate())) {
             throw new ValidationException("A befejezés dátuma nem lehet a kezdés előtt.");
@@ -62,7 +63,7 @@ public class CompetitionService {
      * Pontszámok kiszámítása a verseny időszakának tranzakcióiból.
      * Pontszám = összforgalom / 1000 + tranzakciók száma × 10
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public List<CompetitionEntryDto> calculateScores(UUID competitionId) {
         WorkerCompetition competition = competitionRepository.findById(competitionId)
             .orElseThrow(() -> new ResourceNotFoundException("Verseny nem található: " + competitionId));
@@ -73,8 +74,9 @@ public class CompetitionService {
         // Töröljük a régi bejegyzéseket
         entryRepository.deleteByCompetitionId(competitionId);
 
-        // Minden dolgozó tranzakcióit összesítjük
-        List<Worker> workers = workerRepository.findAll();
+        // Minden dolgozó tranzakcióit összesítjük (multi-tenant szűréssel)
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<Worker> workers = workerRepository.findByCompanyId(companyId);
         AtomicInteger rankCounter = new AtomicInteger(1);
 
         List<WorkerCompetitionEntry> entries = workers.stream()

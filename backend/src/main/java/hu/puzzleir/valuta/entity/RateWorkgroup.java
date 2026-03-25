@@ -34,6 +34,7 @@ public class RateWorkgroup {
     @Column(name = "legacy_group_number")
     private Integer legacyGroupNumber;
 
+    @Column(name = "is_active")
     @Builder.Default
     private Boolean active = true;
 

@@ -1,5 +1,8 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.exception.BusinessException;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.dto.backup.BackupRecordResponse;
 import hu.puzzleir.valuta.entity.BackupRecord;
 import hu.puzzleir.valuta.entity.BackupStatus;
@@ -39,7 +42,7 @@ public class BackupService {
     /**
      * Új backup mentés létrehozása.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public BackupRecordResponse createBackup(BackupType type, String createdBy) {
         // Mentés könyvtár biztosítása
         Path backupDir = Paths.get(backupDirectory);
@@ -89,18 +92,18 @@ public class BackupService {
     /**
      * Backup visszaállítás — admin only!
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void restoreBackup(UUID backupId) {
         BackupRecord record = backupRecordRepository.findById(backupId)
-                .orElseThrow(() -> new RuntimeException("Backup nem található: " + backupId));
+                .orElseThrow(() -> new ResourceNotFoundException("Backup nem található: " + backupId));
 
         if (record.getStatus() != BackupStatus.COMPLETED) {
-            throw new RuntimeException("Csak sikeresen befejezett mentés állítható vissza. Státusz: " + record.getStatus());
+            throw new ValidationException("Csak sikeresen befejezett mentés állítható vissza. Státusz: " + record.getStatus());
         }
 
         Path filePath = Paths.get(record.getFilePath());
         if (!Files.exists(filePath)) {
-            throw new RuntimeException("Backup fájl nem található: " + record.getFilePath());
+            throw new ResourceNotFoundException("Backup fájl nem található: " + record.getFilePath());
         }
 
         // Valós környezetben: pg_restore futtatás
@@ -123,12 +126,12 @@ public class BackupService {
     @Transactional(readOnly = true)
     public byte[] downloadBackup(UUID backupId) {
         BackupRecord record = backupRecordRepository.findById(backupId)
-                .orElseThrow(() -> new RuntimeException("Backup nem található: " + backupId));
+                .orElseThrow(() -> new ResourceNotFoundException("Backup nem található: " + backupId));
 
         try {
             return Files.readAllBytes(Paths.get(record.getFilePath()));
         } catch (IOException e) {
-            throw new RuntimeException("Backup fájl olvasása sikertelen: " + record.getFilePath(), e);
+            throw new BusinessException("Backup fájl olvasása sikertelen: " + record.getFilePath(), "BACKUP_READ_FAILED");
         }
     }
 

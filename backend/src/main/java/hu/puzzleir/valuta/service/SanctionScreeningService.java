@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.exception.BusinessException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.dto.sanction.SanctionMatch;
@@ -48,7 +49,7 @@ public class SanctionScreeningService {
     /**
      * Ügyfél szűrés — név + okmányszám + születési dátum alapján.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SanctionScreeningResult screenCustomer(
             String name,
             String documentNumber,
@@ -162,7 +163,7 @@ public class SanctionScreeningService {
      * ENSZ XML szankciós lista importálása.
      * Formátum: UN Consolidated List XML (https://scsanctions.un.org/resources/xml/en/consolidated.xml)
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public int importSanctionList(InputStream xmlData) {
         int importedCount = 0;
 
@@ -223,7 +224,7 @@ public class SanctionScreeningService {
 
         } catch (Exception e) {
             log.error("[SanctionImport] XML import hiba: {}", e.getMessage(), e);
-            throw new RuntimeException("Szankciós lista import hiba: " + e.getMessage(), e);
+            throw new BusinessException("Szankciós lista import hiba: " + e.getMessage(), "SANCTION_IMPORT_FAILED");
         }
 
         return importedCount;

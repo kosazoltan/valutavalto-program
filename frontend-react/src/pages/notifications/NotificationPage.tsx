@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Bell, CheckCircle } from 'lucide-react'
-import { notificationApi, Notification } from '../../services/api'
+import { notificationApi, Notification } from '../../services/api/index'
+import { logger } from '../../utils/logger';
 
 export default function NotificationPage() {
   const [notifications, setNotifications] = useState<Notification[]>([])
@@ -17,7 +18,7 @@ export default function NotificationPage() {
       setError(null)
       setNotifications(await notificationApi.list())
     } catch (err) {
-      console.error('Értesítések betöltési hiba:', err)
+      logger.error('NotificationPage', 'Értesítések betöltési hiba:', err)
       setError('Hiba az értesítések betöltésekor')
     } finally {
       setLoading(false)
@@ -30,7 +31,7 @@ export default function NotificationPage() {
       await notificationApi.markAsRead(id)
       await loadData()
     } catch (err) {
-      console.error('Olvasottnak jelölés hiba:', err)
+      logger.error('NotificationPage', 'Olvasottnak jelölés hiba:', err)
       setError('Hiba történt az olvasottnak jelölés során')
     }
   }
@@ -41,7 +42,7 @@ export default function NotificationPage() {
       await notificationApi.markAllAsRead()
       await loadData()
     } catch (err) {
-      console.error('Összes olvasottnak jelölés hiba:', err)
+      logger.error('NotificationPage', 'Összes olvasottnak jelölés hiba:', err)
       setError('Hiba történt')
     }
   }

@@ -35,13 +35,13 @@ public class DocumentScannerController {
 
     @GetMapping("/customer/{customerId}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<ScannedDocumentDto>> getCustomerDocuments(@PathVariable UUID customerId) {
+    public ResponseEntity<List<ScannedDocumentDto>> getCustomerDocuments(@PathVariable Long customerId) {
         return ResponseEntity.ok(documentScannerService.getCustomerDocuments(customerId));
     }
 
     @GetMapping("/transaction/{transactionId}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<ScannedDocumentDto>> getTransactionDocuments(@PathVariable UUID transactionId) {
+    public ResponseEntity<List<ScannedDocumentDto>> getTransactionDocuments(@PathVariable Long transactionId) {
         return ResponseEntity.ok(documentScannerService.getTransactionDocuments(transactionId));
     }
 

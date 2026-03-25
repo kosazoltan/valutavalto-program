@@ -9,8 +9,8 @@ import {
 import { CashierHeader } from '../../components/cashier/CashierHeader'
 import { HotkeyBar } from '../../components/cashier/HotkeyBar'
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext'
-import { transactionApi, exchangeRateApi } from '../../services/api'
-import type { BuyRequest, SellRequest, ExchangeRate } from '../../services/api'
+import { transactionApi, exchangeRateApi } from '../../services/api/index'
+import type { BuyRequest, SellRequest, ExchangeRate } from '../../services/api/index'
 import { roundHuf } from '../../utils/rounding'
 import { toast } from '../../components/ui/toaster'
 import {
@@ -19,6 +19,7 @@ import {
   mapCachedRatesToExchangeRates,
   saveAndSyncPendingBuySell,
 } from '../../utils/electronTransactions'
+import { logger } from '../../utils/logger'
 
 /**
  * Penztaros Eladas/Vetel kepernyoje — 6 soros valuta tabla.
@@ -115,7 +116,7 @@ export default function CashierTransactionPage() {
             return
           }
         } catch (err) {
-          console.error('Helyi arfolyam cache betoltes sikertelen:', err)
+          logger.error('CashierTransactionPage', 'Helyi arfolyam cache betoltes sikertelen:', err)
         }
       }
 
@@ -125,7 +126,7 @@ export default function CashierTransactionPage() {
           setExchangeRates(rates)
         }
       } catch (err) {
-        console.error('Arfolyam betoltes sikertelen:', err)
+        logger.error('CashierTransactionPage', 'Arfolyam betoltes sikertelen:', err)
         if (!cancelled && electronQueueAvailable) {
           toast.error('Árfolyam nem elérhető', 'Nincs használható helyi vagy szerver oldali árfolyam adat.')
         }

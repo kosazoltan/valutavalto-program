@@ -32,7 +32,7 @@ public class CameraUploadService {
      * Runs every 5 minutes.
      */
     @Scheduled(fixedDelayString = "${camera.upload-interval-seconds:300}000")
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void uploadPendingRecordings() {
         List<CameraRecording> pending = recordingRepository
                 .findByUploadedToServerFalseAndStatusIn(

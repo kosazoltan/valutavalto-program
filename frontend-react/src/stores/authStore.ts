@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persistToken, clearPersistedToken } from '../services/api'
+import { persistToken, clearPersistedToken } from '../services/api/index'
 
 export interface Worker {
   id: number

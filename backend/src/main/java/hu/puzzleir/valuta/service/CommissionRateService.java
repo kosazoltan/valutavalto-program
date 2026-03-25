@@ -26,12 +26,12 @@ public class CommissionRateService {
                 .orElseThrow(() -> new ResourceNotFoundException("CommissionRate not found: " + id));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CommissionRate create(CommissionRate entity) {
         return repository.save(entity);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CommissionRate update(UUID id, CommissionRate updated) {
         CommissionRate existing = findById(id);
         existing.setEntityType(updated.getEntityType());
@@ -44,7 +44,7 @@ public class CommissionRateService {
         return repository.save(existing);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void delete(UUID id) {
         CommissionRate existing = findById(id);
         existing.setIsActive(false);

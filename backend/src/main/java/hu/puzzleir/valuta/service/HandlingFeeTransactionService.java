@@ -69,7 +69,7 @@ public class HandlingFeeTransactionService {
     /**
      * Kedvezmény alkalmazása: törzsvásárlói -10%, nagytételes -20%.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public HandlingFeeTransactionDto applyDiscount(UUID feeId, int discountPercent, String reason) {
         HandlingFeeTransaction hft = repository.findById(feeId)
             .orElseThrow(() -> new ResourceNotFoundException("Kezelési díj nem található: " + feeId));

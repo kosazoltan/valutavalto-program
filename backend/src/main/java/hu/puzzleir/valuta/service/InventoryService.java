@@ -52,7 +52,7 @@ public class InventoryService {
     /**
      * Bank → pénztár valuta kivét kérés (PENDING státusz).
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public InventoryMovementDto requestBankWithdraw(BankWithdrawRequestDto dto, Long workerId) {
         Branch branch = findBranch(dto.getBranchId());
         Currency currency = findCurrency(dto.getCurrencyId());
@@ -81,7 +81,7 @@ public class InventoryService {
      * Pénztár → bank befizetés (PENDING státusz — négy-szem elv).
      * A CashBalance csökkentés csak jóváhagyáskor (approveMovement) történik.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public InventoryMovementDto depositToBank(BankDepositRequestDto dto, Long workerId) {
         Branch branch = findBranch(dto.getBranchId());
         Currency currency = findCurrency(dto.getCurrencyId());
@@ -124,7 +124,7 @@ public class InventoryService {
     /**
      * Irodák közti szállítás (PENDING státusz).
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public InventoryMovementDto transferBetweenBranches(BranchTransferRequestDto dto, Long workerId) {
         Branch fromBranch = findBranch(dto.getFromBranchId());
         Branch toBranch = findBranch(dto.getToBranchId());
@@ -172,7 +172,7 @@ public class InventoryService {
      * Mozgás jóváhagyása (PENDING → APPROVED).
      * Pessimistic lock-kal védve a race condition ellen.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public InventoryMovementDto approveMovement(Long movementId, Long workerId) {
         InventoryMovement movement = findMovementForUpdate(movementId);
         Worker worker = findWorker(workerId);
@@ -212,7 +212,7 @@ public class InventoryService {
      * Mozgás fogadása (IN_TRANSIT → RECEIVED) — CashBalance frissítéssel!
      * Pessimistic lock-kal védve a race condition ellen.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public InventoryMovementDto receiveMovement(Long movementId, Long workerId, ReceiveMovementDto dto) {
         InventoryMovement movement = findMovementForUpdate(movementId);
         Worker worker = findWorker(workerId);
@@ -266,7 +266,7 @@ public class InventoryService {
      * Mozgás visszavonása (PENDING → CANCELLED).
      * Pessimistic lock-kal védve a race condition ellen.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void cancelMovement(Long movementId) {
         InventoryMovement movement = findMovementForUpdate(movementId);
 
@@ -286,7 +286,7 @@ public class InventoryService {
     /**
      * Manuális készlet korrekció — CashBalance update + AuditLog bejegyzés.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public InventoryMovementDto correctInventory(CorrectionRequestDto dto, Long workerId) {
         Branch branch = findBranch(dto.getBranchId());
         Currency currency = findCurrency(dto.getCurrencyId());
@@ -352,11 +352,12 @@ public class InventoryService {
     // ============ QUERIES ============
 
     /**
-     * Összes iroda teljes készlete (CashBalance lista).
+     * Összes iroda teljes készlete (CashBalance lista) - multi-tenant szűréssel.
      */
     @Transactional(readOnly = true)
     public List<CashBalance> getAllStock() {
-        return cashBalanceRepository.findAll();
+        UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
+        return cashBalanceRepository.findByCompanyId(companyId);
     }
 
     /**
@@ -368,11 +369,12 @@ public class InventoryService {
     }
 
     /**
-     * Összes iroda × összes valuta mátrix.
+     * Összes iroda × összes valuta mátrix - multi-tenant szűréssel.
      */
     @Transactional(readOnly = true)
     public StockMatrixDto getStockMatrix() {
-        List<CashBalance> allBalances = cashBalanceRepository.findAll();
+        UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
+        List<CashBalance> allBalances = cashBalanceRepository.findByCompanyId(companyId);
         Map<String, Map<String, BigDecimal>> matrix = new LinkedHashMap<>();
 
         for (CashBalance cb : allBalances) {

@@ -7,6 +7,7 @@ import hu.puzzleir.valuta.dto.config.ConfigBundleDto;
 import hu.puzzleir.valuta.dto.config.ImportResultDto;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.*;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,7 +26,7 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Transactional(rollbackFor = Exception.class)
 @Slf4j
 public class ConfigExportService {
 
@@ -55,8 +56,7 @@ public class ConfigExportService {
             ));
 
         // Árfolyam beállítások
-        List<ConfigBundleDto.RateSettingEntry> rateSettings = rateCategoryRepository.findAll().stream()
-            .filter(rc -> rc.getBranch() != null && branchId.equals(rc.getBranch().getId()))
+        List<ConfigBundleDto.RateSettingEntry> rateSettings = rateCategoryRepository.findByBranchId(branchId).stream()
             .map(rc -> ConfigBundleDto.RateSettingEntry.builder()
                 .currencyCode(rc.getCurrencyCode())
                 .buyRate(rc.getBuyRate().toPlainString())
@@ -77,8 +77,9 @@ public class ConfigExportService {
                 .build())
             .toList();
 
-        // Nyomtatási sablonok
-        List<ConfigBundleDto.PrintTemplateEntry> printTemplates = printTemplateRepository.findAll().stream()
+        // Nyomtatási sablonok (cég-specifikus + default)
+        Integer legacyCompanyId = resolveLegacyCompanyId(branch);
+        List<ConfigBundleDto.PrintTemplateEntry> printTemplates = printTemplateRepository.findCompanyScopedOrDefault(legacyCompanyId).stream()
             .map(pt -> ConfigBundleDto.PrintTemplateEntry.builder()
                 .name(pt.getName())
                 .templateType(pt.getTemplateType().name())
@@ -89,9 +90,7 @@ public class ConfigExportService {
 
         // LED kijelző
         ConfigBundleDto.LedConfigEntry ledConfig = null;
-        List<LedDisplay> leds = ledDisplayRepository.findAll().stream()
-            .filter(l -> l.getBranch() != null && branchId.equals(l.getBranch().getId()))
-            .toList();
+        List<LedDisplay> leds = ledDisplayRepository.findByBranchId(branchId);
         if (!leds.isEmpty()) {
             LedDisplay led = leds.get(0);
             ledConfig = ConfigBundleDto.LedConfigEntry.builder()
@@ -187,13 +186,31 @@ public class ConfigExportService {
         return result.build();
     }
 
+    private Integer resolveLegacyCompanyId(Branch branch) {
+        if (branch == null || branch.getCompany() == null || branch.getCompany().getCode() == null) {
+            return null;
+        }
+
+        String digits = branch.getCompany().getCode().replaceAll("\\D+", "");
+        if (digits.isBlank()) {
+            return null;
+        }
+
+        try {
+            return Integer.parseInt(digits);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
     /**
      * Összes fiók konfigurációjának exportálása.
      */
     @Transactional(readOnly = true)
     public Map<UUID, ConfigBundleDto> exportAllBranches() {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         Map<UUID, ConfigBundleDto> result = new LinkedHashMap<>();
-        List<Branch> branches = branchRepository.findAll();
+        List<Branch> branches = branchRepository.findByCompanyId(companyId);
 
         for (Branch branch : branches) {
             try {

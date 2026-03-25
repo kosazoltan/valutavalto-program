@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Printer, Send } from 'lucide-react'
-import { navIntegrationApi } from '../../services/api'
+import { navIntegrationApi } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
+import { logger } from '../../utils/logger';
 
 interface NavResult {
   success: boolean
@@ -30,7 +31,7 @@ export default function NavIntegrationPage() {
         setError(`NAV hiba: ${res.error}`)
       }
     } catch (err) {
-      console.error('NAV küldési hiba:', err)
+      logger.error('NavIntegrationPage', 'NAV küldési hiba:', err)
       setError('Hiba történt a NAV küldés során')
     }
   }

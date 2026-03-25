@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Settings, Plus, Trash2, Save } from 'lucide-react'
-import { api } from '../../services/api'
+import { api } from '../../services/api/index'
+import { logger } from '../../utils/logger';
 
 const isElectron = () => !!window.electronAPI
 
@@ -49,7 +50,7 @@ export default function CameraConfigPage() {
         setConfigs(res.data)
       }
     } catch (err) {
-      console.error('Config lekeres sikertelen:', err)
+      logger.error('CameraConfigPage', 'Config lekeres sikertelen:', err)
     } finally {
       setLoading(false)
     }
@@ -75,7 +76,7 @@ export default function CameraConfigPage() {
       }
       setEditing(null)
     } catch (err) {
-      console.error('Mentes sikertelen:', err)
+      logger.error('CameraConfigPage', 'Mentes sikertelen:', err)
     }
   }
 
@@ -91,7 +92,7 @@ export default function CameraConfigPage() {
         fetchConfigs()
       }
     } catch (err) {
-      console.error('Torles sikertelen:', err)
+      logger.error('CameraConfigPage', 'Torles sikertelen:', err)
     }
   }
 

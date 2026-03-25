@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { FileText, Download, Search } from 'lucide-react'
-import { loggingApi, AuditLog } from '../../services/api'
+import { loggingApi, AuditLog } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
+import { logger } from '../../utils/logger';
 
 export default function LoggingPage() {
   const [logs, setLogs] = useState<AuditLog[]>([])
@@ -13,12 +14,7 @@ export default function LoggingPage() {
   const [page, setPage] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
 
-  useEffect(() => {
-    void loadLogs()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [logType, fromDate, toDate, page])
-
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     try {
       setLoading(true)
       let result
@@ -32,11 +28,15 @@ export default function LoggingPage() {
       setLogs(result.content)
       setTotalElements(result.totalElements)
     } catch (error) {
-      console.error('Hiba a logok betöltésekor:', error)
+      logger.error('LoggingPage', 'Hiba a logok betöltésekor:', error)
     } finally {
       setLoading(false)
     }
-  }
+  }, [logType, fromDate, toDate, page])
+
+  useEffect(() => {
+    void loadLogs()
+  }, [loadLogs])
 
   const handleExport = async () => {
     try {
@@ -47,7 +47,7 @@ export default function LoggingPage() {
       a.download = `logs-${logType}-${new Date().toISOString()}.csv`
       a.click()
     } catch (error) {
-      console.error('Hiba az exportálásnál:', error)
+      logger.error('LoggingPage', 'Hiba az exportálásnál:', error)
       toast.error('Exportálási hiba', 'Hiba történt az exportálás során')
     }
   }

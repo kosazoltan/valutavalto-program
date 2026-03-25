@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.exception.BusinessException;
 import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.dto.employee.*;
 import hu.puzzleir.valuta.entity.*;
@@ -26,7 +27,7 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Transactional(rollbackFor = Exception.class)
 @Slf4j
 public class EmployeeService {
 
@@ -298,7 +299,7 @@ public class EmployeeService {
 
         } catch (Exception e) {
             log.error("Dolgozói import hiba", e);
-            throw new RuntimeException("Import hiba: " + e.getMessage(), e);
+            throw new BusinessException("Import hiba: " + e.getMessage(), "EMPLOYEE_IMPORT_FAILED");
         }
     }
 

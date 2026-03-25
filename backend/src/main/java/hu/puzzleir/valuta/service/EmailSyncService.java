@@ -43,7 +43,8 @@ public class EmailSyncService {
 
     private static final String USER_ME = "me";
     private static final String APP_NAME = "Valutavalto-ERP";
-    private static final int SYNC_MAX_MESSAGES = 100;
+    @org.springframework.beans.factory.annotation.Value("${app.email.sync.max-messages:100}")
+    private int syncMaxMessages;
 
     /**
      * 5 percenként szinkronizálja az aktív email fiókok leveleit az EmailCache táblába.
@@ -99,7 +100,7 @@ public class EmailSyncService {
         for (String query : List.of("in:INBOX", "in:SENT")) {
             ListMessagesResponse response = gmail.users().messages().list(USER_ME)
                     .setQ(query)
-                    .setMaxResults((long) SYNC_MAX_MESSAGES)
+                    .setMaxResults((long) syncMaxMessages)
                     .execute();
 
             if (response.getMessages() == null) {

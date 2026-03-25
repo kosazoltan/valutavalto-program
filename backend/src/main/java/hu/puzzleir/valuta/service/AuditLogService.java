@@ -39,7 +39,7 @@ public class AuditLogService {
      * Egyszerűsített audit log — action + message + entityId (String).
      * SecurityContext-ből tölti ki a user/branch adatokat.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void log(String action, String message, String entityId) {
         log(action, "SYSTEM", entityId,
             null, null, null, null, message, null, null);
@@ -48,13 +48,13 @@ public class AuditLogService {
     /**
      * Egyszerűsített audit log — action + message + entityId (Long).
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void log(String action, String message, Long entityId) {
         log(action, "SYSTEM", entityId != null ? entityId.toString() : null,
             null, null, null, null, message, null, null);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void log(String action, String entityType, String entityId,
                     String userId, String userName, String branchId, String branchName,
                     String changes, String ipAddress, String userAgent) {
@@ -77,7 +77,7 @@ public class AuditLogService {
     /**
      * Bővített audit log — oldValue/newValue JSON + reason mező.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void logWithDetails(String action, String entityType, String entityId,
                                String userId, String userName, String branchId, String branchName,
                                String oldValue, String newValue, String reason,
@@ -180,7 +180,7 @@ public class AuditLogService {
     /**
      * Általános művelet naplózása.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void logAction(String entityType, UUID entityId, String action, String details, Long workerId) {
         log.debug("Audit logAction: {} {} {} workerId={}", action, entityType, entityId, workerId);
         AuditLog entry = AuditLog.builder()
@@ -196,7 +196,7 @@ public class AuditLogService {
     /**
      * Tranzakció esemény naplózása (létrehozás/módosítás/stornó).
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void logTransactionEvent(UUID transactionId, String event) {
         log.debug("Audit logTransactionEvent: {} {}", transactionId, event);
         AuditLog entry = AuditLog.builder()
@@ -211,7 +211,7 @@ public class AuditLogService {
     /**
      * Árfolyam változás naplózása.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void logRateChange(String currency, BigDecimal oldRate, BigDecimal newRate, Long workerId) {
         log.debug("Audit logRateChange: {} {} -> {} workerId={}", currency, oldRate, newRate, workerId);
         AuditLog entry = AuditLog.builder()
@@ -229,7 +229,7 @@ public class AuditLogService {
     /**
      * Biztonsági esemény naplózása.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void logSecurityEvent(String eventType, String details, String ipAddress) {
         log.debug("Audit logSecurityEvent: {} ip={}", eventType, ipAddress);
         AuditLog entry = AuditLog.builder()

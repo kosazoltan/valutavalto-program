@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Users, Plus, Edit, Trash2, Search, X, Save, Shield } from 'lucide-react'
-import { roleApi, Role, RoleCreateRequest, permissionApi, Permission } from '../../services/api'
+import { roleApi, Role, RoleCreateRequest, permissionApi, Permission } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
+import { logger } from '../../utils/logger';
 
 export default function RolePage() {
   const [roles, setRoles] = useState<Role[]>([])
   const [permissions, setPermissions] = useState<Permission[]>([])
-  const [filteredRoles, setFilteredRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -22,17 +22,17 @@ export default function RolePage() {
   })
 
 
-  useEffect(() => {
-    void loadData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  useEffect(() => {
-    filterRoles()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const filteredRoles = useMemo(() => {
+    if (!searchTerm) return roles
+    const term = searchTerm.toLowerCase()
+    return roles.filter(r =>
+      r.code.toLowerCase().includes(term) ||
+      r.name.toLowerCase().includes(term) ||
+      r.description?.toLowerCase().includes(term)
+    )
   }, [roles, searchTerm])
 
-  const createDefaultRolesIfNeeded = async (existingRoles: Role[] = []): Promise<Role[]> => {
+  const createDefaultRolesIfNeeded = useCallback(async (existingRoles: Role[] = []): Promise<Role[]> => {
     const defaultRoles: RoleCreateRequest[] = [
       {
         code: 'ADMIN',
@@ -86,12 +86,12 @@ export default function RolePage() {
 
       return existingRoles
     } catch (err) {
-      console.error('Alapértelmezett szerepkörök létrehozása sikertelen:', err)
+      logger.error('RolePage', 'Alapértelmezett szerepkörök létrehozása sikertelen:', err)
       return existingRoles
     }
-  }
+  }, [])
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -109,7 +109,7 @@ export default function RolePage() {
       setRoles(finalRolesData)
       setPermissions(permissionsData)
     } catch (err) {
-      console.error('Szerepkörök betöltési hiba:', err)
+      logger.error('RolePage', 'Szerepkörök betöltési hiba:', err)
       // Ha hiba van a betöltésnél, próbáljuk meg létrehozni az alapértelmezetteket
       try {
         const rolesData = await roleApi.list()
@@ -120,27 +120,17 @@ export default function RolePage() {
           setRoles(rolesData)
         }
       } catch (innerErr) {
-        console.error('Szerepkörök újratöltése sikertelen:', innerErr)
+        logger.error('RolePage', 'Szerepkörök újratöltése sikertelen:', innerErr)
         setError('Hiba a szerepkörök betöltésekor')
       }
     } finally {
       setLoading(false)
     }
-  }
+  }, [createDefaultRolesIfNeeded])
 
-  const filterRoles = () => {
-    let filtered = roles
-
-    if (searchTerm) {
-      filtered = filtered.filter(r =>
-        r.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.description?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-
-    setFilteredRoles(filtered)
-  }
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
 
   const handleCreateDefaultRoles = async () => {
     if (!confirm('Ez létrehozza az alapértelmezett munkaköröket (admin, értéktáros, területi vezető, kontroller, pénztáros). Folytassuk?')) {
@@ -159,7 +149,7 @@ export default function RolePage() {
 
       toast.success('Szerepkörök ellenőrizve', `Összesen ${created} alapértelmezett szerepkör elérhető.`)
     } catch (err) {
-      console.error('Alapértelmezett szerepkörök létrehozási hiba:', err)
+      logger.error('RolePage', 'Alapértelmezett szerepkörök létrehozási hiba:', err)
       setError('Hiba történt az alapértelmezett szerepkörök létrehozása során')
     } finally {
       setLoading(false)
@@ -209,7 +199,7 @@ export default function RolePage() {
       setShowForm(false)
       setEditingRole(null)
     } catch (err) {
-      console.error('Szerepkör mentési hiba:', err)
+      logger.error('RolePage', 'Szerepkör mentési hiba:', err)
       setError('Hiba történt a mentés során')
     }
   }
@@ -224,7 +214,7 @@ export default function RolePage() {
       await roleApi.delete(id)
       await loadData()
     } catch (err) {
-      console.error('Szerepkör törlési hiba:', err)
+      logger.error('RolePage', 'Szerepkör törlési hiba:', err)
       setError('Hiba történt a törlés során')
     }
   }
@@ -235,7 +225,7 @@ export default function RolePage() {
       await roleApi.toggleActive(id)
       await loadData()
     } catch (err) {
-      console.error('Szerepkör állapotváltási hiba:', err)
+      logger.error('RolePage', 'Szerepkör állapotváltási hiba:', err)
       setError('Hiba történt az állapotváltás során')
     }
   }
@@ -250,7 +240,7 @@ export default function RolePage() {
       const updatedRole = await roleApi.getById(selectedRole.id)
       setSelectedRole(updatedRole)
     } catch (err) {
-      console.error('Jogosultság hozzáadási hiba:', err)
+      logger.error('RolePage', 'Jogosultság hozzáadási hiba:', err)
       setError('Hiba történt a jogosultság hozzáadása során')
     }
   }
@@ -265,7 +255,7 @@ export default function RolePage() {
       const updatedRole = await roleApi.getById(selectedRole.id)
       setSelectedRole(updatedRole)
     } catch (err) {
-      console.error('Jogosultság eltávolítási hiba:', err)
+      logger.error('RolePage', 'Jogosultság eltávolítási hiba:', err)
       setError('Hiba történt a jogosultság eltávolítása során')
     }
   }

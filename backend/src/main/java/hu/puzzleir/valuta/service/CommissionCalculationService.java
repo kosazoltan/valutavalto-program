@@ -40,7 +40,7 @@ public class CommissionCalculationService {
     /**
      * Egyetlen pénztáros havi jutalékának számítása.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CommissionCalculation calculateMonthly(Long workerId, String yearMonth, UUID companyId) {
         YearMonth ym = parseYearMonth(yearMonth);
 
@@ -129,7 +129,7 @@ public class CommissionCalculationService {
     /**
      * Iroda összes pénztárosának jutalék számítása.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public List<CommissionCalculation> calculateAllWorkers(UUID branchId, String yearMonth, UUID companyId) {
         YearMonth ym = parseYearMonth(yearMonth);
         LocalDate monthStart = ym.atDay(1);
@@ -159,7 +159,7 @@ public class CommissionCalculationService {
     /**
      * Jutalék jóváhagyása.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CommissionCalculation approveCommission(UUID calcId) {
         CommissionCalculation calc = commissionCalcRepo.findById(calcId)
                 .orElseThrow(() -> new ValidationException("Jutalék számítás nem található: " + calcId));

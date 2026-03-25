@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.dto.printtemplate.PrintTemplateDto;
 import hu.puzzleir.valuta.dto.printtemplate.PrintTemplateResponse;
 import hu.puzzleir.valuta.entity.PrintTemplate;
@@ -47,14 +48,14 @@ public class PrintTemplateService {
     private PrintTemplateResponse getDefaultByType(PrintTemplateType templateType) {
         return printTemplateRepository.findByTemplateTypeAndIsDefaultTrue(templateType)
                 .map(this::toResponse)
-                .orElseThrow(() -> new RuntimeException(
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Nincs alapértelmezett sablon ehhez a típushoz: " + templateType));
     }
 
     /**
      * Sablon mentés/létrehozás.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public PrintTemplateResponse saveTemplate(PrintTemplateDto dto) {
         PrintTemplate template = PrintTemplate.builder()
                 .name(dto.getName())
@@ -72,10 +73,10 @@ public class PrintTemplateService {
     /**
      * Sablon frissítés.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public PrintTemplateResponse updateTemplate(UUID id, PrintTemplateDto dto) {
         PrintTemplate template = printTemplateRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Sablon nem található: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Sablon nem található: " + id));
 
         template.setName(dto.getName());
         template.setTemplateType(PrintTemplateType.valueOf(dto.getTemplateType().toUpperCase()));
@@ -121,7 +122,7 @@ public class PrintTemplateService {
     @Transactional(readOnly = true)
     public PrintTemplateResponse getTemplateById(UUID id) {
         PrintTemplate template = printTemplateRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Sablon nem található: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Sablon nem található: " + id));
         return toResponse(template);
     }
 
@@ -132,7 +133,7 @@ public class PrintTemplateService {
     @Transactional(readOnly = true)
     public String previewTemplate(UUID templateId, Map<String, Object> data) {
         PrintTemplate template = printTemplateRepository.findById(templateId)
-                .orElseThrow(() -> new RuntimeException("Sablon nem található: " + templateId));
+                .orElseThrow(() -> new ResourceNotFoundException("Sablon nem található: " + templateId));
 
         String rendered = template.getContent();
         if (rendered == null) return "";

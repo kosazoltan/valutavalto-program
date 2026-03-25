@@ -22,6 +22,11 @@ type RateUpdatePayload = {
  * - Browser dev: window.location alapján.
  */
 function resolveWsEndpoint(): string {
+  const explicitWsUrl = import.meta.env.VITE_WS_URL as string | undefined
+  if (explicitWsUrl?.trim()) {
+    return explicitWsUrl
+  }
+
   const apiBase = import.meta.env.VITE_API_URL as string | undefined
   if (apiBase) {
     try {
@@ -36,7 +41,7 @@ function resolveWsEndpoint(): string {
     return `${window.location.protocol}//${window.location.host}/ws`
   }
 
-  return 'http://localhost:8080/ws'
+  return '/ws'
 }
 
 /**

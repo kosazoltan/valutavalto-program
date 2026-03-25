@@ -16,7 +16,7 @@ import {
   Currency,
   ExchangeRate,
   ConversionRequest
-} from '../../services/api'
+} from '../../services/api/index'
 import { NumberInput } from '../../components/NumberInput'
 import { formatDecimal, formatInteger } from '../../utils/numberFormat'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -166,7 +166,8 @@ export default function ConversionPage() {
         setConversionRate(directRate)
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // getRate and roundHuf are stable closures that only depend on `rates`, which is in the dep array
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- getRate/roundHuf are derived from `rates` already in deps
   }, [fromCurrencyId, toCurrencyId, fromAmount, rates])
 
   // Get currency by id

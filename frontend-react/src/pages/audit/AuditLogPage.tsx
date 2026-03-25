@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Shield, Search, ChevronLeft, ChevronRight, X } from 'lucide-react'
-import { auditLogApi } from '../../services/api'
-import type { AuditLog } from '../../services/api'
+import { auditLogApi } from '../../services/api/index'
+import type { AuditLog } from '../../services/api/index'
+import { logger } from '../../utils/logger';
 
 /**
  * AuditLogPage — érzékeny műveletek audit naplója.
@@ -60,7 +61,7 @@ export default function AuditLogPage() {
       setLogs(result.content)
       setTotalElements(result.totalElements)
     } catch (error) {
-      console.error('Hiba az audit logok betöltésekor:', error)
+      logger.error('AuditLogPage', 'Hiba az audit logok betöltésekor:', error)
     } finally {
       setLoading(false)
     }

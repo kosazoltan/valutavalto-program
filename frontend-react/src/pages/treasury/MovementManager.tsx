@@ -13,8 +13,8 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { transferApi, currencyApi } from '../../services/api'
-import type { Transfer, Currency, CreateTransferRequest } from '../../services/api'
+import { transferApi, currencyApi } from '../../services/api/index'
+import type { Transfer, Currency, CreateTransferRequest } from '../../services/api/index'
 import {
   formatInteger,
   formatDateTime,
@@ -31,6 +31,7 @@ import {
 } from '../../utils/electronTransactions'
 import { getLocalPendingTransfers } from '../../utils/localQueue'
 import { useAuthStore } from '../../stores/authStore'
+import { logger } from '../../utils/logger';
 
 const MOVEMENT_TYPES = [
   { value: 'VAULT_WITHDRAW' as const, label: 'Bank kivét', description: 'Értéktárból bankba szállítás', icon: Banknote },
@@ -70,7 +71,7 @@ export default function MovementManager() {
       setAllTransfers([...localPending, ...all.content])
       setCurrencies(currData)
     } catch (err) {
-      console.error('MovementManager fetch error:', err)
+      logger.error('MovementManager', 'MovementManager fetch error:', err)
     } finally {
       setLoading(false)
     }
@@ -101,7 +102,7 @@ export default function MovementManager() {
       })
       void fetchData()
     } catch (err) {
-      console.error('Approve error:', err)
+      logger.error('MovementManager', 'Approve error:', err)
     }
   }, [fetchData, pendingTransfers, allTransfers])
 
@@ -117,7 +118,7 @@ export default function MovementManager() {
       })
       void fetchData()
     } catch (err) {
-      console.error('Reject error:', err)
+      logger.error('MovementManager', 'Reject error:', err)
     }
   }, [fetchData])
 
@@ -157,7 +158,7 @@ export default function MovementManager() {
       setNotes('')
       void fetchData()
     } catch (err) {
-      console.error('Create movement error:', err)
+      logger.error('MovementManager', 'Create movement error:', err)
     }
   }, [toBranchId, currencyId, amount, movementType, notes, fetchData, currencies, electronQueueAvailable])
 

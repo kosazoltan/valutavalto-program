@@ -43,7 +43,7 @@ import java.util.UUID;
  */
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Transactional(rollbackFor = Exception.class)
 @Slf4j
 public class ReservationService {
 
@@ -529,7 +529,7 @@ public class ReservationService {
      * egyszer létrehoz egy Notification-t. Idempotens: ha már létezik, kihagyja.
      */
     @Scheduled(fixedDelay = 30 * 60 * 1000)
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void sendPreExpiryWarnings() {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime in24h = now.plusHours(24);

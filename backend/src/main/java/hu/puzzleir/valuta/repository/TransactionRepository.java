@@ -823,4 +823,34 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
      * Napi zárás ellenőrzés: van-e PENDING státuszú tranzakció az adott irodában.
      */
     boolean existsByBranchIdAndStatus(UUID branchId, TransactionStatus status);
+
+    /**
+     * Ugyfel tranzakcioi okmany szam alapjan (multi-tenant).
+     */
+    @Query("SELECT t FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.customerDocumentNumber = :docNumber " +
+           "AND t.status = 'COMPLETED' " +
+           "ORDER BY t.transactionDate DESC, t.transactionTime DESC")
+    List<Transaction> findByCompanyIdAndCustomerDocumentNumber(
+        @Param("companyId") UUID companyId,
+        @Param("docNumber") String docNumber
+    );
+
+    /**
+     * Ugyfel tranzakcioi okmany szam es datum alapjan (multi-tenant).
+     */
+    @Query("SELECT t FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.customerDocumentNumber = :docNumber " +
+           "AND t.status = 'COMPLETED' " +
+           "AND (:dateFrom IS NULL OR t.transactionDate >= :dateFrom) " +
+           "AND (:dateTo IS NULL OR t.transactionDate <= :dateTo) " +
+           "ORDER BY t.transactionDate DESC, t.transactionTime DESC")
+    List<Transaction> findByCompanyIdAndCustomerDocumentNumberAndDateRange(
+        @Param("companyId") UUID companyId,
+        @Param("docNumber") String docNumber,
+        @Param("dateFrom") LocalDate dateFrom,
+        @Param("dateTo") LocalDate dateTo
+    );
 }

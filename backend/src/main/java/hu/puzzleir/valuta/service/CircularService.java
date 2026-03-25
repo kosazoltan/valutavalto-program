@@ -62,7 +62,7 @@ public class CircularService {
     /**
      * Körlevél létrehozása.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CircularDto create(CreateCircularDto dto, Long workerId) {
         Worker worker = workerRepository.findById(workerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Dolgozó nem található: " + workerId));
@@ -82,7 +82,7 @@ public class CircularService {
     /**
      * Körlevél tudomásul vétele.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CircularDto acknowledge(Long circularId) {
         Circular circular = findOrThrow(circularId);
 
@@ -138,7 +138,7 @@ public class CircularService {
      * készítette a körleveleket ODT/DOCX formátumban és FTP-n terjesztette.
      * Az új rendszerben REST API-n keresztül történik.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CircularDto createTyped(CreateCircularDto dto, Long workerId,
                                     CircularType type,
                                     CircularType.CircularTarget target,
@@ -205,7 +205,7 @@ public class CircularService {
      * Legacy: AT.xxx fájlba beírta a dolgozó nevét és az időpontot.
      * Modern: circular_acknowledgment táblába kerül.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CircularDto acknowledgeByWorker(Long circularId) {
         Circular circular = findOrThrow(circularId);
         Long workerId = SecurityUtils.getCurrentWorkerId();
@@ -270,7 +270,7 @@ public class CircularService {
      * Auto-sorszám generálás.
      * Legacy: FZS001, FZS002, BT008, KI001 — prefix + 3 számjegy.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public String generateRegistrationNumber(UUID companyId, String prefix) {
         CircularSequence seq = sequenceRepository.findForUpdate(companyId, prefix)
                 .orElseGet(() -> {
@@ -310,7 +310,7 @@ public class CircularService {
      * Legacy: LASTYEAR mappába kerültek az előző évi körlevelek,
      * ARCHIVE mappába a régebbiek.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CircularDto archive(Long circularId) {
         Circular circular = findOrThrow(circularId);
 
@@ -357,7 +357,7 @@ public class CircularService {
      * Csatolmány feltöltése körlevélhez.
      * Legacy: ODT/DOCX/PDF fájlok a KORLEVEL mappában.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CircularDto uploadAttachment(Long circularId, MultipartFile file) throws IOException {
         Circular circular = findOrThrow(circularId);
 

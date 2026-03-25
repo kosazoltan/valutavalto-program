@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { CreditCard } from 'lucide-react'
-import { posTerminalApi, PosTerminal } from '../../services/api'
+import { posTerminalApi, PosTerminal } from '../../services/api/index'
 
 export default function PosTerminalPage() {
   const [terminals, setTerminals] = useState<PosTerminal[]>([])

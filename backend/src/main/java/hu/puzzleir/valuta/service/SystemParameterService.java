@@ -29,7 +29,7 @@ public class SystemParameterService {
         return getByKey(key).getParameterValue();
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SystemParameter create(String key, String value, String type, String category, String description) {
         SystemParameter p = SystemParameter.builder()
                 .parameterKey(key).parameterValue(value).parameterType(type)
@@ -37,7 +37,7 @@ public class SystemParameterService {
         return repo.save(p);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SystemParameter update(UUID id, String value, String description) {
         SystemParameter p = findOrThrow(id);
         if (value != null) p.setParameterValue(value);
@@ -45,14 +45,14 @@ public class SystemParameterService {
         return repo.save(p);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SystemParameter toggleActive(UUID id) {
         SystemParameter p = findOrThrow(id);
         p.setIsActive(!p.getIsActive());
         return repo.save(p);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void delete(UUID id) { repo.deleteById(id); }
 
     private SystemParameter findOrThrow(UUID id) {

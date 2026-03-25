@@ -36,7 +36,7 @@ public class VaultCollectionService {
                 .collect(Collectors.toList());
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CollectionResponseDto createCollection(CollectionRequestDto request) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
 
@@ -66,7 +66,7 @@ public class VaultCollectionService {
         return toDto(saved);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CollectionResponseDto updateStatus(Long id, VaultOperationStatus newStatus) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         VaultCollection collection = vaultCollectionRepository.findById(id)

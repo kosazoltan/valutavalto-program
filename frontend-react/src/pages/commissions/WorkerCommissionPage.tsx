@@ -1,26 +1,30 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Users, Search, Calendar, Download } from 'lucide-react'
-import { workerCommissionApi, WorkerCommission } from '../../services/api'
+import { workerCommissionApi, WorkerCommission } from '../../services/api/index'
 import { formatInteger, formatDecimal } from '../../utils/numberFormat'
 import { toast } from '../../components/ui/toaster'
+import { logger } from '../../utils/logger';
 
 export default function WorkerCommissionPage() {
   const [commissions, setCommissions] = useState<WorkerCommission[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [filteredCommissions, setFilteredCommissions] = useState<WorkerCommission[]>([])
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+
+  const filteredCommissions = useMemo(() => {
+    if (!searchTerm) return commissions
+    const term = searchTerm.toLowerCase()
+    return commissions.filter(c =>
+      c.workerName?.toLowerCase().includes(term) ||
+      c.branchName?.toLowerCase().includes(term)
+    )
+  }, [commissions, searchTerm])
 
   useEffect(() => {
     void loadData()
   }, [])
-
-  useEffect(() => {
-    filterCommissions()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [commissions, searchTerm])
 
   const loadData = async () => {
     try {
@@ -29,22 +33,11 @@ export default function WorkerCommissionPage() {
       const data = await workerCommissionApi.list()
       setCommissions(data)
     } catch (err) {
-      console.error('Jutalékok betöltési hiba:', err)
+      logger.error('WorkerCommissionPage', 'Jutalékok betöltési hiba:', err)
       setError('Hiba a jutalékok betöltésekor')
     } finally {
       setLoading(false)
     }
-  }
-
-  const filterCommissions = () => {
-    let filtered = commissions
-    if (searchTerm) {
-      filtered = filtered.filter(c =>
-        c.workerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.branchName?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-    setFilteredCommissions(filtered)
   }
 
   const handleFilterByPeriod = async () => {
@@ -57,7 +50,7 @@ export default function WorkerCommissionPage() {
       const data = await workerCommissionApi.getByPeriod(startDate, endDate)
       setCommissions(data)
     } catch (err) {
-      console.error('Szűrési hiba:', err)
+      logger.error('WorkerCommissionPage', 'Szűrési hiba:', err)
       setError('Hiba történt az időszak szűrése során')
     }
   }
@@ -72,7 +65,7 @@ export default function WorkerCommissionPage() {
       await workerCommissionApi.getAccountingList(startDate, endDate)
       // TODO: Implement CSV export
     } catch (err) {
-      console.error('Export hiba:', err)
+      logger.error('WorkerCommissionPage', 'Export hiba:', err)
       setError('Hiba történt az export során')
     }
   }

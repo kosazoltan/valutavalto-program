@@ -31,7 +31,7 @@ public class RateHistoryService {
     /**
      * Új árfolyam változás rögzítése
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public RateHistory recordRateChange(RateHistoryDto dto) {
         // Előző bejegyzés lezárása (effectiveTo beállítása)
         rateHistoryRepository.findLatestByCurrency(dto.getCompanyId(), dto.getCurrencyCode())

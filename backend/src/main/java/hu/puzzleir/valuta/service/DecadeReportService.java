@@ -54,7 +54,7 @@ public class DecadeReportService {
     /**
      * Dekádjelentés generálása. Összesíti az adott 10 napos időszak tranzakcióit.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public DecadeReportDto generateDecadeReport(UUID branchId, int year, int decade) {
         if (decade < 1 || decade > 36) {
             throw new ValidationException("Érvénytelen dekád: " + decade + " (1-36 között kell legyen)");
@@ -126,7 +126,7 @@ public class DecadeReportService {
     /**
      * Dekád véglegesítése (CLOSED státusz).
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public DecadeReportDto closeDecade(UUID reportId) {
         DecadeReport report = decadeReportRepository.findById(reportId)
             .orElseThrow(() -> new ResourceNotFoundException("Dekádjelentés nem található: " + reportId));

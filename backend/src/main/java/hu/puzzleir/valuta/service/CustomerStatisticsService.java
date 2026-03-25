@@ -47,15 +47,11 @@ public class CustomerStatisticsService {
             throw new ResourceNotFoundException("Ügyfél nem található: " + customerId);
         }
 
-        // Tranzakciók lekérése a customer_name/customer_document_number alapján
-        List<Transaction> transactions = transactionRepository.findAll().stream()
-                .filter(t -> t.getCompany().getId().equals(companyId))
-                .filter(t -> TransactionStatus.COMPLETED.equals(t.getStatus()))
-                .filter(t -> {
-                    String docNum = customer.getDocumentNumber();
-                    return docNum != null && docNum.equals(t.getCustomerDocumentNumber());
-                })
-                .toList();
+        // Tranzakciók lekérése okmányszám alapján (multi-tenant szűréssel)
+        String docNum = customer.getDocumentNumber();
+        List<Transaction> transactions = (docNum != null)
+                ? transactionRepository.findByCompanyIdAndCustomerDocumentNumber(companyId, docNum)
+                : Collections.emptyList();
 
         if (transactions.isEmpty()) {
             return CustomerStatsDto.builder()
@@ -126,21 +122,10 @@ public class CustomerStatisticsService {
             throw new ResourceNotFoundException("Ügyfél nem található: " + customerId);
         }
 
-        List<Transaction> transactions = transactionRepository.findAll().stream()
-                .filter(t -> t.getCompany().getId().equals(companyId))
-                .filter(t -> TransactionStatus.COMPLETED.equals(t.getStatus()))
-                .filter(t -> {
-                    String docNum = customer.getDocumentNumber();
-                    return docNum != null && docNum.equals(t.getCustomerDocumentNumber());
-                })
-                .filter(t -> {
-                    LocalDate txDate = t.getTransactionDate();
-                    if (txDate == null) return false;
-                    if (from != null && txDate.isBefore(from)) return false;
-                    if (to != null && txDate.isAfter(to)) return false;
-                    return true;
-                })
-                .toList();
+        String docNum = customer.getDocumentNumber();
+        List<Transaction> transactions = (docNum != null)
+                ? transactionRepository.findByCompanyIdAndCustomerDocumentNumberAndDateRange(companyId, docNum, from, to)
+                : Collections.emptyList();
 
         if (transactions.isEmpty()) {
             return CustomerStatsDto.builder()
@@ -176,12 +161,10 @@ public class CustomerStatisticsService {
     public List<CustomerRankingDto> getTopCustomers(UUID branchId, LocalDate from, LocalDate to, int limit) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
 
-        List<Transaction> transactions = transactionRepository.findAll().stream()
-                .filter(t -> t.getCompany().getId().equals(companyId))
-                .filter(t -> TransactionStatus.COMPLETED.equals(t.getStatus()))
-                .filter(t -> branchId == null || (t.getBranch() != null && t.getBranch().getId().equals(branchId)))
-                .filter(t -> from == null || !t.getTransactionDate().isBefore(from))
-                .filter(t -> to == null || !t.getTransactionDate().isAfter(to))
+        // Multi-tenant: szűrt lekérdezés findAll() helyett
+        List<Transaction> transactions = transactionRepository.findWithFilters(
+                companyId, branchId, from, to, null, org.springframework.data.domain.Pageable.unpaged()
+        ).getContent().stream()
                 .filter(t -> t.getCustomerDocumentNumber() != null && !t.getCustomerDocumentNumber().isBlank())
                 .toList();
 

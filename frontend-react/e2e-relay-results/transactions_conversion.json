@@ -1,0 +1,35 @@
+{
+  "route": "/transactions/conversion",
+  "loaded": true,
+  "title": "RepZtecH Exclusive Best Change - Pénztári Rendszer",
+  "clicked": 4,
+  "disabled": 1,
+  "errors": 0,
+  "skipped": 1,
+  "buttons": [
+    {
+      "label": "Tovább a cél valutához →",
+      "state": "disabled"
+    },
+    {
+      "label": "[no-label]",
+      "state": "clicked"
+    },
+    {
+      "label": "Kijelentkezés",
+      "state": "skip"
+    },
+    {
+      "label": "[no-label]",
+      "state": "clicked"
+    },
+    {
+      "label": "Mégsem",
+      "state": "clicked"
+    },
+    {
+      "label": "Újrakezdés",
+      "state": "clicked"
+    }
+  ]
+}

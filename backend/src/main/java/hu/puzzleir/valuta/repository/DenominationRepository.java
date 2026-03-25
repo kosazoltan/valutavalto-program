@@ -55,4 +55,17 @@ public interface DenominationRepository extends JpaRepository<Denomination, Long
            "AND d.minQuantity IS NOT NULL " +
            "AND d.active = true")
     List<Denomination> findLowStock(@Param("companyId") UUID companyId);
+
+    /**
+     * Aktiv cimletek valuta kod alapjan (cimlet kalkulator)
+     */
+    @Query("SELECT d FROM Denomination d " +
+           "WHERE d.currency.code = :currencyCode " +
+           "AND d.company.id = :companyId " +
+           "AND d.active = true " +
+           "ORDER BY d.faceValue DESC")
+    List<Denomination> findByCompanyIdAndCurrencyCode(
+        @Param("companyId") UUID companyId,
+        @Param("currencyCode") String currencyCode
+    );
 }

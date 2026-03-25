@@ -2,7 +2,8 @@ import { Suspense, lazy, useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
 import { Toaster } from './components/ui/toaster'
-import { api, clearPersistedToken, hasPersistedToken, loadPersistedToken } from './services/api'
+import ErrorBoundary from './components/ErrorBoundary'
+import { api, clearPersistedToken, hasPersistedToken, loadPersistedToken } from './services/api/index'
 
 // Layouts
 import MainLayout from './layouts/MainLayout'
@@ -10,6 +11,7 @@ import AuthLayout from './layouts/AuthLayout'
 
 // Pages
 import LoginPage from './pages/auth/LoginPage'
+import { logger } from './utils/logger';
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const TransactionPage = lazy(() => import('./pages/transactions/TransactionPage'))
@@ -149,7 +151,7 @@ export default function App() {
           }
         }
       } catch (err) {
-        console.error('[App] Token restore hiba:', err)
+        logger.error('App', 'Token restore hiba:', err)
       } finally {
         setIsRestoring(false)
       }
@@ -166,7 +168,7 @@ export default function App() {
   }
 
   return (
-    <>
+    <ErrorBoundary>
       <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
           {/* Auth routes */}
@@ -345,6 +347,6 @@ export default function App() {
         </Routes>
       </Suspense>
       <Toaster />
-    </>
+    </ErrorBoundary>
   )
 }

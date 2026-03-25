@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.entity.Competitor;
 import hu.puzzleir.valuta.repository.CompetitorRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,15 +23,15 @@ public class CompetitorService {
 
     public Competitor findById(UUID id) {
         return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Competitor not found: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Competitor not found: " + id));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Competitor create(Competitor entity) {
         return repository.save(entity);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Competitor update(UUID id, Competitor updated) {
         Competitor existing = findById(id);
         existing.setName(updated.getName());
@@ -40,7 +41,7 @@ public class CompetitorService {
         return repository.save(existing);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void delete(UUID id) {
         Competitor existing = findById(id);
         existing.setIsActive(false);

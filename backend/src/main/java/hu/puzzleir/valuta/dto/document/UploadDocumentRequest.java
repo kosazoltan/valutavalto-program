@@ -9,8 +9,8 @@ import java.util.UUID;
  */
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class UploadDocumentRequest {
-    private UUID customerId;
-    private UUID transactionId;
+    private Long customerId;
+    private Long transactionId;
     private String documentType;
     private String notes;
 }

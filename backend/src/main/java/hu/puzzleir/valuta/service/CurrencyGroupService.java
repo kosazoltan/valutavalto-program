@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.entity.CurrencyGroup;
 import hu.puzzleir.valuta.repository.CurrencyGroupRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,15 +23,15 @@ public class CurrencyGroupService {
 
     public CurrencyGroup findById(UUID id) {
         return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("CurrencyGroup not found: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("CurrencyGroup not found: " + id));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CurrencyGroup create(CurrencyGroup entity) {
         return repository.save(entity);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CurrencyGroup update(UUID id, CurrencyGroup updated) {
         CurrencyGroup existing = findById(id);
         existing.setCode(updated.getCode());
@@ -41,7 +42,7 @@ public class CurrencyGroupService {
         return repository.save(existing);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void delete(UUID id) {
         CurrencyGroup existing = findById(id);
         existing.setIsActive(false);

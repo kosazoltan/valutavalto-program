@@ -19,7 +19,7 @@ public class RateTemplateApprovalService {
 
     private final RateTemplateRepository templateRepository;
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public RateTemplate approve(UUID templateId) {
         RateTemplate template = templateRepository.findById(templateId)
                 .orElseThrow(() -> new ValidationException("Sablon nem található: " + templateId));
@@ -37,7 +37,7 @@ public class RateTemplateApprovalService {
         return saved;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public RateTemplate revoke(UUID templateId) {
         RateTemplate template = templateRepository.findById(templateId)
                 .orElseThrow(() -> new ValidationException("Sablon nem található: " + templateId));

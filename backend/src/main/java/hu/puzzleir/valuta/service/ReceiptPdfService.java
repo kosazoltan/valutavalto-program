@@ -1,5 +1,7 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.exception.BusinessException;
+
 import hu.puzzleir.valuta.dto.receipt.ReceiptData;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -46,7 +48,7 @@ public class ReceiptPdfService {
             return out.toByteArray();
         } catch (IOException e) {
             log.error("PDF generálási hiba", e);
-            throw new RuntimeException("PDF generálás sikertelen", e);
+            throw new BusinessException("PDF generálás sikertelen", "PDF_GENERATION_FAILED");
         }
     }
 
@@ -63,7 +65,7 @@ public class ReceiptPdfService {
             return out.toByteArray();
         } catch (IOException e) {
             log.error("PDF másolat generálási hiba", e);
-            throw new RuntimeException("PDF másolat generálás sikertelen", e);
+            throw new BusinessException("PDF másolat generálás sikertelen", "PDF_COPY_FAILED");
         }
     }
 

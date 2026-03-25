@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { isElectron } from '@/utils/electron';
+import { logger } from '../utils/logger';
 
 /**
  * App mód típus — kiterjesztve a frontend-react 'full' móddal.
@@ -26,7 +27,7 @@ async function loadAppMode(): Promise<AppMode> {
       return stored;
     }
   } catch (err) {
-    console.error('[useAppMode] Config betöltési hiba:', err);
+    logger.error('useAppMode', 'Config betöltési hiba:', err);
   }
 
   // Electron default: penztar
@@ -61,7 +62,7 @@ export function useAppMode(): { mode: AppMode; isLoading: boolean } {
           setMode(loaded);
         }
       } catch (err) {
-        console.error('[useAppMode] Hiba:', err);
+        logger.error('useAppMode', 'Hiba:', err);
       } finally {
         if (!cancelled) {
           setIsLoading(false);

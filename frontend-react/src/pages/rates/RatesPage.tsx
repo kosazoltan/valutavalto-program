@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { TrendingUp, RefreshCw, Edit, Save, X, Clock, Download } from 'lucide-react'
-import { exchangeRateApi, ExchangeRate } from '../../services/api'
+import { exchangeRateApi, ExchangeRate } from '../../services/api/index'
 import { NumberInput } from '../../components/NumberInput'
 import { formatDecimal } from '../../utils/numberFormat'
 import { recordLocalAuditEvent } from '../../utils/electronTransactions'
+import { logger } from '../../utils/logger';
 
 interface RateRow {
   id: number
@@ -47,7 +48,7 @@ export default function RatesPage() {
       setRates(data.map(mapExchangeRateToRow))
       setLastRefresh(new Date().toLocaleString('hu-HU'))
     } catch (err) {
-      console.error('Árfolyamok betöltési hiba:', err)
+      logger.error('RatesPage', 'Árfolyamok betöltési hiba:', err)
       setError('Hiba az árfolyamok betöltésekor. Kérjük, próbálja újra!')
     } finally {
       setLoading(false)
@@ -102,7 +103,7 @@ export default function RatesPage() {
       setEditingCode(null)
       void loadRates()
     } catch (err) {
-      console.error('Árfolyam mentési hiba:', err)
+      logger.error('RatesPage', 'Árfolyam mentési hiba:', err)
       alert('Hiba az árfolyam mentésekor!')
     }
   }

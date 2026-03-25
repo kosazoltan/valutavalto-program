@@ -139,7 +139,7 @@ public class RateCreationController {
     @PostMapping("/workgroups/{workgroupId}/branches")
     public ResponseEntity<Void> updateWorkgroupBranches(
             @PathVariable UUID workgroupId,
-            @RequestBody BranchAssignmentRequest request) {
+            @jakarta.validation.Valid @RequestBody BranchAssignmentRequest request) {
         rateCreationService.updateWorkgroupBranches(workgroupId, request.getBranchIds());
         return ResponseEntity.ok().build();
     }
@@ -152,7 +152,7 @@ public class RateCreationController {
     @PutMapping("/workgroups/{workgroupId}/limits")
     public ResponseEntity<Void> updateWorkgroupLimits(
             @PathVariable UUID workgroupId,
-            @RequestBody LimitBoundaryRequest request) {
+            @jakarta.validation.Valid @RequestBody LimitBoundaryRequest request) {
         rateCreationService.updateWorkgroupLimits(
                 workgroupId,
                 request.getLimit1Boundary(),

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Camera, RefreshCw, Wifi, WifiOff } from 'lucide-react'
-import { api } from '../../services/api'
+import { api } from '../../services/api/index'
+import { logger } from '../../utils/logger';
 
 const isElectron = () => !!window.electronAPI
 
@@ -79,7 +80,7 @@ export default function CameraLivePage() {
         }
         localStreamRef.current = stream
       } catch (err) {
-        console.error('Kamera stream hiba:', err)
+        logger.error('CameraLivePage', 'Kamera stream hiba:', err)
       }
     }
     startStream()

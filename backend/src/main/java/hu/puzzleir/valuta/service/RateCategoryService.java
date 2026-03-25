@@ -62,7 +62,7 @@ public class RateCategoryService {
         return toDto(rc);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public RateCategoryDto setRateCategory(CreateRateCategoryDto dto) {
         Branch branch = branchRepository.findById(dto.getBranchId())
             .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + dto.getBranchId()));

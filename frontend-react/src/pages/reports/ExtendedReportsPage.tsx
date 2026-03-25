@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { FileText, Calendar } from 'lucide-react'
-import { reportExtendedApi } from '../../services/api'
+import { reportExtendedApi } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
+import { logger } from '../../utils/logger';
 
 export default function ExtendedReportsPage() {
   const [reportType, setReportType] = useState('transaction-list')
@@ -50,7 +51,7 @@ export default function ExtendedReportsPage() {
       }
       setReportData(data as Record<string, unknown>)
     } catch (error) {
-      console.error('Hiba a riport generálásánál:', error)
+      logger.error('ExtendedReportsPage', 'Hiba a riport generálásánál:', error)
       toast.error('Riport hiba', 'Hiba történt a riport generálása során')
     } finally {
       setLoading(false)

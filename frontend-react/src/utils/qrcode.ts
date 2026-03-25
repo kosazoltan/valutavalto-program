@@ -11,6 +11,7 @@
  */
 
 import type { QRData } from '@/types/receipt';
+import { logger } from './logger';
 
 // Lazy-loaded QR code module — import happens on first use, not at module load time.
 // This avoids a race condition where a top-level IIFE could still be pending
@@ -27,7 +28,7 @@ async function getQRCodeModule(): Promise<typeof import('qrcode') | null> {
         return mod;
       })
       .catch(() => {
-        console.warn('[qrcode] npm package "qrcode" not installed. Run: npm install qrcode @types/qrcode');
+        logger.warn('qrcode', 'npm package "qrcode" not installed. Run: npm install qrcode @types/qrcode');
         return null;
       });
   }

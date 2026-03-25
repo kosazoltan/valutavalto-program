@@ -1,0 +1,827 @@
+{
+  "timestamp": "2026-03-24T08:26:07.129Z",
+  "totalRoutes": 62,
+  "loadedRoutes": 1,
+  "failedRoutes": [
+    {
+      "route": "/transactions/new",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/transactions",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/transactions/conversion",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/customers",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/customers/new",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/rates",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/rates/creation",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/rates/groups",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/cashdesk",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/cashdesk/denominations",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/cashdesk/breaks",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/closing/wizard",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/transfers",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/shipments",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/reports",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/reports/extended",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/receipts",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/handover-sheets",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/company",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/commissions",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/commission-rates",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/contributions",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/workstations",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/organizations",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/logging",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/settings",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/settings/users",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/settings/roles",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/settings/permissions",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/settings/parameters",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/fees",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/fee-packages",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/blacklist",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/anonymous-reports",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/archiving",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/exchange-rate-display",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/synchronization",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/local-queue",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/pos-terminal",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/nav-integration",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/documents",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/notifications",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/organizational-system-parameters",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/branch-groups",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/audit-log",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/circulars",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/pep",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/reservations",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/suspicious-reports",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/treasury",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/treasury/matrix",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/treasury/movements",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/treasury/bank",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/treasury/rates",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/camera/live",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/camera/playback",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/camera/export",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/camera/status",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/darius",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/cashier",
+      "error": "REDIRECTED_TO_LOGIN"
+    },
+    {
+      "route": "/rate-management",
+      "error": "REDIRECTED_TO_LOGIN"
+    }
+  ],
+  "buttonSummary": [
+    {
+      "route": "/dashboard",
+      "loaded": true,
+      "clicked": 2,
+      "disabled": 0,
+      "errors": 1,
+      "buttons": [
+        {
+          "label": "[no-label]",
+          "state": "clicked"
+        },
+        {
+          "label": "[no-label]",
+          "state": "clicked"
+        },
+        {
+          "label": "[no-label]",
+          "state": "error",
+          "err": "TimeoutError: locator.textContent: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('button:not([disabled"
+        }
+      ]
+    },
+    {
+      "route": "/transactions/new",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/transactions",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/transactions/conversion",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/customers",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/customers/new",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/rates",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/rates/creation",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/rates/groups",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/cashdesk",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/cashdesk/denominations",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/cashdesk/breaks",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/closing/wizard",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/transfers",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/shipments",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/reports",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/reports/extended",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/receipts",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/handover-sheets",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/company",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/commissions",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/commission-rates",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/contributions",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/workstations",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/organizations",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/logging",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/settings",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/settings/users",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/settings/roles",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/settings/permissions",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/settings/parameters",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/fees",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/fee-packages",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/blacklist",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/anonymous-reports",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/archiving",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/exchange-rate-display",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/synchronization",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/local-queue",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/pos-terminal",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/nav-integration",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/documents",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/notifications",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/organizational-system-parameters",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/branch-groups",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/audit-log",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/circulars",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/pep",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/reservations",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/suspicious-reports",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/treasury",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/treasury/matrix",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/treasury/movements",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/treasury/bank",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/treasury/rates",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/camera/live",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/camera/playback",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/camera/export",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/camera/status",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/darius",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/cashier",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    },
+    {
+      "route": "/rate-management",
+      "loaded": false,
+      "clicked": 0,
+      "disabled": 0,
+      "errors": 0,
+      "buttons": []
+    }
+  ],
+  "bugs": [
+    "[BTN_ERROR] /dashboard → \"[no-label]\": TimeoutError: locator.textContent: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('button:not([disabled",
+    "[LOAD_FAIL] /transactions/new: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /transactions: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /transactions/conversion: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /customers: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /customers/new: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /rates: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /rates/creation: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /rates/groups: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /cashdesk: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /cashdesk/denominations: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /cashdesk/breaks: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /closing/wizard: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /transfers: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /shipments: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /reports: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /reports/extended: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /receipts: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /handover-sheets: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /company: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /commissions: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /commission-rates: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /contributions: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /workstations: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /organizations: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /logging: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /settings: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /settings/users: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /settings/roles: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /settings/permissions: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /settings/parameters: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /fees: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /fee-packages: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /blacklist: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /anonymous-reports: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /archiving: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /exchange-rate-display: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /synchronization: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /local-queue: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /pos-terminal: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /nav-integration: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /documents: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /notifications: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /organizational-system-parameters: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /branch-groups: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /audit-log: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /circulars: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /pep: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /reservations: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /suspicious-reports: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /treasury: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /treasury/matrix: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /treasury/movements: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /treasury/bank: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /treasury/rates: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /camera/live: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /camera/playback: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /camera/export: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /camera/status: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /darius: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /cashier: REDIRECTED_TO_LOGIN",
+    "[LOAD_FAIL] /rate-management: REDIRECTED_TO_LOGIN"
+  ]
+}

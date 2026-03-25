@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Monitor, Plus, Edit, Trash2, Search, X, Save } from 'lucide-react'
-import { workstationApi, Workstation, WorkstationCreateRequest } from '../../services/api'
+import { workstationApi, Workstation, WorkstationCreateRequest } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
+import { logger } from '../../utils/logger';
 
 export default function WorkstationPage() {
   const [workstations, setWorkstations] = useState<Workstation[]>([])
-  const [filteredWorkstations, setFilteredWorkstations] = useState<Workstation[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [showForm, setShowForm] = useState(false)
@@ -27,7 +27,7 @@ export default function WorkstationPage() {
 
     load().catch(err => {
       if (mounted) {
-        console.error('Failed to load workstations:', err)
+        logger.error('WorkstationPage', 'Failed to load workstations:', err)
       }
     })
 
@@ -36,9 +36,14 @@ export default function WorkstationPage() {
     }
   }, [])
 
-  useEffect(() => {
-    filterWorkstations()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const filteredWorkstations = useMemo(() => {
+    if (!searchTerm) return workstations
+    const term = searchTerm.toLowerCase()
+    return workstations.filter(w =>
+      w.code.toLowerCase().includes(term) ||
+      w.name.toLowerCase().includes(term) ||
+      w.machineName?.toLowerCase().includes(term)
+    )
   }, [workstations, searchTerm])
 
   const loadData = async (): Promise<void> => {
@@ -48,23 +53,11 @@ export default function WorkstationPage() {
       setWorkstations(data)
     } catch (err) {
       const errorMessage = getErrorMessage(err)
-      console.error('Failed to load workstations:', err)
+      logger.error('WorkstationPage', 'Failed to load workstations:', err)
       toast.error('Betöltési hiba', `Hiba történt a betöltés során: ${errorMessage}`)
     } finally {
       setLoading(false)
     }
-  }
-
-  const filterWorkstations = () => {
-    let filtered = workstations
-    if (searchTerm) {
-      filtered = filtered.filter(w =>
-        w.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        w.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        w.machineName?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-    setFilteredWorkstations(filtered)
   }
 
   const handleCreate = () => {
@@ -107,7 +100,7 @@ export default function WorkstationPage() {
     } catch (err) {
       const errorMessage = getErrorMessage(err)
       toast.error('Mentési hiba', `Hiba történt a mentés során: ${errorMessage}`)
-      console.error('Failed to save workstation:', err)
+      logger.error('WorkstationPage', 'Failed to save workstation:', err)
     }
   }
 
@@ -119,7 +112,7 @@ export default function WorkstationPage() {
     } catch (err) {
       const errorMessage = getErrorMessage(err)
       toast.error('Törlési hiba', `Hiba történt a törlés során: ${errorMessage}`)
-      console.error('Failed to delete workstation:', err)
+      logger.error('WorkstationPage', 'Failed to delete workstation:', err)
     }
   }
 

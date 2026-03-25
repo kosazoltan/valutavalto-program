@@ -149,10 +149,7 @@ public class DenominationCalculatorService {
     // === PRIVÁT ===
 
     private List<Denomination> getActiveDenominations(String currencyCode) {
-        return denominationRepository.findAll().stream()
-                .filter(d -> d.getCurrency() != null
-                        && currencyCode.equals(d.getCurrency().getCode()))
-                .filter(d -> d.getActive() != null && d.getActive())
-                .toList();
+        java.util.UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
+        return denominationRepository.findByCompanyIdAndCurrencyCode(companyId, currencyCode);
     }
 }

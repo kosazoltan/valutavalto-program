@@ -30,6 +30,14 @@ import java.util.List;
 import java.util.UUID;
 
 /**
+ * NOTE: Calculation logic (rate resolution, discount, HUF amount) delegated to
+ * {@link TransactionCalculationService}.  Validation helpers (identification,
+ * AML, stock, session, multi-line) delegated to
+ * {@link TransactionValidationService}.  Export logic lives in
+ * {@link TransactionExportService}.
+ */
+
+/**
  * Tranzakció szolgáltatás.
  *
  * Legacy: VASARLAS.DLL, ELADAS.DLL, STORNO.DLL funkciók
@@ -39,7 +47,7 @@ import java.util.UUID;
  */
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Transactional(rollbackFor = Exception.class)
 @Slf4j
 public class TransactionService {
 
@@ -58,12 +66,10 @@ public class TransactionService {
     private final AmlService amlService;
     private final PosTerminalService posTerminalService;
     private final ObjectProvider<CameraTransactionLinker> cameraTransactionLinkerProvider;
+    private final TransactionCalculationService calculationService;
 
     // Sztornó limit supervisor nélkül (3 db/nap)
     private static final int DAILY_REVERSAL_LIMIT = 3;
-
-    // Napi kedvezmény limit pénztárosonként (Legacy: 5 db/nap egyedi ráta kedvezmény)
-    private static final int DAILY_DISCOUNT_LIMIT = 5;
 
     // Azonosítás nélküli limit HUF-ban (300.000 Ft - NAV szabályozás)
     private static final BigDecimal IDENTIFICATION_LIMIT = new BigDecimal("300000");
@@ -154,13 +160,13 @@ public class TransactionService {
 
         // Kedvezmény validálás (ELŐBB, mielőtt bármilyen számítás történne)
         if (request.getDiscountPercent() != null && request.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0) {
-            validateDiscount(request.getDiscountPercent());
+            calculationService.validateDiscount(request.getDiscountPercent());
         }
 
-        BigDecimal appliedRate = resolveBuyRate(rate, request.getCurrencyAmount(), request.getCustomExchangeRate());
+        BigDecimal appliedRate = calculationService.resolveBuyRate(rate, request.getCurrencyAmount(), request.getCustomExchangeRate());
         BigDecimal fullHufBeforeDiscount = request.getCurrencyAmount()
             .multiply(appliedRate).setScale(0, RoundingMode.HALF_UP);
-        BigDecimal hufAmount = applyBuyDiscount(fullHufBeforeDiscount, request.getDiscountPercent());
+        BigDecimal hufAmount = calculationService.applyBuyDiscount(fullHufBeforeDiscount, request.getDiscountPercent());
 
         // Kezelési díj szerver oldali számítás (kliens értékét felülírjuk)
         BigDecimal serverHandlingFee = handlingFeeCalculator.calculate(
@@ -184,7 +190,7 @@ public class TransactionService {
         String receiptNumber = receiptSequenceService.generateReceiptNumber(branchId, TransactionType.BUY);
 
         // Kedvezmény összeg a PRE-DISCOUNT értékből (nem a már csökkentett hufAmount-ból!)
-        BigDecimal discountAmount = calculateDiscountAmount(fullHufBeforeDiscount, request.getDiscountPercent());
+        BigDecimal discountAmount = calculationService.calculateDiscountAmount(fullHufBeforeDiscount, request.getDiscountPercent());
 
         // POS terminál integráció - bankkártyás fizetésnél
         PaymentMethod paymentMethod = request.getPaymentMethod() != null ? request.getPaymentMethod() : PaymentMethod.CASH;
@@ -291,13 +297,13 @@ public class TransactionService {
 
         // Kedvezmény validálás (ELŐBB, mielőtt bármilyen számítás történne)
         if (request.getDiscountPercent() != null && request.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0) {
-            validateDiscount(request.getDiscountPercent());
+            calculationService.validateDiscount(request.getDiscountPercent());
         }
 
-        BigDecimal appliedRate = resolveSellRate(rate, request.getCurrencyAmount(), request.getCustomExchangeRate());
+        BigDecimal appliedRate = calculationService.resolveSellRate(rate, request.getCurrencyAmount(), request.getCustomExchangeRate());
         BigDecimal fullHufBeforeDiscount = request.getCurrencyAmount()
             .multiply(appliedRate).setScale(0, RoundingMode.HALF_UP);
-        BigDecimal hufAmount = applySellDiscount(fullHufBeforeDiscount, request.getDiscountPercent());
+        BigDecimal hufAmount = calculationService.applySellDiscount(fullHufBeforeDiscount, request.getDiscountPercent());
 
         // Készlet ellenőrzése
         validateCurrencyStock(branchId, currency.getId(), request.getCurrencyAmount());
@@ -324,7 +330,7 @@ public class TransactionService {
         String receiptNumber = receiptSequenceService.generateReceiptNumber(branchId, TransactionType.SELL);
 
         // Kedvezmény összeg a PRE-DISCOUNT értékből (nem a már csökkentett hufAmount-ból!)
-        BigDecimal discountAmount = calculateDiscountAmount(fullHufBeforeDiscount, request.getDiscountPercent());
+        BigDecimal discountAmount = calculationService.calculateDiscountAmount(fullHufBeforeDiscount, request.getDiscountPercent());
 
         // POS terminál integráció - bankkártyás fizetésnél
         PaymentMethod paymentMethod = request.getPaymentMethod() != null ? request.getPaymentMethod() : PaymentMethod.CASH;
@@ -851,7 +857,7 @@ public class TransactionService {
 
         // Kedvezmeny validalas
         if (request.getDiscountPercent() != null && request.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0) {
-            validateDiscount(request.getDiscountPercent());
+            calculationService.validateDiscount(request.getDiscountPercent());
         }
 
         // Elso sor valutaja a fejlec valutaja (legacy konvencio)
@@ -873,7 +879,7 @@ public class TransactionService {
                     .orElseThrow(() -> new ResourceNotFoundException("Valuta nem található: sor " + (lineIdx + 1)));
 
             ExchangeRate lineRate = exchangeRateService.getCurrentRate(lineCurrencyId);
-            BigDecimal appliedRate = resolveBuyRate(lineRate, lineReq.getBanknoteCount(), lineReq.getCustomExchangeRate());
+            BigDecimal appliedRate = calculationService.resolveBuyRate(lineRate, lineReq.getBanknoteCount(), lineReq.getCustomExchangeRate());
 
             TransactionLine line = TransactionLine.builder()
                     .lineNumber(lineIdx + 1)
@@ -895,7 +901,7 @@ public class TransactionService {
         }
 
         // Kedvezmeny az osszes sorra
-        BigDecimal hufAfterDiscount = applyBuyDiscount(totalHuf, request.getDiscountPercent());
+        BigDecimal hufAfterDiscount = calculationService.applyBuyDiscount(totalHuf, request.getDiscountPercent());
 
         // Kezelesi dij
         BigDecimal serverHandlingFee = handlingFeeCalculator.calculate(
@@ -916,7 +922,7 @@ public class TransactionService {
         // Bizonylat szam generalas
         String receiptNumber = receiptSequenceService.generateReceiptNumber(branchId, TransactionType.BUY);
 
-        BigDecimal discountAmount = calculateDiscountAmount(totalHuf, request.getDiscountPercent());
+        BigDecimal discountAmount = calculationService.calculateDiscountAmount(totalHuf, request.getDiscountPercent());
 
         // POS terminal kezeles
         PaymentMethod paymentMethod = request.getPaymentMethod() != null ? request.getPaymentMethod() : PaymentMethod.CASH;
@@ -1019,7 +1025,7 @@ public class TransactionService {
 
         // Kedvezmeny validalas
         if (request.getDiscountPercent() != null && request.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0) {
-            validateDiscount(request.getDiscountPercent());
+            calculationService.validateDiscount(request.getDiscountPercent());
         }
 
         // Elso sor valutaja a fejlec valutaja
@@ -1040,7 +1046,7 @@ public class TransactionService {
                     .orElseThrow(() -> new ResourceNotFoundException("Valuta nem található: sor " + (lineIdx + 1)));
 
             ExchangeRate lineRate = exchangeRateService.getCurrentRate(lineCurrencyId);
-            BigDecimal appliedRate = resolveSellRate(lineRate, lineReq.getBanknoteCount(), lineReq.getCustomExchangeRate());
+            BigDecimal appliedRate = calculationService.resolveSellRate(lineRate, lineReq.getBanknoteCount(), lineReq.getCustomExchangeRate());
 
             // Keszlet ellenorzes soronkent
             validateCurrencyStock(branchId, lineCurrency.getId(), lineReq.getBanknoteCount());
@@ -1064,7 +1070,7 @@ public class TransactionService {
         }
 
         // Kedvezmeny az osszes sorra
-        BigDecimal hufAfterDiscount = applySellDiscount(totalHuf, request.getDiscountPercent());
+        BigDecimal hufAfterDiscount = calculationService.applySellDiscount(totalHuf, request.getDiscountPercent());
 
         // Kezelesi dij
         BigDecimal serverHandlingFee = handlingFeeCalculator.calculate(
@@ -1083,7 +1089,7 @@ public class TransactionService {
                 request.getCustomerDocumentNumber(), firstCurrency.getCode());
 
         String receiptNumber = receiptSequenceService.generateReceiptNumber(branchId, TransactionType.SELL);
-        BigDecimal discountAmount = calculateDiscountAmount(totalHuf, request.getDiscountPercent());
+        BigDecimal discountAmount = calculationService.calculateDiscountAmount(totalHuf, request.getDiscountPercent());
 
         // POS terminal kezeles
         PaymentMethod paymentMethod = request.getPaymentMethod() != null ? request.getPaymentMethod() : PaymentMethod.CASH;
@@ -1271,137 +1277,6 @@ public class TransactionService {
     private void validateOpenSession() {
         if (!dailySessionService.hasOpenSession()) {
             throw new ValidationException("Nincs nyitott napi munkamenet! Először nyissa meg a napot.");
-        }
-    }
-
-    private BigDecimal calculateBuyHufAmount(BigDecimal currencyAmount, ExchangeRate rate, BigDecimal discountPercent) {
-        // Alap hufAmount discount NÉLKÜL (tier meghatározáshoz)
-        BigDecimal baseAmount = currencyAmount.multiply(rate.getBaseBuyRate());
-        BigDecimal appliedRate = rate.getBuyRateForAmount(baseAmount);
-        BigDecimal hufAmount = currencyAmount.multiply(appliedRate).setScale(0, RoundingMode.HALF_UP);
-
-        // Kedvezmény alkalmazása a VÉGSŐ hufAmount-ra (egyszer!)
-        // BUY: ügyfél valutát ad el → kedvezmény = TÖBB forintot kap (spread csökkentés)
-        if (discountPercent != null && discountPercent.compareTo(BigDecimal.ZERO) > 0) {
-            BigDecimal discount = hufAmount.multiply(discountPercent).divide(new BigDecimal("100"), 0, RoundingMode.HALF_UP);
-            hufAmount = hufAmount.add(discount);
-        }
-
-        return hufAmount;
-    }
-
-    private BigDecimal resolveBuyRate(ExchangeRate rate, BigDecimal currencyAmount, BigDecimal customExchangeRate) {
-        if (customExchangeRate != null) {
-            if (customExchangeRate.compareTo(BigDecimal.ZERO) <= 0) {
-                throw new ValidationException("Az egyedi vételi árfolyamnak pozitívnak kell lennie!");
-            }
-            // Legacy ARFVALT szabály: vételnél az egyedi árfolyam
-            // NAGYOBB kell legyen az aktív vételi árfolyamnál (ügyfélnek előnyösebb)
-            // ÉS KISEBB kell legyen az elszámolási (MNB) árfolyamnál (cégnek ne legyen veszteséges)
-            BigDecimal activeBuyRate = rate.getBaseBuyRate();
-            if (customExchangeRate.compareTo(activeBuyRate) < 0) {
-                throw new ValidationException(
-                    String.format("Az egyedi vételi árfolyam (%s) nem lehet alacsonyabb az aktív vételi árfolyamnál (%s)!",
-                        customExchangeRate, activeBuyRate));
-            }
-            if (rate.getOfficialRate() != null && customExchangeRate.compareTo(rate.getOfficialRate()) > 0) {
-                throw new ValidationException(
-                    String.format("Az egyedi vételi árfolyam (%s) nem lépheti túl az MNB elszámolási árfolyamot (%s)!",
-                        customExchangeRate, rate.getOfficialRate()));
-            }
-            return customExchangeRate;
-        }
-
-        BigDecimal baseAmount = currencyAmount.multiply(rate.getBaseBuyRate());
-        return rate.getBuyRateForAmount(baseAmount);
-    }
-
-    private BigDecimal resolveSellRate(ExchangeRate rate, BigDecimal currencyAmount, BigDecimal customExchangeRate) {
-        if (customExchangeRate != null) {
-            if (customExchangeRate.compareTo(BigDecimal.ZERO) <= 0) {
-                throw new ValidationException("Az egyedi eladási árfolyamnak pozitívnak kell lennie!");
-            }
-            // Legacy ARFVALT szabály: eladásnál az egyedi árfolyam
-            // KISEBB kell legyen az aktív eladási árfolyamnál (ügyfélnek előnyösebb)
-            // ÉS NAGYOBB kell legyen az elszámolási (MNB) árfolyamnál (cégnek ne legyen veszteséges)
-            BigDecimal activeSellRate = rate.getBaseSellRate();
-            if (customExchangeRate.compareTo(activeSellRate) > 0) {
-                throw new ValidationException(
-                    String.format("Az egyedi eladási árfolyam (%s) nem lehet magasabb az aktív eladási árfolyamnál (%s)!",
-                        customExchangeRate, activeSellRate));
-            }
-            if (rate.getOfficialRate() != null && customExchangeRate.compareTo(rate.getOfficialRate()) < 0) {
-                throw new ValidationException(
-                    String.format("Az egyedi eladási árfolyam (%s) nem lehet alacsonyabb az MNB elszámolási árfolyamnál (%s)!",
-                        customExchangeRate, rate.getOfficialRate()));
-            }
-            return customExchangeRate;
-        }
-
-        BigDecimal baseAmount = currencyAmount.multiply(rate.getBaseSellRate());
-        return rate.getSellRateForAmount(baseAmount);
-    }
-
-    private BigDecimal applyBuyDiscount(BigDecimal fullHufAmount, BigDecimal discountPercent) {
-        if (discountPercent == null || discountPercent.compareTo(BigDecimal.ZERO) <= 0) {
-            return fullHufAmount;
-        }
-
-        BigDecimal discount = fullHufAmount.multiply(discountPercent)
-                .divide(new BigDecimal("100"), 0, RoundingMode.HALF_UP);
-        return fullHufAmount.add(discount);
-    }
-
-    private BigDecimal applySellDiscount(BigDecimal fullHufAmount, BigDecimal discountPercent) {
-        if (discountPercent == null || discountPercent.compareTo(BigDecimal.ZERO) <= 0) {
-            return fullHufAmount;
-        }
-
-        BigDecimal discount = fullHufAmount.multiply(discountPercent)
-                .divide(new BigDecimal("100"), 0, RoundingMode.HALF_UP);
-        return fullHufAmount.subtract(discount);
-    }
-
-    private BigDecimal calculateSellHufAmount(BigDecimal currencyAmount, ExchangeRate rate, BigDecimal discountPercent) {
-        // Alap hufAmount discount NÉLKÜL (tier meghatározáshoz)
-        BigDecimal baseAmount = currencyAmount.multiply(rate.getBaseSellRate());
-        BigDecimal appliedRate = rate.getSellRateForAmount(baseAmount);
-        BigDecimal hufAmount = currencyAmount.multiply(appliedRate).setScale(0, RoundingMode.HALF_UP);
-
-        // Kedvezmény alkalmazása a VÉGSŐ hufAmount-ra (egyszer!)
-        if (discountPercent != null && discountPercent.compareTo(BigDecimal.ZERO) > 0) {
-            BigDecimal discount = hufAmount.multiply(discountPercent).divide(new BigDecimal("100"), 0, RoundingMode.HALF_UP);
-            hufAmount = hufAmount.subtract(discount);
-        }
-
-        return hufAmount;
-    }
-
-    private BigDecimal calculateDiscountAmount(BigDecimal hufAmount, BigDecimal discountPercent) {
-        if (discountPercent == null || discountPercent.compareTo(BigDecimal.ZERO) == 0) {
-            return BigDecimal.ZERO;
-        }
-        return hufAmount.multiply(discountPercent).divide(new BigDecimal("100"), 0, RoundingMode.HALF_UP);
-    }
-
-    private void validateDiscount(BigDecimal discountPercent) {
-        if (discountPercent.compareTo(BigDecimal.ZERO) < 0) {
-            throw new ValidationException("Kedvezmény nem lehet negatív!");
-        }
-        // Abszolút felső határ - supervisor sem adhat ennél többet
-        if (discountPercent.compareTo(new BigDecimal("15")) > 0) {
-            throw new ValidationException("Maximum kedvezmény: 15%!");
-        }
-        if (discountPercent.compareTo(new BigDecimal("2.0")) > 0 && !SecurityUtils.isSupervisorOrAbove()) {
-            throw new ValidationException("2% feletti kedvezményhez supervisor jogosultság szükséges!");
-        }
-
-        // GAP 1: Napi kedvezmény limit pénztárosonként (Legacy: 5 db/nap)
-        Long workerId = SecurityUtils.getCurrentWorkerId();
-        long dailyDiscountCount = transactionRepository.countDailyDiscountsByWorker(workerId, LocalDate.now());
-        if (dailyDiscountCount >= DAILY_DISCOUNT_LIMIT && !SecurityUtils.isSupervisorOrAbove()) {
-            throw new ValidationException(
-                String.format("Napi kedvezmény limit (%d) elérve! Supervisor jóváhagyás szükséges.", DAILY_DISCOUNT_LIMIT));
         }
     }
 

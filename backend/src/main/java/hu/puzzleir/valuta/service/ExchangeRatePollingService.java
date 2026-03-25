@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.exception.BusinessException;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.ExchangeRate;
 import hu.puzzleir.valuta.entity.ExchangeRateSource;
@@ -200,7 +201,7 @@ public class ExchangeRatePollingService {
         ResponseEntity<String> response = restTemplate.getForEntity(MNB_URL, String.class);
 
         if (response.getBody() == null || response.getBody().isBlank()) {
-            throw new RuntimeException("MNB válasz üres");
+            throw new BusinessException("MNB válasz üres", "MNB_EMPTY_RESPONSE");
         }
 
         log.info("MNB válasz megérkezett, XML feldolgozás...");
@@ -209,7 +210,7 @@ public class ExchangeRatePollingService {
         Map<String, MnbRate> parsedRates = parseMnbXml(response.getBody());
 
         if (parsedRates.isEmpty()) {
-            throw new RuntimeException("MNB XML-ből nem sikerült árfolyamot kinyerni");
+            throw new BusinessException("MNB XML-ből nem sikerült árfolyamot kinyerni", "MNB_PARSE_FAILED");
         }
 
         log.info("MNB XML feldolgozva: {} árfolyam", parsedRates.size());
@@ -232,7 +233,7 @@ public class ExchangeRatePollingService {
         Map<String, BigDecimal> ecbRates = fetchEcbRatesOnly();
 
         if (ecbRates.isEmpty()) {
-            throw new RuntimeException("ECB árfolyam lekérdezés üres eredményt adott");
+            throw new BusinessException("ECB árfolyam lekérdezés üres eredményt adott", "ECB_EMPTY_RESPONSE");
         }
 
         // ECB árfolyamokat MnbRate formátumra konvertálva mentjük az updateOfficialRates-szel
@@ -322,7 +323,7 @@ public class ExchangeRatePollingService {
      * Hivatalos árfolyamok frissítése az adatbázisban.
      * A mai napra aktív ExchangeRate rekordokat keresi és frissíti az officialRate-et.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public int updateOfficialRates(Map<String, MnbRate> mnbRates) {
         int updatedCount = 0;
         LocalDate today = LocalDate.now();
@@ -486,7 +487,7 @@ public class ExchangeRatePollingService {
      * @param currencyId A valuta ID-ja
      * @param spread     A spread értéke (HUF-ban)
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void applyMargins(Long currencyId, BigDecimal spread) {
         Currency currency = currencyRepository.findById(currencyId)
             .orElseThrow(() -> {
@@ -533,7 +534,7 @@ public class ExchangeRatePollingService {
      * @param branchId Fiók azonosító
      * @param date     A nap dátuma
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void snapshotDailyRates(UUID branchId, LocalDate date) {
         log.info("Napi árfolyam snapshot indítása: fiók={}, dátum={}", branchId, date);
 

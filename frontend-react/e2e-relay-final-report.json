@@ -1,0 +1,397 @@
+{
+  "timestamp": "2026-03-24T19:12:47.328Z",
+  "RUN_STATUS": "COMPLETE",
+  "STARTUP_STATUS": {
+    "backend": "UP (659 Java tests PASS)",
+    "frontend_build": "PASS (tsc 0 err, eslint 0 warn)",
+    "dev_server": "UP on :3001"
+  },
+  "BUTTON_COVERAGE": {
+    "routes_tested": 62,
+    "routes_loaded": 62,
+    "routes_failed": 0,
+    "total_clicked": 192,
+    "total_disabled": 8,
+    "total_btn_errors": 0
+  },
+  "E2E_RESULTS": {
+    "auth_persist": "PASS",
+    "route_coverage": "62/62"
+  },
+  "BUGS_FOUND": [],
+  "FAILED_ROUTES": [],
+  "PER_ROUTE": [
+    {
+      "route": "/anonymous-reports",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/archiving",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/audit-log",
+      "clicked": 2,
+      "disabled": 2,
+      "errors": 0
+    },
+    {
+      "route": "/blacklist",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/branch-groups",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/camera/export",
+      "clicked": 3,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/camera/live",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/camera/playback",
+      "clicked": 2,
+      "disabled": 1,
+      "errors": 0
+    },
+    {
+      "route": "/camera/status",
+      "clicked": 4,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/cashdesk",
+      "clicked": 6,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/cashdesk/breaks",
+      "clicked": 2,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/cashdesk/denominations",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/cashier",
+      "clicked": 11,
+      "disabled": 1,
+      "errors": 0
+    },
+    {
+      "route": "/circulars",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/closing/wizard",
+      "clicked": 4,
+      "disabled": 1,
+      "errors": 0
+    },
+    {
+      "route": "/commission-rates",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/commissions",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/company",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/contributions",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/customers",
+      "clicked": 11,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/customers/new",
+      "clicked": 5,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/darius",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/dashboard",
+      "clicked": 2,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/documents",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/exchange-rate-display",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/fee-packages",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/fees",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/handover-sheets",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/local-queue",
+      "clicked": 2,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/logging",
+      "clicked": 3,
+      "disabled": 2,
+      "errors": 0
+    },
+    {
+      "route": "/nav-integration",
+      "clicked": 3,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/notifications",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/organizational-system-parameters",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/organizations",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/pep",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/pos-terminal",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/rate-management",
+      "clicked": 7,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/rates",
+      "clicked": 4,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/rates/creation",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/rates/groups",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/receipts",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/reports",
+      "clicked": 14,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/reports/extended",
+      "clicked": 3,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/reservations",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/settings",
+      "clicked": 13,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/settings/parameters",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/settings/permissions",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/settings/roles",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/settings/users",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/shipments",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/suspicious-reports",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/synchronization",
+      "clicked": 3,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/transactions",
+      "clicked": 17,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/transactions/conversion",
+      "clicked": 4,
+      "disabled": 1,
+      "errors": 0
+    },
+    {
+      "route": "/transactions/new",
+      "clicked": 8,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/transfers",
+      "clicked": 8,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/treasury",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/treasury/bank",
+      "clicked": 5,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/treasury/matrix",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/treasury/movements",
+      "clicked": 5,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/treasury/rates",
+      "clicked": 6,
+      "disabled": 0,
+      "errors": 0
+    },
+    {
+      "route": "/workstations",
+      "clicked": 1,
+      "disabled": 0,
+      "errors": 0
+    }
+  ]
+}

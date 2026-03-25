@@ -42,7 +42,7 @@ public class VaultTerritory {
     @Column(name = "base_capital_approved_at")
     private LocalDate baseCapitalApprovedAt;
 
-    @Column
+    @Column(name = "is_active")
     @Builder.Default
     private Boolean active = true;
 }

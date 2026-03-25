@@ -140,7 +140,7 @@ public class EmailAccountService {
      * Email fiók létrehozása vagy frissítése.
      * Validáció: pontosan 1 FK (branch/vaultTerritory/ownCompany/worker) kitöltve!
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public EmailAccount createOrUpdateAccount(EmailAccountDto dto, Long configuredByWorkerId) {
         validateExactlyOneFk(dto);
 
@@ -192,7 +192,7 @@ public class EmailAccountService {
     /**
      * Email fiók törlése.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteAccount(UUID accountId) {
         EmailAccount account = emailAccountRepository.findById(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Email fiók nem található: " + accountId));
@@ -219,7 +219,7 @@ public class EmailAccountService {
     /**
      * OAuth2 callback kezelése — authorization code cseréje token-ekre.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public EmailAccount handleOAuthCallback(String code, String state) {
         UUID accountId;
         try {
@@ -259,7 +259,7 @@ public class EmailAccountService {
      * Access token frissítése, ha lejárt.
      * @return Frissített EmailAccount
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public EmailAccount refreshTokenIfNeeded(EmailAccount account) {
         if (account.getOauthRefreshToken() == null) {
             throw new ValidationException("Nincs refresh token a fiókhoz: " + account.getId());

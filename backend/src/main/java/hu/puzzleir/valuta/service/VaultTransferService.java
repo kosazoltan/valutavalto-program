@@ -66,7 +66,7 @@ public class VaultTransferService {
      * Áttétel kérelem létrehozása.
      * A forrás készletét még NEM vonjuk le — csak COMPLETED állapotban.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public VaultTransferResponseDto createTransfer(VaultTransferRequestDto request) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Long workerId = SecurityUtils.getCurrentWorkerId();
@@ -116,7 +116,7 @@ public class VaultTransferService {
      * Szupervisor jóváhagyás (nagy összegű áttételeknél).
      * Legacy SUPER modul — jelszóval történt, modern rendszerben RBAC.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public VaultTransferResponseDto supervisorApprove(Long id) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Long workerId = SecurityUtils.getCurrentWorkerId();
@@ -138,7 +138,7 @@ public class VaultTransferService {
      * Áttétel végrehajtása / átvétele.
      * WAC kezelés: forrásból kivesszük az aktuális WAC-on, célba betesszük ugyanazon a WAC-on.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public VaultTransferResponseDto completeTransfer(Long id) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Long workerId = SecurityUtils.getCurrentWorkerId();
@@ -202,7 +202,7 @@ public class VaultTransferService {
         return toDto(vaultTransferRepository.save(transfer));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public VaultTransferResponseDto rejectTransfer(Long id) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         VaultTransfer transfer = findTransfer(companyId, id);

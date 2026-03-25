@@ -1,0 +1,63 @@
+{
+  "route": "/cashier",
+  "loaded": true,
+  "title": "RepZtecH Exclusive Best Change - Pénztári Rendszer",
+  "clicked": 11,
+  "disabled": 1,
+  "errors": 0,
+  "skipped": 1,
+  "buttons": [
+    {
+      "label": "Elozo",
+      "state": "disabled"
+    },
+    {
+      "label": "[no-label]",
+      "state": "clicked"
+    },
+    {
+      "label": "Kijelentkezés",
+      "state": "skip"
+    },
+    {
+      "label": "[no-label]",
+      "state": "clicked"
+    },
+    {
+      "label": "VETEL1",
+      "state": "clicked"
+    },
+    {
+      "label": "ELADAS2",
+      "state": "clicked"
+    },
+    {
+      "label": "KONVERZIO3",
+      "state": "clicked"
+    },
+    {
+      "label": "ATADAS4",
+      "state": "clicked"
+    },
+    {
+      "label": "STORNO6",
+      "state": "clicked"
+    },
+    {
+      "label": "ARFOLYAM7",
+      "state": "clicked"
+    },
+    {
+      "label": "KESZLET8",
+      "state": "clicked"
+    },
+    {
+      "label": "FORGALOM9",
+      "state": "clicked"
+    },
+    {
+      "label": "Kovetkezo",
+      "state": "clicked"
+    }
+  ]
+}

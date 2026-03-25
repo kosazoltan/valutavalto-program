@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Ban, Upload } from 'lucide-react'
-import { blacklistApi, ProhibitedPerson, ProhibitedCompany } from '../../services/api'
+import { blacklistApi, ProhibitedPerson, ProhibitedCompany } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
+import { logger } from '../../utils/logger';
 
 export default function BlacklistPage() {
   const [activeTab, setActiveTab] = useState<'persons' | 'companies'>('persons')
@@ -20,7 +21,7 @@ export default function BlacklistPage() {
         setCompanies(await blacklistApi.getCompanies())
       }
     } catch (err) {
-      console.error('Tiltólista betöltési hiba:', err)
+      logger.error('BlacklistPage', 'Tiltólista betöltési hiba:', err)
       setError('Hiba a tiltólista betöltésekor')
     } finally {
       setLoading(false)
@@ -44,7 +45,7 @@ export default function BlacklistPage() {
       await loadData()
       toast.success('Importálás sikeres')
     } catch (err) {
-      console.error('Importálási hiba:', err)
+      logger.error('BlacklistPage', 'Importálási hiba:', err)
       setError('Hiba az importálásnál. Kérjük ellenőrizze a fájl formátumát.')
     }
   }

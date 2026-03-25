@@ -5,12 +5,14 @@ import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.WorkerRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,7 +23,8 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
 
     public List<UserDetailDto> listUsers() {
-        return workerRepository.findAll().stream().map(this::toDto).collect(Collectors.toList());
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return workerRepository.findByCompanyId(companyId).stream().map(this::toDto).collect(Collectors.toList());
     }
 
     public UserDetailDto getUserById(Long id) {
@@ -32,7 +35,7 @@ public class UserService {
         return toDto(findOrThrow(workerId));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public UserDetailDto createUser(String code, String name, String email, String password, String role, String branchId) {
         Worker worker = Worker.builder()
                 .code(code)
@@ -45,7 +48,7 @@ public class UserService {
         return toDto(workerRepository.save(worker));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public UserDetailDto updateUser(Long id, String email, String name, String role, Boolean active) {
         Worker w = findOrThrow(id);
         if (email != null) w.setEmail(email);
@@ -55,14 +58,14 @@ public class UserService {
         return toDto(workerRepository.save(w));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void changePassword(Long id, String newPassword) {
         Worker w = findOrThrow(id);
         w.setPasswordHash(passwordEncoder.encode(newPassword));
         workerRepository.save(w);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void updateMyPassword(Long workerId, String oldPassword, String newPassword) {
         Worker w = findOrThrow(workerId);
         if (!passwordEncoder.matches(oldPassword, w.getPasswordHash())) {
@@ -72,14 +75,14 @@ public class UserService {
         workerRepository.save(w);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public UserDetailDto toggleActive(Long id) {
         Worker w = findOrThrow(id);
         w.setActive(!w.getActive());
         return toDto(workerRepository.save(w));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteUser(Long id) {
         workerRepository.deleteById(id);
     }

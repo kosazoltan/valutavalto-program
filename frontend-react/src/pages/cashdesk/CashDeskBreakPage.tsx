@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Clock, Play, Square } from 'lucide-react'
-import { cashDeskBreakApi, CashDeskBreak, cashDeskApi, CashDesk } from '../../services/api'
+import { cashDeskBreakApi, CashDeskBreak, cashDeskApi, CashDesk } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
+import { logger } from '../../utils/logger';
 
 export default function CashDeskBreakPage() {
   const [breaks, setBreaks] = useState<CashDeskBreak[]>([])
@@ -17,7 +18,7 @@ export default function CashDeskBreakPage() {
       const data = await cashDeskBreakApi.list(selectedCashDeskId)
       setBreaks(data)
     } catch (err) {
-      console.error('Szünetek betöltési hiba:', err)
+      logger.error('CashDeskBreakPage', 'Szünetek betöltési hiba:', err)
       setError('Hiba a szünetek betöltésekor')
     } finally {
       setLoading(false)
@@ -42,7 +43,7 @@ export default function CashDeskBreakPage() {
         setSelectedCashDeskId(data[0]?.id ?? '')
       }
     } catch (err) {
-      console.error('Pénztárak betöltési hiba:', err)
+      logger.error('CashDeskBreakPage', 'Pénztárak betöltési hiba:', err)
       setError('Hiba a pénztárak betöltésekor')
     }
   }
@@ -60,7 +61,7 @@ export default function CashDeskBreakPage() {
       await cashDeskBreakApi.start(selectedCashDeskId, breakType, reason)
       await loadBreaks()
     } catch (err) {
-      console.error('Szünet indítási hiba:', err)
+      logger.error('CashDeskBreakPage', 'Szünet indítási hiba:', err)
       setError('Hiba történt a szünet indítása során')
     }
   }
@@ -71,7 +72,7 @@ export default function CashDeskBreakPage() {
       await cashDeskBreakApi.end(breakId)
       await loadBreaks()
     } catch (err) {
-      console.error('Szünet befejezési hiba:', err)
+      logger.error('CashDeskBreakPage', 'Szünet befejezési hiba:', err)
       setError('Hiba történt a szünet befejezése során')
     }
   }

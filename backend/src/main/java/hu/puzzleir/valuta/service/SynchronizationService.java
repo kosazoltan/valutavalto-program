@@ -24,7 +24,7 @@ public class SynchronizationService {
     private final TransactionRepository transactionRepository;
     private final SyncService syncService;
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> sync(UUID branchId, Long workerId) {
         UUID effectiveBranch = branchId != null ? branchId : SecurityUtils.getCurrentBranchId();
         log.info("Szinkronizáció indítása: branch={}, worker={}", effectiveBranch, workerId);

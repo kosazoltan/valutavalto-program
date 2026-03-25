@@ -8,8 +8,8 @@ import java.util.UUID;
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class ScannedDocumentDto {
     private UUID id;
-    private UUID customerId;
-    private UUID transactionId;
+    private Long customerId;
+    private Long transactionId;
     private String documentType;
     private String fileName;
     private String mimeType;

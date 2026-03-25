@@ -10,7 +10,7 @@ import java.util.UUID;
 @Repository
 public interface ScannedDocumentRepository extends JpaRepository<ScannedDocument, UUID> {
 
-    List<ScannedDocument> findByCustomerIdAndIsDeletedFalseOrderByScannedAtDesc(UUID customerId);
+    List<ScannedDocument> findByCustomerIdAndIsDeletedFalseOrderByScannedAtDesc(Long customerId);
 
-    List<ScannedDocument> findByTransactionIdAndIsDeletedFalseOrderByScannedAtDesc(UUID transactionId);
+    List<ScannedDocument> findByTransactionIdAndIsDeletedFalseOrderByScannedAtDesc(Long transactionId);
 }

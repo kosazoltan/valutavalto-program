@@ -9,8 +9,8 @@ import {
   Eye,
 } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { ertektarApi, currencyApi } from '../../services/api'
-import type { BankTransaction, BankTransactionRequest, Currency } from '../../services/api'
+import { ertektarApi, currencyApi } from '../../services/api/index'
+import type { BankTransaction, BankTransactionRequest, Currency } from '../../services/api/index'
 import { formatInteger, formatDateTime, currencyColorClass } from './treasuryUtils'
 import { TableSkeleton } from './LoadingSkeleton'
 import {
@@ -18,6 +18,7 @@ import {
   saveAndSyncPendingBankTransaction,
 } from '../../utils/electronTransactions'
 import { getLocalPendingBankTransactions } from '../../utils/localQueue'
+import { logger } from '../../utils/logger';
 
 export default function BankTransactions() {
   const electronQueueAvailable = isElectronQueueAvailable()
@@ -48,7 +49,7 @@ export default function BankTransactions() {
       setTransactions([...localPending, ...txData])
       setCurrencies(currData)
     } catch (err) {
-      console.error('BankTransactions fetch error:', err)
+      logger.error('BankTransactions', 'BankTransactions fetch error:', err)
     } finally {
       setLoading(false)
     }
@@ -97,7 +98,7 @@ export default function BankTransactions() {
       resetForm()
       void fetchData()
     } catch (err) {
-      console.error('Create bank transaction error:', err)
+      logger.error('BankTransactions', 'Create bank transaction error:', err)
     } finally {
       setSubmitting(false)
     }

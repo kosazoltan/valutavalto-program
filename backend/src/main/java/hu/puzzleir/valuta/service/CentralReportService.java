@@ -1,7 +1,10 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.BranchStatus;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.BranchStatusRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,13 +28,25 @@ import java.util.List;
 public class CentralReportService {
 
     private final BranchStatusRepository branchStatusRepository;
+    private final BranchRepository branchRepository;
+
+    /**
+     * Multi-tenant szűrt BranchStatus lista.
+     */
+    private List<BranchStatus> getCompanyBranchStatuses() {
+        java.util.UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<java.util.UUID> branchIds = branchRepository.findByCompanyId(companyId).stream()
+                .map(Branch::getId)
+                .toList();
+        return branchStatusRepository.findByBranchIdIn(branchIds);
+    }
 
     /**
      * Napi konszolidált riport generálás — CSV.
      */
     @Transactional(readOnly = true)
     public byte[] generateDailyConsolidation(LocalDate date) {
-        List<BranchStatus> branches = branchStatusRepository.findAll();
+        List<BranchStatus> branches = getCompanyBranchStatuses();
         StringBuilder csv = new StringBuilder();
         csv.append("Fiók ID,Utolsó heartbeat,Online,Napi tranzakció szám,Napi forgalom (HUF),Nyitott riasztások\n");
 
@@ -55,7 +70,7 @@ public class CentralReportService {
      */
     @Transactional(readOnly = true)
     public byte[] generateWeeklyReport(LocalDate weekStart) {
-        List<BranchStatus> branches = branchStatusRepository.findAll();
+        List<BranchStatus> branches = getCompanyBranchStatuses();
         StringBuilder csv = new StringBuilder();
         csv.append("Heti riport kezdete: ").append(weekStart).append("\n");
         csv.append("Fiók ID,Napi tranzakció szám,Napi forgalom (HUF),Online státusz\n");
@@ -77,7 +92,7 @@ public class CentralReportService {
      */
     @Transactional(readOnly = true)
     public byte[] generateMonthlyReport(YearMonth month) {
-        List<BranchStatus> branches = branchStatusRepository.findAll();
+        List<BranchStatus> branches = getCompanyBranchStatuses();
         StringBuilder csv = new StringBuilder();
         csv.append("Havi riport: ").append(month).append("\n");
         csv.append("Fiók ID,Napi tranzakció szám,Napi forgalom (HUF),Online státusz,Nyitott riasztások\n");

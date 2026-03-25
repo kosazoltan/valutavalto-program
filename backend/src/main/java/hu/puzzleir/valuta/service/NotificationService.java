@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.entity.Notification;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.repository.NotificationRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,7 +34,7 @@ public class NotificationService {
         return repo.findByUserIdAndIsReadFalseOrderByCreatedAtDesc(userId).size();
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void markAsRead(UUID id) {
         Notification n = repo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Értesítés nem található: " + id));
@@ -41,12 +42,12 @@ public class NotificationService {
         repo.save(n);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void markAllAsRead(String userId) {
         repo.markAllAsRead(userId);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Notification send(String userId, String title, String message, String type) {
         Notification n = Notification.builder()
                 .userId(userId).title(title).message(message)
@@ -57,7 +58,7 @@ public class NotificationService {
     /**
      * Értesítés küldése egy worker-nek.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Notification sendToWorker(Long workerId, String title, String message, String type) {
         log.info("Értesítés küldése: worker={}, title={}, type={}", workerId, title, type);
         return send(String.valueOf(workerId), title, message, type != null ? type : "INFO");
@@ -66,7 +67,7 @@ public class NotificationService {
     /**
      * Értesítés küldése egy iroda összes aktív dolgozójának.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public int sendToBranch(UUID branchId, String title, String message) {
         List<Worker> workers = workerRepository.findActiveWorkersByBranch(branchId);
         int count = 0;
@@ -81,9 +82,10 @@ public class NotificationService {
     /**
      * Broadcast értesítés minden dolgozónak.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public int sendToAll(String title, String message) {
-        List<Worker> workers = workerRepository.findAll();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<Worker> workers = workerRepository.findByCompanyId(companyId);
         int count = 0;
         for (Worker w : workers) {
             if (Boolean.TRUE.equals(w.getActive())) {

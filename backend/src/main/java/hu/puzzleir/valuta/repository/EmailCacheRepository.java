@@ -24,9 +24,9 @@ public interface EmailCacheRepository extends JpaRepository<EmailCache, UUID> {
 
     List<EmailCache> findByEmailAccountIdOrderByReceivedAtDesc(UUID emailAccountId, Pageable pageable);
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     void deleteByReceivedAtBefore(LocalDateTime cutoff);
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     void deleteByEmailAccountId(UUID emailAccountId);
 }

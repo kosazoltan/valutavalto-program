@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { api } from '@/services/api';
+import { api } from '@/services/api/index';
+import { logger } from '../../utils/logger';
 
 interface RateGroup {
   id: number;
@@ -59,7 +60,7 @@ export default function RateGroupPage() {
       const response = await api.get('/rate-groups');
       setRateGroups(response?.data || []);
     } catch (error) {
-      console.error('Failed to load rate groups:', error);
+      logger.error('RateGroupPage', 'Failed to load rate groups:', error);
     } finally {
       setLoading(false);
     }
@@ -71,7 +72,7 @@ export default function RateGroupPage() {
       const response = await api.get('/rate-groups/discount-tiers');
       setDiscountTiers(response?.data || []);
     } catch (error) {
-      console.error('Failed to load discount tiers:', error);
+      logger.error('RateGroupPage', 'Failed to load discount tiers:', error);
     } finally {
       setLoading(false);
     }
@@ -83,7 +84,7 @@ export default function RateGroupPage() {
         await api.delete(`/rate-groups/${id}`);
         loadRateGroups();
       } catch (error) {
-        console.error('Failed to delete rate group:', error);
+        logger.error('RateGroupPage', 'Failed to delete rate group:', error);
       }
     }
   };
@@ -94,7 +95,7 @@ export default function RateGroupPage() {
         await api.delete(`/rate-groups/discount-tiers/${id}`);
         loadDiscountTiers();
       } catch (error) {
-        console.error('Failed to delete discount tier:', error);
+        logger.error('RateGroupPage', 'Failed to delete discount tier:', error);
       }
     }
   };
@@ -126,7 +127,7 @@ export default function RateGroupPage() {
       setEditingGroup(null);
       loadRateGroups();
     } catch (error) {
-      console.error('Failed to save rate group:', error);
+      logger.error('RateGroupPage', 'Failed to save rate group:', error);
     }
   };
 

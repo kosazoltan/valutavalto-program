@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CredentialResponse, GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google'
 import { useAuthStore } from '../../stores/authStore'
-import { authApi } from '../../services/api'
+import { authApi } from '../../services/api/index'
 import { Eye, EyeOff, User, Lock, Building2, Shield } from 'lucide-react'
 import { getErrorMessage } from '../../utils/errorHandling'
 

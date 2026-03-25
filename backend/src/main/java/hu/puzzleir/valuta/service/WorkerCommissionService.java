@@ -36,7 +36,7 @@ public class WorkerCommissionService {
                 .orElseThrow(() -> new ResourceNotFoundException("WorkerCommission not found: " + id));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public List<WorkerCommission> calculate(UUID branchId, LocalDate periodStart, LocalDate periodEnd) {
         // Find all workers in branch (simplified — get distinct worker IDs from transactions)
         List<WorkerCommission> commissions = new ArrayList<>();

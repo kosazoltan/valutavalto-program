@@ -105,7 +105,7 @@ public class WesternUnionService {
     /**
      * WU küldés rögzítése.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public WuTransaction recordSend(WuTransactionDto dto) {
         validateMtcn(dto.getMtcn());
         Branch branch = findBranch(dto.getBranchId());
@@ -151,7 +151,7 @@ public class WesternUnionService {
     /**
      * WU fogadás rögzítése.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public WuTransaction recordReceive(WuTransactionDto dto) {
         validateMtcn(dto.getMtcn());
         Branch branch = findBranch(dto.getBranchId());
@@ -201,7 +201,7 @@ public class WesternUnionService {
      * IC_IN: irodák közötti beérkező USD (másik irodától érkező készlet).
      * Legacy: WUNION.DLL IC_IN típusú mozgás.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public WuTransaction recordIcIn(WuTransactionDto dto) {
         Branch branch = findBranch(dto.getBranchId());
 
@@ -229,7 +229,7 @@ public class WesternUnionService {
      * IC_OUT: irodák közötti kimenő USD (másik irodának átadott készlet).
      * Legacy: WUNION.DLL IC_OUT típusú mozgás.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public WuTransaction recordIcOut(WuTransactionDto dto) {
         Branch branch = findBranch(dto.getBranchId());
 
@@ -266,7 +266,7 @@ public class WesternUnionService {
      * @throws ResourceNotFoundException ha az eredeti nem található
      * @throws ValidationException       ha már sztornózva van, vagy STORNO típus
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public WuTransaction reverseWuTransaction(UUID originalId, String reason) {
         WuTransaction original = wuTransactionRepository.findById(originalId)
                 .orElseThrow(() -> new ResourceNotFoundException("WU tranzakció nem található: " + originalId));
@@ -345,7 +345,7 @@ public class WesternUnionService {
      * @param idNumber     igazolvány száma
      * @return meglévő vagy újonnan létrehozott WuCustomer
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public WuCustomer findOrCreateWuCustomer(String lastName, String firstName,
                                               String idType, String idNumber) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();

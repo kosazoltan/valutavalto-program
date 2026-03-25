@@ -58,7 +58,7 @@ public class StockCorrectionService {
      * Korrekciós kérelem létrehozása.
      * Az aktuális készletet olvassuk ki, és kiszámoljuk a különbözetet.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public StockCorrectionResponseDto createCorrection(StockCorrectionRequestDto request) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Long workerId = SecurityUtils.getCurrentWorkerId();
@@ -97,7 +97,7 @@ public class StockCorrectionService {
      * Korrekció jóváhagyása — készlet effektív módosítása.
      * A WAC nem változik korrekciónál (a készlet mennyisége módosul).
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public StockCorrectionResponseDto approveCorrection(Long id) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Long workerId = SecurityUtils.getCurrentWorkerId();
@@ -140,7 +140,7 @@ public class StockCorrectionService {
         return toDto(stockCorrectionRepository.save(correction));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public StockCorrectionResponseDto rejectCorrection(Long id) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         StockCorrection correction = stockCorrectionRepository.findById(id)

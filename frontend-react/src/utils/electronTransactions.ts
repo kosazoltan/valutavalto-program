@@ -1,4 +1,4 @@
-import type { ConversionRequest, Currency, ExchangeRate } from '../services/api'
+import type { ConversionRequest, Currency, ExchangeRate } from '../services/api/index'
 
 export interface ElectronCachedRate {
   currency_code: string

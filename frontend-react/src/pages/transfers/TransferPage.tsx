@@ -19,7 +19,7 @@ import {
   Transfer,
   CreateTransferRequest,
   Currency
-} from '../../services/api'
+} from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
 import { NumberInput } from '../../components/NumberInput'
 import { formatDecimal, formatInteger } from '../../utils/numberFormat'

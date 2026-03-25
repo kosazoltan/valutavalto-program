@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Settings } from 'lucide-react'
-import { organizationalSystemParameterApi, OrganizationalSystemParameter } from '../../services/api'
+import { organizationalSystemParameterApi, OrganizationalSystemParameter } from '../../services/api/index'
+import { logger } from '../../utils/logger';
 
 export default function OrganizationalSystemParameterPage() {
   const [params, setParams] = useState<OrganizationalSystemParameter[]>([])
@@ -15,7 +16,7 @@ export default function OrganizationalSystemParameterPage() {
       setLoading(true)
       setParams(await organizationalSystemParameterApi.list())
     } catch (error) {
-      console.error('Hiba:', error)
+      logger.error('OrganizationalSystemParameterPage', 'Hiba:', error)
     } finally {
       setLoading(false)
     }

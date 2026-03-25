@@ -17,6 +17,6 @@ public interface EmployeeBankAccountRepository extends JpaRepository<EmployeeBan
     List<EmployeeBankAccount> findByEmployeeId(Long employeeId);
 
     /** Dolgozó bankszámláinak törlése */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     void deleteByEmployeeId(Long employeeId);
 }

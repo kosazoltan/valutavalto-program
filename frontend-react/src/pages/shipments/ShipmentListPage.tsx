@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Package, Plus, Eye, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
-import { shipmentRequestApi, ShipmentRequest } from '../../services/api'
+import { shipmentRequestApi, ShipmentRequest } from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { logger } from '../../utils/logger';
 
 export default function ShipmentListPage() {
   const navigate = useNavigate()
@@ -15,26 +16,7 @@ export default function ShipmentListPage() {
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('REQUESTED')
 
-  useEffect(() => {
-    let mounted = true
-
-    const load = async (): Promise<void> => {
-      await loadShipments()
-    }
-
-    load().catch(err => {
-      if (mounted) {
-        console.error('Failed to load shipments:', err)
-      }
-    })
-
-    return () => {
-      mounted = false
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, branchId])
-
-  const loadShipments = async (): Promise<void> => {
+  const loadShipments = useCallback(async (): Promise<void> => {
     try {
       setLoading(true)
       let data: ShipmentRequest[]
@@ -49,11 +31,15 @@ export default function ShipmentListPage() {
     } catch (err) {
       const errorMessage = getErrorMessage(err)
       setError(errorMessage)
-      console.error('Failed to load shipments:', err)
+      logger.error('ShipmentListPage', 'Failed to load shipments:', err)
     } finally {
       setLoading(false)
     }
-  }
+  }, [statusFilter, branchId])
+
+  useEffect(() => {
+    void loadShipments()
+  }, [loadShipments])
 
   const handleApprove = async (shipmentId: string): Promise<void> => {
     if (!worker?.id) return
@@ -66,7 +52,7 @@ export default function ShipmentListPage() {
     } catch (err) {
       const errorMessage = getErrorMessage(err)
       setError(errorMessage)
-      console.error('Failed to approve shipment:', err)
+      logger.error('ShipmentListPage', 'Failed to approve shipment:', err)
     } finally {
       setLoading(false)
     }
@@ -84,7 +70,7 @@ export default function ShipmentListPage() {
     } catch (err) {
       const errorMessage = getErrorMessage(err)
       setError(errorMessage)
-      console.error('Failed to reject shipment:', err)
+      logger.error('ShipmentListPage', 'Failed to reject shipment:', err)
     } finally {
       setLoading(false)
     }

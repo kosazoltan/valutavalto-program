@@ -1,4 +1,4 @@
-import type { BankTransaction, HandoverSheet, Transfer } from '../services/api'
+import type { BankTransaction, HandoverSheet, Transfer } from '../services/api/index'
 import type { Worker } from '../stores/authStore'
 import type { PrintReceiptData } from '../types/receipt'
 import { getElectronAPI } from './electron'

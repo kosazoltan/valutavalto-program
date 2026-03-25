@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Building, Plus, Edit, Trash2, Search, X, Save } from 'lucide-react'
-import { organizationApi, Organization } from '../../services/api'
+import { organizationApi, Organization } from '../../services/api/index'
+import { logger } from '../../utils/logger';
 
 export default function OrganizationPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([])
-  const [filteredOrganizations, setFilteredOrganizations] = useState<Organization[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -17,14 +17,18 @@ export default function OrganizationPage() {
     isActive: true
   })
 
+  const filteredOrganizations = useMemo(() => {
+    if (!searchTerm) return organizations
+    const term = searchTerm.toLowerCase()
+    return organizations.filter(o =>
+      o.code?.toLowerCase().includes(term) ||
+      o.name?.toLowerCase().includes(term)
+    )
+  }, [organizations, searchTerm])
+
   useEffect(() => {
     void loadData()
   }, [])
-
-  useEffect(() => {
-    filterOrganizations()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [organizations, searchTerm])
 
   const loadData = async () => {
     try {
@@ -33,22 +37,11 @@ export default function OrganizationPage() {
       const data = await organizationApi.list()
       setOrganizations(data)
     } catch (err) {
-      console.error('Szervezetek betöltési hiba:', err)
+      logger.error('OrganizationPage', 'Szervezetek betöltési hiba:', err)
       setError('Hiba a szervezetek betöltésekor')
     } finally {
       setLoading(false)
     }
-  }
-
-  const filterOrganizations = () => {
-    let filtered = organizations
-    if (searchTerm) {
-      filtered = filtered.filter(o =>
-        o.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        o.name?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-    setFilteredOrganizations(filtered)
   }
 
   const handleCreate = () => {
@@ -77,7 +70,7 @@ export default function OrganizationPage() {
       setShowForm(false)
       setEditingOrg(null)
     } catch (err) {
-      console.error('Mentési hiba:', err)
+      logger.error('OrganizationPage', 'Mentési hiba:', err)
       setError('Hiba történt a mentés során')
     }
   }
@@ -89,7 +82,7 @@ export default function OrganizationPage() {
       await organizationApi.delete(id)
       await loadData()
     } catch (err) {
-      console.error('Törlési hiba:', err)
+      logger.error('OrganizationPage', 'Törlési hiba:', err)
       setError('Hiba történt a törlés során')
     }
   }

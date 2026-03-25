@@ -153,7 +153,7 @@ public class CameraController {
     public ResponseEntity<List<CameraTransactionLink>> findByTransaction(
             @PathVariable String transactionId) {
         List<CameraTransactionLink> links = transactionLinker.findByTransactionId(
-                        TransactionIdentityCodec.parseUuidOrLegacyLong(transactionId)).stream()
+                        Long.parseLong(transactionId)).stream()
                 .filter(this::canAccessLink)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(links);

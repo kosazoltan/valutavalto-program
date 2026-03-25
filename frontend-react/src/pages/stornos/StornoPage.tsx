@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { AlertCircle, CheckCircle, XCircle, ArrowLeft, Save } from 'lucide-react'
-import { stornoApi, transactionApi, StornoRequest, StornoCheckResult, StornoApproval, Transaction } from '../../services/api'
+import { stornoApi, transactionApi, StornoRequest, StornoCheckResult, StornoApproval, Transaction } from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
 import { getErrorMessage } from '../../utils/errorHandling'
 import {
@@ -9,6 +9,7 @@ import {
   recordLocalAuditEvent,
   saveAndSyncPendingStorno,
 } from '../../utils/electronTransactions'
+import { logger } from '../../utils/logger'
 
 export default function StornoPage() {
   const { id } = useParams<{ id: string }>()
@@ -27,40 +28,18 @@ export default function StornoPage() {
   const [customRate, setCustomRate] = useState<string>('')
   const [paymentMethod, setPaymentMethod] = useState<string>('CASH')
 
-  useEffect(() => {
-    let mounted = true
-
-    if (id && workerId) {
-      const load = async (): Promise<void> => {
-        await loadTransaction()
-        await checkStorno()
-      }
-      
-      load().catch(err => {
-        if (mounted) {
-          console.error('Failed to load storno page:', err)
-        }
-      })
-    }
-
-    return () => {
-      mounted = false
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, workerId])
-
-  const loadTransaction = async (): Promise<void> => {
+  const loadTransaction = useCallback(async (): Promise<void> => {
     try {
       const tx = await transactionApi.getById(id!)
       setTransaction(tx)
     } catch (err) {
       const errorMessage = getErrorMessage(err)
       setError(errorMessage)
-      console.error('Failed to load transaction:', err)
+      logger.error('StornoPage', 'Failed to load transaction:', err)
     }
-  }
+  }, [id])
 
-  const checkStorno = async (): Promise<void> => {
+  const checkStorno = useCallback(async (): Promise<void> => {
     if (!id || !workerId) return
     
     try {
@@ -75,11 +54,18 @@ export default function StornoPage() {
     } catch (err) {
       const errorMessage = getErrorMessage(err)
       setError(errorMessage)
-      console.error('Failed to check storno:', err)
+      logger.error('StornoPage', 'Failed to check storno:', err)
     } finally {
       setLoading(false)
     }
-  }
+  }, [id, workerId])
+
+  useEffect(() => {
+    if (id && workerId) {
+      void loadTransaction()
+      void checkStorno()
+    }
+  }, [id, workerId, loadTransaction, checkStorno])
 
   const handleRequestApproval = async (): Promise<void> => {
     if (!id || !workerId || !reason.trim()) {
@@ -107,7 +93,7 @@ export default function StornoPage() {
     } catch (err) {
       const errorMessage = getErrorMessage(err)
       setError(errorMessage)
-      console.error('Failed to request approval:', err)
+      logger.error('StornoPage', 'Failed to request approval:', err)
     } finally {
       setLoading(false)
     }
@@ -164,7 +150,7 @@ export default function StornoPage() {
     } catch (err) {
       const errorMessage = getErrorMessage(err)
       setError(errorMessage)
-      console.error('Failed to execute storno:', err)
+      logger.error('StornoPage', 'Failed to execute storno:', err)
     } finally {
       setLoading(false)
     }

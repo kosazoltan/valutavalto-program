@@ -38,6 +38,7 @@ public class RateDiscount {
     @Builder.Default
     private BigDecimal sellDiscountPercent = BigDecimal.ZERO;
 
+    @Column(name = "is_active")
     @Builder.Default
     private Boolean active = true;
 }

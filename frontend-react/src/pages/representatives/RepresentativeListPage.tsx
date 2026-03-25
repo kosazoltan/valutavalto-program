@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Users, Plus, Eye, AlertCircle } from 'lucide-react'
-import { authorizedRepresentativeApi, AuthorizedRepresentative } from '../../services/api'
+import { authorizedRepresentativeApi, AuthorizedRepresentative } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { logger } from '../../utils/logger';
 
 export default function RepresentativeListPage() {
   const { customerId } = useParams<{ customerId: string }>()
@@ -11,28 +12,7 @@ export default function RepresentativeListPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    let mounted = true
-
-    if (customerId) {
-      const load = async (): Promise<void> => {
-        await loadRepresentatives()
-      }
-
-      load().catch(err => {
-        if (mounted) {
-          console.error('Failed to load representatives:', err)
-        }
-      })
-    }
-
-    return () => {
-      mounted = false
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customerId])
-
-  const loadRepresentatives = async (): Promise<void> => {
+  const loadRepresentatives = useCallback(async (): Promise<void> => {
     if (!customerId) return
     try {
       setLoading(true)
@@ -41,11 +21,17 @@ export default function RepresentativeListPage() {
     } catch (err) {
       const errorMessage = getErrorMessage(err)
       setError(errorMessage)
-      console.error('Failed to load representatives:', err)
+      logger.error('RepresentativeListPage', 'Failed to load representatives:', err)
     } finally {
       setLoading(false)
     }
-  }
+  }, [customerId])
+
+  useEffect(() => {
+    if (customerId) {
+      void loadRepresentatives()
+    }
+  }, [customerId, loadRepresentatives])
 
   if (!customerId) {
     return (

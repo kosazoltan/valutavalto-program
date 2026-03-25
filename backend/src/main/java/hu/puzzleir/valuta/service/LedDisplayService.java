@@ -64,7 +64,7 @@ public class LedDisplayService {
     /**
      * Árfolyam tábla frissítése LED kijelzőre.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public LedDisplayDto updateRateBoard(UUID branchId) {
         verifyBranchOwnership(branchId);
         Branch branch = branchRepository.findById(branchId)
@@ -89,7 +89,7 @@ public class LedDisplayService {
     /**
      * Futó szöveg beállítása.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public LedDisplayDto updateScrollingText(UUID branchId, String text) {
         verifyBranchOwnership(branchId);
         Branch branch = branchRepository.findById(branchId)
@@ -141,7 +141,7 @@ public class LedDisplayService {
     /**
      * LED kijelző konfiguráció mentése / frissítése (legacy V38 signature).
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public LedDisplayConfigDto saveDisplayConfig(SaveLedDisplayConfigRequest request) {
         Branch branch = branchRepository.findById(request.getBranchId())
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + request.getBranchId()));
@@ -316,7 +316,7 @@ public class LedDisplayService {
     /**
      * Konfiguráció frissítése (V98 API — DTO alapú).
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public LedDisplayConfigDto updateConfig(UUID branchId, LedDisplayConfigDto dto) {
         verifyBranchOwnership(branchId);
         Branch branch = branchRepository.findById(branchId)

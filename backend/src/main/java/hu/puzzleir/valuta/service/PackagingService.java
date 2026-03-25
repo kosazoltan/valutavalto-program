@@ -27,7 +27,7 @@ public class PackagingService {
     private final PackagingRecordRepository repository;
     private final BranchRepository branchRepository;
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public PackagingRecordDto create(CreatePackagingRecordDto dto) {
         Branch branch = branchRepository.findById(dto.getBranchId())
             .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + dto.getBranchId()));
@@ -59,7 +59,7 @@ public class PackagingService {
             .stream().map(this::toDto).toList();
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void delete(UUID id) {
         if (!repository.existsById(id)) {
             throw new ResourceNotFoundException("Göngyöleg rekord nem található: " + id);

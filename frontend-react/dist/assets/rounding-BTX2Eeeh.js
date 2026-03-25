@@ -1,0 +1,1 @@
+function e(e){let t=Math.abs(Math.round(e)),n=t%10,r=t-n,i;return i=n<=2?r:n<=7?r+5:r+10,e<0?-i:i}export{e as t};

@@ -49,7 +49,7 @@ public class OutboxSyncWorkerService {
     private int initialDelaySeconds;
 
     @Scheduled(fixedDelayString = "${sync.outbox.fixed-delay-ms:5000}")
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void dispatchPendingEvents() {
         List<SyncOutboxEvent> pending = syncOutboxRepository.findReadyForDispatch(
                 LocalDateTime.now(),

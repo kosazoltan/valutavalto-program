@@ -102,7 +102,7 @@ public class WorkerRoleService {
     /**
      * Role hozzárendelés worker-hez
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void assignRole(Long workerId, String roleCode) {
         Worker worker = workerRepository.findById(workerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Worker nem található: " + workerId));
@@ -129,7 +129,7 @@ public class WorkerRoleService {
     /**
      * Role eltávolítás worker-ről
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void removeRole(Long workerId, String roleCode) {
         if (!assignmentRepository.existsByWorkerIdAndRoleDefCode(workerId, roleCode)) {
             throw new ResourceNotFoundException("A worker nem rendelkezik ezzel a szerepkörrel: " + roleCode);

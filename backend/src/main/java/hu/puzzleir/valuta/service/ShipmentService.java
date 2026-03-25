@@ -22,7 +22,7 @@ import java.util.UUID;
  */
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Transactional(rollbackFor = Exception.class)
 @Slf4j
 public class ShipmentService {
 

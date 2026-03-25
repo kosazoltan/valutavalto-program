@@ -66,7 +66,7 @@ public class MonthlyClosingService {
      * @param yearMonth év-hónap (pl. "2026-03")
      * @return MonthlyClosingSummary entity
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public MonthlyClosingSummary performMonthlyClosing(UUID branchId, String yearMonth) {
         // Validáció — HIGH FIX #5: Cheap validáció előbb, expensive DB query később
         YearMonth ym = parseYearMonth(yearMonth);

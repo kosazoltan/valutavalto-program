@@ -41,7 +41,7 @@ public class TradeService {
     private final CashBalanceRepository cashBalanceRepository;
     private final CurrencyRepository currencyRepository;
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public TradeDto proposeTrade(ProposeTradeDto dto) {
         Branch fromBranch = branchRepository.findById(dto.getFromBranchId())
                 .orElseThrow(() -> new ResourceNotFoundException("Forrás iroda nem található: " + dto.getFromBranchId()));
@@ -75,7 +75,7 @@ public class TradeService {
         return toDto(trade);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public TradeDto acceptTrade(UUID tradeId, Long workerId) {
         Trade trade = findOrThrow(tradeId);
         validateTradeAccess(trade);
@@ -89,7 +89,7 @@ public class TradeService {
         return toDto(trade);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public TradeDto rejectTrade(UUID tradeId, String reason) {
         Trade trade = findOrThrow(tradeId);
         validateTradeAccess(trade);
@@ -104,7 +104,7 @@ public class TradeService {
         return toDto(trade);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public TradeDto completeTrade(UUID tradeId) {
         Trade trade = findOrThrow(tradeId);
         validateTradeAccess(trade);
@@ -119,7 +119,7 @@ public class TradeService {
         return toDto(trade);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public TradeDto cancelTrade(UUID tradeId) {
         Trade trade = findOrThrow(tradeId);
         validateTradeAccess(trade);

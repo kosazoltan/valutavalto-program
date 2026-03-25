@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Lock, Check, X, Loader2, Minus, ChevronLeft } from 'lucide-react'
 import { CashierHeader } from '../../components/cashier/CashierHeader'
 import { toast } from '../../components/ui/toaster'
-import { closingWizardApi } from '../../services/api'
+import { closingWizardApi } from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
 
 /**

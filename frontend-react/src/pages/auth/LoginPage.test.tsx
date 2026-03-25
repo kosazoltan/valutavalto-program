@@ -35,7 +35,7 @@ vi.mock('../../stores/authStore', () => ({
     }),
 }))
 
-vi.mock('../../services/api', () => ({
+vi.mock('../../services/api/index', () => ({
   authApi: {
     login: mocks.authLogin,
     selectRole: mocks.authSelectRole,

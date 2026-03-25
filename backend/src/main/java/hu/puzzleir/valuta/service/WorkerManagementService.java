@@ -50,7 +50,7 @@ public class WorkerManagementService {
     /**
      * Jelszó reset (admin funkció).
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void resetPassword(Long workerId, String newPassword) {
         Worker worker = getWorkerWithCheck(workerId);
         worker.setPasswordHash(passwordEncoder.encode(newPassword));
@@ -75,7 +75,7 @@ public class WorkerManagementService {
     /**
      * Szünet indítás.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public WorkerBreakDto startBreak(Long workerId, String reason) {
         Worker worker = getWorkerWithCheck(workerId);
 
@@ -102,7 +102,7 @@ public class WorkerManagementService {
     /**
      * Szünet befejezés.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public WorkerBreakDto endBreak(Long workerId) {
         getWorkerWithCheck(workerId);
 

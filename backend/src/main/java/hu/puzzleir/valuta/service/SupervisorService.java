@@ -59,7 +59,7 @@ public class SupervisorService {
      * Árfolyam kézi felülbírálat.
      * AUDIT: minden felülbírálat naplózva!
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void overrideRate(UUID branchId, String currency, BigDecimal newBuyRate,
                              BigDecimal newSellRate, String reason) {
         if (!SecurityUtils.isSupervisorOrAbove()) {
@@ -106,7 +106,7 @@ public class SupervisorService {
      * Kezelési díj felülbírálat.
      * AUDIT: naplózva!
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void overrideFee(Long transactionId, BigDecimal newFee, String reason) {
         if (!SecurityUtils.isSupervisorOrAbove()) {
             throw new ValidationException("Nincs supervisor jogosultság!");

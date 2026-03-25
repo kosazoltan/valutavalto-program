@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { FileText, Upload, Download } from 'lucide-react'
-import { documentStorageApi, Document } from '../../services/api'
+import { documentStorageApi, Document } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
+import { logger } from '../../utils/logger';
 
 export default function DocumentStoragePage() {
   const [documents, setDocuments] = useState<Document[]>([])
@@ -18,7 +19,7 @@ export default function DocumentStoragePage() {
       setError(null)
       setDocuments(await documentStorageApi.list())
     } catch (err) {
-      console.error('Dokumentumok betöltési hiba:', err)
+      logger.error('DocumentStoragePage', 'Dokumentumok betöltési hiba:', err)
       setError('Hiba a dokumentumok betöltésekor')
     } finally {
       setLoading(false)
@@ -34,7 +35,7 @@ export default function DocumentStoragePage() {
       await loadData()
       toast.success('Feltöltés sikeres')
     } catch (err) {
-      console.error('Feltöltési hiba:', err)
+      logger.error('DocumentStoragePage', 'Feltöltési hiba:', err)
       setError('Hiba a feltöltésnél. Kérjük ellenőrizze a fájlt.')
     }
   }
@@ -49,7 +50,7 @@ export default function DocumentStoragePage() {
       a.download = fileName
       a.click()
     } catch (err) {
-      console.error('Letöltési hiba:', err)
+      logger.error('DocumentStoragePage', 'Letöltési hiba:', err)
       setError('Hiba a letöltésnél')
     }
   }

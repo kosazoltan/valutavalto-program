@@ -27,7 +27,7 @@ public class SealTrackingService {
     /**
      * Plomba felhelyezése — SEALED rekord létrehozása.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SealTracking seal(String transferType, Long transferId, String sealNumber) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Long workerId = SecurityUtils.getCurrentWorkerId();
@@ -66,7 +66,7 @@ public class SealTrackingService {
     /**
      * Szállítás megkezdése — SEALED → IN_TRANSIT átmenet.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SealTracking startTransit(String transferType, Long transferId) {
         SealTracking tracking = findByTransferOrThrow(transferType, transferId);
 
@@ -89,7 +89,7 @@ public class SealTrackingService {
     /**
      * Megérkezés visszaigazolása — IN_TRANSIT → ARRIVED átmenet.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SealTracking confirmArrival(String transferType, Long transferId) {
         SealTracking tracking = findByTransferOrThrow(transferType, transferId);
 
@@ -112,7 +112,7 @@ public class SealTrackingService {
     /**
      * Plomba felnyitása — ARRIVED → OPENED átmenet, rögzíti a megnyitót és az időpontot.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SealTracking openSeal(String transferType, Long transferId) {
         SealTracking tracking = findByTransferOrThrow(transferType, transferId);
 

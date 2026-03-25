@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { FileText, Plus, Printer, CheckCircle, Search } from 'lucide-react'
-import { handoverSheetApi, HandoverSheet, cashDeskApi, CashDesk } from '../../services/api'
+import { handoverSheetApi, HandoverSheet, cashDeskApi, CashDesk } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import {
   isElectronQueueAvailable,
@@ -12,12 +12,12 @@ import {
   mapPendingHandoverGeneratesToSheets,
   type LocalPendingHandoverOperation,
 } from '../../utils/localQueue'
+import { logger } from '../../utils/logger'
 
 export default function HandoverSheetPage() {
   const electronQueueAvailable = isElectronQueueAvailable()
   const [sheets, setSheets] = useState<HandoverSheet[]>([])
   const [cashDesks, setCashDesks] = useState<CashDesk[]>([])
-  const [filteredSheets, setFilteredSheets] = useState<HandoverSheet[]>([])
   const [localPendingOperations, setLocalPendingOperations] = useState<LocalPendingHandoverOperation[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -40,7 +40,7 @@ export default function HandoverSheetPage() {
         setLocalPendingOperations(await getLocalPendingHandoverOperations())
       }
     } catch (err) {
-      console.error('Átadó lapok betöltési hiba:', err)
+      logger.error('HandoverSheetPage', 'Átadó lapok betöltési hiba:', err)
       setError('Hiba az átadó lapok betöltésekor')
     } finally {
       setLoading(false)
@@ -52,7 +52,7 @@ export default function HandoverSheetPage() {
       const data = await cashDeskApi.list()
       setCashDesks(data)
     } catch (err) {
-      console.error('Pénztárak betöltési hiba:', err)
+      logger.error('HandoverSheetPage', 'Pénztárak betöltési hiba:', err)
       setError('Hiba a pénztárak betöltésekor')
     }
   }, [])
@@ -62,22 +62,18 @@ export default function HandoverSheetPage() {
     void loadCashDesks()
   }, [loadData, loadCashDesks])
 
-  useEffect(() => {
-    filterSheets()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sheets, searchTerm, localPendingOperations, cashDesks])
-
-  const filterSheets = () => {
+  const filteredSheets = useMemo(() => {
     const cashDeskNames = new Map(cashDesks.map((desk) => [desk.id, desk.name]))
     const localGenerated = mapPendingHandoverGeneratesToSheets(localPendingOperations, cashDeskNames)
     let filtered = [...localGenerated, ...sheets]
     if (searchTerm) {
+      const term = searchTerm.toLowerCase()
       filtered = filtered.filter(s =>
-        s.sheetNumber?.toLowerCase().includes(searchTerm.toLowerCase())
+        s.sheetNumber?.toLowerCase().includes(term)
       )
     }
-    setFilteredSheets(filtered)
-  }
+    return filtered
+  }, [sheets, searchTerm, localPendingOperations, cashDesks])
 
   const handleGenerate = async () => {
     try {
@@ -120,7 +116,7 @@ export default function HandoverSheetPage() {
         toast.success('Átadó lap sikeresen létrehozva')
       }
     } catch (err) {
-      console.error('Generálási hiba:', err)
+      logger.error('HandoverSheetPage', 'Generálási hiba:', err)
       setError('Hiba történt a generálás során')
     }
   }
@@ -151,7 +147,7 @@ export default function HandoverSheetPage() {
       }
       await loadData()
     } catch (err) {
-      console.error('Nyomtatási hiba:', err)
+      logger.error('HandoverSheetPage', 'Nyomtatási hiba:', err)
       setError('Hiba történt a nyomtatás során')
     }
   }
@@ -184,7 +180,7 @@ export default function HandoverSheetPage() {
         toast.success('Átadó lap sikeresen befejezve')
       }
     } catch (err) {
-      console.error('Befejezési hiba:', err)
+      logger.error('HandoverSheetPage', 'Befejezési hiba:', err)
       setError('Hiba történt a befejezés során')
     }
   }

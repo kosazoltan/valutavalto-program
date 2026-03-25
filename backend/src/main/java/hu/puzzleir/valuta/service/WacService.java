@@ -39,7 +39,7 @@ public class WacService {
     /**
      * WAC frissítés amikor valuta érkezik (bank→értéktár, értéktár→pénztár, ügyfél→pénztár).
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void receiveStock(String entityType, String entityId, String currencyCode,
                              BigDecimal quantity, BigDecimal costPerUnit) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
@@ -68,7 +68,7 @@ public class WacService {
      * WAC-ból kiadás (nem változtatja a WAC-ot, csak csökkenti a mennyiséget).
      * @return a kiadott tételek WAC-ja (ez lesz az átvevő bekerülési ára)
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public BigDecimal issueStock(String entityType, String entityId, String currencyCode,
                                  BigDecimal quantity) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
@@ -97,7 +97,7 @@ public class WacService {
      * Profit rögzítés ügyféltranzakciónál.
      * @return realizált profit összeg
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public BigDecimal recordProfit(UUID branchId, Long transactionId, String currencyCode,
                                    BigDecimal quantity, BigDecimal customerPrice, String txType) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();

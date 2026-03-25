@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Building2 } from 'lucide-react'
-import { branchGroupApi, BranchGroup } from '../../services/api'
+import { branchGroupApi, BranchGroup } from '../../services/api/index'
+import { logger } from '../../utils/logger';
 
 export default function BranchGroupPage() {
   const [groups, setGroups] = useState<BranchGroup[]>([])
@@ -15,7 +16,7 @@ export default function BranchGroupPage() {
       setLoading(true)
       setGroups(await branchGroupApi.list())
     } catch (error) {
-      console.error('Hiba:', error)
+      logger.error('BranchGroupPage', 'Hiba:', error)
     } finally {
       setLoading(false)
     }

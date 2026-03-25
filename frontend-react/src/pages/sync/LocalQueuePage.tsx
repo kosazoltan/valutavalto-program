@@ -13,7 +13,8 @@ import {
   type PendingReceiptDraft,
 } from '../../utils/localQueue'
 import { isElectron } from '../../utils/electron'
-import type { BankTransaction, Transfer } from '../../services/api'
+import type { BankTransaction, Transfer } from '../../services/api/index'
+import { logger } from '../../utils/logger';
 
 export default function LocalQueuePage() {
   const worker = useAuthStore((state) => state.worker)
@@ -46,7 +47,7 @@ export default function LocalQueuePage() {
       setHandoverOperations(localHandoverOperations)
       setAuditEvents(localAuditEvents)
     } catch (error) {
-      console.error('Helyi queue betöltési hiba:', error)
+      logger.error('LocalQueuePage', 'Helyi queue betöltési hiba:', error)
       toast.error('Hiba történt a helyi queue betöltésekor')
     } finally {
       setLoading(false)
@@ -68,7 +69,7 @@ export default function LocalQueuePage() {
       toast.success(`Szinkron lefutott, ${synced} rekord került továbbításra`)
       await loadQueue()
     } catch (error) {
-      console.error('Helyi queue szinkron hiba:', error)
+      logger.error('LocalQueuePage', 'Helyi queue szinkron hiba:', error)
       toast.error('A helyi queue szinkronizálása sikertelen')
     } finally {
       setSyncing(false)

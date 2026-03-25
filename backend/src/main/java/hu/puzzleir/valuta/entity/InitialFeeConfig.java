@@ -78,7 +78,7 @@ public class InitialFeeConfig {
     @Builder.Default
     private Integer dailyCustomFeeLimit = 3;
 
-    @Column(nullable = false)
+    @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean active = true;
 }

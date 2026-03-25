@@ -49,7 +49,7 @@ public class DocumentScannerService {
     /**
      * Dokumentum feltöltés és mentés.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ScannedDocumentDto saveScannedDocument(MultipartFile file, DocumentScanUploadRequest request) {
         if (!providerActive) {
             throw new BusinessException(
@@ -105,7 +105,7 @@ public class DocumentScannerService {
      * Ügyfélhez tartozó dokumentumok lekérdezése.
      */
     @Transactional(readOnly = true)
-    public List<ScannedDocumentDto> getCustomerDocuments(UUID customerId) {
+    public List<ScannedDocumentDto> getCustomerDocuments(Long customerId) {
         return scannedDocumentRepository
                 .findByCustomerIdAndIsDeletedFalseOrderByScannedAtDesc(customerId)
                 .stream()
@@ -117,7 +117,7 @@ public class DocumentScannerService {
      * Tranzakcióhoz tartozó dokumentumok lekérdezése.
      */
     @Transactional(readOnly = true)
-    public List<ScannedDocumentDto> getTransactionDocuments(UUID transactionId) {
+    public List<ScannedDocumentDto> getTransactionDocuments(Long transactionId) {
         return scannedDocumentRepository
                 .findByTransactionIdAndIsDeletedFalseOrderByScannedAtDesc(transactionId)
                 .stream()
@@ -128,7 +128,7 @@ public class DocumentScannerService {
     /**
      * Dokumentum soft delete.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteDocument(UUID documentId) {
         ScannedDocument doc = scannedDocumentRepository.findById(documentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Dokumentum nem található: " + documentId));

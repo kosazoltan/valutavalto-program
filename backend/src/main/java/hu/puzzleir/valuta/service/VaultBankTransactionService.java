@@ -60,7 +60,7 @@ public class VaultBankTransactionService {
      * Banki tranzakció létrehozása és azonnali végrehajtása.
      * Legacy MATPTAR: egylépéses végrehajtás.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public BankTransactionResponseDto createBankTransaction(BankTransactionRequestDto request) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Long workerId = SecurityUtils.getCurrentWorkerId();
@@ -131,7 +131,7 @@ public class VaultBankTransactionService {
         return toDto(saved);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public BankTransactionResponseDto updateStatus(Long id, VaultOperationStatus newStatus) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         VaultBankTransaction tx = bankTransactionRepository.findById(id)

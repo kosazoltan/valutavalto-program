@@ -1,25 +1,29 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Calculator, Search, Calendar } from 'lucide-react'
-import { contributionApi, Contribution } from '../../services/api'
+import { contributionApi, Contribution } from '../../services/api/index'
 import { formatInteger } from '../../utils/numberFormat'
 import { toast } from '../../components/ui/toaster'
+import { logger } from '../../utils/logger';
 
 export default function ContributionPage() {
   const [contributions, setContributions] = useState<Contribution[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [filteredContributions, setFilteredContributions] = useState<Contribution[]>([])
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+
+  const filteredContributions = useMemo(() => {
+    if (!searchTerm) return contributions
+    const term = searchTerm.toLowerCase()
+    return contributions.filter(c =>
+      c.workerFullName?.toLowerCase().includes(term) ||
+      c.branchName?.toLowerCase().includes(term)
+    )
+  }, [contributions, searchTerm])
 
   useEffect(() => {
     void loadData()
   }, [])
-
-  useEffect(() => {
-    filterContributions()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contributions, searchTerm])
 
   const loadData = async () => {
     try {
@@ -27,21 +31,10 @@ export default function ContributionPage() {
       const data = await contributionApi.list()
       setContributions(data)
     } catch (error) {
-      console.error('Hiba az adatok betöltésekor:', error)
+      logger.error('ContributionPage', 'Hiba az adatok betöltésekor:', error)
     } finally {
       setLoading(false)
     }
-  }
-
-  const filterContributions = () => {
-    let filtered = contributions
-    if (searchTerm) {
-      filtered = filtered.filter(c =>
-        c.workerFullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.branchName?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-    setFilteredContributions(filtered)
   }
 
   const handleFilterByPeriod = async () => {
@@ -53,7 +46,7 @@ export default function ContributionPage() {
       const data = await contributionApi.getByPeriod(startDate, endDate)
       setContributions(data)
     } catch (error) {
-      console.error('Hiba a szűréskor:', error)
+      logger.error('ContributionPage', 'Hiba a szűréskor:', error)
     }
   }
 

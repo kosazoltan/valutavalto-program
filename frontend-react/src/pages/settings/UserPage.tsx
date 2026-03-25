@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Users, Plus, Edit, Trash2, Search, X, Save, Key } from 'lucide-react'
-import { userApi, UserDetail, UserCreateRequest, UserUpdateRequest, roleApi, Role } from '../../services/api'
+import { userApi, UserDetail, UserCreateRequest, UserUpdateRequest, roleApi, Role } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
+import { logger } from '../../utils/logger';
 
 export default function UserPage() {
   const [users, setUsers] = useState<UserDetail[]>([])
   const [roles, setRoles] = useState<Role[]>([])
-  const [filteredUsers, setFilteredUsers] = useState<UserDetail[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -24,14 +24,19 @@ export default function UserPage() {
     branchId: ''
   })
 
+  const filteredUsers = useMemo(() => {
+    if (!searchTerm) return users
+    const term = searchTerm.toLowerCase()
+    return users.filter(u =>
+      u.username.toLowerCase().includes(term) ||
+      u.name?.toLowerCase().includes(term) ||
+      u.email?.toLowerCase().includes(term)
+    )
+  }, [users, searchTerm])
+
   useEffect(() => {
     void loadData()
   }, [])
-
-  useEffect(() => {
-    filterUsers()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [users, searchTerm])
 
   const loadData = async () => {
     try {
@@ -44,25 +49,11 @@ export default function UserPage() {
       setUsers(usersData)
       setRoles(rolesData.filter(r => r.isActive))
     } catch (err) {
-      console.error('Felhasználók betöltési hiba:', err)
+      logger.error('UserPage', 'Felhasználók betöltési hiba:', err)
       setError('Hiba a felhasználók betöltésekor')
     } finally {
       setLoading(false)
     }
-  }
-
-  const filterUsers = () => {
-    let filtered = users
-
-    if (searchTerm) {
-      filtered = filtered.filter(u =>
-        u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.email?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-
-    setFilteredUsers(filtered)
   }
 
   const handleCreate = () => {
@@ -186,7 +177,7 @@ export default function UserPage() {
       setNewPassword('')
       toast.success('Jelszó sikeresen megváltoztatva')
     } catch (err) {
-      console.error('Jelszó módosítási hiba:', err)
+      logger.error('UserPage', 'Jelszó módosítási hiba:', err)
       setError('Hiba történt a jelszó módosítása során')
     }
   }
@@ -201,7 +192,7 @@ export default function UserPage() {
       await userApi.delete(id)
       await loadData()
     } catch (err) {
-      console.error('Felhasználó törlési hiba:', err)
+      logger.error('UserPage', 'Felhasználó törlési hiba:', err)
       setError('Hiba történt a törlés során')
     }
   }
@@ -212,7 +203,7 @@ export default function UserPage() {
       await userApi.toggleActive(id)
       await loadData()
     } catch (err) {
-      console.error('Felhasználó állapotváltási hiba:', err)
+      logger.error('UserPage', 'Felhasználó állapotváltási hiba:', err)
       setError('Hiba történt az állapotváltás során')
     }
   }
@@ -227,7 +218,7 @@ export default function UserPage() {
       await userApi.archive(id)
       await loadData()
     } catch (err) {
-      console.error('Felhasználó archiválási hiba:', err)
+      logger.error('UserPage', 'Felhasználó archiválási hiba:', err)
       setError('Hiba történt az archiválás során')
     }
   }
@@ -472,8 +463,8 @@ export default function UserPage() {
                   <td>
                     {user.roles && user.roles.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
-                        {user.roles.map((role, idx) => (
-                          <span key={idx} className="badge badge-blue text-xs">{role}</span>
+                        {user.roles.map((role) => (
+                          <span key={role} className="badge badge-blue text-xs">{role}</span>
                         ))}
                       </div>
                     ) : (

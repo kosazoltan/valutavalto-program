@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Building, Plus, Edit, Trash2, Search, X, Save } from 'lucide-react'
-import { ownCompanyApi, OwnCompany } from '../../services/api'
+import { ownCompanyApi, OwnCompany } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
+import { logger } from '../../utils/logger';
 
 export default function OwnCompanyPage() {
   const [companies, setCompanies] = useState<OwnCompany[]>([])
-  const [filteredCompanies, setFilteredCompanies] = useState<OwnCompany[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [showForm, setShowForm] = useState(false)
@@ -24,14 +24,18 @@ export default function OwnCompanyPage() {
     isActive: true
   })
 
+  const filteredCompanies = useMemo(() => {
+    if (!searchTerm) return companies
+    const term = searchTerm.toLowerCase()
+    return companies.filter(c =>
+      c.name?.toLowerCase().includes(term) ||
+      c.taxNumber?.toLowerCase().includes(term)
+    )
+  }, [companies, searchTerm])
+
   useEffect(() => {
     void loadData()
   }, [])
-
-  useEffect(() => {
-    filterCompanies()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companies, searchTerm])
 
   const loadData = async () => {
     try {
@@ -39,21 +43,10 @@ export default function OwnCompanyPage() {
       const data = await ownCompanyApi.list()
       setCompanies(data)
     } catch (error) {
-      console.error('Hiba az adatok betöltésekor:', error)
+      logger.error('OwnCompanyPage', 'Hiba az adatok betöltésekor:', error)
     } finally {
       setLoading(false)
     }
-  }
-
-  const filterCompanies = () => {
-    let filtered = companies
-    if (searchTerm) {
-      filtered = filtered.filter(c =>
-        c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.taxNumber?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-    setFilteredCompanies(filtered)
   }
 
   const handleCreate = () => {
@@ -79,7 +72,7 @@ export default function OwnCompanyPage() {
       setShowForm(false)
       setEditingCompany(null)
     } catch (error) {
-      console.error('Hiba a mentéskor:', error)
+      logger.error('OwnCompanyPage', 'Hiba a mentéskor:', error)
       toast.error('Mentési hiba', 'Hiba történt a mentés során')
     }
   }
@@ -90,7 +83,7 @@ export default function OwnCompanyPage() {
       await ownCompanyApi.delete(id)
       await loadData()
     } catch (error) {
-      console.error('Hiba a törléskor:', error)
+      logger.error('OwnCompanyPage', 'Hiba a törléskor:', error)
       toast.error('Törlési hiba', 'Hiba történt a törlés során')
     }
   }

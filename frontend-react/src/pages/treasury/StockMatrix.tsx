@@ -6,8 +6,8 @@ import {
   Download,
 } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { cashBalanceApi, currencyApi } from '../../services/api'
-import type { CashBalance, Currency } from '../../services/api'
+import { cashBalanceApi, currencyApi } from '../../services/api/index'
+import type { CashBalance, Currency } from '../../services/api/index'
 import {
   formatInteger,
   formatMillions,
@@ -17,6 +17,7 @@ import {
   currencyColorClass,
 } from './treasuryUtils'
 import { TableSkeleton } from './LoadingSkeleton'
+import { logger } from '../../utils/logger';
 
 /** Branch aggregated data for the matrix */
 interface BranchRow {
@@ -47,7 +48,7 @@ export default function StockMatrix() {
       setCountdown(30)
       countdownRef.current = 30
     } catch (err) {
-      console.error('StockMatrix fetch error:', err)
+      logger.error('StockMatrix', 'StockMatrix fetch error:', err)
     } finally {
       setLoading(false)
     }

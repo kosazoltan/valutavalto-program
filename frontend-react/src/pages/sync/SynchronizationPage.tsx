@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { RefreshCw } from 'lucide-react'
-import { synchronizationApi } from '../../services/api'
+import { synchronizationApi } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
+import { logger } from '../../utils/logger';
 
 interface SyncResult {
   recordsSynced: number
@@ -29,7 +30,7 @@ export default function SynchronizationPage() {
     } catch (err) {
       const errorMessage = getErrorMessage(err)
       toast.error('Szinkronizációs hiba', `Hiba történt: ${errorMessage}`)
-      console.error('Failed to synchronize:', err)
+      logger.error('SynchronizationPage', 'Failed to synchronize:', err)
     } finally {
       setLoading(false)
     }

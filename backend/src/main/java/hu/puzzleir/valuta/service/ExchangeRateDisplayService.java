@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.entity.ExchangeRate;
 import hu.puzzleir.valuta.entity.ExchangeRateDisplay;
 import hu.puzzleir.valuta.repository.ExchangeRateDisplayRepository;
@@ -27,7 +28,7 @@ public class ExchangeRateDisplayService {
 
     public ExchangeRateDisplay findById(UUID id) {
         return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("ExchangeRateDisplay not found: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("ExchangeRateDisplay not found: " + id));
     }
 
     public Map<String, Object> getCurrentRates(UUID displayId) {
@@ -63,7 +64,7 @@ public class ExchangeRateDisplayService {
         return result;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ExchangeRateDisplay update(UUID displayId, ExchangeRateDisplay updated) {
         ExchangeRateDisplay existing = findById(displayId);
         if (updated.getDisplayName() != null) {

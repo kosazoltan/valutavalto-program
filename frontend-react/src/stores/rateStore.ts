@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import { api } from '../services/api'
-import type { ExchangeRate } from '../services/api'
+import { api } from '../services/api/index'
+import type { ExchangeRate } from '../services/api/index'
 
 /**
  * Limit szintű árfolyam feloldó — közös logika vételi és eladási irányhoz.

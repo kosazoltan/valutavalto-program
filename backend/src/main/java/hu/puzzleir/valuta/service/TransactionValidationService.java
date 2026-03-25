@@ -32,6 +32,10 @@ import java.util.*;
 @Slf4j
 public class TransactionValidationService {
 
+    private static final int DEFAULT_MAX_REVERSAL_COUNT = 5;
+    private static final BigDecimal DEFAULT_IDENTIFICATION_THRESHOLD = new BigDecimal("2000000");
+    private static final BigDecimal DEFAULT_ENHANCED_DD_THRESHOLD = new BigDecimal("5000000");
+
     private final TransactionRepository transactionRepository;
     private final SystemParameterService systemParameterService;
 
@@ -271,7 +275,7 @@ public class TransactionValidationService {
         try {
             return Integer.parseInt(systemParameterService.getValue("DAILY_DISCOUNT_LIMIT"));
         } catch (Exception e) {
-            return 5; // Legacy default
+            return DEFAULT_MAX_REVERSAL_COUNT; // Legacy default
         }
     }
 
@@ -279,7 +283,7 @@ public class TransactionValidationService {
         try {
             return new BigDecimal(systemParameterService.getValue("FORINT_SUPERVISOR_THRESHOLD"));
         } catch (Exception e) {
-            return new BigDecimal("2000000"); // 2M Ft default
+            return DEFAULT_IDENTIFICATION_THRESHOLD; // 2M Ft default
         }
     }
 
@@ -287,7 +291,7 @@ public class TransactionValidationService {
         try {
             return new BigDecimal(systemParameterService.getValue("VAULT_SUPERVISOR_THRESHOLD"));
         } catch (Exception e) {
-            return new BigDecimal("5000000"); // 5M Ft default
+            return DEFAULT_ENHANCED_DD_THRESHOLD; // 5M Ft default
         }
     }
 

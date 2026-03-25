@@ -38,7 +38,7 @@ public class DataImportService {
     /**
      * Napi zárás import indítása.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public DataImportJob importDailyClosing(UUID branchId, LocalDate date) {
         Branch branch = findBranch(branchId);
         DataImportJob job = createJob(branch, DataImportType.DAILY_CLOSING);
@@ -61,7 +61,7 @@ public class DataImportService {
     /**
      * Készletadatok import.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public DataImportJob importInventory(UUID branchId) {
         Branch branch = findBranch(branchId);
         DataImportJob job = createJob(branch, DataImportType.INVENTORY);
@@ -83,7 +83,7 @@ public class DataImportService {
     /**
      * Tranzakciók import.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public DataImportJob importTransactions(UUID branchId, LocalDate from, LocalDate to) {
         Branch branch = findBranch(branchId);
         DataImportJob job = createJob(branch, DataImportType.TRANSACTIONS);
@@ -105,7 +105,7 @@ public class DataImportService {
     /**
      * Teljes import — minden típus egyben.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public DataImportJob importAll(UUID branchId) {
         Branch branch = findBranch(branchId);
         DataImportJob job = createJob(branch, DataImportType.FULL);
@@ -135,7 +135,7 @@ public class DataImportService {
     /**
      * Sikertelen import újrapróbálása.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public DataImportJob retryFailed(UUID jobId) {
         DataImportJob job = dataImportJobRepository.findById(jobId)
                 .orElseThrow(() -> new ResourceNotFoundException("Import job not found: " + jobId));

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { RefreshCw, Send, AlertTriangle, ChevronDown, ChevronRight, Users } from 'lucide-react'
-import { api } from '../../services/api'
+import { api } from '../../services/api/index'
+import { logger } from '../../utils/logger';
 
 /**
  * Arfolyam rogzites — Legacy: arfdata.dat adatbevitel.
@@ -103,7 +104,7 @@ export default function SettlementRateEntry() {
         }
       })
       .catch((err) => {
-        console.error('Failed to load reference data:', err)
+        logger.error('SettlementRateEntry', 'Failed to load reference data:', err)
         setError('Referencia adatok betöltése sikertelen')
       })
   }, [])
@@ -143,7 +144,7 @@ export default function SettlementRateEntry() {
 
       setRates(rateEntries)
     } catch (err) {
-      console.error('Failed to load rates:', err)
+      logger.error('SettlementRateEntry', 'Failed to load rates:', err)
       setError('Árfolyam adatok betöltése sikertelen')
     } finally {
       setLoading(false)

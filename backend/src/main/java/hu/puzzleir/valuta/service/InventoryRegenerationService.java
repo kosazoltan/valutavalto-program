@@ -37,7 +37,7 @@ public class InventoryRegenerationService {
     /**
      * Készlet regenerálás — újraszámolja a készletet a tranzakciók alapján.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public RegenerationResultDto regenerate(UUID branchId, Long workerId) {
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));

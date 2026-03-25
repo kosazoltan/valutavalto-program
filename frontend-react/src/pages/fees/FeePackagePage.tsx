@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { api } from '@/services/api';
+import { api } from '@/services/api/index';
+import { logger } from '../../utils/logger';
 
 interface FeePackage {
   id: number;
@@ -40,7 +41,7 @@ export default function FeePackagePage() {
       const response = await api.get('/fee-packages');
       setFeePackages(response?.data || []);
     } catch (error) {
-      console.error('Failed to load fee packages:', error);
+      logger.error('FeePackagePage', 'Failed to load fee packages:', error);
     } finally {
       setLoading(false);
     }
@@ -52,7 +53,7 @@ export default function FeePackagePage() {
         await api.delete(`/fee-packages/${id}`);
         loadFeePackages();
       } catch (error) {
-        console.error('Failed to delete fee package:', error);
+        logger.error('FeePackagePage', 'Failed to delete fee package:', error);
       }
     }
   };
@@ -62,7 +63,7 @@ export default function FeePackagePage() {
       await api.post(`/fee-packages/${id}/set-default`);
       loadFeePackages();
     } catch (error) {
-      console.error('Failed to set default:', error);
+      logger.error('FeePackagePage', 'Failed to set default:', error);
     }
   };
 
@@ -106,7 +107,7 @@ export default function FeePackagePage() {
       setEditingPackage(null);
       loadFeePackages();
     } catch (error) {
-      console.error('Failed to save fee package:', error);
+      logger.error('FeePackagePage', 'Failed to save fee package:', error);
     }
   };
 

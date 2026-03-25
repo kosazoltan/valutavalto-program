@@ -61,7 +61,7 @@ public class DariusReportService {
      * Ha már létezik DRAFT/GENERATED jelentés az adott napra, felülírja.
      * Ha SUBMITTED/ACKNOWLEDGED, ValidationException-t dob.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public DariusDailyReportDto generateDailyReport(LocalDate date) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         log.info("Darius napi jelentés generálása: companyId={}, date={}", companyId, date);
@@ -178,7 +178,7 @@ public class DariusReportService {
      * Főértéktáros jóváhagyás (4-eyes).
      * Csak GENERATED státuszú jelentés hagyható jóvá.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public DariusDailyReportDto approveReport(UUID reportId) {
         DariusDailyReport report = findReport(reportId);
 
@@ -213,7 +213,7 @@ public class DariusReportService {
      * amit az implementáló fél a bank specifikáció alapján készít el.
      * Ez a service az állapotgépet és az audit trail-t kezeli.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public DariusDailyReportDto submitReport(UUID reportId) {
         DariusDailyReport report = findReport(reportId);
 
@@ -302,7 +302,7 @@ public class DariusReportService {
      * Automatikus retry: újraküldi a FAILED státuszú, retry limiten belüli jelentéseket.
      * Scheduled job-ból hívandó (pl. @Scheduled minden 15 percben).
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public List<DariusDailyReportDto> retryFailedReports() {
         List<DariusDailyReport> retryable = reportRepository.findRetryable(LocalDateTime.now());
 
@@ -322,7 +322,7 @@ public class DariusReportService {
     /**
      * Bank visszaigazolás rögzítése (webhook vagy polling alapú).
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public DariusDailyReportDto acknowledgeReport(UUID reportId, String ackReference) {
         DariusDailyReport report = findReport(reportId);
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Receipt as ReceiptIcon, Search, Printer, Eye, Clock } from 'lucide-react'
-import { receiptApi, Receipt } from '../../services/api'
+import { receiptApi, Receipt } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
 import { useAuthStore } from '../../stores/authStore'
@@ -11,11 +11,11 @@ import {
   type PendingReceiptDraft,
 } from '../../utils/localQueue'
 import { isElectron } from '../../utils/electron'
+import { logger } from '../../utils/logger';
 
 export default function ReceiptPage() {
   const worker = useAuthStore((state) => state.worker)
   const [receipts, setReceipts] = useState<Receipt[]>([])
-  const [filteredReceipts, setFilteredReceipts] = useState<Receipt[]>([])
   const [localDrafts, setLocalDrafts] = useState<PendingReceiptDraft[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -33,7 +33,7 @@ export default function ReceiptPage() {
       setLocalDrafts(drafts)
     } catch (err) {
       const errorMessage = getErrorMessage(err)
-      console.error('Failed to load receipts:', err)
+      logger.error('ReceiptPage', 'Failed to load receipts:', err)
       toast.error('Hiba történt a betöltés során', errorMessage)
     } finally {
       setLoading(false)
@@ -44,21 +44,14 @@ export default function ReceiptPage() {
     void loadData()
   }, [loadData])
 
-  useEffect(() => {
-    filterReceipts()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const filteredReceipts = useMemo(() => {
+    if (!searchTerm) return receipts
+    const term = searchTerm.toLowerCase()
+    return receipts.filter(r =>
+      r.receiptNumber?.toLowerCase().includes(term) ||
+      r.navReceiptNumber?.toLowerCase().includes(term)
+    )
   }, [receipts, searchTerm])
-
-  const filterReceipts = (): void => {
-    let filtered = receipts
-    if (searchTerm) {
-      filtered = filtered.filter(r =>
-        r.receiptNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.navReceiptNumber?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-    setFilteredReceipts(filtered)
-  }
 
   const handlePrint = async (id: string): Promise<void> => {
     try {
@@ -68,7 +61,7 @@ export default function ReceiptPage() {
     } catch (err) {
       const errorMessage = getErrorMessage(err)
       toast.error('Hiba történt a nyomtatás során', errorMessage)
-      console.error('Failed to print receipt:', err)
+      logger.error('ReceiptPage', 'Failed to print receipt:', err)
     }
   }
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Users, Plus, Save } from 'lucide-react'
-import { api } from '../../services/api'
+import { api } from '../../services/api/index'
+import { logger } from '../../utils/logger';
 
 interface Workgroup {
   id?: string
@@ -24,7 +25,7 @@ export default function WorkgroupManager() {
       const { data } = await api.get<Workgroup[]>('/rate-management/workgroups')
       setWorkgroups(data)
     } catch (err) {
-      console.error('Lekeres sikertelen:', err)
+      logger.error('WorkgroupManager', 'Lekeres sikertelen:', err)
     } finally {
       setLoading(false)
     }
@@ -41,7 +42,7 @@ export default function WorkgroupManager() {
       setEditing(null)
       fetchWorkgroups()
     } catch (err) {
-      console.error('Mentes sikertelen:', err)
+      logger.error('WorkgroupManager', 'Mentes sikertelen:', err)
     }
   }
 

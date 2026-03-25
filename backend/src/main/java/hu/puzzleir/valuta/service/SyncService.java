@@ -44,22 +44,22 @@ public class SyncService {
     private final IntegrationTransportProperties integrationTransportProperties;
     private final FileTransportService fileTransportService;
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SyncLogDto syncRatesDown(UUID branchId) {
         return performSync(branchId, SyncLog.SyncType.RATES, SyncLog.SyncDirection.DOWN);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SyncLogDto syncTransactionsUp(UUID branchId) {
         return performSync(branchId, SyncLog.SyncType.TRANSACTIONS, SyncLog.SyncDirection.UP);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SyncLogDto syncInventoryUp(UUID branchId) {
         return performSync(branchId, SyncLog.SyncType.INVENTORY, SyncLog.SyncDirection.UP);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SyncLogDto syncAll(UUID branchId) {
         return performSync(branchId, SyncLog.SyncType.FULL, SyncLog.SyncDirection.DOWN);
     }

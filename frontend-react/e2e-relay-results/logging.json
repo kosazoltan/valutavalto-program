@@ -1,0 +1,35 @@
+{
+  "route": "/logging",
+  "loaded": true,
+  "title": "RepZtecH Exclusive Best Change - Pénztári Rendszer",
+  "clicked": 3,
+  "disabled": 2,
+  "errors": 0,
+  "skipped": 1,
+  "buttons": [
+    {
+      "label": "Előző",
+      "state": "disabled"
+    },
+    {
+      "label": "Következő",
+      "state": "disabled"
+    },
+    {
+      "label": "[no-label]",
+      "state": "clicked"
+    },
+    {
+      "label": "Kijelentkezés",
+      "state": "skip"
+    },
+    {
+      "label": "[no-label]",
+      "state": "clicked"
+    },
+    {
+      "label": "Exportálás CSV",
+      "state": "clicked"
+    }
+  ]
+}

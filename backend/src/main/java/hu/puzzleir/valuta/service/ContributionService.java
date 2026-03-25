@@ -34,7 +34,7 @@ public class ContributionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Contribution not found: " + id));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public List<Contribution> calculate(UUID branchId, LocalDate periodStart, LocalDate periodEnd) {
         List<Contribution> contributions = new ArrayList<>();
 

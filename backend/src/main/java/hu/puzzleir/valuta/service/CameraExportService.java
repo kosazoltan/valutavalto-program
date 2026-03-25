@@ -47,7 +47,7 @@ public class CameraExportService {
 
     // === 1. KÉRELEM ===
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CameraExportRequest createExportRequest(UUID branchId, String cameraId,
                                                      LocalDateTime from, LocalDateTime to,
                                                      String reason, String referenceNumber) {
@@ -90,7 +90,7 @@ public class CameraExportService {
 
     // === 2. JÓVÁHAGYÁS (4-eyes) ===
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CameraExportRequest approveExport(UUID requestId) {
         CameraExportRequest request = findRequest(requestId);
 
@@ -118,7 +118,7 @@ public class CameraExportService {
         return request;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CameraExportRequest rejectExport(UUID requestId, String rejectionReason) {
         CameraExportRequest request = findRequest(requestId);
 
@@ -143,7 +143,7 @@ public class CameraExportService {
 
     // === 3. EXPORT VÉGREHAJTÁS ===
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CameraExportRequest executeExport(UUID requestId) {
         CameraExportRequest request = findRequest(requestId);
 

@@ -48,7 +48,7 @@ public class ExchangeRateMasterService {
      * Törzs árfolyam létrehozása (DRAFT állapotban).
      * A főértéktáros készíti az árfolyamot.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ExchangeRateMaster createMasterRate(CreateMasterRateRequest request) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Long workerId = SecurityUtils.getCurrentWorkerId();
@@ -103,7 +103,7 @@ public class ExchangeRateMasterService {
      * Törzs árfolyam jóváhagyása.
      * Csak DRAFT állapotú árfolyamot lehet jóváhagyni.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ExchangeRateMaster approveMasterRate(UUID masterRateId) {
         ExchangeRateMaster master = masterRepository.findById(masterRateId)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -135,7 +135,7 @@ public class ExchangeRateMasterService {
      * @param masterRateId a törzs árfolyam ID
      * @param workgroupId opcionális munkacsoport - ha null, akkor az összes aktív pénztárnak
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ExchangeRateMaster publishAndDistribute(UUID masterRateId, UUID workgroupId) {
         ExchangeRateMaster master = masterRepository.findById(masterRateId)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -227,7 +227,7 @@ public class ExchangeRateMasterService {
     /**
      * Törzs árfolyam visszavonása.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ExchangeRateMaster revokeMasterRate(UUID masterRateId) {
         ExchangeRateMaster master = masterRepository.findById(masterRateId)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -284,7 +284,7 @@ public class ExchangeRateMasterService {
     /**
      * Pénztár visszaigazolás (acknowledge) regisztrálása.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void acknowledgeDistribution(UUID distributionId) {
         ExchangeRateDistribution dist = distributionRepository.findById(distributionId)
                 .orElseThrow(() -> new ResourceNotFoundException(

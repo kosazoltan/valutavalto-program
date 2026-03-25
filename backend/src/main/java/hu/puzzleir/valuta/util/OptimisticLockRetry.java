@@ -1,5 +1,7 @@
 package hu.puzzleir.valuta.util;
 
+import hu.puzzleir.valuta.exception.BusinessException;
+
 import jakarta.persistence.OptimisticLockException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -40,7 +42,7 @@ public final class OptimisticLockRetry {
                     Thread.sleep(RETRY_DELAY_MS * attempt);
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
-                    throw new RuntimeException("Retry interrupted", ie);
+                    throw new BusinessException("Retry interrupted", "RETRY_INTERRUPTED");
                 }
             }
         }

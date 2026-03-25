@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { isElectron } from '@/utils/electron';
+import { logger } from '../../utils/logger';
 
 interface CameraRecorderProps {
   transactionId: string;
@@ -35,7 +36,7 @@ export default function CameraRecorder({ transactionId, onSaved }: CameraRecorde
         }
         setHasCamera(true);
       } catch (err) {
-        console.error('[CameraRecorder] Kamera hiba:', err);
+        logger.error('CameraRecorder', 'Kamera hiba:', err);
         setHasCamera(false);
       }
     };
@@ -74,7 +75,7 @@ export default function CameraRecorder({ transactionId, onSaved }: CameraRecorde
         setStatus('Felvétel mentve');
         onSaved(filepath);
       } catch (err) {
-        console.error('[CameraRecorder] Mentés hiba:', err);
+        logger.error('CameraRecorder', 'Mentés hiba:', err);
         setStatus('Mentés sikertelen');
       }
     };

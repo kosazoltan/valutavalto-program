@@ -36,7 +36,7 @@ public class DocumentStorageService {
                 .orElseThrow(() -> new ResourceNotFoundException("Dokumentum nem található: " + id));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Document upload(MultipartFile file, String entityType, UUID entityId) throws IOException {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Document doc = Document.builder()
@@ -52,7 +52,7 @@ public class DocumentStorageService {
         return repo.save(doc);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void delete(UUID id) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Document doc = repo.findByIdAndCompanyId(id, companyId)

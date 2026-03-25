@@ -1,0 +1,67 @@
+{
+  "route": "/settings",
+  "loaded": true,
+  "title": "RepZtecH Exclusive Best Change - Pénztári Rendszer",
+  "clicked": 13,
+  "disabled": 0,
+  "errors": 0,
+  "skipped": 1,
+  "buttons": [
+    {
+      "label": "[no-label]",
+      "state": "clicked"
+    },
+    {
+      "label": "Kijelentkezés",
+      "state": "skip"
+    },
+    {
+      "label": "[no-label]",
+      "state": "clicked"
+    },
+    {
+      "label": "Cégadatok",
+      "state": "clicked"
+    },
+    {
+      "label": "Felhasználók",
+      "state": "clicked"
+    },
+    {
+      "label": "Rendszerparaméterek",
+      "state": "clicked"
+    },
+    {
+      "label": "Jogosultságok",
+      "state": "clicked"
+    },
+    {
+      "label": "Szerepkörök",
+      "state": "clicked"
+    },
+    {
+      "label": "Nyomtatás",
+      "state": "clicked"
+    },
+    {
+      "label": "Adatbázis",
+      "state": "clicked"
+    },
+    {
+      "label": "Értesítések",
+      "state": "clicked"
+    },
+    {
+      "label": "Biztonság",
+      "state": "clicked"
+    },
+    {
+      "label": "Megjelenés",
+      "state": "clicked"
+    },
+    {
+      "label": "Mentés",
+      "state": "clicked"
+    }
+  ]
+}

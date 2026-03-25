@@ -1,38 +1,26 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.CashBalance;
-import hu.puzzleir.valuta.entity.Currency;
-import hu.puzzleir.valuta.entity.DailySession;
 import hu.puzzleir.valuta.entity.Denomination;
-import hu.puzzleir.valuta.entity.MonthlyClosing;
 import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.entity.TransactionType;
-import hu.puzzleir.valuta.entity.Transfer;
-import hu.puzzleir.valuta.entity.Transfer.TransferStatus;
-import hu.puzzleir.valuta.entity.Worker;
-import hu.puzzleir.valuta.entity.Branch;
-import hu.puzzleir.valuta.repository.*;
-import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
- * Riport szolgĂ„â€šĂ‹â€ˇltatĂ„â€šĂ‹â€ˇs.
+ * Riport szolgaltatas — Facade.
  *
- * Legacy: Napi zĂ„â€šĂ‹â€ˇrĂ„â€šĂ‹â€ˇs riportok, forgalmi kimutatĂ„â€šĂ‹â€ˇsok
- * - Napi forgalmi Ă„â€šĂ‚Â¶sszesĂ„â€šĂ‚Â­tĂ„Ä…Ă˘â‚¬Â
- * - ValutĂ„â€šĂ‹â€ˇnkĂ„â€šĂ‚Â©nti forgalom
- * - PĂ„â€šĂ‚Â©nztĂ„â€šĂ‹â€ˇros teljesĂ„â€šĂ‚Â­tmĂ„â€šĂ‚Â©ny
- * - IdĂ„Ä…Ă˘â‚¬Âszaki kimutatĂ„â€šĂ‹â€ˇsok
+ * Delegál a specializált generátorokra:
+ * - DailyReportGenerator: napi záras, kassza állapot
+ * - MonthlyReportGenerator: havi forgalom, időszaki, kezelési díj
+ * - NbReportGenerator: NAV/MNB riportok, pénztáros teljesítmény, átadás-átvétel
  */
 @Service
 @RequiredArgsConstructor
@@ -40,495 +28,54 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ReportService {
 
-    private final TransactionRepository transactionRepository;
-    private final DailySessionRepository dailySessionRepository;
-    private final CashBalanceRepository cashBalanceRepository;
-    private final DenominationRepository denominationRepository;
-    private final CurrencyRepository currencyRepository;
-    private final WorkerRepository workerRepository;
-    private final TransferRepository transferRepository;
-    private final MonthlyClosingRepository monthlyClosingRepository;
-    private final BranchRepository branchRepository;
+    private final DailyReportGenerator dailyReportGenerator;
+    private final MonthlyReportGenerator monthlyReportGenerator;
+    private final NbReportGenerator nbReportGenerator;
 
-    /**
-     * Napi zĂ„â€šĂ‹â€ˇrĂ„â€šĂ‹â€ˇs riport
-     *
-     * Legacy: NAPZAR - Ă„â€šĂ‚Â¶sszesĂ„â€šĂ‚Â­tĂ„Ä…Ă˘â‚¬Â riport nyomtatĂ„â€šĂ‹â€ˇshoz
-     */
+    // ============ DAILY REPORTS ============
+
     public DailyClosingReport generateDailyClosingReport(LocalDate date) {
-        UUID companyId = SecurityUtils.getCurrentCompanyId();
-        UUID branchId = SecurityUtils.getCurrentBranchId();
-
-        // Session adatok
-        DailySession session = dailySessionRepository.findByBranchIdAndSessionDate(branchId, date)
-                .orElse(null);
-
-        // Napi tranzakciĂ„â€šÄąâ€šk
-        List<Transaction> transactions = transactionRepository.findByBranchAndDate(branchId, date);
-
-        // ValutĂ„â€šĂ‹â€ˇnkĂ„â€šĂ‚Â©nti bontĂ„â€šĂ‹â€ˇs
-        Map<String, CurrencyTurnover> currencyTurnovers = calculateCurrencyTurnovers(transactions);
-
-        // Kassza egyenlegek
-        List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
-
-        // CĂ„â€šĂ‚Â­mletezĂ„â€šĂ‚Â©s (HUF)
-        Currency huf = currencyRepository.findByCode("HUF").orElse(null);
-        List<Denomination> hufDenominations = huf != null
-                ? denominationRepository.findByBranchAndCurrency(branchId, huf.getId())
-                : Collections.emptyList();
-
-        BigDecimal denominatedTotal = hufDenominations.stream()
-                .map(Denomination::getTotalValue)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        // Ă„â€šĂ˘â‚¬â€śsszesĂ„â€šĂ‚Â­tĂ„â€šĂ‚Â©s
-        BigDecimal totalBuy = transactions.stream()
-                .filter(t -> t.getTransactionType() == TransactionType.BUY && t.isActive())
-                .map(Transaction::getHufAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        BigDecimal totalSell = transactions.stream()
-                .filter(t -> t.getTransactionType() == TransactionType.SELL && t.isActive())
-                .map(Transaction::getHufAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        BigDecimal totalFees = transactions.stream()
-                .filter(Transaction::isActive)
-                .map(Transaction::getHandlingFee)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        long reversalCount = transactions.stream()
-                .filter(t -> t.getTransactionType() == TransactionType.REVERSAL)
-                .count();
-
-        return DailyClosingReport.builder()
-                .reportDate(date)
-                .generatedAt(LocalDateTime.now())
-                .sessionId(session != null ? session.getId() : null)
-                .sessionStatus(session != null ? session.getStatus().name() : "NO_SESSION")
-                .openingBalanceHuf(session != null ? session.getOpeningBalanceHuf() : BigDecimal.ZERO)
-                .closingBalanceHuf(session != null ? session.getClosingBalanceHuf() : null)
-                .transactionCount(transactions.size())
-                .buyCount((int) transactions.stream().filter(t -> t.getTransactionType() == TransactionType.BUY).count())
-                .sellCount((int) transactions.stream().filter(t -> t.getTransactionType() == TransactionType.SELL).count())
-                .reversalCount((int) reversalCount)
-                .totalBuyHuf(totalBuy)
-                .totalSellHuf(totalSell)
-                .netTurnoverHuf(totalSell.subtract(totalBuy))
-                .totalHandlingFees(totalFees)
-                .currencyTurnovers(new ArrayList<>(currencyTurnovers.values()))
-                .cashBalances(balances)
-                .hufDenominations(hufDenominations)
-                .denominatedTotalHuf(denominatedTotal)
-                .build();
+        return dailyReportGenerator.generateDailyClosingReport(date);
     }
 
-    /**
-     * IdĂ„Ä…Ă˘â‚¬Âszaki forgalmi kimutatĂ„â€šĂ‹â€ˇs
-     *
-     * Legacy: IdĂ„Ä…Ă˘â‚¬Âszaki riportok
-     */
-    public PeriodReport generatePeriodReport(LocalDate startDate, LocalDate endDate) {
-        UUID companyId = SecurityUtils.getCurrentCompanyId();
-
-        List<DailySession> sessions = dailySessionRepository.findByDateRange(companyId, startDate, endDate);
-
-        BigDecimal totalBuy = BigDecimal.ZERO;
-        BigDecimal totalSell = BigDecimal.ZERO;
-        BigDecimal totalFees = BigDecimal.ZERO;
-        int totalTransactions = 0;
-        int totalReversals = 0;
-
-        List<DailySummary> dailySummaries = new ArrayList<>();
-
-        for (DailySession session : sessions) {
-            totalBuy = totalBuy.add(session.getBuyTurnoverHuf() != null ? session.getBuyTurnoverHuf() : BigDecimal.ZERO);
-            totalSell = totalSell.add(session.getSellTurnoverHuf() != null ? session.getSellTurnoverHuf() : BigDecimal.ZERO);
-            totalFees = totalFees.add(session.getHandlingFeeTotal() != null ? session.getHandlingFeeTotal() : BigDecimal.ZERO);
-            totalTransactions += session.getTransactionCount() != null ? session.getTransactionCount() : 0;
-            totalReversals += session.getReversalCount() != null ? session.getReversalCount() : 0;
-
-            dailySummaries.add(DailySummary.builder()
-                    .date(session.getSessionDate())
-                    .branchName(session.getBranch().getName())
-                    .transactionCount(session.getTransactionCount())
-                    .buyTurnover(session.getBuyTurnoverHuf())
-                    .sellTurnover(session.getSellTurnoverHuf())
-                    .netTurnover(session.getNetTurnover())
-                    .handlingFees(session.getHandlingFeeTotal())
-                    .build());
-        }
-
-        return PeriodReport.builder()
-                .startDate(startDate)
-                .endDate(endDate)
-                .generatedAt(LocalDateTime.now())
-                .totalDays(sessions.size())
-                .totalTransactions(totalTransactions)
-                .totalReversals(totalReversals)
-                .totalBuyHuf(totalBuy)
-                .totalSellHuf(totalSell)
-                .netTurnoverHuf(totalSell.subtract(totalBuy))
-                .totalHandlingFees(totalFees)
-                .averageDailyTurnover(sessions.isEmpty() ? BigDecimal.ZERO :
-                        totalSell.add(totalBuy).divide(BigDecimal.valueOf(sessions.size()), 0, RoundingMode.HALF_UP))
-                .dailySummaries(dailySummaries)
-                .build();
-    }
-
-    /**
-     * PĂ„â€šĂ‚Â©nztĂ„â€šĂ‹â€ˇros teljesĂ„â€šĂ‚Â­tmĂ„â€šĂ‚Â©ny riport
-     */
-    public WorkerPerformanceReport generateWorkerPerformanceReport(Long workerId, LocalDate startDate, LocalDate endDate) {
-        Worker worker = workerRepository.findById(workerId)
-                .orElseThrow(() -> new RuntimeException("PĂ„â€šĂ‚Â©nztĂ„â€šĂ‹â€ˇros nem talĂ„â€šĂ‹â€ˇlhatĂ„â€šÄąâ€š"));
-
-        // P2-14: egyetlen date-range query az N+1 while-loop helyett
-        List<Transaction> transactions = transactionRepository
-                .findByWorkerIdAndTransactionDateBetween(workerId, startDate, endDate);
-
-        BigDecimal totalBuy = transactions.stream()
-                .filter(t -> t.getTransactionType() == TransactionType.BUY && t.isActive())
-                .map(Transaction::getHufAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        BigDecimal totalSell = transactions.stream()
-                .filter(t -> t.getTransactionType() == TransactionType.SELL && t.isActive())
-                .map(Transaction::getHufAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        long reversals = transactions.stream()
-                .filter(t -> t.getTransactionType() == TransactionType.REVERSAL)
-                .count();
-
-        return WorkerPerformanceReport.builder()
-                .workerId(workerId)
-                .workerCode(worker.getCode())
-                .workerName(worker.getName())
-                .startDate(startDate)
-                .endDate(endDate)
-                .generatedAt(LocalDateTime.now())
-                .totalTransactions(transactions.size())
-                .buyTransactions((int) transactions.stream().filter(t -> t.getTransactionType() == TransactionType.BUY).count())
-                .sellTransactions((int) transactions.stream().filter(t -> t.getTransactionType() == TransactionType.SELL).count())
-                .reversalCount((int) reversals)
-                .totalBuyHuf(totalBuy)
-                .totalSellHuf(totalSell)
-                .totalTurnoverHuf(totalBuy.add(totalSell))
-                .averageTransactionValue(transactions.isEmpty() ? BigDecimal.ZERO :
-                        totalBuy.add(totalSell).divide(BigDecimal.valueOf(transactions.size()), 0, RoundingMode.HALF_UP))
-                .build();
-    }
-
-    /**
-     * ValutĂ„â€šĂ‹â€ˇnkĂ„â€šĂ‚Â©nti forgalmi kimutatĂ„â€šĂ‹â€ˇs
-     */
-    public CurrencyReport generateCurrencyReport(Long currencyId, LocalDate startDate, LocalDate endDate) {
-        UUID companyId = SecurityUtils.getCurrentCompanyId();
-
-        Currency currency = currencyRepository.findById(currencyId)
-                .orElseThrow(() -> new RuntimeException("Valuta nem talĂ„â€šĂ‹â€ˇlhatĂ„â€šÄąâ€š"));
-
-        List<Transaction> buyTransactions = transactionRepository.findByTypeAndDateRange(
-                companyId, TransactionType.BUY, startDate, endDate).stream()
-                .filter(t -> t.getCurrency().getId().equals(currencyId))
-                .collect(Collectors.toList());
-
-        List<Transaction> sellTransactions = transactionRepository.findByTypeAndDateRange(
-                companyId, TransactionType.SELL, startDate, endDate).stream()
-                .filter(t -> t.getCurrency().getId().equals(currencyId))
-                .collect(Collectors.toList());
-
-        BigDecimal totalBoughtAmount = buyTransactions.stream()
-                .filter(Transaction::isActive)
-                .map(Transaction::getCurrencyAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        BigDecimal totalSoldAmount = sellTransactions.stream()
-                .filter(Transaction::isActive)
-                .map(Transaction::getCurrencyAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        BigDecimal totalBoughtHuf = buyTransactions.stream()
-                .filter(Transaction::isActive)
-                .map(Transaction::getHufAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        BigDecimal totalSoldHuf = sellTransactions.stream()
-                .filter(Transaction::isActive)
-                .map(Transaction::getHufAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        BigDecimal avgBuyRate = totalBoughtAmount.compareTo(BigDecimal.ZERO) > 0
-                ? totalBoughtHuf.divide(totalBoughtAmount, 4, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO;
-
-        BigDecimal avgSellRate = totalSoldAmount.compareTo(BigDecimal.ZERO) > 0
-                ? totalSoldHuf.divide(totalSoldAmount, 4, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO;
-
-        return CurrencyReport.builder()
-                .currencyId(currencyId)
-                .currencyCode(currency.getCode())
-                .currencyName(currency.getName())
-                .startDate(startDate)
-                .endDate(endDate)
-                .generatedAt(LocalDateTime.now())
-                .buyTransactionCount(buyTransactions.size())
-                .sellTransactionCount(sellTransactions.size())
-                .totalBoughtAmount(totalBoughtAmount)
-                .totalSoldAmount(totalSoldAmount)
-                .netAmount(totalBoughtAmount.subtract(totalSoldAmount))
-                .totalBoughtHuf(totalBoughtHuf)
-                .totalSoldHuf(totalSoldHuf)
-                .netHuf(totalSoldHuf.subtract(totalBoughtHuf))
-                .averageBuyRate(avgBuyRate)
-                .averageSellRate(avgSellRate)
-                .spread(avgSellRate.subtract(avgBuyRate))
-                .build();
-    }
-
-    /**
-     * Kassza Ă„â€šĂ‹â€ˇllapot riport (pillanat Ă„â€šĂ‹â€ˇllĂ„â€šĂ‹â€ˇs)
-     *
-     * Legacy: PILLALL - pillanat Ă„â€šĂ‹â€ˇllapot
-     */
     public CashStatusReport generateCashStatusReport() {
-        UUID branchId = SecurityUtils.getCurrentBranchId();
-
-        List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
-        List<Denomination> denominations = denominationRepository.findByBranchId(branchId);
-
-        BigDecimal totalHuf = balances.stream()
-                .filter(b -> "HUF".equals(b.getCurrency().getCode()))
-                .map(CashBalance::getCurrentBalance)
-                .findFirst()
-                .orElse(BigDecimal.ZERO);
-
-        // Ă„â€šĂ˘â‚¬â€śsszes egyenleg HUF-ra Ă„â€šĂ‹â€ˇtszĂ„â€šĂ‹â€ˇmĂ„â€šĂ‚Â­tva (egyszerĂ„Ä…Ă‚Â±sĂ„â€šĂ‚Â­tett - csak HUF-ot mutatjuk)
-        int lowBalanceAlerts = (int) balances.stream().filter(CashBalance::isLowBalance).count();
-        int highBalanceAlerts = (int) balances.stream().filter(CashBalance::isHighBalance).count();
-        int lowDenominationAlerts = (int) denominations.stream().filter(Denomination::isLowStock).count();
-
-        return CashStatusReport.builder()
-                .generatedAt(LocalDateTime.now())
-                .totalCurrencies(balances.size())
-                .hufBalance(totalHuf)
-                .lowBalanceAlerts(lowBalanceAlerts)
-                .highBalanceAlerts(highBalanceAlerts)
-                .lowDenominationAlerts(lowDenominationAlerts)
-                .balances(balances)
-                .build();
+        return dailyReportGenerator.generateCashStatusReport();
     }
 
-    /**
-     * Havi forgalmi kimutatĂ„â€šĂ‹â€ˇs
-     *
-     * Legacy: HAVIFORG - havi forgalmi Ă„â€šĂ‚Â¶sszesĂ„â€šĂ‚Â­tĂ„Ä…Ă˘â‚¬Â
-     */
+    // ============ MONTHLY/PERIOD REPORTS ============
+
+    public PeriodReport generatePeriodReport(LocalDate startDate, LocalDate endDate) {
+        return monthlyReportGenerator.generatePeriodReport(startDate, endDate);
+    }
+
     public MonthlyTurnoverReport generateMonthlyTurnoverReport(Integer year, Integer month) {
-        UUID companyId = SecurityUtils.getCurrentCompanyId();
-
-        // Havi zĂ„â€šĂ‹â€ˇrĂ„â€šĂ‹â€ˇsok lekĂ„â€šĂ‚Â©rĂ„â€šĂ‚Â©se
-        List<MonthlyClosing> closings = monthlyClosingRepository
-                .findByCompanyIdAndClosingYearOrderByClosingMonthDesc(companyId, year).stream()
-                .filter(c -> c.getClosingMonth().equals(month))
-                .collect(Collectors.toList());
-
-        BigDecimal totalBuyHuf = BigDecimal.ZERO;
-        BigDecimal totalSellHuf = BigDecimal.ZERO;
-        BigDecimal totalHandlingFees = BigDecimal.ZERO;
-        int totalTransactions = 0;
-        int totalBuyCount = 0;
-        int totalSellCount = 0;
-        int totalReversals = 0;
-
-        // P2-14: iroda neveket előzetesen betöltjük (1 lekérdezés a ciklus helyett)
-        Set<UUID> branchIds = closings.stream().map(MonthlyClosing::getBranchId).collect(Collectors.toSet());
-        Map<UUID, String> branchNames = branchRepository.findAllById(branchIds).stream()
-                .collect(Collectors.toMap(Branch::getId, Branch::getName));
-
-        List<BranchMonthlyData> branchData = new ArrayList<>();
-
-        for (MonthlyClosing closing : closings) {
-            totalBuyHuf = totalBuyHuf.add(closing.getTotalBuyHuf() != null ? closing.getTotalBuyHuf() : BigDecimal.ZERO);
-            totalSellHuf = totalSellHuf.add(closing.getTotalSellHuf() != null ? closing.getTotalSellHuf() : BigDecimal.ZERO);
-            totalHandlingFees = totalHandlingFees.add(closing.getTotalHandlingFees() != null ? closing.getTotalHandlingFees() : BigDecimal.ZERO);
-            totalTransactions += closing.getTotalTransactionCount() != null ? closing.getTotalTransactionCount() : 0;
-            totalBuyCount += closing.getBuyCount() != null ? closing.getBuyCount() : 0;
-            totalSellCount += closing.getSellCount() != null ? closing.getSellCount() : 0;
-            totalReversals += closing.getReversalCount() != null ? closing.getReversalCount() : 0;
-
-            String branchName = branchNames.getOrDefault(closing.getBranchId(),
-                    "Iroda-" + closing.getBranchId().toString().substring(0, 8));
-
-            branchData.add(BranchMonthlyData.builder()
-                    .branchId(closing.getBranchId())
-                    .branchName(branchName)
-                    .transactionCount(closing.getTotalTransactionCount())
-                    .buyCount(closing.getBuyCount())
-                    .sellCount(closing.getSellCount())
-                    .reversalCount(closing.getReversalCount())
-                    .buyHuf(closing.getTotalBuyHuf())
-                    .sellHuf(closing.getTotalSellHuf())
-                    .netResult(closing.getTotalSellHuf().subtract(closing.getTotalBuyHuf()))
-                    .handlingFees(closing.getTotalHandlingFees())
-                    .finalized(("CLOSED".equals(closing.getStatus())))
-                    .build());
-        }
-
-        return MonthlyTurnoverReport.builder()
-                .year(year)
-                .month(month)
-                .generatedAt(LocalDateTime.now())
-                .branchCount(closings.size())
-                .totalTransactions(totalTransactions)
-                .totalBuyCount(totalBuyCount)
-                .totalSellCount(totalSellCount)
-                .totalReversals(totalReversals)
-                .totalBuyHuf(totalBuyHuf)
-                .totalSellHuf(totalSellHuf)
-                .netTurnoverHuf(totalSellHuf.subtract(totalBuyHuf))
-                .totalHandlingFees(totalHandlingFees)
-                .branchData(branchData)
-                .build();
+        return monthlyReportGenerator.generateMonthlyTurnoverReport(year, month);
     }
 
-    /**
-     * Ă„â€šĂ‚ÂtadĂ„â€šĂ‹â€ˇs-Ă„â€šĂ‹â€ˇtvĂ„â€šĂ‚Â©tel Ă„â€šĂ‚Â¶sszesĂ„â€šĂ‚Â­tĂ„Ä…Ă˘â‚¬Â riport
-     *
-     * Legacy: ATADATVET - Ă„â€šĂ‹â€ˇtadĂ„â€šĂ‹â€ˇs-Ă„â€šĂ‹â€ˇtvĂ„â€šĂ‚Â©tel kimutatĂ„â€šĂ‹â€ˇs
-     */
-    public TransferReport generateTransferReport(LocalDate startDate, LocalDate endDate) {
-        UUID companyId = SecurityUtils.getCurrentCompanyId();
-        UUID branchId = SecurityUtils.getCurrentBranchId();
-
-        // KimenĂ„Ä…Ă˘â‚¬Â Ă„â€šĂ‹â€ˇtadĂ„â€šĂ‹â€ˇsok
-        List<Transfer> outgoing = transferRepository.findByFromBranchIdOrderByCreatedAtDesc(branchId)
-                .stream()
-                .filter(t -> !t.getTransferDate().isBefore(startDate) && !t.getTransferDate().isAfter(endDate))
-                .collect(Collectors.toList());
-
-        // BejĂ„â€šĂ‚Â¶vĂ„Ä…Ă˘â‚¬Â Ă„â€šĂ‹â€ˇtadĂ„â€šĂ‹â€ˇsok
-        List<Transfer> incoming = transferRepository.findByToBranchIdOrderByCreatedAtDesc(branchId)
-                .stream()
-                .filter(t -> !t.getTransferDate().isBefore(startDate) && !t.getTransferDate().isAfter(endDate))
-                .collect(Collectors.toList());
-
-        // KimenĂ„Ä…Ă˘â‚¬Â Ă„â€šĂ‚Â¶sszesĂ„â€šĂ‚Â­tĂ„â€šĂ‚Â©s
-        BigDecimal totalOutgoingHuf = outgoing.stream()
-                .filter(t -> t.getStatus() != TransferStatus.CANCELLED)
-                .map(t -> t.getHufValue() != null ? t.getHufValue() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        int outgoingCompleted = (int) outgoing.stream().filter(t -> t.getStatus() == TransferStatus.COMPLETED).count();
-        int outgoingPending = (int) outgoing.stream().filter(t -> t.getStatus() == TransferStatus.PENDING).count();
-
-        // BejĂ„â€šĂ‚Â¶vĂ„Ä…Ă˘â‚¬Â Ă„â€šĂ‚Â¶sszesĂ„â€šĂ‚Â­tĂ„â€šĂ‚Â©s
-        BigDecimal totalIncomingHuf = incoming.stream()
-                .filter(t -> t.getStatus() == TransferStatus.COMPLETED)
-                .map(t -> t.getHufValue() != null ? t.getHufValue() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        int incomingCompleted = (int) incoming.stream().filter(t -> t.getStatus() == TransferStatus.COMPLETED).count();
-        int incomingPending = (int) incoming.stream().filter(t -> t.getStatus() == TransferStatus.PENDING).count();
-
-        // EltĂ„â€šĂ‚Â©rĂ„â€šĂ‚Â©sek
-        BigDecimal totalDifference = incoming.stream()
-                .filter(t -> t.getStatus() == TransferStatus.COMPLETED && t.getDifference() != null)
-                .map(Transfer::getDifference)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        List<TransferSummaryItem> outgoingItems = outgoing.stream()
-                .map(t -> TransferSummaryItem.builder()
-                        .transferNumber(t.getTransferNumber())
-                        .date(t.getTransferDate())
-                        .targetBranchName(t.getToBranch().getName())
-                        .currencyCode(t.getCurrency().getCode())
-                        .amount(t.getAmount())
-                        .hufValue(t.getHufValue())
-                        .status(t.getStatus().name())
-                        .build())
-                .collect(Collectors.toList());
-
-        List<TransferSummaryItem> incomingItems = incoming.stream()
-                .map(t -> TransferSummaryItem.builder()
-                        .transferNumber(t.getTransferNumber())
-                        .date(t.getTransferDate())
-                        .targetBranchName(t.getFromBranch().getName())
-                        .currencyCode(t.getCurrency().getCode())
-                        .amount(t.getReceivedAmount() != null ? t.getReceivedAmount() : t.getAmount())
-                        .hufValue(t.getHufValue())
-                        .status(t.getStatus().name())
-                        .difference(t.getDifference())
-                        .build())
-                .collect(Collectors.toList());
-
-        return TransferReport.builder()
-                .startDate(startDate)
-                .endDate(endDate)
-                .generatedAt(LocalDateTime.now())
-                .outgoingCount(outgoing.size())
-                .outgoingCompleted(outgoingCompleted)
-                .outgoingPending(outgoingPending)
-                .totalOutgoingHuf(totalOutgoingHuf)
-                .incomingCount(incoming.size())
-                .incomingCompleted(incomingCompleted)
-                .incomingPending(incomingPending)
-                .totalIncomingHuf(totalIncomingHuf)
-                .netTransferHuf(totalIncomingHuf.subtract(totalOutgoingHuf))
-                .totalDifference(totalDifference)
-                .outgoingItems(outgoingItems)
-                .incomingItems(incomingItems)
-                .build();
-    }
-
-    /**
-     * KezelĂ„â€šĂ‚Â©si dĂ„â€šĂ‚Â­j Ă„â€šĂ‚Â¶sszesĂ„â€šĂ‚Â­tĂ„Ä…Ă˘â‚¬Â riport
-     *
-     * Legacy: KezelĂ„â€šĂ‚Â©si kĂ„â€šĂ‚Â¶ltsĂ„â€šĂ‚Â©g jelentĂ„â€šĂ‚Â©s
-     */
     public HandlingFeeReport generateHandlingFeeReport(LocalDate startDate, LocalDate endDate) {
-        UUID companyId = SecurityUtils.getCurrentCompanyId();
-        UUID branchId = SecurityUtils.getCurrentBranchId();
-
-        // P2-14: GROUP BY aggregált lekérdezés az N+1 napi ciklus helyett
-        List<Object[]> rows = transactionRepository
-                .findHandlingFeeSummaryByBranchAndDateRange(branchId, startDate, endDate);
-
-        BigDecimal totalFees = BigDecimal.ZERO;
-        long transactionsWithFee = 0;
-        Map<String, BigDecimal> feesByCurrency = new LinkedHashMap<>();
-
-        for (Object[] row : rows) {
-            // row: [transactionDate, currencyCode, SUM(handlingFee), COUNT(t)]
-            BigDecimal feeSum = row[2] != null ? (BigDecimal) row[2] : BigDecimal.ZERO;
-            long count = row[3] != null ? ((Number) row[3]).longValue() : 0L;
-            String currencyCode = (String) row[1];
-
-            totalFees = totalFees.add(feeSum);
-            transactionsWithFee += count;
-            feesByCurrency.merge(currencyCode, feeSum, BigDecimal::add);
-        }
-
-        List<CurrencyFeeData> currencyFeeList = feesByCurrency.entrySet().stream()
-                .map(e -> new CurrencyFeeData(e.getKey(), e.getValue()))
-                .collect(Collectors.toList());
-
-        return HandlingFeeReport.builder()
-                .startDate(startDate)
-                .endDate(endDate)
-                .generatedAt(LocalDateTime.now())
-                .totalHandlingFees(totalFees)
-                .transactionsWithFee((int) transactionsWithFee)
-                .feesByCurrency(currencyFeeList)
-                .build();
+        return monthlyReportGenerator.generateHandlingFeeReport(startDate, endDate);
     }
 
-    // ============ HELPER METHODS ============
+    // ============ NAV/MNB REPORTS ============
 
-    private Map<String, CurrencyTurnover> calculateCurrencyTurnovers(List<Transaction> transactions) {
+    public WorkerPerformanceReport generateWorkerPerformanceReport(Long workerId, LocalDate startDate, LocalDate endDate) {
+        return nbReportGenerator.generateWorkerPerformanceReport(workerId, startDate, endDate);
+    }
+
+    public CurrencyReport generateCurrencyReport(Long currencyId, LocalDate startDate, LocalDate endDate) {
+        return nbReportGenerator.generateCurrencyReport(currencyId, startDate, endDate);
+    }
+
+    public TransferReport generateTransferReport(LocalDate startDate, LocalDate endDate) {
+        return nbReportGenerator.generateTransferReport(startDate, endDate);
+    }
+
+    // ============ SHARED HELPER ============
+
+    /**
+     * Valutankenti forgalom szamitas (kozos helper).
+     */
+    static Map<String, CurrencyTurnover> calculateCurrencyTurnovers(List<Transaction> transactions) {
         Map<String, CurrencyTurnover> turnovers = new LinkedHashMap<>();
 
         for (Transaction t : transactions) {

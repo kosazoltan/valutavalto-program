@@ -104,7 +104,7 @@ public class NavClosingDiscrepancyService {
      * @param navAmount     NAV pénztárgépen mutatott összeg
      * @param justification indoklás (min 20 karakter)
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void approveDiscrepancy(UUID closingId, BigDecimal navAmount, String justification) {
         NavClosing closing = navClosingRepository.findById(closingId)
                 .orElseThrow(() -> new ResourceNotFoundException("NAV zárás nem található: " + closingId));

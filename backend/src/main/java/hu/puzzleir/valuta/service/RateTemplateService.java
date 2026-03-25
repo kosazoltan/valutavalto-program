@@ -43,7 +43,7 @@ public class RateTemplateService {
         return template;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public RateTemplate createTemplate(RateTemplate template) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Company company = companyRepository.findById(companyId)
@@ -58,7 +58,7 @@ public class RateTemplateService {
         return saved;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public RateTemplate updateTemplate(UUID id, RateTemplate update) {
         RateTemplate existing = getTemplate(id);
         if (existing.getStatus() != RateTemplate.RateTemplateStatus.DRAFT) {
@@ -82,7 +82,7 @@ public class RateTemplateService {
         return templateRepository.save(existing);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteTemplate(UUID id) {
         RateTemplate template = getTemplate(id);
         if (template.getStatus() == RateTemplate.RateTemplateStatus.PUBLISHED) {

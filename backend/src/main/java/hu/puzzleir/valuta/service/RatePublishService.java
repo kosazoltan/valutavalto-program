@@ -52,7 +52,7 @@ public class RatePublishService {
     /**
      * Publish approved rate templates for a workgroup.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public RatePublication publish(UUID workgroupId, List<UUID> templateIds, String notes) {
         RateWorkgroup workgroup = workgroupRepository.findById(workgroupId)
                 .orElseThrow(() -> new ValidationException("Munkacsoport nem található: " + workgroupId));

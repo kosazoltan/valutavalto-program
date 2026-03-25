@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { isElectron } from '@/utils/electron';
+import { logger } from '../../utils/logger';
 
 interface DocumentScannerProps {
   transactionId: string;
@@ -50,7 +51,7 @@ export default function DocumentScanner({ transactionId, onScanned }: DocumentSc
         }
         setHasCamera(true);
       } catch (err) {
-        console.error('[DocumentScanner] Kamera hiba:', err);
+        logger.error('DocumentScanner', 'Kamera hiba:', err);
         setHasCamera(false);
       }
     };
@@ -91,7 +92,7 @@ export default function DocumentScanner({ transactionId, onScanned }: DocumentSc
       onScanned(documentType, result.path);
       await loadDocuments();
     } catch (err) {
-      console.error('[DocumentScanner] Mentés hiba:', err);
+      logger.error('DocumentScanner', 'Mentés hiba:', err);
       setStatus('Mentés sikertelen');
     }
   }, [transactionId, documentType, onScanned, loadDocuments]);

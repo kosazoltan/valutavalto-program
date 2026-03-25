@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.service;
 import hu.puzzleir.valuta.config.IntegrationTransportProperties;
 import hu.puzzleir.valuta.dto.eveningclosing.*;
 import hu.puzzleir.valuta.entity.*;
+import hu.puzzleir.valuta.exception.BusinessException;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -130,7 +131,7 @@ public class EveningClosingService {
      * @param pkg Az előkészített adatcsomag
      * @return Küldés eredménye
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public DataSyncResult sendToHeadquarters(DailyDataPackage pkg) {
         log.info("Adatcsomag küldése a központnak: branchId={}, datum={}", pkg.getBranchId(), pkg.getDate());
 
@@ -206,7 +207,7 @@ public class EveningClosingService {
                             pkg.getBranchId(), pkg.getDate(), response.getStatusCode());
                     return DataSyncResult.success(pkg.getChecksum());
                 } else {
-                    throw new RuntimeException("Sikertelen HTTP válasz: " + response.getStatusCode());
+                    throw new BusinessException("Sikertelen HTTP válasz: " + response.getStatusCode(), "HTTP_CALL_FAILED");
                 }
 
             } catch (Exception e) {

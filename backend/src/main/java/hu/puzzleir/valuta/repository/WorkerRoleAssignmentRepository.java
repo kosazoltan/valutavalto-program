@@ -19,7 +19,7 @@ public interface WorkerRoleAssignmentRepository extends JpaRepository<WorkerRole
 
     boolean existsByWorkerIdAndRoleDefCode(Long workerId, String roleCode);
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     void deleteByWorkerIdAndRoleDefCode(Long workerId, String roleCode);
 
     long countByWorkerId(Long workerId);

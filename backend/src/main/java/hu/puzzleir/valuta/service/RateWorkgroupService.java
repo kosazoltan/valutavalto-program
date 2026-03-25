@@ -42,7 +42,7 @@ public class RateWorkgroupService {
         return wg;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public RateWorkgroup create(RateWorkgroup workgroup) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         if (workgroupRepository.findByCode(workgroup.getCode()).isPresent()) {
@@ -56,7 +56,7 @@ public class RateWorkgroupService {
         return saved;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public RateWorkgroup update(UUID id, RateWorkgroup update) {
         RateWorkgroup existing = getById(id);
         existing.setName(update.getName());

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { isElectron } from '../utils/electron';
-import { api } from '../services/api';
+import { api } from '../services/api/index';
 
 const HEALTH_CHECK_INTERVAL_MS = 30_000;
 

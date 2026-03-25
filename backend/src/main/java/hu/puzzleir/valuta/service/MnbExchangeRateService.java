@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.exception.BusinessException;
 import hu.puzzleir.valuta.entity.MnbExchangeRateCache;
 import hu.puzzleir.valuta.repository.MnbExchangeRateCacheRepository;
 import lombok.RequiredArgsConstructor;
@@ -60,7 +61,7 @@ public class MnbExchangeRateService {
      * @param date a kért dátum
      * @return Map currencyCode → MnbExchangeRateCache
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Map<String, MnbExchangeRateCache> getRatesForDate(LocalDate date) {
         // 1. Próbálunk pontos dátumra cache-ből kiszolgálni
         List<MnbExchangeRateCache> cached = cacheRepository.findByRateDate(date);
@@ -94,7 +95,7 @@ public class MnbExchangeRateService {
     /**
      * Aktuális napi MNB árfolyamok lekérése.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Map<String, MnbExchangeRateCache> getCurrentRates() {
         return getRatesForDate(LocalDate.now());
     }
@@ -102,7 +103,7 @@ public class MnbExchangeRateService {
     /**
      * Egyetlen valuta MNB árfolyamának lekérése adott napra.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Optional<MnbExchangeRateCache> getRateForCurrency(String currencyCode, LocalDate date) {
         Map<String, MnbExchangeRateCache> rates = getRatesForDate(date);
         return Optional.ofNullable(rates.get(currencyCode));
@@ -136,7 +137,7 @@ public class MnbExchangeRateService {
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() != 200) {
-            throw new RuntimeException("MNB SOAP HTTP error: " + response.statusCode());
+            throw new BusinessException("MNB SOAP HTTP error: " + response.statusCode(), "MNB_SOAP_ERROR");
         }
 
         // SOAP válasz feldolgozása

@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Settings, Plus, Edit, Trash2, Search, X, Save } from 'lucide-react'
-import { systemParameterApi, SystemParameter, SystemParameterCreateRequest } from '../../services/api'
+import { systemParameterApi, SystemParameter, SystemParameterCreateRequest } from '../../services/api/index'
+import { logger } from '../../utils/logger';
 
 export default function SystemParameterPage() {
   const [parameters, setParameters] = useState<SystemParameter[]>([])
-  const [filteredParameters, setFilteredParameters] = useState<SystemParameter[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -23,14 +23,25 @@ export default function SystemParameterPage() {
   const categories = Array.from(new Set(parameters.map(p => p.category))).sort()
   const parameterTypes = ['STRING', 'NUMBER', 'BOOLEAN', 'DATE', 'JSON']
 
+  const filteredParameters = useMemo(() => {
+    let filtered = parameters
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase()
+      filtered = filtered.filter(p =>
+        p.parameterKey.toLowerCase().includes(term) ||
+        p.parameterValue.toLowerCase().includes(term) ||
+        p.description?.toLowerCase().includes(term)
+      )
+    }
+    if (selectedCategory) {
+      filtered = filtered.filter(p => p.category === selectedCategory)
+    }
+    return filtered
+  }, [parameters, searchTerm, selectedCategory])
+
   useEffect(() => {
     void loadParameters()
   }, [])
-
-  useEffect(() => {
-    filterParameters()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [parameters, searchTerm, selectedCategory])
 
   const loadParameters = async () => {
     try {
@@ -39,29 +50,11 @@ export default function SystemParameterPage() {
       const data = await systemParameterApi.list()
       setParameters(data)
     } catch (err) {
-      console.error('Paraméterek betöltési hiba:', err)
+      logger.error('SystemParameterPage', 'Paraméterek betöltési hiba:', err)
       setError('Hiba a paraméterek betöltésekor')
     } finally {
       setLoading(false)
     }
-  }
-
-  const filterParameters = () => {
-    let filtered = parameters
-
-    if (searchTerm) {
-      filtered = filtered.filter(p =>
-        p.parameterKey.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.parameterValue.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.description?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-
-    if (selectedCategory) {
-      filtered = filtered.filter(p => p.category === selectedCategory)
-    }
-
-    setFilteredParameters(filtered)
   }
 
   const handleCreate = () => {
@@ -102,7 +95,7 @@ export default function SystemParameterPage() {
       setShowForm(false)
       setEditingParameter(null)
     } catch (err) {
-      console.error('Mentési hiba:', err)
+      logger.error('SystemParameterPage', 'Mentési hiba:', err)
       setError('Hiba történt a mentés során')
     }
   }
@@ -117,7 +110,7 @@ export default function SystemParameterPage() {
       await systemParameterApi.delete(id)
       await loadParameters()
     } catch (err) {
-      console.error('Törlési hiba:', err)
+      logger.error('SystemParameterPage', 'Törlési hiba:', err)
       setError('Hiba történt a törlés során')
     }
   }
@@ -128,7 +121,7 @@ export default function SystemParameterPage() {
       await systemParameterApi.toggleActive(id)
       await loadParameters()
     } catch (err) {
-      console.error('Állapotváltási hiba:', err)
+      logger.error('SystemParameterPage', 'Állapotváltási hiba:', err)
       setError('Hiba történt az állapotváltás során')
     }
   }

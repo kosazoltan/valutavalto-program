@@ -77,7 +77,7 @@ public class PosTerminalService {
      * @param terminalId Terminál azonosító
      * @return POS tranzakció eredmény
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public PosTransactionResult initiatePayment(BigDecimal amount, String currency, String terminalId) {
         log.info("POS fizetés indítása: {} {} terminál={}", amount, currency, terminalId);
 
@@ -129,7 +129,7 @@ public class PosTerminalService {
      * @param terminalId             Terminál azonosító
      * @return POS tranzakció eredmény
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public PosTransactionResult initiateReversal(String originalTransactionRef, String terminalId) {
         log.info("POS sztornó indítása: eredeti ref={}, terminál={}", originalTransactionRef, terminalId);
 
@@ -174,7 +174,7 @@ public class PosTerminalService {
      * @param terminalId Terminál azonosító
      * @return Napi zárás eredmény
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public PosClosingResult dailyClose(String terminalId) {
         log.info("POS napi zárás indítása: terminál={}", terminalId);
 
@@ -254,7 +254,7 @@ public class PosTerminalService {
     /**
      * Legacy processTransaction metódus — backward compatibility.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> processTransaction(String terminalId, BigDecimal amount, String currency) {
         PosTransactionResult posResult = initiatePayment(amount, currency, terminalId);
 

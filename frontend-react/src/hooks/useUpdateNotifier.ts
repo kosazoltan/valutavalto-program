@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { isElectron } from '../utils/electron';
-import { api } from '../services/api';
+import { api } from '../services/api/index';
+import { logger } from '../utils/logger';
 
 const CHECK_INTERVAL_MS = 2 * 60 * 1000; // 2 perc
 const HARD_WARNING_DELAY_MS = 5 * 60 * 1000; // 5 perc
@@ -48,7 +49,7 @@ export function useUpdateNotifier(): { updateAvailable: boolean; hardRequired: b
           }
         }
       } catch (error) {
-        console.warn('[UpdateNotifier] Verzió-ellenőrzés sikertelen:', error);
+        logger.warn('UpdateNotifier', 'Verzió-ellenőrzés sikertelen:', error);
       }
     };
 

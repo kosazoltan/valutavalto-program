@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.entity.OrganizationalSystemParameter;
 import hu.puzzleir.valuta.repository.OrganizationalSystemParameterRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,15 +26,15 @@ public class OrganizationalSystemParameterService {
 
     public OrganizationalSystemParameter findById(UUID id) {
         return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("OrganizationalSystemParameter not found: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("OrganizationalSystemParameter not found: " + id));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public OrganizationalSystemParameter create(OrganizationalSystemParameter entity) {
         return repository.save(entity);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public OrganizationalSystemParameter update(UUID id, OrganizationalSystemParameter updated) {
         OrganizationalSystemParameter existing = findById(id);
         existing.setOrganizationId(updated.getOrganizationId());
@@ -46,7 +47,7 @@ public class OrganizationalSystemParameterService {
         return repository.save(existing);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void delete(UUID id) {
         OrganizationalSystemParameter existing = findById(id);
         existing.setIsActive(false);

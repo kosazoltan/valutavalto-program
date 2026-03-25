@@ -24,7 +24,7 @@ import java.util.UUID;
 @Table(name = "sanction_entries", indexes = {
         @Index(name = "idx_sanction_full_name", columnList = "full_name"),
         @Index(name = "idx_sanction_document_number", columnList = "document_number"),
-        @Index(name = "idx_sanction_active", columnList = "active"),
+        @Index(name = "idx_sanction_is_active", columnList = "is_active"),
         @Index(name = "idx_sanction_list_type", columnList = "list_type")
 })
 @EntityListeners(AuditingEntityListener.class)
@@ -72,7 +72,7 @@ public class SanctionEntry {
     private LocalDate lastUpdated;
 
     /** Aktív-e a bejegyzés */
-    @Column(name = "active", nullable = false)
+    @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean active = true;
 

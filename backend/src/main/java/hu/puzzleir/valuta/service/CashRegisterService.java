@@ -40,7 +40,7 @@ public class CashRegisterService {
     /**
      * Napi nyitás — OPEN esemény rögzítése.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CashRegisterEventDto openDay(UUID branchId) {
         Branch branch = findBranch(branchId);
         String comPort = resolveNavComPort();
@@ -64,7 +64,7 @@ public class CashRegisterService {
     /**
      * Napi zárás — Z jelentés, CLOSE esemény.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CashRegisterEventDto closeDay(UUID branchId) {
         Branch branch = findBranch(branchId);
         String comPort = resolveNavComPort();
@@ -88,7 +88,7 @@ public class CashRegisterService {
     /**
      * Bizonylat nyomtatása a pénztárgépen.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CashRegisterEventDto printReceipt(CashRegisterReceiptRequest request) {
         Branch branch = findBranch(request.getBranchId());
         String comPort = resolveNavComPort();
@@ -120,7 +120,7 @@ public class CashRegisterService {
     /**
      * Sztornó bizonylat nyomtatása.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CashRegisterEventDto printStorno(CashRegisterStornoRequest request) {
         Branch branch = findBranch(request.getBranchId());
 
@@ -159,7 +159,7 @@ public class CashRegisterService {
     /**
      * X jelentés (köztes) lekérdezése.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CashRegisterEventDto getXReport(UUID branchId) {
         Branch branch = findBranch(branchId);
         String comPort = resolveNavComPort();

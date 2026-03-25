@@ -59,7 +59,7 @@ public class HandlingFeeDecadeService {
      * 5. Záró = nyitó + összDíj
      * 6. Sorszámozás (KEZDIJSORSZAM)
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public HandlingFeeDecadeReportDto generateReport(UUID branchId, int year, int decade) {
         if (decade < 1 || decade > 36) {
             throw new ValidationException("Érvénytelen dekád: " + decade + " (1-36 között kell legyen)");
@@ -182,7 +182,7 @@ public class HandlingFeeDecadeService {
      * Kezelési díj dekád lezárása.
      * Legacy: PRINTCONTROL.KEZDIJPRINT = TRUE
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public HandlingFeeDecadeReportDto closeReport(UUID reportId) {
         HandlingFeeDecadeReport report = reportRepository.findById(reportId)
             .orElseThrow(() -> new ResourceNotFoundException("Kezelési díj dekádjelentés nem található: " + reportId));

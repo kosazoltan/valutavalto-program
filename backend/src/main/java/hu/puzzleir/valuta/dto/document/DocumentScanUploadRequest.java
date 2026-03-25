@@ -7,16 +7,14 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.UUID;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class DocumentScanUploadRequest {
 
-    private UUID customerId;
-    private UUID transactionId;
+    private Long customerId;
+    private Long transactionId;
 
     @Pattern(regexp = "ID_CARD|PASSPORT|DRIVERS_LICENSE|OTHER", message = "Érvénytelen dokumentum típus")
     @Builder.Default

@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Shield, Plus, Edit, Trash2, Search, X, Save } from 'lucide-react'
-import { permissionApi, Permission, PermissionCreateRequest } from '../../services/api'
+import { permissionApi, Permission, PermissionCreateRequest } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
+import { logger } from '../../utils/logger';
 
 export default function PermissionPage() {
   const [permissions, setPermissions] = useState<Permission[]>([])
-  const [filteredPermissions, setFilteredPermissions] = useState<Permission[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedModule, setSelectedModule] = useState<string>('')
@@ -32,7 +32,7 @@ export default function PermissionPage() {
 
     load().catch(err => {
       if (mounted) {
-        console.error('Failed to load permissions:', err)
+        logger.error('PermissionPage', 'Failed to load permissions:', err)
       }
     })
 
@@ -41,10 +41,6 @@ export default function PermissionPage() {
     }
   }, [])
 
-  useEffect(() => {
-    filterPermissions()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [permissions, searchTerm, selectedModule])
 
   const loadPermissions = async (): Promise<void> => {
     try {
@@ -53,21 +49,21 @@ export default function PermissionPage() {
       setPermissions(data)
     } catch (err) {
       const errorMessage = getErrorMessage(err)
-      console.error('Failed to load permissions:', err)
+      logger.error('PermissionPage', 'Failed to load permissions:', err)
       toast.error('Hiba történt a betöltés során', errorMessage)
     } finally {
       setLoading(false)
     }
   }
 
-  const filterPermissions = () => {
+  const filteredPermissions = useMemo(() => {
     let filtered = permissions
 
     if (searchTerm) {
       filtered = filtered.filter(p =>
         p.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.description?.toLowerCase().includes(searchTerm.toLowerCase())
+        p.description?.toLowerCase().includes(searchTerm.toLowerCase()),
       )
     }
 
@@ -75,8 +71,8 @@ export default function PermissionPage() {
       filtered = filtered.filter(p => p.module === selectedModule)
     }
 
-    setFilteredPermissions(filtered)
-  }
+    return filtered
+  }, [permissions, searchTerm, selectedModule])
 
   const handleCreate = () => {
     setEditingPermission(null)
@@ -115,7 +111,7 @@ export default function PermissionPage() {
       setShowForm(false)
       setEditingPermission(null)
     } catch (error) {
-      console.error('Hiba a jogosultság mentésekor:', error)
+      logger.error('PermissionPage', 'Hiba a jogosultság mentésekor:', error)
       toast.error('Hiba történt a mentés során')
     }
   }
@@ -129,7 +125,7 @@ export default function PermissionPage() {
       await permissionApi.delete(id)
       await loadPermissions()
     } catch (error) {
-      console.error('Hiba a jogosultság törlésekor:', error)
+      logger.error('PermissionPage', 'Hiba a jogosultság törlésekor:', error)
       toast.error('Hiba történt a törlés során')
     }
   }
@@ -139,7 +135,7 @@ export default function PermissionPage() {
       await permissionApi.toggleActive(id)
       await loadPermissions()
     } catch (error) {
-      console.error('Hiba a jogosultság állapotváltásakor:', error)
+      logger.error('PermissionPage', 'Hiba a jogosultság állapotváltásakor:', error)
       toast.error('Hiba történt az állapotváltás során')
     }
   }

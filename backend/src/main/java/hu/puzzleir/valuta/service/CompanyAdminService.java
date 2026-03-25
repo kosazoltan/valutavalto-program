@@ -8,6 +8,7 @@ import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.dto.admin.*;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.repository.SyncLogRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,7 +23,7 @@ import java.util.UUID;
  */
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Transactional(rollbackFor = Exception.class)
 @Slf4j
 public class CompanyAdminService {
 
@@ -145,7 +146,8 @@ public class CompanyAdminService {
      */
     @Transactional(readOnly = true)
     public List<BranchWithStatsDto> getAllBranchesWithStats() {
-        return branchRepository.findAll().stream()
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return branchRepository.findByCompanyId(companyId).stream()
             .map(branch -> {
                 long workerCount = workerRepository.countActiveWorkersByBranch(branch.getId());
 

@@ -1,5 +1,7 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.exception.BusinessException;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
@@ -60,7 +62,7 @@ public class ReportExportService {
             );
         } catch (IOException e) {
             log.error("WorkerPerformanceReport CSV export hiba", e);
-            throw new RuntimeException("CSV export meghiúsult", e);
+            throw new BusinessException("CSV export meghiúsult", "CSV_EXPORT_FAILED");
         }
         return sw.toString();
     }
@@ -83,7 +85,7 @@ public class ReportExportService {
 
         } catch (IOException e) {
             log.error("HandlingFeeReport CSV export hiba", e);
-            throw new RuntimeException("CSV export meghiúsult", e);
+            throw new BusinessException("CSV export meghiúsult", "CSV_EXPORT_FAILED");
         }
         return sw.toString();
     }
@@ -119,7 +121,7 @@ public class ReportExportService {
 
         } catch (IOException e) {
             log.error("MonthlyTurnoverReport CSV export hiba", e);
-            throw new RuntimeException("CSV export meghiúsult", e);
+            throw new BusinessException("CSV export meghiúsult", "CSV_EXPORT_FAILED");
         }
         return sw.toString();
     }
@@ -149,7 +151,7 @@ public class ReportExportService {
 
         } catch (IOException e) {
             log.error("PeriodReport CSV export hiba", e);
-            throw new RuntimeException("CSV export meghiúsult", e);
+            throw new BusinessException("CSV export meghiúsult", "CSV_EXPORT_FAILED");
         }
         return sw.toString();
     }

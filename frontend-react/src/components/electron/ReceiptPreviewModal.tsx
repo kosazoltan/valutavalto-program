@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PrintReceiptData } from '@/types/receipt';
+import { logger } from '../../utils/logger';
 
 interface ReceiptPreviewModalProps {
   isOpen: boolean;
@@ -73,7 +74,7 @@ export default function ReceiptPreviewModal({
         onClose();
       }, 2000);
     } catch (err) {
-      console.error('[ReceiptPreviewModal] Nyomtatás hiba:', err);
+      logger.error('ReceiptPreviewModal', 'Nyomtatás hiba:', err);
       setIsPrinting(false);
     }
   }, [onPrint, onClose]);

@@ -1,8 +1,11 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.dto.monitoring.BranchStatusResponse;
+import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.BranchStatus;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.BranchStatusRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,11 +25,12 @@ import java.util.stream.Collectors;
 public class BranchMonitoringService {
 
     private final BranchStatusRepository branchStatusRepository;
+    private final BranchRepository branchRepository;
 
     /**
      * Heartbeat frissítés — fiók jelzi hogy él.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void updateHeartbeat(UUID branchId) {
         BranchStatus status = branchStatusRepository.findByBranchId(branchId)
                 .orElseGet(() -> BranchStatus.builder()
@@ -62,11 +66,15 @@ public class BranchMonitoringService {
     }
 
     /**
-     * Összes fiók dashboard nézete.
+     * Összes fiók dashboard nézete — multi-tenant szűréssel.
      */
     @Transactional(readOnly = true)
     public Map<UUID, BranchStatusResponse> getBranchDashboard() {
-        return branchStatusRepository.findAll()
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<UUID> companyBranchIds = branchRepository.findByCompanyId(companyId).stream()
+                .map(Branch::getId)
+                .collect(Collectors.toList());
+        return branchStatusRepository.findByBranchIdIn(companyBranchIds)
                 .stream()
                 .collect(Collectors.toMap(
                         BranchStatus::getBranchId,

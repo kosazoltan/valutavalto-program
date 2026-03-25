@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Plus, Save, CheckCircle, Send, XCircle, Trash2 } from 'lucide-react'
-import { api } from '../../services/api'
+import { api } from '../../services/api/index'
 
 interface RateTemplate {
   id?: string

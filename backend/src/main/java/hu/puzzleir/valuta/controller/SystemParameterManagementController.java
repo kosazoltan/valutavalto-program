@@ -21,6 +21,8 @@ import java.util.Map;
 @PreAuthorize("hasAnyRole('MANAGER','ADMIN')")
 public class SystemParameterManagementController {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(SystemParameterManagementController.class);
+
     private final SystemParameterService service;
 
     @GetMapping

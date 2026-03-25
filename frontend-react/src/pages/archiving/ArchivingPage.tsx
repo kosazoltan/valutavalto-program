@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Archive, Play } from 'lucide-react'
-import { archivingApi, ArchiveTask } from '../../services/api'
+import { archivingApi, ArchiveTask } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
+import { logger } from '../../utils/logger';
 
 export default function ArchivingPage() {
   const [tasks, setTasks] = useState<ArchiveTask[]>([])
@@ -17,7 +18,7 @@ export default function ArchivingPage() {
 
     load().catch(err => {
       if (mounted) {
-        console.error('Failed to load archiving tasks:', err)
+        logger.error('ArchivingPage', 'Failed to load archiving tasks:', err)
       }
     })
 
@@ -31,7 +32,7 @@ export default function ArchivingPage() {
       setLoading(true)
       setTasks(await archivingApi.listTasks())
     } catch (err) {
-      console.error('Failed to load tasks:', err)
+      logger.error('ArchivingPage', 'Failed to load tasks:', err)
     } finally {
       setLoading(false)
     }
@@ -45,7 +46,7 @@ export default function ArchivingPage() {
     } catch (err) {
       const errorMessage = getErrorMessage(err)
       toast.error('Archiválási hiba', `Hiba történt: ${errorMessage}`)
-      console.error('Failed to execute task:', err)
+      logger.error('ArchivingPage', 'Failed to execute task:', err)
     }
   }
 

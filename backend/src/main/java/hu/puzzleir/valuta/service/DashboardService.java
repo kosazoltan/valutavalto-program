@@ -29,6 +29,8 @@ import java.util.stream.Collectors;
 @Slf4j
 public class DashboardService {
 
+    private static final int TOP_CUSTOMERS_LIMIT = 10;
+
     private final TransactionRepository transactionRepository;
     private final BranchRepository branchRepository;
     private final NotificationRepository notificationRepository;
@@ -69,7 +71,7 @@ public class DashboardService {
         // Utolsó 10 tranzakció
         List<DashboardSummaryDto.RecentTransactionDto> recent = todayTx.stream()
                 .sorted(Comparator.comparing(Transaction::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
-                .limit(10)
+                .limit(TOP_CUSTOMERS_LIMIT)
                 .map(t -> DashboardSummaryDto.RecentTransactionDto.builder()
                         .id(t.getId())
                         .receiptNumber(t.getReceiptNumber())

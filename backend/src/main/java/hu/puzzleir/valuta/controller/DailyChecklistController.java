@@ -49,7 +49,7 @@ public class DailyChecklistController {
     public ResponseEntity<DailyChecklistDto> checkItem(
             @PathVariable UUID checklistId,
             @PathVariable int itemNumber,
-            @RequestBody CheckItemRequest request) {
+            @jakarta.validation.Valid @RequestBody CheckItemRequest request) {
         DailyChecklistDto result = dailyChecklistService.checkItem(
                 checklistId, itemNumber, request.isChecked(), request.getNotes());
         return ResponseEntity.ok(result);

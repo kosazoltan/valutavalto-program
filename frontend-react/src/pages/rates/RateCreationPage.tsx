@@ -6,44 +6,14 @@ import {
   RateOverviewDTO,
   RateOverviewItem,
   WorkgroupDetailDTO,
-  BranchListItem
-} from '../../services/api'
+  BranchListItem,
+} from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
-import { formatDecimal } from '../../utils/numberFormat'
 import { useAuthStore } from '../../stores/authStore'
-
-// ===================== Types =====================
-
-interface EditableRate {
-  currencyId: number
-  currencyCode: string
-  currencyName: string
-  officialRate: number | null
-  buyRate: string
-  sellRate: string
-  limit1BuyRate: string
-  limit1SellRate: string
-  limit2BuyRate: string
-  limit2SellRate: string
-  limit3BuyRate: string
-  limit3SellRate: string
-  hasRate: boolean
-  modified: boolean
-}
-
-function parseNum(val: string): number {
-  return parseFloat(val.replace(',', '.')) || 0
-}
-
-function fmtRate(val: number | null | undefined, decimals = 4): string {
-  if (val == null || val === 0) return ''
-  return val.toFixed(decimals).replace('.', ',')
-}
-
-function fmtAmount(val: number | null | undefined): string {
-  if (val == null || val === 0) return ''
-  return Math.round(val).toLocaleString('hu-HU')
-}
+import { logger } from '../../utils/logger'
+import RateGrid from './components/RateGrid'
+import BranchPickerModal from './components/BranchPickerModal'
+import { fmtRate, parseNum, type EditableRate } from './types'
 
 // ===================== Main Component =====================
 
@@ -81,7 +51,9 @@ export default function RateCreationPage() {
       })
       setLimitsModified(false)
     }
-  }, [selectedWg?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Only re-sync limit inputs when the selected workgroup identity changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: sync only on WG id change, not on every selectedWg reference
+  }, [selectedWg?.id])
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -112,14 +84,14 @@ export default function RateCreationPage() {
       }))
       setRates(editableRates)
     } catch (err) {
-      console.error('Betöltési hiba:', err)
+      logger.error('RateCreationPage', 'Betöltési hiba:', err)
       setError('Hiba az árfolyam adatok betöltésekor')
     } finally {
       setLoading(false)
     }
   }, [])
 
-  useEffect(() => { void loadData() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { void loadData() }, [loadData])
 
   const updateRate = (index: number, field: keyof EditableRate, value: string) => {
     setRates(prev => {
@@ -357,95 +329,7 @@ export default function RateCreationPage() {
       <div className="flex gap-1.5 flex-1 min-h-0">
 
         {/* === LEFT: RATE TABLE === */}
-        <div className="flex-1 bg-white rounded shadow-sm border overflow-hidden flex flex-col min-w-0">
-          <div className="overflow-auto flex-1">
-            <table className="w-full text-xs border-collapse">
-              <thead className="sticky top-0 z-20">
-                <tr className="bg-green-800 text-white text-[10px]">
-                  <th colSpan={2} className="px-1 py-0.5 text-left border-r border-green-600">Elsz.árf.</th>
-                  <th className="px-1 py-0.5 border-r border-green-600">Valuta</th>
-                  <th colSpan={2} className="px-1 py-0.5 border-r border-green-600 text-center">
-                    0 - {fmtAmount(selectedWg?.limit1Boundary)}
-                  </th>
-                  <th colSpan={2} className="px-1 py-0.5 border-r border-green-600 text-center">
-                    {fmtAmount(selectedWg?.limit1Boundary)} - {fmtAmount(selectedWg?.limit2Boundary)}
-                  </th>
-                  <th colSpan={2} className="px-1 py-0.5 border-r border-green-600 text-center">
-                    {fmtAmount(selectedWg?.limit2Boundary)} - {fmtAmount(selectedWg?.limit3Boundary)}
-                  </th>
-                  <th colSpan={2} className="px-1 py-0.5 text-center">Saját hat.</th>
-                </tr>
-                <tr className="bg-green-700 text-white text-[10px]">
-                  <th className="px-1 py-0.5 text-left w-14 border-r border-green-500">MNB</th>
-                  <th className="px-1 py-0.5 w-4 border-r border-green-500"></th>
-                  <th className="px-1 py-0.5 w-10 border-r border-green-500 font-bold">Kód</th>
-                  <th className="px-1 py-0.5 w-[72px] text-green-200 border-r border-green-500">Vet</th>
-                  <th className="px-1 py-0.5 w-[72px] text-red-200 border-r border-green-500">Elad</th>
-                  <th className="px-1 py-0.5 w-[72px] text-green-200 border-r border-green-500">V+</th>
-                  <th className="px-1 py-0.5 w-[72px] text-red-200 border-r border-green-500">E-</th>
-                  <th className="px-1 py-0.5 w-[72px] text-green-200 border-r border-green-500">V+</th>
-                  <th className="px-1 py-0.5 w-[72px] text-red-200 border-r border-green-500">E-</th>
-                  <th className="px-1 py-0.5 w-[72px] text-green-200">Vmax</th>
-                  <th className="px-1 py-0.5 w-[72px] text-red-200">Emin</th>
-                </tr>
-                <tr className="bg-gray-200 text-gray-500 text-[9px] font-bold">
-                  <th className="px-1 py-0 border-r">J</th>
-                  <th className="px-1 py-0 border-r"></th>
-                  <th className="px-1 py-0 border-r">K</th>
-                  <th className="px-1 py-0 border-r">L</th>
-                  <th className="px-1 py-0 border-r">M</th>
-                  <th className="px-1 py-0 border-r">N</th>
-                  <th className="px-1 py-0 border-r">O</th>
-                  <th className="px-1 py-0 border-r">P</th>
-                  <th className="px-1 py-0 border-r">Q</th>
-                  <th className="px-1 py-0">R</th>
-                  <th className="px-1 py-0">S</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rates.map((r, idx) => {
-                  const buy = parseNum(r.buyRate)
-                  const sell = parseNum(r.sellRate)
-                  const isInvalid = buy > 0 && sell > 0 && buy >= sell
-                  const rowBg = r.modified
-                    ? 'bg-yellow-50'
-                    : !r.hasRate
-                      ? 'bg-gray-50'
-                      : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
-
-                  return (
-                    <tr key={r.currencyId} className={`${rowBg} border-b border-gray-100 hover:bg-blue-50/30`}>
-                      <td className="px-1 py-0 text-right font-mono text-blue-800 font-bold border-r text-[11px]">
-                        {r.officialRate ? formatDecimal(r.officialRate, 2, 4) : '0'}
-                      </td>
-                      <td className="px-0 py-0 text-center border-r w-4">
-                        {r.modified && <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-400" />}
-                        {isInvalid && <AlertTriangle size={9} className="text-red-500 inline" />}
-                      </td>
-                      <td className="px-1 py-0 text-center font-bold text-blue-700 border-r text-[11px]">
-                        {r.currencyCode}
-                      </td>
-                      {/* Rate input cells */}
-                      {(['buyRate', 'sellRate', 'limit1BuyRate', 'limit1SellRate', 'limit2BuyRate', 'limit2SellRate', 'limit3BuyRate', 'limit3SellRate'] as const).map((field) => {
-                        const isBuy = field.includes('buy') || field === 'buyRate'
-                        const colorClass = isBuy ? 'text-green-700' : 'text-red-700'
-                        const focusBg = isBuy ? 'focus:bg-green-50' : 'focus:bg-red-50'
-                        return (
-                          <td key={field} className="px-0 py-0 border-r last:border-r-0">
-                            <input type="text" value={r[field]}
-                              onChange={e => updateRate(idx, field, e.target.value)}
-                              className={`w-full px-0.5 py-0 text-right font-mono text-[11px] ${colorClass} font-bold border-0 bg-transparent ${focusBg} focus:outline-none`}
-                            />
-                          </td>
-                        )
-                      })}
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <RateGrid rates={rates} selectedWg={selectedWg} updateRate={updateRate} />
 
         {/* === RIGHT: WORKGROUP PANEL === */}
         <div className="w-64 flex-shrink-0 flex flex-col gap-1 min-h-0">
@@ -551,73 +435,19 @@ export default function RateCreationPage() {
       </div>
 
       {/* === BRANCH PICKER MODAL === */}
-      {branchModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg shadow-xl w-[600px] max-h-[80vh] flex flex-col">
-            {/* Modal header */}
-            <div className="flex items-center justify-between px-4 py-2 border-b">
-              <h2 className="text-sm font-bold text-gray-800">
-                Irodák kezelése — {selectedWg?.name}
-              </h2>
-              <button onClick={() => setBranchModalOpen(false)} className="text-gray-400 hover:text-gray-600">
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Search */}
-            <div className="px-4 py-2 border-b">
-              <input
-                type="text"
-                placeholder="Keresés név, kód vagy város szerint..."
-                value={branchFilter}
-                onChange={e => setBranchFilter(e.target.value)}
-                className="w-full px-3 py-1.5 text-sm border rounded focus:border-blue-400 focus:outline-none"
-              />
-            </div>
-
-            {/* Branch list grouped by city */}
-            <div className="flex-1 overflow-y-auto px-4 py-2">
-              {groupedBranches.map(([city, branches]) => (
-                <div key={city} className="mb-2">
-                  <div className="text-[10px] font-bold text-gray-500 uppercase mb-0.5">{city}</div>
-                  <div className="space-y-0.5">
-                    {branches.map(b => (
-                      <label key={b.id} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-50 cursor-pointer text-xs">
-                        <input
-                          type="checkbox"
-                          checked={selectedBranchIds.has(b.id)}
-                          onChange={() => toggleBranch(b.id)}
-                          className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                        />
-                        <span className="font-mono text-gray-500 w-12">{b.code}</span>
-                        <span className="text-gray-800">{b.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              ))}
-              {groupedBranches.length === 0 && (
-                <div className="text-center text-gray-400 py-8 text-sm">Nincs találat</div>
-              )}
-            </div>
-
-            {/* Modal footer */}
-            <div className="flex items-center justify-between px-4 py-2 border-t bg-gray-50">
-              <span className="text-xs text-gray-500">{selectedBranchIds.size} iroda kiválasztva</span>
-              <div className="flex gap-2">
-                <button onClick={() => setBranchModalOpen(false)}
-                  className="px-3 py-1.5 text-xs border rounded hover:bg-gray-100">
-                  Mégse
-                </button>
-                <button onClick={() => void handleSaveBranches()} disabled={savingBranches || !canWriteRateCreation}
-                  className="px-3 py-1.5 text-xs bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded font-bold">
-                  {savingBranches ? 'Mentés...' : 'Mentés'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <BranchPickerModal
+        open={branchModalOpen}
+        selectedWgName={selectedWg?.name}
+        branchFilter={branchFilter}
+        setBranchFilter={setBranchFilter}
+        groupedBranches={groupedBranches}
+        selectedBranchIds={selectedBranchIds}
+        toggleBranch={toggleBranch}
+        onClose={() => setBranchModalOpen(false)}
+        onSave={() => void handleSaveBranches()}
+        saving={savingBranches}
+        canWriteRateCreation={canWriteRateCreation}
+      />
     </div>
   )
 }

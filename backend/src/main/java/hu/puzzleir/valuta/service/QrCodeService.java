@@ -1,5 +1,7 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.exception.BusinessException;
+
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
 import com.google.zxing.WriterException;
@@ -159,10 +161,10 @@ public class QrCodeService {
 
         } catch (WriterException e) {
             log.error("QR kód kódolási hiba: {}", e.getMessage(), e);
-            throw new RuntimeException("QR kód generálási hiba: " + e.getMessage(), e);
+            throw new BusinessException("QR kód generálási hiba: " + e.getMessage(), "QR_GENERATION_FAILED");
         } catch (IOException e) {
             log.error("QR kód I/O hiba: {}", e.getMessage(), e);
-            throw new RuntimeException("QR kód kiírási hiba: " + e.getMessage(), e);
+            throw new BusinessException("QR kód kiírási hiba: " + e.getMessage(), "QR_WRITE_FAILED");
         }
     }
 

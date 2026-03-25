@@ -13,6 +13,6 @@ public interface WorkerCompetitionEntryRepository extends JpaRepository<WorkerCo
 
     List<WorkerCompetitionEntry> findByCompetitionIdOrderByScoreDesc(UUID competitionId);
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     void deleteByCompetitionId(UUID competitionId);
 }

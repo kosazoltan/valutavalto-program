@@ -1,11 +1,14 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.exception.BusinessException;
+
 import com.github.sarxos.webcam.Webcam;
 import hu.puzzleir.valuta.config.CameraProperties;
 import hu.puzzleir.valuta.entity.CameraConfig;
 import hu.puzzleir.valuta.entity.CameraRecording;
 import hu.puzzleir.valuta.repository.CameraConfigRepository;
 import hu.puzzleir.valuta.repository.CameraRecordingRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import lombok.extern.slf4j.Slf4j;
@@ -175,7 +178,7 @@ public class CameraRecordingService {
     /**
      * Start a new recording segment.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CameraRecording startNewSegment(UUID branchId, String cameraId) {
         LocalDateTime now = LocalDateTime.now();
         try {
@@ -197,14 +200,14 @@ public class CameraRecordingService {
             return recording;
         } catch (IOException e) {
             log.error("Szegmens inditas sikertelen: {}", cameraId, e);
-            throw new RuntimeException("Szegmens letrehozas sikertelen", e);
+            throw new BusinessException("Szegmens letrehozas sikertelen", "CAMERA_SEGMENT_FAILED");
         }
     }
 
     /**
      * Finalize a recording segment.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void finalizeRecording(CameraRecording recording) {
         recording.setEndTime(LocalDateTime.now());
         if (recording.getLocalFilePath() == null || recording.getLocalFilePath().isBlank()) {
@@ -258,16 +261,23 @@ public class CameraRecordingService {
      * Get branch ID for a camera â€” from config or fallback.
      */
     private UUID getBranchIdForCamera(String cameraId) {
-        // Try to find from camera config
-        List<CameraConfig> configs = cameraConfigRepository.findAll();
-        for (CameraConfig config : configs) {
-            if (cameraId.equals(config.getCameraId())) {
-                return config.getBranchId();
-            }
+        UUID currentBranchId = resolveCurrentBranchId();
+        if (currentBranchId != null) {
+            return cameraConfigRepository.findByBranchIdAndCameraId(currentBranchId, cameraId)
+                    .map(CameraConfig::getBranchId)
+                    .orElse(currentBranchId);
         }
-        // Fallback: use a default branch ID (should be configured)
-        log.warn("Nincs branch konfiguracio a kamerahoz: {}, alapertelmezett hasznalata", cameraId);
+
+        log.warn("Nincs branch kontextus a kamerahoz: {}, alapertelmezett branch hasznalata", cameraId);
         return UUID.fromString("00000000-0000-0000-0000-000000000001");
+    }
+
+    private UUID resolveCurrentBranchId() {
+        try {
+            return SecurityUtils.getCurrentBranchId();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /**

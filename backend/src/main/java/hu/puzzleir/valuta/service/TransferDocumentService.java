@@ -43,7 +43,7 @@ public class TransferDocumentService {
     /**
      * Bizonylat létrehozása → PENDING
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public TransferDocument createTransfer(Long senderId, String currencyCode, BigDecimal quantity,
                                            String sourceType, String sourceId,
                                            String destinationType, String destinationId,
@@ -83,7 +83,7 @@ public class TransferDocumentService {
     /**
      * Értékszállító átveszi → PICKED_UP (PIN ellenőrzéssel)
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public TransferDocument courierPickup(Long docId, Long courierId, String courierPin) {
         TransferDocument doc = findAndValidate(docId, TransferDocument.Status.PENDING);
         Worker courier = workerRepository.findById(courierId)
@@ -109,7 +109,7 @@ public class TransferDocumentService {
     /**
      * Értékszállító átadja → DELIVERED
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public TransferDocument courierDeliver(Long docId) {
         TransferDocument doc = findAndValidate(docId, TransferDocument.Status.PICKED_UP);
 
@@ -124,7 +124,7 @@ public class TransferDocumentService {
     /**
      * Átvevő megerősíti → CONFIRMED
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public TransferDocument receiverConfirm(Long docId, Long receiverId) {
         TransferDocument doc = findAndValidate(docId, TransferDocument.Status.DELIVERED);
         Worker receiver = workerRepository.findById(receiverId)

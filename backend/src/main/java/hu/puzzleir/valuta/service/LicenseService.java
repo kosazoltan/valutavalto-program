@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.dto.license.LicenseResponse;
 import hu.puzzleir.valuta.dto.license.LicenseStatusResponse;
 import hu.puzzleir.valuta.entity.License;
@@ -66,7 +67,7 @@ public class LicenseService {
     @Transactional(readOnly = true)
     public LicenseResponse getCurrentLicense() {
         License license = licenseRepository.findByIsActiveTrue()
-                .orElseThrow(() -> new RuntimeException("Nincs aktív licenc."));
+                .orElseThrow(() -> new ResourceNotFoundException("Nincs aktív licenc."));
 
         int remaining = (int) ChronoUnit.DAYS.between(LocalDate.now(), license.getValidTo());
 
@@ -113,10 +114,10 @@ public class LicenseService {
     /**
      * Licenc aktiválás kulccsal.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public LicenseResponse activateLicense(String licenseKey) {
         final License license = licenseRepository.findByLicenseKey(licenseKey)
-                .orElseThrow(() -> new RuntimeException("Érvénytelen licenc kulcs: " + licenseKey));
+                .orElseThrow(() -> new ResourceNotFoundException("Érvénytelen licenc kulcs: " + licenseKey));
 
         // Korábbi aktív licencek deaktiválása
         licenseRepository.findByIsActiveTrue().ifPresent(existing -> {

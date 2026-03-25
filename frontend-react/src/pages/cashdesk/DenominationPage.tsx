@@ -7,10 +7,11 @@ import {
   currencyApi,
   Denomination,
   Currency
-} from '../../services/api'
+} from '../../services/api/index'
 import { NumberInput } from '../../components/NumberInput'
 import { toast } from '../../components/ui/toaster'
 import { formatInteger, formatDecimal } from '../../utils/numberFormat'
+import { logger } from '../../utils/logger';
 
 interface DenominationQuantityUpdateRequest {
   denominationId: string
@@ -40,7 +41,7 @@ export default function DenominationPage() {
       })
       setEditingQuantities(initialQuantities)
     } catch (error) {
-      console.error('Címletek betöltése sikertelen:', error)
+      logger.error('DenominationPage', 'Címletek betöltése sikertelen:', error)
     }
   }, [selectedCurrencyId])
 
@@ -69,7 +70,7 @@ export default function DenominationPage() {
       const total = data.reduce((sum, b) => sum + b.totalValue, 0)
       setCalculatedTotal(total)
     } catch (error) {
-      console.error('Címlet egyenlegek betöltése sikertelen:', error)
+      logger.error('DenominationPage', 'Címlet egyenlegek betöltése sikertelen:', error)
     } finally {
       setLoading(false)
     }
@@ -94,7 +95,7 @@ export default function DenominationPage() {
         setSelectedCurrencyId(data[0]?.id ?? null)
       }
     } catch (error) {
-      console.error('Valuták betöltése sikertelen:', error)
+      logger.error('DenominationPage', 'Valuták betöltése sikertelen:', error)
     }
   }
 
@@ -137,7 +138,7 @@ export default function DenominationPage() {
       toast.success('Címletezés sikeresen mentve!')
       void loadDenominationBalances()
     } catch (error) {
-      console.error('Mentés sikertelen:', error)
+      logger.error('DenominationPage', 'Mentés sikertelen:', error)
       toast.error('Hiba történt a mentés során')
     }
   }

@@ -93,7 +93,7 @@ public class Denomination {
     /**
      * Aktív-e a címlet (használható)
      */
-    @Column(nullable = false)
+    @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean active = true;
 

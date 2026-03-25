@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { History, RefreshCw } from 'lucide-react'
-import { api } from '../../services/api'
+import { api } from '../../services/api/index'
+import { logger } from '../../utils/logger';
 
 interface Publication {
   id: string
@@ -26,7 +27,7 @@ export default function RatePublishHistory() {
       const { data } = await api.get<Publication[]>('/rate-management/publications')
       setPublications(data)
     } catch (err) {
-      console.error('Lekeres sikertelen:', err)
+      logger.error('RatePublishHistory', 'Lekeres sikertelen:', err)
     } finally {
       setLoading(false)
     }

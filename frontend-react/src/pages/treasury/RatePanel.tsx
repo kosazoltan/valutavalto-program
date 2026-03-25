@@ -9,11 +9,12 @@ import {
   X,
 } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { exchangeRateApi, currencyApi } from '../../services/api'
-import type { ExchangeRate, Currency, CreateExchangeRateRequest } from '../../services/api'
+import { exchangeRateApi, currencyApi } from '../../services/api/index'
+import type { ExchangeRate, Currency, CreateExchangeRateRequest } from '../../services/api/index'
 import { formatAmount, currencyColorClass } from './treasuryUtils'
 import { TableSkeleton } from './LoadingSkeleton'
 import { recordLocalAuditEvent } from '../../utils/electronTransactions'
+import { logger } from '../../utils/logger';
 
 interface RateRow {
   currency: Currency
@@ -64,7 +65,7 @@ export default function RatePanel() {
       setRateRows(rows)
       setLastPoll(new Date().toLocaleTimeString('hu-HU'))
     } catch (err) {
-      console.error('RatePanel fetch error:', err)
+      logger.error('RatePanel', 'RatePanel fetch error:', err)
     } finally {
       setLoading(false)
     }
@@ -119,7 +120,7 @@ export default function RatePanel() {
       setManualCurrencyId(0)
       void fetchData()
     } catch (err) {
-      console.error('Manual rate submit error:', err)
+      logger.error('RatePanel', 'Manual rate submit error:', err)
     }
   }, [manualCurrencyId, manualBuyRate, manualSellRate, fetchData, rateRows])
 

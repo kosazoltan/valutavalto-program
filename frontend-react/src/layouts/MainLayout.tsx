@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
-import { dailySessionApi } from '../services/api'
+import { dailySessionApi } from '../services/api/index'
 import {
   Home,
   ArrowLeftRight,
@@ -235,8 +235,8 @@ export default function MainLayout() {
 
         {/* Navigation Groups */}
         <nav className="flex-1 py-4 overflow-y-auto">
-          {menuGroups.map((group, groupIdx) => (
-            <div key={groupIdx} className="mb-6">
+          {menuGroups.map((group) => (
+            <div key={group.label} className="mb-6">
               {sidebarOpen && (
                 <div className="px-4 mb-2 text-xs font-semibold text-secondary-400 uppercase tracking-wider">
                   {group.label}

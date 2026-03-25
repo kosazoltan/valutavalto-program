@@ -28,7 +28,7 @@ public class CameraCleanupService {
      * Runs every night at 2:00 AM.
      */
     @Scheduled(cron = "0 0 2 * * *")
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void cleanupExpiredRecordings() {
         LocalDate cutoff = LocalDate.now().minusDays(cameraProperties.getRetentionDays());
         log.info("Lejart kamerafelvetelk torlese inditasa (cutoff: {})", cutoff);
@@ -61,7 +61,7 @@ public class CameraCleanupService {
     /**
      * Manual cleanup trigger (for admin).
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public int manualCleanup(LocalDate beforeDate) {
         List<CameraRecording> recordings = recordingRepository
                 .findByExpiresAtBeforeAndStatusNot(beforeDate, CameraRecording.RecordingStatus.RECORDING);

@@ -12,10 +12,11 @@ import {
   X,
 } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { reportApi, notificationApi } from '../../services/api'
-import type { DailyClosingReport, Notification as AppNotification } from '../../services/api'
+import { reportApi, notificationApi } from '../../services/api/index'
+import type { DailyClosingReport, Notification as AppNotification } from '../../services/api/index'
 import { formatMillions, formatInteger, todayISO } from './treasuryUtils'
 import { TableSkeleton } from './LoadingSkeleton'
+import { logger } from '../../utils/logger';
 
 type TabType = 'reports' | 'circulars'
 
@@ -70,7 +71,7 @@ export default function ReportsCirculars() {
       }
       setCirculars(notifications)
     } catch (err) {
-      console.error('ReportsCirculars fetch error:', err)
+      logger.error('ReportsCirculars', 'ReportsCirculars fetch error:', err)
     } finally {
       setLoading(false)
     }
@@ -99,7 +100,7 @@ export default function ReportsCirculars() {
       setCircularUrgent(false)
       void fetchData()
     } catch (err) {
-      console.error('Send circular error:', err)
+      logger.error('ReportsCirculars', 'Send circular error:', err)
     }
   }, [circularTitle, circularContent, circularUrgent, fetchData])
 

@@ -37,7 +37,7 @@ public class TransferService {
     private final ReceiptSequenceService receiptSequenceService;
     private final AuditLogService auditLogService;
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public TransferDto create(CreateTransferDto dto, Long workerId) {
         Worker fromWorker = workerRepository.findById(workerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Dolgozó nem található: " + workerId));
@@ -102,7 +102,7 @@ public class TransferService {
         return toDto(transfer);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public TransferDto receive(Long id, ReceiveTransferDto dto, Long workerId) {
         Transfer transfer = findOrThrow(id);
         if (transfer.getStatus() != Transfer.TransferStatus.PENDING &&
@@ -160,7 +160,7 @@ public class TransferService {
         return toDto(transfer);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public TransferDto reject(Long id, String reason, Long workerId) {
         Transfer transfer = findOrThrow(id);
         if (transfer.getStatus() != Transfer.TransferStatus.PENDING) {
@@ -177,7 +177,7 @@ public class TransferService {
         return toDto(transfer);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void cancel(Long id) {
         Transfer transfer = findOrThrow(id);
         if (transfer.getStatus() != Transfer.TransferStatus.PENDING) {

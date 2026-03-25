@@ -42,7 +42,7 @@ public class RateApprovalService {
     /**
      * Új árfolyam változtatási kérelem.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public RateApprovalDto requestRateChange(RequestRateChangeDto dto, Long requestedById) {
         Branch branch = branchRepository.findById(dto.getBranchId())
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + dto.getBranchId()));
@@ -77,7 +77,7 @@ public class RateApprovalService {
      * által kért árfolyam változtatást, és az új árfolyam bekerül
      * az ARFOLYAM táblába.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public RateApprovalDto approveRateChange(UUID approvalId, Long approvedById) {
         RateApproval approval = rateApprovalRepository.findById(approvalId)
                 .orElseThrow(() -> new ResourceNotFoundException("Jóváhagyás nem található: " + approvalId));
@@ -132,7 +132,7 @@ public class RateApprovalService {
     /**
      * Árfolyam változtatás elutasítása.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public RateApprovalDto rejectRateChange(UUID approvalId, String reason) {
         RateApproval approval = rateApprovalRepository.findById(approvalId)
                 .orElseThrow(() -> new ResourceNotFoundException("Jóváhagyás nem található: " + approvalId));

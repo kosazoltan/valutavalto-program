@@ -1,0 +1,1 @@
+function e(e){if(e==null||e===``)return`0`;let t=typeof e==`string`?parseFloat(e):e;return isNaN(t)?`0`:Math.floor(t).toLocaleString(`hu-HU`)}function t(e,t=0,n=2){if(e==null||e===``)return`0`;let r=typeof e==`string`?parseFloat(e):e;return isNaN(r)?`0`:r.toLocaleString(`hu-HU`,{minimumFractionDigits:t,maximumFractionDigits:n})}export{e as n,t};

@@ -62,7 +62,7 @@ public class MaterialReceiptService {
     /**
      * Bizonylat létrehozása DRAFT állapotban.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public MaterialReceiptResponseDto createReceipt(MaterialReceiptRequestDto request) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Long workerId = SecurityUtils.getCurrentWorkerId();
@@ -114,7 +114,7 @@ public class MaterialReceiptService {
      * B (bevétel): készlet nő a bizonylat tételsorai szerint.
      * K (kiadás): készlet csökken.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public MaterialReceiptResponseDto finalizeReceipt(Long id) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         MaterialReceipt receipt = materialReceiptRepository.findById(id)

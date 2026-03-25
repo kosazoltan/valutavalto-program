@@ -13,10 +13,11 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { transactionApi, cashBalanceApi, dailySessionApi } from '../../services/api'
-import type { DailyTurnoverSummary, CashBalance, DailySession } from '../../services/api'
+import { transactionApi, cashBalanceApi, dailySessionApi } from '../../services/api/index'
+import type { DailyTurnoverSummary, CashBalance, DailySession } from '../../services/api/index'
 import { formatInteger, formatMillions } from './treasuryUtils'
 import { DashboardSkeleton } from './LoadingSkeleton'
+import { logger } from '../../utils/logger';
 
 interface BranchRanking {
   id: string
@@ -107,7 +108,7 @@ export default function TreasuryDashboard() {
 
       setLastRefresh(new Date())
     } catch (err) {
-      console.error('Treasury dashboard fetch error:', err)
+      logger.error('TreasuryDashboard', 'Treasury dashboard fetch error:', err)
     } finally {
       setLoading(false)
     }

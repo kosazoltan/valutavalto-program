@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { DollarSign, Plus } from 'lucide-react'
-import { feeApi, FeeType, FeeRate, FeeDiscount } from '../../services/api'
+import { feeApi, FeeType, FeeRate, FeeDiscount } from '../../services/api/index'
+import { logger } from '../../utils/logger';
 
 export default function FeePage() {
   const [activeTab, setActiveTab] = useState<'types' | 'rates' | 'discounts'>('types')
@@ -12,12 +13,7 @@ export default function FeePage() {
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState<Partial<FeeType & FeeRate & FeeDiscount>>({})
 
-  useEffect(() => {
-    void loadData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -29,12 +25,16 @@ export default function FeePage() {
         setDiscounts(await feeApi.getDiscounts())
       }
     } catch (err) {
-      console.error('Díjadatok betöltési hiba:', err)
+      logger.error('FeePage', 'Díjadatok betöltési hiba:', err)
       setError('Hiba a díjadatok betöltésekor')
     } finally {
       setLoading(false)
     }
-  }
+  }, [activeTab])
+
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
 
   const handleSave = async () => {
     try {
@@ -52,7 +52,7 @@ export default function FeePage() {
       await loadData()
       setShowForm(false)
     } catch (err) {
-      console.error('Díj mentési hiba:', err)
+      logger.error('FeePage', 'Díj mentési hiba:', err)
       setError('Hiba történt a mentés során')
     }
   }
