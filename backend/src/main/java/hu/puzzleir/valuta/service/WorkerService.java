@@ -344,8 +344,8 @@ public class WorkerService {
                     return new ValidationException("Hibás pénztáros kód vagy jelszó!");
                 });
         
-        // Aktív check
-        if (!worker.getActive()) {
+        // Aktív check (Boolean.TRUE.equals to prevent NPE on null active)
+        if (!Boolean.TRUE.equals(worker.getActive())) {
             throw new ValidationException("Ez a pénztáros inaktív!");
         }
         
