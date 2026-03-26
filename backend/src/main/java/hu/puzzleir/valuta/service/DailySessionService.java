@@ -52,10 +52,24 @@ public class DailySessionService {
         Long workerId = SecurityUtils.getCurrentWorkerId();
         LocalDate today = LocalDate.now();
 
-        // Ellenőrzés: nincs-e már nyitott nap
-        if (dailySessionRepository.hasOpenSession(branchId)) {
-            throw new ValidationException("Már van nyitott napi munkamenet!");
+        // Stale sessionök automatikus lezárása (korábbi napok)
+        List<DailySession> staleSessions = dailySessionRepository.findOpenSessionsByBranch(branchId).stream()
+                .filter(s -> s.getSessionDate() != null && s.getSessionDate().isBefore(today))
+                .toList();
+        for (DailySession stale : staleSessions) {
+            log.warn("Stale session automatikus lezárása: sessionDate={}, branchId={}", stale.getSessionDate(), branchId);
+            stale.setStatus(DailySessionStatus.CLOSED);
+            stale.setClosedAt(LocalDateTime.now());
+            stale.setClosingBalanceHuf(stale.getOpeningBalanceHuf() != null ? stale.getOpeningBalanceHuf() : BigDecimal.ZERO);
+            dailySessionRepository.save(stale);
         }
+
+        // Ellenőrzés: nincs-e már MAI nyitott nap
+        dailySessionRepository.findByBranchIdAndSessionDate(branchId, today).ifPresent(existing -> {
+            if (existing.getStatus() == DailySessionStatus.OPEN) {
+                throw new ValidationException("Már van nyitott napi munkamenet!");
+            }
+        });
 
         // HIGH FIX #14: Ha ugyanaz a pénztáros megpróbálja KÉTSZER nyitni a napot → hiba
         dailySessionRepository.findByBranchIdAndSessionDate(branchId, today).ifPresent(existingSession -> {

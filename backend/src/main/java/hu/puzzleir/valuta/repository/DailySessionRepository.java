@@ -100,10 +100,21 @@ public interface DailySessionRepository extends JpaRepository<DailySession, Long
     );
 
     /**
-     * Van-e nyitott session
+     * Van-e MAI nyitott session (dátumszűrős)
+     */
+    @Query("SELECT ds FROM DailySession ds " +
+           "WHERE ds.branch.id = :branchId " +
+           "AND ds.sessionDate = :sessionDate " +
+           "AND ds.status = 'OPEN'")
+    Optional<DailySession> findOpenSessionByBranchAndDate(
+            @Param("branchId") UUID branchId,
+            @Param("sessionDate") LocalDate sessionDate);
+
+    /**
+     * Van-e nyitott session (MAI napra)
      */
     default boolean hasOpenSession(UUID branchId) {
-        return !findOpenSessionsByBranch(branchId).isEmpty();
+        return findOpenSessionByBranchAndDate(branchId, LocalDate.now()).isPresent();
     }
 
     /**
