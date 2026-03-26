@@ -2,6 +2,8 @@ package hu.puzzleir.valuta.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -35,6 +37,7 @@ public class SyncOutboxEvent {
     private String idempotencyKey;
 
     @Column(name = "payload", nullable = false, columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String payload;
 
     @Enumerated(EnumType.STRING)
