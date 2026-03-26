@@ -152,7 +152,7 @@ public interface ExchangeRateRepository extends JpaRepository<ExchangeRate, Long
      */
     @Query(value = "SELECT DISTINCT ON (er.currency_id) er.* FROM exchange_rate er " +
            "WHERE er.company_id = :companyId " +
-           "AND er.active = true " +
+           "AND er.is_active = true " +
            "ORDER BY er.currency_id, er.valid_date DESC, er.valid_time DESC",
            nativeQuery = true)
     List<ExchangeRate> findLatestActiveRates(@Param("companyId") UUID companyId);
@@ -163,7 +163,7 @@ public interface ExchangeRateRepository extends JpaRepository<ExchangeRate, Long
     @Query(value = "SELECT (er.base_buy_rate + er.base_sell_rate) / 2 FROM exchange_rate er " +
            "WHERE er.company_id = :companyId " +
            "AND er.currency_id = (SELECT c.id FROM currency c WHERE c.code = :code) " +
-           "AND er.active = true " +
+           "AND er.is_active = true " +
            "ORDER BY er.valid_date DESC, er.valid_time DESC LIMIT 1",
            nativeQuery = true)
     Optional<BigDecimal> findLatestMidRateByCompanyAndCode(
@@ -176,7 +176,7 @@ public interface ExchangeRateRepository extends JpaRepository<ExchangeRate, Long
      */
     @Query(value = "SELECT (er.base_buy_rate + er.base_sell_rate) / 2 FROM exchange_rate er " +
            "WHERE er.currency_id = (SELECT c.id FROM currency c WHERE c.code = :code) " +
-           "AND er.active = true " +
+           "AND er.is_active = true " +
            "ORDER BY er.valid_date DESC, er.valid_time DESC LIMIT 1",
            nativeQuery = true)
     Optional<BigDecimal> findLatestMidRateByCodeGlobal(@Param("code") String code);
