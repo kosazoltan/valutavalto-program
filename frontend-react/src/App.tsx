@@ -118,7 +118,10 @@ export default function App() {
         if (token) {
           const parts = token.split('.')
           if (parts.length === 3 && parts[1]) {
-            const payload = JSON.parse(atob(parts[1])) as {
+            // Base64URL → Base64 conversion (JWT payload uses URL-safe encoding)
+            const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+            const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+            const payload = JSON.parse(atob(padded)) as {
               exp?: number
               activeRole?: string
               permissions?: string[]
