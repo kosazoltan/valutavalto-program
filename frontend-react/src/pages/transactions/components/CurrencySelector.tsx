@@ -68,9 +68,7 @@ export default function CurrencySelector({
               <div>
                 <span className="font-bold text-lg">
                   {currency.code}
-                  {index < 9 && (
-                    <span className="ml-2 text-xs opacity-75">({index + 1})</span>
-                  )}
+                  <span className="ml-2 text-xs opacity-75">({index + 1})</span>
                 </span>
                 <span className={`ml-2 text-sm ${
                   selectedCurrency?.id === currency.id ? 'text-primary-100' : 'text-gray-500'
@@ -87,7 +85,7 @@ export default function CurrencySelector({
         ))}
       </div>
       <div className="mt-2 text-xs text-gray-500">
-        <div>Navigáció: Nyilak ↑↓ vagy számok 1-8</div>
+        <div>Navigáció: Nyilak ↑↓</div>
         <div>Választás: Enter</div>
       </div>
     </div>

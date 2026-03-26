@@ -56,7 +56,7 @@ const menuGroups = [
     items: [
       { path: '/cashdesk', label: 'Pénztár', icon: Wallet },
       { path: '/reports', label: 'Riportok', icon: FileText },
-      { path: '/darius', label: 'Darius jelentések', icon: FileSpreadsheet },
+      { path: '/darius', label: 'Darius jelentések', icon: FileSpreadsheet, minRole: 'MANAGER' as const },
     ]
   },
   {
@@ -101,7 +101,7 @@ export default function MainLayout() {
   const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null)
   const [showSessionDialog, setShowSessionDialog] = useState(false)
   const [sessionError, setSessionError] = useState<string | null>(null)
-  const { user, logout } = useAuthStore()
+  const { user, logout, hasRole } = useAuthStore()
   const navigate = useNavigate()
 
   const initSession = useCallback(async () => {
@@ -128,10 +128,23 @@ export default function MainLayout() {
         setSessionInfo(newSession as unknown as SessionInfo)
         setSessionReady(true)
       } catch (err: unknown) {
+        const axErr = err as { response?: { data?: { message?: string }; status?: number }; message?: string }
+        const msg = axErr?.response?.data?.message || axErr?.message || ''
+        const isAlreadyOpen = msg.includes('már') && (msg.includes('nyitott') || msg.includes('létezik') || msg.includes('munkamenet'))
+
+        // Ha más pénztáros/branch már nyitotta → próbáljuk lekérni az existing session-t
+        if (isAlreadyOpen) {
+          try {
+            const current = await dailySessionApi.getCurrent()
+            setSessionInfo(current as unknown as SessionInfo)
+          } catch { /* session info nem kritikus — folytatunk anélkül */ }
+          // Session már nyitva van → engedjük tovább AKKOR IS ha getCurrent() hibázott
+          setSessionReady(true)
+          return
+        }
+
         // Ha a napnyitás nem sikerült (pl. előző nap nincs lezárva)
-        const axErr = err as { response?: { data?: { message?: string } }; message?: string }
-        const msg = axErr?.response?.data?.message || axErr?.message || 'Hiba a napnyitás során'
-        setSessionError(msg)
+        setSessionError(msg || 'Hiba a napnyitás során')
         setShowSessionDialog(true)
       }
     } catch {
@@ -242,7 +255,9 @@ export default function MainLayout() {
                   {group.label}
                 </div>
               )}
-              {group.items.map((item) => (
+              {group.items
+                .filter((item) => !('minRole' in item) || hasRole((item as { minRole: string }).minRole))
+                .map((item) => (
                 <NavLink
                   key={item.path}
                   to={item.path}

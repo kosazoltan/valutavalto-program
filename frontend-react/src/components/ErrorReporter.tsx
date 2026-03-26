@@ -37,12 +37,9 @@ export async function sendErrorReport(params: {
       timestamp: new Date().toISOString(),
     };
 
-    const baseUrl = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8080/api/v1' : '/api/v1');
-    await fetch(`${baseUrl}/error-report`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    // Best-effort: API kliens proxy-n át, JWT header-rel
+    const { api } = await import('../services/api/client');
+    await api.post('/error-report', body);
   } catch {
     // Silently fail — error reporter must not crash
   }

@@ -1,7 +1,9 @@
+import { useState, useEffect } from 'react'
 import { ArrowLeftRight, Users, TrendingUp, Wallet, FileText, AlertTriangle, ArrowUp, ArrowDown, Clock } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { exchangeRateApi, type ExchangeRate } from '../services/api/exchange-rates'
 
-// Mock data - replace with API calls
+// Mock data - replace with API calls (stats & transactions still mock)
 const mockStats = {
   todayTransactions: 47,
   todayVolume: 12500000,
@@ -13,13 +15,6 @@ const mockStats = {
   }
 }
 
-const mockRates = [
-  { code: 'EUR', name: 'Euró', buy: 391.50, sell: 398.50, change: 0.5, trend: 'up' },
-  { code: 'USD', name: 'US Dollár', buy: 358.20, sell: 365.80, change: -0.3, trend: 'down' },
-  { code: 'GBP', name: 'Angol Font', buy: 455.00, sell: 468.00, change: 0.8, trend: 'up' },
-  { code: 'CHF', name: 'Svájci Frank', buy: 402.50, sell: 412.50, change: 0.1, trend: 'up' },
-]
-
 const mockRecentTransactions = [
   { id: 1, time: '10:45', type: 'BUY', currency: 'EUR', amount: 500, huf: 195750, customer: 'Kiss János', status: 'completed' },
   { id: 2, time: '10:32', type: 'SELL', currency: 'USD', amount: 1000, huf: 358200, customer: 'Nagy Péter', status: 'completed' },
@@ -27,7 +22,31 @@ const mockRecentTransactions = [
   { id: 4, time: '09:58', type: 'SELL', currency: 'CHF', amount: 350, huf: 140875, customer: 'Kovács Béla', status: 'pending' },
 ]
 
+// Fő devizák a dashboardra (top 4)
+const DASHBOARD_CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF']
+
 export default function DashboardPage() {
+  const [liveRates, setLiveRates] = useState<ExchangeRate[]>([])
+  const [ratesLoading, setRatesLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchRates = async () => {
+      try {
+        const allRates = await exchangeRateApi.list()
+        // Szűrés: csak aktív + dashboard devizák
+        const filtered = allRates
+          .filter(r => r.active && DASHBOARD_CURRENCIES.includes(r.currencyCode))
+          .sort((a, b) => DASHBOARD_CURRENCIES.indexOf(a.currencyCode) - DASHBOARD_CURRENCIES.indexOf(b.currencyCode))
+        setLiveRates(filtered)
+      } catch {
+        // Ha API nem elérhető, üres marad
+        setLiveRates([])
+      } finally {
+        setRatesLoading(false)
+      }
+    }
+    fetchRates()
+  }, [])
   return (
     <div className="space-y-6">
       {/* Page header */}
@@ -96,28 +115,29 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {mockRates.map((rate) => (
-                <tr key={rate.code}>
-                  <td>
-                    <div className="flex items-center gap-2">
-                      <span className={`font-bold text-currency-${rate.code.toLowerCase()}`}>{rate.code}</span>
-                      <span className="text-secondary-500 text-xs">{rate.name}</span>
-                    </div>
-                  </td>
-                  <td className="text-right font-mono font-semibold">{rate.buy.toFixed(2)}</td>
-                  <td className="text-right font-mono font-semibold">{rate.sell.toFixed(2)}</td>
-                  <td className="text-right">
-                    <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${
-                      rate.change >= 0 
-                        ? 'bg-success-100 text-success-700' 
-                        : 'bg-danger-100 text-danger-700'
-                    }`}>
-                      {rate.change >= 0 ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
-                      {rate.change >= 0 ? '+' : ''}{rate.change.toFixed(1)}%
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {ratesLoading ? (
+                <tr><td colSpan={4} className="text-center py-4 text-secondary-400">Betöltés...</td></tr>
+              ) : liveRates.length === 0 ? (
+                <tr><td colSpan={4} className="text-center py-4 text-secondary-400">Nincs elérhető árfolyam</td></tr>
+              ) : (
+                liveRates.map((rate) => (
+                  <tr key={rate.currencyCode}>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        <span className={`font-bold text-currency-${rate.currencyCode.toLowerCase()}`}>{rate.currencyCode}</span>
+                        <span className="text-secondary-500 text-xs">{rate.currencyName}</span>
+                      </div>
+                    </td>
+                    <td className="text-right font-mono font-semibold">{rate.baseBuyRate.toFixed(2)}</td>
+                    <td className="text-right font-mono font-semibold">{rate.baseSellRate.toFixed(2)}</td>
+                    <td className="text-right">
+                      <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-secondary-100 text-secondary-600">
+                        {rate.officialRate ? `MNB: ${rate.officialRate.toFixed(2)}` : '—'}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
