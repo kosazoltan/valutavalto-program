@@ -3,14 +3,12 @@ package hu.puzzleir.valuta.config;
 import org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 
 /**
  * Flyway konfiguráció production környezethez.
  * Repair-t futtat migrate előtt, hogy a sikertelen migrációkat kezelje.
  */
 @Configuration
-@Profile("production")
 public class FlywayConfig {
 
     @Bean
