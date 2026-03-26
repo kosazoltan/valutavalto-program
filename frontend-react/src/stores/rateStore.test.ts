@@ -241,7 +241,6 @@ describe('rateStore', () => {
       })
       act(() => {
         useRateStore.getState().applyPublishedRates([
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           { buyRate: 999, sellRate: 999 } as any,
         ])
       })
