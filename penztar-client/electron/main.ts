@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { app, BrowserWindow, ipcMain, dialog, protocol, net, safeStorage } from 'electron';
 import log from 'electron-log/main';
 import path from 'node:path';
