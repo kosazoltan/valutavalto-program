@@ -21,6 +21,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -64,21 +65,43 @@ public class DailySessionService {
             dailySessionRepository.save(stale);
         }
 
-        // Ellenőrzés: nincs-e már MAI nyitott nap
-        dailySessionRepository.findByBranchIdAndSessionDate(branchId, today).ifPresent(existing -> {
+        // Ellenőrzés: nincs-e már MAI session
+        Optional<DailySession> existingOpt = dailySessionRepository.findByBranchIdAndSessionDate(branchId, today);
+        if (existingOpt.isPresent()) {
+            DailySession existing = existingOpt.get();
+
             if (existing.getStatus() == DailySessionStatus.OPEN) {
                 throw new ValidationException("Már van nyitott napi munkamenet!");
             }
-        });
 
-        // HIGH FIX #14: Ha ugyanaz a pénztáros megpróbálja KÉTSZER nyitni a napot → hiba
-        dailySessionRepository.findByBranchIdAndSessionDate(branchId, today).ifPresent(existingSession -> {
-            if (existingSession.getOpenedByWorker() != null
-                    && existingSession.getOpenedByWorker().getId().equals(workerId)) {
-                throw new ValidationException("Ez a pénztáros már nyitotta a mai napot!");
+            // REOPEN: ha mai session CLOSED → újranyitás engedélyezett
+            if (existing.getStatus() == DailySessionStatus.CLOSED) {
+                Worker worker = workerRepository.findById(workerId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található"));
+
+                existing.setStatus(DailySessionStatus.OPEN);
+                existing.setOpenedByWorker(worker);
+                existing.setOpenedAt(LocalDateTime.now());
+                existing.setClosedByWorker(null);
+                existing.setClosedAt(null);
+                existing.setClosingBalanceHuf(null);
+                existing.setDenominationVerified(false);
+
+                DailySession saved = dailySessionRepository.save(existing);
+
+                // Kassza egyenlegek napi nyitás
+                updateCashBalancesForOpening(branchId);
+
+                log.info("Napi újranyitás (REOPEN): {} - {} - pénztáros: {}",
+                        existing.getBranch().getName(), today, worker.getName());
+
+                return saved;
             }
-            throw new ValidationException("Mai napra már létezik munkamenet ezen az irodán!");
-        });
+
+            // PENDING_CLOSE vagy egyéb → nem lehet nyitni
+            throw new ValidationException("Mai napra már létezik munkamenet ezen az irodán! Státusz: "
+                    + existing.getStatus().getDisplayName());
+        }
 
         // Ellenőrzés: előző nap le van-e zárva
         dailySessionRepository.findLatest(branchId).ifPresent(lastSession -> {

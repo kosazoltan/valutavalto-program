@@ -66,10 +66,52 @@ public class SessionOpenService {
             throw new ValidationException("Van lezáratlan korábbi munkamenet! Először zárja le!");
         }
 
-        // Ellenőrzés: mai napra már létezik-e session
-        dailySessionRepository.findByBranchIdAndSessionDate(branchId, today).ifPresent(existing -> {
-            throw new ValidationException("Mai napra már létezik munkamenet ezen az irodán!");
-        });
+        // REOPEN: ha mai session CLOSED → újranyitás engedélyezett
+        Optional<DailySession> existingOpt = dailySessionRepository.findByBranchIdAndSessionDate(branchId, today);
+        if (existingOpt.isPresent()) {
+            DailySession existingSession = existingOpt.get();
+
+            if (existingSession.getStatus() == DailySessionStatus.OPEN) {
+                throw new ValidationException("Már van nyitott napi munkamenet ezen az irodán!");
+            }
+
+            if (existingSession.getStatus() == DailySessionStatus.CLOSED) {
+                existingSession.setStatus(DailySessionStatus.OPEN);
+                existingSession.setOpenedByWorker(worker);
+                existingSession.setOpenedAt(LocalDateTime.now());
+                existingSession.setClosedByWorker(null);
+                existingSession.setClosedAt(null);
+                existingSession.setClosingBalanceHuf(null);
+                existingSession.setDenominationVerified(false);
+
+                DailySession saved = dailySessionRepository.save(existingSession);
+
+                List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
+                for (CashBalance balance : balances) {
+                    balance.setDailyOpening();
+                    cashBalanceRepository.save(balance);
+                }
+
+                log.info("Pénztár újranyitás (REOPEN): iroda={}, pénztáros={}, dátum={}",
+                        branch.getName(), worker.getName(), today);
+
+                return SessionDataDto.builder()
+                        .sessionId(saved.getId())
+                        .branchId(branchId.toString())
+                        .branchName(branch.getName())
+                        .workerId(workerId)
+                        .workerName(worker.getName())
+                        .sessionDate(today)
+                        .status(saved.getStatus().name())
+                        .openedAt(saved.getOpenedAt())
+                        .openingBalances(calculateOpeningBalances(branchId))
+                        .warnings(validateSessionOpen(branchId))
+                        .build();
+            }
+
+            throw new ValidationException("Mai napra már létezik munkamenet ezen az irodán! Státusz: "
+                    + existingSession.getStatus().getDisplayName());
+        }
 
         // Nyitó készlet: előző záró készlet átvétele
         Map<String, BigDecimal> openingBalances = calculateOpeningBalances(branchId);
