@@ -398,10 +398,22 @@ public class WorkerService {
         String tokenId = jwtTokenProvider.getTokenIdFromToken(token);
         
         // Session tracking
+        // BUGFIX: worker.getBranch() may be null → use company's first active branch as fallback
+        Branch sessionBranch = worker.getBranch();
+        if (sessionBranch == null) {
+            sessionBranch = branchRepository.findByCompanyIdAndIsActiveTrue(company.getId()).stream()
+                    .findFirst()
+                    .orElseGet(() -> branchRepository.findByCompanyId(company.getId()).stream().findFirst().orElse(null));
+            
+            if (sessionBranch == null) {
+                throw new ValidationException("Nincs elérhető iroda a bejelentkezéshez!");
+            }
+        }
+        
         WorkerSession session = WorkerSession.builder()
                 .company(company)
                 .worker(worker)
-                .branch(worker.getBranch())
+                .branch(sessionBranch)
                 .loginAt(LocalDateTime.now())
                 .ipAddress(ipAddress)
                 .userAgent(userAgent)
