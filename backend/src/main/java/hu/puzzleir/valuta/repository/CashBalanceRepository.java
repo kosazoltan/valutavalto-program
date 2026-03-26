@@ -33,34 +33,46 @@ public interface CashBalanceRepository extends JpaRepository<CashBalance, Long> 
             @Param("branchId") UUID branchId, @Param("currencyId") Long currencyId);
 
     /**
-     * Összes egyenleg egy fiókhoz
+     * Összes egyenleg egy fiókhoz (JOIN FETCH a lazy proxy hiba elkerüléséhez)
      */
     @Query("SELECT cb FROM CashBalance cb " +
+           "JOIN FETCH cb.branch " +
+           "JOIN FETCH cb.currency " +
+           "JOIN FETCH cb.company " +
            "WHERE cb.branch.id = :branchId " +
            "ORDER BY cb.currency.displayOrder")
     List<CashBalance> findByBranchId(@Param("branchId") UUID branchId);
 
     /**
-     * Összes egyenleg egy céghez
+     * Összes egyenleg egy céghez (JOIN FETCH a lazy proxy hiba elkerüléséhez)
      */
     @Query("SELECT cb FROM CashBalance cb " +
+           "JOIN FETCH cb.branch " +
+           "JOIN FETCH cb.currency " +
+           "JOIN FETCH cb.company " +
            "WHERE cb.company.id = :companyId " +
            "ORDER BY cb.branch.name, cb.currency.displayOrder")
     List<CashBalance> findByCompanyId(@Param("companyId") UUID companyId);
 
     /**
-     * Alacsony készletű egyenlegek
+     * Alacsony készletű egyenlegek (JOIN FETCH)
      */
     @Query("SELECT cb FROM CashBalance cb " +
+           "JOIN FETCH cb.branch " +
+           "JOIN FETCH cb.currency " +
+           "JOIN FETCH cb.company " +
            "WHERE cb.company.id = :companyId " +
            "AND cb.currentBalance <= cb.minBalance " +
            "AND cb.minBalance IS NOT NULL")
     List<CashBalance> findLowBalances(@Param("companyId") UUID companyId);
 
     /**
-     * Magas készletű egyenlegek
+     * Magas készletű egyenlegek (JOIN FETCH)
      */
     @Query("SELECT cb FROM CashBalance cb " +
+           "JOIN FETCH cb.branch " +
+           "JOIN FETCH cb.currency " +
+           "JOIN FETCH cb.company " +
            "WHERE cb.company.id = :companyId " +
            "AND cb.currentBalance >= cb.maxBalance " +
            "AND cb.maxBalance IS NOT NULL")

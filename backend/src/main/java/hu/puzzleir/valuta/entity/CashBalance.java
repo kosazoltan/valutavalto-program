@@ -1,5 +1,7 @@
 package hu.puzzleir.valuta.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;
 import jakarta.persistence.*;
@@ -20,6 +22,7 @@ import java.time.LocalDateTime;
  * - Nyitó/záró egyenleg
  */
 @Entity
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Table(name = "cash_balance", indexes = {
     @Index(name = "idx_cash_balance_branch", columnList = "branch_id"),
     @Index(name = "idx_cash_balance_currency", columnList = "currency_id")
@@ -43,6 +46,7 @@ public class CashBalance {
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id", nullable = false)
+    @JsonIgnore
     private Company company;
 
     /**
@@ -50,6 +54,7 @@ public class CashBalance {
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "branch_id", nullable = false)
+    @JsonIgnore
     private Branch branch;
 
     /**
@@ -57,6 +62,7 @@ public class CashBalance {
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "currency_id", nullable = false)
+    @JsonIgnore
     private Currency currency;
 
     /**

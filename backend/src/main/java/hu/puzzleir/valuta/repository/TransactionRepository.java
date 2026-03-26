@@ -150,15 +150,26 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     );
 
     /**
-     * Tranzakciók lapozással
+     * Tranzakciók lapozással (JOIN FETCH a lazy proxy hiba elkerüléséhez)
      */
-    @Query("SELECT t FROM Transaction t " +
+    @Query(value = "SELECT t FROM Transaction t " +
+           "JOIN FETCH t.branch " +
+           "JOIN FETCH t.company " +
+           "LEFT JOIN FETCH t.currency " +
+           "LEFT JOIN FETCH t.worker " +
+           "LEFT JOIN FETCH t.originalTransaction " +
            "WHERE t.company.id = :companyId " +
            "AND (:branchId IS NULL OR t.branch.id = :branchId) " +
            "AND (:startDate IS NULL OR t.transactionDate >= :startDate) " +
            "AND (:endDate IS NULL OR t.transactionDate <= :endDate) " +
            "AND (:type IS NULL OR t.transactionType = :type) " +
-           "ORDER BY t.transactionDate DESC, t.transactionTime DESC")
+           "ORDER BY t.transactionDate DESC, t.transactionTime DESC",
+           countQuery = "SELECT COUNT(t) FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND (:branchId IS NULL OR t.branch.id = :branchId) " +
+           "AND (:startDate IS NULL OR t.transactionDate >= :startDate) " +
+           "AND (:endDate IS NULL OR t.transactionDate <= :endDate) " +
+           "AND (:type IS NULL OR t.transactionType = :type)")
     Page<Transaction> findWithFilters(
         @Param("companyId") UUID companyId,
         @Param("branchId") UUID branchId,

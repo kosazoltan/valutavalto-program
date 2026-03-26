@@ -61,7 +61,20 @@ public class SessionOpenService {
 
         LocalDate today = LocalDate.now();
 
-        // Ellenőrzés: nincs-e lezáratlan korábbi session
+        // Stale sessionök automatikus lezárása (korábbi napok) — #2 fix
+        List<DailySession> staleSessions = dailySessionRepository.findOpenSessionsByBranch(branchId).stream()
+                .filter(s -> s.getSessionDate() != null && s.getSessionDate().isBefore(today))
+                .toList();
+        for (DailySession stale : staleSessions) {
+            log.warn("Stale session automatikus lezárása (SessionOpenService): sessionDate={}, branchId={}",
+                    stale.getSessionDate(), branchId);
+            stale.setStatus(DailySessionStatus.CLOSED);
+            stale.setClosedAt(LocalDateTime.now());
+            stale.setClosingBalanceHuf(stale.getOpeningBalanceHuf() != null ? stale.getOpeningBalanceHuf() : BigDecimal.ZERO);
+            dailySessionRepository.save(stale);
+        }
+
+        // Ellenőrzés: nincs-e lezáratlan MAI session
         if (dailySessionRepository.hasOpenSession(branchId)) {
             throw new ValidationException("Van lezáratlan korábbi munkamenet! Először zárja le!");
         }
@@ -86,11 +99,8 @@ public class SessionOpenService {
 
                 DailySession saved = dailySessionRepository.save(existingSession);
 
-                List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
-                for (CashBalance balance : balances) {
-                    balance.setDailyOpening();
-                    cashBalanceRepository.save(balance);
-                }
+                // Null-safe kassza egyenleg nyitás — #4 fix
+                updateCashBalancesForOpening(branchId);
 
                 log.info("Pénztár újranyitás (REOPEN): iroda={}, pénztáros={}, dátum={}",
                         branch.getName(), worker.getName(), today);
@@ -132,12 +142,8 @@ public class SessionOpenService {
 
         DailySession saved = dailySessionRepository.save(session);
 
-        // Kassza egyenlegek napi nyitás beállítása
-        List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
-        for (CashBalance balance : balances) {
-            balance.setDailyOpening();
-            cashBalanceRepository.save(balance);
-        }
+        // Kassza egyenlegek napi nyitás beállítása — null-safe
+        updateCashBalancesForOpening(branchId);
 
         log.info("Pénztárnyitás: iroda={}, pénztáros={}, dátum={}, nyitó HUF={}",
                 branch.getName(), worker.getName(), today, openingHuf);
@@ -172,25 +178,32 @@ public class SessionOpenService {
 
     /**
      * Nyitás validáció — figyelmeztetések visszaadása.
+     * Megjegyzés: REOPEN esetén a mai OPEN session nem hamis warning (#1 fix).
      */
     @Transactional(readOnly = true)
     public List<String> validateSessionOpen(UUID branchId) {
         List<String> warnings = new ArrayList<>();
+        LocalDate today = LocalDate.now();
 
-        // Előző nap lezárva?
+        // Előző nap lezárva? (csak korábbi napra vonatkozó session-ök)
         dailySessionRepository.findLatest(branchId).ifPresent(lastSession -> {
-            if (lastSession.getStatus() == DailySessionStatus.OPEN) {
-                warnings.add("⚠️ Az előző nap nincs lezárva! (Dátum: " + lastSession.getSessionDate() + ")");
-            }
-            if (lastSession.getStatus() == DailySessionStatus.PENDING_CLOSE) {
-                warnings.add("⚠️ Az előző nap zárás alatt áll! (Dátum: " + lastSession.getSessionDate() + ")");
+            // Csak korábbi dátumú session-ök relevánsak — a mai OPEN session REOPEN utáni normális állapot
+            if (lastSession.getSessionDate() != null && lastSession.getSessionDate().isBefore(today)) {
+                if (lastSession.getStatus() == DailySessionStatus.OPEN) {
+                    warnings.add("⚠️ Az előző nap nincs lezárva! (Dátum: " + lastSession.getSessionDate() + ")");
+                }
+                if (lastSession.getStatus() == DailySessionStatus.PENDING_CLOSE) {
+                    warnings.add("⚠️ Az előző nap zárás alatt áll! (Dátum: " + lastSession.getSessionDate() + ")");
+                }
             }
         });
 
-        // Mai napra már van session?
-        LocalDate today = LocalDate.now();
+        // Mai session warning: csak PENDING_CLOSE/egyéb nem-normális állapotban releváns
+        // OPEN vagy CLOSED mai session a normális működés része (nyitás/REOPEN), nem warning
         dailySessionRepository.findByBranchIdAndSessionDate(branchId, today).ifPresent(existing -> {
-            warnings.add("⚠️ Mai napra már létezik munkamenet! Státusz: " + existing.getStatus().getDisplayName());
+            if (existing.getStatus() != DailySessionStatus.OPEN && existing.getStatus() != DailySessionStatus.CLOSED) {
+                warnings.add("⚠️ Mai napra már létezik munkamenet! Státusz: " + existing.getStatus().getDisplayName());
+            }
         });
 
         // Készlet ellenőrzés - alacsony egyenleg
@@ -207,6 +220,30 @@ public class SessionOpenService {
     }
 
     // ============ PRIVATE METHODS ============
+
+    /**
+     * Kassza egyenlegek null-safe frissítése nyitáskor.
+     * DailySessionService-ből átemelt logika a DRY és null-safety érdekében (#3, #4 fix).
+     */
+    private void updateCashBalancesForOpening(UUID branchId) {
+        List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
+        for (CashBalance balance : balances) {
+            if (balance.getCurrentBalance() == null) {
+                String currencyCode = balance.getCurrency() != null ? balance.getCurrency().getCode() : "UNKNOWN";
+                log.warn("CashBalance currentBalance null nyitáskor, null-safe korrekció: branchId={}, currency={}",
+                        branchId, currencyCode);
+                balance.setCurrentBalance(BigDecimal.ZERO);
+            }
+            if (balance.getVersion() == null) {
+                String currencyCode = balance.getCurrency() != null ? balance.getCurrency().getCode() : "UNKNOWN";
+                log.warn("CashBalance version null nyitáskor, optimistic-lock null-safe korrekció: branchId={}, currency={}",
+                        branchId, currencyCode);
+                balance.setVersion(0L);
+            }
+            balance.setDailyOpening();
+            cashBalanceRepository.save(balance);
+        }
+    }
 
     private Map<String, BigDecimal> calculateOpeningBalances(UUID branchId) {
         List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);

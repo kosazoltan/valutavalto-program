@@ -18,9 +18,17 @@ import java.util.UUID;
 public interface DailySessionRepository extends JpaRepository<DailySession, Long> {
 
     /**
-     * Napi session keresése fiók és dátum alapján
+     * Napi session keresése fiók és dátum alapján (JOIN FETCH a lazy proxy hiba elkerüléséhez)
      */
-    Optional<DailySession> findByBranchIdAndSessionDate(UUID branchId, LocalDate sessionDate);
+    @Query("SELECT ds FROM DailySession ds " +
+           "JOIN FETCH ds.branch " +
+           "JOIN FETCH ds.company " +
+           "LEFT JOIN FETCH ds.openedByWorker " +
+           "LEFT JOIN FETCH ds.closedByWorker " +
+           "WHERE ds.branch.id = :branchId AND ds.sessionDate = :sessionDate")
+    Optional<DailySession> findByBranchIdAndSessionDate(
+            @Param("branchId") UUID branchId,
+            @Param("sessionDate") LocalDate sessionDate);
 
     /**
      * Napi session részletekkel (lazy proxy hiba elkerüléséhez DTO map előtt).
@@ -35,26 +43,38 @@ public interface DailySessionRepository extends JpaRepository<DailySession, Long
             @Param("sessionDate") LocalDate sessionDate);
 
     /**
-     * Aktuális nyitott session egy fiókhoz
+     * Aktuális nyitott session egy fiókhoz (JOIN FETCH)
      */
     @Query("SELECT ds FROM DailySession ds " +
+           "JOIN FETCH ds.branch " +
+           "JOIN FETCH ds.company " +
+           "LEFT JOIN FETCH ds.openedByWorker " +
+           "LEFT JOIN FETCH ds.closedByWorker " +
            "WHERE ds.branch.id = :branchId " +
            "AND ds.status = 'OPEN' " +
            "ORDER BY ds.sessionDate DESC")
     List<DailySession> findOpenSessionsByBranch(@Param("branchId") UUID branchId);
 
     /**
-     * Utolsó session egy fiókhoz
+     * Utolsó session egy fiókhoz (JOIN FETCH)
      */
     @Query("SELECT ds FROM DailySession ds " +
+           "JOIN FETCH ds.branch " +
+           "JOIN FETCH ds.company " +
+           "LEFT JOIN FETCH ds.openedByWorker " +
+           "LEFT JOIN FETCH ds.closedByWorker " +
            "WHERE ds.branch.id = :branchId " +
            "ORDER BY ds.sessionDate DESC")
     List<DailySession> findLatestByBranch(@Param("branchId") UUID branchId);
 
     /**
-     * Sessions időszakra
+     * Sessions időszakra (JOIN FETCH a lazy proxy hiba elkerüléséhez)
      */
     @Query("SELECT ds FROM DailySession ds " +
+           "JOIN FETCH ds.branch " +
+           "JOIN FETCH ds.company " +
+           "LEFT JOIN FETCH ds.openedByWorker " +
+           "LEFT JOIN FETCH ds.closedByWorker " +
            "WHERE ds.company.id = :companyId " +
            "AND ds.sessionDate BETWEEN :startDate AND :endDate " +
            "ORDER BY ds.sessionDate DESC")
@@ -65,17 +85,25 @@ public interface DailySessionRepository extends JpaRepository<DailySession, Long
     );
 
     /**
-     * Nyitott sessionök a céghez
+     * Nyitott sessionök a céghez (JOIN FETCH)
      */
     @Query("SELECT ds FROM DailySession ds " +
+           "JOIN FETCH ds.branch " +
+           "JOIN FETCH ds.company " +
+           "LEFT JOIN FETCH ds.openedByWorker " +
+           "LEFT JOIN FETCH ds.closedByWorker " +
            "WHERE ds.company.id = :companyId " +
            "AND ds.status = 'OPEN'")
     List<DailySession> findOpenSessionsByCompany(@Param("companyId") UUID companyId);
 
     /**
-     * Branch sessionök dátumtartományban.
+     * Branch sessionök dátumtartományban (JOIN FETCH).
      */
     @Query("SELECT ds FROM DailySession ds " +
+           "JOIN FETCH ds.branch " +
+           "JOIN FETCH ds.company " +
+           "LEFT JOIN FETCH ds.openedByWorker " +
+           "LEFT JOIN FETCH ds.closedByWorker " +
            "WHERE ds.branch.id = :branchId " +
            "AND ds.sessionDate BETWEEN :startDate AND :endDate " +
            "ORDER BY ds.sessionDate ASC")
@@ -100,9 +128,13 @@ public interface DailySessionRepository extends JpaRepository<DailySession, Long
     );
 
     /**
-     * Van-e MAI nyitott session (dátumszűrős)
+     * Van-e MAI nyitott session (dátumszűrős, JOIN FETCH)
      */
     @Query("SELECT ds FROM DailySession ds " +
+           "JOIN FETCH ds.branch " +
+           "JOIN FETCH ds.company " +
+           "LEFT JOIN FETCH ds.openedByWorker " +
+           "LEFT JOIN FETCH ds.closedByWorker " +
            "WHERE ds.branch.id = :branchId " +
            "AND ds.sessionDate = :sessionDate " +
            "AND ds.status = 'OPEN'")

@@ -14,7 +14,7 @@ var config = {
         port: 3000,
         proxy: {
             '/api': {
-                target: 'https://valuta-backend-spbx.onrender.com',
+                target: 'http://localhost:8080',
                 changeOrigin: true,
             },
         },
@@ -28,6 +28,7 @@ var config = {
         globals: true,
         setupFiles: './src/test/setup.ts',
         css: true,
+        exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
     },
     // API URL beállítása build időben
     envPrefix: 'VITE_',

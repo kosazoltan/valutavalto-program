@@ -20,8 +20,8 @@ if errorlevel 1 (
 
 echo.
 echo [2/3] Neon DB kornyezet beallitasa
-REM --- .env fajlbol olvassa a connection adatokat ---
-for /f "tokens=1,* delims==" %%A in ('type "%ROOT_DIR%.env" ^| findstr /B "DATABASE_"') do (
+REM --- .env fajlbol olvassa az osszes releváns env vart ---
+for /f "tokens=1,* delims==" %%A in ('type "%ROOT_DIR%.env" ^| findstr /B "DATABASE_ JWT_ SPRING_ GOOGLE_ ENCRYPTION_ CORS_ NVD_"') do (
   set "%%A=%%B"
 )
 

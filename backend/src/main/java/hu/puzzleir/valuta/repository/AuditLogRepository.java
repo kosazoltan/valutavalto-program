@@ -15,22 +15,28 @@ import java.util.UUID;
 @Repository
 public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
 
-    @Query("SELECT a FROM AuditLog a WHERE " +
-           "a.companyId = :companyId AND " +
-           "(:from IS NULL OR a.createdAt >= :from) AND " +
-           "(:to IS NULL OR a.createdAt <= :to) " +
-           "ORDER BY a.createdAt DESC")
+    @Query(value = "SELECT * FROM audit_log a WHERE " +
+           "a.company_id = :companyId AND " +
+           "(CAST(:from AS timestamp) IS NULL OR a.created_at >= :from) AND " +
+           "(CAST(:to AS timestamp) IS NULL OR a.created_at <= :to) " +
+           "ORDER BY a.created_at DESC",
+           countQuery = "SELECT COUNT(*) FROM audit_log a WHERE " +
+           "a.company_id = :companyId AND " +
+           "(CAST(:from AS timestamp) IS NULL OR a.created_at >= :from) AND " +
+           "(CAST(:to AS timestamp) IS NULL OR a.created_at <= :to)",
+           nativeQuery = true)
     Page<AuditLog> findByDateRange(
             @Param("companyId") UUID companyId,
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to,
             Pageable pageable);
 
-    @Query("SELECT a FROM AuditLog a WHERE " +
-           "a.companyId = :companyId AND " +
-           "(:from IS NULL OR a.createdAt >= :from) AND " +
-           "(:to IS NULL OR a.createdAt <= :to) " +
-           "ORDER BY a.createdAt DESC")
+    @Query(value = "SELECT * FROM audit_log a WHERE " +
+           "a.company_id = :companyId AND " +
+           "(CAST(:from AS timestamp) IS NULL OR a.created_at >= :from) AND " +
+           "(CAST(:to AS timestamp) IS NULL OR a.created_at <= :to) " +
+           "ORDER BY a.created_at DESC",
+           nativeQuery = true)
     List<AuditLog> findAllByDateRange(
             @Param("companyId") UUID companyId,
             @Param("from") LocalDateTime from,
@@ -40,11 +46,16 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
 
     List<AuditLog> findByCompanyIdAndEntityTypeAndEntityIdOrderByCreatedAtDesc(UUID companyId, String entityType, String entityId);
 
-    @Query("SELECT a FROM AuditLog a WHERE a.companyId = :companyId " +
-           "AND a.userId = :userId " +
-           "AND (:from IS NULL OR a.createdAt >= :from) " +
-           "AND (:to IS NULL OR a.createdAt <= :to) " +
-           "ORDER BY a.createdAt DESC")
+    @Query(value = "SELECT * FROM audit_log a WHERE a.company_id = :companyId " +
+           "AND a.user_id = :userId " +
+           "AND (CAST(:from AS timestamp) IS NULL OR a.created_at >= :from) " +
+           "AND (CAST(:to AS timestamp) IS NULL OR a.created_at <= :to) " +
+           "ORDER BY a.created_at DESC",
+           countQuery = "SELECT COUNT(*) FROM audit_log a WHERE a.company_id = :companyId " +
+           "AND a.user_id = :userId " +
+           "AND (CAST(:from AS timestamp) IS NULL OR a.created_at >= :from) " +
+           "AND (CAST(:to AS timestamp) IS NULL OR a.created_at <= :to)",
+           nativeQuery = true)
     Page<AuditLog> findByWorker(
             @Param("companyId") UUID companyId,
             @Param("userId") String userId,
@@ -52,11 +63,16 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
             @Param("to") LocalDateTime to,
             Pageable pageable);
 
-    @Query("SELECT a FROM AuditLog a WHERE a.companyId = :companyId " +
-           "AND a.branchId = :branchId " +
-           "AND (:from IS NULL OR a.createdAt >= :from) " +
-           "AND (:to IS NULL OR a.createdAt <= :to) " +
-           "ORDER BY a.createdAt DESC")
+    @Query(value = "SELECT * FROM audit_log a WHERE a.company_id = :companyId " +
+           "AND a.branch_id = :branchId " +
+           "AND (CAST(:from AS timestamp) IS NULL OR a.created_at >= :from) " +
+           "AND (CAST(:to AS timestamp) IS NULL OR a.created_at <= :to) " +
+           "ORDER BY a.created_at DESC",
+           countQuery = "SELECT COUNT(*) FROM audit_log a WHERE a.company_id = :companyId " +
+           "AND a.branch_id = :branchId " +
+           "AND (CAST(:from AS timestamp) IS NULL OR a.created_at >= :from) " +
+           "AND (CAST(:to AS timestamp) IS NULL OR a.created_at <= :to)",
+           nativeQuery = true)
     Page<AuditLog> findByBranch(
             @Param("companyId") UUID companyId,
             @Param("branchId") String branchId,
@@ -64,11 +80,16 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
             @Param("to") LocalDateTime to,
             Pageable pageable);
 
-    @Query("SELECT a FROM AuditLog a WHERE a.companyId = :companyId " +
+    @Query(value = "SELECT * FROM audit_log a WHERE a.company_id = :companyId " +
            "AND a.action = :action " +
-           "AND (:from IS NULL OR a.createdAt >= :from) " +
-           "AND (:to IS NULL OR a.createdAt <= :to) " +
-           "ORDER BY a.createdAt DESC")
+           "AND (CAST(:from AS timestamp) IS NULL OR a.created_at >= :from) " +
+           "AND (CAST(:to AS timestamp) IS NULL OR a.created_at <= :to) " +
+           "ORDER BY a.created_at DESC",
+           countQuery = "SELECT COUNT(*) FROM audit_log a WHERE a.company_id = :companyId " +
+           "AND a.action = :action " +
+           "AND (CAST(:from AS timestamp) IS NULL OR a.created_at >= :from) " +
+           "AND (CAST(:to AS timestamp) IS NULL OR a.created_at <= :to)",
+           nativeQuery = true)
     Page<AuditLog> findByAction(
             @Param("companyId") UUID companyId,
             @Param("action") String action,
@@ -78,18 +99,30 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
 
     /**
      * Összetett keresés — szűrés minden mező kombinációjára.
+     * CAST(:x AS timestamp/text) a PostgreSQL nullable paraméter típus-felismerés fix-éhez.
      */
-    @Query("SELECT a FROM AuditLog a WHERE " +
-           "a.companyId = :companyId AND " +
-           "(:dateFrom IS NULL OR a.createdAt >= :dateFrom) AND " +
-           "(:dateTo IS NULL OR a.createdAt <= :dateTo) AND " +
-           "(:workerId IS NULL OR a.userId = :workerId) AND " +
-           "(:entityType IS NULL OR a.entityType = :entityType) AND " +
-           "(:action IS NULL OR a.action = :action) AND " +
-           "(:keyword IS NULL OR LOWER(a.changes) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-           " OR :keyword IS NULL OR LOWER(a.reason) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-           " OR :keyword IS NULL OR LOWER(a.userName) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
-           "ORDER BY a.createdAt DESC")
+    @Query(value = "SELECT a.* FROM audit_log a WHERE " +
+           "a.company_id = :companyId AND " +
+           "(CAST(:dateFrom AS timestamp) IS NULL OR a.created_at >= :dateFrom) AND " +
+           "(CAST(:dateTo AS timestamp) IS NULL OR a.created_at <= :dateTo) AND " +
+           "(CAST(:workerId AS text) IS NULL OR a.user_id = :workerId) AND " +
+           "(CAST(:entityType AS text) IS NULL OR a.entity_type = :entityType) AND " +
+           "(CAST(:action AS text) IS NULL OR a.action = :action) AND " +
+           "(CAST(:keyword AS text) IS NULL OR LOWER(a.changes) LIKE LOWER(CONCAT('%', CAST(:keyword AS text), '%')) " +
+           " OR CAST(:keyword AS text) IS NULL OR LOWER(a.reason) LIKE LOWER(CONCAT('%', CAST(:keyword AS text), '%')) " +
+           " OR CAST(:keyword AS text) IS NULL OR LOWER(a.user_name) LIKE LOWER(CONCAT('%', CAST(:keyword AS text), '%'))) " +
+           "ORDER BY a.created_at DESC",
+           countQuery = "SELECT COUNT(*) FROM audit_log a WHERE " +
+           "a.company_id = :companyId AND " +
+           "(CAST(:dateFrom AS timestamp) IS NULL OR a.created_at >= :dateFrom) AND " +
+           "(CAST(:dateTo AS timestamp) IS NULL OR a.created_at <= :dateTo) AND " +
+           "(CAST(:workerId AS text) IS NULL OR a.user_id = :workerId) AND " +
+           "(CAST(:entityType AS text) IS NULL OR a.entity_type = :entityType) AND " +
+           "(CAST(:action AS text) IS NULL OR a.action = :action) AND " +
+           "(CAST(:keyword AS text) IS NULL OR LOWER(a.changes) LIKE LOWER(CONCAT('%', CAST(:keyword AS text), '%')) " +
+           " OR CAST(:keyword AS text) IS NULL OR LOWER(a.reason) LIKE LOWER(CONCAT('%', CAST(:keyword AS text), '%')) " +
+           " OR CAST(:keyword AS text) IS NULL OR LOWER(a.user_name) LIKE LOWER(CONCAT('%', CAST(:keyword AS text), '%')))",
+           nativeQuery = true)
     Page<AuditLog> searchAuditLog(
             @Param("companyId") UUID companyId,
             @Param("dateFrom") LocalDateTime dateFrom,
