@@ -116,7 +116,7 @@ export default function CashierTransactionPage() {
             return
           }
         } catch (err) {
-          logger.error('CashierTransactionPage', 'Helyi arfolyam cache betoltes sikertelen:', err)
+          logger.error('CashierTransactionPage', 'Helyi arfolyam cache betöltés sikertelen:', err)
         }
       }
 
@@ -126,7 +126,7 @@ export default function CashierTransactionPage() {
           setExchangeRates(rates)
         }
       } catch (err) {
-        logger.error('CashierTransactionPage', 'Arfolyam betoltes sikertelen:', err)
+        logger.error('CashierTransactionPage', 'Arfolyam betöltés sikertelen:', err)
         if (!cancelled && electronQueueAvailable) {
           toast.error('Árfolyam nem elérhető', 'Nincs használható helyi vagy szerver oldali árfolyam adat.')
         }
@@ -163,7 +163,7 @@ export default function CashierTransactionPage() {
         return next
       })
 
-      // Ha 3 betus kod, arfolyam lekeres az API-bol betoltott rateekbol
+      // Ha 3 betus kod, arfolyam lekérés az API-bol betoltott rateekbol
       if (code.length === 3) {
         const rateEntry = exchangeRates.find((r) => r.currencyCode === code && r.active)
         if (rateEntry) {
@@ -363,10 +363,10 @@ export default function CashierTransactionPage() {
           className="text-lg font-bold text-white px-5 py-2 rounded-lg shadow"
           style={{ backgroundColor: mode === 'buy' ? '#2E7D32' : '#1565C0' }}
         >
-          {mode === 'buy' ? 'VETEL' : 'ELADAS'}
+          {mode === 'buy' ? 'VÉTEL' : 'ELADÁS'}
         </span>
         <span className="text-sm text-gray-500 dark:text-gray-400">
-          Max {MAX_LINES} valutasor | Tab/Enter = kovetkezo | Esc = sor torles
+          Max {MAX_LINES} valutasor | Tab/Enter = következő | Esc = sor törlés
         </span>
       </div>
 
@@ -378,7 +378,7 @@ export default function CashierTransactionPage() {
               <thead>
                 <tr className="bg-gray-100 dark:bg-gray-700 text-sm font-semibold text-gray-700 dark:text-gray-300">
                   <th className="px-4 py-3 text-left w-28">VALUTA</th>
-                  <th className="px-4 py-3 text-right w-32">ARFOLYAM</th>
+                  <th className="px-4 py-3 text-right w-32">ÁRFOLYAM</th>
                   <th className="px-4 py-3 text-right w-36">BANKJEGY DB</th>
                   <th className="px-4 py-3 text-right">FORINT ERTEK</th>
                 </tr>
@@ -529,7 +529,7 @@ export default function CashierTransactionPage() {
               className="w-full py-3 rounded-lg text-white font-bold text-lg shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
               style={{ backgroundColor: 'var(--primary)' }}
             >
-              {isSubmitting ? 'MENTES...' : 'BIZONYLAT KESZITESE'}
+              {isSubmitting ? 'MENTÉS...' : 'BIZONYLAT KÉSZÍTÉSE'}
             </button>
           </div>
         </div>
@@ -541,10 +541,10 @@ export default function CashierTransactionPage() {
           { key: 'F2', label: 'Vetel', onClick: () => setMode('buy'), active: mode === 'buy' },
           { key: 'F3', label: 'Eladas', onClick: () => setMode('sell'), active: mode === 'sell' },
           { key: 'F5', label: 'Storno', onClick: () => navigate('/stornos'), variant: 'danger' },
-          { key: 'F8', label: 'Arfolyam', onClick: () => navigate('/rates') },
+          { key: 'F8', label: 'Árfolyam', onClick: () => navigate('/rates') },
         ]}
         right={[
-          { key: 'Esc', label: 'Megse', onClick: handleCancel, variant: 'secondary' },
+          { key: 'Esc', label: 'Mégse', onClick: handleCancel, variant: 'secondary' },
         ]}
       />
     </div>

@@ -153,13 +153,13 @@ export default function DiscountLevelEditor() {
                 onClick={saveDiscount}
               >
                 <Save className="h-4 w-4 mr-2" />
-                Mentes
+                Mentés
               </button>
               <button
                 className="inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
                 onClick={() => setEditing(null)}
               >
-                Megse
+                Mégse
               </button>
             </div>
           </div>
@@ -167,9 +167,9 @@ export default function DiscountLevelEditor() {
       )}
 
       {loading ? (
-        <p>Betoltes...</p>
+        <p>Betöltés...</p>
       ) : discounts.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">Nincs kedvezmeny szint (max 3 szint adhato hozza)</div>
+        <div className="text-center py-8 text-muted-foreground">Nincs kedvezmény szint (max 3 szint adható hozzá)</div>
       ) : (
         <div className="space-y-2">
           {discounts.map((d) => (
@@ -179,20 +179,20 @@ export default function DiscountLevelEditor() {
                   <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border bg-transparent">Szint {d.level}</span>
                   <span className="font-medium">{d.name}</span>
                   <span className="text-sm text-muted-foreground">
-                    Vetel: -{d.buyDiscountPercent}% | Eladas: -{d.sellDiscountPercent}%
+                    Vétel: -{d.buyDiscountPercent}% | Eladás: -{d.sellDiscountPercent}%
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                     d.active ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
                   }`}>
-                    {d.active ? 'Aktiv' : 'Inaktiv'}
+                    {d.active ? 'Aktív' : 'Inaktív'}
                   </span>
                   <button
                     className="inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"
                     onClick={() => setEditing(d)}
                   >
-                    Szerkesztes
+                    Szerkesztés
                   </button>
                 </div>
               </div>

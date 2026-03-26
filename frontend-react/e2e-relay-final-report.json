@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-24T19:12:47.328Z",
+  "timestamp": "2026-03-26T02:00:06.315Z",
   "RUN_STATUS": "COMPLETE",
   "STARTUP_STATUS": {
     "backend": "UP (659 Java tests PASS)",
@@ -10,7 +10,7 @@
     "routes_tested": 62,
     "routes_loaded": 62,
     "routes_failed": 0,
-    "total_clicked": 192,
+    "total_clicked": 227,
     "total_disabled": 8,
     "total_btn_errors": 0
   },
@@ -23,13 +23,13 @@
   "PER_ROUTE": [
     {
       "route": "/anonymous-reports",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
     {
       "route": "/archiving",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
@@ -41,13 +41,13 @@
     },
     {
       "route": "/blacklist",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
     {
       "route": "/branch-groups",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
@@ -59,7 +59,7 @@
     },
     {
       "route": "/camera/live",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
@@ -89,7 +89,7 @@
     },
     {
       "route": "/cashdesk/denominations",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
@@ -101,7 +101,7 @@
     },
     {
       "route": "/circulars",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
@@ -113,25 +113,25 @@
     },
     {
       "route": "/commission-rates",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
     {
       "route": "/commissions",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
     {
       "route": "/company",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
     {
       "route": "/contributions",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
@@ -149,7 +149,7 @@
     },
     {
       "route": "/darius",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
@@ -161,31 +161,31 @@
     },
     {
       "route": "/documents",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
     {
       "route": "/exchange-rate-display",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
     {
       "route": "/fee-packages",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
     {
       "route": "/fees",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
     {
       "route": "/handover-sheets",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
@@ -209,31 +209,31 @@
     },
     {
       "route": "/notifications",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
     {
       "route": "/organizational-system-parameters",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
     {
       "route": "/organizations",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
     {
       "route": "/pep",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
     {
       "route": "/pos-terminal",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
@@ -251,19 +251,19 @@
     },
     {
       "route": "/rates/creation",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
     {
       "route": "/rates/groups",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
     {
       "route": "/receipts",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
@@ -281,7 +281,7 @@
     },
     {
       "route": "/reservations",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
@@ -293,37 +293,37 @@
     },
     {
       "route": "/settings/parameters",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
     {
       "route": "/settings/permissions",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
     {
       "route": "/settings/roles",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
     {
       "route": "/settings/users",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
     {
       "route": "/shipments",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
     {
       "route": "/suspicious-reports",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
@@ -359,7 +359,7 @@
     },
     {
       "route": "/treasury",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
@@ -371,7 +371,7 @@
     },
     {
       "route": "/treasury/matrix",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     },
@@ -389,7 +389,7 @@
     },
     {
       "route": "/workstations",
-      "clicked": 1,
+      "clicked": 2,
       "disabled": 0,
       "errors": 0
     }

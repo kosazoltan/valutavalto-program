@@ -8,7 +8,7 @@
   "skipped": 1,
   "buttons": [
     {
-      "label": "Elozo",
+      "label": "Előző",
       "state": "disabled"
     },
     {
@@ -32,23 +32,23 @@
       "state": "clicked"
     },
     {
-      "label": "KONVERZIO3",
+      "label": "KONVERZIÓ3",
       "state": "clicked"
     },
     {
-      "label": "ATADAS4",
+      "label": "ÁTADÁS4",
       "state": "clicked"
     },
     {
-      "label": "STORNO6",
+      "label": "STORNÓ6",
       "state": "clicked"
     },
     {
-      "label": "ARFOLYAM7",
+      "label": "ÁRFOLYAM7",
       "state": "clicked"
     },
     {
-      "label": "KESZLET8",
+      "label": "KÉSZLET8",
       "state": "clicked"
     },
     {

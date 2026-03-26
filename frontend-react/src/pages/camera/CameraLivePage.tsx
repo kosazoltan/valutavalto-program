@@ -24,7 +24,7 @@ export default function CameraLivePage() {
   const fetchCameraStatus = useCallback(async () => {
     try {
       if (isElectron()) {
-        // Electron: lokalis kamerak listazasa WebRTC-n keresztul
+        // Electron: lokális kamerák listázása WebRTC-n keresztül
         const devices = await navigator.mediaDevices.enumerateDevices()
         const videoCams = devices.filter(d => d.kind === 'videoinput')
         setCameras(videoCams.map((d, i) => ({
@@ -38,7 +38,7 @@ export default function CameraLivePage() {
           if (first) setSelectedCamera(first.deviceId || 'cam-0')
         }
       } else {
-        // Bongeszo: szerver API
+        // Böngésző: szerver API
         const res = await api.get('/camera/status')
         if (res.data) {
           setCameras(res.data)
@@ -60,14 +60,14 @@ export default function CameraLivePage() {
     }
   }, [fetchCameraStatus])
 
-  // Electron: lokalis kamerakep WebRTC-n keresztul
+  // Electron: lokális kamerakép WebRTC-n keresztül
   useEffect(() => {
     if (!isElectron() || !selectedCamera) return
 
     let stream: MediaStream | null = null
     const startStream = async () => {
       try {
-        // Elozo stream leallitasa
+        // Előző stream leállítása
         if (localStreamRef.current) localStreamRef.current.getTracks().forEach(t => t.stop())
 
         stream = await navigator.mediaDevices.getUserMedia({
@@ -90,7 +90,7 @@ export default function CameraLivePage() {
     }
   }, [selectedCamera])
 
-  // Bongeszo: szerver stream (JPEG polling)
+  // Böngésző: szerver stream (JPEG polling)
   useEffect(() => {
     if (isElectron() || !selectedCamera) return
 
@@ -110,24 +110,24 @@ export default function CameraLivePage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Camera className="h-6 w-6" />
-          Elo kamerakep
-          {isElectron() && <span className="text-sm font-normal text-muted-foreground">(lokalis)</span>}
+          Élő kamerakép
+          {isElectron() && <span className="text-sm font-normal text-muted-foreground">(lokális)</span>}
         </h1>
         <button
           className="inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
           onClick={() => void fetchCameraStatus()}
         >
           <RefreshCw className="h-4 w-4 mr-2" />
-          Frissites
+          Frissítés
         </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Camera selector */}
         <div className="lg:col-span-1 space-y-3">
-          <h2 className="font-semibold text-sm text-muted-foreground uppercase">Kamerak</h2>
+          <h2 className="font-semibold text-sm text-muted-foreground uppercase">Kamerák</h2>
           {loading ? (
-            <p className="text-muted-foreground">Betoltes...</p>
+            <p className="text-muted-foreground">Betöltés...</p>
           ) : cameras.length === 0 ? (
             <p className="text-muted-foreground">Nincs csatlakoztatott kamera</p>
           ) : (
@@ -164,10 +164,10 @@ export default function CameraLivePage() {
                 {selectedCamera ? (
                   <>
                     <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-                    ELO
+                    ÉLŐ
                   </>
                 ) : (
-                  'Valasszon kamerat'
+                  'Válasszon kamerát'
                 )}
               </h3>
             </div>
@@ -184,11 +184,11 @@ export default function CameraLivePage() {
                       className="w-full h-full object-contain"
                     />
                   ) : (
-                    // Bongeszo: JPEG polling
+                    // Böngésző: JPEG polling
                     <img
                       ref={imgRef}
                       src={`/api/v1/camera/stream/${selectedCamera}?t=${Date.now()}`}
-                      alt="Elo kamerakep"
+                      alt="Élő kamerakép"
                       className="w-full h-full object-contain"
                       onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
                         (e.target as HTMLImageElement).style.display = 'none'
@@ -198,7 +198,7 @@ export default function CameraLivePage() {
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-64 bg-muted rounded-lg">
-                  <p className="text-muted-foreground">Valasszon egy kamerat a listabol</p>
+                  <p className="text-muted-foreground">Válasszon egy kamerát a listából</p>
                 </div>
               )}
             </div>

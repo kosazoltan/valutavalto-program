@@ -238,7 +238,7 @@ export default function RateTemplateEditor() {
       {editing && (
         <div className="rounded-lg border bg-card shadow-sm">
           <div className="p-4 pb-2">
-            <h3 className="text-lg font-semibold">{editing.id ? 'Sablon szerkesztese' : 'Uj arfolyam sablon'}</h3>
+            <h3 className="text-lg font-semibold">{editing.id ? 'Sablon szerkesztése' : 'Új árfolyam sablon'}</h3>
           </div>
           <div className="p-4">
             <div className="grid grid-cols-3 gap-4">
@@ -259,7 +259,7 @@ export default function RateTemplateEditor() {
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium">Veteli arfolyam</label>
+                <label className="text-sm font-medium">Vételi árfolyam</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   value={editing.baseBuyRate}
@@ -268,7 +268,7 @@ export default function RateTemplateEditor() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Eladasi arfolyam</label>
+                <label className="text-sm font-medium">Eladási árfolyam</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   value={editing.baseSellRate}
@@ -277,7 +277,7 @@ export default function RateTemplateEditor() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Veteli felar</label>
+                <label className="text-sm font-medium">Vételi felár</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   value={editing.buySpread}
@@ -285,7 +285,7 @@ export default function RateTemplateEditor() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Eladasi felar</label>
+                <label className="text-sm font-medium">Eladási felár</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   value={editing.sellSpread}
@@ -293,7 +293,7 @@ export default function RateTemplateEditor() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Kerekites</label>
+                <label className="text-sm font-medium">Kerekítés</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   type="number"
@@ -302,7 +302,7 @@ export default function RateTemplateEditor() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Hivatalos (MNB) arfolyam</label>
+                <label className="text-sm font-medium">Hivatalos (MNB) árfolyam</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm bg-blue-50 dark:bg-blue-950/30"
                   value={editing.officialRate}
@@ -361,13 +361,13 @@ export default function RateTemplateEditor() {
                 onClick={saveTemplate}
               >
                 <Save className="h-4 w-4 mr-2" />
-                Mentes
+                Mentés
               </button>
               <button
                 className="inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
                 onClick={() => setEditing(null)}
               >
-                Megse
+                Mégse
               </button>
             </div>
           </div>
@@ -376,9 +376,9 @@ export default function RateTemplateEditor() {
 
       {/* Template list */}
       {loading ? (
-        <p>Betoltes...</p>
+        <p>Betöltés...</p>
       ) : templates.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">Nincs arfolyam sablon ebben a munkacsoportban</div>
+        <div className="text-center py-8 text-muted-foreground">Nincs árfolyam sablon ebben a munkacsoportban</div>
       ) : (
         <div className="space-y-2">
           {templates.map((t) => (
@@ -400,14 +400,14 @@ export default function RateTemplateEditor() {
                         className="inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"
                         onClick={() => setEditing(t)}
                       >
-                        Szerkesztes
+                        Szerkesztés
                       </button>
                       <button
                         className="inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"
                         onClick={() => t.id && approveTemplate(t.id)}
                       >
                         <CheckCircle className="h-4 w-4 mr-1" />
-                        Jovahagyas
+                        Jóváhagyás
                       </button>
                       <button
                         className="inline-flex items-center justify-center rounded-md bg-destructive px-3 py-1.5 text-xs font-medium text-destructive-foreground hover:bg-destructive/90"
@@ -423,7 +423,7 @@ export default function RateTemplateEditor() {
                       onClick={() => t.id && publishTemplate(t.id)}
                     >
                       <Send className="h-4 w-4 mr-1" />
-                      Publikalas
+                      Publikálás
                     </button>
                   )}
                   {(t.status === 'PUBLISHED' || t.status === 'APPROVED') && (

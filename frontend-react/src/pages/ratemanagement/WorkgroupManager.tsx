@@ -25,7 +25,7 @@ export default function WorkgroupManager() {
       const { data } = await api.get<Workgroup[]>('/rate-management/workgroups')
       setWorkgroups(data)
     } catch (err) {
-      logger.error('WorkgroupManager', 'Lekeres sikertelen:', err)
+      logger.error('WorkgroupManager', 'Lekérés sikertelen:', err)
     } finally {
       setLoading(false)
     }
@@ -42,7 +42,7 @@ export default function WorkgroupManager() {
       setEditing(null)
       fetchWorkgroups()
     } catch (err) {
-      logger.error('WorkgroupManager', 'Mentes sikertelen:', err)
+      logger.error('WorkgroupManager', 'Mentés sikertelen:', err)
     }
   }
 
@@ -101,13 +101,13 @@ export default function WorkgroupManager() {
                 onClick={saveWorkgroup}
               >
                 <Save className="h-4 w-4 mr-2" />
-                Mentes
+                Mentés
               </button>
               <button
                 className="inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
                 onClick={() => setEditing(null)}
               >
-                Megse
+                Mégse
               </button>
             </div>
           </div>
@@ -115,7 +115,7 @@ export default function WorkgroupManager() {
       )}
 
       {loading ? (
-        <p>Betoltes...</p>
+        <p>Betöltés...</p>
       ) : (
         <div className="space-y-2">
           {workgroups.map((wg) => (
@@ -132,13 +132,13 @@ export default function WorkgroupManager() {
                   <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                     wg.active ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
                   }`}>
-                    {wg.active ? 'Aktiv' : 'Inaktiv'}
+                    {wg.active ? 'Aktív' : 'Inaktív'}
                   </span>
                   <button
                     className="inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"
                     onClick={() => setEditing(wg)}
                   >
-                    Szerkesztes
+                    Szerkesztés
                   </button>
                 </div>
               </div>

@@ -20,7 +20,7 @@
       "state": "clicked"
     },
     {
-      "label": "Arfolyam rogzites",
+      "label": "Árfolyam rögzítés",
       "state": "clicked"
     },
     {
@@ -32,11 +32,11 @@
       "state": "clicked"
     },
     {
-      "label": "Kedvezmenyek",
+      "label": "Kedvezmények",
       "state": "clicked"
     },
     {
-      "label": "Publikalasi naplo",
+      "label": "Publikálási napló",
       "state": "clicked"
     }
   ]

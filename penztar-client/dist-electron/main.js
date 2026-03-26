@@ -1,19 +1,1931 @@
-var e=Object.create,t=Object.defineProperty,n=Object.getOwnPropertyDescriptor,r=Object.getOwnPropertyNames,i=Object.getPrototypeOf,a=Object.prototype.hasOwnProperty,o=(e,t)=>()=>(t||e((t={exports:{}}).exports,t),t.exports),s=(e,i,o,s)=>{if(i&&typeof i==`object`||typeof i==`function`)for(var c=r(i),l=0,u=c.length,d;l<u;l++)d=c[l],!a.call(e,d)&&d!==o&&t(e,d,{get:(e=>i[e]).bind(null,d),enumerable:!(s=n(i,d))||s.enumerable});return e},c=(n,r,a)=>(a=n==null?{}:e(i(n)),s(r||!n||!n.__esModule?t(a,`default`,{value:n,enumerable:!0}):a,n));let l=require(`electron`),u=require(`node:path`);u=c(u);let d=require(`node:url`),f=require(`sql.js`);f=c(f);let p=require(`node:fs`);p=c(p);let m=require(`node:crypto`);m=c(m);var h=o(((e,t)=>{var n=require(`fs`),r=require(`path`);t.exports={findAndReadPackageJson:i,tryReadJsonAt:a};function i(){return a(c())||a(s())||a(process.resourcesPath,`app.asar`)||a(process.resourcesPath,`app`)||a(process.cwd())||{name:void 0,version:void 0}}function a(...e){if(e[0])try{let t=o(`package.json`,r.join(...e));if(!t)return;let i=JSON.parse(n.readFileSync(t,`utf8`)),a=i?.productName||i?.name;return!a||a.toLowerCase()===`electron`?void 0:a?{name:a,version:i?.version}:void 0}catch{return}}function o(e,t){let i=t;for(;;){let t=r.parse(i),a=t.root,o=t.dir;if(n.existsSync(r.join(i,e)))return r.resolve(r.join(i,e));if(i===a)return null;i=o}}function s(){let e=process.argv.filter(e=>e.indexOf(`--user-data-dir=`)===0);return e.length===0||typeof e[0]!=`string`?null:e[0].replace(`--user-data-dir=`,``)}function c(){try{return require.main?.filename}catch{return}}})),g=o(((e,t)=>{var n=require(`child_process`),r=require(`os`),i=require(`path`),a=h();t.exports=class{appName=void 0;appPackageJson=void 0;platform=process.platform;getAppLogPath(e=this.getAppName()){return this.platform===`darwin`?i.join(this.getSystemPathHome(),`Library/Logs`,e):i.join(this.getAppUserDataPath(e),`logs`)}getAppName(){let e=this.appName||this.getAppPackageJson()?.name;if(!e)throw Error(`electron-log can't determine the app name. It tried these methods:
-1. Use \`electron.app.name\`
-2. Use productName or name from the nearest package.json\`
-You can also set it through log.transports.file.setAppName()`);return e}getAppPackageJson(){return typeof this.appPackageJson!=`object`&&(this.appPackageJson=a.findAndReadPackageJson()),this.appPackageJson}getAppUserDataPath(e=this.getAppName()){return e?i.join(this.getSystemPathAppData(),e):void 0}getAppVersion(){return this.getAppPackageJson()?.version}getElectronLogPath(){return this.getAppLogPath()}getMacOsVersion(){let e=Number(r.release().split(`.`)[0]);return e<=19?`10.${e-4}`:e-9}getOsVersion(){let e=r.type().replace(`_`,` `),t=r.release();return e===`Darwin`&&(e=`macOS`,t=this.getMacOsVersion()),`${e} ${t}`}getPathVariables(){let e=this.getAppName(),t=this.getAppVersion(),n=this;return{appData:this.getSystemPathAppData(),appName:e,appVersion:t,get electronDefaultDir(){return n.getElectronLogPath()},home:this.getSystemPathHome(),libraryDefaultDir:this.getAppLogPath(e),libraryTemplate:this.getAppLogPath(`{appName}`),temp:this.getSystemPathTemp(),userData:this.getAppUserDataPath(e)}}getSystemPathAppData(){let e=this.getSystemPathHome();switch(this.platform){case`darwin`:return i.join(e,`Library/Application Support`);case`win32`:return process.env.APPDATA||i.join(e,`AppData/Roaming`);default:return process.env.XDG_CONFIG_HOME||i.join(e,`.config`)}}getSystemPathHome(){return r.homedir?.()||process.env.HOME}getSystemPathTemp(){return r.tmpdir()}getVersions(){return{app:`${this.getAppName()} ${this.getAppVersion()}`,electron:void 0,os:this.getOsVersion()}}isDev(){return process.env.NODE_ENV===`development`||process.env.ELECTRON_IS_DEV===`1`}isElectron(){return!!process.versions.electron}onAppEvent(e,t){}onAppReady(e){e()}onEveryWebContentsEvent(e,t){}onIpc(e,t){}onIpcInvoke(e,t){}openUrl(e,t=console.error){let r={darwin:`open`,win32:`start`,linux:`xdg-open`}[process.platform]||`xdg-open`;n.exec(`${r} ${e}`,{},e=>{e&&t(e)})}setAppName(e){this.appName=e}setPlatform(e){this.platform=e}setPreloadFileForSessions({filePath:e,includeFutureSession:t=!0,getSessions:n=()=>[]}){}sendIpc(e,t){}showErrorBox(e,t){}}})),_=o(((e,t)=>{var n=require(`path`),r=g();t.exports=class extends r{electron=void 0;constructor({electron:e}={}){super(),this.electron=e}getAppName(){let e;try{e=this.appName||this.electron.app?.name||this.electron.app?.getName()}catch{}return e||super.getAppName()}getAppUserDataPath(e){return this.getPath(`userData`)||super.getAppUserDataPath(e)}getAppVersion(){let e;try{e=this.electron.app?.getVersion()}catch{}return e||super.getAppVersion()}getElectronLogPath(){return this.getPath(`logs`)||super.getElectronLogPath()}getPath(e){try{return this.electron.app?.getPath(e)}catch{return}}getVersions(){return{app:`${this.getAppName()} ${this.getAppVersion()}`,electron:`Electron ${process.versions.electron}`,os:this.getOsVersion()}}getSystemPathAppData(){return this.getPath(`appData`)||super.getSystemPathAppData()}isDev(){return this.electron.app?.isPackaged===void 0?typeof process.execPath==`string`?n.basename(process.execPath).toLowerCase().startsWith(`electron`):super.isDev():!this.electron.app.isPackaged}onAppEvent(e,t){return this.electron.app?.on(e,t),()=>{this.electron.app?.off(e,t)}}onAppReady(e){this.electron.app?.isReady()?e():this.electron.app?.once?this.electron.app?.once(`ready`,e):e()}onEveryWebContentsEvent(e,t){return this.electron.webContents?.getAllWebContents()?.forEach(n=>{n.on(e,t)}),this.electron.app?.on(`web-contents-created`,n),()=>{this.electron.webContents?.getAllWebContents().forEach(n=>{n.off(e,t)}),this.electron.app?.off(`web-contents-created`,n)};function n(n,r){r.on(e,t)}}onIpc(e,t){this.electron.ipcMain?.on(e,t)}onIpcInvoke(e,t){this.electron.ipcMain?.handle?.(e,t)}openUrl(e,t=console.error){this.electron.shell?.openExternal(e).catch(t)}setPreloadFileForSessions({filePath:e,includeFutureSession:t=!0,getSessions:n=()=>[this.electron.session?.defaultSession]}){for(let e of n().filter(Boolean))r(e);t&&this.onAppEvent(`session-created`,e=>{r(e)});function r(t){typeof t.registerPreloadScript==`function`?t.registerPreloadScript({filePath:e,id:`electron-log-preload`,type:`frame`}):t.setPreloads([...t.getPreloads(),e])}}sendIpc(e,t){this.electron.BrowserWindow?.getAllWindows()?.forEach(n=>{n.webContents?.isDestroyed()===!1&&n.webContents?.isCrashed()===!1&&n.webContents.send(e,t)})}showErrorBox(e,t){this.electron.dialog?.showErrorBox(e,t)}}})),v=o(((e,t)=>{var n={};try{n=require(`electron`)}catch{}n.ipcRenderer&&r(n),typeof t==`object`&&(t.exports=r);function r({contextBridge:e,ipcRenderer:t}){if(!t)return;t.on(`__ELECTRON_LOG_IPC__`,(e,t)=>{window.postMessage({cmd:`message`,...t})}),t.invoke(`__ELECTRON_LOG__`,{cmd:`getOptions`}).catch(e=>console.error(Error(`electron-log isn't initialized in the main process. Please call log.initialize() before. ${e.message}`)));let n={sendToMain(e){try{t.send(`__ELECTRON_LOG__`,e)}catch(n){console.error(`electronLog.sendToMain `,n,`data:`,e),t.send(`__ELECTRON_LOG__`,{cmd:`errorHandler`,error:{message:n?.message,stack:n?.stack},errorName:`sendToMain`})}},log(...e){n.sendToMain({data:e,level:`info`})}};for(let e of[`error`,`warn`,`info`,`verbose`,`debug`,`silly`])n[e]=(...t)=>n.sendToMain({data:t,level:e});if(e&&process.contextIsolated)try{e.exposeInMainWorld(`__electronLog`,n)}catch{}typeof window==`object`?window.__electronLog=n:__electronLog=n}})),y=o(((e,t)=>{var n=require(`fs`),r=require(`os`),i=require(`path`),a=v(),o=!1,s=!1;t.exports={initialize({externalApi:e,getSessions:t,includeFutureSession:n,logger:r,preload:i=!0,spyRendererConsole:a=!1}){e.onAppReady(()=>{try{i&&c({externalApi:e,getSessions:t,includeFutureSession:n,logger:r,preloadOption:i}),a&&l({externalApi:e,logger:r})}catch(e){r.warn(e)}})}};function c({externalApi:e,getSessions:t,includeFutureSession:s,logger:c,preloadOption:l}){let u=typeof l==`string`?l:void 0;if(o){c.warn(Error(`log.initialize({ preload }) already called`).stack);return}o=!0;try{u=i.resolve(__dirname,`../renderer/electron-log-preload.js`)}catch{}if(!u||!n.existsSync(u)){u=i.join(e.getAppUserDataPath()||r.tmpdir(),`electron-log-preload.js`);let t=`
+//#region \0rolldown/runtime.js
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __commonJSMin = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
+var __copyProps = (to, from, except, desc) => {
+	if (from && typeof from === "object" || typeof from === "function") for (var keys = __getOwnPropNames(from), i = 0, n = keys.length, key; i < n; i++) {
+		key = keys[i];
+		if (!__hasOwnProp.call(to, key) && key !== except) __defProp(to, key, {
+			get: ((k) => from[k]).bind(null, key),
+			enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable
+		});
+	}
+	return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", {
+	value: mod,
+	enumerable: true
+}) : target, mod));
+//#endregion
+let electron = require("electron");
+let node_path = require("node:path");
+node_path = __toESM(node_path);
+let node_url = require("node:url");
+let sql_js = require("sql.js");
+sql_js = __toESM(sql_js);
+let node_fs = require("node:fs");
+node_fs = __toESM(node_fs);
+let node_crypto = require("node:crypto");
+node_crypto = __toESM(node_crypto);
+//#region node_modules/electron-log/src/node/packageJson.js
+var require_packageJson = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	var fs$7 = require("fs");
+	var path$9 = require("path");
+	module.exports = {
+		findAndReadPackageJson,
+		tryReadJsonAt
+	};
+	/**
+	* @return {{ name?: string, version?: string}}
+	*/
+	function findAndReadPackageJson() {
+		return tryReadJsonAt(getMainModulePath()) || tryReadJsonAt(extractPathFromArgs()) || tryReadJsonAt(process.resourcesPath, "app.asar") || tryReadJsonAt(process.resourcesPath, "app") || tryReadJsonAt(process.cwd()) || {
+			name: void 0,
+			version: void 0
+		};
+	}
+	/**
+	* @param {...string} searchPaths
+	* @return {{ name?: string, version?: string } | undefined}
+	*/
+	function tryReadJsonAt(...searchPaths) {
+		if (!searchPaths[0]) return;
+		try {
+			const fileName = findUp("package.json", path$9.join(...searchPaths));
+			if (!fileName) return;
+			const json = JSON.parse(fs$7.readFileSync(fileName, "utf8"));
+			const name = json?.productName || json?.name;
+			if (!name || name.toLowerCase() === "electron") return;
+			if (name) return {
+				name,
+				version: json?.version
+			};
+			return;
+		} catch (e) {
+			return;
+		}
+	}
+	/**
+	* @param {string} fileName
+	* @param {string} [cwd]
+	* @return {string | null}
+	*/
+	function findUp(fileName, cwd) {
+		let currentPath = cwd;
+		while (true) {
+			const parsedPath = path$9.parse(currentPath);
+			const root = parsedPath.root;
+			const dir = parsedPath.dir;
+			if (fs$7.existsSync(path$9.join(currentPath, fileName))) return path$9.resolve(path$9.join(currentPath, fileName));
+			if (currentPath === root) return null;
+			currentPath = dir;
+		}
+	}
+	/**
+	* Get app path from --user-data-dir cmd arg, passed to a renderer process
+	* @return {string|null}
+	*/
+	function extractPathFromArgs() {
+		const matchedArgs = process.argv.filter((arg) => {
+			return arg.indexOf("--user-data-dir=") === 0;
+		});
+		if (matchedArgs.length === 0 || typeof matchedArgs[0] !== "string") return null;
+		return matchedArgs[0].replace("--user-data-dir=", "");
+	}
+	function getMainModulePath() {
+		try {
+			return require.main?.filename;
+		} catch {
+			return;
+		}
+	}
+}));
+//#endregion
+//#region node_modules/electron-log/src/node/NodeExternalApi.js
+var require_NodeExternalApi = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	var childProcess = require("child_process");
+	var os$3 = require("os");
+	var path$8 = require("path");
+	var packageJson = require_packageJson();
+	var NodeExternalApi = class {
+		appName = void 0;
+		appPackageJson = void 0;
+		platform = process.platform;
+		getAppLogPath(appName = this.getAppName()) {
+			if (this.platform === "darwin") return path$8.join(this.getSystemPathHome(), "Library/Logs", appName);
+			return path$8.join(this.getAppUserDataPath(appName), "logs");
+		}
+		getAppName() {
+			const appName = this.appName || this.getAppPackageJson()?.name;
+			if (!appName) throw new Error("electron-log can't determine the app name. It tried these methods:\n1. Use `electron.app.name`\n2. Use productName or name from the nearest package.json`\nYou can also set it through log.transports.file.setAppName()");
+			return appName;
+		}
+		/**
+		* @private
+		* @returns {undefined}
+		*/
+		getAppPackageJson() {
+			if (typeof this.appPackageJson !== "object") this.appPackageJson = packageJson.findAndReadPackageJson();
+			return this.appPackageJson;
+		}
+		getAppUserDataPath(appName = this.getAppName()) {
+			return appName ? path$8.join(this.getSystemPathAppData(), appName) : void 0;
+		}
+		getAppVersion() {
+			return this.getAppPackageJson()?.version;
+		}
+		getElectronLogPath() {
+			return this.getAppLogPath();
+		}
+		getMacOsVersion() {
+			const release = Number(os$3.release().split(".")[0]);
+			if (release <= 19) return `10.${release - 4}`;
+			return release - 9;
+		}
+		/**
+		* @protected
+		* @returns {string}
+		*/
+		getOsVersion() {
+			let osName = os$3.type().replace("_", " ");
+			let osVersion = os$3.release();
+			if (osName === "Darwin") {
+				osName = "macOS";
+				osVersion = this.getMacOsVersion();
+			}
+			return `${osName} ${osVersion}`;
+		}
+		/**
+		* @return {PathVariables}
+		*/
+		getPathVariables() {
+			const appName = this.getAppName();
+			const appVersion = this.getAppVersion();
+			const self = this;
+			return {
+				appData: this.getSystemPathAppData(),
+				appName,
+				appVersion,
+				get electronDefaultDir() {
+					return self.getElectronLogPath();
+				},
+				home: this.getSystemPathHome(),
+				libraryDefaultDir: this.getAppLogPath(appName),
+				libraryTemplate: this.getAppLogPath("{appName}"),
+				temp: this.getSystemPathTemp(),
+				userData: this.getAppUserDataPath(appName)
+			};
+		}
+		getSystemPathAppData() {
+			const home = this.getSystemPathHome();
+			switch (this.platform) {
+				case "darwin": return path$8.join(home, "Library/Application Support");
+				case "win32": return process.env.APPDATA || path$8.join(home, "AppData/Roaming");
+				default: return process.env.XDG_CONFIG_HOME || path$8.join(home, ".config");
+			}
+		}
+		getSystemPathHome() {
+			return os$3.homedir?.() || process.env.HOME;
+		}
+		getSystemPathTemp() {
+			return os$3.tmpdir();
+		}
+		getVersions() {
+			return {
+				app: `${this.getAppName()} ${this.getAppVersion()}`,
+				electron: void 0,
+				os: this.getOsVersion()
+			};
+		}
+		isDev() {
+			return process.env.NODE_ENV === "development" || process.env.ELECTRON_IS_DEV === "1";
+		}
+		isElectron() {
+			return Boolean(process.versions.electron);
+		}
+		onAppEvent(_eventName, _handler) {}
+		onAppReady(handler) {
+			handler();
+		}
+		onEveryWebContentsEvent(eventName, handler) {}
+		/**
+		* Listen to async messages sent from opposite process
+		* @param {string} channel
+		* @param {function} listener
+		*/
+		onIpc(channel, listener) {}
+		onIpcInvoke(channel, listener) {}
+		/**
+		* @param {string} url
+		* @param {Function} [logFunction]
+		*/
+		openUrl(url, logFunction = console.error) {
+			const start = {
+				darwin: "open",
+				win32: "start",
+				linux: "xdg-open"
+			}[process.platform] || "xdg-open";
+			childProcess.exec(`${start} ${url}`, {}, (err) => {
+				if (err) logFunction(err);
+			});
+		}
+		setAppName(appName) {
+			this.appName = appName;
+		}
+		setPlatform(platform) {
+			this.platform = platform;
+		}
+		setPreloadFileForSessions({ filePath, includeFutureSession = true, getSessions = () => [] }) {}
+		/**
+		* Sent a message to opposite process
+		* @param {string} channel
+		* @param {any} message
+		*/
+		sendIpc(channel, message) {}
+		showErrorBox(title, message) {}
+	};
+	module.exports = NodeExternalApi;
+}));
+//#endregion
+//#region node_modules/electron-log/src/main/ElectronExternalApi.js
+var require_ElectronExternalApi = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	var path$7 = require("path");
+	var NodeExternalApi = require_NodeExternalApi();
+	var ElectronExternalApi = class extends NodeExternalApi {
+		/**
+		* @type {typeof Electron}
+		*/
+		electron = void 0;
+		/**
+		* @param {object} options
+		* @param {typeof Electron} [options.electron]
+		*/
+		constructor({ electron } = {}) {
+			super();
+			this.electron = electron;
+		}
+		getAppName() {
+			let appName;
+			try {
+				appName = this.appName || this.electron.app?.name || this.electron.app?.getName();
+			} catch {}
+			return appName || super.getAppName();
+		}
+		getAppUserDataPath(appName) {
+			return this.getPath("userData") || super.getAppUserDataPath(appName);
+		}
+		getAppVersion() {
+			let appVersion;
+			try {
+				appVersion = this.electron.app?.getVersion();
+			} catch {}
+			return appVersion || super.getAppVersion();
+		}
+		getElectronLogPath() {
+			return this.getPath("logs") || super.getElectronLogPath();
+		}
+		/**
+		* @private
+		* @param {any} name
+		* @returns {string|undefined}
+		*/
+		getPath(name) {
+			try {
+				return this.electron.app?.getPath(name);
+			} catch {
+				return;
+			}
+		}
+		getVersions() {
+			return {
+				app: `${this.getAppName()} ${this.getAppVersion()}`,
+				electron: `Electron ${process.versions.electron}`,
+				os: this.getOsVersion()
+			};
+		}
+		getSystemPathAppData() {
+			return this.getPath("appData") || super.getSystemPathAppData();
+		}
+		isDev() {
+			if (this.electron.app?.isPackaged !== void 0) return !this.electron.app.isPackaged;
+			if (typeof process.execPath === "string") return path$7.basename(process.execPath).toLowerCase().startsWith("electron");
+			return super.isDev();
+		}
+		onAppEvent(eventName, handler) {
+			this.electron.app?.on(eventName, handler);
+			return () => {
+				this.electron.app?.off(eventName, handler);
+			};
+		}
+		onAppReady(handler) {
+			if (this.electron.app?.isReady()) handler();
+			else if (this.electron.app?.once) this.electron.app?.once("ready", handler);
+			else handler();
+		}
+		onEveryWebContentsEvent(eventName, handler) {
+			this.electron.webContents?.getAllWebContents()?.forEach((webContents) => {
+				webContents.on(eventName, handler);
+			});
+			this.electron.app?.on("web-contents-created", onWebContentsCreated);
+			return () => {
+				this.electron.webContents?.getAllWebContents().forEach((webContents) => {
+					webContents.off(eventName, handler);
+				});
+				this.electron.app?.off("web-contents-created", onWebContentsCreated);
+			};
+			function onWebContentsCreated(_, webContents) {
+				webContents.on(eventName, handler);
+			}
+		}
+		/**
+		* Listen to async messages sent from opposite process
+		* @param {string} channel
+		* @param {function} listener
+		*/
+		onIpc(channel, listener) {
+			this.electron.ipcMain?.on(channel, listener);
+		}
+		onIpcInvoke(channel, listener) {
+			this.electron.ipcMain?.handle?.(channel, listener);
+		}
+		/**
+		* @param {string} url
+		* @param {Function} [logFunction]
+		*/
+		openUrl(url, logFunction = console.error) {
+			this.electron.shell?.openExternal(url).catch(logFunction);
+		}
+		setPreloadFileForSessions({ filePath, includeFutureSession = true, getSessions = () => [this.electron.session?.defaultSession] }) {
+			for (const session of getSessions().filter(Boolean)) setPreload(session);
+			if (includeFutureSession) this.onAppEvent("session-created", (session) => {
+				setPreload(session);
+			});
+			/**
+			* @param {Session} session
+			*/
+			function setPreload(session) {
+				if (typeof session.registerPreloadScript === "function") session.registerPreloadScript({
+					filePath,
+					id: "electron-log-preload",
+					type: "frame"
+				});
+				else session.setPreloads([...session.getPreloads(), filePath]);
+			}
+		}
+		/**
+		* Sent a message to opposite process
+		* @param {string} channel
+		* @param {any} message
+		*/
+		sendIpc(channel, message) {
+			this.electron.BrowserWindow?.getAllWindows()?.forEach((wnd) => {
+				if (wnd.webContents?.isDestroyed() === false && wnd.webContents?.isCrashed() === false) wnd.webContents.send(channel, message);
+			});
+		}
+		showErrorBox(title, message) {
+			this.electron.dialog?.showErrorBox(title, message);
+		}
+	};
+	module.exports = ElectronExternalApi;
+}));
+//#endregion
+//#region node_modules/electron-log/src/renderer/electron-log-preload.js
+var require_electron_log_preload = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	var electron = {};
+	try {
+		electron = require("electron");
+	} catch (e) {}
+	if (electron.ipcRenderer) initialize(electron);
+	if (typeof module === "object") module.exports = initialize;
+	/**
+	* @param {Electron.ContextBridge} contextBridge
+	* @param {Electron.IpcRenderer} ipcRenderer
+	*/
+	function initialize({ contextBridge, ipcRenderer }) {
+		if (!ipcRenderer) return;
+		ipcRenderer.on("__ELECTRON_LOG_IPC__", (_, message) => {
+			window.postMessage({
+				cmd: "message",
+				...message
+			});
+		});
+		ipcRenderer.invoke("__ELECTRON_LOG__", { cmd: "getOptions" }).catch((e) => console.error(/* @__PURE__ */ new Error(`electron-log isn't initialized in the main process. Please call log.initialize() before. ${e.message}`)));
+		const electronLog = {
+			sendToMain(message) {
+				try {
+					ipcRenderer.send("__ELECTRON_LOG__", message);
+				} catch (e) {
+					console.error("electronLog.sendToMain ", e, "data:", message);
+					ipcRenderer.send("__ELECTRON_LOG__", {
+						cmd: "errorHandler",
+						error: {
+							message: e?.message,
+							stack: e?.stack
+						},
+						errorName: "sendToMain"
+					});
+				}
+			},
+			log(...data) {
+				electronLog.sendToMain({
+					data,
+					level: "info"
+				});
+			}
+		};
+		for (const level of [
+			"error",
+			"warn",
+			"info",
+			"verbose",
+			"debug",
+			"silly"
+		]) electronLog[level] = (...data) => electronLog.sendToMain({
+			data,
+			level
+		});
+		if (contextBridge && process.contextIsolated) try {
+			contextBridge.exposeInMainWorld("__electronLog", electronLog);
+		} catch {}
+		if (typeof window === "object") window.__electronLog = electronLog;
+		else __electronLog = electronLog;
+	}
+}));
+//#endregion
+//#region node_modules/electron-log/src/main/initialize.js
+var require_initialize = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	var fs$6 = require("fs");
+	var os$2 = require("os");
+	var path$6 = require("path");
+	var preloadInitializeFn = require_electron_log_preload();
+	var preloadInitialized = false;
+	var spyConsoleInitialized = false;
+	module.exports = { initialize({ externalApi, getSessions, includeFutureSession, logger, preload = true, spyRendererConsole = false }) {
+		externalApi.onAppReady(() => {
+			try {
+				if (preload) initializePreload({
+					externalApi,
+					getSessions,
+					includeFutureSession,
+					logger,
+					preloadOption: preload
+				});
+				if (spyRendererConsole) initializeSpyRendererConsole({
+					externalApi,
+					logger
+				});
+			} catch (err) {
+				logger.warn(err);
+			}
+		});
+	} };
+	function initializePreload({ externalApi, getSessions, includeFutureSession, logger, preloadOption }) {
+		let preloadPath = typeof preloadOption === "string" ? preloadOption : void 0;
+		if (preloadInitialized) {
+			logger.warn((/* @__PURE__ */ new Error("log.initialize({ preload }) already called")).stack);
+			return;
+		}
+		preloadInitialized = true;
+		try {
+			preloadPath = path$6.resolve(__dirname, "../renderer/electron-log-preload.js");
+		} catch {}
+		if (!preloadPath || !fs$6.existsSync(preloadPath)) {
+			preloadPath = path$6.join(externalApi.getAppUserDataPath() || os$2.tmpdir(), "electron-log-preload.js");
+			const preloadCode = `
       try {
-        (${a.toString()})(require('electron'));
+        (${preloadInitializeFn.toString()})(require('electron'));
       } catch(e) {
         console.error(e);
       }
-    `;n.writeFileSync(u,t,`utf8`)}e.setPreloadFileForSessions({filePath:u,includeFutureSession:s,getSessions:t})}function l({externalApi:e,logger:t}){if(s){t.warn(Error(`log.initialize({ spyRendererConsole }) already called`).stack);return}s=!0;let n=[`debug`,`info`,`warn`,`error`];e.onEveryWebContentsEvent(`console-message`,(e,r,i)=>{t.processMessage({data:[i],level:n[r],variables:{processType:`renderer`}})})}})),b=o(((e,t)=>{t.exports=n;function n(e){return Object.defineProperties(t,{defaultLabel:{value:``,writable:!0},labelPadding:{value:!0,writable:!0},maxLabelLength:{value:0,writable:!0},labelLength:{get(){switch(typeof t.labelPadding){case`boolean`:return t.labelPadding?t.maxLabelLength:0;case`number`:return t.labelPadding;default:return 0}}}});function t(n){t.maxLabelLength=Math.max(t.maxLabelLength,n.length);let r={};for(let t of e.levels)r[t]=(...r)=>e.logData(r,{level:t,scope:n});return r.log=r.info,r}}})),ee=o(((e,t)=>{t.exports=class{constructor({processMessage:e}){this.processMessage=e,this.buffer=[],this.enabled=!1,this.begin=this.begin.bind(this),this.commit=this.commit.bind(this),this.reject=this.reject.bind(this)}addMessage(e){this.buffer.push(e)}begin(){this.enabled=[]}commit(){this.enabled=!1,this.buffer.forEach(e=>this.processMessage(e)),this.buffer=[]}reject(){this.enabled=!1,this.buffer=[]}}})),x=o(((e,t)=>{var n=b(),r=ee();t.exports=class e{static instances={};dependencies={};errorHandler=null;eventLogger=null;functions={};hooks=[];isDev=!1;levels=null;logId=null;scope=null;transports={};variables={};constructor({allowUnknownLevel:t=!1,dependencies:i={},errorHandler:a,eventLogger:o,initializeFn:s,isDev:c=!1,levels:l=[`error`,`warn`,`info`,`verbose`,`debug`,`silly`],logId:u,transportFactories:d={},variables:f}={}){this.addLevel=this.addLevel.bind(this),this.create=this.create.bind(this),this.initialize=this.initialize.bind(this),this.logData=this.logData.bind(this),this.processMessage=this.processMessage.bind(this),this.allowUnknownLevel=t,this.buffering=new r(this),this.dependencies=i,this.initializeFn=s,this.isDev=c,this.levels=l,this.logId=u,this.scope=n(this),this.transportFactories=d,this.variables=f||{};for(let e of this.levels)this.addLevel(e,!1);this.log=this.info,this.functions.log=this.log,this.errorHandler=a,a?.setOptions({...i,logFn:this.error}),this.eventLogger=o,o?.setOptions({...i,logger:this});for(let[e,t]of Object.entries(d))this.transports[e]=t(this,i);e.instances[u]=this}static getInstance({logId:e}){return this.instances[e]||this.instances.default}addLevel(e,t=this.levels.length){t!==!1&&this.levels.splice(t,0,e),this[e]=(...t)=>this.logData(t,{level:e}),this.functions[e]=this[e]}catchErrors(e){return this.processMessage({data:[`log.catchErrors is deprecated. Use log.errorHandler instead`],level:`warn`},{transports:[`console`]}),this.errorHandler.startCatching(e)}create(t){return typeof t==`string`&&(t={logId:t}),new e({dependencies:this.dependencies,errorHandler:this.errorHandler,initializeFn:this.initializeFn,isDev:this.isDev,transportFactories:this.transportFactories,variables:{...this.variables},...t})}compareLevels(e,t,n=this.levels){let r=n.indexOf(e),i=n.indexOf(t);return i===-1||r===-1?!0:i<=r}initialize(e={}){this.initializeFn({logger:this,...this.dependencies,...e})}logData(e,t={}){this.buffering.enabled?this.buffering.addMessage({data:e,date:new Date,...t}):this.processMessage({data:e,...t})}processMessage(e,{transports:t=this.transports}={}){if(e.cmd===`errorHandler`){this.errorHandler.handle(e.error,{errorName:e.errorName,processType:`renderer`,showDialog:!!e.showDialog});return}let n=e.level;this.allowUnknownLevel||(n=this.levels.includes(e.level)?e.level:`info`);let r={date:new Date,logId:this.logId,...e,level:n,variables:{...this.variables,...e.variables}};for(let[n,i]of this.transportEntries(t))if(!(typeof i!=`function`||i.level===!1)&&this.compareLevels(i.level,e.level))try{let e=this.hooks.reduce((e,t)=>e&&t(e,i,n),r);e&&i({...e,data:[...e.data]})}catch(e){this.processInternalErrorFn(e)}}processInternalErrorFn(e){}transportEntries(e=this.transports){return(Array.isArray(e)?e:Object.entries(e)).map(e=>{switch(typeof e){case`string`:return this.transports[e]?[e,this.transports[e]]:null;case`function`:return[e.name,e];default:return Array.isArray(e)?e:null}}).filter(Boolean)}}})),te=o(((e,t)=>{var n=class{externalApi=void 0;isActive=!1;logFn=void 0;onError=void 0;showDialog=!0;constructor({externalApi:e,logFn:t=void 0,onError:n=void 0,showDialog:r=void 0}={}){this.createIssue=this.createIssue.bind(this),this.handleError=this.handleError.bind(this),this.handleRejection=this.handleRejection.bind(this),this.setOptions({externalApi:e,logFn:t,onError:n,showDialog:r}),this.startCatching=this.startCatching.bind(this),this.stopCatching=this.stopCatching.bind(this)}handle(e,{logFn:t=this.logFn,onError:n=this.onError,processType:i=`browser`,showDialog:a=this.showDialog,errorName:o=``}={}){e=r(e);try{if(typeof n==`function`){let t=this.externalApi?.getVersions()||{},r=this.createIssue;if(n({createIssue:r,error:e,errorName:o,processType:i,versions:t})===!1)return}o?t(o,e):t(e),a&&!o.includes(`rejection`)&&this.externalApi&&this.externalApi.showErrorBox(`A JavaScript error occurred in the ${i} process`,e.stack)}catch{console.error(e)}}setOptions({externalApi:e,logFn:t,onError:n,showDialog:r}){typeof e==`object`&&(this.externalApi=e),typeof t==`function`&&(this.logFn=t),typeof n==`function`&&(this.onError=n),typeof r==`boolean`&&(this.showDialog=r)}startCatching({onError:e,showDialog:t}={}){this.isActive||(this.isActive=!0,this.setOptions({onError:e,showDialog:t}),process.on(`uncaughtException`,this.handleError),process.on(`unhandledRejection`,this.handleRejection))}stopCatching(){this.isActive=!1,process.removeListener(`uncaughtException`,this.handleError),process.removeListener(`unhandledRejection`,this.handleRejection)}createIssue(e,t){this.externalApi?.openUrl(`${e}?${new URLSearchParams(t).toString()}`)}handleError(e){this.handle(e,{errorName:`Unhandled`})}handleRejection(e){let t=e instanceof Error?e:Error(JSON.stringify(e));this.handle(t,{errorName:`Unhandled rejection`})}};function r(e){if(e instanceof Error)return e;if(e&&typeof e==`object`){if(e.message)return Object.assign(Error(e.message),e);try{return Error(JSON.stringify(e))}catch(t){return Error(`Couldn't normalize error ${String(e)}: ${t}`)}}return Error(`Can't normalize error ${String(e)}`)}t.exports=n})),ne=o(((e,t)=>{t.exports=class{disposers=[];format=`{eventSource}#{eventName}:`;formatters={app:{"certificate-error":({args:e})=>this.arrayToObject(e.slice(1,4),[`url`,`error`,`certificate`]),"child-process-gone":({args:e})=>e.length===1?e[0]:e,"render-process-gone":({args:[e,t]})=>t&&typeof t==`object`?{...t,...this.getWebContentsDetails(e)}:[]},webContents:{"console-message":({args:[e,t,n,r]})=>{if(!(e<3))return{message:t,source:`${r}:${n}`}},"did-fail-load":({args:e})=>this.arrayToObject(e,[`errorCode`,`errorDescription`,`validatedURL`,`isMainFrame`,`frameProcessId`,`frameRoutingId`]),"did-fail-provisional-load":({args:e})=>this.arrayToObject(e,[`errorCode`,`errorDescription`,`validatedURL`,`isMainFrame`,`frameProcessId`,`frameRoutingId`]),"plugin-crashed":({args:e})=>this.arrayToObject(e,[`name`,`version`]),"preload-error":({args:e})=>this.arrayToObject(e,[`preloadPath`,`error`])}};events={app:{"certificate-error":!0,"child-process-gone":!0,"render-process-gone":!0},webContents:{"did-fail-load":!0,"did-fail-provisional-load":!0,"plugin-crashed":!0,"preload-error":!0,unresponsive:!0}};externalApi=void 0;level=`error`;scope=``;constructor(e={}){this.setOptions(e)}setOptions({events:e,externalApi:t,level:n,logger:r,format:i,formatters:a,scope:o}){typeof e==`object`&&(this.events=e),typeof t==`object`&&(this.externalApi=t),typeof n==`string`&&(this.level=n),typeof r==`object`&&(this.logger=r),(typeof i==`string`||typeof i==`function`)&&(this.format=i),typeof a==`object`&&(this.formatters=a),typeof o==`string`&&(this.scope=o)}startLogging(e={}){this.setOptions(e),this.disposeListeners();for(let e of this.getEventNames(this.events.app))this.disposers.push(this.externalApi.onAppEvent(e,(...t)=>{this.handleEvent({eventSource:`app`,eventName:e,handlerArgs:t})}));for(let e of this.getEventNames(this.events.webContents))this.disposers.push(this.externalApi.onEveryWebContentsEvent(e,(...t)=>{this.handleEvent({eventSource:`webContents`,eventName:e,handlerArgs:t})}))}stopLogging(){this.disposeListeners()}arrayToObject(e,t){let n={};return t.forEach((t,r)=>{n[t]=e[r]}),e.length>t.length&&(n.unknownArgs=e.slice(t.length)),n}disposeListeners(){this.disposers.forEach(e=>e()),this.disposers=[]}formatEventLog({eventName:e,eventSource:t,handlerArgs:n}){let[r,...i]=n;if(typeof this.format==`function`)return this.format({args:i,event:r,eventName:e,eventSource:t});let a=this.formatters[t]?.[e],o=i;if(typeof a==`function`&&(o=a({args:i,event:r,eventName:e,eventSource:t})),!o)return;let s={};return Array.isArray(o)?s.args=o:typeof o==`object`&&Object.assign(s,o),t===`webContents`&&Object.assign(s,this.getWebContentsDetails(r?.sender)),[this.format.replace(`{eventSource}`,t===`app`?`App`:`WebContents`).replace(`{eventName}`,e),s]}getEventNames(e){return!e||typeof e!=`object`?[]:Object.entries(e).filter(([e,t])=>t).map(([e])=>e)}getWebContentsDetails(e){if(!e?.loadURL)return{};try{return{webContents:{id:e.id,url:e.getURL()}}}catch{return{}}}handleEvent({eventName:e,eventSource:t,handlerArgs:n}){let r=this.formatEventLog({eventName:e,eventSource:t,handlerArgs:n});r&&(this.scope?this.logger.scope(this.scope):this.logger)?.[this.level]?.(...r)}}})),S=o(((e,t)=>{t.exports={transform:n};function n({logger:e,message:t,transport:n,initialData:r=t?.data||[],transforms:i=n?.transforms}){return i.reduce((r,i)=>typeof i==`function`?i({data:r,logger:e,message:t,transport:n}):r,r)}})),re=o(((e,t)=>{var{transform:n}=S();t.exports={concatFirstStringElements:r,formatScope:a,formatText:s,formatVariables:o,timeZoneFromOffset:i,format({message:e,logger:t,transport:r,data:i=e?.data}){switch(typeof r.format){case`string`:return n({message:e,logger:t,transforms:[o,a,s],transport:r,initialData:[r.format,...i]});case`function`:return r.format({data:i,level:e?.level||`info`,logger:t,message:e,transport:r});default:return i}}};function r({data:e}){return typeof e[0]!=`string`||typeof e[1]!=`string`||e[0].match(/%[1cdfiOos]/)?e:[`${e[0]} ${e[1]}`,...e.slice(2)]}function i(e){let t=Math.abs(e);return`${e>0?`-`:`+`}${Math.floor(t/60).toString().padStart(2,`0`)}:${(t%60).toString().padStart(2,`0`)}`}function a({data:e,logger:t,message:n}){let{defaultLabel:r,labelLength:i}=t?.scope||{},a=e[0],o=n.scope;o||=r;let s;return s=o===``?i>0?``.padEnd(i+3):``:typeof o==`string`?` (${o})`.padEnd(i+3):``,e[0]=a.replace(`{scope}`,s),e}function o({data:e,message:t}){let n=e[0];if(typeof n!=`string`)return e;n=n.replace(`{level}]`,`${t.level}]`.padEnd(6,` `));let r=t.date||new Date;return e[0]=n.replace(/\{(\w+)}/g,(e,n)=>{switch(n){case`level`:return t.level||`info`;case`logId`:return t.logId;case`y`:return r.getFullYear().toString(10);case`m`:return(r.getMonth()+1).toString(10).padStart(2,`0`);case`d`:return r.getDate().toString(10).padStart(2,`0`);case`h`:return r.getHours().toString(10).padStart(2,`0`);case`i`:return r.getMinutes().toString(10).padStart(2,`0`);case`s`:return r.getSeconds().toString(10).padStart(2,`0`);case`ms`:return r.getMilliseconds().toString(10).padStart(3,`0`);case`z`:return i(r.getTimezoneOffset());case`iso`:return r.toISOString();default:return t.variables?.[n]||e}}).trim(),e}function s({data:e}){let t=e[0];if(typeof t!=`string`)return e;if(t.lastIndexOf(`{text}`)===t.length-6)return e[0]=t.replace(/\s?{text}/,``),e[0]===``&&e.shift(),e;let n=t.split(`{text}`),r=[];return n[0]!==``&&r.push(n[0]),r=r.concat(e.slice(1)),n[1]!==``&&r.push(n[1]),r}})),C=o(((e,t)=>{var n=require(`util`);t.exports={serialize:i,maxDepth({data:e,transport:n,depth:r=n?.depth??6}){if(!e)return e;if(r<1)return Array.isArray(e)?`[array]`:typeof e==`object`&&e?`[object]`:e;if(Array.isArray(e))return e.map(e=>t.exports.maxDepth({data:e,depth:r-1}));if(typeof e!=`object`||e&&typeof e.toISOString==`function`)return e;if(e===null)return null;if(e instanceof Error)return e;let i={};for(let n in e)Object.prototype.hasOwnProperty.call(e,n)&&(i[n]=t.exports.maxDepth({data:e[n],depth:r-1}));return i},toJSON({data:e}){return JSON.parse(JSON.stringify(e,r()))},toString({data:e,transport:t}){let i=t?.inspectOptions||{},a=e.map(e=>{if(e!==void 0)try{let t=JSON.stringify(e,r(),`  `);return t===void 0?void 0:JSON.parse(t)}catch{return e}});return n.formatWithOptions(i,...a)}};function r(e={}){let t=new WeakSet;return function(n,r){if(typeof r==`object`&&r){if(t.has(r))return;t.add(r)}return i(n,r,e)}}function i(e,t,n={}){let r=n?.serializeMapAndSet!==!1;return t instanceof Error?t.stack:t&&(typeof t==`function`?`[function] ${t.toString()}`:t instanceof Date?t.toISOString():r&&t instanceof Map&&Object.fromEntries?Object.fromEntries(t):r&&t instanceof Set&&Array.from?Array.from(t):t)}})),w=o(((e,t)=>{t.exports={transformStyles:a,applyAnsiStyles({data:e}){return a(e,r,i)},removeStyles({data:e}){return a(e,()=>``)}};var n={unset:`\x1B[0m`,black:`\x1B[30m`,red:`\x1B[31m`,green:`\x1B[32m`,yellow:`\x1B[33m`,blue:`\x1B[34m`,magenta:`\x1B[35m`,cyan:`\x1B[36m`,white:`\x1B[37m`,gray:`\x1B[90m`};function r(e){return n[e.replace(/color:\s*(\w+).*/,`$1`).toLowerCase()]||``}function i(e){return e+n.unset}function a(e,t,n){let r={};return e.reduce((e,i,a,o)=>{if(r[a])return e;if(typeof i==`string`){let e=a,s=!1;i=i.replace(/%[1cdfiOos]/g,n=>{if(e+=1,n!==`%c`)return n;let a=o[e];return typeof a==`string`?(r[e]=!0,s=!0,t(a,i)):n}),s&&n&&(i=n(i))}return e.push(i),e},[])}})),ie=o(((e,t)=>{var{concatFirstStringElements:n,format:r}=re(),{maxDepth:i,toJSON:a}=C(),{applyAnsiStyles:o,removeStyles:s}=w(),{transform:c}=S(),l={error:console.error,warn:console.warn,info:console.info,verbose:console.info,debug:console.debug,silly:console.debug,log:console.log};t.exports=d;var u=`%c{h}:{i}:{s}.{ms}{scope}%c ${process.platform===`win32`?`>`:`›`} {text}`;Object.assign(d,{DEFAULT_FORMAT:u});function d(e){return Object.assign(t,{colorMap:{error:`red`,warn:`yellow`,info:`cyan`,verbose:`unset`,debug:`gray`,silly:`gray`,default:`unset`},format:u,level:`silly`,transforms:[f,r,m,n,i,a],useStyles:process.env.FORCE_STYLES,writeFn({message:e}){(l[e.level]||l.info)(...e.data)}});function t(n){let r=c({logger:e,message:n,transport:t});t.writeFn({message:{...n,data:r}})}}function f({data:e,message:t,transport:n}){return typeof n.format!=`string`||!n.format.includes(`%c`)?e:[`color:${h(t.level,n)}`,`color:unset`,...e]}function p(e,t){if(typeof e==`boolean`)return e;let n=t===`error`||t===`warn`?process.stderr:process.stdout;return n&&n.isTTY}function m(e){let{message:t,transport:n}=e;return(p(n.useStyles,t.level)?o:s)(e)}function h(e,t){return t.colorMap[e]||t.colorMap.default}})),ae=o(((e,t)=>{var n=require(`events`),r=require(`fs`),i=require(`os`);t.exports=class extends n{asyncWriteQueue=[];bytesWritten=0;hasActiveAsyncWriting=!1;path=null;initialSize=void 0;writeOptions=null;writeAsync=!1;constructor({path:e,writeOptions:t={encoding:`utf8`,flag:`a`,mode:438},writeAsync:n=!1}){super(),this.path=e,this.writeOptions=t,this.writeAsync=n}get size(){return this.getSize()}clear(){try{return r.writeFileSync(this.path,``,{mode:this.writeOptions.mode,flag:`w`}),this.reset(),!0}catch(e){return e.code===`ENOENT`?!0:(this.emit(`error`,e,this),!1)}}crop(e){try{let t=a(this.path,e||4096);this.clear(),this.writeLine(`[log cropped]${i.EOL}${t}`)}catch(e){this.emit(`error`,Error(`Couldn't crop file ${this.path}. ${e.message}`),this)}}getSize(){if(this.initialSize===void 0)try{this.initialSize=r.statSync(this.path).size}catch{this.initialSize=0}return this.initialSize+this.bytesWritten}increaseBytesWrittenCounter(e){this.bytesWritten+=Buffer.byteLength(e,this.writeOptions.encoding)}isNull(){return!1}nextAsyncWrite(){let e=this;if(this.hasActiveAsyncWriting||this.asyncWriteQueue.length===0)return;let t=this.asyncWriteQueue.join(``);this.asyncWriteQueue=[],this.hasActiveAsyncWriting=!0,r.writeFile(this.path,t,this.writeOptions,n=>{e.hasActiveAsyncWriting=!1,n?e.emit(`error`,Error(`Couldn't write to ${e.path}. ${n.message}`),this):e.increaseBytesWrittenCounter(t),e.nextAsyncWrite()})}reset(){this.initialSize=void 0,this.bytesWritten=0}toString(){return this.path}writeLine(e){if(e+=i.EOL,this.writeAsync){this.asyncWriteQueue.push(e),this.nextAsyncWrite();return}try{r.writeFileSync(this.path,e,this.writeOptions),this.increaseBytesWrittenCounter(e)}catch(e){this.emit(`error`,Error(`Couldn't write to ${this.path}. ${e.message}`),this)}}};function a(e,t){let n=Buffer.alloc(t),i=r.statSync(e),a=Math.min(i.size,t),o=Math.max(0,i.size-t),s=r.openSync(e,`r`),c=r.readSync(s,n,0,a,o);return r.closeSync(s),n.toString(`utf8`,0,c)}})),oe=o(((e,t)=>{var n=ae();t.exports=class extends n{clear(){}crop(){}getSize(){return 0}isNull(){return!0}writeLine(){}}})),se=o(((e,t)=>{var n=require(`events`),r=require(`fs`),i=require(`path`),a=ae(),o=oe();t.exports=class extends n{store={};constructor(){super(),this.emitError=this.emitError.bind(this)}provide({filePath:e,writeOptions:t={},writeAsync:n=!1}){let r;try{if(e=i.resolve(e),this.store[e])return this.store[e];r=this.createFile({filePath:e,writeOptions:t,writeAsync:n})}catch(t){r=new o({path:e}),this.emitError(t,r)}return r.on(`error`,this.emitError),this.store[e]=r,r}createFile({filePath:e,writeOptions:t,writeAsync:n}){return this.testFileWriting({filePath:e,writeOptions:t}),new a({path:e,writeOptions:t,writeAsync:n})}emitError(e,t){this.emit(`error`,e,t)}testFileWriting({filePath:e,writeOptions:t}){r.mkdirSync(i.dirname(e),{recursive:!0}),r.writeFileSync(e,``,{flag:`a`,mode:t.mode})}}})),ce=o(((e,t)=>{var n=require(`fs`),r=require(`os`),i=require(`path`),a=se(),{transform:o}=S(),{removeStyles:s}=w(),{format:c,concatFirstStringElements:l}=re(),{toString:u}=C();t.exports=f;var d=new a;function f(e,{registry:t=d,externalApi:a}={}){let f;return t.listenerCount(`error`)<1&&t.on(`error`,(e,t)=>{g(`Can't write to ${t}`,e)}),Object.assign(m,{fileName:p(e.variables.processType),format:`[{y}-{m}-{d} {h}:{i}:{s}.{ms}] [{level}]{scope} {text}`,getFile:_,inspectOptions:{depth:5},level:`silly`,maxSize:1024**2,readAllLogs:v,sync:!0,transforms:[s,c,l,u],writeOptions:{flag:`a`,mode:438,encoding:`utf8`},archiveLogFn(e){let t=e.toString(),r=i.parse(t);try{n.renameSync(t,i.join(r.dir,`${r.name}.old${r.ext}`))}catch(t){g(`Could not rotate log`,t);let n=Math.round(m.maxSize/4);e.crop(Math.min(n,256*1024))}},resolvePathFn(e){return i.join(e.libraryDefaultDir,e.fileName)},setAppName(t){e.dependencies.externalApi.setAppName(t)}});function m(t){let n=_(t);m.maxSize>0&&n.size>m.maxSize&&(m.archiveLogFn(n),n.reset());let r=o({logger:e,message:t,transport:m});n.writeLine(r)}function h(){f||(f=Object.create(Object.prototype,{...Object.getOwnPropertyDescriptors(a.getPathVariables()),fileName:{get(){return m.fileName},enumerable:!0}}),typeof m.archiveLog==`function`&&(m.archiveLogFn=m.archiveLog,g(`archiveLog is deprecated. Use archiveLogFn instead`)),typeof m.resolvePath==`function`&&(m.resolvePathFn=m.resolvePath,g(`resolvePath is deprecated. Use resolvePathFn instead`)))}function g(t,n=null,r=`error`){let i=[`electron-log.transports.file: ${t}`];n&&i.push(n),e.transports.console({data:i,date:new Date,level:r})}function _(e){h();let n=m.resolvePathFn(f,e);return t.provide({filePath:n,writeAsync:!m.sync,writeOptions:m.writeOptions})}function v({fileFilter:e=e=>e.endsWith(`.log`)}={}){h();let t=i.dirname(m.resolvePathFn(f));return n.existsSync(t)?n.readdirSync(t).map(e=>i.join(t,e)).filter(e).map(e=>{try{return{path:e,lines:n.readFileSync(e,`utf8`).split(r.EOL)}}catch{return null}}).filter(Boolean):[]}}function p(e=process.type){switch(e){case`renderer`:return`renderer.log`;case`worker`:return`worker.log`;default:return`main.log`}}})),le=o(((e,t)=>{var{maxDepth:n,toJSON:r}=C(),{transform:i}=S();t.exports=a;function a(e,{externalApi:t}){return Object.assign(a,{depth:3,eventId:`__ELECTRON_LOG_IPC__`,level:e.isDev?`silly`:!1,transforms:[r,n]}),t?.isElectron()?a:void 0;function a(n){n?.variables?.processType!==`renderer`&&t?.sendIpc(a.eventId,{...n,data:i({logger:e,message:n,transport:a})})}}})),ue=o(((e,t)=>{var n=require(`http`),r=require(`https`),{transform:i}=S(),{removeStyles:a}=w(),{toJSON:o,maxDepth:s}=C();t.exports=c;function c(e){return Object.assign(t,{client:{name:`electron-application`},depth:6,level:!1,requestOptions:{},transforms:[a,o,s],makeBodyFn({message:e}){return JSON.stringify({client:t.client,data:e.data,date:e.date.getTime(),level:e.level,scope:e.scope,variables:e.variables})},processErrorFn({error:n}){e.processMessage({data:[`electron-log: can't POST ${t.url}`,n],level:`warn`},{transports:[`console`,`file`]})},sendRequestFn({serverUrl:e,requestOptions:t,body:i}){let a=(e.startsWith(`https:`)?r:n).request(e,{method:`POST`,...t,headers:{"Content-Type":`application/json`,"Content-Length":i.length,...t.headers}});return a.write(i),a.end(),a}});function t(n){if(!t.url)return;let r=t.makeBodyFn({logger:e,message:{...n,data:i({logger:e,message:n,transport:t})},transport:t}),a=t.sendRequestFn({serverUrl:t.url,requestOptions:t.requestOptions,body:Buffer.from(r,`utf8`)});a.on(`error`,r=>t.processErrorFn({error:r,logger:e,message:n,request:a,transport:t}))}}})),de=o(((e,t)=>{var n=x(),r=te(),i=ne(),a=ie(),o=ce(),s=le(),c=ue();t.exports=l;function l({dependencies:e,initializeFn:t}){let l=new n({dependencies:e,errorHandler:new r,eventLogger:new i,initializeFn:t,isDev:e.externalApi?.isDev(),logId:`default`,transportFactories:{console:a,file:o,ipc:s,remote:c},variables:{processType:`main`}});return l.default=l,l.Logger=n,l.processInternalErrorFn=e=>{l.transports.console.writeFn({message:{data:[`Unhandled electron-log error`,e],level:`error`}})},l}})),fe=o(((e,t)=>{var n=require(`electron`),r=_(),{initialize:i}=y(),a=de(),o=new r({electron:n}),s=a({dependencies:{externalApi:o},initializeFn:i});t.exports=s,o.onIpc(`__ELECTRON_LOG__`,(e,t)=>{t.scope&&s.Logger.getInstance(t).scope(t.scope);let n=new Date(t.date);c({...t,date:n.getTime()?n:new Date})}),o.onIpcInvoke(`__ELECTRON_LOG__`,(e,{cmd:t=``,logId:n})=>{switch(t){case`getOptions`:return{levels:s.Logger.getInstance({logId:n}).levels,logId:n};default:return c({data:[`Unknown cmd '${t}'`],level:`error`}),{}}});function c(e){s.Logger.getInstance(e)?.processMessage(e)}})),T=c(o(((e,t)=>{t.exports=fe()}))()),E=null,D=``;function pe(){let e=l.app.getPath(`home`),t=u.default.join(e,`.valuta`);if(!p.default.existsSync(t))try{p.default.mkdirSync(t,{recursive:!0})}catch(e){let n=e instanceof Error?e.message:String(e);throw Error(`Nem sikerült létrehozni a valuta mappát: ${t}. ${n}`,{cause:e})}return u.default.join(t,`local.db`)}function me(){let e=[];l.app.isPackaged?(e.push(u.default.join(process.resourcesPath,`sql-wasm.wasm`)),e.push(u.default.join(l.app.getAppPath(),`resources`,`sql-wasm.wasm`)),e.push(u.default.join(l.app.getAppPath(),`sql-wasm.wasm`)),e.push(u.default.join(__dirname,`sql-wasm.wasm`))):(e.push(u.default.join(__dirname,`../node_modules/sql.js/dist/sql-wasm.wasm`)),e.push(u.default.join(process.cwd(),`node_modules/sql.js/dist/sql-wasm.wasm`)));for(let t of e)if(p.default.existsSync(t))return t;throw Error(`sql-wasm.wasm nem található. Próbált útvonalak: ${e.join(` | `)}`)}async function he(){try{D=pe();let e=me(),t=await(0,f.default)({wasmBinary:p.default.readFileSync(e)});if(p.default.existsSync(D)){let e=p.default.readFileSync(D);E=new t.Database(e)}else E=new t.Database;E.run(`PRAGMA foreign_keys = ON;`),E.run(`
+    `;
+			fs$6.writeFileSync(preloadPath, preloadCode, "utf8");
+		}
+		externalApi.setPreloadFileForSessions({
+			filePath: preloadPath,
+			includeFutureSession,
+			getSessions
+		});
+	}
+	function initializeSpyRendererConsole({ externalApi, logger }) {
+		if (spyConsoleInitialized) {
+			logger.warn((/* @__PURE__ */ new Error("log.initialize({ spyRendererConsole }) already called")).stack);
+			return;
+		}
+		spyConsoleInitialized = true;
+		const levels = [
+			"debug",
+			"info",
+			"warn",
+			"error"
+		];
+		externalApi.onEveryWebContentsEvent("console-message", (event, level, message) => {
+			logger.processMessage({
+				data: [message],
+				level: levels[level],
+				variables: { processType: "renderer" }
+			});
+		});
+	}
+}));
+//#endregion
+//#region node_modules/electron-log/src/core/scope.js
+var require_scope = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	module.exports = scopeFactory;
+	function scopeFactory(logger) {
+		return Object.defineProperties(scope, {
+			defaultLabel: {
+				value: "",
+				writable: true
+			},
+			labelPadding: {
+				value: true,
+				writable: true
+			},
+			maxLabelLength: {
+				value: 0,
+				writable: true
+			},
+			labelLength: { get() {
+				switch (typeof scope.labelPadding) {
+					case "boolean": return scope.labelPadding ? scope.maxLabelLength : 0;
+					case "number": return scope.labelPadding;
+					default: return 0;
+				}
+			} }
+		});
+		function scope(label) {
+			scope.maxLabelLength = Math.max(scope.maxLabelLength, label.length);
+			const newScope = {};
+			for (const level of logger.levels) newScope[level] = (...d) => logger.logData(d, {
+				level,
+				scope: label
+			});
+			newScope.log = newScope.info;
+			return newScope;
+		}
+	}
+}));
+//#endregion
+//#region node_modules/electron-log/src/core/Buffering.js
+var require_Buffering = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	var Buffering = class {
+		constructor({ processMessage }) {
+			this.processMessage = processMessage;
+			this.buffer = [];
+			this.enabled = false;
+			this.begin = this.begin.bind(this);
+			this.commit = this.commit.bind(this);
+			this.reject = this.reject.bind(this);
+		}
+		addMessage(message) {
+			this.buffer.push(message);
+		}
+		begin() {
+			this.enabled = [];
+		}
+		commit() {
+			this.enabled = false;
+			this.buffer.forEach((item) => this.processMessage(item));
+			this.buffer = [];
+		}
+		reject() {
+			this.enabled = false;
+			this.buffer = [];
+		}
+	};
+	module.exports = Buffering;
+}));
+//#endregion
+//#region node_modules/electron-log/src/core/Logger.js
+var require_Logger = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	var scopeFactory = require_scope();
+	var Buffering = require_Buffering();
+	module.exports = class Logger {
+		static instances = {};
+		dependencies = {};
+		errorHandler = null;
+		eventLogger = null;
+		functions = {};
+		hooks = [];
+		isDev = false;
+		levels = null;
+		logId = null;
+		scope = null;
+		transports = {};
+		variables = {};
+		constructor({ allowUnknownLevel = false, dependencies = {}, errorHandler, eventLogger, initializeFn, isDev = false, levels = [
+			"error",
+			"warn",
+			"info",
+			"verbose",
+			"debug",
+			"silly"
+		], logId, transportFactories = {}, variables } = {}) {
+			this.addLevel = this.addLevel.bind(this);
+			this.create = this.create.bind(this);
+			this.initialize = this.initialize.bind(this);
+			this.logData = this.logData.bind(this);
+			this.processMessage = this.processMessage.bind(this);
+			this.allowUnknownLevel = allowUnknownLevel;
+			this.buffering = new Buffering(this);
+			this.dependencies = dependencies;
+			this.initializeFn = initializeFn;
+			this.isDev = isDev;
+			this.levels = levels;
+			this.logId = logId;
+			this.scope = scopeFactory(this);
+			this.transportFactories = transportFactories;
+			this.variables = variables || {};
+			for (const name of this.levels) this.addLevel(name, false);
+			this.log = this.info;
+			this.functions.log = this.log;
+			this.errorHandler = errorHandler;
+			errorHandler?.setOptions({
+				...dependencies,
+				logFn: this.error
+			});
+			this.eventLogger = eventLogger;
+			eventLogger?.setOptions({
+				...dependencies,
+				logger: this
+			});
+			for (const [name, factory] of Object.entries(transportFactories)) this.transports[name] = factory(this, dependencies);
+			Logger.instances[logId] = this;
+		}
+		static getInstance({ logId }) {
+			return this.instances[logId] || this.instances.default;
+		}
+		addLevel(level, index = this.levels.length) {
+			if (index !== false) this.levels.splice(index, 0, level);
+			this[level] = (...args) => this.logData(args, { level });
+			this.functions[level] = this[level];
+		}
+		catchErrors(options) {
+			this.processMessage({
+				data: ["log.catchErrors is deprecated. Use log.errorHandler instead"],
+				level: "warn"
+			}, { transports: ["console"] });
+			return this.errorHandler.startCatching(options);
+		}
+		create(options) {
+			if (typeof options === "string") options = { logId: options };
+			return new Logger({
+				dependencies: this.dependencies,
+				errorHandler: this.errorHandler,
+				initializeFn: this.initializeFn,
+				isDev: this.isDev,
+				transportFactories: this.transportFactories,
+				variables: { ...this.variables },
+				...options
+			});
+		}
+		compareLevels(passLevel, checkLevel, levels = this.levels) {
+			const pass = levels.indexOf(passLevel);
+			const check = levels.indexOf(checkLevel);
+			if (check === -1 || pass === -1) return true;
+			return check <= pass;
+		}
+		initialize(options = {}) {
+			this.initializeFn({
+				logger: this,
+				...this.dependencies,
+				...options
+			});
+		}
+		logData(data, options = {}) {
+			if (this.buffering.enabled) this.buffering.addMessage({
+				data,
+				date: /* @__PURE__ */ new Date(),
+				...options
+			});
+			else this.processMessage({
+				data,
+				...options
+			});
+		}
+		processMessage(message, { transports = this.transports } = {}) {
+			if (message.cmd === "errorHandler") {
+				this.errorHandler.handle(message.error, {
+					errorName: message.errorName,
+					processType: "renderer",
+					showDialog: Boolean(message.showDialog)
+				});
+				return;
+			}
+			let level = message.level;
+			if (!this.allowUnknownLevel) level = this.levels.includes(message.level) ? message.level : "info";
+			const normalizedMessage = {
+				date: /* @__PURE__ */ new Date(),
+				logId: this.logId,
+				...message,
+				level,
+				variables: {
+					...this.variables,
+					...message.variables
+				}
+			};
+			for (const [transName, transFn] of this.transportEntries(transports)) {
+				if (typeof transFn !== "function" || transFn.level === false) continue;
+				if (!this.compareLevels(transFn.level, message.level)) continue;
+				try {
+					const transformedMsg = this.hooks.reduce((msg, hook) => {
+						return msg ? hook(msg, transFn, transName) : msg;
+					}, normalizedMessage);
+					if (transformedMsg) transFn({
+						...transformedMsg,
+						data: [...transformedMsg.data]
+					});
+				} catch (e) {
+					this.processInternalErrorFn(e);
+				}
+			}
+		}
+		processInternalErrorFn(_e) {}
+		transportEntries(transports = this.transports) {
+			return (Array.isArray(transports) ? transports : Object.entries(transports)).map((item) => {
+				switch (typeof item) {
+					case "string": return this.transports[item] ? [item, this.transports[item]] : null;
+					case "function": return [item.name, item];
+					default: return Array.isArray(item) ? item : null;
+				}
+			}).filter(Boolean);
+		}
+	};
+}));
+//#endregion
+//#region node_modules/electron-log/src/node/ErrorHandler.js
+var require_ErrorHandler = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	var ErrorHandler = class {
+		externalApi = void 0;
+		isActive = false;
+		logFn = void 0;
+		onError = void 0;
+		showDialog = true;
+		constructor({ externalApi, logFn = void 0, onError = void 0, showDialog = void 0 } = {}) {
+			this.createIssue = this.createIssue.bind(this);
+			this.handleError = this.handleError.bind(this);
+			this.handleRejection = this.handleRejection.bind(this);
+			this.setOptions({
+				externalApi,
+				logFn,
+				onError,
+				showDialog
+			});
+			this.startCatching = this.startCatching.bind(this);
+			this.stopCatching = this.stopCatching.bind(this);
+		}
+		handle(error, { logFn = this.logFn, onError = this.onError, processType = "browser", showDialog = this.showDialog, errorName = "" } = {}) {
+			error = normalizeError(error);
+			try {
+				if (typeof onError === "function") {
+					const versions = this.externalApi?.getVersions() || {};
+					const createIssue = this.createIssue;
+					if (onError({
+						createIssue,
+						error,
+						errorName,
+						processType,
+						versions
+					}) === false) return;
+				}
+				errorName ? logFn(errorName, error) : logFn(error);
+				if (showDialog && !errorName.includes("rejection") && this.externalApi) this.externalApi.showErrorBox(`A JavaScript error occurred in the ${processType} process`, error.stack);
+			} catch {
+				console.error(error);
+			}
+		}
+		setOptions({ externalApi, logFn, onError, showDialog }) {
+			if (typeof externalApi === "object") this.externalApi = externalApi;
+			if (typeof logFn === "function") this.logFn = logFn;
+			if (typeof onError === "function") this.onError = onError;
+			if (typeof showDialog === "boolean") this.showDialog = showDialog;
+		}
+		startCatching({ onError, showDialog } = {}) {
+			if (this.isActive) return;
+			this.isActive = true;
+			this.setOptions({
+				onError,
+				showDialog
+			});
+			process.on("uncaughtException", this.handleError);
+			process.on("unhandledRejection", this.handleRejection);
+		}
+		stopCatching() {
+			this.isActive = false;
+			process.removeListener("uncaughtException", this.handleError);
+			process.removeListener("unhandledRejection", this.handleRejection);
+		}
+		createIssue(pageUrl, queryParams) {
+			this.externalApi?.openUrl(`${pageUrl}?${new URLSearchParams(queryParams).toString()}`);
+		}
+		handleError(error) {
+			this.handle(error, { errorName: "Unhandled" });
+		}
+		handleRejection(reason) {
+			const error = reason instanceof Error ? reason : new Error(JSON.stringify(reason));
+			this.handle(error, { errorName: "Unhandled rejection" });
+		}
+	};
+	function normalizeError(e) {
+		if (e instanceof Error) return e;
+		if (e && typeof e === "object") {
+			if (e.message) return Object.assign(new Error(e.message), e);
+			try {
+				return new Error(JSON.stringify(e));
+			} catch (serErr) {
+				return /* @__PURE__ */ new Error(`Couldn't normalize error ${String(e)}: ${serErr}`);
+			}
+		}
+		return /* @__PURE__ */ new Error(`Can't normalize error ${String(e)}`);
+	}
+	module.exports = ErrorHandler;
+}));
+//#endregion
+//#region node_modules/electron-log/src/node/EventLogger.js
+var require_EventLogger = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	var EventLogger = class {
+		disposers = [];
+		format = "{eventSource}#{eventName}:";
+		formatters = {
+			app: {
+				"certificate-error": ({ args }) => {
+					return this.arrayToObject(args.slice(1, 4), [
+						"url",
+						"error",
+						"certificate"
+					]);
+				},
+				"child-process-gone": ({ args }) => {
+					return args.length === 1 ? args[0] : args;
+				},
+				"render-process-gone": ({ args: [webContents, details] }) => {
+					return details && typeof details === "object" ? {
+						...details,
+						...this.getWebContentsDetails(webContents)
+					} : [];
+				}
+			},
+			webContents: {
+				"console-message": ({ args: [level, message, line, sourceId] }) => {
+					if (level < 3) return;
+					return {
+						message,
+						source: `${sourceId}:${line}`
+					};
+				},
+				"did-fail-load": ({ args }) => {
+					return this.arrayToObject(args, [
+						"errorCode",
+						"errorDescription",
+						"validatedURL",
+						"isMainFrame",
+						"frameProcessId",
+						"frameRoutingId"
+					]);
+				},
+				"did-fail-provisional-load": ({ args }) => {
+					return this.arrayToObject(args, [
+						"errorCode",
+						"errorDescription",
+						"validatedURL",
+						"isMainFrame",
+						"frameProcessId",
+						"frameRoutingId"
+					]);
+				},
+				"plugin-crashed": ({ args }) => {
+					return this.arrayToObject(args, ["name", "version"]);
+				},
+				"preload-error": ({ args }) => {
+					return this.arrayToObject(args, ["preloadPath", "error"]);
+				}
+			}
+		};
+		events = {
+			app: {
+				"certificate-error": true,
+				"child-process-gone": true,
+				"render-process-gone": true
+			},
+			webContents: {
+				"did-fail-load": true,
+				"did-fail-provisional-load": true,
+				"plugin-crashed": true,
+				"preload-error": true,
+				"unresponsive": true
+			}
+		};
+		externalApi = void 0;
+		level = "error";
+		scope = "";
+		constructor(options = {}) {
+			this.setOptions(options);
+		}
+		setOptions({ events, externalApi, level, logger, format, formatters, scope }) {
+			if (typeof events === "object") this.events = events;
+			if (typeof externalApi === "object") this.externalApi = externalApi;
+			if (typeof level === "string") this.level = level;
+			if (typeof logger === "object") this.logger = logger;
+			if (typeof format === "string" || typeof format === "function") this.format = format;
+			if (typeof formatters === "object") this.formatters = formatters;
+			if (typeof scope === "string") this.scope = scope;
+		}
+		startLogging(options = {}) {
+			this.setOptions(options);
+			this.disposeListeners();
+			for (const eventName of this.getEventNames(this.events.app)) this.disposers.push(this.externalApi.onAppEvent(eventName, (...handlerArgs) => {
+				this.handleEvent({
+					eventSource: "app",
+					eventName,
+					handlerArgs
+				});
+			}));
+			for (const eventName of this.getEventNames(this.events.webContents)) this.disposers.push(this.externalApi.onEveryWebContentsEvent(eventName, (...handlerArgs) => {
+				this.handleEvent({
+					eventSource: "webContents",
+					eventName,
+					handlerArgs
+				});
+			}));
+		}
+		stopLogging() {
+			this.disposeListeners();
+		}
+		arrayToObject(array, fieldNames) {
+			const obj = {};
+			fieldNames.forEach((fieldName, index) => {
+				obj[fieldName] = array[index];
+			});
+			if (array.length > fieldNames.length) obj.unknownArgs = array.slice(fieldNames.length);
+			return obj;
+		}
+		disposeListeners() {
+			this.disposers.forEach((disposer) => disposer());
+			this.disposers = [];
+		}
+		formatEventLog({ eventName, eventSource, handlerArgs }) {
+			const [event, ...args] = handlerArgs;
+			if (typeof this.format === "function") return this.format({
+				args,
+				event,
+				eventName,
+				eventSource
+			});
+			const formatter = this.formatters[eventSource]?.[eventName];
+			let formattedArgs = args;
+			if (typeof formatter === "function") formattedArgs = formatter({
+				args,
+				event,
+				eventName,
+				eventSource
+			});
+			if (!formattedArgs) return;
+			const eventData = {};
+			if (Array.isArray(formattedArgs)) eventData.args = formattedArgs;
+			else if (typeof formattedArgs === "object") Object.assign(eventData, formattedArgs);
+			if (eventSource === "webContents") Object.assign(eventData, this.getWebContentsDetails(event?.sender));
+			return [this.format.replace("{eventSource}", eventSource === "app" ? "App" : "WebContents").replace("{eventName}", eventName), eventData];
+		}
+		getEventNames(eventMap) {
+			if (!eventMap || typeof eventMap !== "object") return [];
+			return Object.entries(eventMap).filter(([_, listen]) => listen).map(([eventName]) => eventName);
+		}
+		getWebContentsDetails(webContents) {
+			if (!webContents?.loadURL) return {};
+			try {
+				return { webContents: {
+					id: webContents.id,
+					url: webContents.getURL()
+				} };
+			} catch {
+				return {};
+			}
+		}
+		handleEvent({ eventName, eventSource, handlerArgs }) {
+			const log = this.formatEventLog({
+				eventName,
+				eventSource,
+				handlerArgs
+			});
+			if (log) (this.scope ? this.logger.scope(this.scope) : this.logger)?.[this.level]?.(...log);
+		}
+	};
+	module.exports = EventLogger;
+}));
+//#endregion
+//#region node_modules/electron-log/src/core/transforms/transform.js
+var require_transform = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	module.exports = { transform };
+	function transform({ logger, message, transport, initialData = message?.data || [], transforms = transport?.transforms }) {
+		return transforms.reduce((data, trans) => {
+			if (typeof trans === "function") return trans({
+				data,
+				logger,
+				message,
+				transport
+			});
+			return data;
+		}, initialData);
+	}
+}));
+//#endregion
+//#region node_modules/electron-log/src/core/transforms/format.js
+var require_format = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	var { transform } = require_transform();
+	module.exports = {
+		concatFirstStringElements,
+		formatScope,
+		formatText,
+		formatVariables,
+		timeZoneFromOffset,
+		format({ message, logger, transport, data = message?.data }) {
+			switch (typeof transport.format) {
+				case "string": return transform({
+					message,
+					logger,
+					transforms: [
+						formatVariables,
+						formatScope,
+						formatText
+					],
+					transport,
+					initialData: [transport.format, ...data]
+				});
+				case "function": return transport.format({
+					data,
+					level: message?.level || "info",
+					logger,
+					message,
+					transport
+				});
+				default: return data;
+			}
+		}
+	};
+	/**
+	* The first argument of console.log may contain a template. In the library
+	* the first element is a string related to transports.console.format. So
+	* this function concatenates first two elements to make templates like %d
+	* work
+	* @param {*[]} data
+	* @return {*[]}
+	*/
+	function concatFirstStringElements({ data }) {
+		if (typeof data[0] !== "string" || typeof data[1] !== "string") return data;
+		if (data[0].match(/%[1cdfiOos]/)) return data;
+		return [`${data[0]} ${data[1]}`, ...data.slice(2)];
+	}
+	function timeZoneFromOffset(minutesOffset) {
+		const minutesPositive = Math.abs(minutesOffset);
+		return `${minutesOffset > 0 ? "-" : "+"}${Math.floor(minutesPositive / 60).toString().padStart(2, "0")}:${(minutesPositive % 60).toString().padStart(2, "0")}`;
+	}
+	function formatScope({ data, logger, message }) {
+		const { defaultLabel, labelLength } = logger?.scope || {};
+		const template = data[0];
+		let label = message.scope;
+		if (!label) label = defaultLabel;
+		let scopeText;
+		if (label === "") scopeText = labelLength > 0 ? "".padEnd(labelLength + 3) : "";
+		else if (typeof label === "string") scopeText = ` (${label})`.padEnd(labelLength + 3);
+		else scopeText = "";
+		data[0] = template.replace("{scope}", scopeText);
+		return data;
+	}
+	function formatVariables({ data, message }) {
+		let template = data[0];
+		if (typeof template !== "string") return data;
+		template = template.replace("{level}]", `${message.level}]`.padEnd(6, " "));
+		const date = message.date || /* @__PURE__ */ new Date();
+		data[0] = template.replace(/\{(\w+)}/g, (substring, name) => {
+			switch (name) {
+				case "level": return message.level || "info";
+				case "logId": return message.logId;
+				case "y": return date.getFullYear().toString(10);
+				case "m": return (date.getMonth() + 1).toString(10).padStart(2, "0");
+				case "d": return date.getDate().toString(10).padStart(2, "0");
+				case "h": return date.getHours().toString(10).padStart(2, "0");
+				case "i": return date.getMinutes().toString(10).padStart(2, "0");
+				case "s": return date.getSeconds().toString(10).padStart(2, "0");
+				case "ms": return date.getMilliseconds().toString(10).padStart(3, "0");
+				case "z": return timeZoneFromOffset(date.getTimezoneOffset());
+				case "iso": return date.toISOString();
+				default: return message.variables?.[name] || substring;
+			}
+		}).trim();
+		return data;
+	}
+	function formatText({ data }) {
+		const template = data[0];
+		if (typeof template !== "string") return data;
+		if (template.lastIndexOf("{text}") === template.length - 6) {
+			data[0] = template.replace(/\s?{text}/, "");
+			if (data[0] === "") data.shift();
+			return data;
+		}
+		const templatePieces = template.split("{text}");
+		let result = [];
+		if (templatePieces[0] !== "") result.push(templatePieces[0]);
+		result = result.concat(data.slice(1));
+		if (templatePieces[1] !== "") result.push(templatePieces[1]);
+		return result;
+	}
+}));
+//#endregion
+//#region node_modules/electron-log/src/node/transforms/object.js
+var require_object = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	var util = require("util");
+	module.exports = {
+		serialize,
+		maxDepth({ data, transport, depth = transport?.depth ?? 6 }) {
+			if (!data) return data;
+			if (depth < 1) {
+				if (Array.isArray(data)) return "[array]";
+				if (typeof data === "object" && data) return "[object]";
+				return data;
+			}
+			if (Array.isArray(data)) return data.map((child) => module.exports.maxDepth({
+				data: child,
+				depth: depth - 1
+			}));
+			if (typeof data !== "object") return data;
+			if (data && typeof data.toISOString === "function") return data;
+			if (data === null) return null;
+			if (data instanceof Error) return data;
+			const newJson = {};
+			for (const i in data) {
+				if (!Object.prototype.hasOwnProperty.call(data, i)) continue;
+				newJson[i] = module.exports.maxDepth({
+					data: data[i],
+					depth: depth - 1
+				});
+			}
+			return newJson;
+		},
+		toJSON({ data }) {
+			return JSON.parse(JSON.stringify(data, createSerializer()));
+		},
+		toString({ data, transport }) {
+			const inspectOptions = transport?.inspectOptions || {};
+			const simplifiedData = data.map((item) => {
+				if (item === void 0) return;
+				try {
+					const str = JSON.stringify(item, createSerializer(), "  ");
+					return str === void 0 ? void 0 : JSON.parse(str);
+				} catch (e) {
+					return item;
+				}
+			});
+			return util.formatWithOptions(inspectOptions, ...simplifiedData);
+		}
+	};
+	/**
+	* @param {object} options?
+	* @param {boolean} options.serializeMapAndSet?
+	* @return {function}
+	*/
+	function createSerializer(options = {}) {
+		const seen = /* @__PURE__ */ new WeakSet();
+		return function(key, value) {
+			if (typeof value === "object" && value !== null) {
+				if (seen.has(value)) return;
+				seen.add(value);
+			}
+			return serialize(key, value, options);
+		};
+	}
+	/**
+	* @param {string} key
+	* @param {any} value
+	* @param {object} options?
+	* @return {any}
+	*/
+	function serialize(key, value, options = {}) {
+		const serializeMapAndSet = options?.serializeMapAndSet !== false;
+		if (value instanceof Error) return value.stack;
+		if (!value) return value;
+		if (typeof value === "function") return `[function] ${value.toString()}`;
+		if (value instanceof Date) return value.toISOString();
+		if (serializeMapAndSet && value instanceof Map && Object.fromEntries) return Object.fromEntries(value);
+		if (serializeMapAndSet && value instanceof Set && Array.from) return Array.from(value);
+		return value;
+	}
+}));
+//#endregion
+//#region node_modules/electron-log/src/core/transforms/style.js
+var require_style = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	module.exports = {
+		transformStyles,
+		applyAnsiStyles({ data }) {
+			return transformStyles(data, styleToAnsi, resetAnsiStyle);
+		},
+		removeStyles({ data }) {
+			return transformStyles(data, () => "");
+		}
+	};
+	var ANSI_COLORS = {
+		unset: "\x1B[0m",
+		black: "\x1B[30m",
+		red: "\x1B[31m",
+		green: "\x1B[32m",
+		yellow: "\x1B[33m",
+		blue: "\x1B[34m",
+		magenta: "\x1B[35m",
+		cyan: "\x1B[36m",
+		white: "\x1B[37m",
+		gray: "\x1B[90m"
+	};
+	function styleToAnsi(style) {
+		return ANSI_COLORS[style.replace(/color:\s*(\w+).*/, "$1").toLowerCase()] || "";
+	}
+	function resetAnsiStyle(string) {
+		return string + ANSI_COLORS.unset;
+	}
+	function transformStyles(data, onStyleFound, onStyleApplied) {
+		const foundStyles = {};
+		return data.reduce((result, item, index, array) => {
+			if (foundStyles[index]) return result;
+			if (typeof item === "string") {
+				let valueIndex = index;
+				let styleApplied = false;
+				item = item.replace(/%[1cdfiOos]/g, (match) => {
+					valueIndex += 1;
+					if (match !== "%c") return match;
+					const style = array[valueIndex];
+					if (typeof style === "string") {
+						foundStyles[valueIndex] = true;
+						styleApplied = true;
+						return onStyleFound(style, item);
+					}
+					return match;
+				});
+				if (styleApplied && onStyleApplied) item = onStyleApplied(item);
+			}
+			result.push(item);
+			return result;
+		}, []);
+	}
+}));
+//#endregion
+//#region node_modules/electron-log/src/node/transports/console.js
+var require_console = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	var { concatFirstStringElements, format } = require_format();
+	var { maxDepth, toJSON } = require_object();
+	var { applyAnsiStyles, removeStyles } = require_style();
+	var { transform } = require_transform();
+	var consoleMethods = {
+		error: console.error,
+		warn: console.warn,
+		info: console.info,
+		verbose: console.info,
+		debug: console.debug,
+		silly: console.debug,
+		log: console.log
+	};
+	module.exports = consoleTransportFactory;
+	var DEFAULT_FORMAT = `%c{h}:{i}:{s}.{ms}{scope}%c ${process.platform === "win32" ? ">" : "›"} {text}`;
+	Object.assign(consoleTransportFactory, { DEFAULT_FORMAT });
+	function consoleTransportFactory(logger) {
+		return Object.assign(transport, {
+			colorMap: {
+				error: "red",
+				warn: "yellow",
+				info: "cyan",
+				verbose: "unset",
+				debug: "gray",
+				silly: "gray",
+				default: "unset"
+			},
+			format: DEFAULT_FORMAT,
+			level: "silly",
+			transforms: [
+				addTemplateColors,
+				format,
+				formatStyles,
+				concatFirstStringElements,
+				maxDepth,
+				toJSON
+			],
+			useStyles: process.env.FORCE_STYLES,
+			writeFn({ message }) {
+				(consoleMethods[message.level] || consoleMethods.info)(...message.data);
+			}
+		});
+		function transport(message) {
+			const data = transform({
+				logger,
+				message,
+				transport
+			});
+			transport.writeFn({ message: {
+				...message,
+				data
+			} });
+		}
+	}
+	function addTemplateColors({ data, message, transport }) {
+		if (typeof transport.format !== "string" || !transport.format.includes("%c")) return data;
+		return [
+			`color:${levelToStyle(message.level, transport)}`,
+			"color:unset",
+			...data
+		];
+	}
+	function canUseStyles(useStyleValue, level) {
+		if (typeof useStyleValue === "boolean") return useStyleValue;
+		const stream = level === "error" || level === "warn" ? process.stderr : process.stdout;
+		return stream && stream.isTTY;
+	}
+	function formatStyles(args) {
+		const { message, transport } = args;
+		return (canUseStyles(transport.useStyles, message.level) ? applyAnsiStyles : removeStyles)(args);
+	}
+	function levelToStyle(level, transport) {
+		return transport.colorMap[level] || transport.colorMap.default;
+	}
+}));
+//#endregion
+//#region node_modules/electron-log/src/node/transports/file/File.js
+var require_File = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	var EventEmitter$1 = require("events");
+	var fs$5 = require("fs");
+	var os$1 = require("os");
+	var File = class extends EventEmitter$1 {
+		asyncWriteQueue = [];
+		bytesWritten = 0;
+		hasActiveAsyncWriting = false;
+		path = null;
+		initialSize = void 0;
+		writeOptions = null;
+		writeAsync = false;
+		constructor({ path, writeOptions = {
+			encoding: "utf8",
+			flag: "a",
+			mode: 438
+		}, writeAsync = false }) {
+			super();
+			this.path = path;
+			this.writeOptions = writeOptions;
+			this.writeAsync = writeAsync;
+		}
+		get size() {
+			return this.getSize();
+		}
+		clear() {
+			try {
+				fs$5.writeFileSync(this.path, "", {
+					mode: this.writeOptions.mode,
+					flag: "w"
+				});
+				this.reset();
+				return true;
+			} catch (e) {
+				if (e.code === "ENOENT") return true;
+				this.emit("error", e, this);
+				return false;
+			}
+		}
+		crop(bytesAfter) {
+			try {
+				const content = readFileSyncFromEnd(this.path, bytesAfter || 4096);
+				this.clear();
+				this.writeLine(`[log cropped]${os$1.EOL}${content}`);
+			} catch (e) {
+				this.emit("error", /* @__PURE__ */ new Error(`Couldn't crop file ${this.path}. ${e.message}`), this);
+			}
+		}
+		getSize() {
+			if (this.initialSize === void 0) try {
+				this.initialSize = fs$5.statSync(this.path).size;
+			} catch (e) {
+				this.initialSize = 0;
+			}
+			return this.initialSize + this.bytesWritten;
+		}
+		increaseBytesWrittenCounter(text) {
+			this.bytesWritten += Buffer.byteLength(text, this.writeOptions.encoding);
+		}
+		isNull() {
+			return false;
+		}
+		nextAsyncWrite() {
+			const file = this;
+			if (this.hasActiveAsyncWriting || this.asyncWriteQueue.length === 0) return;
+			const text = this.asyncWriteQueue.join("");
+			this.asyncWriteQueue = [];
+			this.hasActiveAsyncWriting = true;
+			fs$5.writeFile(this.path, text, this.writeOptions, (e) => {
+				file.hasActiveAsyncWriting = false;
+				if (e) file.emit("error", /* @__PURE__ */ new Error(`Couldn't write to ${file.path}. ${e.message}`), this);
+				else file.increaseBytesWrittenCounter(text);
+				file.nextAsyncWrite();
+			});
+		}
+		reset() {
+			this.initialSize = void 0;
+			this.bytesWritten = 0;
+		}
+		toString() {
+			return this.path;
+		}
+		writeLine(text) {
+			text += os$1.EOL;
+			if (this.writeAsync) {
+				this.asyncWriteQueue.push(text);
+				this.nextAsyncWrite();
+				return;
+			}
+			try {
+				fs$5.writeFileSync(this.path, text, this.writeOptions);
+				this.increaseBytesWrittenCounter(text);
+			} catch (e) {
+				this.emit("error", /* @__PURE__ */ new Error(`Couldn't write to ${this.path}. ${e.message}`), this);
+			}
+		}
+	};
+	module.exports = File;
+	function readFileSyncFromEnd(filePath, bytesCount) {
+		const buffer = Buffer.alloc(bytesCount);
+		const stats = fs$5.statSync(filePath);
+		const readLength = Math.min(stats.size, bytesCount);
+		const offset = Math.max(0, stats.size - bytesCount);
+		const fd = fs$5.openSync(filePath, "r");
+		const totalBytes = fs$5.readSync(fd, buffer, 0, readLength, offset);
+		fs$5.closeSync(fd);
+		return buffer.toString("utf8", 0, totalBytes);
+	}
+}));
+//#endregion
+//#region node_modules/electron-log/src/node/transports/file/NullFile.js
+var require_NullFile = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	var File = require_File();
+	var NullFile = class extends File {
+		clear() {}
+		crop() {}
+		getSize() {
+			return 0;
+		}
+		isNull() {
+			return true;
+		}
+		writeLine() {}
+	};
+	module.exports = NullFile;
+}));
+//#endregion
+//#region node_modules/electron-log/src/node/transports/file/FileRegistry.js
+var require_FileRegistry = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	var EventEmitter = require("events");
+	var fs$4 = require("fs");
+	var path$5 = require("path");
+	var File = require_File();
+	var NullFile = require_NullFile();
+	var FileRegistry = class extends EventEmitter {
+		store = {};
+		constructor() {
+			super();
+			this.emitError = this.emitError.bind(this);
+		}
+		/**
+		* Provide a File object corresponding to the filePath
+		* @param {string} filePath
+		* @param {WriteOptions} [writeOptions]
+		* @param {boolean} [writeAsync]
+		* @return {File}
+		*/
+		provide({ filePath, writeOptions = {}, writeAsync = false }) {
+			let file;
+			try {
+				filePath = path$5.resolve(filePath);
+				if (this.store[filePath]) return this.store[filePath];
+				file = this.createFile({
+					filePath,
+					writeOptions,
+					writeAsync
+				});
+			} catch (e) {
+				file = new NullFile({ path: filePath });
+				this.emitError(e, file);
+			}
+			file.on("error", this.emitError);
+			this.store[filePath] = file;
+			return file;
+		}
+		/**
+		* @param {string} filePath
+		* @param {WriteOptions} writeOptions
+		* @param {boolean} async
+		* @return {File}
+		* @private
+		*/
+		createFile({ filePath, writeOptions, writeAsync }) {
+			this.testFileWriting({
+				filePath,
+				writeOptions
+			});
+			return new File({
+				path: filePath,
+				writeOptions,
+				writeAsync
+			});
+		}
+		/**
+		* @param {Error} error
+		* @param {File} file
+		* @private
+		*/
+		emitError(error, file) {
+			this.emit("error", error, file);
+		}
+		/**
+		* @param {string} filePath
+		* @param {WriteOptions} writeOptions
+		* @private
+		*/
+		testFileWriting({ filePath, writeOptions }) {
+			fs$4.mkdirSync(path$5.dirname(filePath), { recursive: true });
+			fs$4.writeFileSync(filePath, "", {
+				flag: "a",
+				mode: writeOptions.mode
+			});
+		}
+	};
+	module.exports = FileRegistry;
+}));
+//#endregion
+//#region node_modules/electron-log/src/node/transports/file/index.js
+var require_file = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	var fs$3 = require("fs");
+	var os = require("os");
+	var path$4 = require("path");
+	var FileRegistry = require_FileRegistry();
+	var { transform } = require_transform();
+	var { removeStyles } = require_style();
+	var { format, concatFirstStringElements } = require_format();
+	var { toString } = require_object();
+	module.exports = fileTransportFactory;
+	var globalRegistry = new FileRegistry();
+	function fileTransportFactory(logger, { registry = globalRegistry, externalApi } = {}) {
+		/** @type {PathVariables} */
+		let pathVariables;
+		if (registry.listenerCount("error") < 1) registry.on("error", (e, file) => {
+			logConsole(`Can't write to ${file}`, e);
+		});
+		return Object.assign(transport, {
+			fileName: getDefaultFileName(logger.variables.processType),
+			format: "[{y}-{m}-{d} {h}:{i}:{s}.{ms}] [{level}]{scope} {text}",
+			getFile,
+			inspectOptions: { depth: 5 },
+			level: "silly",
+			maxSize: 1024 ** 2,
+			readAllLogs,
+			sync: true,
+			transforms: [
+				removeStyles,
+				format,
+				concatFirstStringElements,
+				toString
+			],
+			writeOptions: {
+				flag: "a",
+				mode: 438,
+				encoding: "utf8"
+			},
+			archiveLogFn(file) {
+				const oldPath = file.toString();
+				const inf = path$4.parse(oldPath);
+				try {
+					fs$3.renameSync(oldPath, path$4.join(inf.dir, `${inf.name}.old${inf.ext}`));
+				} catch (e) {
+					logConsole("Could not rotate log", e);
+					const quarterOfMaxSize = Math.round(transport.maxSize / 4);
+					file.crop(Math.min(quarterOfMaxSize, 256 * 1024));
+				}
+			},
+			resolvePathFn(vars) {
+				return path$4.join(vars.libraryDefaultDir, vars.fileName);
+			},
+			setAppName(name) {
+				logger.dependencies.externalApi.setAppName(name);
+			}
+		});
+		function transport(message) {
+			const file = getFile(message);
+			if (transport.maxSize > 0 && file.size > transport.maxSize) {
+				transport.archiveLogFn(file);
+				file.reset();
+			}
+			const content = transform({
+				logger,
+				message,
+				transport
+			});
+			file.writeLine(content);
+		}
+		function initializeOnFirstAccess() {
+			if (pathVariables) return;
+			pathVariables = Object.create(Object.prototype, {
+				...Object.getOwnPropertyDescriptors(externalApi.getPathVariables()),
+				fileName: {
+					get() {
+						return transport.fileName;
+					},
+					enumerable: true
+				}
+			});
+			if (typeof transport.archiveLog === "function") {
+				transport.archiveLogFn = transport.archiveLog;
+				logConsole("archiveLog is deprecated. Use archiveLogFn instead");
+			}
+			if (typeof transport.resolvePath === "function") {
+				transport.resolvePathFn = transport.resolvePath;
+				logConsole("resolvePath is deprecated. Use resolvePathFn instead");
+			}
+		}
+		function logConsole(message, error = null, level = "error") {
+			const data = [`electron-log.transports.file: ${message}`];
+			if (error) data.push(error);
+			logger.transports.console({
+				data,
+				date: /* @__PURE__ */ new Date(),
+				level
+			});
+		}
+		function getFile(msg) {
+			initializeOnFirstAccess();
+			const filePath = transport.resolvePathFn(pathVariables, msg);
+			return registry.provide({
+				filePath,
+				writeAsync: !transport.sync,
+				writeOptions: transport.writeOptions
+			});
+		}
+		function readAllLogs({ fileFilter = (f) => f.endsWith(".log") } = {}) {
+			initializeOnFirstAccess();
+			const logsPath = path$4.dirname(transport.resolvePathFn(pathVariables));
+			if (!fs$3.existsSync(logsPath)) return [];
+			return fs$3.readdirSync(logsPath).map((fileName) => path$4.join(logsPath, fileName)).filter(fileFilter).map((logPath) => {
+				try {
+					return {
+						path: logPath,
+						lines: fs$3.readFileSync(logPath, "utf8").split(os.EOL)
+					};
+				} catch {
+					return null;
+				}
+			}).filter(Boolean);
+		}
+	}
+	function getDefaultFileName(processType = process.type) {
+		switch (processType) {
+			case "renderer": return "renderer.log";
+			case "worker": return "worker.log";
+			default: return "main.log";
+		}
+	}
+}));
+//#endregion
+//#region node_modules/electron-log/src/node/transports/ipc.js
+var require_ipc = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	var { maxDepth, toJSON } = require_object();
+	var { transform } = require_transform();
+	module.exports = ipcTransportFactory;
+	/**
+	* @param logger
+	* @param {ElectronExternalApi} externalApi
+	* @returns {transport|null}
+	*/
+	function ipcTransportFactory(logger, { externalApi }) {
+		Object.assign(transport, {
+			depth: 3,
+			eventId: "__ELECTRON_LOG_IPC__",
+			level: logger.isDev ? "silly" : false,
+			transforms: [toJSON, maxDepth]
+		});
+		return externalApi?.isElectron() ? transport : void 0;
+		function transport(message) {
+			if (message?.variables?.processType === "renderer") return;
+			externalApi?.sendIpc(transport.eventId, {
+				...message,
+				data: transform({
+					logger,
+					message,
+					transport
+				})
+			});
+		}
+	}
+}));
+//#endregion
+//#region node_modules/electron-log/src/node/transports/remote.js
+var require_remote = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	var http = require("http");
+	var https = require("https");
+	var { transform } = require_transform();
+	var { removeStyles } = require_style();
+	var { toJSON, maxDepth } = require_object();
+	module.exports = remoteTransportFactory;
+	function remoteTransportFactory(logger) {
+		return Object.assign(transport, {
+			client: { name: "electron-application" },
+			depth: 6,
+			level: false,
+			requestOptions: {},
+			transforms: [
+				removeStyles,
+				toJSON,
+				maxDepth
+			],
+			makeBodyFn({ message }) {
+				return JSON.stringify({
+					client: transport.client,
+					data: message.data,
+					date: message.date.getTime(),
+					level: message.level,
+					scope: message.scope,
+					variables: message.variables
+				});
+			},
+			processErrorFn({ error }) {
+				logger.processMessage({
+					data: [`electron-log: can't POST ${transport.url}`, error],
+					level: "warn"
+				}, { transports: ["console", "file"] });
+			},
+			sendRequestFn({ serverUrl, requestOptions, body }) {
+				const request = (serverUrl.startsWith("https:") ? https : http).request(serverUrl, {
+					method: "POST",
+					...requestOptions,
+					headers: {
+						"Content-Type": "application/json",
+						"Content-Length": body.length,
+						...requestOptions.headers
+					}
+				});
+				request.write(body);
+				request.end();
+				return request;
+			}
+		});
+		function transport(message) {
+			if (!transport.url) return;
+			const body = transport.makeBodyFn({
+				logger,
+				message: {
+					...message,
+					data: transform({
+						logger,
+						message,
+						transport
+					})
+				},
+				transport
+			});
+			const request = transport.sendRequestFn({
+				serverUrl: transport.url,
+				requestOptions: transport.requestOptions,
+				body: Buffer.from(body, "utf8")
+			});
+			request.on("error", (error) => transport.processErrorFn({
+				error,
+				logger,
+				message,
+				request,
+				transport
+			}));
+		}
+	}
+}));
+//#endregion
+//#region node_modules/electron-log/src/node/createDefaultLogger.js
+var require_createDefaultLogger = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	var Logger = require_Logger();
+	var ErrorHandler = require_ErrorHandler();
+	var EventLogger = require_EventLogger();
+	var transportConsole = require_console();
+	var transportFile = require_file();
+	var transportIpc = require_ipc();
+	var transportRemote = require_remote();
+	module.exports = createDefaultLogger;
+	function createDefaultLogger({ dependencies, initializeFn }) {
+		const defaultLogger = new Logger({
+			dependencies,
+			errorHandler: new ErrorHandler(),
+			eventLogger: new EventLogger(),
+			initializeFn,
+			isDev: dependencies.externalApi?.isDev(),
+			logId: "default",
+			transportFactories: {
+				console: transportConsole,
+				file: transportFile,
+				ipc: transportIpc,
+				remote: transportRemote
+			},
+			variables: { processType: "main" }
+		});
+		defaultLogger.default = defaultLogger;
+		defaultLogger.Logger = Logger;
+		defaultLogger.processInternalErrorFn = (e) => {
+			defaultLogger.transports.console.writeFn({ message: {
+				data: ["Unhandled electron-log error", e],
+				level: "error"
+			} });
+		};
+		return defaultLogger;
+	}
+}));
+//#endregion
+//#region node_modules/electron-log/src/main/index.js
+var require_main$1 = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	var electron$1 = require("electron");
+	var ElectronExternalApi = require_ElectronExternalApi();
+	var { initialize } = require_initialize();
+	var createDefaultLogger = require_createDefaultLogger();
+	var externalApi = new ElectronExternalApi({ electron: electron$1 });
+	var defaultLogger = createDefaultLogger({
+		dependencies: { externalApi },
+		initializeFn: initialize
+	});
+	module.exports = defaultLogger;
+	externalApi.onIpc("__ELECTRON_LOG__", (_, message) => {
+		if (message.scope) defaultLogger.Logger.getInstance(message).scope(message.scope);
+		const date = new Date(message.date);
+		processMessage({
+			...message,
+			date: date.getTime() ? date : /* @__PURE__ */ new Date()
+		});
+	});
+	externalApi.onIpcInvoke("__ELECTRON_LOG__", (_, { cmd = "", logId }) => {
+		switch (cmd) {
+			case "getOptions": return {
+				levels: defaultLogger.Logger.getInstance({ logId }).levels,
+				logId
+			};
+			default:
+				processMessage({
+					data: [`Unknown cmd '${cmd}'`],
+					level: "error"
+				});
+				return {};
+		}
+	});
+	function processMessage(message) {
+		defaultLogger.Logger.getInstance(message)?.processMessage(message);
+	}
+}));
+//#endregion
+//#region electron/sqlite.ts
+var import_main = /* @__PURE__ */ __toESM((/* @__PURE__ */ __commonJSMin(((exports, module) => {
+	module.exports = require_main$1();
+})))());
+var db = null;
+var dbPath = "";
+function getDbPath() {
+	const userDir = electron.app.getPath("home");
+	const valutaDir = node_path.default.join(userDir, ".valuta");
+	if (!node_fs.default.existsSync(valutaDir)) try {
+		node_fs.default.mkdirSync(valutaDir, { recursive: true });
+	} catch (err) {
+		const message = err instanceof Error ? err.message : String(err);
+		throw new Error(`Nem sikerült létrehozni a valuta mappát: ${valutaDir}. ${message}`, { cause: err });
+	}
+	return node_path.default.join(valutaDir, "local.db");
+}
+function resolveWasmPath() {
+	const candidates = [];
+	if (electron.app.isPackaged) {
+		candidates.push(node_path.default.join(process.resourcesPath, "sql-wasm.wasm"));
+		candidates.push(node_path.default.join(electron.app.getAppPath(), "resources", "sql-wasm.wasm"));
+		candidates.push(node_path.default.join(electron.app.getAppPath(), "sql-wasm.wasm"));
+		candidates.push(node_path.default.join(__dirname, "sql-wasm.wasm"));
+	} else {
+		candidates.push(node_path.default.join(__dirname, "../node_modules/sql.js/dist/sql-wasm.wasm"));
+		candidates.push(node_path.default.join(process.cwd(), "node_modules/sql.js/dist/sql-wasm.wasm"));
+	}
+	for (const candidate of candidates) if (node_fs.default.existsSync(candidate)) return candidate;
+	throw new Error(`sql-wasm.wasm nem található. Próbált útvonalak: ${candidates.join(" | ")}`);
+}
+async function initDatabase() {
+	try {
+		dbPath = getDbPath();
+		const wasmPath = resolveWasmPath();
+		const SQL = await (0, sql_js.default)({ wasmBinary: node_fs.default.readFileSync(wasmPath) });
+		if (node_fs.default.existsSync(dbPath)) {
+			const buffer = node_fs.default.readFileSync(dbPath);
+			db = new SQL.Database(buffer);
+		} else db = new SQL.Database();
+		db.run("PRAGMA foreign_keys = ON;");
+		db.run(`
       CREATE TABLE IF NOT EXISTS config (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL,
         updated_at TEXT DEFAULT (datetime('now'))
       );
-    `),E.run(`
+    `);
+		db.run(`
       CREATE TABLE IF NOT EXISTS cached_rates (
         currency_code TEXT PRIMARY KEY,
         buy_rate REAL NOT NULL,
@@ -31,7 +1943,22 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
         limit3_buy_rate REAL,
         limit3_sell_rate REAL
       );
-    `);for(let e of[`official_rate`,`limit1_amount`,`limit1_buy_rate`,`limit1_sell_rate`,`limit2_amount`,`limit2_buy_rate`,`limit2_sell_rate`,`limit3_amount`,`limit3_buy_rate`,`limit3_sell_rate`])try{E.run(`ALTER TABLE cached_rates ADD COLUMN ${e} REAL`)}catch{}E.run(`
+    `);
+		for (const col of [
+			"official_rate",
+			"limit1_amount",
+			"limit1_buy_rate",
+			"limit1_sell_rate",
+			"limit2_amount",
+			"limit2_buy_rate",
+			"limit2_sell_rate",
+			"limit3_amount",
+			"limit3_buy_rate",
+			"limit3_sell_rate"
+		]) try {
+			db.run(`ALTER TABLE cached_rates ADD COLUMN ${col} REAL`);
+		} catch {}
+		db.run(`
       CREATE TABLE IF NOT EXISTS pending_transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         type TEXT NOT NULL CHECK(type IN ('SELL', 'BUY')),
@@ -53,7 +1980,8 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
         created_at TEXT DEFAULT (datetime('now')),
         synced INTEGER DEFAULT 0
       );
-    `),E.run(`
+    `);
+		db.run(`
       CREATE TABLE IF NOT EXISTS pending_conversions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         from_currency_id INTEGER,
@@ -74,7 +2002,8 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
         created_at TEXT DEFAULT (datetime('now')),
         synced INTEGER DEFAULT 0
       );
-    `),E.run(`
+    `);
+		db.run(`
       CREATE TABLE IF NOT EXISTS pending_bank_transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         transaction_type TEXT NOT NULL CHECK(transaction_type IN ('BUY', 'SELL')),
@@ -91,7 +2020,8 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
         created_at TEXT DEFAULT (datetime('now')),
         synced INTEGER DEFAULT 0
       );
-    `),E.run(`
+    `);
+		db.run(`
       CREATE TABLE IF NOT EXISTS pending_stornos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         transaction_id INTEGER NOT NULL,
@@ -112,7 +2042,8 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
         created_at TEXT DEFAULT (datetime('now')),
         synced INTEGER DEFAULT 0
       );
-    `),E.run(`
+    `);
+		db.run(`
       CREATE TABLE IF NOT EXISTS pending_handover_operations (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         operation_type TEXT NOT NULL CHECK(operation_type IN ('GENERATE', 'PRINT', 'COMPLETE')),
@@ -127,7 +2058,8 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
         created_at TEXT DEFAULT (datetime('now')),
         synced INTEGER DEFAULT 0
       );
-    `),E.run(`
+    `);
+		db.run(`
       CREATE TABLE IF NOT EXISTS local_audit_events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         entity_type TEXT NOT NULL,
@@ -142,7 +2074,22 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
         retention_until TEXT NOT NULL,
         created_at TEXT DEFAULT (datetime('now'))
       );
-    `);try{E.run(`ALTER TABLE pending_transactions ADD COLUMN idempotency_key TEXT`)}catch{}for(let e of[`handling_fee REAL`,`discount_percent REAL`,`customer_identifier TEXT`,`customer_name TEXT`,`customer_document_number TEXT`,`customer_address TEXT`,`local_reference_number TEXT`])try{E.run(`ALTER TABLE pending_transactions ADD COLUMN ${e}`)}catch{}E.run(`
+    `);
+		try {
+			db.run("ALTER TABLE pending_transactions ADD COLUMN idempotency_key TEXT");
+		} catch {}
+		for (const colDef of [
+			"handling_fee REAL",
+			"discount_percent REAL",
+			"customer_identifier TEXT",
+			"customer_name TEXT",
+			"customer_document_number TEXT",
+			"customer_address TEXT",
+			"local_reference_number TEXT"
+		]) try {
+			db.run(`ALTER TABLE pending_transactions ADD COLUMN ${colDef}`);
+		} catch {}
+		db.run(`
       CREATE TABLE IF NOT EXISTS cached_customers (
         id INTEGER PRIMARY KEY,
         name TEXT NOT NULL,
@@ -152,7 +2099,8 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
         birth_date TEXT,
         cached_at TEXT DEFAULT (datetime('now'))
       );
-    `),E.run(`
+    `);
+		db.run(`
       CREATE TABLE IF NOT EXISTS pending_transfers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         target_branch_id TEXT,
@@ -169,7 +2117,8 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
         created_at TEXT DEFAULT (datetime('now')),
         synced INTEGER DEFAULT 0
       );
-    `),E.run(`
+    `);
+		db.run(`
       CREATE TABLE IF NOT EXISTS pending_distributions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         target_branch_code TEXT NOT NULL,
@@ -182,7 +2131,8 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
         created_at TEXT DEFAULT (datetime('now')),
         synced INTEGER DEFAULT 0
       );
-    `),E.run(`
+    `);
+		db.run(`
       CREATE TABLE IF NOT EXISTS cached_branch_status (
         branch_code TEXT PRIMARY KEY,
         branch_name TEXT NOT NULL,
@@ -194,7 +2144,8 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
         cash_balances TEXT,
         cached_at TEXT DEFAULT (datetime('now'))
       );
-    `),E.run(`
+    `);
+		db.run(`
       CREATE TABLE IF NOT EXISTS cached_cash_desks (
         id TEXT PRIMARY KEY,
         code TEXT NOT NULL,
@@ -204,7 +2155,8 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
         is_active INTEGER DEFAULT 1,
         cached_at TEXT DEFAULT (datetime('now'))
       );
-    `),E.run(`
+    `);
+		db.run(`
       CREATE TABLE IF NOT EXISTS cached_workers (
         id INTEGER PRIMARY KEY,
         worker_code TEXT,
@@ -218,7 +2170,8 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
         active INTEGER DEFAULT 1,
         cached_at TEXT DEFAULT (datetime('now'))
       );
-    `),E.run(`
+    `);
+		db.run(`
       CREATE TABLE IF NOT EXISTS pending_collections (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         source_branch_code TEXT NOT NULL,
@@ -230,8 +2183,109 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
         created_at TEXT DEFAULT (datetime('now')),
         synced INTEGER DEFAULT 0
       );
-    `);for(let e of[`target_branch_id TEXT`,`currency_id INTEGER`,`huf_value REAL`,`transfer_type TEXT`,`local_reference_number TEXT`,`idempotency_key TEXT`])try{E.run(`ALTER TABLE pending_transfers ADD COLUMN ${e}`)}catch{}for(let e of[`local_reference_number TEXT`,`idempotency_key TEXT`])try{E.run(`ALTER TABLE pending_distributions ADD COLUMN ${e}`)}catch{}for(let e of[`local_reference_number TEXT`,`idempotency_key TEXT`])try{E.run(`ALTER TABLE pending_collections ADD COLUMN ${e}`)}catch{}for(let e of[`approval_id TEXT`,`custom_exchange_rate REAL`,`payment_method TEXT`,`customer_name TEXT`,`customer_document_number TEXT`,`local_reference_number TEXT`,`idempotency_key TEXT`])try{E.run(`ALTER TABLE pending_stornos ADD COLUMN ${e}`)}catch{}for(let e of[`sheet_id TEXT`,`from_cash_desk_id TEXT`,`to_cash_desk_id TEXT`,`transfer_date TEXT`,`amounts_json TEXT`,`note TEXT`,`local_reference_number TEXT`,`idempotency_key TEXT`])try{E.run(`ALTER TABLE pending_handover_operations ADD COLUMN ${e}`)}catch{}ve(),O()}catch(e){let t=e,n=`code`in t&&t.code?String(t.code):`unknown`,r=t instanceof Error?t.message:String(t),i=(()=>{try{return me()}catch(e){return`resolve error: ${e instanceof Error?e.message:String(e)}`}})(),a=[`dbPath=${D||`n/a`}`,`wasmPath=${i}`,`resourcesPath=${process.resourcesPath}`,`appPath=${l.app.getAppPath()}`,`isPackaged=${l.app.isPackaged}`,`errorCode=${n}`,`errorMessage=${r}`].join(`
-`);throw Error(`Database init failed:\n${a}`,{cause:e})}}function O(){if(!E)return;let e=E.export(),t=Buffer.from(e),n=D+`.tmp`;try{p.default.writeFileSync(n,t),p.default.renameSync(n,D)}catch{try{p.default.unlinkSync(n)}catch{}p.default.writeFileSync(D,t)}}function ge(e=31){let t=new Date;return t.setDate(t.getDate()+e),t.toISOString()}function k(e){return`${e}-${new Date().toISOString().replace(/\D/g,``).slice(0,14)}-${m.default.randomBytes(2).toString(`hex`).toUpperCase()}`}function A(e){return e==null?null:JSON.stringify(e)}function j(e){if(!E)throw Error(`Database not initialized`);E.run(`INSERT INTO local_audit_events (
+    `);
+		for (const colDef of [
+			"target_branch_id TEXT",
+			"currency_id INTEGER",
+			"huf_value REAL",
+			"transfer_type TEXT",
+			"local_reference_number TEXT",
+			"idempotency_key TEXT"
+		]) try {
+			db.run(`ALTER TABLE pending_transfers ADD COLUMN ${colDef}`);
+		} catch {}
+		for (const colDef of ["local_reference_number TEXT", "idempotency_key TEXT"]) try {
+			db.run(`ALTER TABLE pending_distributions ADD COLUMN ${colDef}`);
+		} catch {}
+		for (const colDef of ["local_reference_number TEXT", "idempotency_key TEXT"]) try {
+			db.run(`ALTER TABLE pending_collections ADD COLUMN ${colDef}`);
+		} catch {}
+		for (const colDef of [
+			"approval_id TEXT",
+			"custom_exchange_rate REAL",
+			"payment_method TEXT",
+			"customer_name TEXT",
+			"customer_document_number TEXT",
+			"local_reference_number TEXT",
+			"idempotency_key TEXT"
+		]) try {
+			db.run(`ALTER TABLE pending_stornos ADD COLUMN ${colDef}`);
+		} catch {}
+		for (const colDef of [
+			"sheet_id TEXT",
+			"from_cash_desk_id TEXT",
+			"to_cash_desk_id TEXT",
+			"transfer_date TEXT",
+			"amounts_json TEXT",
+			"note TEXT",
+			"local_reference_number TEXT",
+			"idempotency_key TEXT"
+		]) try {
+			db.run(`ALTER TABLE pending_handover_operations ADD COLUMN ${colDef}`);
+		} catch {}
+		cleanupLocalAuditEvents();
+		saveDatabase();
+	} catch (err) {
+		const error = err;
+		const errorCode = "code" in error && error.code ? String(error.code) : "unknown";
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		const wasmPath = (() => {
+			try {
+				return resolveWasmPath();
+			} catch (resolveErr) {
+				return `resolve error: ${resolveErr instanceof Error ? resolveErr.message : String(resolveErr)}`;
+			}
+		})();
+		const details = [
+			`dbPath=${dbPath || "n/a"}`,
+			`wasmPath=${wasmPath}`,
+			`resourcesPath=${process.resourcesPath}`,
+			`appPath=${electron.app.getAppPath()}`,
+			`isPackaged=${electron.app.isPackaged}`,
+			`errorCode=${errorCode}`,
+			`errorMessage=${errorMessage}`
+		].join("\n");
+		throw new Error(`Database init failed:\n${details}`, { cause: err });
+	}
+}
+/**
+* Atomi adatbázis mentés — temp fájl + rename pattern.
+*
+* Ez véd az áramszünet/crash közbeni korrupció ellen:
+* 1. Írás temp fájlba (dbPath + '.tmp')
+* 2. Rename temp → végleges (atomi művelet a legtöbb fájlrendszeren)
+* Ha a rename sikertelen, a temp fájl marad, az eredeti DB érintetlen.
+*/
+function saveDatabase() {
+	if (!db) return;
+	const data = db.export();
+	const buffer = Buffer.from(data);
+	const tmpPath = dbPath + ".tmp";
+	try {
+		node_fs.default.writeFileSync(tmpPath, buffer);
+		node_fs.default.renameSync(tmpPath, dbPath);
+	} catch (err) {
+		try {
+			node_fs.default.unlinkSync(tmpPath);
+		} catch {}
+		node_fs.default.writeFileSync(dbPath, buffer);
+	}
+}
+function computeRetentionUntil(days = 31) {
+	const retentionDate = /* @__PURE__ */ new Date();
+	retentionDate.setDate(retentionDate.getDate() + days);
+	return retentionDate.toISOString();
+}
+function generateLocalReference(prefix) {
+	return `${prefix}-${(/* @__PURE__ */ new Date()).toISOString().replace(/\D/g, "").slice(0, 14)}-${node_crypto.default.randomBytes(2).toString("hex").toUpperCase()}`;
+}
+function toJsonOrNull(value) {
+	if (value === null || value === void 0) return null;
+	return JSON.stringify(value);
+}
+function saveLocalAuditEvent(params) {
+	if (!db) throw new Error("Database not initialized");
+	db.run(`INSERT INTO local_audit_events (
       entity_type,
       event_type,
       reference_number,
@@ -242,9 +2296,73 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
       rate_snapshot_json,
       status,
       retention_until
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,[e.entityType,e.eventType,e.referenceNumber??null,e.entityId??null,JSON.stringify(e.payload),A(e.customerSnapshot),A(e.identificationSnapshot),A(e.rateSnapshot),e.status??`LOCAL_RECORDED`,ge(e.retentionDays??31)]),O();let t=E.prepare(`SELECT last_insert_rowid() as id`);t.step();let n=t.getAsObject();return t.free(),n.id??0}function _e(e=200){if(!E)return[];let t=[],n=E.prepare(`SELECT * FROM local_audit_events ORDER BY created_at DESC LIMIT ?`);for(n.bind([e]);n.step();)t.push(n.getAsObject());return n.free(),t}function ve(e=31){E&&E.run(`DELETE FROM local_audit_events
-     WHERE datetime(created_at) < datetime('now', ?)`,[`-${e} days`])}function M(e){if(!E)return null;let t=E.prepare(`SELECT value FROM config WHERE key = ?`);if(t.bind([e]),t.step()){let e=t.getAsObject();return t.free(),e.value??null}return t.free(),null}function N(e,t){if(E){if(e.length>100)throw Error(`Config key too long: ${e.length} chars (max 100)`);if(t.length>1e4)throw Error(`Config value too long: ${t.length} chars (max 10000)`);E.run(`INSERT INTO config (key, value, updated_at) VALUES (?, ?, datetime('now'))
-     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,[e,t]),O()}}function P(e){E&&(E.run(`DELETE FROM config WHERE key = ?`,[e]),O())}function ye(e,t,n,r,i,a,o,s,c,l,u,d,f){if(!E)throw Error(`Database not initialized`);let p=m.default.randomUUID(),h=k(e===`BUY`?`LB`:`LS`),g=c?.trim()||null,_=l?.trim()||null,v=u?.trim()||null,y=d?.trim()||null;E.run(`INSERT INTO pending_transactions (
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+		params.entityType,
+		params.eventType,
+		params.referenceNumber ?? null,
+		params.entityId ?? null,
+		JSON.stringify(params.payload),
+		toJsonOrNull(params.customerSnapshot),
+		toJsonOrNull(params.identificationSnapshot),
+		toJsonOrNull(params.rateSnapshot),
+		params.status ?? "LOCAL_RECORDED",
+		computeRetentionUntil(params.retentionDays ?? 31)
+	]);
+	saveDatabase();
+	const stmt = db.prepare("SELECT last_insert_rowid() as id");
+	stmt.step();
+	const row = stmt.getAsObject();
+	stmt.free();
+	return row["id"] ?? 0;
+}
+function getLocalAuditEvents(limit = 200) {
+	if (!db) return [];
+	const results = [];
+	const stmt = db.prepare("SELECT * FROM local_audit_events ORDER BY created_at DESC LIMIT ?");
+	stmt.bind([limit]);
+	while (stmt.step()) results.push(stmt.getAsObject());
+	stmt.free();
+	return results;
+}
+function cleanupLocalAuditEvents(retentionDays = 31) {
+	if (!db) return;
+	db.run(`DELETE FROM local_audit_events
+     WHERE datetime(created_at) < datetime('now', ?)`, [`-${retentionDays} days`]);
+}
+function getConfig(key) {
+	if (!db) return null;
+	const stmt = db.prepare("SELECT value FROM config WHERE key = ?");
+	stmt.bind([key]);
+	if (stmt.step()) {
+		const row = stmt.getAsObject();
+		stmt.free();
+		return row["value"] ?? null;
+	}
+	stmt.free();
+	return null;
+}
+function setConfig(key, value) {
+	if (!db) return;
+	if (key.length > 100) throw new Error(`Config key too long: ${key.length} chars (max 100)`);
+	if (value.length > 1e4) throw new Error(`Config value too long: ${value.length} chars (max 10000)`);
+	db.run(`INSERT INTO config (key, value, updated_at) VALUES (?, ?, datetime('now'))
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`, [key, value]);
+	saveDatabase();
+}
+function deleteConfig(key) {
+	if (!db) return;
+	db.run("DELETE FROM config WHERE key = ?", [key]);
+	saveDatabase();
+}
+function savePendingTransaction(type, currencyCode, foreignAmount, hufAmount, roundedHufAmount, rate, handlingFee, discountPercent, customerIdentifier, customerName, customerDocumentNumber, customerAddress, denominations) {
+	if (!db) throw new Error("Database not initialized");
+	const idempotencyKey = node_crypto.default.randomUUID();
+	const localReferenceNumber = generateLocalReference(type === "BUY" ? "LB" : "LS");
+	const normalizedCustomerIdentifier = customerIdentifier?.trim() || null;
+	const normalizedCustomerName = customerName?.trim() || null;
+	const normalizedCustomerDocumentNumber = customerDocumentNumber?.trim() || null;
+	const normalizedCustomerAddress = customerAddress?.trim() || null;
+	db.run(`INSERT INTO pending_transactions (
       type,
       currency_code,
       foreign_amount,
@@ -262,7 +2380,82 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
       local_reference_number,
       idempotency_key
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,[e,t,n,r,i,a,o,s,null,g,_,v,y,f,h,p]),O();let b=E.prepare(`SELECT last_insert_rowid() as id`);b.step();let ee=b.getAsObject();b.free();let x=ee.id??0;return j({entityType:`TRANSACTION`,eventType:e,referenceNumber:h,entityId:String(x),payload:{type:e,currencyCode:t,foreignAmount:n,hufAmount:r,roundedHufAmount:i,rate:a,handlingFee:o,discountPercent:s,denominations:f,idempotencyKey:p},customerSnapshot:{customerIdentifier:g,customerName:_,customerDocumentNumber:v,customerAddress:y},identificationSnapshot:{customerIdentifier:g,customerDocumentNumber:v},rateSnapshot:{currencyCode:t,rate:a,roundedHufAmount:i},status:`PENDING_UPLOAD`}),x}function be(){if(!E)return[];let e=[],t=E.prepare(`SELECT * FROM pending_transactions WHERE synced = 0 ORDER BY created_at ASC`);for(;t.step();){let n=t.getAsObject();e.push(n)}return t.free(),e}function xe(e,t,n,r,i,a,o,s,c,l,u,d,f){if(!E)throw Error(`Database not initialized`);let p=m.default.randomUUID(),h=k(`LC`);E.run(`INSERT INTO pending_conversions (
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+		type,
+		currencyCode,
+		foreignAmount,
+		hufAmount,
+		roundedHufAmount,
+		rate,
+		handlingFee,
+		discountPercent,
+		null,
+		normalizedCustomerIdentifier,
+		normalizedCustomerName,
+		normalizedCustomerDocumentNumber,
+		normalizedCustomerAddress,
+		denominations,
+		localReferenceNumber,
+		idempotencyKey
+	]);
+	saveDatabase();
+	const stmt = db.prepare("SELECT last_insert_rowid() as id");
+	stmt.step();
+	const row = stmt.getAsObject();
+	stmt.free();
+	const insertedId = row["id"] ?? 0;
+	saveLocalAuditEvent({
+		entityType: "TRANSACTION",
+		eventType: type,
+		referenceNumber: localReferenceNumber,
+		entityId: String(insertedId),
+		payload: {
+			type,
+			currencyCode,
+			foreignAmount,
+			hufAmount,
+			roundedHufAmount,
+			rate,
+			handlingFee,
+			discountPercent,
+			denominations,
+			idempotencyKey
+		},
+		customerSnapshot: {
+			customerIdentifier: normalizedCustomerIdentifier,
+			customerName: normalizedCustomerName,
+			customerDocumentNumber: normalizedCustomerDocumentNumber,
+			customerAddress: normalizedCustomerAddress
+		},
+		identificationSnapshot: {
+			customerIdentifier: normalizedCustomerIdentifier,
+			customerDocumentNumber: normalizedCustomerDocumentNumber
+		},
+		rateSnapshot: {
+			currencyCode,
+			rate,
+			roundedHufAmount
+		},
+		status: "PENDING_UPLOAD"
+	});
+	return insertedId;
+}
+function getPendingTransactions() {
+	if (!db) return [];
+	const results = [];
+	const stmt = db.prepare("SELECT * FROM pending_transactions WHERE synced = 0 ORDER BY created_at ASC");
+	while (stmt.step()) {
+		const row = stmt.getAsObject();
+		results.push(row);
+	}
+	stmt.free();
+	return results;
+}
+function savePendingConversion(fromCurrencyId, fromCurrencyCode, toCurrencyId, toCurrencyCode, fromAmount, calculatedHufAmount, calculatedToAmount, conversionRate, handlingFee, customerId, customerName, customerDocumentNumber, note) {
+	if (!db) throw new Error("Database not initialized");
+	const idempotencyKey = node_crypto.default.randomUUID();
+	const localReferenceNumber = generateLocalReference("LC");
+	db.run(`INSERT INTO pending_conversions (
       from_currency_id,
       from_currency_code,
       to_currency_id,
@@ -278,7 +2471,104 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
       note,
       local_reference_number,
       idempotency_key
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,[e,t,n,r,i,a,o,s,c,l?.trim()||null,u?.trim()||null,d?.trim()||null,f?.trim()||null,h,p]),O();let g=E.prepare(`SELECT last_insert_rowid() as id`);g.step();let _=g.getAsObject();g.free();let v=_.id??0;return j({entityType:`CONVERSION`,eventType:`CREATE`,referenceNumber:h,entityId:String(v),payload:{fromCurrencyId:e,fromCurrencyCode:t,toCurrencyId:n,toCurrencyCode:r,fromAmount:i,calculatedHufAmount:a,calculatedToAmount:o,conversionRate:s,handlingFee:c,note:f?.trim()||null,idempotencyKey:p},customerSnapshot:{customerId:l?.trim()||null,customerName:u?.trim()||null,customerDocumentNumber:d?.trim()||null},identificationSnapshot:{customerId:l?.trim()||null,customerDocumentNumber:d?.trim()||null},rateSnapshot:{fromCurrencyCode:t,toCurrencyCode:r,conversionRate:s,calculatedHufAmount:a,calculatedToAmount:o},status:`PENDING_UPLOAD`}),v}function Se(){if(!E)return[];let e=[],t=E.prepare(`SELECT * FROM pending_conversions WHERE synced = 0 ORDER BY created_at ASC`);for(;t.step();){let n=t.getAsObject();e.push(n)}return t.free(),e}function Ce(e){E&&(E.run(`UPDATE pending_conversions SET synced = 1 WHERE id = ?`,[e]),O())}function we(e){E&&(E.run(`UPDATE pending_transactions SET synced = 1 WHERE id = ?`,[e]),O())}function Te(){if(!E)return 0;let e=E.prepare(`SELECT COUNT(*) as cnt FROM pending_transactions WHERE synced = 0`);e.step();let t=e.getAsObject();return e.free(),t.cnt??0}function Ee(){return E}function De(e,t,n,r,i){if(!E)throw Error(`Database not initialized`);let a=k(`LD`),o=m.default.randomUUID();E.run(`INSERT INTO pending_distributions (
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+		fromCurrencyId,
+		fromCurrencyCode,
+		toCurrencyId,
+		toCurrencyCode,
+		fromAmount,
+		calculatedHufAmount,
+		calculatedToAmount,
+		conversionRate,
+		handlingFee,
+		customerId?.trim() || null,
+		customerName?.trim() || null,
+		customerDocumentNumber?.trim() || null,
+		note?.trim() || null,
+		localReferenceNumber,
+		idempotencyKey
+	]);
+	saveDatabase();
+	const stmt = db.prepare("SELECT last_insert_rowid() as id");
+	stmt.step();
+	const row = stmt.getAsObject();
+	stmt.free();
+	const insertedId = row["id"] ?? 0;
+	saveLocalAuditEvent({
+		entityType: "CONVERSION",
+		eventType: "CREATE",
+		referenceNumber: localReferenceNumber,
+		entityId: String(insertedId),
+		payload: {
+			fromCurrencyId,
+			fromCurrencyCode,
+			toCurrencyId,
+			toCurrencyCode,
+			fromAmount,
+			calculatedHufAmount,
+			calculatedToAmount,
+			conversionRate,
+			handlingFee,
+			note: note?.trim() || null,
+			idempotencyKey
+		},
+		customerSnapshot: {
+			customerId: customerId?.trim() || null,
+			customerName: customerName?.trim() || null,
+			customerDocumentNumber: customerDocumentNumber?.trim() || null
+		},
+		identificationSnapshot: {
+			customerId: customerId?.trim() || null,
+			customerDocumentNumber: customerDocumentNumber?.trim() || null
+		},
+		rateSnapshot: {
+			fromCurrencyCode,
+			toCurrencyCode,
+			conversionRate,
+			calculatedHufAmount,
+			calculatedToAmount
+		},
+		status: "PENDING_UPLOAD"
+	});
+	return insertedId;
+}
+function getPendingConversions() {
+	if (!db) return [];
+	const results = [];
+	const stmt = db.prepare("SELECT * FROM pending_conversions WHERE synced = 0 ORDER BY created_at ASC");
+	while (stmt.step()) {
+		const row = stmt.getAsObject();
+		results.push(row);
+	}
+	stmt.free();
+	return results;
+}
+function markConversionSynced(id) {
+	if (!db) return;
+	db.run("UPDATE pending_conversions SET synced = 1 WHERE id = ?", [id]);
+	saveDatabase();
+}
+function markTransactionSynced(id) {
+	if (!db) return;
+	db.run("UPDATE pending_transactions SET synced = 1 WHERE id = ?", [id]);
+	saveDatabase();
+}
+function getPendingTransactionCount() {
+	if (!db) return 0;
+	const stmt = db.prepare("SELECT COUNT(*) as cnt FROM pending_transactions WHERE synced = 0");
+	stmt.step();
+	const row = stmt.getAsObject();
+	stmt.free();
+	return row["cnt"] ?? 0;
+}
+function getDb() {
+	return db;
+}
+function savePendingDistribution(targetBranchCode, currencyCode, amount, denominations, note) {
+	if (!db) throw new Error("Database not initialized");
+	const localReferenceNumber = generateLocalReference("LD");
+	const idempotencyKey = node_crypto.default.randomUUID();
+	db.run(`INSERT INTO pending_distributions (
       target_branch_code,
       currency_code,
       amount,
@@ -286,7 +2576,57 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
       note,
       local_reference_number,
       idempotency_key
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)`,[e,t,n,r,i,a,o]),O();let s=E.prepare(`SELECT last_insert_rowid() as id`);s.step();let c=s.getAsObject();s.free();let l=c.id??0;return j({entityType:`TREASURY_DISTRIBUTION`,eventType:`CREATE`,referenceNumber:a,entityId:String(l),payload:{targetBranchCode:e,currencyCode:t,amount:n,denominations:r,note:i,idempotencyKey:o},rateSnapshot:{currencyCode:t},status:`PENDING_UPLOAD`}),l}function Oe(){if(!E)return[];let e=[],t=E.prepare(`SELECT * FROM pending_distributions WHERE synced = 0 ORDER BY created_at ASC`);for(;t.step();)e.push(t.getAsObject());return t.free(),e}function ke(e){E&&(E.run(`UPDATE pending_distributions SET synced = 1 WHERE id = ?`,[e]),O())}function Ae(e,t,n,r,i,a,o,s,c){if(!E)throw Error(`Database not initialized`);let l=k(`LT`),u=m.default.randomUUID();E.run(`INSERT INTO pending_transfers (
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)`, [
+		targetBranchCode,
+		currencyCode,
+		amount,
+		denominations,
+		note,
+		localReferenceNumber,
+		idempotencyKey
+	]);
+	saveDatabase();
+	const stmt = db.prepare("SELECT last_insert_rowid() as id");
+	stmt.step();
+	const row = stmt.getAsObject();
+	stmt.free();
+	const insertedId = row["id"] ?? 0;
+	saveLocalAuditEvent({
+		entityType: "TREASURY_DISTRIBUTION",
+		eventType: "CREATE",
+		referenceNumber: localReferenceNumber,
+		entityId: String(insertedId),
+		payload: {
+			targetBranchCode,
+			currencyCode,
+			amount,
+			denominations,
+			note,
+			idempotencyKey
+		},
+		rateSnapshot: { currencyCode },
+		status: "PENDING_UPLOAD"
+	});
+	return insertedId;
+}
+function getPendingDistributions() {
+	if (!db) return [];
+	const results = [];
+	const stmt = db.prepare("SELECT * FROM pending_distributions WHERE synced = 0 ORDER BY created_at ASC");
+	while (stmt.step()) results.push(stmt.getAsObject());
+	stmt.free();
+	return results;
+}
+function markDistributionSynced(id) {
+	if (!db) return;
+	db.run("UPDATE pending_distributions SET synced = 1 WHERE id = ?", [id]);
+	saveDatabase();
+}
+function savePendingTransfer(targetBranchId, targetBranchCode, currencyId, currencyCode, amount, hufValue, transferType, denominations, note) {
+	if (!db) throw new Error("Database not initialized");
+	const localReferenceNumber = generateLocalReference("LT");
+	const idempotencyKey = node_crypto.default.randomUUID();
+	db.run(`INSERT INTO pending_transfers (
       target_branch_id,
       target_branch_code,
       currency_id,
@@ -298,14 +2638,110 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
       note,
       local_reference_number,
       idempotency_key
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,[e,t,n,r,i,a,o,s,c,l,u]),O();let d=E.prepare(`SELECT last_insert_rowid() as id`);d.step();let f=d.getAsObject();d.free();let p=f.id??0;return j({entityType:`TRANSFER`,eventType:o??`CREATE`,referenceNumber:l,entityId:String(p),payload:{targetBranchId:e,targetBranchCode:t,currencyId:n,currencyCode:r,amount:i,hufValue:a,transferType:o,denominations:s,note:c,idempotencyKey:u},rateSnapshot:{currencyCode:r,hufValue:a},status:`PENDING_UPLOAD`}),p}function F(){if(!E)return[];let e=[],t=E.prepare(`SELECT * FROM pending_transfers WHERE synced = 0 ORDER BY created_at ASC`);for(;t.step();)e.push(t.getAsObject());return t.free(),e}function je(e){E&&(E.run(`UPDATE pending_transfers SET synced = 1 WHERE id = ?`,[e]),O())}function Me(e,t,n,r){if(!E)throw Error(`Database not initialized`);let i=k(`LCOL`),a=m.default.randomUUID();E.run(`INSERT INTO pending_collections (
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+		targetBranchId,
+		targetBranchCode,
+		currencyId,
+		currencyCode,
+		amount,
+		hufValue,
+		transferType,
+		denominations,
+		note,
+		localReferenceNumber,
+		idempotencyKey
+	]);
+	saveDatabase();
+	const stmt = db.prepare("SELECT last_insert_rowid() as id");
+	stmt.step();
+	const row = stmt.getAsObject();
+	stmt.free();
+	const insertedId = row["id"] ?? 0;
+	saveLocalAuditEvent({
+		entityType: "TRANSFER",
+		eventType: transferType ?? "CREATE",
+		referenceNumber: localReferenceNumber,
+		entityId: String(insertedId),
+		payload: {
+			targetBranchId,
+			targetBranchCode,
+			currencyId,
+			currencyCode,
+			amount,
+			hufValue,
+			transferType,
+			denominations,
+			note,
+			idempotencyKey
+		},
+		rateSnapshot: {
+			currencyCode,
+			hufValue
+		},
+		status: "PENDING_UPLOAD"
+	});
+	return insertedId;
+}
+function getPendingTransfers() {
+	if (!db) return [];
+	const results = [];
+	const stmt = db.prepare("SELECT * FROM pending_transfers WHERE synced = 0 ORDER BY created_at ASC");
+	while (stmt.step()) results.push(stmt.getAsObject());
+	stmt.free();
+	return results;
+}
+function markTransferSynced(id) {
+	if (!db) return;
+	db.run("UPDATE pending_transfers SET synced = 1 WHERE id = ?", [id]);
+	saveDatabase();
+}
+function savePendingCollection(sourceBranchCode, currencyCode, amount, note) {
+	if (!db) throw new Error("Database not initialized");
+	const localReferenceNumber = generateLocalReference("LCOL");
+	const idempotencyKey = node_crypto.default.randomUUID();
+	db.run(`INSERT INTO pending_collections (
       source_branch_code,
       currency_code,
       amount,
       note,
       local_reference_number,
       idempotency_key
-    ) VALUES (?, ?, ?, ?, ?, ?)`,[e,t,n,r,i,a]),O();let o=E.prepare(`SELECT last_insert_rowid() as id`);o.step();let s=o.getAsObject();o.free();let c=s.id??0;return j({entityType:`TREASURY_COLLECTION`,eventType:`CREATE`,referenceNumber:i,entityId:String(c),payload:{sourceBranchCode:e,currencyCode:t,amount:n,note:r,idempotencyKey:a},rateSnapshot:{currencyCode:t},status:`PENDING_UPLOAD`}),c}function Ne(e,t,n,r,i,a,o,s,c){if(!E)throw Error(`Database not initialized`);let l=k(`LBANK`),u=m.default.randomUUID();E.run(`INSERT INTO pending_bank_transactions (
+    ) VALUES (?, ?, ?, ?, ?, ?)`, [
+		sourceBranchCode,
+		currencyCode,
+		amount,
+		note,
+		localReferenceNumber,
+		idempotencyKey
+	]);
+	saveDatabase();
+	const stmt = db.prepare("SELECT last_insert_rowid() as id");
+	stmt.step();
+	const row = stmt.getAsObject();
+	stmt.free();
+	const insertedId = row["id"] ?? 0;
+	saveLocalAuditEvent({
+		entityType: "TREASURY_COLLECTION",
+		eventType: "CREATE",
+		referenceNumber: localReferenceNumber,
+		entityId: String(insertedId),
+		payload: {
+			sourceBranchCode,
+			currencyCode,
+			amount,
+			note,
+			idempotencyKey
+		},
+		rateSnapshot: { currencyCode },
+		status: "PENDING_UPLOAD"
+	});
+	return insertedId;
+}
+function savePendingBankTransaction(transactionType, currencyCode, amount, exchangeRate, hufAmount, vaultTerritoryId, bankName, bankReference, note) {
+	if (!db) throw new Error("Database not initialized");
+	const localReferenceNumber = generateLocalReference("LBANK");
+	const idempotencyKey = node_crypto.default.randomUUID();
+	db.run(`INSERT INTO pending_bank_transactions (
       transaction_type,
       currency_code,
       amount,
@@ -317,7 +2753,69 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
       note,
       local_reference_number,
       idempotency_key
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,[e,t,n,r,i,a,o?.trim()||null,s?.trim()||null,c?.trim()||null,l,u]),O();let d=E.prepare(`SELECT last_insert_rowid() as id`);d.step();let f=d.getAsObject();d.free();let p=f.id??0;return j({entityType:`BANK_TRANSACTION`,eventType:e,referenceNumber:l,entityId:String(p),payload:{transactionType:e,currencyCode:t,amount:n,exchangeRate:r,hufAmount:i,vaultTerritoryId:a,bankName:o?.trim()||null,bankReference:s?.trim()||null,note:c?.trim()||null,idempotencyKey:u},rateSnapshot:{currencyCode:t,exchangeRate:r,hufAmount:i},status:`PENDING_UPLOAD`}),p}function Pe(){if(!E)return[];let e=[],t=E.prepare(`SELECT * FROM pending_bank_transactions WHERE synced = 0 ORDER BY created_at ASC`);for(;t.step();)e.push(t.getAsObject());return t.free(),e}function Fe(e){E&&(E.run(`UPDATE pending_bank_transactions SET synced = 1 WHERE id = ?`,[e]),O())}function Ie(e){if(!E)throw Error(`Database not initialized`);let t=k(`LST`),n=m.default.randomUUID();E.run(`INSERT INTO pending_stornos (
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+		transactionType,
+		currencyCode,
+		amount,
+		exchangeRate,
+		hufAmount,
+		vaultTerritoryId,
+		bankName?.trim() || null,
+		bankReference?.trim() || null,
+		note?.trim() || null,
+		localReferenceNumber,
+		idempotencyKey
+	]);
+	saveDatabase();
+	const stmt = db.prepare("SELECT last_insert_rowid() as id");
+	stmt.step();
+	const row = stmt.getAsObject();
+	stmt.free();
+	const insertedId = row["id"] ?? 0;
+	saveLocalAuditEvent({
+		entityType: "BANK_TRANSACTION",
+		eventType: transactionType,
+		referenceNumber: localReferenceNumber,
+		entityId: String(insertedId),
+		payload: {
+			transactionType,
+			currencyCode,
+			amount,
+			exchangeRate,
+			hufAmount,
+			vaultTerritoryId,
+			bankName: bankName?.trim() || null,
+			bankReference: bankReference?.trim() || null,
+			note: note?.trim() || null,
+			idempotencyKey
+		},
+		rateSnapshot: {
+			currencyCode,
+			exchangeRate,
+			hufAmount
+		},
+		status: "PENDING_UPLOAD"
+	});
+	return insertedId;
+}
+function getPendingBankTransactions() {
+	if (!db) return [];
+	const results = [];
+	const stmt = db.prepare("SELECT * FROM pending_bank_transactions WHERE synced = 0 ORDER BY created_at ASC");
+	while (stmt.step()) results.push(stmt.getAsObject());
+	stmt.free();
+	return results;
+}
+function markBankTransactionSynced(id) {
+	if (!db) return;
+	db.run("UPDATE pending_bank_transactions SET synced = 1 WHERE id = ?", [id]);
+	saveDatabase();
+}
+function savePendingStorno(params) {
+	if (!db) throw new Error("Database not initialized");
+	const localReferenceNumber = generateLocalReference("LST");
+	const idempotencyKey = node_crypto.default.randomUUID();
+	db.run(`INSERT INTO pending_stornos (
       transaction_id,
       original_receipt_number,
       original_transaction_type,
@@ -333,7 +2831,80 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
       customer_document_number,
       local_reference_number,
       idempotency_key
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,[e.transactionId,e.originalReceiptNumber,e.originalTransactionType,e.currencyCode,e.foreignAmount,e.hufAmount,e.exchangeRate,e.reason.trim(),e.approvalId??null,e.customExchangeRate??null,e.paymentMethod??null,e.customerName?.trim()||null,e.customerDocumentNumber?.trim()||null,t,n]),O();let r=E.prepare(`SELECT last_insert_rowid() as id`);r.step();let i=r.getAsObject();r.free();let a=i.id??0;return j({entityType:`STORNO`,eventType:`EXECUTE`,referenceNumber:t,entityId:String(a),payload:{transactionId:e.transactionId,originalReceiptNumber:e.originalReceiptNumber,originalTransactionType:e.originalTransactionType,currencyCode:e.currencyCode,foreignAmount:e.foreignAmount,hufAmount:e.hufAmount,exchangeRate:e.exchangeRate,reason:e.reason.trim(),approvalId:e.approvalId??null,customExchangeRate:e.customExchangeRate??null,paymentMethod:e.paymentMethod??null,idempotencyKey:n},customerSnapshot:{customerName:e.customerName?.trim()||null,customerDocumentNumber:e.customerDocumentNumber?.trim()||null},identificationSnapshot:{customerDocumentNumber:e.customerDocumentNumber?.trim()||null},rateSnapshot:{currencyCode:e.currencyCode,exchangeRate:e.customExchangeRate??e.exchangeRate,hufAmount:e.hufAmount},status:`PENDING_UPLOAD`}),a}function Le(){if(!E)return[];let e=[],t=E.prepare(`SELECT * FROM pending_stornos WHERE synced = 0 ORDER BY created_at ASC`);for(;t.step();)e.push(t.getAsObject());return t.free(),e}function Re(e){E&&(E.run(`UPDATE pending_stornos SET synced = 1 WHERE id = ?`,[e]),O())}function ze(e){if(!E)throw Error(`Database not initialized`);let t=k(e.operationType===`GENERATE`?`LHS`:`LHS-${e.operationType}`),n=m.default.randomUUID();E.run(`INSERT INTO pending_handover_operations (
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+		params.transactionId,
+		params.originalReceiptNumber,
+		params.originalTransactionType,
+		params.currencyCode,
+		params.foreignAmount,
+		params.hufAmount,
+		params.exchangeRate,
+		params.reason.trim(),
+		params.approvalId ?? null,
+		params.customExchangeRate ?? null,
+		params.paymentMethod ?? null,
+		params.customerName?.trim() || null,
+		params.customerDocumentNumber?.trim() || null,
+		localReferenceNumber,
+		idempotencyKey
+	]);
+	saveDatabase();
+	const stmt = db.prepare("SELECT last_insert_rowid() as id");
+	stmt.step();
+	const row = stmt.getAsObject();
+	stmt.free();
+	const insertedId = row["id"] ?? 0;
+	saveLocalAuditEvent({
+		entityType: "STORNO",
+		eventType: "EXECUTE",
+		referenceNumber: localReferenceNumber,
+		entityId: String(insertedId),
+		payload: {
+			transactionId: params.transactionId,
+			originalReceiptNumber: params.originalReceiptNumber,
+			originalTransactionType: params.originalTransactionType,
+			currencyCode: params.currencyCode,
+			foreignAmount: params.foreignAmount,
+			hufAmount: params.hufAmount,
+			exchangeRate: params.exchangeRate,
+			reason: params.reason.trim(),
+			approvalId: params.approvalId ?? null,
+			customExchangeRate: params.customExchangeRate ?? null,
+			paymentMethod: params.paymentMethod ?? null,
+			idempotencyKey
+		},
+		customerSnapshot: {
+			customerName: params.customerName?.trim() || null,
+			customerDocumentNumber: params.customerDocumentNumber?.trim() || null
+		},
+		identificationSnapshot: { customerDocumentNumber: params.customerDocumentNumber?.trim() || null },
+		rateSnapshot: {
+			currencyCode: params.currencyCode,
+			exchangeRate: params.customExchangeRate ?? params.exchangeRate,
+			hufAmount: params.hufAmount
+		},
+		status: "PENDING_UPLOAD"
+	});
+	return insertedId;
+}
+function getPendingStornos() {
+	if (!db) return [];
+	const results = [];
+	const stmt = db.prepare("SELECT * FROM pending_stornos WHERE synced = 0 ORDER BY created_at ASC");
+	while (stmt.step()) results.push(stmt.getAsObject());
+	stmt.free();
+	return results;
+}
+function markStornoSynced(id) {
+	if (!db) return;
+	db.run("UPDATE pending_stornos SET synced = 1 WHERE id = ?", [id]);
+	saveDatabase();
+}
+function savePendingHandoverOperation(params) {
+	if (!db) throw new Error("Database not initialized");
+	const localReferenceNumber = generateLocalReference(params.operationType === "GENERATE" ? "LHS" : `LHS-${params.operationType}`);
+	const idempotencyKey = node_crypto.default.randomUUID();
+	db.run(`INSERT INTO pending_handover_operations (
       operation_type,
       sheet_id,
       from_cash_desk_id,
@@ -343,7 +2914,70 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
       note,
       local_reference_number,
       idempotency_key
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,[e.operationType,e.sheetId??null,e.fromCashDeskId??null,e.toCashDeskId??null,e.transferDate??null,A(e.amounts),e.note?.trim()||null,t,n]),O();let r=E.prepare(`SELECT last_insert_rowid() as id`);r.step();let i=r.getAsObject();r.free();let a=i.id??0;return j({entityType:`HANDOVER_SHEET`,eventType:e.operationType,referenceNumber:t,entityId:String(a),payload:{sheetId:e.sheetId??null,fromCashDeskId:e.fromCashDeskId??null,toCashDeskId:e.toCashDeskId??null,transferDate:e.transferDate??null,amounts:e.amounts??null,note:e.note?.trim()||null,idempotencyKey:n},status:`PENDING_UPLOAD`}),a}function Be(){if(!E)return[];let e=[],t=E.prepare(`SELECT * FROM pending_handover_operations WHERE synced = 0 ORDER BY created_at ASC`);for(;t.step();)e.push(t.getAsObject());return t.free(),e}function Ve(e){E&&(E.run(`UPDATE pending_handover_operations SET synced = 1 WHERE id = ?`,[e]),O())}function He(){if(!E)return[];let e=[],t=E.prepare(`SELECT * FROM pending_collections WHERE synced = 0 ORDER BY created_at ASC`);for(;t.step();)e.push(t.getAsObject());return t.free(),e}function Ue(e){E&&(E.run(`UPDATE pending_collections SET synced = 1 WHERE id = ?`,[e]),O())}function We(e,t,n,r,i,a,o,s){E&&(E.run(`INSERT INTO cached_branch_status (branch_code, branch_name, company_id, last_sync_at, online_status, total_huf_value, daily_turnover, cash_balances, cached_at)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+		params.operationType,
+		params.sheetId ?? null,
+		params.fromCashDeskId ?? null,
+		params.toCashDeskId ?? null,
+		params.transferDate ?? null,
+		toJsonOrNull(params.amounts),
+		params.note?.trim() || null,
+		localReferenceNumber,
+		idempotencyKey
+	]);
+	saveDatabase();
+	const stmt = db.prepare("SELECT last_insert_rowid() as id");
+	stmt.step();
+	const row = stmt.getAsObject();
+	stmt.free();
+	const insertedId = row["id"] ?? 0;
+	saveLocalAuditEvent({
+		entityType: "HANDOVER_SHEET",
+		eventType: params.operationType,
+		referenceNumber: localReferenceNumber,
+		entityId: String(insertedId),
+		payload: {
+			sheetId: params.sheetId ?? null,
+			fromCashDeskId: params.fromCashDeskId ?? null,
+			toCashDeskId: params.toCashDeskId ?? null,
+			transferDate: params.transferDate ?? null,
+			amounts: params.amounts ?? null,
+			note: params.note?.trim() || null,
+			idempotencyKey
+		},
+		status: "PENDING_UPLOAD"
+	});
+	return insertedId;
+}
+function getPendingHandoverOperations() {
+	if (!db) return [];
+	const results = [];
+	const stmt = db.prepare("SELECT * FROM pending_handover_operations WHERE synced = 0 ORDER BY created_at ASC");
+	while (stmt.step()) results.push(stmt.getAsObject());
+	stmt.free();
+	return results;
+}
+function markHandoverOperationSynced(id) {
+	if (!db) return;
+	db.run("UPDATE pending_handover_operations SET synced = 1 WHERE id = ?", [id]);
+	saveDatabase();
+}
+function getPendingCollections() {
+	if (!db) return [];
+	const results = [];
+	const stmt = db.prepare("SELECT * FROM pending_collections WHERE synced = 0 ORDER BY created_at ASC");
+	while (stmt.step()) results.push(stmt.getAsObject());
+	stmt.free();
+	return results;
+}
+function markCollectionSynced(id) {
+	if (!db) return;
+	db.run("UPDATE pending_collections SET synced = 1 WHERE id = ?", [id]);
+	saveDatabase();
+}
+function saveCachedBranchStatus(branchCode, branchName, companyId, lastSyncAt, onlineStatus, totalHufValue, dailyTurnover, cashBalances) {
+	if (!db) return;
+	db.run(`INSERT INTO cached_branch_status (branch_code, branch_name, company_id, last_sync_at, online_status, total_huf_value, daily_turnover, cash_balances, cached_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
      ON CONFLICT(branch_code) DO UPDATE SET
        branch_name = excluded.branch_name,
@@ -353,7 +2987,37 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
        total_huf_value = excluded.total_huf_value,
        daily_turnover = excluded.daily_turnover,
        cash_balances = excluded.cash_balances,
-       cached_at = excluded.cached_at`,[e,t,n,r,i,a,o,s]),O())}function Ge(){if(!E)return[];let e=[],t=E.prepare(`SELECT * FROM cached_branch_status ORDER BY branch_code ASC`);for(;t.step();)e.push(t.getAsObject());return t.free(),e}function Ke(){if(!E)return null;let e=E.prepare(`SELECT MAX(cached_at) as last_cached FROM cached_branch_status`);e.step();let t=e.getAsObject();return e.free(),t.last_cached??null}function qe(e,t,n,r,i,a){E&&(E.run(`INSERT INTO cached_cash_desks (id, code, name, company_id, city, is_active, cached_at)
+       cached_at = excluded.cached_at`, [
+		branchCode,
+		branchName,
+		companyId,
+		lastSyncAt,
+		onlineStatus,
+		totalHufValue,
+		dailyTurnover,
+		cashBalances
+	]);
+	saveDatabase();
+}
+function getCachedBranchStatuses() {
+	if (!db) return [];
+	const results = [];
+	const stmt = db.prepare("SELECT * FROM cached_branch_status ORDER BY branch_code ASC");
+	while (stmt.step()) results.push(stmt.getAsObject());
+	stmt.free();
+	return results;
+}
+function getCachedBranchStatusTimestamp() {
+	if (!db) return null;
+	const stmt = db.prepare("SELECT MAX(cached_at) as last_cached FROM cached_branch_status");
+	stmt.step();
+	const row = stmt.getAsObject();
+	stmt.free();
+	return row["last_cached"] ?? null;
+}
+function saveCachedCashDesk(id, code, name, companyId, city, isActive) {
+	if (!db) return;
+	db.run(`INSERT INTO cached_cash_desks (id, code, name, company_id, city, is_active, cached_at)
      VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
      ON CONFLICT(id) DO UPDATE SET
        code = excluded.code,
@@ -361,7 +3025,35 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
        company_id = excluded.company_id,
        city = excluded.city,
        is_active = excluded.is_active,
-       cached_at = excluded.cached_at`,[e,t,n,r,i,a?1:0]),O())}function Je(){if(!E)return[];let e=[],t=E.prepare(`SELECT * FROM cached_cash_desks ORDER BY code ASC`);for(;t.step();)e.push(t.getAsObject());return t.free(),e}function Ye(){if(!E)return null;let e=E.prepare(`SELECT MAX(cached_at) as last_cached FROM cached_cash_desks`);e.step();let t=e.getAsObject();return e.free(),t.last_cached??null}function Xe(e,t,n,r,i,a,o,s,c,l){E&&(E.run(`INSERT INTO cached_workers (id, worker_code, full_name, role, branch_id, branch_code, branch_name, company_id, company_code, active, cached_at)
+       cached_at = excluded.cached_at`, [
+		id,
+		code,
+		name,
+		companyId,
+		city,
+		isActive ? 1 : 0
+	]);
+	saveDatabase();
+}
+function getCachedCashDesks() {
+	if (!db) return [];
+	const results = [];
+	const stmt = db.prepare("SELECT * FROM cached_cash_desks ORDER BY code ASC");
+	while (stmt.step()) results.push(stmt.getAsObject());
+	stmt.free();
+	return results;
+}
+function getCachedCashDeskTimestamp() {
+	if (!db) return null;
+	const stmt = db.prepare("SELECT MAX(cached_at) as last_cached FROM cached_cash_desks");
+	stmt.step();
+	const row = stmt.getAsObject();
+	stmt.free();
+	return row["last_cached"] ?? null;
+}
+function saveCachedWorker(id, workerCode, fullName, role, branchId, branchCode, branchName, companyId, companyCode, active) {
+	if (!db) return;
+	db.run(`INSERT INTO cached_workers (id, worker_code, full_name, role, branch_id, branch_code, branch_name, company_id, company_code, active, cached_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
      ON CONFLICT(id) DO UPDATE SET
        worker_code = excluded.worker_code,
@@ -373,33 +3065,337 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
        company_id = excluded.company_id,
        company_code = excluded.company_code,
        active = excluded.active,
-       cached_at = excluded.cached_at`,[e,t,n,r,i,a,o,s,c,l?1:0]),O())}function Ze(){if(!E)return[];let e=[],t=E.prepare(`SELECT * FROM cached_workers ORDER BY full_name ASC`);for(;t.step();)e.push(t.getAsObject());return t.free(),e}function Qe(){if(!E)return null;let e=E.prepare(`SELECT MAX(cached_at) as last_cached FROM cached_workers`);e.step();let t=e.getAsObject();return e.free(),t.last_cached??null}function $e(){if(!E)return[];let e=[],t=E.prepare(`SELECT * FROM cached_rates ORDER BY currency_code ASC`);for(;t.step();)e.push(t.getAsObject());return t.free(),e}var I=`\x1B`,L=``,R={INIT:`${I}@`,ALIGN_CENTER:`${I}a\x01`,ALIGN_LEFT:`${I}a\x00`,BOLD_ON:`${I}E\x01`,BOLD_OFF:`${I}E\x00`,DOUBLE_WIDTH:`${L}!\x10`,DOUBLE_HEIGHT:`${L}!\x01`,DOUBLE_BOTH:`${L}!\x11`,NORMAL_SIZE:`${L}!\x00`,UNDERLINE_ON:`${I}-\x01`,UNDERLINE_OFF:`${I}-\x00`,CUT_PAPER:`${L}V\x00`,PARTIAL_CUT:`${L}V\x01`,FEED_LINES:e=>`${I}d${String.fromCharCode(e)}`,LINE:`─`.repeat(42),DOUBLE_LINE:`═`.repeat(42)},z={BEST_CHANGE:{name:`BEST CHANGE`,fullName:`EXCLUSIVE BEST CHANGE ZRT.`,taxNumber:`32313332-2-02`,address:`Szeged, Kárász u. 5.`},EXPRESSZ:{name:`EXPRESSZ`,fullName:`EXPRESSZ ÉKSZERHÁZ ÉS MINIBANK KFT.`,taxNumber:`14040535-2-02`,address:`Szeged, Klauzál tér 3.`}},et={sell:`ELADÁSI BIZONYLAT`,buy:`VÁSÁRLÁSI BIZONYLAT`,transfer:`ÁTADÁS-ÁTVÉTELI BIZONYLAT`,storno:`STORNÓ BIZONYLAT`,conversion:`KONVERZIÓS BIZONYLAT`,closing:`NAPI ZÁRÁS`};function tt(e){let t=z[e.companyType]??z.BEST_CHANGE,n=[];if(n.push(R.INIT),n.push(R.ALIGN_CENTER),n.push(R.BOLD_ON),n.push(R.DOUBLE_BOTH),n.push(t.name),n.push(R.NORMAL_SIZE),n.push(t.fullName),n.push(R.BOLD_OFF),n.push(t.address),n.push(`Adószám: ${t.taxNumber}`),n.push(``),n.push(R.DOUBLE_LINE),n.push(``),n.push(R.BOLD_ON),n.push(R.DOUBLE_HEIGHT),n.push(et[e.type]),n.push(R.NORMAL_SIZE),n.push(R.BOLD_OFF),n.push(``),n.push(R.ALIGN_LEFT),n.push(`Bizonylat: ${e.receiptNumber}`),n.push(`Dátum:     ${e.date}  ${e.time}`),n.push(`Pénztár:   ${e.branchCode}`),n.push(`Pénztáros: ${e.cashierName}`),n.push(``),n.push(R.LINE),e.type===`sell`||e.type===`buy`?n.push(...nt(e)):e.type===`conversion`?n.push(...it(e)):e.type===`transfer`?n.push(...rt(e)):e.type===`storno`?n.push(...at(e)):e.type===`closing`&&n.push(...ot(e)),e.customerName&&(n.push(``),n.push(R.LINE),n.push(R.BOLD_ON),n.push(`ÜGYFÉL ADATOK:`),n.push(R.BOLD_OFF),n.push(`Név:      ${e.customerName}`),e.customerDocType&&n.push(`Igazolv.: ${e.customerDocType}`),e.customerDocNumber&&n.push(`Szám:     ${e.customerDocNumber}`)),e.receiptNumber&&(e.type===`sell`||e.type===`buy`||e.type===`conversion`)){n.push(``),n.push(R.LINE),n.push(R.ALIGN_CENTER),n.push(``),n.push(R.BOLD_ON),n.push(`QR KÓD:`),n.push(R.BOLD_OFF);let r=[e.receiptNumber,e.date,(e.roundedHufAmount??e.hufAmount??0).toString(),e.currencyCode??`HUF`,t.taxNumber,e.branchCode].join(`|`);n.push(`[QR:${r}]`),n.push(``)}return n.push(``),n.push(R.DOUBLE_LINE),n.push(R.ALIGN_CENTER),n.push(`Köszönjük, hogy minket választott!`),n.push(``),n.push(R.FEED_LINES(4)),n.push(R.PARTIAL_CUT),n.join(`
-`)}function nt(e){let t=[],n=e.type===`sell`;return t.push(``),t.push(R.BOLD_ON),t.push(n?`Deviza eladás (HUF → valuta):`:`Deviza vásárlás (valuta → HUF):`),t.push(R.BOLD_OFF),t.push(``),t.push(`Valutanem:   ${e.currencyCode??`—`}`),t.push(`Összeg:      ${B(e.foreignAmount)} ${e.currencyCode??``}`),t.push(`Árfolyam:    ${V(e.rate)}`),t.push(``),t.push(R.LINE),t.push(R.BOLD_ON),t.push(`HUF összeg:  ${B(e.hufAmount)} Ft`),e.roundedHufAmount!==void 0&&e.roundingDiff!==void 0&&e.roundingDiff!==0?(t.push(`Kerekítés:   ${B(e.roundingDiff)} Ft`),t.push(R.DOUBLE_HEIGHT),t.push(`FIZETENDŐ:   ${B(e.roundedHufAmount)} Ft`),t.push(R.NORMAL_SIZE)):(t.push(R.DOUBLE_HEIGHT),t.push(`FIZETENDŐ:   ${B(e.roundedHufAmount??e.hufAmount)} Ft`),t.push(R.NORMAL_SIZE)),t.push(R.BOLD_OFF),t}function rt(e){let t=[];return t.push(``),t.push(R.BOLD_ON),t.push(`Átadás-átvétel:`),t.push(R.BOLD_OFF),t.push(``),t.push(`Cél pénztár: ${e.transferTarget??`—`}`),t.push(`Valutanem:   ${e.currencyCode??`—`}`),t.push(`Összeg:      ${B(e.foreignAmount)} ${e.currencyCode??``}`),e.transferNote&&t.push(`Megjegyzés:  ${e.transferNote}`),t}function it(e){let t=[];return t.push(``),t.push(R.BOLD_ON),t.push(`Konverzió:`),t.push(R.BOLD_OFF),t.push(``),t.push(`Forrás:      ${B(e.sourceAmount)} ${e.sourceCurrencyCode??`—`}`),t.push(`Cél:         ${B(e.targetAmount)} ${e.targetCurrencyCode??`—`}`),t.push(`Köztes HUF:  ${B(e.hufAmount)} Ft`),t.push(`Árfolyam:    ${V(e.rate)}`),e.note&&t.push(`Megjegyzés:  ${e.note}`),t}function at(e){let t=[];return t.push(``),t.push(R.BOLD_ON),t.push(`STORNÓ:`),t.push(R.BOLD_OFF),t.push(``),t.push(`Eredeti biz.: ${e.originalReceiptNumber??`—`}`),t.push(`Valutanem:    ${e.currencyCode??`—`}`),t.push(`Összeg:       ${B(e.foreignAmount)} ${e.currencyCode??``}`),t.push(`HUF összeg:   ${B(e.hufAmount)} Ft`),e.stornoReason&&(t.push(``),t.push(`Indok: ${e.stornoReason}`)),t}function ot(e){let t=[],n=e.closingSummary;if(!n)return t.push(``),t.push(`(Nincs zárási adat)`),t;if(t.push(``),t.push(R.BOLD_ON),t.push(`FORGALMI ÖSSZESÍTŐ:`),t.push(R.BOLD_OFF),t.push(``),t.push(`Összes tranzakció: ${n.totalTransactions}`),t.push(`  - Eladás:        ${n.sellCount}`),t.push(`  - Vásárlás:      ${n.buyCount}`),t.push(``),t.push(`HUF forgalom:      ${B(n.totalHufTurnover)} Ft`),t.push(`Díjbevétel:        ${B(n.totalFees)} Ft`),t.push(``),t.push(R.LINE),t.push(`Nyitó egyenleg:    ${B(n.openingBalance)} Ft`),t.push(`Záró egyenleg:     ${B(n.closingBalance)} Ft`),n.discrepancies.length>0){t.push(``),t.push(R.BOLD_ON),t.push(`ELTÉRÉSEK:`),t.push(R.BOLD_OFF);for(let e of n.discrepancies)t.push(`  ${e.currencyCode}: várt ${B(e.expected)} → tény ${B(e.actual)} (${B(e.difference)})`)}return t}function B(e){return e===void 0?`—`:e.toLocaleString(`hu-HU`,{maximumFractionDigits:2})}function V(e){return e===void 0?`—`:e.toLocaleString(`hu-HU`,{minimumFractionDigits:2,maximumFractionDigits:4})}function st(e){let t=z[e.companyType]??z.BEST_CHANGE,n=et[e.type],r=``;return r+=`
+       cached_at = excluded.cached_at`, [
+		id,
+		workerCode,
+		fullName,
+		role,
+		branchId,
+		branchCode,
+		branchName,
+		companyId,
+		companyCode,
+		active ? 1 : 0
+	]);
+	saveDatabase();
+}
+function getCachedWorkers() {
+	if (!db) return [];
+	const results = [];
+	const stmt = db.prepare("SELECT * FROM cached_workers ORDER BY full_name ASC");
+	while (stmt.step()) results.push(stmt.getAsObject());
+	stmt.free();
+	return results;
+}
+function getCachedWorkerTimestamp() {
+	if (!db) return null;
+	const stmt = db.prepare("SELECT MAX(cached_at) as last_cached FROM cached_workers");
+	stmt.step();
+	const row = stmt.getAsObject();
+	stmt.free();
+	return row["last_cached"] ?? null;
+}
+function getCachedRates() {
+	if (!db) return [];
+	const results = [];
+	const stmt = db.prepare("SELECT * FROM cached_rates ORDER BY currency_code ASC");
+	while (stmt.step()) results.push(stmt.getAsObject());
+	stmt.free();
+	return results;
+}
+//#endregion
+//#region electron/printer.ts
+/**
+* Thermal Receipt Printer — Electron main process.
+*
+* 80mm-es hőnyomtatóra generál bizonylat szöveget ESC/POS parancsokkal,
+* illetve HTML formátumban az Electron beépített nyomtató API-ján keresztül.
+*
+* Nyomtatási architektúra:
+*   1. printReceipt() — fő belépési pont, IPC-ből hívva
+*   2. Megpróbálja printToThermalUsb()-t (ESC/POS közvetlen USB — jövőbeli)
+*   3. Ha nincs USB nyomtató, fallback: printViaElectron() — rejtett ablakban
+*      HTML-t renderel és a rendszer nyomtató-driverén keresztül nyomtat
+*
+* Két cég:
+*   - Best Change: Exclusive Best Change Zrt. (adószám: 32313332-2-02)
+*   - Expressz: Expressz Ékszerház és Minibank Kft. (adószám: 14040535-2-02)
+*/
+var ESC = "\x1B";
+var GS = "";
+var CMD = {
+	INIT: `${ESC}@`,
+	ALIGN_CENTER: `${ESC}a\x01`,
+	ALIGN_LEFT: `${ESC}a\x00`,
+	BOLD_ON: `${ESC}E\x01`,
+	BOLD_OFF: `${ESC}E\x00`,
+	DOUBLE_WIDTH: `${GS}!\x10`,
+	DOUBLE_HEIGHT: `${GS}!\x01`,
+	DOUBLE_BOTH: `${GS}!\x11`,
+	NORMAL_SIZE: `${GS}!\x00`,
+	UNDERLINE_ON: `${ESC}-\x01`,
+	UNDERLINE_OFF: `${ESC}-\x00`,
+	CUT_PAPER: `${GS}V\x00`,
+	PARTIAL_CUT: `${GS}V\x01`,
+	FEED_LINES: (n) => `${ESC}d${String.fromCharCode(n)}`,
+	LINE: "─".repeat(42),
+	DOUBLE_LINE: "═".repeat(42)
+};
+var COMPANIES = {
+	BEST_CHANGE: {
+		name: "BEST CHANGE",
+		fullName: "EXCLUSIVE BEST CHANGE ZRT.",
+		taxNumber: "32313332-2-02",
+		address: "Szeged, Kárász u. 5."
+	},
+	EXPRESSZ: {
+		name: "EXPRESSZ",
+		fullName: "EXPRESSZ ÉKSZERHÁZ ÉS MINIBANK KFT.",
+		taxNumber: "14040535-2-02",
+		address: "Szeged, Klauzál tér 3."
+	}
+};
+var JOB_TYPE_LABELS = {
+	sell: "ELADÁSI BIZONYLAT",
+	buy: "VÁSÁRLÁSI BIZONYLAT",
+	transfer: "ÁTADÁS-ÁTVÉTELI BIZONYLAT",
+	storno: "STORNÓ BIZONYLAT",
+	conversion: "KONVERZIÓS BIZONYLAT",
+	closing: "NAPI ZÁRÁS"
+};
+/**
+* ESC/POS bizonylat generálása stringként.
+* Közvetlen USB hőnyomtató esetén ezt közvetlenül a port-ra kell küldeni.
+* Jelenleg a printToThermalUsb() stub használja előkészítésre.
+*/
+function generateReceiptContent(data) {
+	const company = COMPANIES[data.companyType] ?? COMPANIES["BEST_CHANGE"];
+	const lines = [];
+	lines.push(CMD.INIT);
+	lines.push(CMD.ALIGN_CENTER);
+	lines.push(CMD.BOLD_ON);
+	lines.push(CMD.DOUBLE_BOTH);
+	lines.push(company.name);
+	lines.push(CMD.NORMAL_SIZE);
+	lines.push(company.fullName);
+	lines.push(CMD.BOLD_OFF);
+	lines.push(company.address);
+	lines.push(`Adószám: ${company.taxNumber}`);
+	lines.push("");
+	lines.push(CMD.DOUBLE_LINE);
+	lines.push("");
+	lines.push(CMD.BOLD_ON);
+	lines.push(CMD.DOUBLE_HEIGHT);
+	lines.push(JOB_TYPE_LABELS[data.type]);
+	lines.push(CMD.NORMAL_SIZE);
+	lines.push(CMD.BOLD_OFF);
+	lines.push("");
+	lines.push(CMD.ALIGN_LEFT);
+	lines.push(`Bizonylat: ${data.receiptNumber}`);
+	lines.push(`Dátum:     ${data.date}  ${data.time}`);
+	lines.push(`Pénztár:   ${data.branchCode}`);
+	lines.push(`Pénztáros: ${data.cashierName}`);
+	lines.push("");
+	lines.push(CMD.LINE);
+	if (data.type === "sell" || data.type === "buy") lines.push(...generateTransactionLines(data));
+	else if (data.type === "conversion") lines.push(...generateConversionLines(data));
+	else if (data.type === "transfer") lines.push(...generateTransferLines(data));
+	else if (data.type === "storno") lines.push(...generateStornoLines(data));
+	else if (data.type === "closing") lines.push(...generateClosingLines(data));
+	if (data.customerName) {
+		lines.push("");
+		lines.push(CMD.LINE);
+		lines.push(CMD.BOLD_ON);
+		lines.push("ÜGYFÉL ADATOK:");
+		lines.push(CMD.BOLD_OFF);
+		lines.push(`Név:      ${data.customerName}`);
+		if (data.customerDocType) lines.push(`Igazolv.: ${data.customerDocType}`);
+		if (data.customerDocNumber) lines.push(`Szám:     ${data.customerDocNumber}`);
+	}
+	if (data.receiptNumber && (data.type === "sell" || data.type === "buy" || data.type === "conversion")) {
+		lines.push("");
+		lines.push(CMD.LINE);
+		lines.push(CMD.ALIGN_CENTER);
+		lines.push("");
+		lines.push(CMD.BOLD_ON);
+		lines.push("QR KÓD:");
+		lines.push(CMD.BOLD_OFF);
+		const qrContent = [
+			data.receiptNumber,
+			data.date,
+			(data.roundedHufAmount ?? data.hufAmount ?? 0).toString(),
+			data.currencyCode ?? "HUF",
+			company.taxNumber,
+			data.branchCode
+		].join("|");
+		lines.push(`[QR:${qrContent}]`);
+		lines.push("");
+	}
+	lines.push("");
+	lines.push(CMD.DOUBLE_LINE);
+	lines.push(CMD.ALIGN_CENTER);
+	lines.push("Köszönjük, hogy minket választott!");
+	lines.push("");
+	lines.push(CMD.FEED_LINES(4));
+	lines.push(CMD.PARTIAL_CUT);
+	return lines.join("\n");
+}
+function generateTransactionLines(data) {
+	const lines = [];
+	const isSell = data.type === "sell";
+	lines.push("");
+	lines.push(CMD.BOLD_ON);
+	lines.push(isSell ? "Deviza eladás (HUF → valuta):" : "Deviza vásárlás (valuta → HUF):");
+	lines.push(CMD.BOLD_OFF);
+	lines.push("");
+	lines.push(`Valutanem:   ${data.currencyCode ?? "—"}`);
+	lines.push(`Összeg:      ${formatAmount(data.foreignAmount)} ${data.currencyCode ?? ""}`);
+	lines.push(`Árfolyam:    ${formatRate(data.rate)}`);
+	lines.push("");
+	lines.push(CMD.LINE);
+	lines.push(CMD.BOLD_ON);
+	lines.push(`HUF összeg:  ${formatAmount(data.hufAmount)} Ft`);
+	if (data.roundedHufAmount !== void 0 && data.roundingDiff !== void 0 && data.roundingDiff !== 0) {
+		lines.push(`Kerekítés:   ${formatAmount(data.roundingDiff)} Ft`);
+		lines.push(CMD.DOUBLE_HEIGHT);
+		lines.push(`FIZETENDŐ:   ${formatAmount(data.roundedHufAmount)} Ft`);
+		lines.push(CMD.NORMAL_SIZE);
+	} else {
+		lines.push(CMD.DOUBLE_HEIGHT);
+		lines.push(`FIZETENDŐ:   ${formatAmount(data.roundedHufAmount ?? data.hufAmount)} Ft`);
+		lines.push(CMD.NORMAL_SIZE);
+	}
+	lines.push(CMD.BOLD_OFF);
+	return lines;
+}
+function generateTransferLines(data) {
+	const lines = [];
+	lines.push("");
+	lines.push(CMD.BOLD_ON);
+	lines.push("Átadás-átvétel:");
+	lines.push(CMD.BOLD_OFF);
+	lines.push("");
+	lines.push(`Cél pénztár: ${data.transferTarget ?? "—"}`);
+	lines.push(`Valutanem:   ${data.currencyCode ?? "—"}`);
+	lines.push(`Összeg:      ${formatAmount(data.foreignAmount)} ${data.currencyCode ?? ""}`);
+	if (data.transferNote) lines.push(`Megjegyzés:  ${data.transferNote}`);
+	return lines;
+}
+function generateConversionLines(data) {
+	const lines = [];
+	lines.push("");
+	lines.push(CMD.BOLD_ON);
+	lines.push("Konverzió:");
+	lines.push(CMD.BOLD_OFF);
+	lines.push("");
+	lines.push(`Forrás:      ${formatAmount(data.sourceAmount)} ${data.sourceCurrencyCode ?? "—"}`);
+	lines.push(`Cél:         ${formatAmount(data.targetAmount)} ${data.targetCurrencyCode ?? "—"}`);
+	lines.push(`Köztes HUF:  ${formatAmount(data.hufAmount)} Ft`);
+	lines.push(`Árfolyam:    ${formatRate(data.rate)}`);
+	if (data.note) lines.push(`Megjegyzés:  ${data.note}`);
+	return lines;
+}
+function generateStornoLines(data) {
+	const lines = [];
+	lines.push("");
+	lines.push(CMD.BOLD_ON);
+	lines.push("STORNÓ:");
+	lines.push(CMD.BOLD_OFF);
+	lines.push("");
+	lines.push(`Eredeti biz.: ${data.originalReceiptNumber ?? "—"}`);
+	lines.push(`Valutanem:    ${data.currencyCode ?? "—"}`);
+	lines.push(`Összeg:       ${formatAmount(data.foreignAmount)} ${data.currencyCode ?? ""}`);
+	lines.push(`HUF összeg:   ${formatAmount(data.hufAmount)} Ft`);
+	if (data.stornoReason) {
+		lines.push("");
+		lines.push(`Indok: ${data.stornoReason}`);
+	}
+	return lines;
+}
+function generateClosingLines(data) {
+	const lines = [];
+	const summary = data.closingSummary;
+	if (!summary) {
+		lines.push("");
+		lines.push("(Nincs zárási adat)");
+		return lines;
+	}
+	lines.push("");
+	lines.push(CMD.BOLD_ON);
+	lines.push("FORGALMI ÖSSZESÍTŐ:");
+	lines.push(CMD.BOLD_OFF);
+	lines.push("");
+	lines.push(`Összes tranzakció: ${summary.totalTransactions}`);
+	lines.push(`  - Eladás:        ${summary.sellCount}`);
+	lines.push(`  - Vásárlás:      ${summary.buyCount}`);
+	lines.push("");
+	lines.push(`HUF forgalom:      ${formatAmount(summary.totalHufTurnover)} Ft`);
+	lines.push(`Díjbevétel:        ${formatAmount(summary.totalFees)} Ft`);
+	lines.push("");
+	lines.push(CMD.LINE);
+	lines.push(`Nyitó egyenleg:    ${formatAmount(summary.openingBalance)} Ft`);
+	lines.push(`Záró egyenleg:     ${formatAmount(summary.closingBalance)} Ft`);
+	if (summary.discrepancies.length > 0) {
+		lines.push("");
+		lines.push(CMD.BOLD_ON);
+		lines.push("ELTÉRÉSEK:");
+		lines.push(CMD.BOLD_OFF);
+		for (const d of summary.discrepancies) lines.push(`  ${d.currencyCode}: várt ${formatAmount(d.expected)} → tény ${formatAmount(d.actual)} (${formatAmount(d.difference)})`);
+	}
+	return lines;
+}
+function formatAmount(value) {
+	if (value === void 0) return "—";
+	return value.toLocaleString("hu-HU", { maximumFractionDigits: 2 });
+}
+function formatRate(value) {
+	if (value === void 0) return "—";
+	return value.toLocaleString("hu-HU", {
+		minimumFractionDigits: 2,
+		maximumFractionDigits: 4
+	});
+}
+/**
+* Bizonylat HTML generálása — 80mm szélességre optimalizált.
+* Ezt rendereli a rejtett BrowserWindow a rendszer nyomtató felé.
+*/
+function generateReceiptHtml(data) {
+	const company = COMPANIES[data.companyType] ?? COMPANIES["BEST_CHANGE"];
+	const label = JOB_TYPE_LABELS[data.type];
+	let bodyContent = "";
+	bodyContent += `
     <div class="center">
-      <div class="company-name">${H(t.name)}</div>
-      <div class="company-full">${H(t.fullName)}</div>
-      <div>${H(t.address)}</div>
-      <div>Adószám: ${H(t.taxNumber)}</div>
+      <div class="company-name">${escHtml(company.name)}</div>
+      <div class="company-full">${escHtml(company.fullName)}</div>
+      <div>${escHtml(company.address)}</div>
+      <div>Adószám: ${escHtml(company.taxNumber)}</div>
     </div>
     <div class="double-line"></div>
-    <div class="center receipt-type">${H(n)}</div>
+    <div class="center receipt-type">${escHtml(label)}</div>
     <div class="meta">
-      <div>Bizonylat: ${H(e.receiptNumber)}</div>
-      <div>Dátum: ${H(e.date)} &nbsp; ${H(e.time)}</div>
-      <div>Pénztár: ${H(e.branchCode)}</div>
-      <div>Pénztáros: ${H(e.cashierName)}</div>
+      <div>Bizonylat: ${escHtml(data.receiptNumber)}</div>
+      <div>Dátum: ${escHtml(data.date)} &nbsp; ${escHtml(data.time)}</div>
+      <div>Pénztár: ${escHtml(data.branchCode)}</div>
+      <div>Pénztáros: ${escHtml(data.cashierName)}</div>
     </div>
     <div class="line"></div>
-  `,e.type===`sell`||e.type===`buy`?r+=ct(e):e.type===`transfer`?r+=lt(e):e.type===`storno`?r+=ut(e):e.type===`closing`&&(r+=dt(e)),e.customerName&&(r+=`
+  `;
+	if (data.type === "sell" || data.type === "buy") bodyContent += generateTransactionHtml(data);
+	else if (data.type === "transfer") bodyContent += generateTransferHtml(data);
+	else if (data.type === "storno") bodyContent += generateStornoHtml(data);
+	else if (data.type === "closing") bodyContent += generateClosingHtml(data);
+	if (data.customerName) bodyContent += `
       <div class="line"></div>
       <div class="bold">ÜGYFÉL ADATOK:</div>
-      <div>Név: ${H(e.customerName)}</div>
-      ${e.customerDocType?`<div>Igazolv.: ${H(e.customerDocType)}</div>`:``}
-      ${e.customerDocNumber?`<div>Szám: ${H(e.customerDocNumber)}</div>`:``}
-    `),r+=`
+      <div>Név: ${escHtml(data.customerName)}</div>
+      ${data.customerDocType ? `<div>Igazolv.: ${escHtml(data.customerDocType)}</div>` : ""}
+      ${data.customerDocNumber ? `<div>Szám: ${escHtml(data.customerDocNumber)}</div>` : ""}
+    `;
+	bodyContent += `
     <div class="double-line"></div>
     <div class="center footer">Köszönjük, hogy minket választott!</div>
-  `,`<!DOCTYPE html>
+  `;
+	return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -454,56 +3450,684 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
     .discrepancy { color: #c00; font-weight: bold; }
   </style>
 </head>
-<body>${r}</body>
-</html>`}function ct(e){let t=`
+<body>${bodyContent}</body>
+</html>`;
+}
+function generateTransactionHtml(data) {
+	let html = `
     <div class="section">
-      <div class="bold">${H(e.type===`sell`?`Deviza eladás (HUF → valuta):`:`Deviza vásárlás (valuta → HUF):`)}</div>
-      <div class="amount-row"><span>Valutanem:</span><span>${H(e.currencyCode??`—`)}</span></div>
-      <div class="amount-row"><span>Összeg:</span><span>${B(e.foreignAmount)} ${H(e.currencyCode??``)}</span></div>
-      <div class="amount-row"><span>Árfolyam:</span><span>${V(e.rate)}</span></div>
+      <div class="bold">${escHtml(data.type === "sell" ? "Deviza eladás (HUF → valuta):" : "Deviza vásárlás (valuta → HUF):")}</div>
+      <div class="amount-row"><span>Valutanem:</span><span>${escHtml(data.currencyCode ?? "—")}</span></div>
+      <div class="amount-row"><span>Összeg:</span><span>${formatAmount(data.foreignAmount)} ${escHtml(data.currencyCode ?? "")}</span></div>
+      <div class="amount-row"><span>Árfolyam:</span><span>${formatRate(data.rate)}</span></div>
     </div>
     <div class="line"></div>
-    <div class="amount-row bold"><span>HUF összeg:</span><span>${B(e.hufAmount)} Ft</span></div>
-  `;return e.roundedHufAmount!==void 0&&e.roundingDiff!==void 0&&e.roundingDiff!==0?t+=`
-      <div class="amount-row"><span>Kerekítés:</span><span>${B(e.roundingDiff)} Ft</span></div>
-      <div class="amount-row total"><span>FIZETENDŐ:</span><span>${B(e.roundedHufAmount)} Ft</span></div>
-    `:t+=`
-      <div class="amount-row total"><span>FIZETENDŐ:</span><span>${B(e.roundedHufAmount??e.hufAmount)} Ft</span></div>
-    `,t}function lt(e){return`
+    <div class="amount-row bold"><span>HUF összeg:</span><span>${formatAmount(data.hufAmount)} Ft</span></div>
+  `;
+	if (data.roundedHufAmount !== void 0 && data.roundingDiff !== void 0 && data.roundingDiff !== 0) html += `
+      <div class="amount-row"><span>Kerekítés:</span><span>${formatAmount(data.roundingDiff)} Ft</span></div>
+      <div class="amount-row total"><span>FIZETENDŐ:</span><span>${formatAmount(data.roundedHufAmount)} Ft</span></div>
+    `;
+	else html += `
+      <div class="amount-row total"><span>FIZETENDŐ:</span><span>${formatAmount(data.roundedHufAmount ?? data.hufAmount)} Ft</span></div>
+    `;
+	return html;
+}
+function generateTransferHtml(data) {
+	return `
     <div class="section">
       <div class="bold">Átadás-átvétel:</div>
-      <div class="amount-row"><span>Cél pénztár:</span><span>${H(e.transferTarget??`—`)}</span></div>
-      <div class="amount-row"><span>Valutanem:</span><span>${H(e.currencyCode??`—`)}</span></div>
-      <div class="amount-row"><span>Összeg:</span><span>${B(e.foreignAmount)} ${H(e.currencyCode??``)}</span></div>
-      ${e.transferNote?`<div>Megjegyzés: ${H(e.transferNote)}</div>`:``}
+      <div class="amount-row"><span>Cél pénztár:</span><span>${escHtml(data.transferTarget ?? "—")}</span></div>
+      <div class="amount-row"><span>Valutanem:</span><span>${escHtml(data.currencyCode ?? "—")}</span></div>
+      <div class="amount-row"><span>Összeg:</span><span>${formatAmount(data.foreignAmount)} ${escHtml(data.currencyCode ?? "")}</span></div>
+      ${data.transferNote ? `<div>Megjegyzés: ${escHtml(data.transferNote)}</div>` : ""}
     </div>
-  `}function ut(e){return`
+  `;
+}
+function generateStornoHtml(data) {
+	return `
     <div class="section">
       <div class="bold">STORNÓ:</div>
-      <div class="amount-row"><span>Eredeti biz.:</span><span>${H(e.originalReceiptNumber??`—`)}</span></div>
-      <div class="amount-row"><span>Valutanem:</span><span>${H(e.currencyCode??`—`)}</span></div>
-      <div class="amount-row"><span>Összeg:</span><span>${B(e.foreignAmount)} ${H(e.currencyCode??``)}</span></div>
-      <div class="amount-row"><span>HUF összeg:</span><span>${B(e.hufAmount)} Ft</span></div>
-      ${e.stornoReason?`<div>Indok: ${H(e.stornoReason)}</div>`:``}
+      <div class="amount-row"><span>Eredeti biz.:</span><span>${escHtml(data.originalReceiptNumber ?? "—")}</span></div>
+      <div class="amount-row"><span>Valutanem:</span><span>${escHtml(data.currencyCode ?? "—")}</span></div>
+      <div class="amount-row"><span>Összeg:</span><span>${formatAmount(data.foreignAmount)} ${escHtml(data.currencyCode ?? "")}</span></div>
+      <div class="amount-row"><span>HUF összeg:</span><span>${formatAmount(data.hufAmount)} Ft</span></div>
+      ${data.stornoReason ? `<div>Indok: ${escHtml(data.stornoReason)}</div>` : ""}
     </div>
-  `}function dt(e){let t=e.closingSummary;if(!t)return`<div class="section">(Nincs zárási adat)</div>`;let n=``;return t.discrepancies.length>0&&(n=`
+  `;
+}
+function generateClosingHtml(data) {
+	const summary = data.closingSummary;
+	if (!summary) return "<div class=\"section\">(Nincs zárási adat)</div>";
+	let discrepancyHtml = "";
+	if (summary.discrepancies.length > 0) discrepancyHtml = `
       <div class="bold discrepancy">ELTÉRÉSEK:</div>
-      ${t.discrepancies.map(e=>`<div class="discrepancy">&nbsp;&nbsp;${H(e.currencyCode)}: várt ${B(e.expected)} → tény ${B(e.actual)} (${B(e.difference)})</div>`).join(``)}
-    `),`
+      ${summary.discrepancies.map((d) => `<div class="discrepancy">&nbsp;&nbsp;${escHtml(d.currencyCode)}: várt ${formatAmount(d.expected)} → tény ${formatAmount(d.actual)} (${formatAmount(d.difference)})</div>`).join("")}
+    `;
+	return `
     <div class="section">
       <div class="bold">FORGALMI ÖSSZESÍTŐ:</div>
-      <div class="amount-row"><span>Összes tranzakció:</span><span>${t.totalTransactions}</span></div>
-      <div class="amount-row"><span>&nbsp;&nbsp;- Eladás:</span><span>${t.sellCount}</span></div>
-      <div class="amount-row"><span>&nbsp;&nbsp;- Vásárlás:</span><span>${t.buyCount}</span></div>
+      <div class="amount-row"><span>Összes tranzakció:</span><span>${summary.totalTransactions}</span></div>
+      <div class="amount-row"><span>&nbsp;&nbsp;- Eladás:</span><span>${summary.sellCount}</span></div>
+      <div class="amount-row"><span>&nbsp;&nbsp;- Vásárlás:</span><span>${summary.buyCount}</span></div>
       <br/>
-      <div class="amount-row"><span>HUF forgalom:</span><span>${B(t.totalHufTurnover)} Ft</span></div>
-      <div class="amount-row"><span>Díjbevétel:</span><span>${B(t.totalFees)} Ft</span></div>
+      <div class="amount-row"><span>HUF forgalom:</span><span>${formatAmount(summary.totalHufTurnover)} Ft</span></div>
+      <div class="amount-row"><span>Díjbevétel:</span><span>${formatAmount(summary.totalFees)} Ft</span></div>
     </div>
     <div class="line"></div>
-    <div class="amount-row"><span>Nyitó egyenleg:</span><span>${B(t.openingBalance)} Ft</span></div>
-    <div class="amount-row"><span>Záró egyenleg:</span><span>${B(t.closingBalance)} Ft</span></div>
-    ${n}
-  `}function H(e){return e.replace(/&/g,`&amp;`).replace(/</g,`&lt;`).replace(/>/g,`&gt;`).replace(/"/g,`&quot;`)}async function ft(e){return!1}async function pt(e,t){let n=null;try{n=new l.BrowserWindow({show:!1,width:302,height:800,webPreferences:{contextIsolation:!0,nodeIntegration:!1}}),await n.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(e)}`);let r={silent:!0,printBackground:!0,margins:{marginType:`none`},pageSize:{width:8e4,height:297e3}};return t&&(r.deviceName=t),await new Promise(e=>{n.webContents.print(r,(t,n)=>{t||T.default.warn(`[PRINTER] Nyomtatás sikertelen: ${n}`),e(t)})})}catch(e){return T.default.error(`[PRINTER] printViaElectron hiba:`,e),!1}finally{n&&!n.isDestroyed()&&n.close()}}async function mt(e,t){try{if(T.default.info(`[PRINTER] Nyomtatás indítása: ${e.type} ${e.receiptNumber}`),await ft(tt(e)))return T.default.info(`[PRINTER] USB hőnyomtató: OK — ${e.receiptNumber}`),!0;T.default.info(`[PRINTER] USB nyomtató nem elérhető, Electron print fallback...`);let n=await pt(st(e),t);return n?T.default.info(`[PRINTER] Electron print: OK — ${e.receiptNumber}`):T.default.error(`[PRINTER] Nyomtatás sikertelen — ${e.receiptNumber}. Ellenőrizd a nyomtató állapotát (offline / papír kifogyott).`),n}catch(e){return T.default.error(`[PRINTER] Váratlan nyomtatási hiba:`,e),!1}}var U=class extends Error{status;constructor(e,t){super(`HTTP ${e}: ${t}`),this.status=e}};function W(e){return e instanceof U&&(e.status===401||e.status===403)}async function G(e,t){let n={"Content-Type":`application/json`};t&&(n.Authorization=`Bearer ${t}`);let r=await fetch(e,{method:`GET`,headers:n,signal:AbortSignal.timeout(1e4)});if(!r.ok)throw new U(r.status,r.statusText);return r.json()}async function K(e,t,n,r){let i={"Content-Type":`application/json`,"Idempotency-Key":r??crypto.randomUUID()};n&&(i.Authorization=`Bearer ${n}`);let a=await fetch(e,{method:`POST`,headers:i,body:JSON.stringify(t),signal:AbortSignal.timeout(15e3)});if(!a.ok)throw new U(a.status,a.statusText);return a.json()}var q=new class{intervalId=null;lastTokenValidationAt=0;tokenValidationTtlMs=12e4;status={lastSyncAt:null,lastSyncResult:null,isRunning:!1};getServerUrl(){return M(`server_url`)??`http://localhost:8080/api/v1`}getBootstrapCredentials(){let e=process.env.PENZTAR_BOOTSTRAP_COMPANY_CODE?.trim()||M(`bootstrap_company_code`)?.trim()||``,t=process.env.PENZTAR_BOOTSTRAP_WORKER_CODE?.trim()||M(`bootstrap_worker_code`)?.trim()||``,n=process.env.PENZTAR_BOOTSTRAP_PASSWORD?.trim()||M(`bootstrap_password`)?.trim()||``,r=process.env.PENZTAR_BOOTSTRAP_ROLE_CODE?.trim()||M(`bootstrap_role_code`)?.trim()||null;return!e||!t||!n?null:{companyCode:e,workerCode:t,password:n,roleCode:r}}persistAuthToken(e){try{if(l.safeStorage.isEncryptionAvailable()){N(`auth_token_encrypted`,l.safeStorage.encryptString(e).toString(`base64`)),P(`auth_token`);return}}catch(e){console.warn(`[SyncEngine] Token titkosított mentése nem sikerült, plaintext fallback:`,e)}N(`auth_token`,e)}clearStoredAuthToken(){P(`auth_token_encrypted`),P(`auth_token`),this.lastTokenValidationAt=0}async validateToken(e,t){let n=Date.now();if(n-this.lastTokenValidationAt<this.tokenValidationTtlMs)return!0;try{return await G(`${e}/workers/me`,t),this.lastTokenValidationAt=n,!0}catch(e){if(W(e))return!1;throw e}}async bootstrapAuthSession(e){let t=this.getBootstrapCredentials();if(!t)return null;try{let n=await K(`${e}/auth/login`,{companyCode:t.companyCode,workerCode:t.workerCode,password:t.password},null),r=n.token;return n.roleSelectionRequired&&t.roleCode&&(r=(await K(`${e}/auth/login/select-role`,{token:r,roleCode:t.roleCode},null)).token),this.persistAuthToken(r),this.lastTokenValidationAt=Date.now(),console.log(`[SyncEngine] Lokális auth/session bootstrap sikeres`),r}catch(e){return W(e)?console.warn(`[SyncEngine] Lokális auth bootstrap sikertelen (401/403). Ellenőrizd a bootstrap credentialöket.`):console.warn(`[SyncEngine] Lokális auth bootstrap hiba:`,e instanceof Error?e.message:e),null}}getAuthToken(){let e=M(`auth_token_encrypted`);if(e&&l.safeStorage.isEncryptionAvailable())try{return l.safeStorage.decryptString(Buffer.from(e,`base64`))}catch(e){console.warn(`[SyncEngine] Nem sikerült visszafejteni a tárolt auth tokent:`,e)}return M(`auth_token`)}start(e=3e4){this.intervalId&&(console.log(`[SyncEngine] Már fut, újraindítás...`),this.stop()),console.log(`[SyncEngine] Indítás — ${e}ms intervallum`),setTimeout(()=>{this.runSync()},5e3),this.intervalId=setInterval(()=>{this.runSync()},e)}stop(){this.intervalId&&(clearInterval(this.intervalId),this.intervalId=null,console.log(`[SyncEngine] Leállítva`))}async runSync(){if(this.status.isRunning){console.log(`[SyncEngine] Előző sync még fut, kihagyás`);return}this.status.isRunning=!0;try{let e=this.getServerUrl(),t=this.getAuthToken();t?await this.validateToken(e,t)||(this.clearStoredAuthToken(),t=await this.bootstrapAuthSession(e)):t=await this.bootstrapAuthSession(e);let n=await this.syncAll(t);this.status.lastSyncResult=n,n.synced>0&&console.log(`[SyncEngine] ${n.synced} tranzakció szinkronizálva`),n.failed>0&&console.warn(`[SyncEngine] ${n.failed} tranzakció SIKERTELEN:`,n.errors),t&&(await this.syncRates(),await this.syncCirculars(),await this.syncDistributions(),await this.syncTransfers(),await this.syncCollections(),await this.cacheBranchStatus(),await this.syncCashDeskMasterData(),await this.syncWorkerMasterData()),this.status.lastSyncAt=new Date().toISOString()}catch(e){console.error(`[SyncEngine] Sync hiba:`,e)}finally{this.status.isRunning=!1}}async syncAll(e){let t={synced:0,failed:0,errors:[]},n=be(),r=Se(),i=Pe(),a=Oe(),o=F(),s=He(),c=Le(),l=Be(),u=n.length+r.length+i.length+a.length+o.length+s.length+c.length+l.length;if(u===0)return t;let d=this.getServerUrl(),f=e??this.getAuthToken();if(!f)return t.errors.push(`Nincs auth token — bejelentkezés szükséges`),t.failed=u,t;for(let e of n)try{await this.syncTransaction(d,f,e),we(e.id),t.synced++}catch(n){let r=n instanceof Error?n.message:String(n);if(t.failed++,t.errors.push(`TX #${e.id} (${e.type} ${e.currency_code}): ${r}`),W(n)||r.includes(`HTTP 401`)||r.includes(`HTTP 403`)){t.errors.push(`Auth/session hiba — további próbálkozások leállítva`),t.failed+=u-t.synced-t.failed;break}if(r.includes(`fetch`)||r.includes(`network`)||r.includes(`timeout`)){t.errors.push(`Hálózati hiba — további próbálkozások leállítva`),t.failed+=u-t.synced-t.failed;break}}if(t.errors.some(e=>e.includes(`Hálózati hiba`)))return t;for(let e of r)try{await this.syncConversion(d,f,e),Ce(e.id),t.synced++}catch(n){let r=n instanceof Error?n.message:String(n);if(t.failed++,t.errors.push(`CONV #${e.id} (${e.from_currency_code}->${e.to_currency_code}): ${r}`),W(n)||r.includes(`HTTP 401`)||r.includes(`HTTP 403`)){t.errors.push(`Auth/session hiba — további próbálkozások leállítva`),t.failed+=u-t.synced-t.failed;break}if(r.includes(`fetch`)||r.includes(`network`)||r.includes(`timeout`)){t.errors.push(`Hálózati hiba — további próbálkozások leállítva`),t.failed+=u-t.synced-t.failed;break}}if(t.errors.some(e=>e.includes(`Hálózati hiba`)))return t;for(let e of i)try{await this.syncBankTransaction(d,f,e),Fe(e.id),t.synced++}catch(n){let r=n instanceof Error?n.message:String(n);if(t.failed++,t.errors.push(`BANK #${e.id} (${e.transaction_type} ${e.currency_code}): ${r}`),W(n)||r.includes(`HTTP 401`)||r.includes(`HTTP 403`)){t.errors.push(`Auth/session hiba — további próbálkozások leállítva`),t.failed+=u-t.synced-t.failed;break}if(r.includes(`fetch`)||r.includes(`network`)||r.includes(`timeout`)){t.errors.push(`Hálózati hiba — további próbálkozások leállítva`),t.failed+=u-t.synced-t.failed;break}}if(t.errors.some(e=>e.includes(`Hálózati hiba`)))return t;for(let e of a)try{await this.syncDistribution(d,f,e),ke(e.id),t.synced++}catch(n){let r=n instanceof Error?n.message:String(n);if(t.failed++,t.errors.push(`DIST #${e.id} (${e.currency_code}): ${r}`),W(n)||r.includes(`HTTP 401`)||r.includes(`HTTP 403`)){t.errors.push(`Auth/session hiba — további próbálkozások leállítva`),t.failed+=u-t.synced-t.failed;break}if(r.includes(`fetch`)||r.includes(`network`)||r.includes(`timeout`)){t.errors.push(`Hálózati hiba — további próbálkozások leállítva`),t.failed+=u-t.synced-t.failed;break}}if(t.errors.some(e=>e.includes(`Hálózati hiba`)))return t;for(let e of o)try{await this.syncTransfer(d,f,e),je(e.id),t.synced++}catch(n){let r=n instanceof Error?n.message:String(n);if(t.failed++,t.errors.push(`TRANSFER #${e.id} (${e.currency_code}): ${r}`),W(n)||r.includes(`HTTP 401`)||r.includes(`HTTP 403`)){t.errors.push(`Auth/session hiba — további próbálkozások leállítva`),t.failed+=u-t.synced-t.failed;break}if(r.includes(`fetch`)||r.includes(`network`)||r.includes(`timeout`)){t.errors.push(`Hálózati hiba — további próbálkozások leállítva`),t.failed+=u-t.synced-t.failed;break}}if(t.errors.some(e=>e.includes(`Hálózati hiba`)))return t;for(let e of s)try{await this.syncCollection(d,f,e),Ue(e.id),t.synced++}catch(n){let r=n instanceof Error?n.message:String(n);if(t.failed++,t.errors.push(`COLLECTION #${e.id} (${e.currency_code}): ${r}`),W(n)||r.includes(`HTTP 401`)||r.includes(`HTTP 403`)){t.errors.push(`Auth/session hiba — további próbálkozások leállítva`),t.failed+=u-t.synced-t.failed;break}if(r.includes(`fetch`)||r.includes(`network`)||r.includes(`timeout`)){t.errors.push(`Hálózati hiba — további próbálkozások leállítva`),t.failed+=u-t.synced-t.failed;break}}if(t.errors.some(e=>e.includes(`Hálózati hiba`)))return t;for(let e of c)try{await this.syncStorno(d,f,e),Re(e.id),t.synced++}catch(n){let r=n instanceof Error?n.message:String(n);if(t.failed++,t.errors.push(`STORNO #${e.id} (${e.original_receipt_number}): ${r}`),W(n)||r.includes(`HTTP 401`)||r.includes(`HTTP 403`)){t.errors.push(`Auth/session hiba — további próbálkozások leállítva`),t.failed+=u-t.synced-t.failed;break}if(r.includes(`fetch`)||r.includes(`network`)||r.includes(`timeout`)){t.errors.push(`Hálózati hiba — további próbálkozások leállítva`),t.failed+=u-t.synced-t.failed;break}}if(t.errors.some(e=>e.includes(`Hálózati hiba`)))return t;for(let e of l)try{await this.syncHandoverOperation(d,f,e),Ve(e.id),t.synced++}catch(n){let r=n instanceof Error?n.message:String(n);if(t.failed++,t.errors.push(`HANDOVER #${e.id} (${e.operation_type}): ${r}`),W(n)||r.includes(`HTTP 401`)||r.includes(`HTTP 403`)){t.errors.push(`Auth/session hiba — további próbálkozások leállítva`),t.failed+=u-t.synced-t.failed;break}if(r.includes(`fetch`)||r.includes(`network`)||r.includes(`timeout`)){t.errors.push(`Hálózati hiba — további próbálkozások leállítva`),t.failed+=u-t.synced-t.failed;break}}return t}async syncTransaction(e,t,n){let r=n.type===`SELL`?`${e}/transactions/sell`:`${e}/transactions/buy`,i={currencyCode:n.currency_code,currencyAmount:n.foreign_amount,customExchangeRate:n.rate};n.handling_fee!==null&&n.handling_fee!==void 0&&(i.handlingFee=n.handling_fee),n.discount_percent!==null&&n.discount_percent!==void 0&&(i.discountPercent=n.discount_percent);let a=n.customer_identifier??(typeof n.customer_id==`string`?n.customer_id:null);if(a&&a.trim().length>0&&(i.customerId=a),n.customer_name&&n.customer_name.trim().length>0&&(i.customerName=n.customer_name),n.customer_document_number&&n.customer_document_number.trim().length>0&&(i.customerDocumentNumber=n.customer_document_number),n.customer_address&&n.customer_address.trim().length>0&&(i.customerAddress=n.customer_address),n.denominations!==null)try{i.denominations=JSON.parse(n.denominations)}catch{i.denominations=n.denominations}await K(r,i,t,n.idempotency_key??void 0)}async syncConversion(e,t,n){let r={fromAmount:n.from_amount};n.from_currency_id&&n.from_currency_id>0?r.fromCurrencyId=n.from_currency_id:r.fromCurrencyCode=n.from_currency_code,n.to_currency_id&&n.to_currency_id>0?r.toCurrencyId=n.to_currency_id:r.toCurrencyCode=n.to_currency_code,n.handling_fee!==null&&n.handling_fee!==void 0&&(r.handlingFee=n.handling_fee),n.customer_id&&n.customer_id.trim().length>0&&(r.customerId=n.customer_id),n.customer_name&&n.customer_name.trim().length>0&&(r.customerName=n.customer_name),n.customer_document_number&&n.customer_document_number.trim().length>0&&(r.customerDocumentNumber=n.customer_document_number),await K(`${e}/transactions/conversion`,r,t,n.idempotency_key??void 0)}async syncBankTransaction(e,t,n){let r={transactionType:n.transaction_type,currencyCode:n.currency_code,amount:n.amount,exchangeRate:n.exchange_rate};n.vault_territory_id!==null&&n.vault_territory_id!==void 0&&(r.vaultTerritoryId=n.vault_territory_id),n.bank_name&&n.bank_name.trim().length>0&&(r.bankName=n.bank_name),n.bank_reference&&n.bank_reference.trim().length>0&&(r.bankReference=n.bank_reference),n.note&&n.note.trim().length>0&&(r.note=n.note),await K(`${e}/ertektar/bank-transactions`,r,t,n.idempotency_key??void 0)}async syncStorno(e,t,n){let r={transactionId:n.transaction_id,reason:n.reason};n.approval_id&&(r.approvalId=n.approval_id),n.custom_exchange_rate!==null&&n.custom_exchange_rate!==void 0&&(r.customExchangeRate=n.custom_exchange_rate),n.payment_method&&(r.paymentMethodDid=n.payment_method),await K(`${e}/stornos/execute`,r,t,n.idempotency_key??void 0)}async syncDistribution(e,t,n){let r={targetBranchCode:n.target_branch_code,currencyCode:n.currency_code,amount:n.amount};if(n.denominations)try{r.denominations=JSON.parse(n.denominations)}catch{}n.note&&(r.note=n.note),await K(`${e}/ertektar/distribution`,r,t,n.idempotency_key??void 0)}async syncTransfer(e,t,n){let r={amount:n.amount,targetBranchCode:n.target_branch_code,currencyCode:n.currency_code};if(n.target_branch_id&&(r.toBranchId=n.target_branch_id),n.currency_id!==null&&n.currency_id!==void 0&&(r.currencyId=n.currency_id),n.transfer_type&&(r.transferType=n.transfer_type),n.huf_value!==null&&n.huf_value!==void 0&&(r.hufValue=n.huf_value),n.denominations)try{r.denominations=JSON.parse(n.denominations)}catch{}n.note&&(r.notes=n.note),await K(`${e}/transfers`,r,t,n.idempotency_key??void 0)}async syncCollection(e,t,n){let r={sourceBranchCode:n.source_branch_code,currencyCode:n.currency_code,amount:n.amount};n.note&&(r.note=n.note),await K(`${e}/ertektar/collections`,r,t,n.idempotency_key??void 0)}async syncHandoverOperation(e,t,n){if(n.operation_type===`GENERATE`){await K(`${e}/handover-sheets/generate`,{fromCashDeskId:n.from_cash_desk_id,toCashDeskId:n.to_cash_desk_id,transferDate:n.transfer_date,amounts:n.amounts_json?JSON.parse(n.amounts_json):{}},t,n.idempotency_key??void 0);return}if(!n.sheet_id)throw Error(`Hiányzó handover sheet id`);await K(n.operation_type===`PRINT`?`${e}/handover-sheets/${n.sheet_id}/print`:`${e}/handover-sheets/${n.sheet_id}/complete`,{},t,n.idempotency_key??void 0)}async syncRates(){try{let e=this.getServerUrl(),t=this.getAuthToken(),n=await G(`${e}/exchange-rates/pos-current`,t),r=Ee();if(!r||!Array.isArray(n))return;for(let e of n)r.run(`INSERT INTO cached_rates (currency_code, buy_rate, sell_rate, unit, updated_at,
+    <div class="amount-row"><span>Nyitó egyenleg:</span><span>${formatAmount(summary.openingBalance)} Ft</span></div>
+    <div class="amount-row"><span>Záró egyenleg:</span><span>${formatAmount(summary.closingBalance)} Ft</span></div>
+    ${discrepancyHtml}
+  `;
+}
+/** Egyszerű HTML escape az XSS elkerülésére. */
+function escHtml(str) {
+	return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+/**
+* Jövőbeli USB hőnyomtató integráció.
+* Közvetlen ESC/POS parancsokat küld a nyomtatónak USB-n vagy soros porton.
+*
+* Aktiváláshoz szükséges:
+*   1. `node-thermal-printer` vagy `escpos` npm csomag telepítése
+*   2. USB HID driver (libusb) a célgépen
+*   3. A PRINTER_CONFIG_KEY konfigba a nyomtató USB vendor/product ID beállítása
+*
+* @returns true ha sikerült nyomtatni, false ha nincs USB nyomtató (fallback-re vált)
+*/
+async function printToThermalUsb(_escPosContent) {
+	return false;
+}
+/**
+* Nyomtatás Electron beépített webContents.print() API-n keresztül.
+* Rejtett BrowserWindow-ban rendereli a bizonylat HTML-t, majd a rendszer
+* nyomtató-driverén keresztül kinyomtatja.
+*
+* @param html - A bizonylat HTML tartalma
+* @param printerName - Opcionális nyomtató név; ha nincs megadva, az alapértelmezett nyomtatót használja
+* @returns true ha a nyomtatás sikerült
+*/
+async function printViaElectron(html, printerName) {
+	let printWindow = null;
+	try {
+		printWindow = new electron.BrowserWindow({
+			show: false,
+			width: 302,
+			height: 800,
+			webPreferences: {
+				contextIsolation: true,
+				nodeIntegration: false
+			}
+		});
+		await printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+		const printOptions = {
+			silent: true,
+			printBackground: true,
+			margins: { marginType: "none" },
+			pageSize: {
+				width: 8e4,
+				height: 297e3
+			}
+		};
+		if (printerName) printOptions.deviceName = printerName;
+		return await new Promise((resolve) => {
+			printWindow.webContents.print(printOptions, (success, failureReason) => {
+				if (!success) import_main.default.warn(`[PRINTER] Nyomtatás sikertelen: ${failureReason}`);
+				resolve(success);
+			});
+		});
+	} catch (err) {
+		import_main.default.error("[PRINTER] printViaElectron hiba:", err);
+		return false;
+	} finally {
+		if (printWindow && !printWindow.isDestroyed()) printWindow.close();
+	}
+}
+/**
+* Bizonylat nyomtatás — fő belépési pont.
+*
+* Nyomtatási sorrend:
+*   1. Ha USB hőnyomtató konfigurálva van → ESC/POS közvetlen nyomtatás
+*   2. Egyébként → Electron webContents.print() rendszer nyomtatón keresztül
+*
+* Hibajelzések:
+*   - Nyomtató offline / nem elérhető → false visszatérés, log üzenet
+*   - Papír kifogyott → a rendszer driver kezeli, false visszatérés
+*
+* @param data - A bizonylat adatai
+* @param printerName - Opcionális nyomtató név felülírás
+* @returns true ha a nyomtatás sikeresen elindult
+*/
+async function printReceipt(data, printerName) {
+	try {
+		import_main.default.info(`[PRINTER] Nyomtatás indítása: ${data.type} ${data.receiptNumber}`);
+		if (await printToThermalUsb(generateReceiptContent(data))) {
+			import_main.default.info(`[PRINTER] USB hőnyomtató: OK — ${data.receiptNumber}`);
+			return true;
+		}
+		import_main.default.info("[PRINTER] USB nyomtató nem elérhető, Electron print fallback...");
+		const electronSuccess = await printViaElectron(generateReceiptHtml(data), printerName);
+		if (electronSuccess) import_main.default.info(`[PRINTER] Electron print: OK — ${data.receiptNumber}`);
+		else import_main.default.error(`[PRINTER] Nyomtatás sikertelen — ${data.receiptNumber}. Ellenőrizd a nyomtató állapotát (offline / papír kifogyott).`);
+		return electronSuccess;
+	} catch (err) {
+		import_main.default.error("[PRINTER] Váratlan nyomtatási hiba:", err);
+		return false;
+	}
+}
+//#endregion
+//#region electron/sync-engine.ts
+/**
+* SyncEngine — Offline → Online szinkronizáció.
+*
+* Feladatai:
+* 1. Pending tranzakciók szinkronizálása (30s intervallum)
+* 2. Árfolyamok letöltése és SQLite cache frissítése
+* 3. Körlevelek letöltése
+*
+* Életciklus:
+* - app.whenReady() → syncEngine.start()
+* - app.on('will-quit') → syncEngine.stop()
+*/
+var HttpStatusError = class extends Error {
+	status;
+	constructor(status, statusText) {
+		super(`HTTP ${status}: ${statusText}`);
+		this.status = status;
+	}
+};
+function isAuthStatusError(err) {
+	return err instanceof HttpStatusError && (err.status === 401 || err.status === 403);
+}
+async function httpGet(url, token) {
+	const headers = { "Content-Type": "application/json" };
+	if (token) headers["Authorization"] = `Bearer ${token}`;
+	const response = await fetch(url, {
+		method: "GET",
+		headers,
+		signal: AbortSignal.timeout(1e4)
+	});
+	if (!response.ok) throw new HttpStatusError(response.status, response.statusText);
+	return response.json();
+}
+async function httpPost(url, body, token, idempotencyKey) {
+	const headers = {
+		"Content-Type": "application/json",
+		"Idempotency-Key": idempotencyKey ?? crypto.randomUUID()
+	};
+	if (token) headers["Authorization"] = `Bearer ${token}`;
+	const response = await fetch(url, {
+		method: "POST",
+		headers,
+		body: JSON.stringify(body),
+		signal: AbortSignal.timeout(15e3)
+	});
+	if (!response.ok) throw new HttpStatusError(response.status, response.statusText);
+	return response.json();
+}
+var SyncEngine = class {
+	intervalId = null;
+	lastTokenValidationAt = 0;
+	tokenValidationTtlMs = 12e4;
+	status = {
+		lastSyncAt: null,
+		lastSyncResult: null,
+		isRunning: false
+	};
+	getServerUrl() {
+		return getConfig("server_url") ?? "http://localhost:8080/api/v1";
+	}
+	getBootstrapCredentials() {
+		const companyCode = process.env.PENZTAR_BOOTSTRAP_COMPANY_CODE?.trim() || getConfig("bootstrap_company_code")?.trim() || "";
+		const workerCode = process.env.PENZTAR_BOOTSTRAP_WORKER_CODE?.trim() || getConfig("bootstrap_worker_code")?.trim() || "";
+		const password = process.env.PENZTAR_BOOTSTRAP_PASSWORD?.trim() || getConfig("bootstrap_password")?.trim() || "";
+		const roleCode = process.env.PENZTAR_BOOTSTRAP_ROLE_CODE?.trim() || getConfig("bootstrap_role_code")?.trim() || null;
+		if (!companyCode || !workerCode || !password) return null;
+		return {
+			companyCode,
+			workerCode,
+			password,
+			roleCode
+		};
+	}
+	persistAuthToken(token) {
+		try {
+			if (electron.safeStorage.isEncryptionAvailable()) {
+				setConfig("auth_token_encrypted", electron.safeStorage.encryptString(token).toString("base64"));
+				deleteConfig("auth_token");
+				return;
+			}
+		} catch (err) {
+			console.warn("[SyncEngine] Token titkosított mentése nem sikerült, plaintext fallback:", err);
+		}
+		setConfig("auth_token", token);
+	}
+	clearStoredAuthToken() {
+		deleteConfig("auth_token_encrypted");
+		deleteConfig("auth_token");
+		this.lastTokenValidationAt = 0;
+	}
+	async validateToken(serverUrl, token) {
+		const now = Date.now();
+		if (now - this.lastTokenValidationAt < this.tokenValidationTtlMs) return true;
+		try {
+			await httpGet(`${serverUrl}/workers/me`, token);
+			this.lastTokenValidationAt = now;
+			return true;
+		} catch (err) {
+			if (isAuthStatusError(err)) return false;
+			throw err;
+		}
+	}
+	async bootstrapAuthSession(serverUrl) {
+		const credentials = this.getBootstrapCredentials();
+		if (!credentials) return null;
+		try {
+			const login = await httpPost(`${serverUrl}/auth/login`, {
+				companyCode: credentials.companyCode,
+				workerCode: credentials.workerCode,
+				password: credentials.password
+			}, null);
+			let token = login.token;
+			if (login.roleSelectionRequired && credentials.roleCode) token = (await httpPost(`${serverUrl}/auth/login/select-role`, {
+				token,
+				roleCode: credentials.roleCode
+			}, null)).token;
+			this.persistAuthToken(token);
+			this.lastTokenValidationAt = Date.now();
+			console.log("[SyncEngine] Lokális auth/session bootstrap sikeres");
+			return token;
+		} catch (err) {
+			if (isAuthStatusError(err)) console.warn("[SyncEngine] Lokális auth bootstrap sikertelen (401/403). Ellenőrizd a bootstrap credentialöket.");
+			else console.warn("[SyncEngine] Lokális auth bootstrap hiba:", err instanceof Error ? err.message : err);
+			return null;
+		}
+	}
+	getAuthToken() {
+		const encryptedToken = getConfig("auth_token_encrypted");
+		if (encryptedToken && electron.safeStorage.isEncryptionAvailable()) try {
+			return electron.safeStorage.decryptString(Buffer.from(encryptedToken, "base64"));
+		} catch (err) {
+			console.warn("[SyncEngine] Nem sikerült visszafejteni a tárolt auth tokent:", err);
+		}
+		return getConfig("auth_token");
+	}
+	/**
+	* Szinkronizáció indítása — periodikus (alapértelmezetten 30s).
+	*/
+	start(intervalMs = 3e4) {
+		if (this.intervalId) {
+			console.log("[SyncEngine] Már fut, újraindítás...");
+			this.stop();
+		}
+		console.log(`[SyncEngine] Indítás — ${intervalMs}ms intervallum`);
+		setTimeout(() => {
+			this.runSync();
+		}, 5e3);
+		this.intervalId = setInterval(() => {
+			this.runSync();
+		}, intervalMs);
+	}
+	/**
+	* Szinkronizáció leállítása.
+	*/
+	stop() {
+		if (this.intervalId) {
+			clearInterval(this.intervalId);
+			this.intervalId = null;
+			console.log("[SyncEngine] Leállítva");
+		}
+	}
+	/**
+	* Teljes szinkronizálási ciklus futtatása.
+	*/
+	async runSync() {
+		if (this.status.isRunning) {
+			console.log("[SyncEngine] Előző sync még fut, kihagyás");
+			return;
+		}
+		this.status.isRunning = true;
+		try {
+			const serverUrl = this.getServerUrl();
+			let token = this.getAuthToken();
+			if (token) {
+				if (!await this.validateToken(serverUrl, token)) {
+					this.clearStoredAuthToken();
+					token = await this.bootstrapAuthSession(serverUrl);
+				}
+			} else token = await this.bootstrapAuthSession(serverUrl);
+			const result = await this.syncAll(token);
+			this.status.lastSyncResult = result;
+			if (result.synced > 0) console.log(`[SyncEngine] ${result.synced} tranzakció szinkronizálva`);
+			if (result.failed > 0) console.warn(`[SyncEngine] ${result.failed} tranzakció SIKERTELEN:`, result.errors);
+			if (token) {
+				await this.syncRates();
+				await this.syncCirculars();
+				await this.syncDistributions();
+				await this.syncTransfers();
+				await this.syncCollections();
+				await this.cacheBranchStatus();
+				await this.syncCashDeskMasterData();
+				await this.syncWorkerMasterData();
+			}
+			this.status.lastSyncAt = (/* @__PURE__ */ new Date()).toISOString();
+		} catch (err) {
+			console.error("[SyncEngine] Sync hiba:", err);
+		} finally {
+			this.status.isRunning = false;
+		}
+	}
+	/**
+	* Pending tranzakciók szinkronizálása a szerverrel.
+	*/
+	async syncAll(tokenOverride) {
+		const result = {
+			synced: 0,
+			failed: 0,
+			errors: []
+		};
+		const pendingTransactions = getPendingTransactions();
+		const pendingConversions = getPendingConversions();
+		const pendingBankTransactions = getPendingBankTransactions();
+		const pendingDistributions = getPendingDistributions();
+		const pendingTransfers = getPendingTransfers();
+		const pendingCollections = getPendingCollections();
+		const pendingStornos = getPendingStornos();
+		const pendingHandoverOperations = getPendingHandoverOperations();
+		const totalPending = pendingTransactions.length + pendingConversions.length + pendingBankTransactions.length + pendingDistributions.length + pendingTransfers.length + pendingCollections.length + pendingStornos.length + pendingHandoverOperations.length;
+		if (totalPending === 0) return result;
+		const serverUrl = this.getServerUrl();
+		const token = tokenOverride ?? this.getAuthToken();
+		if (!token) {
+			result.errors.push("Nincs auth token — bejelentkezés szükséges");
+			result.failed = totalPending;
+			return result;
+		}
+		for (const tx of pendingTransactions) try {
+			await this.syncTransaction(serverUrl, token, tx);
+			markTransactionSynced(tx.id);
+			result.synced++;
+		} catch (err) {
+			const errorMsg = err instanceof Error ? err.message : String(err);
+			result.failed++;
+			result.errors.push(`TX #${tx.id} (${tx.type} ${tx.currency_code}): ${errorMsg}`);
+			if (isAuthStatusError(err) || errorMsg.includes("HTTP 401") || errorMsg.includes("HTTP 403")) {
+				result.errors.push("Auth/session hiba — további próbálkozások leállítva");
+				result.failed += totalPending - result.synced - result.failed;
+				break;
+			}
+			if (errorMsg.includes("fetch") || errorMsg.includes("network") || errorMsg.includes("timeout")) {
+				result.errors.push("Hálózati hiba — további próbálkozások leállítva");
+				result.failed += totalPending - result.synced - result.failed;
+				break;
+			}
+		}
+		if (result.errors.some((error) => error.includes("Hálózati hiba"))) return result;
+		for (const conversion of pendingConversions) try {
+			await this.syncConversion(serverUrl, token, conversion);
+			markConversionSynced(conversion.id);
+			result.synced++;
+		} catch (err) {
+			const errorMsg = err instanceof Error ? err.message : String(err);
+			result.failed++;
+			result.errors.push(`CONV #${conversion.id} (${conversion.from_currency_code}->${conversion.to_currency_code}): ${errorMsg}`);
+			if (isAuthStatusError(err) || errorMsg.includes("HTTP 401") || errorMsg.includes("HTTP 403")) {
+				result.errors.push("Auth/session hiba — további próbálkozások leállítva");
+				result.failed += totalPending - result.synced - result.failed;
+				break;
+			}
+			if (errorMsg.includes("fetch") || errorMsg.includes("network") || errorMsg.includes("timeout")) {
+				result.errors.push("Hálózati hiba — további próbálkozások leállítva");
+				result.failed += totalPending - result.synced - result.failed;
+				break;
+			}
+		}
+		if (result.errors.some((error) => error.includes("Hálózati hiba"))) return result;
+		for (const bankTransaction of pendingBankTransactions) try {
+			await this.syncBankTransaction(serverUrl, token, bankTransaction);
+			markBankTransactionSynced(bankTransaction.id);
+			result.synced++;
+		} catch (err) {
+			const errorMsg = err instanceof Error ? err.message : String(err);
+			result.failed++;
+			result.errors.push(`BANK #${bankTransaction.id} (${bankTransaction.transaction_type} ${bankTransaction.currency_code}): ${errorMsg}`);
+			if (isAuthStatusError(err) || errorMsg.includes("HTTP 401") || errorMsg.includes("HTTP 403")) {
+				result.errors.push("Auth/session hiba — további próbálkozások leállítva");
+				result.failed += totalPending - result.synced - result.failed;
+				break;
+			}
+			if (errorMsg.includes("fetch") || errorMsg.includes("network") || errorMsg.includes("timeout")) {
+				result.errors.push("Hálózati hiba — további próbálkozások leállítva");
+				result.failed += totalPending - result.synced - result.failed;
+				break;
+			}
+		}
+		if (result.errors.some((error) => error.includes("Hálózati hiba"))) return result;
+		for (const distribution of pendingDistributions) try {
+			await this.syncDistribution(serverUrl, token, distribution);
+			markDistributionSynced(distribution.id);
+			result.synced++;
+		} catch (err) {
+			const errorMsg = err instanceof Error ? err.message : String(err);
+			result.failed++;
+			result.errors.push(`DIST #${distribution.id} (${distribution.currency_code}): ${errorMsg}`);
+			if (isAuthStatusError(err) || errorMsg.includes("HTTP 401") || errorMsg.includes("HTTP 403")) {
+				result.errors.push("Auth/session hiba — további próbálkozások leállítva");
+				result.failed += totalPending - result.synced - result.failed;
+				break;
+			}
+			if (errorMsg.includes("fetch") || errorMsg.includes("network") || errorMsg.includes("timeout")) {
+				result.errors.push("Hálózati hiba — további próbálkozások leállítva");
+				result.failed += totalPending - result.synced - result.failed;
+				break;
+			}
+		}
+		if (result.errors.some((error) => error.includes("Hálózati hiba"))) return result;
+		for (const transfer of pendingTransfers) try {
+			await this.syncTransfer(serverUrl, token, transfer);
+			markTransferSynced(transfer.id);
+			result.synced++;
+		} catch (err) {
+			const errorMsg = err instanceof Error ? err.message : String(err);
+			result.failed++;
+			result.errors.push(`TRANSFER #${transfer.id} (${transfer.currency_code}): ${errorMsg}`);
+			if (isAuthStatusError(err) || errorMsg.includes("HTTP 401") || errorMsg.includes("HTTP 403")) {
+				result.errors.push("Auth/session hiba — további próbálkozások leállítva");
+				result.failed += totalPending - result.synced - result.failed;
+				break;
+			}
+			if (errorMsg.includes("fetch") || errorMsg.includes("network") || errorMsg.includes("timeout")) {
+				result.errors.push("Hálózati hiba — további próbálkozások leállítva");
+				result.failed += totalPending - result.synced - result.failed;
+				break;
+			}
+		}
+		if (result.errors.some((error) => error.includes("Hálózati hiba"))) return result;
+		for (const collection of pendingCollections) try {
+			await this.syncCollection(serverUrl, token, collection);
+			markCollectionSynced(collection.id);
+			result.synced++;
+		} catch (err) {
+			const errorMsg = err instanceof Error ? err.message : String(err);
+			result.failed++;
+			result.errors.push(`COLLECTION #${collection.id} (${collection.currency_code}): ${errorMsg}`);
+			if (isAuthStatusError(err) || errorMsg.includes("HTTP 401") || errorMsg.includes("HTTP 403")) {
+				result.errors.push("Auth/session hiba — további próbálkozások leállítva");
+				result.failed += totalPending - result.synced - result.failed;
+				break;
+			}
+			if (errorMsg.includes("fetch") || errorMsg.includes("network") || errorMsg.includes("timeout")) {
+				result.errors.push("Hálózati hiba — további próbálkozások leállítva");
+				result.failed += totalPending - result.synced - result.failed;
+				break;
+			}
+		}
+		if (result.errors.some((error) => error.includes("Hálózati hiba"))) return result;
+		for (const storno of pendingStornos) try {
+			await this.syncStorno(serverUrl, token, storno);
+			markStornoSynced(storno.id);
+			result.synced++;
+		} catch (err) {
+			const errorMsg = err instanceof Error ? err.message : String(err);
+			result.failed++;
+			result.errors.push(`STORNO #${storno.id} (${storno.original_receipt_number}): ${errorMsg}`);
+			if (isAuthStatusError(err) || errorMsg.includes("HTTP 401") || errorMsg.includes("HTTP 403")) {
+				result.errors.push("Auth/session hiba — további próbálkozások leállítva");
+				result.failed += totalPending - result.synced - result.failed;
+				break;
+			}
+			if (errorMsg.includes("fetch") || errorMsg.includes("network") || errorMsg.includes("timeout")) {
+				result.errors.push("Hálózati hiba — további próbálkozások leállítva");
+				result.failed += totalPending - result.synced - result.failed;
+				break;
+			}
+		}
+		if (result.errors.some((error) => error.includes("Hálózati hiba"))) return result;
+		for (const operation of pendingHandoverOperations) try {
+			await this.syncHandoverOperation(serverUrl, token, operation);
+			markHandoverOperationSynced(operation.id);
+			result.synced++;
+		} catch (err) {
+			const errorMsg = err instanceof Error ? err.message : String(err);
+			result.failed++;
+			result.errors.push(`HANDOVER #${operation.id} (${operation.operation_type}): ${errorMsg}`);
+			if (isAuthStatusError(err) || errorMsg.includes("HTTP 401") || errorMsg.includes("HTTP 403")) {
+				result.errors.push("Auth/session hiba — további próbálkozások leállítva");
+				result.failed += totalPending - result.synced - result.failed;
+				break;
+			}
+			if (errorMsg.includes("fetch") || errorMsg.includes("network") || errorMsg.includes("timeout")) {
+				result.errors.push("Hálózati hiba — további próbálkozások leállítva");
+				result.failed += totalPending - result.synced - result.failed;
+				break;
+			}
+		}
+		return result;
+	}
+	/**
+	* Egyedi tranzakció szinkronizálása.
+	*/
+	async syncTransaction(serverUrl, token, tx) {
+		const endpoint = tx.type === "SELL" ? `${serverUrl}/transactions/sell` : `${serverUrl}/transactions/buy`;
+		const body = {
+			currencyCode: tx.currency_code,
+			currencyAmount: tx.foreign_amount,
+			customExchangeRate: tx.rate
+		};
+		if (tx.handling_fee !== null && tx.handling_fee !== void 0) body["handlingFee"] = tx.handling_fee;
+		if (tx.discount_percent !== null && tx.discount_percent !== void 0) body["discountPercent"] = tx.discount_percent;
+		const customerIdentifier = tx.customer_identifier ?? (typeof tx.customer_id === "string" ? tx.customer_id : null);
+		if (customerIdentifier && customerIdentifier.trim().length > 0) body["customerId"] = customerIdentifier;
+		if (tx.customer_name && tx.customer_name.trim().length > 0) body["customerName"] = tx.customer_name;
+		if (tx.customer_document_number && tx.customer_document_number.trim().length > 0) body["customerDocumentNumber"] = tx.customer_document_number;
+		if (tx.customer_address && tx.customer_address.trim().length > 0) body["customerAddress"] = tx.customer_address;
+		if (tx.denominations !== null) try {
+			body["denominations"] = JSON.parse(tx.denominations);
+		} catch {
+			body["denominations"] = tx.denominations;
+		}
+		await httpPost(endpoint, body, token, tx.idempotency_key ?? void 0);
+	}
+	async syncConversion(serverUrl, token, conversion) {
+		const body = { fromAmount: conversion.from_amount };
+		if (conversion.from_currency_id && conversion.from_currency_id > 0) body["fromCurrencyId"] = conversion.from_currency_id;
+		else body["fromCurrencyCode"] = conversion.from_currency_code;
+		if (conversion.to_currency_id && conversion.to_currency_id > 0) body["toCurrencyId"] = conversion.to_currency_id;
+		else body["toCurrencyCode"] = conversion.to_currency_code;
+		if (conversion.handling_fee !== null && conversion.handling_fee !== void 0) body["handlingFee"] = conversion.handling_fee;
+		if (conversion.customer_id && conversion.customer_id.trim().length > 0) body["customerId"] = conversion.customer_id;
+		if (conversion.customer_name && conversion.customer_name.trim().length > 0) body["customerName"] = conversion.customer_name;
+		if (conversion.customer_document_number && conversion.customer_document_number.trim().length > 0) body["customerDocumentNumber"] = conversion.customer_document_number;
+		await httpPost(`${serverUrl}/transactions/conversion`, body, token, conversion.idempotency_key ?? void 0);
+	}
+	async syncBankTransaction(serverUrl, token, bankTransaction) {
+		const body = {
+			transactionType: bankTransaction.transaction_type,
+			currencyCode: bankTransaction.currency_code,
+			amount: bankTransaction.amount,
+			exchangeRate: bankTransaction.exchange_rate
+		};
+		if (bankTransaction.vault_territory_id !== null && bankTransaction.vault_territory_id !== void 0) body["vaultTerritoryId"] = bankTransaction.vault_territory_id;
+		if (bankTransaction.bank_name && bankTransaction.bank_name.trim().length > 0) body["bankName"] = bankTransaction.bank_name;
+		if (bankTransaction.bank_reference && bankTransaction.bank_reference.trim().length > 0) body["bankReference"] = bankTransaction.bank_reference;
+		if (bankTransaction.note && bankTransaction.note.trim().length > 0) body["note"] = bankTransaction.note;
+		await httpPost(`${serverUrl}/ertektar/bank-transactions`, body, token, bankTransaction.idempotency_key ?? void 0);
+	}
+	async syncStorno(serverUrl, token, storno) {
+		const body = {
+			transactionId: storno.transaction_id,
+			reason: storno.reason
+		};
+		if (storno.approval_id) body["approvalId"] = storno.approval_id;
+		if (storno.custom_exchange_rate !== null && storno.custom_exchange_rate !== void 0) body["customExchangeRate"] = storno.custom_exchange_rate;
+		if (storno.payment_method) body["paymentMethodDid"] = storno.payment_method;
+		await httpPost(`${serverUrl}/stornos/execute`, body, token, storno.idempotency_key ?? void 0);
+	}
+	async syncDistribution(serverUrl, token, dist) {
+		const body = {
+			targetBranchCode: dist.target_branch_code,
+			currencyCode: dist.currency_code,
+			amount: dist.amount
+		};
+		if (dist.denominations) try {
+			body["denominations"] = JSON.parse(dist.denominations);
+		} catch {}
+		if (dist.note) body["note"] = dist.note;
+		await httpPost(`${serverUrl}/ertektar/distribution`, body, token, dist.idempotency_key ?? void 0);
+	}
+	async syncTransfer(serverUrl, token, tx) {
+		const body = {
+			amount: tx.amount,
+			targetBranchCode: tx.target_branch_code,
+			currencyCode: tx.currency_code
+		};
+		if (tx.target_branch_id) body["toBranchId"] = tx.target_branch_id;
+		if (tx.currency_id !== null && tx.currency_id !== void 0) body["currencyId"] = tx.currency_id;
+		if (tx.transfer_type) body["transferType"] = tx.transfer_type;
+		if (tx.huf_value !== null && tx.huf_value !== void 0) body["hufValue"] = tx.huf_value;
+		if (tx.denominations) try {
+			body["denominations"] = JSON.parse(tx.denominations);
+		} catch {}
+		if (tx.note) body["notes"] = tx.note;
+		await httpPost(`${serverUrl}/transfers`, body, token, tx.idempotency_key ?? void 0);
+	}
+	async syncCollection(serverUrl, token, col) {
+		const body = {
+			sourceBranchCode: col.source_branch_code,
+			currencyCode: col.currency_code,
+			amount: col.amount
+		};
+		if (col.note) body["note"] = col.note;
+		await httpPost(`${serverUrl}/ertektar/collections`, body, token, col.idempotency_key ?? void 0);
+	}
+	async syncHandoverOperation(serverUrl, token, operation) {
+		if (operation.operation_type === "GENERATE") {
+			await httpPost(`${serverUrl}/handover-sheets/generate`, {
+				fromCashDeskId: operation.from_cash_desk_id,
+				toCashDeskId: operation.to_cash_desk_id,
+				transferDate: operation.transfer_date,
+				amounts: operation.amounts_json ? JSON.parse(operation.amounts_json) : {}
+			}, token, operation.idempotency_key ?? void 0);
+			return;
+		}
+		if (!operation.sheet_id) throw new Error("Hiányzó handover sheet id");
+		await httpPost(operation.operation_type === "PRINT" ? `${serverUrl}/handover-sheets/${operation.sheet_id}/print` : `${serverUrl}/handover-sheets/${operation.sheet_id}/complete`, {}, token, operation.idempotency_key ?? void 0);
+	}
+	/**
+	* Árfolyamok letöltése és SQLite cache frissítése.
+	*
+	* Legacy: ArfolyamBeolvasas — FTP szerveren lévő NR*.DAT fájl letöltése
+	* és a helyi ARFOLYAM tábla frissítése.
+	* Új rendszer: REST API-n keresztül kéri le az aktuális árfolyamokat.
+	*/
+	async syncRates() {
+		try {
+			const serverUrl = this.getServerUrl();
+			const token = this.getAuthToken();
+			const rates = await httpGet(`${serverUrl}/exchange-rates/pos-current`, token);
+			const db = getDb();
+			if (!db || !Array.isArray(rates)) return;
+			for (const rate of rates) db.run(`INSERT INTO cached_rates (currency_code, buy_rate, sell_rate, unit, updated_at,
              official_rate, limit1_amount, limit1_buy_rate, limit1_sell_rate,
              limit2_amount, limit2_buy_rate, limit2_sell_rate,
              limit3_amount, limit3_buy_rate, limit3_sell_rate)
@@ -522,7 +4146,45 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
              limit2_sell_rate = excluded.limit2_sell_rate,
              limit3_amount = excluded.limit3_amount,
              limit3_buy_rate = excluded.limit3_buy_rate,
-             limit3_sell_rate = excluded.limit3_sell_rate`,[e.currencyCode,e.buyRate,e.sellRate,e.unit,e.updatedAt,e.officialRate??null,e.limit1Amount??null,e.limit1BuyRate??null,e.limit1SellRate??null,e.limit2Amount??null,e.limit2BuyRate??null,e.limit2SellRate??null,e.limit3Amount??null,e.limit3BuyRate??null,e.limit3SellRate??null]);O(),console.log(`[SyncEngine] ${n.length} árfolyam frissítve`)}catch(e){if(W(e)){this.clearStoredAuthToken(),console.warn(`[SyncEngine] Árfolyam sync auth hiba (401/403), session újra-bootstrap szükséges.`);return}console.warn(`[SyncEngine] Árfolyam sync hiba:`,e instanceof Error?e.message:e)}}async syncCirculars(){try{let e=this.getServerUrl(),t=this.getAuthToken(),n=await G(`${e}/circulars`,t),r=Ee();if(!r||!Array.isArray(n))return;r.run(`
+             limit3_sell_rate = excluded.limit3_sell_rate`, [
+				rate.currencyCode,
+				rate.buyRate,
+				rate.sellRate,
+				rate.unit,
+				rate.updatedAt,
+				rate.officialRate ?? null,
+				rate.limit1Amount ?? null,
+				rate.limit1BuyRate ?? null,
+				rate.limit1SellRate ?? null,
+				rate.limit2Amount ?? null,
+				rate.limit2BuyRate ?? null,
+				rate.limit2SellRate ?? null,
+				rate.limit3Amount ?? null,
+				rate.limit3BuyRate ?? null,
+				rate.limit3SellRate ?? null
+			]);
+			saveDatabase();
+			console.log(`[SyncEngine] ${rates.length} árfolyam frissítve`);
+		} catch (err) {
+			if (isAuthStatusError(err)) {
+				this.clearStoredAuthToken();
+				console.warn("[SyncEngine] Árfolyam sync auth hiba (401/403), session újra-bootstrap szükséges.");
+				return;
+			}
+			console.warn("[SyncEngine] Árfolyam sync hiba:", err instanceof Error ? err.message : err);
+		}
+	}
+	/**
+	* Körlevelek letöltése és SQLite-ba mentése.
+	*/
+	async syncCirculars() {
+		try {
+			const serverUrl = this.getServerUrl();
+			const token = this.getAuthToken();
+			const circulars = await httpGet(`${serverUrl}/circulars`, token);
+			const db = getDb();
+			if (!db || !Array.isArray(circulars)) return;
+			db.run(`
         CREATE TABLE IF NOT EXISTS cached_circulars (
           id INTEGER PRIMARY KEY,
           subject TEXT NOT NULL,
@@ -532,10 +4194,765 @@ You can also set it through log.transports.file.setAppName()`);return e}getAppPa
           acknowledged INTEGER DEFAULT 0,
           cached_at TEXT DEFAULT (datetime('now'))
         )
-      `);for(let e of n)r.run(`INSERT INTO cached_circulars (id, subject, body, sender, sent_at)
+      `);
+			for (const circular of circulars) db.run(`INSERT INTO cached_circulars (id, subject, body, sender, sent_at)
            VALUES (?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              subject = excluded.subject,
              body = excluded.body,
              sender = excluded.sender,
-             sent_at = excluded.sent_at`,[e.id,e.subject,e.body,e.sender,e.sentAt]);n.length>0&&(O(),console.log(`[SyncEngine] ${n.length} körlevél szinkronizálva`))}catch(e){if(W(e)){this.clearStoredAuthToken(),console.warn(`[SyncEngine] Körlevél sync auth hiba (401/403), session újra-bootstrap szükséges.`);return}console.warn(`[SyncEngine] Körlevél sync hiba:`,e instanceof Error?e.message:e)}}async syncDistributions(){try{let e=Oe();if(e.length===0)return;let t=this.getServerUrl(),n=this.getAuthToken();if(!n)return;for(let r of e)try{let e={targetBranchCode:r.target_branch_code,currencyCode:r.currency_code,amount:r.amount};if(r.denominations)try{e.denominations=JSON.parse(r.denominations)}catch{}r.note&&(e.note=r.note),await K(`${t}/ertektar/distribution`,e,n,r.idempotency_key??void 0),ke(r.id)}catch(e){if(W(e)){this.clearStoredAuthToken(),console.warn(`[SyncEngine] Distribution auth hiba (401/403), ciklus leállítva.`);break}console.warn(`[SyncEngine] Distribution #${r.id} sync hiba:`,e instanceof Error?e.message:e);break}}catch(e){console.warn(`[SyncEngine] Distribution sync hiba:`,e instanceof Error?e.message:e)}}async syncTransfers(){try{let e=F();if(e.length===0)return;let t=this.getServerUrl(),n=this.getAuthToken();if(!n)return;for(let r of e)try{let e={amount:r.amount};if(r.target_branch_id&&(e.toBranchId=r.target_branch_id),e.targetBranchCode=r.target_branch_code,r.currency_id!==null&&r.currency_id!==void 0&&(e.currencyId=r.currency_id),e.currencyCode=r.currency_code,r.transfer_type&&(e.transferType=r.transfer_type),r.huf_value!==null&&r.huf_value!==void 0&&(e.hufValue=r.huf_value),r.denominations)try{e.denominations=JSON.parse(r.denominations)}catch{}r.note&&(e.notes=r.note),await K(`${t}/transfers`,e,n,r.idempotency_key??void 0),je(r.id)}catch(e){if(W(e)){this.clearStoredAuthToken(),console.warn(`[SyncEngine] Transfer auth hiba (401/403), ciklus leállítva.`);break}console.warn(`[SyncEngine] Transfer #${r.id} sync hiba:`,e instanceof Error?e.message:e);break}}catch(e){console.warn(`[SyncEngine] Transfer sync hiba:`,e instanceof Error?e.message:e)}}async syncCollections(){try{let e=He();if(e.length===0)return;let t=this.getServerUrl(),n=this.getAuthToken();if(!n)return;for(let r of e)try{let e={sourceBranchCode:r.source_branch_code,currencyCode:r.currency_code,amount:r.amount};r.note&&(e.note=r.note),await K(`${t}/ertektar/collections`,e,n,r.idempotency_key??void 0),Ue(r.id)}catch(e){if(W(e)){this.clearStoredAuthToken(),console.warn(`[SyncEngine] Collection auth hiba (401/403), ciklus leállítva.`);break}console.warn(`[SyncEngine] Collection #${r.id} sync hiba:`,e instanceof Error?e.message:e);break}}catch(e){console.warn(`[SyncEngine] Collection sync hiba:`,e instanceof Error?e.message:e)}}async cacheBranchStatus(){try{let e=this.getServerUrl(),t=this.getAuthToken(),n=await G(`${e}/ertektar/branches/status`,t);if(!Array.isArray(n))return;for(let e of n)We(e.code,e.name,e.companyId,e.lastSyncAt,e.onlineStatus,e.totalHufValue,e.dailyTurnover,e.cashBalances?JSON.stringify(e.cashBalances):null);n.length>0&&console.log(`[SyncEngine] ${n.length} pénztár státusz cache-elve`)}catch(e){if(W(e)){this.clearStoredAuthToken(),console.warn(`[SyncEngine] Branch status auth hiba (401/403), session újra-bootstrap szükséges.`);return}console.warn(`[SyncEngine] Branch status cache hiba:`,e instanceof Error?e.message:e)}}async syncCashDeskMasterData(){try{let e=this.getServerUrl(),t=this.getAuthToken(),n=await G(`${e}/branches?activeOnly=true`,t);if(!Array.isArray(n))return;for(let e of n)qe(e.id,e.code,e.name,e.companyId??null,e.city??null,e.isActive??!0);n.length>0&&console.log(`[SyncEngine] ${n.length} pénztár törzs rekord cache-elve`)}catch(e){if(W(e)){this.clearStoredAuthToken(),console.warn(`[SyncEngine] Pénztár törzs sync auth hiba (401/403), session újra-bootstrap szükséges.`);return}console.warn(`[SyncEngine] Pénztár törzs sync hiba:`,e instanceof Error?e.message:e)}}async syncWorkerMasterData(){try{let e=this.getServerUrl(),t=this.getAuthToken(),n=await G(`${e}/workers/active`,t);if(!Array.isArray(n))return;for(let e of n)Xe(e.id,e.workerCode??null,e.fullName,e.role??null,e.branchId??null,e.branchCode??null,e.branchName??null,e.companyId??null,e.companyCode??null,e.active??!0);n.length>0&&console.log(`[SyncEngine] ${n.length} dolgozó törzs rekord cache-elve`)}catch(e){if(W(e)){this.clearStoredAuthToken(),console.warn(`[SyncEngine] Dolgozó törzs sync auth hiba (401/403), session újra-bootstrap szükséges.`);return}console.warn(`[SyncEngine] Dolgozó törzs sync hiba:`,e instanceof Error?e.message:e)}}getStatus(){return{...this.status}}},J=`C:/valuta/camera`;function ht(e){let t=e.replace(/[^a-zA-Z0-9_-]/g,``);if(!t||t!==e)throw Error(`Invalid transactionId: `+e);return t}function Y(e){return p.default.existsSync(e)?p.default.readdirSync(e).filter(t=>{let n=u.default.join(e,t);return p.default.existsSync(n)&&p.default.statSync(n).isDirectory()}):[]}function X(e){if(!p.default.existsSync(e))return[];let t=[],n=p.default.readdirSync(e,{withFileTypes:!0});for(let r of n){let n=u.default.join(e,r.name);r.isDirectory()?t.push(...X(n)):r.isFile()&&t.push(n)}return t}function gt(e,t){if(!p.default.existsSync(e))return 0;p.default.mkdirSync(t,{recursive:!0});let n=0,r=p.default.readdirSync(e,{withFileTypes:!0});for(let i of r){let r=u.default.join(e,i.name),a=u.default.join(t,i.name);i.isDirectory()?n+=gt(r,a):i.isFile()&&(p.default.mkdirSync(u.default.dirname(a),{recursive:!0}),p.default.copyFileSync(r,a),n+=1)}return n}l.ipcMain.handle(`camera-save-recording`,async(e,t,n,r)=>{let i=new Date().toISOString().slice(0,10),a=ht(t),o=u.default.join(J,i,a);p.default.mkdirSync(o,{recursive:!0});let s=`recording_${Date.now()}.${r}`,c=u.default.join(o,s);return p.default.writeFileSync(c,Buffer.from(n)),c}),l.ipcMain.handle(`camera-export-to-usb`,async(e,t,n)=>{let r=await l.dialog.showOpenDialog({title:`Válaszd ki az USB meghajtót`,properties:[`openDirectory`],buttonLabel:`Exportálás ide`});if(r.canceled||!r.filePaths[0])return{success:!1,exported:0,error:`Megszakítva`};let i=new Date(t),a=new Date(n);if(Number.isNaN(i.getTime())||Number.isNaN(a.getTime()))return{success:!1,exported:0,error:`Érvénytelen dátum`};if(i>a)return{success:!1,exported:0,error:`A dátumtartomány hibás`};try{let e=u.default.join(r.filePaths[0],`valuta_kamera_export`);p.default.mkdirSync(e,{recursive:!0});let t=0,n=Y(J);for(let r of n){let n=new Date(r);if(Number.isNaN(n.getTime())||n<i||n>a)continue;let o=u.default.join(J,r),s=u.default.join(e,r);t+=gt(o,s)}return{success:!0,exported:t}}catch(e){return{success:!1,exported:0,error:`Írási hiba: ${e.message}`}}}),l.ipcMain.handle(`camera-list-recordings`,async(e,t)=>{if(!p.default.existsSync(J))return[];if(t){let e=[],n=ht(t),r=Y(J);for(let t of r){let r=u.default.join(J,t,n);e.push(...X(r))}return e}return X(J)});function _t(e){if(!p.default.existsSync(e))return 0;let t=0,n=p.default.readdirSync(e,{withFileTypes:!0});for(let r of n){let n=u.default.join(e,r.name);if(r.isDirectory())t+=_t(n);else if(r.isFile())try{t+=p.default.statSync(n).size}catch{}}return t}l.ipcMain.handle(`camera-local-storage-stats`,async()=>{if(!p.default.existsSync(J))return{totalUsageBytes:0,availableSpaceBytes:0,totalRecordings:0,oldestDate:null,newestDate:null};let e=_t(J),t=X(J),n=Y(J).sort(),r=0;try{let e=p.default.statfsSync(J);r=Number(e.bavail)*Number(e.bsize)}catch{}return{totalUsageBytes:e,availableSpaceBytes:r,totalRecordings:t.length,oldestDate:n.length>0?n[0]:null,newestDate:n.length>0?n[n.length-1]:null}}),l.ipcMain.handle(`camera-local-recordings-by-date`,async(e,t,n)=>{if(!p.default.existsSync(J))return[];let r=new Date(t),i=new Date(n);if(Number.isNaN(r.getTime())||Number.isNaN(i.getTime()))return[];let a=[],o=Y(J);for(let e of o){let t=new Date(e);if(Number.isNaN(t.getTime())||t<r||t>i)continue;let n=Y(u.default.join(J,e));for(let t of n){let n=X(u.default.join(J,e,t));for(let r of n)try{let n=p.default.statSync(r);a.push({date:e,transactionId:t,filePath:r,fileSizeBytes:n.size,createdAt:n.birthtime.toISOString()})}catch{}}}return a}),l.ipcMain.handle(`camera-local-read-file`,async(e,t)=>{let n=u.default.resolve(t);return!n.startsWith(u.default.resolve(J))||!p.default.existsSync(n)?null:p.default.readFileSync(n).toString(`base64`)}),l.ipcMain.handle(`camera-local-cleanup`,async(e,t)=>{if(!p.default.existsSync(J))return{deletedCount:0};let n=new Date;n.setDate(n.getDate()-t);let r=0;for(let e of Y(J)){let t=new Date(e);if(Number.isNaN(t.getTime())||t>=n)continue;let i=u.default.join(J,e),a=X(i).length;try{p.default.rmSync(i,{recursive:!0,force:!0}),r+=a}catch{}}return{deletedCount:r}});var Z=`C:/valuta/scan`,vt=`C:/valuta/.scan_key`;function yt(e){let t=e.replace(/[^a-zA-Z0-9_-]/g,``);if(!t||t!==e)throw Error(`Invalid transactionId: `+e);return t}function bt(){if(p.default.existsSync(vt)){let e=p.default.readFileSync(vt,`utf8`).trim();return Buffer.from(e,`base64`)}let e=m.default.randomBytes(32);return p.default.writeFileSync(vt,e.toString(`base64`),{mode:384}),e}function xt(e){let t=bt(),n=m.default.randomBytes(16),r=m.default.createCipheriv(`aes-256-gcm`,t,n),i=Buffer.concat([r.update(e),r.final()]),a=r.getAuthTag();return{encrypted:i,iv:n.toString(`hex`),tag:a.toString(`hex`)}}function St(e,t,n){let r=bt(),i=m.default.createDecipheriv(`aes-256-gcm`,r,Buffer.from(t,`hex`));return i.setAuthTag(Buffer.from(n,`hex`)),Buffer.concat([i.update(e),i.final()])}l.ipcMain.handle(`scan-save-document`,async(e,t,n,r)=>{let{encrypted:i,iv:a,tag:o}=xt(Buffer.from(r,`base64`)),s=new Date().toISOString().slice(0,10),c=yt(t),l=u.default.join(Z,s,c);p.default.mkdirSync(l,{recursive:!0});let d=`${n}_${Date.now()}.enc`,f=u.default.join(l,d);return p.default.writeFileSync(f,i),p.default.writeFileSync(`${f}.meta`,JSON.stringify({iv:a,tag:o,documentType:n,timestamp:new Date().toISOString()})),{path:f,encrypted:!0}}),l.ipcMain.handle(`scan-get-document`,async(e,t)=>{let n=u.default.resolve(t);if(!n.startsWith(u.default.resolve(Z)))throw Error(`Érvénytelen fájlútvonal`);let r=p.default.readFileSync(n),i=p.default.readFileSync(`${n}.meta`,`utf8`),a=JSON.parse(i);return St(r,a.iv,a.tag).toString(`base64`)}),l.ipcMain.handle(`scan-list-documents`,async(e,t)=>{if(!p.default.existsSync(Z))return[];let n=[],r=yt(t),i=p.default.readdirSync(Z);for(let e of i){let t=u.default.join(Z,e,r);if(!p.default.existsSync(t)||!p.default.statSync(t).isDirectory())continue;let i=p.default.readdirSync(t);for(let e of i)e.endsWith(`.enc`)&&n.push(u.default.join(t,e))}return n}),l.ipcMain.handle(`restart-app`,()=>{try{return l.app.relaunch(),l.app.exit(0),!0}catch(e){return T.default.error(`[Updater] restart-app failed`,e),!1}});var Q=!l.app.isPackaged;l.protocol.registerSchemesAsPrivileged([{scheme:`app`,privileges:{standard:!0,secure:!0,supportFetchAPI:!0,corsEnabled:!0,stream:!0}}]),T.default.initialize(),T.default.transports.file.level=`info`,T.default.transports.console.level=Q?`debug`:`warn`,process.on(`uncaughtException`,e=>{T.default.error(`[Process] uncaughtException`,e)}),process.on(`unhandledRejection`,e=>{T.default.error(`[Process] unhandledRejection`,e)});var $=null;function Ct(){$=new l.BrowserWindow({width:1280,height:1024,resizable:Q,fullscreen:!1,autoHideMenuBar:!0,title:`Valuta Pénztár`,webPreferences:{preload:u.default.join(__dirname,`preload.js`),contextIsolation:!0,nodeIntegration:!1,sandbox:!0,webSecurity:!0,allowRunningInsecureContent:!1,experimentalFeatures:!1}}),Q?($.loadURL(`http://localhost:3000`),$.webContents.openDevTools({mode:`detach`})):$.loadURL(`app://localhost/index.html`),$.webContents.on(`console-message`,(e,t,n,r,i)=>{t>=2&&T.default.warn(`[Renderer] L${t} ${i}:${r} — ${n}`)}),$.webContents.on(`render-process-gone`,(e,t)=>{T.default.error(`[Renderer] Process gone:`,t.reason),l.dialog.showErrorBox(`Megjelenítési hiba`,`A program megjelenítő folyamata leállt.\nOk: ${t.reason}\n\nKérjük, indítsa újra az alkalmazást.`)}),$.webContents.on(`before-input-event`,(e,t)=>{t.key===`F12`&&t.type===`keyDown`&&$?.webContents.toggleDevTools()}),$.webContents.on(`will-navigate`,(e,t)=>{[`app://localhost`,`http://localhost:3000`].some(e=>t.startsWith(e))||(T.default.warn(`[Security] Blocked navigation to: ${t}`),e.preventDefault())}),$.webContents.setWindowOpenHandler(({url:e})=>(T.default.warn(`[Security] Blocked popup window: ${e}`),{action:`deny`})),$.on(`closed`,()=>{$=null})}l.ipcMain.handle(`print-receipt`,async(e,t)=>{try{return await mt(JSON.parse(t))}catch(e){return console.error(`[IPC] print-receipt hiba:`,e),!1}}),l.ipcMain.handle(`get-config`,async(e,t)=>M(t)),l.ipcMain.handle(`set-config`,async(e,t,n)=>{N(t,n)}),l.ipcMain.handle(`delete-config`,async(e,t)=>{P(t)}),l.ipcMain.handle(`save-pending-transaction`,async(e,t,n,r,i,a,o,s,c,l,u,d,f,p)=>ye(t,n,r,i,a,o,s,c,l,u,d,f,p)),l.ipcMain.handle(`get-pending-transactions`,async()=>be()),l.ipcMain.handle(`save-pending-conversion`,async(e,t,n,r,i,a,o,s,c,l,u,d,f,p)=>xe(t,n,r,i,a,o,s,c,l,u,d,f,p)),l.ipcMain.handle(`get-pending-conversions`,async()=>Se()),l.ipcMain.handle(`save-pending-bank-transaction`,async(e,t,n,r,i,a,o,s,c,l)=>Ne(t,n,r,i,a,o,s,c,l)),l.ipcMain.handle(`get-pending-bank-transactions`,async()=>Pe()),l.ipcMain.handle(`save-pending-storno`,async(e,t)=>Ie(t)),l.ipcMain.handle(`get-pending-stornos`,async()=>Le()),l.ipcMain.handle(`get-pending-transaction-count`,async()=>Te()),l.ipcMain.handle(`mark-transaction-synced`,async(e,t)=>{we(t)}),l.ipcMain.handle(`mark-conversion-synced`,async(e,t)=>{Ce(t)}),l.ipcMain.handle(`mark-bank-transaction-synced`,async(e,t)=>{Fe(t)}),l.ipcMain.handle(`mark-storno-synced`,async(e,t)=>{Re(t)}),l.ipcMain.handle(`sync-offline`,async()=>(await q.syncAll()).synced),l.ipcMain.handle(`get-sync-status`,async()=>JSON.stringify(q.getStatus())),l.ipcMain.handle(`get-app-version`,async()=>l.app.getVersion()),l.ipcMain.handle(`get-printers`,async()=>$?$.webContents.getPrintersAsync():[]),l.ipcMain.handle(`save-pending-distribution`,async(e,t,n,r,i,a)=>De(t,n,r,i,a)),l.ipcMain.handle(`save-pending-transfer`,async(e,t,n,r,i,a,o,s,c,l)=>Ae(t,n,r,i,a,o,s,c,l)),l.ipcMain.handle(`get-pending-transfers`,async()=>F()),l.ipcMain.handle(`save-pending-collection`,async(e,t,n,r,i)=>Me(t,n,r,i)),l.ipcMain.handle(`save-pending-handover-operation`,async(e,t)=>ze(t)),l.ipcMain.handle(`get-pending-handover-operations`,async()=>Be()),l.ipcMain.handle(`get-cached-branch-statuses`,async()=>Ge()),l.ipcMain.handle(`get-cached-branch-status-timestamp`,async()=>Ke()),l.ipcMain.handle(`get-cached-rates`,async()=>$e()),l.ipcMain.handle(`get-cached-cash-desks`,async()=>Je()),l.ipcMain.handle(`get-cached-cash-desk-timestamp`,async()=>Ye()),l.ipcMain.handle(`get-cached-workers`,async()=>Ze()),l.ipcMain.handle(`get-cached-worker-timestamp`,async()=>Qe()),l.ipcMain.handle(`save-local-audit-event`,async(e,t)=>j(t)),l.ipcMain.handle(`get-local-audit-events`,async(e,t)=>_e(t??200)),l.ipcMain.handle(`secure-store-token`,async(e,t)=>{try{return l.safeStorage.isEncryptionAvailable()?(N(`auth_token_encrypted`,l.safeStorage.encryptString(t).toString(`base64`)),P(`auth_token`),!0):(T.default.warn(`[SafeStorage] Encryption not available, falling back to config store`),N(`auth_token`,t),!0)}catch(e){return T.default.error(`[SafeStorage] store-token error:`,e),!1}}),l.ipcMain.handle(`secure-load-token`,async()=>{try{let e=M(`auth_token_encrypted`);if(e&&l.safeStorage.isEncryptionAvailable()){let t=Buffer.from(e,`base64`);return l.safeStorage.decryptString(t)}let t=M(`auth_token`);return t?(T.default.info(`[SafeStorage] Migrating plaintext token to encrypted storage`),l.safeStorage.isEncryptionAvailable()&&(N(`auth_token_encrypted`,l.safeStorage.encryptString(t).toString(`base64`)),P(`auth_token`)),t):null}catch(e){return T.default.error(`[SafeStorage] load-token error:`,e),null}}),l.ipcMain.handle(`secure-clear-token`,async()=>{P(`auth_token_encrypted`),P(`auth_token`)}),l.app.whenReady().then(async()=>{let e=u.default.join(__dirname,`../dist`);l.protocol.handle(`app`,t=>{let n=new URL(t.url),r=u.default.join(e,decodeURIComponent(n.pathname));(n.pathname===`/`||n.pathname===``)&&(r=u.default.join(e,`index.html`)),u.default.extname(r)===``&&(r=u.default.join(e,`index.html`));let i=u.default.resolve(r),a=u.default.resolve(e);return!i.startsWith(a+u.default.sep)&&i!==a&&(T.default.warn(`[Protocol] Path traversal blokkolva: ${t.url} → ${i}`),r=u.default.join(e,`index.html`)),T.default.info(`[Protocol] ${t.url} → ${r}`),l.net.fetch((0,d.pathToFileURL)(r).toString())}),T.default.info(`[App] Custom "app" protocol regisztrálva, distPath:`,e);try{await he()}catch(e){T.default.error(`[App] initDatabase failed`,e);let t=e instanceof Error?e.message:String(e);l.dialog.showErrorBox(`Adatbázis hiba`,`A helyi adatbázist nem sikerült inicializálni.\n\nRészletek:\n${t}`),l.app.quit();return}Ct(),q.start(3e4),T.default.info(`[App] SyncEngine elindítva`)}),l.app.on(`will-quit`,()=>{q.stop(),T.default.info(`[App] SyncEngine leállítva`)}),l.app.on(`window-all-closed`,()=>{l.app.quit()}),l.app.on(`activate`,()=>{$===null&&Ct()});
+             sent_at = excluded.sent_at`, [
+				circular.id,
+				circular.subject,
+				circular.body,
+				circular.sender,
+				circular.sentAt
+			]);
+			if (circulars.length > 0) {
+				saveDatabase();
+				console.log(`[SyncEngine] ${circulars.length} körlevél szinkronizálva`);
+			}
+		} catch (err) {
+			if (isAuthStatusError(err)) {
+				this.clearStoredAuthToken();
+				console.warn("[SyncEngine] Körlevél sync auth hiba (401/403), session újra-bootstrap szükséges.");
+				return;
+			}
+			console.warn("[SyncEngine] Körlevél sync hiba:", err instanceof Error ? err.message : err);
+		}
+	}
+	/**
+	* Értéktár: Pending distributions szinkronizálása.
+	*/
+	async syncDistributions() {
+		try {
+			const pending = getPendingDistributions();
+			if (pending.length === 0) return;
+			const serverUrl = this.getServerUrl();
+			const token = this.getAuthToken();
+			if (!token) return;
+			for (const dist of pending) try {
+				const body = {
+					targetBranchCode: dist.target_branch_code,
+					currencyCode: dist.currency_code,
+					amount: dist.amount
+				};
+				if (dist.denominations) try {
+					body["denominations"] = JSON.parse(dist.denominations);
+				} catch {}
+				if (dist.note) body["note"] = dist.note;
+				await httpPost(`${serverUrl}/ertektar/distribution`, body, token, dist.idempotency_key ?? void 0);
+				markDistributionSynced(dist.id);
+			} catch (err) {
+				if (isAuthStatusError(err)) {
+					this.clearStoredAuthToken();
+					console.warn("[SyncEngine] Distribution auth hiba (401/403), ciklus leállítva.");
+					break;
+				}
+				console.warn(`[SyncEngine] Distribution #${dist.id} sync hiba:`, err instanceof Error ? err.message : err);
+				break;
+			}
+		} catch (err) {
+			console.warn("[SyncEngine] Distribution sync hiba:", err instanceof Error ? err.message : err);
+		}
+	}
+	/**
+	* Értéktár: Pending transfers szinkronizálása.
+	*/
+	async syncTransfers() {
+		try {
+			const pending = getPendingTransfers();
+			if (pending.length === 0) return;
+			const serverUrl = this.getServerUrl();
+			const token = this.getAuthToken();
+			if (!token) return;
+			for (const tx of pending) try {
+				const body = { amount: tx.amount };
+				if (tx.target_branch_id) body["toBranchId"] = tx.target_branch_id;
+				body["targetBranchCode"] = tx.target_branch_code;
+				if (tx.currency_id !== null && tx.currency_id !== void 0) body["currencyId"] = tx.currency_id;
+				body["currencyCode"] = tx.currency_code;
+				if (tx.transfer_type) body["transferType"] = tx.transfer_type;
+				if (tx.huf_value !== null && tx.huf_value !== void 0) body["hufValue"] = tx.huf_value;
+				if (tx.denominations) try {
+					body["denominations"] = JSON.parse(tx.denominations);
+				} catch {}
+				if (tx.note) body["notes"] = tx.note;
+				await httpPost(`${serverUrl}/transfers`, body, token, tx.idempotency_key ?? void 0);
+				markTransferSynced(tx.id);
+			} catch (err) {
+				if (isAuthStatusError(err)) {
+					this.clearStoredAuthToken();
+					console.warn("[SyncEngine] Transfer auth hiba (401/403), ciklus leállítva.");
+					break;
+				}
+				console.warn(`[SyncEngine] Transfer #${tx.id} sync hiba:`, err instanceof Error ? err.message : err);
+				break;
+			}
+		} catch (err) {
+			console.warn("[SyncEngine] Transfer sync hiba:", err instanceof Error ? err.message : err);
+		}
+	}
+	/**
+	* Értéktár: Pending collections szinkronizálása.
+	*/
+	async syncCollections() {
+		try {
+			const pending = getPendingCollections();
+			if (pending.length === 0) return;
+			const serverUrl = this.getServerUrl();
+			const token = this.getAuthToken();
+			if (!token) return;
+			for (const col of pending) try {
+				const body = {
+					sourceBranchCode: col.source_branch_code,
+					currencyCode: col.currency_code,
+					amount: col.amount
+				};
+				if (col.note) body["note"] = col.note;
+				await httpPost(`${serverUrl}/ertektar/collections`, body, token, col.idempotency_key ?? void 0);
+				markCollectionSynced(col.id);
+			} catch (err) {
+				if (isAuthStatusError(err)) {
+					this.clearStoredAuthToken();
+					console.warn("[SyncEngine] Collection auth hiba (401/403), ciklus leállítva.");
+					break;
+				}
+				console.warn(`[SyncEngine] Collection #${col.id} sync hiba:`, err instanceof Error ? err.message : err);
+				break;
+			}
+		} catch (err) {
+			console.warn("[SyncEngine] Collection sync hiba:", err instanceof Error ? err.message : err);
+		}
+	}
+	/**
+	* Értéktár: Pénztár státuszok cache-elése.
+	*/
+	async cacheBranchStatus() {
+		try {
+			const serverUrl = this.getServerUrl();
+			const token = this.getAuthToken();
+			const branches = await httpGet(`${serverUrl}/ertektar/branches/status`, token);
+			if (!Array.isArray(branches)) return;
+			for (const branch of branches) saveCachedBranchStatus(branch.code, branch.name, branch.companyId, branch.lastSyncAt, branch.onlineStatus, branch.totalHufValue, branch.dailyTurnover, branch.cashBalances ? JSON.stringify(branch.cashBalances) : null);
+			if (branches.length > 0) console.log(`[SyncEngine] ${branches.length} pénztár státusz cache-elve`);
+		} catch (err) {
+			if (isAuthStatusError(err)) {
+				this.clearStoredAuthToken();
+				console.warn("[SyncEngine] Branch status auth hiba (401/403), session újra-bootstrap szükséges.");
+				return;
+			}
+			console.warn("[SyncEngine] Branch status cache hiba:", err instanceof Error ? err.message : err);
+		}
+	}
+	/**
+	* Pénztár törzs (branch master) cache-elése.
+	*/
+	async syncCashDeskMasterData() {
+		try {
+			const serverUrl = this.getServerUrl();
+			const token = this.getAuthToken();
+			const cashDesks = await httpGet(`${serverUrl}/branches?activeOnly=true`, token);
+			if (!Array.isArray(cashDesks)) return;
+			for (const cashDesk of cashDesks) saveCachedCashDesk(cashDesk.id, cashDesk.code, cashDesk.name, cashDesk.companyId ?? null, cashDesk.city ?? null, cashDesk.isActive ?? true);
+			if (cashDesks.length > 0) console.log(`[SyncEngine] ${cashDesks.length} pénztár törzs rekord cache-elve`);
+		} catch (err) {
+			if (isAuthStatusError(err)) {
+				this.clearStoredAuthToken();
+				console.warn("[SyncEngine] Pénztár törzs sync auth hiba (401/403), session újra-bootstrap szükséges.");
+				return;
+			}
+			console.warn("[SyncEngine] Pénztár törzs sync hiba:", err instanceof Error ? err.message : err);
+		}
+	}
+	/**
+	* Dolgozó törzs cache-elése.
+	*/
+	async syncWorkerMasterData() {
+		try {
+			const serverUrl = this.getServerUrl();
+			const token = this.getAuthToken();
+			const workers = await httpGet(`${serverUrl}/workers/active`, token);
+			if (!Array.isArray(workers)) return;
+			for (const worker of workers) saveCachedWorker(worker.id, worker.workerCode ?? null, worker.fullName, worker.role ?? null, worker.branchId ?? null, worker.branchCode ?? null, worker.branchName ?? null, worker.companyId ?? null, worker.companyCode ?? null, worker.active ?? true);
+			if (workers.length > 0) console.log(`[SyncEngine] ${workers.length} dolgozó törzs rekord cache-elve`);
+		} catch (err) {
+			if (isAuthStatusError(err)) {
+				this.clearStoredAuthToken();
+				console.warn("[SyncEngine] Dolgozó törzs sync auth hiba (401/403), session újra-bootstrap szükséges.");
+				return;
+			}
+			console.warn("[SyncEngine] Dolgozó törzs sync hiba:", err instanceof Error ? err.message : err);
+		}
+	}
+	/**
+	* Aktuális szinkronizáció státusz lekérdezése.
+	*/
+	getStatus() {
+		return { ...this.status };
+	}
+};
+/**
+* Globális SyncEngine példány — az electron main process-ben használjuk.
+*/
+var syncEngine = new SyncEngine();
+//#endregion
+//#region electron/camera.ts
+var CAMERA_DIR = "C:/valuta/camera";
+function sanitizeId$1(id) {
+	const clean = id.replace(/[^a-zA-Z0-9_-]/g, "");
+	if (!clean || clean !== id) throw new Error("Invalid transactionId: " + id);
+	return clean;
+}
+function listDirectories(root) {
+	if (!node_fs.default.existsSync(root)) return [];
+	return node_fs.default.readdirSync(root).filter((entry) => {
+		const fullPath = node_path.default.join(root, entry);
+		return node_fs.default.existsSync(fullPath) && node_fs.default.statSync(fullPath).isDirectory();
+	});
+}
+function collectFiles(root) {
+	if (!node_fs.default.existsSync(root)) return [];
+	const result = [];
+	const entries = node_fs.default.readdirSync(root, { withFileTypes: true });
+	for (const entry of entries) {
+		const fullPath = node_path.default.join(root, entry.name);
+		if (entry.isDirectory()) result.push(...collectFiles(fullPath));
+		else if (entry.isFile()) result.push(fullPath);
+	}
+	return result;
+}
+function copyDirectoryWithCount(sourceDir, targetDir) {
+	if (!node_fs.default.existsSync(sourceDir)) return 0;
+	node_fs.default.mkdirSync(targetDir, { recursive: true });
+	let count = 0;
+	const entries = node_fs.default.readdirSync(sourceDir, { withFileTypes: true });
+	for (const entry of entries) {
+		const src = node_path.default.join(sourceDir, entry.name);
+		const dest = node_path.default.join(targetDir, entry.name);
+		if (entry.isDirectory()) count += copyDirectoryWithCount(src, dest);
+		else if (entry.isFile()) {
+			node_fs.default.mkdirSync(node_path.default.dirname(dest), { recursive: true });
+			node_fs.default.copyFileSync(src, dest);
+			count += 1;
+		}
+	}
+	return count;
+}
+electron.ipcMain.handle("camera-save-recording", async (_event, transactionId, videoBuffer, extension) => {
+	const date = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+	const safeId = sanitizeId$1(transactionId);
+	const dir = node_path.default.join(CAMERA_DIR, date, safeId);
+	node_fs.default.mkdirSync(dir, { recursive: true });
+	const filename = `recording_${Date.now()}.${extension}`;
+	const filepath = node_path.default.join(dir, filename);
+	node_fs.default.writeFileSync(filepath, Buffer.from(videoBuffer));
+	return filepath;
+});
+electron.ipcMain.handle("camera-export-to-usb", async (_event, dateFrom, dateTo) => {
+	const result = await electron.dialog.showOpenDialog({
+		title: "Válaszd ki az USB meghajtót",
+		properties: ["openDirectory"],
+		buttonLabel: "Exportálás ide"
+	});
+	if (result.canceled || !result.filePaths[0]) return {
+		success: false,
+		exported: 0,
+		error: "Megszakítva"
+	};
+	const from = new Date(dateFrom);
+	const to = new Date(dateTo);
+	if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return {
+		success: false,
+		exported: 0,
+		error: "Érvénytelen dátum"
+	};
+	if (from > to) return {
+		success: false,
+		exported: 0,
+		error: "A dátumtartomány hibás"
+	};
+	try {
+		const targetDir = node_path.default.join(result.filePaths[0], "valuta_kamera_export");
+		node_fs.default.mkdirSync(targetDir, { recursive: true });
+		let exported = 0;
+		const dateDirs = listDirectories(CAMERA_DIR);
+		for (const dateDir of dateDirs) {
+			const dateValue = new Date(dateDir);
+			if (Number.isNaN(dateValue.getTime())) continue;
+			if (dateValue < from || dateValue > to) continue;
+			const sourceDir = node_path.default.join(CAMERA_DIR, dateDir);
+			const destinationDir = node_path.default.join(targetDir, dateDir);
+			exported += copyDirectoryWithCount(sourceDir, destinationDir);
+		}
+		return {
+			success: true,
+			exported
+		};
+	} catch (err) {
+		return {
+			success: false,
+			exported: 0,
+			error: `Írási hiba: ${err.message}`
+		};
+	}
+});
+electron.ipcMain.handle("camera-list-recordings", async (_event, transactionId) => {
+	if (!node_fs.default.existsSync(CAMERA_DIR)) return [];
+	if (transactionId) {
+		const recordings = [];
+		const safeId = sanitizeId$1(transactionId);
+		const dateDirs = listDirectories(CAMERA_DIR);
+		for (const dateDir of dateDirs) {
+			const candidateDir = node_path.default.join(CAMERA_DIR, dateDir, safeId);
+			recordings.push(...collectFiles(candidateDir));
+		}
+		return recordings;
+	}
+	return collectFiles(CAMERA_DIR);
+});
+function getDirSize(dirPath) {
+	if (!node_fs.default.existsSync(dirPath)) return 0;
+	let size = 0;
+	const entries = node_fs.default.readdirSync(dirPath, { withFileTypes: true });
+	for (const entry of entries) {
+		const fullPath = node_path.default.join(dirPath, entry.name);
+		if (entry.isDirectory()) size += getDirSize(fullPath);
+		else if (entry.isFile()) try {
+			size += node_fs.default.statSync(fullPath).size;
+		} catch {}
+	}
+	return size;
+}
+electron.ipcMain.handle("camera-local-storage-stats", async () => {
+	if (!node_fs.default.existsSync(CAMERA_DIR)) return {
+		totalUsageBytes: 0,
+		availableSpaceBytes: 0,
+		totalRecordings: 0,
+		oldestDate: null,
+		newestDate: null
+	};
+	const totalUsageBytes = getDirSize(CAMERA_DIR);
+	const allFiles = collectFiles(CAMERA_DIR);
+	const dateDirs = listDirectories(CAMERA_DIR).sort();
+	let availableSpaceBytes = 0;
+	try {
+		const stats = node_fs.default.statfsSync(CAMERA_DIR);
+		availableSpaceBytes = Number(stats.bavail) * Number(stats.bsize);
+	} catch {}
+	return {
+		totalUsageBytes,
+		availableSpaceBytes,
+		totalRecordings: allFiles.length,
+		oldestDate: dateDirs.length > 0 ? dateDirs[0] : null,
+		newestDate: dateDirs.length > 0 ? dateDirs[dateDirs.length - 1] : null
+	};
+});
+electron.ipcMain.handle("camera-local-recordings-by-date", async (_event, dateFrom, dateTo) => {
+	if (!node_fs.default.existsSync(CAMERA_DIR)) return [];
+	const from = new Date(dateFrom);
+	const to = new Date(dateTo);
+	if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return [];
+	const results = [];
+	const dateDirs = listDirectories(CAMERA_DIR);
+	for (const dateDir of dateDirs) {
+		const dirDate = new Date(dateDir);
+		if (Number.isNaN(dirDate.getTime())) continue;
+		if (dirDate < from || dirDate > to) continue;
+		const txDirs = listDirectories(node_path.default.join(CAMERA_DIR, dateDir));
+		for (const txDir of txDirs) {
+			const files = collectFiles(node_path.default.join(CAMERA_DIR, dateDir, txDir));
+			for (const filePath of files) try {
+				const stat = node_fs.default.statSync(filePath);
+				results.push({
+					date: dateDir,
+					transactionId: txDir,
+					filePath,
+					fileSizeBytes: stat.size,
+					createdAt: stat.birthtime.toISOString()
+				});
+			} catch {}
+		}
+	}
+	return results;
+});
+electron.ipcMain.handle("camera-local-read-file", async (_event, filePath) => {
+	const resolved = node_path.default.resolve(filePath);
+	if (!resolved.startsWith(node_path.default.resolve(CAMERA_DIR))) return null;
+	if (!node_fs.default.existsSync(resolved)) return null;
+	return node_fs.default.readFileSync(resolved).toString("base64");
+});
+electron.ipcMain.handle("camera-local-cleanup", async (_event, retentionDays) => {
+	if (!node_fs.default.existsSync(CAMERA_DIR)) return { deletedCount: 0 };
+	const cutoff = /* @__PURE__ */ new Date();
+	cutoff.setDate(cutoff.getDate() - retentionDays);
+	let deletedCount = 0;
+	for (const dateDir of listDirectories(CAMERA_DIR)) {
+		const dirDate = new Date(dateDir);
+		if (Number.isNaN(dirDate.getTime()) || dirDate >= cutoff) continue;
+		const dirPath = node_path.default.join(CAMERA_DIR, dateDir);
+		const fileCount = collectFiles(dirPath).length;
+		try {
+			node_fs.default.rmSync(dirPath, {
+				recursive: true,
+				force: true
+			});
+			deletedCount += fileCount;
+		} catch {}
+	}
+	return { deletedCount };
+});
+//#endregion
+//#region electron/scanner.ts
+var SCAN_DIR = "C:/valuta/scan";
+var ENCRYPTION_KEY_FILE = "C:/valuta/.scan_key";
+function sanitizeId(id) {
+	const clean = id.replace(/[^a-zA-Z0-9_-]/g, "");
+	if (!clean || clean !== id) throw new Error("Invalid transactionId: " + id);
+	return clean;
+}
+function getOrCreateKey() {
+	if (node_fs.default.existsSync(ENCRYPTION_KEY_FILE)) {
+		const stored = node_fs.default.readFileSync(ENCRYPTION_KEY_FILE, "utf8").trim();
+		return Buffer.from(stored, "base64");
+	}
+	const key = node_crypto.default.randomBytes(32);
+	node_fs.default.writeFileSync(ENCRYPTION_KEY_FILE, key.toString("base64"), { mode: 384 });
+	return key;
+}
+function encrypt(buffer) {
+	const key = getOrCreateKey();
+	const iv = node_crypto.default.randomBytes(16);
+	const cipher = node_crypto.default.createCipheriv("aes-256-gcm", key, iv);
+	const encrypted = Buffer.concat([cipher.update(buffer), cipher.final()]);
+	const tag = cipher.getAuthTag();
+	return {
+		encrypted,
+		iv: iv.toString("hex"),
+		tag: tag.toString("hex")
+	};
+}
+function decrypt(encrypted, iv, tag) {
+	const key = getOrCreateKey();
+	const decipher = node_crypto.default.createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "hex"));
+	decipher.setAuthTag(Buffer.from(tag, "hex"));
+	return Buffer.concat([decipher.update(encrypted), decipher.final()]);
+}
+electron.ipcMain.handle("scan-save-document", async (_event, transactionId, documentType, imageBase64) => {
+	const { encrypted, iv, tag } = encrypt(Buffer.from(imageBase64, "base64"));
+	const date = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+	const safeId = sanitizeId(transactionId);
+	const dir = node_path.default.join(SCAN_DIR, date, safeId);
+	node_fs.default.mkdirSync(dir, { recursive: true });
+	const filename = `${documentType}_${Date.now()}.enc`;
+	const filepath = node_path.default.join(dir, filename);
+	node_fs.default.writeFileSync(filepath, encrypted);
+	node_fs.default.writeFileSync(`${filepath}.meta`, JSON.stringify({
+		iv,
+		tag,
+		documentType,
+		timestamp: (/* @__PURE__ */ new Date()).toISOString()
+	}));
+	return {
+		path: filepath,
+		encrypted: true
+	};
+});
+electron.ipcMain.handle("scan-get-document", async (_event, filepath) => {
+	const resolved = node_path.default.resolve(filepath);
+	if (!resolved.startsWith(node_path.default.resolve(SCAN_DIR))) throw new Error("Érvénytelen fájlútvonal");
+	const encrypted = node_fs.default.readFileSync(resolved);
+	const metaRaw = node_fs.default.readFileSync(`${resolved}.meta`, "utf8");
+	const meta = JSON.parse(metaRaw);
+	return decrypt(encrypted, meta.iv, meta.tag).toString("base64");
+});
+electron.ipcMain.handle("scan-list-documents", async (_event, transactionId) => {
+	if (!node_fs.default.existsSync(SCAN_DIR)) return [];
+	const results = [];
+	const safeId = sanitizeId(transactionId);
+	const dateDirs = node_fs.default.readdirSync(SCAN_DIR);
+	for (const dateDir of dateDirs) {
+		const candidate = node_path.default.join(SCAN_DIR, dateDir, safeId);
+		if (!node_fs.default.existsSync(candidate) || !node_fs.default.statSync(candidate).isDirectory()) continue;
+		const files = node_fs.default.readdirSync(candidate);
+		for (const file of files) if (file.endsWith(".enc")) results.push(node_path.default.join(candidate, file));
+	}
+	return results;
+});
+//#endregion
+//#region electron/updater.ts
+electron.ipcMain.handle("restart-app", () => {
+	try {
+		electron.app.relaunch();
+		electron.app.exit(0);
+		return true;
+	} catch (err) {
+		import_main.default.error("[Updater] restart-app failed", err);
+		return false;
+	}
+});
+//#endregion
+//#region electron/main.ts
+var isDev = !electron.app.isPackaged;
+electron.protocol.registerSchemesAsPrivileged([{
+	scheme: "app",
+	privileges: {
+		standard: true,
+		secure: true,
+		supportFetchAPI: true,
+		corsEnabled: true,
+		stream: true
+	}
+}]);
+import_main.default.initialize();
+import_main.default.transports.file.level = "info";
+import_main.default.transports.console.level = isDev ? "debug" : "warn";
+process.on("uncaughtException", (err) => {
+	import_main.default.error("[Process] uncaughtException", err);
+});
+process.on("unhandledRejection", (reason) => {
+	import_main.default.error("[Process] unhandledRejection", reason);
+});
+var mainWindow = null;
+function createWindow() {
+	mainWindow = new electron.BrowserWindow({
+		width: 1280,
+		height: 1024,
+		resizable: isDev,
+		fullscreen: false,
+		autoHideMenuBar: true,
+		title: "Valuta Pénztár",
+		webPreferences: {
+			preload: node_path.default.join(__dirname, "preload.js"),
+			contextIsolation: true,
+			nodeIntegration: false,
+			sandbox: true,
+			webSecurity: true,
+			allowRunningInsecureContent: false,
+			experimentalFeatures: false
+		}
+	});
+	if (isDev) {
+		mainWindow.loadURL("http://localhost:3000");
+		mainWindow.webContents.openDevTools({ mode: "detach" });
+	} else mainWindow.loadURL("app://localhost/index.html");
+	mainWindow.webContents.on("console-message", (_event, level, message, line, sourceId) => {
+		if (level >= 2) import_main.default.warn(`[Renderer] L${level} ${sourceId}:${line} — ${message}`);
+	});
+	mainWindow.webContents.on("render-process-gone", (_event, details) => {
+		import_main.default.error("[Renderer] Process gone:", details.reason);
+		electron.dialog.showErrorBox("Megjelenítési hiba", `A program megjelenítő folyamata leállt.\nOk: ${details.reason}\n\nKérjük, indítsa újra az alkalmazást.`);
+	});
+	mainWindow.webContents.on("before-input-event", (_event, input) => {
+		if (input.key === "F12" && input.type === "keyDown") mainWindow?.webContents.toggleDevTools();
+	});
+	mainWindow.webContents.on("will-navigate", (event, url) => {
+		if (!["app://localhost", "http://localhost:3000"].some((origin) => url.startsWith(origin))) {
+			import_main.default.warn(`[Security] Blocked navigation to: ${url}`);
+			event.preventDefault();
+		}
+	});
+	mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+		import_main.default.warn(`[Security] Blocked popup window: ${url}`);
+		return { action: "deny" };
+	});
+	mainWindow.on("closed", () => {
+		mainWindow = null;
+	});
+}
+electron.ipcMain.handle("print-receipt", async (_event, dataJson) => {
+	try {
+		return await printReceipt(JSON.parse(dataJson));
+	} catch (err) {
+		console.error("[IPC] print-receipt hiba:", err);
+		return false;
+	}
+});
+electron.ipcMain.handle("get-config", async (_event, key) => {
+	return getConfig(key);
+});
+electron.ipcMain.handle("set-config", async (_event, key, value) => {
+	setConfig(key, value);
+});
+electron.ipcMain.handle("delete-config", async (_event, key) => {
+	deleteConfig(key);
+});
+electron.ipcMain.handle("save-pending-transaction", async (_event, type, currencyCode, foreignAmount, hufAmount, roundedHufAmount, rate, handlingFee, discountPercent, customerIdentifier, customerName, customerDocumentNumber, customerAddress, denominations) => {
+	return savePendingTransaction(type, currencyCode, foreignAmount, hufAmount, roundedHufAmount, rate, handlingFee, discountPercent, customerIdentifier, customerName, customerDocumentNumber, customerAddress, denominations);
+});
+electron.ipcMain.handle("get-pending-transactions", async () => {
+	return getPendingTransactions();
+});
+electron.ipcMain.handle("save-pending-conversion", async (_event, fromCurrencyId, fromCurrencyCode, toCurrencyId, toCurrencyCode, fromAmount, calculatedHufAmount, calculatedToAmount, conversionRate, handlingFee, customerId, customerName, customerDocumentNumber, note) => {
+	return savePendingConversion(fromCurrencyId, fromCurrencyCode, toCurrencyId, toCurrencyCode, fromAmount, calculatedHufAmount, calculatedToAmount, conversionRate, handlingFee, customerId, customerName, customerDocumentNumber, note);
+});
+electron.ipcMain.handle("get-pending-conversions", async () => {
+	return getPendingConversions();
+});
+electron.ipcMain.handle("save-pending-bank-transaction", async (_event, transactionType, currencyCode, amount, exchangeRate, hufAmount, vaultTerritoryId, bankName, bankReference, note) => {
+	return savePendingBankTransaction(transactionType, currencyCode, amount, exchangeRate, hufAmount, vaultTerritoryId, bankName, bankReference, note);
+});
+electron.ipcMain.handle("get-pending-bank-transactions", async () => {
+	return getPendingBankTransactions();
+});
+electron.ipcMain.handle("save-pending-storno", async (_event, payload) => {
+	return savePendingStorno(payload);
+});
+electron.ipcMain.handle("get-pending-stornos", async () => {
+	return getPendingStornos();
+});
+electron.ipcMain.handle("get-pending-transaction-count", async () => {
+	return getPendingTransactionCount();
+});
+electron.ipcMain.handle("mark-transaction-synced", async (_event, id) => {
+	markTransactionSynced(id);
+});
+electron.ipcMain.handle("mark-conversion-synced", async (_event, id) => {
+	markConversionSynced(id);
+});
+electron.ipcMain.handle("mark-bank-transaction-synced", async (_event, id) => {
+	markBankTransactionSynced(id);
+});
+electron.ipcMain.handle("mark-storno-synced", async (_event, id) => {
+	markStornoSynced(id);
+});
+electron.ipcMain.handle("sync-offline", async () => {
+	return (await syncEngine.syncAll()).synced;
+});
+electron.ipcMain.handle("get-sync-status", async () => {
+	return JSON.stringify(syncEngine.getStatus());
+});
+electron.ipcMain.handle("get-app-version", async () => {
+	return electron.app.getVersion();
+});
+electron.ipcMain.handle("get-printers", async () => {
+	if (!mainWindow) return [];
+	return mainWindow.webContents.getPrintersAsync();
+});
+electron.ipcMain.handle("save-pending-distribution", async (_event, targetBranchCode, currencyCode, amount, denominations, note) => {
+	return savePendingDistribution(targetBranchCode, currencyCode, amount, denominations, note);
+});
+electron.ipcMain.handle("save-pending-transfer", async (_event, targetBranchId, targetBranchCode, currencyId, currencyCode, amount, hufValue, transferType, denominations, note) => {
+	return savePendingTransfer(targetBranchId, targetBranchCode, currencyId, currencyCode, amount, hufValue, transferType, denominations, note);
+});
+electron.ipcMain.handle("get-pending-transfers", async () => {
+	return getPendingTransfers();
+});
+electron.ipcMain.handle("save-pending-collection", async (_event, sourceBranchCode, currencyCode, amount, note) => {
+	return savePendingCollection(sourceBranchCode, currencyCode, amount, note);
+});
+electron.ipcMain.handle("save-pending-handover-operation", async (_event, payload) => {
+	return savePendingHandoverOperation(payload);
+});
+electron.ipcMain.handle("get-pending-handover-operations", async () => {
+	return getPendingHandoverOperations();
+});
+electron.ipcMain.handle("get-cached-branch-statuses", async () => {
+	return getCachedBranchStatuses();
+});
+electron.ipcMain.handle("get-cached-branch-status-timestamp", async () => {
+	return getCachedBranchStatusTimestamp();
+});
+electron.ipcMain.handle("get-cached-rates", async () => {
+	return getCachedRates();
+});
+electron.ipcMain.handle("get-cached-cash-desks", async () => {
+	return getCachedCashDesks();
+});
+electron.ipcMain.handle("get-cached-cash-desk-timestamp", async () => {
+	return getCachedCashDeskTimestamp();
+});
+electron.ipcMain.handle("get-cached-workers", async () => {
+	return getCachedWorkers();
+});
+electron.ipcMain.handle("get-cached-worker-timestamp", async () => {
+	return getCachedWorkerTimestamp();
+});
+electron.ipcMain.handle("save-local-audit-event", async (_event, payload) => {
+	return saveLocalAuditEvent(payload);
+});
+electron.ipcMain.handle("get-local-audit-events", async (_event, limit) => {
+	return getLocalAuditEvents(limit ?? 200);
+});
+electron.ipcMain.handle("secure-store-token", async (_event, token) => {
+	try {
+		if (!electron.safeStorage.isEncryptionAvailable()) {
+			import_main.default.warn("[SafeStorage] Encryption not available, falling back to config store");
+			setConfig("auth_token", token);
+			return true;
+		}
+		setConfig("auth_token_encrypted", electron.safeStorage.encryptString(token).toString("base64"));
+		deleteConfig("auth_token");
+		return true;
+	} catch (err) {
+		import_main.default.error("[SafeStorage] store-token error:", err);
+		return false;
+	}
+});
+electron.ipcMain.handle("secure-load-token", async () => {
+	try {
+		const encrypted = getConfig("auth_token_encrypted");
+		if (encrypted && electron.safeStorage.isEncryptionAvailable()) {
+			const buffer = Buffer.from(encrypted, "base64");
+			return electron.safeStorage.decryptString(buffer);
+		}
+		const plaintext = getConfig("auth_token");
+		if (plaintext) {
+			import_main.default.info("[SafeStorage] Migrating plaintext token to encrypted storage");
+			if (electron.safeStorage.isEncryptionAvailable()) {
+				setConfig("auth_token_encrypted", electron.safeStorage.encryptString(plaintext).toString("base64"));
+				deleteConfig("auth_token");
+			}
+			return plaintext;
+		}
+		return null;
+	} catch (err) {
+		import_main.default.error("[SafeStorage] load-token error:", err);
+		return null;
+	}
+});
+electron.ipcMain.handle("secure-clear-token", async () => {
+	deleteConfig("auth_token_encrypted");
+	deleteConfig("auth_token");
+});
+electron.app.whenReady().then(async () => {
+	const distPath = node_path.default.join(__dirname, "../dist");
+	electron.protocol.handle("app", (req) => {
+		const url = new URL(req.url);
+		let filePath = node_path.default.join(distPath, decodeURIComponent(url.pathname));
+		if (url.pathname === "/" || url.pathname === "") filePath = node_path.default.join(distPath, "index.html");
+		if (!(node_path.default.extname(filePath) !== "")) filePath = node_path.default.join(distPath, "index.html");
+		const resolved = node_path.default.resolve(filePath);
+		const resolvedDist = node_path.default.resolve(distPath);
+		if (!resolved.startsWith(resolvedDist + node_path.default.sep) && resolved !== resolvedDist) {
+			import_main.default.warn(`[Protocol] Path traversal blokkolva: ${req.url} → ${resolved}`);
+			filePath = node_path.default.join(distPath, "index.html");
+		}
+		import_main.default.info(`[Protocol] ${req.url} → ${filePath}`);
+		return electron.net.fetch((0, node_url.pathToFileURL)(filePath).toString());
+	});
+	import_main.default.info("[App] Custom \"app\" protocol regisztrálva, distPath:", distPath);
+	try {
+		await initDatabase();
+	} catch (err) {
+		import_main.default.error("[App] initDatabase failed", err);
+		const details = err instanceof Error ? err.message : String(err);
+		electron.dialog.showErrorBox("Adatbázis hiba", `A helyi adatbázist nem sikerült inicializálni.\n\nRészletek:\n${details}`);
+		electron.app.quit();
+		return;
+	}
+	createWindow();
+	syncEngine.start(3e4);
+	import_main.default.info("[App] SyncEngine elindítva");
+});
+electron.app.on("will-quit", () => {
+	syncEngine.stop();
+	import_main.default.info("[App] SyncEngine leállítva");
+});
+electron.app.on("window-all-closed", () => {
+	electron.app.quit();
+});
+electron.app.on("activate", () => {
+	if (mainWindow === null) createWindow();
+});
+//#endregion

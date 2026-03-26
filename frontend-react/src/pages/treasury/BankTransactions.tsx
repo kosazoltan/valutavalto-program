@@ -162,14 +162,14 @@ export default function BankTransactions() {
           <thead>
             <tr>
               <th className="w-16">ID</th>
-              <th className="w-20">Tipus</th>
+              <th className="w-20">Típus</th>
               <th className="w-16">Valuta</th>
-              <th className="text-right w-28">Mennyiseg</th>
-              <th className="text-right w-24">Arfolyam</th>
-              <th className="text-right w-28">HUF ertek</th>
+              <th className="text-right w-28">Mennyiség</th>
+              <th className="text-right w-24">Árfolyam</th>
+              <th className="text-right w-28">HUF érték</th>
               <th className="w-32">Bank</th>
-              <th className="w-24">Statusz</th>
-              <th className="w-32">Datum</th>
+              <th className="w-24">Státusz</th>
+              <th className="w-32">Dátum</th>
               <th className="w-8"></th>
             </tr>
           </thead>
@@ -299,7 +299,7 @@ export default function BankTransactions() {
                   />
                 </div>
                 <div>
-                  <label className="form-label">Arfolyam (HUF/1 egyseg)</label>
+                  <label className="form-label">Árfolyam (HUF/1 egység)</label>
                   <input
                     type="number"
                     className="form-input w-full font-mono"
@@ -360,11 +360,11 @@ export default function BankTransactions() {
               {/* Buttons */}
               <div className="flex justify-end gap-3 pt-4 border-t">
                 <button type="button" className="form-button" onClick={() => setShowNewModal(false)}>
-                  Megse
+                  Mégse
                 </button>
                 <button type="submit" className="form-button-primary" disabled={submitting}>
                   <CheckCircle size={18} />
-                  <span>{submitting ? 'Feldolgozas...' : 'Vegrehajtas'}</span>
+                  <span>{submitting ? 'Feldolgozás...' : 'Végrehajtás'}</span>
                 </button>
               </div>
             </form>
@@ -380,15 +380,15 @@ export default function BankTransactions() {
               Tranzakcio #{showDetailModal.id}
             </h2>
             <div className="space-y-2 text-sm">
-              <Row label="Tipus" value={showDetailModal.transactionType === 'BUY' ? 'Banki vetel' : 'Banki eladas'} />
+              <Row label="Típus" value={showDetailModal.transactionType === 'BUY' ? 'Banki vétel' : 'Banki eladás'} />
               <Row label="Valuta" value={showDetailModal.currencyCode} />
-              <Row label="Mennyiseg" value={formatInteger(showDetailModal.amount)} mono />
-              <Row label="Arfolyam" value={showDetailModal.exchangeRate?.toFixed(4)} mono />
-              <Row label="HUF ertek" value={`${formatInteger(showDetailModal.hufAmount)} Ft`} mono />
+              <Row label="Mennyiség" value={formatInteger(showDetailModal.amount)} mono />
+              <Row label="Árfolyam" value={showDetailModal.exchangeRate?.toFixed(4)} mono />
+              <Row label="HUF érték" value={`${formatInteger(showDetailModal.hufAmount)} Ft`} mono />
               <Row label="Bank" value={showDetailModal.bankName || '-'} />
               <Row label="Ref." value={showDetailModal.bankReference || '-'} />
-              <Row label="Statusz" value={showDetailModal.status} />
-              <Row label="Datum" value={formatDateTime(showDetailModal.createdAt)} />
+              <Row label="Státusz" value={showDetailModal.status} />
+              <Row label="Dátum" value={formatDateTime(showDetailModal.createdAt)} />
               {showDetailModal.note && <Row label="Megjegyzes" value={showDetailModal.note} />}
             </div>
             <button onClick={() => setShowDetailModal(null)} className="form-button-primary w-full mt-6">

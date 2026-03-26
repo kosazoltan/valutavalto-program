@@ -56,7 +56,7 @@ export default function CashDeskPage() {
             className="form-button-primary flex items-center gap-1"
           >
             <FileCheck size={16} />
-            Zárás
+            Napi zárás
           </button>
           {status.isOpen ? (
             <button className="form-button flex items-center gap-1 text-red-600">

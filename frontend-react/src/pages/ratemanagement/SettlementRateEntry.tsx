@@ -11,7 +11,7 @@ import { logger } from '../../utils/logger';
  * - Hivatalos (MNB/elszamolasi) arfolyam
  * - Limit szintek (1-3) osszegekkel es arfolyamokkal
  *
- * Mentes utan a "Publikalas" gombbal az osszes fiok megkapja az uj arfolyamokat.
+ * Mentés utan a "Publikalas" gombbal az osszes fiok megkapja az uj arfolyamokat.
  */
 
 interface CurrencyInfo {
@@ -193,7 +193,7 @@ export default function SettlementRateEntry() {
     // Validalas: legalabb 1 valutahoz kell arfolyam
     const validRates = rates.filter(r => r.baseBuyRate.trim() && r.baseSellRate.trim())
     if (validRates.length === 0) {
-      setError('Legalabb egy valutahoz rogzitsen veteli es eladasi arfolyamot!')
+      setError('Legalább egy valutához rögzítsen vételi és eladási árfolyamot!')
       return
     }
 
@@ -202,11 +202,11 @@ export default function SettlementRateEntry() {
       const buy = parseFloat(r.baseBuyRate)
       const sell = parseFloat(r.baseSellRate)
       if (isNaN(buy) || isNaN(sell)) {
-        setError(`${r.currencyCode}: ervenytelen arfolyam ertek!`)
+        setError(`${r.currencyCode}: érvénytelen árfolyam érték!`)
         return
       }
       if (sell <= buy) {
-        setError(`${r.currencyCode}: az eladasi arfolyamnak (${sell}) nagyobbnak kell lennie a vetelinel (${buy})!`)
+        setError(`${r.currencyCode}: az eladási árfolyamnak (${sell}) nagyobbnak kell lennie a vételinél (${buy})!`)
         return
       }
     }
@@ -233,13 +233,13 @@ export default function SettlementRateEntry() {
       }
 
       await api.post('/rate-creation/publish-group-rate', payload)
-      setSuccess(`Sikeres publikalas! ${validRates.length} valuta arfolyama frissiteve.`)
+      setSuccess(`Sikeres publikálás! ${validRates.length} valuta árfolyama frissítve.`)
 
       // Reload data to show updated values
       await fetchRates()
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } }
-      const msg = axiosErr?.response?.data?.message || 'Publikalas sikertelen'
+      const msg = axiosErr?.response?.data?.message || 'Publikálás sikertelen'
       setError(msg)
     } finally {
       setSaving(false)
@@ -250,7 +250,7 @@ export default function SettlementRateEntry() {
     return (
       <div className="flex items-center justify-center py-12">
         <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-        <span className="ml-2 text-muted-foreground">Arfolyamok betoltese...</span>
+        <span className="ml-2 text-muted-foreground">Árfolyamok betöltése...</span>
       </div>
     )
   }
@@ -277,7 +277,7 @@ export default function SettlementRateEntry() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Rogzitse az arfolyamokat az osszes aktiv valutahoz. A "Publikalas" gombbal az arfolyamok azonnal elove valnak.
+          Rögzítse az árfolyamokat az összes aktív valutához. A "Publikálás" gombbal az árfolyamok azonnal élővé válnak.
         </p>
         <div className="flex gap-2">
           <button
@@ -286,7 +286,7 @@ export default function SettlementRateEntry() {
             disabled={saving}
           >
             <RefreshCw className="h-4 w-4 mr-2" />
-            Frissites
+            Frissítés
           </button>
           <button
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
@@ -298,7 +298,7 @@ export default function SettlementRateEntry() {
             ) : (
               <Send className="h-4 w-4 mr-2" />
             )}
-            {saving ? 'Publikalas...' : 'Publikalas'}
+            {saving ? 'Publikálás...' : 'Publikálás'}
           </button>
         </div>
       </div>
@@ -324,8 +324,8 @@ export default function SettlementRateEntry() {
               <tr className="border-b bg-muted/50">
                 <th className="text-left p-3 font-medium w-28">Valuta</th>
                 <th className="text-left p-3 font-medium">Hivatalos (MNB)</th>
-                <th className="text-left p-3 font-medium">Veteli arfolyam</th>
-                <th className="text-left p-3 font-medium">Eladasi arfolyam</th>
+                <th className="text-left p-3 font-medium">Vételi árfolyam</th>
+                <th className="text-left p-3 font-medium">Eladási árfolyam</th>
                 <th className="text-left p-3 font-medium w-24">Spread</th>
                 <th className="text-left p-3 font-medium w-16">Limit</th>
               </tr>
@@ -557,7 +557,7 @@ export default function SettlementRateEntry() {
           ) : (
             <Send className="h-4 w-4 mr-2" />
           )}
-          {saving ? 'Arfolyamok frissitese...' : 'Arfolyamok publikalasa'}
+          {saving ? 'Árfolyamok frissítése...' : 'Árfolyamok publikálása'}
         </button>
       </div>
     </div>

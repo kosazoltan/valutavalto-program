@@ -48,8 +48,8 @@ const PAGE2: MenuItem[] = [
   { key: '4', label: 'LISTÁK', icon: List, color: 'from-gray-500 to-gray-600', route: '/transactions' },
   { key: '5', label: 'PÉNZTÁROSOK', icon: Users, color: 'from-emerald-500 to-emerald-600', route: '/settings/users' },
   { key: '6', label: 'NAPI FORGALOM', icon: Calendar, color: 'from-orange-500 to-orange-600', route: '/reports/extended' },
-  { key: '7', label: 'REGI ZARAS', icon: Archive, color: 'from-amber-500 to-amber-600', route: '/archiving' },
-  { key: '8', label: 'REGENERALAS', icon: RefreshCw, color: 'from-cyan-500 to-cyan-600', route: '/cashdesk/denominations' },
+  { key: '7', label: 'RÉGI ZÁRÁS', icon: Archive, color: 'from-amber-500 to-amber-600', route: '/archiving' },
+  { key: '8', label: 'REGENERÁLÁS', icon: RefreshCw, color: 'from-cyan-500 to-cyan-600', route: '/cashdesk/denominations' },
   { key: '9', label: 'EGYEB', icon: Settings, color: 'from-gray-500 to-gray-600', route: '/settings' },
 ]
 

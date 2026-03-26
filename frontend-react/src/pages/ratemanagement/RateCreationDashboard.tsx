@@ -7,11 +7,11 @@ import DiscountLevelEditor from './DiscountLevelEditor'
 import RatePublishHistory from './RatePublishHistory'
 
 const tabs = [
-  { key: 'settlement', label: 'Arfolyam rogzites' },
+  { key: 'settlement', label: 'Árfolyam rögzítés' },
   { key: 'templates', label: 'Sablonok' },
   { key: 'workgroups', label: 'Munkacsoportok' },
-  { key: 'discounts', label: 'Kedvezmenyek' },
-  { key: 'history', label: 'Publikalasi naplo' },
+  { key: 'discounts', label: 'Kedvezmények' },
+  { key: 'history', label: 'Publikálási napló' },
 ] as const
 
 type TabKey = (typeof tabs)[number]['key']
@@ -24,7 +24,7 @@ export default function RateCreationDashboard() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <BarChart3 className="h-6 w-6" />
-          Arfolyam kezeles
+          Árfolyam kezelés
         </h1>
       </div>
 

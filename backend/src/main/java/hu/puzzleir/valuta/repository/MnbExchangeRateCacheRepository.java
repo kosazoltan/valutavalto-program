@@ -22,6 +22,12 @@ public interface MnbExchangeRateCacheRepository extends JpaRepository<MnbExchang
     Optional<MnbExchangeRateCache> findByCurrencyCodeAndRateDate(String currencyCode, LocalDate rateDate);
 
     /**
+     * Adott dátumra, valutára és forrásra cache-elt árfolyam.
+     * Használandó ha MNB és RAIFFEISEN is írhat azonos dátumra.
+     */
+    Optional<MnbExchangeRateCache> findByCurrencyCodeAndRateDateAndSource(String currencyCode, LocalDate rateDate, String source);
+
+    /**
      * Adott dátum összes cache-elt árfolyama.
      */
     List<MnbExchangeRateCache> findByRateDate(LocalDate rateDate);
@@ -49,4 +55,26 @@ public interface MnbExchangeRateCacheRepository extends JpaRepository<MnbExchang
     @Query("SELECT m FROM MnbExchangeRateCache m " +
             "WHERE m.rateDate = (SELECT MAX(m2.rateDate) FROM MnbExchangeRateCache m2 WHERE m2.rateDate <= :date)")
     List<MnbExchangeRateCache> findLatestRates(@Param("date") LocalDate date);
+
+    // ============ SOURCE-SZŰRT LEKÉRDEZÉSEK (Raiffeisen integráció) ============
+
+    /**
+     * Adott dátum cache-elt árfolyamai forrás szerint szűrve.
+     */
+    @Query("SELECT m FROM MnbExchangeRateCache m " +
+            "WHERE m.rateDate = :date AND m.source = :source")
+    List<MnbExchangeRateCache> findByRateDateAndSource(
+            @Param("date") LocalDate date,
+            @Param("source") String source);
+
+    /**
+     * Legutolsó elérhető árfolyamok forrás szerint szűrve (fallback).
+     */
+    @Query("SELECT m FROM MnbExchangeRateCache m " +
+            "WHERE m.source = :source " +
+            "AND m.rateDate = (SELECT MAX(m2.rateDate) FROM MnbExchangeRateCache m2 " +
+            "WHERE m2.source = :source AND m2.rateDate <= :date)")
+    List<MnbExchangeRateCache> findLatestRatesBySource(
+            @Param("date") LocalDate date,
+            @Param("source") String source);
 }

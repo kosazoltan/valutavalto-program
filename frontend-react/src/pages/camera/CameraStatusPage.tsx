@@ -26,16 +26,16 @@ export default function CameraStatusPage() {
     setLoading(true)
     try {
       if (isElectron() && window.electronAPI?.cameraLocalStorageStats) {
-        // Electron: lokalis fajlrendszer statisztika
+        // Electron: lokális fájlrendszer statisztika
         const localStats = await window.electronAPI.cameraLocalStorageStats()
         setStats(localStats)
       } else {
-        // Bongeszo: szerver API
+        // Böngésző: szerver API
         const res = await api.get('/camera/admin/storage-stats')
         setStats(res.data)
       }
     } catch (err) {
-      logger.error('CameraStatusPage', 'Statusz lekeres sikertelen:', err)
+      logger.error('CameraStatusPage', 'Státusz lekérés sikertelen:', err)
     } finally {
       setLoading(false)
     }
@@ -43,20 +43,20 @@ export default function CameraStatusPage() {
 
   const triggerCleanup = async () => {
     const retentionDays = 50
-    if (!confirm(`Biztosan torli az ${retentionDays} napnal regebbi felveteleket?`)) return
+    if (!confirm(`Biztosan törli az ${retentionDays} napnál régebbi felvételeket?`)) return
     try {
       if (isElectron() && window.electronAPI?.cameraLocalCleanup) {
         const result = await window.electronAPI.cameraLocalCleanup(retentionDays)
-        toast.success(`${result.deletedCount} felvetel torolve`)
+        toast.success(`${result.deletedCount} felvétel törölve`)
       } else {
         const res = await api.post('/camera/admin/cleanup', {})
         if (res.data) {
-          toast.success(`${res.data.deletedCount} felvetel torolve`)
+          toast.success(`${res.data.deletedCount} felvétel törölve`)
         }
       }
       fetchStats()
     } catch (err) {
-      logger.error('CameraStatusPage', 'Takaritas sikertelen:', err)
+      logger.error('CameraStatusPage', 'Takarítás sikertelen:', err)
     }
   }
 
@@ -75,8 +75,8 @@ export default function CameraStatusPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <HardDrive className="h-6 w-6" />
-          Kamera rendszer allapot
-          {isElectron() && <span className="text-sm font-normal text-muted-foreground">(lokalis)</span>}
+          Kamera rendszer állapot
+          {isElectron() && <span className="text-sm font-normal text-muted-foreground">(lokális)</span>}
         </h1>
         <div className="flex gap-2">
           <button
@@ -84,32 +84,32 @@ export default function CameraStatusPage() {
             onClick={fetchStats}
           >
             <RefreshCw className="h-4 w-4 mr-2" />
-            Frissites
+            Frissítés
           </button>
           <button
             className="inline-flex items-center justify-center rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90"
             onClick={triggerCleanup}
           >
             <Trash2 className="h-4 w-4 mr-2" />
-            Lejart felvetelek torlese
+            Lejárt felvételek törlése
           </button>
         </div>
       </div>
 
       {loading ? (
-        <p>Betoltes...</p>
+        <p>Betöltés...</p>
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="rounded-lg border bg-card shadow-sm">
               <div className="p-4">
-                <p className="text-sm text-muted-foreground">Felvetelek</p>
+                <p className="text-sm text-muted-foreground">Felvételek</p>
                 <p className="text-3xl font-bold">{stats?.totalRecordings ?? 0}</p>
               </div>
             </div>
             <div className="rounded-lg border bg-card shadow-sm">
               <div className="p-4">
-                <p className="text-sm text-muted-foreground">Tarhelyhasznalat</p>
+                <p className="text-sm text-muted-foreground">Tárhelyhasználat</p>
                 <p className="text-3xl font-bold">{stats ? formatSize(stats.totalUsageBytes) : '-'}</p>
                 <p className="text-xs text-muted-foreground">
                   {stats ? formatSize(stats.availableSpaceBytes) : '-'} szabad
@@ -118,7 +118,7 @@ export default function CameraStatusPage() {
             </div>
             <div className="rounded-lg border bg-card shadow-sm">
               <div className="p-4">
-                <p className="text-sm text-muted-foreground">Idoszak</p>
+                <p className="text-sm text-muted-foreground">Időszak</p>
                 <p className="text-lg font-bold">
                   {stats?.oldestDate ?? '-'} -- {stats?.newestDate ?? '-'}
                 </p>
@@ -129,7 +129,7 @@ export default function CameraStatusPage() {
           {stats && (
             <div className="rounded-lg border bg-card shadow-sm">
               <div className="p-4 pb-2">
-                <h3 className="text-lg font-semibold">Tarhelyhasznalat</h3>
+                <h3 className="text-lg font-semibold">Tárhelyhasználat</h3>
               </div>
               <div className="p-4">
                 <div className="w-full bg-muted rounded-full h-4 overflow-hidden">
@@ -140,7 +140,7 @@ export default function CameraStatusPage() {
                     style={{ width: `${Math.min(usagePercent, 100)}%` }}
                   />
                 </div>
-                <p className="text-sm text-muted-foreground mt-2">{usagePercent.toFixed(1)}% hasznalat</p>
+                <p className="text-sm text-muted-foreground mt-2">{usagePercent.toFixed(1)}% használat</p>
               </div>
             </div>
           )}

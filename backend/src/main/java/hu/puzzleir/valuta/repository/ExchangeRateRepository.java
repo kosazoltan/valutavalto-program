@@ -145,6 +145,19 @@ public interface ExchangeRateRepository extends JpaRepository<ExchangeRate, Long
     );
 
     /**
+     * Legutolsó aktív árfolyamok egy céghez — FALLBACK ha az adott napra nincs adat.
+     * Az utolsó elérhető nap adatait adja vissza (DISTINCT ON currency_id).
+     *
+     * PostgreSQL-specifikus: DISTINCT ON + ORDER BY a legfrissebb per-valuta rekord kiválasztásához.
+     */
+    @Query(value = "SELECT DISTINCT ON (er.currency_id) er.* FROM exchange_rate er " +
+           "WHERE er.company_id = :companyId " +
+           "AND er.active = true " +
+           "ORDER BY er.currency_id, er.valid_date DESC, er.valid_time DESC",
+           nativeQuery = true)
+    List<ExchangeRate> findLatestActiveRates(@Param("companyId") UUID companyId);
+
+    /**
      * Legfrissebb közép-árfolyam — company-specific.
      */
     @Query(value = "SELECT (er.base_buy_rate + er.base_sell_rate) / 2 FROM exchange_rate er " +

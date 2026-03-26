@@ -27,7 +27,7 @@ export default function RatePublishHistory() {
       const { data } = await api.get<Publication[]>('/rate-management/publications')
       setPublications(data)
     } catch (err) {
-      logger.error('RatePublishHistory', 'Lekeres sikertelen:', err)
+      logger.error('RatePublishHistory', 'Lekérés sikertelen:', err)
     } finally {
       setLoading(false)
     }
@@ -38,21 +38,21 @@ export default function RatePublishHistory() {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <History className="h-5 w-5" />
-          Publikalasi naplo
+          Publikálási napló
         </h2>
         <button
           className="inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"
           onClick={fetchHistory}
         >
           <RefreshCw className="h-4 w-4 mr-2" />
-          Frissites
+          Frissítés
         </button>
       </div>
 
       {loading ? (
-        <p>Betoltes...</p>
+        <p>Betöltés...</p>
       ) : publications.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">Nincs publikalasi elozmeny</div>
+        <div className="text-center py-8 text-muted-foreground">Nincs publikálási előzmény</div>
       ) : (
         <div className="space-y-2">
           {publications.map((pub) => (

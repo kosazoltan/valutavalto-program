@@ -28,7 +28,7 @@ export default function CameraConfigPage() {
   useEffect(() => {
     fetchConfigs()
     if (isElectron()) {
-      // Lokalis kamerak detektalasa
+      // Lokális kamerák detektálása
       navigator.mediaDevices.enumerateDevices().then(devices => {
         setLocalDevices(devices.filter(d => d.kind === 'videoinput'))
       })
@@ -38,7 +38,7 @@ export default function CameraConfigPage() {
   const fetchConfigs = async () => {
     try {
       if (isElectron()) {
-        // Electron: lokalis konfiguracio a config store-bol
+        // Electron: lokális konfiguráció a config store-ból
         const configJson = await window.electronAPI!.getConfig('camera_configs')
         if (configJson) {
           setConfigs(JSON.parse(configJson))
@@ -50,7 +50,7 @@ export default function CameraConfigPage() {
         setConfigs(res.data)
       }
     } catch (err) {
-      logger.error('CameraConfigPage', 'Config lekeres sikertelen:', err)
+      logger.error('CameraConfigPage', 'Config lekérés sikertelen:', err)
     } finally {
       setLoading(false)
     }
@@ -59,7 +59,7 @@ export default function CameraConfigPage() {
   const saveConfig = async (config: CameraConfigItem) => {
     try {
       if (isElectron()) {
-        // Electron: lokalis mentes
+        // Electron: lokális mentés
         const existing = [...configs]
         if (config.id) {
           const idx = existing.findIndex(c => c.id === config.id)
@@ -76,12 +76,12 @@ export default function CameraConfigPage() {
       }
       setEditing(null)
     } catch (err) {
-      logger.error('CameraConfigPage', 'Mentes sikertelen:', err)
+      logger.error('CameraConfigPage', 'Mentés sikertelen:', err)
     }
   }
 
   const deleteConfig = async (id: string) => {
-    if (!confirm('Biztosan torli a kamera konfiguraciot?')) return
+    if (!confirm('Biztosan törli a kamera konfigurációt?')) return
     try {
       if (isElectron()) {
         const updated = configs.filter(c => c.id !== id)
@@ -92,7 +92,7 @@ export default function CameraConfigPage() {
         fetchConfigs()
       }
     } catch (err) {
-      logger.error('CameraConfigPage', 'Torles sikertelen:', err)
+      logger.error('CameraConfigPage', 'Törlés sikertelen:', err)
     }
   }
 
@@ -114,23 +114,23 @@ export default function CameraConfigPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Settings className="h-6 w-6" />
-          Kamera konfiguracio
-          {isElectron() && <span className="text-sm font-normal text-muted-foreground">(lokalis)</span>}
+          Kamera konfiguráció
+          {isElectron() && <span className="text-sm font-normal text-muted-foreground">(lokális)</span>}
         </h1>
         <button
           className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           onClick={() => setEditing(newConfig())}
         >
           <Plus className="h-4 w-4 mr-2" />
-          Uj kamera
+          Új kamera
         </button>
       </div>
 
-      {/* Electron: lokalis kamerak listaja */}
+      {/* Electron: lokális kamerák listája */}
       {isElectron() && localDevices.length > 0 && (
         <div className="rounded-lg border bg-card shadow-sm">
           <div className="p-4 pb-2">
-            <h3 className="text-lg font-semibold">Eszlelt lokalis kamerak</h3>
+            <h3 className="text-lg font-semibold">Észlelt lokális kamerák</h3>
           </div>
           <div className="p-4">
             <div className="space-y-1">
@@ -148,7 +148,7 @@ export default function CameraConfigPage() {
       {editing && (
         <div className="rounded-lg border bg-card shadow-sm">
           <div className="p-4 pb-2">
-            <h3 className="text-lg font-semibold">{editing.id ? 'Szerkesztes' : 'Uj kamera'}</h3>
+            <h3 className="text-lg font-semibold">{editing.id ? 'Szerkesztés' : 'Új kamera'}</h3>
           </div>
           <div className="p-4">
             <div className="grid grid-cols-2 gap-4">
@@ -170,7 +170,7 @@ export default function CameraConfigPage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Szelesseg</label>
+                <label className="text-sm font-medium">Szélesség</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   type="number"
@@ -179,7 +179,7 @@ export default function CameraConfigPage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Magassag</label>
+                <label className="text-sm font-medium">Magasság</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   type="number"
@@ -188,7 +188,7 @@ export default function CameraConfigPage() {
                 />
               </div>
               <div className="col-span-2">
-                <label className="text-sm font-medium">Tarolasi utvonal</label>
+                <label className="text-sm font-medium">Tárolási útvonal</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   value={editing.localStoragePath}
@@ -202,13 +202,13 @@ export default function CameraConfigPage() {
                 onClick={() => saveConfig(editing)}
               >
                 <Save className="h-4 w-4 mr-2" />
-                Mentes
+                Mentés
               </button>
               <button
                 className="inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
                 onClick={() => setEditing(null)}
               >
-                Megse
+                Mégse
               </button>
             </div>
           </div>
@@ -217,9 +217,9 @@ export default function CameraConfigPage() {
 
       {/* Config list */}
       {loading ? (
-        <p>Betoltes...</p>
+        <p>Betöltés...</p>
       ) : configs.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">Nincs konfiguralt kamera</div>
+        <div className="text-center py-12 text-muted-foreground">Nincs konfigurált kamera</div>
       ) : (
         <div className="space-y-3">
           {configs.map((config) => (
@@ -231,20 +231,20 @@ export default function CameraConfigPage() {
                     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                       config.enabled ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
                     }`}>
-                      {config.enabled ? 'Aktiv' : 'Inaktiv'}
+                      {config.enabled ? 'Aktív' : 'Inaktív'}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {config.resolutionWidth}x{config.resolutionHeight} @ {config.fps} FPS
                   </p>
-                  <p className="text-xs text-muted-foreground">Utvonal: {config.localStoragePath}</p>
+                  <p className="text-xs text-muted-foreground">Útvonal: {config.localStoragePath}</p>
                 </div>
                 <div className="flex gap-2">
                   <button
                     className="inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"
                     onClick={() => setEditing(config)}
                   >
-                    Szerkesztes
+                    Szerkesztés
                   </button>
                   <button
                     className="inline-flex items-center justify-center rounded-md bg-destructive px-3 py-1.5 text-xs font-medium text-destructive-foreground hover:bg-destructive/90"

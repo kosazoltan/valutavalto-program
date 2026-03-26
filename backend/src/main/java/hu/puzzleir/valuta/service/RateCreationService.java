@@ -59,11 +59,12 @@ public class RateCreationService {
 
     /**
      * Bank árfolyamok lekérése az aktuális rátákból.
+     * Fallback: ha a mai napra nincs adat, a legutolsó elérhető napot adja vissza.
      */
     @Transactional(readOnly = true)
     public List<BankRateDTO> getBankRates() {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        List<ExchangeRate> rates = exchangeRateRepository.findActiveRatesByDate(companyId, LocalDate.now());
+        List<ExchangeRate> rates = findActiveRatesWithFallback(companyId);
 
         return rates.stream().map(rate -> {
             BigDecimal middleRate = rate.getBaseBuyRate()
@@ -279,8 +280,8 @@ public class RateCreationService {
         // Összes aktív valuta
         List<Currency> activeCurrencies = currencyRepository.findByActiveTrueOrderByDisplayOrderAsc();
 
-        // Aktuális exchange_rate-ek (company + dátum szűrés)
-        List<ExchangeRate> currentRates = exchangeRateRepository.findActiveRatesByDate(companyId, today);
+        // Aktuális exchange_rate-ek (company + dátum szűrés, fallback ha nincs mai adat)
+        List<ExchangeRate> currentRates = findActiveRatesWithFallback(companyId);
 
         // Map: currencyId → legfrissebb ExchangeRate
         Map<Long, ExchangeRate> rateMap = new LinkedHashMap<>();
@@ -362,7 +363,7 @@ public class RateCreationService {
     @Transactional(readOnly = true)
     public Map<String, Object> prepareAllRates() {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        List<ExchangeRate> currentRates = exchangeRateRepository.findActiveRatesByDate(companyId, LocalDate.now());
+        List<ExchangeRate> currentRates = findActiveRatesWithFallback(companyId);
 
         List<Map<String, Object>> proposals = currentRates.stream().map(rate -> {
             Map<String, Object> proposal = new LinkedHashMap<>();
@@ -551,6 +552,19 @@ public class RateCreationService {
 
         rateWorkgroupRepository.save(workgroup);
         log.info("Munkacsoport iroda-hozzárendelés frissítve: workgroupId={}, {} iroda", workgroupId, workgroup.getBranches().size());
+    }
+
+    /**
+     * Aktív árfolyamok keresése fallback logikával.
+     * Ha a mai napra nincs adat, a legutolsó elérhető napot adja vissza.
+     */
+    private List<ExchangeRate> findActiveRatesWithFallback(UUID companyId) {
+        List<ExchangeRate> rates = exchangeRateRepository.findActiveRatesByDate(companyId, LocalDate.now());
+        if (rates.isEmpty()) {
+            log.info("Nincs mai aktív árfolyam (companyId={}), fallback: legutolsó elérhető nap", companyId);
+            rates = exchangeRateRepository.findLatestActiveRates(companyId);
+        }
+        return rates;
     }
 
     /**

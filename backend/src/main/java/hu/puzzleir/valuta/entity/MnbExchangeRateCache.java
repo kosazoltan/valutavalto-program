@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "mnb_exchange_rate_cache", uniqueConstraints = {
-        @UniqueConstraint(columnNames = { "currency_code", "rate_date" })
+        @UniqueConstraint(columnNames = { "currency_code", "rate_date", "source" })
 }, indexes = {
         @Index(name = "idx_mnb_rate_date", columnList = "rate_date"),
         @Index(name = "idx_mnb_rate_currency", columnList = "currency_code")
@@ -58,6 +58,13 @@ public class MnbExchangeRateCache {
     @Column(nullable = false)
     @Builder.Default
     private Integer unit = 1;
+
+    /**
+     * Forrás: "MNB" vagy "RAIFFEISEN"
+     */
+    @Column(name = "source", nullable = false, length = 20)
+    @Builder.Default
+    private String source = "MNB";
 
     /**
      * Letöltés időpontja

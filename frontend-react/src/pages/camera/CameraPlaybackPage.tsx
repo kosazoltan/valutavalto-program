@@ -5,7 +5,7 @@ import { logger } from '../../utils/logger';
 
 const isElectron = () => !!window.electronAPI
 
-// Lokalis (Electron) felvetel bejegyzes
+// Lokális (Electron) felvétel bejegyzés
 interface LocalRecordingEntry {
   date: string
   transactionId: string
@@ -14,7 +14,7 @@ interface LocalRecordingEntry {
   createdAt: string
 }
 
-// Szerver oldali felvetel metadata
+// Szerver oldali felvétel metadata
 interface RecordingMetadata {
   id: string
   branchId: string
@@ -42,12 +42,12 @@ export default function CameraPlaybackPage() {
     setSelectedVideo(null)
     try {
       if (isElectron() && window.electronAPI?.cameraLocalRecordingsByDate) {
-        // Electron: lokalis fajlrendszerben keres
+        // Electron: lokális fájlrendszerben keres
         const results = await window.electronAPI.cameraLocalRecordingsByDate(startDate, endDate)
         setLocalRecordings(results)
         setServerRecordings([])
       } else {
-        // Bongeszo: szerver API — branchId-t nem kerdezzuk (admin lekeres)
+        // Böngésző: szerver API — branchId-t nem kérdezzük (admin lekérés)
         const params = new URLSearchParams({
           branchId: '', // TODO: branch selector
           start: startDate + 'T00:00:00',
@@ -58,7 +58,7 @@ export default function CameraPlaybackPage() {
         setLocalRecordings([])
       }
     } catch (err) {
-      logger.error('CameraPlaybackPage', 'Kereses sikertelen:', err)
+      logger.error('CameraPlaybackPage', 'Keresés sikertelen:', err)
     } finally {
       setLoading(false)
     }
@@ -72,7 +72,7 @@ export default function CameraPlaybackPage() {
         setSelectedVideo(`data:video/webm;base64,${base64}`)
       }
     } catch (err) {
-      logger.error('CameraPlaybackPage', 'Lejatszas sikertelen:', err)
+      logger.error('CameraPlaybackPage', 'Lejátszás sikertelen:', err)
     }
   }
 
@@ -93,8 +93,8 @@ export default function CameraPlaybackPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold flex items-center gap-2">
         <PlayCircle className="h-6 w-6" />
-        Felvetel visszajatszas
-        {isElectron() && <span className="text-sm font-normal text-muted-foreground">(lokalis)</span>}
+        Felvétel visszajátszás
+        {isElectron() && <span className="text-sm font-normal text-muted-foreground">(lokális)</span>}
       </h1>
 
       {/* Search controls */}
@@ -102,13 +102,13 @@ export default function CameraPlaybackPage() {
         <div className="p-4 pb-2">
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            Kereses datum szerint
+            Keresés dátum szerint
           </h3>
         </div>
         <div className="p-4">
           <div className="flex gap-3 items-end">
             <div>
-              <label className="text-sm font-medium">Kezdo datum</label>
+              <label className="text-sm font-medium">Kezdő dátum</label>
               <input
                 className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                 type="date"
@@ -117,7 +117,7 @@ export default function CameraPlaybackPage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Zaro datum</label>
+              <label className="text-sm font-medium">Záró dátum</label>
               <input
                 className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                 type="date"
@@ -131,7 +131,7 @@ export default function CameraPlaybackPage() {
               disabled={loading || !startDate || !endDate}
             >
               <Search className="h-4 w-4 mr-2" />
-              Kereses
+              Keresés
             </button>
           </div>
         </div>
@@ -141,7 +141,7 @@ export default function CameraPlaybackPage() {
       {selectedVideo && (
         <div className="rounded-lg border bg-card shadow-sm">
           <div className="p-4 pb-2">
-            <h3 className="text-lg font-semibold">Lejatszas</h3>
+            <h3 className="text-lg font-semibold">Lejátszás</h3>
           </div>
           <div className="p-4">
             <video
@@ -154,13 +154,13 @@ export default function CameraPlaybackPage() {
         </div>
       )}
 
-      {/* Lokalis felvetelek (Electron) */}
+      {/* Lokális felvételek (Electron) */}
       {localRecordings.length > 0 && (
         <div className="rounded-lg border bg-card shadow-sm">
           <div className="p-4 pb-2">
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <FileVideo className="h-5 w-5" />
-              Lokalis felvetelek ({localRecordings.length})
+              Lokális felvételek ({localRecordings.length})
             </h3>
           </div>
           <div className="p-4">
@@ -168,7 +168,7 @@ export default function CameraPlaybackPage() {
               {localRecordings.map((rec) => (
                 <div key={rec.transactionId} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <div className="space-y-1">
-                    <p className="font-medium">Tranzakcio: {rec.transactionId}</p>
+                    <p className="font-medium">Tranzakció: {rec.transactionId}</p>
                     <p className="text-sm text-muted-foreground">
                       {rec.date} -- {formatDate(rec.createdAt)}
                     </p>
@@ -180,7 +180,7 @@ export default function CameraPlaybackPage() {
                       onClick={() => playLocalFile(rec.filePath)}
                     >
                       <PlayCircle className="h-4 w-4 mr-1" />
-                      Lejatszas
+                      Lejátszás
                     </button>
                   </div>
                 </div>
@@ -190,13 +190,13 @@ export default function CameraPlaybackPage() {
         </div>
       )}
 
-      {/* Szerver felvetelek (bongeszo) */}
+      {/* Szerver felvételek (böngésző) */}
       {serverRecordings.length > 0 && (
         <div className="rounded-lg border bg-card shadow-sm">
           <div className="p-4 pb-2">
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <FileVideo className="h-5 w-5" />
-              Szerveren tarolt felvetelek ({serverRecordings.length})
+              Szerveren tárolt felvételek ({serverRecordings.length})
             </h3>
           </div>
           <div className="p-4">
@@ -218,7 +218,7 @@ export default function CameraPlaybackPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm">{formatFileSize(rec.fileSizeBytes)}</p>
-                    <p className="text-xs text-muted-foreground">{rec.linkedTransactions} tranzakcio</p>
+                    <p className="text-xs text-muted-foreground">{rec.linkedTransactions} tranzakció</p>
                   </div>
                 </div>
               ))}
@@ -229,7 +229,7 @@ export default function CameraPlaybackPage() {
 
       {!loading && !hasResults && (
         <div className="text-center py-12 text-muted-foreground">
-          Hasznalja a keresot felvetelek megjelenitesehez
+          Használja a keresőt felvételek megjelenítéséhez
         </div>
       )}
     </div>
