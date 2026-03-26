@@ -72,11 +72,15 @@ public class ReceiptSequenceService {
 
         String branchCode = extractBranchCode(branch.getCode());
 
-        // Szekvencia lekérése PESSIMISTIC LOCK-kal
+        // Szekvencia lekérése PESSIMISTIC LOCK-kal, vagy auto-create ha nem létezik
         ReceiptSequence sequence = receiptSequenceRepository.findByBranchIdForUpdate(branchId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                    "Bizonylat szekvencia nem található branch-hez: " + branchId
-                    + ". Futtassa a V42 migrációt!"));
+                .orElseGet(() -> {
+                    log.info("Bizonylat szekvencia auto-create branch-hez: {}", branchId);
+                    ReceiptSequence newSeq = ReceiptSequence.builder()
+                            .branchId(branchId)
+                            .build();
+                    return receiptSequenceRepository.save(newSeq);
+                });
 
         // Prefix és sorszám meghatározása a típus alapján
         String prefix = getPrefix(transactionType);
