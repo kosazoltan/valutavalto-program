@@ -41,22 +41,22 @@ SELECT
 FROM company c WHERE c.code = 'EBC'
 ON CONFLICT (code) DO NOTHING;
 
--- Workers: password_hash = BCrypt('1234'), column is_active (NOT active!)
-INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, is_active, email, created_at)
+-- Workers: password_hash = BCrypt('1234'), column: active (not is_active)
+INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, active, email, created_at)
 SELECT c.id, b.id, 'BORSI', 'Borsi Tamas',
     '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie',
     'CASHIER', true, 'borsi.tamas.ebc@gmail.com', NOW()
 FROM branch b JOIN company c ON b.company_id = c.id WHERE b.code = 'TISZA'
 ON CONFLICT (company_id, code) DO NOTHING;
 
-INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, is_active, email, created_at)
+INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, active, email, created_at)
 SELECT c.id, b.id, 'BALI', 'Bali Henrietta',
     '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie',
     'CASHIER', true, 'bali.henriett.ebc@gmail.com', NOW()
 FROM branch b JOIN company c ON b.company_id = c.id WHERE b.code = 'TISZA'
 ON CONFLICT (company_id, code) DO NOTHING;
 
-INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, is_active, email, created_at)
+INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, active, email, created_at)
 SELECT c.id, b.id, 'KASZA', 'Kasza Helga',
     '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie',
     'CASHIER', true, 'kasza.helga.ebc@gmail.com', NOW()
