@@ -108,7 +108,7 @@ class DailySessionServiceTest {
                 .openingBalanceHuf(BigDecimal.ZERO)
                 .build();
 
-        when(dailySessionRepository.hasOpenSession(branchId)).thenReturn(false);
+        when(dailySessionRepository.findOpenSessionsByBranch(branchId)).thenReturn(List.of());
         when(dailySessionRepository.findByBranchIdAndSessionDate(eq(branchId), eq(LocalDate.now())))
                 .thenReturn(Optional.empty());
         when(dailySessionRepository.findLatest(branchId)).thenReturn(Optional.empty());

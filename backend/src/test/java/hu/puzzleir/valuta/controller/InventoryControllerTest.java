@@ -77,13 +77,14 @@ class InventoryControllerTest {
 
         when(inventoryService.getAllStock()).thenReturn(List.of(balance));
 
+        // branch, currency, company are @JsonIgnore on CashBalance entity
+        // so only directly serialized fields appear in JSON response
         mockMvc.perform(get("/api/v1/inventory/stock"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].id").value(10))
-                .andExpect(jsonPath("$[0].branch.id").value(branchId.toString()))
-                .andExpect(jsonPath("$[0].currency.code").value("EUR"))
-                .andExpect(jsonPath("$[0].currentBalance").value(1234.56));
+                .andExpect(jsonPath("$[0].currentBalance").value(1234.56))
+                .andExpect(jsonPath("$[0].openingBalance").value(1200.00));
 
         verify(inventoryService, times(1)).getAllStock();
         verifyNoMoreInteractions(inventoryService);
