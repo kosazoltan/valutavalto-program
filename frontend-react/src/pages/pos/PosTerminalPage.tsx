@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { CreditCard } from 'lucide-react'
 import { posTerminalApi, PosTerminal } from '../../services/api/index'
+import { safeArray } from '@/utils/safeArray'
 
 export default function PosTerminalPage() {
   const [terminals, setTerminals] = useState<PosTerminal[]>([])
@@ -29,7 +30,7 @@ export default function PosTerminalPage() {
           <table className="data-grid w-full">
             <thead><tr><th>Terminál ID</th><th>Név</th><th>Fők</th><th>Utolsó tranzakció</th><th>Státusz</th></tr></thead>
             <tbody>
-              {terminals.map(t => (
+              {safeArray<PosTerminal>(terminals).map(t => (
                 <tr key={t.id}>
                   <td className="font-mono">{t.terminalId}</td>
                   <td>{t.terminalName}</td>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '@/services/api/index';
+import { safeArray } from '@/utils/safeArray';
 
 interface Reservation {
   id: number;
@@ -96,7 +97,7 @@ export default function ReservationPage() {
     }
   }, [loadReservations]);
 
-  const filteredReservations = reservations.filter(r =>
+  const filteredReservations = safeArray<Reservation>(reservations).filter(r =>
     r.reservationNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     r.customerName?.toLowerCase().includes(searchTerm.toLowerCase())
   );

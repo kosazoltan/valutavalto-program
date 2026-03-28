@@ -134,7 +134,7 @@ export default function CameraExportPage() {
               <label className="text-xs text-gray-500">Iroda *</label>
               <select value={form.branchId} onChange={e => { setForm({ ...form, branchId: e.target.value }); loadByBranch(e.target.value) }} className="input-field text-sm w-full">
                 <option value="">Válasszon...</option>
-                {branches.map(b => <option key={b.id} value={b.id}>{b.code} — {b.name}</option>)}
+                {safeArray<BranchInfo>(branches).map(b => <option key={b.id} value={b.id}>{b.code} — {b.name}</option>)}
               </select>
             </div>
             <div>

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Settings } from 'lucide-react'
 import { organizationalSystemParameterApi, OrganizationalSystemParameter } from '../../services/api/index'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
+import { safeArray } from '@/utils/safeArray';
 
 export default function OrganizationalSystemParameterPage() {
   const [params, setParams] = useState<OrganizationalSystemParameter[]>([])
@@ -30,7 +31,7 @@ export default function OrganizationalSystemParameterPage() {
           <table className="data-grid w-full">
             <thead><tr><th>Szervezet</th><th>Kulcs</th><th>Érték</th><th>Valuta</th><th>Érvényesség</th></tr></thead>
             <tbody>
-              {params.map(p => (
+              {safeArray<OrganizationalSystemParameter>(params).map(p => (
                 <tr key={p.id}>
                   <td>{p.organizationName || '-'}</td>
                   <td className="font-mono text-sm">{p.parameterKey}</td>

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Building2 } from 'lucide-react'
 import { branchGroupApi, BranchGroup } from '../../services/api/index'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
+import { safeArray } from '@/utils/safeArray';
 
 export default function BranchGroupPage() {
   const [groups, setGroups] = useState<BranchGroup[]>([])
@@ -30,7 +31,7 @@ export default function BranchGroupPage() {
           <table className="data-grid w-full">
             <thead><tr><th>Kód</th><th>Név</th><th>Szülő csoport</th><th>Főkok száma</th><th>Státusz</th></tr></thead>
             <tbody>
-              {groups.map(g => (
+              {safeArray<BranchGroup>(groups).map(g => (
                 <tr key={g.id}>
                   <td className="font-mono text-sm">{g.code}</td>
                   <td>{g.name}</td>

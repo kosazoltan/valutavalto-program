@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Bell, CheckCircle } from 'lucide-react'
 import { notificationApi, Notification } from '../../services/api/index'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
+import { safeArray } from '@/utils/safeArray';
 
 export default function NotificationPage() {
   const [notifications, setNotifications] = useState<Notification[]>([])
@@ -65,7 +66,7 @@ export default function NotificationPage() {
           <table className="data-grid w-full">
             <thead><tr><th>Cím</th><th>Üzenet</th><th>Típus</th><th>Dátum</th><th>Olvasva</th><th>Műveletek</th></tr></thead>
             <tbody>
-              {notifications.map(n => (
+              {safeArray<Notification>(notifications).map(n => (
                 <tr key={n.id} className={!n.isRead ? 'bg-blue-50' : ''}>
                   <td>{n.title}</td>
                   <td>{n.message}</td>

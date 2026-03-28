@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { FileText, Upload, Download } from 'lucide-react'
 import { documentStorageApi, Document } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
+import { safeArray } from '@/utils/safeArray';
 
 export default function DocumentStoragePage() {
   const [documents, setDocuments] = useState<Document[]>([])
@@ -74,7 +75,7 @@ export default function DocumentStoragePage() {
           <table className="data-grid w-full">
             <thead><tr><th>Fájlnév</th><th>Típus</th><th>Méret</th><th>Feltöltve</th><th>Műveletek</th></tr></thead>
             <tbody>
-              {documents.map(d => (
+              {safeArray<Document>(documents).map(d => (
                 <tr key={d.id}>
                   <td>{d.fileName}</td>
                   <td>{d.fileType}</td>

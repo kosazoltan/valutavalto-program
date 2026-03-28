@@ -3,7 +3,8 @@ import { Archive, Play } from 'lucide-react'
 import { archivingApi, ArchiveTask } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
+import { safeArray } from '@/utils/safeArray';
 
 export default function ArchivingPage() {
   const [tasks, setTasks] = useState<ArchiveTask[]>([])
@@ -58,7 +59,7 @@ export default function ArchivingPage() {
           <table className="data-grid w-full">
             <thead><tr><th>Típus</th><th>Entitás típus</th><th>Státusz</th><th>Kezdés</th><th>Befejezés</th><th>Műveletek</th></tr></thead>
             <tbody>
-              {tasks.map(t => (
+              {safeArray<ArchiveTask>(tasks).map(t => (
                 <tr key={t.id}>
                   <td>{t.taskType}</td>
                   <td>{t.entityType}</td>

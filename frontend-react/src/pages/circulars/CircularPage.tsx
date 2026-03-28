@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '@/services/api/index';
+import { safeArray } from '@/utils/safeArray';
 
 interface Circular {
   id: number;
@@ -139,7 +140,7 @@ export default function CircularPage() {
     }
   }, [loadCirculars, loadUnacknowledged]);
 
-  const filteredCirculars = circulars.filter(c =>
+  const filteredCirculars = safeArray<Circular>(circulars).filter(c =>
     c.circularNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.title?.toLowerCase().includes(searchTerm.toLowerCase())
   );

@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { Monitor, RefreshCw } from 'lucide-react'
 import { exchangeRateDisplayApi, ExchangeRateDisplay } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
+import { safeArray } from '@/utils/safeArray';
 
 export default function ExchangeRateDisplayPage() {
   const [displays, setDisplays] = useState<ExchangeRateDisplay[]>([])
@@ -50,7 +51,7 @@ export default function ExchangeRateDisplayPage() {
           <table className="data-grid w-full">
             <thead><tr><th>Név</th><th>Frissítési idő</th><th>Státusz</th><th>Műveletek</th></tr></thead>
             <tbody>
-              {displays.map(d => (
+              {safeArray<ExchangeRateDisplay>(displays).map(d => (
                 <tr key={d.id}>
                   <td>{d.displayName}</td>
                   <td>{d.refreshInterval}s</td>
