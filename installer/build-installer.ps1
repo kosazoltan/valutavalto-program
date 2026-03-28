@@ -137,12 +137,12 @@ VITE_COMPANY_ID=1
         if ($LASTEXITCODE -ne 0) { throw "electron-builder failed" }
 
         # Copy unpacked electron to stage
-        $unpackedDir = Get-ChildItem "release\win-unpacked" -ErrorAction SilentlyContinue
+        $unpackedDir = Get-Item "release\win-unpacked" -ErrorAction SilentlyContinue
         if (-not $unpackedDir) {
             $unpackedDir = Get-ChildItem "release" -Directory | Where-Object { $_.Name -match "unpacked" } | Select-Object -First 1
         }
         if ($unpackedDir) {
-            Copy-Item "$($unpackedDir.FullName)\*" "$StageDir\electron\" -Recurse -Force
+            Copy-Item (Join-Path $unpackedDir.FullName "*") "$StageDir\electron\" -Recurse -Force
 
             # FONTOS: Átnevezés ékezetes EXE → ASCII-safe "Penztar.exe"
             # Az electron-builder productName-ből generál ékezetes EXE nevet,
@@ -151,7 +151,8 @@ VITE_COMPANY_ID=1
             foreach ($exe in $exeFiles) {
                 $newName = "Penztar.exe"
                 Write-Host "  EXE átnevezés: $($exe.Name) → $newName" -ForegroundColor Yellow
-                Rename-Item $exe.FullName -NewName $newName -Force
+                $targetPath = Join-Path (Split-Path $exe.FullName) $newName
+                Move-Item $exe.FullName -Destination $targetPath -Force
             }
 
             Write-Host "Electron app staged" -ForegroundColor Green
@@ -183,25 +184,30 @@ if (-not $SkipDownloads) {
 
     Write-Host "Extracting PostgreSQL..."
     Expand-Archive -Path $pgZip -DestinationPath "$dlDir\pg-extract" -Force
-    $pgExtracted = Get-ChildItem "$dlDir\pg-extract\pgsql" -ErrorAction SilentlyContinue
+    $pgExtracted = Get-Item "$dlDir\pg-extract\pgsql" -ErrorAction SilentlyContinue
     if (-not $pgExtracted) {
         $pgExtracted = Get-ChildItem "$dlDir\pg-extract" -Directory | Select-Object -First 1
     }
-    Copy-Item "$($pgExtracted.FullName)\*" "$StageDir\pgsql\" -Recurse -Force
+    Copy-Item (Join-Path $pgExtracted.FullName "*") "$StageDir\pgsql\" -Recurse -Force
     Write-Host "PostgreSQL staged" -ForegroundColor Green
 
     # NSSM
-    $nssmZip = Join-Path $dlDir "nssm.zip"
-    if (-not (Test-Path $nssmZip)) {
-        Write-Host "Downloading NSSM $NSSM_VERSION..."
-        Invoke-WebRequest -Uri $NSSM_URL -OutFile $nssmZip -UseBasicParsing
-    } else { Write-Host "NSSM ZIP cached" -ForegroundColor Yellow }
+    # NSSM — skip download if already staged
+    if (Test-Path "$StageDir\tools\nssm.exe") {
+        Write-Host "NSSM already staged, skipping download" -ForegroundColor Yellow
+    } else {
+        $nssmZip = Join-Path $dlDir "nssm.zip"
+        if (-not (Test-Path $nssmZip)) {
+            Write-Host "Downloading NSSM $NSSM_VERSION..."
+            Invoke-WebRequest -Uri $NSSM_URL -OutFile $nssmZip -UseBasicParsing
+        } else { Write-Host "NSSM ZIP cached" -ForegroundColor Yellow }
 
-    Write-Host "Extracting NSSM..."
-    Expand-Archive -Path $nssmZip -DestinationPath "$dlDir\nssm-extract" -Force
-    $nssmExe = Get-ChildItem "$dlDir\nssm-extract" -Recurse -Filter "nssm.exe" | Where-Object { $_.Directory.Name -eq "win64" } | Select-Object -First 1
-    Copy-Item $nssmExe.FullName "$StageDir\tools\nssm.exe"
-    Write-Host "NSSM staged" -ForegroundColor Green
+        Write-Host "Extracting NSSM..."
+        Expand-Archive -Path $nssmZip -DestinationPath "$dlDir\nssm-extract" -Force
+        $nssmExe = Get-ChildItem "$dlDir\nssm-extract" -Recurse -Filter "nssm.exe" | Where-Object { $_.Directory.Name -eq "win64" } | Select-Object -First 1
+        Copy-Item $nssmExe.FullName "$StageDir\tools\nssm.exe"
+        Write-Host "NSSM staged" -ForegroundColor Green
+    }
 } else { Write-Host "Downloads SKIPPED" -ForegroundColor Yellow }
 
 # ─── 5. Config + Scripts ──────────────────────────────────────────────────
