@@ -4854,78 +4854,6 @@ function copyDirectoryWithCount(sourceDir, targetDir) {
 	}
 	return count;
 }
-electron.ipcMain.handle("camera-save-recording", async (_event, transactionId, videoBuffer, extension) => {
-	const date = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-	const safeId = sanitizeId$1(transactionId);
-	const dir = node_path.default.join(CAMERA_DIR, date, safeId);
-	node_fs.default.mkdirSync(dir, { recursive: true });
-	const filename = `recording_${Date.now()}.${extension}`;
-	const filepath = node_path.default.join(dir, filename);
-	node_fs.default.writeFileSync(filepath, Buffer.from(videoBuffer));
-	return filepath;
-});
-electron.ipcMain.handle("camera-export-to-usb", async (_event, dateFrom, dateTo) => {
-	const result = await electron.dialog.showOpenDialog({
-		title: "Válaszd ki az USB meghajtót",
-		properties: ["openDirectory"],
-		buttonLabel: "Exportálás ide"
-	});
-	if (result.canceled || !result.filePaths[0]) return {
-		success: false,
-		exported: 0,
-		error: "Megszakítva"
-	};
-	const from = new Date(dateFrom);
-	const to = new Date(dateTo);
-	if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return {
-		success: false,
-		exported: 0,
-		error: "Érvénytelen dátum"
-	};
-	if (from > to) return {
-		success: false,
-		exported: 0,
-		error: "A dátumtartomány hibás"
-	};
-	try {
-		const targetDir = node_path.default.join(result.filePaths[0], "valuta_kamera_export");
-		node_fs.default.mkdirSync(targetDir, { recursive: true });
-		let exported = 0;
-		const dateDirs = listDirectories(CAMERA_DIR);
-		for (const dateDir of dateDirs) {
-			const dateValue = new Date(dateDir);
-			if (Number.isNaN(dateValue.getTime())) continue;
-			if (dateValue < from || dateValue > to) continue;
-			const sourceDir = node_path.default.join(CAMERA_DIR, dateDir);
-			const destinationDir = node_path.default.join(targetDir, dateDir);
-			exported += copyDirectoryWithCount(sourceDir, destinationDir);
-		}
-		return {
-			success: true,
-			exported
-		};
-	} catch (err) {
-		return {
-			success: false,
-			exported: 0,
-			error: `Írási hiba: ${err.message}`
-		};
-	}
-});
-electron.ipcMain.handle("camera-list-recordings", async (_event, transactionId) => {
-	if (!node_fs.default.existsSync(CAMERA_DIR)) return [];
-	if (transactionId) {
-		const recordings = [];
-		const safeId = sanitizeId$1(transactionId);
-		const dateDirs = listDirectories(CAMERA_DIR);
-		for (const dateDir of dateDirs) {
-			const candidateDir = node_path.default.join(CAMERA_DIR, dateDir, safeId);
-			recordings.push(...collectFiles(candidateDir));
-		}
-		return recordings;
-	}
-	return collectFiles(CAMERA_DIR);
-});
 function getDirSize(dirPath) {
 	if (!node_fs.default.existsSync(dirPath)) return 0;
 	let size = 0;
@@ -4939,84 +4867,158 @@ function getDirSize(dirPath) {
 	}
 	return size;
 }
-electron.ipcMain.handle("camera-local-storage-stats", async () => {
-	if (!node_fs.default.existsSync(CAMERA_DIR)) return {
-		totalUsageBytes: 0,
-		availableSpaceBytes: 0,
-		totalRecordings: 0,
-		oldestDate: null,
-		newestDate: null
-	};
-	const totalUsageBytes = getDirSize(CAMERA_DIR);
-	const allFiles = collectFiles(CAMERA_DIR);
-	const dateDirs = listDirectories(CAMERA_DIR).sort();
-	let availableSpaceBytes = 0;
-	try {
-		const stats = node_fs.default.statfsSync(CAMERA_DIR);
-		availableSpaceBytes = Number(stats.bavail) * Number(stats.bsize);
-	} catch {}
-	return {
-		totalUsageBytes,
-		availableSpaceBytes,
-		totalRecordings: allFiles.length,
-		oldestDate: dateDirs.length > 0 ? dateDirs[0] : null,
-		newestDate: dateDirs.length > 0 ? dateDirs[dateDirs.length - 1] : null
-	};
-});
-electron.ipcMain.handle("camera-local-recordings-by-date", async (_event, dateFrom, dateTo) => {
-	if (!node_fs.default.existsSync(CAMERA_DIR)) return [];
-	const from = new Date(dateFrom);
-	const to = new Date(dateTo);
-	if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return [];
-	const results = [];
-	const dateDirs = listDirectories(CAMERA_DIR);
-	for (const dateDir of dateDirs) {
-		const dirDate = new Date(dateDir);
-		if (Number.isNaN(dirDate.getTime())) continue;
-		if (dirDate < from || dirDate > to) continue;
-		const txDirs = listDirectories(node_path.default.join(CAMERA_DIR, dateDir));
-		for (const txDir of txDirs) {
-			const files = collectFiles(node_path.default.join(CAMERA_DIR, dateDir, txDir));
-			for (const filePath of files) try {
-				const stat = node_fs.default.statSync(filePath);
-				results.push({
-					date: dateDir,
-					transactionId: txDir,
-					filePath,
-					fileSizeBytes: stat.size,
-					createdAt: stat.birthtime.toISOString()
+function registerCameraHandlers() {
+	electron.ipcMain.handle("camera-save-recording", async (_event, transactionId, videoBuffer, extension) => {
+		const date = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+		const safeId = sanitizeId$1(transactionId);
+		const dir = node_path.default.join(CAMERA_DIR, date, safeId);
+		node_fs.default.mkdirSync(dir, { recursive: true });
+		const filename = `recording_${Date.now()}.${extension}`;
+		const filepath = node_path.default.join(dir, filename);
+		node_fs.default.writeFileSync(filepath, Buffer.from(videoBuffer));
+		return filepath;
+	});
+	electron.ipcMain.handle("camera-export-to-usb", async (_event, dateFrom, dateTo) => {
+		const result = await electron.dialog.showOpenDialog({
+			title: "Válaszd ki az USB meghajtót",
+			properties: ["openDirectory"],
+			buttonLabel: "Exportálás ide"
+		});
+		if (result.canceled || !result.filePaths[0]) return {
+			success: false,
+			exported: 0,
+			error: "Megszakítva"
+		};
+		const from = new Date(dateFrom);
+		const to = new Date(dateTo);
+		if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return {
+			success: false,
+			exported: 0,
+			error: "Érvénytelen dátum"
+		};
+		if (from > to) return {
+			success: false,
+			exported: 0,
+			error: "A dátumtartomány hibás"
+		};
+		try {
+			const targetDir = node_path.default.join(result.filePaths[0], "valuta_kamera_export");
+			node_fs.default.mkdirSync(targetDir, { recursive: true });
+			let exported = 0;
+			const dateDirs = listDirectories(CAMERA_DIR);
+			for (const dateDir of dateDirs) {
+				const dateValue = new Date(dateDir);
+				if (Number.isNaN(dateValue.getTime())) continue;
+				if (dateValue < from || dateValue > to) continue;
+				const sourceDir = node_path.default.join(CAMERA_DIR, dateDir);
+				const destinationDir = node_path.default.join(targetDir, dateDir);
+				exported += copyDirectoryWithCount(sourceDir, destinationDir);
+			}
+			return {
+				success: true,
+				exported
+			};
+		} catch (err) {
+			return {
+				success: false,
+				exported: 0,
+				error: `Írási hiba: ${err.message}`
+			};
+		}
+	});
+	electron.ipcMain.handle("camera-list-recordings", async (_event, transactionId) => {
+		if (!node_fs.default.existsSync(CAMERA_DIR)) return [];
+		if (transactionId) {
+			const recordings = [];
+			const safeId = sanitizeId$1(transactionId);
+			const dateDirs = listDirectories(CAMERA_DIR);
+			for (const dateDir of dateDirs) {
+				const candidateDir = node_path.default.join(CAMERA_DIR, dateDir, safeId);
+				recordings.push(...collectFiles(candidateDir));
+			}
+			return recordings;
+		}
+		return collectFiles(CAMERA_DIR);
+	});
+	electron.ipcMain.handle("camera-local-storage-stats", async () => {
+		if (!node_fs.default.existsSync(CAMERA_DIR)) return {
+			totalUsageBytes: 0,
+			availableSpaceBytes: 0,
+			totalRecordings: 0,
+			oldestDate: null,
+			newestDate: null
+		};
+		const totalUsageBytes = getDirSize(CAMERA_DIR);
+		const allFiles = collectFiles(CAMERA_DIR);
+		const dateDirs = listDirectories(CAMERA_DIR).sort();
+		let availableSpaceBytes = 0;
+		try {
+			const stats = node_fs.default.statfsSync(CAMERA_DIR);
+			availableSpaceBytes = Number(stats.bavail) * Number(stats.bsize);
+		} catch {}
+		return {
+			totalUsageBytes,
+			availableSpaceBytes,
+			totalRecordings: allFiles.length,
+			oldestDate: dateDirs.length > 0 ? dateDirs[0] : null,
+			newestDate: dateDirs.length > 0 ? dateDirs[dateDirs.length - 1] : null
+		};
+	});
+	electron.ipcMain.handle("camera-local-recordings-by-date", async (_event, dateFrom, dateTo) => {
+		if (!node_fs.default.existsSync(CAMERA_DIR)) return [];
+		const from = new Date(dateFrom);
+		const to = new Date(dateTo);
+		if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return [];
+		const results = [];
+		const dateDirs = listDirectories(CAMERA_DIR);
+		for (const dateDir of dateDirs) {
+			const dirDate = new Date(dateDir);
+			if (Number.isNaN(dirDate.getTime())) continue;
+			if (dirDate < from || dirDate > to) continue;
+			const txDirs = listDirectories(node_path.default.join(CAMERA_DIR, dateDir));
+			for (const txDir of txDirs) {
+				const files = collectFiles(node_path.default.join(CAMERA_DIR, dateDir, txDir));
+				for (const filePath of files) try {
+					const stat = node_fs.default.statSync(filePath);
+					results.push({
+						date: dateDir,
+						transactionId: txDir,
+						filePath,
+						fileSizeBytes: stat.size,
+						createdAt: stat.birthtime.toISOString()
+					});
+				} catch {}
+			}
+		}
+		return results;
+	});
+	electron.ipcMain.handle("camera-local-read-file", async (_event, filePath) => {
+		const resolved = node_path.default.resolve(filePath);
+		if (!resolved.startsWith(node_path.default.resolve(CAMERA_DIR))) return null;
+		if (!node_fs.default.existsSync(resolved)) return null;
+		return node_fs.default.readFileSync(resolved).toString("base64");
+	});
+	electron.ipcMain.handle("camera-local-cleanup", async (_event, retentionDays) => {
+		if (!node_fs.default.existsSync(CAMERA_DIR)) return { deletedCount: 0 };
+		const cutoff = /* @__PURE__ */ new Date();
+		cutoff.setDate(cutoff.getDate() - retentionDays);
+		let deletedCount = 0;
+		for (const dateDir of listDirectories(CAMERA_DIR)) {
+			const dirDate = new Date(dateDir);
+			if (Number.isNaN(dirDate.getTime()) || dirDate >= cutoff) continue;
+			const dirPath = node_path.default.join(CAMERA_DIR, dateDir);
+			const fileCount = collectFiles(dirPath).length;
+			try {
+				node_fs.default.rmSync(dirPath, {
+					recursive: true,
+					force: true
 				});
+				deletedCount += fileCount;
 			} catch {}
 		}
-	}
-	return results;
-});
-electron.ipcMain.handle("camera-local-read-file", async (_event, filePath) => {
-	const resolved = node_path.default.resolve(filePath);
-	if (!resolved.startsWith(node_path.default.resolve(CAMERA_DIR))) return null;
-	if (!node_fs.default.existsSync(resolved)) return null;
-	return node_fs.default.readFileSync(resolved).toString("base64");
-});
-electron.ipcMain.handle("camera-local-cleanup", async (_event, retentionDays) => {
-	if (!node_fs.default.existsSync(CAMERA_DIR)) return { deletedCount: 0 };
-	const cutoff = /* @__PURE__ */ new Date();
-	cutoff.setDate(cutoff.getDate() - retentionDays);
-	let deletedCount = 0;
-	for (const dateDir of listDirectories(CAMERA_DIR)) {
-		const dirDate = new Date(dateDir);
-		if (Number.isNaN(dirDate.getTime()) || dirDate >= cutoff) continue;
-		const dirPath = node_path.default.join(CAMERA_DIR, dateDir);
-		const fileCount = collectFiles(dirPath).length;
-		try {
-			node_fs.default.rmSync(dirPath, {
-				recursive: true,
-				force: true
-			});
-			deletedCount += fileCount;
-		} catch {}
-	}
-	return { deletedCount };
-});
+		return { deletedCount };
+	});
+}
 //#endregion
 //#region electron/scanner.ts
 var SCAN_DIR = "C:/valuta/scan";
@@ -5053,59 +5055,63 @@ function decrypt(encrypted, iv, tag) {
 	decipher.setAuthTag(Buffer.from(tag, "hex"));
 	return Buffer.concat([decipher.update(encrypted), decipher.final()]);
 }
-electron.ipcMain.handle("scan-save-document", async (_event, transactionId, documentType, imageBase64) => {
-	const { encrypted, iv, tag } = encrypt(Buffer.from(imageBase64, "base64"));
-	const date = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-	const safeId = sanitizeId(transactionId);
-	const dir = node_path.default.join(SCAN_DIR, date, safeId);
-	node_fs.default.mkdirSync(dir, { recursive: true });
-	const filename = `${documentType}_${Date.now()}.enc`;
-	const filepath = node_path.default.join(dir, filename);
-	node_fs.default.writeFileSync(filepath, encrypted);
-	node_fs.default.writeFileSync(`${filepath}.meta`, JSON.stringify({
-		iv,
-		tag,
-		documentType,
-		timestamp: (/* @__PURE__ */ new Date()).toISOString()
-	}));
-	return {
-		path: filepath,
-		encrypted: true
-	};
-});
-electron.ipcMain.handle("scan-get-document", async (_event, filepath) => {
-	const resolved = node_path.default.resolve(filepath);
-	if (!resolved.startsWith(node_path.default.resolve(SCAN_DIR))) throw new Error("Érvénytelen fájlútvonal");
-	const encrypted = node_fs.default.readFileSync(resolved);
-	const metaRaw = node_fs.default.readFileSync(`${resolved}.meta`, "utf8");
-	const meta = JSON.parse(metaRaw);
-	return decrypt(encrypted, meta.iv, meta.tag).toString("base64");
-});
-electron.ipcMain.handle("scan-list-documents", async (_event, transactionId) => {
-	if (!node_fs.default.existsSync(SCAN_DIR)) return [];
-	const results = [];
-	const safeId = sanitizeId(transactionId);
-	const dateDirs = node_fs.default.readdirSync(SCAN_DIR);
-	for (const dateDir of dateDirs) {
-		const candidate = node_path.default.join(SCAN_DIR, dateDir, safeId);
-		if (!node_fs.default.existsSync(candidate) || !node_fs.default.statSync(candidate).isDirectory()) continue;
-		const files = node_fs.default.readdirSync(candidate);
-		for (const file of files) if (file.endsWith(".enc")) results.push(node_path.default.join(candidate, file));
-	}
-	return results;
-});
+function registerScannerHandlers() {
+	electron.ipcMain.handle("scan-save-document", async (_event, transactionId, documentType, imageBase64) => {
+		const { encrypted, iv, tag } = encrypt(Buffer.from(imageBase64, "base64"));
+		const date = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+		const safeId = sanitizeId(transactionId);
+		const dir = node_path.default.join(SCAN_DIR, date, safeId);
+		node_fs.default.mkdirSync(dir, { recursive: true });
+		const filename = `${documentType}_${Date.now()}.enc`;
+		const filepath = node_path.default.join(dir, filename);
+		node_fs.default.writeFileSync(filepath, encrypted);
+		node_fs.default.writeFileSync(`${filepath}.meta`, JSON.stringify({
+			iv,
+			tag,
+			documentType,
+			timestamp: (/* @__PURE__ */ new Date()).toISOString()
+		}));
+		return {
+			path: filepath,
+			encrypted: true
+		};
+	});
+	electron.ipcMain.handle("scan-get-document", async (_event, filepath) => {
+		const resolved = node_path.default.resolve(filepath);
+		if (!resolved.startsWith(node_path.default.resolve(SCAN_DIR))) throw new Error("Érvénytelen fájlútvonal");
+		const encrypted = node_fs.default.readFileSync(resolved);
+		const metaRaw = node_fs.default.readFileSync(`${resolved}.meta`, "utf8");
+		const meta = JSON.parse(metaRaw);
+		return decrypt(encrypted, meta.iv, meta.tag).toString("base64");
+	});
+	electron.ipcMain.handle("scan-list-documents", async (_event, transactionId) => {
+		if (!node_fs.default.existsSync(SCAN_DIR)) return [];
+		const results = [];
+		const safeId = sanitizeId(transactionId);
+		const dateDirs = node_fs.default.readdirSync(SCAN_DIR);
+		for (const dateDir of dateDirs) {
+			const candidate = node_path.default.join(SCAN_DIR, dateDir, safeId);
+			if (!node_fs.default.existsSync(candidate) || !node_fs.default.statSync(candidate).isDirectory()) continue;
+			const files = node_fs.default.readdirSync(candidate);
+			for (const file of files) if (file.endsWith(".enc")) results.push(node_path.default.join(candidate, file));
+		}
+		return results;
+	});
+}
 //#endregion
 //#region electron/updater.ts
-electron.ipcMain.handle("restart-app", () => {
-	try {
-		electron.app.relaunch();
-		electron.app.exit(0);
-		return true;
-	} catch (err) {
-		import_main.default.error("[Updater] restart-app failed", err);
-		return false;
-	}
-});
+function registerUpdaterHandlers() {
+	electron.ipcMain.handle("restart-app", () => {
+		try {
+			electron.app.relaunch();
+			electron.app.exit(0);
+			return true;
+		} catch (err) {
+			import_main.default.error("[Updater] restart-app failed", err);
+			return false;
+		}
+	});
+}
 //#endregion
 //#region electron/main.ts
 var isDev = !electron.app.isPackaged;
@@ -5331,6 +5337,9 @@ electron.ipcMain.handle("secure-clear-token", async () => {
 	deleteConfig("auth_token");
 });
 electron.app.whenReady().then(async () => {
+	registerCameraHandlers();
+	registerScannerHandlers();
+	registerUpdaterHandlers();
 	const distPath = node_path.default.join(__dirname, "../dist");
 	electron.protocol.handle("app", (req) => {
 		const url = new URL(req.url);

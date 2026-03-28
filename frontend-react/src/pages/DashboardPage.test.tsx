@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import DashboardPage from './DashboardPage'
@@ -14,6 +14,36 @@ vi.mock('react-router-dom', async () => {
     useNavigate: () => mocks.navigate,
   }
 })
+
+vi.mock('../services/api/exchange-rates', () => ({
+  exchangeRateApi: {
+    list: vi.fn().mockResolvedValue([
+      {
+        id: 1, currencyId: 4, currencyCode: 'EUR', currencyName: 'Euró',
+        validDate: '2026-03-27', validTime: '08:00', baseBuyRate: 391.50,
+        baseSellRate: 398.50, officialRate: 395.00, active: true, createdAt: '2026-03-27T08:00:00',
+      },
+      {
+        id: 2, currencyId: 5, currencyCode: 'USD', currencyName: 'Amerikai dollár',
+        validDate: '2026-03-27', validTime: '08:00', baseBuyRate: 358.20,
+        baseSellRate: 365.80, officialRate: 362.00, active: true, createdAt: '2026-03-27T08:00:00',
+      },
+      {
+        id: 3, currencyId: 6, currencyCode: 'GBP', currencyName: 'Angol font',
+        validDate: '2026-03-27', validTime: '08:00', baseBuyRate: 455.00,
+        baseSellRate: 465.00, officialRate: 460.00, active: true, createdAt: '2026-03-27T08:00:00',
+      },
+      {
+        id: 4, currencyId: 7, currencyCode: 'CHF', currencyName: 'Svájci frank',
+        validDate: '2026-03-27', validTime: '08:00', baseBuyRate: 402.50,
+        baseSellRate: 410.00, officialRate: 406.00, active: true, createdAt: '2026-03-27T08:00:00',
+      },
+    ]),
+  },
+  rateApi: {
+    list: vi.fn().mockResolvedValue([]),
+  },
+}))
 
 function renderDashboardPage() {
   render(
@@ -59,11 +89,13 @@ describe('DashboardPage', () => {
     expect(screen.getAllByText('CHF').length).toBeGreaterThan(0)
   })
 
-  it('árfolyamok vétel és eladási értékeket helyesen mutatja', () => {
+  it('árfolyamok vétel és eladási értékeket helyesen mutatja', async () => {
     renderDashboardPage()
-    // EUR sorban a vétel ár 391.50, eladás 398.50
-    expect(screen.getByText('391.50')).toBeInTheDocument()
-    expect(screen.getByText('398.50')).toBeInTheDocument()
+    // EUR sorban a vétel ár 391.50, eladás 398.50 (mock API-ból)
+    await waitFor(() => {
+      expect(screen.getByText('391.50')).toBeInTheDocument()
+      expect(screen.getByText('398.50')).toBeInTheDocument()
+    })
   })
 
   it('gyorsműveletek linkeket jeleníti meg', () => {

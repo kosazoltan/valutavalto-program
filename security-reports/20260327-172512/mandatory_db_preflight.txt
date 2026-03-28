@@ -1,0 +1,12 @@
+﻿Command: powershell -NoProfile -ExecutionPolicy Bypass -File "D:\repo\valutavalto-program\scripts\security\mandatory-db-preflight.ps1" -RepoRoot "D:\repo\valutavalto-program"
+Status: FAILED
+Note: Exit code 1
+
+--- STDOUT ---
+[DB-PREFLIGHT] Mandatory DB preflight started
+[DB-PREFLIGHT] Checking DB reachability and migration history
+[DB-PREFLIGHT] Local DB connection failed: psql: error: connection to server at "localhost" (::1), port 5432 failed: Connection refused (0x0000274D/10061)
+
+
+--- STDERR ---
+
