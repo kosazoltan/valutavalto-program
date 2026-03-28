@@ -55,4 +55,11 @@ public class LoginResponseDto {
      */
     @Builder.Default
     private Boolean roleSelectionRequired = false;
+
+    /**
+     * true ha a worker jelszava még soha nem volt megváltoztatva (seed default jelszó).
+     * Frontend: kötelező jelszóváltoztatás dialógus megjelenítése.
+     */
+    @Builder.Default
+    private Boolean passwordChangeRequired = false;
 }

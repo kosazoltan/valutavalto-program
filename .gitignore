@@ -96,3 +96,10 @@ Felmérés/
 *.m4a
 Felmérés/
 .tmp_*.txt
+
+# Installer build artifacts (nagy fájlok + secrets)
+installer/build/
+
+# Environment backup/local files (may contain secrets)
+*.env.backup
+*.env.local-installer

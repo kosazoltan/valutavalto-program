@@ -99,6 +99,15 @@ public class SecurityConfig {
                     .policy("camera=(), microphone=(), geolocation=()"))
             )
 
+            // 401 Unauthorized (nem 403) ha nincs/érvénytelen token (F-07 security fix)
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.setStatus(401);
+                    response.getWriter().write("{\"status\":401,\"error\":\"UNAUTHORIZED\",\"message\":\"Hitelesítés szükséges\"}");
+                })
+            )
+
             .addFilterBefore(productionCorsFilter, UsernamePasswordAuthenticationFilter.class)
             
             // JWT filter hozzáadás (UsernamePasswordAuthenticationFilter előtt)

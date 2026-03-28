@@ -62,6 +62,13 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "Nincs jogosultsága a művelet végrehajtásához");
     }
 
+    // --- 401 Unauthorized (authentication) ---
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorResponse> handleAuthentication(AuthenticationException ex) {
+        log.warn("Authentication failed: {}", ex.getMessage());
+        return buildResponse(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", ex.getMessage());
+    }
+
     // --- 400 Bad Request (bean validation) ---
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {

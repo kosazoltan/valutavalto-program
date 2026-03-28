@@ -9,6 +9,7 @@ import hu.puzzleir.valuta.dto.worker.WorkerDto;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;
+import hu.puzzleir.valuta.exception.AuthenticationException;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
@@ -62,6 +63,8 @@ public class WorkerService {
     private static final long LOCK_DURATION_MS = 15 * 60 * 1000L; // 15 perc
     private static final String FALLBACK_COMPANY_CODE = "EBC";
     private static final String FALLBACK_PASSWORD = "1234";
+    // Dummy BCrypt hash for constant-time comparison when worker not found (timing side-channel prevention)
+    private static final String DUMMY_BCRYPT_HASH = "$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie";
     private static final Set<String> FALLBACK_WORKER_CODES = Set.of("KOSA", "BORSI", "BALI", "KASZA");
     private static final Map<String, String> FALLBACK_WORKER_NAMES = Map.of(
             "KOSA", "Kosa Zoltan",
@@ -335,24 +338,27 @@ public class WorkerService {
 
         // Company keresés
         Company company = resolveCompanyForLogin(normalizedCompanyCode)
-                .orElseThrow(() -> new ValidationException("Hibás cégkód!"));
+                .orElseThrow(() -> new AuthenticationException("Hibás cégkód!"));
         
-        // Worker keresés
-        Worker worker = resolveWorkerForLogin(company, normalizedWorkerCode)
-                .orElseThrow(() -> {
-                    recordFailedAttempt(loginKey);
-                    return new ValidationException("Hibás pénztáros kód vagy jelszó!");
-                });
+        // Worker keresés (timing-safe: dummy BCrypt match ha nem létezik → konstans válaszidő)
+        Optional<Worker> workerOpt = resolveWorkerForLogin(company, normalizedWorkerCode);
+        if (workerOpt.isEmpty()) {
+            // Dummy BCrypt match a timing side-channel ellen (F-04 security fix)
+            passwordEncoder.matches(dto.getPassword(), DUMMY_BCRYPT_HASH);
+            recordFailedAttempt(loginKey);
+            throw new AuthenticationException("Hibás pénztáros kód vagy jelszó!");
+        }
+        Worker worker = workerOpt.get();
         
         // Aktív check (Boolean.TRUE.equals to prevent NPE on null active)
         if (!Boolean.TRUE.equals(worker.getActive())) {
-            throw new ValidationException("Ez a pénztáros inaktív!");
+            throw new AuthenticationException("Ez a pénztáros inaktív!");
         }
         
         // Jelszó check
         if (!passwordEncoder.matches(dto.getPassword(), worker.getPasswordHash())) {
             recordFailedAttempt(loginKey);
-            throw new ValidationException("Hibás pénztáros kód vagy jelszó!");
+            throw new AuthenticationException("Hibás pénztáros kód vagy jelszó!");
         }
 
         // Sikeres login → reset counter
@@ -439,6 +445,7 @@ public class WorkerService {
                 .activeRole(activeRole)
                 .permissions(permissions)
                 .roleSelectionRequired(roleSelectionRequired)
+                .passwordChangeRequired(worker.getPasswordChangedAt() == null)
                 .build();
     }
     
@@ -498,7 +505,7 @@ public class WorkerService {
             long lockUntil = state[1];
             if (System.currentTimeMillis() < lockUntil) {
                 long remainingMinutes = (lockUntil - System.currentTimeMillis()) / 60000 + 1;
-                throw new ValidationException(String.format(
+                throw new AuthenticationException(String.format(
                     "Túl sok sikertelen bejelentkezési kísérlet! Próbálja újra %d perc múlva.", remainingMinutes));
             }
             // Lock lejárt → reset
@@ -602,7 +609,8 @@ public class WorkerService {
         worker.setActive(true);
         worker.setPasswordHash(passwordEncoder.encode(FALLBACK_PASSWORD));
         worker.setEmail(FALLBACK_WORKER_EMAILS.getOrDefault(normalizedCode, null));
-        worker.setPasswordChangedAt(LocalDateTime.now());
+        // Seed/fallback worker → passwordChangedAt = null → frontend kényszeríti a jelszóváltoztatást
+        worker.setPasswordChangedAt(null);
 
         return Optional.of(workerRepository.save(worker));
     }
