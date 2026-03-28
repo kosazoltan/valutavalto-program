@@ -266,45 +266,35 @@ Section "Telepítés" SecInstall
             DetailPrint "  FIGYELMEZTETÉS: Adatbázis már létezhet (kód: $0)"
         ${EndIf}
 
-        ; Create user and grants — SQL file approach (no NSIS escape issues)
+        ; Create user via createuser.exe (no SQL escaping issues at all)
         DetailPrint "  Felhasználó létrehozása: valuta_user"
 
-        ; Write SQL to temp file — avoids all NSIS shell escaping issues with psql -c
-        ; NSIS escape: $$$$ → literal $$  |  $\r$\n → CRLF  |  single quotes are safe in FileWrite
+        ; Step 1: createuser (idempotent — fails silently if user exists)
+        nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\createuser.exe" -p 54320 -U postgres --no-superuser --no-createdb --no-createrole valuta_user'
+        Pop $0
+        ${If} $0 != 0
+            DetailPrint "  createuser kód: $0 (user már létezhet — OK)"
+        ${EndIf}
+
+        ; Step 2: Set password + grants via SQL file (no dollar-quoting needed)
         FileOpen $0 "$DATA_DIR\scripts\setup-user.sql" w
-        FileWrite $0 "DO $$$$ BEGIN$\r$\n"
-        FileWrite $0 "  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'valuta_user') THEN$\r$\n"
-        FileWrite $0 "    CREATE USER valuta_user WITH PASSWORD 'BestChange2026Local';$\r$\n"
-        FileWrite $0 "  END IF;$\r$\n"
-        FileWrite $0 "END $$$$;$\r$\n"
+        FileWrite $0 "ALTER USER valuta_user WITH PASSWORD 'BestChange2026Local';$\r$\n"
         FileWrite $0 "GRANT ALL PRIVILEGES ON DATABASE valuta TO valuta_user;$\r$\n"
+        FileWrite $0 "GRANT ALL ON SCHEMA public TO valuta_user;$\r$\n"
+        FileWrite $0 "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO valuta_user;$\r$\n"
         FileClose $0
 
-        ; Execute setup SQL (against valuta db)
         nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -d valuta -f "$DATA_DIR\scripts\setup-user.sql"'
         Pop $0
         ${If} $0 != 0
             DetailPrint "  FIGYELMEZTETÉS: setup-user.sql kód: $0 — folytatás"
         ${EndIf}
 
-        ; Grants on schema (must be connected to valuta db)
-        FileOpen $0 "$DATA_DIR\scripts\setup-grants.sql" w
-        FileWrite $0 "GRANT ALL ON SCHEMA public TO valuta_user;$\r$\n"
-        FileWrite $0 "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO valuta_user;$\r$\n"
-        FileClose $0
-
-        nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -d valuta -f "$DATA_DIR\scripts\setup-grants.sql"'
-        Pop $0
-        ${If} $0 != 0
-            DetailPrint "  FIGYELMEZTETÉS: setup-grants.sql kód: $0 — folytatás"
-        ${EndIf}
-
-        ; Cleanup temp SQL files
+        ; Cleanup temp SQL file
         Delete "$DATA_DIR\scripts\setup-user.sql"
-        Delete "$DATA_DIR\scripts\setup-grants.sql"
 
-        ; Verify user exists (dollar-quoting avoids single-quote escaping in psql -c)
-        nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -t -A -c "SELECT 1 FROM pg_roles WHERE rolname=$$$$valuta_user$$$$"'
+        ; Verify user exists
+        nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -t -A -c "SELECT count(*) FROM pg_roles WHERE rolname=$$valuta_user$$"'
         Pop $0
         Pop $1
         StrCpy $2 $1 1
