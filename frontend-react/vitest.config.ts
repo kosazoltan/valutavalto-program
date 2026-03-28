@@ -29,7 +29,7 @@ const config: UserConfig & { test: InlineConfig } = {
     globals: true,
     setupFiles: './src/test/setup.ts',
     css: true,
-    exclude: ['e2e/**', 'node_modules/**', 'dist/**', 'vite.config.test.ts'],
+    exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
   },
   envPrefix: 'VITE_',
   clearScreen: false,
