@@ -18,7 +18,8 @@ import {
   saveAndSyncPendingBankTransaction,
 } from '../../utils/electronTransactions'
 import { getLocalPendingBankTransactions } from '../../utils/localQueue'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
+import { safeArray } from '../../utils/safeArray'
 
 export default function BankTransactions() {
   const electronQueueAvailable = isElectronQueueAvailable()
@@ -41,11 +42,13 @@ export default function BankTransactions() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [txData, currData, localPending] = await Promise.all([
-        ertektarApi.getBankTransactions().catch(() => [] as BankTransaction[]),
-        currencyApi.list().catch(() => [] as Currency[]),
+      const [txDataRaw, currDataRaw, localPending] = await Promise.all([
+        ertektarApi.getBankTransactions().catch(() => []),
+        currencyApi.list().catch(() => []),
         electronQueueAvailable ? getLocalPendingBankTransactions() : Promise.resolve([] as BankTransaction[]),
       ])
+      const txData = safeArray<BankTransaction>(txDataRaw)
+      const currData = safeArray<Currency>(currDataRaw)
       setTransactions([...localPending, ...txData])
       setCurrencies(currData)
     } catch (err) {

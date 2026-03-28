@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { History, RefreshCw } from 'lucide-react'
 import { api } from '../../services/api/index'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
+import { safeArray } from '../../utils/safeArray'
 
 interface Publication {
   id: string
@@ -24,8 +25,9 @@ export default function RatePublishHistory() {
   const fetchHistory = async () => {
     setLoading(true)
     try {
-      const { data } = await api.get<Publication[]>('/rate-management/publications')
-      setPublications(data)
+      const res = await api.get<Publication[]>('/rate-management/publications')
+      const publicationsData = safeArray<Publication>(res?.data)
+      setPublications(publicationsData)
     } catch (err) {
       logger.error('RatePublishHistory', 'Lekérés sikertelen:', err)
     } finally {

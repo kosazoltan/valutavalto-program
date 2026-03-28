@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/services/api/index'
+import { safeArray } from '@/utils/safeArray'
 
 export interface PoliticallyExposedPerson {
   id: number
@@ -64,7 +65,7 @@ export function usePepData() {
       } else {
         response = await api.get('/pep')
       }
-      setPepList(response?.data || [])
+      setPepList(safeArray<PoliticallyExposedPerson>(response?.data))
     } catch {
       setPepList([])
     } finally {
@@ -75,7 +76,7 @@ export function usePepData() {
   const loadReviewDue = useCallback(async () => {
     try {
       const response = await api.get('/pep/review-due')
-      setReviewDue(response?.data || [])
+      setReviewDue(safeArray<PoliticallyExposedPerson>(response?.data))
     } catch {
       setReviewDue([])
     }

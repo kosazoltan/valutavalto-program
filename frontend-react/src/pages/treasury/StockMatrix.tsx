@@ -17,7 +17,8 @@ import {
   currencyColorClass,
 } from './treasuryUtils'
 import { TableSkeleton } from './LoadingSkeleton'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
+import { safeArray } from '../../utils/safeArray'
 
 /** Branch aggregated data for the matrix */
 interface BranchRow {
@@ -39,10 +40,12 @@ export default function StockMatrix() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [balanceData, currencyData] = await Promise.all([
-        cashBalanceApi.getCompanyBalances().catch(() => [] as CashBalance[]),
-        currencyApi.list().catch(() => [] as Currency[]),
+      const [balanceDataRaw, currencyDataRaw] = await Promise.all([
+        cashBalanceApi.getCompanyBalances().catch(() => []),
+        currencyApi.list().catch(() => []),
       ])
+      const balanceData = safeArray<CashBalance>(balanceDataRaw)
+      const currencyData = safeArray<Currency>(currencyDataRaw)
       setBalances(balanceData)
       setCurrencies(currencyData)
       setCountdown(30)

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { FileSpreadsheet, CheckCircle, XCircle, Clock, RefreshCw, Send, ThumbsUp, AlertTriangle, Calendar } from 'lucide-react'
 import { dariusApi, DariusDailyReport, DariusMonthlyDto } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { safeArray } from '../../utils/safeArray'
 
 type Tab = 'daily' | 'monthly' | 'missing'
 
@@ -34,7 +35,7 @@ export default function DariusReportPage() {
     setLoading(true); setError('')
     try {
       const res = await dariusApi.getRange(dateFrom, dateTo)
-      setReports(res.data)
+      setReports(safeArray<DariusDailyReport>(res?.data))
     } catch (err) { setError(getErrorMessage(err)) }
     finally { setLoading(false) }
   }, [dateFrom, dateTo])
@@ -53,7 +54,7 @@ export default function DariusReportPage() {
     setLoading(true); setError('')
     try {
       const res = await dariusApi.getMissingDates(dateFrom, dateTo)
-      setMissingDates(res.data)
+      setMissingDates(safeArray<string>(res?.data))
     } catch (err) { setError(getErrorMessage(err)) }
     finally { setLoading(false) }
   }, [dateFrom, dateTo])

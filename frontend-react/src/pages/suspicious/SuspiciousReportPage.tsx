@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '@/services/api/index';
+import { safeArray } from '@/utils/safeArray';
 
 interface SuspiciousReport {
   id: number;
@@ -66,7 +67,7 @@ export default function SuspiciousReportPage() {
       } else {
         response = await api.get(`/suspicious-reports/status/${activeTab.toUpperCase()}`);
       }
-      setReports(response?.data || []);
+      setReports(safeArray<SuspiciousReport>(response?.data));
     } catch {
       setReports([]);
     } finally {

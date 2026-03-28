@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Percent, Plus, Save } from 'lucide-react'
 import { api } from '../../services/api/index'
+import { safeArray } from '../../utils/safeArray'
 
 interface Workgroup {
   id: string
@@ -27,9 +28,10 @@ export default function DiscountLevelEditor() {
 
   const fetchWorkgroups = useCallback(async () => {
     try {
-      const { data } = await api.get<Workgroup[]>('/rate-management/workgroups')
-      setWorkgroups(data)
-      const firstWorkgroup = data[0]
+      const res = await api.get<Workgroup[]>('/rate-management/workgroups')
+      const workgroupsData = safeArray<Workgroup>(res?.data)
+      setWorkgroups(workgroupsData)
+      const firstWorkgroup = workgroupsData[0]
       if (firstWorkgroup) setSelectedWorkgroup(firstWorkgroup.id)
     } catch {
       // Intentionally ignored here; the UI remains usable without workgroups.
@@ -39,8 +41,9 @@ export default function DiscountLevelEditor() {
   const fetchDiscounts = useCallback(async () => {
     setLoading(true)
     try {
-      const { data } = await api.get<Discount[]>(`/rate-management/discounts/${selectedWorkgroup}`)
-      setDiscounts(data)
+      const res = await api.get<Discount[]>(`/rate-management/discounts/${selectedWorkgroup}`)
+      const discountsData = safeArray<Discount>(res?.data)
+      setDiscounts(discountsData)
     } catch {
       setDiscounts([])
     } finally {

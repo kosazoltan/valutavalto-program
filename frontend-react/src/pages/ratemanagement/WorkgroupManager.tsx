@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Users, Plus, Save } from 'lucide-react'
 import { api } from '../../services/api/index'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
+import { safeArray } from '../../utils/safeArray'
 
 interface Workgroup {
   id?: string
@@ -22,8 +23,9 @@ export default function WorkgroupManager() {
 
   const fetchWorkgroups = async () => {
     try {
-      const { data } = await api.get<Workgroup[]>('/rate-management/workgroups')
-      setWorkgroups(data)
+      const res = await api.get<Workgroup[]>('/rate-management/workgroups')
+      const workgroupsData = safeArray<Workgroup>(res?.data)
+      setWorkgroups(workgroupsData)
     } catch (err) {
       logger.error('WorkgroupManager', 'Lekérés sikertelen:', err)
     } finally {

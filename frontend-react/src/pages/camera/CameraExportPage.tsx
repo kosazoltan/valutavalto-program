@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Download, Shield, CheckCircle, XCircle, Clock, Eye, AlertTriangle, ShieldCheck, FileText } from 'lucide-react'
 import { cameraExportApi, CameraExportRequest, ChainOfCustodyRecord, branchApi, BranchInfo } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { safeArray } from '../../utils/safeArray'
 
 const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
   REQUESTED: { label: 'Jóváhagyásra vár', color: 'bg-yellow-100 text-yellow-700', icon: Clock },
@@ -34,7 +35,7 @@ export default function CameraExportPage() {
   const loadPending = useCallback(async () => {
     try {
       const res = await cameraExportApi.getPending()
-      setPending(res.data)
+      setPending(safeArray<CameraExportRequest>(res?.data))
     } catch { /* */ }
   }, [])
 
@@ -43,7 +44,7 @@ export default function CameraExportPage() {
     setLoading(true)
     try {
       const res = await cameraExportApi.getByBranch(branchId)
-      setRequests(res.data)
+      setRequests(safeArray<CameraExportRequest>(res?.data))
     } catch (err) { setError(getErrorMessage(err)) }
     finally { setLoading(false) }
   }, [])
@@ -53,7 +54,7 @@ export default function CameraExportPage() {
   const loadCustody = async (id: string) => {
     try {
       const res = await cameraExportApi.getCustody(id)
-      setCustody(res.data)
+      setCustody(safeArray<ChainOfCustodyRecord>(res?.data))
     } catch { setCustody([]) }
   }
 

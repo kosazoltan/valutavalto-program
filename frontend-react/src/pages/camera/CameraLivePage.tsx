@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Camera, RefreshCw, Wifi, WifiOff } from 'lucide-react'
 import { api } from '../../services/api/index'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
+import { safeArray } from '../../utils/safeArray'
 
 const isElectron = () => !!window.electronAPI
 
@@ -40,11 +41,11 @@ export default function CameraLivePage() {
       } else {
         // Böngésző: szerver API
         const res = await api.get('/camera/status')
-        if (res.data) {
-          setCameras(res.data)
-          if (res.data.length > 0 && !selectedCamera) {
-            setSelectedCamera(res.data[0].cameraId)
-          }
+        const camerasData = safeArray<CameraStatus>(res?.data)
+        setCameras(camerasData)
+        if (camerasData.length > 0 && !selectedCamera) {
+          const first = camerasData[0]
+          if (first) setSelectedCamera(first.cameraId)
         }
       }
     } finally {

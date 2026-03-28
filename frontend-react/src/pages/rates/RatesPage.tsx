@@ -4,7 +4,8 @@ import { exchangeRateApi, ExchangeRate } from '../../services/api/index'
 import { NumberInput } from '../../components/NumberInput'
 import { formatDecimal } from '../../utils/numberFormat'
 import { recordLocalAuditEvent } from '../../utils/electronTransactions'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
+import { safeArray } from '../../utils/safeArray'
 
 interface RateRow {
   id: number
@@ -44,7 +45,8 @@ export default function RatesPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await exchangeRateApi.list()
+      const dataRaw = await exchangeRateApi.list()
+      const data = safeArray<ExchangeRate>(dataRaw)
       setRates(data.map(mapExchangeRateToRow))
       setLastRefresh(new Date().toLocaleString('hu-HU'))
     } catch (err) {

@@ -17,7 +17,8 @@ import { transactionApi, cashBalanceApi, dailySessionApi } from '../../services/
 import type { DailyTurnoverSummary, CashBalance, DailySession } from '../../services/api/index'
 import { formatInteger, formatMillions } from './treasuryUtils'
 import { DashboardSkeleton } from './LoadingSkeleton'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
+import { safeArray } from '../../utils/safeArray'
 
 interface BranchRanking {
   id: string
@@ -45,12 +46,13 @@ export default function TreasuryDashboard() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [turnoverData, balanceData] = await Promise.all([
+      const [turnoverData, balanceDataRaw] = await Promise.all([
         transactionApi.getDailyTurnover().catch(() => null),
-        cashBalanceApi.getCompanyBalances().catch(() => [] as CashBalance[]),
+        cashBalanceApi.getCompanyBalances().catch(() => []),
       ])
 
       if (turnoverData) setTurnover(turnoverData)
+      const balanceData = safeArray<CashBalance>(balanceDataRaw)
       setBalances(balanceData)
 
       // Build branch rankings from balance data (group by branch)
@@ -80,9 +82,10 @@ export default function TreasuryDashboard() {
 
       // Fetch closing statuses
       const today = new Date().toISOString().slice(0, 10)
-      const sessions = await dailySessionApi
+      const sessionsRaw = await dailySessionApi
         .getHistory(today, today)
-        .catch(() => [] as DailySession[])
+        .catch(() => [])
+      const sessions = safeArray<DailySession>(sessionsRaw)
       
       const closingMap = new Map<string, BranchClosing>()
       for (const s of sessions) {

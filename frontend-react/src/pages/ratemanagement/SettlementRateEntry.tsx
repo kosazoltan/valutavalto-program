@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { RefreshCw, Send, AlertTriangle, ChevronDown, ChevronRight, Users } from 'lucide-react'
 import { api } from '../../services/api/index'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
+import { safeArray } from '../../utils/safeArray'
 
 /**
  * Arfolyam rogzites — Legacy: arfdata.dat adatbevitel.
@@ -94,13 +95,15 @@ export default function SettlementRateEntry() {
       api.get<WorkgroupInfo[]>('/rate-management/workgroups'),
     ])
       .then(([currRes, wgRes]) => {
-        const sorted = currRes.data
+        const currenciesData = safeArray<CurrencyInfo>(currRes?.data)
+        const workgroupsData = safeArray<WorkgroupInfo>(wgRes?.data)
+        const sorted = currenciesData
           .filter((c: CurrencyInfo) => c.code !== 'HUF')
           .sort((a: CurrencyInfo, b: CurrencyInfo) => (a.displayOrder ?? 100) - (b.displayOrder ?? 100))
         setCurrencies(sorted)
-        setWorkgroups(wgRes.data)
-        if (wgRes.data[0]) {
-          setSelectedWorkgroup(wgRes.data[0].id)
+        setWorkgroups(workgroupsData)
+        if (workgroupsData[0]) {
+          setSelectedWorkgroup(workgroupsData[0].id)
         }
       })
       .catch((err) => {
@@ -116,8 +119,9 @@ export default function SettlementRateEntry() {
     setError(null)
     try {
       const rateRes = await api.get<CurrentRateFromApi[]>('/exchange-rates/current')
+      const ratesData = safeArray<CurrentRateFromApi>(rateRes?.data)
       const rateMap = new Map<number, CurrentRateFromApi>()
-      for (const r of rateRes.data) {
+      for (const r of ratesData) {
         rateMap.set(r.currencyId, r)
       }
 

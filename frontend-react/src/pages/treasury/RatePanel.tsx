@@ -14,7 +14,8 @@ import type { ExchangeRate, Currency, CreateExchangeRateRequest } from '../../se
 import { formatAmount, currencyColorClass } from './treasuryUtils'
 import { TableSkeleton } from './LoadingSkeleton'
 import { recordLocalAuditEvent } from '../../utils/electronTransactions'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
+import { safeArray } from '../../utils/safeArray'
 
 interface RateRow {
   currency: Currency
@@ -39,10 +40,13 @@ export default function RatePanel() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [rates, currencies] = await Promise.all([
-        exchangeRateApi.list().catch(() => [] as ExchangeRate[]),
-        currencyApi.list().catch(() => [] as Currency[]),
+      const [ratesRaw, currenciesRaw] = await Promise.all([
+        exchangeRateApi.list().catch(() => []),
+        currencyApi.list().catch(() => []),
       ])
+
+      const rates = safeArray<ExchangeRate>(ratesRaw)
+      const currencies = safeArray<Currency>(currenciesRaw)
 
       const rateMap = new Map<number, ExchangeRate>()
       for (const r of rates) {

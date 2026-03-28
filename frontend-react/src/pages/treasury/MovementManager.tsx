@@ -31,7 +31,8 @@ import {
 } from '../../utils/electronTransactions'
 import { getLocalPendingTransfers } from '../../utils/localQueue'
 import { useAuthStore } from '../../stores/authStore'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
+import { safeArray } from '../../utils/safeArray'
 
 const MOVEMENT_TYPES = [
   { value: 'VAULT_WITHDRAW' as const, label: 'Bank kivét', description: 'Értéktárból bankba szállítás', icon: Banknote },
@@ -61,14 +62,17 @@ export default function MovementManager() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [pending, all, currData, localPending] = await Promise.all([
-        transferApi.getPending().catch(() => [] as Transfer[]),
-        transferApi.search({ page: 0, size: 50 }).catch(() => ({ content: [] as Transfer[], totalElements: 0, totalPages: 0, size: 50, number: 0 })),
-        currencyApi.list().catch(() => [] as Currency[]),
+      const [pendingRaw, allRaw, currDataRaw, localPending] = await Promise.all([
+        transferApi.getPending().catch(() => []),
+        transferApi.search({ page: 0, size: 50 }).catch(() => ({ content: [], totalElements: 0, totalPages: 0, size: 50, number: 0 })),
+        currencyApi.list().catch(() => []),
         electronQueueAvailable ? getLocalPendingTransfers(worker) : Promise.resolve([] as Transfer[]),
       ])
+      const pending = safeArray<Transfer>(pendingRaw)
+      const allTransfersData = safeArray<Transfer>(allRaw?.content)
+      const currData = safeArray<Currency>(currDataRaw)
       setPendingTransfers([...localPending, ...pending])
-      setAllTransfers([...localPending, ...all.content])
+      setAllTransfers([...localPending, ...allTransfersData])
       setCurrencies(currData)
     } catch (err) {
       logger.error('MovementManager', 'MovementManager fetch error:', err)

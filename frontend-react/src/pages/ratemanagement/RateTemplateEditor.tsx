@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Plus, Save, CheckCircle, Send, XCircle, Trash2 } from 'lucide-react'
 import { api } from '../../services/api/index'
+import { safeArray } from '../../utils/safeArray'
 
 interface RateTemplate {
   id?: string
@@ -49,9 +50,10 @@ export default function RateTemplateEditor() {
 
   const fetchWorkgroups = useCallback(async () => {
     try {
-      const { data } = await api.get<Workgroup[]>('/rate-management/workgroups')
-      setWorkgroups(data)
-      const firstWorkgroup = data[0]
+      const res = await api.get<Workgroup[]>('/rate-management/workgroups')
+      const workgroupsData = safeArray<Workgroup>(res?.data)
+      setWorkgroups(workgroupsData)
+      const firstWorkgroup = workgroupsData[0]
       if (firstWorkgroup) setSelectedWorkgroup(firstWorkgroup.id)
     } catch {
       setError('Munkacsoportok lekérése sikertelen')
@@ -62,10 +64,11 @@ export default function RateTemplateEditor() {
     setLoading(true)
     setError(null)
     try {
-      const { data } = await api.get<RateTemplate[]>('/rate-management/templates', {
+      const res = await api.get<RateTemplate[]>('/rate-management/templates', {
         params: { workgroupId: selectedWorkgroup }
       })
-      setTemplates(data)
+      const templatesData = safeArray<RateTemplate>(res?.data)
+      setTemplates(templatesData)
     } catch {
       setError('Sablonok lekérése sikertelen')
     } finally {
@@ -75,8 +78,9 @@ export default function RateTemplateEditor() {
 
   const fetchCurrencies = useCallback(async () => {
     try {
-      const { data } = await api.get<CurrencyOption[]>('/currencies')
-      setCurrencies(data)
+      const res = await api.get<CurrencyOption[]>('/currencies')
+      const currenciesData = safeArray<CurrencyOption>(res?.data)
+      setCurrencies(currenciesData)
     } catch {
       setCurrencies([])
     }
