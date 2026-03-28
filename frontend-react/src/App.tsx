@@ -125,6 +125,7 @@ export default function App() {
               exp?: number
               activeRole?: string
               permissions?: string[]
+              roles?: string[]
             }
             const now = Math.floor(Date.now() / 1000)
             if (payload.exp && payload.exp > now) {
@@ -140,6 +141,7 @@ export default function App() {
                     new Date(payload.exp * 1000).toISOString(),
                     payload.activeRole ?? null,
                     payload.permissions ?? [],
+                    payload.roles ?? [],
                   )
                 }
               } catch {

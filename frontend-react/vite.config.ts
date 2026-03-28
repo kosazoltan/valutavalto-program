@@ -16,7 +16,7 @@ const config: UserConfig & { test: InlineConfig } = {
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://localhost:8081',
+        target: 'http://localhost:8080',
         changeOrigin: true,
       },
     },

@@ -15,7 +15,10 @@ if "%PG_DIR%"=="" (
     exit /b 1
 )
 if "%PG_PORT%"=="" set PG_PORT=54320
-if "%PG_PASSWORD%"=="" set PG_PASSWORD=BestChange2026Local
+if "%PG_PASSWORD%"=="" (
+    echo HIBA: Hianyzik a PostgreSQL jelszo parameter - PG_PASSWORD kotelezo
+    exit /b 1
+)
 
 echo [1/5] Adatbazis cluster inicializalasa...
 "%PG_DIR%\bin\initdb.exe" -D "%PG_DIR%\data" -U postgres -E UTF8 --locale=C --auth=trust

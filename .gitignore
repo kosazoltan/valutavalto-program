@@ -103,3 +103,5 @@ installer/build/
 # Environment backup/local files (may contain secrets)
 *.env.backup
 *.env.local-installer
+
+tmp/
