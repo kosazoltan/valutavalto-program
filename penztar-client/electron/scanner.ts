@@ -47,60 +47,62 @@ function decrypt(encrypted: Buffer, iv: string, tag: string): Buffer {
   return Buffer.concat([decipher.update(encrypted), decipher.final()]);
 }
 
-ipcMain.handle('scan-save-document', async (
-  _event,
-  transactionId: string,
-  documentType: DocumentType,
-  imageBase64: string,
-): Promise<{ path: string; encrypted: boolean }> => {
-  const buffer = Buffer.from(imageBase64, 'base64');
-  const { encrypted, iv, tag } = encrypt(buffer);
-  const date = new Date().toISOString().slice(0, 10);
-  const safeId = sanitizeId(transactionId);
-  const dir = path.join(SCAN_DIR, date, safeId);
-  fs.mkdirSync(dir, { recursive: true });
-  const filename = `${documentType}_${Date.now()}.enc`;
-  const filepath = path.join(dir, filename);
-  fs.writeFileSync(filepath, encrypted);
-  fs.writeFileSync(
-    `${filepath}.meta`,
-    JSON.stringify({ iv, tag, documentType, timestamp: new Date().toISOString() }),
-  );
-  return { path: filepath, encrypted: true };
-});
+export function registerScannerHandlers(): void {
+  ipcMain.handle('scan-save-document', async (
+    _event,
+    transactionId: string,
+    documentType: DocumentType,
+    imageBase64: string,
+  ): Promise<{ path: string; encrypted: boolean }> => {
+    const buffer = Buffer.from(imageBase64, 'base64');
+    const { encrypted, iv, tag } = encrypt(buffer);
+    const date = new Date().toISOString().slice(0, 10);
+    const safeId = sanitizeId(transactionId);
+    const dir = path.join(SCAN_DIR, date, safeId);
+    fs.mkdirSync(dir, { recursive: true });
+    const filename = `${documentType}_${Date.now()}.enc`;
+    const filepath = path.join(dir, filename);
+    fs.writeFileSync(filepath, encrypted);
+    fs.writeFileSync(
+      `${filepath}.meta`,
+      JSON.stringify({ iv, tag, documentType, timestamp: new Date().toISOString() }),
+    );
+    return { path: filepath, encrypted: true };
+  });
 
-ipcMain.handle('scan-get-document', async (
-  _event,
-  filepath: string,
-): Promise<string> => {
-  const resolved = path.resolve(filepath);
-  if (!resolved.startsWith(path.resolve(SCAN_DIR))) {
-    throw new Error('Érvénytelen fájlútvonal');
-  }
-  const encrypted = fs.readFileSync(resolved);
-  const metaRaw = fs.readFileSync(`${resolved}.meta`, 'utf8');
-  const meta = JSON.parse(metaRaw) as { iv: string; tag: string };
-  const decrypted = decrypt(encrypted, meta.iv, meta.tag);
-  return decrypted.toString('base64');
-});
+  ipcMain.handle('scan-get-document', async (
+    _event,
+    filepath: string,
+  ): Promise<string> => {
+    const resolved = path.resolve(filepath);
+    if (!resolved.startsWith(path.resolve(SCAN_DIR))) {
+      throw new Error('Érvénytelen fájlútvonal');
+    }
+    const encrypted = fs.readFileSync(resolved);
+    const metaRaw = fs.readFileSync(`${resolved}.meta`, 'utf8');
+    const meta = JSON.parse(metaRaw) as { iv: string; tag: string };
+    const decrypted = decrypt(encrypted, meta.iv, meta.tag);
+    return decrypted.toString('base64');
+  });
 
-ipcMain.handle('scan-list-documents', async (
-  _event,
-  transactionId: string,
-): Promise<string[]> => {
-  if (!fs.existsSync(SCAN_DIR)) return [];
-  const results: string[] = [];
-  const safeId = sanitizeId(transactionId);
-  const dateDirs = fs.readdirSync(SCAN_DIR);
-  for (const dateDir of dateDirs) {
-    const candidate = path.join(SCAN_DIR, dateDir, safeId);
-    if (!fs.existsSync(candidate) || !fs.statSync(candidate).isDirectory()) continue;
-    const files = fs.readdirSync(candidate);
-    for (const file of files) {
-      if (file.endsWith('.enc')) {
-        results.push(path.join(candidate, file));
+  ipcMain.handle('scan-list-documents', async (
+    _event,
+    transactionId: string,
+  ): Promise<string[]> => {
+    if (!fs.existsSync(SCAN_DIR)) return [];
+    const results: string[] = [];
+    const safeId = sanitizeId(transactionId);
+    const dateDirs = fs.readdirSync(SCAN_DIR);
+    for (const dateDir of dateDirs) {
+      const candidate = path.join(SCAN_DIR, dateDir, safeId);
+      if (!fs.existsSync(candidate) || !fs.statSync(candidate).isDirectory()) continue;
+      const files = fs.readdirSync(candidate);
+      for (const file of files) {
+        if (file.endsWith('.enc')) {
+          results.push(path.join(candidate, file));
+        }
       }
     }
-  }
-  return results;
-});
+    return results;
+  });
+}

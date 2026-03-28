@@ -39,9 +39,9 @@ import {
 } from './sqlite';
 import { printReceipt, type PrintReceiptData } from './printer';
 import { syncEngine } from './sync-engine';
-import './camera';
-import './scanner';
-import './updater';
+import { registerCameraHandlers } from './camera';
+import { registerScannerHandlers } from './scanner';
+import { registerUpdaterHandlers } from './updater';
 
 const isDev = !app.isPackaged;
 
@@ -492,6 +492,11 @@ ipcMain.handle('secure-clear-token', async (): Promise<void> => {
 // --- App Lifecycle ---
 
 app.whenReady().then(async () => {
+  // IPC handlers regisztráció (app.whenReady() UTÁN, hogy ipcMain elérhető legyen)
+  registerCameraHandlers();
+  registerScannerHandlers();
+  registerUpdaterHandlers();
+
   // Custom 'app' protocol handler regisztráció
   // Ez a dist/ mappából szolgálja ki a fájlokat, mint egy webszerver
   const distPath = path.join(__dirname, '../dist');
