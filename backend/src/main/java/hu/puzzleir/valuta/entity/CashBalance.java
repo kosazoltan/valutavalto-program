@@ -102,7 +102,8 @@ public class CashBalance {
     private LocalDateTime createdAt;
 
     @Version
-    private Long version;
+    @Column(columnDefinition = "bigint default 0")
+    private Long version = 0L;
 
     @LastModifiedDate
     @Column(name = "updated_at")
