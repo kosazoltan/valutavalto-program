@@ -1031,9 +1031,10 @@ export interface RepresentativeRegistrationRequest {
 export interface AuthorizationCreateRequest {
   operationDid: string
   startDate: string
-  endDate?: string
-  transactionLimit?: number
+  expiryDate?: string
+  maxAmount?: number
   singleTransactionLimit?: number
+  maxTransactionCount?: number
   notes?: string
 }
 
@@ -1050,7 +1051,7 @@ export const authorizedRepresentativeApi = {
     const response = await api.get<AuthorizedRepresentative[]>(`/authorized-representatives/customer/${customerId}`)
     return response.data
   },
-  createAuthorization: async (representativeId: string, request: AuthorizationCreateRequest, workerId: string): Promise<Authorization> => {
+  createAuthorization: async (representativeId: string, request: AuthorizationCreateRequest, workerId: number): Promise<Authorization> => {
     const response = await api.post<Authorization>(
       `/authorized-representatives/${representativeId}/authorizations`,
       request,
@@ -1058,9 +1059,17 @@ export const authorizedRepresentativeApi = {
     )
     return response.data
   },
-  verifyAuthorization: async (authorizationId: string, workerId: string, notes?: string): Promise<Authorization> => {
+  verifyAuthorization: async (authorizationId: string, workerId: number, notes?: string): Promise<Authorization> => {
     const response = await api.post<Authorization>(
       `/authorized-representatives/authorizations/${authorizationId}/verify`,
+      null,
+      { params: { workerId, notes } }
+    )
+    return response.data
+  },
+  resumeAuthorization: async (authorizationId: string, workerId: number, notes?: string): Promise<Authorization> => {
+    const response = await api.post<Authorization>(
+      `/authorized-representatives/authorizations/${authorizationId}/resume`,
       null,
       { params: { workerId, notes } }
     )
@@ -1079,7 +1088,7 @@ export const authorizedRepresentativeApi = {
       params: { representativeId, authorizationId, transactionId, workerId, branchId }
     })
   },
-  suspendAuthorization: async (authorizationId: string, workerId: string, reason: string): Promise<Authorization> => {
+  suspendAuthorization: async (authorizationId: string, workerId: number, reason: string): Promise<Authorization> => {
     const response = await api.post<Authorization>(
       `/authorized-representatives/authorizations/${authorizationId}/suspend`,
       null,
@@ -1087,7 +1096,7 @@ export const authorizedRepresentativeApi = {
     )
     return response.data
   },
-  revokeAuthorization: async (authorizationId: string, workerId: string, reason: string): Promise<Authorization> => {
+  revokeAuthorization: async (authorizationId: string, workerId: number, reason: string): Promise<Authorization> => {
     const response = await api.post<Authorization>(
       `/authorized-representatives/authorizations/${authorizationId}/revoke`,
       null,

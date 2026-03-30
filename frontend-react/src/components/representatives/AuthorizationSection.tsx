@@ -131,6 +131,10 @@ export default function AuthorizationSection({ representativeId }: Props) {
               <input type="number" value={form.maxAmount || ''} onChange={e => setForm({ ...form, maxAmount: e.target.value ? Number(e.target.value) : undefined })} className="form-input w-full" placeholder="Korlátlan" />
             </div>
             <div>
+              <label className="text-sm text-gray-600">Max tranzakciószám</label>
+              <input type="number" min={1} value={form.maxTransactionCount || ''} onChange={e => setForm({ ...form, maxTransactionCount: e.target.value ? Number(e.target.value) : undefined })} className="form-input w-full" placeholder="Korlátlan" />
+            </div>
+            <div>
               <label className="text-sm text-gray-600">Egyszeri limit (Ft)</label>
               <input type="number" value={form.singleTransactionLimit || ''} onChange={e => setForm({ ...form, singleTransactionLimit: e.target.value ? Number(e.target.value) : undefined })} className="form-input w-full" placeholder="Korlátlan" />
             </div>
