@@ -4,6 +4,7 @@ import { ArrowLeft, User, FileText, AlertCircle, Loader2 } from 'lucide-react'
 import { authorizedRepresentativeApi, AuthorizedRepresentative } from '../../services/api/transactions'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
+import AuthorizationSection from '../../components/representatives/AuthorizationSection'
 
 export default function RepresentativeDetailPage() {
   const { customerId, representativeId } = useParams<{ customerId: string; representativeId: string }>()
@@ -165,7 +166,8 @@ export default function RepresentativeDetailPage() {
         </div>
       </div>
 
-      {/* Meghatalmazások szekció — Authorization domain 2. sprintben kerül implementálásra */}
+      {/* Meghatalmazások szekció */}
+      {representativeId && <AuthorizationSection representativeId={representativeId} />}
     </div>
   )
 }

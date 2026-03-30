@@ -802,6 +802,37 @@ export const authorizedRepresentativeApi = {
   }
 }
 
+// ================== TRANSACTION BANKNOTE API ==================
+
+export interface TransactionBanknote {
+  id: number
+  transactionId: number
+  transactionLineId?: number
+  currencyCode: string
+  faceValue: number
+  quantity: number
+  direction: 'IN' | 'OUT'
+  totalValue: number
+}
+
+export interface TransactionBanknoteCreateRequest {
+  currencyCode: string
+  faceValue: number
+  quantity: number
+  direction: 'IN' | 'OUT'
+}
+
+export const transactionBanknoteApi = {
+  getByTransaction: async (transactionId: number): Promise<TransactionBanknote[]> => {
+    const response = await api.get<TransactionBanknote[]>(`/transactions/${transactionId}/banknotes`)
+    return response.data
+  },
+  create: async (transactionId: number, request: TransactionBanknoteCreateRequest): Promise<TransactionBanknote> => {
+    const response = await api.post<TransactionBanknote>(`/transactions/${transactionId}/banknotes`, request)
+    return response.data
+  },
+}
+
 // ================== SHIPMENT REQUEST API ==================
 
 export interface ShipmentRequest {
