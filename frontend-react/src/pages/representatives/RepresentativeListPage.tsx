@@ -108,7 +108,8 @@ export default function RepresentativeListPage() {
                   <td>{rep.documentTypeDid || '-'}</td>
                   <td>{rep.relationshipDid || '-'}</td>
                   <td className="text-sm text-gray-600">
-                    {rep.registeredAt ? new Date(rep.registeredAt).toLocaleDateString('hu-HU') : '-'}
+                    {rep.authorizationStart ? new Date(rep.authorizationStart).toLocaleDateString('hu-HU') : '-'}
+                    {rep.authorizationEnd ? ` — ${new Date(rep.authorizationEnd).toLocaleDateString('hu-HU')}` : rep.authorizationStart ? ' — ∞' : ''}
                   </td>
                   <td>
                     <span className={`px-2 py-1 text-xs rounded ${

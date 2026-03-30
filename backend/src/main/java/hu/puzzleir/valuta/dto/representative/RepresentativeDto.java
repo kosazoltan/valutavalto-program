@@ -31,6 +31,8 @@ public class RepresentativeDto {
     private String email;
     private String representativeTypeDid;
     private String relationshipDid;
+    private LocalDate authorizationStart;
+    private LocalDate authorizationEnd;
     private Boolean isActive;
     private LocalDateTime registeredAt;
 }

@@ -657,6 +657,8 @@ export interface AuthorizedRepresentative {
   email?: string
   representativeTypeDid?: string
   relationshipDid?: string
+  authorizationStart?: string
+  authorizationEnd?: string
   isActive: boolean
   registeredAt: string
 }

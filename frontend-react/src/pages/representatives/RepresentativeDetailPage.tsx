@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, User, FileText, AlertCircle, Loader2, Shield } from 'lucide-react'
-import { authorizedRepresentativeApi, AuthorizedRepresentative, Authorization } from '../../services/api/transactions'
+import { ArrowLeft, User, FileText, AlertCircle, Loader2 } from 'lucide-react'
+import { authorizedRepresentativeApi, AuthorizedRepresentative } from '../../services/api/transactions'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 
 export default function RepresentativeDetailPage() {
   const { customerId, representativeId } = useParams<{ customerId: string; representativeId: string }>()
   const [rep, setRep] = useState<AuthorizedRepresentative | null>(null)
-  const [authorizations, setAuthorizations] = useState<Authorization[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -19,14 +18,6 @@ export default function RepresentativeDetailPage() {
         setLoading(true)
         const found = await authorizedRepresentativeApi.getById(representativeId)
         setRep(found)
-        if (found) {
-          try {
-            const auths = await authorizedRepresentativeApi.findAuthorizations(found.id)
-            setAuthorizations(auths)
-          } catch {
-            // Authorizations may not exist yet
-          }
-        }
       } catch (err) {
         setError(getErrorMessage(err))
         logger.error('RepresentativeDetailPage', 'Failed to load representative:', err)
@@ -174,46 +165,7 @@ export default function RepresentativeDetailPage() {
         </div>
       </div>
 
-      {/* Authorizations */}
-      <div className="form-panel">
-        <h2 className="section-title flex items-center gap-2"><Shield size={16} /> Meghatalmazások</h2>
-        {authorizations.length === 0 ? (
-          <div className="text-center py-4 text-gray-500">Nincsenek meghatalmazások rögzítve</div>
-        ) : (
-          <table className="data-grid w-full">
-            <thead>
-              <tr>
-                <th>Típus</th>
-                <th>Státusz</th>
-                <th>Érvényes -tól</th>
-                <th>Érvényes -ig</th>
-                <th>Max összeg</th>
-                <th>Tranzakciók</th>
-              </tr>
-            </thead>
-            <tbody>
-              {authorizations.map(auth => (
-                <tr key={auth.id}>
-                  <td>{auth.authorizationTypeDid || '-'}</td>
-                  <td>
-                    <span className={`px-2 py-1 text-xs rounded ${
-                      auth.statusDid === 'ACTIVE' ? 'bg-green-100 text-green-700' :
-                      auth.statusDid === 'SUSPENDED' ? 'bg-yellow-100 text-yellow-700' :
-                      'bg-gray-100 text-gray-700'
-                    }`}>
-                      {auth.statusDid || 'N/A'}
-                    </span>
-                  </td>
-                  <td>{auth.startDate ? new Date(auth.startDate).toLocaleDateString('hu-HU') : '-'}</td>
-                  <td>{auth.expiryDate ? new Date(auth.expiryDate).toLocaleDateString('hu-HU') : 'Határozatlan'}</td>
-                  <td>{auth.maxAmount ? `${auth.maxAmount.toLocaleString('hu-HU')} Ft` : '-'}</td>
-                  <td>{auth.usedTransactionCount ?? 0} / {auth.maxTransactionCount ?? '∞'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      {/* Meghatalmazások szekció — Authorization domain 2. sprintben kerül implementálásra */}
     </div>
   )
 }

@@ -51,12 +51,27 @@ public class AuthorizedRepresentativeService {
 
     public AuthorizedRepresentative update(UUID id, AuthorizedRepresentative updated) {
         AuthorizedRepresentative existing = findById(id);
+        // Alap mezők
         existing.setRepresentativeName(updated.getRepresentativeName());
         existing.setRepresentativeDocumentNumber(updated.getRepresentativeDocumentNumber());
         existing.setRepresentativeDocumentType(updated.getRepresentativeDocumentType());
         existing.setAuthorizationStart(updated.getAuthorizationStart());
         existing.setAuthorizationEnd(updated.getAuthorizationEnd());
         existing.setIsActive(updated.getIsActive());
+        // V2 mezők
+        existing.setFirstName(updated.getFirstName());
+        existing.setLastName(updated.getLastName());
+        existing.setBirthDate(updated.getBirthDate());
+        existing.setBirthPlace(updated.getBirthPlace());
+        existing.setNationalityDid(updated.getNationalityDid());
+        existing.setAddress(updated.getAddress());
+        existing.setPhone(updated.getPhone());
+        existing.setEmail(updated.getEmail());
+        existing.setDocumentTypeDid(updated.getDocumentTypeDid());
+        existing.setDocumentValidFrom(updated.getDocumentValidFrom());
+        existing.setDocumentValidTo(updated.getDocumentValidTo());
+        existing.setRepresentativeTypeDid(updated.getRepresentativeTypeDid());
+        existing.setRelationshipDid(updated.getRelationshipDid());
         log.info("Meghatalmazott frissítve: {}", id);
         return representativeRepository.save(existing);
     }

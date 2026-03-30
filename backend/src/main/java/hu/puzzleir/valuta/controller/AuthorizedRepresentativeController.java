@@ -149,6 +149,8 @@ public class AuthorizedRepresentativeController {
                 .email(entity.getEmail())
                 .representativeTypeDid(entity.getRepresentativeTypeDid())
                 .relationshipDid(entity.getRelationshipDid())
+                .authorizationStart(entity.getAuthorizationStart())
+                .authorizationEnd(entity.getAuthorizationEnd())
                 .isActive(entity.getIsActive())
                 .registeredAt(entity.getCreatedAt())
                 .build();
