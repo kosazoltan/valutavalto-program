@@ -26,6 +26,8 @@ export function useGridNavigation({ rows, cols }: UseGridNavigationOptions) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [activeCell, setActiveCell] = useState<GridCell | null>(null)
   const [editing, setEditing] = useState(false)
+  /** Suppresses onCellFocus when focusCell is driving programmatic focus */
+  const suppressFocusRef = useRef(false)
 
   const getInput = useCallback((row: number, col: number): HTMLInputElement | null => {
     if (!containerRef.current) return null
@@ -47,6 +49,8 @@ export function useGridNavigation({ rows, cols }: UseGridNavigationOptions) {
       input.select()
     } else {
       setEditing(false)
+      // Suppress the onFocus handler so it doesn't re-enable editing
+      suppressFocusRef.current = true
       input.focus()
       // Move cursor to end without selecting
       const len = input.value.length
@@ -150,6 +154,10 @@ export function useGridNavigation({ rows, cols }: UseGridNavigationOptions) {
 
   /** Called when an input is clicked/focused directly */
   const onCellFocus = useCallback((row: number, col: number) => {
+    if (suppressFocusRef.current) {
+      suppressFocusRef.current = false
+      return
+    }
     setActiveCell({ row, col })
     setEditing(true)
   }, [])

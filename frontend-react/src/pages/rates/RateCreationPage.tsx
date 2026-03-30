@@ -272,6 +272,19 @@ export default function RateCreationPage() {
       }
     }
 
+    // BACKLOG-004 fix: Block publish if any validation error exists (limit/MNB checks)
+    const errorCurrencyIds = Object.keys(validationErrors)
+    if (errorCurrencyIds.length > 0) {
+      const affectedCodes = validRates
+        .filter(r => validationErrors[r.currencyId])
+        .map(r => r.currencyCode)
+      toast.error(
+        'Validációs hiba',
+        `${affectedCodes.join(', ')}: Javítsd a hibákat a publikálás előtt!`
+      )
+      return
+    }
+
     setPublishing(true)
     try {
       await rateCreationApi.publishGroupRate({
