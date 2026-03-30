@@ -6,7 +6,7 @@
 !include "MUI2.nsh"
 
 !ifndef VERSION
-  !define VERSION "1.4.0"
+  !define VERSION "1.5.0"
 !endif
 !ifndef BUILD_DATE
   !define BUILD_DATE "dev"
@@ -80,10 +80,13 @@ Section "Eltávolítás"
     ; --- 4. Remove directories ---
     DetailPrint "4/5 — Fájlok és mappák törlése (5 lépéses: STOP→KILL→REMOVE→DELETE→REGISTRY)..."
 
-    ; Program Files locations
+    ; Program Files locations (F-N-10: PROGRAMFILES64 for x64 installs)
+    RMDir /r "$PROGRAMFILES64\Valutavalto Penztar"
+    RMDir /r "$PROGRAMFILES64\ValutavaltoPenztar"
+    RMDir /r "$PROGRAMFILES64\Penztar"
+    ; Legacy 32-bit leftovers
     RMDir /r "$PROGRAMFILES\Valutavalto Penztar"
     RMDir /r "$PROGRAMFILES\ValutavaltoPenztar"
-    RMDir /r "$PROGRAMFILES\Penztar"
 
     ; ProgramData
     RMDir /r "C:\ProgramData\BestChange"
@@ -106,8 +109,8 @@ Section "Eltávolítás"
     DetailPrint ""
     DetailPrint "============================================"
     DetailPrint "KÉSZ! A régi telepítés teljesen eltávolítva."
-    DetailPrint "Most futtathatod a Penztar-Setup-1.1.0.exe fájlt."
+    DetailPrint "Most futtathatod a Penztar-Setup-${VERSION}.exe fájlt."
     DetailPrint "============================================"
 
-    MessageBox MB_OK|MB_ICONINFORMATION "Eltávolítás kész!$\r$\n$\r$\nMost telepítheted az új verziót:$\r$\nPenztar-Setup-1.1.0.exe (rendszergazdaként)"
+    MessageBox MB_OK|MB_ICONINFORMATION "Eltávolítás kész!$\r$\n$\r$\nMost telepítheted az új verziót:$\r$\nPenztar-Setup-${VERSION}.exe (rendszergazdaként)"
 SectionEnd

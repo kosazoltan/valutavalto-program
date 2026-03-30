@@ -1,7 +1,13 @@
-﻿; =============================================================================
-; Valutaváltó Pénztár — Egyfájlos Windows Telepítő v3
+; =============================================================================
+; Valutaváltó Pénztár — Egyfájlos Windows Telepítő v5
 ; NSIS 3.x Script — Production Quality
 ; =============================================================================
+; v5: Eszter review fixes: F-N-01 cmd.exe port check, F-N-02 silent uninstall,
+;     F-N-03 vc_redist bundled, F-N-04 stack leak fix, F-N-06 db_exists upgrade,
+;     F-N-07 ReadRegDWORD, F-N-08 2>nul removal, F-N-09 quoted NSSM values,
+;     F-N-14 LockedList SilentSearch fix
+; v4: F3-A random DB jelszó, SI-A silent port abort, F4-A scram-sha-256,
+;     F1-A scoped lock_wait, F5-A nssm start, F3-C no weak fallback
 ; v3: nsProcess + LockedList pluginok, helyes service stop sorrend,
 ;     pg_ctl graceful shutdown, scoped process kill
 ; =============================================================================
@@ -19,7 +25,7 @@
 
 ; --- Paraméterek ---
 !ifndef VERSION
-  !define VERSION "1.4.0"
+  !define VERSION "1.5.0"
 !endif
 !ifndef BUILD_DATE
   !define BUILD_DATE "dev"
@@ -92,19 +98,19 @@ Section "Telepítés" SecInstall
     ; =====================================================================
     ; FÁZIS 1: Régi telepítés cleanup (ha van)
     ; Helyes sorrend: STOP → pg_ctl → KILL → WAIT → REMOVE
-    ; (F-08 fix: sc delete ELŐTT kell killt csinálni, nem utána)
     ; =====================================================================
     DetailPrint "Korábbi telepítés ellenőrzése..."
 
     ; --- 1a. STOP services via NSSM (graceful, keeps service registration) ---
     DetailPrint "  Szolgáltatások leállítása..."
-    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" stop BestChange-Backend 2>nul'
+    ; F-N-08: nsExec nem shell → 2>nul eltávolítva
+    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" stop BestChange-Backend'
     Sleep 3000
-    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" stop BestChange-PostgreSQL 2>nul'
+    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" stop BestChange-PostgreSQL'
     Sleep 3000
-    ; Fallback: net stop (ha NSSM nincs a data dir-ben, pl. első telepítés régi maradvánnyal)
-    nsExec::ExecToLog 'net stop BestChange-Backend 2>nul'
-    nsExec::ExecToLog 'net stop BestChange-PostgreSQL 2>nul'
+    ; Fallback: net stop (ha NSSM nincs a data dir-ben)
+    nsExec::ExecToLog 'net stop BestChange-Backend'
+    nsExec::ExecToLog 'net stop BestChange-PostgreSQL'
     Sleep 2000
 
     ; --- 1b. pg_ctl stop -m fast (PostgreSQL-specifikus graceful shutdown) ---
@@ -114,18 +120,14 @@ Section "Telepítés" SecInstall
     skip_pgctl:
     Sleep 2000
 
-    ; --- 1c. KILL remaining BestChange processes (nsProcess + scoped PS fallback) ---
+    ; --- 1c. KILL remaining BestChange processes (scoped PS) ---
     DetailPrint "  Maradék folyamatok leállítása..."
-    ; nsProcess: postgres.exe — a mi PG-nk a BestChange mappában van,
-    ; de ha más PG is fut, a pg_ctl stop -m fast fentebb elintézte a miénket.
-    ; Itt már csak a zombi process maradhat.
     nsProcess::_FindProcess "postgres.exe"
     Pop $0
     ${If} $0 == 0
         DetailPrint "  postgres.exe még fut — scoped kill..."
         nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process postgres -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
     ${EndIf}
-    ; java.exe — scoped kill (csak BestChange path)
     nsProcess::_FindProcess "java.exe"
     Pop $0
     ${If} $0 == 0
@@ -134,7 +136,7 @@ Section "Telepítés" SecInstall
     ${EndIf}
     Sleep 2000
 
-    ; --- 1d. WAIT for file locks (nsProcess poll) ---
+    ; --- 1d. WAIT for file locks (F1-A: fully scoped, F-N-04: stack leak fix) ---
     DetailPrint "  Várakozás a fájlzárak feloldására..."
     StrCpy $R0 0
     lock_wait_loop:
@@ -143,13 +145,15 @@ Section "Telepítés" SecInstall
             DetailPrint "  Időtúllépés — folytatás (fájlzár lehetséges)."
             Goto lock_wait_done
         ${EndIf}
-        ; Check: postgres still alive?
-        nsProcess::_FindProcess "postgres.exe"
-        Pop $0
-        ${If} $0 != 0
-            ; postgres dead — check java (scoped)
+        ; F1-A: scoped postgres check, F-N-04: Pop both exit code AND stdout
+        nsExec::ExecToStack 'powershell.exe -NoProfile -Command "if(Get-Process postgres -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' }){exit 1}else{exit 0}"'
+        Pop $0  ; exit code
+        Pop $1  ; stdout (F-N-04 fix: prevent stack leak)
+        ${If} $0 == 0
+            ; BestChange postgres dead — check java (scoped)
             nsExec::ExecToStack 'powershell.exe -NoProfile -Command "if(Get-Process java -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' }){exit 1}else{exit 0}"'
-            Pop $0
+            Pop $0  ; exit code
+            Pop $1  ; stdout (F-N-04 fix)
             ${If} $0 == 0
                 Goto lock_wait_done
             ${EndIf}
@@ -161,15 +165,15 @@ Section "Telepítés" SecInstall
 
     ; --- 1e. REMOVE service registration (CSAK miután a process halott!) ---
     DetailPrint "  Régi szolgáltatások eltávolítása..."
-    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" remove BestChange-Backend confirm 2>nul'
-    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" remove BestChange-PostgreSQL confirm 2>nul'
-    ; Fallback: sc delete (ha NSSM nem elérhető)
-    nsExec::ExecToLog 'sc.exe delete BestChange-Backend 2>nul'
-    nsExec::ExecToLog 'sc.exe delete BestChange-PostgreSQL 2>nul'
+    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" remove BestChange-Backend confirm'
+    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" remove BestChange-PostgreSQL confirm'
+    ; Fallback: sc delete
+    nsExec::ExecToLog 'cmd.exe /C sc.exe delete BestChange-Backend'
+    nsExec::ExecToLog 'cmd.exe /C sc.exe delete BestChange-PostgreSQL'
     Sleep 1000
 
     ; =====================================================================
-    ; FÁZIS 1f: LockedList — locked fájlok detektálása a DATA_DIR-ben
+    ; FÁZIS 1f: LockedList — locked fájlok detektálása
     ; =====================================================================
     IfFileExists "$DATA_DIR\pgsql\bin\postgres.exe" 0 skip_lockedlist
         DetailPrint "  Fájlzárak ellenőrzése (LockedList)..."
@@ -177,15 +181,9 @@ Section "Telepítés" SecInstall
         LockedList::AddFolder "$DATA_DIR\jre\bin"
         LockedList::AddFolder "$DATA_DIR\backend"
         LockedList::SilentSearch
-        Pop $0
-        ${If} $0 != 0
-            DetailPrint "  FIGYELMEZTETÉS: $0 fájl zárolva van! Kísérlet a feloldásra..."
-            ; Try one more aggressive kill
-            nsProcess::_KillProcess "postgres.exe"
-            Pop $0
-            nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process java -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
-            Sleep 3000
-        ${EndIf}
+        ; F-N-14 fix: LockedList::SilentSearch nem tér vissza count-tal
+        ; Konzervatív megoldás: egyszerű sleep a biztonság kedvéért
+        Sleep 2000
     skip_lockedlist:
 
     ; =====================================================================
@@ -210,10 +208,11 @@ Section "Telepítés" SecInstall
     File "${STAGE_DIR}\backend\valuta-backend.jar"
     CreateDirectory "$DATA_DIR\backend\logs"
 
-    ; --- NSSM ---
-    DetailPrint "Service Manager telepítése..."
+    ; --- NSSM + VC++ Redistributable (F-N-03 fix: vc_redist is bundled) ---
+    DetailPrint "Service Manager + VC++ Runtime telepítése..."
     SetOutPath "$DATA_DIR\tools"
     File "${STAGE_DIR}\tools\nssm.exe"
+    File "${STAGE_DIR}\tools\vc_redist.x64.exe"
 
     ; --- Scripts ---
     SetOutPath "$DATA_DIR\scripts"
@@ -227,14 +226,14 @@ Section "Telepítés" SecInstall
     ; =====================================================================
     ; FÁZIS 2B: VC++ Redistributable (2015-2022 x64) — PG16 előfeltétel
     ; =====================================================================
-    ; PG 16 EDB binárisok vcruntime140.dll-t igényelnek — sok irodai gépen nincs!
-    ; F-08: Registry-based check (megbízhatóbb mint $SYSDIR\vcruntime140.dll)
     DetailPrint "Visual C++ Runtime ellenőrzés..."
-    ReadRegStr $0 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" "Installed"
+    ; F-N-07 fix: ReadRegDWORD for DWORD registry value
+    ReadRegDWORD $0 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" "Installed"
     ${If} $0 != 1
         DetailPrint "  VC++ 2015-2022 Redistributable telepítése..."
         nsExec::ExecToStack '"$DATA_DIR\tools\vc_redist.x64.exe" /install /quiet /norestart'
         Pop $0
+        Pop $1  ; stdout (stack balance)
         ${If} $0 != 0
         ${AndIf} $0 != 3010
             DetailPrint "  VC++ Redistributable kód: $0 (folytatás)"
@@ -250,49 +249,46 @@ Section "Telepítés" SecInstall
     SetOutPath "$DATA_DIR\config"
 
     ; =====================================================================
-    ; Per-install random secret generálás (F-01/F-03 fix, v1.4.0 refactor)
+    ; Per-install random secret generálás
     ; Külön PS1 fájl — NSIS nem tudja a PowerShell {} blokkokat inline kezelni
-    ; A script 3 sort ír: JWT_SECRET, ENCRYPTION_SALT, ENCRYPTION_KEY
+    ; A script 4 sort ír: JWT_SECRET, ENCRYPTION_SALT, ENCRYPTION_KEY, DB_PASSWORD
     ; =====================================================================
     SetOutPath "$INSTDIR"
     File "scripts\generate-secrets.ps1"
     nsExec::ExecToStack 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\generate-secrets.ps1"'
     Pop $1  ; exit code
-    Pop $2  ; output = 3 lines: jwt\r\nsalt\r\nkey
+    Pop $2  ; output = 4 lines
 
-    ; Parse 3 lines from output — $2=jwt, $4=salt, $6=key
-    ; NSIS ExecToStack returns all stdout as one string with $\r$\n separators
-    ; We need to split it
+    ; Parse 4 lines — $2=jwt, $4=salt, $6=key, $8=dbpw
     StrCpy $R0 $2  ; save full output
 
-    ; Extract JWT (line 1 — everything before first newline)
     ${WordFind} $R0 "$\r$\n" "+1" $2
-
-    ; Extract Salt (line 2)
     ${WordFind} $R0 "$\r$\n" "+2" $4
-
-    ; Extract Key (line 3)
     ${WordFind} $R0 "$\r$\n" "+3" $6
+    ${WordFind} $R0 "$\r$\n" "+4" $8
 
-    ; Fallback ha PowerShell nem elérhető
-    StrCmp $2 "" 0 +2
-        StrCpy $2 "EmergencyJWTKey-$HWNDPARENT-NoRandom-PleaseRegenerate"
-    StrCmp $4 "" 0 +2
-        StrCpy $4 "a1b2c3d4e5f6a7b8"
-    StrCmp $6 "" 0 +2
-        StrCpy $6 "LocalInstallKey2026BestChange"
+    ; F3-C: Abort if secret generation failed (no weak fallback)
+    ${If} $1 != 0
+    ${OrIf} $2 == ""
+    ${OrIf} $4 == ""
+    ${OrIf} $6 == ""
+    ${OrIf} $8 == ""
+        IfSilent +2
+        MessageBox MB_OK|MB_ICONSTOP "HIBA: A biztonsági kulcsok generálása sikertelen (PowerShell).$\r$\nEllenőrizze, hogy a PowerShell elérhető-e.$\r$\nHibakód: $1"
+        Abort
+    ${EndIf}
 
     ; Cleanup temp script
     Delete "$INSTDIR\generate-secrets.ps1"
 
-    ; application-local.properties
+    ; application-local.properties (F3-A: random DB password from $8)
     FileOpen $0 "$DATA_DIR\config\application-local.properties" w
     FileWrite $0 "# Valutavalto Penztar - lokalis konfig$\r$\n"
     FileWrite $0 "# Automatikusan generalta a telepito$\r$\n"
     FileWrite $0 "server.port=8080$\r$\n"
     FileWrite $0 "spring.datasource.url=jdbc:postgresql://localhost:54320/valuta$\r$\n"
     FileWrite $0 "spring.datasource.username=valuta_user$\r$\n"
-    FileWrite $0 "spring.datasource.password=BestChange2026Local$\r$\n"
+    FileWrite $0 "spring.datasource.password=$8$\r$\n"
     FileWrite $0 "spring.datasource.driver-class-name=org.postgresql.Driver$\r$\n"
     FileWrite $0 "spring.datasource.hikari.maximum-pool-size=10$\r$\n"
     FileWrite $0 "spring.datasource.hikari.minimum-idle=2$\r$\n"
@@ -303,13 +299,11 @@ Section "Telepítés" SecInstall
     FileWrite $0 "cors.allowed-origins=app://localhost,http://localhost:3000$\r$\n"
     FileWrite $0 "logging.level.root=INFO$\r$\n"
     FileWrite $0 "logging.level.hu.puzzleir.valuta=INFO$\r$\n"
-    FileWrite $0 "springdoc.api-docs.enabled=true$\r$\n"
-    FileWrite $0 "springdoc.swagger-ui.enabled=true$\r$\n"
+    FileWrite $0 "springdoc.api-docs.enabled=false$\r$\n"
+    FileWrite $0 "springdoc.swagger-ui.enabled=false$\r$\n"
     FileWrite $0 "camera.enabled=false$\r$\n"
     FileWrite $0 "jwt.secret=$2$\r$\n"
     FileWrite $0 "jwt.expiration=86400000$\r$\n"
-    FileWrite $0 "google.client.id=none$\r$\n"
-    FileWrite $0 "google.client.secret=none$\r$\n"
     FileWrite $0 "app.encryption.key=$6$\r$\n"
     FileWrite $0 "app.encryption.salt=$4$\r$\n"
     FileWrite $0 "management.endpoints.web.exposure.include=health,info$\r$\n"
@@ -336,17 +330,18 @@ Section "Telepítés" SecInstall
     IfFileExists "$DATA_DIR\pgsql\data\PG_VERSION" db_exists db_init
 
     db_init:
-        ; initdb
+        ; F4-A: initdb with trust (temporary — hardened after user setup)
         DetailPrint "  initdb futtatása..."
         nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\initdb.exe" -D "$DATA_DIR\pgsql\data" -U postgres -E UTF8 --locale=C --auth=trust'
         Pop $0
+        Pop $1  ; stdout (stack balance)
         ${If} $0 != 0
             IfSilent +2
             MessageBox MB_OK|MB_ICONSTOP "HIBA: Az adatbázis inicializálás sikertelen (initdb).$\r$\nHibakód: $0$\r$\n$\r$\nEllenőrizze, hogy van-e elég hely a lemezen."
             Abort
         ${EndIf}
 
-        ; PostgreSQL port config
+        ; PostgreSQL port + security config
         FileOpen $0 "$DATA_DIR\pgsql\data\postgresql.conf" a
         FileSeek $0 0 END
         FileWrite $0 "$\r$\n# Penztar installer config$\r$\n"
@@ -355,12 +350,14 @@ Section "Telepítés" SecInstall
         FileWrite $0 "log_destination = 'stderr'$\r$\n"
         FileWrite $0 "logging_collector = on$\r$\n"
         FileWrite $0 "log_directory = 'log'$\r$\n"
+        FileWrite $0 "password_encryption = 'scram-sha-256'$\r$\n"
         FileClose $0
 
         ; Start PG temporarily for DB setup
         DetailPrint "  PostgreSQL ideiglenes indítás..."
         nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\pg_ctl.exe" start -D "$DATA_DIR\pgsql\data" -l "$DATA_DIR\pgsql\log\postgresql.log" -w -t 30'
         Pop $0
+        Pop $1  ; stdout (stack balance)
         ${If} $0 != 0
             IfSilent +2
             MessageBox MB_OK|MB_ICONSTOP "HIBA: PostgreSQL nem indult el.$\r$\nEllenőrizze a log fájlt:$\r$\n$DATA_DIR\pgsql\log\postgresql.log"
@@ -381,6 +378,7 @@ Section "Telepítés" SecInstall
             Sleep 1000
             nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -c "SELECT 1" -t -A'
             Pop $0
+            Pop $1  ; stdout (stack balance)
             ${If} $0 != 0
                 Goto pg_wait_loop
             ${EndIf}
@@ -390,23 +388,23 @@ Section "Telepítés" SecInstall
         DetailPrint "  Adatbázis létrehozása: valuta"
         nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\createdb.exe" -p 54320 -U postgres valuta'
         Pop $0
+        Pop $1  ; stdout
         ${If} $0 != 0
             DetailPrint "  FIGYELMEZTETÉS: Adatbázis már létezhet (kód: $0)"
         ${EndIf}
 
-        ; Create user via createuser.exe (no SQL escaping issues at all)
+        ; Create user
         DetailPrint "  Felhasználó létrehozása: valuta_user"
-
-        ; Step 1: createuser (idempotent — fails silently if user exists)
         nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\createuser.exe" -p 54320 -U postgres --no-superuser --no-createdb --no-createrole valuta_user'
         Pop $0
+        Pop $1  ; stdout
         ${If} $0 != 0
             DetailPrint "  createuser kód: $0 (user már létezhet — OK)"
         ${EndIf}
 
-        ; Step 2: Set password + grants via SQL file (no dollar-quoting needed)
+        ; Set password + grants (F3-A: random password from $8)
         FileOpen $0 "$DATA_DIR\scripts\setup-user.sql" w
-        FileWrite $0 "ALTER USER valuta_user WITH PASSWORD 'BestChange2026Local';$\r$\n"
+        FileWrite $0 "ALTER USER valuta_user WITH PASSWORD '$8';$\r$\n"
         FileWrite $0 "GRANT ALL PRIVILEGES ON DATABASE valuta TO valuta_user;$\r$\n"
         FileWrite $0 "GRANT ALL ON SCHEMA public TO valuta_user;$\r$\n"
         FileWrite $0 "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO valuta_user;$\r$\n"
@@ -414,14 +412,15 @@ Section "Telepítés" SecInstall
 
         nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -d valuta -f "$DATA_DIR\scripts\setup-user.sql"'
         Pop $0
+        Pop $1  ; stdout
         ${If} $0 != 0
             DetailPrint "  FIGYELMEZTETÉS: setup-user.sql kód: $0 — folytatás"
         ${EndIf}
 
-        ; Cleanup temp SQL file
+        ; Cleanup temp SQL (contains password!)
         Delete "$DATA_DIR\scripts\setup-user.sql"
 
-        ; Verify user exists (SQL file to avoid NSIS $$ quoting issues)
+        ; Verify user
         FileOpen $0 "$DATA_DIR\scripts\verify-user.sql" w
         FileWrite $0 "SELECT count(*) FROM pg_roles WHERE rolname='valuta_user';$\r$\n"
         FileClose $0
@@ -437,24 +436,66 @@ Section "Telepítés" SecInstall
         ${EndIf}
         DetailPrint "  valuta_user létrehozva és ellenőrizve!"
 
-        ; Run seed data SQL (company, branch, workers, currencies)
+        ; Seed data
         DetailPrint "  Seed adatok betöltése..."
         nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -d valuta -f "$DATA_DIR\scripts\seed-data.sql"'
         Pop $0
+        Pop $1  ; stdout
         ${If} $0 != 0
             DetailPrint "  FIGYELMEZTETÉS: Seed script kód: $0 (lehet hogy az adatok már léteznek)"
         ${Else}
             DetailPrint "  Seed adatok betöltve!"
         ${EndIf}
 
-        ; Stop temp PG (service will manage it)
+        ; F4-A: Harden pg_hba.conf — scram-sha-256 for app user
+        DetailPrint "  pg_hba.conf biztonsági beállítás..."
+        FileOpen $0 "$DATA_DIR\pgsql\data\pg_hba.conf" w
+        FileWrite $0 "# Penztar installer — hardened auth (v1.5.0)$\r$\n"
+        FileWrite $0 "# TYPE  DATABASE  USER         ADDRESS       METHOD$\r$\n"
+        FileWrite $0 "local   all       postgres                   trust$\r$\n"
+        FileWrite $0 "host    all       postgres     127.0.0.1/32  trust$\r$\n"
+        FileWrite $0 "host    all       postgres     ::1/128       trust$\r$\n"
+        FileWrite $0 "host    all       valuta_user  127.0.0.1/32  scram-sha-256$\r$\n"
+        FileWrite $0 "host    all       valuta_user  ::1/128       scram-sha-256$\r$\n"
+        FileClose $0
+        DetailPrint "  pg_hba.conf kész (valuta_user: scram-sha-256)"
+
+        ; Stop temp PG
         DetailPrint "  Ideiglenes PostgreSQL leállítás..."
         nsExec::ExecToLog '"$DATA_DIR\pgsql\bin\pg_ctl.exe" stop -D "$DATA_DIR\pgsql\data" -m fast -w -t 30'
         Sleep 2000
         Goto db_done
 
     db_exists:
-        DetailPrint "  Meglévő adatbázis megtalálva, kihagyás."
+        ; F-N-06 fix: Upgrade telepítés — jelszó frissítés a meglévő DB-ben
+        DetailPrint "  Meglévő adatbázis — jelszó frissítés..."
+
+        ; Start PG temporarily
+        nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\pg_ctl.exe" start -D "$DATA_DIR\pgsql\data" -l "$DATA_DIR\pgsql\log\postgresql.log" -w -t 30'
+        Pop $0
+        Pop $1
+        ${If} $0 != 0
+            DetailPrint "  FIGYELMEZTETÉS: PG nem indult el frissítéshez — jelszó kihagyva"
+            Goto db_done
+        ${EndIf}
+
+        ; Update password to match new config
+        FileOpen $0 "$DATA_DIR\scripts\update-password.sql" w
+        FileWrite $0 "ALTER USER valuta_user WITH PASSWORD '$8';$\r$\n"
+        FileClose $0
+        nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -d valuta -f "$DATA_DIR\scripts\update-password.sql"'
+        Pop $0
+        Pop $1
+        Delete "$DATA_DIR\scripts\update-password.sql"
+        ${If} $0 == 0
+            DetailPrint "  DB jelszó frissítve!"
+        ${Else}
+            DetailPrint "  FIGYELMEZTETÉS: Jelszó frissítés sikertelen (kód: $0)"
+        ${EndIf}
+
+        ; Stop temp PG
+        nsExec::ExecToLog '"$DATA_DIR\pgsql\bin\pg_ctl.exe" stop -D "$DATA_DIR\pgsql\data" -m fast -w -t 30'
+        Sleep 2000
 
     db_done:
 
@@ -468,21 +509,22 @@ Section "Telepítés" SecInstall
     ; NetworkService fiókkal fut — PG16 elutasítja az admin/LocalSystem futást!
     DetailPrint "  BestChange-PostgreSQL szolgáltatás..."
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" install BestChange-PostgreSQL "$DATA_DIR\pgsql\bin\postgres.exe"'
-    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL AppDirectory $DATA_DIR\pgsql'
+    ; F-N-09 fix: quoted values for safety
+    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL AppDirectory "$DATA_DIR\pgsql"'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL AppParameters "-D" "$DATA_DIR\pgsql\data"'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL DisplayName "BestChange PostgreSQL"'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL Description "Valutavalto Penztar adatbazis szerver"'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL ObjectName "NT AUTHORITY\NetworkService" ""'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL Start SERVICE_AUTO_START'
-    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL AppStdout $DATA_DIR\pgsql\log\service-stdout.log'
-    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL AppStderr $DATA_DIR\pgsql\log\service-stderr.log'
+    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL AppStdout "$DATA_DIR\pgsql\log\service-stdout.log"'
+    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL AppStderr "$DATA_DIR\pgsql\log\service-stderr.log"'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL AppThrottle 30000'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL AppExit Default Restart'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL AppRestartDelay 3000'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL AppRotateFiles 1'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL AppRotateBytes 10485760'
 
-    ; Grant NetworkService full control on pgsql data/log dirs
+    ; Grant NetworkService
     nsExec::ExecToLog 'icacls "$DATA_DIR\pgsql\data" /grant "NT AUTHORITY\NetworkService":(OI)(CI)F /T /Q'
     nsExec::ExecToLog 'icacls "$DATA_DIR\pgsql\log" /grant "NT AUTHORITY\NetworkService":(OI)(CI)F /T /Q'
     nsExec::ExecToLog 'icacls "$DATA_DIR\pgsql\bin" /grant "NT AUTHORITY\NetworkService":(OI)(CI)RX /T /Q'
@@ -490,12 +532,9 @@ Section "Telepítés" SecInstall
     nsExec::ExecToLog 'icacls "$DATA_DIR\pgsql\share" /grant "NT AUTHORITY\NetworkService":(OI)(CI)RX /T /Q'
 
     ; --- Backend service ---
-    ; NetworkService fiókkal fut — security best practice
-    ; AppThrottle 120s: Spring Boot 162 entity + Flyway = lassú startup!
     DetailPrint "  BestChange-Backend szolgáltatás..."
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" install BestChange-Backend "$DATA_DIR\jre\bin\java.exe"'
-    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend AppDirectory $DATA_DIR\backend'
-    ; DB jelszó CSAK config fájlból (application-local.properties), nem parancssorból — F-04 security fix
+    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend AppDirectory "$DATA_DIR\backend"'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend AppParameters "-jar" "valuta-backend.jar" "--spring.config.additional-location=file:../config/" "--spring.profiles.active=local"'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend DisplayName "BestChange Backend"'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend Description "Valutavalto Penztar szerver"'
@@ -505,12 +544,12 @@ Section "Telepítés" SecInstall
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend AppThrottle 120000'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend AppExit Default Restart'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend AppRestartDelay 5000'
-    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend AppStdout $DATA_DIR\backend\logs\service-stdout.log'
-    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend AppStderr $DATA_DIR\backend\logs\service-stderr.log'
+    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend AppStdout "$DATA_DIR\backend\logs\service-stdout.log"'
+    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend AppStderr "$DATA_DIR\backend\logs\service-stderr.log"'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend AppRotateFiles 1'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend AppRotateBytes 10485760'
 
-    ; Grant NetworkService access to backend/config/jre dirs
+    ; Grant NetworkService
     nsExec::ExecToLog 'icacls "$DATA_DIR\backend" /grant "NT AUTHORITY\NetworkService":(OI)(CI)F /T /Q'
     nsExec::ExecToLog 'icacls "$DATA_DIR\config" /grant "NT AUTHORITY\NetworkService":(OI)(CI)R /T /Q'
     nsExec::ExecToLog 'icacls "$DATA_DIR\jre" /grant "NT AUTHORITY\NetworkService":(OI)(CI)RX /T /Q'
@@ -520,10 +559,11 @@ Section "Telepítés" SecInstall
     ; =====================================================================
     DetailPrint "Szolgáltatások indítása..."
 
-    ; --- PostgreSQL indítás ---
+    ; --- PostgreSQL indítás (F5-A: nssm start) ---
     DetailPrint "  PostgreSQL indítása..."
-    nsExec::ExecToStack 'net start BestChange-PostgreSQL'
+    nsExec::ExecToStack '"$DATA_DIR\tools\nssm.exe" start BestChange-PostgreSQL'
     Pop $0
+    Pop $1  ; stdout
     ${If} $0 != 0
         DetailPrint "  FIGYELMEZTETÉS: PostgreSQL service start kód: $0"
     ${EndIf}
@@ -541,21 +581,23 @@ Section "Telepítés" SecInstall
         Sleep 1000
         nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -c "SELECT 1" -t -A'
         Pop $0
+        Pop $1  ; stdout (stack balance)
         ${If} $0 != 0
             Goto pg_svc_wait
         ${EndIf}
     DetailPrint "  PostgreSQL kész! ($R0 mp)"
     pg_svc_done:
 
-    ; --- Backend indítás ---
+    ; --- Backend indítás (F5-A: nssm start) ---
     DetailPrint "  Backend szerver indítása..."
-    nsExec::ExecToStack 'net start BestChange-Backend'
+    nsExec::ExecToStack '"$DATA_DIR\tools\nssm.exe" start BestChange-Backend'
     Pop $0
+    Pop $1  ; stdout
     ${If} $0 != 0
         DetailPrint "  FIGYELMEZTETÉS: Backend service start kód: $0"
     ${EndIf}
 
-    ; Health check: Backend (port 8080 listening)
+    ; Health check: Backend
     DetailPrint "  Várakozás a Backend szerverre (ez 30-60 másodpercig tarthat)..."
     StrCpy $R0 0
     be_svc_wait:
@@ -569,8 +611,7 @@ Section "Telepítés" SecInstall
         nsExec::ExecToStack 'powershell -NoProfile -Command "try{(Invoke-WebRequest -Uri http://localhost:8080/actuator/health -UseBasicParsing -TimeoutSec 3).StatusCode}catch{1}"'
         Pop $0
         Pop $1
-        ; $1 contains "200" if success
-        StrCpy $2 $1 3  ; first 3 chars
+        StrCpy $2 $1 3
         ${If} $2 == "200"
             Goto be_svc_ready
         ${EndIf}
@@ -599,7 +640,6 @@ Section "Telepítés" SecInstall
     WriteRegStr HKLM "Software\BestChange\ValutavaltoPenztar" "DataDir" $DATA_DIR
     WriteRegStr HKLM "Software\BestChange\ValutavaltoPenztar" "Version" "${VERSION}"
 
-    ; Programs and Features
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "DisplayName" "Valutaváltó Pénztár ${VERSION}"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "QuietUninstallString" "$\"$INSTDIR\uninstall.exe$\" /S"
@@ -610,13 +650,11 @@ Section "Telepítés" SecInstall
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "InstallLocation" "$INSTDIR"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "InstallDate" "${BUILD_DATE}"
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "VersionMajor" 1
-    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "VersionMinor" 4
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "VersionMinor" 5
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "NoModify" 1
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "NoRepair" 1
-    ; EstimatedSize — kb-ban (420 MB ~ 430080 KB)
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "EstimatedSize" 430080
 
-    ; Uninstaller
     WriteUninstaller "$INSTDIR\uninstall.exe"
 
     DetailPrint ""
@@ -629,29 +667,26 @@ SectionEnd
 ; Eltávolítás
 ; =============================================================================
 Section "un.Eltávolítás"
-    ; Read data dir from registry
     ReadRegStr $DATA_DIR HKLM "Software\BestChange\ValutavaltoPenztar" "DataDir"
     ${If} $DATA_DIR == ""
         ExpandEnvStrings $DATA_DIR "%PROGRAMDATA%\BestChange"
     ${EndIf}
 
-    ; F-08: Helyes sorrend — STOP → pg_ctl → KILL → WAIT → REMOVE
     DetailPrint "Szolgáltatások leállítása..."
-    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" stop BestChange-Backend 2>nul'
+    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" stop BestChange-Backend'
     Sleep 3000
-    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" stop BestChange-PostgreSQL 2>nul'
+    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" stop BestChange-PostgreSQL'
     Sleep 3000
-    nsExec::ExecToLog 'net stop BestChange-Backend 2>nul'
-    nsExec::ExecToLog 'net stop BestChange-PostgreSQL 2>nul'
+    nsExec::ExecToLog 'net stop BestChange-Backend'
+    nsExec::ExecToLog 'net stop BestChange-PostgreSQL'
     Sleep 2000
 
-    ; pg_ctl graceful stop
     IfFileExists "$DATA_DIR\pgsql\bin\pg_ctl.exe" 0 un_skip_pgctl
         nsExec::ExecToLog '"$DATA_DIR\pgsql\bin\pg_ctl.exe" stop -D "$DATA_DIR\pgsql\data" -m fast -w -t 30'
     un_skip_pgctl:
     Sleep 2000
 
-    ; Scoped process kill (nsProcess + PowerShell fallback)
+    ; Scoped process kill
     nsProcess::_FindProcess "postgres.exe"
     Pop $0
     ${If} $0 == 0
@@ -664,19 +699,18 @@ Section "un.Eltávolítás"
     ${EndIf}
     Sleep 2000
 
-    ; REMOVE service (csak miután a process halott)
     DetailPrint "Szolgáltatások eltávolítása..."
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" remove BestChange-Backend confirm'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" remove BestChange-PostgreSQL confirm'
-    nsExec::ExecToLog 'sc.exe delete BestChange-Backend 2>nul'
-    nsExec::ExecToLog 'sc.exe delete BestChange-PostgreSQL 2>nul'
+    nsExec::ExecToLog 'cmd.exe /C sc.exe delete BestChange-Backend'
+    nsExec::ExecToLog 'cmd.exe /C sc.exe delete BestChange-PostgreSQL'
     Sleep 1000
 
-    ; Remove program files
     DetailPrint "Alkalmazás fájlok eltávolítása..."
     RMDir /r "$INSTDIR"
 
-    ; Ask about data
+    ; F-N-02 fix: Silent uninstall → safe default (keep data)
+    IfSilent un_keepData
     MessageBox MB_YESNO "Töröljem az adatbázist és a konfigurációt is?$\r$\n$\r$\nHa NEM-et választ, az adatok megmaradnak egy későbbi újratelepítéshez.$\r$\n$\r$\n($DATA_DIR)" IDYES un_deleteData IDNO un_keepData
 
     un_deleteData:
@@ -685,7 +719,6 @@ Section "un.Eltávolítás"
         Goto un_doneData
 
     un_keepData:
-        ; Remove binaries but keep data/config
         DetailPrint "Binárisok törlése (adatok megmaradnak)..."
         RMDir /r "$DATA_DIR\jre"
         RMDir /r "$DATA_DIR\tools"
@@ -694,11 +727,9 @@ Section "un.Eltávolítás"
 
     un_doneData:
 
-    ; Shortcuts
     Delete "$DESKTOP\Valutaváltó Pénztár.lnk"
     RMDir /r "$SMPROGRAMS\Valutaváltó Pénztár"
 
-    ; Registry
     DeleteRegKey HKLM "Software\BestChange\ValutavaltoPenztar"
     DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar"
 
@@ -710,13 +741,11 @@ SectionEnd
 ; Indítási ellenőrzések
 ; =============================================================================
 Function .onInit
-    ; 64-bit check
     ${IfNot} ${RunningX64}
         MessageBox MB_OK|MB_ICONSTOP "Ez az alkalmazás csak 64 bites Windows rendszeren fut."
         Abort
     ${EndIf}
 
-    ; Admin check
     UserInfo::GetAccountType
     Pop $0
     ${If} $0 != "admin"
@@ -724,26 +753,29 @@ Function .onInit
         Abort
     ${EndIf}
 
-    ; Port check: 54320
-    nsExec::ExecToStack 'netstat -an | findstr ":54320 " | findstr "LISTENING"'
+    ; F-N-01 fix: cmd.exe /C for pipe support + SI-A: silent abort
+    nsExec::ExecToStack 'cmd.exe /C netstat -an | findstr ":54320 " | findstr "LISTENING"'
     Pop $0
+    Pop $1  ; stdout
     ${If} $0 == 0
-        IfSilent +3
+        IfSilent +2
         MessageBox MB_YESNO|MB_ICONQUESTION "A 54320-as port foglalt.$\r$\n$\r$\nLehetséges, hogy egy korábbi telepítés fut.$\r$\nA telepítő megpróbálja leállítani.$\r$\n$\r$\nFolytatja?" IDYES +2
         Abort
     ${EndIf}
 
-    ; Port check: 8080
-    nsExec::ExecToStack 'netstat -an | findstr ":8080 " | findstr "LISTENING"'
+    nsExec::ExecToStack 'cmd.exe /C netstat -an | findstr ":8080 " | findstr "LISTENING"'
     Pop $0
+    Pop $1  ; stdout
     ${If} $0 == 0
-        IfSilent +3
+        IfSilent +2
         MessageBox MB_YESNO|MB_ICONQUESTION "A 8080-as port foglalt.$\r$\n$\r$\nLehetséges, hogy egy másik alkalmazás használja.$\r$\n$\r$\nFolytatja?" IDYES +2
         Abort
     ${EndIf}
 FunctionEnd
 
+; F-N-02 fix: silent uninstall confirmation skip
 Function un.onInit
+    IfSilent +3
     MessageBox MB_YESNO|MB_ICONQUESTION "Biztosan eltávolítja a Valutaváltó Pénztárt?" IDYES +2
     Abort
 FunctionEnd

@@ -7,7 +7,7 @@
 # =============================================================================
 
 param(
-    [string]$Version = "1.4.0",
+    [string]$Version = "1.5.0",
     [switch]$SkipBackendBuild,
     [switch]$SkipFrontendBuild,
     [switch]$SkipDownloads,
@@ -118,7 +118,8 @@ VITE_API_URL=http://localhost:8080/api/v1
 VITE_BRANCH_CODE=EBC
 VITE_COMPANY_ID=1
 "@
-        $envContent | Set-Content ".env.local-installer" -Encoding UTF8
+        # BS-A fix: No BOM (Set-Content -Encoding UTF8 writes BOM on PS 5.1)
+        [System.IO.File]::WriteAllText((Join-Path (Get-Location) ".env.local-installer"), $envContent)
 
         # Backup original .env, replace with local installer config
         if (Test-Path ".env") { Copy-Item ".env" ".env.backup" -Force }
@@ -259,7 +260,8 @@ penztar.bootstrap.company-code=EBC
 penztar.bootstrap.worker-code=BORSI
 penztar.bootstrap.role-code=CASHIER
 "@
-$backendConfig | Set-Content "$StageDir\config\application-local.properties" -Encoding UTF8
+# BS-A fix: No BOM for config template
+[System.IO.File]::WriteAllText("$StageDir\config\application-local.properties", $backendConfig)
 
 # Penztar .env template
 $penztarEnv = @"
@@ -267,7 +269,7 @@ VITE_API_URL=http://localhost:8080/api/v1
 VITE_BRANCH_CODE=EBC
 VITE_COMPANY_ID=1
 "@
-$penztarEnv | Set-Content "$StageDir\config\penztar.env" -Encoding UTF8
+[System.IO.File]::WriteAllText("$StageDir\config\penztar.env", $penztarEnv)
 
 # Init DB + seed + service scripts
 Copy-Item "$InstallerDir\scripts\init-db.bat" "$StageDir\scripts\" -ErrorAction SilentlyContinue
