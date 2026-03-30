@@ -37,6 +37,7 @@ public class ReceiptGeneratorService {
 
     private final TransactionRepository transactionRepository;
     private final ReceiptPdfService receiptPdfService;
+    private final EscPosReceiptService escPosReceiptService;
 
     private static final DateTimeFormatter RECEIPT_DATE_FORMAT = DateTimeFormatter.ofPattern("yyMMdd");
     /**
@@ -75,11 +76,11 @@ public class ReceiptGeneratorService {
 
         List<ReceiptData.ReceiptLineData> lines = new ArrayList<>();
         lines.add(ReceiptData.ReceiptLineData.builder()
-                .label("Forrás iroda").value(transfer.getFromBranch().getName()).build());
+                .label("Forrás iroda").value(transfer.getFromBranch() != null ? transfer.getFromBranch().getName() : "—").build());
         lines.add(ReceiptData.ReceiptLineData.builder()
-                .label("Cél iroda").value(transfer.getToBranch().getName()).build());
+                .label("Cél iroda").value(transfer.getToBranch() != null ? transfer.getToBranch().getName() : "—").build());
         lines.add(ReceiptData.ReceiptLineData.builder()
-                .label("Szállítólevél szám").value(transfer.getTransferNumber()).build());
+                .label("Szállítólevél szám").value(transfer.getTransferNumber() != null ? transfer.getTransferNumber() : "—").build());
 
         return ReceiptData.builder()
                 .receiptNumber(receiptNumber)
@@ -162,69 +163,40 @@ public class ReceiptGeneratorService {
     }
 
     /**
-     * ESC/POS nyomtató formátum
+     * ESC/POS nyomtató formátum — delegál az EscPosReceiptService-nek,
+     * amely a javított fejlécet, teljes ügyfél adatokat, ÁFA-mentesség szöveget,
+     * kerekítést és két aláírás sort tartalmazza.
      */
     public byte[] formatForEscPos(ReceiptData data) {
-        StringBuilder sb = new StringBuilder();
-
-        // ESC/POS init
-        sb.append("\u001B@"); // Initialize printer
-        sb.append("\u001Ba\u0001"); // Center alignment
-
-        // Fejléc
-        sb.append("\u001B!\u0010"); // Double-height
-        sb.append(data.getCompanyName() != null ? data.getCompanyName() : "").append("\n");
-        sb.append("\u001B!\u0000"); // Normal
-        sb.append(data.getBranchName() != null ? data.getBranchName() : "").append("\n");
-        sb.append("================================\n");
-
-        sb.append("\u001Ba\u0000"); // Left alignment
-
-        // Bizonylat adatok
-        sb.append("Bizonylat: ").append(data.getReceiptNumber()).append("\n");
-        sb.append("Típus:     ").append(data.getReceiptType()).append("\n");
-        sb.append("Dátum:     ").append(data.getDate() != null ?
-                data.getDate().format(DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm")) : "").append("\n");
-        sb.append("Pénztáros: ").append(data.getWorkerName() != null ? data.getWorkerName() : "").append("\n");
-        sb.append("--------------------------------\n");
-
-        // Valuta adatok
-        if (data.getCurrencyCode() != null) {
-            sb.append("Valuta:    ").append(data.getCurrencyCode()).append("\n");
-            sb.append("Összeg:    ").append(data.getForeignAmount() != null ? data.getForeignAmount().toPlainString() : "").append("\n");
-            sb.append("Árfolyam:  ").append(data.getRate() != null ? data.getRate().toPlainString() : "").append("\n");
-            sb.append("HUF:       ").append(data.getHufAmount() != null ? data.getHufAmount().toPlainString() : "").append(" Ft\n");
-        }
-
-        if (data.getHandlingFee() != null && data.getHandlingFee().compareTo(BigDecimal.ZERO) > 0) {
-            sb.append("Kezelési díj: ").append(data.getHandlingFee().toPlainString()).append(" Ft\n");
-        }
-
-        sb.append("--------------------------------\n");
-
-        // Ügyfél
-        if (data.getCustomerName() != null && !data.getCustomerName().isBlank()) {
-            sb.append("Ügyfél:    ").append(data.getCustomerName()).append("\n");
-        }
-        if (data.getCustomerIdNumber() != null && !data.getCustomerIdNumber().isBlank()) {
-            sb.append("Okmány:    ").append(data.getCustomerIdNumber()).append("\n");
-        }
-
-        // Extra sorok
-        if (data.getLines() != null) {
-            for (ReceiptData.ReceiptLineData line : data.getLines()) {
-                sb.append(line.getLabel()).append(": ").append(line.getValue()).append("\n");
+        String type = data.getReceiptType();
+        if (type == null) type = "";
+        return switch (type) {
+            case "BUY" -> escPosReceiptService.generateBuyReceipt(data);
+            case "SELL" -> escPosReceiptService.generateSellReceipt(data);
+            case "REVERSAL", "STORNO" -> escPosReceiptService.generateStornoReceipt(data);
+            case "CONVERSION" -> escPosReceiptService.generateConversionReceipt(data);
+            case "TRANSFER", "TRANSFER_OUT" -> escPosReceiptService.generateTransferOutReceipt(data);
+            case "TRANSFER_IN" -> escPosReceiptService.generateTransferInReceipt(data);
+            case "HANDLING_FEE" -> escPosReceiptService.generateHandlingFeeReceipt(data);
+            case "KKTG_TRANSFER" -> escPosReceiptService.generateKktgTransferReceipt(data);
+            // CASH_STATUS és VAULT_CLOSING extra paramétereket igényelnek (currency map-ek) →
+            // közvetlenül az EscPosReceiptService-t kell hívni a megfelelő service-ből,
+            // nem a formatForEscPos()-on keresztül. Ide nem juthatnak be normál flow-ban.
+            // CLOSING: napi zárás → PDF útvonal (formatForPdf), ESC/POS-on nem támogatott.
+            // WU: Western Union bizonylatok → saját nyomtatási flow-t használnak.
+            case "CLOSING", "CASH_STATUS", "VAULT_CLOSING" -> {
+                log.warn("ESC/POS not supported for type '{}', falling back to generic receipt", type);
+                yield escPosReceiptService.generateBuyReceipt(data);
             }
-        }
-
-        sb.append("================================\n");
-        sb.append(data.getSignatureLine() != null ? data.getSignatureLine() : "Aláírás: ____________________")
-                .append("\n\n\n");
-
-        // Paper cut
-        sb.append("\u001DVA\u0003"); // Partial cut
-
-        return sb.toString().getBytes(StandardCharsets.UTF_8);
+            default -> {
+                if (type.startsWith("WU_")) {
+                    log.warn("ESC/POS WU receipt type '{}', falling back to generic buy receipt", type);
+                    yield escPosReceiptService.generateBuyReceipt(data);
+                }
+                log.warn("Unknown receipt type for ESC/POS: '{}', using fallback", type);
+                yield escPosReceiptService.generateBuyReceipt(data);
+            }
+        };
     }
 
     /**
@@ -339,12 +311,9 @@ public class ReceiptGeneratorService {
                     .label("Kezelési díj").value(tx.getHandlingFee().toPlainString() + " Ft").build());
         }
 
-        return ReceiptData.builder()
+        ReceiptData.ReceiptDataBuilder builder = ReceiptData.builder()
                 .receiptNumber(receiptNumber)
                 .receiptType(type)
-                .companyName(tx.getCompany() != null ? tx.getCompany().getName() : "")
-                .branchName(tx.getBranch() != null ? tx.getBranch().getName() : "")
-                .workerName(tx.getWorker() != null ? tx.getWorker().getName() : "")
                 .date(LocalDateTime.now())
                 .currencyCode(tx.getCurrency() != null ? tx.getCurrency().getCode() : "")
                 .foreignAmount(tx.getCurrencyAmount())
@@ -354,8 +323,90 @@ public class ReceiptGeneratorService {
                 .customerName(tx.getCustomerName())
                 .customerIdNumber(tx.getCustomerDocumentNumber())
                 .lines(lines)
-                .qrCode(receiptNumber)
-                .build();
+                .qrCode(receiptNumber);
+
+        // Cég adatok
+        if (tx.getCompany() != null) {
+            builder.companyName(tx.getCompany().getName())
+                   .companyFullName(tx.getCompany().getName())
+                   .companyTaxNumber(tx.getCompany().getTaxNumber())
+                   .companyPhone(tx.getCompany().getPhone());
+        }
+
+        // Fiók adatok
+        if (tx.getBranch() != null) {
+            builder.branchName(tx.getBranch().getName())
+                   .branchCode(tx.getBranch().getCode())
+                   .branchAddress(tx.getBranch().getAddress())
+                   .branchPhone(tx.getBranch().getPhone());
+        }
+
+        // Pénztáros
+        if (tx.getWorker() != null) {
+            builder.workerName(tx.getWorker().getName());
+        }
+
+        // Ügyfél részletes adatok (300K felett kötelező a bizonylaton)
+        // Transaction entity-n elérhető: customerAddress, customerNationality
+        builder.customerAddress(tx.getCustomerAddress())
+               .customerNationality(tx.getCustomerNationality());
+        // Megjegyzés: customerMotherName, customerBirthPlace, customerBirthDate, customerDocType
+        // jelenleg nem léteznek a Transaction entity-n — ezek a Customer entity-n vagy
+        // a jövőbeli AML adatbővítés részeként lesznek elérhetők.
+        // A ReceiptData DTO-ban opcionálisak, null-safe.
+
+        // Kerekítés — Transaction entity: roundingAmount
+        if (tx.getRoundingAmount() != null && tx.getRoundingAmount().compareTo(BigDecimal.ZERO) != 0) {
+            BigDecimal roundedAmount = tx.getHufAmount() != null
+                    ? tx.getHufAmount().add(tx.getRoundingAmount())
+                    : tx.getRoundingAmount();
+            builder.roundingDiff(tx.getRoundingAmount())
+                   .roundedHufAmount(roundedAmount);
+        }
+
+        // ÁFA-mentesség — alapértelmezett a @Builder.Default-ból jön
+
+        return builder.build();
+    }
+
+    /**
+     * Kezelési díj bizonylat generálása (külön bizonylat a díjról)
+     * Prefix: B
+     */
+    public ReceiptData generateHandlingFeeReceipt(Transaction tx, String sealNumber) {
+        String receiptNumber = generateReceiptNumber("B");
+
+        List<ReceiptData.ReceiptLineData> lines = new ArrayList<>();
+        lines.add(ReceiptData.ReceiptLineData.builder()
+                .label("Alapbizonylat").value(tx.getReceiptNumber() != null ? tx.getReceiptNumber() : "").build());
+
+        ReceiptData.ReceiptDataBuilder builder = ReceiptData.builder()
+                .receiptNumber(receiptNumber)
+                .receiptType("HANDLING_FEE")
+                .date(LocalDateTime.now())
+                .hufAmount(tx.getHandlingFee())
+                .handlingFee(tx.getHandlingFee())
+                .sealNumber(sealNumber)
+                .lines(lines)
+                .qrCode(receiptNumber);
+
+        if (tx.getCompany() != null) {
+            builder.companyName(tx.getCompany().getName())
+                   .companyFullName(tx.getCompany().getName())
+                   .companyTaxNumber(tx.getCompany().getTaxNumber())
+                   .companyPhone(tx.getCompany().getPhone());
+        }
+        if (tx.getBranch() != null) {
+            builder.branchName(tx.getBranch().getName())
+                   .branchCode(tx.getBranch().getCode())
+                   .branchAddress(tx.getBranch().getAddress())
+                   .branchPhone(tx.getBranch().getPhone());
+        }
+        if (tx.getWorker() != null) {
+            builder.workerName(tx.getWorker().getName());
+        }
+
+        return builder.build();
     }
 
     /**

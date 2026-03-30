@@ -62,6 +62,55 @@ public class ReceiptData {
     /** Ügyfél okmányszáma */
     private String customerIdNumber;
 
+    /** Ügyfél okmány típusa (személyi ig. / útlevél / jogosítvány) */
+    private String customerDocType;
+
+    /** Ügyfél lakcíme */
+    private String customerAddress;
+
+    /** Ügyfél anyja neve */
+    private String customerMotherName;
+
+    /** Ügyfél születési helye */
+    private String customerBirthPlace;
+
+    /** Ügyfél születési dátuma */
+    private String customerBirthDate;
+
+    /** Ügyfél állampolgársága */
+    private String customerNationality;
+
+    /** Cég teljes neve (pl. EXCLUSIVE BEST CHANGE ZRT.) */
+    private String companyFullName;
+
+    /** Cég telefonszáma */
+    private String companyPhone;
+
+    /** Cég adószáma */
+    private String companyTaxNumber;
+
+    /** Fiók/iroda kódja (pl. V105) */
+    private String branchCode;
+
+    /** Fiók/iroda címe */
+    private String branchAddress;
+
+    /** Fiók/iroda telefonszáma */
+    private String branchPhone;
+
+    /** Kerekített Ft összeg */
+    private BigDecimal roundedHufAmount;
+
+    /** Kerekítési különbözet */
+    private BigDecimal roundingDiff;
+
+    /** Plombaszám (KKTG átadás, belső átadás) */
+    private String sealNumber;
+
+    /** ÁFA-mentességi szöveg (törvényi kötelező valutaváltásnál) */
+    @Builder.Default
+    private String vatExemptionText = "Szj 67.13.10.0 — Az ÁFA alól mentes: 2007. évi CXVII tv. 85. § e)";
+
     /** Bizonylat sorok (tetszőleges extra sorok) */
     @Builder.Default
     private List<ReceiptLineData> lines = new ArrayList<>();

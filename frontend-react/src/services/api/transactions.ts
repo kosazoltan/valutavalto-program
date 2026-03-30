@@ -121,7 +121,13 @@ export interface Transaction {
   customerName?: string
   customerAddress?: string
   customerDocumentNumber?: string
+  customerDocType?: string
   customerNationality?: string
+  customerMotherName?: string
+  customerBirthPlace?: string
+  customerBirthDate?: string
+  roundedHufAmount?: number
+  roundingDiff?: number
   originalTransactionId?: number
   reversalReason?: string
   approvedBy?: string

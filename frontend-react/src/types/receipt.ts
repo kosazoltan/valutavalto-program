@@ -3,7 +3,17 @@
  * Portolva a penztar-client/src/types/index.ts fájlból.
  */
 
-export type PrintJobType = 'sell' | 'buy' | 'transfer' | 'storno' | 'conversion' | 'closing';
+export type PrintJobType =
+  | 'sell'
+  | 'buy'
+  | 'transfer'
+  | 'storno'
+  | 'conversion'
+  | 'closing'
+  | 'handling_fee'
+  | 'cash_status'
+  | 'vault_closing'
+  | 'kktg_transfer';
 
 export interface PrintReceiptData {
   type: PrintJobType;
@@ -22,6 +32,15 @@ export interface PrintReceiptData {
   customerName?: string;
   customerDocType?: string;
   customerDocNumber?: string;
+  customerAddress?: string;
+  customerMotherName?: string;
+  customerBirthPlace?: string;
+  customerBirthDate?: string;
+  customerNationality?: string;
+  sealNumber?: string;
+  vatExemptionText?: string;
+  companyPhone?: string;
+  companyTaxNumber?: string;
   stornoReason?: string;
   originalReceiptNumber?: string;
   sourceCurrencyCode?: string;
