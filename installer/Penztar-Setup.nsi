@@ -11,6 +11,7 @@
 !include "LogicLib.nsh"
 !include "FileFunc.nsh"
 !include "x64.nsh"
+!include "WordFunc.nsh"
 
 ; --- Projekt-saját pluginok (nsProcess, LockedList) ---
 !addplugindir /x86-unicode "plugins\x86-unicode"
@@ -248,31 +249,41 @@ Section "Telepítés" SecInstall
     DetailPrint "Konfiguráció generálása..."
     SetOutPath "$DATA_DIR\config"
 
-    ; Per-install random JWT secret generálás (F-01 security fix)
-    nsExec::ExecToStack 'powershell.exe -NoProfile -Command "[Convert]::ToBase64String((1..48 | ForEach-Object { Get-Random -Max 256 }) -as [byte[]])"'
+    ; =====================================================================
+    ; Per-install random secret generálás (F-01/F-03 fix, v1.4.0 refactor)
+    ; Külön PS1 fájl — NSIS nem tudja a PowerShell {} blokkokat inline kezelni
+    ; A script 3 sort ír: JWT_SECRET, ENCRYPTION_SALT, ENCRYPTION_KEY
+    ; =====================================================================
+    SetOutPath "$INSTDIR"
+    File "scripts\generate-secrets.ps1"
+    nsExec::ExecToStack 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\generate-secrets.ps1"'
     Pop $1  ; exit code
-    Pop $2  ; output = random base64 string (64 char)
-    ; Ha PowerShell nem elérhető → cmd.exe %RANDOM% alapú fallback (F-02 fix: nem determinisztikus)
-    StrCmp $2 "" 0 +5
-        nsExec::ExecToStack 'cmd.exe /c "echo %RANDOM%%RANDOM%%RANDOM%%RANDOM%%RANDOM%%RANDOM%%RANDOM%%RANDOM%JWT%DATE%"'
-        Pop $1
-        Pop $2
-        StrCmp $2 "" 0 +2
-            StrCpy $2 "EmergencyJWTKey-$HWNDPARENT-NoRandom"
+    Pop $2  ; output = 3 lines: jwt\r\nsalt\r\nkey
 
-    ; Per-install random encryption salt generálás
-    nsExec::ExecToStack 'powershell.exe -NoProfile -Command "-join ((1..16) | ForEach-Object { '{0:x2}' -f (Get-Random -Max 256) })"'
-    Pop $3  ; exit code
-    Pop $4  ; output = random hex salt (32 char)
+    ; Parse 3 lines from output — $2=jwt, $4=salt, $6=key
+    ; NSIS ExecToStack returns all stdout as one string with $\r$\n separators
+    ; We need to split it
+    StrCpy $R0 $2  ; save full output
+
+    ; Extract JWT (line 1 — everything before first newline)
+    ${WordFind} $R0 "$\r$\n" "+1" $2
+
+    ; Extract Salt (line 2)
+    ${WordFind} $R0 "$\r$\n" "+2" $4
+
+    ; Extract Key (line 3)
+    ${WordFind} $R0 "$\r$\n" "+3" $6
+
+    ; Fallback ha PowerShell nem elérhető
+    StrCmp $2 "" 0 +2
+        StrCpy $2 "EmergencyJWTKey-$HWNDPARENT-NoRandom-PleaseRegenerate"
     StrCmp $4 "" 0 +2
-        StrCpy $4 "a1b2c3d4e5f6a7b8" ; fallback
-
-    ; Per-install random encryption key generálás (F-03 fix)
-    nsExec::ExecToStack 'powershell.exe -NoProfile -Command "[Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Max 256 }) -as [byte[]])"'
-    Pop $5  ; exit code
-    Pop $6  ; output = random base64 encryption key
+        StrCpy $4 "a1b2c3d4e5f6a7b8"
     StrCmp $6 "" 0 +2
-        StrCpy $6 "LocalInstallKey2026BestChange" ; fallback
+        StrCpy $6 "LocalInstallKey2026BestChange"
+
+    ; Cleanup temp script
+    Delete "$INSTDIR\generate-secrets.ps1"
 
     ; application-local.properties
     FileOpen $0 "$DATA_DIR\config\application-local.properties" w
