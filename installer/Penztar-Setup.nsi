@@ -18,7 +18,10 @@
 
 ; --- Paraméterek ---
 !ifndef VERSION
-  !define VERSION "1.1.0"
+  !define VERSION "1.4.0"
+!endif
+!ifndef BUILD_DATE
+  !define BUILD_DATE "dev"
 !endif
 !ifndef STAGE_DIR
   !define STAGE_DIR "build\stage"
@@ -27,9 +30,21 @@
   !define OUTPUT_DIR "build"
 !endif
 
+; --- Windows EXE Version Info (Properties → Részletek) ---
+VIProductVersion "${VERSION}.0"
+VIFileVersion "${VERSION}.0"
+VIAddVersionKey /LANG=1038 "ProductName" "Valutaváltó Pénztár"
+VIAddVersionKey /LANG=1038 "CompanyName" "Exclusive Best Change Zrt."
+VIAddVersionKey /LANG=1038 "LegalCopyright" "© 2026 Exclusive Best Change Zrt."
+VIAddVersionKey /LANG=1038 "FileDescription" "Valutaváltó Pénztár Telepítő"
+VIAddVersionKey /LANG=1038 "FileVersion" "${VERSION}"
+VIAddVersionKey /LANG=1038 "ProductVersion" "${VERSION} (${BUILD_DATE})"
+VIAddVersionKey /LANG=1038 "OriginalFilename" "Penztar-Setup-${VERSION}.exe"
+VIAddVersionKey /LANG=1038 "InternalName" "PenztarSetup"
+
 ; --- Alapbeállítások ---
 Name "Valutaváltó Pénztár ${VERSION}"
-OutFile "${OUTPUT_DIR}\Penztar-Setup-${VERSION}.exe"
+OutFile "${OUTPUT_DIR}\Penztar-Setup-${VERSION}-${BUILD_DATE}.exe"
 InstallDir "$PROGRAMFILES64\Valutavalto Penztar"
 InstallDirRegKey HKLM "Software\BestChange\ValutavaltoPenztar" "InstallDir"
 RequestExecutionLevel admin
@@ -576,12 +591,19 @@ Section "Telepítés" SecInstall
     ; Programs and Features
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "DisplayName" "Valutaváltó Pénztár ${VERSION}"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "DisplayIcon" "$INSTDIR\Penztar.exe"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "QuietUninstallString" "$\"$INSTDIR\uninstall.exe$\" /S"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "DisplayIcon" "$INSTDIR\Penztar.exe,0"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "DisplayVersion" "${VERSION}"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "Publisher" "Exclusive Best Change Zrt."
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "URLInfoAbout" "https://excbest.com"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "InstallLocation" "$INSTDIR"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "InstallDate" "${BUILD_DATE}"
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "VersionMajor" 1
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "VersionMinor" 4
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "NoModify" 1
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "NoRepair" 1
+    ; EstimatedSize — kb-ban (420 MB ~ 430080 KB)
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "EstimatedSize" 430080
 
     ; Uninstaller
     WriteUninstaller "$INSTDIR\uninstall.exe"

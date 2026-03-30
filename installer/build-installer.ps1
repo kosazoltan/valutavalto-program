@@ -7,12 +7,16 @@
 # =============================================================================
 
 param(
-    [string]$Version = "1.1.0",
+    [string]$Version = "1.4.0",
     [switch]$SkipBackendBuild,
     [switch]$SkipFrontendBuild,
     [switch]$SkipDownloads,
     [switch]$SkipNsis
 )
+
+# Build date for filename and metadata (YYYYMMDD format)
+$BuildDate = Get-Date -Format "yyyyMMdd"
+Write-Host "Build: v$Version ($BuildDate)" -ForegroundColor Cyan
 
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
@@ -285,7 +289,7 @@ if (-not $SkipNsis) {
     $nsiScript = Join-Path $InstallerDir "Penztar-Setup.nsi"
     if (-not (Test-Path $nsiScript)) { throw "NSIS script not found: $nsiScript" }
 
-    & $NSIS_EXE /DVERSION=$Version /DSTAGE_DIR=$StageDir /DOUTPUT_DIR=$BuildDir $nsiScript
+    & $NSIS_EXE /DVERSION=$Version /DBUILD_DATE=$BuildDate /DSTAGE_DIR=$StageDir /DOUTPUT_DIR=$BuildDir $nsiScript
     if ($LASTEXITCODE -ne 0) { throw "NSIS compile failed" }
 
     $outputExe = Get-ChildItem "$BuildDir\Penztar-Setup-*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
@@ -293,6 +297,8 @@ if (-not $SkipNsis) {
         $exeSize = $outputExe.Length / 1MB
         Write-Host "`n✅ KÉSZ: $($outputExe.Name) ($([math]::Round($exeSize, 1)) MB)" -ForegroundColor Green
         Write-Host "   Helye: $($outputExe.FullName)"
+        Write-Host "   Verzió: $Version ($BuildDate)" -ForegroundColor Green
+        Write-Host "   Jobb klikk → Tulajdonságok → Részletek → FileVersion, ProductVersion" -ForegroundColor DarkGray
     }
 } else { Write-Host "NSIS compile SKIPPED" -ForegroundColor Yellow }
 

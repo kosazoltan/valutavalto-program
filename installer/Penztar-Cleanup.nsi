@@ -5,8 +5,25 @@
 
 !include "MUI2.nsh"
 
-Name "Valutaváltó Pénztár - Eltávolító"
-OutFile "build\Penztar-Eltavolito.exe"
+!ifndef VERSION
+  !define VERSION "1.4.0"
+!endif
+!ifndef BUILD_DATE
+  !define BUILD_DATE "dev"
+!endif
+
+; --- Windows EXE Version Info ---
+VIProductVersion "${VERSION}.0"
+VIFileVersion "${VERSION}.0"
+VIAddVersionKey /LANG=1038 "ProductName" "Valutaváltó Pénztár Eltávolító"
+VIAddVersionKey /LANG=1038 "CompanyName" "Exclusive Best Change Zrt."
+VIAddVersionKey /LANG=1038 "LegalCopyright" "© 2026 Exclusive Best Change Zrt."
+VIAddVersionKey /LANG=1038 "FileDescription" "Valutaváltó Pénztár — Teljes Eltávolító"
+VIAddVersionKey /LANG=1038 "FileVersion" "${VERSION}"
+VIAddVersionKey /LANG=1038 "ProductVersion" "${VERSION} (${BUILD_DATE})"
+
+Name "Valutaváltó Pénztár - Eltávolító ${VERSION}"
+OutFile "build\Penztar-Eltavolito-${VERSION}-${BUILD_DATE}.exe"
 RequestExecutionLevel admin
 Unicode true
 
