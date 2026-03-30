@@ -208,6 +208,16 @@ if (-not $SkipDownloads) {
         Copy-Item $nssmExe.FullName "$StageDir\tools\nssm.exe"
         Write-Host "NSSM staged" -ForegroundColor Green
     }
+    # VC++ 2015-2022 Redistributable x64 — PG16 EDB binárisok előfeltétele
+    $vcRedist = "$StageDir\tools\vc_redist.x64.exe"
+    if (Test-Path $vcRedist) {
+        Write-Host "VC++ Redistributable already staged, skipping download" -ForegroundColor Yellow
+    } else {
+        $vcUrl = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+        Write-Host "Downloading VC++ 2015-2022 Redistributable x64..."
+        Invoke-WebRequest -Uri $vcUrl -OutFile $vcRedist -UseBasicParsing
+        Write-Host "VC++ Redistributable staged ($([math]::Round((Get-Item $vcRedist).Length / 1MB, 1)) MB)" -ForegroundColor Green
+    }
 } else { Write-Host "Downloads SKIPPED" -ForegroundColor Yellow }
 
 # ─── 5. Config + Scripts ──────────────────────────────────────────────────

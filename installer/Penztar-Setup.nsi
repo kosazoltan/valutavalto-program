@@ -126,6 +126,22 @@ Section "Telepítés" SecInstall
     File /r "${STAGE_DIR}\electron\*.*"
 
     ; =====================================================================
+    ; FÁZIS 2B: VC++ Redistributable (2015-2022 x64) — PG16 előfeltétel
+    ; =====================================================================
+    ; PG 16 EDB binárisok vcruntime140.dll-t igényelnek — sok irodai gépen nincs!
+    DetailPrint "Visual C++ Runtime ellenőrzés..."
+    IfFileExists "$SYSDIR\vcruntime140.dll" vc_ok
+        DetailPrint "  VC++ 2015-2022 Redistributable telepítése..."
+        nsExec::ExecToStack '"$DATA_DIR\tools\vc_redist.x64.exe" /install /quiet /norestart'
+        Pop $0
+        ${If} $0 != 0
+        ${AndIf} $0 != 3010
+            DetailPrint "  VC++ Redistributable kód: $0 (folytatás)"
+        ${EndIf}
+    vc_ok:
+    DetailPrint "  VC++ Runtime OK"
+
+    ; =====================================================================
     ; FÁZIS 3: Konfiguráció generálása
     ; =====================================================================
     DetailPrint "Konfiguráció generálása..."
