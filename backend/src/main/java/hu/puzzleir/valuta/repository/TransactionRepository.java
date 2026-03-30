@@ -24,14 +24,28 @@ import java.util.UUID;
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
 
     /**
-     * Bizonylat keresése szám alapján
-     */
-    Optional<Transaction> findByReceiptNumberAndCompanyId(String receiptNumber, UUID companyId);
-
-    /**
-     * Napi tranzakciók egy fiókhoz
+     * Bizonylat keresése szám alapján (JOIN FETCH a lazy proxy hiba elkerüléséhez)
      */
     @Query("SELECT t FROM Transaction t " +
+           "JOIN FETCH t.branch " +
+           "JOIN FETCH t.company " +
+           "LEFT JOIN FETCH t.currency " +
+           "LEFT JOIN FETCH t.worker " +
+           "LEFT JOIN FETCH t.originalTransaction " +
+           "WHERE t.receiptNumber = :receiptNumber AND t.company.id = :companyId")
+    Optional<Transaction> findByReceiptNumberAndCompanyId(
+        @Param("receiptNumber") String receiptNumber,
+        @Param("companyId") UUID companyId);
+
+    /**
+     * Napi tranzakciók egy fiókhoz (JOIN FETCH a lazy proxy hiba elkerüléséhez)
+     */
+    @Query("SELECT t FROM Transaction t " +
+           "JOIN FETCH t.branch " +
+           "JOIN FETCH t.company " +
+           "LEFT JOIN FETCH t.currency " +
+           "LEFT JOIN FETCH t.worker " +
+           "LEFT JOIN FETCH t.originalTransaction " +
            "WHERE t.branch.id = :branchId " +
            "AND t.transactionDate = :date " +
            "ORDER BY t.transactionTime DESC")
