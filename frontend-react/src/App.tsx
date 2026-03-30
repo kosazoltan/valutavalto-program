@@ -32,6 +32,8 @@ const ReportsPage = lazy(() => import('./pages/reports/ReportsPage'))
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'))
 const StornoPage = lazy(() => import('./pages/stornos/StornoPage'))
 const RepresentativeListPage = lazy(() => import('./pages/representatives/RepresentativeListPage'))
+const RepresentativeCreatePage = lazy(() => import('./pages/representatives/RepresentativeCreatePage'))
+const RepresentativeDetailPage = lazy(() => import('./pages/representatives/RepresentativeDetailPage'))
 const ShipmentListPage = lazy(() => import('./pages/shipments/ShipmentListPage'))
 const WorkerCommissionPage = lazy(() => import('./pages/commissions/WorkerCommissionPage'))
 const WorkstationPage = lazy(() => import('./pages/workstations/WorkstationPage'))
@@ -223,6 +225,8 @@ export default function App() {
           
           {/* Representatives */}
           <Route path="/customers/:customerId/representatives" element={<RepresentativeListPage />} />
+          <Route path="/customers/:customerId/representatives/new" element={<RepresentativeCreatePage />} />
+          <Route path="/customers/:customerId/representatives/:representativeId" element={<RepresentativeDetailPage />} />
           
           {/* Shipments */}
           <Route path="/shipments" element={<ShipmentListPage />} />

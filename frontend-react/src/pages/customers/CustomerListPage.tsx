@@ -1,21 +1,47 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { Users, Search, Plus, Edit, Trash2, Eye } from 'lucide-react'
-
-const mockCustomers = [
-  { id: '1', name: 'Kiss János', birthDate: '1985-03-15', nationality: 'Magyar', documentType: 'Személyi ig.', documentNumber: '123456AB', phone: '+36301234567', createdAt: '2024-01-15' },
-  { id: '2', name: 'Nagy Péter', birthDate: '1990-07-22', nationality: 'Magyar', documentType: 'Útlevél', documentNumber: 'AB1234567', phone: '+36201234567', createdAt: '2024-02-20' },
-  { id: '3', name: 'Szabó Anna', birthDate: '1978-11-30', nationality: 'Magyar', documentType: 'Személyi ig.', documentNumber: '789012CD', phone: '+36701234567', createdAt: '2024-03-10' },
-  { id: '4', name: 'Kovács István', birthDate: '1995-05-08', nationality: 'Szlovák', documentType: 'Útlevél', documentNumber: 'SK9876543', phone: '+421901234567', createdAt: '2024-04-05' },
-]
+import { Users, Search, Plus, Edit, Eye, AlertCircle, Loader2 } from 'lucide-react'
+import { customerApi, Customer } from '../../services/api/transactions'
+import { getErrorMessage } from '../../utils/errorHandling'
+import { logger } from '../../utils/logger'
 
 export default function CustomerListPage() {
   const [search, setSearch] = useState('')
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const filteredCustomers = mockCustomers.filter(c => 
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.documentNumber.toLowerCase().includes(search.toLowerCase())
-  )
+  const loadCustomers = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = search.trim()
+        ? await customerApi.search(search.trim())
+        : await customerApi.getActive()
+      setCustomers(data)
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      setError(msg)
+      logger.error('CustomerListPage', 'Failed to load customers:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [search])
+
+  useEffect(() => {
+    const timer = setTimeout(() => { void loadCustomers() }, search ? 400 : 0)
+    return () => clearTimeout(timer)
+  }, [loadCustomers, search])
+
+  const handleDeactivate = async (id: number) => {
+    if (!confirm('Biztosan inaktiválja az ügyfelet?')) return
+    try {
+      await customerApi.deactivate(id)
+      void loadCustomers()
+    } catch (err) {
+      setError(getErrorMessage(err))
+    }
+  }
 
   return (
     <div className="space-y-3">
@@ -41,60 +67,97 @@ export default function CustomerListPage() {
             className="form-input flex-1"
             placeholder="Keresés név vagy okmányszám alapján..."
           />
-          <button className="form-button">
+          <button onClick={() => void loadCustomers()} className="form-button">
             <Search size={16} />
           </button>
         </div>
       </div>
 
+      {/* Error */}
+      {error && (
+        <div className="form-panel bg-red-50 border-red-200">
+          <div className="flex items-center gap-2 text-red-700">
+            <AlertCircle size={16} />
+            <span>{error}</span>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="form-panel p-0">
-        <table className="data-grid w-full">
-          <thead>
-            <tr>
-              <th>Név</th>
-              <th>Születési dátum</th>
-              <th>Állampolgárság</th>
-              <th>Okmány típus</th>
-              <th>Okmányszám</th>
-              <th>Telefon</th>
-              <th>Létrehozva</th>
-              <th className="w-28">Műveletek</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredCustomers.map((customer) => (
-              <tr key={customer.id}>
-                <td className="font-semibold">{customer.name}</td>
-                <td>{customer.birthDate}</td>
-                <td>{customer.nationality}</td>
-                <td>{customer.documentType}</td>
-                <td className="font-mono">{customer.documentNumber}</td>
-                <td className="font-mono text-sm">{customer.phone}</td>
-                <td className="text-sm text-gray-600">{customer.createdAt}</td>
-                <td>
-                  <div className="flex gap-1">
-                    <Link to={`/customers/${customer.id}`} className="toolbar-button" title="Megtekintés">
-                      <Eye size={14} />
-                    </Link>
-                    <button className="toolbar-button" title="Szerkesztés">
-                      <Edit size={14} />
-                    </button>
-                    <button className="toolbar-button text-red-500" title="Törlés">
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </td>
+        {loading ? (
+          <div className="flex items-center justify-center py-8 text-gray-500 gap-2">
+            <Loader2 size={18} className="animate-spin" />
+            Betöltés...
+          </div>
+        ) : customers.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            {search ? 'Nincs találat' : 'Nincsenek ügyfelek'}
+          </div>
+        ) : (
+          <table className="data-grid w-full">
+            <thead>
+              <tr>
+                <th>Név</th>
+                <th>Születési dátum</th>
+                <th>Állampolgárság</th>
+                <th>Okmány típus</th>
+                <th>Okmányszám</th>
+                <th>Telefon</th>
+                <th>Státusz</th>
+                <th className="w-24">Műveletek</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {customers.map((c) => (
+                <tr key={c.id}>
+                  <td className="font-semibold">
+                    {c.name}
+                    {c.isVip && <span className="ml-1 text-xs bg-yellow-100 text-yellow-700 px-1 rounded">VIP</span>}
+                  </td>
+                  <td>{c.birthDate ? new Date(c.birthDate).toLocaleDateString('hu-HU') : '-'}</td>
+                  <td>{c.nationality || '-'}</td>
+                  <td>{c.documentType || '-'}</td>
+                  <td className="font-mono text-sm">{c.documentNumber || '-'}</td>
+                  <td className="font-mono text-sm">{c.phone || '-'}</td>
+                  <td>
+                    <span className={`px-2 py-1 text-xs rounded ${
+                      c.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                    }`}>
+                      {c.active ? 'Aktív' : 'Inaktív'}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="flex gap-1">
+                      <Link to={`/customers/${c.id}`} className="toolbar-button" title="Megtekintés">
+                        <Eye size={14} />
+                      </Link>
+                      <Link to={`/customers/${c.id}`} className="toolbar-button" title="Szerkesztés">
+                        <Edit size={14} />
+                      </Link>
+                      {c.active && (
+                        <button
+                          onClick={() => handleDeactivate(c.id)}
+                          className="toolbar-button text-red-500"
+                          title="Inaktiválás"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* Footer */}
       <div className="form-panel">
-        <span className="text-sm">{filteredCustomers.length} ügyfél</span>
+        <span className="text-sm">{customers.length} ügyfél</span>
       </div>
     </div>
   )
 }
+

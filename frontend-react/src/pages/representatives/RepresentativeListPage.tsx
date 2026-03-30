@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { Users, Plus, Eye, AlertCircle } from 'lucide-react'
-import { authorizedRepresentativeApi, AuthorizedRepresentative } from '../../services/api/index'
+import { Users, Plus, Eye, AlertCircle, Loader2, ArrowLeft } from 'lucide-react'
+import { authorizedRepresentativeApi, AuthorizedRepresentative } from '../../services/api/transactions'
 import { getErrorMessage } from '../../utils/errorHandling'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
 
 export default function RepresentativeListPage() {
   const { customerId } = useParams<{ customerId: string }>()
@@ -16,6 +16,7 @@ export default function RepresentativeListPage() {
     if (!customerId) return
     try {
       setLoading(true)
+      setError(null)
       const data = await authorizedRepresentativeApi.findByCustomer(customerId)
       setRepresentatives(data)
     } catch (err) {
@@ -43,13 +44,21 @@ export default function RepresentativeListPage() {
     )
   }
 
+  const customerName = representatives.length > 0 ? representatives[0]?.customerName : undefined
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <Users />
-          Meghatalmazottak
-        </h1>
+        <div className="flex items-center gap-3">
+          <Link to={`/customers/${customerId}`} className="toolbar-button">
+            <ArrowLeft size={18} />
+          </Link>
+          <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+            <Users />
+            Meghatalmazottak
+            {customerName && <span className="text-base font-normal text-gray-500">— {customerName}</span>}
+          </h1>
+        </div>
         <Link
           to={`/customers/${customerId}/representatives/new`}
           className="form-button-primary flex items-center gap-2"
@@ -69,7 +78,8 @@ export default function RepresentativeListPage() {
       )}
 
       {loading ? (
-        <div className="form-panel text-center py-8 text-gray-500">
+        <div className="form-panel flex items-center justify-center py-8 text-gray-500 gap-2">
+          <Loader2 size={18} className="animate-spin" />
           Betöltés...
         </div>
       ) : representatives.length === 0 ? (
@@ -83,10 +93,10 @@ export default function RepresentativeListPage() {
               <tr>
                 <th>Név</th>
                 <th>Okmányszám</th>
-                <th>Születési dátum</th>
+                <th>Okmány típus</th>
                 <th>Kapcsolat</th>
+                <th>Érvényes</th>
                 <th>Státusz</th>
-                <th>Regisztrálva</th>
                 <th className="w-24">Műveletek</th>
               </tr>
             </thead>
@@ -95,8 +105,11 @@ export default function RepresentativeListPage() {
                 <tr key={rep.id}>
                   <td className="font-semibold">{rep.fullName}</td>
                   <td className="font-mono text-sm">{rep.documentNumber || '-'}</td>
-                  <td>{rep.birthDate ? new Date(rep.birthDate).toLocaleDateString('hu-HU') : '-'}</td>
+                  <td>{rep.documentTypeDid || '-'}</td>
                   <td>{rep.relationshipDid || '-'}</td>
+                  <td className="text-sm text-gray-600">
+                    {rep.registeredAt ? new Date(rep.registeredAt).toLocaleDateString('hu-HU') : '-'}
+                  </td>
                   <td>
                     <span className={`px-2 py-1 text-xs rounded ${
                       rep.isActive
@@ -105,9 +118,6 @@ export default function RepresentativeListPage() {
                     }`}>
                       {rep.isActive ? 'Aktív' : 'Inaktív'}
                     </span>
-                  </td>
-                  <td className="text-sm text-gray-600">
-                    {new Date(rep.registeredAt).toLocaleDateString('hu-HU')}
                   </td>
                   <td>
                     <div className="flex gap-1">
@@ -129,4 +139,3 @@ export default function RepresentativeListPage() {
     </div>
   )
 }
-
