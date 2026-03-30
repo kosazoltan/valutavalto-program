@@ -1,0 +1,39 @@
+{
+  "route": "/fees",
+  "loaded": true,
+  "title": "RepZtecH Exclusive Best Change - Pénztári Rendszer",
+  "clicked": 6,
+  "disabled": 0,
+  "errors": 0,
+  "skipped": 1,
+  "buttons": [
+    {
+      "label": "[no-label]",
+      "state": "clicked"
+    },
+    {
+      "label": "Kijelentkezés",
+      "state": "skip"
+    },
+    {
+      "label": "[no-label]",
+      "state": "clicked"
+    },
+    {
+      "label": "Díjtípusok",
+      "state": "clicked"
+    },
+    {
+      "label": "Díj mértékek",
+      "state": "clicked"
+    },
+    {
+      "label": "Kedvezmények",
+      "state": "clicked"
+    },
+    {
+      "label": "Új",
+      "state": "clicked"
+    }
+  ]
+}

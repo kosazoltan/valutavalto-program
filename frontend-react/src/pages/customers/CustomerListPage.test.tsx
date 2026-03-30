@@ -16,8 +16,43 @@ vi.mock('react-router-dom', async () => {
   }
 })
 
+const mockCustomers = [
+  {
+    id: 1, name: 'Kiss János', birthDate: '1985-03-15', nationality: 'Magyar',
+    documentType: 'Személyi ig.', documentNumber: '123456AB', phone: '+36301234567',
+    active: true, isVip: false,
+  },
+  {
+    id: 2, name: 'Nagy Péter', birthDate: '1990-07-22', nationality: 'Magyar',
+    documentType: 'Útlevél', documentNumber: 'AB1234567', phone: '+36309876543',
+    active: true, isVip: false,
+  },
+  {
+    id: 3, name: 'Szabó Anna', birthDate: '1978-11-30', nationality: 'Szlovák',
+    documentType: 'Személyi ig.', documentNumber: 'SK987654', phone: null,
+    active: true, isVip: false,
+  },
+  {
+    id: 4, name: 'Kovács István', birthDate: '1965-01-10', nationality: 'Magyar',
+    documentType: 'Útlevél', documentNumber: 'HU5556677', phone: '+36201112233',
+    active: true, isVip: false,
+  },
+]
+
+const mockGetActive = vi.fn()
+const mockSearch = vi.fn()
+const mockDeactivate = vi.fn()
+
+vi.mock('../../services/api/transactions', () => ({
+  customerApi: {
+    getActive: (...args: unknown[]) => mockGetActive(...args),
+    search: (...args: unknown[]) => mockSearch(...args),
+    deactivate: (...args: unknown[]) => mockDeactivate(...args),
+  },
+}))
+
 function renderCustomerListPage() {
-  render(
+  return render(
     <MemoryRouter>
       <CustomerListPage />
     </MemoryRouter>,
@@ -27,17 +62,29 @@ function renderCustomerListPage() {
 describe('CustomerListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetActive.mockResolvedValue(mockCustomers)
+    mockSearch.mockImplementation((q: string) => {
+      const lower = q.toLowerCase()
+      return Promise.resolve(
+        mockCustomers.filter(
+          (c) =>
+            c.name.toLowerCase().includes(lower) ||
+            c.documentNumber.toLowerCase().includes(lower),
+        ),
+      )
+    })
+    mockDeactivate.mockResolvedValue(undefined)
   })
 
-  it('oldal renderelésének ellenőrzése', () => {
+  it('oldal renderelésének ellenőrzése', async () => {
     renderCustomerListPage()
     expect(screen.getByText('Ügyfelek')).toBeInTheDocument()
+    await waitFor(() => expect(mockGetActive).toHaveBeenCalled())
   })
 
   it('új ügyfél gomb megjelenítése', () => {
     renderCustomerListPage()
-    const newButton = screen.getByText('Új ügyfél')
-    expect(newButton).toBeInTheDocument()
+    expect(screen.getByText('Új ügyfél')).toBeInTheDocument()
   })
 
   it('keresési mező megjelenítése', () => {
@@ -45,57 +92,67 @@ describe('CustomerListPage', () => {
     expect(screen.getByPlaceholderText(/Keresés név vagy okmányszám alapján/)).toBeInTheDocument()
   })
 
-  it('összes ügyfél megjelenítése alapértelmezésben', () => {
+  it('összes ügyfél megjelenítése alapértelmezésben', async () => {
     renderCustomerListPage()
-    expect(screen.getByText('Kiss János')).toBeInTheDocument()
-    expect(screen.getByText('Nagy Péter')).toBeInTheDocument()
-    expect(screen.getByText('Szabó Anna')).toBeInTheDocument()
-    expect(screen.getByText('Kovács István')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('Kiss János')).toBeInTheDocument()
+      expect(screen.getByText('Nagy Péter')).toBeInTheDocument()
+      expect(screen.getByText('Szabó Anna')).toBeInTheDocument()
+      expect(screen.getByText('Kovács István')).toBeInTheDocument()
+    })
   })
 
-  it('ügyfél nevét megjelenít', () => {
+  it('ügyfél nevét megjelenít', async () => {
     renderCustomerListPage()
-    expect(screen.getByText('Kiss János')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('Kiss János')).toBeInTheDocument()
+    })
   })
 
-  it('születési dátumot megjelenít', () => {
+  it('születési dátumot megjelenít', async () => {
     renderCustomerListPage()
-    expect(screen.getByText('1985-03-15')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('1985. 03. 15.')).toBeInTheDocument()
+    })
   })
 
-  it('állampolgárságot megjelenít', () => {
+  it('állampolgárságot megjelenít', async () => {
     renderCustomerListPage()
-    expect(screen.getAllByText('Magyar').length).toBeGreaterThan(0)
-    expect(screen.getByText('Szlovák')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getAllByText('Magyar').length).toBeGreaterThan(0)
+      expect(screen.getByText('Szlovák')).toBeInTheDocument()
+    })
   })
 
-  it('okmány típusokat megjelenít', () => {
+  it('okmány típusokat megjelenít', async () => {
     renderCustomerListPage()
-    expect(screen.getAllByText('Személyi ig.').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Útlevél').length).toBeGreaterThan(0)
+    await waitFor(() => {
+      expect(screen.getAllByText('Személyi ig.').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Útlevél').length).toBeGreaterThan(0)
+    })
   })
 
-  it('okmányszámokat megjelenít', () => {
+  it('okmányszámokat megjelenít', async () => {
     renderCustomerListPage()
-    expect(screen.getByText('123456AB')).toBeInTheDocument()
-    expect(screen.getByText('AB1234567')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('123456AB')).toBeInTheDocument()
+      expect(screen.getByText('AB1234567')).toBeInTheDocument()
+    })
   })
 
-  it('telefonszámokat megjelenít', () => {
+  it('telefonszámokat megjelenít', async () => {
     renderCustomerListPage()
-    expect(screen.getByText('+36301234567')).toBeInTheDocument()
-  })
-
-  it('létrehozás dátumát megjelenít', () => {
-    renderCustomerListPage()
-    expect(screen.getByText('2024-01-15')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('+36301234567')).toBeInTheDocument()
+    })
   })
 
   it('keresés név alapján szűr', async () => {
     renderCustomerListPage()
-    const user = userEvent.setup()
+    await waitFor(() => expect(screen.getByText('Kiss János')).toBeInTheDocument())
 
-    const searchInput = screen.getByPlaceholderText(/Keresés név vagy okmányszám alapján/) as HTMLInputElement
+    const user = userEvent.setup()
+    const searchInput = screen.getByPlaceholderText(/Keresés név vagy okmányszám alapján/)
     await user.type(searchInput, 'Kiss')
 
     await waitFor(() => {
@@ -106,9 +163,10 @@ describe('CustomerListPage', () => {
 
   it('keresés okmányszám alapján szűr', async () => {
     renderCustomerListPage()
-    const user = userEvent.setup()
+    await waitFor(() => expect(screen.getByText('Kiss János')).toBeInTheDocument())
 
-    const searchInput = screen.getByPlaceholderText(/Keresés név vagy okmányszám alapján/) as HTMLInputElement
+    const user = userEvent.setup()
+    const searchInput = screen.getByPlaceholderText(/Keresés név vagy okmányszám alapján/)
     await user.type(searchInput, '123456AB')
 
     await waitFor(() => {
@@ -119,9 +177,10 @@ describe('CustomerListPage', () => {
 
   it('keresés kis/nagybetűre nem érzékeny', async () => {
     renderCustomerListPage()
-    const user = userEvent.setup()
+    await waitFor(() => expect(screen.getByText('Kiss János')).toBeInTheDocument())
 
-    const searchInput = screen.getByPlaceholderText(/Keresés név vagy okmányszám alapján/) as HTMLInputElement
+    const user = userEvent.setup()
+    const searchInput = screen.getByPlaceholderText(/Keresés név vagy okmányszám alapján/)
     await user.type(searchInput, 'kiss')
 
     await waitFor(() => {
@@ -131,43 +190,50 @@ describe('CustomerListPage', () => {
 
   it('megtekintés gomb navigál az ügyfél detailra', async () => {
     renderCustomerListPage()
-    const user = userEvent.setup()
+    await waitFor(() => expect(screen.getByText('Kiss János')).toBeInTheDocument())
 
     const viewButtons = screen.getAllByTitle('Megtekintés')
-    await user.click(viewButtons[0]!)
-
-    expect(true).toBe(true) // Link működése a router-ből függene
+    expect(viewButtons.length).toBeGreaterThan(0)
+    // Link href ellenőrzés
+    expect(viewButtons[0]!.closest('a')).toHaveAttribute('href', '/customers/1')
   })
 
-  it('szerkesztés gomb megjelenít', () => {
+  it('szerkesztés gomb megjelenít', async () => {
     renderCustomerListPage()
+    await waitFor(() => expect(screen.getByText('Kiss János')).toBeInTheDocument())
+
     const editButtons = screen.getAllByTitle('Szerkesztés')
     expect(editButtons.length).toBeGreaterThan(0)
   })
 
-  it('törlés gomb megjelenít', () => {
+  it('inaktiválás gomb megjelenít', async () => {
     renderCustomerListPage()
-    const deleteButtons = screen.getAllByTitle('Törlés')
-    expect(deleteButtons.length).toBeGreaterThan(0)
+    await waitFor(() => expect(screen.getByText('Kiss János')).toBeInTheDocument())
+
+    const deactivateButtons = screen.getAllByTitle('Inaktiválás')
+    expect(deactivateButtons.length).toBeGreaterThan(0)
   })
 
   it('üres keresési eredmény kezelése', async () => {
+    mockSearch.mockResolvedValue([])
     renderCustomerListPage()
-    const user = userEvent.setup()
+    await waitFor(() => expect(screen.getByText('Kiss János')).toBeInTheDocument())
 
-    const searchInput = screen.getByPlaceholderText(/Keresés név vagy okmányszám alapján/) as HTMLInputElement
+    const user = userEvent.setup()
+    const searchInput = screen.getByPlaceholderText(/Keresés név vagy okmányszám alapján/)
     await user.type(searchInput, 'Nonexistent Customer')
 
     await waitFor(() => {
       expect(screen.queryByText('Kiss János')).not.toBeInTheDocument()
-      expect(screen.queryByText('Nagy Péter')).not.toBeInTheDocument()
+      expect(screen.getByText('Nincs találat')).toBeInTheDocument()
     })
   })
 
   it('keresési szűrés törlésére az összes ügyfél visszajelenik', async () => {
     renderCustomerListPage()
-    const user = userEvent.setup()
+    await waitFor(() => expect(screen.getByText('Kiss János')).toBeInTheDocument())
 
+    const user = userEvent.setup()
     const searchInput = screen.getByPlaceholderText(/Keresés név vagy okmányszám alapján/) as HTMLInputElement
     await user.type(searchInput, 'Kiss')
 
@@ -184,31 +250,35 @@ describe('CustomerListPage', () => {
     })
   })
 
-  it('tábla fejléc megjelenítése', () => {
+  it('tábla fejléc megjelenítése', async () => {
     renderCustomerListPage()
+    await waitFor(() => expect(screen.getByText('Kiss János')).toBeInTheDocument())
+
     expect(screen.getByText('Név')).toBeInTheDocument()
     expect(screen.getByText('Születési dátum')).toBeInTheDocument()
     expect(screen.getByText('Állampolgárság')).toBeInTheDocument()
     expect(screen.getByText('Okmány típus')).toBeInTheDocument()
     expect(screen.getByText('Okmányszám')).toBeInTheDocument()
     expect(screen.getByText('Telefon')).toBeInTheDocument()
-    expect(screen.getByText('Létrehozva')).toBeInTheDocument()
   })
 
-  it('ügyfél száma megjelenítése', () => {
+  it('ügyfél száma megjelenítése', async () => {
     renderCustomerListPage()
-    // 4 ügyfél van
-    expect(screen.getByText('Kiss János')).toBeInTheDocument()
-    expect(screen.getByText('Nagy Péter')).toBeInTheDocument()
-    expect(screen.getByText('Szabó Anna')).toBeInTheDocument()
-    expect(screen.getByText('Kovács István')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('Kiss János')).toBeInTheDocument()
+      expect(screen.getByText('Nagy Péter')).toBeInTheDocument()
+      expect(screen.getByText('Szabó Anna')).toBeInTheDocument()
+      expect(screen.getByText('Kovács István')).toBeInTheDocument()
+    })
+    expect(screen.getByText('4 ügyfél')).toBeInTheDocument()
   })
 
   it('több névvel rendelkező ügyfél szűrése', async () => {
     renderCustomerListPage()
-    const user = userEvent.setup()
+    await waitFor(() => expect(screen.getByText('Kiss János')).toBeInTheDocument())
 
-    const searchInput = screen.getByPlaceholderText(/Keresés név vagy okmányszám alapján/) as HTMLInputElement
+    const user = userEvent.setup()
+    const searchInput = screen.getByPlaceholderText(/Keresés név vagy okmányszám alapján/)
     await user.type(searchInput, 'Nagy')
 
     await waitFor(() => {

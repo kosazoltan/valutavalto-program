@@ -1,0 +1,35 @@
+{
+  "route": "/treasury/matrix",
+  "loaded": true,
+  "title": "RepZtecH Exclusive Best Change - Pénztári Rendszer",
+  "clicked": 5,
+  "disabled": 0,
+  "errors": 0,
+  "skipped": 1,
+  "buttons": [
+    {
+      "label": "[no-label]",
+      "state": "clicked"
+    },
+    {
+      "label": "Kijelentkezés",
+      "state": "skip"
+    },
+    {
+      "label": "[no-label]",
+      "state": "clicked"
+    },
+    {
+      "label": "?",
+      "state": "clicked"
+    },
+    {
+      "label": "Szünet",
+      "state": "clicked"
+    },
+    {
+      "label": "Export CSV",
+      "state": "clicked"
+    }
+  ]
+}

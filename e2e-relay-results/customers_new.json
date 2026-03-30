@@ -1,0 +1,35 @@
+{
+  "route": "/customers/new",
+  "loaded": true,
+  "title": "RepZtecH Exclusive Best Change - Pénztári Rendszer",
+  "clicked": 5,
+  "disabled": 0,
+  "errors": 0,
+  "skipped": 1,
+  "buttons": [
+    {
+      "label": "[no-label]",
+      "state": "clicked"
+    },
+    {
+      "label": "Kijelentkezés",
+      "state": "skip"
+    },
+    {
+      "label": "[no-label]",
+      "state": "clicked"
+    },
+    {
+      "label": "Magánszemély",
+      "state": "clicked"
+    },
+    {
+      "label": "Céges ügyfél",
+      "state": "clicked"
+    },
+    {
+      "label": "Mentés",
+      "state": "clicked"
+    }
+  ]
+}

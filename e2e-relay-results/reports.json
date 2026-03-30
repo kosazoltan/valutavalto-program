@@ -1,0 +1,71 @@
+{
+  "route": "/reports",
+  "loaded": true,
+  "title": "RepZtecH Exclusive Best Change - Pénztári Rendszer",
+  "clicked": 14,
+  "disabled": 0,
+  "errors": 0,
+  "skipped": 1,
+  "buttons": [
+    {
+      "label": "[no-label]",
+      "state": "clicked"
+    },
+    {
+      "label": "Kijelentkezés",
+      "state": "skip"
+    },
+    {
+      "label": "[no-label]",
+      "state": "clicked"
+    },
+    {
+      "label": "Napi jelentés",
+      "state": "clicked"
+    },
+    {
+      "label": "Havi kimutatás",
+      "state": "clicked"
+    },
+    {
+      "label": "Valuta statisztika",
+      "state": "clicked"
+    },
+    {
+      "label": "Eredmény kimutatás",
+      "state": "clicked"
+    },
+    {
+      "label": "Ügyfél statisztika",
+      "state": "clicked"
+    },
+    {
+      "label": "MNB jelentés",
+      "state": "clicked"
+    },
+    {
+      "label": "Ma",
+      "state": "clicked"
+    },
+    {
+      "label": "Hónap",
+      "state": "clicked"
+    },
+    {
+      "label": "Év",
+      "state": "clicked"
+    },
+    {
+      "label": "Nyomtatás",
+      "state": "clicked"
+    },
+    {
+      "label": "Excel",
+      "state": "clicked"
+    },
+    {
+      "label": "PDF",
+      "state": "clicked"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "route": "/commissions",
+  "loaded": true,
+  "title": "RepZtecH Exclusive Best Change - Pénztári Rendszer",
+  "clicked": 4,
+  "disabled": 0,
+  "errors": 0,
+  "skipped": 1,
+  "buttons": [
+    {
+      "label": "[no-label]",
+      "state": "clicked"
+    },
+    {
+      "label": "Kijelentkezés",
+      "state": "skip"
+    },
+    {
+      "label": "[no-label]",
+      "state": "clicked"
+    },
+    {
+      "label": "Szűrés",
+      "state": "clicked"
+    },
+    {
+      "label": "Export",
+      "state": "clicked"
+    }
+  ]
+}

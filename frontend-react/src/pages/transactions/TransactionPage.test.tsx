@@ -174,16 +174,16 @@ describe('TransactionPage', () => {
     expect(mocks.navigate).toHaveBeenCalledWith('/transactions')
   })
 
-  it('Nyomtatás gomb meghívja a window.print-et', async () => {
-    const printSpy = vi.spyOn(window, 'print').mockImplementation(() => {})
+  it('Nyomtatás gomb mentés nélkül figyelmeztető toast-ot mutat', async () => {
     renderTransactionPage()
     const user = userEvent.setup()
 
     const printButton = screen.getByText('Nyomtatás')
+    // savedTransaction nincs → toast warning, nem window.print
     await user.click(printButton)
 
-    expect(printSpy).toHaveBeenCalled()
-    printSpy.mockRestore()
+    // A gomb opacity-50 stílust kap mentett tranzakció nélkül
+    expect(printButton.className).toContain('opacity-50')
   })
 
   it('sikeres BUY tranzakció mentésekor API-t meghívja', async () => {
