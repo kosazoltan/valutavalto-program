@@ -18,20 +18,20 @@ $allowedExtRegex = '\.(java|ts|tsx|js|jsx|json|yml|yaml|md|txt|sql|properties|xm
 
 $files = @()
 if ((Test-GitRefExists -Ref $BaseRef) -and (Test-GitRefExists -Ref $HeadRef)) {
-    $files = (& git diff --name-only --diff-filter=ACMRT $BaseRef $HeadRef) | Where-Object { $_ }
+    $files = @((& git diff --name-only --diff-filter=ACMRT $BaseRef $HeadRef) | Where-Object { $_ })
 } else {
-    $files = (& git diff --name-only --diff-filter=ACMRT --cached) | Where-Object { $_ }
-    if (-not $files -or $files.Count -eq 0) {
-        $files = (& git diff --name-only --diff-filter=ACMRT) | Where-Object { $_ }
+    $files = @((& git diff --name-only --diff-filter=ACMRT --cached) | Where-Object { $_ })
+    if ($files.Count -eq 0) {
+        $files = @((& git diff --name-only --diff-filter=ACMRT) | Where-Object { $_ })
     }
 }
 
-$files = $files |
+$files = @($files |
     Where-Object { $_ -match $allowedExtRegex } |
     Where-Object { $_ -notmatch $excludePathRegex } |
-    Sort-Object -Unique
+    Sort-Object -Unique)
 
-if (-not $files -or $files.Count -eq 0) {
+if ($files.Count -eq 0) {
     Write-Host "UTF-8 guardrail: no applicable files to check."
     exit 0
 }
