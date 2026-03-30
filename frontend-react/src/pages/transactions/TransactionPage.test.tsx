@@ -184,6 +184,11 @@ describe('TransactionPage', () => {
 
     // A gomb opacity-50 stílust kap mentett tranzakció nélkül
     expect(printButton.className).toContain('opacity-50')
+    // Toast warning hívás ellenőrzés
+    expect(mocks.toast.warning).toHaveBeenCalledWith(
+      'Nincs mentett tranzakció',
+      'Először mentse el a tranzakciót a bizonylat nyomtatásához!',
+    )
   })
 
   it('sikeres BUY tranzakció mentésekor API-t meghívja', async () => {
