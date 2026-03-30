@@ -89,6 +89,30 @@ Section "Telepítés" SecInstall
     nsExec::ExecToLog 'taskkill /F /FI "SERVICES eq BestChange-Backend" 2>nul'
     Sleep 1000
 
+    ; F-07: Kill any remaining postgres.exe from BestChange path (sc delete removes service association,
+    ; so SERVICES filter above misses it — but the process still locks DLLs like icudt67.dll)
+    nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process postgres -ErrorAction SilentlyContinue | Where-Object { $_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
+    nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process java -ErrorAction SilentlyContinue | Where-Object { $_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
+
+    ; Wait for file locks to release (postgres DLL unlock can take a few seconds after process exit)
+    DetailPrint "Várakozás a fájlzárak feloldására..."
+    StrCpy $R0 0
+    lock_wait_loop:
+        IntOp $R0 $R0 + 1
+        ${If} $R0 > 10
+            DetailPrint "  Időtúllépés — folytatás (fájlzár lehetséges)."
+            Goto lock_wait_done
+        ${EndIf}
+        nsExec::ExecToStack 'powershell.exe -NoProfile -Command "if(Get-Process postgres -ErrorAction SilentlyContinue | Where-Object { $_.Path -like ''*BestChange*'' }){exit 1}else{exit 0}"'
+        Pop $0
+        ${If} $0 == 0
+            Goto lock_wait_done
+        ${EndIf}
+        Sleep 1000
+        Goto lock_wait_loop
+    lock_wait_done:
+    Sleep 1000
+
     ; =====================================================================
     ; FÁZIS 2: Fájlok másolása
     ; =====================================================================
