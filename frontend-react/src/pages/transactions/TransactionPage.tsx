@@ -11,10 +11,12 @@ import {
 import { NumberInput } from '../../components/NumberInput'
 import { formatDecimal } from '../../utils/numberFormat'
 import { transactionApi } from '../../services/api/index'
-import type { BuyRequest, SellRequest } from '../../services/api/index'
+import type { BuyRequest, SellRequest, Transaction } from '../../services/api/index'
 import { roundHuf } from '../../utils/rounding'
 import { toast } from '../../components/ui/toaster'
 import { saveAndSyncPendingBuySell } from '../../utils/electronTransactions'
+import ReceiptPrint from '../../components/ReceiptPrint'
+import { useAuthStore } from '../../stores/authStore'
 
 import { useTransactionRates } from './hooks/useTransactionRates'
 import type { CurrencyRate } from './hooks/useTransactionRates'
@@ -44,6 +46,10 @@ export default function TransactionPage() {
 
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [savedTransaction, setSavedTransaction] = useState<Transaction | null>(null)
+
+  // Auth store for receipt info
+  const { user } = useAuthStore()
 
   // Identification logic
   const { identificationLevel, requiresSourceVerification } = useIdentificationLevel(hufAmount)
@@ -198,6 +204,7 @@ export default function TransactionPage() {
             ...customerData,
           }
           const result = await transactionApi.buy(request)
+          setSavedTransaction(result)
           toast.success('Vétel tranzakció sikeresen mentve!', `Bizonylat szám: ${result.receiptNumber}`)
         } else {
           const request: SellRequest = {
@@ -207,11 +214,12 @@ export default function TransactionPage() {
             ...customerData,
           }
           const result = await transactionApi.sell(request)
+          setSavedTransaction(result)
           toast.success('Eladás tranzakció sikeresen mentve!', `Bizonylat szám: ${result.receiptNumber}`)
         }
       }
 
-      navigate('/transactions')
+      // Don't navigate away — let user print receipt first
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Ismeretlen hiba'
       const axiosError = error as { response?: { data?: { message?: string } } }
@@ -223,11 +231,11 @@ export default function TransactionPage() {
   }
 
   const handlePrint = () => {
-    if (typeof window === 'undefined' || typeof window.print !== 'function') {
-      toast.error('Nyomtatás nem elérhető ezen a környezeten')
+    if (!savedTransaction) {
+      toast.warning('Nincs mentett tranzakció', 'Először mentse el a tranzakciót a bizonylat nyomtatásához!')
       return
     }
-    window.print()
+    // ReceiptPrint modal is shown via savedTransaction state
   }
 
   const currentRate = selectedCurrency
@@ -246,7 +254,7 @@ export default function TransactionPage() {
           <button onClick={() => navigate('/transactions')} className="form-button flex items-center gap-1" title="Mégsem (Esc)">
             <X size={16} /> Mégsem
           </button>
-          <button onClick={handlePrint} className="form-button flex items-center gap-1" title="Nyomtatás">
+          <button onClick={handlePrint} className={`form-button flex items-center gap-1 ${!savedTransaction ? 'opacity-50 cursor-not-allowed' : ''}`} title={savedTransaction ? 'Bizonylat nyomtatása' : 'Először mentse el a tranzakciót'}>
             <Printer size={16} /> Nyomtatás
           </button>
           <button
@@ -382,6 +390,22 @@ export default function TransactionPage() {
           onCustomerAddressChange={setCustomerAddress}
         />
       </div>
+
+      {/* Receipt print modal */}
+      {savedTransaction && (
+        <ReceiptPrint
+          transaction={savedTransaction}
+          companyName={user?.companyName || 'Exclusive Best Change Zrt.'}
+          companyAddress={''}
+          companyTaxNumber={''}
+          branchName={user?.branchName || ''}
+          workerName={user?.fullName || ''}
+          onClose={() => {
+            setSavedTransaction(null)
+            navigate('/transactions')
+          }}
+        />
+      )}
 
       {/* Keyboard shortcuts help */}
       <div className="text-xs text-gray-500 p-2 bg-gray-50 rounded border">
