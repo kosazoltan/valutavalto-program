@@ -34,12 +34,34 @@ class ReceiptGeneratorServiceTest {
     @Mock
     private ReceiptPdfService receiptPdfService;
 
+    @Mock
+    private EscPosReceiptService escPosReceiptService;
+
     @BeforeEach
-    void setUpPdfMock() {
+    void setUpMocks() {
         // Mock PDF bytes so formatForPdf works in tests without a real PDFBox render.
-        // lenient() used because only testFormatForPdf calls formatForPdf; the rest do not.
         byte[] fakePdf = "%PDF-1.4 fake".getBytes(StandardCharsets.UTF_8);
         Mockito.lenient().when(receiptPdfService.generatePdf(any())).thenReturn(fakePdf);
+
+        // Mock ESC/POS bytes so formatForEscPos works without a real printer.
+        // generateSellReceipt mock returns a stream that echoes the ReceiptData content
+        // so the testFormatForEscPos content-assertions pass.
+        Mockito.lenient().when(escPosReceiptService.generateSellReceipt(any())).thenAnswer(inv -> {
+            ReceiptData d = inv.getArgument(0);
+            String text = "\u001B@" +
+                (d.getCompanyName() != null ? d.getCompanyName() : "") + "\n" +
+                (d.getReceiptNumber() != null ? d.getReceiptNumber() : "") + "\n" +
+                (d.getCurrencyCode() != null ? d.getCurrencyCode() : "") + "\n";
+            return text.getBytes(java.nio.charset.StandardCharsets.ISO_8859_1);
+        });
+        byte[] fakeEscPos = "\u001B@ESCPOS\n".getBytes(StandardCharsets.UTF_8);
+        Mockito.lenient().when(escPosReceiptService.generateBuyReceipt(any())).thenReturn(fakeEscPos);
+        Mockito.lenient().when(escPosReceiptService.generateStornoReceipt(any())).thenReturn(fakeEscPos);
+        Mockito.lenient().when(escPosReceiptService.generateConversionReceipt(any())).thenReturn(fakeEscPos);
+        Mockito.lenient().when(escPosReceiptService.generateTransferOutReceipt(any())).thenReturn(fakeEscPos);
+        Mockito.lenient().when(escPosReceiptService.generateTransferInReceipt(any())).thenReturn(fakeEscPos);
+        Mockito.lenient().when(escPosReceiptService.generateHandlingFeeReceipt(any())).thenReturn(fakeEscPos);
+        Mockito.lenient().when(escPosReceiptService.generateKktgTransferReceipt(any())).thenReturn(fakeEscPos);
     }
 
     private Transaction createTestTransaction(TransactionType type) {
