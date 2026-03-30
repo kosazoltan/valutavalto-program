@@ -22,6 +22,8 @@
         <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>${java.version}</maven.compiler.release>
+        <!-- CVE-2026-22732 fix: Spring Security 6.5.0 → 6.5.9 -->
+        <spring-security.version>6.5.9</spring-security.version>
     </properties>
     
     <dependencies>
