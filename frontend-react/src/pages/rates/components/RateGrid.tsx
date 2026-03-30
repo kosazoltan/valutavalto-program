@@ -1,17 +1,26 @@
 import { AlertTriangle } from 'lucide-react'
 import { formatDecimal } from '../../../utils/numberFormat'
+import { useGridNavigation } from '../../../hooks/useGridNavigation'
 import type { WorkgroupDetailDTO } from '../../../services/api'
 import { fmtAmount, parseNum, type EditableRate } from '../types'
+
+const EDITABLE_FIELDS = ['buyRate', 'sellRate', 'limit1BuyRate', 'limit1SellRate', 'limit2BuyRate', 'limit2SellRate', 'limit3BuyRate', 'limit3SellRate'] as const
 
 interface RateGridProps {
   rates: EditableRate[]
   selectedWg: WorkgroupDetailDTO | null
   updateRate: (index: number, field: keyof EditableRate, value: string) => void
+  validationErrors?: Record<number, string[]>
 }
 
-export default function RateGrid({ rates, selectedWg, updateRate }: RateGridProps) {
+export default function RateGrid({ rates, selectedWg, updateRate, validationErrors = {} }: RateGridProps) {
+  const { containerRef, activeCell, getCellProps } = useGridNavigation({
+    rows: rates.length,
+    cols: EDITABLE_FIELDS.length,
+  })
+
   return (
-    <div className="flex-1 bg-white rounded shadow-sm border overflow-hidden flex flex-col min-w-0">
+    <div ref={containerRef} className="flex-1 bg-white rounded shadow-sm border overflow-hidden flex flex-col min-w-0">
       <div className="overflow-auto flex-1">
         <table className="w-full text-xs border-collapse">
           <thead className="sticky top-0 z-20">
@@ -27,7 +36,8 @@ export default function RateGrid({ rates, selectedWg, updateRate }: RateGridProp
               <th colSpan={2} className="px-1 py-0.5 border-r border-green-600 text-center">
                 {fmtAmount(selectedWg?.limit2Boundary)} - {fmtAmount(selectedWg?.limit3Boundary)}
               </th>
-              <th colSpan={2} className="px-1 py-0.5 text-center">Saját hat.</th>
+              <th colSpan={2} className="px-1 py-0.5 text-center border-r border-green-600">Saját hat.</th>
+              <th className="px-1 py-0.5 text-center w-28">Ellenőrzés</th>
             </tr>
             <tr className="bg-green-700 text-white text-[10px]">
               <th className="px-1 py-0.5 text-left w-14 border-r border-green-500">MNB</th>
@@ -39,8 +49,9 @@ export default function RateGrid({ rates, selectedWg, updateRate }: RateGridProp
               <th className="px-1 py-0.5 w-[72px] text-red-200 border-r border-green-500">E-</th>
               <th className="px-1 py-0.5 w-[72px] text-green-200 border-r border-green-500">V+</th>
               <th className="px-1 py-0.5 w-[72px] text-red-200 border-r border-green-500">E-</th>
-              <th className="px-1 py-0.5 w-[72px] text-green-200">Vmax</th>
-              <th className="px-1 py-0.5 w-[72px] text-red-200">Emin</th>
+              <th className="px-1 py-0.5 w-[72px] text-green-200 border-r border-green-500">Vmax</th>
+              <th className="px-1 py-0.5 w-[72px] text-red-200 border-r border-green-500">Emin</th>
+              <th className="px-1 py-0.5 text-yellow-200">Hiba</th>
             </tr>
             <tr className="bg-gray-200 text-gray-500 text-[9px] font-bold">
               <th className="px-1 py-0 border-r">J</th>
@@ -53,7 +64,8 @@ export default function RateGrid({ rates, selectedWg, updateRate }: RateGridProp
               <th className="px-1 py-0 border-r">P</th>
               <th className="px-1 py-0 border-r">Q</th>
               <th className="px-1 py-0">R</th>
-              <th className="px-1 py-0">S</th>
+              <th className="px-1 py-0 border-r">S</th>
+              <th className="px-1 py-0">✓</th>
             </tr>
           </thead>
           <tbody>
@@ -79,19 +91,33 @@ export default function RateGrid({ rates, selectedWg, updateRate }: RateGridProp
                   <td className="px-1 py-0 text-center font-bold text-blue-700 border-r text-[11px]">
                     {r.currencyCode}
                   </td>
-                  {(['buyRate', 'sellRate', 'limit1BuyRate', 'limit1SellRate', 'limit2BuyRate', 'limit2SellRate', 'limit3BuyRate', 'limit3SellRate'] as const).map((field) => {
+                  {EDITABLE_FIELDS.map((field, colIdx) => {
                     const isBuy = field.includes('buy') || field === 'buyRate'
                     const colorClass = isBuy ? 'text-green-700' : 'text-red-700'
                     const focusBg = isBuy ? 'focus:bg-green-50' : 'focus:bg-red-50'
+                    const isActive = activeCell?.row === idx && activeCell?.col === colIdx
+                    const activeBorder = isActive ? 'ring-2 ring-blue-500 ring-inset' : ''
                     return (
-                      <td key={field} className="px-0 py-0 border-r last:border-r-0">
+                      <td key={field} className="px-0 py-0 border-r">
                         <input type="text" value={r[field]}
+                          {...getCellProps(idx, colIdx)}
                           onChange={e => updateRate(idx, field, e.target.value)}
-                          className={`w-full px-0.5 py-0 text-right font-mono text-[11px] ${colorClass} font-bold border-0 bg-transparent ${focusBg} focus:outline-none`}
+                          className={`w-full px-0.5 py-0 text-right font-mono text-[11px] ${colorClass} font-bold border-0 bg-transparent ${focusBg} focus:outline-none ${activeBorder}`}
                         />
                       </td>
                     )
                   })}
+                  <td className="px-1 py-0 text-[9px]">
+                    {validationErrors[r.currencyId]?.map((err, ei) => (
+                      <div key={ei} className="text-red-600 flex items-center gap-0.5">
+                        <AlertTriangle size={8} className="flex-shrink-0" />
+                        {err}
+                      </div>
+                    ))}
+                    {!validationErrors[r.currencyId] && r.hasRate && (
+                      <span className="text-green-600">✓</span>
+                    )}
+                  </td>
                 </tr>
               )
             })}

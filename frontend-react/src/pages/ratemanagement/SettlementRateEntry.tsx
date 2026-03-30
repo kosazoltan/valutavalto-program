@@ -3,6 +3,7 @@ import { RefreshCw, Send, AlertTriangle, ChevronDown, ChevronRight, Users } from
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
+import { useGridNavigation } from '../../hooks/useGridNavigation'
 
 /**
  * Arfolyam rogzites — Legacy: arfdata.dat adatbevitel.
@@ -87,6 +88,12 @@ export default function SettlementRateEntry() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [expandedLimits, setExpandedLimits] = useState<Set<number>>(new Set())
+
+  const MAIN_FIELDS: EditableField[] = ['officialRate', 'baseBuyRate', 'baseSellRate']
+  const { containerRef, activeCell, getCellProps } = useGridNavigation({
+    rows: rates.length,
+    cols: MAIN_FIELDS.length,
+  })
 
   // Egyszeri betöltés: valuták + munkacsoportok (nem változnak workgroup váltáskor)
   useEffect(() => {
@@ -321,7 +328,7 @@ export default function SettlementRateEntry() {
       )}
 
       {/* Rate entry table */}
-      <div className="rounded-lg border bg-card shadow-sm overflow-hidden">
+      <div ref={containerRef} className="rounded-lg border bg-card shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -358,7 +365,8 @@ export default function SettlementRateEntry() {
                         <input
                           type="text"
                           inputMode="decimal"
-                          className="w-full h-9 rounded-md border px-2 py-1 text-sm font-mono text-center bg-blue-50 dark:bg-blue-950/30"
+                          {...getCellProps(idx, 0)}
+                          className={`w-full h-9 rounded-md border px-2 py-1 text-sm font-mono text-center bg-blue-50 dark:bg-blue-950/30 ${activeCell?.row === idx && activeCell?.col === 0 ? 'ring-2 ring-blue-500' : ''}`}
                           value={rate.officialRate}
                           onChange={e => updateRate(idx, 'officialRate', e.target.value)}
                           placeholder="MNB"
@@ -370,9 +378,10 @@ export default function SettlementRateEntry() {
                         <input
                           type="text"
                           inputMode="decimal"
+                          {...getCellProps(idx, 1)}
                           className={`w-full h-9 rounded-md border px-2 py-1 text-sm font-mono text-center ${
                             !isValid ? 'border-destructive' : 'focus:ring-2 focus:ring-primary'
-                          }`}
+                          } ${activeCell?.row === idx && activeCell?.col === 1 ? 'ring-2 ring-blue-500' : ''}`}
                           value={rate.baseBuyRate}
                           onChange={e => updateRate(idx, 'baseBuyRate', e.target.value)}
                           placeholder="Vetel"
@@ -384,9 +393,10 @@ export default function SettlementRateEntry() {
                         <input
                           type="text"
                           inputMode="decimal"
+                          {...getCellProps(idx, 2)}
                           className={`w-full h-9 rounded-md border px-2 py-1 text-sm font-mono text-center ${
                             !isValid ? 'border-destructive' : 'focus:ring-2 focus:ring-primary'
-                          }`}
+                          } ${activeCell?.row === idx && activeCell?.col === 2 ? 'ring-2 ring-blue-500' : ''}`}
                           value={rate.baseSellRate}
                           onChange={e => updateRate(idx, 'baseSellRate', e.target.value)}
                           placeholder="Eladas"

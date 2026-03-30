@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { AxiosError } from 'axios'
-import { RefreshCw, AlertTriangle, Send, Plus, X, Building2, Clock } from 'lucide-react'
+import { RefreshCw, AlertTriangle, Send, Plus, X, Building2, Clock, Undo2, Redo2 } from 'lucide-react'
 import {
   rateCreationApi,
   RateOverviewDTO,
@@ -22,6 +22,8 @@ export default function RateCreationPage() {
   const [overview, setOverview] = useState<RateOverviewDTO | null>(null)
   const [workgroups, setWorkgroups] = useState<WorkgroupDetailDTO[]>([])
   const [rates, setRates] = useState<EditableRate[]>([])
+  const undoStack = useRef<EditableRate[][]>([])
+  const redoStack = useRef<EditableRate[][]>([])
   const [selectedWgIndex, setSelectedWgIndex] = useState<number>(0)
   const [loading, setLoading] = useState(false)
   const [publishing, setPublishing] = useState(false)
@@ -93,7 +95,41 @@ export default function RateCreationPage() {
 
   useEffect(() => { void loadData() }, [loadData])
 
+  const pushUndo = useCallback(() => {
+    undoStack.current.push(rates.map(r => ({ ...r })))
+    if (undoStack.current.length > 50) undoStack.current.shift()
+    redoStack.current = []
+  }, [rates])
+
+  const undo = useCallback(() => {
+    if (undoStack.current.length === 0) return
+    redoStack.current.push(rates.map(r => ({ ...r })))
+    setRates(undoStack.current.pop()!)
+  }, [rates])
+
+  const redo = useCallback(() => {
+    if (redoStack.current.length === 0) return
+    undoStack.current.push(rates.map(r => ({ ...r })))
+    setRates(redoStack.current.pop()!)
+  }, [rates])
+
+  // Ctrl+Z / Ctrl+Y global handler
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        undo()
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault()
+        redo()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [undo, redo])
+
   const updateRate = (index: number, field: keyof EditableRate, value: string) => {
+    pushUndo()
     setRates(prev => {
       const updated = [...prev]
       const existing = updated[index]
@@ -297,6 +333,32 @@ export default function RateCreationPage() {
 
   const modifiedCount = rates.filter(r => r.modified).length
 
+  // BACKLOG-004: Validation error list per rate row
+  const validationErrors = useMemo(() => {
+    const errors: Record<number, string[]> = {}
+    for (const r of rates) {
+      const errs: string[] = []
+      const buy = parseNum(r.buyRate)
+      const sell = parseNum(r.sellRate)
+      if (buy > 0 && sell > 0 && buy >= sell) {
+        errs.push('Vétel ≥ Eladás')
+      }
+      // Limit consistency checks
+      const l1b = parseNum(r.limit1BuyRate), l1s = parseNum(r.limit1SellRate)
+      if (l1b > 0 && l1s > 0 && l1b >= l1s) errs.push('L1: Vétel ≥ Eladás')
+      const l2b = parseNum(r.limit2BuyRate), l2s = parseNum(r.limit2SellRate)
+      if (l2b > 0 && l2s > 0 && l2b >= l2s) errs.push('L2: Vétel ≥ Eladás')
+      const l3b = parseNum(r.limit3BuyRate), l3s = parseNum(r.limit3SellRate)
+      if (l3b > 0 && l3s > 0 && l3b >= l3s) errs.push('L3: Vétel ≥ Eladás')
+      // Buy rate should be ≤ official rate (if both present)
+      if (r.officialRate && buy > 0 && buy > r.officialRate * 1.1) {
+        errs.push('Vétel > MNB +10%')
+      }
+      if (errs.length > 0) errors[r.currencyId] = errs
+    }
+    return errors
+  }, [rates])
+
   return (
     <div className="h-[calc(100vh-9.5rem)] flex flex-col">
       {error && (
@@ -315,6 +377,14 @@ export default function RateCreationPage() {
               {new Date(overview.generatedAt).toLocaleString('hu-HU')}
             </span>
           )}
+          <button onClick={undo} disabled={undoStack.current.length === 0}
+            className="p-0.5 rounded hover:bg-gray-100 disabled:opacity-30" title="Visszavonás (Ctrl+Z)">
+            <Undo2 size={13} />
+          </button>
+          <button onClick={redo} disabled={redoStack.current.length === 0}
+            className="p-0.5 rounded hover:bg-gray-100 disabled:opacity-30" title="Mégis (Ctrl+Y)">
+            <Redo2 size={13} />
+          </button>
           {modifiedCount > 0 && (
             <span className="text-orange-600 font-medium">{modifiedCount} mod.</span>
           )}
@@ -329,7 +399,7 @@ export default function RateCreationPage() {
       <div className="flex gap-1.5 flex-1 min-h-0">
 
         {/* === LEFT: RATE TABLE === */}
-        <RateGrid rates={rates} selectedWg={selectedWg} updateRate={updateRate} />
+        <RateGrid rates={rates} selectedWg={selectedWg} updateRate={updateRate} validationErrors={validationErrors} />
 
         {/* === RIGHT: WORKGROUP PANEL === */}
         <div className="w-64 flex-shrink-0 flex flex-col gap-1 min-h-0">

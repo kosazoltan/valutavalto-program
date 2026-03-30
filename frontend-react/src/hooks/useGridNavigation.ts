@@ -1,0 +1,170 @@
+import { useCallback, useRef, useEffect, useState } from 'react'
+
+export interface GridCell {
+  row: number
+  col: number
+}
+
+interface UseGridNavigationOptions {
+  rows: number
+  cols: number
+  /** CSS selector to find input elements within the grid container */
+  inputSelector?: string
+}
+
+/**
+ * Excel-like keyboard navigation for editable grid tables.
+ *
+ * Features:
+ * - Arrow keys move between cells (up/down/left/right)
+ * - Enter activates cell for editing (focuses input, selects all)
+ * - Enter again (or Tab) moves to the next cell down (or right at bottom)
+ * - Escape deactivates cell (blurs input)
+ * - Tab/Shift+Tab move right/left
+ */
+export function useGridNavigation({ rows, cols }: UseGridNavigationOptions) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [activeCell, setActiveCell] = useState<GridCell | null>(null)
+  const [editing, setEditing] = useState(false)
+
+  const getInput = useCallback((row: number, col: number): HTMLInputElement | null => {
+    if (!containerRef.current) return null
+    return containerRef.current.querySelector<HTMLInputElement>(
+      `[data-grid-row="${row}"][data-grid-col="${col}"]`
+    )
+  }, [])
+
+  const focusCell = useCallback((row: number, col: number, startEditing = false) => {
+    const clamped = { row: Math.max(0, Math.min(row, rows - 1)), col: Math.max(0, Math.min(col, cols - 1)) }
+    const input = getInput(clamped.row, clamped.col)
+    if (!input) return
+
+    setActiveCell(clamped)
+
+    if (startEditing) {
+      setEditing(true)
+      input.focus()
+      input.select()
+    } else {
+      setEditing(false)
+      input.focus()
+      // Move cursor to end without selecting
+      const len = input.value.length
+      input.setSelectionRange(len, len)
+    }
+  }, [rows, cols, getInput])
+
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (!activeCell) return
+
+    const { row, col } = activeCell
+
+    switch (e.key) {
+      case 'ArrowUp':
+        e.preventDefault()
+        if (row > 0) focusCell(row - 1, col)
+        break
+
+      case 'ArrowDown':
+        e.preventDefault()
+        if (row < rows - 1) focusCell(row + 1, col)
+        break
+
+      case 'ArrowLeft':
+        if (!editing) {
+          e.preventDefault()
+          if (col > 0) focusCell(row, col - 1)
+        }
+        break
+
+      case 'ArrowRight':
+        if (!editing) {
+          e.preventDefault()
+          if (col < cols - 1) focusCell(row, col + 1)
+        }
+        break
+
+      case 'Enter':
+        e.preventDefault()
+        if (!editing) {
+          // Activate cell for editing
+          focusCell(row, col, true)
+        } else {
+          // Move down (or wrap to next column)
+          if (row < rows - 1) {
+            focusCell(row + 1, col)
+          } else if (col < cols - 1) {
+            focusCell(0, col + 1)
+          }
+        }
+        break
+
+      case 'Tab':
+        e.preventDefault()
+        if (e.shiftKey) {
+          // Move left (or wrap to prev row end)
+          if (col > 0) {
+            focusCell(row, col - 1)
+          } else if (row > 0) {
+            focusCell(row - 1, cols - 1)
+          }
+        } else {
+          // Move right (or wrap to next row start)
+          if (col < cols - 1) {
+            focusCell(row, col + 1)
+          } else if (row < rows - 1) {
+            focusCell(row + 1, 0)
+          }
+        }
+        break
+
+      case 'Escape':
+        e.preventDefault()
+        setEditing(false)
+        // Keep focus on cell but exit edit mode
+        const input = getInput(row, col)
+        if (input) input.blur()
+        break
+
+      default:
+        // If a printable character is typed and not editing, start editing
+        if (!editing && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+          setEditing(true)
+          const input = getInput(row, col)
+          if (input) {
+            input.focus()
+            input.select()
+          }
+        }
+        break
+    }
+  }, [activeCell, editing, rows, cols, focusCell, getInput])
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    container.addEventListener('keydown', handleKeyDown)
+    return () => container.removeEventListener('keydown', handleKeyDown)
+  }, [handleKeyDown])
+
+  /** Called when an input is clicked/focused directly */
+  const onCellFocus = useCallback((row: number, col: number) => {
+    setActiveCell({ row, col })
+    setEditing(true)
+  }, [])
+
+  return {
+    containerRef,
+    activeCell,
+    editing,
+    focusCell,
+    onCellFocus,
+    /** data-attributes to spread on each input: data-grid-row, data-grid-col */
+    getCellProps: (row: number, col: number) => ({
+      'data-grid-row': row,
+      'data-grid-col': col,
+      onFocus: () => onCellFocus(row, col),
+    }),
+  }
+}
