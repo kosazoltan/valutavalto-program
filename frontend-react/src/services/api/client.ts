@@ -95,7 +95,16 @@ function processQueue(error: unknown, token: string | null) {
 
 // Response interceptor - handle errors + token refresh + 403 kezelés
 api.interceptors.response.use(
-  (response: AxiosResponse) => response,
+  (response: AxiosResponse) => {
+    // Auto-unwrap Spring Boot paginated responses (Page<T> → T[])
+    // When backend returns { content: [...], totalElements, totalPages, ... }
+    // but frontend expects a plain array, extract just the content.
+    const d = response.data
+    if (d && typeof d === 'object' && !Array.isArray(d) && Array.isArray(d.content) && ('totalElements' in d || 'totalPages' in d || 'number' in d)) {
+      response.data = d.content
+    }
+    return response
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
 

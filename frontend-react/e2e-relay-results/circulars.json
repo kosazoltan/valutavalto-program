@@ -2,17 +2,41 @@
   "route": "/circulars",
   "loaded": true,
   "title": "RepZtecH Exclusive Best Change - Pénztári Rendszer",
-  "clicked": 2,
+  "clicked": 7,
   "disabled": 0,
   "errors": 0,
-  "skipped": 0,
+  "skipped": 1,
   "buttons": [
     {
-      "label": "Újrapróbálás",
+      "label": "[no-label]",
       "state": "clicked"
     },
     {
-      "label": "Főoldal",
+      "label": "Kijelentkezés",
+      "state": "skip"
+    },
+    {
+      "label": "[no-label]",
+      "state": "clicked"
+    },
+    {
+      "label": "+ Új dokumentum",
+      "state": "clicked"
+    },
+    {
+      "label": "Aktív",
+      "state": "clicked"
+    },
+    {
+      "label": "Körlevelek",
+      "state": "clicked"
+    },
+    {
+      "label": "Szabályzatok",
+      "state": "clicked"
+    },
+    {
+      "label": "Archivált",
       "state": "clicked"
     }
   ]

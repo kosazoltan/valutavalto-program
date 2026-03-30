@@ -347,6 +347,7 @@ export default function App() {
 
           {/* === Árfolyam-kezelés Routes === */}
           <Route path="/rate-management" element={<RateCreationDashboard />} />
+              <Route path="/trade" element={<Navigate to="/cashier" replace />} />
 
           </Route>
         </Routes>

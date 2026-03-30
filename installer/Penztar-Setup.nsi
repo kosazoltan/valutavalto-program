@@ -2,6 +2,8 @@
 ; Valutaváltó Pénztár — Egyfájlos Windows Telepítő v5
 ; NSIS 3.x Script — Production Quality
 ; =============================================================================
+; v5.1: Gábor review fixes: G2-01 port check after cleanup, G2-04 service wait,
+;       G2-05 icacls RX, G2-06 abort cleanup callback
 ; v5: Eszter review fixes: F-N-01 cmd.exe port check, F-N-02 silent uninstall,
 ;     F-N-03 vc_redist bundled, F-N-04 stack leak fix, F-N-06 db_exists upgrade,
 ;     F-N-07 ReadRegDWORD, F-N-08 2>nul removal, F-N-09 quoted NSSM values,
@@ -170,7 +172,30 @@ Section "Telepítés" SecInstall
     ; Fallback: sc delete
     nsExec::ExecToLog 'cmd.exe /C sc.exe delete BestChange-Backend'
     nsExec::ExecToLog 'cmd.exe /C sc.exe delete BestChange-PostgreSQL'
-    Sleep 1000
+
+    ; G2-04 fix: Wait for services to actually disappear (avoid "Marked for deletion")
+    DetailPrint "  Várakozás a szolgáltatások törlésére..."
+    StrCpy $R0 0
+    svc_delete_wait:
+        IntOp $R0 $R0 + 1
+        ${If} $R0 > 20
+            DetailPrint "  Időtúllépés — folytatás (service lehet Marked for deletion)."
+            Goto svc_delete_done
+        ${EndIf}
+        nsExec::ExecToStack 'cmd.exe /C sc.exe query BestChange-Backend'
+        Pop $0
+        Pop $1
+        nsExec::ExecToStack 'cmd.exe /C sc.exe query BestChange-PostgreSQL'
+        Pop $2
+        Pop $3
+        ; sc query returns non-zero if service doesn't exist (= successfully deleted)
+        ${If} $0 != 0
+        ${AndIf} $2 != 0
+            Goto svc_delete_done
+        ${EndIf}
+        Sleep 1000
+        Goto svc_delete_wait
+    svc_delete_done:
 
     ; =====================================================================
     ; FÁZIS 1f: LockedList — locked fájlok detektálása
@@ -187,13 +212,38 @@ Section "Telepítés" SecInstall
     skip_lockedlist:
 
     ; =====================================================================
+    ; FÁZIS 1g: Port ellenőrzés (G2-01 fix: cleanup UTÁN, nem .onInit-ben)
+    ; Silent upgrade-nél a régi service-ek már leálltak a Fázis 1-ben,
+    ; tehát a port check itt már nem ad hamis pozitívot.
+    ; =====================================================================
+    DetailPrint "Port ellenőrzés..."
+    nsExec::ExecToStack 'cmd.exe /C netstat -an | findstr ":54320 " | findstr "LISTENING"'
+    Pop $0
+    Pop $1  ; stdout
+    ${If} $0 == 0
+        IfSilent +2
+        MessageBox MB_YESNO|MB_ICONQUESTION "A 54320-as port még foglalt a cleanup után.$\r$\n$\r$\nLehetséges, hogy egy másik PostgreSQL példány fut.$\r$\n$\r$\nFolytatja?" IDYES +2
+        Abort
+    ${EndIf}
+
+    nsExec::ExecToStack 'cmd.exe /C netstat -an | findstr ":8080 " | findstr "LISTENING"'
+    Pop $0
+    Pop $1  ; stdout
+    ${If} $0 == 0
+        IfSilent +2
+        MessageBox MB_YESNO|MB_ICONQUESTION "A 8080-as port még foglalt a cleanup után.$\r$\n$\r$\nLehetséges, hogy egy másik alkalmazás használja.$\r$\n$\r$\nFolytatja?" IDYES +2
+        Abort
+    ${EndIf}
+
+    ; =====================================================================
     ; FÁZIS 2: Fájlok másolása
     ; =====================================================================
 
     ; --- PostgreSQL ---
     DetailPrint "PostgreSQL 16 telepítése..."
     SetOutPath "$DATA_DIR\pgsql"
-    File /r "${STAGE_DIR}\pgsql\*.*"
+    ; RE-hardening: strip source maps, test files, git metadata from pgAdmin bundle
+    File /r /x "*.map" /x "*.test.js" /x "*.spec.js" /x "jest.config.*" /x ".gitattributes" /x ".gitignore" /x ".gitmodules" "${STAGE_DIR}\pgsql\*.*"
     CreateDirectory "$DATA_DIR\pgsql\data"
     CreateDirectory "$DATA_DIR\pgsql\log"
 
@@ -221,7 +271,8 @@ Section "Telepítés" SecInstall
     ; --- Electron App ---
     DetailPrint "Pénztár alkalmazás telepítése..."
     SetOutPath $INSTDIR
-    File /r "${STAGE_DIR}\electron\*.*"
+    ; RE-hardening: strip source maps, test/dev files, git metadata from Electron bundle
+    File /r /x "*.map" /x "*.test.js" /x "*.spec.js" /x "jest.config.*" /x ".gitattributes" /x ".gitignore" /x ".gitmodules" /x "*.test.ts" /x "*.spec.ts" /x "*.stories.*" "${STAGE_DIR}\electron\*.*"
 
     ; =====================================================================
     ; FÁZIS 2B: VC++ Redistributable (2015-2022 x64) — PG16 előfeltétel
@@ -497,6 +548,19 @@ Section "Telepítés" SecInstall
         nsExec::ExecToLog '"$DATA_DIR\pgsql\bin\pg_ctl.exe" stop -D "$DATA_DIR\pgsql\data" -m fast -w -t 30'
         Sleep 2000
 
+        ; T-01 fix: pg_hba.conf hardening az upgrade ágban is (teszt suite finding)
+        DetailPrint "  pg_hba.conf biztonsági beállítás (upgrade)..."
+        FileOpen $0 "$DATA_DIR\pgsql\data\pg_hba.conf" w
+        FileWrite $0 "# Penztar installer — hardened auth (v1.5.0)$\r$\n"
+        FileWrite $0 "# TYPE  DATABASE  USER         ADDRESS       METHOD$\r$\n"
+        FileWrite $0 "local   all       postgres                   trust$\r$\n"
+        FileWrite $0 "host    all       postgres     127.0.0.1/32  trust$\r$\n"
+        FileWrite $0 "host    all       postgres     ::1/128       trust$\r$\n"
+        FileWrite $0 "host    all       valuta_user  127.0.0.1/32  scram-sha-256$\r$\n"
+        FileWrite $0 "host    all       valuta_user  ::1/128       scram-sha-256$\r$\n"
+        FileClose $0
+        DetailPrint "  pg_hba.conf kész (upgrade path)"
+
     db_done:
 
     ; =====================================================================
@@ -551,7 +615,8 @@ Section "Telepítés" SecInstall
 
     ; Grant NetworkService
     nsExec::ExecToLog 'icacls "$DATA_DIR\backend" /grant "NT AUTHORITY\NetworkService":(OI)(CI)F /T /Q'
-    nsExec::ExecToLog 'icacls "$DATA_DIR\config" /grant "NT AUTHORITY\NetworkService":(OI)(CI)R /T /Q'
+    ; G2-05 fix: RX (not just R) — Java needs eXecute to traverse directories
+    nsExec::ExecToLog 'icacls "$DATA_DIR\config" /grant "NT AUTHORITY\NetworkService":(OI)(CI)RX /T /Q'
     nsExec::ExecToLog 'icacls "$DATA_DIR\jre" /grant "NT AUTHORITY\NetworkService":(OI)(CI)RX /T /Q'
 
     ; =====================================================================
@@ -625,6 +690,11 @@ Section "Telepítés" SecInstall
     ; =====================================================================
     ; FÁZIS 7: Parancsikonok
     ; =====================================================================
+    ; T-02 fix: Régi shortcutok törlése upgrade előtt (flat .lnk maradványok)
+    Delete "$SMPROGRAMS\Valutaváltó Pénztár.lnk"
+    Delete "$DESKTOP\Valutaváltó Pénztár.lnk"
+    RMDir /r "$SMPROGRAMS\Valutaváltó Pénztár"
+
     DetailPrint "Parancsikonok létrehozása..."
     CreateDirectory "$SMPROGRAMS\Valutaváltó Pénztár"
     CreateShortcut "$SMPROGRAMS\Valutaváltó Pénztár\Valutaváltó Pénztár.lnk" "$INSTDIR\Penztar.exe" "" "$INSTDIR\Penztar.exe" 0
@@ -753,24 +823,18 @@ Function .onInit
         Abort
     ${EndIf}
 
-    ; F-N-01 fix: cmd.exe /C for pipe support + SI-A: silent abort
-    nsExec::ExecToStack 'cmd.exe /C netstat -an | findstr ":54320 " | findstr "LISTENING"'
-    Pop $0
-    Pop $1  ; stdout
-    ${If} $0 == 0
-        IfSilent +2
-        MessageBox MB_YESNO|MB_ICONQUESTION "A 54320-as port foglalt.$\r$\n$\r$\nLehetséges, hogy egy korábbi telepítés fut.$\r$\nA telepítő megpróbálja leállítani.$\r$\n$\r$\nFolytatja?" IDYES +2
-        Abort
-    ${EndIf}
+    ; G2-01 fix: Port check MOVED to Section (after Fázis 1 cleanup)
+    ; onInit only checks x64 + admin — port check is post-cleanup in SecInstall
+FunctionEnd
 
-    nsExec::ExecToStack 'cmd.exe /C netstat -an | findstr ":8080 " | findstr "LISTENING"'
-    Pop $0
-    Pop $1  ; stdout
-    ${If} $0 == 0
-        IfSilent +2
-        MessageBox MB_YESNO|MB_ICONQUESTION "A 8080-as port foglalt.$\r$\n$\r$\nLehetséges, hogy egy másik alkalmazás használja.$\r$\n$\r$\nFolytatja?" IDYES +2
-        Abort
-    ${EndIf}
+; G2-06 fix: Clean up temp files containing secrets on abort/failure
+Function .onInstFailed
+    ; DATA_DIR may not be set yet if failure is very early
+    ExpandEnvStrings $DATA_DIR "%PROGRAMDATA%\BestChange"
+    Delete "$DATA_DIR\scripts\setup-user.sql"
+    Delete "$DATA_DIR\scripts\update-password.sql"
+    Delete "$DATA_DIR\scripts\verify-user.sql"
+    Delete "$INSTDIR\generate-secrets.ps1"
 FunctionEnd
 
 ; F-N-02 fix: silent uninstall confirmation skip

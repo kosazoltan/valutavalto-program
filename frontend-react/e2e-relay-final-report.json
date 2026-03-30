@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-28T06:22:13.039Z",
+  "timestamp": "2026-03-30T14:23:20.881Z",
   "RUN_STATUS": "COMPLETE",
   "STARTUP_STATUS": {
     "backend": "UP (659 Java tests PASS)",
@@ -10,7 +10,7 @@
     "routes_tested": 62,
     "routes_loaded": 62,
     "routes_failed": 0,
-    "total_clicked": 248,
+    "total_clicked": 249,
     "total_disabled": 8,
     "total_btn_errors": 0
   },
@@ -209,7 +209,7 @@
     },
     {
       "route": "/notifications",
-      "clicked": 2,
+      "clicked": 3,
       "disabled": 0,
       "errors": 0
     },
