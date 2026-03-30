@@ -702,11 +702,21 @@ export interface RepresentativeRegistrationRequest {
   name: string
   documentType: string
   documentNumber: string
-  documentExpiry?: string
+  documentTypeDid?: string
+  documentValidFrom?: string
+  documentValidTo?: string
   address?: string
   phone?: string
   email?: string
-  relationship?: string
+  firstName?: string
+  lastName?: string
+  birthDate?: string
+  birthPlace?: string
+  nationalityDid?: string
+  representativeTypeDid?: string
+  relationshipDid?: string
+  authorizationStart: string
+  authorizationEnd?: string
 }
 
 export interface AuthorizationCreateRequest {
@@ -729,6 +739,10 @@ export const authorizedRepresentativeApi = {
   },
   findByCustomer: async (customerId: string): Promise<AuthorizedRepresentative[]> => {
     const response = await api.get<AuthorizedRepresentative[]>(`/authorized-representatives/customer/${customerId}`)
+    return response.data
+  },
+  getById: async (id: string): Promise<AuthorizedRepresentative> => {
+    const response = await api.get<AuthorizedRepresentative>(`/authorized-representatives/${id}`)
     return response.data
   },
   createAuthorization: async (representativeId: string, request: AuthorizationCreateRequest, workerId: string): Promise<Authorization> => {

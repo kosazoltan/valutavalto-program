@@ -17,7 +17,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "authorized_representative", indexes = {
     @Index(name = "idx_auth_rep_customer", columnList = "customer_id"),
-    @Index(name = "idx_auth_rep_document", columnList = "document_number")
+    @Index(name = "idx_auth_rep_document", columnList = "representative_document_number")
 })
 @EntityListeners(AuditingEntityListener.class)
 @Getter

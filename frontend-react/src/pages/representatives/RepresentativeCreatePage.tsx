@@ -14,11 +14,13 @@ export default function RepresentativeCreatePage() {
     name: '',
     documentType: 'Személyi igazolvány',
     documentNumber: '',
-    documentExpiry: '',
+    documentValidTo: '',
     address: '',
     phone: '',
     email: '',
-    relationship: '',
+    relationshipDid: '',
+    authorizationStart: new Date().toISOString().slice(0, 10),
+    authorizationEnd: '',
   })
 
   const update = (field: string, value: string) => {
@@ -35,11 +37,13 @@ export default function RepresentativeCreatePage() {
         name: form.name,
         documentType: form.documentType,
         documentNumber: form.documentNumber,
-        documentExpiry: form.documentExpiry || undefined,
+        documentValidTo: form.documentValidTo || undefined,
         address: form.address || undefined,
         phone: form.phone || undefined,
         email: form.email || undefined,
-        relationship: form.relationship || undefined,
+        relationshipDid: form.relationshipDid || undefined,
+        authorizationStart: form.authorizationStart,
+        authorizationEnd: form.authorizationEnd || undefined,
       }
       await authorizedRepresentativeApi.register(customerId, req, '')
       navigate(`/customers/${customerId}/representatives`)
@@ -98,7 +102,7 @@ export default function RepresentativeCreatePage() {
               </div>
               <div>
                 <label className="form-label">Kapcsolat típusa</label>
-                <select value={form.relationship} onChange={(e) => update('relationship', e.target.value)} className="form-input">
+                <select value={form.relationshipDid} onChange={(e) => update('relationshipDid', e.target.value)} className="form-input">
                   <option value="">—</option>
                   <option value="FAMILY">Családtag</option>
                   <option value="COLLEAGUE">Munkatárs</option>
@@ -128,8 +132,20 @@ export default function RepresentativeCreatePage() {
                 <input type="text" value={form.documentNumber} onChange={(e) => update('documentNumber', e.target.value)} className="form-input font-mono" required />
               </div>
               <div>
-                <label className="form-label">Okmány érvényessége</label>
-                <input type="date" value={form.documentExpiry} onChange={(e) => update('documentExpiry', e.target.value)} className="form-input" />
+                <label className="form-label">Okmány lejárat</label>
+                <input type="date" value={form.documentValidTo} onChange={(e) => update('documentValidTo', e.target.value)} className="form-input" />
+              </div>
+            </div>
+
+            <h2 className="section-title mt-4">Érvényesség</h2>
+            <div className="space-y-3">
+              <div>
+                <label className="form-label required">Meghatalmazás kezdete</label>
+                <input type="date" value={form.authorizationStart} onChange={(e) => update('authorizationStart', e.target.value)} className="form-input" required />
+              </div>
+              <div>
+                <label className="form-label">Meghatalmazás vége</label>
+                <input type="date" value={form.authorizationEnd} onChange={(e) => update('authorizationEnd', e.target.value)} className="form-input" />
               </div>
             </div>
           </div>

@@ -17,9 +17,7 @@ export default function RepresentativeDetailPage() {
     const load = async () => {
       try {
         setLoading(true)
-        // A findByCustomer API-ból keressük ki az ID-t, vagy közvetlenül GET /{id}
-        const allReps = customerId ? await authorizedRepresentativeApi.findByCustomer(customerId) : []
-        const found = allReps.find(r => r.id === representativeId) || null
+        const found = await authorizedRepresentativeApi.getById(representativeId)
         setRep(found)
         if (found) {
           try {
