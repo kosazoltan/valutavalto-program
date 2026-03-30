@@ -20,5 +20,11 @@ CREATE TABLE IF NOT EXISTS authorization (
     updated_at TIMESTAMP
 );
 
+ALTER TABLE authorization ADD CONSTRAINT chk_authorization_status
+    CHECK (status_did IN ('PENDING', 'ACTIVE', 'SUSPENDED', 'REVOKED'));
+
+ALTER TABLE authorization ADD CONSTRAINT chk_authorization_dates
+    CHECK (expiry_date IS NULL OR expiry_date >= start_date);
+
 CREATE INDEX IF NOT EXISTS idx_authorization_representative ON authorization(representative_id);
 CREATE INDEX IF NOT EXISTS idx_authorization_status ON authorization(status_did);

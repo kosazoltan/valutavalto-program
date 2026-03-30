@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.dto.transaction.TransactionBanknoteDto;
 import hu.puzzleir.valuta.entity.TransactionBanknote;
 import hu.puzzleir.valuta.repository.TransactionBanknoteRepository;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -46,7 +47,7 @@ public class TransactionBanknoteController {
     @PostMapping
     public ResponseEntity<TransactionBanknoteDto> create(
             @PathVariable Long transactionId,
-            @RequestBody TransactionBanknoteDto dto) {
+            @Valid @RequestBody TransactionBanknoteDto dto) {
         TransactionBanknote entity = TransactionBanknote.builder()
                 .transactionId(transactionId)
                 .transactionLineId(dto.getTransactionLineId())

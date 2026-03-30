@@ -95,52 +95,88 @@ public class DenominationOptimizationService {
     }
 
     /**
-     * DYNAMIC: dinamikus programozáson alapuló optimalizáció.
-     * Pontosabb, de lassabb nagy összegekre.
-     * Fallback: greedy ha az összeg túl nagy (>100K egység).
+     * DYNAMIC: bounded knapsack DP készletkorláttal.
+     *
+     * Tizedes összegek kezelése: a legkisebb címlet decimális helyei alapján
+     * skálázunk egészre (pl. 0.50 → *100 → 50). Fallback: greedy ha az összeg
+     * túl nagy a DP-hez (>500K skálázott egység) vagy nincs egész címlet.
      */
     private Map<BigDecimal, Integer> dynamic(List<Denomination> available, BigDecimal amount) {
-        // Egész számra kerekítjük
-        int target = amount.intValue();
-        if (target > 100_000) {
-            log.info("Dynamic: összeg túl nagy ({}), fallback greedy-re", target);
-            return greedy(available, amount);
+        // Csak aktív, készletes címletek
+        List<Denomination> usable = available.stream()
+                .filter(d -> d.getQuantity() > 0)
+                .toList();
+        if (usable.isEmpty()) {
+            log.warn("Dynamic: nincs elérhető címlet, üres eredmény");
+            return new LinkedHashMap<>();
         }
 
-        // dp[i] = minimum bankjegy i összeg kifizetéséhez
-        int[] dp = new int[target + 1];
-        int[] lastDenom = new int[target + 1];
+        // Skálázási faktor: a legkisebb tizedes jegy alapján (pl. 0.50 → scale=2 → mult=100)
+        int maxScale = usable.stream()
+                .map(d -> d.getFaceValue().stripTrailingZeros().scale())
+                .reduce(0, Math::max);
+        maxScale = Math.max(maxScale, amount.stripTrailingZeros().scale());
+        BigDecimal multiplier = BigDecimal.TEN.pow(maxScale);
+
+        long target;
+        try {
+            target = amount.multiply(multiplier).longValueExact();
+        } catch (ArithmeticException e) {
+            log.info("Dynamic: összeg nem konvertálható egészre, fallback greedy");
+            return greedy(available, amount);
+        }
+        if (target <= 0 || target > 500_000L) {
+            log.info("Dynamic: target={} kívül esik a DP tartományon, fallback greedy", target);
+            return greedy(available, amount);
+        }
+        int t = (int) target;
+
+        // Készlet-korlátozott DP (bounded knapsack)
+        // dp[i] = minimum bankjegy szám i egységhez, -1 = elérhetetlen
+        int[] dp = new int[t + 1];
+        int[][] used = new int[usable.size()][t + 1]; // used[denomIdx][amount] = hány db ebből
         Arrays.fill(dp, Integer.MAX_VALUE);
-        Arrays.fill(lastDenom, -1);
         dp[0] = 0;
 
-        int[] faceValues = available.stream()
-                .filter(d -> d.getQuantity() > 0)
-                .mapToInt(d -> d.getFaceValue().intValue())
-                .distinct()
-                .toArray();
+        for (int di = 0; di < usable.size(); di++) {
+            Denomination denom = usable.get(di);
+            long fvScaled;
+            try {
+                fvScaled = denom.getFaceValue().multiply(multiplier).longValueExact();
+            } catch (ArithmeticException e) {
+                continue;
+            }
+            if (fvScaled <= 0 || fvScaled > t) continue;
+            int fv = (int) fvScaled;
+            int maxQty = denom.getQuantity();
 
-        for (int i = 1; i <= target; i++) {
-            for (int fv : faceValues) {
-                if (fv <= i && dp[i - fv] != Integer.MAX_VALUE && dp[i - fv] + 1 < dp[i]) {
-                    dp[i] = dp[i - fv] + 1;
-                    lastDenom[i] = fv;
+            // Backward pass: az adott címlettel max maxQty-ot használhatunk
+            for (int i = t; i >= fv; i--) {
+                for (int q = 1; q <= maxQty && (long) q * fv <= i; q++) {
+                    int prev = i - q * fv;
+                    if (dp[prev] != Integer.MAX_VALUE && dp[prev] + q < dp[i]) {
+                        dp[i] = dp[prev] + q;
+                        used[di][i] = q;
+                    }
                 }
             }
         }
 
-        if (dp[target] == Integer.MAX_VALUE) {
+        if (dp[t] == Integer.MAX_VALUE) {
             log.warn("Dynamic: nem találtam egzakt megoldást, fallback greedy");
             return greedy(available, amount);
         }
 
         // Backtrack
         Map<BigDecimal, Integer> result = new LinkedHashMap<>();
-        int pos = target;
-        while (pos > 0) {
-            int fv = lastDenom[pos];
-            result.merge(BigDecimal.valueOf(fv), 1, Integer::sum);
-            pos -= fv;
+        int pos = t;
+        for (int di = usable.size() - 1; di >= 0 && pos > 0; di--) {
+            int q = used[di][pos];
+            if (q > 0) {
+                result.put(usable.get(di).getFaceValue(), q);
+                long fvScaled = usable.get(di).getFaceValue().multiply(multiplier).longValueExact();
+                pos -= (int) (q * fvScaled);
+            }
         }
 
         return result;

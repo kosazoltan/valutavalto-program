@@ -125,8 +125,12 @@ public class Authorization {
         return expiryDate != null && expiryDate.isBefore(LocalDate.now());
     }
 
+    public boolean isStarted() {
+        return startDate != null && !startDate.isAfter(LocalDate.now());
+    }
+
     public boolean canExecuteTransaction(BigDecimal amount) {
-        if (!isActive() || isExpired()) return false;
+        if (!isActive() || isExpired() || !isStarted()) return false;
         if (maxTransactionCount != null && usedTransactionCount >= maxTransactionCount) return false;
         if (singleTransactionLimit != null && amount != null && amount.compareTo(singleTransactionLimit) > 0) return false;
         if (maxAmount != null && amount != null && usedAmount.add(amount).compareTo(maxAmount) > 0) return false;

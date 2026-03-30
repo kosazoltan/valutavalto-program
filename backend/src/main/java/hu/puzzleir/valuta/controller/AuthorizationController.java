@@ -45,6 +45,7 @@ public class AuthorizationController {
      * POST /api/v1/authorized-representatives/{representativeId}/authorizations
      */
     @PostMapping("/{representativeId}/authorizations")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<AuthorizationDto> create(
             @PathVariable UUID representativeId,
             @Valid @RequestBody CreateAuthorizationDto dto,
@@ -78,6 +79,19 @@ public class AuthorizationController {
             @RequestParam Long workerId,
             @RequestParam String reason) {
         return ResponseEntity.ok(toDto(authorizationService.suspend(authorizationId, workerId, reason)));
+    }
+
+    /**
+     * Jogosultság újraaktíválása (SUSPENDED → ACTIVE).
+     * POST /api/v1/authorized-representatives/authorizations/{authorizationId}/resume
+     */
+    @PostMapping("/authorizations/{authorizationId}/resume")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<AuthorizationDto> resume(
+            @PathVariable UUID authorizationId,
+            @RequestParam Long workerId,
+            @RequestParam(required = false) String notes) {
+        return ResponseEntity.ok(toDto(authorizationService.resume(authorizationId, workerId, notes)));
     }
 
     /**

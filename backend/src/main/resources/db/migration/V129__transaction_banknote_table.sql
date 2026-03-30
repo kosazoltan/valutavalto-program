@@ -11,5 +11,11 @@ CREATE TABLE IF NOT EXISTS transaction_banknote (
     created_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
+ALTER TABLE transaction_banknote ADD CONSTRAINT fk_txbn_transaction
+    FOREIGN KEY (transaction_id) REFERENCES transaction(id);
+
+ALTER TABLE transaction_banknote ADD CONSTRAINT fk_txbn_transaction_line
+    FOREIGN KEY (transaction_line_id) REFERENCES transaction_line(id);
+
 CREATE INDEX IF NOT EXISTS idx_txbn_transaction ON transaction_banknote(transaction_id);
 CREATE INDEX IF NOT EXISTS idx_txbn_currency ON transaction_banknote(currency_code);
