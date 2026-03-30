@@ -30,13 +30,13 @@ public class BanknoteInventoryController {
     }
 
     @GetMapping("/branch/{branchId}/low-stock")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<BanknoteInventoryDto>> getLowStock(@PathVariable UUID branchId) {
         return ResponseEntity.ok(service.getLowStock(branchId).stream().map(this::toDto).toList());
     }
 
     @GetMapping("/branch/{branchId}/over-stock")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<BanknoteInventoryDto>> getOverStock(@PathVariable UUID branchId) {
         return ResponseEntity.ok(service.getOverStock(branchId).stream().map(this::toDto).toList());
     }

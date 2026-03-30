@@ -3,6 +3,7 @@ import { Shield, Plus, CheckCircle, XCircle, Pause, Play, AlertCircle, Loader2 }
 import { authorizedRepresentativeApi, Authorization, AuthorizationCreateRequest } from '../../services/api/transactions'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../ui/toaster'
+import { useAuthStore } from '../../stores/authStore'
 
 interface Props {
   representativeId: string
@@ -16,6 +17,9 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 }
 
 export default function AuthorizationSection({ representativeId }: Props) {
+  const worker = useAuthStore(s => s.worker)
+  const workerId = worker?.id ?? 0
+
   const [authorizations, setAuthorizations] = useState<Authorization[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -45,7 +49,7 @@ export default function AuthorizationSection({ representativeId }: Props) {
   const handleCreate = async () => {
     try {
       setSubmitting(true)
-      await authorizedRepresentativeApi.createAuthorization(representativeId, form, 'current-worker')
+      await authorizedRepresentativeApi.createAuthorization(representativeId, form, workerId)
       toast.success('Meghatalmazás létrehozva')
       setShowForm(false)
       setForm({ operationDid: 'CURRENCY_EXCHANGE', startDate: new Date().toISOString().split('T')[0]! })
@@ -65,18 +69,13 @@ export default function AuthorizationSection({ representativeId }: Props) {
 
     try {
       if (action === 'verify') {
-        await authorizedRepresentativeApi.verifyAuthorization(authId, 'current-worker')
+        await authorizedRepresentativeApi.verifyAuthorization(authId, workerId)
       } else if (action === 'suspend') {
-        await authorizedRepresentativeApi.suspendAuthorization(authId, 'current-worker', reason!)
+        await authorizedRepresentativeApi.suspendAuthorization(authId, workerId, reason!)
       } else if (action === 'resume') {
-        // resume endpoint — POST /authorizations/{id}/resume
-        const response = await fetch(`/api/v1/authorized-representatives/authorizations/${authId}/resume`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-        })
-        if (!response.ok) throw new Error(`Resume failed: ${response.status}`)
+        await authorizedRepresentativeApi.resumeAuthorization(authId, workerId)
       } else {
-        await authorizedRepresentativeApi.revokeAuthorization(authId, 'current-worker', reason!)
+        await authorizedRepresentativeApi.revokeAuthorization(authId, workerId, reason!)
       }
       toast.success('Művelet sikeres')
       void loadAuthorizations()
@@ -125,11 +124,11 @@ export default function AuthorizationSection({ representativeId }: Props) {
             </div>
             <div>
               <label className="text-sm text-gray-600">Lejárati dátum</label>
-              <input type="date" value={form.endDate || ''} onChange={e => setForm({ ...form, endDate: e.target.value || undefined })} className="form-input w-full" />
+              <input type="date" value={form.expiryDate || ''} onChange={e => setForm({ ...form, expiryDate: e.target.value || undefined })} className="form-input w-full" />
             </div>
             <div>
-              <label className="text-sm text-gray-600">Tranzakciós limit (Ft)</label>
-              <input type="number" value={form.transactionLimit || ''} onChange={e => setForm({ ...form, transactionLimit: e.target.value ? Number(e.target.value) : undefined })} className="form-input w-full" placeholder="Korlátlan" />
+              <label className="text-sm text-gray-600">Összeg limit (Ft)</label>
+              <input type="number" value={form.maxAmount || ''} onChange={e => setForm({ ...form, maxAmount: e.target.value ? Number(e.target.value) : undefined })} className="form-input w-full" placeholder="Korlátlan" />
             </div>
             <div>
               <label className="text-sm text-gray-600">Egyszeri limit (Ft)</label>
