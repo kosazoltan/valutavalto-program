@@ -293,10 +293,14 @@ Section "Telepítés" SecInstall
         ; Cleanup temp SQL file
         Delete "$DATA_DIR\scripts\setup-user.sql"
 
-        ; Verify user exists
-        nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -t -A -c "SELECT count(*) FROM pg_roles WHERE rolname=$$valuta_user$$"'
+        ; Verify user exists (SQL file to avoid NSIS $$ quoting issues)
+        FileOpen $0 "$DATA_DIR\scripts\verify-user.sql" w
+        FileWrite $0 "SELECT count(*) FROM pg_roles WHERE rolname='valuta_user';$\r$\n"
+        FileClose $0
+        nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -t -A -f "$DATA_DIR\scripts\verify-user.sql"'
         Pop $0
         Pop $1
+        Delete "$DATA_DIR\scripts\verify-user.sql"
         StrCpy $2 $1 1
         ${If} $2 != "1"
             IfSilent +2
