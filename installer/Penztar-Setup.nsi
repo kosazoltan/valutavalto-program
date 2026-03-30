@@ -70,40 +70,45 @@ Section "Telepítés" SecInstall
 
     ; =====================================================================
     ; FÁZIS 1: Régi telepítés cleanup (ha van)
+    ; Helyes sorrend: STOP → pg_ctl → KILL → WAIT → REMOVE
+    ; (F-08 fix: sc delete ELŐTT kell killt csinálni, nem utána)
     ; =====================================================================
     DetailPrint "Korábbi telepítés ellenőrzése..."
 
-    ; Stop old services if they exist
+    ; --- 1a. STOP services via NSSM (graceful, keeps service registration) ---
+    DetailPrint "  Szolgáltatások leállítása..."
+    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" stop BestChange-Backend 2>nul'
+    Sleep 3000
+    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" stop BestChange-PostgreSQL 2>nul'
+    Sleep 3000
+    ; Fallback: net stop (ha NSSM nincs a data dir-ben, pl. első telepítés régi maradvánnyal)
     nsExec::ExecToLog 'net stop BestChange-Backend 2>nul'
-    Sleep 2000
     nsExec::ExecToLog 'net stop BestChange-PostgreSQL 2>nul'
     Sleep 2000
 
-    ; Remove old services
-    nsExec::ExecToLog 'sc.exe delete BestChange-Backend 2>nul'
-    nsExec::ExecToLog 'sc.exe delete BestChange-PostgreSQL 2>nul'
-    Sleep 1000
+    ; --- 1b. pg_ctl stop -m fast (PostgreSQL-specifikus graceful shutdown) ---
+    DetailPrint "  PostgreSQL graceful stop..."
+    IfFileExists "$DATA_DIR\pgsql\bin\pg_ctl.exe" 0 skip_pgctl
+        nsExec::ExecToLog '"$DATA_DIR\pgsql\bin\pg_ctl.exe" stop -D "$DATA_DIR\pgsql\data" -m fast -w -t 30'
+    skip_pgctl:
+    Sleep 2000
 
-    ; Kill only BestChange service processes (F-06: scoped, nem globális)
-    nsExec::ExecToLog 'taskkill /F /FI "SERVICES eq BestChange-PostgreSQL" 2>nul'
-    nsExec::ExecToLog 'taskkill /F /FI "SERVICES eq BestChange-Backend" 2>nul'
-    Sleep 1000
-
-    ; F-07: Kill any remaining postgres.exe from BestChange path (sc delete removes service association,
-    ; so SERVICES filter above misses it — but the process still locks DLLs like icudt67.dll)
+    ; --- 1c. KILL remaining BestChange processes (scoped, F-06+F-07) ---
+    DetailPrint "  Maradék folyamatok leállítása..."
     nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process postgres -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
     nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process java -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
+    Sleep 1000
 
-    ; Wait for file locks to release (postgres DLL unlock can take a few seconds after process exit)
-    DetailPrint "Várakozás a fájlzárak feloldására..."
+    ; --- 1d. WAIT for file locks (postgres + java) ---
+    DetailPrint "  Várakozás a fájlzárak feloldására..."
     StrCpy $R0 0
     lock_wait_loop:
         IntOp $R0 $R0 + 1
-        ${If} $R0 > 10
+        ${If} $R0 > 15
             DetailPrint "  Időtúllépés — folytatás (fájlzár lehetséges)."
             Goto lock_wait_done
         ${EndIf}
-        nsExec::ExecToStack 'powershell.exe -NoProfile -Command "if(Get-Process postgres -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' }){exit 1}else{exit 0}"'
+        nsExec::ExecToStack 'powershell.exe -NoProfile -Command "if(Get-Process postgres,java -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' }){exit 1}else{exit 0}"'
         Pop $0
         ${If} $0 == 0
             Goto lock_wait_done
@@ -111,6 +116,15 @@ Section "Telepítés" SecInstall
         Sleep 1000
         Goto lock_wait_loop
     lock_wait_done:
+    Sleep 1000
+
+    ; --- 1e. REMOVE service registration (CSAK miután a process halott!) ---
+    DetailPrint "  Régi szolgáltatások eltávolítása..."
+    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" remove BestChange-Backend confirm 2>nul'
+    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" remove BestChange-PostgreSQL confirm 2>nul'
+    ; Fallback: sc delete (ha NSSM nem elérhető)
+    nsExec::ExecToLog 'sc.exe delete BestChange-Backend 2>nul'
+    nsExec::ExecToLog 'sc.exe delete BestChange-PostgreSQL 2>nul'
     Sleep 1000
 
     ; =====================================================================
@@ -153,8 +167,10 @@ Section "Telepítés" SecInstall
     ; FÁZIS 2B: VC++ Redistributable (2015-2022 x64) — PG16 előfeltétel
     ; =====================================================================
     ; PG 16 EDB binárisok vcruntime140.dll-t igényelnek — sok irodai gépen nincs!
+    ; F-08: Registry-based check (megbízhatóbb mint $SYSDIR\vcruntime140.dll)
     DetailPrint "Visual C++ Runtime ellenőrzés..."
-    IfFileExists "$SYSDIR\vcruntime140.dll" vc_ok
+    ReadRegStr $0 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" "Installed"
+    ${If} $0 != 1
         DetailPrint "  VC++ 2015-2022 Redistributable telepítése..."
         nsExec::ExecToStack '"$DATA_DIR\tools\vc_redist.x64.exe" /install /quiet /norestart'
         Pop $0
@@ -162,8 +178,9 @@ Section "Telepítés" SecInstall
         ${AndIf} $0 != 3010
             DetailPrint "  VC++ Redistributable kód: $0 (folytatás)"
         ${EndIf}
-    vc_ok:
-    DetailPrint "  VC++ Runtime OK"
+    ${Else}
+        DetailPrint "  VC++ Runtime OK (registry verified)"
+    ${EndIf}
 
     ; =====================================================================
     ; FÁZIS 3: Konfiguráció generálása
@@ -540,25 +557,33 @@ Section "un.Eltávolítás"
         ExpandEnvStrings $DATA_DIR "%PROGRAMDATA%\BestChange"
     ${EndIf}
 
-    ; Stop and remove services
+    ; F-08: Helyes sorrend — STOP → pg_ctl → KILL → WAIT → REMOVE
     DetailPrint "Szolgáltatások leállítása..."
-    nsExec::ExecToLog 'net stop BestChange-Backend'
+    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" stop BestChange-Backend 2>nul'
     Sleep 3000
-    nsExec::ExecToLog 'net stop BestChange-PostgreSQL'
+    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" stop BestChange-PostgreSQL 2>nul'
     Sleep 3000
+    nsExec::ExecToLog 'net stop BestChange-Backend 2>nul'
+    nsExec::ExecToLog 'net stop BestChange-PostgreSQL 2>nul'
+    Sleep 2000
 
+    ; pg_ctl graceful stop
+    IfFileExists "$DATA_DIR\pgsql\bin\pg_ctl.exe" 0 un_skip_pgctl
+        nsExec::ExecToLog '"$DATA_DIR\pgsql\bin\pg_ctl.exe" stop -D "$DATA_DIR\pgsql\data" -m fast -w -t 30'
+    un_skip_pgctl:
+    Sleep 2000
+
+    ; Scoped process kill (F-06+F-07)
+    nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process postgres -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
+    nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process java -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
+    Sleep 2000
+
+    ; REMOVE service (csak miután a process halott)
     DetailPrint "Szolgáltatások eltávolítása..."
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" remove BestChange-Backend confirm'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" remove BestChange-PostgreSQL confirm'
-
-    ; Fallback: sc delete
-    nsExec::ExecToLog 'sc.exe delete BestChange-Backend'
-    nsExec::ExecToLog 'sc.exe delete BestChange-PostgreSQL'
-    Sleep 2000
-
-    ; Kill any remaining BestChange processes (F-06: scoped kill, nem globális)
-    nsExec::ExecToLog 'taskkill /F /FI "SERVICES eq BestChange-PostgreSQL" 2>nul'
-    nsExec::ExecToLog 'taskkill /F /FI "SERVICES eq BestChange-Backend" 2>nul'
+    nsExec::ExecToLog 'sc.exe delete BestChange-Backend 2>nul'
+    nsExec::ExecToLog 'sc.exe delete BestChange-PostgreSQL 2>nul'
     Sleep 1000
 
     ; Remove program files
