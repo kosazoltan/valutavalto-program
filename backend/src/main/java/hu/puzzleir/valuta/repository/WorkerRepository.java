@@ -58,6 +58,16 @@ public interface WorkerRepository extends JpaRepository<Worker, Long> {
     List<Worker> searchByName(@Param("companyId") UUID companyId, @Param("name") String name);
     
     /**
+     * Worker keresés ID + company (multi-tenant IDOR védelem)
+     */
+    Optional<Worker> findByIdAndCompanyId(Long id, UUID companyId);
+
+    /**
+     * Worker törlés ID + company alapján (multi-tenant IDOR védelem)
+     */
+    void deleteByIdAndCompanyId(Long id, UUID companyId);
+
+    /**
      * Code létezik-e már (company-n belül)
      */
     boolean existsByCompanyIdAndCode(UUID companyId, String code);

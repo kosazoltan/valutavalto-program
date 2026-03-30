@@ -1,5 +1,9 @@
 package hu.puzzleir.valuta.controller;
 
+import hu.puzzleir.valuta.dto.user.CreateUserRequest;
+import hu.puzzleir.valuta.dto.user.UpdateUserRequest;
+import hu.puzzleir.valuta.dto.user.ChangePasswordRequest;
+import hu.puzzleir.valuta.dto.user.UpdateMyPasswordRequest;
 import hu.puzzleir.valuta.dto.user.UserDetailDto;
 import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
 import hu.puzzleir.valuta.service.UserService;
@@ -12,7 +16,6 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -41,32 +44,31 @@ public class UserController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<UserDetailDto> create(@Valid @RequestBody Map<String, String> body) {
+    public ResponseEntity<UserDetailDto> create(@Valid @RequestBody CreateUserRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(userService.createUser(
-                body.get("username"), body.get("fullName"), body.get("email"),
-                body.get("password"), body.get("roleId"), body.get("branchId")));
+                request.getUsername(), request.getFullName(), request.getEmail(),
+                request.getPassword(), request.getRoleId(), request.getBranchId()));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
-    public ResponseEntity<UserDetailDto> update(@PathVariable Long id, @Valid @RequestBody Map<String, Object> body) {
+    public ResponseEntity<UserDetailDto> update(@PathVariable Long id, @Valid @RequestBody UpdateUserRequest request) {
         return ResponseEntity.ok(userService.updateUser(id,
-                (String) body.get("email"), (String) body.get("fullName"),
-                (String) body.get("roleId"),
-                body.containsKey("active") ? (Boolean) body.get("active") : null));
+                request.getEmail(), request.getFullName(),
+                request.getRoleId(), request.getActive()));
     }
 
     @PostMapping("/{id}/change-password")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> changePassword(@PathVariable Long id, @Valid @RequestBody Map<String, String> body) {
-        userService.changePassword(id, body.get("newPassword"));
+    public ResponseEntity<Void> changePassword(@PathVariable Long id, @Valid @RequestBody ChangePasswordRequest request) {
+        userService.changePassword(id, request.getNewPassword());
         return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/me/password")
-    public ResponseEntity<Void> updateMyPassword(Authentication auth, @Valid @RequestBody Map<String, String> body) {
+    public ResponseEntity<Void> updateMyPassword(Authentication auth, @Valid @RequestBody UpdateMyPasswordRequest request) {
         Long workerId = getWorkerId(auth);
-        userService.updateMyPassword(workerId, body.get("oldPassword"), body.get("newPassword"));
+        userService.updateMyPassword(workerId, request.getOldPassword(), request.getNewPassword());
         return ResponseEntity.noContent().build();
     }
 

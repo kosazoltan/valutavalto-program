@@ -64,7 +64,8 @@ export default function TransactionPage() {
 
   // Focus on foreign amount input on mount
   useEffect(() => {
-    setTimeout(() => foreignAmountRef.current?.focus(), 100)
+    const timerId = setTimeout(() => foreignAmountRef.current?.focus(), 100)
+    return () => clearTimeout(timerId)
   }, [])
 
   // Calculate amounts

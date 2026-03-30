@@ -193,7 +193,8 @@ export default function CameraExportPage() {
           {loading && <div className="text-center py-4 text-gray-400">Betöltés...</div>}
           {!loading && requests.length === 0 && <div className="text-gray-400 text-sm text-center py-4">Válasszon irodát az export kérelmek megtekintéséhez</div>}
           {requests.map(r => (
-            <div key={r.id} onClick={() => handleSelectRequest(r)}
+            <div key={r.id} role="button" tabIndex={0} onClick={() => handleSelectRequest(r)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSelectRequest(r) } }}
               className={`p-3 rounded border cursor-pointer hover:bg-gray-50 transition ${selected?.id === r.id ? 'border-blue-400 bg-blue-50' : 'border-gray-200'}`}>
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">

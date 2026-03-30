@@ -142,7 +142,8 @@ export default function CashierTransactionPage() {
 
   // Auto focus first row on mount
   useEffect(() => {
-    setTimeout(() => currencyRefs.current[0]?.focus(), 100)
+    const timerId = setTimeout(() => currencyRefs.current[0]?.focus(), 100)
+    return () => clearTimeout(timerId)
   }, [])
 
   // ====== HOTKEYS ======

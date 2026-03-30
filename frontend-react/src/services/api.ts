@@ -2375,10 +2375,8 @@ export const organizationApi = {
     const response = await api.get<Organization>(`/organizations/${id}`)
     return response.data
   },
-  create: async (data: Partial<Organization>, workerId: string): Promise<Organization> => {
-    const response = await api.post<Organization>('/organizations', data, {
-      params: { workerId }
-    })
+  create: async (data: Partial<Organization>): Promise<Organization> => {
+    const response = await api.post<Organization>('/organizations', data)
     return response.data
   },
   update: async (id: string, data: Partial<Organization>): Promise<Organization> => {

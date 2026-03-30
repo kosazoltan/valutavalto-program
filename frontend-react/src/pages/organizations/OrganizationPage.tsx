@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Building, Plus, Edit, Trash2, Search, X, Save } from 'lucide-react'
 import { organizationApi, Organization } from '../../services/api/index'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
 
 export default function OrganizationPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([])
@@ -59,12 +59,10 @@ export default function OrganizationPage() {
   const handleSave = async () => {
     try {
       setError(null)
-      // TODO: Get current user ID
-      const workerId = 'current-user-id'
       if (editingOrg) {
         await organizationApi.update(editingOrg.id, formData)
       } else {
-        await organizationApi.create(formData, workerId)
+        await organizationApi.create(formData)
       }
       await loadData()
       setShowForm(false)
