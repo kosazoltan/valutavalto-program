@@ -1,8 +1,9 @@
 ﻿; =============================================================================
-; Valutaváltó Pénztár — Egyfájlos Windows Telepítő v2
+; Valutaváltó Pénztár — Egyfájlos Windows Telepítő v3
 ; NSIS 3.x Script — Production Quality
 ; =============================================================================
-; Javítva: NSSM quoting, EXE név, health check, hibakezelés, re-install
+; v3: nsProcess + LockedList pluginok, helyes service stop sorrend,
+;     pg_ctl graceful shutdown, scoped process kill
 ; =============================================================================
 
 !include "MUI2.nsh"
@@ -10,6 +11,10 @@
 !include "LogicLib.nsh"
 !include "FileFunc.nsh"
 !include "x64.nsh"
+
+; --- Projekt-saját pluginok (nsProcess, LockedList) ---
+!addplugindir /x86-unicode "plugins\x86-unicode"
+!addincludedir "include"
 
 ; --- Paraméterek ---
 !ifndef VERSION
@@ -93,13 +98,27 @@ Section "Telepítés" SecInstall
     skip_pgctl:
     Sleep 2000
 
-    ; --- 1c. KILL remaining BestChange processes (scoped, F-06+F-07) ---
+    ; --- 1c. KILL remaining BestChange processes (nsProcess + scoped PS fallback) ---
     DetailPrint "  Maradék folyamatok leállítása..."
-    nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process postgres -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
-    nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process java -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
-    Sleep 1000
+    ; nsProcess: postgres.exe — a mi PG-nk a BestChange mappában van,
+    ; de ha más PG is fut, a pg_ctl stop -m fast fentebb elintézte a miénket.
+    ; Itt már csak a zombi process maradhat.
+    nsProcess::_FindProcess "postgres.exe"
+    Pop $0
+    ${If} $0 == 0
+        DetailPrint "  postgres.exe még fut — scoped kill..."
+        nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process postgres -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
+    ${EndIf}
+    ; java.exe — scoped kill (csak BestChange path)
+    nsProcess::_FindProcess "java.exe"
+    Pop $0
+    ${If} $0 == 0
+        DetailPrint "  java.exe fut — scoped kill (BestChange)..."
+        nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process java -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
+    ${EndIf}
+    Sleep 2000
 
-    ; --- 1d. WAIT for file locks (postgres + java) ---
+    ; --- 1d. WAIT for file locks (nsProcess poll) ---
     DetailPrint "  Várakozás a fájlzárak feloldására..."
     StrCpy $R0 0
     lock_wait_loop:
@@ -108,10 +127,16 @@ Section "Telepítés" SecInstall
             DetailPrint "  Időtúllépés — folytatás (fájlzár lehetséges)."
             Goto lock_wait_done
         ${EndIf}
-        nsExec::ExecToStack 'powershell.exe -NoProfile -Command "if(Get-Process postgres,java -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' }){exit 1}else{exit 0}"'
+        ; Check: postgres still alive?
+        nsProcess::_FindProcess "postgres.exe"
         Pop $0
-        ${If} $0 == 0
-            Goto lock_wait_done
+        ${If} $0 != 0
+            ; postgres dead — check java (scoped)
+            nsExec::ExecToStack 'powershell.exe -NoProfile -Command "if(Get-Process java -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' }){exit 1}else{exit 0}"'
+            Pop $0
+            ${If} $0 == 0
+                Goto lock_wait_done
+            ${EndIf}
         ${EndIf}
         Sleep 1000
         Goto lock_wait_loop
@@ -126,6 +151,26 @@ Section "Telepítés" SecInstall
     nsExec::ExecToLog 'sc.exe delete BestChange-Backend 2>nul'
     nsExec::ExecToLog 'sc.exe delete BestChange-PostgreSQL 2>nul'
     Sleep 1000
+
+    ; =====================================================================
+    ; FÁZIS 1f: LockedList — locked fájlok detektálása a DATA_DIR-ben
+    ; =====================================================================
+    IfFileExists "$DATA_DIR\pgsql\bin\postgres.exe" 0 skip_lockedlist
+        DetailPrint "  Fájlzárak ellenőrzése (LockedList)..."
+        LockedList::AddFolder "$DATA_DIR\pgsql\bin"
+        LockedList::AddFolder "$DATA_DIR\jre\bin"
+        LockedList::AddFolder "$DATA_DIR\backend"
+        LockedList::SilentSearch
+        Pop $0
+        ${If} $0 != 0
+            DetailPrint "  FIGYELMEZTETÉS: $0 fájl zárolva van! Kísérlet a feloldásra..."
+            ; Try one more aggressive kill
+            nsProcess::_KillProcess "postgres.exe"
+            Pop $0
+            nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process java -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
+            Sleep 3000
+        ${EndIf}
+    skip_lockedlist:
 
     ; =====================================================================
     ; FÁZIS 2: Fájlok másolása
@@ -573,9 +618,17 @@ Section "un.Eltávolítás"
     un_skip_pgctl:
     Sleep 2000
 
-    ; Scoped process kill (F-06+F-07)
-    nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process postgres -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
-    nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process java -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
+    ; Scoped process kill (nsProcess + PowerShell fallback)
+    nsProcess::_FindProcess "postgres.exe"
+    Pop $0
+    ${If} $0 == 0
+        nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process postgres -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
+    ${EndIf}
+    nsProcess::_FindProcess "java.exe"
+    Pop $0
+    ${If} $0 == 0
+        nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process java -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
+    ${EndIf}
     Sleep 2000
 
     ; REMOVE service (csak miután a process halott)
