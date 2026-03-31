@@ -335,18 +335,7 @@ export default function RateCreationPage() {
 
   // ===================== Render =====================
 
-  if (loading && !overview) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <RefreshCw className="animate-spin text-blue-600" size={32} />
-        <span className="ml-3 text-gray-600">Árfolyamok betöltése...</span>
-      </div>
-    )
-  }
-
-  const modifiedCount = rates.filter(r => r.modified).length
-
-  // BACKLOG-004: Validation error list per rate row
+  // BACKLOG-004: Validation error list per rate row (must be before early returns for hooks)
   const validationErrors = useMemo(() => {
     const errors: Record<number, string[]> = {}
     for (const r of rates) {
@@ -371,6 +360,17 @@ export default function RateCreationPage() {
     }
     return errors
   }, [rates])
+
+  if (loading && !overview) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="animate-spin text-blue-600" size={32} />
+        <span className="ml-3 text-gray-600">Árfolyamok betöltése...</span>
+      </div>
+    )
+  }
+
+  const modifiedCount = rates.filter(r => r.modified).length
 
   return (
     <div className="h-[calc(100vh-9.5rem)] flex flex-col">

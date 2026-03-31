@@ -122,25 +122,27 @@ export function useGridNavigation({ rows, cols }: UseGridNavigationOptions) {
         }
         break
 
-      case 'Escape':
+      case 'Escape': {
         e.preventDefault()
         setEditing(false)
         // Keep focus on cell but exit edit mode
-        const input = getInput(row, col)
-        if (input) input.blur()
+        const escInput = getInput(row, col)
+        if (escInput) escInput.blur()
         break
+      }
 
-      default:
+      default: {
         // If a printable character is typed and not editing, start editing
         if (!editing && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
           setEditing(true)
-          const input = getInput(row, col)
-          if (input) {
-            input.focus()
-            input.select()
+          const defInput = getInput(row, col)
+          if (defInput) {
+            defInput.focus()
+            defInput.select()
           }
         }
         break
+      }
     }
   }, [activeCell, editing, rows, cols, focusCell, getInput])
 
