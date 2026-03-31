@@ -1,5 +1,5 @@
 // dotenv only in development — not bundled in production asar
-try { require('dotenv/config'); } catch { /* production: dotenv not available, safe to skip */ }
+try { await import('dotenv/config'); } catch { /* production: dotenv not available, safe to skip */ }
 import { app, BrowserWindow, ipcMain, dialog, protocol, net, safeStorage } from 'electron';
 import log from 'electron-log/main';
 import path from 'node:path';
