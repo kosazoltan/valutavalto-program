@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
-// lucide-react icons moved to CustomerPanel
+import { AlertTriangle } from 'lucide-react'
 import { CashierHeader } from '../../components/cashier/CashierHeader'
 import { HotkeyBar } from '../../components/cashier/HotkeyBar'
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext'
-import { transactionApi, exchangeRateApi } from '../../services/api/index'
+import { transactionApi, exchangeRateApi, dailySessionApi } from '../../services/api/index'
 import type { BuyRequest, SellRequest, ExchangeRate } from '../../services/api/index'
 import { roundHuf } from '../../utils/rounding'
 import { toast } from '../../components/ui/toaster'
@@ -60,6 +60,9 @@ export default function CashierTransactionPage() {
   const { theme: _theme } = useCompanyTheme()
   const electronQueueAvailable = isElectronQueueAvailable()
 
+  // Daily session guard
+  const [sessionOpen, setSessionOpen] = useState<boolean | null>(null)
+
   // Transaction state
   const [mode, setMode] = useState<'buy' | 'sell'>('buy')
   const [rows, setRows] = useState<TransactionRow[]>(
@@ -73,8 +76,11 @@ export default function CashierTransactionPage() {
   const amlResultRef = useRef<AmlCheckResultDto | null>(null)
 
   // Fees
-  const [handlingFee, _setHandlingFee] = useState(0)
-  const [discount, _setDiscount] = useState(0)
+  const [handlingFee, setHandlingFee] = useState(0)
+  const [discount, setDiscount] = useState(0)
+  const [showFeeDialog, setShowFeeDialog] = useState(false)
+  const [feeInput, setFeeInput] = useState('')
+  const [discountInput, setDiscountInput] = useState('')
 
   // Exchange rates from API
   const [exchangeRates, setExchangeRates] = useState<ExchangeRate[]>([])
@@ -96,7 +102,8 @@ export default function CashierTransactionPage() {
 
   // Calculated totals
   const subtotal = rows.reduce((sum, r) => sum + r.hufValue, 0)
-  const total = subtotal + handlingFee - discount
+  const discountAmount = discount > 0 ? Math.round(subtotal * discount / 100) : 0
+  const total = subtotal + handlingFee - discountAmount
 
   // Identification level based on HUF total
   const { identificationLevel, requiresSourceVerification } = useIdentificationLevel(String(total))
@@ -116,6 +123,22 @@ export default function CashierTransactionPage() {
       setMode(requestedMode)
     }
   }, [searchParams])
+
+  // Daily session guard — check if session is open before allowing transactions
+  useEffect(() => {
+    let cancelled = false
+    const checkSession = async () => {
+      try {
+        const isOpen = await dailySessionApi.isOpen()
+        if (!cancelled) setSessionOpen(isOpen)
+      } catch {
+        // If we can't check, assume open (fail-open for session check, fail-closed for AML)
+        if (!cancelled) setSessionOpen(true)
+      }
+    }
+    void checkSession()
+    return () => { cancelled = true }
+  }, [])
 
   // Load exchange rates with Electron cached-rates priority
   useEffect(() => {
@@ -165,6 +188,11 @@ export default function CashierTransactionPage() {
   useHotkeys('f3', () => setMode('sell'), { enableOnFormTags: true })
   useHotkeys('f5', () => navigate('/stornos'), { enableOnFormTags: true })
   useHotkeys('f8', () => navigate('/rates'), { enableOnFormTags: true })
+  useHotkeys('f9', () => {
+    setFeeInput(String(handlingFee || ''))
+    setDiscountInput(String(discount || ''))
+    setShowFeeDialog(true)
+  }, { enableOnFormTags: true })
   useHotkeys('escape', () => handleCancel(), { enableOnFormTags: true })
 
   // ====== HANDLERS ======
@@ -219,7 +247,37 @@ export default function CashierTransactionPage() {
   )
 
   const handleSubmit = useCallback(async () => {
-    const filledRows = rows.filter((r) => r.currencyCode && r.hufValue > 0)
+    // Collect rows with any input (currency code typed)
+    const touchedRows = rows.filter((r) => r.currencyCode.length > 0)
+    if (touchedRows.length === 0) return
+
+    // Session guard
+    if (sessionOpen === false) {
+      toast.error('Nincs nyitott nap', 'A tranzakcio rogzitesehez eloszor meg kell nyitni a napot!')
+      return
+    }
+
+    // Input validation — check ALL touched rows, collect errors
+    const validationErrors: string[] = []
+    for (const row of touchedRows) {
+      if (row.currencyCode.length !== 3) {
+        validationErrors.push(`"${row.currencyCode}" nem ervenyes 3 betus valutakod.`)
+      }
+      if (!row.exchangeRate || row.exchangeRate <= 0) {
+        validationErrors.push(`${row.currencyCode || '?'}: nincs betoltve arfolyam.`)
+      }
+      const qty = parseFloat(row.quantity)
+      if (!qty || qty <= 0) {
+        validationErrors.push(`${row.currencyCode || '?'}: a mennyiseg 0-nal nagyobb kell legyen.`)
+      }
+    }
+    if (validationErrors.length > 0) {
+      toast.warning('Hibas sorok', validationErrors.join(' | '))
+      return
+    }
+
+    // After validation, only send rows with actual values
+    const filledRows = touchedRows.filter((r) => r.currencyCode.length === 3 && r.hufValue > 0)
     if (filledRows.length === 0) return
 
     // AML/identification check
@@ -387,7 +445,7 @@ export default function CashierTransactionPage() {
     } finally {
       setIsSubmitting(false)
     }
-  }, [rows, mode, total, handlingFee, discount, identificationLevel, electronQueueAvailable, worker?.branchCode, worker?.companyCode, worker?.fullName])
+  }, [rows, mode, total, handlingFee, discount, identificationLevel, sessionOpen, electronQueueAvailable, worker?.branchCode, worker?.companyCode, worker?.fullName])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent, rowIdx: number, field: 'currency' | 'quantity') => {
@@ -445,6 +503,84 @@ export default function CashierTransactionPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20">
       <CashierHeader />
+
+      {/* SESSION GUARD WARNING */}
+      {sessionOpen === false && (
+        <div className="mx-6 mt-4 bg-red-50 dark:bg-red-950/30 border-2 border-red-500 rounded-lg p-4 flex items-center gap-3">
+          <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400 shrink-0" />
+          <div>
+            <p className="font-bold text-red-800 dark:text-red-200">Nincs nyitott napi session!</p>
+            <p className="text-sm text-red-700 dark:text-red-300">A tranzakciok rogzitesehez eloszor meg kell nyitni a napot.</p>
+          </div>
+        </div>
+      )}
+
+      {/* FEE/DISCOUNT DIALOG */}
+      {showFeeDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 w-96 space-y-4">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Kezelesi dij / Kedvezmeny</h3>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kezelesi dij (HUF)</label>
+              <input
+                type="number"
+                value={feeInput}
+                onChange={(e) => setFeeInput(e.target.value)}
+                className="w-full h-11 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white font-mono text-lg"
+                autoFocus
+                min={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setHandlingFee(Math.max(0, parseInt(feeInput) || 0))
+                    setDiscount(Math.min(15, Math.max(0, parseFloat(discountInput) || 0)))
+                    setShowFeeDialog(false)
+                  } else if (e.key === 'Escape') {
+                    setShowFeeDialog(false)
+                  }
+                }}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kedvezmeny (%)</label>
+              <input
+                type="number"
+                value={discountInput}
+                onChange={(e) => setDiscountInput(e.target.value)}
+                className="w-full h-11 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white font-mono text-lg"
+                min={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setHandlingFee(Math.max(0, parseInt(feeInput) || 0))
+                    setDiscount(Math.min(15, Math.max(0, parseFloat(discountInput) || 0)))
+                    setShowFeeDialog(false)
+                  } else if (e.key === 'Escape') {
+                    setShowFeeDialog(false)
+                  }
+                }}
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setHandlingFee(Math.max(0, parseInt(feeInput) || 0))
+                  setDiscount(Math.min(15, Math.max(0, parseFloat(discountInput) || 0)))
+                  setShowFeeDialog(false)
+                }}
+                className="flex-1 py-2.5 rounded-lg text-white font-semibold"
+                style={{ backgroundColor: 'var(--primary)' }}
+              >
+                Alkalmaz
+              </button>
+              <button
+                onClick={() => setShowFeeDialog(false)}
+                className="flex-1 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                Megse
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODE BADGE */}
       <div className="px-6 pt-4 pb-2 flex items-center gap-4">
@@ -538,8 +674,8 @@ export default function CashierTransactionPage() {
               </div>
               {discount > 0 && (
                 <div className="flex justify-between text-base">
-                  <span className="text-gray-600 dark:text-gray-400">KEDVEZMENY:</span>
-                  <span className="font-mono font-semibold text-green-600">-{formatNum(discount)} HUF</span>
+                  <span className="text-gray-600 dark:text-gray-400">KEDVEZMENY ({discount}%):</span>
+                  <span className="font-mono font-semibold text-green-600">-{formatNum(discountAmount)} HUF</span>
                 </div>
               )}
               <hr className="border-gray-300 dark:border-gray-600" />
@@ -568,7 +704,7 @@ export default function CashierTransactionPage() {
             {/* Veglegestes gomb */}
             <button
               onClick={handleSubmit}
-              disabled={isSubmitting || !rows.some((r) => r.hufValue > 0) || (amlResultRef.current?.blocked ?? false)}
+              disabled={isSubmitting || !rows.some((r) => r.currencyCode.length > 0) || (amlResultRef.current?.blocked ?? false)}
               className="w-full py-3 rounded-lg text-white font-bold text-lg shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
               data-action="save"
               style={{ backgroundColor: 'var(--primary)' }}
@@ -610,6 +746,7 @@ export default function CashierTransactionPage() {
           { key: 'F3', label: 'Eladas', onClick: () => setMode('sell'), active: mode === 'sell' },
           { key: 'F5', label: 'Storno', onClick: () => navigate('/stornos'), variant: 'danger' },
           { key: 'F8', label: 'Árfolyam', onClick: () => navigate('/rates') },
+          { key: 'F9', label: 'Dij/Kedv.', onClick: () => { setFeeInput(String(handlingFee || '')); setDiscountInput(String(discount || '')); setShowFeeDialog(true) } },
         ]}
         right={[
           { key: 'Esc', label: 'Mégse', onClick: handleCancel, variant: 'secondary' },
