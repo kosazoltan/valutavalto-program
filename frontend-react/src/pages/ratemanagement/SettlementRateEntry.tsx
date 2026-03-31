@@ -87,6 +87,7 @@ export default function SettlementRateEntry() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [validationErrors, setValidationErrors] = useState<{ row: number; code: string; message: string }[]>([])
   const [success, setSuccess] = useState<string | null>(null)
   const [expandedLimits, setExpandedLimits] = useState<Set<number>>(new Set())
 
@@ -230,27 +231,58 @@ export default function SettlementRateEntry() {
    */
   const publishRates = async () => {
     setError(null)
+    setValidationErrors([])
     setSuccess(null)
 
     // Validalas: legalabb 1 valutahoz kell arfolyam
     const validRates = rates.filter(r => r.baseBuyRate.trim() && r.baseSellRate.trim())
     if (validRates.length === 0) {
-      setError('Legalább egy valutához rögzítsen vételi és eladási árfolyamot!')
+      setError('Legalabb egy valutahoz rogzitsen veteli es eladasi arfolyamot!')
       return
     }
 
-    // Validalas: eladasi > veteli
-    for (const r of validRates) {
+    // Strukturalt per-row validacio
+    const errors: { row: number; code: string; message: string }[] = []
+    for (let i = 0; i < rates.length; i++) {
+      const r = rates[i]!
+      const hasBuy = r.baseBuyRate.trim() !== ''
+      const hasSell = r.baseSellRate.trim() !== ''
+
+      // Csak az egyiket toltotte ki
+      if (hasBuy !== hasSell) {
+        errors.push({ row: i, code: r.currencyCode ?? '', message: 'Veteli es eladasi arfolyam egyutt szukseges' })
+        continue
+      }
+      if (!hasBuy && !hasSell) continue
+
       const buy = parseFloat(r.baseBuyRate)
       const sell = parseFloat(r.baseSellRate)
-      if (isNaN(buy) || isNaN(sell)) {
-        setError(`${r.currencyCode}: érvénytelen árfolyam érték!`)
-        return
+
+      if (isNaN(buy)) {
+        errors.push({ row: i, code: r.currencyCode ?? '', message: 'Ervenytelen veteli arfolyam ertek' })
       }
-      if (sell <= buy) {
-        setError(`${r.currencyCode}: az eladási árfolyamnak (${sell}) nagyobbnak kell lennie a vételinél (${buy})!`)
-        return
+      if (isNaN(sell)) {
+        errors.push({ row: i, code: r.currencyCode ?? '', message: 'Ervenytelen eladasi arfolyam ertek' })
       }
+      if (!isNaN(buy) && !isNaN(sell) && sell <= buy) {
+        errors.push({ row: i, code: r.currencyCode ?? '', message: `Eladasi (${sell}) nagyobb kell legyen a veteliinel (${buy})` })
+      }
+
+      // Limit validacio: ha limit osszeg van, limit arfolyam is kell
+      for (const lvl of [1, 2, 3] as const) {
+        const amt = r[`limit${lvl}Amount` as EditableField]?.trim()
+        const lBuy = r[`limit${lvl}BuyRate` as EditableField]?.trim()
+        const lSell = r[`limit${lvl}SellRate` as EditableField]?.trim()
+        if (amt && (!lBuy || !lSell)) {
+          errors.push({ row: i, code: r.currencyCode ?? '', message: `Limit ${lvl}: osszeghez arfolyam is szukseges` })
+        }
+      }
+    }
+
+    if (errors.length > 0) {
+      setValidationErrors(errors)
+      setError(`${errors.length} validacios hiba talalhato`)
+      return
     }
 
     setSaving(true)
@@ -368,6 +400,18 @@ export default function SettlementRateEntry() {
           {error}
         </div>
       )}
+      {validationErrors.length > 0 && (
+        <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm">
+          <div className="font-medium text-destructive mb-2">Validacios hibak ({validationErrors.length}):</div>
+          <ul className="list-disc list-inside space-y-1 text-destructive/90">
+            {validationErrors.map((ve, i) => (
+              <li key={i}>
+                <span className="font-mono font-bold">{ve.code}</span>: {ve.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {success && (
         <div className="rounded-md bg-green-500/10 border border-green-500/20 p-3 text-sm text-green-700 dark:text-green-400">
           {success}
@@ -394,11 +438,13 @@ export default function SettlementRateEntry() {
                 const sell = parseFloat(rate.baseSellRate)
                 const spread = !isNaN(buy) && !isNaN(sell) ? (sell - buy).toFixed(2) : '-'
                 const isValid = !rate.baseBuyRate || !rate.baseSellRate || (!isNaN(buy) && !isNaN(sell) && sell > buy)
+                const rowErrors = validationErrors.filter(ve => ve.row === idx)
+                const hasRowError = rowErrors.length > 0
                 const isExpanded = expandedLimits.has(rate.currencyId)
 
                 return (
                   <React.Fragment key={rate.currencyId}>
-                    <tr className={`border-b hover:bg-muted/30 ${!isValid ? 'bg-destructive/5' : ''}`}>
+                    <tr className={`border-b hover:bg-muted/30 ${!isValid || hasRowError ? 'bg-destructive/5' : ''}`}>
                       {/* Currency */}
                       <td className="p-3">
                         <div className="flex flex-col">

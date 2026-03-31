@@ -105,3 +105,5 @@ installer/build/
 *.env.local-installer
 
 tmp/
+
+test-output.txt

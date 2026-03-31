@@ -61,6 +61,10 @@ export function useGridNavigation({ rows, cols }: UseGridNavigationOptions) {
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (!activeCell) return
 
+    // Only handle events from grid-cell inputs (skip limit/other inputs)
+    const target = e.target as HTMLElement
+    if (!target.hasAttribute('data-grid-row') || !target.hasAttribute('data-grid-col')) return
+
     const { row, col } = activeCell
 
     switch (e.key) {

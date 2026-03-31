@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useGridNavigation } from './useGridNavigation'
 
@@ -99,6 +99,14 @@ describe('useGridNavigation', () => {
       expect(result.current.activeCell).toEqual({ row: 2, col: 0 })
     })
 
+    /** Helper: dispatch keydown from the currently focused grid-cell input */
+    function dispatchKey(key: string, opts: Partial<KeyboardEventInit> = {}) {
+      const active = document.activeElement as HTMLElement | null
+      const target = active?.hasAttribute('data-grid-row') ? active : container
+      const event = new KeyboardEvent('keydown', { key, bubbles: true, ...opts })
+      target.dispatchEvent(event)
+    }
+
     it('keyboard ArrowDown moves focus down', () => {
       const { result } = renderHook(() => useGridNavigation({ rows: 3, cols: 3 }))
 
@@ -111,10 +119,7 @@ describe('useGridNavigation', () => {
         result.current.focusCell(0, 0)
       })
 
-      act(() => {
-        const event = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })
-        container.dispatchEvent(event)
-      })
+      act(() => dispatchKey('ArrowDown'))
 
       expect(result.current.activeCell).toEqual({ row: 1, col: 0 })
     })
@@ -131,10 +136,7 @@ describe('useGridNavigation', () => {
         result.current.focusCell(0, 0)
       })
 
-      act(() => {
-        const event = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })
-        container.dispatchEvent(event)
-      })
+      act(() => dispatchKey('ArrowRight'))
 
       expect(result.current.activeCell).toEqual({ row: 0, col: 1 })
     })
@@ -154,17 +156,11 @@ describe('useGridNavigation', () => {
       expect(result.current.editing).toBe(false)
 
       // Enter -> editing
-      act(() => {
-        const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })
-        container.dispatchEvent(event)
-      })
+      act(() => dispatchKey('Enter'))
       expect(result.current.editing).toBe(true)
 
       // Enter again -> move down
-      act(() => {
-        const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })
-        container.dispatchEvent(event)
-      })
+      act(() => dispatchKey('Enter'))
       expect(result.current.activeCell).toEqual({ row: 1, col: 0 })
     })
 
@@ -181,10 +177,7 @@ describe('useGridNavigation', () => {
       })
       expect(result.current.editing).toBe(true)
 
-      act(() => {
-        const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })
-        container.dispatchEvent(event)
-      })
+      act(() => dispatchKey('Escape'))
       expect(result.current.editing).toBe(false)
     })
 
@@ -201,17 +194,11 @@ describe('useGridNavigation', () => {
       })
 
       // Tab -> right
-      act(() => {
-        const event = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true })
-        container.dispatchEvent(event)
-      })
+      act(() => dispatchKey('Tab'))
       expect(result.current.activeCell).toEqual({ row: 0, col: 2 })
 
       // Shift+Tab -> left
-      act(() => {
-        const event = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true })
-        container.dispatchEvent(event)
-      })
+      act(() => dispatchKey('Tab', { shiftKey: true }))
       expect(result.current.activeCell).toEqual({ row: 0, col: 1 })
     })
 
@@ -227,10 +214,7 @@ describe('useGridNavigation', () => {
         result.current.focusCell(0, 2)
       })
 
-      act(() => {
-        const event = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true })
-        container.dispatchEvent(event)
-      })
+      act(() => dispatchKey('Tab'))
       expect(result.current.activeCell).toEqual({ row: 1, col: 0 })
     })
 
@@ -247,10 +231,7 @@ describe('useGridNavigation', () => {
       })
       expect(result.current.editing).toBe(false)
 
-      act(() => {
-        const event = new KeyboardEvent('keydown', { key: '5', bubbles: true })
-        container.dispatchEvent(event)
-      })
+      act(() => dispatchKey('5'))
       expect(result.current.editing).toBe(true)
     })
 
@@ -266,10 +247,7 @@ describe('useGridNavigation', () => {
         result.current.focusCell(2, 0)
       })
 
-      act(() => {
-        const event = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })
-        container.dispatchEvent(event)
-      })
+      act(() => dispatchKey('ArrowDown'))
       expect(result.current.activeCell).toEqual({ row: 2, col: 0 })
     })
   })
