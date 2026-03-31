@@ -1,7 +1,10 @@
 ; =============================================================================
-; Valutaváltó Pénztár — Egyfájlos Windows Telepítő v6
+; Valutaváltó Pénztár — Egyfájlos Windows Telepítő v6.1
 ; NSIS 3.x Script — Production Quality
 ; =============================================================================
+; v6.1: Eszter review fixes: E6-01 IfSilent +2→+1 (fatal abort in silent mode),
+;       E6-02 config dir ACL hardening (inheritance removed, explicit grants),
+;       E6-03 uninstaller process-death wait loop, E6-04 firewall remoteip=127.0.0.1
 ; v6: Nóra dependency research alapján:
 ;     - PostgreSQL 16 → 17 upgrade
 ;     - Windows Firewall szabályok (8080, 54320)
@@ -324,12 +327,13 @@ Section "Telepítés" SecInstall
     ${WordFind} $R0 "$\r$\n" "+4" $8
 
     ; F3-C: Abort if secret generation failed (no weak fallback)
+    ; E6-01 fix: IfSilent +1 (only skip MessageBox, NOT Abort)
     ${If} $1 != 0
     ${OrIf} $2 == ""
     ${OrIf} $4 == ""
     ${OrIf} $6 == ""
     ${OrIf} $8 == ""
-        IfSilent +2
+        IfSilent +1
         MessageBox MB_OK|MB_ICONSTOP "HIBA: A biztonsági kulcsok generálása sikertelen (PowerShell).$\r$\nEllenőrizze, hogy a PowerShell elérhető-e.$\r$\nHibakód: $1"
         Abort
     ${EndIf}
@@ -391,8 +395,9 @@ Section "Telepítés" SecInstall
         nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\initdb.exe" -D "$DATA_DIR\pgsql\data" -U postgres -E UTF8 --locale=C --auth=trust'
         Pop $0
         Pop $1  ; stdout (stack balance)
+        ; E6-01 fix: IfSilent +1
         ${If} $0 != 0
-            IfSilent +2
+            IfSilent +1
             MessageBox MB_OK|MB_ICONSTOP "HIBA: Az adatbázis inicializálás sikertelen (initdb).$\r$\nHibakód: $0$\r$\n$\r$\nEllenőrizze, hogy van-e elég hely a lemezen."
             Abort
         ${EndIf}
@@ -414,8 +419,9 @@ Section "Telepítés" SecInstall
         nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\pg_ctl.exe" start -D "$DATA_DIR\pgsql\data" -l "$DATA_DIR\pgsql\log\postgresql.log" -w -t 30'
         Pop $0
         Pop $1  ; stdout (stack balance)
+        ; E6-01 fix: IfSilent +1
         ${If} $0 != 0
-            IfSilent +2
+            IfSilent +1
             MessageBox MB_OK|MB_ICONSTOP "HIBA: PostgreSQL nem indult el.$\r$\nEllenőrizze a log fájlt:$\r$\n$DATA_DIR\pgsql\log\postgresql.log"
             Abort
         ${EndIf}
@@ -425,8 +431,9 @@ Section "Telepítés" SecInstall
         StrCpy $R0 0
         pg_wait_loop:
             IntOp $R0 $R0 + 1
+            ; E6-01 fix: IfSilent +1 (pg_ctl stop + Abort always runs)
             ${If} $R0 > 20
-                IfSilent +3
+                IfSilent +1
                 MessageBox MB_OK|MB_ICONSTOP "HIBA: PostgreSQL nem válaszol 20 másodpercen belül."
                 nsExec::ExecToLog '"$DATA_DIR\pgsql\bin\pg_ctl.exe" stop -D "$DATA_DIR\pgsql\data" -m fast -w -t 10'
                 Abort
@@ -485,8 +492,9 @@ Section "Telepítés" SecInstall
         Pop $1
         Delete "$DATA_DIR\scripts\verify-user.sql"
         StrCpy $2 $1 1
+        ; E6-01 fix: IfSilent +1
         ${If} $2 != "1"
-            IfSilent +2
+            IfSilent +1
             MessageBox MB_OK|MB_ICONSTOP "HIBA: A valuta_user adatbázis felhasználó létrehozása sikertelen.$\r$\nA backend szerver nem fog tudni csatlakozni.$\r$\n$\r$\nEllenőrizze a PostgreSQL logot:$\r$\n$DATA_DIR\pgsql\log\postgresql.log"
             Abort
         ${EndIf}
@@ -620,8 +628,13 @@ Section "Telepítés" SecInstall
 
     ; Grant NetworkService
     nsExec::ExecToLog 'icacls "$DATA_DIR\backend" /grant "NT AUTHORITY\NetworkService":(OI)(CI)F /T /Q'
+    ; E6-02 fix: Config dir ACL hardening — remove inheritance, explicit grants only
+    ; Secrets (jwt.secret, db password, encryption key) must not be readable by regular users
+    nsExec::ExecToLog 'icacls "$DATA_DIR\config" /inheritance:r /T /Q'
+    nsExec::ExecToLog 'icacls "$DATA_DIR\config" /grant:r "NT AUTHORITY\SYSTEM":(OI)(CI)F /T /Q'
+    nsExec::ExecToLog 'icacls "$DATA_DIR\config" /grant:r "BUILTIN\Administrators":(OI)(CI)F /T /Q'
+    nsExec::ExecToLog 'icacls "$DATA_DIR\config" /grant:r "NT AUTHORITY\NetworkService":(OI)(CI)RX /T /Q'
     ; G2-05 fix: RX (not just R) — Java needs eXecute to traverse directories
-    nsExec::ExecToLog 'icacls "$DATA_DIR\config" /grant "NT AUTHORITY\NetworkService":(OI)(CI)RX /T /Q'
     nsExec::ExecToLog 'icacls "$DATA_DIR\jre" /grant "NT AUTHORITY\NetworkService":(OI)(CI)RX /T /Q'
 
     ; =====================================================================
@@ -633,9 +646,9 @@ Section "Telepítés" SecInstall
     ; Előbb töröljük a régieket (idempotens — ha nincs, nem hiba)
     nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Valutavalto-Backend"'
     nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Valutavalto-PostgreSQL"'
-    ; Új szabályok (TCP, bármely profil)
-    nsExec::ExecToLog 'netsh advfirewall firewall add rule name="Valutavalto-Backend" dir=in action=allow protocol=TCP localport=8080 profile=any'
-    nsExec::ExecToLog 'netsh advfirewall firewall add rule name="Valutavalto-PostgreSQL" dir=in action=allow protocol=TCP localport=54320 profile=any'
+    ; E6-04 fix: remoteip=127.0.0.1 — localhost-only portok, ne legyenek network-accessible
+    nsExec::ExecToLog 'netsh advfirewall firewall add rule name="Valutavalto-Backend" dir=in action=allow protocol=TCP localport=8080 remoteip=127.0.0.1 profile=any'
+    nsExec::ExecToLog 'netsh advfirewall firewall add rule name="Valutavalto-PostgreSQL" dir=in action=allow protocol=TCP localport=54320 remoteip=127.0.0.1 profile=any'
     DetailPrint "  Firewall szabályok OK"
 
     ; =====================================================================
@@ -786,7 +799,28 @@ Section "un.Eltávolítás"
     ${If} $0 == 0
         nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process java -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
     ${EndIf}
-    Sleep 2000
+
+    ; E6-03 fix: Wait for process death before removing services (max 10s)
+    DetailPrint "  Várakozás a folyamatok leállására..."
+    StrCpy $R0 0
+    un_kill_wait:
+        IntOp $R0 $R0 + 1
+        ${If} $R0 > 10
+            DetailPrint "  Timeout — folytatás"
+            Goto un_kill_done
+        ${EndIf}
+        Sleep 1000
+        nsProcess::_FindProcess "postgres.exe"
+        Pop $0
+        ${If} $0 == 0
+            Goto un_kill_wait
+        ${EndIf}
+        nsProcess::_FindProcess "java.exe"
+        Pop $0
+        ${If} $0 == 0
+            Goto un_kill_wait
+        ${EndIf}
+    un_kill_done:
 
     DetailPrint "Szolgáltatások eltávolítása..."
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" remove BestChange-Backend confirm'
