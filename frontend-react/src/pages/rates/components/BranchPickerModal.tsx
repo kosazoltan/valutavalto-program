@@ -1,5 +1,5 @@
 import { X } from 'lucide-react'
-import type { BranchListItem } from '../../../services/api'
+import type { BranchListItem } from '../../../services/api/index'
 
 interface BranchPickerModalProps {
   open: boolean

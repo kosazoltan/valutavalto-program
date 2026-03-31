@@ -1,7 +1,7 @@
 import { AlertTriangle } from 'lucide-react'
 import { formatDecimal } from '../../../utils/numberFormat'
 import { useGridNavigation } from '../../../hooks/useGridNavigation'
-import type { WorkgroupDetailDTO } from '../../../services/api'
+import type { WorkgroupDetailDTO } from '../../../services/api/index'
 import { fmtAmount, parseNum, type EditableRate } from '../types'
 
 const EDITABLE_FIELDS = ['buyRate', 'sellRate', 'limit1BuyRate', 'limit1SellRate', 'limit2BuyRate', 'limit2SellRate', 'limit3BuyRate', 'limit3SellRate'] as const

@@ -1,68 +1,63 @@
-import { useState, useCallback, useRef } from 'react'
+import { useCallback, useRef, useState } from 'react'
 
-interface UndoStackOptions {
-  /** Maximum number of undo states to keep */
-  maxHistory?: number
+export interface UndoEntry<T> {
+  /** Snapshot before the change */
+  prev: T
+  /** Snapshot after the change */
+  next: T
+}
+
+interface UseUndoStackOptions {
+  maxSize?: number
 }
 
 /**
- * Application-level undo/redo stack for any serializable state.
+ * General-purpose undo/redo stack.
  *
  * Usage:
- *   const { state, setState, undo, redo, canUndo, canRedo, checkpoint } = useUndoStack(initialState)
- *
- * - Call `checkpoint()` before a batch of changes to create an undo point
- * - Ctrl+Z triggers undo, Ctrl+Y / Ctrl+Shift+Z triggers redo
+ *   const { push, undo, redo, canUndo, canRedo } = useUndoStack<MyState>()
+ *   // On change: push({ prev: oldState, next: newState })
+ *   // Ctrl+Z: undo() → returns prev snapshot or null
+ *   // Ctrl+Shift+Z: redo() → returns next snapshot or null
  */
-export function useUndoStack<T>(initialState: T, options?: UndoStackOptions) {
-  const maxHistory = options?.maxHistory ?? 50
-  const [state, setStateRaw] = useState<T>(initialState)
-  const undoStack = useRef<T[]>([])
-  const redoStack = useRef<T[]>([])
-  const lastCheckpoint = useRef<T>(initialState)
+export function useUndoStack<T>({ maxSize = 50 }: UseUndoStackOptions = {}) {
+  const undoRef = useRef<UndoEntry<T>[]>([])
+  const redoRef = useRef<UndoEntry<T>[]>([])
+  const [version, setVersion] = useState(0)
 
-  /** Save a checkpoint (snapshot current state onto undo stack) */
-  const checkpoint = useCallback(() => {
-    undoStack.current.push(lastCheckpoint.current)
-    if (undoStack.current.length > maxHistory) {
-      undoStack.current.shift()
+  const push = useCallback((entry: UndoEntry<T>) => {
+    undoRef.current.push(entry)
+    if (undoRef.current.length > maxSize) {
+      undoRef.current.shift()
     }
-    redoStack.current = []
-    lastCheckpoint.current = state
-  }, [state, maxHistory])
+    // Any new change clears the redo stack
+    redoRef.current = []
+    setVersion(v => v + 1)
+  }, [maxSize])
 
-  /** Set state (does NOT auto-create checkpoint — call checkpoint() explicitly before batch changes) */
-  const setState = useCallback((newState: T | ((prev: T) => T)) => {
-    setStateRaw(prev => {
-      const next = typeof newState === 'function' ? (newState as (prev: T) => T)(prev) : newState
-      lastCheckpoint.current = next
-      return next
-    })
+  const undo = useCallback((): T | null => {
+    const entry = undoRef.current.pop()
+    if (!entry) return null
+    redoRef.current.push(entry)
+    setVersion(v => v + 1)
+    return entry.prev
   }, [])
 
-  const undo = useCallback(() => {
-    if (undoStack.current.length === 0) return
-    const prev = undoStack.current.pop()!
-    redoStack.current.push(lastCheckpoint.current)
-    lastCheckpoint.current = prev
-    setStateRaw(prev)
-  }, [])
-
-  const redo = useCallback(() => {
-    if (redoStack.current.length === 0) return
-    const next = redoStack.current.pop()!
-    undoStack.current.push(lastCheckpoint.current)
-    lastCheckpoint.current = next
-    setStateRaw(next)
+  const redo = useCallback((): T | null => {
+    const entry = redoRef.current.pop()
+    if (!entry) return null
+    undoRef.current.push(entry)
+    setVersion(v => v + 1)
+    return entry.next
   }, [])
 
   return {
-    state,
-    setState,
+    push,
     undo,
     redo,
-    checkpoint,
-    canUndo: undoStack.current.length > 0,
-    canRedo: redoStack.current.length > 0,
+    canUndo: undoRef.current.length > 0,
+    canRedo: redoRef.current.length > 0,
+    /** Changes on each push/undo/redo — useful for reactive UI */
+    version,
   }
 }
