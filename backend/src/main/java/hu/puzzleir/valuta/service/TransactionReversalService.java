@@ -147,6 +147,8 @@ public class TransactionReversalService {
         Long currencyId = original.getCurrency().getId();
         if (original.getTransactionType() == TransactionType.BUY) {
             // Eredeti vetel visszavonasa: valuta -, HUF +
+            // Stock validation: van-e eleg valuta a kasszaban a visszavethez
+            helper.validateCurrencyStock(branchId, currencyId, original.getCurrencyAmount());
             helper.updateCashBalance(branchId, currencyId, original.getCurrencyAmount().negate(), false);
             helper.updateCashBalance(branchId, helper.getHufCurrencyId(), original.getHufAmount(), true);
         } else if (original.getTransactionType() == TransactionType.SELL) {
@@ -269,6 +271,8 @@ public class TransactionReversalService {
         Long currencyId = original.getCurrency().getId();
         if (original.getTransactionType() == TransactionType.BUY) {
             // Eredeti vetel reszleges visszavonasa: valuta -, HUF +
+            // Stock validation: van-e eleg valuta a kasszaban a reszleges visszavethez
+            helper.validateCurrencyStock(branchId, currencyId, refundCurrency);
             helper.updateCashBalance(branchId, currencyId, refundCurrency.negate(), false);
             helper.updateCashBalance(branchId, helper.getHufCurrencyId(), refundHuf, true);
         } else if (original.getTransactionType() == TransactionType.SELL) {
