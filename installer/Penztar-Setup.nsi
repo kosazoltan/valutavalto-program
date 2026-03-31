@@ -517,24 +517,24 @@ Section "Telepítés" SecInstall
         FileWrite $0 "SELECT CASE WHEN EXISTS (SELECT 1 FROM pg_roles WHERE rolname='valuta_user') THEN 'ROLE_OK' ELSE 'ROLE_MISSING' END;$\r$\n"
         FileClose $0
         nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -t -A -f "$DATA_DIR\scripts\verify-user.sql"'
-        Pop $0
-        Pop $1
-        ; S6-10 fix: Secure wipe before delete
+        Pop $R1
+        Pop $R2
+        ; S6-10 fix: Secure wipe before delete (uses $0 as file handle — does NOT touch R1/R2)
         FileOpen $0 "$DATA_DIR\scripts\verify-user.sql" w
         FileWrite $0 "-- WIPED --$\r$\n"
         FileClose $0
         Delete "$DATA_DIR\scripts\verify-user.sql"
 
-        DetailPrint "  Verify raw output: [$1], exit code: $0"
-        ${If} $0 == 0
-            ${If} $1 == "ROLE_OK"
+        DetailPrint "  Verify raw output: [$R2], exit code: $R1"
+        ${If} $R1 == 0
+            ${If} $R2 == "ROLE_OK"
                 Goto verify_user_ok
             ${EndIf}
-            StrCpy $2 $1 7
+            StrCpy $2 $R2 7
             ${If} $2 == "ROLE_OK"
                 Goto verify_user_ok
             ${EndIf}
-            StrCpy $2 $1 7 1
+            StrCpy $2 $R2 7 1
             ${If} $2 == "ROLE_OK"
                 Goto verify_user_ok
             ${EndIf}
@@ -552,7 +552,7 @@ Section "Telepítés" SecInstall
             RMDir /r "$INSTDIR"
         ${EndIf}
         IfSilent +1
-        MessageBox MB_OK|MB_ICONSTOP "HIBA: A valuta_user adatbázis felhasználó létrehozása/ellenőrzése sikertelen.$\r$\nA telepítő rollbackelte a félkész állapotot.$\r$\n$\r$\nVerify output: [$1]$\r$\nEllenőrizze a PostgreSQL logot:$\r$\n$DATA_DIR\pgsql\log\postgresql.log"
+        MessageBox MB_OK|MB_ICONSTOP "HIBA: A valuta_user adatbázis felhasználó létrehozása/ellenőrzése sikertelen.$\r$\nA telepítő rollbackelte a félkész állapotot.$\r$\n$\r$\nVerify output: [$R2]$\r$\nEllenőrizze a PostgreSQL logot:$\r$\n$DATA_DIR\pgsql\log\postgresql.log"
         Abort
         verify_user_ok:
         DetailPrint "  valuta_user létrehozva és ellenőrizve!"
