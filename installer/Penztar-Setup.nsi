@@ -463,13 +463,30 @@ Section "Telepítés" SecInstall
             DetailPrint "  FIGYELMEZTETÉS: Adatbázis már létezhet (kód: $0)"
         ${EndIf}
 
-        ; Create user
+        ; Create user — createuser CLI first, then SQL fallback
         DetailPrint "  Felhasználó létrehozása: valuta_user"
         nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\createuser.exe" -p 54320 -U postgres --no-superuser --no-createdb --no-createrole valuta_user'
         Pop $0
         Pop $1  ; stdout
         ${If} $0 != 0
-            DetailPrint "  createuser kód: $0 (user már létezhet — OK)"
+            DetailPrint "  createuser kód: $0 — SQL fallback..."
+            ; SQL fallback: CREATE ROLE IF NOT EXISTS (PG 16+: DO block)
+            FileOpen $0 "$DATA_DIR\scripts\create-user-fallback.sql" w
+            FileWrite $0 "DO $$$$ BEGIN$\r$\n"
+            FileWrite $0 "  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'valuta_user') THEN$\r$\n"
+            FileWrite $0 "    CREATE ROLE valuta_user LOGIN;$\r$\n"
+            FileWrite $0 "  END IF;$\r$\n"
+            FileWrite $0 "END $$$$;$\r$\n"
+            FileClose $0
+            nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -f "$DATA_DIR\scripts\create-user-fallback.sql"'
+            Pop $0
+            Pop $1
+            DetailPrint "  SQL fallback kód: $0"
+            ; S6-10: secure wipe
+            FileOpen $0 "$DATA_DIR\scripts\create-user-fallback.sql" w
+            FileWrite $0 "-- WIPED --$\r$\n"
+            FileClose $0
+            Delete "$DATA_DIR\scripts\create-user-fallback.sql"
         ${EndIf}
 
         ; Set password + grants (F3-A: random password from $8)
@@ -493,7 +510,7 @@ Section "Telepítés" SecInstall
         FileClose $0
         Delete "$DATA_DIR\scripts\setup-user.sql"
 
-        ; Verify user
+        ; Verify user — robust: check output contains "1", not just first char
         FileOpen $0 "$DATA_DIR\scripts\verify-user.sql" w
         FileWrite $0 "SELECT count(*) FROM pg_roles WHERE rolname='valuta_user';$\r$\n"
         FileClose $0
@@ -505,13 +522,38 @@ Section "Telepítés" SecInstall
         FileWrite $0 "-- WIPED --$\r$\n"
         FileClose $0
         Delete "$DATA_DIR\scripts\verify-user.sql"
+
+        ; Robust verify: trim output then check first char
+        ; $1 may contain whitespace/newlines from psql output
+        DetailPrint "  Verify raw output: [$1], exit code: $0"
         StrCpy $2 $1 1
-        ; E6-01 fix: IfSilent +1
-        ${If} $2 != "1"
-            IfSilent +1
-            MessageBox MB_OK|MB_ICONSTOP "HIBA: A valuta_user adatbázis felhasználó létrehozása sikertelen.$\r$\nA backend szerver nem fog tudni csatlakozni.$\r$\n$\r$\nEllenőrizze a PostgreSQL logot:$\r$\n$DATA_DIR\pgsql\log\postgresql.log"
-            Abort
+        ${If} $2 == "1"
+            Goto verify_user_ok
         ${EndIf}
+        ; Maybe whitespace prefix — try second char
+        StrCpy $2 $1 1 1
+        ${If} $2 == "1"
+            Goto verify_user_ok
+        ${EndIf}
+        ; Retry with inline -c (fallback for file-based psql issues)
+        DetailPrint "  Verify retry (inline)..."
+        nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -t -A -c "SELECT count(*) FROM pg_roles WHERE rolname=$$valuta_user$$"'
+        Pop $0
+        Pop $1
+        DetailPrint "  Retry output: [$1], exit code: $0"
+        StrCpy $2 $1 1
+        ${If} $2 == "1"
+            Goto verify_user_ok
+        ${EndIf}
+        StrCpy $2 $1 1 1
+        ${If} $2 == "1"
+            Goto verify_user_ok
+        ${EndIf}
+        ; All retries failed
+        IfSilent +1
+        MessageBox MB_OK|MB_ICONSTOP "HIBA: A valuta_user adatbázis felhasználó létrehozása sikertelen.$\r$\nVerify output: [$1]$\r$\nA backend szerver nem fog tudni csatlakozni.$\r$\n$\r$\nEllenőrizze a PostgreSQL logot:$\r$\n$DATA_DIR\pgsql\log\postgresql.log"
+        Abort
+        verify_user_ok:
         DetailPrint "  valuta_user létrehozva és ellenőrizve!"
 
         ; Seed data
@@ -656,7 +698,8 @@ Section "Telepítés" SecInstall
     ; Secrets (jwt.secret, db password, encryption key) must not be readable by regular users
     nsExec::ExecToLog 'icacls "$DATA_DIR\config" /inheritance:r /T /Q'
     nsExec::ExecToLog 'icacls "$DATA_DIR\config" /grant:r "NT AUTHORITY\SYSTEM":(OI)(CI)F /T /Q'
-    nsExec::ExecToLog 'icacls "$DATA_DIR\config" /grant:r "BUILTIN\Administrators":(OI)(CI)F /T /Q'
+    ; SID S-1-5-32-544 = Administrators (locale-independent, works on Hungarian Windows)
+    nsExec::ExecToLog 'icacls "$DATA_DIR\config" /grant:r *S-1-5-32-544:(OI)(CI)F /T /Q'
     nsExec::ExecToLog 'icacls "$DATA_DIR\config" /grant:r "NT AUTHORITY\NetworkService":(OI)(CI)RX /T /Q'
     ; G2-05 fix: RX (not just R) — Java needs eXecute to traverse directories
     nsExec::ExecToLog 'icacls "$DATA_DIR\jre" /grant "NT AUTHORITY\NetworkService":(OI)(CI)RX /T /Q'
