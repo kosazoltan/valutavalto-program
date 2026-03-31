@@ -1,5 +1,6 @@
 // dotenv only in development — not bundled in production asar
-try { await import('dotenv/config'); } catch { /* production: dotenv not available, safe to skip */ }
+// NOTE: Cannot use top-level await here — CJS output format (vite-plugin-electron/rolldown)
+import('dotenv/config').catch(() => { /* production: dotenv not available, safe to skip */ });
 import { app, BrowserWindow, ipcMain, dialog, protocol, net, safeStorage } from 'electron';
 import log from 'electron-log/main';
 import path from 'node:path';

@@ -2,6 +2,8 @@ let electron = require("electron");
 //#region electron/preload.ts
 electron.contextBridge.exposeInMainWorld("electronAPI", {
 	printReceipt: (data) => electron.ipcRenderer.invoke("print-receipt", data),
+	listSerialPorts: () => electron.ipcRenderer.invoke("list-serial-ports"),
+	openCashDrawer: () => electron.ipcRenderer.invoke("open-cash-drawer"),
 	getConfig: (key) => electron.ipcRenderer.invoke("get-config", key),
 	setConfig: (key, value) => electron.ipcRenderer.invoke("set-config", key, value),
 	deleteConfig: (key) => electron.ipcRenderer.invoke("delete-config", key),

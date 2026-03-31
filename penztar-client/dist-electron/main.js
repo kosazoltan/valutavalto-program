@@ -1254,24 +1254,7 @@ function getCachedRates() {
 */
 var ESC = "\x1B";
 var GS = "";
-var CMD = {
-	INIT: `${ESC}@`,
-	ALIGN_CENTER: `${ESC}a\x01`,
-	ALIGN_LEFT: `${ESC}a\x00`,
-	BOLD_ON: `${ESC}E\x01`,
-	BOLD_OFF: `${ESC}E\x00`,
-	DOUBLE_WIDTH: `${GS}!\x10`,
-	DOUBLE_HEIGHT: `${GS}!\x01`,
-	DOUBLE_BOTH: `${GS}!\x11`,
-	NORMAL_SIZE: `${GS}!\x00`,
-	UNDERLINE_ON: `${ESC}-\x01`,
-	UNDERLINE_OFF: `${ESC}-\x00`,
-	CUT_PAPER: `${GS}V\x00`,
-	PARTIAL_CUT: `${GS}V\x01`,
-	FEED_LINES: (n) => `${ESC}d${String.fromCharCode(n)}`,
-	LINE: "─".repeat(42),
-	DOUBLE_LINE: "═".repeat(42)
-};
+`${ESC}`, `${ESC}`, `${ESC}`, `${ESC}`, `${ESC}`, `${GS}`, `${GS}`, `${GS}`, `${GS}`, `${ESC}`, `${ESC}`, `${GS}`, `${GS}`, "─".repeat(42), "═".repeat(42);
 var COMPANIES = {
 	BEST_CHANGE: {
 		name: "BEST CHANGE",
@@ -1300,256 +1283,6 @@ var JOB_TYPE_LABELS = {
 	vault_closing: "ÉRTÉKTÁRI ZÁRÁS",
 	kktg_transfer: "KKTG ÁTADÁS-ÁTVÉTEL"
 };
-/**
-* ESC/POS bizonylat generálása stringként.
-* Közvetlen USB hőnyomtató esetén ezt közvetlenül a port-ra kell küldeni.
-* Jelenleg a printToThermalUsb() stub használja előkészítésre.
-*/
-function generateReceiptContent(data) {
-	const company = COMPANIES[data.companyType] ?? COMPANIES["BEST_CHANGE"];
-	const lines = [];
-	lines.push(CMD.INIT);
-	lines.push(CMD.ALIGN_CENTER);
-	lines.push(CMD.BOLD_ON);
-	lines.push(CMD.DOUBLE_BOTH);
-	lines.push(company.name);
-	lines.push(CMD.NORMAL_SIZE);
-	lines.push(company.fullName);
-	lines.push(CMD.BOLD_OFF);
-	lines.push(company.address);
-	const phone = data.companyPhone || company.phone;
-	if (phone) lines.push(`Tel: ${phone}`);
-	lines.push(`Adószám: ${data.companyTaxNumber || company.taxNumber}`);
-	lines.push("");
-	lines.push(CMD.DOUBLE_LINE);
-	lines.push("");
-	lines.push(CMD.BOLD_ON);
-	lines.push(CMD.DOUBLE_HEIGHT);
-	lines.push(JOB_TYPE_LABELS[data.type]);
-	lines.push(CMD.NORMAL_SIZE);
-	lines.push(CMD.BOLD_OFF);
-	lines.push("");
-	lines.push(CMD.ALIGN_LEFT);
-	lines.push(`Bizonylat: ${data.receiptNumber}`);
-	lines.push(`Dátum:     ${data.date}  ${data.time}`);
-	lines.push(`Pénztár:   ${data.branchCode}`);
-	lines.push(`Pénztáros: ${data.cashierName}`);
-	lines.push("");
-	lines.push(CMD.LINE);
-	if (data.type === "sell" || data.type === "buy") lines.push(...generateTransactionLines(data));
-	else if (data.type === "conversion") lines.push(...generateConversionLines(data));
-	else if (data.type === "transfer") lines.push(...generateTransferLines(data));
-	else if (data.type === "storno") lines.push(...generateStornoLines(data));
-	else if (data.type === "closing") lines.push(...generateClosingLines(data));
-	else if (data.type === "handling_fee") lines.push(...generateHandlingFeeLines(data));
-	else if (data.type === "cash_status") lines.push(...generateCashStatusLines(data));
-	else if (data.type === "vault_closing") lines.push(...generateVaultClosingLines(data));
-	else if (data.type === "kktg_transfer") lines.push(...generateKktgTransferLines(data));
-	if (data.customerName) {
-		lines.push("");
-		lines.push(CMD.LINE);
-		lines.push(CMD.BOLD_ON);
-		lines.push("ÜGYFÉL ADATOK:");
-		lines.push(CMD.BOLD_OFF);
-		lines.push(`Név:        ${data.customerName}`);
-		if (data.customerBirthPlace) lines.push(`Szül.hely:  ${data.customerBirthPlace}`);
-		if (data.customerBirthDate) lines.push(`Szül.idő:   ${data.customerBirthDate}`);
-		if (data.customerMotherName) lines.push(`Anyja neve: ${data.customerMotherName}`);
-		if (data.customerAddress) lines.push(`Lakcím:     ${data.customerAddress}`);
-		if (data.customerDocType) lines.push(`Okmány:     ${data.customerDocType}`);
-		if (data.customerDocNumber) lines.push(`Okmányszám: ${data.customerDocNumber}`);
-		if (data.customerNationality) lines.push(`Államp.:    ${data.customerNationality}`);
-	}
-	if (data.receiptNumber && (data.type === "sell" || data.type === "buy" || data.type === "conversion")) {
-		lines.push("");
-		lines.push(CMD.LINE);
-		lines.push(CMD.ALIGN_CENTER);
-		lines.push("");
-		lines.push(CMD.BOLD_ON);
-		lines.push("QR KÓD:");
-		lines.push(CMD.BOLD_OFF);
-		const qrContent = [
-			data.receiptNumber,
-			data.date,
-			(data.roundedHufAmount ?? data.hufAmount ?? 0).toString(),
-			data.currencyCode ?? "HUF",
-			data.companyTaxNumber || company.taxNumber,
-			data.branchCode
-		].join("|");
-		lines.push(`[QR:${qrContent}]`);
-		lines.push("");
-	}
-	lines.push("");
-	lines.push(CMD.LINE);
-	lines.push(CMD.ALIGN_LEFT);
-	lines.push("Szj 67.13.10.0");
-	lines.push("Az ÁFA alól mentes:");
-	lines.push("2007. évi CXVII tv. 85. § e)");
-	lines.push(CMD.LINE);
-	lines.push("");
-	lines.push(CMD.ALIGN_LEFT);
-	lines.push("...............    ...............");
-	lines.push("  Pénztáros            Ügyfél");
-	lines.push("");
-	lines.push(CMD.DOUBLE_LINE);
-	lines.push(CMD.ALIGN_CENTER);
-	lines.push("Köszönjük, hogy minket választott!");
-	lines.push("");
-	lines.push("A bizonylat a pénzmosás elleni");
-	lines.push("törvény alapján nem helyettesíti");
-	lines.push("a számlát.");
-	lines.push("");
-	lines.push(CMD.FEED_LINES(4));
-	lines.push(CMD.PARTIAL_CUT);
-	return lines.join("\n");
-}
-function generateTransactionLines(data) {
-	const lines = [];
-	const isSell = data.type === "sell";
-	lines.push("");
-	lines.push(CMD.BOLD_ON);
-	lines.push(isSell ? "Deviza eladás (HUF → valuta):" : "Deviza vásárlás (valuta → HUF):");
-	lines.push(CMD.BOLD_OFF);
-	lines.push("");
-	lines.push(`Valutanem:   ${data.currencyCode ?? "—"}`);
-	lines.push(`Összeg:      ${formatAmount(data.foreignAmount)} ${data.currencyCode ?? ""}`);
-	lines.push(`Árfolyam:    ${formatRate(data.rate)}`);
-	lines.push("");
-	lines.push(CMD.LINE);
-	lines.push(CMD.BOLD_ON);
-	lines.push(`HUF összeg:  ${formatAmount(data.hufAmount)} Ft`);
-	if (data.roundedHufAmount !== void 0 && data.roundingDiff !== void 0 && data.roundingDiff !== 0) {
-		lines.push(`Kerekítés:   ${formatAmount(data.roundingDiff)} Ft`);
-		lines.push(CMD.DOUBLE_HEIGHT);
-		lines.push(`FIZETENDŐ:   ${formatAmount(data.roundedHufAmount)} Ft`);
-		lines.push(CMD.NORMAL_SIZE);
-	} else {
-		lines.push(CMD.DOUBLE_HEIGHT);
-		lines.push(`FIZETENDŐ:   ${formatAmount(data.roundedHufAmount ?? data.hufAmount)} Ft`);
-		lines.push(CMD.NORMAL_SIZE);
-	}
-	lines.push(CMD.BOLD_OFF);
-	return lines;
-}
-function generateTransferLines(data) {
-	const lines = [];
-	lines.push("");
-	lines.push(CMD.BOLD_ON);
-	lines.push("Átadás-átvétel:");
-	lines.push(CMD.BOLD_OFF);
-	lines.push("");
-	lines.push(`Cél pénztár: ${data.transferTarget ?? "—"}`);
-	lines.push(`Valutanem:   ${data.currencyCode ?? "—"}`);
-	lines.push(`Összeg:      ${formatAmount(data.foreignAmount)} ${data.currencyCode ?? ""}`);
-	if (data.transferNote) lines.push(`Megjegyzés:  ${data.transferNote}`);
-	return lines;
-}
-function generateConversionLines(data) {
-	const lines = [];
-	lines.push("");
-	lines.push(CMD.BOLD_ON);
-	lines.push("Konverzió:");
-	lines.push(CMD.BOLD_OFF);
-	lines.push("");
-	lines.push(`Forrás:      ${formatAmount(data.sourceAmount)} ${data.sourceCurrencyCode ?? "—"}`);
-	lines.push(`Cél:         ${formatAmount(data.targetAmount)} ${data.targetCurrencyCode ?? "—"}`);
-	lines.push(`Köztes HUF:  ${formatAmount(data.hufAmount)} Ft`);
-	lines.push(`Árfolyam:    ${formatRate(data.rate)}`);
-	if (data.note) lines.push(`Megjegyzés:  ${data.note}`);
-	return lines;
-}
-function generateStornoLines(data) {
-	const lines = [];
-	lines.push("");
-	lines.push(CMD.BOLD_ON);
-	lines.push("STORNÓ:");
-	lines.push(CMD.BOLD_OFF);
-	lines.push("");
-	lines.push(`Eredeti biz.: ${data.originalReceiptNumber ?? "—"}`);
-	lines.push(`Valutanem:    ${data.currencyCode ?? "—"}`);
-	lines.push(`Összeg:       ${formatAmount(data.foreignAmount)} ${data.currencyCode ?? ""}`);
-	lines.push(`HUF összeg:   ${formatAmount(data.hufAmount)} Ft`);
-	if (data.stornoReason) {
-		lines.push("");
-		lines.push(`Indok: ${data.stornoReason}`);
-	}
-	return lines;
-}
-function generateClosingLines(data) {
-	const lines = [];
-	const summary = data.closingSummary;
-	if (!summary) {
-		lines.push("");
-		lines.push("(Nincs zárási adat)");
-		return lines;
-	}
-	lines.push("");
-	lines.push(CMD.BOLD_ON);
-	lines.push("FORGALMI ÖSSZESÍTŐ:");
-	lines.push(CMD.BOLD_OFF);
-	lines.push("");
-	lines.push(`Összes tranzakció: ${summary.totalTransactions}`);
-	lines.push(`  - Eladás:        ${summary.sellCount}`);
-	lines.push(`  - Vásárlás:      ${summary.buyCount}`);
-	lines.push("");
-	lines.push(`HUF forgalom:      ${formatAmount(summary.totalHufTurnover)} Ft`);
-	lines.push(`Díjbevétel:        ${formatAmount(summary.totalFees)} Ft`);
-	lines.push("");
-	lines.push(CMD.LINE);
-	lines.push(`Nyitó egyenleg:    ${formatAmount(summary.openingBalance)} Ft`);
-	lines.push(`Záró egyenleg:     ${formatAmount(summary.closingBalance)} Ft`);
-	if (summary.discrepancies.length > 0) {
-		lines.push("");
-		lines.push(CMD.BOLD_ON);
-		lines.push("ELTÉRÉSEK:");
-		lines.push(CMD.BOLD_OFF);
-		for (const d of summary.discrepancies) lines.push(`  ${d.currencyCode}: várt ${formatAmount(d.expected)} → tény ${formatAmount(d.actual)} (${formatAmount(d.difference)})`);
-	}
-	return lines;
-}
-function generateHandlingFeeLines(data) {
-	const lines = [];
-	lines.push("");
-	lines.push(CMD.BOLD_ON);
-	lines.push(`Kezelési díj: ${formatAmount(data.hufAmount)} Ft`);
-	lines.push(CMD.BOLD_OFF);
-	if (data.sealNumber) lines.push(`Plombaszám:    ${data.sealNumber}`);
-	if (data.originalReceiptNumber) lines.push(`Alapbizonylat: ${data.originalReceiptNumber}`);
-	return lines;
-}
-function generateCashStatusLines(data) {
-	const lines = [];
-	lines.push("");
-	lines.push(CMD.BOLD_ON);
-	lines.push("PÉNZTÁR ÁLLÁS");
-	lines.push(CMD.BOLD_OFF);
-	if (data.hufAmount !== void 0) lines.push(`HUF egyenleg:  ${formatAmount(data.hufAmount)} Ft`);
-	if (data.note) lines.push(`Megjegyzés:    ${data.note}`);
-	return lines;
-}
-function generateVaultClosingLines(data) {
-	const lines = [];
-	lines.push("");
-	lines.push(CMD.BOLD_ON);
-	lines.push("ÉRTÉKTÁRI ZÁRÁS");
-	lines.push(CMD.BOLD_OFF);
-	if (data.hufAmount !== void 0) lines.push(`Összeg:        ${formatAmount(data.hufAmount)} Ft`);
-	if (data.sealNumber) lines.push(`Plombaszám:    ${data.sealNumber}`);
-	if (data.note) lines.push(`Megjegyzés:    ${data.note}`);
-	return lines;
-}
-function generateKktgTransferLines(data) {
-	const lines = [];
-	lines.push("");
-	lines.push(CMD.BOLD_ON);
-	lines.push("KKTG ÁTADÁS-ÁTVÉTEL");
-	lines.push(CMD.BOLD_OFF);
-	if (data.hufAmount !== void 0) lines.push(`Összeg:        ${formatAmount(data.hufAmount)} Ft`);
-	if (data.sealNumber) lines.push(`Plombaszám:    ${data.sealNumber}`);
-	if (data.transferTarget) lines.push(`Cél iroda:     ${data.transferTarget}`);
-	if (data.note) lines.push(`Megjegyzés:    ${data.note}`);
-	return lines;
-}
 function formatAmount(value) {
 	if (value === void 0) return "—";
 	return value.toLocaleString("hu-HU", { maximumFractionDigits: 2 });
@@ -1637,7 +1370,7 @@ async function generateReceiptHtml(data) {
 		data.branchCode ?? ""
 	].join("|");
 	try {
-		const qrDataUrl = await (await Promise.resolve().then(() => /* @__PURE__ */ require_chunk.__toESM(require("./lib-D9GoHSn6.js").default))).toDataURL(qrText, {
+		const qrDataUrl = await (await Promise.resolve().then(() => /* @__PURE__ */ require_chunk.__toESM(require("./lib-C2WqpPNS.js").default))).toDataURL(qrText, {
 			width: 120,
 			margin: 1,
 			errorCorrectionLevel: "M"
@@ -1837,19 +1570,23 @@ function generateKktgTransferHtml(data) {
 function escHtml(str) {
 	return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
+/** Soros (COM) port konfig kulcs — ha be van állítva, a blokknyomtató soros porton nyomtat. */
+var SERIAL_PORT_CONFIG_KEY = "printer.serialPort";
 /**
-* Jövőbeli USB hőnyomtató integráció.
-* Közvetlen ESC/POS parancsokat küld a nyomtatónak USB-n vagy soros porton.
+* Soros blokknyomtató küldés (Star SP500 vagy kompatibilis).
+* Ha van konfigurált COM port, közvetlenül soros portra küldi az ESC/POS adatot.
 *
-* Aktiváláshoz szükséges:
-*   1. `node-thermal-printer` vagy `escpos` npm csomag telepítése
-*   2. USB HID driver (libusb) a célgépen
-*   3. A PRINTER_CONFIG_KEY konfigba a nyomtató USB vendor/product ID beállítása
-*
-* @returns true ha sikerült nyomtatni, false ha nincs USB nyomtató (fallback-re vált)
+* @returns true ha sikerült nyomtatni, false ha nincs soros nyomtató konfigurálva
 */
-async function printToThermalUsb(_escPosContent) {
-	return false;
+async function printToSerialPrinter(data, serialPort) {
+	if (!serialPort) return false;
+	try {
+		const { printReceiptToSerial } = await Promise.resolve().then(() => require("./serial-printer-SF75wf_9.js"));
+		return await printReceiptToSerial(data, { port: serialPort });
+	} catch (err) {
+		electron_log_main.default.warn("[PRINTER] Soros nyomtató hiba, fallback Electron print-re:", err);
+		return false;
+	}
 }
 /**
 * Nyomtatás Electron beépített webContents.print() API-n keresztül.
@@ -1911,14 +1648,17 @@ async function printViaElectron(html, printerName) {
 * @param printerName - Opcionális nyomtató név felülírás
 * @returns true ha a nyomtatás sikeresen elindult
 */
-async function printReceipt(data, printerName) {
+async function printReceipt(data, printerName, serialPort) {
 	try {
 		electron_log_main.default.info(`[PRINTER] Nyomtatás indítása: ${data.type} ${data.receiptNumber}`);
-		if (await printToThermalUsb(generateReceiptContent(data))) {
-			electron_log_main.default.info(`[PRINTER] USB hőnyomtató: OK — ${data.receiptNumber}`);
-			return true;
+		if (serialPort) {
+			if (await printToSerialPrinter(data, serialPort)) {
+				electron_log_main.default.info(`[PRINTER] Soros blokknyomtató (${serialPort}): OK — ${data.receiptNumber}`);
+				return true;
+			}
+			electron_log_main.default.warn(`[PRINTER] Soros port ${serialPort} sikertelen, Electron fallback...`);
 		}
-		electron_log_main.default.info("[PRINTER] USB nyomtató nem elérhető, Electron print fallback...");
+		electron_log_main.default.info("[PRINTER] Electron print fallback...");
 		const electronSuccess = await printViaElectron(await generateReceiptHtml(data), printerName);
 		if (electronSuccess) electron_log_main.default.info(`[PRINTER] Electron print: OK — ${data.receiptNumber}`);
 		else electron_log_main.default.error(`[PRINTER] Nyomtatás sikertelen — ${data.receiptNumber}. Ellenőrizd a nyomtató állapotát (offline / papír kifogyott).`);
@@ -3012,9 +2752,7 @@ function registerUpdaterHandlers() {
 }
 //#endregion
 //#region electron/main.ts
-try {
-	require("dotenv/config");
-} catch {}
+import("dotenv/config").catch(() => {});
 var isDev = !electron.app.isPackaged;
 electron.protocol.registerSchemesAsPrivileged([{
 	scheme: "app",
@@ -3084,9 +2822,29 @@ function createWindow() {
 }
 electron.ipcMain.handle("print-receipt", async (_event, dataJson) => {
 	try {
-		return await printReceipt(JSON.parse(dataJson));
+		return await printReceipt(JSON.parse(dataJson), getConfig("printer.deviceName") ?? void 0, getConfig("printer.serialPort") ?? void 0);
 	} catch (err) {
 		console.error("[IPC] print-receipt hiba:", err);
+		return false;
+	}
+});
+electron.ipcMain.handle("list-serial-ports", async () => {
+	try {
+		const { listSerialPorts } = await Promise.resolve().then(() => require("./serial-printer-SF75wf_9.js"));
+		return await listSerialPorts();
+	} catch (err) {
+		console.error("[IPC] list-serial-ports hiba:", err);
+		return [];
+	}
+});
+electron.ipcMain.handle("open-cash-drawer", async () => {
+	try {
+		const serialPort = getConfig(SERIAL_PORT_CONFIG_KEY);
+		if (!serialPort) return false;
+		const { openCashDrawer } = await Promise.resolve().then(() => require("./serial-printer-SF75wf_9.js"));
+		return await openCashDrawer({ port: serialPort });
+	} catch (err) {
+		console.error("[IPC] open-cash-drawer hiba:", err);
 		return false;
 	}
 });
