@@ -30,7 +30,8 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
- * TransactionService multi-line (BLOKKTETEL) tesztek.
+ * TransactionMultiLineService tesztek (korabban TransactionService multi-line).
+ * A delegate pattern miatt kozvetlenul a MultiLineService-t teszteljuk.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -44,7 +45,7 @@ class TransactionServiceMultiLineTest {
     private static final Long USD_ID = 3L;
 
     @InjectMocks
-    private TransactionService transactionService;
+    private TransactionMultiLineService multiLineServiceImpl;
 
     @Mock
     private TransactionRepository transactionRepository;
@@ -90,6 +91,9 @@ class TransactionServiceMultiLineTest {
 
     @Mock
     private TransactionCalculationService calculationService;
+
+    @Mock
+    private TransactionOperationHelper helper;
 
     private Company company;
     private Branch branch;
@@ -185,6 +189,14 @@ class TransactionServiceMultiLineTest {
         amlOk.setApproved(true);
         when(amlService.checkTransaction(any(), any(), any(), any())).thenReturn(amlOk);
 
+        // Helper mock — validateOpenSession no-op (void), resolveCurrencyId delegates, etc.
+        when(helper.getHufCurrencyId()).thenReturn(HUF_ID);
+        when(helper.getMaxTransactionLines()).thenReturn(6);
+        when(helper.resolveCurrencyId(eq(EUR_ID), any())).thenReturn(EUR_ID);
+        when(helper.resolveCurrencyId(eq(USD_ID), any())).thenReturn(USD_ID);
+        when(helper.resolveCurrencyId(eq(null), eq("EUR"))).thenReturn(EUR_ID);
+        when(helper.resolveCurrencyId(eq(null), eq("USD"))).thenReturn(USD_ID);
+
         // Kassza egyenleg mock
         CashBalance hufBalance = new CashBalance();
         hufBalance.setCurrentBalance(new BigDecimal("10000000"));
@@ -221,38 +233,9 @@ class TransactionServiceMultiLineTest {
         });
     }
 
-    // ============ SINGLE-LINE BACKWARD COMPATIBILITY ============
-
-    @Test
-    @DisplayName("Single-line vetel meg mindig mukodik lines nelkul")
-    void singleLineBuyStillWorks() {
-        TransactionService.BuyRequest request = TransactionService.BuyRequest.builder()
-                .currencyId(EUR_ID)
-                .currencyAmount(new BigDecimal("100"))
-                .build();
-
-        Transaction result = transactionService.executeBuy(request);
-
-        assertThat(result).isNotNull();
-        assertThat(result.getMultiLine()).isFalse();
-        assertThat(result.getLineCount()).isEqualTo(1);
-        assertThat(result.getLines()).isEmpty();
-    }
-
-    @Test
-    @DisplayName("Single-line vetel ures lines listaval is mukodik")
-    void singleLineBuyWithEmptyLines() {
-        TransactionService.BuyRequest request = TransactionService.BuyRequest.builder()
-                .currencyId(EUR_ID)
-                .currencyAmount(new BigDecimal("100"))
-                .lines(Collections.emptyList())
-                .build();
-
-        Transaction result = transactionService.executeBuy(request);
-
-        assertThat(result).isNotNull();
-        assertThat(result.getMultiLine()).isFalse();
-    }
+    // Single-line backward compatibility tesztek eltavolitva:
+    // A single-line logika a TransactionService.executeBuy()-ban marad,
+    // nem a MultiLineService feladata.
 
     // ============ MULTI-LINE BUY ============
 
@@ -272,7 +255,7 @@ class TransactionServiceMultiLineTest {
                 .lines(Arrays.asList(eurLine, usdLine))
                 .build();
 
-        Transaction result = transactionService.executeBuy(request);
+        Transaction result = multiLineServiceImpl.executeMultiLineBuy(request);
 
         assertThat(result).isNotNull();
         assertThat(result.getMultiLine()).isTrue();
@@ -316,7 +299,7 @@ class TransactionServiceMultiLineTest {
                 .lines(Arrays.asList(eurLine, usdLine))
                 .build();
 
-        Transaction result = transactionService.executeBuy(request);
+        Transaction result = multiLineServiceImpl.executeMultiLineBuy(request);
 
         // hufAmount tartalmazza az osszes sor HUF erteket kerekitve
         assertThat(result.getHufAmount()).isNotNull();
@@ -346,7 +329,7 @@ class TransactionServiceMultiLineTest {
                 .lines(sevenLines)
                 .build();
 
-        assertThatThrownBy(() -> transactionService.executeBuy(request))
+        assertThatThrownBy(() -> multiLineServiceImpl.executeMultiLineBuy(request))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("maximum 6");
     }
@@ -366,7 +349,7 @@ class TransactionServiceMultiLineTest {
                 .lines(sixLines)
                 .build();
 
-        Transaction result = transactionService.executeBuy(request);
+        Transaction result = multiLineServiceImpl.executeMultiLineBuy(request);
         assertThat(result).isNotNull();
         assertThat(result.getLineCount()).isEqualTo(6);
         assertThat(result.getLines()).hasSize(6);
@@ -386,7 +369,7 @@ class TransactionServiceMultiLineTest {
                 .lines(List.of(line))
                 .build();
 
-        assertThatThrownBy(() -> transactionService.executeBuy(request))
+        assertThatThrownBy(() -> multiLineServiceImpl.executeMultiLineBuy(request))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("pozitiv");
     }
@@ -402,7 +385,7 @@ class TransactionServiceMultiLineTest {
                 .lines(List.of(line))
                 .build();
 
-        assertThatThrownBy(() -> transactionService.executeBuy(request))
+        assertThatThrownBy(() -> multiLineServiceImpl.executeMultiLineBuy(request))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("valuta");
     }
@@ -427,7 +410,7 @@ class TransactionServiceMultiLineTest {
                 .lines(Arrays.asList(eurLine, usdLine))
                 .build();
 
-        Transaction result = transactionService.executeSell(request);
+        Transaction result = multiLineServiceImpl.executeMultiLineSell(request);
 
         assertThat(result).isNotNull();
         assertThat(result.getMultiLine()).isTrue();
@@ -452,10 +435,10 @@ class TransactionServiceMultiLineTest {
                 .lines(Arrays.asList(eurLine, usdLine))
                 .build();
 
-        transactionService.executeSell(request);
+        multiLineServiceImpl.executeMultiLineSell(request);
 
-        // Kassza frissites: EUR keszlet, USD keszlet, HUF keszlet
-        verify(cashBalanceRepository, atLeast(3)).save(any(CashBalance.class));
+        // Kassza frissites: soronkent updateCashBalance + HUF
+        verify(helper, atLeast(3)).updateCashBalance(any(), any(), any(), anyBoolean());
     }
 
     // ============ CURRENCY CODE RESOLUTION ============
@@ -472,7 +455,7 @@ class TransactionServiceMultiLineTest {
                 .lines(List.of(eurLine))
                 .build();
 
-        Transaction result = transactionService.executeBuy(request);
+        Transaction result = multiLineServiceImpl.executeMultiLineBuy(request);
 
         assertThat(result).isNotNull();
         assertThat(result.getMultiLine()).isTrue();

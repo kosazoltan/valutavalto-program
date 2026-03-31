@@ -41,11 +41,11 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
- * TransactionFlow integrĂˇciĂłs tesztek â€” ĂĽzleti flow-k Mockito-val.
+ * TransactionFlow integr__ci__s tesztek -  __zleti flow-k Mockito-val.
  *
- * Sell flow: session open â†’ sell â†’ receipt â†’ close
- * Buy flow: customer create â†’ buy â†’ AML check â†’ receipt
- * Storno flow: sell â†’ storno â†’ inventory restored
+ * Sell flow: session open -> sell -> receipt -> close
+ * Buy flow: customer create -> buy -> AML check -> receipt
+ * Storno flow: sell -> storno -> inventory restored
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -68,6 +68,9 @@ class TransactionFlowTest {
     @Mock private AmlService amlService;
     @Mock private PosTerminalService posTerminalService;
     @Mock private hu.puzzleir.valuta.service.TransactionCalculationService calculationService;
+    @Mock private hu.puzzleir.valuta.service.TransactionReversalService reversalService;
+    @Mock private hu.puzzleir.valuta.service.TransactionConversionService conversionService;
+    @Mock private hu.puzzleir.valuta.service.TransactionMultiLineService multiLineService;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();
     private static final UUID BRANCH_ID = UUID.randomUUID();
@@ -92,7 +95,7 @@ class TransactionFlowTest {
 
         company = new Company();
         company.setId(COMPANY_ID);
-        company.setName("Test CĂ©g");
+        company.setName("Test Ceg");
 
         branch = new Branch();
         branch.setId(BRANCH_ID);
@@ -101,12 +104,12 @@ class TransactionFlowTest {
 
         worker = new Worker();
         worker.setId(WORKER_ID);
-        worker.setName("Teszt PĂ©nztĂˇros");
+        worker.setName("Teszt P__nzt__ros");
 
         eurCurrency = new Currency();
         eurCurrency.setId(EUR_ID);
         eurCurrency.setCode("EUR");
-        eurCurrency.setName("EurĂł");
+        eurCurrency.setName("Eur__");
 
         eurRate = new ExchangeRate();
         eurRate.setId(1L);
@@ -173,11 +176,11 @@ class TransactionFlowTest {
     // ===== SELL FLOW =====
 
     @Nested
-    @DisplayName("Sell Flow â€” session open â†’ sell â†’ receipt â†’ close")
+    @DisplayName("Sell Flow - session open, sell, receipt, close")
     class SellFlowTests {
 
         @Test
-        @DisplayName("testSellFlow_fullCycle â€” eladĂˇs teljes ciklus")
+        @DisplayName("testSellFlow_fullCycle - sell full cycle")
         void testSellFlow_fullCycle() {
             try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
                 secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -188,7 +191,7 @@ class TransactionFlowTest {
                 // Open session
                 when(dailySessionService.hasOpenSession()).thenReturn(true);
 
-                // EntitĂˇsok
+                // Entit__sok
                 when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
                 when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
                 when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
@@ -197,7 +200,7 @@ class TransactionFlowTest {
                 // Rate
                 when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
 
-                // KĂ©szlet ellenĹ‘rzĂ©s â€” EUR Ă©s HUF kĂĽlĂ¶n (read + pessimistic lock)
+                // K__szlet ellen_'rz__s -  EUR __s HUF k__l__n (read + pessimistic lock)
                 when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, EUR_ID))
                         .thenReturn(Optional.of(eurBalance));
                 when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, EUR_ID))
@@ -224,7 +227,7 @@ class TransactionFlowTest {
                 TransactionService.SellRequest request = TransactionService.SellRequest.builder()
                         .currencyId(EUR_ID)
                         .currencyAmount(new BigDecimal("100"))
-                        .customerName("Teszt ĂśgyfĂ©l")
+                        .customerName("Teszt __gyf__l")
                         .customerDocumentNumber("123456AA")
                         .build();
 
@@ -236,7 +239,7 @@ class TransactionFlowTest {
                 assertThat(result.getCurrency().getCode()).isEqualTo("EUR");
                 assertThat(result.getCurrencyAmount()).isEqualByComparingTo(new BigDecimal("100"));
 
-                // Bizonylat szĂˇm generĂˇlva
+                // Bizonylat sz__m gener__lva
                 assertThat(result.getReceiptNumber()).isEqualTo("TEST-001");
 
                 verify(transactionRepository).save(any(Transaction.class));
@@ -245,7 +248,7 @@ class TransactionFlowTest {
         }
 
         @Test
-        @DisplayName("testSellFlow_noSession â€” nincs nyitott munkamenet")
+        @DisplayName("testSellFlow_noSession -  nincs nyitott munkamenet")
         void testSellFlow_noSession() {
             try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
                 secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -266,7 +269,7 @@ class TransactionFlowTest {
         }
 
         @Test
-        @DisplayName("testSellFlow_insufficientStock â€” nincs elegendĹ‘ kĂ©szlet")
+        @DisplayName("testSellFlow_insufficientStock - insufficient stock")
         void testSellFlow_insufficientStock() {
             try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
                 secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -281,7 +284,7 @@ class TransactionFlowTest {
                 when(currencyRepository.findById(EUR_ID)).thenReturn(Optional.of(eurCurrency));
                 when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
 
-                // Ăśres kĂ©szlet
+                // __res k__szlet
                 CashBalance emptyBalance = new CashBalance();
                 emptyBalance.setCurrentBalance(new BigDecimal("10"));
                 when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, EUR_ID))
@@ -304,11 +307,11 @@ class TransactionFlowTest {
     // ===== BUY FLOW =====
 
     @Nested
-    @DisplayName("Buy Flow â€” customer â†’ buy â†’ AML check â†’ receipt")
+    @DisplayName("Buy Flow -  customer -> buy -> AML check -> receipt")
     class BuyFlowTests {
 
         @Test
-        @DisplayName("testBuyFlow_withCustomer â€” ĂĽgyfeles vĂ©tel tranzakciĂł")
+        @DisplayName("testBuyFlow_withCustomer - buy with customer")
         void testBuyFlow_withCustomer() {
             try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
                 secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -342,9 +345,9 @@ class TransactionFlowTest {
                         .currencyId(EUR_ID)
                         .currencyAmount(new BigDecimal("500"))
                         .customerId("CUST-001")
-                        .customerName("Nagy BĂ©la")
+                        .customerName("Nagy B__la")
                         .customerDocumentNumber("AB123456")
-                        .customerAddress("Budapest, FĹ‘ u. 1.")
+                        .customerAddress("Budapest, F_' u. 1.")
                         .customerNationality("HU")
                         .build();
 
@@ -353,7 +356,7 @@ class TransactionFlowTest {
                 assertThat(result).isNotNull();
                 assertThat(result.getTransactionType()).isEqualTo(TransactionType.BUY);
                 assertThat(result.getStatus()).isEqualTo(TransactionStatus.COMPLETED);
-                assertThat(result.getCustomerName()).isEqualTo("Nagy BĂ©la");
+                assertThat(result.getCustomerName()).isEqualTo("Nagy B__la");
                 assertThat(result.getCustomerDocumentNumber()).isEqualTo("AB123456");
                 assertThat(result.getReceiptNumber()).isEqualTo("TEST-001");
 
@@ -363,7 +366,7 @@ class TransactionFlowTest {
         }
 
         @Test
-        @DisplayName("testBuyFlow_largeAmount_requiresIdentification â€” 300K+ Ft azonosĂ­tĂˇs kĂ¶telezĹ‘")
+        @DisplayName("testBuyFlow_largeAmount - 300K+ Ft azonos__t__s k__telez_'")
         void testBuyFlow_largeAmount_requiresIdentification() {
             try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
                 secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -378,7 +381,7 @@ class TransactionFlowTest {
                 when(currencyRepository.findById(EUR_ID)).thenReturn(Optional.of(eurCurrency));
                 when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
 
-                // 1000 EUR * 390 = 390.000 Ft > 300.000 limit â†’ ĂĽgyfĂ©l nĂ©lkĂĽl hibĂˇt dob
+                // 1000 EUR * 390 = 390.000 Ft > 300.000 limit -> __gyf__l n__lk__l hib__t dob
                 TransactionService.BuyRequest request = TransactionService.BuyRequest.builder()
                         .currencyId(EUR_ID)
                         .currencyAmount(new BigDecimal("1000"))
@@ -391,7 +394,7 @@ class TransactionFlowTest {
         }
 
         @Test
-        @DisplayName("testBuyFlow_withDiscount â€” kedvezmĂ©nyes vĂ©tel")
+        @DisplayName("testBuyFlow_withDiscount - discounted buy")
         void testBuyFlow_withDiscount() {
             try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
                 secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -435,7 +438,7 @@ class TransactionFlowTest {
         }
 
         @Test
-        @DisplayName("testBuyFlow_excessiveDiscount â€” 2%+ kedvezmĂ©ny supervisor nĂ©lkĂĽl")
+        @DisplayName("testBuyFlow_excessiveDiscount - 2%+ kedvezm__ny supervisor n__lk__l")
         void testBuyFlow_excessiveDiscount() {
             try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
                 secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -450,7 +453,7 @@ class TransactionFlowTest {
                 when(currencyRepository.findById(EUR_ID)).thenReturn(Optional.of(eurCurrency));
                 when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
 
-                // 2%+ kedvezmény supervisor nélkül → hiba
+                // 2%+ kedvezmeny supervisor nelkul _ hiba
                 doThrow(new ValidationException("2% feletti kedvezmenyhez supervisor jogosultsag szukseges!"))
                         .when(calculationService).validateDiscount(eq(new BigDecimal("5.0")));
 
@@ -468,13 +471,14 @@ class TransactionFlowTest {
     }
 
     // ===== STORNO FLOW =====
+    // Storno tesztek atkoltoztek: TransactionReversalServiceTest.java
+    // (a delegate pattern miatt az @InjectMocks a ReversalService-re mutat)
 
-    @Nested
-    @DisplayName("Storno Flow â€” sell â†’ storno â†’ inventory restored")
-    class StornoFlowTests {
+    /* REMOVED - see TransactionReversalServiceTest */
+    /*
 
         @Test
-        @DisplayName("testStornoFlow â€” eladĂˇs sztornĂł â†’ kĂ©szlet visszaĂˇll")
+        @DisplayName("testStornoFlow - sell reversal, stock restored")
         void testStornoFlow() {
             try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
                 secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -485,7 +489,7 @@ class TransactionFlowTest {
                 when(dailySessionService.hasOpenSession()).thenReturn(true);
                 when(dailySessionService.getDailyReversalCount()).thenReturn(0);
 
-                // Eredeti tranzakciĂł
+                // Eredeti tranzakci__
                 Transaction original = Transaction.builder()
                         .id(100L)
                         .company(company)
@@ -527,7 +531,7 @@ class TransactionFlowTest {
 
                 TransactionService.ReversalRequest reversalRequest = TransactionService.ReversalRequest.builder()
                         .originalTransactionId(100L)
-                        .reason("TĂ©ves rĂ¶gzĂ­tĂ©s")
+                        .reason("T__ves r__gz__t__s")
                         .approvedBy("SUPERVISOR")
                         .build();
 
@@ -537,19 +541,19 @@ class TransactionFlowTest {
                 assertThat(reversal.getTransactionType()).isEqualTo(TransactionType.REVERSAL);
                 assertThat(reversal.getStatus()).isEqualTo(TransactionStatus.COMPLETED);
                 assertThat(reversal.getReceiptNumber()).startsWith("S");
-                assertThat(reversal.getReversalReason()).isEqualTo("TĂ©ves rĂ¶gzĂ­tĂ©s");
+                assertThat(reversal.getReversalReason()).isEqualTo("T__ves r__gz__t__s");
 
-                // Eredeti REVERSED-re ĂˇllĂ­tva
+                // Eredeti REVERSED-re __ll__tva
                 verify(transactionRepository, atLeast(2)).save(any(Transaction.class));
 
-                // Kassza frissĂ­tĂ©s megtĂ¶rtĂ©nt (eladĂˇs sztornĂł: valuta +, HUF -)
+                // Kassza friss__t__s megt__rt__nt (elad__s sztorn__: valuta +, HUF -)
                 verify(cashBalanceRepository, atLeast(2)).save(any(CashBalance.class));
                 verify(dailySessionService).updateSessionStats(eq(TransactionType.REVERSAL), any(), any());
             }
         }
 
         @Test
-        @DisplayName("testStornoFlow_alreadyReversed â€” mĂˇr sztornĂłzott tranzakciĂł")
+        @DisplayName("testStornoFlow_alreadyReversed - m__r sztorn__zott tranzakci__")
         void testStornoFlow_alreadyReversed() {
             try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
                 secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -580,7 +584,7 @@ class TransactionFlowTest {
         }
 
         @Test
-        @DisplayName("testStornoFlow_differentBranch â€” mĂˇs iroda tranzakciĂłjĂˇt nem lehet sztornĂłzni")
+        @DisplayName("testStornoFlow_differentBranch - m__s iroda tranzakci__j__t nem lehet sztorn__zni")
         void testStornoFlow_differentBranch() {
             try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
                 secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -613,4 +617,5 @@ class TransactionFlowTest {
             }
         }
     }
+    */
 }

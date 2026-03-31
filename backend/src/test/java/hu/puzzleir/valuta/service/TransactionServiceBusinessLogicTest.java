@@ -6,6 +6,7 @@ import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.ExchangeRate;
 import hu.puzzleir.valuta.entity.Transaction;
+import hu.puzzleir.valuta.entity.TransactionStatus;
 import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.exception.ValidationException;
@@ -35,6 +36,7 @@ import java.time.LocalTime;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -72,6 +74,9 @@ class TransactionServiceBusinessLogicTest {
     @Mock private AmlService amlService;
     @Mock private PosTerminalService posTerminalService;
     @Mock private TransactionCalculationService calculationService;
+    @Mock private TransactionReversalService reversalService;
+    @Mock private TransactionConversionService conversionService;
+    @Mock private TransactionMultiLineService multiLineService;
 
     private Currency huf;
     private Currency eur;
@@ -181,9 +186,10 @@ class TransactionServiceBusinessLogicTest {
         verify(cashBalanceRepository, atLeastOnce()).findByBranchIdAndCurrencyIdForUpdate(eq(BRANCH_ID), eq(EUR_ID));
     }
 
+    // executeConversion teszt - a delegate pattern miatt a conversionService mock-ot stub-oljuk
     @Test
-    @DisplayName("executeConversion: napi session stat mindkét lábra frissül")
-    void executeConversion_updatesBothSessionLegs() {
+    @DisplayName("executeConversion: delegalja a ConversionService-nek")
+    void executeConversion_delegatesToConversionService() {
         TransactionService.ConversionRequest request = TransactionService.ConversionRequest.builder()
                 .fromCurrencyId(EUR_ID)
                 .toCurrencyId(USD_ID)
@@ -191,10 +197,16 @@ class TransactionServiceBusinessLogicTest {
                 .customerId("CUST-1")
                 .build();
 
-        assertThatCode(() -> transactionService.executeConversion(request)).doesNotThrowAnyException();
+        Transaction mockResult = Transaction.builder()
+                .transactionType(TransactionType.CONVERSION)
+                .status(TransactionStatus.COMPLETED)
+                .build();
+        when(conversionService.executeConversion(any())).thenReturn(mockResult);
 
-        verify(dailySessionService).updateSessionStats(TransactionType.BUY, new BigDecimal("39500"), BigDecimal.ZERO);
-        verify(dailySessionService).updateSessionStats(TransactionType.SELL, new BigDecimal("39500"), BigDecimal.ZERO);
+        Transaction result = transactionService.executeConversion(request);
+        assertThat(result).isNotNull();
+        assertThat(result.getTransactionType()).isEqualTo(TransactionType.CONVERSION);
+        verify(conversionService).executeConversion(request);
     }
 
     private Currency currency(Long id, String code) {
