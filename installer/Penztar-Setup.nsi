@@ -696,11 +696,14 @@ Section "Telepítés" SecInstall
     nsExec::ExecToLog 'icacls "$DATA_DIR\backend\logs" /grant "NT AUTHORITY\NetworkService":(OI)(CI)F /T /Q'
     ; E6-02 fix: Config dir ACL hardening — remove inheritance, explicit grants only
     ; Secrets (jwt.secret, db password, encryption key) must not be readable by regular users
-    nsExec::ExecToLog 'icacls "$DATA_DIR\config" /inheritance:r /T /Q'
-    nsExec::ExecToLog 'icacls "$DATA_DIR\config" /grant:r "NT AUTHORITY\SYSTEM":(OI)(CI)F /T /Q'
+    ; Config ACL hardening: remove inheritance, set explicit grants, then reset children to inherit
+    nsExec::ExecToLog 'icacls "$DATA_DIR\config" /inheritance:r /Q'
+    nsExec::ExecToLog 'icacls "$DATA_DIR\config" /grant:r "NT AUTHORITY\SYSTEM":(OI)(CI)F /Q'
     ; SID S-1-5-32-544 = Administrators (locale-independent, works on Hungarian Windows)
-    nsExec::ExecToLog 'icacls "$DATA_DIR\config" /grant:r *S-1-5-32-544:(OI)(CI)F /T /Q'
-    nsExec::ExecToLog 'icacls "$DATA_DIR\config" /grant:r "NT AUTHORITY\NetworkService":(OI)(CI)RX /T /Q'
+    nsExec::ExecToLog 'icacls "$DATA_DIR\config" /grant:r *S-1-5-32-544:(OI)(CI)F /Q'
+    nsExec::ExecToLog 'icacls "$DATA_DIR\config" /grant:r "NT AUTHORITY\NetworkService":(OI)(CI)RX /Q'
+    ; Force children (existing files) to re-inherit from the folder ACL
+    nsExec::ExecToLog 'icacls "$DATA_DIR\config\*" /reset /Q'
     ; G2-05 fix: RX (not just R) — Java needs eXecute to traverse directories
     nsExec::ExecToLog 'icacls "$DATA_DIR\jre" /grant "NT AUTHORITY\NetworkService":(OI)(CI)RX /T /Q'
 
