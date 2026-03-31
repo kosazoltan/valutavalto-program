@@ -1,5 +1,6 @@
 -- V128: Authorization tábla — meghatalmazás jogosultságok
-CREATE TABLE IF NOT EXISTS authorization (
+-- "authorization" is a PostgreSQL reserved word — must be quoted
+CREATE TABLE IF NOT EXISTS "authorization" (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     representative_id UUID NOT NULL REFERENCES authorized_representative(id),
     operation_did VARCHAR(50) NOT NULL,
@@ -20,11 +21,11 @@ CREATE TABLE IF NOT EXISTS authorization (
     updated_at TIMESTAMP
 );
 
-ALTER TABLE authorization ADD CONSTRAINT chk_authorization_status
+ALTER TABLE "authorization" ADD CONSTRAINT chk_authorization_status
     CHECK (status_did IN ('PENDING', 'ACTIVE', 'SUSPENDED', 'REVOKED'));
 
-ALTER TABLE authorization ADD CONSTRAINT chk_authorization_dates
+ALTER TABLE "authorization" ADD CONSTRAINT chk_authorization_dates
     CHECK (expiry_date IS NULL OR expiry_date >= start_date);
 
-CREATE INDEX IF NOT EXISTS idx_authorization_representative ON authorization(representative_id);
-CREATE INDEX IF NOT EXISTS idx_authorization_status ON authorization(status_did);
+CREATE INDEX IF NOT EXISTS idx_authorization_representative ON "authorization"(representative_id);
+CREATE INDEX IF NOT EXISTS idx_authorization_status ON "authorization"(status_did);

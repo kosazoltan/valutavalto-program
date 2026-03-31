@@ -18,7 +18,7 @@ import java.util.UUID;
  * Lifecycle: PENDING → ACTIVE → (SUSPENDED ↔ ACTIVE) → REVOKED
  */
 @Entity
-@Table(name = "authorization", indexes = {
+@Table(name = "\"authorization\"", indexes = {
     @Index(name = "idx_authorization_representative", columnList = "representative_id"),
     @Index(name = "idx_authorization_status", columnList = "status_did")
 })
