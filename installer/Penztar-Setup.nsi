@@ -97,6 +97,7 @@ SetCompressorDictSize 64
 
 ; --- Változók ---
 Var DATA_DIR
+Var DB_ALREADY_EXISTS
 
 ; =============================================================================
 ; Telepítés
@@ -392,6 +393,7 @@ Section "Telepítés" SecInstall
     ; FÁZIS 4: Adatbázis inicializálás
     ; =====================================================================
     DetailPrint "Adatbázis inicializálása..."
+    StrCpy $DB_ALREADY_EXISTS 0
 
     ; Check if DB already initialized
     IfFileExists "$DATA_DIR\pgsql\data\PG_VERSION" db_exists db_init
@@ -510,9 +512,9 @@ Section "Telepítés" SecInstall
         FileClose $0
         Delete "$DATA_DIR\scripts\setup-user.sql"
 
-        ; Verify user — robust: check output contains "1", not just first char
+        ; Verify user — SQL file only, exact marker check (no inline -c fallback)
         FileOpen $0 "$DATA_DIR\scripts\verify-user.sql" w
-        FileWrite $0 "SELECT count(*) FROM pg_roles WHERE rolname='valuta_user';$\r$\n"
+        FileWrite $0 "SELECT CASE WHEN EXISTS (SELECT 1 FROM pg_roles WHERE rolname='valuta_user') THEN 'ROLE_OK' ELSE 'ROLE_MISSING' END;$\r$\n"
         FileClose $0
         nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -t -A -f "$DATA_DIR\scripts\verify-user.sql"'
         Pop $0
@@ -523,35 +525,34 @@ Section "Telepítés" SecInstall
         FileClose $0
         Delete "$DATA_DIR\scripts\verify-user.sql"
 
-        ; Robust verify: trim output then check first char
-        ; $1 may contain whitespace/newlines from psql output
         DetailPrint "  Verify raw output: [$1], exit code: $0"
-        StrCpy $2 $1 1
-        ${If} $2 == "1"
-            Goto verify_user_ok
+        ${If} $0 == 0
+            ${If} $1 == "ROLE_OK"
+                Goto verify_user_ok
+            ${EndIf}
+            StrCpy $2 $1 7
+            ${If} $2 == "ROLE_OK"
+                Goto verify_user_ok
+            ${EndIf}
+            StrCpy $2 $1 7 1
+            ${If} $2 == "ROLE_OK"
+                Goto verify_user_ok
+            ${EndIf}
         ${EndIf}
-        ; Maybe whitespace prefix — try second char
-        StrCpy $2 $1 1 1
-        ${If} $2 == "1"
-            Goto verify_user_ok
+
+        DetailPrint "  HIBA: valuta_user verify sikertelen — rollback indul"
+        nsExec::ExecToLog '"$DATA_DIR\pgsql\bin\pg_ctl.exe" stop -D "$DATA_DIR\pgsql\data" -m fast -w -t 10'
+        ${If} $DB_ALREADY_EXISTS == 0
+            RMDir /r "$DATA_DIR\pgsql"
+            RMDir /r "$DATA_DIR\backend"
+            RMDir /r "$DATA_DIR\config"
+            RMDir /r "$DATA_DIR\jre"
+            RMDir /r "$DATA_DIR\tools"
+            RMDir /r "$DATA_DIR\scripts"
+            RMDir /r "$INSTDIR"
         ${EndIf}
-        ; Retry with inline -c (fallback for file-based psql issues)
-        DetailPrint "  Verify retry (inline)..."
-        nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -t -A -c "SELECT count(*) FROM pg_roles WHERE rolname=$$valuta_user$$"'
-        Pop $0
-        Pop $1
-        DetailPrint "  Retry output: [$1], exit code: $0"
-        StrCpy $2 $1 1
-        ${If} $2 == "1"
-            Goto verify_user_ok
-        ${EndIf}
-        StrCpy $2 $1 1 1
-        ${If} $2 == "1"
-            Goto verify_user_ok
-        ${EndIf}
-        ; All retries failed
         IfSilent +1
-        MessageBox MB_OK|MB_ICONSTOP "HIBA: A valuta_user adatbázis felhasználó létrehozása sikertelen.$\r$\nVerify output: [$1]$\r$\nA backend szerver nem fog tudni csatlakozni.$\r$\n$\r$\nEllenőrizze a PostgreSQL logot:$\r$\n$DATA_DIR\pgsql\log\postgresql.log"
+        MessageBox MB_OK|MB_ICONSTOP "HIBA: A valuta_user adatbázis felhasználó létrehozása/ellenőrzése sikertelen.$\r$\nA telepítő rollbackelte a félkész állapotot.$\r$\n$\r$\nVerify output: [$1]$\r$\nEllenőrizze a PostgreSQL logot:$\r$\n$DATA_DIR\pgsql\log\postgresql.log"
         Abort
         verify_user_ok:
         DetailPrint "  valuta_user létrehozva és ellenőrizve!"
@@ -591,6 +592,7 @@ Section "Telepítés" SecInstall
         Goto db_done
 
     db_exists:
+        StrCpy $DB_ALREADY_EXISTS 1
         ; F-N-06 fix: Upgrade telepítés — jelszó frissítés a meglévő DB-ben
         DetailPrint "  Meglévő adatbázis — jelszó frissítés..."
 
@@ -656,7 +658,7 @@ Section "Telepítés" SecInstall
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL DisplayName "BestChange PostgreSQL"'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL Description "Valutavalto Penztar adatbazis szerver"'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL ObjectName "NT AUTHORITY\NetworkService" ""'
-    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL Start SERVICE_AUTO_START'
+    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL Start SERVICE_DEMAND_START'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL AppStdout "$DATA_DIR\pgsql\log\service-stdout.log"'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL AppStderr "$DATA_DIR\pgsql\log\service-stderr.log"'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL AppThrottle 30000'
@@ -665,12 +667,12 @@ Section "Telepítés" SecInstall
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL AppRotateFiles 1'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL AppRotateBytes 10485760'
 
-    ; Grant NetworkService
-    nsExec::ExecToLog 'icacls "$DATA_DIR\pgsql\data" /grant "NT AUTHORITY\NetworkService":(OI)(CI)F /T /Q'
-    nsExec::ExecToLog 'icacls "$DATA_DIR\pgsql\log" /grant "NT AUTHORITY\NetworkService":(OI)(CI)F /T /Q'
-    nsExec::ExecToLog 'icacls "$DATA_DIR\pgsql\bin" /grant "NT AUTHORITY\NetworkService":(OI)(CI)RX /T /Q'
-    nsExec::ExecToLog 'icacls "$DATA_DIR\pgsql\lib" /grant "NT AUTHORITY\NetworkService":(OI)(CI)RX /T /Q'
-    nsExec::ExecToLog 'icacls "$DATA_DIR\pgsql\share" /grant "NT AUTHORITY\NetworkService":(OI)(CI)RX /T /Q'
+    ; Grant NetworkService (*S-1-5-20 = locale-independent SID)
+    nsExec::ExecToLog 'icacls "$DATA_DIR\pgsql\data" /grant *S-1-5-20:(OI)(CI)F /T /Q'
+    nsExec::ExecToLog 'icacls "$DATA_DIR\pgsql\log" /grant *S-1-5-20:(OI)(CI)F /T /Q'
+    nsExec::ExecToLog 'icacls "$DATA_DIR\pgsql\bin" /grant *S-1-5-20:(OI)(CI)RX /T /Q'
+    nsExec::ExecToLog 'icacls "$DATA_DIR\pgsql\lib" /grant *S-1-5-20:(OI)(CI)RX /T /Q'
+    nsExec::ExecToLog 'icacls "$DATA_DIR\pgsql\share" /grant *S-1-5-20:(OI)(CI)RX /T /Q'
 
     ; --- Backend service ---
     DetailPrint "  BestChange-Backend szolgáltatás..."
@@ -681,7 +683,7 @@ Section "Telepítés" SecInstall
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend Description "Valutavalto Penztar szerver"'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend ObjectName "NT AUTHORITY\NetworkService" ""'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend DependOnService BestChange-PostgreSQL'
-    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend Start SERVICE_AUTO_START'
+    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend Start SERVICE_DEMAND_START'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend AppThrottle 120000'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend AppExit Default Restart'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend AppRestartDelay 5000'
@@ -692,20 +694,16 @@ Section "Telepítés" SecInstall
 
     ; S6-05 fix: Backend dir RX only (JAR overwrite prevention), logs dir F (write needed)
     CreateDirectory "$DATA_DIR\backend\logs"
-    nsExec::ExecToLog 'icacls "$DATA_DIR\backend" /grant "NT AUTHORITY\NetworkService":(OI)(CI)RX /T /Q'
-    nsExec::ExecToLog 'icacls "$DATA_DIR\backend\logs" /grant "NT AUTHORITY\NetworkService":(OI)(CI)F /T /Q'
-    ; E6-02 fix: Config dir ACL hardening — remove inheritance, explicit grants only
-    ; Secrets (jwt.secret, db password, encryption key) must not be readable by regular users
-    ; Config ACL hardening: remove inheritance, set explicit grants, then reset children to inherit
+    nsExec::ExecToLog 'icacls "$DATA_DIR\backend" /grant *S-1-5-20:(OI)(CI)RX /T /Q'
+    nsExec::ExecToLog 'icacls "$DATA_DIR\backend\logs" /grant *S-1-5-20:(OI)(CI)F /T /Q'
+    ; E6-02 fix: Config dir ACL hardening — locale-independent SIDs + recursive child reset
+    ; *S-1-5-18 = SYSTEM, *S-1-5-32-544 = Administrators, *S-1-5-20 = NetworkService
+    ; Root folder gets explicit ACLs, existing children are reset to inherit from the hardened root.
     nsExec::ExecToLog 'icacls "$DATA_DIR\config" /inheritance:r /Q'
-    nsExec::ExecToLog 'icacls "$DATA_DIR\config" /grant:r "NT AUTHORITY\SYSTEM":(OI)(CI)F /Q'
-    ; SID S-1-5-32-544 = Administrators (locale-independent, works on Hungarian Windows)
-    nsExec::ExecToLog 'icacls "$DATA_DIR\config" /grant:r *S-1-5-32-544:(OI)(CI)F /Q'
-    nsExec::ExecToLog 'icacls "$DATA_DIR\config" /grant:r "NT AUTHORITY\NetworkService":(OI)(CI)RX /Q'
-    ; Force children (existing files) to re-inherit from the folder ACL
-    nsExec::ExecToLog 'icacls "$DATA_DIR\config\*" /reset /Q'
+    nsExec::ExecToLog 'icacls "$DATA_DIR\config" /grant:r *S-1-5-18:(OI)(CI)F *S-1-5-32-544:(OI)(CI)F *S-1-5-20:(OI)(CI)RX /Q'
+    nsExec::ExecToLog 'icacls "$DATA_DIR\config\*" /reset /T /C /Q'
     ; G2-05 fix: RX (not just R) — Java needs eXecute to traverse directories
-    nsExec::ExecToLog 'icacls "$DATA_DIR\jre" /grant "NT AUTHORITY\NetworkService":(OI)(CI)RX /T /Q'
+    nsExec::ExecToLog 'icacls "$DATA_DIR\jre" /grant *S-1-5-20:(OI)(CI)RX /T /Q'
 
     ; =====================================================================
     ; FÁZIS 5B: Windows Firewall szabályok (localhost portok)
@@ -725,6 +723,10 @@ Section "Telepítés" SecInstall
     ; FÁZIS 6: Szolgáltatások indítása + health check
     ; =====================================================================
     DetailPrint "Szolgáltatások indítása..."
+
+    ; Race fix: only after ACL/config hardening flip services to AUTO_START, then start them.
+    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-PostgreSQL Start SERVICE_AUTO_START'
+    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend Start SERVICE_AUTO_START'
 
     ; --- PostgreSQL indítás (F5-A: nssm start) ---
     DetailPrint "  PostgreSQL indítása..."
