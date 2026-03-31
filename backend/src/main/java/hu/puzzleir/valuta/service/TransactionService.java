@@ -68,6 +68,11 @@ public class TransactionService {
     private final ObjectProvider<CameraTransactionLinker> cameraTransactionLinkerProvider;
     private final TransactionCalculationService calculationService;
 
+    // Delegate services — @Lazy to avoid circular dependency (they import inner DTOs from this class)
+    private final @org.springframework.context.annotation.Lazy TransactionReversalService reversalService;
+    private final @org.springframework.context.annotation.Lazy TransactionConversionService conversionService;
+    private final @org.springframework.context.annotation.Lazy TransactionMultiLineService multiLineService;
+
     // Sztorn├│ limit supervisor n├ęlk├╝l (3 db/nap)
     private static final int DAILY_REVERSAL_LIMIT = 3;
 
