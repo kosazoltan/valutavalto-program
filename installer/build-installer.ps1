@@ -7,7 +7,7 @@
 # =============================================================================
 
 param(
-    [string]$Version = "1.5.0",
+    [string]$Version = "1.6.0",
     [switch]$SkipBackendBuild,
     [switch]$SkipFrontendBuild,
     [switch]$SkipDownloads,
@@ -25,7 +25,7 @@ $BuildDir = Join-Path $InstallerDir "build"
 $StageDir = Join-Path $BuildDir "stage"
 
 # Verziók
-$PG_VERSION = "16.8-1"
+$PG_VERSION = "17.5-1"
 $PG_URL = "https://get.enterprisedb.com/postgresql/postgresql-${PG_VERSION}-windows-x64-binaries.zip"
 $NSSM_VERSION = "2.24"
 $NSSM_URL = "https://nssm.cc/release/nssm-${NSSM_VERSION}.zip"

@@ -1,7 +1,12 @@
 ; =============================================================================
-; Valutaváltó Pénztár — Egyfájlos Windows Telepítő v5
+; Valutaváltó Pénztár — Egyfájlos Windows Telepítő v6
 ; NSIS 3.x Script — Production Quality
 ; =============================================================================
+; v6: Nóra dependency research alapján:
+;     - PostgreSQL 16 → 17 upgrade
+;     - Windows Firewall szabályok (8080, 54320)
+;     - Firewall cleanup uninstall-nál
+;     - Dependency report: shared/valuta-installer-dependency-report.md
 ; v5.1: Gábor review fixes: G2-01 port check after cleanup, G2-04 service wait,
 ;       G2-05 icacls RX, G2-06 abort cleanup callback
 ; v5: Eszter review fixes: F-N-01 cmd.exe port check, F-N-02 silent uninstall,
@@ -27,7 +32,7 @@
 
 ; --- Paraméterek ---
 !ifndef VERSION
-  !define VERSION "1.5.0"
+  !define VERSION "1.6.0"
 !endif
 !ifndef BUILD_DATE
   !define BUILD_DATE "dev"
@@ -240,7 +245,7 @@ Section "Telepítés" SecInstall
     ; =====================================================================
 
     ; --- PostgreSQL ---
-    DetailPrint "PostgreSQL 16 telepítése..."
+    DetailPrint "PostgreSQL 17 telepítése..."
     SetOutPath "$DATA_DIR\pgsql"
     ; RE-hardening: strip source maps, test files, git metadata from pgAdmin bundle
     File /r /x "*.map" /x "*.test.js" /x "*.spec.js" /x "jest.config.*" /x ".gitattributes" /x ".gitignore" /x ".gitmodules" "${STAGE_DIR}\pgsql\*.*"
@@ -275,7 +280,7 @@ Section "Telepítés" SecInstall
     File /r /x "*.map" /x "*.test.js" /x "*.spec.js" /x "jest.config.*" /x ".gitattributes" /x ".gitignore" /x ".gitmodules" /x "*.test.ts" /x "*.spec.ts" /x "*.stories.*" "${STAGE_DIR}\electron\*.*"
 
     ; =====================================================================
-    ; FÁZIS 2B: VC++ Redistributable (2015-2022 x64) — PG16 előfeltétel
+    ; FÁZIS 2B: VC++ Redistributable (2015-2022 x64) — PG17 előfeltétel
     ; =====================================================================
     DetailPrint "Visual C++ Runtime ellenőrzés..."
     ; F-N-07 fix: ReadRegDWORD for DWORD registry value
@@ -501,7 +506,7 @@ Section "Telepítés" SecInstall
         ; F4-A: Harden pg_hba.conf — scram-sha-256 for app user
         DetailPrint "  pg_hba.conf biztonsági beállítás..."
         FileOpen $0 "$DATA_DIR\pgsql\data\pg_hba.conf" w
-        FileWrite $0 "# Penztar installer — hardened auth (v1.5.0)$\r$\n"
+        FileWrite $0 "# Penztar installer — hardened auth (v1.6.0)$\r$\n"
         FileWrite $0 "# TYPE  DATABASE  USER         ADDRESS       METHOD$\r$\n"
         FileWrite $0 "local   all       postgres                   trust$\r$\n"
         FileWrite $0 "host    all       postgres     127.0.0.1/32  trust$\r$\n"
@@ -551,7 +556,7 @@ Section "Telepítés" SecInstall
         ; T-01 fix: pg_hba.conf hardening az upgrade ágban is (teszt suite finding)
         DetailPrint "  pg_hba.conf biztonsági beállítás (upgrade)..."
         FileOpen $0 "$DATA_DIR\pgsql\data\pg_hba.conf" w
-        FileWrite $0 "# Penztar installer — hardened auth (v1.5.0)$\r$\n"
+        FileWrite $0 "# Penztar installer — hardened auth (v1.6.0)$\r$\n"
         FileWrite $0 "# TYPE  DATABASE  USER         ADDRESS       METHOD$\r$\n"
         FileWrite $0 "local   all       postgres                   trust$\r$\n"
         FileWrite $0 "host    all       postgres     127.0.0.1/32  trust$\r$\n"
@@ -570,7 +575,7 @@ Section "Telepítés" SecInstall
 
     ; --- PostgreSQL service ---
     ; postgres.exe közvetlenül (NEM pg_ctl!) — NSSM + pg_ctl = "Paused" bug
-    ; NetworkService fiókkal fut — PG16 elutasítja az admin/LocalSystem futást!
+    ; NetworkService fiókkal fut — PG17 elutasítja az admin/LocalSystem futást!
     DetailPrint "  BestChange-PostgreSQL szolgáltatás..."
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" install BestChange-PostgreSQL "$DATA_DIR\pgsql\bin\postgres.exe"'
     ; F-N-09 fix: quoted values for safety
@@ -618,6 +623,20 @@ Section "Telepítés" SecInstall
     ; G2-05 fix: RX (not just R) — Java needs eXecute to traverse directories
     nsExec::ExecToLog 'icacls "$DATA_DIR\config" /grant "NT AUTHORITY\NetworkService":(OI)(CI)RX /T /Q'
     nsExec::ExecToLog 'icacls "$DATA_DIR\jre" /grant "NT AUTHORITY\NetworkService":(OI)(CI)RX /T /Q'
+
+    ; =====================================================================
+    ; FÁZIS 5B: Windows Firewall szabályok (localhost portok)
+    ; Corporate VPN/firewall policy blokkolhatja a localhost forgalmat is.
+    ; Forrás: shared/valuta-installer-dependency-report.md
+    ; =====================================================================
+    DetailPrint "Windows Firewall szabályok beállítása..."
+    ; Előbb töröljük a régieket (idempotens — ha nincs, nem hiba)
+    nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Valutavalto-Backend"'
+    nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Valutavalto-PostgreSQL"'
+    ; Új szabályok (TCP, bármely profil)
+    nsExec::ExecToLog 'netsh advfirewall firewall add rule name="Valutavalto-Backend" dir=in action=allow protocol=TCP localport=8080 profile=any'
+    nsExec::ExecToLog 'netsh advfirewall firewall add rule name="Valutavalto-PostgreSQL" dir=in action=allow protocol=TCP localport=54320 profile=any'
+    DetailPrint "  Firewall szabályok OK"
 
     ; =====================================================================
     ; FÁZIS 6: Szolgáltatások indítása + health check
@@ -720,7 +739,7 @@ Section "Telepítés" SecInstall
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "InstallLocation" "$INSTDIR"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "InstallDate" "${BUILD_DATE}"
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "VersionMajor" 1
-    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "VersionMinor" 5
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "VersionMinor" 6
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "NoModify" 1
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "NoRepair" 1
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "EstimatedSize" 430080
@@ -775,6 +794,11 @@ Section "un.Eltávolítás"
     nsExec::ExecToLog 'cmd.exe /C sc.exe delete BestChange-Backend'
     nsExec::ExecToLog 'cmd.exe /C sc.exe delete BestChange-PostgreSQL'
     Sleep 1000
+
+    ; Firewall szabályok eltávolítása
+    DetailPrint "Firewall szabályok eltávolítása..."
+    nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Valutavalto-Backend"'
+    nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Valutavalto-PostgreSQL"'
 
     DetailPrint "Alkalmazás fájlok eltávolítása..."
     RMDir /r "$INSTDIR"
