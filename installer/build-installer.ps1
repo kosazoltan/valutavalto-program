@@ -31,6 +31,19 @@ $NSSM_VERSION = "2.24"
 $NSSM_URL = "https://nssm.cc/release/nssm-${NSSM_VERSION}.zip"
 $NSIS_EXE = "C:\Program Files (x86)\NSIS\makensis.exe"
 
+# S6-02/03 fix: SHA-256 checksums for supply chain integrity
+$PG_SHA256 = "46903BB56BB0A40A81768703FA7420F0690095685DA040BED2C584B900A1124C"
+$NSSM_SHA256 = "EEE9C44C29C2BE011F1F1E43BB8C3FCA888CB81053022EC5A0060035DE16D848"  # nssm.exe binary
+$VCREDIST_SHA256 = "CC0FF0EB1DC3F5188AE6300FAEF32BF5BEEBA4BDD6E8E445A9184072096B713B"
+
+function Assert-FileHash($Path, $Expected, $Label) {
+    $actual = (Get-FileHash $Path -Algorithm SHA256).Hash
+    if ($actual -ne $Expected) {
+        throw "CHECKSUM MISMATCH for $Label!`nExpected: $Expected`nActual:   $actual`nFile:     $Path"
+    }
+    Write-Host "  $Label checksum OK" -ForegroundColor Green
+}
+
 function Write-Step($msg) { Write-Host "`n=== $msg ===" -ForegroundColor Cyan }
 
 # ─── Előkészítés ────────────────────────────────────────────────────────────
@@ -187,6 +200,7 @@ if (-not $SkipDownloads) {
         Invoke-WebRequest -Uri $PG_URL -OutFile $pgZip -UseBasicParsing
     } else { Write-Host "PostgreSQL ZIP cached" -ForegroundColor Yellow }
 
+    Assert-FileHash $pgZip $PG_SHA256 "PostgreSQL $PG_VERSION"
     Write-Host "Extracting PostgreSQL..."
     Expand-Archive -Path $pgZip -DestinationPath "$dlDir\pg-extract" -Force
     $pgExtracted = Get-Item "$dlDir\pg-extract\pgsql" -ErrorAction SilentlyContinue
@@ -211,6 +225,7 @@ if (-not $SkipDownloads) {
         Expand-Archive -Path $nssmZip -DestinationPath "$dlDir\nssm-extract" -Force
         $nssmExe = Get-ChildItem "$dlDir\nssm-extract" -Recurse -Filter "nssm.exe" | Where-Object { $_.Directory.Name -eq "win64" } | Select-Object -First 1
         Copy-Item $nssmExe.FullName "$StageDir\tools\nssm.exe"
+        Assert-FileHash "$StageDir\tools\nssm.exe" $NSSM_SHA256 "NSSM $NSSM_VERSION"
         Write-Host "NSSM staged" -ForegroundColor Green
     }
     # VC++ 2015-2022 Redistributable x64 — PG16 EDB binárisok előfeltétele
@@ -221,6 +236,7 @@ if (-not $SkipDownloads) {
         $vcUrl = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
         Write-Host "Downloading VC++ 2015-2022 Redistributable x64..."
         Invoke-WebRequest -Uri $vcUrl -OutFile $vcRedist -UseBasicParsing
+        Assert-FileHash $vcRedist $VCREDIST_SHA256 "VC++ Redistributable"
         Write-Host "VC++ Redistributable staged ($([math]::Round((Get-Item $vcRedist).Length / 1MB, 1)) MB)" -ForegroundColor Green
     }
 } else { Write-Host "Downloads SKIPPED" -ForegroundColor Yellow }
@@ -242,10 +258,10 @@ spring.jpa.hibernate.ddl-auto=update
 spring.jpa.show-sql=false
 spring.flyway.enabled=false
 # Flyway disabled: JPA ddl-auto=update manages schema, seed via init-db
-cors.allowed-origins=app://localhost,http://localhost:3000
+cors.allowed-origins=app://localhost
 logging.level.root=INFO
-springdoc.api-docs.enabled=true
-springdoc.swagger-ui.enabled=true
+springdoc.api-docs.enabled=false
+springdoc.swagger-ui.enabled=false
 camera.enabled=false
 jwt.secret=__GENERATED_AT_INSTALL_TIME__
 jwt.expiration=86400000

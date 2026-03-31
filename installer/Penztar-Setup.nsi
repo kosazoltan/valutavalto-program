@@ -4,7 +4,9 @@
 ; =============================================================================
 ; v6.1: Eszter review fixes: E6-01 IfSilent +2→+1 (fatal abort in silent mode),
 ;       E6-02 config dir ACL hardening (inheritance removed, explicit grants),
-;       E6-03 uninstaller process-death wait loop, E6-04 firewall remoteip=127.0.0.1
+;       E6-03 uninstaller process-death wait loop, E6-04 firewall remoteip=127.0.0.1,
+;       S6-01 default password warning, S6-05 backend dir RX+logs F,
+;       S6-06 silent uninstall secrets cleanup, S6-07 CORS localhost:3000 removed
 ; v6: Nóra dependency research alapján:
 ;     - PostgreSQL 16 → 17 upgrade
 ;     - Windows Firewall szabályok (8080, 54320)
@@ -356,7 +358,8 @@ Section "Telepítés" SecInstall
     FileWrite $0 "spring.jpa.show-sql=false$\r$\n"
     FileWrite $0 "spring.flyway.enabled=false$\r$\n"
     FileWrite $0 "# Flyway disabled: JPA ddl-auto=update manages schema, seed via init-db$\r$\n"
-    FileWrite $0 "cors.allowed-origins=app://localhost,http://localhost:3000$\r$\n"
+    ; S6-07 fix: dev CORS origin eltávolítva (csak Electron app origin kell)
+    FileWrite $0 "cors.allowed-origins=app://localhost$\r$\n"
     FileWrite $0 "logging.level.root=INFO$\r$\n"
     FileWrite $0 "logging.level.hu.puzzleir.valuta=INFO$\r$\n"
     FileWrite $0 "springdoc.api-docs.enabled=false$\r$\n"
@@ -511,6 +514,10 @@ Section "Telepítés" SecInstall
             DetailPrint "  Seed adatok betöltve!"
         ${EndIf}
 
+        ; S6-01 fix: Figyelmeztetés az alapértelmezett jelszavakra
+        IfSilent +1
+        MessageBox MB_OK|MB_ICONEXCLAMATION "FONTOS: A dolgozók alapértelmezett jelszava '1234'.$\r$\n$\r$\nAz első bejelentkezés után AZONNAL változtassa meg a jelszavakat!$\r$\n$\r$\nÉrintett felhasználók: BORSI, BALI, KASZA"
+
         ; F4-A: Harden pg_hba.conf — scram-sha-256 for app user
         DetailPrint "  pg_hba.conf biztonsági beállítás..."
         FileOpen $0 "$DATA_DIR\pgsql\data\pg_hba.conf" w
@@ -626,8 +633,10 @@ Section "Telepítés" SecInstall
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend AppRotateFiles 1'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend AppRotateBytes 10485760'
 
-    ; Grant NetworkService
-    nsExec::ExecToLog 'icacls "$DATA_DIR\backend" /grant "NT AUTHORITY\NetworkService":(OI)(CI)F /T /Q'
+    ; S6-05 fix: Backend dir RX only (JAR overwrite prevention), logs dir F (write needed)
+    CreateDirectory "$DATA_DIR\backend\logs"
+    nsExec::ExecToLog 'icacls "$DATA_DIR\backend" /grant "NT AUTHORITY\NetworkService":(OI)(CI)RX /T /Q'
+    nsExec::ExecToLog 'icacls "$DATA_DIR\backend\logs" /grant "NT AUTHORITY\NetworkService":(OI)(CI)F /T /Q'
     ; E6-02 fix: Config dir ACL hardening — remove inheritance, explicit grants only
     ; Secrets (jwt.secret, db password, encryption key) must not be readable by regular users
     nsExec::ExecToLog 'icacls "$DATA_DIR\config" /inheritance:r /T /Q'
@@ -848,6 +857,9 @@ Section "un.Eltávolítás"
 
     un_keepData:
         DetailPrint "Binárisok törlése (adatok megmaradnak)..."
+        ; S6-06 fix: Secrets törlése még keep-data módban is
+        Delete "$DATA_DIR\config\application-local.properties"
+        DetailPrint "  Konfigurációs fájl törölve (titkos kulcsok eltávolítva)"
         RMDir /r "$DATA_DIR\jre"
         RMDir /r "$DATA_DIR\tools"
         RMDir /r "$DATA_DIR\scripts"
