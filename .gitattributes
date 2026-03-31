@@ -3,16 +3,16 @@
 mvnw text eol=lf
 mvnw.cmd text eol=crlf
 
-# Java/XML/SQL — auto
-*.java text=auto
-*.xml text=auto
-*.sql text=auto
-*.properties text=auto
+# Java/XML/SQL - auto, UTF-8
+*.java text=auto working-tree-encoding=UTF-8
+*.xml text=auto working-tree-encoding=UTF-8
+*.sql text=auto working-tree-encoding=UTF-8
+*.properties text=auto working-tree-encoding=UTF-8
 *.yml text=auto
 *.yaml text=auto
 
-# Frontend
-*.ts text=auto
-*.tsx text=auto
-*.json text=auto
-*.md text=auto
+# Frontend - UTF-8
+*.ts text=auto working-tree-encoding=UTF-8
+*.tsx text=auto working-tree-encoding=UTF-8
+*.json text=auto working-tree-encoding=UTF-8
+*.md text=auto working-tree-encoding=UTF-8
