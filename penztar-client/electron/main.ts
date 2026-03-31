@@ -38,7 +38,7 @@ import {
   getCachedWorkers,
   getCachedWorkerTimestamp,
 } from './sqlite';
-import { printReceipt, type PrintReceiptData } from './printer';
+import { printReceipt, type PrintReceiptData, PRINTER_CONFIG_KEY, SERIAL_PORT_CONFIG_KEY } from './printer';
 import { syncEngine } from './sync-engine';
 import { registerCameraHandlers } from './camera';
 import { registerScannerHandlers } from './scanner';
@@ -151,9 +151,33 @@ function createWindow(): void {
 ipcMain.handle('print-receipt', async (_event, dataJson: string): Promise<boolean> => {
   try {
     const data = JSON.parse(dataJson) as PrintReceiptData;
-    return await printReceipt(data);
+    const printerName = getConfig(PRINTER_CONFIG_KEY) ?? undefined;
+    const serialPort = getConfig(SERIAL_PORT_CONFIG_KEY) ?? undefined;
+    return await printReceipt(data, printerName, serialPort);
   } catch (err) {
     console.error('[IPC] print-receipt hiba:', err);
+    return false;
+  }
+});
+
+ipcMain.handle('list-serial-ports', async (): Promise<unknown[]> => {
+  try {
+    const { listSerialPorts } = await import('./serial-printer');
+    return await listSerialPorts();
+  } catch (err) {
+    console.error('[IPC] list-serial-ports hiba:', err);
+    return [];
+  }
+});
+
+ipcMain.handle('open-cash-drawer', async (): Promise<boolean> => {
+  try {
+    const serialPort = getConfig(SERIAL_PORT_CONFIG_KEY);
+    if (!serialPort) return false;
+    const { openCashDrawer } = await import('./serial-printer');
+    return await openCashDrawer({ port: serialPort });
+  } catch (err) {
+    console.error('[IPC] open-cash-drawer hiba:', err);
     return false;
   }
 });

@@ -4,6 +4,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   printReceipt: (data: string): Promise<boolean> =>
     ipcRenderer.invoke('print-receipt', data),
 
+  listSerialPorts: (): Promise<Array<{ path: string; manufacturer?: string; friendlyName?: string }>> =>
+    ipcRenderer.invoke('list-serial-ports'),
+
+  openCashDrawer: (): Promise<boolean> =>
+    ipcRenderer.invoke('open-cash-drawer'),
+
   getConfig: (key: string): Promise<string | null> =>
     ipcRenderer.invoke('get-config', key),
 

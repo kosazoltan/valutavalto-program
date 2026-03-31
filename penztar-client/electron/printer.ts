@@ -836,21 +836,25 @@ function escHtml(str: string): string {
 /** A konfig kulcs, amiben a preferált nyomtató neve van tárolva (SQLite config). */
 export const PRINTER_CONFIG_KEY = 'printer.deviceName';
 
+/** Soros (COM) port konfig kulcs — ha be van állítva, a blokknyomtató soros porton nyomtat. */
+export const SERIAL_PORT_CONFIG_KEY = 'printer.serialPort';
+
 /**
- * Jövőbeli USB hőnyomtató integráció.
- * Közvetlen ESC/POS parancsokat küld a nyomtatónak USB-n vagy soros porton.
+ * Soros blokknyomtató küldés (Star SP500 vagy kompatibilis).
+ * Ha van konfigurált COM port, közvetlenül soros portra küldi az ESC/POS adatot.
  *
- * Aktiváláshoz szükséges:
- *   1. `node-thermal-printer` vagy `escpos` npm csomag telepítése
- *   2. USB HID driver (libusb) a célgépen
- *   3. A PRINTER_CONFIG_KEY konfigba a nyomtató USB vendor/product ID beállítása
- *
- * @returns true ha sikerült nyomtatni, false ha nincs USB nyomtató (fallback-re vált)
+ * @returns true ha sikerült nyomtatni, false ha nincs soros nyomtató konfigurálva
  */
-async function printToThermalUsb(_escPosContent: string): Promise<boolean> {
-  // Natív USB nyomtató jelenleg nincs konfigurálva.
-  // Ha a jövőben szükséges, itt kell implementálni a közvetlen USB küldést.
-  return false;
+async function printToSerialPrinter(data: PrintReceiptData, serialPort?: string): Promise<boolean> {
+  if (!serialPort) return false;
+
+  try {
+    const { printReceiptToSerial } = await import('./serial-printer');
+    return await printReceiptToSerial(data, { port: serialPort });
+  } catch (err) {
+    log.warn('[PRINTER] Soros nyomtató hiba, fallback Electron print-re:', err);
+    return false;
+  }
 }
 
 /**
@@ -939,21 +943,23 @@ async function printViaElectron(html: string, printerName?: string): Promise<boo
 export async function printReceipt(
   data: PrintReceiptData,
   printerName?: string,
+  serialPort?: string,
 ): Promise<boolean> {
   try {
     log.info(`[PRINTER] Nyomtatás indítása: ${data.type} ${data.receiptNumber}`);
 
-    // 1. Próbáljuk ESC/POS USB nyomtatón
-    const escPosContent = generateReceiptContent(data);
-    const usbSuccess = await printToThermalUsb(escPosContent);
-
-    if (usbSuccess) {
-      log.info(`[PRINTER] USB hőnyomtató: OK — ${data.receiptNumber}`);
-      return true;
+    // 1. Próbáljuk soros blokknyomtatón (Star SP500 / kompatibilis)
+    if (serialPort) {
+      const serialSuccess = await printToSerialPrinter(data, serialPort);
+      if (serialSuccess) {
+        log.info(`[PRINTER] Soros blokknyomtató (${serialPort}): OK — ${data.receiptNumber}`);
+        return true;
+      }
+      log.warn(`[PRINTER] Soros port ${serialPort} sikertelen, Electron fallback...`);
     }
 
     // 2. Fallback: Electron rendszer nyomtató (HTML alapú)
-    log.info('[PRINTER] USB nyomtató nem elérhető, Electron print fallback...');
+    log.info('[PRINTER] Electron print fallback...');
     const html = await generateReceiptHtml(data);
     const electronSuccess = await printViaElectron(html, printerName);
 

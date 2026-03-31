@@ -1,38 +1,16 @@
-//#region \0rolldown/runtime.js
-var __create = Object.create;
-var __defProp = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __getProtoOf = Object.getPrototypeOf;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __copyProps = (to, from, except, desc) => {
-	if (from && typeof from === "object" || typeof from === "function") for (var keys = __getOwnPropNames(from), i = 0, n = keys.length, key; i < n; i++) {
-		key = keys[i];
-		if (!__hasOwnProp.call(to, key) && key !== except) __defProp(to, key, {
-			get: ((k) => from[k]).bind(null, key),
-			enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable
-		});
-	}
-	return to;
-};
-var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", {
-	value: mod,
-	enumerable: true
-}) : target, mod));
-//#endregion
-require("dotenv/config");
+const require_chunk = require("./chunk-DyKKrNZQ.js");
 let electron = require("electron");
 let electron_log_main = require("electron-log/main");
-electron_log_main = __toESM(electron_log_main);
+electron_log_main = require_chunk.__toESM(electron_log_main);
 let node_path = require("node:path");
-node_path = __toESM(node_path);
+node_path = require_chunk.__toESM(node_path);
 let node_url = require("node:url");
 let sql_js = require("sql.js");
-sql_js = __toESM(sql_js);
+sql_js = require_chunk.__toESM(sql_js);
 let node_fs = require("node:fs");
-node_fs = __toESM(node_fs);
+node_fs = require_chunk.__toESM(node_fs);
 let node_crypto = require("node:crypto");
-node_crypto = __toESM(node_crypto);
+node_crypto = require_chunk.__toESM(node_crypto);
 //#region electron/sqlite.ts
 var db = null;
 var dbPath = "";
@@ -1299,13 +1277,15 @@ var COMPANIES = {
 		name: "BEST CHANGE",
 		fullName: "EXCLUSIVE BEST CHANGE ZRT.",
 		taxNumber: "32313332-2-02",
-		address: "Szeged, Kárász u. 5."
+		address: "Szeged, Kárász u. 5.",
+		phone: "06703800161"
 	},
 	EXPRESSZ: {
 		name: "EXPRESSZ",
 		fullName: "EXPRESSZ ÉKSZERHÁZ ÉS MINIBANK KFT.",
 		taxNumber: "14040535-2-02",
-		address: "Szeged, Klauzál tér 3."
+		address: "Szeged, Klauzál tér 3.",
+		phone: ""
 	}
 };
 var JOB_TYPE_LABELS = {
@@ -1314,7 +1294,11 @@ var JOB_TYPE_LABELS = {
 	transfer: "ÁTADÁS-ÁTVÉTELI BIZONYLAT",
 	storno: "STORNÓ BIZONYLAT",
 	conversion: "KONVERZIÓS BIZONYLAT",
-	closing: "NAPI ZÁRÁS"
+	closing: "NAPI ZÁRÁS",
+	handling_fee: "KEZELÉSI DÍJ BIZONYLAT",
+	cash_status: "PÉNZTÁR ÁLLÁS",
+	vault_closing: "ÉRTÉKTÁRI ZÁRÁS",
+	kktg_transfer: "KKTG ÁTADÁS-ÁTVÉTEL"
 };
 /**
 * ESC/POS bizonylat generálása stringként.
@@ -1333,7 +1317,9 @@ function generateReceiptContent(data) {
 	lines.push(company.fullName);
 	lines.push(CMD.BOLD_OFF);
 	lines.push(company.address);
-	lines.push(`Adószám: ${company.taxNumber}`);
+	const phone = data.companyPhone || company.phone;
+	if (phone) lines.push(`Tel: ${phone}`);
+	lines.push(`Adószám: ${data.companyTaxNumber || company.taxNumber}`);
 	lines.push("");
 	lines.push(CMD.DOUBLE_LINE);
 	lines.push("");
@@ -1355,15 +1341,24 @@ function generateReceiptContent(data) {
 	else if (data.type === "transfer") lines.push(...generateTransferLines(data));
 	else if (data.type === "storno") lines.push(...generateStornoLines(data));
 	else if (data.type === "closing") lines.push(...generateClosingLines(data));
+	else if (data.type === "handling_fee") lines.push(...generateHandlingFeeLines(data));
+	else if (data.type === "cash_status") lines.push(...generateCashStatusLines(data));
+	else if (data.type === "vault_closing") lines.push(...generateVaultClosingLines(data));
+	else if (data.type === "kktg_transfer") lines.push(...generateKktgTransferLines(data));
 	if (data.customerName) {
 		lines.push("");
 		lines.push(CMD.LINE);
 		lines.push(CMD.BOLD_ON);
 		lines.push("ÜGYFÉL ADATOK:");
 		lines.push(CMD.BOLD_OFF);
-		lines.push(`Név:      ${data.customerName}`);
-		if (data.customerDocType) lines.push(`Igazolv.: ${data.customerDocType}`);
-		if (data.customerDocNumber) lines.push(`Szám:     ${data.customerDocNumber}`);
+		lines.push(`Név:        ${data.customerName}`);
+		if (data.customerBirthPlace) lines.push(`Szül.hely:  ${data.customerBirthPlace}`);
+		if (data.customerBirthDate) lines.push(`Szül.idő:   ${data.customerBirthDate}`);
+		if (data.customerMotherName) lines.push(`Anyja neve: ${data.customerMotherName}`);
+		if (data.customerAddress) lines.push(`Lakcím:     ${data.customerAddress}`);
+		if (data.customerDocType) lines.push(`Okmány:     ${data.customerDocType}`);
+		if (data.customerDocNumber) lines.push(`Okmányszám: ${data.customerDocNumber}`);
+		if (data.customerNationality) lines.push(`Államp.:    ${data.customerNationality}`);
 	}
 	if (data.receiptNumber && (data.type === "sell" || data.type === "buy" || data.type === "conversion")) {
 		lines.push("");
@@ -1378,16 +1373,31 @@ function generateReceiptContent(data) {
 			data.date,
 			(data.roundedHufAmount ?? data.hufAmount ?? 0).toString(),
 			data.currencyCode ?? "HUF",
-			company.taxNumber,
+			data.companyTaxNumber || company.taxNumber,
 			data.branchCode
 		].join("|");
 		lines.push(`[QR:${qrContent}]`);
 		lines.push("");
 	}
 	lines.push("");
+	lines.push(CMD.LINE);
+	lines.push(CMD.ALIGN_LEFT);
+	lines.push("Szj 67.13.10.0");
+	lines.push("Az ÁFA alól mentes:");
+	lines.push("2007. évi CXVII tv. 85. § e)");
+	lines.push(CMD.LINE);
+	lines.push("");
+	lines.push(CMD.ALIGN_LEFT);
+	lines.push("...............    ...............");
+	lines.push("  Pénztáros            Ügyfél");
+	lines.push("");
 	lines.push(CMD.DOUBLE_LINE);
 	lines.push(CMD.ALIGN_CENTER);
 	lines.push("Köszönjük, hogy minket választott!");
+	lines.push("");
+	lines.push("A bizonylat a pénzmosás elleni");
+	lines.push("törvény alapján nem helyettesíti");
+	lines.push("a számlát.");
 	lines.push("");
 	lines.push(CMD.FEED_LINES(4));
 	lines.push(CMD.PARTIAL_CUT);
@@ -1497,6 +1507,49 @@ function generateClosingLines(data) {
 	}
 	return lines;
 }
+function generateHandlingFeeLines(data) {
+	const lines = [];
+	lines.push("");
+	lines.push(CMD.BOLD_ON);
+	lines.push(`Kezelési díj: ${formatAmount(data.hufAmount)} Ft`);
+	lines.push(CMD.BOLD_OFF);
+	if (data.sealNumber) lines.push(`Plombaszám:    ${data.sealNumber}`);
+	if (data.originalReceiptNumber) lines.push(`Alapbizonylat: ${data.originalReceiptNumber}`);
+	return lines;
+}
+function generateCashStatusLines(data) {
+	const lines = [];
+	lines.push("");
+	lines.push(CMD.BOLD_ON);
+	lines.push("PÉNZTÁR ÁLLÁS");
+	lines.push(CMD.BOLD_OFF);
+	if (data.hufAmount !== void 0) lines.push(`HUF egyenleg:  ${formatAmount(data.hufAmount)} Ft`);
+	if (data.note) lines.push(`Megjegyzés:    ${data.note}`);
+	return lines;
+}
+function generateVaultClosingLines(data) {
+	const lines = [];
+	lines.push("");
+	lines.push(CMD.BOLD_ON);
+	lines.push("ÉRTÉKTÁRI ZÁRÁS");
+	lines.push(CMD.BOLD_OFF);
+	if (data.hufAmount !== void 0) lines.push(`Összeg:        ${formatAmount(data.hufAmount)} Ft`);
+	if (data.sealNumber) lines.push(`Plombaszám:    ${data.sealNumber}`);
+	if (data.note) lines.push(`Megjegyzés:    ${data.note}`);
+	return lines;
+}
+function generateKktgTransferLines(data) {
+	const lines = [];
+	lines.push("");
+	lines.push(CMD.BOLD_ON);
+	lines.push("KKTG ÁTADÁS-ÁTVÉTEL");
+	lines.push(CMD.BOLD_OFF);
+	if (data.hufAmount !== void 0) lines.push(`Összeg:        ${formatAmount(data.hufAmount)} Ft`);
+	if (data.sealNumber) lines.push(`Plombaszám:    ${data.sealNumber}`);
+	if (data.transferTarget) lines.push(`Cél iroda:     ${data.transferTarget}`);
+	if (data.note) lines.push(`Megjegyzés:    ${data.note}`);
+	return lines;
+}
 function formatAmount(value) {
 	if (value === void 0) return "—";
 	return value.toLocaleString("hu-HU", { maximumFractionDigits: 2 });
@@ -1512,7 +1565,7 @@ function formatRate(value) {
 * Bizonylat HTML generálása — 80mm szélességre optimalizált.
 * Ezt rendereli a rejtett BrowserWindow a rendszer nyomtató felé.
 */
-function generateReceiptHtml(data) {
+async function generateReceiptHtml(data) {
 	const company = COMPANIES[data.companyType] ?? COMPANIES["BEST_CHANGE"];
 	const label = JOB_TYPE_LABELS[data.type];
 	let bodyContent = "";
@@ -1521,7 +1574,8 @@ function generateReceiptHtml(data) {
       <div class="company-name">${escHtml(company.name)}</div>
       <div class="company-full">${escHtml(company.fullName)}</div>
       <div>${escHtml(company.address)}</div>
-      <div>Adószám: ${escHtml(company.taxNumber)}</div>
+      ${data.companyPhone || company.phone ? `<div>Tel: ${escHtml(data.companyPhone || company.phone)}</div>` : ""}
+      <div>Adószám: ${escHtml(data.companyTaxNumber || company.taxNumber)}</div>
     </div>
     <div class="double-line"></div>
     <div class="center receipt-type">${escHtml(label)}</div>
@@ -1536,17 +1590,74 @@ function generateReceiptHtml(data) {
 	if (data.type === "sell" || data.type === "buy") bodyContent += generateTransactionHtml(data);
 	else if (data.type === "transfer") bodyContent += generateTransferHtml(data);
 	else if (data.type === "storno") bodyContent += generateStornoHtml(data);
+	else if (data.type === "conversion") bodyContent += generateConversionHtml(data);
 	else if (data.type === "closing") bodyContent += generateClosingHtml(data);
+	else if (data.type === "handling_fee") bodyContent += generateHandlingFeeHtml(data);
+	else if (data.type === "cash_status") bodyContent += generateCashStatusHtml(data);
+	else if (data.type === "vault_closing") bodyContent += generateVaultClosingHtml(data);
+	else if (data.type === "kktg_transfer") bodyContent += generateKktgTransferHtml(data);
 	if (data.customerName) bodyContent += `
       <div class="line"></div>
       <div class="bold">ÜGYFÉL ADATOK:</div>
-      <div>Név: ${escHtml(data.customerName)}</div>
-      ${data.customerDocType ? `<div>Igazolv.: ${escHtml(data.customerDocType)}</div>` : ""}
-      ${data.customerDocNumber ? `<div>Szám: ${escHtml(data.customerDocNumber)}</div>` : ""}
+      <div class="amount-row"><span>Név:</span><span>${escHtml(data.customerName)}</span></div>
+      ${data.customerBirthPlace ? `<div class="amount-row"><span>Szül. hely:</span><span>${escHtml(data.customerBirthPlace)}</span></div>` : ""}
+      ${data.customerBirthDate ? `<div class="amount-row"><span>Szül. idő:</span><span>${escHtml(data.customerBirthDate)}</span></div>` : ""}
+      ${data.customerMotherName ? `<div class="amount-row"><span>Anyja neve:</span><span>${escHtml(data.customerMotherName)}</span></div>` : ""}
+      ${data.customerAddress ? `<div class="amount-row"><span>Lakcím:</span><span>${escHtml(data.customerAddress)}</span></div>` : ""}
+      ${data.customerDocType ? `<div class="amount-row"><span>Okmány:</span><span>${escHtml(data.customerDocType)}</span></div>` : ""}
+      ${data.customerDocNumber ? `<div class="amount-row"><span>Okmányszám:</span><span>${escHtml(data.customerDocNumber)}</span></div>` : ""}
+      ${data.customerNationality ? `<div class="amount-row"><span>Állampolgárság:</span><span>${escHtml(data.customerNationality)}</span></div>` : ""}
     `;
+	bodyContent += `
+    <div class="line"></div>
+    <div style="font-size: 9px; margin: 4px 0;">
+      ${data.vatExemptionText ? `<div>${escHtml(data.vatExemptionText)}</div>` : `<div>Szj 67.13.10.0</div><div>Az ÁFA alól mentes: 2007. évi CXVII tv. 85. § e)</div>`}
+    </div>
+    <div class="line"></div>
+  `;
+	bodyContent += `
+    <div style="display: flex; justify-content: space-around; margin: 12px 0;">
+      <div style="text-align: center;">
+        <div style="border-top: 1px solid #000; width: 90px; display: inline-block;"></div>
+        <div style="font-size: 9px;">Pénztáros</div>
+      </div>
+      <div style="text-align: center;">
+        <div style="border-top: 1px solid #000; width: 90px; display: inline-block;"></div>
+        <div style="font-size: 9px;">Ügyfél</div>
+      </div>
+    </div>
+  `;
+	const taxNum = data.companyTaxNumber || company.taxNumber;
+	const qrText = [
+		data.receiptNumber,
+		data.date,
+		(data.roundedHufAmount ?? data.hufAmount ?? 0).toString(),
+		data.currencyCode ?? "HUF",
+		taxNum,
+		data.branchCode ?? ""
+	].join("|");
+	try {
+		const qrDataUrl = await (await Promise.resolve().then(() => /* @__PURE__ */ require_chunk.__toESM(require("./lib-D9GoHSn6.js").default))).toDataURL(qrText, {
+			width: 120,
+			margin: 1,
+			errorCorrectionLevel: "M"
+		});
+		bodyContent += `
+      <div class="center" style="margin: 8px 0;">
+        <img src="${qrDataUrl}" style="width: 100px; height: 100px;" alt="QR" />
+      </div>
+    `;
+	} catch {
+		bodyContent += `
+      <div class="center" style="margin: 8px 0; font-size: 8px; color: #999;">QR: ${escHtml(qrText)}</div>
+    `;
+	}
 	bodyContent += `
     <div class="double-line"></div>
     <div class="center footer">Köszönjük, hogy minket választott!</div>
+    <div class="center" style="font-size: 8px; color: #666; margin-top: 4px;">
+      A bizonylat a pénzmosás elleni törvény alapján nem helyettesíti a számlát.
+    </div>
   `;
 	return `<!DOCTYPE html>
 <html>
@@ -1673,6 +1784,55 @@ function generateClosingHtml(data) {
     ${discrepancyHtml}
   `;
 }
+function generateConversionHtml(data) {
+	return `
+    <div class="section">
+      <div class="amount-row"><span>Forrás:</span><span>${formatAmount(data.sourceAmount)} ${escHtml(data.sourceCurrencyCode ?? "—")}</span></div>
+      <div class="amount-row"><span>Cél:</span><span>${formatAmount(data.targetAmount)} ${escHtml(data.targetCurrencyCode ?? "—")}</span></div>
+      <div class="amount-row"><span>Köztes HUF:</span><span>${formatAmount(data.hufAmount)} Ft</span></div>
+      <div class="amount-row"><span>Árfolyam:</span><span>${formatRate(data.rate)}</span></div>
+      ${data.note ? `<div class="amount-row"><span>Megjegyzés:</span><span>${escHtml(data.note)}</span></div>` : ""}
+    </div>
+  `;
+}
+function generateHandlingFeeHtml(data) {
+	return `
+    <div class="section">
+      <div class="bold total">Kezelési díj: ${formatAmount(data.hufAmount ?? 0)} Ft</div>
+      ${data.sealNumber ? `<div class="amount-row"><span>Plombaszám:</span><span>${escHtml(data.sealNumber)}</span></div>` : ""}
+      ${data.originalReceiptNumber ? `<div class="amount-row"><span>Alapbizonylat:</span><span>${escHtml(data.originalReceiptNumber)}</span></div>` : ""}
+    </div>
+  `;
+}
+function generateCashStatusHtml(data) {
+	return `
+    <div class="section">
+      <div class="bold">PÉNZTÁR ÁLLÁS</div>
+      ${data.hufAmount !== void 0 ? `<div class="amount-row"><span>HUF egyenleg:</span><span>${formatAmount(data.hufAmount)} Ft</span></div>` : ""}
+      ${data.note ? `<div class="amount-row"><span>Megjegyzés:</span><span>${escHtml(data.note)}</span></div>` : ""}
+    </div>
+  `;
+}
+function generateVaultClosingHtml(data) {
+	return `
+    <div class="section">
+      <div class="bold">ÉRTÉKTÁRI ZÁRÁS</div>
+      ${data.hufAmount !== void 0 ? `<div class="amount-row"><span>Összeg:</span><span>${formatAmount(data.hufAmount)} Ft</span></div>` : ""}
+      ${data.sealNumber ? `<div class="amount-row"><span>Plombaszám:</span><span>${escHtml(data.sealNumber)}</span></div>` : ""}
+      ${data.note ? `<div class="amount-row"><span>Megjegyzés:</span><span>${escHtml(data.note)}</span></div>` : ""}
+    </div>
+  `;
+}
+function generateKktgTransferHtml(data) {
+	return `
+    <div class="section">
+      <div class="bold total">Összeg: ${formatAmount(data.hufAmount ?? 0)} Ft</div>
+      ${data.sealNumber ? `<div class="amount-row"><span>Plombaszám:</span><span>${escHtml(data.sealNumber)}</span></div>` : ""}
+      ${data.transferTarget ? `<div class="amount-row"><span>Cél iroda:</span><span>${escHtml(data.transferTarget)}</span></div>` : ""}
+      ${data.note ? `<div class="amount-row"><span>Megjegyzés:</span><span>${escHtml(data.note)}</span></div>` : ""}
+    </div>
+  `;
+}
 /** Egyszerű HTML escape az XSS elkerülésére. */
 function escHtml(str) {
 	return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -1759,7 +1919,7 @@ async function printReceipt(data, printerName) {
 			return true;
 		}
 		electron_log_main.default.info("[PRINTER] USB nyomtató nem elérhető, Electron print fallback...");
-		const electronSuccess = await printViaElectron(generateReceiptHtml(data), printerName);
+		const electronSuccess = await printViaElectron(await generateReceiptHtml(data), printerName);
 		if (electronSuccess) electron_log_main.default.info(`[PRINTER] Electron print: OK — ${data.receiptNumber}`);
 		else electron_log_main.default.error(`[PRINTER] Nyomtatás sikertelen — ${data.receiptNumber}. Ellenőrizd a nyomtató állapotát (offline / papír kifogyott).`);
 		return electronSuccess;
@@ -2852,6 +3012,9 @@ function registerUpdaterHandlers() {
 }
 //#endregion
 //#region electron/main.ts
+try {
+	require("dotenv/config");
+} catch {}
 var isDev = !electron.app.isPackaged;
 electron.protocol.registerSchemesAsPrivileged([{
 	scheme: "app",
