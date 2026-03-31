@@ -6,7 +6,8 @@
 ;       E6-02 config dir ACL hardening (inheritance removed, explicit grants),
 ;       E6-03 uninstaller process-death wait loop, E6-04 firewall remoteip=127.0.0.1,
 ;       S6-01 default password warning, S6-05 backend dir RX+logs F,
-;       S6-06 silent uninstall secrets cleanup, S6-07 CORS localhost:3000 removed
+;       S6-06 silent uninstall secrets cleanup, S6-07 CORS localhost:3000 removed,
+;       S6-10 secure wipe before SQL/PS1 temp file deletion (forensic prevention)
 ; v6: Nóra dependency research alapján:
 ;     - PostgreSQL 16 → 17 upgrade
 ;     - Windows Firewall szabályok (8080, 54320)
@@ -340,7 +341,10 @@ Section "Telepítés" SecInstall
         Abort
     ${EndIf}
 
-    ; Cleanup temp script
+    ; S6-10 fix: Secure wipe before delete (contains secret generation logic)
+    FileOpen $0 "$INSTDIR\generate-secrets.ps1" w
+    FileWrite $0 "# WIPED"
+    FileClose $0
     Delete "$INSTDIR\generate-secrets.ps1"
 
     ; application-local.properties (F3-A: random DB password from $8)
@@ -483,7 +487,10 @@ Section "Telepítés" SecInstall
             DetailPrint "  FIGYELMEZTETÉS: setup-user.sql kód: $0 — folytatás"
         ${EndIf}
 
-        ; Cleanup temp SQL (contains password!)
+        ; S6-10 fix: Secure wipe before delete (NTFS forensic recovery prevention)
+        FileOpen $0 "$DATA_DIR\scripts\setup-user.sql" w
+        FileWrite $0 "-- WIPED --$\r$\n"
+        FileClose $0
         Delete "$DATA_DIR\scripts\setup-user.sql"
 
         ; Verify user
@@ -493,6 +500,10 @@ Section "Telepítés" SecInstall
         nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -t -A -f "$DATA_DIR\scripts\verify-user.sql"'
         Pop $0
         Pop $1
+        ; S6-10 fix: Secure wipe before delete
+        FileOpen $0 "$DATA_DIR\scripts\verify-user.sql" w
+        FileWrite $0 "-- WIPED --$\r$\n"
+        FileClose $0
         Delete "$DATA_DIR\scripts\verify-user.sql"
         StrCpy $2 $1 1
         ; E6-01 fix: IfSilent +1
@@ -557,6 +568,10 @@ Section "Telepítés" SecInstall
         nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -d valuta -f "$DATA_DIR\scripts\update-password.sql"'
         Pop $0
         Pop $1
+        ; S6-10 fix: Secure wipe before delete
+        FileOpen $0 "$DATA_DIR\scripts\update-password.sql" w
+        FileWrite $0 "-- WIPED --$\r$\n"
+        FileClose $0
         Delete "$DATA_DIR\scripts\update-password.sql"
         ${If} $0 == 0
             DetailPrint "  DB jelszó frissítve!"
@@ -901,9 +916,22 @@ FunctionEnd
 Function .onInstFailed
     ; DATA_DIR may not be set yet if failure is very early
     ExpandEnvStrings $DATA_DIR "%PROGRAMDATA%\BestChange"
+    ; S6-10 fix: Secure wipe before delete (forensic recovery prevention)
+    FileOpen $0 "$DATA_DIR\scripts\setup-user.sql" w
+    FileWrite $0 "-- WIPED --$\r$\n"
+    FileClose $0
     Delete "$DATA_DIR\scripts\setup-user.sql"
+    FileOpen $0 "$DATA_DIR\scripts\update-password.sql" w
+    FileWrite $0 "-- WIPED --$\r$\n"
+    FileClose $0
     Delete "$DATA_DIR\scripts\update-password.sql"
+    FileOpen $0 "$DATA_DIR\scripts\verify-user.sql" w
+    FileWrite $0 "-- WIPED --$\r$\n"
+    FileClose $0
     Delete "$DATA_DIR\scripts\verify-user.sql"
+    FileOpen $0 "$INSTDIR\generate-secrets.ps1" w
+    FileWrite $0 "# WIPED"
+    FileClose $0
     Delete "$INSTDIR\generate-secrets.ps1"
 FunctionEnd
 
