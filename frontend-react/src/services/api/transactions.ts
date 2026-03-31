@@ -156,11 +156,15 @@ export interface BuyRequest {
   customExchangeRate?: number
   handlingFee?: number
   discountPercent?: number
-  customerId?: string
+  customerId?: string | number
   customerName?: string
   customerAddress?: string
   customerDocumentNumber?: string
+  customerDocumentType?: string
   customerNationality?: string
+  customerBirthPlace?: string
+  customerBirthDate?: string
+  customerMotherName?: string
   notes?: string
 }
 
@@ -171,11 +175,15 @@ export interface SellRequest {
   customExchangeRate?: number
   handlingFee?: number
   discountPercent?: number
-  customerId?: string
+  customerId?: string | number
   customerName?: string
   customerAddress?: string
   customerDocumentNumber?: string
+  customerDocumentType?: string
   customerNationality?: string
+  customerBirthPlace?: string
+  customerBirthDate?: string
+  customerMotherName?: string
   notes?: string
 }
 

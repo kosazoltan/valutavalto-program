@@ -22,8 +22,8 @@ import { useTransactionRates } from './hooks/useTransactionRates'
 import type { CurrencyRate } from './hooks/useTransactionRates'
 import { useIdentificationLevel } from './hooks/useIdentificationLevel'
 import CurrencySelector from './components/CurrencySelector'
-import CustomerPanel from './components/CustomerPanel'
-import type { Customer } from './components/CustomerPanel'
+import CustomerPanel from './components/LegacyCustomerPanel'
+import type { Customer } from './components/LegacyCustomerPanel'
 
 export default function TransactionPage() {
   const navigate = useNavigate()

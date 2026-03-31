@@ -1,0 +1,1 @@
+import{o as e,r as t}from"./createLucideIcon-CcfsW-ky.js";var n=e(t(),1);function r(e){let[t,r]=(0,n.useState)(`SIMPLE`),[i,a]=(0,n.useState)(!1);return(0,n.useEffect)(()=>{let t=parseFloat(e.replace(/\s/g,``).replace(`,`,`.`))||0;r(t<=1e5?`SIMPLE`:t<=3e5?`SIMPLIFIED`:`FULL`),a(t>=35e5)},[e]),{identificationLevel:t,requiresSourceVerification:i}}export{r as t};

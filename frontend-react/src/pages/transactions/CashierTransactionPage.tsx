@@ -1,11 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
-import {
-  AlertTriangle,
-  User,
-  Scan,
-} from 'lucide-react'
+// lucide-react icons moved to CustomerPanel
 import { CashierHeader } from '../../components/cashier/CashierHeader'
 import { HotkeyBar } from '../../components/cashier/HotkeyBar'
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext'
@@ -24,6 +20,10 @@ import { isElectron } from '../../utils/electron'
 import ReceiptPreviewModal from '../../components/electron/ReceiptPreviewModal'
 import type { PrintReceiptData } from '../../types/receipt'
 import { useAuthStore } from '../../stores/authStore'
+import CustomerPanel from './components/CustomerPanel'
+import type { CustomerPanelData } from './components/CustomerPanel'
+import { useIdentificationLevel } from './hooks/useIdentificationLevel'
+import type { AmlCheckResultDto } from '../../services/api/transactions'
 
 /**
  * Penztaros Eladas/Vetel kepernyoje — 6 soros valuta tabla.
@@ -68,10 +68,9 @@ export default function CashierTransactionPage() {
   const [activeRow, setActiveRow] = useState(0)
   const [activeField, setActiveField] = useState<'currency' | 'quantity'>('currency')
 
-  // Customer state
-  const [customerName, setCustomerName] = useState('')
-  const [customerDocNumber, setCustomerDocNumber] = useState('')
-  const [customerAddress, setCustomerAddress] = useState('')
+  // Customer state (managed by CustomerPanel)
+  const customerDataRef = useRef<CustomerPanelData | null>(null)
+  const amlResultRef = useRef<AmlCheckResultDto | null>(null)
 
   // Fees
   const [handlingFee, _setHandlingFee] = useState(0)
@@ -98,6 +97,9 @@ export default function CashierTransactionPage() {
   // Calculated totals
   const subtotal = rows.reduce((sum, r) => sum + r.hufValue, 0)
   const total = subtotal + handlingFee - discount
+
+  // Identification level based on HUF total
+  const { identificationLevel, requiresSourceVerification } = useIdentificationLevel(String(total))
 
   // Focus management
   useEffect(() => {
@@ -220,21 +222,37 @@ export default function CashierTransactionPage() {
     const filledRows = rows.filter((r) => r.currencyCode && r.hufValue > 0)
     if (filledRows.length === 0) return
 
-    // AML ellenorzes
-    if (total >= IDENTIFICATION_LIMIT) {
-      if (!customerName.trim() || !customerDocNumber.trim()) {
-        toast.warning('Ügyfél azonosítás kötelező', `${IDENTIFICATION_LIMIT.toLocaleString('hu-HU')} Ft feletti tranzakciohoz ugyfel azonositas KOTELEZO!`)
+    // AML/identification check
+    const cd = customerDataRef.current
+    const aml = amlResultRef.current
+    if (identificationLevel !== 'SIMPLE') {
+      if (!cd?.name?.trim() || !cd?.documentNumber?.trim()) {
+        toast.warning('Ugyfel azonositas kotelezo', `${IDENTIFICATION_LIMIT.toLocaleString('hu-HU')} Ft feletti tranzakciohoz ugyfel azonositas KOTELEZO!`)
         return
       }
+      if (identificationLevel === 'FULL' && (!cd?.birthPlace || !cd?.birthDate || !cd?.motherName || !cd?.address)) {
+        toast.warning('Teljes azonositas kotelezo', '300.000 Ft felett teljes ugyfeladatsor szukseges (szuletesi hely/ido, anyja neve, lakcim)!')
+        return
+      }
+    }
+    if (aml?.blocked) {
+      toast.error('Tranzakcio blokkolt', 'AML szabalysertes — a tranzakcio nem rogzitheto!')
+      return
     }
 
     setIsSubmitting(true)
 
     try {
-      const customerData = total >= IDENTIFICATION_LIMIT ? {
-        customerName: customerName.trim() || undefined,
-        customerDocumentNumber: customerDocNumber.trim() || undefined,
-        customerAddress: customerAddress.trim() || undefined,
+      const customerData = cd ? {
+        customerId: cd.id || undefined,
+        customerName: cd.name || undefined,
+        customerDocumentNumber: cd.documentNumber || undefined,
+        customerDocumentType: cd.documentType || undefined,
+        customerNationality: cd.nationality || undefined,
+        customerBirthPlace: cd.birthPlace || undefined,
+        customerBirthDate: cd.birthDate || undefined,
+        customerMotherName: cd.motherName || undefined,
+        customerAddress: cd.address || undefined,
       } : {}
 
       if (electronQueueAvailable) {
@@ -248,10 +266,10 @@ export default function CashierTransactionPage() {
             rate: row.exchangeRate,
             handlingFee: handlingFee > 0 ? handlingFee : null,
             discountPercent: discount > 0 ? discount : null,
-            customerIdentifier: customerDocNumber.trim() || null,
-            customerName: customerName.trim() || null,
-            customerDocumentNumber: customerDocNumber.trim() || null,
-            customerAddress: customerAddress.trim() || null,
+            customerIdentifier: cd?.documentNumber || null,
+            customerName: cd?.name || null,
+            customerDocumentNumber: cd?.documentNumber || null,
+            customerAddress: cd?.address || null,
             denominations: null,
           })),
         )
@@ -283,9 +301,9 @@ export default function CashierTransactionPage() {
             hufAmount: row.hufValue,
             roundedHufAmount: roundHuf(row.hufValue),
             roundingDiff: roundHuf(row.hufValue) - row.hufValue,
-            customerName: customerName.trim() || undefined,
-            customerDocNumber: customerDocNumber.trim() || undefined,
-            customerAddress: customerAddress.trim() || undefined,
+            customerName: cd?.name || undefined,
+            customerDocNumber: cd?.documentNumber || undefined,
+            customerAddress: cd?.address || undefined,
             vatExemptionText: 'Tárgyi adómentes az ÁFA tv. 86.§ (1) bek. k) pontja alapján.',
           }))
           receiptQueueRef.current = receipts.slice(1)
@@ -342,9 +360,9 @@ export default function CashierTransactionPage() {
             hufAmount: row.hufValue,
             roundedHufAmount: roundHuf(row.hufValue),
             roundingDiff: roundHuf(row.hufValue) - row.hufValue,
-            customerName: customerName.trim() || undefined,
-            customerDocNumber: customerDocNumber.trim() || undefined,
-            customerAddress: customerAddress.trim() || undefined,
+            customerName: cd?.name || undefined,
+            customerDocNumber: cd?.documentNumber || undefined,
+            customerAddress: cd?.address || undefined,
             vatExemptionText: 'Tárgyi adómentes az ÁFA tv. 86.§ (1) bek. k) pontja alapján.',
           }))
           receiptQueueRef.current = receipts.slice(1)
@@ -359,9 +377,8 @@ export default function CashierTransactionPage() {
       setRows(Array.from({ length: MAX_LINES }, emptyRow))
       setActiveRow(0)
       setActiveField('currency')
-      setCustomerName('')
-      setCustomerDocNumber('')
-      setCustomerAddress('')
+      customerDataRef.current = null
+      amlResultRef.current = null
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Ismeretlen hiba'
       const axiosError = error as { response?: { data?: { message?: string } } }
@@ -370,7 +387,7 @@ export default function CashierTransactionPage() {
     } finally {
       setIsSubmitting(false)
     }
-  }, [rows, mode, total, handlingFee, discount, customerName, customerDocNumber, customerAddress, electronQueueAvailable, worker?.branchCode, worker?.companyCode, worker?.fullName])
+  }, [rows, mode, total, handlingFee, discount, identificationLevel, electronQueueAvailable, worker?.branchCode, worker?.companyCode, worker?.fullName])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent, rowIdx: number, field: 'currency' | 'quantity') => {
@@ -540,65 +557,20 @@ export default function CashierTransactionPage() {
 
           {/* JOBB: UGYFEL PANEL */}
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-4">
-            <h3 className="text-lg font-bold flex items-center gap-2 text-gray-900 dark:text-white">
-              <User className="w-5 h-5" />
-              UGYFEL ADATOK
-            </h3>
-
-            {total >= IDENTIFICATION_LIMIT && (
-              <div className="bg-amber-50 dark:bg-amber-950/30 border-2 border-amber-400 dark:border-amber-600 rounded-lg p-3 flex items-start gap-2">
-                <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-                  Azonositas KOTELEZO {IDENTIFICATION_LIMIT.toLocaleString('hu-HU')} Ft felett!
-                </p>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nev</label>
-              <input
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="Kovacs Janos"
-                className="w-full h-11 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white focus:ring-2 focus:border-transparent"
-                style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Igazolvany szam</label>
-              <input
-                value={customerDocNumber}
-                onChange={(e) => setCustomerDocNumber(e.target.value)}
-                placeholder="123456AB"
-                className="w-full h-11 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent font-mono text-gray-900 dark:text-white focus:ring-2 focus:border-transparent"
-                style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Lakcim</label>
-              <input
-                value={customerAddress}
-                onChange={(e) => setCustomerAddress(e.target.value)}
-                placeholder="1111 Budapest, Fo utca 1."
-                className="w-full h-11 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white focus:ring-2 focus:border-transparent"
-                style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
-              />
-            </div>
-
-            {total >= IDENTIFICATION_LIMIT && (
-              <button className="w-full py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center gap-2 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                <Scan className="w-4 h-4" />
-                Igazolvany beolvasas
-              </button>
-            )}
+            <CustomerPanel
+              identificationLevel={identificationLevel}
+              requiresSourceVerification={requiresSourceVerification}
+              hufTotal={total}
+              onCustomerReady={(data) => { customerDataRef.current = data }}
+              onAmlResult={(result) => { amlResultRef.current = result }}
+            />
 
             {/* Veglegestes gomb */}
             <button
               onClick={handleSubmit}
-              disabled={isSubmitting || !rows.some((r) => r.hufValue > 0)}
+              disabled={isSubmitting || !rows.some((r) => r.hufValue > 0) || (amlResultRef.current?.blocked ?? false)}
               className="w-full py-3 rounded-lg text-white font-bold text-lg shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+              data-action="save"
               style={{ backgroundColor: 'var(--primary)' }}
             >
               {isSubmitting ? 'MENTÉS...' : 'BIZONYLAT KÉSZÍTÉSE'}
