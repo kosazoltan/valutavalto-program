@@ -20,6 +20,10 @@ import {
   saveAndSyncPendingBuySell,
 } from '../../utils/electronTransactions'
 import { logger } from '../../utils/logger'
+import { isElectron } from '../../utils/electron'
+import ReceiptPreviewModal from '../../components/electron/ReceiptPreviewModal'
+import type { PrintReceiptData } from '../../types/receipt'
+import { useAuthStore } from '../../stores/authStore'
 
 /**
  * Penztaros Eladas/Vetel kepernyoje — 6 soros valuta tabla.
@@ -78,6 +82,14 @@ export default function CashierTransactionPage() {
 
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Receipt print state — queue for multi-line transactions
+  const [showReceiptModal, setShowReceiptModal] = useState(false)
+  const [receiptData, setReceiptData] = useState<PrintReceiptData | null>(null)
+  const receiptQueueRef = useRef<PrintReceiptData[]>([])
+
+  // Auth store for receipt data
+  const worker = useAuthStore(s => s.worker)
 
   // Refs for keyboard navigation
   const currencyRefs = useRef<(HTMLInputElement | null)[]>([])
@@ -252,6 +264,36 @@ export default function CashierTransactionPage() {
             `${outcome.pendingCount} tétel helyi queue-ba került, ${outcome.syncedCount} tétel azonnal feltöltve.`,
           )
         }
+
+        // Build receipt queue for all lines (Electron)
+        if (isElectron()) {
+          const now = new Date()
+          const outcomeReceipts = (outcome as { receiptNumbers?: string[] }).receiptNumbers ?? []
+          const receipts: PrintReceiptData[] = filledRows.map((row, idx) => ({
+            type: mode === 'buy' ? 'buy' as const : 'sell' as const,
+            companyType: ((worker?.companyCode ?? '').startsWith('EXP') ? 'EXPRESSZ' : 'BEST_CHANGE') as 'BEST_CHANGE' | 'EXPRESSZ',
+            receiptNumber: outcomeReceipts[idx] ?? `P-${now.getTime()}-${idx}`,
+            branchCode: worker?.branchCode ?? '',
+            cashierName: worker?.fullName ?? '',
+            date: now.toLocaleDateString('hu-HU'),
+            time: now.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }),
+            currencyCode: row.currencyCode,
+            foreignAmount: parseFloat(row.quantity) || 0,
+            rate: row.exchangeRate,
+            hufAmount: row.hufValue,
+            roundedHufAmount: roundHuf(row.hufValue),
+            roundingDiff: roundHuf(row.hufValue) - row.hufValue,
+            customerName: customerName.trim() || undefined,
+            customerDocNumber: customerDocNumber.trim() || undefined,
+            customerAddress: customerAddress.trim() || undefined,
+            vatExemptionText: 'Tárgyi adómentes az ÁFA tv. 86.§ (1) bek. k) pontja alapján.',
+          }))
+          receiptQueueRef.current = receipts.slice(1)
+          if (receipts[0]) {
+            setReceiptData(receipts[0])
+            setShowReceiptModal(true)
+          }
+        }
       } else {
         const receiptNumbers: string[] = []
 
@@ -282,6 +324,35 @@ export default function CashierTransactionPage() {
         }
 
         toast.success('Bizonylat(ok) sikeresen készítve!', `${filledRows.length} tétel, ${total.toLocaleString('hu-HU')} Ft | Bizonylat számok: ${receiptNumbers.join(', ')}`)
+
+        // Build receipt queue for all lines (API path)
+        if (filledRows.length > 0 && receiptNumbers.length > 0) {
+          const now = new Date()
+          const receipts: PrintReceiptData[] = filledRows.map((row, idx) => ({
+            type: mode === 'buy' ? 'buy' as const : 'sell' as const,
+            companyType: ((worker?.companyCode ?? '').startsWith('EXP') ? 'EXPRESSZ' : 'BEST_CHANGE') as 'BEST_CHANGE' | 'EXPRESSZ',
+            receiptNumber: receiptNumbers[idx] ?? `API-${now.getTime()}-${idx}`,
+            branchCode: worker?.branchCode ?? '',
+            cashierName: worker?.fullName ?? '',
+            date: now.toLocaleDateString('hu-HU'),
+            time: now.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }),
+            currencyCode: row.currencyCode,
+            foreignAmount: parseFloat(row.quantity) || 0,
+            rate: row.exchangeRate,
+            hufAmount: row.hufValue,
+            roundedHufAmount: roundHuf(row.hufValue),
+            roundingDiff: roundHuf(row.hufValue) - row.hufValue,
+            customerName: customerName.trim() || undefined,
+            customerDocNumber: customerDocNumber.trim() || undefined,
+            customerAddress: customerAddress.trim() || undefined,
+            vatExemptionText: 'Tárgyi adómentes az ÁFA tv. 86.§ (1) bek. k) pontja alapján.',
+          }))
+          receiptQueueRef.current = receipts.slice(1)
+          if (receipts[0]) {
+            setReceiptData(receipts[0])
+            setShowReceiptModal(true)
+          }
+        }
       }
 
       // Reset
@@ -299,7 +370,7 @@ export default function CashierTransactionPage() {
     } finally {
       setIsSubmitting(false)
     }
-  }, [rows, mode, total, handlingFee, discount, customerName, customerDocNumber, customerAddress, electronQueueAvailable])
+  }, [rows, mode, total, handlingFee, discount, customerName, customerDocNumber, customerAddress, electronQueueAvailable, worker?.branchCode, worker?.companyCode, worker?.fullName])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent, rowIdx: number, field: 'currency' | 'quantity') => {
@@ -535,6 +606,30 @@ export default function CashierTransactionPage() {
           </div>
         </div>
       </main>
+
+      {/* RECEIPT PREVIEW MODAL */}
+      <ReceiptPreviewModal
+        isOpen={showReceiptModal}
+        onClose={() => {
+          // Show next receipt in queue if any
+          const next = receiptQueueRef.current.shift()
+          if (next) {
+            setReceiptData(next)
+          } else {
+            setShowReceiptModal(false)
+            setReceiptData(null)
+          }
+        }}
+        receiptData={receiptData}
+        qrCodeDataUrl={null}
+        allowPrint={isElectron()}
+        onPrint={async () => {
+          if (receiptData && window.electronAPI?.printReceipt) {
+            await window.electronAPI.printReceipt(JSON.stringify(receiptData))
+          }
+        }}
+        printLabel={!isElectron() ? 'Nyomtatás nem elérhető' : undefined}
+      />
 
       {/* HOTKEY BAR */}
       <HotkeyBar

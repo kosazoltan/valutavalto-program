@@ -300,7 +300,20 @@ export default function ReceiptPreviewModal({
                   {receiptData.customerDocNumber && (
                     <p>Szám: {receiptData.customerDocNumber}</p>
                   )}
+                  {receiptData.customerAddress && (
+                    <p>Cím: {receiptData.customerAddress}</p>
+                  )}
                 </div>
+              </>
+            )}
+
+            {/* ÁFA-mentesség */}
+            {receiptData.vatExemptionText && (
+              <>
+                <div className="my-3 border-t border-gray-300" />
+                <p className="text-[10px] italic text-gray-600">
+                  {receiptData.vatExemptionText}
+                </p>
               </>
             )}
 

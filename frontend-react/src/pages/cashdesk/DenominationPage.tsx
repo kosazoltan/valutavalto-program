@@ -12,6 +12,7 @@ import { NumberInput } from '../../components/NumberInput'
 import { toast } from '../../components/ui/toaster'
 import { formatInteger, formatDecimal } from '../../utils/numberFormat'
 import { logger } from '../../utils/logger';
+import { useAuthStore } from '../../stores/authStore';
 
 interface DenominationQuantityUpdateRequest {
   denominationId: string
@@ -19,7 +20,7 @@ interface DenominationQuantityUpdateRequest {
 }
 
 export default function DenominationPage() {
-  const [selectedCashDeskId] = useState<string>('') // TODO: Get from context/params
+  const selectedCashDeskId = useAuthStore((s: { worker: { branchId: string } | null }) => s.worker?.branchId ?? '')
   const [currencies, setCurrencies] = useState<Currency[]>([])
   const [selectedCurrencyId, setSelectedCurrencyId] = useState<number | null>(null)
   const [denominations, setDenominations] = useState<Denomination[]>([])

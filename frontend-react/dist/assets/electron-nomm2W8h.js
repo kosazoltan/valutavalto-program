@@ -1,0 +1,1 @@
+function e(){return typeof window<`u`&&!!window.electronAPI}function t(){return window.electronAPI??null}export{e as n,t};

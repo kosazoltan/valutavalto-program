@@ -287,8 +287,8 @@ export interface CashBalance {
 export interface AdjustBalanceRequest {
   currencyId: number
   amount: number
-  isAddition: boolean
-  notes?: string
+  incoming: boolean
+  reason?: string
 }
 
 export interface BranchBalanceSummary {

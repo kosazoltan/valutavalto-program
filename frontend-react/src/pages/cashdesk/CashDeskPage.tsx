@@ -1,34 +1,82 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Vault, Lock, Unlock, Plus, Minus, AlertTriangle, CheckCircle, Clock, FileCheck } from 'lucide-react'
 import { NumberInput } from '../../components/NumberInput'
+import { cashBalanceApi, dailySessionApi } from '../../services/api/index'
+import type { CashBalance, DailySession } from '../../services/api/index'
+import { toast } from '../../components/ui/toaster'
+import { logger } from '../../utils/logger'
 
-const mockCashDeskStatus = {
-  isOpen: true,
-  openedAt: '2024-05-20 08:15:00',
-  openedBy: 'Kiss Péter',
-  balances: [
-    { currency: 'HUF', balance: 2500000, minBalance: 500000, maxBalance: 5000000 },
-    { currency: 'EUR', balance: 5200, minBalance: 500, maxBalance: 10000 },
-    { currency: 'USD', balance: 3800, minBalance: 500, maxBalance: 8000 },
-    { currency: 'GBP', balance: 1200, minBalance: 200, maxBalance: 3000 },
-    { currency: 'CHF', balance: 800, minBalance: 200, maxBalance: 2000 },
-  ],
-  todayStats: {
-    transactions: 23,
-    buyTotal: 1250000,
-    sellTotal: 980000,
-    profit: 45000
-  }
+interface CashDeskBalanceItem {
+  currencyId: number
+  currency: string
+  balance: number
+  minBalance: number
+  maxBalance: number
+}
+
+interface CashDeskStatus {
+  isOpen: boolean
+  openedAt: string
+  openedBy: string
+  balances: CashDeskBalanceItem[]
+  todayStats: { transactions: number; buyTotal: number; sellTotal: number; profit: number }
 }
 
 export default function CashDeskPage() {
   const navigate = useNavigate()
-  const [status] = useState(mockCashDeskStatus)
+  const [status, setStatus] = useState<CashDeskStatus>({
+    isOpen: false,
+    openedAt: '',
+    openedBy: '',
+    balances: [],
+    todayStats: { transactions: 0, buyTotal: 0, sellTotal: 0, profit: 0 },
+  })
+  const [_loading, setLoading] = useState(true)
   const [showMovementDialog, setShowMovementDialog] = useState(false)
   const [movementType, setMovementType] = useState<'in' | 'out'>('in')
   const [movementCurrency, setMovementCurrency] = useState('HUF')
   const [movementAmount, setMovementAmount] = useState('')
+
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [balances, session]: [CashBalance[], DailySession | null] = await Promise.all([
+        cashBalanceApi.list().catch(() => [] as CashBalance[]),
+        dailySessionApi.getCurrent().catch(() => null),
+      ])
+
+      setStatus({
+        isOpen: !!session && session.status === 'OPEN',
+        openedAt: session?.openedAt ?? '',
+        openedBy: session?.openedByWorkerName ?? '',
+        balances: balances.map((b) => ({
+          currencyId: b.currencyId,
+          currency: b.currencyCode,
+          balance: b.currentBalance,
+          minBalance: b.minBalance ?? 0,
+          maxBalance: b.maxBalance ?? 999999999,
+        })),
+        todayStats: session
+          ? {
+              transactions: session.transactionCount,
+              buyTotal: session.buyTurnoverHuf,
+              sellTotal: session.sellTurnoverHuf,
+              profit: session.handlingFeeTotal,
+            }
+          : { transactions: 0, buyTotal: 0, sellTotal: 0, profit: 0 },
+      })
+    } catch (error) {
+      logger.error('CashDeskPage', 'Adatok betöltése sikertelen:', error)
+      toast.error('Hiba', 'Pénztár adatok betöltése sikertelen')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
 
   const getBalanceStatus = (balance: number, min: number, max: number) => {
     if (balance < min) return 'low'
@@ -36,10 +84,32 @@ export default function CashDeskPage() {
     return 'ok'
   }
 
-  const handleMovement = () => {
-    // API call would go here
-    setShowMovementDialog(false)
-    setMovementAmount('')
+  const handleMovement = async () => {
+    const amount = parseFloat(movementAmount)
+    if (!amount || amount <= 0) {
+      toast.warning('Érvénytelen összeg', 'Adjon meg pozitív összeget')
+      return
+    }
+    try {
+      const currencyBalance = status.balances.find(b => b.currency === movementCurrency)
+      if (!currencyBalance) {
+        toast.error('Hiba', 'Ismeretlen valutanem')
+        return
+      }
+      await cashBalanceApi.adjust({
+        currencyId: currencyBalance.currencyId,
+        amount,
+        incoming: movementType === 'in',
+        reason: `${movementType === 'in' ? 'Bevét' : 'Kiadás'}: ${amount} ${movementCurrency}`,
+      })
+      toast.success('Sikeres', `${movementType === 'in' ? 'Bevét' : 'Kiadás'} rögzítve`)
+      setShowMovementDialog(false)
+      setMovementAmount('')
+      void loadData()
+    } catch (error) {
+      logger.error('CashDeskPage', 'Pénzmozgás hiba:', error)
+      toast.error('Hiba', 'Pénzmozgás rögzítése sikertelen')
+    }
   }
 
   return (
