@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { RefreshCw, Send, AlertTriangle, ChevronDown, ChevronRight, Users } from 'lucide-react'
+import { RefreshCw, Send, AlertTriangle, ChevronDown, ChevronRight, Users, Undo2, Redo2 } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
 import { useGridNavigation } from '../../hooks/useGridNavigation'
+import { useUndoStack } from '../../hooks/useUndoStack'
 
 /**
  * Arfolyam rogzites — Legacy: arfdata.dat adatbevitel.
@@ -95,6 +96,32 @@ export default function SettlementRateEntry() {
     cols: MAIN_FIELDS.length,
   })
 
+  const { push: pushUndo, undo, redo, canUndo, canRedo } = useUndoStack<ExchangeRateData[]>()
+
+  // Ctrl+Z / Ctrl+Shift+Z global handler
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        if (e.shiftKey) {
+          e.preventDefault()
+          const snapshot = redo()
+          if (snapshot) setRates(snapshot)
+        } else {
+          e.preventDefault()
+          const snapshot = undo()
+          if (snapshot) setRates(snapshot)
+        }
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+        e.preventDefault()
+        const snapshot = redo()
+        if (snapshot) setRates(snapshot)
+      }
+    }
+    window.addEventListener('keydown', handleGlobalKeyDown)
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown)
+  }, [undo, redo])
+
   // Egyszeri betöltés: valuták + munkacsoportok (nem változnak workgroup váltáskor)
   useEffect(() => {
     Promise.all([
@@ -169,12 +196,16 @@ export default function SettlementRateEntry() {
   type EditableField = Exclude<keyof ExchangeRateData, 'id' | 'currencyId' | 'currencyCode' | 'currencyName'>
 
   const updateRate = (index: number, field: EditableField, value: string) => {
-    setRates(prev => prev.map((r, i) => {
-      if (i !== index) return r
-      const copy = { ...r }
-      copy[field] = value
-      return copy
-    }))
+    setRates(prev => {
+      const next = prev.map((r, i) => {
+        if (i !== index) return r
+        const copy = { ...r }
+        copy[field] = value
+        return copy
+      })
+      pushUndo({ prev, next })
+      return next
+    })
   }
 
   const toggleLimits = (currencyId: number) => {
@@ -291,6 +322,22 @@ export default function SettlementRateEntry() {
           Rögzítse az árfolyamokat az összes aktív valutához. A "Publikálás" gombbal az árfolyamok azonnal élővé válnak.
         </p>
         <div className="flex gap-2">
+          <button
+            className="inline-flex items-center justify-center rounded-md border px-2 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
+            onClick={() => { const s = undo(); if (s) setRates(s) }}
+            disabled={!canUndo}
+            title="Visszavonás (Ctrl+Z)"
+          >
+            <Undo2 className="h-4 w-4" />
+          </button>
+          <button
+            className="inline-flex items-center justify-center rounded-md border px-2 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
+            onClick={() => { const s = redo(); if (s) setRates(s) }}
+            disabled={!canRedo}
+            title="Újra (Ctrl+Shift+Z)"
+          >
+            <Redo2 className="h-4 w-4" />
+          </button>
           <button
             className="inline-flex items-center justify-center rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
             onClick={fetchRates}
