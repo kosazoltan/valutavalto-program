@@ -316,6 +316,8 @@ export class SyncEngine {
         return safeStorage.decryptString(Buffer.from(encryptedToken, 'base64'));
       } catch (err) {
         console.warn('[SyncEngine] Nem sikerült visszafejteni a tárolt auth tokent:', err);
+        // Corrupted/foreign DPAPI payload: remove it so sync can continue with plaintext or fresh login token.
+        deleteConfig('auth_token_encrypted');
       }
     }
     return getConfig('auth_token');

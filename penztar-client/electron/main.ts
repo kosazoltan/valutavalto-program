@@ -1,7 +1,13 @@
 // dotenv only in development — not bundled in production asar
 // NOTE: Cannot use top-level await here — CJS output format (vite-plugin-electron/rolldown)
 import('dotenv/config').catch(() => { /* production: dotenv not available, safe to skip */ });
-import { app, BrowserWindow, ipcMain, dialog, protocol, net, safeStorage } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, protocol, net, safeStorage, session } from 'electron';
+
+// Windows 11 Insider (26200+) sandbox compatibility fix
+// The Chromium sandbox fails to initialize on recent Windows Insider builds,
+// causing the Electron process to silently exit with code 0 (packaged) or 1 (dev).
+app.commandLine.appendSwitch('no-sandbox');
+app.commandLine.appendSwitch('disable-gpu-sandbox');
 import log from 'electron-log/main';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -46,6 +52,19 @@ import { registerScannerHandlers } from './scanner';
 import { registerUpdaterHandlers } from './updater';
 
 const isDev = !app.isPackaged;
+const devServerUrl = process.env.ELECTRON_RENDERER_URL ?? 'http://127.0.0.1:3000';
+const devUserDataDir = process.env.ELECTRON_DEV_USER_DATA;
+const shouldAutoOpenDevTools =
+  isDev && ['1', 'true', 'yes', 'on'].includes((process.env.ELECTRON_OPEN_DEVTOOLS ?? '').toLowerCase());
+
+// Force a local writable profile/cache path in dev to avoid Windows cache lock/ACL issues.
+if (isDev && devUserDataDir) {
+  app.commandLine.appendSwitch('user-data-dir', devUserDataDir);
+  app.setPath('userData', devUserDataDir);
+  app.setPath('sessionData', path.join(devUserDataDir, 'session'));
+  app.commandLine.appendSwitch('disk-cache-dir', path.join(devUserDataDir, 'cache'));
+  app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
+}
 
 // Custom 'app' protocol regisztráció — MUSZÁJ app.whenReady() ELŐTT lennie!
 // Ez megoldja a file:// + ES module CORS problémát, ami üres képernyőt okoz.
@@ -96,8 +115,30 @@ function createWindow(): void {
   });
 
   if (isDev) {
-    mainWindow.loadURL('http://localhost:3000');
-    mainWindow.webContents.openDevTools({ mode: 'detach' });
+    log.info(`[App] Dev renderer URL: ${devServerUrl}`);
+    const loadDevUrlWithRetry = async (): Promise<void> => {
+      const retries = 20;
+      for (let i = 0; i < retries; i += 1) {
+        try {
+          await mainWindow?.loadURL(devServerUrl);
+          return;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          log.warn(`[DevLoad] attempt ${i + 1}/${retries} failed: ${message}`);
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+      }
+      dialog.showErrorBox(
+        'Fejlesztői indítási hiba',
+        `A renderer nem tudott csatlakozni a dev szerverhez: ${devServerUrl}\n\n` +
+        'Ellenőrizze, hogy a Vite szerver fut-e, majd indítsa újra az alkalmazást.',
+      );
+    };
+
+    void loadDevUrlWithRetry();
+    if (shouldAutoOpenDevTools) {
+      mainWindow.webContents.openDevTools({ mode: 'detach' });
+    }
   } else {
     // Custom 'app' protocol-on keresztül töltjük be — NEM file://-al!
     // A file:// + type="module" (ES module) Chromium CORS policy miatt üres képernyőt ad.
@@ -109,6 +150,10 @@ function createWindow(): void {
     if (level >= 2) { // warning és error
       log.warn(`[Renderer] L${level} ${sourceId}:${line} — ${message}`);
     }
+  });
+
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    log.error(`[Renderer] did-fail-load ${errorCode} ${errorDescription} @ ${validatedURL}`);
   });
 
   // Ha a renderer process crash-el, jelenjen meg hibaüzenet
@@ -129,7 +174,7 @@ function createWindow(): void {
 
   // Security: blokkolja az ismeretlen URL-ekre való navigálást (XSS/phishing védelem)
   mainWindow.webContents.on('will-navigate', (event, url) => {
-    const allowed = ['app://localhost', 'http://localhost:3000'];
+    const allowed = ['app://localhost', devServerUrl];
     if (!allowed.some(origin => url.startsWith(origin))) {
       log.warn(`[Security] Blocked navigation to: ${url}`);
       event.preventDefault();
@@ -489,8 +534,14 @@ ipcMain.handle('secure-load-token', async (): Promise<string | null> => {
     // Először a titkosított tokent próbáljuk
     const encrypted = getConfig('auth_token_encrypted');
     if (encrypted && safeStorage.isEncryptionAvailable()) {
-      const buffer = Buffer.from(encrypted, 'base64');
-      return safeStorage.decryptString(buffer);
+      try {
+        const buffer = Buffer.from(encrypted, 'base64');
+        return safeStorage.decryptString(buffer);
+      } catch (err) {
+        // Corrupted token from another machine/user profile or old encryption context.
+        log.warn('[SafeStorage] Corrupted encrypted token removed');
+        deleteConfig('auth_token_encrypted');
+      }
     }
     // Fallback: régi plaintext token (migráció)
     const plaintext = getConfig('auth_token');
@@ -518,6 +569,31 @@ ipcMain.handle('secure-clear-token', async (): Promise<void> => {
 // --- App Lifecycle ---
 
 app.whenReady().then(async () => {
+  if (isDev) {
+    const devCsp = [
+      "default-src 'self' app: data: blob: http: https:",
+      "script-src 'self' 'unsafe-inline' http: https:",
+      "style-src 'self' 'unsafe-inline' http: https:",
+      "img-src 'self' data: blob: http: https:",
+      "font-src 'self' data: http: https:",
+      "connect-src 'self' data: blob: http: https: ws: wss:",
+      "worker-src 'self' blob:",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "frame-ancestors 'none'",
+    ].join('; ');
+
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      const headers = details.responseHeaders ?? {};
+      callback({
+        responseHeaders: {
+          ...headers,
+          'Content-Security-Policy': [devCsp],
+        },
+      });
+    });
+  }
+
   // IPC handlers regisztráció (app.whenReady() UTÁN, hogy ipcMain elérhető legyen)
   registerCameraHandlers();
   registerScannerHandlers();
@@ -566,6 +642,15 @@ app.whenReady().then(async () => {
     );
     app.quit();
     return;
+  }
+
+  // Dev default: if server_url points to local backend (often down), use production API.
+  if (isDev) {
+    const currentServerUrl = getConfig('server_url');
+    if (!currentServerUrl || currentServerUrl.includes('localhost:8080')) {
+      setConfig('server_url', 'https://excvaluta.com/api/v1');
+      log.info('[App] Dev default server_url set to https://excvaluta.com/api/v1');
+    }
   }
 
   createWindow();

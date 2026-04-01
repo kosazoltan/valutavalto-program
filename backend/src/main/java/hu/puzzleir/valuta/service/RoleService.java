@@ -23,10 +23,12 @@ public class RoleService {
 
     // --- ROLE ---
 
+    @Transactional(readOnly = true)
     public List<RoleDto> listRoles() {
         return roleRepository.findAll().stream().map(this::toRoleDto).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public RoleDto getRoleById(UUID id) {
         return toRoleDto(findRoleOrThrow(id));
     }
@@ -151,12 +153,15 @@ public class RoleService {
     }
 
     private RoleDto toRoleDto(Role r) {
+        List<String> permissionNames = r.getPermissions() == null
+                ? List.of()
+                : r.getPermissions().stream().map(Permission::getName).collect(Collectors.toList());
         return RoleDto.builder()
                 .id(r.getId().toString())
                 .code(r.getCode()).name(r.getName()).description(r.getDescription())
                 .roleType(r.getRoleType()).hierarchyLevel(r.getHierarchyLevel())
                 .isSystemRole(r.getIsSystemRole()).isActive(r.getIsActive())
-                .permissions(r.getPermissions().stream().map(Permission::getName).collect(Collectors.toList()))
+                .permissions(permissionNames)
                 .build();
     }
 

@@ -59,10 +59,10 @@ export default function CashDeskPage() {
         })),
         todayStats: session
           ? {
-              transactions: session.transactionCount,
-              buyTotal: session.buyTurnoverHuf,
-              sellTotal: session.sellTurnoverHuf,
-              profit: session.handlingFeeTotal,
+              transactions: session.transactionCount ?? 0,
+              buyTotal: session.buyTurnoverHuf ?? 0,
+              sellTotal: session.sellTurnoverHuf ?? 0,
+              profit: session.handlingFeeTotal ?? 0,
             }
           : { transactions: 0, buyTotal: 0, sellTotal: 0, profit: 0 },
       })

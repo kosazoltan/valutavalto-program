@@ -188,12 +188,23 @@ export default function RolePage() {
   }
 
   const handleSave = async () => {
+    const code = formData.code.trim()
+    const name = formData.name.trim()
+    if (!editingRole && !code) {
+      setError('A szerepkör kód kötelező')
+      return
+    }
+    if (!name) {
+      setError('A szerepkör név kötelező')
+      return
+    }
+
     try {
       setError(null)
       if (editingRole) {
-        await roleApi.update(editingRole.id, formData)
+        await roleApi.update(editingRole.id, { ...formData, name })
       } else {
-        await roleApi.create(formData)
+        await roleApi.create({ ...formData, code, name })
       }
       await loadData()
       setShowForm(false)
@@ -395,6 +406,7 @@ export default function RolePage() {
                 </button>
                 <button
                   onClick={handleSave}
+                  disabled={!formData.name.trim() || (!editingRole && !formData.code.trim())}
                   className="form-button-primary flex items-center gap-2"
                 >
                   <Save size={16} />
