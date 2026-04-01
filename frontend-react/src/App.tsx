@@ -146,9 +146,42 @@ export default function App() {
                     payload.roles ?? [],
                   )
                 }
-              } catch {
-                // Token szerver oldalon érvénytelen
-                await clearPersistedToken()
+              } catch (apiErr: unknown) {
+                // Network error (offline) → restore from JWT payload if Electron
+                const isNetworkError = apiErr instanceof Error && (
+                  apiErr.message === 'Network Error' ||
+                  apiErr.message.includes('ECONNREFUSED') ||
+                  apiErr.message.includes('timeout')
+                )
+                if (isNetworkError && window.electronAPI) {
+                  // Offline fallback: build Worker from JWT claims
+                  const jwtPayload = payload as Record<string, unknown>
+                  const offlineWorker = {
+                    id: Number(jwtPayload.workerId) || 0,
+                    workerCode: String(jwtPayload.workerCode ?? ''),
+                    firstName: '',
+                    lastName: '',
+                    fullName: String(jwtPayload.workerName ?? ''),
+                    role: String(jwtPayload.role ?? ''),
+                    branchId: String(jwtPayload.branchId ?? ''),
+                    branchCode: String(jwtPayload.branchCode ?? ''),
+                    branchName: '',
+                    companyId: String(jwtPayload.companyId ?? ''),
+                    companyCode: String(jwtPayload.companyCode ?? ''),
+                    companyName: '',
+                  }
+                  useAuthStore.getState().login(
+                    offlineWorker, token, 'Bearer',
+                    new Date(payload.exp! * 1000).toISOString(),
+                    (jwtPayload.activeRole as string) ?? null,
+                    (jwtPayload.permissions as string[]) ?? [],
+                    (jwtPayload.roles as string[]) ?? [],
+                  )
+                  logger.warn('App', 'Offline login restore — JWT payloadbol.')
+                } else {
+                  // Token szerver oldalon érvénytelen
+                  await clearPersistedToken()
+                }
               }
             } else {
               await clearPersistedToken()
