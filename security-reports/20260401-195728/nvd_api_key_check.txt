@@ -1,0 +1,1 @@
+﻿NVD API key test status: HTTP 200

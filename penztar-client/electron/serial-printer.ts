@@ -192,14 +192,14 @@ export async function printToSerial(
     });
 
     return new Promise<boolean>((resolve) => {
-      port.open((openErr) => {
+      port.open((openErr: Error | null | undefined) => {
         if (openErr) {
           log.error(`[SERIAL-PRINTER] Port nyitás sikertelen (${cfg.port}):`, openErr.message);
           resolve(false);
           return;
         }
 
-        port.write(data, (writeErr) => {
+        port.write(data, (writeErr: Error | null | undefined) => {
           if (writeErr) {
             log.error(`[SERIAL-PRINTER] Írás sikertelen (${cfg.port}):`, writeErr.message);
             port.close();
@@ -207,11 +207,11 @@ export async function printToSerial(
             return;
           }
 
-          port.drain((drainErr) => {
+          port.drain((drainErr: Error | null | undefined) => {
             if (drainErr) {
               log.warn(`[SERIAL-PRINTER] Drain figyelmeztetés (${cfg.port}):`, drainErr.message);
             }
-            port.close((closeErr) => {
+            port.close((closeErr: Error | null | undefined) => {
               if (closeErr) {
                 log.warn(`[SERIAL-PRINTER] Port zárás figyelmeztetés:`, closeErr.message);
               }

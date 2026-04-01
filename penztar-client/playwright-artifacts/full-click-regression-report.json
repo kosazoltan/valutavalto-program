@@ -1,0 +1,464 @@
+{
+  "createdAt": "2026-04-01T19:11:42.240Z",
+  "baseUrl": "http://127.0.0.1:3000",
+  "visited": [
+    {
+      "route": "/dashboard",
+      "url": "http://127.0.0.1:3000/dashboard",
+      "bodyLen": 1024
+    },
+    {
+      "route": "/transactions/new",
+      "url": "http://127.0.0.1:3000/transactions/new",
+      "bodyLen": 900
+    },
+    {
+      "route": "/transactions",
+      "url": "http://127.0.0.1:3000/transactions",
+      "bodyLen": 980
+    },
+    {
+      "route": "/customers",
+      "url": "http://127.0.0.1:3000/customers",
+      "bodyLen": 11
+    },
+    {
+      "route": "/rates",
+      "url": "http://127.0.0.1:3000/rates",
+      "bodyLen": 493
+    },
+    {
+      "route": "/rates/creation",
+      "url": "http://127.0.0.1:3000/rates/creation",
+      "bodyLen": 474
+    },
+    {
+      "route": "/cashdesk",
+      "url": "http://127.0.0.1:3000/cashdesk",
+      "bodyLen": 11
+    },
+    {
+      "route": "/reports",
+      "url": "http://127.0.0.1:3000/reports",
+      "bodyLen": 872
+    },
+    {
+      "route": "/darius",
+      "url": "http://127.0.0.1:3000/darius",
+      "bodyLen": 756
+    },
+    {
+      "route": "/decade",
+      "url": "http://127.0.0.1:3000/decade",
+      "bodyLen": 11
+    },
+    {
+      "route": "/treasury",
+      "url": "http://127.0.0.1:3000/treasury",
+      "bodyLen": 542
+    },
+    {
+      "route": "/camera/live",
+      "url": "http://127.0.0.1:3000/camera/live",
+      "bodyLen": 540
+    },
+    {
+      "route": "/camera/playback",
+      "url": "http://127.0.0.1:3000/dashboard",
+      "bodyLen": 1136
+    },
+    {
+      "route": "/camera/export",
+      "url": "http://127.0.0.1:3000/camera/export",
+      "bodyLen": 575
+    },
+    {
+      "route": "/camera/status",
+      "url": "http://127.0.0.1:3000/camera/status",
+      "bodyLen": 504
+    },
+    {
+      "route": "/audit-log",
+      "url": "http://127.0.0.1:3000/dashboard",
+      "bodyLen": 1136
+    },
+    {
+      "route": "/local-queue",
+      "url": "http://127.0.0.1:3000/local-queue",
+      "bodyLen": 11
+    },
+    {
+      "route": "/settings",
+      "url": "http://127.0.0.1:3000/settings",
+      "bodyLen": 655
+    },
+    {
+      "route": "/customers/new",
+      "url": "http://127.0.0.1:3000/customers/new",
+      "bodyLen": 815
+    }
+  ],
+  "actionsCount": 51,
+  "issues": [
+    {
+      "type": "api-error",
+      "message": "403 http://127.0.0.1:3000/api/v1/darius/range?startDate=2026-04-01&endDate=2026-04-01",
+      "status": 403,
+      "url": "http://127.0.0.1:3000/api/v1/darius/range?startDate=2026-04-01&endDate=2026-04-01"
+    },
+    {
+      "type": "console-error",
+      "message": "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    },
+    {
+      "type": "console-error",
+      "message": "[client] API Error: {url: /darius/range?startDate=2026-04-01&endDate=2026-04-01, method: get, status: 403, message: Request failed with status code 403}"
+    },
+    {
+      "type": "api-error",
+      "message": "403 http://127.0.0.1:3000/api/v1/darius/range?startDate=2026-04-01&endDate=2026-04-01",
+      "status": 403,
+      "url": "http://127.0.0.1:3000/api/v1/darius/range?startDate=2026-04-01&endDate=2026-04-01"
+    },
+    {
+      "type": "console-error",
+      "message": "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    },
+    {
+      "type": "console-error",
+      "message": "[client] API Error: {url: /darius/range?startDate=2026-04-01&endDate=2026-04-01, method: get, status: 403, message: Request failed with status code 403}"
+    },
+    {
+      "type": "api-error",
+      "message": "403 http://127.0.0.1:3000/api/v1/darius/missing-dates?startDate=2026-04-01&endDate=2026-04-01",
+      "status": 403,
+      "url": "http://127.0.0.1:3000/api/v1/darius/missing-dates?startDate=2026-04-01&endDate=2026-04-01"
+    },
+    {
+      "type": "console-error",
+      "message": "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    },
+    {
+      "type": "console-error",
+      "message": "[client] API Error: {url: /darius/missing-dates?startDate=2026-04-01&endDate=2026-04-01, method: get, status: 403, message: Request failed with status code 403}"
+    },
+    {
+      "type": "api-error",
+      "message": "403 http://127.0.0.1:3000/api/v1/darius/retry-failed",
+      "status": 403,
+      "url": "http://127.0.0.1:3000/api/v1/darius/retry-failed"
+    },
+    {
+      "type": "console-error",
+      "message": "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    },
+    {
+      "type": "console-error",
+      "message": "[client] API Error: {url: /darius/retry-failed, method: post, status: 403, message: Request failed with status code 403}"
+    },
+    {
+      "type": "api-error",
+      "message": "403 http://127.0.0.1:3000/api/v1/darius/missing-dates?startDate=2026-04-01&endDate=2026-04-01",
+      "status": 403,
+      "url": "http://127.0.0.1:3000/api/v1/darius/missing-dates?startDate=2026-04-01&endDate=2026-04-01"
+    },
+    {
+      "type": "console-error",
+      "message": "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    },
+    {
+      "type": "console-error",
+      "message": "[client] API Error: {url: /darius/missing-dates?startDate=2026-04-01&endDate=2026-04-01, method: get, status: 403, message: Request failed with status code 403}"
+    },
+    {
+      "type": "api-error",
+      "message": "403 http://127.0.0.1:3000/api/v1/darius/monthly?year=2026&month=4",
+      "status": 403,
+      "url": "http://127.0.0.1:3000/api/v1/darius/monthly?year=2026&month=4"
+    },
+    {
+      "type": "console-error",
+      "message": "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    },
+    {
+      "type": "console-error",
+      "message": "[client] API Error: {url: /darius/monthly?year=2026&month=4, method: get, status: 403, message: Request failed with status code 403}"
+    },
+    {
+      "type": "api-error",
+      "message": "403 http://127.0.0.1:3000/api/v1/darius/range?startDate=2026-04-01&endDate=2026-04-01",
+      "status": 403,
+      "url": "http://127.0.0.1:3000/api/v1/darius/range?startDate=2026-04-01&endDate=2026-04-01"
+    },
+    {
+      "type": "console-error",
+      "message": "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    },
+    {
+      "type": "console-error",
+      "message": "[client] API Error: {url: /darius/range?startDate=2026-04-01&endDate=2026-04-01, method: get, status: 403, message: Request failed with status code 403}"
+    },
+    {
+      "type": "api-error",
+      "message": "403 http://127.0.0.1:3000/api/v1/darius/missing-dates?startDate=2026-04-01&endDate=2026-04-01",
+      "status": 403,
+      "url": "http://127.0.0.1:3000/api/v1/darius/missing-dates?startDate=2026-04-01&endDate=2026-04-01"
+    },
+    {
+      "type": "console-error",
+      "message": "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    },
+    {
+      "type": "console-error",
+      "message": "[client] API Error: {url: /darius/missing-dates?startDate=2026-04-01&endDate=2026-04-01, method: get, status: 403, message: Request failed with status code 403}"
+    },
+    {
+      "type": "api-error",
+      "message": "401 http://127.0.0.1:3000/api/v1/camera/status",
+      "status": 401,
+      "url": "http://127.0.0.1:3000/api/v1/camera/status"
+    },
+    {
+      "type": "console-error",
+      "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "type": "api-error",
+      "message": "401 http://127.0.0.1:3000/api/v1/camera/status",
+      "status": 401,
+      "url": "http://127.0.0.1:3000/api/v1/camera/status"
+    },
+    {
+      "type": "console-error",
+      "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "type": "api-error",
+      "message": "500 http://127.0.0.1:3000/api/v1/auth/refresh",
+      "status": 500,
+      "url": "http://127.0.0.1:3000/api/v1/auth/refresh"
+    },
+    {
+      "type": "console-error",
+      "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "type": "console-error",
+      "message": "[client] API Error: {url: /auth/refresh, method: post, status: 500, message: Request failed with status code 500}"
+    },
+    {
+      "type": "api-error",
+      "message": "403 http://127.0.0.1:3000/api/v1/camera/export/pending",
+      "status": 403,
+      "url": "http://127.0.0.1:3000/api/v1/camera/export/pending"
+    },
+    {
+      "type": "console-error",
+      "message": "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    },
+    {
+      "type": "console-error",
+      "message": "[client] API Error: {url: /camera/export/pending, method: get, status: 403, message: Request failed with status code 403}"
+    },
+    {
+      "type": "api-error",
+      "message": "403 http://127.0.0.1:3000/api/v1/camera/export/pending",
+      "status": 403,
+      "url": "http://127.0.0.1:3000/api/v1/camera/export/pending"
+    },
+    {
+      "type": "console-error",
+      "message": "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    },
+    {
+      "type": "console-error",
+      "message": "[client] API Error: {url: /camera/export/pending, method: get, status: 403, message: Request failed with status code 403}"
+    },
+    {
+      "type": "api-error",
+      "message": "401 http://127.0.0.1:3000/api/v1/camera/admin/storage-stats",
+      "status": 401,
+      "url": "http://127.0.0.1:3000/api/v1/camera/admin/storage-stats"
+    },
+    {
+      "type": "console-error",
+      "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "type": "api-error",
+      "message": "401 http://127.0.0.1:3000/api/v1/camera/admin/storage-stats",
+      "status": 401,
+      "url": "http://127.0.0.1:3000/api/v1/camera/admin/storage-stats"
+    },
+    {
+      "type": "console-error",
+      "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "type": "api-error",
+      "message": "500 http://127.0.0.1:3000/api/v1/auth/refresh",
+      "status": 500,
+      "url": "http://127.0.0.1:3000/api/v1/auth/refresh"
+    },
+    {
+      "type": "console-error",
+      "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "type": "console-error",
+      "message": "[client] API Error: {url: /auth/refresh, method: post, status: 500, message: Request failed with status code 500}"
+    },
+    {
+      "type": "console-error",
+      "message": "[CameraStatusPage] Státusz lekérés sikertelen: AxiosError: Request failed with status code 500\n    at settle (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:1634:14)\n    at XMLHttpRequest.onloadend (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:1951:4)\n    at Axios$1.request (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:2518:37)\n    at async http://127.0.0.1:3000/src/services/api/client.ts:109:21\n    at async Axios$1.request (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:2514:11)\n    at async fetchStats (http://127.0.0.1:3000/src/pages/camera/CameraStatusPage.tsx:26:17)\n    at Axios$1.request (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:2518:37)\n    at async fetchStats (http://127.0.0.1:3000/src/pages/camera/CameraStatusPage.tsx:26:17)"
+    },
+    {
+      "type": "console-error",
+      "message": "[CameraStatusPage] Státusz lekérés sikertelen: AxiosError: Request failed with status code 500\n    at settle (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:1634:14)\n    at XMLHttpRequest.onloadend (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:1951:4)\n    at Axios$1.request (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:2518:37)\n    at async http://127.0.0.1:3000/src/services/api/client.ts:109:21\n    at async Axios$1.request (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:2514:11)\n    at async fetchStats (http://127.0.0.1:3000/src/pages/camera/CameraStatusPage.tsx:26:17)\n    at Axios$1.request (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:2518:37)\n    at async fetchStats (http://127.0.0.1:3000/src/pages/camera/CameraStatusPage.tsx:26:17)"
+    },
+    {
+      "type": "api-error",
+      "message": "500 http://127.0.0.1:3000/api/v1/roles",
+      "status": 500,
+      "url": "http://127.0.0.1:3000/api/v1/roles"
+    },
+    {
+      "type": "console-error",
+      "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "type": "console-error",
+      "message": "[client] API Error: {url: /roles, method: get, status: 500, message: Request failed with status code 500}"
+    },
+    {
+      "type": "console-error",
+      "message": "[UserPage] Felhasználók betöltési hiba: AxiosError: Request failed with status code 500\n    at settle (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:1634:14)\n    at XMLHttpRequest.onloadend (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:1951:4)\n    at Axios$1.request (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:2518:37)\n    at async Object.list (http://127.0.0.1:3000/src/services/api/users.ts:78:20)\n    at async Promise.all (index 1)\n    at async loadData (http://127.0.0.1:3000/src/pages/settings/UserPage.tsx:41:35)"
+    },
+    {
+      "type": "api-error",
+      "message": "500 http://127.0.0.1:3000/api/v1/roles",
+      "status": 500,
+      "url": "http://127.0.0.1:3000/api/v1/roles"
+    },
+    {
+      "type": "console-error",
+      "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "type": "console-error",
+      "message": "[client] API Error: {url: /roles, method: get, status: 500, message: Request failed with status code 500}"
+    },
+    {
+      "type": "console-error",
+      "message": "[UserPage] Felhasználók betöltési hiba: AxiosError: Request failed with status code 500\n    at settle (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:1634:14)\n    at XMLHttpRequest.onloadend (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:1951:4)\n    at Axios$1.request (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:2518:37)\n    at async Object.list (http://127.0.0.1:3000/src/services/api/users.ts:78:20)\n    at async Promise.all (index 1)\n    at async loadData (http://127.0.0.1:3000/src/pages/settings/UserPage.tsx:41:35)"
+    },
+    {
+      "type": "api-error",
+      "message": "500 http://127.0.0.1:3000/api/v1/roles",
+      "status": 500,
+      "url": "http://127.0.0.1:3000/api/v1/roles"
+    },
+    {
+      "type": "console-error",
+      "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "type": "console-error",
+      "message": "[client] API Error: {url: /roles, method: get, status: 500, message: Request failed with status code 500}"
+    },
+    {
+      "type": "console-error",
+      "message": "[RolePage] Szerepkörök betöltési hiba: AxiosError: Request failed with status code 500\n    at settle (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:1634:14)\n    at XMLHttpRequest.onloadend (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:1951:4)\n    at Axios$1.request (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:2518:37)\n    at async Object.list (http://127.0.0.1:3000/src/services/api/users.ts:78:20)\n    at async Promise.all (index 0)\n    at async http://127.0.0.1:3000/src/pages/settings/RolePage.tsx?t=1775070638965:89:41"
+    },
+    {
+      "type": "api-error",
+      "message": "403 http://127.0.0.1:3000/api/v1/system-parameters",
+      "status": 403,
+      "url": "http://127.0.0.1:3000/api/v1/system-parameters"
+    },
+    {
+      "type": "console-error",
+      "message": "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    },
+    {
+      "type": "console-error",
+      "message": "[client] API Error: {url: /system-parameters, method: get, status: 403, message: Request failed with status code 403}"
+    },
+    {
+      "type": "console-error",
+      "message": "[SystemParameterPage] Paraméterek betöltési hiba: AxiosError: Request failed with status code 403\n    at settle (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:1634:14)\n    at XMLHttpRequest.onloadend (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:1951:4)\n    at Axios$1.request (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:2518:37)\n    at async Object.list (http://127.0.0.1:3000/src/services/api/settings.ts:18:20)\n    at async loadParameters (http://127.0.0.1:3000/src/pages/settings/SystemParameterPage.tsx:55:17)"
+    },
+    {
+      "type": "api-error",
+      "message": "500 http://127.0.0.1:3000/api/v1/roles",
+      "status": 500,
+      "url": "http://127.0.0.1:3000/api/v1/roles"
+    },
+    {
+      "type": "console-error",
+      "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "type": "console-error",
+      "message": "[client] API Error: {url: /roles, method: get, status: 500, message: Request failed with status code 500}"
+    },
+    {
+      "type": "console-error",
+      "message": "[RolePage] Szerepkörök betöltési hiba: AxiosError: Request failed with status code 500\n    at settle (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:1634:14)\n    at XMLHttpRequest.onloadend (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:1951:4)\n    at Axios$1.request (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:2518:37)\n    at async Object.list (http://127.0.0.1:3000/src/services/api/users.ts:78:20)\n    at async Promise.all (index 0)\n    at async http://127.0.0.1:3000/src/pages/settings/RolePage.tsx?t=1775070638965:89:41"
+    },
+    {
+      "type": "api-error",
+      "message": "403 http://127.0.0.1:3000/api/v1/system-parameters",
+      "status": 403,
+      "url": "http://127.0.0.1:3000/api/v1/system-parameters"
+    },
+    {
+      "type": "console-error",
+      "message": "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    },
+    {
+      "type": "console-error",
+      "message": "[client] API Error: {url: /system-parameters, method: get, status: 403, message: Request failed with status code 403}"
+    },
+    {
+      "type": "console-error",
+      "message": "[SystemParameterPage] Paraméterek betöltési hiba: AxiosError: Request failed with status code 403\n    at settle (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:1634:14)\n    at XMLHttpRequest.onloadend (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:1951:4)\n    at Axios$1.request (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:2518:37)\n    at async Object.list (http://127.0.0.1:3000/src/services/api/settings.ts:18:20)\n    at async loadParameters (http://127.0.0.1:3000/src/pages/settings/SystemParameterPage.tsx:55:17)"
+    },
+    {
+      "type": "api-error",
+      "message": "500 http://127.0.0.1:3000/api/v1/roles",
+      "status": 500,
+      "url": "http://127.0.0.1:3000/api/v1/roles"
+    },
+    {
+      "type": "console-error",
+      "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "type": "console-error",
+      "message": "[client] API Error: {url: /roles, method: get, status: 500, message: Request failed with status code 500}"
+    },
+    {
+      "type": "console-error",
+      "message": "[RolePage] Szerepkörök újratöltése sikertelen: AxiosError: Request failed with status code 500\n    at settle (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:1634:14)\n    at XMLHttpRequest.onloadend (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:1951:4)\n    at Axios$1.request (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:2518:37)\n    at async Object.list (http://127.0.0.1:3000/src/services/api/users.ts:78:20)\n    at async http://127.0.0.1:3000/src/pages/settings/RolePage.tsx?t=1775070638965:101:23"
+    },
+    {
+      "type": "api-error",
+      "message": "500 http://127.0.0.1:3000/api/v1/roles",
+      "status": 500,
+      "url": "http://127.0.0.1:3000/api/v1/roles"
+    },
+    {
+      "type": "console-error",
+      "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "type": "console-error",
+      "message": "[client] API Error: {url: /roles, method: get, status: 500, message: Request failed with status code 500}"
+    },
+    {
+      "type": "console-error",
+      "message": "[RolePage] Szerepkörök újratöltése sikertelen: AxiosError: Request failed with status code 500\n    at settle (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:1634:14)\n    at XMLHttpRequest.onloadend (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:1951:4)\n    at Axios$1.request (http://127.0.0.1:3000/node_modules/.vite/deps/axios.js?v=8a74baab:2518:37)\n    at async Object.list (http://127.0.0.1:3000/src/services/api/users.ts:78:20)\n    at async http://127.0.0.1:3000/src/pages/settings/RolePage.tsx?t=1775070638965:101:23"
+    }
+  ]
+}

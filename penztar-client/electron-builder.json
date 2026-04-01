@@ -1,10 +1,12 @@
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
   "appId": "com.bestchange.penztar",
-  "productName": "Valutaváltó Pénztár",
+  "productName": "Valutavalto Penztar",
   "directories": {
     "output": "release"
   },
+  "asar": true,
+  "asarUnpack": [],
   "files": [
     "dist/**/*",
     "dist-electron/**/*"

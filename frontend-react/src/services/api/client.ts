@@ -36,7 +36,7 @@ if (!API_BASE_URL) {
     API_BASE_URL = '/api/v1'
   } else if (window.electronAPI) {
     // Electron production — SQLite-ból olvassa a server_url-t, fallback a prod szerverre
-    API_BASE_URL = 'https://valutavalto-api.onrender.com/api/v1'
+    API_BASE_URL = 'https://excvaluta.com/api/v1'
     // Aszinkron felülírás: ha SQLite-ban van beállítva server_url, használjuk azt
     window.electronAPI.getConfig?.('server_url').then((url: string | null) => {
       if (url) {
