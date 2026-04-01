@@ -6,6 +6,7 @@ import { toast } from '../../components/ui/toaster'
 import { dailySessionApi, cashBalanceApi } from '../../services/api/index'
 import type { CashBalance } from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
+import { clearPersistedToken } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 
 /**
@@ -18,6 +19,7 @@ import { logger } from '../../utils/logger'
 export default function DayOpenPage() {
   const navigate = useNavigate()
   const worker = useAuthStore((s) => s.worker)
+  const logout = useAuthStore((s) => s.logout)
 
   const [loading, setLoading] = useState(true)
   const [balances, setBalances] = useState<CashBalance[]>([])
@@ -193,10 +195,14 @@ export default function DayOpenPage() {
 
           {/* Back */}
           <button
-            onClick={() => navigate(-1)}
+            onClick={async () => {
+              logout()
+              await clearPersistedToken()
+              navigate('/login', { replace: true })
+            }}
             className="w-full text-center text-sm text-gray-500 hover:text-gray-700"
           >
-            Vissza
+            Kijelentkezes
           </button>
         </div>
       </div>

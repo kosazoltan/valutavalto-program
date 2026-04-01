@@ -219,6 +219,9 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
           </Route>
 
+          {/* Day open — full-screen, no MainLayout */}
+          <Route path="/cashdesk/day-open" element={<ProtectedRoute><DayOpenPage /></ProtectedRoute>} />
+
           {/* Protected routes */}
           <Route
             element={
@@ -252,7 +255,6 @@ export default function App() {
           <Route path="/rates/creation" element={<RateCreationPage />} />
           
           {/* Cash desk */}
-          <Route path="/cashdesk/day-open" element={<DayOpenPage />} />
           <Route path="/cashdesk" element={<CashDeskPage />} />
           <Route path="/cashdesk/denominations" element={<DenominationPage />} />
           <Route path="/cashdesk/breaks" element={<CashDeskBreakPage />} />
