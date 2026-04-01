@@ -37,6 +37,7 @@ import type { AmlCheckResultDto } from '../../services/api/transactions'
 
 const MAX_LINES = 6
 const IDENTIFICATION_LIMIT = 300_000
+const RATE_STALE_MS = 5 * 60 * 1000 // 5 perc
 
 interface TransactionRow {
   currencyCode: string
@@ -85,7 +86,6 @@ export default function CashierTransactionPage() {
   // Exchange rates from API
   const [exchangeRates, setExchangeRates] = useState<ExchangeRate[]>([])
   const ratesLoadedAtRef = useRef<number>(0)
-  const RATE_STALE_MS = 5 * 60 * 1000 // 5 perc
 
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -255,9 +255,14 @@ export default function CashierTransactionPage() {
     const touchedRows = rows.filter((r) => r.currencyCode.length > 0)
     if (touchedRows.length === 0) return
 
-    // Session guard
-    if (sessionOpen === false) {
-      toast.error('Nincs nyitott nap', 'A tranzakcio rogzitesehez eloszor meg kell nyitni a napot!')
+    // Session guard — block if session closed OR still loading (null)
+    if (sessionOpen !== true) {
+      toast.error(
+        sessionOpen === null ? 'Session ellenorzes folyamatban' : 'Nincs nyitott nap',
+        sessionOpen === null
+          ? 'Varj, amig a napi session allapota ellenorzesre kerul!'
+          : 'A tranzakcio rogzitesehez eloszor meg kell nyitni a napot!',
+      )
       return
     }
 
