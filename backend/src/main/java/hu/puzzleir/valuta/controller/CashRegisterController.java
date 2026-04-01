@@ -46,6 +46,7 @@ public class CashRegisterController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<CashRegisterEventDto> printReceipt(
             @Valid @RequestBody CashRegisterReceiptRequest request) {
+        branchService.findById(request.getBranchId()); // IDOR védelem: cég ellenőrzés
         return ResponseEntity.ok(cashRegisterService.printReceipt(request));
     }
 
@@ -53,6 +54,7 @@ public class CashRegisterController {
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<CashRegisterEventDto> printStorno(
             @Valid @RequestBody CashRegisterStornoRequest request) {
+        branchService.findById(request.getBranchId()); // IDOR védelem: cég ellenőrzés
         return ResponseEntity.ok(cashRegisterService.printStorno(request));
     }
 

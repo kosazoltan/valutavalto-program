@@ -124,10 +124,17 @@ public class CashRegisterService {
     public CashRegisterEventDto printStorno(CashRegisterStornoRequest request) {
         Branch branch = findBranch(request.getBranchId());
 
-        // Eredeti bizonylat esemény keresése
+        // Eredeti bizonylat esemény keresése + cross-branch védelem
         CashRegisterEvent originalEvent = cashRegisterEventRepository.findById(request.getOriginalReceiptId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Eredeti bizonylat esemény nem található: " + request.getOriginalReceiptId()));
+
+        // Cross-branch sztornó védelem: eredeti bizonylat ugyanahhoz az irodához kell tartozzon
+        if (!originalEvent.getBranch().getId().equals(request.getBranchId())) {
+            throw new IllegalArgumentException(
+                    "Sztornó nem engedélyezett: az eredeti bizonylat más irodához tartozik (original=" +
+                    originalEvent.getBranch().getId() + ", requested=" + request.getBranchId() + ")");
+        }
 
         String comPort = resolveNavComPort();
         String originalReceipt = originalEvent.getReceiptNumber() != null ? originalEvent.getReceiptNumber() : "UNKNOWN";
@@ -189,11 +196,20 @@ public class CashRegisterService {
         Branch branch = findBranch(branchId);
         LocalDate effectiveDate = date != null ? date : LocalDate.now();
 
-        // Napi összesítés
+        // Idempotencia: ha mar van Z_REPORT erre a napra, visszaadjuk
         LocalDateTime from = effectiveDate.atStartOfDay();
         LocalDateTime to = effectiveDate.atTime(LocalTime.MAX);
         List<CashRegisterEvent> dailyEvents = cashRegisterEventRepository
                 .findByBranchIdAndEventTimestampBetweenOrderByEventTimestampDesc(branchId, from, to);
+
+        // Check for existing Z_REPORT on this day
+        var existingZReport = dailyEvents.stream()
+                .filter(e -> e.getEventType() == CashRegisterEventType.Z_REPORT)
+                .findFirst();
+        if (existingZReport.isPresent()) {
+            log.info("Z jelentés már létezik: branch={}, date={}", branch.getCode(), effectiveDate);
+            return toDto(existingZReport.get());
+        }
 
         long receiptCount = dailyEvents.stream()
                 .filter(e -> e.getEventType() == CashRegisterEventType.RECEIPT)

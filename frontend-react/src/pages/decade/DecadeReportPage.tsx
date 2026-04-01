@@ -39,15 +39,18 @@ export default function DecadeReportPage() {
   const [year, setYear] = useState(() => new Date().getFullYear())
   const [reports, setReports] = useState<DecadeReportDto[]>([])
   const [selected, setSelected] = useState<DecadeReportDto | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [listLoading, setListLoading] = useState(false)
+  const [actionLoading, setActionLoading] = useState(false)
   const [error, setError] = useState('')
 
   // generate form
   const [genDecade, setGenDecade] = useState<number>(1)
 
+  const loading = listLoading || actionLoading
+
   const loadReports = useCallback(async () => {
     if (!branchId) return
-    setLoading(true)
+    setListLoading(true)
     setError('')
     try {
       const res = await decadeReportApi.list(branchId, year)
@@ -57,7 +60,7 @@ export default function DecadeReportPage() {
       setError(msg)
       logger.error('DecadeReportPage', 'Failed to load reports:', err)
     } finally {
-      setLoading(false)
+      setListLoading(false)
     }
   }, [branchId, year])
 
@@ -67,20 +70,20 @@ export default function DecadeReportPage() {
 
   const handleGenerate = async () => {
     if (!branchId) return
-    setLoading(true)
+    setActionLoading(true)
     setError('')
     try {
       const dto: GenerateDecadeDto = { branchId, year, decade: genDecade }
       const res = await decadeReportApi.generate(dto)
       setSelected(res.data)
       toast.success('Dekádjelentés generálva', `${year}/${genDecade}. dekád`)
-      loadReports()
+      await loadReports()
     } catch (err) {
       const msg = getErrorMessage(err)
       setError(msg)
       toast.error('Generálás sikertelen', msg)
     } finally {
-      setLoading(false)
+      setActionLoading(false)
     }
   }
 
@@ -89,7 +92,7 @@ export default function DecadeReportPage() {
       const res = await decadeReportApi.close(id)
       setSelected(res.data)
       toast.success('Dekádjelentés lezárva')
-      loadReports()
+      await loadReports()
     } catch (err) {
       const msg = getErrorMessage(err)
       toast.error('Lezárás sikertelen', msg)

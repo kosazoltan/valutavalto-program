@@ -94,39 +94,65 @@ public class NeonReplicationService {
             return fullSync(tableName);
         }
 
-        // Incremental: csak az utolsó sync óta módosultak
-        String selectSql = String.format(
-                "SELECT * FROM \"%s\" WHERE \"%s\" > ? ORDER BY \"%s\" LIMIT ?",
-                tableName, timestampColumn, timestampColumn);
-
         LocalDateTime syncStart = LocalDateTime.now();
-        List<Object[]> rows = new ArrayList<>();
-        List<String> columnNames = new ArrayList<>();
+        LocalDateTime cursor = lastSync;
+        int totalSynced = 0;
+        int maxIterations = 10; // Safety: max 10 batch iteration (10 * 5000 = 50000 rows)
 
-        primaryJdbc.query(selectSql, ps -> {
-            ps.setObject(1, lastSync);
-            ps.setInt(2, BATCH_SIZE * 10); // max 5000 per cycle
-        }, rs -> {
-            if (columnNames.isEmpty()) {
-                ResultSetMetaData meta = rs.getMetaData();
-                for (int i = 1; i <= meta.getColumnCount(); i++) {
-                    columnNames.add(meta.getColumnName(i));
+        for (int iteration = 0; iteration < maxIterations; iteration++) {
+            String selectSql = String.format(
+                    "SELECT * FROM \"%s\" WHERE \"%s\" > ? ORDER BY \"%s\" ASC LIMIT ?",
+                    tableName, timestampColumn, timestampColumn);
+
+            List<Object[]> rows = new ArrayList<>();
+            List<String> columnNames = new ArrayList<>();
+            final LocalDateTime cursorFinal = cursor;
+
+            primaryJdbc.query(selectSql, ps -> {
+                ps.setObject(1, cursorFinal);
+                ps.setInt(2, BATCH_SIZE * 10); // max 5000 per batch
+            }, rs -> {
+                if (columnNames.isEmpty()) {
+                    ResultSetMetaData meta = rs.getMetaData();
+                    for (int i = 1; i <= meta.getColumnCount(); i++) {
+                        columnNames.add(meta.getColumnName(i));
+                    }
+                }
+                Object[] row = new Object[columnNames.size()];
+                for (int i = 0; i < columnNames.size(); i++) {
+                    row[i] = rs.getObject(i + 1);
+                }
+                rows.add(row);
+            });
+
+            if (rows.isEmpty()) {
+                break;
+            }
+
+            int synced = upsertToNeon(tableName, columnNames, rows);
+            totalSynced += synced;
+
+            // Watermark: advance cursor to the last row's timestamp value
+            int tsColIdx = columnNames.indexOf(timestampColumn);
+            if (tsColIdx >= 0) {
+                Object lastTs = rows.get(rows.size() - 1)[tsColIdx];
+                if (lastTs instanceof LocalDateTime ldt) {
+                    cursor = ldt;
+                } else if (lastTs instanceof java.sql.Timestamp sqlTs) {
+                    cursor = sqlTs.toLocalDateTime();
                 }
             }
-            Object[] row = new Object[columnNames.size()];
-            for (int i = 0; i < columnNames.size(); i++) {
-                row[i] = rs.getObject(i + 1);
-            }
-            rows.add(row);
-        });
 
-        if (rows.isEmpty()) {
-            return 0;
+            // If we got fewer rows than the limit, we're done
+            if (rows.size() < BATCH_SIZE * 10) {
+                break;
+            }
         }
 
-        int synced = upsertToNeon(tableName, columnNames, rows);
-        logSyncResult(tableName, synced, "SUCCESS", null);
-        return synced;
+        if (totalSynced > 0) {
+            logSyncResult(tableName, totalSynced, "SUCCESS", null, syncStart);
+        }
+        return totalSynced;
     }
 
     /**
@@ -227,9 +253,13 @@ public class NeonReplicationService {
     }
 
     private void logSyncResult(String tableName, int recordsSynced, String status, String error) {
+        logSyncResult(tableName, recordsSynced, status, error, LocalDateTime.now());
+    }
+
+    private void logSyncResult(String tableName, int recordsSynced, String status, String error, LocalDateTime syncStartedAt) {
         try {
             NeonSyncLog logEntry = NeonSyncLog.builder()
-                    .syncStartedAt(LocalDateTime.now())
+                    .syncStartedAt(syncStartedAt)
                     .syncFinishedAt(LocalDateTime.now())
                     .tableName(tableName)
                     .recordsSynced(recordsSynced)

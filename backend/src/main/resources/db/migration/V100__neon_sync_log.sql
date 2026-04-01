@@ -12,3 +12,4 @@ CREATE TABLE IF NOT EXISTS neon_sync_log (
 
 CREATE INDEX idx_neon_sync_log_status ON neon_sync_log(status);
 CREATE INDEX idx_neon_sync_log_started ON neon_sync_log(sync_started_at DESC);
+CREATE INDEX idx_neon_sync_log_watermark ON neon_sync_log(table_name, status, sync_finished_at DESC);

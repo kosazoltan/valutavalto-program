@@ -36,9 +36,15 @@ public class NeonDataSourceConfig {
         ds.setDriverClassName("org.postgresql.Driver");
 
         if (neonUrl.startsWith("postgresql://") || neonUrl.startsWith("postgres://")) {
-            // JDBC URL konverzió: postgresql://user:pass@host/db?params → jdbc:postgresql://host/db?params
             String jdbcUrl = convertToJdbcUrl(neonUrl);
             ds.setUrl(jdbcUrl);
+            // Apply credentials parsed from the libpq URI
+            if (parsedUsername != null && !parsedUsername.isEmpty()) {
+                ds.setUsername(parsedUsername);
+            }
+            if (parsedPassword != null && !parsedPassword.isEmpty()) {
+                ds.setPassword(parsedPassword);
+            }
         } else if (neonUrl.startsWith("jdbc:")) {
             ds.setUrl(neonUrl);
             ds.setUsername(neonUsername);
@@ -56,26 +62,35 @@ public class NeonDataSourceConfig {
         return new JdbcTemplate(neonDataSource());
     }
 
+    /**
+     * Convert libpq URI to JDBC URL and extract credentials.
+     * postgresql://user:pass@host:port/db?params → jdbc:postgresql://host:port/db?params
+     * User/pass are set on the DataSource, NOT embedded in the JDBC URL.
+     */
     private String convertToJdbcUrl(String url) {
-        // postgresql://user:pass@host:port/db?params
         String withoutScheme = url.replaceFirst("^postgres(ql)?://", "");
-        String userInfo = "";
         String hostAndDb;
         if (withoutScheme.contains("@")) {
             int atIdx = withoutScheme.indexOf('@');
-            userInfo = withoutScheme.substring(0, atIdx);
+            String userInfo = withoutScheme.substring(0, atIdx);
             hostAndDb = withoutScheme.substring(atIdx + 1);
+            // Parse user:pass from URI and store for DataSource config
+            if (userInfo.contains(":")) {
+                int colonIdx = userInfo.indexOf(':');
+                this.parsedUsername = userInfo.substring(0, colonIdx);
+                this.parsedPassword = userInfo.substring(colonIdx + 1);
+            } else {
+                this.parsedUsername = userInfo;
+            }
         } else {
             hostAndDb = withoutScheme;
         }
-        String jdbcUrl = "jdbc:postgresql://" + hostAndDb;
-
-        // Ha van user:pass a URL-ben, a DriverManagerDataSource-ben is beállítjuk
-        if (!userInfo.isEmpty() && userInfo.contains(":")) {
-            // Nem kell külön — a JDBC driver a URL-ből is kiolvassa
-        }
-        return jdbcUrl;
+        return "jdbc:postgresql://" + hostAndDb;
     }
+
+    /** Credentials parsed from the libpq URI, applied in neonDataSource(). */
+    private String parsedUsername;
+    private String parsedPassword;
 
     private String maskUrl(String url) {
         if (url == null || url.isEmpty()) {
