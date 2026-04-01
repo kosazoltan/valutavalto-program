@@ -122,6 +122,50 @@ public class ReceiptData {
     @Builder.Default
     private String signatureLine = "Aláírás: ____________________";
 
+    // ============ KIEGÉSZÍTŐ BIZONYLAT MEZŐK ============
+
+    /**
+     * Orosz/fehérorosz ügyfél (ISO='RU' vagy 'BY') — kötelező nyilatkozat blokk.
+     * Ha igaz, a bizonylaton megjelenik a FATF/EU szankciós nyilatkozat.
+     */
+    @Builder.Default
+    private Boolean requiresRuByDeclaration = false;
+
+    /**
+     * Jogi személy (cég) nyilatkozat blokk szükséges-e.
+     * Ha igaz, megjelenik: cégnév, székhely, okiratszám, képviselő adatai.
+     */
+    @Builder.Default
+    private Boolean requiresLegalEntityBlock = false;
+
+    /** Jogi személy képviselőjének neve */
+    private String legalRepresentativeName;
+
+    /** Jogi személy okiratszáma */
+    private String legalDeedNumber;
+
+    /**
+     * Kedvezményes árfolyam melléklet szükséges-e.
+     * Ha igaz, a bizonylat tartalmaz egy külön mellékletet a kedvezményes árfolyamról.
+     */
+    @Builder.Default
+    private Boolean hasDiscountedRate = false;
+
+    /** Normál (listaáras) árfolyam (összehasonlításhoz a mellékletben) */
+    private java.math.BigDecimal standardRate;
+
+    /**
+     * Másolat nyomtatás indoka.
+     * Ha nem null, a bizonylat MÁSOLAT fejléccel és ezzel az indokkal jelenik meg.
+     */
+    private String copyReason;
+
+    /**
+     * Magyar + angol kétnyelvű tételsorok engedélyezve.
+     */
+    @Builder.Default
+    private Boolean bilingualItems = false;
+
     /**
      * Bizonylat sor adat
      */
@@ -131,6 +175,8 @@ public class ReceiptData {
     @AllArgsConstructor
     public static class ReceiptLineData {
         private String label;
+        /** Opcionális angol felirat kétnyelvű módban */
+        private String labelEn;
         private String value;
     }
 }

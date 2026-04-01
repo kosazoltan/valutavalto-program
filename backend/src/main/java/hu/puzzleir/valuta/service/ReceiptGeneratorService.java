@@ -366,6 +366,11 @@ public class ReceiptGeneratorService {
 
         // ÁFA-mentesség — alapértelmezett a @Builder.Default-ból jön
 
+        // Kiegészítő blokkok aktiválása
+        applyRuByDeclarationIfNeeded(builder, tx.getCustomerNationality());
+        // Kedvezményes árfolyam — jövőbeli bővítés; jelenleg a helper elérhető
+        // az explicit hívásokhoz (pl. VIP ár esetén)
+
         return builder.build();
     }
 
@@ -407,6 +412,102 @@ public class ReceiptGeneratorService {
         }
 
         return builder.build();
+    }
+
+    // ============ KIEGÉSZÍTŐ BIZONYLAT BLOKKOK ============
+
+    /**
+     * Orosz/fehérorosz ügyfél nyilatkozat blokk hozzáadása.
+     *
+     * Ha az ügyfél állampolgársága RU vagy BY, a bizonylaton kötelező
+     * megjeleníteni az EU/FATF szankciós nyilatkozatot.
+     *
+     * @param builder  ReceiptData builder
+     * @param isoCode  ügyfél állampolgárság ISO kódja (pl. "RU", "BY")
+     */
+    public void applyRuByDeclarationIfNeeded(ReceiptData.ReceiptDataBuilder builder, String isoCode) {
+        if ("RU".equalsIgnoreCase(isoCode) || "BY".equalsIgnoreCase(isoCode)) {
+            builder.requiresRuByDeclaration(true);
+            log.debug("RU/BY nyilatkozat blokk aktiválva, ügyfél ISO: {}", isoCode);
+        }
+    }
+
+    /**
+     * Jogi személy nyilatkozat blokk hozzáadása.
+     *
+     * Ha az ügyfél jogi személy, kötelező feltüntetni a cégnevet,
+     * székhelyet, okiratszámot és képviselő adatait.
+     *
+     * @param builder               ReceiptData builder
+     * @param isLegalEntity         jogi személy-e
+     * @param representativeName    képviselő neve
+     * @param deedNumber            okiratszám
+     */
+    public void applyLegalEntityBlockIfNeeded(
+            ReceiptData.ReceiptDataBuilder builder,
+            boolean isLegalEntity,
+            String representativeName,
+            String deedNumber) {
+        if (isLegalEntity) {
+            builder.requiresLegalEntityBlock(true)
+                   .legalRepresentativeName(representativeName)
+                   .legalDeedNumber(deedNumber);
+            log.debug("Jogi személy nyilatkozat blokk aktiválva");
+        }
+    }
+
+    /**
+     * Kedvezményes árfolyam melléklet hozzáadása.
+     *
+     * Ha az ügyfél kedvezményes árfolyamot kapott (pl. VIP ár),
+     * a bizonylaton feltüntetjük a normál és kedvezményes árfolyamot.
+     *
+     * @param builder        ReceiptData builder
+     * @param appliedRate    ténylegesen alkalmazott árfolyam
+     * @param standardRate   standard listaáras árfolyam
+     */
+    public void applyDiscountedRateIfNeeded(
+            ReceiptData.ReceiptDataBuilder builder,
+            java.math.BigDecimal appliedRate,
+            java.math.BigDecimal standardRate) {
+        if (appliedRate != null && standardRate != null
+                && appliedRate.compareTo(standardRate) != 0) {
+            builder.hasDiscountedRate(true)
+                   .standardRate(standardRate);
+            log.debug("Kedvezményes árfolyam melléklet aktiválva: alkalmazott={}, standard={}",
+                appliedRate, standardRate);
+        }
+    }
+
+    /**
+     * Másolat indok beállítása.
+     *
+     * Ha másolatot nyomtatunk, a bizonylaton MÁSOLAT fejléc és az indok jelenik meg.
+     *
+     * @param builder    ReceiptData builder
+     * @param copyReason másolat nyomtatásának indoka (nem null = másolat)
+     */
+    public void applyCopyReason(ReceiptData.ReceiptDataBuilder builder, String copyReason) {
+        if (copyReason != null && !copyReason.isBlank()) {
+            builder.copyReason(copyReason);
+            log.debug("Másolat indok beállítva: {}", copyReason);
+        }
+    }
+
+    /**
+     * Kétnyelvű (magyar + angol) tételsorok generálása.
+     *
+     * @param labelHu  magyar felirat
+     * @param labelEn  angol felirat
+     * @param value    érték
+     * @return kétnyelvű ReceiptLineData
+     */
+    public ReceiptData.ReceiptLineData bilingualLine(String labelHu, String labelEn, String value) {
+        return ReceiptData.ReceiptLineData.builder()
+            .label(labelHu)
+            .labelEn(labelEn)
+            .value(value)
+            .build();
     }
 
     /**

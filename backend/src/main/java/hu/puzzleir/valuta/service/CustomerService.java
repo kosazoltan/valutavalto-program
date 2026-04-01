@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -245,6 +246,96 @@ public class CustomerService {
         customer.setLastTransactionDate(LocalDate.now());
         customer.setTransactionCount(customer.getTransactionCount() + 1);
         customerRepository.save(customer);
+    }
+
+    /**
+     * Pont-alapú ügyfél azonosítás / keresés.
+     *
+     * Logika: anyjaneve + születési idő + születési hely + azonosítószám → 4 kritérium közül
+     * legalább 2 egyezés = azonosított ügyfél.
+     *
+     * Legacy: BIGCTRL.DLL / ADATLAP matchelés logika
+     *
+     * @param documentNumber  okmányszám (legmagasabb prioritású — 1 egyezés = 2 pont)
+     * @param motherName      anyja neve
+     * @param birthDate       születési dátum
+     * @param birthPlace      születési hely
+     * @return azonosított ügyfél (ha van legalább 2 pont), üres ha nem azonosítható
+     */
+    @Transactional(readOnly = true)
+    public Optional<Customer> findOrMatchCustomer(
+            String documentNumber,
+            String motherName,
+            LocalDate birthDate,
+            String birthPlace) {
+
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+
+        // 1. Közvetlen okmányszám alapú keresés (2 pont = azonosított)
+        if (documentNumber != null && !documentNumber.isBlank()) {
+            Optional<Customer> byDoc = customerRepository
+                .findByDocumentNumberAndCompanyId(documentNumber, companyId);
+            if (byDoc.isPresent()) {
+                log.debug("Pont-alapú match: közvetlen okmányszám egyezés, customerId={}",
+                    byDoc.get().getId());
+                return byDoc;
+            }
+            Optional<Customer> byIdCard = customerRepository
+                .findByIdCardNumberAndCompanyId(documentNumber, companyId);
+            if (byIdCard.isPresent()) {
+                log.debug("Pont-alapú match: személyi ig. egyezés, customerId={}",
+                    byIdCard.get().getId());
+                return byIdCard;
+            }
+            Optional<Customer> byPassport = customerRepository
+                .findByPassportNumberAndCompanyId(documentNumber, companyId);
+            if (byPassport.isPresent()) {
+                log.debug("Pont-alapú match: útlevél egyezés, customerId={}",
+                    byPassport.get().getId());
+                return byPassport;
+            }
+        }
+
+        // 2. Pont-alapú matching: 4 kritérium közül min. 2 egyezés
+        List<Customer> candidates = customerRepository.findByCompanyIdAndActiveTrue(companyId);
+
+        Customer best = null;
+        int bestScore = 0;
+
+        for (Customer c : candidates) {
+            int score = 0;
+
+            if (motherName != null && !motherName.isBlank()
+                    && motherName.equalsIgnoreCase(c.getMotherName())) {
+                score++;
+            }
+            if (birthDate != null && birthDate.equals(c.getBirthDate())) {
+                score++;
+            }
+            if (birthPlace != null && !birthPlace.isBlank()
+                    && birthPlace.equalsIgnoreCase(c.getBirthPlace())) {
+                score++;
+            }
+            if (documentNumber != null && !documentNumber.isBlank()
+                    && (documentNumber.equalsIgnoreCase(c.getDocumentNumber())
+                        || documentNumber.equalsIgnoreCase(c.getIdCardNumber())
+                        || documentNumber.equalsIgnoreCase(c.getPassportNumber()))) {
+                score++;
+            }
+
+            if (score > bestScore) {
+                bestScore = score;
+                best = c;
+            }
+        }
+
+        if (bestScore >= 2) {
+            log.debug("Pont-alapú match: {} pont egyezés, customerId={}", bestScore, best.getId());
+            return Optional.of(best);
+        }
+
+        log.debug("Pont-alapú match: nem azonosítható ügyfél (legjobb pontszám: {})", bestScore);
+        return Optional.empty();
     }
 
     /**

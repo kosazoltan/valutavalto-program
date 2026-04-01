@@ -272,6 +272,33 @@ public class Customer {
     @Builder.Default
     private Integer transactionCount = 0;
 
+    /**
+     * Heti göngyölt összeg (HUF) — az elmúlt 7 nap tranzakcióinak összege.
+     * Legacy: HETIOSSZ mező
+     * Frissítése: minden tranzakció könyvelésekor (AmlService.setHighRiskFlagIfNeeded)
+     */
+    @Column(name = "weekly_total", precision = 18, scale = 2)
+    @Builder.Default
+    private java.math.BigDecimal weeklyTotal = java.math.BigDecimal.ZERO;
+
+    /**
+     * Éves göngyölt összeg (HUF) — az aktuális naptári év tranzakcióinak összege.
+     * Legacy: HASFORINT mező
+     * Frissítése: minden tranzakció könyvelésekor
+     */
+    @Column(name = "annual_total", precision = 18, scale = 2)
+    @Builder.Default
+    private java.math.BigDecimal annualTotal = java.math.BigDecimal.ZERO;
+
+    /**
+     * Éves maximum egyszeri tranzakció összeg (HUF).
+     * Legacy: EVIMAX mező
+     * Frissítése: ha az aktuális tranzakció meghaladja az eddigi maximumot
+     */
+    @Column(name = "annual_max", precision = 18, scale = 2)
+    @Builder.Default
+    private java.math.BigDecimal annualMax = java.math.BigDecimal.ZERO;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

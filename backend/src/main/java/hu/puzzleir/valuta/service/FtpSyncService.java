@@ -30,10 +30,18 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * FTP szinkronizáció szolgáltatás.
- * BRIDGE a régi FTP alapú (port 21100) és az új REST API alapú szinkronizáció között.
- * A régi FTP hívásokat menedzselt storage artifact formátumba fordítja.
+ * FTP szinkronizáció szolgáltatás — DEPRECATED.
+ *
+ * Ez az osztály a legacy FTP alapú (port 21100) szinkronizáció bridge implementációja.
+ * Az aktív, kanonikus szinkronizációs csatorna: {@link SynchronizationService} (REST alapú).
+ *
+ * <p>Az FTP kliens kód (Apache Commons Net / FTPClient) eltávolítva — a metódusok
+ * helyi file artifact formátumba írnak, amelyeket a {@link SynchronizationService} olvas fel.
+ * Új fejlesztéseknél közvetlenül a {@link SynchronizationService}-t kell használni.</p>
+ *
+ * @deprecated Használd helyette a {@link SynchronizationService}-t.
  */
+@Deprecated
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -47,8 +55,15 @@ public class FtpSyncService {
          private final FileTransportService fileTransportService;
 
     /**
-     * Árfolyam fájl letöltése (FTP DOWNLOAD).
+     * Árfolyam fájl letöltése — DEPRECATED.
+     *
+     * <p>FTP kliens kód eltávolítva. A metódus helyi file artifact-ot generál,
+     * amelyet a {@link SynchronizationService} REST csatornán keresztül vesz át.
+     * Új kódban használd közvetlenül a {@link SynchronizationService}-t.</p>
+     *
+     * @deprecated FTP csatorna leállítva — használd a {@link SynchronizationService}-t.
      */
+    @Deprecated
     @Transactional(rollbackFor = Exception.class)
     public FtpSyncResultDto syncRateFile(UUID branchId) {
         Branch branch = findBranch(branchId);
@@ -127,8 +142,11 @@ public class FtpSyncService {
     }
 
     /**
-     * Napi jelentés feltöltése (FTP UPLOAD).
+     * Napi jelentés feltöltése — DEPRECATED.
+     *
+     * @deprecated FTP csatorna leállítva — használd a {@link SynchronizationService}-t.
      */
+    @Deprecated
     @Transactional(rollbackFor = Exception.class)
     public FtpSyncResultDto uploadDailyReport(UUID branchId, LocalDate date) {
         Branch branch = findBranch(branchId);
@@ -196,8 +214,11 @@ public class FtpSyncService {
     }
 
     /**
-     * Tranzakció batch feltöltése (FTP UPLOAD).
+     * Tranzakció batch feltöltése — DEPRECATED.
+     *
+     * @deprecated FTP csatorna leállítva — használd a {@link SynchronizationService}-t.
      */
+    @Deprecated
     @Transactional(rollbackFor = Exception.class)
     public FtpSyncResultDto uploadTransactionBatch(UUID branchId) {
         Branch branch = findBranch(branchId);

@@ -92,6 +92,7 @@ const MovementManager = lazy(() => import('./pages/treasury/MovementManager'))
 const RatePanel = lazy(() => import('./pages/treasury/RatePanel'))
 const ReportsCirculars = lazy(() => import('./pages/treasury/ReportsCirculars'))
 const BankTransactions = lazy(() => import('./pages/treasury/BankTransactions'))
+const VatRefundPage = lazy(() => import('./pages/treasury/VatRefundPage'))
 
 function RouteLoadingFallback() {
   return (
@@ -379,6 +380,7 @@ export default function App() {
             <Route path="bank" element={<BankTransactions />} />
             <Route path="rates" element={<RatePanel />} />
             <Route path="reports" element={<ReportsCirculars />} />
+            <Route path="vat" element={<VatRefundPage />} />
           </Route>
 
           {/* === Kamera Routes === */}

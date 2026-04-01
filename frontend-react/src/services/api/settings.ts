@@ -828,4 +828,59 @@ export const ertektarApi = {
   createCollection: async (data: { sourceBranchCode: string; currencyCode: string; amount: number; note?: string }) => (await api.post('/ertektar/collections', data)).data,
   getDistributions: async () => (await api.get('/ertektar/distribution')).data,
   createDistribution: async (data: { items: Array<{ targetBranchCode: string; currencyCode: string; amount: number }>; note?: string }) => (await api.post('/ertektar/distribution', data)).data,
+  getVatRefunds: async (from?: string, to?: string): Promise<VatRefundItem[]> => {
+    const params = new URLSearchParams()
+    if (from) params.set('from', from)
+    if (to) params.set('to', to)
+    const qs = params.toString()
+    return (await api.get<VatRefundItem[]>(`/v1/vat-refund${qs ? `?${qs}` : ''}`)).data
+  },
+  createVatRefund: async (data: VatRefundRequest): Promise<VatRefundItem> => (await api.post<VatRefundItem>('/v1/vat-refund', data)).data,
+  stornoVatRefund: async (id: number): Promise<VatRefundItem> => (await api.post<VatRefundItem>(`/v1/vat-refund/${id}/reverse`, {})).data,
+}
+
+// ================== ÁFA VISSZATÉRÍTÉS ==================
+
+/** Bizonylat típus — backend enum: AK=külföldi, AB=céges, AV=Innova */
+export type VatRefundType = 'AK' | 'AB' | 'AV'
+
+export interface VatRefundItem {
+  id: number
+  companyId: string
+  voucherType: VatRefundType
+  serialNumber: string
+  transactionDate: string
+  transactionTime?: string
+  mainUnit?: number
+  supplyAmount?: number
+  grossAmount: number
+  vatAmount: number
+  vatPercentage?: number
+  customerName?: string
+  customerAddress?: string
+  customerIdentifier?: string
+  bankAccountNumber?: string
+  companyName?: string
+  siteAddress?: string
+  deedNumber?: string
+  isReversed: boolean
+  originalTransactionId?: number
+  createdByWorker?: string
+  createdAt: string
+}
+
+export interface VatRefundRequest {
+  voucherType: VatRefundType
+  grossAmount: number
+  vatAmount: number
+  vatPercentage?: number
+  mainUnit?: number
+  supplyAmount?: number
+  customerName?: string
+  customerAddress?: string
+  customerIdentifier?: string
+  bankAccountNumber?: string
+  companyName?: string
+  siteAddress?: string
+  deedNumber?: string
 }

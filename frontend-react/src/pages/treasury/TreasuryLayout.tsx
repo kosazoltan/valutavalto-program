@@ -8,6 +8,7 @@ import {
   FileText,
   Keyboard,
   Building2,
+  Receipt,
 } from 'lucide-react'
 import { useState, useCallback } from 'react'
 
@@ -18,6 +19,7 @@ const treasuryTabs = [
   { path: '/treasury/bank', label: 'Banki Tx', icon: Building2, hotkey: 'F4', end: false },
   { path: '/treasury/rates', label: 'Árfolyamok', icon: TrendingUp, hotkey: 'F5', end: false },
   { path: '/treasury/reports', label: 'Jelentések', icon: FileText, hotkey: 'F6', end: false },
+  { path: '/treasury/vat', label: 'ÁFA visszatérítés', icon: Receipt, hotkey: 'F7', end: false },
 ] as const
 
 export default function TreasuryLayout() {
@@ -34,6 +36,7 @@ export default function TreasuryLayout() {
   useHotkeys('f4', (e) => { e.preventDefault(); navigate('/treasury/bank') }, { enableOnFormTags: false })
   useHotkeys('f5', (e) => { e.preventDefault(); navigate('/treasury/rates') }, { enableOnFormTags: false })
   useHotkeys('f6', (e) => { e.preventDefault(); navigate('/treasury/reports') }, { enableOnFormTags: false })
+  useHotkeys('f7', (e) => { e.preventDefault(); navigate('/treasury/vat') }, { enableOnFormTags: false })
   useHotkeys('shift+/', () => toggleHelp(), { enableOnFormTags: false })
   useHotkeys('escape', () => closeHelp(), { enableOnFormTags: true })
 
@@ -92,6 +95,7 @@ export default function TreasuryLayout() {
               <HotkeyRow keys="F4" desc="Banki Tranzakciók" />
               <HotkeyRow keys="F5" desc="Árfolyamok" />
               <HotkeyRow keys="F6" desc="Jelentések" />
+              <HotkeyRow keys="F7" desc="ÁFA visszatérítés" />
               <div className="border-t border-secondary-200 pt-3 mt-3">
                 <div className="text-sm font-semibold text-secondary-600 uppercase tracking-wider mb-3">Általános</div>
                 <HotkeyRow keys="?" desc="Billentyűparancsok" />
