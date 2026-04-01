@@ -79,6 +79,7 @@ const CameraConfigPage = lazy(() => import('./pages/camera/CameraConfigPage'))
 const CameraStatusPage = lazy(() => import('./pages/camera/CameraStatusPage'))
 const CameraExportPage = lazy(() => import('./pages/camera/CameraExportPage'))
 const DariusReportPage = lazy(() => import('./pages/darius/DariusReportPage'))
+const DecadeReportPage = lazy(() => import('./pages/decade/DecadeReportPage'))
 
 // === Árfolyam-kezelés modul ===
 const RateCreationDashboard = lazy(() => import('./pages/ratemanagement/RateCreationDashboard'))
@@ -387,6 +388,7 @@ export default function App() {
           <Route path="/camera/status" element={<CameraStatusPage />} />
           <Route path="/camera/export" element={<CameraExportPage />} />
           <Route path="/darius" element={<DariusReportPage />} />
+          <Route path="/decade" element={<DecadeReportPage />} />
 
           {/* === Árfolyam-kezelés Routes === */}
           <Route path="/rate-management" element={<RateCreationDashboard />} />

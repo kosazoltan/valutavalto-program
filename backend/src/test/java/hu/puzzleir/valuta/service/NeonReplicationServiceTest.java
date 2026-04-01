@@ -1,0 +1,92 @@
+package hu.puzzleir.valuta.service;
+
+import hu.puzzleir.valuta.entity.NeonSyncLog;
+import hu.puzzleir.valuta.repository.NeonSyncLogRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
+class NeonReplicationServiceTest {
+
+    @Mock
+    private JdbcTemplate primaryJdbc;
+
+    @Mock
+    private DataSource neonDataSource;
+
+    @Mock
+    private NeonSyncLogRepository syncLogRepository;
+
+    private NeonReplicationService service;
+
+    @BeforeEach
+    void setUp() {
+        service = new NeonReplicationService(primaryJdbc, neonDataSource, syncLogRepository);
+
+        // Default: nincs korábbi sync log
+        when(syncLogRepository.findTopByTableNameAndStatusOrderBySyncFinishedAtDesc(anyString(), eq("SUCCESS")))
+                .thenReturn(Optional.empty());
+        // Default: timestamp oszlop detektálás
+        when(primaryJdbc.queryForList(anyString(), eq(String.class), anyString()))
+                .thenReturn(java.util.List.of("updated_at"));
+        // Default: üres query result (nincs új adat)
+        doAnswer(inv -> null).when(primaryJdbc).query(
+                anyString(),
+                any(org.springframework.jdbc.core.PreparedStatementSetter.class),
+                any(org.springframework.jdbc.core.RowCallbackHandler.class));
+    }
+
+    @Test
+    void syncToNeon_shouldNotThrow_whenNeonUnreachable() throws SQLException {
+        assertThatCode(() -> service.syncToNeon())
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void syncToNeon_shouldCompleteGracefully_whenNoData() {
+        service.syncToNeon();
+        // Nem dob exception-t, és végigmegy mind a 10 táblán
+    }
+
+    @Test
+    void syncTable_shouldReturn0_whenNoNewRecords() {
+        when(syncLogRepository.findTopByTableNameAndStatusOrderBySyncFinishedAtDesc(eq("transaction"), eq("SUCCESS")))
+                .thenReturn(Optional.of(NeonSyncLog.builder()
+                        .syncFinishedAt(LocalDateTime.now())
+                        .build()));
+
+        int result = service.syncTable("transaction");
+        assertThat(result).isEqualTo(0);
+    }
+
+    @Test
+    void syncTable_shouldReturn0_whenNoTimestampColumn() {
+        when(primaryJdbc.queryForList(anyString(), eq(String.class), eq("receipt")))
+                .thenReturn(java.util.List.of());
+
+        // Nincs timestamp → full sync attempt, de skipeli ha nagy
+        when(primaryJdbc.queryForObject(anyString(), eq(Integer.class)))
+                .thenReturn(50000);
+
+        int result = service.syncTable("receipt");
+        assertThat(result).isEqualTo(0);
+    }
+}

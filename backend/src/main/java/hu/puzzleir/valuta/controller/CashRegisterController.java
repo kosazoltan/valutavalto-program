@@ -63,6 +63,24 @@ public class CashRegisterController {
         return ResponseEntity.ok(cashRegisterService.getXReport(branchId));
     }
 
+    @GetMapping("/z-report/{branchId}")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<CashRegisterEventDto> generateZReport(
+            @PathVariable UUID branchId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        branchService.findById(branchId);
+        return ResponseEntity.ok(cashRegisterService.generateZReport(branchId, date));
+    }
+
+    @GetMapping("/receipt-gaps/{branchId}")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<java.util.List<String>> validateReceiptGaps(
+            @PathVariable UUID branchId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        branchService.findById(branchId);
+        return ResponseEntity.ok(cashRegisterService.validateReceiptSequenceContinuity(branchId, date));
+    }
+
     @GetMapping("/events/{branchId}")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<CashRegisterEventDto>> getDailyEvents(

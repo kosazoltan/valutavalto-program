@@ -181,6 +181,90 @@ public class CashRegisterService {
     }
 
     /**
+     * Z jelentés (napi zárás jelentés) generálása.
+     * Összesíti az adott nap összes bizonylat eseményét.
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public CashRegisterEventDto generateZReport(UUID branchId, LocalDate date) {
+        Branch branch = findBranch(branchId);
+        LocalDate effectiveDate = date != null ? date : LocalDate.now();
+
+        // Napi összesítés
+        LocalDateTime from = effectiveDate.atStartOfDay();
+        LocalDateTime to = effectiveDate.atTime(LocalTime.MAX);
+        List<CashRegisterEvent> dailyEvents = cashRegisterEventRepository
+                .findByBranchIdAndEventTimestampBetweenOrderByEventTimestampDesc(branchId, from, to);
+
+        long receiptCount = dailyEvents.stream()
+                .filter(e -> e.getEventType() == CashRegisterEventType.RECEIPT)
+                .count();
+        long stornoCount = dailyEvents.stream()
+                .filter(e -> e.getEventType() == CashRegisterEventType.STORNO)
+                .count();
+
+        String comPort = resolveNavComPort();
+        boolean qrSent = navIntegrationService.sendQrCode(
+                "CASH_REGISTER_Z_REPORT|branchId=" + branchId + "|date=" + effectiveDate, comPort);
+
+        CashRegisterEvent event = CashRegisterEvent.builder()
+                .branch(branch)
+                .eventType(CashRegisterEventType.Z_REPORT)
+                .eventTimestamp(LocalDateTime.now())
+                .rawResponse(buildResponse(qrSent ? "OK" : "ERROR",
+                        String.format("Z jelentés: %d bizonylat, %d sztornó", receiptCount, stornoCount),
+                        "comPort", comPort,
+                        "date", effectiveDate.toString()))
+                .build();
+
+        event = cashRegisterEventRepository.save(event);
+        log.info("Pénztárgép Z jelentés: branch={}, date={}, receipts={}, stornos={}",
+                branch.getCode(), effectiveDate, receiptCount, stornoCount);
+        return toDto(event);
+    }
+
+    /**
+     * Bizonylat sorszám folytonosság ellenőrzése.
+     * Hézagmentes, folyamatos sorszámozást validál az adott irodában.
+     */
+    @Transactional(readOnly = true)
+    public List<String> validateReceiptSequenceContinuity(UUID branchId, LocalDate date) {
+        Branch branch = findBranch(branchId);
+        LocalDateTime from = date.atStartOfDay();
+        LocalDateTime to = date.atTime(LocalTime.MAX);
+
+        List<CashRegisterEvent> receipts = cashRegisterEventRepository
+                .findByBranchIdAndEventTimestampBetweenOrderByEventTimestampDesc(branchId, from, to)
+                .stream()
+                .filter(e -> e.getEventType() == CashRegisterEventType.RECEIPT)
+                .sorted((a, b) -> a.getEventTimestamp().compareTo(b.getEventTimestamp()))
+                .toList();
+
+        List<String> gaps = new java.util.ArrayList<>();
+        for (int i = 1; i < receipts.size(); i++) {
+            String prev = receipts.get(i - 1).getReceiptNumber();
+            String curr = receipts.get(i).getReceiptNumber();
+            if (prev != null && curr != null) {
+                try {
+                    long prevNum = extractSequenceNumber(prev);
+                    long currNum = extractSequenceNumber(curr);
+                    if (currNum != prevNum + 1) {
+                        gaps.add(String.format("Hézag: %s (%d) → %s (%d)", prev, prevNum, curr, currNum));
+                    }
+                } catch (NumberFormatException ignored) {
+                    // Nem numerikus sorszám — skip
+                }
+            }
+        }
+        return gaps;
+    }
+
+    private long extractSequenceNumber(String receiptNumber) {
+        // Bizonylat szám formátum: PREFIX-NNNN vagy NNNN
+        String numPart = receiptNumber.replaceAll("[^0-9]", "");
+        return Long.parseLong(numPart);
+    }
+
+    /**
      * Napi események lekérdezése.
      */
     @Transactional(readOnly = true)

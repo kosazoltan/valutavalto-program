@@ -57,6 +57,7 @@ const menuGroups = [
       { path: '/cashdesk', label: 'Pénztár', icon: Wallet },
       { path: '/reports', label: 'Riportok', icon: FileText },
       { path: '/darius', label: 'Darius jelentések', icon: FileSpreadsheet, minRole: 'MANAGER' as const },
+      { path: '/decade', label: 'Dekád jelentések', icon: FileSpreadsheet, minRole: 'MANAGER' as const },
     ]
   },
   {
