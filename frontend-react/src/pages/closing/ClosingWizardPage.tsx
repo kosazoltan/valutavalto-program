@@ -14,6 +14,12 @@ const HUF_DENOMINATIONS = [20000, 10000, 5000, 2000, 1000, 500, 200, 100, 50, 20
  *
  * Legacy: NAPZAR.DLL
  * A backend closingWizardApi vezérli a lépéseket — NINCS lokális szimuláció.
+ *
+ * Flow:
+ *   Step 1 (MTCN) fut automatikusan →
+ *   PAUSE: felhasználó kitölti a címletezést és rögzíti →
+ *   Steps 2-9 futnak automatikusan →
+ *   Finalize (csak ha denomSubmitted + minden step PASS)
  */
 
 type StepStatus = 'pending' | 'running' | 'done' | 'failed' | 'skipped'
@@ -45,7 +51,7 @@ export default function ClosingWizardPage() {
   const [isRunning, setIsRunning] = useState(false)
   const [wizardId, setWizardId] = useState<string | null>(null)
 
-  // Closing denomination input state
+  // Denomination input state
   const [denomQuantities, setDenomQuantities] = useState<Record<number, number>>(
     () => Object.fromEntries(HUF_DENOMINATIONS.map((d) => [d, 0]))
   )
@@ -55,11 +61,61 @@ export default function ClosingWizardPage() {
   )
   const [denomSubmitted, setDenomSubmitted] = useState(false)
 
+  // Wizard pauses after step 1 for denomination input
+  const [waitingForDenom, setWaitingForDenom] = useState(false)
+
   const completedCount = steps.filter((s) => s.status === 'done' || s.status === 'skipped').length
   const failedCount = steps.filter((s) => s.status === 'failed').length
   const progress = (completedCount / steps.length) * 100
-  const canFinalize = completedCount === steps.length && failedCount === 0
 
+  // Finalize requires ALL steps PASS **and** denomination submitted
+  const canFinalize = completedCount === steps.length && failedCount === 0 && denomSubmitted
+
+  /** Run backend steps from `from` to `to` (0-indexed). Returns true if all passed. */
+  const runSteps = useCallback(async (wizId: string, from: number, to: number): Promise<boolean> => {
+    for (let i = from; i <= to; i++) {
+      setSteps((prev) =>
+        prev.map((s, idx) => (idx === i ? { ...s, status: 'running' as StepStatus } : s))
+      )
+
+      try {
+        const result = await closingWizardApi.navigate(wizId, i + 1)
+        const stepData = result.steps?.find((s) => s.stepNumber === i + 1)
+        const now = new Date().toLocaleTimeString('hu-HU')
+        const passed = stepData ? stepData.completed : true
+
+        setSteps((prev) =>
+          prev.map((s, idx) =>
+            idx === i
+              ? {
+                  ...s,
+                  status: passed ? 'done' : 'failed',
+                  message: passed ? 'Rendben' : (stepData?.stepDescription ?? 'Eltérés találva!'),
+                  completedAt: now,
+                }
+              : s
+          )
+        )
+
+        if (!passed) return false
+      } catch (stepError) {
+        const now = new Date().toLocaleTimeString('hu-HU')
+        const errorMsg = stepError instanceof Error ? stepError.message : 'Ismeretlen hiba'
+
+        setSteps((prev) =>
+          prev.map((s, idx) =>
+            idx === i
+              ? { ...s, status: 'failed', message: errorMsg, completedAt: now }
+              : s
+          )
+        )
+        return false
+      }
+    }
+    return true
+  }, [])
+
+  /** Phase 1: start wizard + run step 1, then pause for denomination input */
   const runClosing = useCallback(async () => {
     if (!worker) {
       toast.error('Hiba', 'Nincs bejelentkezett felhasználó!')
@@ -69,77 +125,48 @@ export default function ClosingWizardPage() {
     setIsRunning(true)
 
     try {
-      // Wizard indítása a backend-en
       const wizard = await closingWizardApi.start(
         worker.branchId,
-        worker.branchId, // cashDeskId — same as branchId for single-desk branches
+        worker.branchId,
         'DAILY',
         String(worker.id),
       )
       setWizardId(wizard.id)
 
-      // Lépések végrehajtása a backend-en
-      for (let i = 0; i < steps.length; i++) {
-        // Lépés indítása (UI frissítés)
-        setSteps((prev) =>
-          prev.map((s, idx) => (idx === i ? { ...s, status: 'running' as StepStatus } : s))
-        )
-
-        try {
-          // Backend lépés végrehajtása — navigate a következő step-re
-          const result = await closingWizardApi.navigate(wizard.id, i + 1)
-          const stepData = result.steps?.find((s) => s.stepNumber === i + 1)
-
-          const now = new Date().toLocaleTimeString('hu-HU')
-          const passed = stepData ? stepData.completed : true
-
-          setSteps((prev) =>
-            prev.map((s, idx) =>
-              idx === i
-                ? {
-                    ...s,
-                    status: passed ? 'done' : 'failed',
-                    message: passed ? 'Rendben' : (stepData?.stepDescription ?? 'Eltérés találva!'),
-                    completedAt: now,
-                  }
-                : s
-            )
-          )
-
-          // Ha FAIL, megállunk
-          if (!passed) {
-            setIsRunning(false)
-            return
-          }
-        } catch (stepError) {
-          const now = new Date().toLocaleTimeString('hu-HU')
-          const errorMsg = stepError instanceof Error ? stepError.message : 'Ismeretlen hiba'
-
-          setSteps((prev) =>
-            prev.map((s, idx) =>
-              idx === i
-                ? { ...s, status: 'failed', message: errorMsg, completedAt: now }
-                : s
-            )
-          )
-          setIsRunning(false)
-          return
-        }
+      // Run step 1 (MTCN check)
+      const step1Ok = await runSteps(wizard.id, 0, 0)
+      if (!step1Ok) {
+        setIsRunning(false)
+        return
       }
+
+      // Pause: wait for denomination input before continuing
+      setIsRunning(false)
+      setWaitingForDenom(true)
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Nem sikerült a napzárás wizard indítása'
       toast.error('Napzárás hiba', errorMsg)
+      setIsRunning(false)
     }
+  }, [worker, runSteps])
 
+  /** Phase 2: user submitted denomination → continue steps 2-9 */
+  const continueAfterDenom = useCallback(async () => {
+    if (!wizardId) return
+
+    setDenomSubmitted(true)
+    setWaitingForDenom(false)
+    setIsRunning(true)
+
+    // Run steps 2-9
+    await runSteps(wizardId, 1, steps.length - 1)
     setIsRunning(false)
-  }, [steps.length, worker])
+  }, [wizardId, steps.length, runSteps])
 
   const handleFinalize = useCallback(async () => {
     if (!canFinalize || !wizardId || !worker) return
 
     try {
-      // A finalize endpoint futtatja a DailyClosingService teljes zárási láncot
-      // (árfolyam snapshot, session lezárás, archiválás, AML reset, dekád stb.)
       await closingWizardApi.finalize(wizardId, String(worker.id))
       toast.success('Napzárás végrehajtva', 'A nap lezárva.')
       navigate('/')
@@ -159,6 +186,9 @@ export default function ClosingWizardPage() {
     }
     setSteps(INITIAL_STEPS)
     setWizardId(null)
+    setWaitingForDenom(false)
+    setDenomSubmitted(false)
+    setDenomQuantities(Object.fromEntries(HUF_DENOMINATIONS.map((d) => [d, 0])))
   }, [wizardId])
 
   const statusIcon = (status: StepStatus) => {
@@ -191,12 +221,15 @@ export default function ClosingWizardPage() {
     }
   }
 
+  // Denomination inputs enabled only when waiting for denom input
+  const denomEditable = waitingForDenom && !denomSubmitted && !isRunning
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <CashierHeader />
 
       <div className="max-w-4xl mx-auto p-8">
-        {/* FEJLÉC */}
+        {/* FEJLEC */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <button
@@ -227,7 +260,7 @@ export default function ClosingWizardPage() {
           </div>
         </div>
 
-        {/* ELLENŐRZÉSI LISTA */}
+        {/* ELLENORZESI LISTA */}
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden mb-8">
           {steps.map((step) => (
             <div
@@ -248,71 +281,78 @@ export default function ClosingWizardPage() {
           ))}
         </div>
 
-        {/* ZÁRÓ CÍMLETEZÉS */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 mb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <Coins className="w-6 h-6 text-amber-500" />
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Esti penztár cimletezése</h2>
-          </div>
-          {!denomSubmitted ? (
-            <>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {HUF_DENOMINATIONS.map((faceValue) => (
-                  <div key={faceValue} className="flex items-center gap-2">
-                    <span className="w-20 text-right text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {faceValue.toLocaleString('hu-HU')} Ft
-                    </span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={denomQuantities[faceValue] || ''}
-                      onChange={(e) => {
-                        const val = Math.max(0, parseInt(e.target.value) || 0)
-                        setDenomQuantities((prev) => ({ ...prev, [faceValue]: val }))
-                      }}
-                      className="w-20 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1.5 text-center text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      placeholder="0"
-                      disabled={isRunning}
-                    />
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {(faceValue * (denomQuantities[faceValue] ?? 0)).toLocaleString('hu-HU')}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-3">
-                <span className="font-bold text-gray-800 dark:text-gray-200">Osszesen:</span>
-                <span className="text-xl font-bold text-blue-900 dark:text-blue-300">
-                  {denomTotal.toLocaleString('hu-HU')} Ft
+        {/* ZARO CIMLETEZÉS — visible after step 1 completes */}
+        {(waitingForDenom || denomSubmitted) && (
+          <div
+            className={`bg-white dark:bg-gray-800 rounded-xl border-2 p-6 mb-8 transition-colors ${
+              waitingForDenom && !denomSubmitted
+                ? 'border-amber-400 dark:border-amber-500 ring-2 ring-amber-200 dark:ring-amber-800'
+                : 'border-gray-200 dark:border-gray-700'
+            }`}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <Coins className="w-6 h-6 text-amber-500" />
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">Esti penztár cimletezése</h2>
+              {waitingForDenom && !denomSubmitted && (
+                <span className="ml-2 text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded">
+                  KITOLTÉS SZUKSÉGES
+                </span>
+              )}
+            </div>
+            {!denomSubmitted ? (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {HUF_DENOMINATIONS.map((faceValue) => (
+                    <div key={faceValue} className="flex items-center gap-2">
+                      <span className="w-20 text-right text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {faceValue.toLocaleString('hu-HU')} Ft
+                      </span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={denomQuantities[faceValue] || ''}
+                        onChange={(e) => {
+                          const val = Math.max(0, parseInt(e.target.value) || 0)
+                          setDenomQuantities((prev) => ({ ...prev, [faceValue]: val }))
+                        }}
+                        className="w-20 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1.5 text-center text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        placeholder="0"
+                        disabled={!denomEditable}
+                      />
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {(faceValue * (denomQuantities[faceValue] ?? 0)).toLocaleString('hu-HU')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-3">
+                  <span className="font-bold text-gray-800 dark:text-gray-200">Osszesen:</span>
+                  <span className="text-xl font-bold text-blue-900 dark:text-blue-300">
+                    {denomTotal.toLocaleString('hu-HU')} Ft
+                  </span>
+                </div>
+                <button
+                  onClick={continueAfterDenom}
+                  disabled={denomTotal === 0 || !denomEditable}
+                  className="mt-3 w-full rounded-lg bg-amber-600 py-2 text-sm font-bold text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  Cimletezés rogzitese és továbblépés
+                </button>
+              </>
+            ) : (
+              <div className="flex items-center gap-3 rounded-lg bg-green-50 dark:bg-green-900/20 p-4">
+                <Check className="h-5 w-5 text-green-600" />
+                <span className="text-sm font-medium text-green-800 dark:text-green-300">
+                  Cimletezés rogzitve: {denomTotal.toLocaleString('hu-HU')} Ft
                 </span>
               </div>
-              <button
-                onClick={() => setDenomSubmitted(true)}
-                disabled={denomTotal === 0}
-                className="mt-3 w-full rounded-lg bg-amber-600 py-2 text-sm font-bold text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                Cimletezés rogzitese
-              </button>
-            </>
-          ) : (
-            <div className="flex items-center gap-3 rounded-lg bg-green-50 dark:bg-green-900/20 p-4">
-              <Check className="h-5 w-5 text-green-600" />
-              <span className="text-sm font-medium text-green-800 dark:text-green-300">
-                Cimletezés rogzitve: {denomTotal.toLocaleString('hu-HU')} Ft
-              </span>
-              <button
-                onClick={() => setDenomSubmitted(false)}
-                className="ml-auto text-xs text-gray-500 hover:text-gray-700"
-              >
-                Modositas
-              </button>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {/* GOMBOK */}
         <div className="flex justify-center gap-4">
-          {!isRunning && completedCount === 0 && (
+          {!isRunning && completedCount === 0 && !waitingForDenom && (
             <button
               onClick={runClosing}
               className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white text-xl font-bold rounded-xl shadow-lg transition-colors"

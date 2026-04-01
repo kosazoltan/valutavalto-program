@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   closingWizardApiStart: vi.fn(),
   closingWizardApiNavigate: vi.fn(),
   closingWizardApiFinalize: vi.fn(),
+  closingWizardApiCancel: vi.fn(),
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -30,6 +31,7 @@ vi.mock('../../services/api/index', () => ({
     start: mocks.closingWizardApiStart,
     navigate: mocks.closingWizardApiNavigate,
     finalize: mocks.closingWizardApiFinalize,
+    cancel: mocks.closingWizardApiCancel,
   },
 }))
 
@@ -70,6 +72,32 @@ function renderClosingWizardPage() {
   )
 }
 
+/** Helper: start wizard, step 1 passes, wizard pauses for denomination */
+async function runStep1() {
+  mocks.closingWizardApiStart.mockResolvedValue({
+    id: 'wizard-1',
+    branchId: 'b1',
+    status: 'IN_PROGRESS',
+    steps: [],
+  })
+  mocks.closingWizardApiNavigate.mockResolvedValue({
+    steps: [{ stepNumber: 1, completed: true, stepDescription: 'OK' }],
+  })
+
+  renderClosingWizardPage()
+  const user = userEvent.setup()
+
+  const startButton = screen.getByRole('button', { name: /ELLENŐRZÉS INDÍTÁSA/i })
+  await user.click(startButton)
+
+  // Wait for step 1 to complete and denomination section to appear
+  await waitFor(() => {
+    expect(screen.getByText(/KITOLTÉS SZUKSÉGES/)).toBeInTheDocument()
+  })
+
+  return user
+}
+
 describe('ClosingWizardPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -99,16 +127,8 @@ describe('ClosingWizardPage', () => {
   })
 
   it('zárás megkezdése gombra kattintás API-t meghívja', async () => {
-    mocks.closingWizardApiStart.mockResolvedValue({
-      id: 'wizard-1',
-      branchId: 'b1',
-      status: 'IN_PROGRESS',
-      steps: [],
-    })
     mocks.closingWizardApiNavigate.mockResolvedValue({
-      steps: [
-        { stepNumber: 1, status: 'DONE', message: 'OK' },
-      ],
+      steps: [{ stepNumber: 1, completed: true, stepDescription: 'OK' }],
     })
 
     renderClosingWizardPage()
@@ -129,7 +149,6 @@ describe('ClosingWizardPage', () => {
 
   it('lépések állapot mutatói megjelennek', () => {
     renderClosingWizardPage()
-    // Check for step items in the list
     const stepLabels = screen.getByText(/MTCN szám ellenőrzés/)
     expect(stepLabels).toBeInTheDocument()
   })
@@ -144,21 +163,13 @@ describe('ClosingWizardPage', () => {
       selector({ worker: null }),
     )
 
-    renderClosingWizardPage()
-    // With no worker, the page should still render but button click should fail internally
+    render(
+      <MemoryRouter>
+        <ClosingWizardPage />
+      </MemoryRouter>,
+    )
+
     expect(screen.getByText('NAPZÁRÁS WIZARD')).toBeInTheDocument()
-  })
-
-  it('lépés elhagyása (skip) lehetséges', async () => {
-    renderClosingWizardPage()
-    const user = userEvent.setup()
-
-    const startButton = screen.getByRole('button', { name: /ELLENŐRZÉS INDÍTÁSA/i })
-    await user.click(startButton)
-
-    await waitFor(() => {
-      expect(mocks.closingWizardApiStart).toHaveBeenCalled()
-    })
   })
 
   it('API hiba során hibaüzenet jelenik meg', async () => {
@@ -175,78 +186,148 @@ describe('ClosingWizardPage', () => {
     })
   })
 
-  it('összes lépés sikeres befejezése után zárás lehetséges', async () => {
-    mocks.closingWizardApiStart.mockResolvedValue({
-      id: 'wizard-1',
-      branchId: 'b1',
-      status: 'IN_PROGRESS',
-      steps: Array.from({ length: 9 }, (_, i) => ({
-        stepNumber: i + 1,
-        status: 'DONE',
-      })),
+  // ========== DENOMINATION FLOW TESTS ==========
+
+  it('step 1 után megáll és címletezési inputot mutat', async () => {
+    await runStep1()
+    // Denomination section visible with "KITOLTÉS SZUKSÉGES" badge
+    expect(screen.getByText(/Esti penztár cimletezése/)).toBeInTheDocument()
+    expect(screen.getByText(/KITOLTÉS SZUKSÉGES/)).toBeInTheDocument()
+  })
+
+  it('cimletezés összeg helyes számolás', async () => {
+    const user = await runStep1()
+
+    // Fill in: 2 x 10,000 Ft = 20,000
+    const inputs = screen.getAllByRole('spinbutton')
+    // Second input is 10,000 (HUF_DENOMINATIONS order: 20k, 10k, ...)
+    await user.clear(inputs[1]!)
+    await user.type(inputs[1]!, '2')
+
+    // Verify the total is computed correctly — 2 x 10,000 = 20,000
+    // Use a function matcher since toLocaleString may produce non-breaking spaces
+    const totalEl = screen.getByText((_content, element) => {
+      return element?.tagName === 'SPAN' &&
+        element.classList.contains('text-xl') &&
+        (element.textContent?.replace(/\s/g, '') === '20000Ft')
+    })
+    expect(totalEl).toBeInTheDocument()
+  })
+
+  it('cimletezés rögzítés gomb 0 összegnél disabled', async () => {
+    await runStep1()
+
+    const submitBtn = screen.getByRole('button', { name: /Cimletezés rogzitese/i })
+    expect(submitBtn).toBeDisabled()
+  })
+
+  it('cimletezés rögzítés elindítja a hátralevő lépéseket (2-9)', async () => {
+    const user = await runStep1()
+
+    // Steps 2-9 will all pass
+    mocks.closingWizardApiNavigate.mockResolvedValue({
+      steps: [{ stepNumber: 2, completed: true }],
     })
 
+    // Enter denomination
+    const inputs = screen.getAllByRole('spinbutton')
+    await user.clear(inputs[0]!) // 20,000 Ft
+    await user.type(inputs[0]!, '5')
+
+    const submitBtn = screen.getByRole('button', { name: /Cimletezés rogzitese/i })
+    expect(submitBtn).not.toBeDisabled()
+    await user.click(submitBtn)
+
+    // Verify steps 2-9 navigate calls happen
+    await waitFor(() => {
+      // Step 1 was called in runStep1, steps 2-9 = 8 more calls
+      expect(mocks.closingWizardApiNavigate).toHaveBeenCalledTimes(9) // 1 + 8
+    })
+  })
+
+  it('finalize tiltva ha cimletezés nincs rögzítve', async () => {
     renderClosingWizardPage()
 
-    // Sikeres zárás gombnak lennie kell — check for finalize button text
-    const buttons = screen.getAllByRole('button')
-    expect(buttons.length).toBeGreaterThan(0)
+    // Finalize button exists but disabled
+    const finalizeBtn = screen.getByRole('button', { name: /Minden lépés szükséges/i })
+    expect(finalizeBtn).toBeDisabled()
+  })
+
+  it('finalize engedélyezve ha minden step PASS és cimletezés rögzítve', async () => {
+    const user = await runStep1()
+
+    // Steps 2-9 pass
+    mocks.closingWizardApiNavigate.mockResolvedValue({
+      steps: [{ stepNumber: 2, completed: true }],
+    })
+    mocks.closingWizardApiFinalize.mockResolvedValue({ success: true, message: 'OK' })
+
+    // Denomination
+    const inputs = screen.getAllByRole('spinbutton')
+    await user.clear(inputs[0]!)
+    await user.type(inputs[0]!, '3')
+    const submitBtn = screen.getByRole('button', { name: /Cimletezés rogzitese/i })
+    await user.click(submitBtn)
+
+    // Wait for all steps to complete
+    await waitFor(() => {
+      expect(mocks.closingWizardApiNavigate).toHaveBeenCalledTimes(9)
+    })
+
+    // Now finalize should show
+    await waitFor(() => {
+      const finalizeBtn = screen.getByRole('button', { name: /Napzárás végrehajtása/i })
+      expect(finalizeBtn).not.toBeDisabled()
+    })
+  })
+
+  it('cancel reseteli a wizardot és a cimletezést', async () => {
+    mocks.closingWizardApiNavigate.mockRejectedValueOnce(new Error('step 1 fail'))
+    mocks.closingWizardApiCancel.mockResolvedValue({})
+
+    renderClosingWizardPage()
+    const user = userEvent.setup()
+
+    const startButton = screen.getByRole('button', { name: /ELLENŐRZÉS INDÍTÁSA/i })
+    await user.click(startButton)
+
+    await waitFor(() => {
+      expect(screen.getByText(/ÚJRA/)).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: /ÚJRA/i }))
+
+    // Should reset back to initial state
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /ELLENŐRZÉS INDÍTÁSA/i })).toBeInTheDocument()
+    })
   })
 
   it('zárás véglegesítése API-t meghívja', async () => {
-    mocks.closingWizardApiStart.mockResolvedValue({
-      id: 'wizard-1',
-      branchId: 'b1',
-      status: 'IN_PROGRESS',
-      steps: [],
+    const user = await runStep1()
+
+    mocks.closingWizardApiNavigate.mockResolvedValue({
+      steps: [{ stepNumber: 2, completed: true }],
     })
-    mocks.closingWizardApiFinalize.mockResolvedValue({ id: 'wizard-1', status: 'COMPLETED' })
+    mocks.closingWizardApiFinalize.mockResolvedValue({ success: true, message: 'OK' })
 
-    renderClosingWizardPage()
-    const user = userEvent.setup()
-
-    const startButton = screen.getByRole('button', { name: /ELLENŐRZÉS INDÍTÁSA/i })
-    await user.click(startButton)
+    // Denomination
+    const inputs = screen.getAllByRole('spinbutton')
+    await user.clear(inputs[0]!)
+    await user.type(inputs[0]!, '1')
+    await user.click(screen.getByRole('button', { name: /Cimletezés rogzitese/i }))
 
     await waitFor(() => {
-      expect(mocks.closingWizardApiStart).toHaveBeenCalled()
-    })
-  })
-
-  it('hiba történt egy lépésnél — újrapróbálás lehetséges', async () => {
-    mocks.closingWizardApiStart.mockResolvedValue({
-      id: 'wizard-1',
-      branchId: 'b1',
-      status: 'IN_PROGRESS',
-      steps: [
-        { stepNumber: 1, status: 'FAILED', message: 'Hiba történt' },
-      ],
+      expect(mocks.closingWizardApiNavigate).toHaveBeenCalledTimes(9)
     })
 
-    renderClosingWizardPage()
-    const user = userEvent.setup()
-
-    const startButton = screen.getByRole('button', { name: /ELLENŐRZÉS INDÍTÁSA/i })
-    await user.click(startButton)
+    await waitFor(async () => {
+      const finalizeBtn = screen.getByRole('button', { name: /Napzárás végrehajtása/i })
+      await user.click(finalizeBtn)
+    })
 
     await waitFor(() => {
-      expect(mocks.closingWizardApiStart).toHaveBeenCalled()
+      expect(mocks.closingWizardApiFinalize).toHaveBeenCalledWith('wizard-1', String(mockWorker.id))
     })
-  })
-
-  it('idő mutatása az elvégzett lépésekhez', async () => {
-    mocks.closingWizardApiStart.mockResolvedValue({
-      id: 'wizard-1',
-      branchId: 'b1',
-      status: 'IN_PROGRESS',
-      steps: [
-        { stepNumber: 1, status: 'DONE', completedAt: '10:45:30' },
-      ],
-    })
-
-    renderClosingWizardPage()
-
-    // Az idő információ a step-en belül megjelenik
-    expect(screen.getByText('NAPZÁRÁS WIZARD')).toBeInTheDocument()
   })
 })
