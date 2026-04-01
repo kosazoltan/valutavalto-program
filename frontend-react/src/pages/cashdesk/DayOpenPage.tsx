@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Sun, AlertTriangle, Loader2, CheckCircle } from 'lucide-react'
+import { Sun, AlertTriangle, Loader2, CheckCircle, Coins } from 'lucide-react'
 import { CashierHeader } from '../../components/cashier/CashierHeader'
 import { toast } from '../../components/ui/toaster'
 import { dailySessionApi, cashBalanceApi } from '../../services/api/index'
@@ -8,6 +8,9 @@ import type { CashBalance } from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
 import { clearPersistedToken } from '../../services/api/index'
 import { logger } from '../../utils/logger'
+
+/** HUF cimletek — csökkeno sorrendben */
+const HUF_DENOMINATIONS = [20000, 10000, 5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5] as const
 
 /**
  * Napnyitás képernyő — pénztáros megerősíti a nyitó egyenleget, utána indul a nap.
@@ -26,6 +29,15 @@ export default function DayOpenPage() {
   const [balanceError, setBalanceError] = useState<string | null>(null)
   const [opening, setOpening] = useState(false)
   const [alreadyOpen, setAlreadyOpen] = useState(false)
+  const [showDenomination, setShowDenomination] = useState(false)
+  const [denomQuantities, setDenomQuantities] = useState<Record<number, number>>(
+    () => Object.fromEntries(HUF_DENOMINATIONS.map((d) => [d, 0]))
+  )
+
+  const denomTotal = useMemo(
+    () => HUF_DENOMINATIONS.reduce((sum, d) => sum + d * (denomQuantities[d] ?? 0), 0),
+    [denomQuantities],
+  )
 
   // Ellenőrizzük, hogy van-e már nyitott nap
   const checkAndLoad = useCallback(async () => {
@@ -172,6 +184,66 @@ export default function DayOpenPage() {
                       </span>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Denomination input toggle */}
+          <button
+            onClick={() => setShowDenomination((v) => !v)}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <Coins className="h-4 w-4" />
+            {showDenomination ? 'Cimletezés elrejtese' : 'Nyito cimletezés kitoltese'}
+          </button>
+
+          {/* Denomination grid */}
+          {showDenomination && (
+            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">
+                HUF cimletezés
+              </h3>
+              <div className="space-y-2">
+                {HUF_DENOMINATIONS.map((faceValue) => (
+                  <div key={faceValue} className="flex items-center gap-3">
+                    <span className="w-20 text-right text-sm font-medium text-gray-700">
+                      {faceValue.toLocaleString('hu-HU')} Ft
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={denomQuantities[faceValue] || ''}
+                      onChange={(e) => {
+                        const val = Math.max(0, parseInt(e.target.value) || 0)
+                        setDenomQuantities((prev) => ({ ...prev, [faceValue]: val }))
+                      }}
+                      className="w-20 rounded border border-gray-300 px-2 py-1.5 text-center text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      placeholder="0"
+                    />
+                    <span className="text-sm text-gray-500">
+                      = {(faceValue * (denomQuantities[faceValue] ?? 0)).toLocaleString('hu-HU')} Ft
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {/* Total */}
+              <div className="mt-3 flex items-center justify-between border-t border-gray-200 pt-3">
+                <span className="text-sm font-bold text-gray-800">Osszesen:</span>
+                <span className="text-lg font-bold text-blue-900">
+                  {denomTotal.toLocaleString('hu-HU')} Ft
+                </span>
+              </div>
+              {/* Comparison with system balance */}
+              {hufBalance && (
+                <div className={`mt-2 rounded-md p-2 text-sm ${
+                  denomTotal === hufBalance.currentBalance
+                    ? 'bg-green-50 text-green-800'
+                    : 'bg-red-50 text-red-800'
+                }`}>
+                  {denomTotal === hufBalance.currentBalance
+                    ? '✓ A cimletezés megegyezik a rendszer egyenleggel'
+                    : `✗ Eltérés: ${(denomTotal - hufBalance.currentBalance).toLocaleString('hu-HU')} Ft (rendszer: ${hufBalance.currentBalance.toLocaleString('hu-HU')} Ft)`}
                 </div>
               )}
             </div>
