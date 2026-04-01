@@ -1,8 +1,5 @@
-# Codex CLI project-level configuration
-# https://developers.openai.com/codex/config-reference/
+# Codex configuration for Valutavalto project
+# Used by Codex CLI and the Codex plugin for Claude Code
 
-# Model to use
-model = "o4-mini"
-
-# Approval mode: "suggest" | "auto-edit" | "full-auto"
-approval_mode = "suggest"
+model = "gpt-5.4"
+model_reasoning_effort = "high"

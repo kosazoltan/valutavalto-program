@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   closingWizardApiNavigate: vi.fn(),
   closingWizardApiFinalize: vi.fn(),
   closingWizardApiCancel: vi.fn(),
+  closingWizardApiSubmitDenominations: vi.fn(),
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -32,6 +33,7 @@ vi.mock('../../services/api/index', () => ({
     navigate: mocks.closingWizardApiNavigate,
     finalize: mocks.closingWizardApiFinalize,
     cancel: mocks.closingWizardApiCancel,
+    submitDenominations: mocks.closingWizardApiSubmitDenominations,
   },
 }))
 
@@ -108,6 +110,7 @@ describe('ClosingWizardPage', () => {
       steps: [],
       createdAt: new Date().toISOString(),
     })
+    mocks.closingWizardApiSubmitDenominations.mockResolvedValue({ total: 100000 })
   })
 
   it('oldal renderelésének ellenőrzése', () => {
@@ -140,7 +143,7 @@ describe('ClosingWizardPage', () => {
     await waitFor(() => {
       expect(mocks.closingWizardApiStart).toHaveBeenCalledWith(
         mockWorker.branchId,
-        mockWorker.branchId,
+        undefined,
         'DAILY',
         String(mockWorker.id),
       )

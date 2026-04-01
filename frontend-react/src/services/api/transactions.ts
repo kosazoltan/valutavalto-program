@@ -641,6 +641,11 @@ export const closingWizardApi = {
       params: { workerId }
     })
     return response.data
+  },
+  /** Submit denomination counts — body: { "HUF": { 500: 3, 1000: 5, ... } } */
+  submitDenominations: async (wizardId: string, denomCounts: Record<string, Record<number, number>>): Promise<Record<string, unknown>> => {
+    const response = await api.post<Record<string, unknown>>(`/closing-wizard/${wizardId}/denominations`, denomCounts)
+    return response.data
   }
 }
 

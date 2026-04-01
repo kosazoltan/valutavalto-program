@@ -57,7 +57,7 @@ export default function DayOpenPage() {
         setBalances(bal)
       } catch (err) {
         logger.warn('DayOpenPage', 'Keszlet lekerdezes sikertelen:', err)
-        setBalanceError('A készlet nem kérdezhető le. A napot nyitó egyenleg nélkül is megnyithatod.')
+        setBalanceError('A készlet nem kérdezhető le. Ellenőrizd a szerver kapcsolatot!')
       }
     } catch (err) {
       logger.error('DayOpenPage', 'Session ellenorzes hiba:', err)
@@ -252,7 +252,7 @@ export default function DayOpenPage() {
           {/* Open day button */}
           <button
             onClick={handleOpenDay}
-            disabled={opening}
+            disabled={opening || !!balanceError}
             className="w-full rounded-lg bg-green-600 py-4 text-lg font-bold text-white transition-colors hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             {opening ? (

@@ -134,8 +134,8 @@ export default function CashierTransactionPage() {
         const isOpen = await dailySessionApi.isOpen()
         if (!cancelled) setSessionOpen(isOpen)
       } catch {
-        // If we can't check, assume open (fail-open for session check, fail-closed for AML)
-        if (!cancelled) setSessionOpen(true)
+        // Fail-closed: ha nem tudjuk ellenőrizni, NEM engedjük a tranzakciót
+        if (!cancelled) setSessionOpen(false)
       }
     }
     void checkSession()
@@ -292,7 +292,9 @@ export default function CashierTransactionPage() {
         }
       } catch (err) {
         logger.error('CashierTransactionPage', 'Keszletellenorzes sikertelen:', err)
-        // Fail-open: ha nem tudjuk ellenorizni, tovabb engedjuk (szerver ugyis ellenorzi)
+        // Fail-closed: ha nem tudjuk ellenorizni, nem engedjuk tovabb
+        toast.error('Keszletellenorzes sikertelen', 'A keszlet nem ellenorizheto. Probald ujra kesobb.')
+        return
       }
     }
 

@@ -127,7 +127,7 @@ export default function ClosingWizardPage() {
     try {
       const wizard = await closingWizardApi.start(
         worker.branchId,
-        worker.branchId,
+        undefined,
         'DAILY',
         String(worker.id),
       )
@@ -150,18 +150,33 @@ export default function ClosingWizardPage() {
     }
   }, [worker, runSteps])
 
-  /** Phase 2: user submitted denomination → continue steps 2-9 */
+  /** Phase 2: user submitted denomination → persist to backend, then continue steps 2-9 */
   const continueAfterDenom = useCallback(async () => {
     if (!wizardId) return
 
+    setIsRunning(true)
+
+    // Submit denomination data to backend before continuing
+    try {
+      const hufDenoms: Record<number, number> = {}
+      for (const [faceValue, qty] of Object.entries(denomQuantities)) {
+        if (qty > 0) hufDenoms[Number(faceValue)] = qty
+      }
+      await closingWizardApi.submitDenominations(wizardId, { HUF: hufDenoms })
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Cimletezés rögzítés sikertelen'
+      toast.error('Cimletezés hiba', errorMsg)
+      setIsRunning(false)
+      return
+    }
+
     setDenomSubmitted(true)
     setWaitingForDenom(false)
-    setIsRunning(true)
 
     // Run steps 2-9
     await runSteps(wizardId, 1, steps.length - 1)
     setIsRunning(false)
-  }, [wizardId, steps.length, runSteps])
+  }, [wizardId, denomQuantities, steps.length, runSteps])
 
   const handleFinalize = useCallback(async () => {
     if (!canFinalize || !wizardId || !worker) return
