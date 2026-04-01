@@ -120,7 +120,7 @@ describe('ClosingWizardPage', () => {
     await waitFor(() => {
       expect(mocks.closingWizardApiStart).toHaveBeenCalledWith(
         mockWorker.branchId,
-        undefined,
+        mockWorker.branchId,
         'DAILY',
         String(mockWorker.id),
       )

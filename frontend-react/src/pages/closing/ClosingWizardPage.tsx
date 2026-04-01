@@ -1,10 +1,13 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Lock, Check, X, Loader2, Minus, ChevronLeft } from 'lucide-react'
+import { Lock, Check, X, Loader2, Minus, ChevronLeft, Coins } from 'lucide-react'
 import { CashierHeader } from '../../components/cashier/CashierHeader'
 import { toast } from '../../components/ui/toaster'
 import { closingWizardApi } from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
+
+/** HUF cimletek — csökkeno sorrendben */
+const HUF_DENOMINATIONS = [20000, 10000, 5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5] as const
 
 /**
  * Napzaras wizard — backend-driven ellenorzesi lanc.
@@ -42,6 +45,16 @@ export default function ClosingWizardPage() {
   const [isRunning, setIsRunning] = useState(false)
   const [wizardId, setWizardId] = useState<string | null>(null)
 
+  // Closing denomination input state
+  const [denomQuantities, setDenomQuantities] = useState<Record<number, number>>(
+    () => Object.fromEntries(HUF_DENOMINATIONS.map((d) => [d, 0]))
+  )
+  const denomTotal = useMemo(
+    () => HUF_DENOMINATIONS.reduce((sum, d) => sum + d * (denomQuantities[d] ?? 0), 0),
+    [denomQuantities],
+  )
+  const [denomSubmitted, setDenomSubmitted] = useState(false)
+
   const completedCount = steps.filter((s) => s.status === 'done' || s.status === 'skipped').length
   const failedCount = steps.filter((s) => s.status === 'failed').length
   const progress = (completedCount / steps.length) * 100
@@ -59,7 +72,7 @@ export default function ClosingWizardPage() {
       // Wizard indítása a backend-en
       const wizard = await closingWizardApi.start(
         worker.branchId,
-        undefined, // cashDeskId — opcionális
+        worker.branchId, // cashDeskId — same as branchId for single-desk branches
         'DAILY',
         String(worker.id),
       )
@@ -233,6 +246,68 @@ export default function ClosingWizardPage() {
               <div>{statusText(step)}</div>
             </div>
           ))}
+        </div>
+
+        {/* ZÁRÓ CÍMLETEZÉS */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <Coins className="w-6 h-6 text-amber-500" />
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Esti penztár cimletezése</h2>
+          </div>
+          {!denomSubmitted ? (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {HUF_DENOMINATIONS.map((faceValue) => (
+                  <div key={faceValue} className="flex items-center gap-2">
+                    <span className="w-20 text-right text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {faceValue.toLocaleString('hu-HU')} Ft
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={denomQuantities[faceValue] || ''}
+                      onChange={(e) => {
+                        const val = Math.max(0, parseInt(e.target.value) || 0)
+                        setDenomQuantities((prev) => ({ ...prev, [faceValue]: val }))
+                      }}
+                      className="w-20 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1.5 text-center text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      placeholder="0"
+                      disabled={isRunning}
+                    />
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {(faceValue * (denomQuantities[faceValue] ?? 0)).toLocaleString('hu-HU')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-3">
+                <span className="font-bold text-gray-800 dark:text-gray-200">Osszesen:</span>
+                <span className="text-xl font-bold text-blue-900 dark:text-blue-300">
+                  {denomTotal.toLocaleString('hu-HU')} Ft
+                </span>
+              </div>
+              <button
+                onClick={() => setDenomSubmitted(true)}
+                disabled={denomTotal === 0}
+                className="mt-3 w-full rounded-lg bg-amber-600 py-2 text-sm font-bold text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                Cimletezés rogzitese
+              </button>
+            </>
+          ) : (
+            <div className="flex items-center gap-3 rounded-lg bg-green-50 dark:bg-green-900/20 p-4">
+              <Check className="h-5 w-5 text-green-600" />
+              <span className="text-sm font-medium text-green-800 dark:text-green-300">
+                Cimletezés rogzitve: {denomTotal.toLocaleString('hu-HU')} Ft
+              </span>
+              <button
+                onClick={() => setDenomSubmitted(false)}
+                className="ml-auto text-xs text-gray-500 hover:text-gray-700"
+              >
+                Modositas
+              </button>
+            </div>
+          )}
         </div>
 
         {/* GOMBOK */}
