@@ -154,7 +154,9 @@ export default function App() {
                   apiErr.message.includes('timeout')
                 )
                 if (isNetworkError && window.electronAPI) {
-                  // Offline fallback: build Worker from JWT claims
+                  // Offline fallback: fail-closed CASHIER-only profile
+                  // SECURITY: nem bízunk a JWT role/permissions claimekben offline módban,
+                  // mert a lokális token manipulálható. Fix CASHIER role + üres permissions.
                   const jwtPayload = payload as Record<string, unknown>
                   const offlineWorker = {
                     id: Number(jwtPayload.workerId) || 0,
@@ -162,7 +164,7 @@ export default function App() {
                     firstName: '',
                     lastName: '',
                     fullName: String(jwtPayload.workerName ?? ''),
-                    role: String(jwtPayload.role ?? ''),
+                    role: 'CASHIER',  // Hardcoded — offline soha nem ad magasabb jogot
                     branchId: String(jwtPayload.branchId ?? ''),
                     branchCode: String(jwtPayload.branchCode ?? ''),
                     branchName: '',
@@ -173,11 +175,11 @@ export default function App() {
                   useAuthStore.getState().login(
                     offlineWorker, token, 'Bearer',
                     new Date(payload.exp! * 1000).toISOString(),
-                    (jwtPayload.activeRole as string) ?? null,
-                    (jwtPayload.permissions as string[]) ?? [],
-                    (jwtPayload.roles as string[]) ?? [],
+                    'CASHIER',  // Offline: fix CASHIER activeRole
+                    [],         // Offline: üres permissions (fail-closed)
+                    ['CASHIER'],
                   )
-                  logger.warn('App', 'Offline login restore — JWT payloadbol.')
+                  logger.warn('App', 'Offline login restore — CASHIER-only profil, korlatozott jogosultsagok.')
                 } else {
                   // Token szerver oldalon érvénytelen
                   await clearPersistedToken()
