@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, useNavigate, Navigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import { dailySessionApi } from '../services/api/index'
 import {
@@ -122,31 +122,9 @@ export default function MainLayout() {
         return
       }
 
-      // 2. Nincs nyitott session — automatikusan megnyitjuk
-      try {
-        const newSession = await dailySessionApi.open()
-        setSessionInfo(newSession as unknown as SessionInfo)
-        setSessionReady(true)
-      } catch (err: unknown) {
-        const axErr = err as { response?: { data?: { message?: string }; status?: number }; message?: string }
-        const msg = axErr?.response?.data?.message || axErr?.message || ''
-        const isAlreadyOpen = msg.includes('már') && (msg.includes('nyitott') || msg.includes('létezik') || msg.includes('munkamenet'))
-
-        // Ha más pénztáros/branch már nyitotta → próbáljuk lekérni az existing session-t
-        if (isAlreadyOpen) {
-          try {
-            const current = await dailySessionApi.getCurrent()
-            setSessionInfo(current as unknown as SessionInfo)
-          } catch { /* session info nem kritikus — folytatunk anélkül */ }
-          // Session már nyitva van → engedjük tovább AKKOR IS ha getCurrent() hibázott
-          setSessionReady(true)
-          return
-        }
-
-        // Ha a napnyitás nem sikerült (pl. előző nap nincs lezárva)
-        setSessionError(msg || 'Hiba a napnyitás során')
-        setShowSessionDialog(true)
-      }
+      // 2. Nincs nyitott session → redirect napnyitás képernyőre
+      setSessionError('redirect-day-open')
+      setShowSessionDialog(true)
     } catch {
       // Backend nem elérhető
       setSessionError('A szerver nem elérhető. Ellenőrizze a kapcsolatot!')
@@ -174,7 +152,11 @@ export default function MainLayout() {
   return (
     <div className="min-h-screen bg-form-bg flex">
       {/* Napnyitás hiba dialógus — csak ha az automatikus nyitás nem sikerült */}
-      {showSessionDialog && !sessionReady && (
+      {showSessionDialog && !sessionReady && sessionError === 'redirect-day-open' && (
+        <Navigate to="/cashdesk/day-open" replace />
+      )}
+
+      {showSessionDialog && !sessionReady && sessionError && sessionError !== 'redirect-day-open' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
             <div className="flex items-center gap-3 mb-6">
@@ -188,11 +170,9 @@ export default function MainLayout() {
                 </p>
               </div>
             </div>
-            {sessionError && (
-              <div className="mb-4 p-3 bg-danger-50 border border-danger-200 rounded-lg text-danger-700 text-sm">
-                {sessionError}
-              </div>
-            )}
+            <div className="mb-4 p-3 bg-danger-50 border border-danger-200 rounded-lg text-danger-700 text-sm">
+              {sessionError}
+            </div>
             <p className="text-secondary-600 mb-6 text-sm">
               Az automatikus napnyitás nem sikerült. Kérjük, ellenőrizze a hibaüzenetet és próbálja újra.
             </p>

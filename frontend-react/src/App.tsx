@@ -28,6 +28,7 @@ const RatesPage = lazy(() => import('./pages/rates/RatesPage'))
 const RateCreationPage = lazy(() => import('./pages/rates/RateCreationPage'))
 const CashDeskPage = lazy(() => import('./pages/cashdesk/CashDeskPage'))
 const DenominationPage = lazy(() => import('./pages/cashdesk/DenominationPage'))
+const DayOpenPage = lazy(() => import('./pages/cashdesk/DayOpenPage'))
 const ReportsPage = lazy(() => import('./pages/reports/ReportsPage'))
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'))
 const StornoPage = lazy(() => import('./pages/stornos/StornoPage'))
@@ -251,6 +252,7 @@ export default function App() {
           <Route path="/rates/creation" element={<RateCreationPage />} />
           
           {/* Cash desk */}
+          <Route path="/cashdesk/day-open" element={<DayOpenPage />} />
           <Route path="/cashdesk" element={<CashDeskPage />} />
           <Route path="/cashdesk/denominations" element={<DenominationPage />} />
           <Route path="/cashdesk/breaks" element={<CashDeskBreakPage />} />
