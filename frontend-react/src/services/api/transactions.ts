@@ -1,5 +1,6 @@
 import { api } from './client'
 import type { PagedResponse } from './client'
+import { branchApi } from './settings'
 import type { BranchInfo } from './settings'
 
 // ================== CUSTOMERS API ==================
@@ -376,7 +377,6 @@ export interface CashDeskStatus {
 export const cashDeskApi = {
   list: async (): Promise<CashDesk[]> => {
     try {
-      const { branchApi } = await import('./settings')
       const branches = await branchApi.listActive()
       return branches.map((branch: BranchInfo) => ({
         id: branch.id,
