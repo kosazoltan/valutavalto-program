@@ -1,1 +1,0 @@
-function e(e){return typeof e==`object`&&!!e&&`content`in e&&Array.isArray(e.content)}function t(t){return Array.isArray(t)?t:e(t)?t.content:[]}export{t};

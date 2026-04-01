@@ -107,3 +107,7 @@ installer/build/
 tmp/
 
 test-output.txt
+
+frontend-react/dist/
+penztar-client/dist/
+penztar-client/dist-electron/
