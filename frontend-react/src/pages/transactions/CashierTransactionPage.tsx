@@ -5,7 +5,7 @@ import { AlertTriangle } from 'lucide-react'
 import { CashierHeader } from '../../components/cashier/CashierHeader'
 import { HotkeyBar } from '../../components/cashier/HotkeyBar'
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext'
-import { transactionApi, exchangeRateApi, dailySessionApi } from '../../services/api/index'
+import { transactionApi, exchangeRateApi, dailySessionApi, cashBalanceApi } from '../../services/api/index'
 import type { BuyRequest, SellRequest, ExchangeRate } from '../../services/api/index'
 import { roundHuf } from '../../utils/rounding'
 import { toast } from '../../components/ui/toaster'
@@ -84,6 +84,8 @@ export default function CashierTransactionPage() {
 
   // Exchange rates from API
   const [exchangeRates, setExchangeRates] = useState<ExchangeRate[]>([])
+  const ratesLoadedAtRef = useRef<number>(0)
+  const RATE_STALE_MS = 5 * 60 * 1000 // 5 perc
 
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -150,6 +152,7 @@ export default function CashierTransactionPage() {
           const cachedRates = await getElectronCachedRates()
           if (!cancelled && cachedRates.length > 0) {
             setExchangeRates(mapCachedRatesToExchangeRates(cachedRates))
+            ratesLoadedAtRef.current = Date.now()
             return
           }
         } catch (err) {
@@ -161,6 +164,7 @@ export default function CashierTransactionPage() {
         const rates = await exchangeRateApi.list()
         if (!cancelled) {
           setExchangeRates(rates)
+          ratesLoadedAtRef.current = Date.now()
         }
       } catch (err) {
         logger.error('CashierTransactionPage', 'Arfolyam betöltés sikertelen:', err)
@@ -255,6 +259,36 @@ export default function CashierTransactionPage() {
     if (sessionOpen === false) {
       toast.error('Nincs nyitott nap', 'A tranzakcio rogzitesehez eloszor meg kell nyitni a napot!')
       return
+    }
+
+    // Rate staleness warning (>5 min since load)
+    if (ratesLoadedAtRef.current > 0 && Date.now() - ratesLoadedAtRef.current > RATE_STALE_MS) {
+      toast.warning('Arfolyam regi', 'Az arfolyamok tobb mint 5 perce toltodtek be. Frissitsd az oldalt az aktualis arfolyamokhoz!')
+    }
+
+    // Sell-mode stock check — verify branch has enough currency to sell
+    if (mode === 'sell') {
+      try {
+        const balances = await cashBalanceApi.list()
+        const insufficientRows: string[] = []
+        for (const row of touchedRows) {
+          if (row.currencyCode.length !== 3) continue
+          const qty = parseFloat(row.quantity) || 0
+          if (qty <= 0) continue
+          const bal = balances.find(b => b.currencyCode === row.currencyCode)
+          const available = bal?.currentBalance ?? 0
+          if (qty > available) {
+            insufficientRows.push(`${row.currencyCode}: ${qty} kert, ${available} elerheto`)
+          }
+        }
+        if (insufficientRows.length > 0) {
+          toast.error('Nincs eleg keszlet', insufficientRows.join(' | '))
+          return
+        }
+      } catch (err) {
+        logger.error('CashierTransactionPage', 'Keszletellenorzes sikertelen:', err)
+        // Fail-open: ha nem tudjuk ellenorizni, tovabb engedjuk (szerver ugyis ellenorzi)
+      }
     }
 
     // Input validation — check ALL touched rows, collect errors
