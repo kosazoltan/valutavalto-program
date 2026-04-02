@@ -1,49 +1,195 @@
-import { useState, useEffect } from 'react'
-import { Percent } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Percent, Plus, Edit2, Trash2 } from 'lucide-react'
 import { commissionRateApi, CommissionRate } from '../../services/api/index'
-import { logger } from '../../utils/logger';
+import { getErrorMessage } from '../../utils/errorHandling'
+import { toast } from '../../components/ui/toaster'
+import { logger } from '../../utils/logger'
+import { safeArray } from '@/utils/safeArray'
+
+interface RateForm {
+  entityType: string
+  entityName: string
+  currencyCode: string
+  rate: string
+  validFrom: string
+  validTo: string
+}
+
+const emptyForm: RateForm = { entityType: 'BRANCH', entityName: '', currencyCode: '', rate: '', validFrom: new Date().toISOString().slice(0, 10), validTo: '' }
 
 export default function CommissionRatePage() {
   const [rates, setRates] = useState<CommissionRate[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [form, setForm] = useState<RateForm>(emptyForm)
+  const [filter, setFilter] = useState({ entityType: '', currencyCode: '' })
 
-  useEffect(() => {
-    void loadData()
-  }, [])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true)
+      setError(null)
       setRates(await commissionRateApi.list())
-    } catch (error) {
-      logger.error('CommissionRatePage', 'Hiba:', error)
+    } catch (err) {
+      logger.error('CommissionRatePage', 'Hiba:', err)
+      setError(getErrorMessage(err))
     } finally {
       setLoading(false)
     }
+  }, [])
+
+  useEffect(() => { void loadData() }, [loadData])
+
+  const handleSave = async () => {
+    if (!form.rate) { toast.warning('Mérték megadása kötelező'); return }
+    try {
+      setError(null)
+      const payload = { ...form, rate: parseFloat(form.rate) }
+      if (editingId) {
+        await commissionRateApi.update(editingId, payload)
+        toast.success('Jutalék mérték frissítve')
+      } else {
+        await commissionRateApi.create(payload)
+        toast.success('Jutalék mérték létrehozva')
+      }
+      setShowForm(false)
+      setEditingId(null)
+      setForm(emptyForm)
+      await loadData()
+    } catch (err) {
+      toast.error('Hiba', getErrorMessage(err))
+    }
   }
+
+  const handleEdit = (r: CommissionRate) => {
+    setForm({
+      entityType: r.entityType,
+      entityName: r.entityName || '',
+      currencyCode: r.currencyCode || '',
+      rate: String(r.rate),
+      validFrom: r.validFrom || '',
+      validTo: r.validTo || '',
+    })
+    setEditingId(r.id)
+    setShowForm(true)
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Biztosan törli a jutalék mértéket?')) return
+    try {
+      await commissionRateApi.delete(id)
+      toast.success('Jutalék mérték törölve')
+      await loadData()
+    } catch (err) {
+      toast.error('Hiba', getErrorMessage(err))
+    }
+  }
+
+  const filtered = safeArray<CommissionRate>(rates).filter(r => {
+    if (filter.entityType && r.entityType !== filter.entityType) return false
+    if (filter.currencyCode && r.currencyCode !== filter.currencyCode) return false
+    return true
+  })
+
+  const entityTypes = [...new Set(rates.map(r => r.entityType))].sort()
+  const currencies = [...new Set(rates.map(r => r.currencyCode).filter(Boolean))].sort()
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold flex items-center gap-2"><Percent />Jutalék mértékek</h1>
-      {loading ? <div>Betöltés...</div> : (
-        <div className="form-panel">
+      <div className="flex justify-between items-center">
+        <h1 className="text-xl font-bold flex items-center gap-2"><Percent />Jutalék mértékek</h1>
+        <button onClick={() => { setShowForm(true); setEditingId(null); setForm(emptyForm) }} className="form-button-primary"><Plus size={16} /> Új mérték</button>
+      </div>
+
+      {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>}
+
+      {showForm && (
+        <div className="form-panel space-y-3 border-2 border-blue-200">
+          <h2 className="font-semibold">{editingId ? 'Mérték szerkesztése' : 'Új jutalék mérték'}</h2>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="form-label">Entitás típus</label>
+              <select className="form-input" value={form.entityType} onChange={e => setForm({ ...form, entityType: e.target.value })}>
+                <option value="BRANCH">Fiók</option>
+                <option value="WORKER">Dolgozó</option>
+                <option value="CUSTOMER">Ügyfél</option>
+                <option value="GLOBAL">Globális</option>
+              </select>
+            </div>
+            <div>
+              <label className="form-label">Entitás neve</label>
+              <input className="form-input" value={form.entityName} onChange={e => setForm({ ...form, entityName: e.target.value })} placeholder="Üres = mindegyik" />
+            </div>
+            <div>
+              <label className="form-label">Valuta</label>
+              <input className="form-input" value={form.currencyCode} onChange={e => setForm({ ...form, currencyCode: e.target.value })} placeholder="pl. EUR" />
+            </div>
+            <div>
+              <label className="form-label">Mérték (%) *</label>
+              <input className="form-input" type="number" step="0.01" value={form.rate} onChange={e => setForm({ ...form, rate: e.target.value })} />
+            </div>
+            <div>
+              <label className="form-label">Érvényesség kezdete</label>
+              <input className="form-input" type="date" value={form.validFrom} onChange={e => setForm({ ...form, validFrom: e.target.value })} />
+            </div>
+            <div>
+              <label className="form-label">Érvényesség vége</label>
+              <input className="form-input" type="date" value={form.validTo} onChange={e => setForm({ ...form, validTo: e.target.value })} placeholder="Üres = határozatlan" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => void handleSave()} className="form-button-primary">Mentés</button>
+            <button onClick={() => { setShowForm(false); setEditingId(null) }} className="form-button">Mégse</button>
+          </div>
+        </div>
+      )}
+
+      {/* Filters */}
+      <div className="form-panel flex gap-3 items-end">
+        <div>
+          <label className="form-label">Entitás típus</label>
+          <select className="form-input" value={filter.entityType} onChange={e => setFilter({ ...filter, entityType: e.target.value })}>
+            <option value="">Mind</option>
+            {entityTypes.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="form-label">Valuta</label>
+          <select className="form-input" value={filter.currencyCode} onChange={e => setFilter({ ...filter, currencyCode: e.target.value })}>
+            <option value="">Mind</option>
+            {currencies.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <span className="text-sm text-gray-500">{filtered.length} találat</span>
+      </div>
+
+      <div className="form-panel">
+        {loading ? <div>Betöltés...</div> : filtered.length === 0 ? (
+          <div className="text-center text-gray-500 py-4">Nincs jutalék mérték</div>
+        ) : (
           <table className="data-grid w-full">
-            <thead><tr><th>Entitás típus</th><th>Entitás</th><th>Valuta</th><th>Mérték</th><th>Érvényesség</th></tr></thead>
+            <thead><tr><th>Entitás típus</th><th>Entitás</th><th>Valuta</th><th>Mérték (%)</th><th>Érvényesség</th><th>Műveletek</th></tr></thead>
             <tbody>
-              {rates.map(r => (
+              {filtered.map(r => (
                 <tr key={r.id}>
                   <td>{r.entityType}</td>
-                  <td>{r.entityName || '-'}</td>
-                  <td>{r.currencyCode || '-'}</td>
-                  <td>{r.rate}</td>
-                  <td>{r.validFrom} - {r.validTo || 'jelenleg'}</td>
+                  <td>{r.entityName || '— Mind —'}</td>
+                  <td>{r.currencyCode || '— Mind —'}</td>
+                  <td className="font-mono">{r.rate}%</td>
+                  <td className="text-sm">{r.validFrom} – {r.validTo || 'határozatlan'}</td>
+                  <td>
+                    <div className="flex gap-1">
+                      <button onClick={() => handleEdit(r)} className="form-button text-xs"><Edit2 size={12} /></button>
+                      <button onClick={() => void handleDelete(r.id)} className="form-button text-xs text-red-600"><Trash2 size={12} /></button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
-

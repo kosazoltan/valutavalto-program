@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { History, RefreshCw } from 'lucide-react'
-import { api } from '../../services/api/index'
+import { api } from '../../services/api/client'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
 

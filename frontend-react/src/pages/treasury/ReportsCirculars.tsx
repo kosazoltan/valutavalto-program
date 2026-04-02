@@ -93,7 +93,7 @@ export default function ReportsCirculars() {
     if (!circularTitle || !circularContent) return
     try {
       const typeStr = circularUrgent ? 'URGENT' : 'INFO'
-      await notificationApi.send('', circularTitle, circularContent, typeStr)
+      await notificationApi.send({ title: circularTitle, message: circularContent, type: typeStr })
       setShowNewCircular(false)
       setCircularTitle('')
       setCircularContent('')

@@ -533,6 +533,8 @@ export const archivingApi = {
   listTasks: async (): Promise<ArchiveTask[]> => (await api.get<ArchiveTask[]>('/archiving/tasks')).data,
   createTask: async (data: Partial<ArchiveTask>): Promise<ArchiveTask> => (await api.post<ArchiveTask>('/archiving/tasks', data)).data,
   executeTask: async (id: string): Promise<ArchiveTask> => (await api.post<ArchiveTask>(`/archiving/tasks/${id}/execute`)).data,
+  monthlyArchive: async (branchId: string, yearMonth: string) => (await api.post('/archiving/monthly', null, { params: { branchId, yearMonth } })).data,
+  getMonthlyStatus: async (branchId: string, yearMonth: string) => (await api.get(`/archiving/monthly/${branchId}/${yearMonth}/status`)).data,
 }
 
 export interface Reservation {
@@ -594,6 +596,8 @@ export const navIntegrationApi = {
   sendTransaction: async (transactionId: string, comPort: string): Promise<NavSendResult> => (await api.post<NavSendResult>('/nav-integration/send-transaction', null, { params: { transactionId, comPort } })).data,
   receiveReceiptNumber: async (comPort: string): Promise<string> => (await api.get<string>('/nav-integration/receive-receipt-number', { params: { comPort } })).data,
   sendQrCode: async (qrCode: string, comPort: string): Promise<boolean> => (await api.post<boolean>('/nav-integration/send-qr-code', null, { params: { qrCode, comPort } })).data,
+  getStatus: async (branchId: string) => (await api.get(`/nav-integration/status`, { params: { branchId } })).data,
+  retryFailed: async (branchId: string) => (await api.post('/nav-integration/retry-failed', null, { params: { branchId } })).data,
 }
 
 export interface Document { id: string; fileName: string; fileType: string; fileSize: number; entityType?: string; entityId?: string; uploadedAt: string; uploadedById?: string; uploadedByName?: string }
@@ -618,9 +622,11 @@ export interface Notification { id: string; title: string; message: string; type
 export const notificationApi = {
   list: async (): Promise<Notification[]> => (await api.get<Notification[]>('/notifications')).data,
   getUnread: async (): Promise<Notification[]> => (await api.get<Notification[]>('/notifications/unread')).data,
+  unreadCount: async (): Promise<number> => (await api.get<number>('/notifications/unread-count')).data,
   markAsRead: async (id: string): Promise<void> => { await api.post(`/notifications/${id}/mark-read`) },
   markAllAsRead: async (): Promise<void> => { await api.post('/notifications/mark-all-read') },
-  send: async (userId: string, title: string, message: string, type: string): Promise<Notification> => (await api.post<Notification>('/notifications', { userId, title, message, type })).data,
+  send: async (data: Record<string, unknown>): Promise<Notification> => (await api.post<Notification>('/notifications/send', data)).data,
+  broadcast: async (data: Record<string, unknown>): Promise<void> => { await api.post('/notifications/broadcast', data) },
 }
 
 export interface OrganizationalSystemParameter {
@@ -634,6 +640,7 @@ export interface OrganizationalSystemParameter {
   validFrom: string
   validTo?: string
   isActive: boolean
+  description?: string
 }
 
 export const organizationalSystemParameterApi = {
