@@ -398,6 +398,19 @@ export interface ExchangeRateDisplay {
   currencyIds: string[]
   refreshInterval: number
   isActive: boolean
+  displayType?: string
+  connectionType?: string
+  comPort?: string
+  baudRate?: number
+  ipAddress?: string
+  port?: number
+  rowCount?: number
+  columnCount?: number
+  brightness?: number
+  showBuyRate?: boolean
+  showSellRate?: boolean
+  showMiddleRate?: boolean
+  showFlag?: boolean
 }
 
 export const exchangeRateDisplayApi = {
@@ -405,11 +418,18 @@ export const exchangeRateDisplayApi = {
     const response = await api.get<ExchangeRateDisplay[]>('/exchange-rate-display')
     return response.data
   },
-  getCurrentRates: async (displayId: string): Promise<Record<string, unknown>> => {
-    const response = await api.get(`/exchange-rate-display/${displayId}/current-rates`)
+  create: async (data: Partial<ExchangeRateDisplay>): Promise<ExchangeRateDisplay> => {
+    const response = await api.post<ExchangeRateDisplay>('/exchange-rate-display', data)
     return response.data
   },
-  updateDisplay: async (displayId: string, rates: Record<string, unknown>): Promise<void> => {
-    await api.post(`/exchange-rate-display/${displayId}/update`, rates)
+  getCurrentRates: async (displayId: string): Promise<Array<{currency: string; buyRate: string; sellRate: string}>> => {
+    const response = await api.get<Array<{currency: string; buyRate: string; sellRate: string}>>(`/exchange-rate-display/${displayId}/current-rates`)
+    return response.data
+  },
+  updateDisplay: async (displayId: string, data: Partial<ExchangeRateDisplay>): Promise<void> => {
+    await api.post(`/exchange-rate-display/${displayId}/update`, data)
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/exchange-rate-display/${id}`)
   }
 }

@@ -570,14 +570,22 @@ export const reservationsApi = {
 
 export interface SynchronizationResult { success: boolean; recordsSynced: number; errors: string[] }
 export const synchronizationApi = {
-  synchronize: async (branchId: string, workerId: string): Promise<SynchronizationResult> => (await api.post<SynchronizationResult>('/synchronization/sync', null, { params: { branchId, workerId } })).data,
+  synchronize: async (branchId: string, workerId: string, options?: { direction?: string; entityTypes?: string[] }): Promise<SynchronizationResult> => (await api.post<SynchronizationResult>('/synchronization/sync', options || null, { params: { branchId, workerId } })).data,
+  shouldSync: async (): Promise<{ shouldSync: boolean; pendingCount: number }> => (await api.get<{ shouldSync: boolean; pendingCount: number }>('/synchronization/should-sync')).data,
   shouldAutoSync: async (branchId: string): Promise<boolean> => (await api.get<boolean>('/synchronization/should-sync', { params: { branchId } })).data,
+  getLogs: async (): Promise<unknown[]> => {
+    try { return (await api.get<unknown[]>('/synchronization/logs')).data } catch { return [] }
+  },
 }
 
-export interface PosTerminal { id: string; terminalId: string; terminalName: string; branchId?: string; branchName?: string; isActive: boolean; lastTransactionAt?: string }
+export interface PosTerminal { id: string; terminalId: string; terminalName: string; branchId?: string; branchName?: string; isActive: boolean; lastTransactionAt?: string; connectionType?: string; comPort?: string; baudRate?: number; ipAddress?: string; port?: number }
 export const posTerminalApi = {
   list: async (): Promise<PosTerminal[]> => (await api.get<PosTerminal[]>('/pos-terminal')).data,
   getById: async (id: string): Promise<PosTerminal> => (await api.get<PosTerminal>(`/pos-terminal/${id}`)).data,
+  create: async (data: Partial<PosTerminal>): Promise<PosTerminal> => (await api.post<PosTerminal>('/pos-terminal', data)).data,
+  update: async (id: string, data: Partial<PosTerminal>): Promise<PosTerminal> => (await api.put<PosTerminal>(`/pos-terminal/${id}`, data)).data,
+  delete: async (id: string): Promise<void> => { await api.delete(`/pos-terminal/${id}`) },
+  testConnection: async (id: string): Promise<{ success: boolean; message?: string }> => (await api.post<{ success: boolean; message?: string }>(`/pos-terminal/${id}/test`)).data,
   processTransaction: async (terminalId: string, amount: number, currency: string): Promise<Record<string, unknown>> => (await api.post('/pos-terminal/process-transaction', null, { params: { terminalId, amount, currency } })).data,
 }
 
@@ -883,4 +891,35 @@ export interface VatRefundRequest {
   companyName?: string
   siteAddress?: string
   deedNumber?: string
+}
+
+// ================== DAILY REPORT / DAYBOOK API ==================
+export const dailyReportApi = {
+  get: async (branchId: string, date: string) => (await api.get(`/daily-reports/${branchId}/${date}`)).data,
+  generate: async (branchId: string, date: string) => (await api.post(`/daily-reports/${branchId}/generate`, null, { params: { date } })).data,
+  submit: async (reportId: string) => (await api.post(`/daily-reports/${reportId}/submit`)).data,
+}
+
+// ================== TURNOVER API ==================
+export const turnoverApi = {
+  daily: async (branchId: string, date: string) => (await api.get('/turnover/daily', { params: { branchId, date } })).data,
+  weekly: async (branchId: string, date: string) => (await api.get('/turnover/weekly', { params: { branchId, date } })).data,
+  monthly: async (branchId: string, date: string) => (await api.get('/turnover/monthly', { params: { branchId, date } })).data,
+  yearly: async (branchId: string, date: string) => (await api.get('/turnover/yearly', { params: { branchId, date } })).data,
+  byPeriod: async (period: string, branchId: string, date: string) => (await api.get(`/turnover/${period}`, { params: { branchId, date } })).data,
+}
+
+// ================== EVENING CLOSING API ==================
+export const eveningClosingApi = {
+  preview: async (branchId: string, date: string) => (await api.get(`/evening-closing/${branchId}/${date}/preview`)).data,
+  send: async (branchId: string, date: string) => (await api.post(`/evening-closing/${branchId}/${date}/send`)).data,
+  report: async (branchId: string, date: string) => (await api.get(`/evening-closing/${branchId}/${date}/report`)).data,
+}
+
+// ================== DAILY CHECKLIST API ==================
+export const dailyChecklistApi = {
+  get: async (branchId: string, date: string) => (await api.get(`/daily-checklist/${branchId}/${date}`)).data,
+  updateItem: async (checklistId: string, itemNumber: number, data: Record<string, unknown>) => (await api.put(`/daily-checklist/${checklistId}/items/${itemNumber}`, data)).data,
+  complete: async (checklistId: string) => (await api.post(`/daily-checklist/${checklistId}/complete`)).data,
+  status: async (branchId: string, date: string) => (await api.get(`/daily-checklist/${branchId}/${date}/status`)).data,
 }

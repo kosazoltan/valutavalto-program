@@ -1,20 +1,48 @@
-import { useState, useEffect } from 'react'
-import { FileText, Upload, Download } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { FileText, Upload, Download, Trash2, Search, Eye, Filter, FolderOpen, File, Image, FileSpreadsheet } from 'lucide-react'
 import { documentStorageApi, Document } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
-import { safeArray } from '@/utils/safeArray';
+import { getErrorMessage } from '../../utils/errorHandling'
+import { safeArray } from '@/utils/safeArray'
+
+const FILE_TYPE_ICONS: Record<string, typeof File> = {
+  pdf: FileText,
+  xlsx: FileSpreadsheet,
+  xls: FileSpreadsheet,
+  csv: FileSpreadsheet,
+  jpg: Image,
+  jpeg: Image,
+  png: Image,
+}
+
+const DOCUMENT_TYPES = [
+  { value: '', label: 'Összes típus' },
+  { value: 'ID_CARD', label: 'Személyi igazolvány' },
+  { value: 'PASSPORT', label: 'Útlevél' },
+  { value: 'DRIVING_LICENSE', label: 'Jogosítvány' },
+  { value: 'ADDRESS_CARD', label: 'Lakcímkártya' },
+  { value: 'COMPANY_EXTRACT', label: 'Cégkivonat' },
+  { value: 'AUTHORIZATION', label: 'Meghatalmazás' },
+  { value: 'RECEIPT', label: 'Bizonylat' },
+  { value: 'CONTRACT', label: 'Szerződés' },
+  { value: 'AML_REPORT', label: 'AML jelentés' },
+  { value: 'OTHER', label: 'Egyéb' },
+]
 
 export default function DocumentStoragePage() {
   const [documents, setDocuments] = useState<Document[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [typeFilter, setTypeFilter] = useState('')
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewName, setPreviewName] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [dragActive, setDragActive] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    void loadData()
-  }, [])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -25,20 +53,41 @@ export default function DocumentStoragePage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
+
+  const handleUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return
     try {
+      setUploading(true)
       setError(null)
-      await documentStorageApi.upload(file)
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i]
+        if (f) await documentStorageApi.upload(f)
+      }
       await loadData()
-      toast.success('Feltöltés sikeres')
+      toast.success('Feltöltés sikeres', `${files.length} dokumentum feltöltve`)
     } catch (err) {
       logger.error('DocumentStoragePage', 'Feltöltési hiba:', err)
       setError('Hiba a feltöltésnél. Kérjük ellenőrizze a fájlt.')
+      toast.error('Feltöltési hiba', getErrorMessage(err))
+    } finally {
+      setUploading(false)
     }
+  }
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    void handleUpload(e.target.files)
+    e.target.value = ''
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragActive(false)
+    void handleUpload(e.dataTransfer.files)
   }
 
   const handleDownload = async (id: string, fileName: string) => {
@@ -50,44 +99,161 @@ export default function DocumentStoragePage() {
       a.href = url
       a.download = fileName
       a.click()
+      window.URL.revokeObjectURL(url)
     } catch (err) {
       logger.error('DocumentStoragePage', 'Letöltési hiba:', err)
       setError('Hiba a letöltésnél')
     }
   }
 
+  const handlePreview = async (doc: Document) => {
+    const ext = doc.fileName.split('.').pop()?.toLowerCase() || ''
+    if (['jpg', 'jpeg', 'png', 'gif', 'pdf'].includes(ext)) {
+      try {
+        const blob = await documentStorageApi.download(doc.id)
+        const url = window.URL.createObjectURL(blob)
+        setPreviewUrl(url)
+        setPreviewName(doc.fileName)
+      } catch (err) {
+        toast.error('Előnézet hiba', getErrorMessage(err))
+      }
+    } else {
+      toast.warning('Előnézet', 'Csak kép és PDF fájlokhoz érhető el előnézet')
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Biztosan törli ezt a dokumentumot?')) return
+    try {
+      setError(null)
+      await documentStorageApi.delete(id)
+      toast.success('Dokumentum törölve')
+      await loadData()
+    } catch (err) {
+      setError(getErrorMessage(err))
+    }
+  }
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / 1048576).toFixed(1)} MB`
+  }
+
+  const getFileIcon = (fileName: string) => {
+    const ext = fileName.split('.').pop()?.toLowerCase() || ''
+    const IconComp = FILE_TYPE_ICONS[ext] || File
+    return <IconComp size={16} />
+  }
+
+  const filtered = safeArray<Document>(documents).filter(d => {
+    if (searchTerm && !d.fileName.toLowerCase().includes(searchTerm.toLowerCase())) return false
+    if (typeFilter && d.entityType !== typeFilter) return false
+    return true
+  })
+
+  const totalSize = filtered.reduce((sum, d) => sum + (d.fileSize || 0), 0)
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold flex items-center gap-2"><FileText />Dokumentumok</h1>
-        <label className="form-button-primary cursor-pointer">
-          <Upload size={16} /> Feltöltés
-          <input type="file" className="hidden" onChange={handleUpload} />
-        </label>
-      </div>
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-          {error}
+        <h1 className="text-xl font-bold flex items-center gap-2"><FolderOpen />Dokumentumtár</h1>
+        <div className="flex gap-2 items-center">
+          <span className="text-sm text-gray-500">{filtered.length} dokumentum ({formatFileSize(totalSize)})</span>
+          <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="form-button-primary">
+            <Upload size={16} /> {uploading ? 'Feltöltés...' : 'Feltöltés'}
+          </button>
+          <input ref={fileInputRef} type="file" className="hidden" multiple onChange={handleFileInput} />
         </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>
       )}
+
+      {/* Drag & drop zone */}
+      <div
+        className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${dragActive ? 'border-blue-400 bg-blue-50' : 'border-gray-300'}`}
+        onDragOver={e => { e.preventDefault(); setDragActive(true) }}
+        onDragLeave={() => setDragActive(false)}
+        onDrop={handleDrop}
+      >
+        <Upload size={32} className="mx-auto text-gray-400 mb-2" />
+        <p className="text-gray-500">Húzza ide a fájlokat vagy kattintson a feltöltés gombra</p>
+        <p className="text-xs text-gray-400 mt-1">PDF, JPG, PNG, XLSX, CSV (max. 10 MB)</p>
+      </div>
+
+      {/* Filters */}
+      <div className="flex gap-2 items-center">
+        <Search size={16} className="text-gray-400" />
+        <input className="form-input flex-1" placeholder="Keresés fájlnév alapján..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+        <Filter size={16} className="text-gray-400" />
+        <select className="form-input w-48" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+          {DOCUMENT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+        </select>
+      </div>
+
+      {/* Table */}
       {loading ? <div>Betöltés...</div> : (
         <div className="form-panel">
-          <table className="data-grid w-full">
-            <thead><tr><th>Fájlnév</th><th>Típus</th><th>Méret</th><th>Feltöltve</th><th>Műveletek</th></tr></thead>
-            <tbody>
-              {safeArray<Document>(documents).map(d => (
-                <tr key={d.id}>
-                  <td>{d.fileName}</td>
-                  <td>{d.fileType}</td>
-                  <td>{(d.fileSize / 1024).toFixed(2)} KB</td>
-                  <td>{new Date(d.uploadedAt).toLocaleString('hu-HU')}</td>
-                  <td>
-                    <button onClick={() => handleDownload(d.id, d.fileName)} className="form-button text-xs"><Download size={12} />Letöltés</button>
-                  </td>
+          {filtered.length === 0 ? (
+            <div className="text-center text-gray-500 py-8">Nincs dokumentum</div>
+          ) : (
+            <table className="data-grid w-full">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Fájlnév</th>
+                  <th>Típus</th>
+                  <th>Méret</th>
+                  <th>Feltöltve</th>
+                  <th>Feltöltő</th>
+                  <th>Kapcsolódó</th>
+                  <th>Műveletek</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map(d => (
+                  <tr key={d.id}>
+                    <td className="text-gray-400">{getFileIcon(d.fileName)}</td>
+                    <td className="font-medium">{d.fileName}</td>
+                    <td className="text-sm">
+                      {DOCUMENT_TYPES.find(t => t.value === d.entityType)?.label ||
+                        d.fileType || '-'}
+                    </td>
+                    <td className="text-sm font-mono">{formatFileSize(d.fileSize)}</td>
+                    <td className="text-sm">{new Date(d.uploadedAt).toLocaleString('hu-HU')}</td>
+                    <td className="text-sm">{d.uploadedByName || '-'}</td>
+                    <td className="text-sm">{d.entityId ? `#${d.entityId}` : '-'}</td>
+                    <td>
+                      <div className="flex gap-1">
+                        <button onClick={() => void handlePreview(d)} className="form-button text-xs" title="Előnézet"><Eye size={12} /></button>
+                        <button onClick={() => handleDownload(d.id, d.fileName)} className="form-button text-xs" title="Letöltés"><Download size={12} /></button>
+                        <button onClick={() => handleDelete(d.id)} className="form-button text-xs text-red-600" title="Törlés"><Trash2 size={12} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {/* Preview modal */}
+      {previewUrl && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => { setPreviewUrl(null); setPreviewName('') }}>
+          <div className="bg-white rounded-lg p-4 max-w-4xl max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="font-semibold">{previewName}</h3>
+              <button onClick={() => { setPreviewUrl(null); setPreviewName('') }} className="form-button text-xs">Bezárás</button>
+            </div>
+            {previewName.toLowerCase().endsWith('.pdf') ? (
+              <iframe src={previewUrl} className="w-full h-[70vh]" title="Dokumentum előnézet" />
+            ) : (
+              <img src={previewUrl} alt={previewName} className="max-w-full max-h-[70vh] object-contain" />
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -93,6 +93,10 @@ const RatePanel = lazy(() => import('./pages/treasury/RatePanel'))
 const ReportsCirculars = lazy(() => import('./pages/treasury/ReportsCirculars'))
 const BankTransactions = lazy(() => import('./pages/treasury/BankTransactions'))
 const VatRefundPage = lazy(() => import('./pages/treasury/VatRefundPage'))
+const DaybookPage = lazy(() => import('./pages/reports/DaybookPage'))
+const DailyTurnoverPage = lazy(() => import('./pages/reports/DailyTurnoverPage'))
+const EveningClosingPage = lazy(() => import('./pages/closing/EveningClosingPage'))
+const DailyChecklistPage = lazy(() => import('./pages/cashdesk/DailyChecklistPage'))
 
 function RouteLoadingFallback() {
   return (
@@ -391,6 +395,10 @@ export default function App() {
           <Route path="/camera/export" element={<CameraExportPage />} />
           <Route path="/darius" element={<DariusReportPage />} />
           <Route path="/decade" element={<DecadeReportPage />} />
+          <Route path="/daybook" element={<DaybookPage />} />
+          <Route path="/daily-turnover" element={<DailyTurnoverPage />} />
+          <Route path="/evening-closing" element={<EveningClosingPage />} />
+          <Route path="/daily-checklist" element={<DailyChecklistPage />} />
 
           {/* === Árfolyam-kezelés Routes === */}
           <Route path="/rate-management" element={<RateCreationDashboard />} />
