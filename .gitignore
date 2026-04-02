@@ -91,11 +91,23 @@ docs/legacy-drive/
 Anti/
 
 Felmérés/
+Felmérés/
 
 # Nagy fájlok kizárása
 *.m4a
 Felmérés/
+Felmérés/
 .tmp_*.txt
+
+# Runtime / test / local artifacts
+penztar-client/.dev-app/
+frontend-react/test-results/
+frontend-react/e2e-relay-final-report.json
+frontend-react/e2e-relay-results/
+frontend-react/tsconfig.node.tsbuildinfo
+frontend-react/tsconfig.tsbuildinfo
+.vite/
+backend_deployment/
 
 # Installer build artifacts (nagy fájlok + secrets)
 installer/build/
@@ -111,3 +123,5 @@ test-output.txt
 frontend-react/dist/
 penztar-client/dist/
 penztar-client/dist-electron/
+
+configs/secrets.json
