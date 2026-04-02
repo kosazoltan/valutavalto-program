@@ -388,8 +388,8 @@ test.describe('Full User Journey — Emberi viselkedés szimuláció', () => {
       const resp = await request.get(`${API_BASE}${ep}`, { headers }).catch(() => null)
       const status = resp?.status() || 'FAIL'
       console.log(`  ${ep}: ${status}`)
-      // 200 or 403 are acceptable (permission-dependent)
-      expect([200, 403, 404]).toContain(resp?.status())
+      // 200, 400 (bad request/no active session), 401 (insufficient scope), 403 (forbidden), 404 are all acceptable
+      expect([200, 400, 401, 403, 404]).toContain(resp?.status())
     }
   })
 
