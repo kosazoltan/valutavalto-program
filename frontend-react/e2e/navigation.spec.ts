@@ -62,7 +62,6 @@ async function loginAndSetupMocks(page: Page) {
       })
     }
 
-    // Default: üres lista
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -88,33 +87,26 @@ test('dashboard elérhető bejelentkezés után', async ({ page }) => {
 test('menü linkek navigálhatók', async ({ page }) => {
   await loginAndSetupMocks(page)
 
-  // Keresünk nav linket vagy bármilyen navigációs elem
   const navLinks = page.getByRole('link')
   let count = await navLinks.count()
 
-  // Ha nincs link, keresünk gombokat vagy menü elemet
   if (count === 0) {
     const buttons = page.getByRole('button')
     count = await buttons.count()
   }
 
-  // Ha még mindig nincsenek elemek, OK — az app mégsem zuhant össze
-  // Ez egy graceful skip
   if (count === 0) {
     test.skip()
   }
 
-  // Ha vannak elemek, ellenőrizzük
-  expect(count).toBeGreaterThanOrEqual(0)
+  expect(count).toBeGreaterThan(0)
 })
 
 test('logout elérhető', async ({ page }) => {
   await loginAndSetupMocks(page)
 
-  // Várjuk meg, hogy a dashboard teljesen renderelődjön
   await expect(page.getByRole('heading', { name: /Irányítópult/i })).toBeVisible()
 
-  // Keresünk logout gombot, user menu-t, vagy bármilyen interaktív elemet
   const logoutButton = page.getByRole('button', { name: /kijelentkezés|logout|kilépés/i })
   const userMenu = page.getByRole('button', { name: /admin|menü|user|profil/i })
   const anyButton = page.getByRole('button')
@@ -123,6 +115,5 @@ test('logout elérhető', async ({ page }) => {
   const menuVisible = await userMenu.count()
   const buttonCount = await anyButton.count()
 
-  // Elég ha VAN valamilyen gomb a dashboard-on (logout, menü, vagy bármi)
-  expect(logoutVisible + menuVisible + buttonCount).toBeGreaterThanOrEqual(1)
+  expect(logoutVisible + menuVisible + buttonCount).toBeGreaterThan(0)
 })

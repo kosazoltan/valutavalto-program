@@ -62,7 +62,27 @@ async function loginForTransaction(page: Page) {
       })
     }
 
-    // Default: üres
+    if (path.endsWith('/exchange-rates') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          {
+            id: 1,
+            currencyId: 1,
+            currencyCode: 'EUR',
+            currencyName: 'Euró',
+            baseBuyRate: 391.5,
+            baseSellRate: 398.5,
+            active: true,
+            createdAt: new Date().toISOString(),
+            validDate: '2026-04-02',
+            validTime: '10:00',
+          },
+        ]),
+      })
+    }
+
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -83,55 +103,24 @@ async function loginForTransaction(page: Page) {
 test('tranzakciós oldal betöltődik', async ({ page }) => {
   await loginForTransaction(page)
 
-  // Navigálunk a trade/transaction oldalra (tipikus route)
-  // Ha nincs trade route, akkor commerce/transaction
-  await page.goto('/trade', { waitUntil: 'networkidle' }).catch(() => null)
+  await page.goto('/transactions/new', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { name: /Új tranzakció/i })).toBeVisible()
 
-  // Alternatív route-ok próbálása
-  const possibleRoutes = ['/trade', '/transactions', '/commerce', '/cashdesk']
-  let found = false
-
-  for (const route of possibleRoutes) {
-    try {
-      await page.goto(route, { waitUntil: 'domcontentloaded', timeout: 5000 })
-      const pageContent = await page.content()
-      if (pageContent.length > 100) {
-        found = true
-        break
-      }
-    } catch {
-      // Próba következő route
-    }
-  }
-
-  // Ha nem találtuk a route-okat, akkor az oldal/app nem létezik — skip gracefully
-  if (!found) {
-    test.skip()
-  }
-
-  // Form elemek jelenléte
-  const inputs = page.locator('input, select, textarea')
-  const inputCount = await inputs.count()
-
-  // Legalább 1 input legyen
-  expect(inputCount).toBeGreaterThanOrEqual(0)
+  const inputs = page.locator('input')
+  expect(await inputs.count()).toBeGreaterThanOrEqual(2)
 })
 
 test('tranzakciós form elemei láthatók és interaktívak', async ({ page }) => {
   await loginForTransaction(page)
 
-  // Route próbálása
-  await page.goto('/trade', { waitUntil: 'networkidle' }).catch(() => null)
+  await page.goto('/transactions/new', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { name: /Új tranzakció/i })).toBeVisible()
 
   const buttons = page.getByRole('button')
-  const inputCount = await buttons.count()
+  const buttonCount = await buttons.count()
+  expect(buttonCount).toBeGreaterThan(0)
 
-  // Ha nincsenek gombók, az OK (valami nem működik a backenddel)
-  // De az alkalmazás nem zuhanna össze
-  if (inputCount === 0) {
-    test.skip()
-  } else {
-    // Ha van gomb, akkor az form része
-    expect(inputCount).toBeGreaterThanOrEqual(0)
-  }
+  const amountInputs = page.getByPlaceholder('0,00')
+  await expect(amountInputs.nth(0)).toBeVisible()
+  await expect(amountInputs.nth(1)).toBeVisible()
 })

@@ -67,7 +67,7 @@ api.interceptors.request.use(
     }
     // Idempotency-Key header for write methods (required by backend IdempotencyFilter)
     const method = (config.method ?? '').toUpperCase()
-    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && config.headers) {
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && config.headers && !config.headers['Idempotency-Key']) {
       config.headers['Idempotency-Key'] = crypto.randomUUID()
     }
     return config

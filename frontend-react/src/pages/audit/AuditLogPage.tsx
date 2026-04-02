@@ -58,8 +58,8 @@ export default function AuditLogPage() {
         result = await auditLogApi.getAll(from, to, page, 50)
       }
 
-      setLogs(result.content)
-      setTotalElements(result.totalElements)
+      setLogs(Array.isArray(result?.content) ? result.content : [])
+      setTotalElements(typeof result?.totalElements === 'number' ? result.totalElements : 0)
     } catch (error) {
       logger.error('AuditLogPage', 'Hiba az audit logok betöltésekor:', error)
     } finally {

@@ -156,12 +156,16 @@ describe('TransactionPage', () => {
     const user = userEvent.setup()
 
     const inputs = screen.getAllByPlaceholderText('0,00')
+    const foreignInput = inputs[0] as HTMLInputElement
     const hufInput = inputs[1] as HTMLInputElement
-    await user.click(hufInput)
+
+    await user.clear(hufInput)
     await user.type(hufInput, '1000')
 
-    // A visszaszámítás megtörténik — az érték bekerült az inputba
-    expect(hufInput.value.length).toBeGreaterThan(0)
+    await waitFor(() => {
+      expect(hufInput).toHaveValue('1000')
+      expect(foreignInput).toHaveValue('2,55')
+    })
   })
 
   it('Mégsem gomb navigál vissza', async () => {

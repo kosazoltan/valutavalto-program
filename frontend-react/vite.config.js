@@ -1,3 +1,4 @@
+var _a;
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -14,7 +15,7 @@ var config = {
         port: 3000,
         proxy: {
             '/api': {
-                target: process.env.VITE_PROXY_TARGET ?? 'http://localhost:8080',
+                target: (_a = process.env.VITE_PROXY_TARGET) !== null && _a !== void 0 ? _a : 'http://localhost:8080',
                 changeOrigin: true,
             },
         },

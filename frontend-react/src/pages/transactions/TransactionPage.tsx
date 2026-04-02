@@ -62,9 +62,14 @@ export default function TransactionPage() {
     }
   }, [currencyRates, selectedCurrency])
 
-  // Focus on foreign amount input on mount
+  // Focus on foreign amount input on mount (only if user hasn't focused elsewhere)
   useEffect(() => {
-    const timerId = setTimeout(() => foreignAmountRef.current?.focus(), 100)
+    const timerId = setTimeout(() => {
+      const active = document.activeElement
+      // Don't steal focus if the user already clicked/tabbed into another input
+      if (active && active.tagName === 'INPUT' && active !== foreignAmountRef.current) return
+      foreignAmountRef.current?.focus()
+    }, 100)
     return () => clearTimeout(timerId)
   }, [])
 
@@ -80,13 +85,18 @@ export default function TransactionPage() {
     if (lastEdited === 'foreign' && foreignAmount) {
       const amount = parseFloat(foreignAmount.replace(',', '.'))
       if (!isNaN(amount)) {
-        setHufAmount(roundHuf((amount / unit) * rate).toString())
+        const nextHufAmount = roundHuf((amount / unit) * rate).toString()
+        if (hufAmount !== nextHufAmount) {
+          setHufAmount(nextHufAmount)
+        }
       }
     } else if (lastEdited === 'huf' && hufAmount) {
       const amount = parseFloat(hufAmount.replace(',', '.').replace(/\s/g, ''))
       if (!isNaN(amount)) {
         const result = ((amount / rate) * unit).toFixed(2).replace('.', ',')
-        setForeignAmount(result)
+        if (foreignAmount !== result) {
+          setForeignAmount(result)
+        }
       }
     }
   }, [foreignAmount, hufAmount, selectedCurrency, transactionType, lastEdited])

@@ -25,8 +25,8 @@ export default function LoggingPage() {
       } else {
         result = await loggingApi.getNavLogs(fromDate || undefined, toDate || undefined, page, 50)
       }
-      setLogs(result.content)
-      setTotalElements(result.totalElements)
+      setLogs(Array.isArray(result?.content) ? result.content : [])
+      setTotalElements(typeof result?.totalElements === 'number' ? result.totalElements : 0)
     } catch (error) {
       logger.error('LoggingPage', 'Hiba a logok betöltésekor:', error)
     } finally {

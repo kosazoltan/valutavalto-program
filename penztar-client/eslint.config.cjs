@@ -1,5 +1,6 @@
 const js = require('@eslint/js');
 const tseslint = require('typescript-eslint');
+const globals = require('globals');
 
 module.exports = tseslint.config(
   {
@@ -7,6 +8,18 @@ module.exports = tseslint.config(
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  {
+    files: ['electron/**/*.cjs'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: {
+        ...globals.node,
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
   {
     plugins: {
       'react-hooks': require('eslint-plugin-react-hooks'),

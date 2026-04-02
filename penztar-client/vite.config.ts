@@ -120,7 +120,11 @@ export default defineConfig({
           });
           electronDevProcess.once('exit', () => {
             // Clean up
-            try { fs.rmSync(tmpAppDir, { recursive: true, force: true }); } catch {}
+            try {
+              fs.rmSync(tmpAppDir, { recursive: true, force: true });
+            } catch {
+              // Ignore temp cleanup failures on Windows dev cache locks.
+            }
             electronDevProcess = null;
           });
         },

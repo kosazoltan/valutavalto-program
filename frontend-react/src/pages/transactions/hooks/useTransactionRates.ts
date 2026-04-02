@@ -16,6 +16,11 @@ export interface CurrencyRate {
   unit: number
 }
 
+function resolveUnit(rate: ExchangeRate): number {
+  const candidate = (rate as ExchangeRate & { unit?: number }).unit
+  return typeof candidate === 'number' && Number.isFinite(candidate) && candidate > 0 ? candidate : 1
+}
+
 export function useTransactionRates() {
   const electronQueueAvailable = isElectronQueueAvailable()
   const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>([])
@@ -44,7 +49,7 @@ export function useTransactionRates() {
             name: r.currencyName,
             buyRate: r.baseBuyRate,
             sellRate: r.baseSellRate,
-            unit: 1,
+            unit: resolveUnit(r),
           }))
         setCurrencyRates(mapped)
       } catch {
