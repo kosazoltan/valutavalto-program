@@ -4,7 +4,6 @@ import {
   ArrowLeftRight,
   Calculator,
   Printer,
-  Save,
   X,
   AlertCircle,
 } from 'lucide-react'
@@ -241,12 +240,12 @@ export default function TransactionPage() {
     }
   }
 
-  const handlePrint = () => {
-    if (!savedTransaction) {
-      toast.warning('Nincs mentett tranzakció', 'Először mentse el a tranzakciót a bizonylat nyomtatásához!')
-      return
-    }
-    // ReceiptPrint modal is shown via savedTransaction state
+  const handleSaveAndPrint = async () => {
+    // Ha mar mentve van, csak a nyomtatast mutatjuk
+    if (savedTransaction) return
+    // Egyebkent eloszor mentunk, a mentes utan a savedTransaction allapot
+    // automatikusan megjeleníti a ReceiptPrint modalt
+    await handleSubmit()
   }
 
   const currentRate = selectedCurrency
@@ -265,17 +264,14 @@ export default function TransactionPage() {
           <button onClick={() => navigate('/transactions')} className="form-button flex items-center gap-1" title="Mégsem (Esc)">
             <X size={16} /> Mégsem
           </button>
-          <button onClick={handlePrint} className={`form-button flex items-center gap-1 ${!savedTransaction ? 'opacity-50 cursor-not-allowed' : ''}`} title={savedTransaction ? 'Bizonylat nyomtatása' : 'Először mentse el a tranzakciót'}>
-            <Printer size={16} /> Nyomtatás
-          </button>
           <button
-            onClick={handleSubmit}
+            onClick={handleSaveAndPrint}
             disabled={isSubmitting}
             className="form-button-primary flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
             data-action="save"
           >
-            <Save size={16} />
-            {isSubmitting ? 'Mentés...' : 'Mentés'}
+            <Printer size={16} />
+            {isSubmitting ? 'Mentés...' : 'Mentés és nyomtatás'}
           </button>
         </div>
       </div>
