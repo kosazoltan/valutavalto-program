@@ -3,5 +3,5 @@ release/
 
 dist/
 
-.e2e-userdata/
+.e2e-userdata*/
 playwright-artifacts/
