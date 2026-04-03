@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Globe, Search, RefreshCw, Plus, Edit2, Trash2, AlertTriangle } from 'lucide-react'
-import { api } from '../../services/api/client'
+import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { safeArray } from '../../utils/safeArray'
 
 interface WesternUnionItem {
   id: string | number
@@ -25,10 +26,10 @@ export default function WesternUnionPage() {
       setLoading(true)
       setError(null)
       const response = await api.get<WesternUnionItem[]>('/western-union')
-      setItems(Array.isArray(response.data) ? response.data : [])
+      setItems(safeArray<typeof items[0]>(response.data))
     } catch (err) {
       const msg = getErrorMessage(err)
-      logger.error('WesternUnionPage', 'Betoltesi hiba:', err)
+      logger.error('WesternUnionPage', 'Betöltési hiba:', err)
       setError(msg)
     } finally {
       setLoading(false)
@@ -48,30 +49,30 @@ export default function WesternUnionPage() {
   })
 
   const handleDelete = async (id: string | number) => {
-    if (!confirm('Biztosan torli?')) return
+    if (!confirm('Biztosan törli?')) return
     try {
       await api.delete(`/western-union/${id}`)
       await loadData()
     } catch (err) {
       const msg = getErrorMessage(err)
       setError(msg)
-      logger.error('WesternUnionPage', 'Torlesi hiba:', err)
+      logger.error('WesternUnionPage', 'Törlési hiba:', err)
     }
   }
 
   return (
-    <div className="space-y-4 p-4">
+    <div className="form-panel space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="flex items-center gap-2 text-xl font-bold">
+        <h1 className="form-title flex items-center gap-2">
           <Globe className="h-6 w-6" />
           Western Union
         </h1>
         <div className="flex items-center gap-2">
-          <button onClick={() => void loadData()} className="rounded bg-gray-100 p-2 hover:bg-gray-200" title="Frissites">
+          <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          <button className="flex items-center gap-1 rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700">
-            <Plus className="h-4 w-4" /> Uj
+          <button className="form-button-primary flex items-center gap-1">
+            <Plus className="h-4 w-4" /> Új
           </button>
         </div>
       </div>
@@ -81,22 +82,22 @@ export default function WesternUnionPage() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Kereses..."
+            placeholder="Keresés..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            className="w-full rounded border border-gray-300 py-2 pl-10 pr-3 text-sm focus:border-blue-500 focus:outline-none"
+            className="form-input w-full pl-10"
           />
         </div>
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 rounded bg-red-50 p-3 text-sm text-red-700">
+        <div className="form-error flex items-center gap-2">
           <AlertTriangle className="h-4 w-4" />
           {error}
         </div>
       )}
 
-      <div className="overflow-x-auto rounded border">
+      <div className="data-grid overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -111,7 +112,7 @@ export default function WesternUnionPage() {
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">Betoltes...</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
             ) : filtered.length === 0 ? (
               <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">Nincs adat</td></tr>
             ) : filtered.map(item => (
@@ -123,10 +124,10 @@ export default function WesternUnionPage() {
                 <td className="px-4 py-3 text-sm">{item.status ?? '-'}</td>
                 <td className="px-4 py-3 text-sm">{item.createdAt ? new Date(item.createdAt).toLocaleString('hu-HU') : '-'}</td>
                 <td className="px-4 py-3 text-right">
-                  <button className="mr-2 rounded p-1 text-blue-600 hover:bg-blue-50" title="Szerkesztes">
+                  <button className="form-button mr-2 p-1 text-blue-600" title="Szerkesztés">
                     <Edit2 className="h-4 w-4" />
                   </button>
-                  <button onClick={() => handleDelete(item.id)} className="rounded p-1 text-red-600 hover:bg-red-50" title="Torles">
+                  <button onClick={() => handleDelete(item.id)} className="form-button p-1 text-red-600" title="Törlés">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </td>
@@ -137,7 +138,7 @@ export default function WesternUnionPage() {
       </div>
 
       <div className="text-sm text-gray-500">
-        Osszes: {filtered.length} / {items.length}
+        Összesen: {filtered.length} / {items.length}
       </div>
     </div>
   )

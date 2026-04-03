@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { FileCheck2, Search, RefreshCw, AlertTriangle } from 'lucide-react'
-import { api } from '../../services/api/client'
+import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { safeArray } from '../../utils/safeArray'
 
 interface TransferDocumentItem {
   id: string | number
@@ -25,10 +26,10 @@ export default function TransferDocumentPage() {
       setLoading(true)
       setError(null)
       const response = await api.get<TransferDocumentItem[]>('/transfer-documents')
-      setItems(Array.isArray(response.data) ? response.data : [])
+      setItems(safeArray<typeof items[0]>(response.data))
     } catch (err) {
       const msg = getErrorMessage(err)
-      logger.error('TransferDocumentPage', 'Betoltesi hiba:', err)
+      logger.error('TransferDocumentPage', 'Betöltési hiba:', err)
       setError(msg)
     } finally {
       setLoading(false)
@@ -48,14 +49,14 @@ export default function TransferDocumentPage() {
   })
 
   return (
-    <div className="space-y-4 p-4">
+    <div className="form-panel space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="flex items-center gap-2 text-xl font-bold">
+        <h1 className="form-title flex items-center gap-2">
           <FileCheck2 className="h-6 w-6" />
           Atutalasi bizonylatok
         </h1>
         <div className="flex items-center gap-2">
-          <button onClick={() => void loadData()} className="rounded bg-gray-100 p-2 hover:bg-gray-200" title="Frissites">
+          <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
@@ -66,22 +67,22 @@ export default function TransferDocumentPage() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Kereses..."
+            placeholder="Keresés..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            className="w-full rounded border border-gray-300 py-2 pl-10 pr-3 text-sm focus:border-blue-500 focus:outline-none"
+            className="form-input w-full pl-10"
           />
         </div>
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 rounded bg-red-50 p-3 text-sm text-red-700">
+        <div className="form-error flex items-center gap-2">
           <AlertTriangle className="h-4 w-4" />
           {error}
         </div>
       )}
 
-      <div className="overflow-x-auto rounded border">
+      <div className="data-grid overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -95,7 +96,7 @@ export default function TransferDocumentPage() {
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">Betoltes...</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
             ) : filtered.length === 0 ? (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">Nincs adat</td></tr>
             ) : filtered.map(item => (
@@ -113,7 +114,7 @@ export default function TransferDocumentPage() {
       </div>
 
       <div className="text-sm text-gray-500">
-        Osszes: {filtered.length} / {items.length}
+        Összesen: {filtered.length} / {items.length}
       </div>
     </div>
   )
