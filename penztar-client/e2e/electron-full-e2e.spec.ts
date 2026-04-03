@@ -8,7 +8,6 @@ const MAIN_JS = path.join(__dirname, '..', 'dist-electron', 'main.js')
 const PROJECT_ROOT = path.join(__dirname, '..')
 const ELECTRON_EXE = path.join(PROJECT_ROOT, 'node_modules', 'electron', 'dist', 'electron.exe')
 const USER_DATA = path.join(__dirname, '..', '.e2e-userdata')
-const BASE_URL = 'app://localhost'
 
 const COMPANY = 'EBC'
 const WORKER = 'KOSA'
