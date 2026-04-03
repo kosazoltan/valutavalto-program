@@ -52,8 +52,9 @@ import { registerVideoManagerHandlers } from './video-manager';
 import { registerScannerHandlers } from './scanner';
 import { registerUpdaterHandlers } from './updater';
 
-const isDev = !app.isPackaged && process.env.ELECTRON_FORCE_PACKAGED !== '1';
+const isDev = !app.isPackaged && !process.argv.includes('--force-packaged') && process.env.ELECTRON_FORCE_PACKAGED !== '1';
 const devServerUrl = process.env.ELECTRON_RENDERER_URL ?? 'http://127.0.0.1:3000';
+console.error(`[BOOT] isDev=${isDev} isPackaged=${app.isPackaged} argv_has_force=${process.argv.includes('--force-packaged')} env_force=${process.env.ELECTRON_FORCE_PACKAGED}`);
 const devUserDataDir = process.env.ELECTRON_DEV_USER_DATA;
 const shouldAutoOpenDevTools =
   isDev && ['1', 'true', 'yes', 'on'].includes((process.env.ELECTRON_OPEN_DEVTOOLS ?? '').toLowerCase());
@@ -143,7 +144,7 @@ function createWindow(): void {
   } else {
     // Custom 'app' protocol-on keresztül töltjük be — NEM file://-al!
     // A file:// + type="module" (ES module) Chromium CORS policy miatt üres képernyőt ad.
-    mainWindow.loadURL('app://localhost/index.html');
+    mainWindow.loadURL('app://localhost/');
   }
 
   // Renderer process hibák logolása — production-ben is lássuk mi történik

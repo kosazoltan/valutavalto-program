@@ -5,6 +5,8 @@ import fs from 'node:fs'
 
 const SCREENSHOT_DIR = path.join(__dirname, '..', 'playwright-artifacts', 'electron-e2e')
 const MAIN_JS = path.join(__dirname, '..', 'dist-electron', 'main.js')
+const PROJECT_ROOT = path.join(__dirname, '..')
+const ELECTRON_EXE = path.join(PROJECT_ROOT, 'node_modules', 'electron', 'dist', 'electron.exe')
 const USER_DATA = path.join(__dirname, '..', '.e2e-userdata')
 const BASE_URL = 'app://localhost'
 
@@ -57,7 +59,11 @@ test.beforeAll(async () => {
   }
 
   // Launch REAL Electron with built-in frontend (production-like, app:// protocol)
+  // IMPORTANT: Use executablePath to the real Electron binary + args[0] = absolute main.js path.
+  // Without executablePath, Playwright uses the bundled Electron which runs default_app.asar,
+  // causing __dirname to resolve to the asar context instead of our dist-electron/ directory.
   electronApp = await electron.launch({
+    executablePath: ELECTRON_EXE,
     args: [MAIN_JS],
     env: {
       ...process.env,
