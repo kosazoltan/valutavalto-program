@@ -198,7 +198,8 @@ export function registerVideoManagerHandlers(): void {
     user?: string,
   ): Promise<{ tempPath: string } | { error: string }> => {
     const resolved = path.resolve(encryptedPath);
-    if (!resolved.startsWith(path.resolve(CAMERA_DIR))) {
+    const cameraDirResolved = path.resolve(CAMERA_DIR);
+    if (!resolved.startsWith(cameraDirResolved + path.sep) && resolved !== cameraDirResolved) {
       writeAuditLog({
         timestamp: new Date().toISOString(),
         action: 'ACCESS_DENIED',
@@ -246,8 +247,17 @@ export function registerVideoManagerHandlers(): void {
     user?: string,
   ): Promise<{ valid: boolean; actualHash: string }> => {
     const resolved = path.resolve(filePath);
-    if (!resolved.startsWith(path.resolve(CAMERA_DIR))) {
-      throw new Error('Fajl a kamera konyvtaron kivul esik');
+    const cameraDirResolved = path.resolve(CAMERA_DIR);
+    if (!resolved.startsWith(cameraDirResolved + path.sep) && resolved !== cameraDirResolved) {
+      writeAuditLog({
+        timestamp: new Date().toISOString(),
+        action: 'ACCESS_DENIED',
+        user,
+        segmentPath: filePath,
+        details: 'Fajl a kamera konyvtaron kivul esik',
+        machineId: getMachineId(),
+      });
+      return { valid: false, actualHash: '' };
     }
 
     const actualHash = computeFileHash(resolved);

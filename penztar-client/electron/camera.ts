@@ -234,7 +234,8 @@ export function registerCameraHandlers(): void {
     filePath: string,
   ): Promise<string | null> => {
     const resolved = path.resolve(filePath);
-    if (!resolved.startsWith(path.resolve(CAMERA_DIR))) return null;
+    const cameraDirResolved = path.resolve(CAMERA_DIR);
+    if (!resolved.startsWith(cameraDirResolved + path.sep) && resolved !== cameraDirResolved) return null;
     if (!fs.existsSync(resolved)) return null;
     return fs.readFileSync(resolved).toString('base64');
   });
@@ -357,11 +358,16 @@ export function registerCameraHandlers(): void {
     encryptedPath: string,
     config: EncryptionConfig,
   ): Promise<{ nonce: string }> => {
-    const resolved = path.resolve(plainPath);
-    if (!resolved.startsWith(path.resolve(CAMERA_DIR))) {
+    const resolvedPlain = path.resolve(plainPath);
+    const resolvedEnc = path.resolve(encryptedPath);
+    const cameraDirResolved = path.resolve(CAMERA_DIR);
+    if (!resolvedPlain.startsWith(cameraDirResolved + path.sep) && resolvedPlain !== cameraDirResolved) {
       throw new Error('Fájl a kamera könyvtáron kívül esik');
     }
-    const nonce = await encryptFile(resolved, path.resolve(encryptedPath), config);
+    if (!resolvedEnc.startsWith(cameraDirResolved + path.sep) && resolvedEnc !== cameraDirResolved) {
+      throw new Error('Cél fájl a kamera könyvtáron kívül esik');
+    }
+    const nonce = await encryptFile(resolvedPlain, resolvedEnc, config);
     return { nonce };
   });
 
@@ -374,11 +380,16 @@ export function registerCameraHandlers(): void {
     plainPath: string,
     config: EncryptionConfig,
   ): Promise<{ success: boolean }> => {
-    const resolved = path.resolve(encryptedPath);
-    if (!resolved.startsWith(path.resolve(CAMERA_DIR))) {
+    const resolvedEnc = path.resolve(encryptedPath);
+    const resolvedPlain = path.resolve(plainPath);
+    const cameraDirResolved = path.resolve(CAMERA_DIR);
+    if (!resolvedEnc.startsWith(cameraDirResolved + path.sep) && resolvedEnc !== cameraDirResolved) {
       throw new Error('Fájl a kamera könyvtáron kívül esik');
     }
-    await decryptFile(resolved, path.resolve(plainPath), config);
+    if (!resolvedPlain.startsWith(cameraDirResolved + path.sep) && resolvedPlain !== cameraDirResolved) {
+      throw new Error('Cél fájl a kamera könyvtáron kívül esik');
+    }
+    await decryptFile(resolvedEnc, resolvedPlain, config);
     return { success: true };
   });
 
@@ -391,7 +402,8 @@ export function registerCameraHandlers(): void {
     expectedHash: string,
   ): Promise<{ valid: boolean; actualHash: string }> => {
     const resolved = path.resolve(filePath);
-    if (!resolved.startsWith(path.resolve(CAMERA_DIR))) {
+    const cameraDirResolved = path.resolve(CAMERA_DIR);
+    if (!resolved.startsWith(cameraDirResolved + path.sep) && resolved !== cameraDirResolved) {
       throw new Error('Fájl a kamera könyvtáron kívül esik');
     }
     const actualHash = computeFileHash(resolved);

@@ -10,6 +10,7 @@
  */
 
 import { spawn, ChildProcess } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { EventEmitter } from 'node:events';
@@ -117,11 +118,12 @@ export class RtspRecorder extends EventEmitter {
       this.processes.delete(cameraId);
     }
 
-    // Szegmens véglegesítése
+    // Szegmens véglegesítése — await, hogy a titkosítás befejeződjön a delete előtt
     const segment = this.activeSegments.get(cameraId);
     if (segment) {
-      void this.finalizeSegment(cameraId, segment);
-      this.activeSegments.delete(cameraId);
+      this.finalizeSegment(cameraId, segment).finally(() => {
+        this.activeSegments.delete(cameraId);
+      });
     }
   }
 
@@ -301,6 +303,5 @@ export class RtspRecorder extends EventEmitter {
  * Hash chain: SHA-256(previousHash + currentFileHash).
  */
 function computeChainHash(previousHash: string, currentFileHash: string): string {
-  const crypto = require('node:crypto');
   return crypto.createHash('sha256').update(previousHash + currentFileHash).digest('hex');
 }
