@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Live UI E2E Test — Playwright against running dev server at http://127.0.0.1:3000
  *
  * Lépések:
@@ -57,7 +57,7 @@ test.describe('Live UI E2E — Valutaváltó Pénztár', () => {
     await workerInput.fill('KOSA')
 
     // Jelszó mező (harmadik input)
-    const passwordInput = page.locator('input[type="password"], input[type="text"]').last()
+    const _passwordInput = page.locator('input[type="password"], input[type="text"]').last()
     // find the password specifically
     const passwordField = page.locator('input[type="password"]').first()
     await passwordField.fill('1234')
@@ -85,7 +85,7 @@ test.describe('Live UI E2E — Valutaváltó Pénztár', () => {
     console.log('[4] Navigálok a tranzakciós oldalra...')
 
     // Megpróbálom a sidebar menüben megtalálni az "Új tranzakció" linket
-    let navToTransactions = false
+    let _navToTransactions = false
 
     // Próbáljunk click-elni a sidebar "Új tranzakció" linkre
     const transactionLinks = page.locator('a[href*="/transactions"]')
@@ -95,12 +95,12 @@ test.describe('Live UI E2E — Valutaváltó Pénztár', () => {
     if (linkCount > 0) {
       // Kattintás az első tranzakciós linkre
       await transactionLinks.first().click()
-      navToTransactions = true
+      _navToTransactions = true
     } else {
       // Közvetlen navigáció
       console.log('[4] Sidebar link nem található, közvetlen URL navigáció: /transactions/new')
       await page.goto(BASE_URL + '/transactions/new', { waitUntil: 'domcontentloaded', timeout: 15000 })
-      navToTransactions = true
+      _navToTransactions = true
     }
 
     // Várunk a tartalom betöltésére — a lazy loading eltűnjön
@@ -112,7 +112,7 @@ test.describe('Live UI E2E — Valutaváltó Pénztár', () => {
     console.log(`[4] Aktuális URL: ${currentUrl}`)
 
     // Ellenőrzés: tranzakciós form látható-e
-    const transactionForm = page.locator('text=Új tranzakció, text=VÉTEL, text=ELADÁS').first()
+    const _transactionForm = page.locator('text=Új tranzakció, text=VÉTEL, text=ELADÁS').first()
     // A loading spinner eltűnésére várunk
     await page.waitForSelector('text=Oldal betöltése...', { state: 'hidden', timeout: 15000 }).catch(() => {
       console.log('[4] Loading spinner nem volt látható vagy már eltűnt')

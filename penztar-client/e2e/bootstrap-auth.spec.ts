@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Bootstrap Auth + Database Cache E2E Tests
  *
  * Teszteli:
@@ -26,7 +26,7 @@ const API_BASE_URL =
 const BOOTSTRAP_COMPANY = process.env.PENZTAR_BOOTSTRAP_COMPANY_CODE || 'EBC'
 const BOOTSTRAP_WORKER = process.env.PENZTAR_BOOTSTRAP_WORKER_CODE || 'BORSI'
 const BOOTSTRAP_PASSWORD = process.env.PENZTAR_BOOTSTRAP_PASSWORD || '1234'
-const BOOTSTRAP_ROLE = process.env.PENZTAR_BOOTSTRAP_ROLE_CODE || 'CASHIER'
+const _BOOTSTRAP_ROLE = process.env.PENZTAR_BOOTSTRAP_ROLE_CODE || 'CASHIER'
 
 interface LoginResponse {
   token?: string
@@ -165,7 +165,7 @@ test.describe('Electron Bootstrap Auth + Database Cache', () => {
     expect(ratesList.length).toBeGreaterThan(0)
     
     // Ellenőrizd hogy legalább HUF van (HUF -> valuta pair)
-    const hasHUFRate = ratesList.some((r: any) => 
+    const hasHUFRate = ratesList.some((r: { targetCurrency?: string; sourceCurrency?: string }) => 
       r.targetCurrency === 'HUF' || r.sourceCurrency === 'HUF'
     )
     expect(hasHUFRate || ratesList.length > 0).toBe(true)

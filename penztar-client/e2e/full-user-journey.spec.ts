@@ -79,7 +79,7 @@ async function checkPageLoads(page: Page, path: string, label: string) {
   
   // No uncaught error overlay
   const errorOverlay = page.locator('[class*="error"], [class*="Error"]').first()
-  const hasErrorOverlay = await errorOverlay.isVisible().catch(() => false)
+  const _hasErrorOverlay = await errorOverlay.isVisible().catch(() => false)
   
   // Check for React error boundary or crash
   const crashText = await page.locator('text=/Something went wrong|Error|Hiba történt/i').first().isVisible().catch(() => false)
