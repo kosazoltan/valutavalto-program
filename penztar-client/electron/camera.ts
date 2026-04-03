@@ -1,8 +1,15 @@
 import { ipcMain, dialog } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
+import { RtspRecorder, type RtspCameraConfig, type RecordingSegment } from './rtsp-recorder';
+import { type EncryptionConfig, encryptFile, decryptFile, computeFileHash, generateNewKey } from './camera-encryption';
 
 const CAMERA_DIR = 'C:/valuta/camera';
+
+// --- RTSP Recorder singleton ---
+let rtspRecorder: RtspRecorder | null = null;
+const completedSegments: RecordingSegment[] = [];
+const MAX_SEGMENT_HISTORY = 500;
 
 function sanitizeId(id: string): string {
   const clean = id.replace(/[^a-zA-Z0-9_-]/g, '');
@@ -255,5 +262,146 @@ export function registerCameraHandlers(): void {
     }
 
     return { deletedCount };
+  });
+
+  // ═══════════════════════════════════════════
+  // RTSP IP kamera kezelés
+  // ═══════════════════════════════════════════
+
+  /**
+   * RTSP kamerákat konfigurál és indítja a rögzítést.
+   */
+  ipcMain.handle('camera-rtsp-start', async (
+    _event,
+    cameras: RtspCameraConfig[],
+    encryption?: { enabled: boolean; masterKeyBase64: string },
+  ): Promise<{ started: number; errors: string[] }> => {
+    const encConfig: EncryptionConfig = encryption ?? { enabled: false, masterKeyBase64: '' };
+
+    if (rtspRecorder) {
+      rtspRecorder.stopAll();
+    }
+
+    rtspRecorder = new RtspRecorder(CAMERA_DIR, encConfig);
+    const errors: string[] = [];
+
+    // Szegmens események kezelése
+    rtspRecorder.on('segment-completed', (segment: RecordingSegment) => {
+      completedSegments.push(segment);
+      if (completedSegments.length > MAX_SEGMENT_HISTORY) {
+        completedSegments.splice(0, completedSegments.length - MAX_SEGMENT_HISTORY);
+      }
+    });
+
+    rtspRecorder.on('segment-error', (cameraId: string, error: Error) => {
+      errors.push(`${cameraId}: ${error.message}`);
+    });
+
+    for (const cam of cameras) {
+      try {
+        rtspRecorder.addCamera(cam);
+      } catch (err) {
+        errors.push(`${cam.id}: ${(err as Error).message}`);
+      }
+    }
+
+    rtspRecorder.startAll();
+    return { started: rtspRecorder.cameraCount, errors };
+  });
+
+  /**
+   * RTSP rögzítés leállítása.
+   */
+  ipcMain.handle('camera-rtsp-stop', async (): Promise<{ stopped: boolean }> => {
+    if (rtspRecorder) {
+      rtspRecorder.stopAll();
+      rtspRecorder = null;
+    }
+    return { stopped: true };
+  });
+
+  /**
+   * RTSP kamerák státusza.
+   */
+  ipcMain.handle('camera-rtsp-status', async () => {
+    if (!rtspRecorder) {
+      return { running: false, cameras: [] };
+    }
+    return {
+      running: rtspRecorder.isRunning,
+      cameras: rtspRecorder.getStatus(),
+    };
+  });
+
+  /**
+   * Befejezett szegmensek lekérdezése.
+   */
+  ipcMain.handle('camera-rtsp-segments', async (
+    _event,
+    limit?: number,
+  ): Promise<RecordingSegment[]> => {
+    const n = limit ?? 50;
+    return completedSegments.slice(-n);
+  });
+
+  // ═══════════════════════════════════════════
+  // Fájl titkosítás / visszafejtés IPC
+  // ═══════════════════════════════════════════
+
+  /**
+   * Egyedi fájl titkosítása.
+   */
+  ipcMain.handle('camera-encrypt-file', async (
+    _event,
+    plainPath: string,
+    encryptedPath: string,
+    config: EncryptionConfig,
+  ): Promise<{ nonce: string }> => {
+    const resolved = path.resolve(plainPath);
+    if (!resolved.startsWith(path.resolve(CAMERA_DIR))) {
+      throw new Error('Fájl a kamera könyvtáron kívül esik');
+    }
+    const nonce = await encryptFile(resolved, path.resolve(encryptedPath), config);
+    return { nonce };
+  });
+
+  /**
+   * Titkosított fájl visszafejtése (lejátszáshoz, exporthoz).
+   */
+  ipcMain.handle('camera-decrypt-file', async (
+    _event,
+    encryptedPath: string,
+    plainPath: string,
+    config: EncryptionConfig,
+  ): Promise<{ success: boolean }> => {
+    const resolved = path.resolve(encryptedPath);
+    if (!resolved.startsWith(path.resolve(CAMERA_DIR))) {
+      throw new Error('Fájl a kamera könyvtáron kívül esik');
+    }
+    await decryptFile(resolved, path.resolve(plainPath), config);
+    return { success: true };
+  });
+
+  /**
+   * Fájl integritás ellenőrzés (SHA-256).
+   */
+  ipcMain.handle('camera-verify-hash', async (
+    _event,
+    filePath: string,
+    expectedHash: string,
+  ): Promise<{ valid: boolean; actualHash: string }> => {
+    const resolved = path.resolve(filePath);
+    if (!resolved.startsWith(path.resolve(CAMERA_DIR))) {
+      throw new Error('Fájl a kamera könyvtáron kívül esik');
+    }
+    const actualHash = computeFileHash(resolved);
+    return { valid: actualHash === expectedHash, actualHash };
+  });
+
+  /**
+   * Új titkosítási kulcs generálása.
+   */
+  ipcMain.handle('camera-generate-key', async (): Promise<{ keyBase64: string }> => {
+    return { keyBase64: generateNewKey() };
   });
 }

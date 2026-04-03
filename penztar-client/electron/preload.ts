@@ -437,6 +437,153 @@ contextBridge.exposeInMainWorld('electronAPI', {
   cameraLocalCleanup: (retentionDays: number): Promise<{ deletedCount: number }> =>
     ipcRenderer.invoke('camera-local-cleanup', retentionDays),
 
+  // --- RTSP IP kamera ---
+  cameraRtspStart: (
+    cameras: Array<{
+      id: string;
+      name: string;
+      rtspUrl: string;
+      type: 'public' | 'private';
+      fps: number;
+      resolution: { width: number; height: number };
+      segmentDurationSeconds: number;
+      retentionDays: number;
+    }>,
+    encryption?: { enabled: boolean; masterKeyBase64: string },
+  ): Promise<{ started: number; errors: string[] }> =>
+    ipcRenderer.invoke('camera-rtsp-start', cameras, encryption),
+
+  cameraRtspStop: (): Promise<{ stopped: boolean }> =>
+    ipcRenderer.invoke('camera-rtsp-stop'),
+
+  cameraRtspStatus: (): Promise<{
+    running: boolean;
+    cameras: Array<{
+      cameraId: string;
+      name: string;
+      type: 'public' | 'private';
+      recording: boolean;
+      currentSegment?: {
+        cameraId: string;
+        segmentPath: string;
+        startTime: string;
+        fileSizeBytes: number;
+        encrypted: boolean;
+      };
+    }>;
+  }> => ipcRenderer.invoke('camera-rtsp-status'),
+
+  cameraRtspSegments: (limit?: number): Promise<Array<{
+    cameraId: string;
+    segmentPath: string;
+    startTime: string;
+    endTime?: string;
+    fileSizeBytes: number;
+    sha256Hash?: string;
+    encrypted: boolean;
+    nonce?: string;
+  }>> => ipcRenderer.invoke('camera-rtsp-segments', limit),
+
+  // --- Titkosítás / hash ---
+  cameraEncryptFile: (
+    plainPath: string,
+    encryptedPath: string,
+    config: { enabled: boolean; masterKeyBase64: string },
+  ): Promise<{ nonce: string }> =>
+    ipcRenderer.invoke('camera-encrypt-file', plainPath, encryptedPath, config),
+
+  cameraDecryptFile: (
+    encryptedPath: string,
+    plainPath: string,
+    config: { enabled: boolean; masterKeyBase64: string },
+  ): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke('camera-decrypt-file', encryptedPath, plainPath, config),
+
+  cameraVerifyHash: (
+    filePath: string,
+    expectedHash: string,
+  ): Promise<{ valid: boolean; actualHash: string }> =>
+    ipcRenderer.invoke('camera-verify-hash', filePath, expectedHash),
+
+  cameraGenerateKey: (): Promise<{ keyBase64: string }> =>
+    ipcRenderer.invoke('camera-generate-key'),
+
+  // --- Videókezelő motor ---
+  videoFindSegments: (
+    dateFrom: string,
+    dateTo: string,
+    cameraId?: string,
+  ): Promise<Array<{
+    cameraId: string;
+    date: string;
+    filePath: string;
+    fileName: string;
+    fileSizeBytes: number;
+    createdAt: string;
+    encrypted: boolean;
+  }>> => ipcRenderer.invoke('video-find-segments', dateFrom, dateTo, cameraId),
+
+  videoFindByTransaction: (
+    transactionTime: string,
+    cameraId?: string,
+    windowMinutes?: number,
+  ): Promise<Array<{
+    cameraId: string;
+    date: string;
+    filePath: string;
+    fileName: string;
+    fileSizeBytes: number;
+    createdAt: string;
+    encrypted: boolean;
+  }>> => ipcRenderer.invoke('video-find-by-transaction', transactionTime, cameraId, windowMinutes),
+
+  videoDecryptForPlayback: (
+    encryptedPath: string,
+    encryptionConfig: { enabled: boolean; masterKeyBase64: string },
+    user?: string,
+  ): Promise<{ tempPath: string } | { error: string }> =>
+    ipcRenderer.invoke('video-decrypt-for-playback', encryptedPath, encryptionConfig, user),
+
+  videoVerifyIntegrity: (
+    filePath: string,
+    expectedHash: string,
+    user?: string,
+  ): Promise<{ valid: boolean; actualHash: string }> =>
+    ipcRenderer.invoke('video-verify-integrity', filePath, expectedHash, user),
+
+  videoRetentionCleanup: (
+    retentionDays?: number,
+    user?: string,
+  ): Promise<{ deletedFiles: number; freedBytes: number }> =>
+    ipcRenderer.invoke('video-retention-cleanup', retentionDays, user),
+
+  videoAuditLog: (
+    date?: string,
+    limit?: number,
+  ): Promise<Array<{
+    timestamp: string;
+    action: string;
+    user?: string;
+    cameraId?: string;
+    segmentPath?: string;
+    transactionId?: string;
+    receiptNumber?: string;
+    details?: string;
+    machineId: string;
+  }>> => ipcRenderer.invoke('video-audit-log', date, limit),
+
+  videoStorageStats: (): Promise<{
+    totalBytes: number;
+    segmentCount: number;
+    encryptedCount: number;
+    oldestDate: string | null;
+    newestDate: string | null;
+    availableBytes: number;
+  }> => ipcRenderer.invoke('video-storage-stats'),
+
+  videoCleanupTemp: (): Promise<{ cleaned: number }> =>
+    ipcRenderer.invoke('video-cleanup-temp'),
+
   // Okmány scan
   scanSaveDocument: (
     transactionId: string,

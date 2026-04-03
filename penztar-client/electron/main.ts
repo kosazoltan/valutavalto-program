@@ -48,6 +48,7 @@ import {
 import { printReceipt, type PrintReceiptData, PRINTER_CONFIG_KEY, SERIAL_PORT_CONFIG_KEY } from './printer';
 import { syncEngine } from './sync-engine';
 import { registerCameraHandlers } from './camera';
+import { registerVideoManagerHandlers } from './video-manager';
 import { registerScannerHandlers } from './scanner';
 import { registerUpdaterHandlers } from './updater';
 
@@ -596,6 +597,7 @@ app.whenReady().then(async () => {
 
   // IPC handlers regisztráció (app.whenReady() UTÁN, hogy ipcMain elérhető legyen)
   registerCameraHandlers();
+  registerVideoManagerHandlers();
   registerScannerHandlers();
   registerUpdaterHandlers();
 
