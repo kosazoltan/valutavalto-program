@@ -36,7 +36,7 @@ We highly encourage switching to the new `scan` command which is easier to use, 
         "account": "",
         "local_database_path": null,
         "safety_version": "3.7.0",
-        "timestamp": "2026-04-01 19:58:31",
+        "timestamp": "2026-04-02 19:48:13",
         "packages_found": 8,
         "vulnerabilities_found": 0,
         "vulnerabilities_ignored": 6,
@@ -61,7 +61,7 @@ We highly encourage switching to the new `scan` command which is easier to use, 
         "git": {
             "branch": "main",
             "tag": "",
-            "commit": "b455ed5740a4e1dbabb857e94aae7b47f727d06d",
+            "commit": "974d2741462a26eb96e7cab6013331f895b6a3bc",
             "dirty": "True",
             "origin": "https://github.com/kosazoltan/valutavalto-program.git"
         },
@@ -316,10 +316,11 @@ We highly encourage switching to the new `scan` command which is easier to use, 
                 "12.1.0"
             ],
             "secure_versions": [
+                "12.2.0",
                 "12.1.1"
             ],
-            "latest_version_without_known_vulnerabilities": "12.1.1",
-            "latest_version": "12.1.1",
+            "latest_version_without_known_vulnerabilities": "12.2.0",
+            "latest_version": "12.2.0",
             "more_info_url": "https://getsafety.com/p/pypi/pillow/97c/"
         }
     },

@@ -84,6 +84,32 @@ const DecadeReportPage = lazy(() => import('./pages/decade/DecadeReportPage'))
 // === Árfolyam-kezelés modul ===
 const RateCreationDashboard = lazy(() => import('./pages/ratemanagement/RateCreationDashboard'))
 
+// === Sprint 7 — Missing pages ===
+const CurrencyGroupPage = lazy(() => import('./pages/currencies/CurrencyGroupPage'))
+const MonthlyClosingPage = lazy(() => import('./pages/closing/MonthlyClosingPage'))
+const BackupPage = lazy(() => import('./pages/backup/BackupPage'))
+const ProfitPage = lazy(() => import('./pages/profit/ProfitPage'))
+const MnbReportPage = lazy(() => import('./pages/reports/MnbReportPage'))
+const InventoryPage = lazy(() => import('./pages/inventory/InventoryPage'))
+const WesternUnionPage = lazy(() => import('./pages/westernunion/WesternUnionPage'))
+const CompetitorPage = lazy(() => import('./pages/competitors/CompetitorPage'))
+const PoliceRequestPage = lazy(() => import('./pages/police/PoliceRequestPage'))
+const SealTrackingPage = lazy(() => import('./pages/seals/SealTrackingPage'))
+const PrintTemplatePage = lazy(() => import('./pages/print/PrintTemplatePage'))
+const LicensePage = lazy(() => import('./pages/licenses/LicensePage'))
+const SchedulerPage = lazy(() => import('./pages/scheduler/SchedulerPage'))
+const EmailPage = lazy(() => import('./pages/email/EmailPage'))
+const EmployeePage = lazy(() => import('./pages/employees/EmployeePage'))
+const HrkPage = lazy(() => import('./pages/hrk/HrkPage'))
+const LedDisplayPage = lazy(() => import('./pages/led/LedDisplayPage'))
+const DataImportPage = lazy(() => import('./pages/import/DataImportPage'))
+const StampPage = lazy(() => import('./pages/stamps/StampPage'))
+const StockSnapshotPage = lazy(() => import('./pages/stock/StockSnapshotPage'))
+const RateCategoryPage = lazy(() => import('./pages/rates/RateCategoryPage'))
+const RateHistoryPage = lazy(() => import('./pages/rates/RateHistoryPage'))
+const TransferDocumentPage = lazy(() => import('./pages/transfers/TransferDocumentPage'))
+const BookingExportPage = lazy(() => import('./pages/export/BookingExportPage'))
+
 // === Treasury (Értéktári) modul ===
 const TreasuryLayout = lazy(() => import('./pages/treasury/TreasuryLayout'))
 const TreasuryDashboard = lazy(() => import('./pages/treasury/TreasuryDashboard'))
@@ -402,7 +428,33 @@ export default function App() {
 
           {/* === Árfolyam-kezelés Routes === */}
           <Route path="/rate-management" element={<RateCreationDashboard />} />
-              <Route path="/trade" element={<Navigate to="/cashier" replace />} />
+          <Route path="/trade" element={<Navigate to="/cashier" replace />} />
+
+          {/* === Sprint 7 Routes === */}
+          <Route path="/currency-groups" element={<CurrencyGroupPage />} />
+          <Route path="/closing/monthly" element={<MonthlyClosingPage />} />
+          <Route path="/backup" element={<BackupPage />} />
+          <Route path="/profit" element={<ProfitPage />} />
+          <Route path="/reports/mnb" element={<MnbReportPage />} />
+          <Route path="/inventory" element={<InventoryPage />} />
+          <Route path="/western-union" element={<WesternUnionPage />} />
+          <Route path="/competitors" element={<CompetitorPage />} />
+          <Route path="/police-requests" element={<PoliceRequestPage />} />
+          <Route path="/seal-tracking" element={<SealTrackingPage />} />
+          <Route path="/print-templates" element={<PrintTemplatePage />} />
+          <Route path="/licenses" element={<LicensePage />} />
+          <Route path="/scheduler" element={<SchedulerPage />} />
+          <Route path="/email-settings" element={<EmailPage />} />
+          <Route path="/employees" element={<EmployeePage />} />
+          <Route path="/hrk" element={<HrkPage />} />
+          <Route path="/led-display" element={<LedDisplayPage />} />
+          <Route path="/data-import" element={<DataImportPage />} />
+          <Route path="/stamps" element={<StampPage />} />
+          <Route path="/stock-snapshots" element={<StockSnapshotPage />} />
+          <Route path="/rates/categories" element={<RateCategoryPage />} />
+          <Route path="/rates/history" element={<RateHistoryPage />} />
+          <Route path="/transfer-documents" element={<TransferDocumentPage />} />
+          <Route path="/booking-export" element={<BookingExportPage />} />
 
           </Route>
         </Routes>
