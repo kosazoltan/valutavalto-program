@@ -47,4 +47,10 @@ public interface DataCollectionRepository extends JpaRepository<DataCollection, 
      */
     List<DataCollection> findByBranchIdAndCollectionDateBetween(
         UUID branchId, LocalDate from, LocalDate to);
+
+    /**
+     * Összesítő: adott napra az összes iroda utolsó gyűjtési állapota.
+     * Ha nincs rekord a napra, üres lista.
+     */
+    List<DataCollection> findByCollectionDateOrderByBranchIdAsc(LocalDate collectionDate);
 }

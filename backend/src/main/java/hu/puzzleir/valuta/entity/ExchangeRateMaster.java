@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -16,6 +17,7 @@ import java.util.UUID;
  *
  * Workflow: DRAFT → APPROVED → PUBLISHED → ARCHIVED/REVOKED
  */
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Entity
 @Table(name = "exchange_rate_master", indexes = {
     @Index(name = "idx_erm_company_currency", columnList = "company_id, currency_id"),

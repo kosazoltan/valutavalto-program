@@ -166,10 +166,18 @@ public class RateApprovalService {
     }
 
     /**
-     * Jóváhagyás történet egy iroda számára.
+     * Jóváhagyás történet — ha branchId null, az összes jóváhagyás visszaadódik.
      */
     @Transactional(readOnly = true)
     public List<RateApprovalDto> getApprovalHistory(UUID branchId) {
+        if (branchId == null) {
+            return rateApprovalRepository.findAll(
+                    org.springframework.data.domain.Sort.by(
+                            org.springframework.data.domain.Sort.Direction.DESC, "requestedAt"))
+                    .stream()
+                    .map(this::toDto)
+                    .collect(Collectors.toList());
+        }
         return rateApprovalRepository.findByBranchIdOrderByRequestedAtDesc(branchId)
                 .stream()
                 .map(this::toDto)

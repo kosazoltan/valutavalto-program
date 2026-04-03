@@ -193,6 +193,31 @@ public class DataCollectionService {
     }
 
     /**
+     * Összesítő: adott nap összes irodájának gyűjtési állapota.
+     * Param nélküli /status hívás esetén kerül meghívásra.
+     */
+    @Transactional(readOnly = true)
+    public List<hu.puzzleir.valuta.dto.datacollection.DataCollectionDto> getSummary(LocalDate date) {
+        return dataCollectionRepository.findByCollectionDateOrderByBranchIdAsc(date)
+            .stream()
+            .map(dc -> hu.puzzleir.valuta.dto.datacollection.DataCollectionDto.builder()
+                .id(dc.getId())
+                .branchId(dc.getBranch() != null ? dc.getBranch().getId() : null)
+                .collectionDate(dc.getCollectionDate())
+                .status(dc.getStatus().name())
+                .collectionType(dc.getCollectionType().name())
+                .transactionCount(dc.getTransactionCount())
+                .totalBuyHuf(dc.getTotalBuyHuf())
+                .totalSellHuf(dc.getTotalSellHuf())
+                .startedAt(dc.getStartedAt())
+                .completedAt(dc.getCompletedAt())
+                .errorMessage(dc.getErrorMessage())
+                .createdAt(dc.getCreatedAt())
+                .build())
+            .collect(java.util.stream.Collectors.toList());
+    }
+
+    /**
      * Sikertelen gyűjtések újrapróbálása.
      *
      * @return újrapróbált gyűjtések száma

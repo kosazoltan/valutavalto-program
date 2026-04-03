@@ -299,12 +299,15 @@ public class ErtektarController {
     /**
      * Osszevont riport lekerdezese datumtartomany alapjan.
      * GET /api/v1/ertektar/reports/consolidated?from=2026-03-01&to=2026-03-15
+     * Ha a parameterek hianyoznak, az aktualis honap elso napjatol a mai napig ad vissza adatot.
      */
     @GetMapping("/reports/consolidated")
     public ResponseEntity<ConsolidatedReportResponseDto> getConsolidatedReport(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return ResponseEntity.ok(consolidatedReportService.getConsolidatedReport(from, to));
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        LocalDate resolvedTo = to != null ? to : LocalDate.now();
+        LocalDate resolvedFrom = from != null ? from : resolvedTo.withDayOfMonth(1);
+        return ResponseEntity.ok(consolidatedReportService.getConsolidatedReport(resolvedFrom, resolvedTo));
     }
 
     // === ALARENDELT PENZTARAK MONITORING ===

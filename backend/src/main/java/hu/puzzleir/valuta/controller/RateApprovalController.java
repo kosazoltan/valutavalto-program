@@ -65,7 +65,7 @@ public class RateApprovalController {
     @GetMapping("/history")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<RateApprovalDto>> getApprovalHistory(
-            @RequestParam UUID branchId) {
+            @RequestParam(required = false) UUID branchId) {
         return ResponseEntity.ok(rateApprovalService.getApprovalHistory(branchId));
     }
 

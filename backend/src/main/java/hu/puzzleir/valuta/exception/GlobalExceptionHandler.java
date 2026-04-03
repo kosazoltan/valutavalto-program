@@ -11,6 +11,7 @@ import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -121,6 +122,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleMissingRequestHeader(MissingRequestHeaderException ex) {
         log.warn("Missing request header: {}", ex.getHeaderName());
         return buildResponse(HttpStatus.BAD_REQUEST, "BAD_REQUEST", "Hianyzo fejléc: " + ex.getHeaderName());
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponse> handleMissingRequestParam(MissingServletRequestParameterException ex) {
+        log.warn("Missing request parameter: {}", ex.getParameterName());
+        return buildResponse(HttpStatus.BAD_REQUEST, "BAD_REQUEST",
+                "Kötelező paraméter hiányzik: " + ex.getParameterName());
     }
 
     // --- 400 Bad Request (custom validation) ---

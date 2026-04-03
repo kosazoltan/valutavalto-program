@@ -13,7 +13,6 @@ import {
   LogOut,
   Menu,
   X,
-  Calculator,
   ChevronDown,
   Bell,
   User,
@@ -23,7 +22,6 @@ import {
   Sun,
   Loader2,
   HardDrive,
-  FileSpreadsheet,
   Camera,
   Download,
 } from 'lucide-react'
@@ -48,7 +46,6 @@ const menuGroups = [
     items: [
       { path: '/customers', label: 'Ügyfelek', icon: Users },
       { path: '/rates', label: 'Árfolyamok', icon: TrendingUp },
-      { path: '/rates/creation', label: 'Árfolyamkészítés', icon: Calculator },
     ]
   },
   {
@@ -56,8 +53,6 @@ const menuGroups = [
     items: [
       { path: '/cashdesk', label: 'Pénztár', icon: Wallet },
       { path: '/reports', label: 'Riportok', icon: FileText },
-      { path: '/darius', label: 'Darius jelentések', icon: FileSpreadsheet, minRole: 'MANAGER' as const },
-      { path: '/decade', label: 'Dekád jelentések', icon: FileSpreadsheet, minRole: 'MANAGER' as const },
     ]
   },
   {

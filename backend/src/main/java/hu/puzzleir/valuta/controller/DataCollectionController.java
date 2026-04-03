@@ -15,6 +15,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.lang.Nullable;
+
 /**
  * Adatgyűjtő szerver controller.
  *
@@ -55,13 +57,20 @@ public class DataCollectionController {
     /**
      * Gyűjtés státusz lekérdezése.
      * GET /api/v1/data-collection/status
+     * Ha branchId és date paraméterek hiányoznak, az összes iroda mai állapotát adja vissza összefoglalóként.
      */
     @GetMapping("/status")
-    public ResponseEntity<DataCollectionDto> getStatus(
-            @RequestParam UUID branchId,
-            @RequestParam LocalDate date) {
-        DataCollection dc = dataCollectionService.getCollectionStatus(branchId, date);
-        return ResponseEntity.ok(toDto(dc));
+    public ResponseEntity<?> getStatus(
+            @RequestParam(required = false) @Nullable UUID branchId,
+            @RequestParam(required = false) @Nullable LocalDate date) {
+        if (branchId != null && date != null) {
+            DataCollection dc = dataCollectionService.getCollectionStatus(branchId, date);
+            return ResponseEntity.ok(toDto(dc));
+        }
+        // Summary: összes iroda utolsó gyűjtési állapota
+        LocalDate resolvedDate = date != null ? date : LocalDate.now();
+        List<DataCollectionDto> summary = dataCollectionService.getSummary(resolvedDate);
+        return ResponseEntity.ok(summary);
     }
 
     /**
