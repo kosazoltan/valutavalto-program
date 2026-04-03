@@ -52,14 +52,14 @@ import { registerVideoManagerHandlers } from './video-manager';
 import { registerScannerHandlers } from './scanner';
 import { registerUpdaterHandlers } from './updater';
 
-const isDev = !app.isPackaged;
+const isDev = !app.isPackaged && process.env.ELECTRON_FORCE_PACKAGED !== '1';
 const devServerUrl = process.env.ELECTRON_RENDERER_URL ?? 'http://127.0.0.1:3000';
 const devUserDataDir = process.env.ELECTRON_DEV_USER_DATA;
 const shouldAutoOpenDevTools =
   isDev && ['1', 'true', 'yes', 'on'].includes((process.env.ELECTRON_OPEN_DEVTOOLS ?? '').toLowerCase());
 
-// Force a local writable profile/cache path in dev to avoid Windows cache lock/ACL issues.
-if (isDev && devUserDataDir) {
+// Force a local writable profile/cache path when ELECTRON_DEV_USER_DATA is set (dev or E2E test).
+if (devUserDataDir) {
   app.commandLine.appendSwitch('user-data-dir', devUserDataDir);
   app.setPath('userData', devUserDataDir);
   app.setPath('sessionData', path.join(devUserDataDir, 'session'));
