@@ -2,3 +2,6 @@
 release/
 
 dist/
+
+.e2e-userdata/
+playwright-artifacts/
