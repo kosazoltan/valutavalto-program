@@ -54,7 +54,7 @@ import { registerUpdaterHandlers } from './updater';
 
 const isDev = !app.isPackaged && !process.argv.includes('--force-packaged') && process.env.ELECTRON_FORCE_PACKAGED !== '1';
 const devServerUrl = process.env.ELECTRON_RENDERER_URL ?? 'http://127.0.0.1:3000';
-console.error(`[BOOT] isDev=${isDev} isPackaged=${app.isPackaged} argv_has_force=${process.argv.includes('--force-packaged')} env_force=${process.env.ELECTRON_FORCE_PACKAGED}`);
+
 const devUserDataDir = process.env.ELECTRON_DEV_USER_DATA;
 const shouldAutoOpenDevTools =
   isDev && ['1', 'true', 'yes', 'on'].includes((process.env.ELECTRON_OPEN_DEVTOOLS ?? '').toLowerCase());
