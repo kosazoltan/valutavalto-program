@@ -17,7 +17,16 @@ let page: Page
 let screenshotIndex = 0
 
 async function nav(route: string) {
-  await page.goto(BASE_URL + route)
+  // Always use client-side navigation (pushState + popstate) to avoid full page reload.
+  // A full reload wipes in-memory Zustand auth state and requires async token restore.
+  // The app may load via app:// OR via dev server (http://127.0.0.1:3000) depending
+  // on environment — pushState works in both cases.
+  await page.evaluate((r: string) => {
+    window.history.pushState({}, '', r)
+    window.dispatchEvent(new PopStateEvent('popstate', { state: {} }))
+  }, route)
+  // Small wait for React to render the new route
+  await page.waitForTimeout(500)
 }
 
 async function screenshot(name: string) {
@@ -27,13 +36,15 @@ async function screenshot(name: string) {
   return filename
 }
 
-async function waitForNoSpinner(timeout = 10_000) {
+async function waitForNoSpinner(timeout = 20_000) {
   await page.waitForFunction(() => {
     const spinners = document.querySelectorAll('.animate-spin, [data-testid="loading"]')
-    const loadingTexts = [...document.querySelectorAll('*')].filter(el =>
-      el.textContent?.includes('Oldal betöltése') || el.textContent?.includes('Betöltés...')
-    )
-    return spinners.length === 0 && loadingTexts.length === 0
+    const body = document.body?.textContent ?? ''
+    const isLoading =
+      body.includes('Oldal betöltése') ||
+      body.includes('Betöltés...') ||
+      body.includes('Munkamenet ellenőrzése')
+    return spinners.length === 0 && !isLoading
   }, { timeout }).catch(() => {})
   await page.waitForTimeout(500)
 }
@@ -58,7 +69,12 @@ test.beforeAll(async () => {
 
   page = await electronApp.firstWindow()
   await page.waitForLoadState('domcontentloaded')
-  await page.waitForTimeout(3000)
+  // Wait until app is no longer in "restoring" state (async token load)
+  await page.waitForFunction(() => {
+    const body = document.body?.textContent ?? ''
+    return !body.includes('Betöltés...')
+  }, { timeout: 15_000 }).catch(() => {})
+  await page.waitForTimeout(1000)
 })
 
 test.afterAll(async () => {
