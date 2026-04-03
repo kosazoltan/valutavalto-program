@@ -71,6 +71,14 @@ public class VaultTransferService {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Long workerId = SecurityUtils.getCurrentWorkerId();
 
+        // Irány validáció: forrás ÉS cél oldal kötelező (vault_id VAGY branch_code)
+        boolean hasSource = request.getSourceVaultId() != null || (request.getSourceBranchCode() != null && !request.getSourceBranchCode().isBlank());
+        boolean hasTarget = request.getTargetVaultId() != null || (request.getTargetBranchCode() != null && !request.getTargetBranchCode().isBlank());
+        if (!hasSource || !hasTarget) {
+            throw new hu.puzzleir.valuta.exception.ValidationException(
+                "Forrás és cél megadása kötelező (sourceVaultId/sourceBranchCode ÉS targetVaultId/targetBranchCode)");
+        }
+
         // Sorszám generálás
         Long seq = vaultTransferRepository.getNextTransferNumber();
         String transferNumber = "VT-" + LocalDateTime.now().format(NUM_FORMAT) + "-" + String.format("%04d", seq);
