@@ -5,3 +5,6 @@ dist/
 
 .e2e-userdata*/
 playwright-artifacts/
+.e2e-test*/
+test-argv.cjs
+test-*.png
