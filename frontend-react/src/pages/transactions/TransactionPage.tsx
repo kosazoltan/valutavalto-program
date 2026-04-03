@@ -269,6 +269,7 @@ export default function TransactionPage() {
             disabled={isSubmitting}
             className="form-button-primary flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
             data-action="save"
+            data-testid="tx-save-print"
           >
             <Printer size={16} />
             {isSubmitting ? 'Mentés...' : 'Mentés és nyomtatás'}
@@ -296,6 +297,7 @@ export default function TransactionPage() {
             <button
               onClick={() => setTransactionType('BUY')}
               onKeyDown={(e) => { if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); setTransactionType('SELL') } }}
+              data-testid="tx-type-buy"
               className={`flex-1 py-2 text-center font-semibold border rounded-l focus:outline-none focus:ring-2 focus:ring-primary ${
                 transactionType === 'BUY' ? 'bg-green-600 text-white border-green-700' : 'bg-gray-100 border-form-border hover:bg-gray-200'
               }`}
@@ -306,6 +308,7 @@ export default function TransactionPage() {
             <button
               onClick={() => setTransactionType('SELL')}
               onKeyDown={(e) => { if (e.key === 'ArrowLeft' || e.key === ' ') { e.preventDefault(); setTransactionType('BUY') } }}
+              data-testid="tx-type-sell"
               className={`flex-1 py-2 text-center font-semibold border rounded-r focus:outline-none focus:ring-2 focus:ring-primary ${
                 transactionType === 'SELL' ? 'bg-blue-600 text-white border-blue-700' : 'bg-gray-100 border-form-border hover:bg-gray-200'
               }`}
@@ -339,6 +342,7 @@ export default function TransactionPage() {
                 allowNegative={false}
                 autoFocus
                 step="0.01"
+                data-testid="tx-foreign-amount"
               />
             </div>
             <div className="text-center text-gray-400">
@@ -357,6 +361,7 @@ export default function TransactionPage() {
                 allowNegative={false}
                 min={0}
                 step="0.01"
+                data-testid="tx-huf-amount"
               />
             </div>
           </div>

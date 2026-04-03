@@ -16,6 +16,7 @@ interface NumberInputProps {
   id?: string
   name?: string
   disabled?: boolean
+  'data-testid'?: string
 }
 
 /**
@@ -39,7 +40,8 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
       title,
       id,
       name,
-      disabled
+      disabled,
+      'data-testid': dataTestId,
     },
     ref
   ) => {
@@ -159,6 +161,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
         min={min}
         max={max}
         step={step}
+        data-testid={dataTestId}
       />
     )
   }

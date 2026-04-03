@@ -51,12 +51,14 @@ export default function CurrencySelector({
         tabIndex={0}
         role="listbox"
         aria-label="Deviza választás"
+        data-testid="currency-selector"
         onKeyDown={handleKeyDown}
       >
         {currencyRates.map((currency, index) => (
           <button
             key={currency.id}
             onClick={() => onSelect(currency)}
+            data-testid={`currency-${currency.code}`}
             className={`w-full text-left p-2 border rounded transition-colors focus:outline-none ${
               selectedCurrency?.id === currency.id
                 ? 'bg-primary text-white border-primary ring-2 ring-primary ring-offset-2'

@@ -218,7 +218,7 @@ export default function LoginPage() {
 
           {/* Error message */}
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-2 rounded mb-3">
+            <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-2 rounded mb-3" data-testid="login-error">
               {error}
             </div>
           )}
@@ -234,6 +234,7 @@ export default function LoginPage() {
                   value={companyCode}
                   onChange={(e) => setCompanyCode(e.target.value.toUpperCase())}
                   className="form-input flex-1"
+                  data-testid="login-company-code"
                 />
               </div>
             </div>
@@ -249,6 +250,7 @@ export default function LoginPage() {
                   onChange={(e) => setWorkerCode(e.target.value.toUpperCase())}
                   className="form-input flex-1"
                   autoFocus
+                  data-testid="login-worker-code"
                 />
               </div>
             </div>
@@ -263,6 +265,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="form-input flex-1"
+                  data-testid="login-password"
                 />
                 <button
                   type="button"
@@ -290,6 +293,7 @@ export default function LoginPage() {
                 type="submit"
                 className="form-button-primary px-6"
                 disabled={loading || !companyCode || !workerCode || !password}
+                data-testid="login-submit"
               >
                 {loading ? 'Bejelentkezés...' : 'Bejelentkezés'}
               </button>
