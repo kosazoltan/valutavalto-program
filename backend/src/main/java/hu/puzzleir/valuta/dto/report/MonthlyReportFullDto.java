@@ -66,6 +66,9 @@ public class MonthlyReportFullDto {
     @Builder.Default private BigDecimal ecommerceExpense = BigDecimal.ZERO;
     @Builder.Default private BigDecimal ecommerceBalance = BigDecimal.ZERO;
 
+    // --- Penztarak kozotti mozgasok (Delphi: AtadAtvetLista) ---
+    private List<TransferLineDto> transferLines;
+
     // --- Munkanapos bontás ---
     private int workingDays;
     private int closedDays;      // tenylegesen lezart napok szama
@@ -85,5 +88,18 @@ public class MonthlyReportFullDto {
         @Builder.Default private BigDecimal avgBuyRate = BigDecimal.ZERO;
         @Builder.Default private BigDecimal avgSellRate = BigDecimal.ZERO;
         @Builder.Default private BigDecimal mnbRate = BigDecimal.ZERO;   // MNB arfolyam ho utolso munkanap
+    }
+
+    /**
+     * Penztarak kozotti mozgas sor (Delphi: AtadAtvetLista).
+     * Devizanemenként aggregalt atvett/atadott/netto osszegek.
+     */
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class TransferLineDto {
+        private String currencyCode;
+        private String currencyName;
+        @Builder.Default private BigDecimal receivedAmount = BigDecimal.ZERO;   // Atvett (bejovo)
+        @Builder.Default private BigDecimal sentAmount = BigDecimal.ZERO;       // Atadott (kimeno)
+        @Builder.Default private BigDecimal netAmount = BigDecimal.ZERO;        // Netto (atvett - atadott)
     }
 }

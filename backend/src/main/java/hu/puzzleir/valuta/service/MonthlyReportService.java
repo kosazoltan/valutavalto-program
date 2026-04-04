@@ -11,8 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.MonthDay;
 import java.time.YearMonth;
 import java.util.*;
 
@@ -36,6 +37,22 @@ public class MonthlyReportService {
     private final ExchangeRateRepository exchangeRateRepository;
     private final CurrencyRepository currencyRepository;
     private final MnbExchangeRateService mnbExchangeRateService;
+    private final TransferRepository transferRepository;
+
+    /**
+     * Magyar fix unnepnapok (nem mozgo, evtol fuggetlen).
+     * Mozgo unnepnapok (husvet, punkosd) nem tartalmazottak — bovitheto kesobbi fazisban.
+     */
+    private static final Set<MonthDay> HUNGARIAN_FIXED_HOLIDAYS = Set.of(
+            MonthDay.of(1, 1),   // Ujev
+            MonthDay.of(3, 15),  // Marcius 15
+            MonthDay.of(5, 1),   // Munka unnepe
+            MonthDay.of(8, 20),  // Allamalapitas
+            MonthDay.of(10, 23), // Oktober 23
+            MonthDay.of(11, 1),  // Mindenszentek
+            MonthDay.of(12, 25), // Karacsony 1
+            MonthDay.of(12, 26)  // Karacsony 2
+    );
 
     public ReportService.MonthlyTurnoverReport generateMonthlyTurnoverReport(Integer year, Integer month) {
         return reportService.generateMonthlyTurnoverReport(year, month);
@@ -90,7 +107,6 @@ public class MonthlyReportService {
         }
 
         // MNB arfolyamok
-        MonthlyClosingService monthlyClosingService = null; // not injected, get last business day
         LocalDate lastBusinessDay = getLastBusinessDay(monthEnd);
         Map<String, MnbExchangeRateCache> mnbRates = mnbExchangeRateService.getRatesForDate(lastBusinessDay);
 
@@ -201,21 +217,31 @@ public class MonthlyReportService {
         BigDecimal afaIncome = sumSubledgerField(branchId, monthStart, monthEnd, "WU_VAT", "HUF", "income");
         BigDecimal afaExpense = sumSubledgerField(branchId, monthStart, monthEnd, "WU_VAT", "HUF", "expense");
 
-        // 4. E-kereskedelem
+        // 4. Kezelesi dij (Delphi: KDAT — HANDLING_FEE subledger)
+        BigDecimal handlingFeeOpening = getSubledgerValue(branchId, monthStart, "HANDLING_FEE", "HUF", true);
+        BigDecimal handlingFeeBalance = getSubledgerValue(branchId, monthEnd, "HANDLING_FEE", "HUF", false);
+        BigDecimal handlingFeeIncome = sumSubledgerField(branchId, monthStart, monthEnd, "HANDLING_FEE", "HUF", "income");
+        BigDecimal handlingFeeExpense = sumSubledgerField(branchId, monthStart, monthEnd, "HANDLING_FEE", "HUF", "expense");
+
+        // 5. E-kereskedelem
         BigDecimal ecomOpening = getSubledgerValue(branchId, monthStart, "ECOMMERCE", "HUF", true);
         BigDecimal ecomBalance = getSubledgerValue(branchId, monthEnd, "ECOMMERCE", "HUF", false);
         BigDecimal ecomIncome = sumSubledgerField(branchId, monthStart, monthEnd, "ECOMMERCE", "HUF", "income");
         BigDecimal ecomExpense = sumSubledgerField(branchId, monthStart, monthEnd, "ECOMMERCE", "HUF", "expense");
 
-        // 5. Munkanapok
+        // 6. Penztar kozotti mozgasok (Delphi: AtadAtvetLista)
+        List<MonthlyReportFullDto.TransferLineDto> transferLines = buildTransferLines(
+                branchId, monthStart, monthEnd, currencyNameMap);
+
+        // 7. Munkanapok
         int workingDays = 0;
         for (LocalDate d = monthStart; !d.isAfter(monthEnd); d = d.plusDays(1)) {
-            if (d.getDayOfWeek().getValue() <= 5) workingDays++;
+            if (isBusinessDay(d)) workingDays++;
         }
         int closedDays = (int) dailyBalanceRepository.findByBranchAndMonth(branchId, ym.getYear(), ym.getMonthValue())
                 .stream().map(DailyBalance::getBalanceDate).distinct().count();
 
-        // B6: branch cim + adoszam
+        // Branch cim + adoszam
         String branchAddress = branch.getAddress();
         String taxId = branch.getCompany() != null ? branch.getCompany().getTaxNumber() : null;
 
@@ -248,17 +274,63 @@ public class MonthlyReportService {
                 .afaIncome(afaIncome)
                 .afaExpense(afaExpense)
                 .afaBalance(afaBalance)
-                .handlingFeeOpening(BigDecimal.ZERO) // TODO: HANDLING_FEE subledger
-                .handlingFeeIncome(BigDecimal.ZERO)
-                .handlingFeeExpense(BigDecimal.ZERO)
-                .handlingFeeBalance(BigDecimal.ZERO)
+                .handlingFeeOpening(handlingFeeOpening)
+                .handlingFeeIncome(handlingFeeIncome)
+                .handlingFeeExpense(handlingFeeExpense)
+                .handlingFeeBalance(handlingFeeBalance)
                 .ecommerceOpening(ecomOpening)
                 .ecommerceIncome(ecomIncome)
                 .ecommerceExpense(ecomExpense)
                 .ecommerceBalance(ecomBalance)
+                .transferLines(transferLines)
                 .workingDays(workingDays)
                 .closedDays(closedDays)
                 .build();
+    }
+
+    // ============ TRANSFER (Delphi: AtadAtvetLista) ============
+
+    /**
+     * Penztarak kozotti mozgasok havi osszesitese (Delphi: AtadAtvetGyujtes + AtadAtvetLista).
+     * Devizanemenként aggregalja a bejovo es kimeno transfer osszegeket.
+     */
+    private List<MonthlyReportFullDto.TransferLineDto> buildTransferLines(
+            UUID branchId, LocalDate start, LocalDate end, Map<String, String> currencyNameMap) {
+
+        Map<String, BigDecimal> inMap = new HashMap<>();
+        Map<String, BigDecimal> outMap = new HashMap<>();
+
+        // Napi bontasban aggregalunk (transferRepository.sumTransfersIn/Out napi szintu)
+        for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
+            for (String cc : currencyNameMap.keySet()) {
+                BigDecimal in = transferRepository.sumTransfersIn(branchId, d, cc);
+                BigDecimal out = transferRepository.sumTransfersOut(branchId, d, cc);
+                if (in.compareTo(BigDecimal.ZERO) != 0) {
+                    inMap.merge(cc, in, BigDecimal::add);
+                }
+                if (out.compareTo(BigDecimal.ZERO) != 0) {
+                    outMap.merge(cc, out, BigDecimal::add);
+                }
+            }
+        }
+
+        Set<String> allCc = new TreeSet<>();
+        allCc.addAll(inMap.keySet());
+        allCc.addAll(outMap.keySet());
+
+        List<MonthlyReportFullDto.TransferLineDto> lines = new ArrayList<>();
+        for (String cc : allCc) {
+            BigDecimal received = inMap.getOrDefault(cc, BigDecimal.ZERO);
+            BigDecimal sent = outMap.getOrDefault(cc, BigDecimal.ZERO);
+            lines.add(MonthlyReportFullDto.TransferLineDto.builder()
+                    .currencyCode(cc)
+                    .currencyName(currencyNameMap.getOrDefault(cc, cc))
+                    .receivedAmount(received)
+                    .sentAmount(sent)
+                    .netAmount(received.subtract(sent))
+                    .build());
+        }
+        return lines;
     }
 
     // ============ HELPER ============
@@ -281,38 +353,40 @@ public class MonthlyReportService {
 
     /**
      * Subledger havi osszesites (income/expense a honapban).
-     * Osszegyujti az osszes napi snapshot income/expense-t.
+     * Egyetlen range query-vel keri le az osszes napi snapshot-ot.
      */
     private BigDecimal sumSubledgerField(UUID branchId, LocalDate start, LocalDate end,
                                          String subledgerType, String currencyCode, String field) {
-        BigDecimal sum = BigDecimal.ZERO;
         List<DailySubledgerSnapshot> snaps = subledgerSnapshotRepository
-                .findByBranchIdAndSnapshotDate(branchId, start);
-        // findByBranchIdAndSnapshotDate only returns one date — need range query
-        // Fallback: iterate days
-        for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
-            Optional<DailySubledgerSnapshot> snap = subledgerSnapshotRepository
-                    .findByBranchIdAndSnapshotDateAndSubledgerTypeAndCurrencyCode(
-                            branchId, d, subledgerType, currencyCode);
-            if (snap.isPresent()) {
-                BigDecimal val = "income".equals(field)
-                        ? nz(snap.get().getIncome())
-                        : nz(snap.get().getExpense());
-                sum = sum.add(val);
-            }
+                .findByBranchIdAndSnapshotDateBetweenAndSubledgerTypeAndCurrencyCode(
+                        branchId, start, end, subledgerType, currencyCode);
+        BigDecimal sum = BigDecimal.ZERO;
+        for (DailySubledgerSnapshot snap : snaps) {
+            BigDecimal val = "income".equals(field) ? nz(snap.getIncome()) : nz(snap.getExpense());
+            sum = sum.add(val);
         }
         return sum;
     }
 
     /**
-     * Ho utolso munkanapja (hetvege + magyar unnepnapok kizarasa).
+     * Ho utolso munkanapja (hetvege + magyar fix unnepnapok kizarasa).
      */
-    private LocalDate getLastBusinessDay(LocalDate monthEnd) {
+    LocalDate getLastBusinessDay(LocalDate monthEnd) {
         LocalDate d = monthEnd;
-        while (d.getDayOfWeek() == java.time.DayOfWeek.SATURDAY
-                || d.getDayOfWeek() == java.time.DayOfWeek.SUNDAY) {
+        while (!isBusinessDay(d)) {
             d = d.minusDays(1);
         }
         return d;
     }
+
+    /**
+     * Munkanap-e (nem hetvege es nem magyar fix unnepnap).
+     */
+    private boolean isBusinessDay(LocalDate date) {
+        if (date.getDayOfWeek() == DayOfWeek.SATURDAY || date.getDayOfWeek() == DayOfWeek.SUNDAY) {
+            return false;
+        }
+        return !HUNGARIAN_FIXED_HOLIDAYS.contains(MonthDay.of(date.getMonthValue(), date.getDayOfMonth()));
+    }
+
 }

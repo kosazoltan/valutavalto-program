@@ -6,6 +6,7 @@ import hu.puzzleir.valuta.service.MonthlyClosingPdfService;
 import hu.puzzleir.valuta.service.MonthlyClosingService;
 import hu.puzzleir.valuta.service.MonthlyReportService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -27,6 +28,7 @@ import java.util.UUID;
  * - GET  /{branchId}/{yearMonth}  — havi összesítő lekérdezés
  * - GET  /{branchId}              — összes lezárt hónap listája
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/closing/monthly")
 @RequiredArgsConstructor
@@ -87,12 +89,19 @@ public class MonthlyClosingController {
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<byte[]> getMonthlyClosingPdf(
             @PathVariable UUID branchId,
-            @PathVariable String yearMonth) throws IOException {
-        byte[] pdf = monthlyClosingPdfService.generatePdf(branchId, yearMonth);
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=havi-zaras-" + yearMonth + "-" + branchId + ".pdf")
-                .contentType(MediaType.APPLICATION_PDF)
-                .body(pdf);
+            @PathVariable String yearMonth) {
+        try {
+            byte[] pdf = monthlyClosingPdfService.generatePdf(branchId, yearMonth);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=havi-zaras-" + yearMonth + "-" + branchId + ".pdf")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(pdf);
+        } catch (IOException e) {
+            log.error("PDF generalasi hiba: branchId={}, yearMonth={}", branchId, yearMonth, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(("{\"error\":\"PDF generalasi hiba: " + e.getMessage() + "\"}").getBytes());
+        }
     }
 }

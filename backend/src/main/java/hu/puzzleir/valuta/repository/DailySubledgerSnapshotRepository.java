@@ -19,4 +19,12 @@ public interface DailySubledgerSnapshotRepository extends JpaRepository<DailySub
 
     boolean existsByBranchIdAndSnapshotDateAndSubledgerType(
             UUID branchId, LocalDate snapshotDate, String subledgerType);
+
+    /**
+     * Havi range query: adott idoszak osszes snapshot-ja subledger tipus + valuta szerint.
+     * N+1 query eliminacio — egyetlen DB hivas a napi iteracio helyett.
+     */
+    List<DailySubledgerSnapshot> findByBranchIdAndSnapshotDateBetweenAndSubledgerTypeAndCurrencyCode(
+            UUID branchId, LocalDate startDate, LocalDate endDate,
+            String subledgerType, String currencyCode);
 }

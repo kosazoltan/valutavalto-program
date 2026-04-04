@@ -86,6 +86,16 @@ class MonthlyClosingPdfServiceTest {
                 .ecommerceIncome(new BigDecimal("300000"))
                 .ecommerceExpense(new BigDecimal("150000"))
                 .ecommerceBalance(new BigDecimal("650000"))
+                // Transfer lines (AtadAtvet)
+                .transferLines(List.of(
+                        MonthlyReportFullDto.TransferLineDto.builder()
+                                .currencyCode("EUR")
+                                .currencyName("Euro")
+                                .receivedAmount(new BigDecimal("2000"))
+                                .sentAmount(new BigDecimal("500"))
+                                .netAmount(new BigDecimal("1500"))
+                                .build()
+                ))
                 .workingDays(22)
                 .closedDays(20)
                 .build();
@@ -118,8 +128,15 @@ class MonthlyClosingPdfServiceTest {
             assertThat(text).contains("EUR");
             assertThat(text).contains("USD");
 
-            // Forgalom
-            assertThat(text).contains("HAVI BANKJEGY-FORGALOM KIMUTATASA");
+            // Transfer (AtadAtvet)
+            assertThat(text).contains("PENZTARAK KOZOTTI MOZGASOK");
+            assertThat(text).contains("ATVETT");
+            assertThat(text).contains("ATADOTT");
+
+            // Forgalom I + II + osszesites
+            assertThat(text).contains("HAVI BANKJEGY-FORGALOM KIMUTATASA I.");
+            assertThat(text).contains("HAVI BANKJEGY-FORGALOM KIMUTATASA II.");
+            assertThat(text).contains("HAVI BANKJEGY-FORGALOM OSSZESITES");
             assertThat(text).contains("MNB ARF");
 
             // Forgalom osszesites

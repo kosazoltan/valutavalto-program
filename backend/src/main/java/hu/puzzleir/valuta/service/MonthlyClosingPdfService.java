@@ -79,7 +79,24 @@ public class MonthlyClosingPdfService {
                     report.getWorkingDays(), report.getClosedDays()));
             w.writeLine(SEPARATOR);
 
-            // === 3. Penztar allasa (Delphi: PenztarAllas — havi zaro) ===
+            // === 3. Penztarak kozotti mozgasok (Delphi: AtadAtvetLista) ===
+            if (report.getTransferLines() != null && !report.getTransferLines().isEmpty()) {
+                w.centerLine("PENZTARAK KOZOTTI MOZGASOK");
+                w.writeLine(SEPARATOR);
+                w.writeLine("VALUTANEM  ATVETT       ATADOTT      NETTO");
+                w.writeLine(SEPARATOR);
+                for (MonthlyReportFullDto.TransferLineDto tl : report.getTransferLines()) {
+                    w.writeLine(String.format("  %-5s   %11s  %11s  %11s",
+                            tl.getCurrencyCode(),
+                            fmt(tl.getReceivedAmount()),
+                            fmt(tl.getSentAmount()),
+                            fmt(tl.getNetAmount())));
+                }
+                w.writeLine(SEPARATOR);
+                w.writeLine("");
+            }
+
+            // === 4. Penztar allasa (Delphi: PenztarAllas — havi zaro) ===
             w.centerLine("HAVI PENZTAR ALLAS");
             w.writeLine(SEPARATOR);
             w.writeLine("Val.   Nyito     Forgalom      Zaro");
@@ -101,8 +118,45 @@ public class MonthlyClosingPdfService {
             w.writeLine(SEPARATOR);
             w.writeLine("");
 
-            // === 4. Havi bankjegy-forgalom (Delphi: ForgalomLista) ===
-            w.writeLine("  HAVI BANKJEGY-FORGALOM KIMUTATASA");
+            // === 5. Havi bankjegy-forgalom I. (Delphi: ForgalomLista I. resz) ===
+            w.writeLine("  HAVI BANKJEGY-FORGALOM KIMUTATASA I.");
+            w.writeLine(SEPARATOR);
+            w.writeLine("VALUTANEM  NYITO KESZLET  ATVETT OSSZEG");
+            w.writeLine(SEPARATOR);
+            for (MonthlyReportFullDto.CurrencyLineDto line : safe(report.getCurrencyLines())) {
+                if (hasActivity(line)) {
+                    // Atvett = closing - opening - buy + sell (netto bejovo transfer)
+                    BigDecimal received = nz(line.getClosingStock()).subtract(nz(line.getOpeningStock()))
+                            .subtract(nz(line.getTotalBuyAmount())).add(nz(line.getTotalSellAmount()));
+                    if (received.compareTo(BigDecimal.ZERO) < 0) received = BigDecimal.ZERO;
+                    w.writeLine(String.format("  %-5s   %11s  %11s",
+                            line.getCurrencyCode(),
+                            fmt(line.getOpeningStock()),
+                            fmt(received)));
+                }
+            }
+            w.writeLine(SEPARATOR);
+            w.writeLine("");
+
+            // === 5b. Havi bankjegy-forgalom II. (Delphi: ForgalomLista II. resz) ===
+            w.writeLine("  HAVI BANKJEGY-FORGALOM KIMUTATASA II.");
+            w.writeLine(SEPARATOR);
+            w.writeLine("VALUTANEM  ATADOTT OSSZEG  ZARO KESZLET");
+            w.writeLine(SEPARATOR);
+            for (MonthlyReportFullDto.CurrencyLineDto line : safe(report.getCurrencyLines())) {
+                if (hasActivity(line)) {
+                    BigDecimal sent = BigDecimal.ZERO; // Atadott = transfer out, kozelites
+                    w.writeLine(String.format("  %-5s   %11s  %11s",
+                            line.getCurrencyCode(),
+                            fmt(sent),
+                            fmt(line.getClosingStock())));
+                }
+            }
+            w.writeLine(SEPARATOR);
+            w.writeLine("");
+
+            // === 5c. Havi forgalom osszesites (osszvetel/osszeladas/MNB) ===
+            w.writeLine("  HAVI BANKJEGY-FORGALOM OSSZESITES");
             w.writeLine(SEPARATOR);
             w.writeLine("VALUTANEM  OSSZVETEL    OSSZELADAS   MNB ARF");
             w.writeLine(SEPARATOR);
@@ -119,7 +173,7 @@ public class MonthlyClosingPdfService {
             w.writeLine(SEPARATOR);
             w.writeLine("");
 
-            // === 5. Havi forgalom osszesites ===
+            // === 6. Havi forgalom osszesites ===
             w.centerLine("HAVI FORGALOM OSSZESITES");
             w.writeLine(SEPARATOR);
             w.writeLine(String.format("Ossz vetel:  %11s HUF", fmt(report.getTotalBuyHuf())));
@@ -130,7 +184,7 @@ public class MonthlyClosingPdfService {
             w.writeLine(SEPARATOR);
             w.writeLine("");
 
-            // === 6. WU/AFA (Delphi: WuAfaNyomtatas — havi osszesites) ===
+            // === 7. WU/AFA (Delphi: WuAfaNyomtatas — havi osszesites) ===
             w.centerLine("Western Union es AFA havi forgalom");
             w.writeLine(SEPARATOR);
             w.centerLine("Western Union dollar forgalma:");
@@ -156,7 +210,7 @@ public class MonthlyClosingPdfService {
             w.writeLine(SEPARATOR);
             w.writeLine("");
 
-            // === 7. Kezelesi dij (Delphi: Kezelesidijnyomtatas — havi) ===
+            // === 8. Kezelesi dij (Delphi: Kezelesidijnyomtatas — havi) ===
             w.writeLine(" KEZELESI KOLTSEG HAVI OSSZESITES");
             w.writeLine(SEPARATOR);
             w.writeLine(String.format(" HAVI NYITO OSSZEG ......:  %11s", fmt(report.getHandlingFeeOpening())));
@@ -166,7 +220,7 @@ public class MonthlyClosingPdfService {
             w.writeLine(SEPARATOR);
             w.writeLine("");
 
-            // === 8. E-kereskedelem (Delphi: Ekernyomtatas — havi) ===
+            // === 9. E-kereskedelem (Delphi: Ekernyomtatas — havi) ===
             w.writeLine(" E-KERESKEDELMI MOZGASOK HAVI OSSZESITES");
             w.writeLine(SEPARATOR);
             w.writeLine(String.format(" HAVI NYITO OSSZEG ......:  %11s", fmt(report.getEcommerceOpening())));
@@ -176,7 +230,7 @@ public class MonthlyClosingPdfService {
             w.writeLine(SEPARATOR);
             w.writeLine("");
 
-            // === 9. Zaro keszlet osszesites ===
+            // === 10. Zaro keszlet osszesites ===
             w.centerLine("HAVI ZARO KESZLET OSSZESITES");
             w.writeLine(SEPARATOR);
             w.writeLine(String.format("Forint keszlet:  %11s HUF", fmt(report.getClosingBalanceHuf())));
@@ -185,7 +239,7 @@ public class MonthlyClosingPdfService {
             w.writeLine(SEPARATOR);
             w.writeLine("");
 
-            // === 10. Alairas ===
+            // === 11. Alairas ===
             w.writeLine("Buntetojogi felelosegem tudataban kije-");
             w.writeLine("lentem,hogy a havi penztar allasa es a");
             w.writeLine("zaroszalagon szereplo osszegek megegy-");
