@@ -25,6 +25,19 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
+  /** Role-alapú default route meghatározása */
+  const getDefaultRouteForRole = (role?: string | null): string => {
+    switch (role) {
+      case 'MANAGER':
+      case 'TREASURY_MANAGER':
+        return '/treasury'
+      case 'CASHIER':
+        return '/cashier'
+      default:
+        return '/dashboard'
+    }
+  }
+
   /** Login eredmény feldolgozása — ha multi-role, role-választó megjelenítése */
   const handleLoginResponse = (response: Awaited<ReturnType<typeof authApi.login>>) => {
     login(
@@ -43,7 +56,7 @@ export default function LoginPage() {
       setPendingLoginResponse(response)
       setShowRoleSelector(true)
     } else {
-      navigate('/dashboard')
+      navigate(getDefaultRouteForRole(response.activeRole ?? response.worker.role))
     }
   }
 
@@ -64,7 +77,7 @@ export default function LoginPage() {
       selectRole(response.token, response.activeRole!, response.permissions ?? [])
       setShowRoleSelector(false)
       setPendingLoginResponse(null)
-      navigate('/dashboard')
+      navigate(getDefaultRouteForRole(response.activeRole))
     } catch (err: unknown) {
       setError(getErrorMessage(err))
     } finally {
