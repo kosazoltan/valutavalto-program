@@ -298,6 +298,95 @@ class DailyClosingArchiveServiceTest {
         assertThat(summary).contains("Címletezés", "E-kereskedelem", "Kezelési díj", "WU/ÁFA");
     }
 
+    // --- Extra tesztek (Eszter kérésére) ---
+
+    @Test
+    @DisplayName("snapshotSubledger WU_VAT: WU_SEND handlingFee=1270 Ft → ÁFA = 269.76 Ft (27/127 formula)")
+    void snapshotSubledger_wuVat_handlingFeeAfaFormula() {
+        when(subledgerSnapshotRepo.existsByBranchIdAndSnapshotDateAndSubledgerType(
+                BRANCH_ID, DATE, "WU_VAT")).thenReturn(false);
+        when(subledgerSnapshotRepo.findByBranchIdAndSnapshotDateAndSubledgerTypeAndCurrencyCode(
+                eq(BRANCH_ID), any(), eq("WU_VAT"), eq("HUF"))).thenReturn(Optional.empty());
+
+        Transaction wuSend = new Transaction();
+        wuSend.setTransactionType(TransactionType.WESTERN_UNION_SEND);
+        wuSend.setCurrency(usdCurrency);
+        wuSend.setCurrencyAmount(BigDecimal.valueOf(100));
+        wuSend.setHufAmount(BigDecimal.valueOf(30000));
+        wuSend.setHandlingFee(BigDecimal.valueOf(1270));
+        wuSend.setReceiptNumber("WU-VAT-001");
+
+        when(transactionRepository.findActiveByBranchAndDate(BRANCH_ID, DATE))
+                .thenReturn(List.of(wuSend));
+
+        service.snapshotSubledger(BRANCH_ID, DATE, "WU_VAT", "HUF");
+
+        ArgumentCaptor<DailySubledgerSnapshot> captor = ArgumentCaptor.forClass(DailySubledgerSnapshot.class);
+        verify(subledgerSnapshotRepo).save(captor.capture());
+
+        DailySubledgerSnapshot snap = captor.getValue();
+        assertThat(snap.getSubledgerType()).isEqualTo("WU_VAT");
+        // 1270 * 27 / 127 = 34290 / 127 = 270.00 (pontosan osztható, HALF_UP, 2 tizedes)
+        assertThat(snap.getIncome()).isEqualByComparingTo("270.00");
+        assertThat(snap.getExpense()).isEqualByComparingTo("0");
+        assertThat(snap.getClosingBalance()).isEqualByComparingTo("270.00");
+    }
+
+    @Test
+    @DisplayName("snapshotSubledger ECOMMERCE: OTHER típusú tranzakció → income aggregálás, BUY kihagyva")
+    void snapshotSubledger_ecommerce_happyPath() {
+        when(subledgerSnapshotRepo.existsByBranchIdAndSnapshotDateAndSubledgerType(
+                BRANCH_ID, DATE, "ECOMMERCE")).thenReturn(false);
+        when(subledgerSnapshotRepo.findByBranchIdAndSnapshotDateAndSubledgerTypeAndCurrencyCode(
+                eq(BRANCH_ID), any(), eq("ECOMMERCE"), eq("HUF"))).thenReturn(Optional.empty());
+
+        Transaction ecomTx = new Transaction();
+        ecomTx.setTransactionType(TransactionType.OTHER);
+        ecomTx.setCurrency(hufCurrency);
+        ecomTx.setHufAmount(BigDecimal.valueOf(45000));
+        ecomTx.setHandlingFee(BigDecimal.ZERO);
+        ecomTx.setReceiptNumber("EC-001");
+
+        // BUY típus NEM kerül ECOMMERCE subledgerbe
+        Transaction nonEcom = buildTransaction(TransactionType.BUY, hufCurrency,
+                BigDecimal.valueOf(100000), BigDecimal.ZERO);
+
+        when(transactionRepository.findActiveByBranchAndDate(BRANCH_ID, DATE))
+                .thenReturn(List.of(ecomTx, nonEcom));
+
+        service.snapshotSubledger(BRANCH_ID, DATE, "ECOMMERCE", "HUF");
+
+        ArgumentCaptor<DailySubledgerSnapshot> captor = ArgumentCaptor.forClass(DailySubledgerSnapshot.class);
+        verify(subledgerSnapshotRepo).save(captor.capture());
+
+        DailySubledgerSnapshot snap = captor.getValue();
+        assertThat(snap.getSubledgerType()).isEqualTo("ECOMMERCE");
+        assertThat(snap.getIncome()).isEqualByComparingTo("45000");   // csak az OTHER kerül be
+        assertThat(snap.getExpense()).isEqualByComparingTo("0");
+        assertThat(snap.getClosingBalance()).isEqualByComparingTo("45000");
+    }
+
+    @Test
+    @DisplayName("snapshotWuAfaSubledgers: orchestráció — 3x hívja snapshotSubledger (WU_USD, WU_HUF, WU_VAT)")
+    void snapshotWuAfaSubledgers_callsThreeSubledgers() {
+        when(subledgerSnapshotRepo.existsByBranchIdAndSnapshotDateAndSubledgerType(
+                eq(BRANCH_ID), eq(DATE), anyString())).thenReturn(false);
+        when(subledgerSnapshotRepo.findByBranchIdAndSnapshotDateAndSubledgerTypeAndCurrencyCode(
+                eq(BRANCH_ID), any(), anyString(), anyString())).thenReturn(Optional.empty());
+        when(transactionRepository.findActiveByBranchAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
+
+        service.snapshotWuAfaSubledgers(BRANCH_ID, DATE);
+
+        // 3 al-pénztár snapshotot kell menteni: WU_USD, WU_HUF, WU_VAT
+        ArgumentCaptor<DailySubledgerSnapshot> captor = ArgumentCaptor.forClass(DailySubledgerSnapshot.class);
+        verify(subledgerSnapshotRepo, times(3)).save(captor.capture());
+
+        List<DailySubledgerSnapshot> saved = captor.getAllValues();
+        assertThat(saved)
+                .extracting(DailySubledgerSnapshot::getSubledgerType)
+                .containsExactlyInAnyOrder("WU_USD", "WU_HUF", "WU_VAT");
+    }
+
     // --- helpers ---
 
     private Transaction buildTransaction(TransactionType type, Currency currency,
