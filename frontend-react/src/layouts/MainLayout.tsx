@@ -31,7 +31,8 @@ const menuGroups = [
   {
     label: 'Főoldal',
     items: [
-      { path: '/dashboard', label: 'Irányítópult', icon: Home }
+      { path: '/dashboard', label: 'Irányítópult', icon: Home },
+      { path: '/cashier', label: 'Pénztáros műveletek', icon: LayoutDashboard },
     ]
   },
   {

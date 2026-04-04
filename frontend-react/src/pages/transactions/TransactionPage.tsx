@@ -21,6 +21,7 @@ import { useTransactionRates } from './hooks/useTransactionRates'
 import type { CurrencyRate } from './hooks/useTransactionRates'
 import { useIdentificationLevel } from './hooks/useIdentificationLevel'
 import CurrencySelector from './components/CurrencySelector'
+import CurrencySearchInput from './components/CurrencySearchInput'
 import CustomerPanel from './components/LegacyCustomerPanel'
 import type { Customer } from './components/LegacyCustomerPanel'
 
@@ -317,6 +318,12 @@ export default function TransactionPage() {
               <div className="text-xs font-normal">(Ügyfél vesz {selectedCurrency?.code || 'devizát'})</div>
             </button>
           </div>
+
+          {/* Currency quick search */}
+          <CurrencySearchInput
+            currencyRates={currencyRates}
+            onSelect={handleCurrencySelect}
+          />
 
           {/* Current rate display */}
           <div className="form-group-box pt-4 mb-3">

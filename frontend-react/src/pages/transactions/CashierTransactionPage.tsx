@@ -22,6 +22,7 @@ import type { PrintReceiptData } from '../../types/receipt'
 import { useAuthStore } from '../../stores/authStore'
 import CustomerPanel from './components/CustomerPanel'
 import type { CustomerPanelData } from './components/CustomerPanel'
+import { CurrencyAutocomplete } from '../../components/cashier/CurrencyAutocomplete'
 import { useIdentificationLevel } from './hooks/useIdentificationLevel'
 import type { AmlCheckResultDto } from '../../services/api/transactions'
 
@@ -201,35 +202,37 @@ export default function CashierTransactionPage() {
 
   // ====== HANDLERS ======
 
-  const handleCurrencyInput = useCallback(
-    async (rowIdx: number, value: string) => {
-      const code = value.toUpperCase().slice(0, 3)
-      setRows((prev) => {
-        const next = [...prev]
-        next[rowIdx] = { ...next[rowIdx]!, currencyCode: code }
-        return next
-      })
-
-      // Ha 3 betus kod, arfolyam lekérés az API-bol betoltott rateekbol
-      if (code.length === 3) {
-        const rateEntry = exchangeRates.find((r) => r.currencyCode === code && r.active)
-        if (rateEntry) {
-          const appliedRate = mode === 'buy' ? rateEntry.baseBuyRate : rateEntry.baseSellRate
-          setRows((prev) => {
-            const next = [...prev]
-            next[rowIdx] = {
-              ...next[rowIdx]!,
-              currencyCode: code,
-              exchangeRate: appliedRate,
-              currencyName: rateEntry.currencyName || code,
-            }
-            return next
-          })
-          setActiveField('quantity')
-        }
+  const handleCurrencySelect = useCallback(
+    (rowIdx: number, code: string, rate: ExchangeRate | null) => {
+      if (rate) {
+        const appliedRate = mode === 'buy' ? rate.baseBuyRate : rate.baseSellRate
+        setRows((prev) => {
+          const next = [...prev]
+          next[rowIdx] = {
+            ...next[rowIdx]!,
+            currencyCode: code,
+            exchangeRate: appliedRate,
+            currencyName: rate.currencyName || code,
+          }
+          return next
+        })
+      } else {
+        setRows((prev) => {
+          const next = [...prev]
+          next[rowIdx] = { ...next[rowIdx]!, currencyCode: code }
+          return next
+        })
       }
     },
-    [mode, exchangeRates]
+    [mode]
+  )
+
+  const handleCurrencyConfirm = useCallback(
+    (rowIdx: number) => {
+      setActiveRow(rowIdx)
+      setActiveField('quantity')
+    },
+    []
   )
 
   const handleQuantityInput = useCallback(
@@ -492,8 +495,8 @@ export default function CashierTransactionPage() {
     (e: React.KeyboardEvent, rowIdx: number, field: 'currency' | 'quantity') => {
       if (e.key === 'Enter' || e.key === 'Tab') {
         e.preventDefault()
-        if (field === 'currency' && rows[rowIdx]?.currencyCode.length === 3) {
-          // Ugras quantity-re
+        if (field === 'currency') {
+          // Currency autocomplete kezeli az Enter/Tab-ot — itt csak fallback
           setActiveField('quantity')
         } else if (field === 'quantity') {
           // Kovetkezo sor
@@ -660,17 +663,16 @@ export default function CashierTransactionPage() {
                     }`}
                   >
                     <td className="px-4 py-2">
-                      <input
-                        ref={(el) => { currencyRefs.current[idx] = el }}
+                      <CurrencyAutocomplete
+                        rates={exchangeRates}
                         value={row.currencyCode}
-                        onChange={(e) => handleCurrencyInput(idx, e.target.value)}
+                        onChange={(code, rate) => handleCurrencySelect(idx, code, rate)}
+                        onConfirm={() => handleCurrencyConfirm(idx)}
                         onKeyDown={(e) => handleKeyDown(e, idx, 'currency')}
                         onFocus={() => { setActiveRow(idx); setActiveField('currency') }}
-                        className="w-20 h-12 text-center font-mono text-lg font-bold uppercase bg-transparent border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:border-transparent"
-                        style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
-                        maxLength={3}
-                        placeholder="EUR"
-                        autoComplete="off"
+                        inputRef={(el) => { currencyRefs.current[idx] = el }}
+                        placeholder="EUR, Euró..."
+                        data-testid={`currency-input-${idx}`}
                       />
                     </td>
                     <td className="px-4 py-2 text-right">
