@@ -113,7 +113,8 @@ public class DailyClosingArchiveService {
                     .faceValue(denom.getFaceValue() != null ? denom.getFaceValue() : BigDecimal.ZERO)
                     .quantity(bal.getQuantity())
                     .totalValue(bal.getTotalValue() != null ? bal.getTotalValue() : BigDecimal.ZERO)
-                    .closingType(1) // esti zárás
+                    .closingType(bal.getDenominationCategory() != null
+                            ? bal.getDenominationCategory().getLegacyCimletSorszam() : 1)
                     .build();
             denominationSnapshotRepo.save(snapshot);
             count++;
@@ -153,24 +154,56 @@ public class DailyClosingArchiveService {
                 branchId, closingDate);
 
         for (Transaction tx : dayTx) {
-            boolean matches = switch (subledgerType) {
-                case "ECOMMERCE" -> tx.getTransactionType() == TransactionType.OTHER;
-                case "HANDLING_FEE" -> tx.getHandlingFee() != null
-                        && tx.getHandlingFee().compareTo(BigDecimal.ZERO) > 0;
-                default -> false;
-            };
+            TransactionType txType = tx.getTransactionType();
+            BigDecimal amt = tx.getHufAmount() != null ? tx.getHufAmount().abs() : BigDecimal.ZERO;
 
-            if (matches) {
-                BigDecimal amt = tx.getHufAmount() != null ? tx.getHufAmount().abs() : BigDecimal.ZERO;
-                if ("ECOMMERCE".equals(subledgerType)) {
-                    // E-kereskedelem: ELOJEL alapján
-                    if (tx.getTransactionType() == TransactionType.OTHER) {
+            switch (subledgerType) {
+                case "ECOMMERCE" -> {
+                    if (txType == TransactionType.OTHER) {
                         income = income.add(amt);
                     }
-                } else {
-                    // Kezelési díj: mindig bevétel
-                    income = income.add(tx.getHandlingFee());
                 }
+                case "HANDLING_FEE" -> {
+                    if (tx.getHandlingFee() != null && tx.getHandlingFee().compareTo(BigDecimal.ZERO) > 0) {
+                        income = income.add(tx.getHandlingFee());
+                    }
+                }
+                case "WU_USD" -> {
+                    boolean isWu = txType == TransactionType.WESTERN_UNION_SEND
+                            || txType == TransactionType.WESTERN_UNION_RECEIVE;
+                    if (isWu && tx.getCurrency() != null && "USD".equals(tx.getCurrency().getCode())) {
+                        BigDecimal currAmt = tx.getCurrencyAmount() != null ? tx.getCurrencyAmount().abs() : BigDecimal.ZERO;
+                        if (txType == TransactionType.WESTERN_UNION_RECEIVE) {
+                            income = income.add(currAmt);
+                        } else {
+                            expense = expense.add(currAmt);
+                        }
+                    }
+                }
+                case "WU_HUF" -> {
+                    boolean isWu = txType == TransactionType.WESTERN_UNION_SEND
+                            || txType == TransactionType.WESTERN_UNION_RECEIVE;
+                    if (isWu) {
+                        if (txType == TransactionType.WESTERN_UNION_RECEIVE) {
+                            income = income.add(amt); // HUF bevétel
+                        } else {
+                            expense = expense.add(amt); // HUF kiadás
+                        }
+                    }
+                }
+                case "WU_VAT" -> {
+                    // ÁFA: WU tranzakciók után számított ÁFA
+                    boolean isWu = txType == TransactionType.WESTERN_UNION_SEND
+                            || txType == TransactionType.WESTERN_UNION_RECEIVE;
+                    if (isWu && tx.getHandlingFee() != null && tx.getHandlingFee().compareTo(BigDecimal.ZERO) > 0) {
+                        // WU kezelési díj ÁFA tartalom (27%)
+                        BigDecimal vatAmount = tx.getHandlingFee()
+                                .multiply(BigDecimal.valueOf(27))
+                                .divide(BigDecimal.valueOf(127), 2, java.math.RoundingMode.HALF_UP);
+                        income = income.add(vatAmount);
+                    }
+                }
+                default -> { /* nem illeszkedik */ }
             }
         }
 
