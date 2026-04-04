@@ -178,20 +178,18 @@ describe('TransactionPage', () => {
     expect(mocks.navigate).toHaveBeenCalledWith('/transactions')
   })
 
-  it('Nyomtatás gomb mentés nélkül figyelmeztető toast-ot mutat', async () => {
+  it('Mentés és nyomtatás gomb összeg nélkül figyelmeztető toast-ot mutat', async () => {
     renderTransactionPage()
     const user = userEvent.setup()
 
-    const printButton = screen.getByText('Nyomtatás')
-    // savedTransaction nincs → toast warning, nem window.print
-    await user.click(printButton)
+    const saveButton = screen.getByTestId('tx-save-print')
+    // Összeg nélkül → toast warning
+    await user.click(saveButton)
 
-    // A gomb opacity-50 stílust kap mentett tranzakció nélkül
-    expect(printButton.className).toContain('opacity-50')
     // Toast warning hívás ellenőrzés
     expect(mocks.toast.warning).toHaveBeenCalledWith(
-      'Nincs mentett tranzakció',
-      'Először mentse el a tranzakciót a bizonylat nyomtatásához!',
+      'Érvénytelen összeg',
+      'Kérem adjon meg érvényes összeget!',
     )
   })
 
@@ -204,7 +202,7 @@ describe('TransactionPage', () => {
     const inputs = screen.getAllByPlaceholderText('0,00')
     await user.type(inputs[0]!, '100')
 
-    const saveButton = screen.getByText('Mentés')
+    const saveButton = screen.getByTestId('tx-save-print')
     await user.click(saveButton)
 
     await waitFor(() => {
@@ -230,7 +228,7 @@ describe('TransactionPage', () => {
     const inputs = screen.getAllByPlaceholderText('0,00')
     await user.type(inputs[0]!, '100')
 
-    const saveButton = screen.getByText('Mentés')
+    const saveButton = screen.getByTestId('tx-save-print')
     await user.click(saveButton)
 
     await waitFor(() => {
@@ -253,7 +251,7 @@ describe('TransactionPage', () => {
     const inputs = screen.getAllByPlaceholderText('0,00')
     await user.type(inputs[0]!, '100')
 
-    const saveButton = screen.getByText('Mentés')
+    const saveButton = screen.getByTestId('tx-save-print')
     await user.click(saveButton)
 
     await waitFor(() => {
@@ -265,7 +263,7 @@ describe('TransactionPage', () => {
     const user = userEvent.setup()
     renderTransactionPage()
 
-    const saveButton = screen.getByText('Mentés')
+    const saveButton = screen.getByTestId('tx-save-print')
     await user.click(saveButton)
 
     await waitFor(() => {
@@ -285,7 +283,7 @@ describe('TransactionPage', () => {
     const inputs = screen.getAllByPlaceholderText('0,00')
     await user.type(inputs[0]!, '100')
 
-    const saveButton = screen.getByText('Mentés')
+    const saveButton = screen.getByTestId('tx-save-print')
     await user.click(saveButton)
 
     await waitFor(() => {
