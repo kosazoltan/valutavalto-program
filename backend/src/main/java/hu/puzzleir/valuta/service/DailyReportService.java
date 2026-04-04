@@ -38,6 +38,7 @@ public class DailyReportService {
     private final DenominationBalanceRepository denominationBalanceRepository;
     private final DailySubledgerSnapshotRepository subledgerSnapshotRepository;
     private final ExchangeRateRepository exchangeRateRepository;
+    private final CurrencyRepository currencyRepository;
 
     /**
      * Napi zaras riport lekerese (ReportService-bol).
@@ -137,10 +138,15 @@ public class DailyReportService {
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem talalhato: " + branchId));
 
+        // B1 fix: Currency name map
+        Map<String, String> currencyNameMap = new HashMap<>();
+        currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()
+                .forEach(c -> currencyNameMap.put(c.getCode(), c.getName()));
+
         // 1. Záró készletek — DailyBalance
         List<DailyBalance> balances = dailyBalanceRepository.findByBranchIdAndBalanceDate(branchId, date);
         BigDecimal closingHuf = BigDecimal.ZERO;
-        BigDecimal closingForeign = BigDecimal.ZERO;
+        BigDecimal closingForeignHuf = BigDecimal.ZERO; // B7 fix: HUF-ekvivalens összeg
 
         // Árfolyam map: currencyCode -> ExchangeRate
         List<ExchangeRate> activeRates = exchangeRateRepository.findActiveByDateAndBranch(date, branchId);
@@ -154,33 +160,46 @@ public class DailyReportService {
         List<DailyReportFullDto.CurrencyLineDto> currencyLines = new ArrayList<>();
         for (DailyBalance bal : balances) {
             BigDecimal closing = bal.getClosingBalance() != null ? bal.getClosingBalance() : BigDecimal.ZERO;
-
-            if ("HUF".equals(bal.getCurrencyCode())) {
-                closingHuf = closingHuf.add(closing);
-            } else {
-                closingForeign = closingForeign.add(closing);
-            }
+            BigDecimal purchases = bal.getPurchases() != null ? bal.getPurchases() : BigDecimal.ZERO;
+            BigDecimal sales = bal.getSales() != null ? bal.getSales() : BigDecimal.ZERO;
 
             // Árfolyam lekérdezés
             BigDecimal buyRate = BigDecimal.ZERO;
             BigDecimal sellRate = BigDecimal.ZERO;
-            BigDecimal settlementRate = BigDecimal.ZERO;
             ExchangeRate rate = rateMap.get(bal.getCurrencyCode());
             if (rate != null) {
                 buyRate = rate.getBaseBuyRate() != null ? rate.getBaseBuyRate() : BigDecimal.ZERO;
                 sellRate = rate.getBaseSellRate() != null ? rate.getBaseSellRate() : BigDecimal.ZERO;
             }
 
+            // B3 fix: HUF ekvivalens számítás (deviza * árfolyam)
+            BigDecimal buyHuf;
+            BigDecimal sellHuf;
+            if ("HUF".equals(bal.getCurrencyCode())) {
+                closingHuf = closingHuf.add(closing);
+                buyHuf = purchases;
+                sellHuf = sales;
+            } else {
+                buyHuf = purchases.multiply(buyRate);
+                sellHuf = sales.multiply(sellRate);
+                // B7 fix: closingForeign HUF-ekvivalens (záró készlet * vételi árfolyam)
+                BigDecimal midRate = buyRate.add(sellRate).compareTo(BigDecimal.ZERO) > 0
+                        ? buyRate.add(sellRate).divide(BigDecimal.valueOf(2), 2, java.math.RoundingMode.HALF_UP)
+                        : BigDecimal.ZERO;
+                closingForeignHuf = closingForeignHuf.add(closing.multiply(midRate));
+            }
+
             currencyLines.add(DailyReportFullDto.CurrencyLineDto.builder()
                     .currencyCode(bal.getCurrencyCode())
+                    .currencyName(currencyNameMap.getOrDefault(bal.getCurrencyCode(), bal.getCurrencyCode())) // B1 fix
                     .closingStock(closing)
-                    .buyAmount(bal.getPurchases() != null ? bal.getPurchases() : BigDecimal.ZERO)
-                    .sellAmount(bal.getSales() != null ? bal.getSales() : BigDecimal.ZERO)
-                    .buyHuf(BigDecimal.ZERO) // TODO: HUF ekvivalens külön kalkuláció
-                    .sellHuf(BigDecimal.ZERO)
+                    .buyAmount(purchases)
+                    .sellAmount(sales)
+                    .buyHuf(buyHuf)   // B3 fix
+                    .sellHuf(sellHuf) // B3 fix
                     .buyRate(buyRate)
                     .sellRate(sellRate)
-                    .settlementRate(settlementRate)
+                    .settlementRate(BigDecimal.ZERO) // nincs külön settlement mező az ExchangeRate-ben
                     .build());
         }
 
@@ -218,7 +237,7 @@ public class DailyReportService {
                 totalHandlingFee = totalHandlingFee.add(tx.getHandlingFee());
             }
 
-            // Kedvezmény: egyedi árfolyamú tranzakciók (appliedRate != baseBuyRate/baseSellRate)
+            // Kedvezmény: egyedi árfolyamú tranzakciók (exchangeRate != baseBuyRate/baseSellRate)
             if (tx.getExchangeRate() != null && tx.getCurrency() != null) {
                 ExchangeRate baseRate = rateMap.get(tx.getCurrency().getCode());
                 if (baseRate != null) {
@@ -236,8 +255,8 @@ public class DailyReportService {
             }
         }
 
-        // 3. Címletek — DenominationBalance (HUF, EVENING)
-        List<DenominationBalance> denomBalances = denominationBalanceRepository.findByCashDeskId(branchId);
+        // 3. Címletek — B2+B4 fix: findByBranchIdAndDate (dátum szűrés + branch mapping a query-ben)
+        List<DenominationBalance> denomBalances = denominationBalanceRepository.findByBranchIdAndDate(branchId, date);
         List<DailyReportFullDto.DenominationLineDto> denomLines = new ArrayList<>();
         BigDecimal denomTotal = BigDecimal.ZERO;
         int euroCoin1 = 0, euroCoin2 = 0;
@@ -302,8 +321,8 @@ public class DailyReportService {
                 .branchCode(branch.getCode())
                 .branchName(branch.getName())
                 .closingBalanceHuf(closingHuf)
-                .closingBalanceForeign(closingForeign)
-                .closingBalanceTotal(closingHuf.add(closingForeign))
+                .closingBalanceForeign(closingForeignHuf) // B7 fix: HUF-ekvivalens
+                .closingBalanceTotal(closingHuf.add(closingForeignHuf))
                 .currencyLines(currencyLines)
                 .morningBuyHuf(morningBuy)
                 .morningSellHuf(morningSell)
@@ -327,7 +346,7 @@ public class DailyReportService {
                 .ecommerceBalanceHuf(ecommerce)
                 .morningCashierName(morningCashier)
                 .afternoonCashierName(afternoonCashier)
-                .requestNotes(List.of()) // TODO: memo implementáció jövőbeli feature
+                .requestNotes(List.of()) // memo: jövőbeli feature (Delphi NIF binárisból jött)
                 .sendNotes(List.of())
                 .build();
     }
