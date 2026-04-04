@@ -4,10 +4,13 @@ import hu.puzzleir.valuta.dto.report.DailyReportDto;
 import hu.puzzleir.valuta.dto.report.DailyReportFullDto;
 import hu.puzzleir.valuta.dto.treasury.SubmissionStatusDto;
 import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
+import hu.puzzleir.valuta.service.DailyClosingPdfService;
 import hu.puzzleir.valuta.service.DailyReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -28,6 +31,7 @@ import java.util.UUID;
 public class DailyReportController {
 
     private final DailyReportService dailyReportService;
+    private final DailyClosingPdfService dailyClosingPdfService;
 
     @GetMapping("/{branchId}/{date}")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
@@ -75,6 +79,23 @@ public class DailyReportController {
             @PathVariable UUID branchId,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(dailyReportService.generateFullReport(branchId, date));
+    }
+
+    /**
+     * Napi zaras PDF — Delphi: nznyomt.dll (AKTLST.TXT nyomtatas).
+     * A teljes napi jelentes adataibol PDF dokumentumot general.
+     */
+    @GetMapping(value = "/{branchId}/{date}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<byte[]> getDailyClosingPdf(
+            @PathVariable UUID branchId,
+            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) throws java.io.IOException {
+        byte[] pdf = dailyClosingPdfService.generatePdf(branchId, date);
+        String filename = "napizaras_" + date + "_" + branchId.toString().substring(0, 8) + ".pdf";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 
     // ============ HELPERS ============
