@@ -2,9 +2,12 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;
+import hu.puzzleir.valuta.entity.DailyBalance;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
+import hu.puzzleir.valuta.repository.DailyBalanceRepository;
+import hu.puzzleir.valuta.dto.mnb.MnbCompanyGroupReportDto;
 import hu.puzzleir.valuta.dto.mnb.MnbSubmissionResult;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.MnbReportRepository;
@@ -44,6 +47,7 @@ public class MnbReportService {
     private final MnbReportRepository mnbReportRepository;
     private final TransactionRepository transactionRepository;
     private final BranchRepository branchRepository;
+    private final DailyBalanceRepository dailyBalanceRepository;
     private final OwnCompanyService ownCompanyService;
     private final MnbApiClient mnbApiClient;
 
@@ -767,6 +771,49 @@ public class MnbReportService {
             log.warn("Cegnev nem elerheto: {}", e.getMessage());
         }
 
+        // 6. KFT szintű aggregáció (Delphi: KftSumma)
+        // Legacy: irodaszám < 151 = "B" (Best Change), >= 151 = "Z" (Pénz-Piac)
+        // Modern: Company entity alapján csoportosítjuk
+        List<MnbCompanyGroupReportDto> companyGroupReports = buildCompanyGroupReports(
+                date, allBranches, regionMap);
+
+        // 7. Készlet validáció (Delphi: AdatKiertekeles)
+        List<java.util.UUID> allBranchIds = allBranches.stream()
+                .map(Branch::getId)
+                .collect(java.util.stream.Collectors.toList());
+        List<DailyBalance> allBalances = dailyBalanceRepository.findByBranchIdsAndDate(allBranchIds, date);
+        List<String> validationErrors = new ArrayList<>();
+        int validCount = 0;
+        int invalidCount = 0;
+
+        // Készlet adatok integrálása a cég szintű currency line-okba
+        Map<String, List<DailyBalance>> balByCurrency = allBalances.stream()
+                .collect(java.util.stream.Collectors.groupingBy(DailyBalance::getCurrencyCode));
+
+        for (hu.puzzleir.valuta.dto.mnb.MnbCurrencyLineDto line : companyReport.getCurrencyLines()) {
+            List<DailyBalance> currBalances = balByCurrency.getOrDefault(line.getCurrencyCode(), java.util.Collections.emptyList());
+            enrichCurrencyLineWithBalance(line, currBalances);
+        }
+
+        // Per-branch validáció
+        Map<java.util.UUID, List<DailyBalance>> balByBranch = allBalances.stream()
+                .collect(java.util.stream.Collectors.groupingBy(DailyBalance::getBranchId));
+        for (Branch branch : allBranches) {
+            List<DailyBalance> branchBalances = balByBranch.getOrDefault(branch.getId(), java.util.Collections.emptyList());
+            boolean branchValid = true;
+            for (DailyBalance db : branchBalances) {
+                db.calculateMnbValidation();
+                if (!"OK".equals(db.getValidationStatus())) {
+                    branchValid = false;
+                    validationErrors.add(branch.getCode() + "/" + db.getCurrencyCode()
+                            + ": záró=" + db.getClosingBalance()
+                            + " számított=" + db.getCalculatedClosing()
+                            + " diff=" + db.getClosingBalance().subtract(db.getCalculatedClosing()).abs());
+                }
+            }
+            if (branchValid) validCount++; else invalidCount++;
+        }
+
         return hu.puzzleir.valuta.dto.mnb.MnbHierarchicalReportDto.builder()
                 .date(date)
                 .companyName(companyName)
@@ -774,8 +821,12 @@ public class MnbReportService {
                 .totalSellHuf(companyReport.getTotalSellHuf())
                 .totalTransactions(companyReport.getTotalTransactions())
                 .companyCurrencyLines(companyReport.getCurrencyLines())
+                .companyGroupReports(companyGroupReports)
                 .regionReports(regionReports)
                 .unassignedBranches(unassigned)
+                .validBranchCount(validCount)
+                .invalidBranchCount(invalidCount)
+                .validationErrors(validationErrors)
                 .build();
     }
 
@@ -875,6 +926,176 @@ public class MnbReportService {
                 .currencyLines(currencyLines)
                 .branchSummaries(branchSummaries)
                 .build();
+    }
+
+    // ============ S1-01: KFT AGGREGÁCIÓ + KÉSZLET VALIDÁCIÓ ============
+
+    /**
+     * KFT (jogi személy csoport) szintű aggregáció.
+     *
+     * Legacy: Delphi KftSumma — irodaszám < 151 = "B" (Best Change), >= 151 = "Z" (Pénz-Piac).
+     * Modern: Company entity alapján csoportosítjuk, ami rugalmasabb.
+     */
+    private List<MnbCompanyGroupReportDto> buildCompanyGroupReports(
+            LocalDate date, List<Branch> allBranches,
+            Map<String, List<Branch>> regionMap) {
+
+        // Csoportosítás Company alapján
+        Map<UUID, List<Branch>> branchesByCompany = allBranches.stream()
+                .filter(b -> b.getCompany() != null)
+                .collect(java.util.stream.Collectors.groupingBy(b -> b.getCompany().getId()));
+
+        List<MnbCompanyGroupReportDto> result = new ArrayList<>();
+
+        for (Map.Entry<UUID, List<Branch>> entry : branchesByCompany.entrySet()) {
+            List<Branch> companyBranches = entry.getValue();
+            Company company = companyBranches.get(0).getCompany();
+
+            // Legacy kompatibilitás: code alapján KFT betűjel
+            String groupCode = company.getCode() != null ? company.getCode() : "?";
+
+            // Tranzakciók batch lekérése
+            List<UUID> branchIds = companyBranches.stream()
+                    .map(Branch::getId)
+                    .collect(java.util.stream.Collectors.toList());
+            List<Transaction> transactions = transactionRepository.findActiveByBranchIdsAndDate(branchIds, date);
+            Map<String, CurrencyAggregation> aggregations = aggregateTransactions(transactions);
+
+            BigDecimal totalBuyHuf = BigDecimal.ZERO;
+            BigDecimal totalSellHuf = BigDecimal.ZERO;
+            BigDecimal totalCardPayment = BigDecimal.ZERO;
+            int totalTxCount = 0;
+
+            // Készlet lekérése
+            List<DailyBalance> balances = dailyBalanceRepository.findByBranchIdsAndDate(branchIds, date);
+            Map<String, List<DailyBalance>> balByCurrency = balances.stream()
+                    .collect(java.util.stream.Collectors.groupingBy(DailyBalance::getCurrencyCode));
+
+            List<hu.puzzleir.valuta.dto.mnb.MnbCurrencyLineDto> lines = new ArrayList<>();
+            for (Map.Entry<String, CurrencyAggregation> cEntry : aggregations.entrySet()) {
+                CurrencyAggregation agg = cEntry.getValue();
+                hu.puzzleir.valuta.dto.mnb.MnbCurrencyLineDto line = hu.puzzleir.valuta.dto.mnb.MnbCurrencyLineDto.builder()
+                        .currencyCode(cEntry.getKey())
+                        .buyAmount(agg.buyAmount)
+                        .sellAmount(agg.sellAmount)
+                        .buyHuf(agg.buyHufTotal)
+                        .sellHuf(agg.sellHufTotal)
+                        .avgBuyRate(agg.getBuyCount() > 0
+                                ? agg.buyRateSum.divide(BigDecimal.valueOf(agg.getBuyCount()), 4, RoundingMode.HALF_UP)
+                                : BigDecimal.ZERO)
+                        .avgSellRate(agg.getSellCount() > 0
+                                ? agg.sellRateSum.divide(BigDecimal.valueOf(agg.getSellCount()), 4, RoundingMode.HALF_UP)
+                                : BigDecimal.ZERO)
+                        .transactionCount(agg.totalCount)
+                        .build();
+
+                // Készlet integrálás
+                List<DailyBalance> currBalances = balByCurrency.getOrDefault(cEntry.getKey(), java.util.Collections.emptyList());
+                enrichCurrencyLineWithBalance(line, currBalances);
+
+                lines.add(line);
+
+                totalBuyHuf = totalBuyHuf.add(agg.buyHufTotal);
+                totalSellHuf = totalSellHuf.add(agg.sellHufTotal);
+                totalTxCount += agg.totalCount;
+                totalCardPayment = totalCardPayment.add(line.getCardPayment());
+            }
+
+            // Körzetek a KFT-en belül
+            List<hu.puzzleir.valuta.dto.mnb.MnbRegionReportDto> kftRegionReports = new ArrayList<>();
+            Map<String, List<Branch>> kftRegionMap = companyBranches.stream()
+                    .collect(java.util.stream.Collectors.groupingBy(
+                            b -> b.getRegionCode() != null ? b.getRegionCode() : "__UNASSIGNED__"));
+            for (Map.Entry<String, List<Branch>> rEntry : kftRegionMap.entrySet()) {
+                if (!"__UNASSIGNED__".equals(rEntry.getKey())) {
+                    kftRegionReports.add(buildRegionReport(date, rEntry.getKey(), rEntry.getValue()));
+                }
+            }
+            kftRegionReports.sort(java.util.Comparator.comparing(hu.puzzleir.valuta.dto.mnb.MnbRegionReportDto::getRegionCode));
+
+            result.add(MnbCompanyGroupReportDto.builder()
+                    .date(date)
+                    .groupCode(groupCode)
+                    .groupName(company.getName() != null ? company.getName() : groupCode)
+                    .totalBuyHuf(totalBuyHuf)
+                    .totalSellHuf(totalSellHuf)
+                    .totalTransactions(totalTxCount)
+                    .totalCardPayment(totalCardPayment)
+                    .currencyLines(lines)
+                    .regionReports(kftRegionReports)
+                    .build());
+        }
+
+        // Rendezés groupCode alapján
+        result.sort(java.util.Comparator.comparing(MnbCompanyGroupReportDto::getGroupCode));
+        return result;
+    }
+
+    /**
+     * Valutasor készlet-adatainak kitöltése DailyBalance-okból.
+     *
+     * Legacy: Delphi AdatKiertekeles — nyitó/záró/mozgás összesítés és validáció.
+     */
+    private void enrichCurrencyLineWithBalance(
+            hu.puzzleir.valuta.dto.mnb.MnbCurrencyLineDto line,
+            List<DailyBalance> balances) {
+
+        BigDecimal opening = BigDecimal.ZERO;
+        BigDecimal closing = BigDecimal.ZERO;
+        BigDecimal tIn = BigDecimal.ZERO;
+        BigDecimal tOut = BigDecimal.ZERO;
+        BigDecimal bIn = BigDecimal.ZERO;
+        BigDecimal bOut = BigDecimal.ZERO;
+        BigDecimal surp = BigDecimal.ZERO;
+        BigDecimal short_ = BigDecimal.ZERO;
+        BigDecimal retIn = BigDecimal.ZERO;
+        BigDecimal retOut = BigDecimal.ZERO;
+        BigDecimal card = BigDecimal.ZERO;
+
+        for (DailyBalance db : balances) {
+            opening = opening.add(db.getOpeningBalance());
+            closing = closing.add(db.getClosingBalance());
+            tIn = tIn.add(db.getTransfersIn());
+            tOut = tOut.add(db.getTransfersOut());
+            bIn = bIn.add(db.getBankIn());
+            bOut = bOut.add(db.getBankOut());
+            surp = surp.add(db.getSurplus());
+            short_ = short_.add(db.getShortage());
+            retIn = retIn.add(db.getReturnsIn());
+            retOut = retOut.add(db.getReturnsOut());
+            card = card.add(db.getCardPayment());
+        }
+
+        line.setOpeningBalance(opening);
+        line.setClosingBalance(closing);
+        line.setTransfersIn(tIn);
+        line.setTransfersOut(tOut);
+        line.setBankIn(bIn);
+        line.setBankOut(bOut);
+        line.setSurplus(surp);
+        line.setShortage(short_);
+        line.setReturnsIn(retIn);
+        line.setReturnsOut(retOut);
+        line.setCardPayment(card);
+
+        // Validáció: bevétel - kiadás = számított záró
+        BigDecimal income = opening
+                .add(line.getBuyAmount())
+                .add(surp)
+                .add(tIn)
+                .add(bIn)
+                .add(retIn);
+        BigDecimal expense = line.getSellAmount()
+                .add(short_)
+                .add(tOut)
+                .add(bOut)
+                .add(retOut);
+        BigDecimal calcClosing = income.subtract(expense);
+        line.setCalculatedClosing(calcClosing);
+
+        BigDecimal diff = closing.subtract(calcClosing).abs();
+        line.setBalanceDiff(diff);
+        line.setValidationStatus(diff.compareTo(BigDecimal.ZERO) == 0 ? "OK" : "?");
     }
 
     /**

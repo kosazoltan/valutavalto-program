@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.dto.mnb.MnbRegionReportDto;
 import hu.puzzleir.valuta.dto.mnb.MnbCurrencyLineDto;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.BranchRepository;
+import hu.puzzleir.valuta.repository.DailyBalanceRepository;
 import hu.puzzleir.valuta.repository.MnbReportRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
@@ -53,6 +54,9 @@ class MnbHierarchicalReportTest {
     private BranchRepository branchRepository;
 
     @Mock
+    private DailyBalanceRepository dailyBalanceRepository;
+
+    @Mock
     private OwnCompanyService ownCompanyService;
 
     @Mock
@@ -72,6 +76,10 @@ class MnbHierarchicalReportTest {
         TestingAuthenticationToken auth = new TestingAuthenticationToken("test", "pass", "ROLE_MANAGER");
         auth.setDetails(details);
         SecurityContextHolder.getContext().setAuthentication(auth);
+
+        // S1-01: DailyBalanceRepository alapértelmezett mock (üres készlet)
+        lenient().when(dailyBalanceRepository.findByBranchIdsAndDate(anyList(), any(LocalDate.class)))
+                .thenReturn(Collections.emptyList());
     }
 
     // ══════════════════════════════════════════════════════════════

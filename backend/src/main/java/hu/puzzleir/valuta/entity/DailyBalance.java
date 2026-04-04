@@ -157,8 +157,53 @@ public class DailyBalance {
     @Column(name = "difference_note", columnDefinition = "TEXT")
     private String differenceNote;
 
+    // --- S1-01: MNB gyűjtő készlet/mozgás mezők (Delphi legacy) ---
+
+    /** Banki átvétel — Delphi: BANKIATVETEL */
+    @Column(name = "bank_in", nullable = false, precision = 18, scale = 2)
+    @Builder.Default
+    private BigDecimal bankIn = BigDecimal.ZERO;
+
+    /** Banki átadás — Delphi: BANKIATADAS */
+    @Column(name = "bank_out", nullable = false, precision = 18, scale = 2)
+    @Builder.Default
+    private BigDecimal bankOut = BigDecimal.ZERO;
+
+    /** Készlettöbblet — Delphi: TOBBLET */
+    @Column(name = "surplus", nullable = false, precision = 18, scale = 2)
+    @Builder.Default
+    private BigDecimal surplus = BigDecimal.ZERO;
+
+    /** Készlethiány — Delphi: HIANY */
+    @Column(name = "shortage", nullable = false, precision = 18, scale = 2)
+    @Builder.Default
+    private BigDecimal shortage = BigDecimal.ZERO;
+
+    /** Visszavétel bejövő — Delphi: VISSZAPLUSZ */
+    @Column(name = "returns_in", nullable = false, precision = 18, scale = 2)
+    @Builder.Default
+    private BigDecimal returnsIn = BigDecimal.ZERO;
+
+    /** Visszavétel kimenő — Delphi: VISSZAMINUSZ */
+    @Column(name = "returns_out", nullable = false, precision = 18, scale = 2)
+    @Builder.Default
+    private BigDecimal returnsOut = BigDecimal.ZERO;
+
+    /** Bankkártyás forgalom HUF — Delphi: BANKKARTYA */
+    @Column(name = "card_payment", nullable = false, precision = 18, scale = 2)
+    @Builder.Default
+    private BigDecimal cardPayment = BigDecimal.ZERO;
+
+    /** Számított záró (MNB validáció) */
+    @Column(name = "calculated_closing", precision = 18, scale = 2)
+    private BigDecimal calculatedClosing;
+
+    /** Validáció eredménye: OK vagy ? */
+    @Column(name = "validation_status", length = 5)
+    private String validationStatus;
+
     /**
-     * Záró készlet számítása
+     * Záró készlet számítása (alapképlet: nyitó + bevétel - kiadás)
      */
     public void calculateClosingBalance() {
         this.closingBalance = openingBalance
@@ -166,6 +211,30 @@ public class DailyBalance {
             .add(transfersIn)
             .subtract(sales)
             .subtract(transfersOut);
+    }
+
+    /**
+     * MNB validáció: számított záró a teljes mozgásokkal.
+     * Delphi AdatKiertekeles logika:
+     *   bevétel = nyitó + vétel + többlet + pénztárból + bankból + visszaPlusz
+     *   kiadás  = eladás + hiány + pénztárba + bankba + visszaMínusz
+     *   számítottZáró = bevétel - kiadás
+     */
+    public void calculateMnbValidation() {
+        BigDecimal income = openingBalance
+            .add(purchases)
+            .add(surplus)
+            .add(transfersIn)
+            .add(bankIn)
+            .add(returnsIn);
+        BigDecimal expense = sales
+            .add(shortage)
+            .add(transfersOut)
+            .add(bankOut)
+            .add(returnsOut);
+        this.calculatedClosing = income.subtract(expense);
+        BigDecimal diff = closingBalance.subtract(calculatedClosing).abs();
+        this.validationStatus = diff.compareTo(BigDecimal.ZERO) == 0 ? "OK" : "?";
     }
 
     /**

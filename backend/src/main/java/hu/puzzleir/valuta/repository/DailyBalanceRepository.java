@@ -75,4 +75,26 @@ public interface DailyBalanceRepository extends JpaRepository<DailyBalance, Long
         @Param("branchId") UUID branchId,
         @Param("from") LocalDate from,
         @Param("to") LocalDate to);
+
+    /**
+     * MNB gyűjtő batch lekérdezés: több iroda napi készletadatai egy napra.
+     * S1-01: Egyetlen query az N+1 probléma elkerüléséhez.
+     */
+    @Query("SELECT db FROM DailyBalance db WHERE db.branchId IN :branchIds " +
+           "AND db.balanceDate = :date ORDER BY db.branchId, db.currencyCode")
+    List<DailyBalance> findByBranchIdsAndDate(
+        @Param("branchIds") List<UUID> branchIds,
+        @Param("date") LocalDate date);
+
+    /**
+     * MNB gyűjtő batch lekérdezés: több iroda készletadatai egy időszakra.
+     * S1-01: Havi aggregáláshoz.
+     */
+    @Query("SELECT db FROM DailyBalance db WHERE db.branchId IN :branchIds " +
+           "AND db.balanceDate BETWEEN :from AND :to " +
+           "ORDER BY db.branchId, db.balanceDate, db.currencyCode")
+    List<DailyBalance> findByBranchIdsAndDateRange(
+        @Param("branchIds") List<UUID> branchIds,
+        @Param("from") LocalDate from,
+        @Param("to") LocalDate to);
 }

@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
+import hu.puzzleir.valuta.repository.DailyBalanceRepository;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.MnbReportRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
@@ -48,6 +49,9 @@ class MnbReportServiceTest {
 
     @Mock
     private BranchRepository branchRepository;
+
+    @Mock
+    private DailyBalanceRepository dailyBalanceRepository;
 
     @Mock
     private OwnCompanyService ownCompanyService;
