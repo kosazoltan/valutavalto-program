@@ -791,8 +791,16 @@ public class MnbReportService {
         Map<String, CurrencyAggregation> regionAggregations = new java.util.LinkedHashMap<>();
         List<hu.puzzleir.valuta.dto.mnb.MnbRegionReportDto.BranchSummary> branchSummaries = new ArrayList<>();
 
+        // Batch query - N+1 kikerulese
+        List<java.util.UUID> branchIds = branches.stream()
+                .map(Branch::getId)
+                .collect(java.util.stream.Collectors.toList());
+        List<Transaction> allTransactions = transactionRepository.findActiveByBranchIdsAndDate(branchIds, date);
+        Map<java.util.UUID, List<Transaction>> txByBranch = allTransactions.stream()
+                .collect(java.util.stream.Collectors.groupingBy(t -> t.getBranch().getId()));
+
         for (Branch branch : branches) {
-            List<Transaction> transactions = transactionRepository.findActiveByBranchAndDate(branch.getId(), date);
+            List<Transaction> transactions = txByBranch.getOrDefault(branch.getId(), java.util.Collections.emptyList());
             Map<String, CurrencyAggregation> branchAgg = aggregateTransactions(transactions);
 
             BigDecimal branchBuyHuf = BigDecimal.ZERO;
@@ -876,15 +884,15 @@ public class MnbReportService {
     private String getRegionName(String regionCode) {
         if (regionCode == null) return "Ismeretlen";
         return switch (regionCode) {
-            case "10" -> "Szekszard";
+            case "10" -> "Szeksz\u00e1rd";
             case "20" -> "Szeged";
-            case "40" -> "Kecskemet";
+            case "40" -> "Kecskem\u00e9t";
             case "50" -> "Debrecen";
-            case "63" -> "Nyiregyhaza";
-            case "75" -> "Bekescsaba";
-            case "120" -> "Pecs";
-            case "145" -> "Kaposvar";
-            default -> "Koerzet " + regionCode;
+            case "63" -> "Ny\u00edregyh\u00e1za";
+            case "75" -> "B\u00e9k\u00e9scsaba";
+            case "120" -> "P\u00e9cs";
+            case "145" -> "Kaposv\u00e1r";
+            default -> "K\u00f6rzet " + regionCode;
         };
     }
 

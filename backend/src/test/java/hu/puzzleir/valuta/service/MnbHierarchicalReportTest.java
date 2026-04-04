@@ -102,7 +102,7 @@ class MnbHierarchicalReportTest {
             MnbRegionReportDto dto = MnbRegionReportDto.builder()
                     .date(date)
                     .regionCode("10")
-                    .regionName("Szekszard")
+                    .regionName("Szeksz\u00e1rd")
                     .branchCount(1)
                     .totalBuyHuf(new BigDecimal("100000"))
                     .totalSellHuf(new BigDecimal("80000"))
@@ -113,7 +113,7 @@ class MnbHierarchicalReportTest {
 
             assertThat(dto.getDate()).isEqualTo(date);
             assertThat(dto.getRegionCode()).isEqualTo("10");
-            assertThat(dto.getRegionName()).isEqualTo("Szekszard");
+            assertThat(dto.getRegionName()).isEqualTo("Szeksz\u00e1rd");
             assertThat(dto.getBranchCount()).isEqualTo(1);
             assertThat(dto.getTotalBuyHuf()).isEqualByComparingTo("100000");
             assertThat(dto.getTotalSellHuf()).isEqualByComparingTo("80000");
@@ -251,7 +251,7 @@ class MnbHierarchicalReportTest {
                     .thenReturn(List.of(branch));
             when(transactionRepository.findActiveByCompanyAndDate(eq(COMPANY_ID), eq(TEST_DATE)))
                     .thenReturn(List.of());
-            when(transactionRepository.findActiveByBranchAndDate(eq(BRANCH_ID_1), eq(TEST_DATE)))
+            when(transactionRepository.findActiveByBranchIdsAndDate(anyList(), eq(TEST_DATE)))
                     .thenReturn(List.of());
             when(ownCompanyService.listActive()).thenReturn(List.of());
             return mnbReportService.generateHierarchicalReport(TEST_DATE);
@@ -260,7 +260,7 @@ class MnbHierarchicalReportTest {
         @Test @DisplayName("regionCode=10 → Szekszard")
         void testRegion10() {
             assertThat(buildReportWithRegionCode("10").getRegionReports().get(0).getRegionName())
-                    .isEqualTo("Szekszard");
+                    .isEqualTo("Szeksz\u00e1rd");
         }
 
         @Test @DisplayName("regionCode=20 → Szeged")
@@ -272,7 +272,7 @@ class MnbHierarchicalReportTest {
         @Test @DisplayName("regionCode=40 → Kecskemet")
         void testRegion40() {
             assertThat(buildReportWithRegionCode("40").getRegionReports().get(0).getRegionName())
-                    .isEqualTo("Kecskemet");
+                    .isEqualTo("Kecskem\u00e9t");
         }
 
         @Test @DisplayName("regionCode=50 → Debrecen")
@@ -284,31 +284,31 @@ class MnbHierarchicalReportTest {
         @Test @DisplayName("regionCode=63 → Nyiregyhaza")
         void testRegion63() {
             assertThat(buildReportWithRegionCode("63").getRegionReports().get(0).getRegionName())
-                    .isEqualTo("Nyiregyhaza");
+                    .isEqualTo("Ny\u00edregyh\u00e1za");
         }
 
         @Test @DisplayName("regionCode=75 → Bekescsaba")
         void testRegion75() {
             assertThat(buildReportWithRegionCode("75").getRegionReports().get(0).getRegionName())
-                    .isEqualTo("Bekescsaba");
+                    .isEqualTo("B\u00e9k\u00e9scsaba");
         }
 
         @Test @DisplayName("regionCode=120 → Pecs")
         void testRegion120() {
             assertThat(buildReportWithRegionCode("120").getRegionReports().get(0).getRegionName())
-                    .isEqualTo("Pecs");
+                    .isEqualTo("P\u00e9cs");
         }
 
         @Test @DisplayName("regionCode=145 → Kaposvar")
         void testRegion145() {
             assertThat(buildReportWithRegionCode("145").getRegionReports().get(0).getRegionName())
-                    .isEqualTo("Kaposvar");
+                    .isEqualTo("Kaposv\u00e1r");
         }
 
         @Test @DisplayName("ismeretlen kód → 'Koerzet XYZ' default fallback")
         void testRegionUnknownDefaultFallback() {
             assertThat(buildReportWithRegionCode("999").getRegionReports().get(0).getRegionName())
-                    .isEqualTo("Koerzet 999");
+                    .isEqualTo("K\u00f6rzet 999");
         }
 
         @Test @DisplayName("null regionCode → unassignedBranches.regionName = 'Koerzethez nem rendelt irodak'")
@@ -318,7 +318,7 @@ class MnbHierarchicalReportTest {
                     .thenReturn(List.of(branch));
             when(transactionRepository.findActiveByCompanyAndDate(eq(COMPANY_ID), eq(TEST_DATE)))
                     .thenReturn(List.of());
-            when(transactionRepository.findActiveByBranchAndDate(eq(BRANCH_ID_1), eq(TEST_DATE)))
+            when(transactionRepository.findActiveByBranchIdsAndDate(anyList(), eq(TEST_DATE)))
                     .thenReturn(List.of());
             when(ownCompanyService.listActive()).thenReturn(List.of());
 
@@ -351,18 +351,16 @@ class MnbHierarchicalReportTest {
 
             var eur = buildCurrency("EUR");
             // Cég szintű tranzakciók
-            Transaction companyTx1 = createTx(TransactionType.BUY, eur,
-                    new BigDecimal("1000"), new BigDecimal("395000"), new BigDecimal("395"));
-            Transaction companyTx2 = createTx(TransactionType.SELL, eur,
-                    new BigDecimal("500"), new BigDecimal("202500"), new BigDecimal("405"));
+            Transaction companyTx1 = createTxWithBranch(TransactionType.BUY, eur,
+                    new BigDecimal("1000"), new BigDecimal("395000"), new BigDecimal("395"), b1);
+            Transaction companyTx2 = createTxWithBranch(TransactionType.SELL, eur,
+                    new BigDecimal("500"), new BigDecimal("202500"), new BigDecimal("405"), b2);
             when(transactionRepository.findActiveByCompanyAndDate(eq(COMPANY_ID), eq(TEST_DATE)))
                     .thenReturn(List.of(companyTx1, companyTx2));
 
             // Branch szintű tranzakciók (nem szükséges összhang a cég totállal ebben a tesztben)
-            when(transactionRepository.findActiveByBranchAndDate(eq(BRANCH_ID_1), eq(TEST_DATE)))
-                    .thenReturn(List.of(companyTx1));
-            when(transactionRepository.findActiveByBranchAndDate(eq(BRANCH_ID_2), eq(TEST_DATE)))
-                    .thenReturn(List.of(companyTx2));
+            when(transactionRepository.findActiveByBranchIdsAndDate(anyList(), eq(TEST_DATE)))
+                    .thenReturn(List.of(companyTx1, companyTx2));
 
             when(ownCompanyService.listActive()).thenReturn(buildOwnCompanyList("Best Change Kft."));
 
@@ -385,11 +383,11 @@ class MnbHierarchicalReportTest {
                     .thenReturn(List.of(b1));
 
             var eur = buildCurrency("EUR");
-            Transaction tx = createTx(TransactionType.BUY, eur,
-                    new BigDecimal("2000"), new BigDecimal("790000"), new BigDecimal("395"));
+            Transaction tx = createTxWithBranch(TransactionType.BUY, eur,
+                    new BigDecimal("2000"), new BigDecimal("790000"), new BigDecimal("395"), b1);
             when(transactionRepository.findActiveByCompanyAndDate(eq(COMPANY_ID), eq(TEST_DATE)))
                     .thenReturn(List.of(tx));
-            when(transactionRepository.findActiveByBranchAndDate(eq(BRANCH_ID_1), eq(TEST_DATE)))
+            when(transactionRepository.findActiveByBranchIdsAndDate(anyList(), eq(TEST_DATE)))
                     .thenReturn(List.of(tx));
             when(ownCompanyService.listActive()).thenReturn(List.of());
 
@@ -414,7 +412,7 @@ class MnbHierarchicalReportTest {
                     .thenReturn(List.of(b1, b2, b3));
             when(transactionRepository.findActiveByCompanyAndDate(eq(COMPANY_ID), eq(TEST_DATE)))
                     .thenReturn(List.of());
-            when(transactionRepository.findActiveByBranchAndDate(any(), eq(TEST_DATE)))
+            when(transactionRepository.findActiveByBranchIdsAndDate(anyList(), eq(TEST_DATE)))
                     .thenReturn(List.of());
             when(ownCompanyService.listActive()).thenReturn(List.of());
 
@@ -435,7 +433,7 @@ class MnbHierarchicalReportTest {
                     .thenReturn(List.of(b1));
             when(transactionRepository.findActiveByCompanyAndDate(eq(COMPANY_ID), eq(TEST_DATE)))
                     .thenReturn(List.of());
-            when(transactionRepository.findActiveByBranchAndDate(eq(BRANCH_ID_1), eq(TEST_DATE)))
+            when(transactionRepository.findActiveByBranchIdsAndDate(anyList(), eq(TEST_DATE)))
                     .thenReturn(List.of());
             when(ownCompanyService.listActive()).thenReturn(List.of());
 
@@ -465,20 +463,18 @@ class MnbHierarchicalReportTest {
             var eur = buildCurrency("EUR");
 
             // Branch 1: 1 BUY
-            Transaction b1tx = createTx(TransactionType.BUY, eur,
-                    new BigDecimal("1000"), new BigDecimal("395000"), new BigDecimal("395"));
+            Transaction b1tx = createTxWithBranch(TransactionType.BUY, eur,
+                    new BigDecimal("1000"), new BigDecimal("395000"), new BigDecimal("395"), b1);
             // Branch 2: 1 BUY + 1 SELL
-            Transaction b2buyTx = createTx(TransactionType.BUY, eur,
-                    new BigDecimal("500"), new BigDecimal("199000"), new BigDecimal("398"));
-            Transaction b2sellTx = createTx(TransactionType.SELL, eur,
-                    new BigDecimal("300"), new BigDecimal("123000"), new BigDecimal("410"));
+            Transaction b2buyTx = createTxWithBranch(TransactionType.BUY, eur,
+                    new BigDecimal("500"), new BigDecimal("199000"), new BigDecimal("398"), b2);
+            Transaction b2sellTx = createTxWithBranch(TransactionType.SELL, eur,
+                    new BigDecimal("300"), new BigDecimal("123000"), new BigDecimal("410"), b2);
 
             when(transactionRepository.findActiveByCompanyAndDate(eq(COMPANY_ID), eq(TEST_DATE)))
                     .thenReturn(List.of(b1tx, b2buyTx, b2sellTx));
-            when(transactionRepository.findActiveByBranchAndDate(eq(BRANCH_ID_1), eq(TEST_DATE)))
-                    .thenReturn(List.of(b1tx));
-            when(transactionRepository.findActiveByBranchAndDate(eq(BRANCH_ID_2), eq(TEST_DATE)))
-                    .thenReturn(List.of(b2buyTx, b2sellTx));
+            when(transactionRepository.findActiveByBranchIdsAndDate(anyList(), eq(TEST_DATE)))
+                    .thenReturn(List.of(b1tx, b2buyTx, b2sellTx));
             when(ownCompanyService.listActive()).thenReturn(List.of());
 
             MnbHierarchicalReportDto result = mnbReportService.generateHierarchicalReport(TEST_DATE);
@@ -486,7 +482,7 @@ class MnbHierarchicalReportTest {
             assertThat(result.getRegionReports()).hasSize(1);
             MnbRegionReportDto region = result.getRegionReports().get(0);
             assertThat(region.getRegionCode()).isEqualTo("10");
-            assertThat(region.getRegionName()).isEqualTo("Szekszard");
+            assertThat(region.getRegionName()).isEqualTo("Szeksz\u00e1rd");
             assertThat(region.getBranchCount()).isEqualTo(2);
 
             // Összegek: b1 + b2
@@ -526,17 +522,15 @@ class MnbHierarchicalReportTest {
             var eur = buildCurrency("EUR");
             var usd = buildCurrency("USD");
 
-            Transaction eurTx = createTx(TransactionType.BUY, eur,
-                    new BigDecimal("1000"), new BigDecimal("395000"), new BigDecimal("395"));
-            Transaction usdTx = createTx(TransactionType.SELL, usd,
-                    new BigDecimal("500"), new BigDecimal("192000"), new BigDecimal("384"));
+            Transaction eurTx = createTxWithBranch(TransactionType.BUY, eur,
+                    new BigDecimal("1000"), new BigDecimal("395000"), new BigDecimal("395"), b1);
+            Transaction usdTx = createTxWithBranch(TransactionType.SELL, usd,
+                    new BigDecimal("500"), new BigDecimal("192000"), new BigDecimal("384"), b2);
 
             when(transactionRepository.findActiveByCompanyAndDate(eq(COMPANY_ID), eq(TEST_DATE)))
                     .thenReturn(List.of(eurTx, usdTx));
-            when(transactionRepository.findActiveByBranchAndDate(eq(BRANCH_ID_1), eq(TEST_DATE)))
-                    .thenReturn(List.of(eurTx));
-            when(transactionRepository.findActiveByBranchAndDate(eq(BRANCH_ID_2), eq(TEST_DATE)))
-                    .thenReturn(List.of(usdTx));
+            when(transactionRepository.findActiveByBranchIdsAndDate(anyList(), eq(TEST_DATE)))
+                    .thenReturn(List.of(eurTx, usdTx));
             when(ownCompanyService.listActive()).thenReturn(List.of());
 
             MnbHierarchicalReportDto result = mnbReportService.generateHierarchicalReport(TEST_DATE);
@@ -558,17 +552,15 @@ class MnbHierarchicalReportTest {
                     .thenReturn(List.of(b1, b2));
 
             var eur = buildCurrency("EUR");
-            Transaction b1tx = createTx(TransactionType.BUY, eur,
-                    new BigDecimal("1000"), new BigDecimal("395000"), new BigDecimal("395"));
-            Transaction b2tx = createTx(TransactionType.SELL, eur,
-                    new BigDecimal("200"), new BigDecimal("82000"), new BigDecimal("410"));
+            Transaction b1tx = createTxWithBranch(TransactionType.BUY, eur,
+                    new BigDecimal("1000"), new BigDecimal("395000"), new BigDecimal("395"), b1);
+            Transaction b2tx = createTxWithBranch(TransactionType.SELL, eur,
+                    new BigDecimal("200"), new BigDecimal("82000"), new BigDecimal("410"), b2);
 
             when(transactionRepository.findActiveByCompanyAndDate(eq(COMPANY_ID), eq(TEST_DATE)))
                     .thenReturn(List.of(b1tx, b2tx));
-            when(transactionRepository.findActiveByBranchAndDate(eq(BRANCH_ID_1), eq(TEST_DATE)))
-                    .thenReturn(List.of(b1tx));
-            when(transactionRepository.findActiveByBranchAndDate(eq(BRANCH_ID_2), eq(TEST_DATE)))
-                    .thenReturn(List.of(b2tx));
+            when(transactionRepository.findActiveByBranchIdsAndDate(anyList(), eq(TEST_DATE)))
+                    .thenReturn(List.of(b1tx, b2tx));
             when(ownCompanyService.listActive()).thenReturn(List.of());
 
             MnbHierarchicalReportDto result = mnbReportService.generateHierarchicalReport(TEST_DATE);
@@ -610,7 +602,7 @@ class MnbHierarchicalReportTest {
                     .thenReturn(List.of(b1));
             when(transactionRepository.findActiveByCompanyAndDate(eq(COMPANY_ID), eq(TEST_DATE)))
                     .thenReturn(List.of());
-            when(transactionRepository.findActiveByBranchAndDate(eq(BRANCH_ID_1), eq(TEST_DATE)))
+            when(transactionRepository.findActiveByBranchIdsAndDate(anyList(), eq(TEST_DATE)))
                     .thenReturn(List.of());
             when(ownCompanyService.listActive()).thenReturn(List.of());
 
@@ -655,15 +647,13 @@ class MnbHierarchicalReportTest {
                     .thenReturn(List.of(b1, b2));
 
             var eur = buildCurrency("EUR");
-            Transaction tx = createTx(TransactionType.BUY, eur,
-                    new BigDecimal("500"), new BigDecimal("197500"), new BigDecimal("395"));
+            Transaction tx = createTxWithBranch(TransactionType.BUY, eur,
+                    new BigDecimal("500"), new BigDecimal("197500"), new BigDecimal("395"), b1);
 
             when(transactionRepository.findActiveByCompanyAndDate(eq(COMPANY_ID), eq(TEST_DATE)))
                     .thenReturn(List.of(tx));
-            when(transactionRepository.findActiveByBranchAndDate(eq(BRANCH_ID_1), eq(TEST_DATE)))
+            when(transactionRepository.findActiveByBranchIdsAndDate(anyList(), eq(TEST_DATE)))
                     .thenReturn(List.of(tx));
-            when(transactionRepository.findActiveByBranchAndDate(eq(BRANCH_ID_2), eq(TEST_DATE)))
-                    .thenReturn(List.of());
             when(ownCompanyService.listActive()).thenReturn(List.of());
 
             MnbHierarchicalReportDto result = mnbReportService.generateHierarchicalReport(TEST_DATE);
@@ -686,12 +676,12 @@ class MnbHierarchicalReportTest {
                     .thenReturn(List.of(b1));
 
             var eur = buildCurrency("EUR");
-            Transaction tx = createTx(TransactionType.BUY, eur,
-                    new BigDecimal("750"), new BigDecimal("296250"), new BigDecimal("395"));
+            Transaction tx = createTxWithBranch(TransactionType.BUY, eur,
+                    new BigDecimal("750"), new BigDecimal("296250"), new BigDecimal("395"), b1);
 
             when(transactionRepository.findActiveByCompanyAndDate(eq(COMPANY_ID), eq(TEST_DATE)))
                     .thenReturn(List.of(tx));
-            when(transactionRepository.findActiveByBranchAndDate(eq(BRANCH_ID_1), eq(TEST_DATE)))
+            when(transactionRepository.findActiveByBranchIdsAndDate(anyList(), eq(TEST_DATE)))
                     .thenReturn(List.of(tx));
             when(ownCompanyService.listActive()).thenReturn(List.of());
 
@@ -700,7 +690,7 @@ class MnbHierarchicalReportTest {
             assertThat(result.getRegionReports()).hasSize(1);
             MnbRegionReportDto region = result.getRegionReports().get(0);
             assertThat(region.getRegionCode()).isEqualTo("120");
-            assertThat(region.getRegionName()).isEqualTo("Pecs");
+            assertThat(region.getRegionName()).isEqualTo("P\u00e9cs");
             assertThat(region.getBranchCount()).isEqualTo(1);
             assertThat(region.getBranchSummaries()).hasSize(1);
             assertThat(region.getBranchSummaries().get(0).getBranchCode()).isEqualTo("PCS01");
@@ -717,14 +707,14 @@ class MnbHierarchicalReportTest {
 
             var huf = buildCurrency("HUF");
             var eur = buildCurrency("EUR");
-            Transaction hufTx = createTx(TransactionType.BUY, huf,
-                    new BigDecimal("10000"), new BigDecimal("10000"), new BigDecimal("1"));
-            Transaction eurTx = createTx(TransactionType.BUY, eur,
-                    new BigDecimal("100"), new BigDecimal("39500"), new BigDecimal("395"));
+            Transaction hufTx = createTxWithBranch(TransactionType.BUY, huf,
+                    new BigDecimal("10000"), new BigDecimal("10000"), new BigDecimal("1"), b1);
+            Transaction eurTx = createTxWithBranch(TransactionType.BUY, eur,
+                    new BigDecimal("100"), new BigDecimal("39500"), new BigDecimal("395"), b1);
 
             when(transactionRepository.findActiveByCompanyAndDate(eq(COMPANY_ID), eq(TEST_DATE)))
                     .thenReturn(List.of(hufTx, eurTx));
-            when(transactionRepository.findActiveByBranchAndDate(eq(BRANCH_ID_1), eq(TEST_DATE)))
+            when(transactionRepository.findActiveByBranchIdsAndDate(anyList(), eq(TEST_DATE)))
                     .thenReturn(List.of(hufTx, eurTx));
             when(ownCompanyService.listActive()).thenReturn(List.of());
 
@@ -750,7 +740,7 @@ class MnbHierarchicalReportTest {
                     .thenReturn(List.of(assigned, unassigned));
             when(transactionRepository.findActiveByCompanyAndDate(eq(COMPANY_ID), eq(TEST_DATE)))
                     .thenReturn(List.of());
-            when(transactionRepository.findActiveByBranchAndDate(any(), eq(TEST_DATE)))
+            when(transactionRepository.findActiveByBranchIdsAndDate(anyList(), eq(TEST_DATE)))
                     .thenReturn(List.of());
             when(ownCompanyService.listActive()).thenReturn(List.of());
 
@@ -786,6 +776,13 @@ class MnbHierarchicalReportTest {
 
     private hu.puzzleir.valuta.entity.Currency buildCurrency(String code) {
         return hu.puzzleir.valuta.entity.Currency.builder().code(code).build();
+    }
+
+    private Transaction createTxWithBranch(TransactionType type, hu.puzzleir.valuta.entity.Currency currency,
+                                  BigDecimal currencyAmount, BigDecimal hufAmount, BigDecimal rate, Branch branch) {
+        Transaction tx = createTx(type, currency, currencyAmount, hufAmount, rate);
+        tx.setBranch(branch);
+        return tx;
     }
 
     private Transaction createTx(TransactionType type, hu.puzzleir.valuta.entity.Currency currency,

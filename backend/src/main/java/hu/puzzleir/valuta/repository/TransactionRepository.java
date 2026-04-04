@@ -206,6 +206,20 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     );
 
     /**
+     * Batch: aktiv tranzakciok lekerese TOBB irodahoz egy napon.
+     * N+1 query kivaltasa korzet szintu MNB aggregacional.
+     */
+    @Query("SELECT t FROM Transaction t " +
+           "WHERE t.branch.id IN :branchIds " +
+           "AND t.transactionDate = :date " +
+           "AND t.status = 'COMPLETED' " +
+           "ORDER BY t.branch.id ASC, t.transactionTime DESC")
+    List<Transaction> findActiveByBranchIdsAndDate(
+        @Param("branchIds") List<UUID> branchIds,
+        @Param("date") LocalDate date
+    );
+
+    /**
      * Aktív (nem sztornózott) tranzakciók
      */
     @Query("SELECT t FROM Transaction t " +
