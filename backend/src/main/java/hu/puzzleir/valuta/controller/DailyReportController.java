@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.report.DailyReportDto;
+import hu.puzzleir.valuta.dto.report.DailyReportFullDto;
 import hu.puzzleir.valuta.dto.treasury.SubmissionStatusDto;
 import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
 import hu.puzzleir.valuta.service.DailyReportService;
@@ -61,6 +62,19 @@ public class DailyReportController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         LocalDate reportDate = date != null ? date : LocalDate.now();
         return ResponseEntity.ok(dailyReportService.getSubmissionStatus(reportDate));
+    }
+
+    /**
+     * Teljes napi jelentés — Delphi NAPIJELENTES teljes adat (S2-01).
+     * Záró készletek, valutanem bontás, DE/DU forgalom, címletek, WU/ÁFA, kedvezmények,
+     * kezelési díj, e-kereskedelem, pénztáros nevek.
+     */
+    @GetMapping("/{branchId}/{date}/full")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<DailyReportFullDto> getFullReport(
+            @PathVariable UUID branchId,
+            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ResponseEntity.ok(dailyReportService.generateFullReport(branchId, date));
     }
 
     // ============ HELPERS ============
