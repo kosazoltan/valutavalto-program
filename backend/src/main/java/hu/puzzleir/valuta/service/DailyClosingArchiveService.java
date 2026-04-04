@@ -1,0 +1,253 @@
+package hu.puzzleir.valuta.service;
+
+import hu.puzzleir.valuta.entity.*;
+import hu.puzzleir.valuta.repository.*;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * Napi zárás archiváló service (Delphi: HaviGyujtokbeMasolas).
+ *
+ * <p>A Delphi rendszerben a napzár 10 copy-lépést hajtott végre, amelyek a napi
+ * munkatáblákat (BLOKKFEJ, BLOKKTETEL, CIMINI, ARFOLYAM, EKERDATA, KEZDIJDATA,
+ * WUAFAFORG, WZARO, EKERESKEDELEM, KEZDIJ) átmásolták havi archívum táblákba
+ * (BF, BT, CIMT, NARF, EDAT, KDAT, WUNI, WZAR, EKER, KEZD) majd törölték az
+ * eredeti táblák tartalmát.</p>
+ *
+ * <p>A modern rendszerben a tranzakciók perzisztensek (nem törlődnek naponta),
+ * ezért a copy-lépések snapshot-jellegű archiválásként működnek:</p>
+ *
+ * <ul>
+ *   <li>Tranzakció archiválás (BfCopy + BtCopy) → {@code MonthlyArchiveService.archiveDailyTransactions()}</li>
+ *   <li>Árfolyam snapshot (NarfCopy) → {@code DailyClosingService.snapshotDailyRates()}</li>
+ *   <li>Címletezés snapshot (CimtCopy) → {@link #snapshotDenominations(UUID, LocalDate)}</li>
+ *   <li>E-kereskedelem zárás (EdatCopy) → {@link #snapshotSubledger(UUID, LocalDate, String, String)}</li>
+ *   <li>Kezelési díj zárás (KdatCopy) → {@link #snapshotSubledger(UUID, LocalDate, String, String)}</li>
+ *   <li>WU/ÁFA forgalom (WuniCopy) → {@link #snapshotWuAfaTransactions(UUID, LocalDate)}</li>
+ *   <li>WU/ÁFA zárás (WzarCopy) → {@link #snapshotWuAfaSubledgers(UUID, LocalDate)}</li>
+ *   <li>E-ker forgalom (EkerCopy) + Kez.díj forgalom (KezdijCopy) → tranzakció táblában marad</li>
+ * </ul>
+ */
+@Service
+@RequiredArgsConstructor
+@Slf4j
+@Transactional
+public class DailyClosingArchiveService {
+
+    private final DailyDenominationSnapshotRepository denominationSnapshotRepo;
+    private final DailySubledgerSnapshotRepository subledgerSnapshotRepo;
+    private final DailyWuAfaTransactionRepository wuAfaTransactionRepo;
+    private final DenominationBalanceRepository denominationBalanceRepo;
+    private final TransactionRepository transactionRepository;
+
+    /**
+     * Teljes napi archiválás végrehajtása (Delphi: HaviGyujtokbeMasolas).
+     *
+     * @return archiválási összesítő szöveg
+     */
+    public String executeFullDailyArchive(UUID branchId, LocalDate closingDate) {
+        log.info("S1-02 napi archiválás indítása: branchId={}, date={}", branchId, closingDate);
+        StringBuilder summary = new StringBuilder();
+
+        // 1. Címletezés snapshot (CimtCopy)
+        int denomCount = snapshotDenominations(branchId, closingDate);
+        summary.append("Címletezés: ").append(denomCount).append(" snapshot. ");
+
+        // 2. E-kereskedelem zárás (EdatCopy)
+        snapshotSubledger(branchId, closingDate, "ECOMMERCE", "HUF");
+        summary.append("E-kereskedelem zárás: OK. ");
+
+        // 3. Kezelési díj zárás (KdatCopy)
+        snapshotSubledger(branchId, closingDate, "HANDLING_FEE", "HUF");
+        summary.append("Kezelési díj zárás: OK. ");
+
+        // 4. WU/ÁFA forgalom snapshot (WuniCopy)
+        int wuTxCount = snapshotWuAfaTransactions(branchId, closingDate);
+        summary.append("WU/ÁFA forgalom: ").append(wuTxCount).append(" tétel. ");
+
+        // 5. WU/ÁFA zárás (WzarCopy)
+        snapshotWuAfaSubledgers(branchId, closingDate);
+        summary.append("WU/ÁFA zárás: OK.");
+
+        log.info("S1-02 napi archiválás kész: branchId={}, date={}, summary={}",
+                branchId, closingDate, summary);
+        return summary.toString();
+    }
+
+    /**
+     * Címletezés snapshot (Delphi: CimtCopy).
+     *
+     * A DenominationBalance aktuális állapotát snapshot-olja.
+     * Duplikáció-védelem: ha az adott napra már van snapshot, kihagyja.
+     */
+    public int snapshotDenominations(UUID branchId, LocalDate closingDate) {
+        if (denominationSnapshotRepo.existsByBranchIdAndSnapshotDate(branchId, closingDate)) {
+            log.info("Címletezés snapshot már létezik: branchId={}, date={} — SKIP", branchId, closingDate);
+            return 0;
+        }
+
+        // Az aktuális DenominationBalance-okat olvassuk
+        List<DenominationBalance> balances = denominationBalanceRepo.findByCashDeskId(branchId);
+
+        int count = 0;
+        for (DenominationBalance bal : balances) {
+            if (bal.getQuantity() == null || bal.getQuantity() == 0) {
+                continue; // 0 darabot nem mentünk
+            }
+            Denomination denom = bal.getDenomination();
+            if (denom == null) continue;
+
+            DailyDenominationSnapshot snapshot = DailyDenominationSnapshot.builder()
+                    .branchId(branchId)
+                    .snapshotDate(closingDate)
+                    .currencyCode(denom.getCurrency() != null ? denom.getCurrency().getCode() : "HUF")
+                    .denominationType(denom.getDenominationType() != null ? denom.getDenominationType().name() : "BANKNOTE")
+                    .faceValue(denom.getFaceValue() != null ? denom.getFaceValue() : BigDecimal.ZERO)
+                    .quantity(bal.getQuantity())
+                    .totalValue(bal.getTotalValue() != null ? bal.getTotalValue() : BigDecimal.ZERO)
+                    .closingType(1) // esti zárás
+                    .build();
+            denominationSnapshotRepo.save(snapshot);
+            count++;
+        }
+
+        log.info("Címletezés snapshot kész: branchId={}, date={}, count={}", branchId, closingDate, count);
+        return count;
+    }
+
+    /**
+     * Al-pénztár zárás snapshot (Delphi: EdatCopy, KdatCopy).
+     *
+     * A napi forgalmat a Transaction táblából aggregáljuk típus szerint.
+     */
+    public void snapshotSubledger(UUID branchId, LocalDate closingDate,
+                                   String subledgerType, String currencyCode) {
+        if (subledgerSnapshotRepo.existsByBranchIdAndSnapshotDateAndSubledgerType(
+                branchId, closingDate, subledgerType)) {
+            log.info("Al-pénztár snapshot már létezik: branchId={}, date={}, type={} — SKIP",
+                    branchId, closingDate, subledgerType);
+            return;
+        }
+
+        // Az előző napi záró = mai nyitó (ha van)
+        LocalDate previousDate = closingDate.minusDays(1);
+        BigDecimal opening = subledgerSnapshotRepo
+                .findByBranchIdAndSnapshotDateAndSubledgerTypeAndCurrencyCode(
+                        branchId, previousDate, subledgerType, currencyCode)
+                .map(DailySubledgerSnapshot::getClosingBalance)
+                .orElse(BigDecimal.ZERO);
+
+        // Napi forgalom aggregálás — tranzakciókból
+        BigDecimal income = BigDecimal.ZERO;
+        BigDecimal expense = BigDecimal.ZERO;
+
+        List<Transaction> dayTx = transactionRepository.findActiveByBranchAndDate(
+                branchId, closingDate);
+
+        for (Transaction tx : dayTx) {
+            boolean matches = switch (subledgerType) {
+                case "ECOMMERCE" -> tx.getTransactionType() == TransactionType.OTHER;
+                case "HANDLING_FEE" -> tx.getHandlingFee() != null
+                        && tx.getHandlingFee().compareTo(BigDecimal.ZERO) > 0;
+                default -> false;
+            };
+
+            if (matches) {
+                BigDecimal amt = tx.getHufAmount() != null ? tx.getHufAmount().abs() : BigDecimal.ZERO;
+                if ("ECOMMERCE".equals(subledgerType)) {
+                    // E-kereskedelem: ELOJEL alapján
+                    if (tx.getTransactionType() == TransactionType.OTHER) {
+                        income = income.add(amt);
+                    }
+                } else {
+                    // Kezelési díj: mindig bevétel
+                    income = income.add(tx.getHandlingFee());
+                }
+            }
+        }
+
+        BigDecimal closing = opening.add(income).subtract(expense);
+
+        DailySubledgerSnapshot snapshot = DailySubledgerSnapshot.builder()
+                .branchId(branchId)
+                .snapshotDate(closingDate)
+                .subledgerType(subledgerType)
+                .currencyCode(currencyCode)
+                .openingBalance(opening)
+                .income(income)
+                .expense(expense)
+                .closingBalance(closing)
+                .build();
+        subledgerSnapshotRepo.save(snapshot);
+
+        log.info("Al-pénztár snapshot kész: branchId={}, date={}, type={}, closing={}",
+                branchId, closingDate, subledgerType, closing);
+    }
+
+    /**
+     * WU/ÁFA forgalmi tételek snapshot (Delphi: WuniCopy).
+     *
+     * A WU és ÁFA típusú tranzakciókat snapshot-olja.
+     */
+    public int snapshotWuAfaTransactions(UUID branchId, LocalDate closingDate) {
+        if (wuAfaTransactionRepo.existsByBranchIdAndTransactionDate(branchId, closingDate)) {
+            log.info("WU/ÁFA forgalom snapshot már létezik: branchId={}, date={} — SKIP",
+                    branchId, closingDate);
+            return 0;
+        }
+
+        List<Transaction> dayTx = transactionRepository.findActiveByBranchAndDate(
+                branchId, closingDate);
+
+        int count = 0;
+        for (Transaction tx : dayTx) {
+            TransactionType type = tx.getTransactionType();
+            boolean isWu = type == TransactionType.WESTERN_UNION_SEND
+                    || type == TransactionType.WESTERN_UNION_RECEIVE;
+            boolean isMg = type == TransactionType.MONEYGRAM_SEND
+                    || type == TransactionType.MONEYGRAM_RECEIVE;
+
+            if (!isWu && !isMg) continue;
+
+            String sign = (type == TransactionType.WESTERN_UNION_RECEIVE
+                    || type == TransactionType.MONEYGRAM_RECEIVE) ? "+" : "-";
+            String receiptType = isWu ? "WU" : "MG";
+
+            DailyWuAfaTransaction wuTx = DailyWuAfaTransaction.builder()
+                    .branchId(branchId)
+                    .transactionDate(closingDate)
+                    .receiptNumber(tx.getReceiptNumber() != null ? tx.getReceiptNumber() : "")
+                    .currencyCode(tx.getCurrency() != null ? tx.getCurrency().getCode() : "USD")
+                    .sign(sign)
+                    .amount(tx.getCurrencyAmount() != null ? tx.getCurrencyAmount() : BigDecimal.ZERO)
+                    .receiptType(receiptType)
+                    .registerCode(null)
+                    .storno(0)
+                    .build();
+            wuAfaTransactionRepo.save(wuTx);
+            count++;
+        }
+
+        log.info("WU/ÁFA forgalom snapshot kész: branchId={}, date={}, count={}", branchId, closingDate, count);
+        return count;
+    }
+
+    /**
+     * WU/ÁFA al-pénztárak napi zárás (Delphi: WzarCopy).
+     *
+     * 3 al-pénztár: WU_USD, WU_HUF, WU_VAT.
+     */
+    public void snapshotWuAfaSubledgers(UUID branchId, LocalDate closingDate) {
+        snapshotSubledger(branchId, closingDate, "WU_USD", "USD");
+        snapshotSubledger(branchId, closingDate, "WU_HUF", "HUF");
+        snapshotSubledger(branchId, closingDate, "WU_VAT", "HUF");
+    }
+}

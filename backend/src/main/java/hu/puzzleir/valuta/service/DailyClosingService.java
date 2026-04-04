@@ -64,6 +64,7 @@ public class DailyClosingService {
     private final PosTerminalRepository posTerminalRepository;
     private final EveningClosingService eveningClosingService;
     private final MonthlyArchiveService monthlyArchiveService;
+    private final DailyClosingArchiveService dailyClosingArchiveService;
     private final DecadeReportService decadeReportService;
     private final AmlService amlService;
     private final ReceiptSequenceService receiptSequenceService;
@@ -453,12 +454,22 @@ public class DailyClosingService {
         // 5. Esti zárás adatcsomag küldés a központnak (legacy ESTIZAR ekvivalens)
         executeEveningSync(branchId, closingDate);
 
-        // 6. Napi tranzakciók archiválása (legacy CopyTables)
+        // 6. Napi tranzakciók archiválása (legacy BfCopy + BtCopy)
         try {
             int archivedCount = monthlyArchiveService.archiveDailyTransactions(branchId, closingDate);
             log.info("Napi archiválás kész: datum={}, iroda={}, archivált={}", closingDate, branchId, archivedCount);
         } catch (Exception e) {
             log.error("Napi archiválás hiba: datum={}, iroda={}, hiba={}",
+                closingDate, branchId, e.getMessage(), e);
+            // NEM dobunk kivételt — ne akadjon meg a zárás
+        }
+
+        // 6b. S1-02: Teljes napi archiválás (Delphi: HaviGyujtokbeMasolas — CimtCopy, EdatCopy, KdatCopy, WuniCopy, WzarCopy)
+        try {
+            String archiveSummary = dailyClosingArchiveService.executeFullDailyArchive(branchId, closingDate);
+            log.info("S1-02 napi archiválás kész: datum={}, iroda={}, summary={}", closingDate, branchId, archiveSummary);
+        } catch (Exception e) {
+            log.error("S1-02 napi archiválás hiba: datum={}, iroda={}, hiba={}",
                 closingDate, branchId, e.getMessage(), e);
             // NEM dobunk kivételt — ne akadjon meg a zárás
         }
