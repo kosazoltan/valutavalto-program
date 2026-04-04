@@ -31,7 +31,7 @@ import java.util.UUID;
  * System paraméterek:
  * - HANDLING_FEE_TYPE: NONE / PER_MILLE / BRACKET
  * - HANDLING_FEE_PER_MILLE: ezrelék érték (pl. "5" = 5‰)
- * - DAILY_CUSTOM_FEE_LIMIT: napi egyedi díj limit (default: 3)
+ * - DAILY_CUSTOM_FEE_LIMIT: napi egyedi díj limit (default: 5)
  */
 @Service
 @RequiredArgsConstructor
@@ -45,7 +45,8 @@ public class HandlingFeeService {
     private final DiscountThresholdService discountThresholdService;
 
     /** Default napi egyedi kezelési díj limit */
-    private static final int DEFAULT_DAILY_CUSTOM_FEE_LIMIT = 3;
+    /** Legacy: HARDWARE.SAJATHATASKORU max 5/nap. DB-ből felülírható (SystemParameter). */
+    private static final int DEFAULT_DAILY_CUSTOM_FEE_LIMIT = 5;
 
     /**
      * Kezelési díj számítása a HUF összeg alapján.

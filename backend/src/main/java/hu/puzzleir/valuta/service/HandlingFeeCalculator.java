@@ -39,8 +39,8 @@ public class HandlingFeeCalculator {
     private final HandlingFeeService handlingFeeService;
     private final TransactionRepository transactionRepository;
 
-    /** Napi egyedi kezelési díj limit (legacy: HARDWARE.NAPIEGYEDIKEZDIJ) */
-    private static final int DAILY_CUSTOM_FEE_LIMIT = 3;
+    /** Napi egyedi kezelési díj limit (legacy: HARDWARE.SAJATHATASKORU max 5/nap) */
+    private static final int DAILY_CUSTOM_FEE_LIMIT = 5;
 
     /**
      * Kezelési díj számítása és validálása.
@@ -53,6 +53,11 @@ public class HandlingFeeCalculator {
     public BigDecimal calculate(BigDecimal hufAmount, TransactionType transactionType,
                                 BigDecimal clientHandlingFee) {
         if (hufAmount == null || hufAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+
+        // Legacy: konverziónál kezelési díj = 0 (Delphi: if _ezkonverzio then _kezelesidij := 0)
+        if (transactionType == TransactionType.CONVERSION) {
             return BigDecimal.ZERO;
         }
 
