@@ -17,7 +17,7 @@ const treasuryTabs = [
   { path: '/treasury/matrix', label: 'Készlet Mátrix', icon: Grid3X3, hotkey: 'F2', end: false },
   { path: '/treasury/movements', label: 'Mozgások', icon: ArrowLeftRight, hotkey: 'F3', end: false },
   { path: '/treasury/bank', label: 'Banki Tx', icon: Building2, hotkey: 'F4', end: false },
-  { path: '/treasury/rates', label: 'Árfolyamok', icon: TrendingUp, hotkey: 'F5', end: false },
+  { path: '/treasury/rates', label: 'Árfolyamkészítés', icon: TrendingUp, hotkey: 'F5', end: false },
   { path: '/treasury/reports', label: 'Jelentések', icon: FileText, hotkey: 'F6', end: false },
   { path: '/treasury/vat', label: 'ÁFA visszatérítés', icon: Receipt, hotkey: 'F7', end: false },
 ] as const
@@ -93,7 +93,7 @@ export default function TreasuryLayout() {
               <HotkeyRow keys="F2" desc="Készlet Mátrix" />
               <HotkeyRow keys="F3" desc="Mozgások" />
               <HotkeyRow keys="F4" desc="Banki Tranzakciók" />
-              <HotkeyRow keys="F5" desc="Árfolyamok" />
+              <HotkeyRow keys="F5" desc="Árfolyamkészítés" />
               <HotkeyRow keys="F6" desc="Jelentések" />
               <HotkeyRow keys="F7" desc="ÁFA visszatérítés" />
               <div className="border-t border-secondary-200 pt-3 mt-3">

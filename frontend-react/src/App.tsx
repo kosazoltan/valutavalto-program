@@ -115,7 +115,7 @@ const TreasuryLayout = lazy(() => import('./pages/treasury/TreasuryLayout'))
 const TreasuryDashboard = lazy(() => import('./pages/treasury/TreasuryDashboard'))
 const StockMatrix = lazy(() => import('./pages/treasury/StockMatrix'))
 const MovementManager = lazy(() => import('./pages/treasury/MovementManager'))
-const RatePanel = lazy(() => import('./pages/treasury/RatePanel'))
+// const RatePanel = lazy(() => import('./pages/treasury/RatePanel')) // Replaced by RateCreationDashboard in treasury
 const ReportsCirculars = lazy(() => import('./pages/treasury/ReportsCirculars'))
 const BankTransactions = lazy(() => import('./pages/treasury/BankTransactions'))
 const VatRefundPage = lazy(() => import('./pages/treasury/VatRefundPage'))
@@ -408,7 +408,7 @@ export default function App() {
             <Route path="matrix" element={<StockMatrix />} />
             <Route path="movements" element={<MovementManager />} />
             <Route path="bank" element={<BankTransactions />} />
-            <Route path="rates" element={<RatePanel />} />
+            <Route path="rates" element={<RateCreationDashboard />} />
             <Route path="reports" element={<ReportsCirculars />} />
             <Route path="vat" element={<VatRefundPage />} />
           </Route>

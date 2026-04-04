@@ -144,10 +144,25 @@ VITE_COMPANY_ID=1
             npm ci --silent
         }
 
-        # Build: typescript + vite + electron
-        Write-Host "Building frontend + electron..."
-        npm run build
-        if ($LASTEXITCODE -ne 0) { throw "npm run build failed" }
+        # Build: step-by-step to avoid dist lock issues on Windows
+        Write-Host "Building electron main process..."
+        npm run build:electron
+        if ($LASTEXITCODE -ne 0) { throw "build:electron failed" }
+
+        Write-Host "Building frontend..."
+        npm run build:frontend
+        if ($LASTEXITCODE -ne 0) { throw "build:frontend failed" }
+
+        # Replace dist with frontend build using robocopy (Windows lock-safe)
+        Write-Host "Copying frontend dist (robocopy /MIR)..."
+        $distDir = Join-Path (Get-Location) "dist"
+        $frontendDist = Join-Path (Split-Path (Get-Location)) "frontend-react\dist"
+        if (-not (Test-Path $frontendDist)) { throw "frontend-react/dist not found after build" }
+        # robocopy /MIR mirrors source to dest, exit codes 0-7 are success
+        & robocopy $frontendDist $distDir /MIR /NFL /NDL /NJH /NJS /NP
+        if ($LASTEXITCODE -gt 7) { throw "robocopy failed with exit code $LASTEXITCODE" }
+        $LASTEXITCODE = 0  # Reset for downstream checks
+        Write-Host "Frontend dist copied via robocopy" -ForegroundColor Green
 
         # Electron-builder: produce unpacked directory (not installer — we pack ourselves)
         Write-Host "Packaging Electron (dir target)..."
