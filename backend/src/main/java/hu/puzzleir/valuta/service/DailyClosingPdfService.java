@@ -18,12 +18,13 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 /**
  * Napi zaras PDF generalas (Delphi: nznyomt.dll — AKTLST.TXT nyomtatas).
  *
  * <p>A Delphi rendszer 40 karakter szeles szoveges blokkot irt nyomtatora.
- * Ez a service ugyanazt a strukturat reprodukalja PDF-ben.</p>
+ * Ez a service ugyanazt a strukturat reprodukalja PDF-ben, Delphi szekcio-paritassal.</p>
  */
 @Slf4j
 @Service
@@ -37,11 +38,13 @@ public class DailyClosingPdfService {
     private static final float LINE_HEIGHT = 14f;
     private static final String SEPARATOR = "----------------------------------------";
     private static final DecimalFormat NUM_FORMAT;
+    private static final DecimalFormat RATE_FORMAT;
 
     static {
         DecimalFormatSymbols symbols = new DecimalFormatSymbols(Locale.forLanguageTag("hu-HU"));
         symbols.setGroupingSeparator(',');
         NUM_FORMAT = new DecimalFormat("#,##0", symbols);
+        RATE_FORMAT = new DecimalFormat("#,##0.00", symbols);
     }
 
     private final DailyReportService dailyReportService;
@@ -49,7 +52,7 @@ public class DailyClosingPdfService {
     /**
      * PDF generalas a teljes napi jelentes adataibol.
      */
-    public byte[] generatePdf(java.util.UUID branchId, java.time.LocalDate date) throws IOException {
+    public byte[] generatePdf(UUID branchId, java.time.LocalDate date) throws IOException {
         DailyReportFullDto report = dailyReportService.generateFullReport(branchId, date);
         return renderPdf(report);
     }
@@ -58,147 +61,222 @@ public class DailyClosingPdfService {
         try (PDDocument doc = new PDDocument();
              ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
 
-            PdfWriter writer = new PdfWriter(doc);
+            PdfWriter w = new PdfWriter(doc);
 
-            // 1. Fejlec (Delphi: BlokkFocimIro)
-            writer.centerLine("EXCLUSIVE BEST CHANGE ZRT");
-            writer.centerLine(report.getBranchCode() + " " + report.getBranchName());
-            writer.writeLine(SEPARATOR);
+            // === 1. Fejlec (Delphi: BlokkFocimIro) ===
+            w.centerLine("EXCLUSIVE BEST CHANGE ZRT");
+            w.centerLine(report.getBranchCode() + " " + report.getBranchName());
+            if (report.getBranchAddress() != null && !report.getBranchAddress().isBlank()) {
+                w.centerLine(report.getBranchAddress());
+            }
+            if (report.getTaxId() != null && !report.getTaxId().isBlank()) {
+                w.centerLine("Adoszam: " + report.getTaxId());
+            }
+            w.writeLine(SEPARATOR);
 
-            // 2. Datum
-            writer.centerLine(report.getReportDate() + " NAPI ZARAS");
-            writer.writeLine(SEPARATOR);
+            // === 2. Datum ===
+            w.centerLine(report.getReportDate() + " NAPI ZARAS");
+            w.writeLine(SEPARATOR);
 
-            // 3. Penztar allasa (Delphi: PenztarAllas)
-            writer.centerLine(report.getReportDate() + "-i penztar allasa");
-            writer.writeLine(SEPARATOR);
-            writer.writeLine("Val.   Zaro keszlet    Vetel HUF     Eladas HUF");
-            writer.writeLine(SEPARATOR);
+            // === 3. Penztar allasa (Delphi: PenztarAllas — nyito/forgalom/zaro) ===
+            w.centerLine(report.getReportDate() + "-i penztar allasa");
+            w.writeLine(SEPARATOR);
+            w.writeLine("Val.   Nyito     Forgalom      Penztar");
+            w.writeLine("nem   osszeg    egyenlege       allas");
+            w.writeLine(SEPARATOR);
 
             for (DailyReportFullDto.CurrencyLineDto line : safe(report.getCurrencyLines())) {
-                if (line.getClosingStock() != null && line.getClosingStock().compareTo(BigDecimal.ZERO) != 0) {
-                    writer.writeLine(String.format("%-5s %11s  %11s  %11s",
+                BigDecimal closing = nz(line.getClosingStock());
+                if (closing.compareTo(BigDecimal.ZERO) != 0) {
+                    BigDecimal opening = nz(line.getOpeningStock());
+                    BigDecimal turnover = closing.subtract(opening);
+                    w.writeLine(String.format("%-5s %11s %11s %11s",
                             line.getCurrencyCode(),
-                            fmt(line.getClosingStock()),
-                            fmt(line.getBuyHuf()),
-                            fmt(line.getSellHuf())));
+                            fmt(opening),
+                            fmt(turnover),
+                            fmt(closing)));
                 }
             }
-            writer.writeLine(SEPARATOR);
-            writer.writeLine("");
+            w.writeLine(SEPARATOR);
+            w.writeLine("");
 
-            // 4. DE/DU forgalom (Delphi: DataKibonto de/du)
-            writer.centerLine("DE/DU FORGALOM");
-            writer.writeLine(SEPARATOR);
-            writer.writeLine(String.format("DE vetel:  %11s HUF", fmt(report.getMorningBuyHuf())));
-            writer.writeLine(String.format("DE eladas: %11s HUF", fmt(report.getMorningSellHuf())));
-            writer.writeLine(String.format("DU vetel:  %11s HUF", fmt(report.getAfternoonBuyHuf())));
-            writer.writeLine(String.format("DU eladas: %11s HUF", fmt(report.getAfternoonSellHuf())));
-            writer.writeLine(SEPARATOR);
-            writer.writeLine(String.format("Ossz vetel:  %11s HUF", fmt(report.getTotalBuyHuf())));
-            writer.writeLine(String.format("Ossz eladas: %11s HUF", fmt(report.getTotalSellHuf())));
-            writer.writeLine(String.format("Tranzakciok: %d (vetel: %d, eladas: %d, storni: %d)",
+            // === 4. Napi bankjegy-forgalom I+II (Delphi: ForgalomLista) ===
+            w.writeLine("  NAPI BANKJEGY-FORGALOM KIMUTATASA-I");
+            w.writeLine(SEPARATOR);
+            w.writeLine("VALUTANEM  NYITO KESZLET   VETEL OSSZEG");
+            w.writeLine(SEPARATOR);
+            for (DailyReportFullDto.CurrencyLineDto line : safe(report.getCurrencyLines())) {
+                if (hasActivity(line)) {
+                    w.writeLine(String.format("  %-5s     %11s      %11s",
+                            line.getCurrencyCode(),
+                            fmt(line.getOpeningStock()),
+                            fmt(line.getBuyAmount())));
+                }
+            }
+            w.writeLine(SEPARATOR);
+            w.writeLine(" NAPI BANKJEGY-FORGALOM KIMUTATASA-II");
+            w.writeLine(SEPARATOR);
+            w.writeLine("VALUTANEM ELADAS OSSZEG    ZARO KESZLET");
+            w.writeLine(SEPARATOR);
+            for (DailyReportFullDto.CurrencyLineDto line : safe(report.getCurrencyLines())) {
+                if (hasActivity(line)) {
+                    w.writeLine(String.format("  %-5s     %11s      %11s",
+                            line.getCurrencyCode(),
+                            fmt(line.getSellAmount()),
+                            fmt(line.getClosingStock())));
+                }
+            }
+            w.writeLine(SEPARATOR);
+            w.writeLine("");
+
+            // === 5. DE/DU forgalom ===
+            w.centerLine("DE/DU FORGALOM");
+            w.writeLine(SEPARATOR);
+            w.writeLine(String.format("DE vetel:  %11s HUF", fmt(report.getMorningBuyHuf())));
+            w.writeLine(String.format("DE eladas: %11s HUF", fmt(report.getMorningSellHuf())));
+            w.writeLine(String.format("DU vetel:  %11s HUF", fmt(report.getAfternoonBuyHuf())));
+            w.writeLine(String.format("DU eladas: %11s HUF", fmt(report.getAfternoonSellHuf())));
+            w.writeLine(SEPARATOR);
+            w.writeLine(String.format("Ossz vetel:  %11s HUF", fmt(report.getTotalBuyHuf())));
+            w.writeLine(String.format("Ossz eladas: %11s HUF", fmt(report.getTotalSellHuf())));
+            w.writeLine(String.format("Tranzakciok: %d (vetel: %d, eladas: %d, storni: %d)",
                     report.getTransactionCount(), report.getBuyCount(),
                     report.getSellCount(), report.getReversalCount()));
-            writer.writeLine(SEPARATOR);
-            writer.writeLine("");
+            w.writeLine(SEPARATOR);
+            w.writeLine("");
 
-            // 5. Cimletek (Delphi: cimlet szekciok a DLP-ben — 12 Ft cimlet)
+            // === 6. HUF cimletek ===
             if (!safe(report.getHufDenominations()).isEmpty()) {
-                writer.centerLine("HUF CIMLETEK");
-                writer.writeLine(SEPARATOR);
-                writer.writeLine(String.format("%-12s %5s %11s", "Cimlet", "Db", "Osszeg"));
-                writer.writeLine(SEPARATOR);
+                w.centerLine("HUF CIMLETEK");
+                w.writeLine(SEPARATOR);
+                w.writeLine(String.format("%-12s %5s %11s", "Cimlet", "Db", "Osszeg"));
+                w.writeLine(SEPARATOR);
                 for (DailyReportFullDto.DenominationLineDto d : report.getHufDenominations()) {
-                    writer.writeLine(String.format("%-12s %5d %11s",
+                    w.writeLine(String.format("%-12s %5d %11s",
                             d.getLabel(),
                             d.getQuantity() != null ? d.getQuantity() : 0,
                             fmt(d.getTotalValue())));
                 }
-                writer.writeLine(SEPARATOR);
-                writer.writeLine(String.format("Cimletezett osszesen: %11s HUF", fmt(report.getDenominatedTotalHuf())));
-
+                w.writeLine(SEPARATOR);
+                w.writeLine(String.format("Cimletezett osszesen: %11s HUF", fmt(report.getDenominatedTotalHuf())));
                 if (report.getEuroCoin1Count() > 0 || report.getEuroCoin2Count() > 0) {
-                    writer.writeLine(String.format("Euro ermek: 1 EUR x%d, 2 EUR x%d",
+                    w.writeLine(String.format("Euro ermek: 1 EUR x%d, 2 EUR x%d",
                             report.getEuroCoin1Count(), report.getEuroCoin2Count()));
                 }
-                writer.writeLine(SEPARATOR);
-                writer.writeLine("");
+                w.writeLine(SEPARATOR);
+                w.writeLine("");
             }
 
-            // 6. WU/AFA (Delphi: WuAfaNyomtatas)
-            writer.centerLine("Western Union es AFA forgalom");
-            writer.writeLine(SEPARATOR);
-            writer.writeLine(String.format("WU USD zaro: %11s USD", fmt(report.getWuUsdBalance())));
-            writer.writeLine(String.format("WU HUF zaro: %11s HUF", fmt(report.getWuHufBalance())));
-            writer.writeLine(String.format("AFA zaro:    %11s HUF", fmt(report.getAfaBalance())));
-            writer.writeLine(SEPARATOR);
-            writer.writeLine("");
+            // === 7. WU/AFA (Delphi: WuAfaNyomtatas — nyito/bevetel/kiadas/zaro x3) ===
+            w.centerLine("Western Union es AFA forgalom");
+            w.writeLine(SEPARATOR);
+            w.centerLine("Western Union dollar forgalma:");
+            w.writeLine("");
+            w.writeLine(String.format("         Nyito: %11s USD", fmt(report.getWuUsdOpening())));
+            w.writeLine(String.format("       Bevetel: %11s USD", fmt(report.getWuUsdIncome())));
+            w.writeLine(String.format("        Kiadas: %11s USD", fmt(report.getWuUsdExpense())));
+            w.writeLine(String.format("          Zaro: %11s USD", fmt(report.getWuUsdBalance())));
+            w.writeLine("");
+            w.centerLine("Western Union forint forgalma:");
+            w.writeLine("");
+            w.writeLine(String.format("         Nyito: %11s HUF", fmt(report.getWuHufOpening())));
+            w.writeLine(String.format("       Bevetel: %11s HUF", fmt(report.getWuHufIncome())));
+            w.writeLine(String.format("        Kiadas: %11s HUF", fmt(report.getWuHufExpense())));
+            w.writeLine(String.format("          Zaro: %11s HUF", fmt(report.getWuHufBalance())));
+            w.writeLine("");
+            w.centerLine("Afa visszaigenyles forgalma:");
+            w.writeLine("");
+            w.writeLine(String.format("         Nyito: %11s HUF", fmt(report.getAfaOpening())));
+            w.writeLine(String.format("       Bevetel: %11s HUF", fmt(report.getAfaIncome())));
+            w.writeLine(String.format("        Kiadas: %11s HUF", fmt(report.getAfaExpense())));
+            w.writeLine(String.format("          Zaro: %11s HUF", fmt(report.getAfaBalance())));
+            w.writeLine(SEPARATOR);
+            w.writeLine("");
 
-            // 7. Kezelesi dij (Delphi: Kezelesidijnyomtatas)
-            writer.centerLine("KEZELESI DIJAS FORGALOM");
-            writer.writeLine(SEPARATOR);
-            writer.writeLine(String.format("Napi kezelesi dij osszesen: %11s HUF", fmt(report.getDailyHandlingFee())));
-            writer.writeLine(SEPARATOR);
-            writer.writeLine("");
+            // === 8. Kezelesi dij (Delphi: Kezelesidijnyomtatas — nyito/atvett/atadott/zaro) ===
+            w.writeLine(" KEZELESI KOLTSEG " + report.getReportDate() + "-I LISTAJA");
+            w.writeLine(SEPARATOR);
+            w.writeLine(String.format(" NAPI NYITO OSSZEG ......:  %11s", fmt(report.getHandlingFeeOpening())));
+            w.writeLine(String.format(" ATVETT OSSZEG ..........:  %11s", fmt(report.getHandlingFeeIncome())));
+            w.writeLine(String.format(" ATADOTT OSSZEG .........:  %11s", fmt(report.getHandlingFeeExpense())));
+            w.writeLine(String.format(" NAPI ZARO OSSZEG .......:  %11s", fmt(report.getDailyHandlingFee())));
+            w.writeLine(SEPARATOR);
+            w.writeLine("");
 
-            // 8. E-kereskedelem (Delphi: EkerNyomtatas)
-            writer.centerLine("E-KERESKEDELMI MOZGASOK");
-            writer.writeLine(SEPARATOR);
-            writer.writeLine(String.format("Zaro egyenleg: %11s HUF", fmt(report.getEcommerceBalanceHuf())));
-            writer.writeLine(SEPARATOR);
-            writer.writeLine("");
+            // === 9. E-kereskedelem (Delphi: EkerNyomtatas — nyito/atvett/atadott/zaro) ===
+            w.writeLine(" E-KERESKEDELMI MOZGASOK " + report.getReportDate() + "-N");
+            w.writeLine(SEPARATOR);
+            w.writeLine(String.format(" NAPI NYITO OSSZEG ......:  %11s", fmt(report.getEcommerceOpening())));
+            w.writeLine(String.format(" ATVETT OSSZEG ..........:  %11s", fmt(report.getEcommerceIncome())));
+            w.writeLine(String.format(" ATADOTT OSSZEG .........:  %11s", fmt(report.getEcommerceExpense())));
+            w.writeLine(String.format(" NAPI ZARO OSSZEG .......:  %11s", fmt(report.getEcommerceBalanceHuf())));
+            w.writeLine(SEPARATOR);
+            w.writeLine("");
 
-            // 9. Kedvezmenyek
+            // === 10. Kedvezmenyek ===
             if (!safe(report.getDiscountLines()).isEmpty()) {
-                writer.centerLine("KEDVEZMENYES TRANZAKCIOK");
-                writer.writeLine(SEPARATOR);
+                w.centerLine("KEDVEZMENYES TRANZAKCIOK");
+                w.writeLine(SEPARATOR);
                 for (DailyReportFullDto.DiscountLineDto dl : report.getDiscountLines()) {
-                    writer.writeLine(String.format("%-5s %11s @ %s  [%s]",
+                    w.writeLine(String.format("%-5s %11s @ %s  [%s]",
                             dl.getCurrencyCode(),
                             fmt(dl.getAmount()),
-                            fmt(dl.getDiscountRate()),
+                            fmtRate(dl.getDiscountRate()),
                             dl.getReceiptNumber() != null ? dl.getReceiptNumber() : "-"));
                 }
-                writer.writeLine(SEPARATOR);
-                writer.writeLine("");
+                w.writeLine(SEPARATOR);
+                w.writeLine("");
             }
 
-            // 10. Zarokeszlet osszesites
-            writer.centerLine("ZARO KESZLET OSSZESITES");
-            writer.writeLine(SEPARATOR);
-            writer.writeLine(String.format("Forint keszlet:  %11s HUF", fmt(report.getClosingBalanceHuf())));
-            writer.writeLine(String.format("Valuta keszlet:  %11s HUF (ekvivalens)", fmt(report.getClosingBalanceForeign())));
-            writer.writeLine(String.format("Osszesen:        %11s HUF", fmt(report.getClosingBalanceTotal())));
-            writer.writeLine(SEPARATOR);
-            writer.writeLine("");
+            // === 11. Zaro keszlet osszesites ===
+            w.centerLine("ZARO KESZLET OSSZESITES");
+            w.writeLine(SEPARATOR);
+            w.writeLine(String.format("Forint keszlet:  %11s HUF", fmt(report.getClosingBalanceHuf())));
+            w.writeLine(String.format("Valuta keszlet:  %11s HUF (ekvivalens)", fmt(report.getClosingBalanceForeign())));
+            w.writeLine(String.format("Osszesen:        %11s HUF", fmt(report.getClosingBalanceTotal())));
+            w.writeLine(SEPARATOR);
+            w.writeLine("");
 
-            // 11. Penztaros (Delphi: DataKibonto — de/du dolgozo)
+            // === 12. Penztaros ===
             if (report.getMorningCashierName() != null || report.getAfternoonCashierName() != null) {
-                writer.writeLine(String.format("DE penztaros: %s",
+                w.writeLine(String.format("DE penztaros: %s",
                         report.getMorningCashierName() != null ? report.getMorningCashierName() : "-"));
-                writer.writeLine(String.format("DU penztaros: %s",
+                w.writeLine(String.format("DU penztaros: %s",
                         report.getAfternoonCashierName() != null ? report.getAfternoonCashierName() : "-"));
-                writer.writeLine("");
+                w.writeLine("");
             }
 
-            // 12. Nyilatkozat (Delphi: ha nem ujranyomtatas)
-            writer.writeLine("Buntetojogi felelosegem tudataban kije-");
-            writer.writeLine("lentem,hogy a penztar allasa es a zaro-");
-            writer.writeLine("szalagon szereplo osszegek megegyeznek.");
-            writer.writeLine("");
-            writer.writeLine("........................................");
-            writer.writeLine("              penztaros");
-            writer.writeLine("");
+            // === 13. Nyilatkozat (Delphi: feltételes — ha nem újranyomtatás) ===
+            w.writeLine("Buntetojogi felelosegem tudataban kije-");
+            w.writeLine("lentem,hogy a penztar allasa es a zaro-");
+            w.writeLine("szalagon szereplo osszegek megegyeznek.");
+            w.writeLine("");
+            w.writeLine("........................................");
+            w.writeLine("              penztaros");
+            w.writeLine("");
 
-            // 13. Ellenor bejegyzes (Delphi: EllenorBejegyzes)
-            writer.writeLine("........................................");
-            writer.writeLine("       Ellenorzo szemely alairasa");
+            // === 14. Ellenor bejegyzes (Delphi: EllenorBejegyzes — nev + bejegyzes + jogszabaly) ===
+            if (report.getInspectorName() != null && !report.getInspectorName().isBlank()) {
+                w.centerLine("Alulirott " + report.getInspectorName());
+                if (report.getInspectorNote() != null && !report.getInspectorNote().isBlank()) {
+                    w.centerLine(report.getInspectorNote());
+                }
+            }
+            w.writeLine("      alairasommal igazolom, hogy a");
+            w.centerLine(report.getBranchCode() + " szamu ertektar");
+            if (report.getBranchAddress() != null && !report.getBranchAddress().isBlank()) {
+                w.centerLine(report.getBranchAddress());
+            }
+            w.writeLine(" zarasa az FZS-01/2009 szamu modositott");
+            w.writeLine("      korlevel betartasaval tortent");
+            w.writeLine("");
+            w.writeLine("........................................");
+            w.writeLine("       Ellenorzo szemely alairasa");
 
-            writer.finish();
+            w.finish();
 
             doc.save(baos);
-            log.info("S2-02 napi zaras PDF generálva: branch={}, date={}, pages={}",
+            log.info("S2-02 napi zaras PDF generalva: branch={}, date={}, pages={}",
                     report.getBranchCode(), report.getReportDate(), doc.getNumberOfPages());
             return baos.toByteArray();
         }
@@ -208,7 +286,25 @@ public class DailyClosingPdfService {
 
     private static String fmt(BigDecimal value) {
         if (value == null || value.compareTo(BigDecimal.ZERO) == 0) return "-";
-        return NUM_FORMAT.format(value.longValue());
+        // B1 fix: format(BigDecimal) — nem longValue() truncation
+        return NUM_FORMAT.format(value);
+    }
+
+    private static String fmtRate(BigDecimal value) {
+        if (value == null || value.compareTo(BigDecimal.ZERO) == 0) return "-";
+        return RATE_FORMAT.format(value);
+    }
+
+    private static BigDecimal nz(BigDecimal value) {
+        return value != null ? value : BigDecimal.ZERO;
+    }
+
+    private static boolean hasActivity(DailyReportFullDto.CurrencyLineDto line) {
+        BigDecimal sum = nz(line.getOpeningStock()).abs()
+                .add(nz(line.getClosingStock()).abs())
+                .add(nz(line.getBuyAmount()).abs())
+                .add(nz(line.getSellAmount()).abs());
+        return sum.compareTo(BigDecimal.ZERO) > 0;
     }
 
     private static <T> List<T> safe(List<T> list) {

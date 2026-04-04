@@ -19,6 +19,8 @@ public class DailyReportFullDto {
     private String branchId;
     private String branchCode;
     private String branchName;
+    private String branchAddress;     // Delphi: penztarcim
+    private String taxId;             // Delphi: adoszam
 
     // --- Záró készletek (Delphi: zForint, zValuta, zOsszes) ---
     private BigDecimal closingBalanceHuf;
@@ -50,21 +52,45 @@ public class DailyReportFullDto {
     private Integer euroCoin1Count;
     private Integer euroCoin2Count;
 
-    // --- WU/ÁFA készletek (Delphi: wuUsd, wuHuf, afa) ---
+    // --- WU/ÁFA készletek (Delphi: wuUsd, wuHuf, afa — nyitó/bevétel/kiadás/záró) ---
+    @Builder.Default private BigDecimal wuUsdOpening = BigDecimal.ZERO;
+    @Builder.Default private BigDecimal wuUsdIncome = BigDecimal.ZERO;
+    @Builder.Default private BigDecimal wuUsdExpense = BigDecimal.ZERO;
     private BigDecimal wuUsdBalance;
+    @Builder.Default private BigDecimal wuHufOpening = BigDecimal.ZERO;
+    @Builder.Default private BigDecimal wuHufIncome = BigDecimal.ZERO;
+    @Builder.Default private BigDecimal wuHufExpense = BigDecimal.ZERO;
     private BigDecimal wuHufBalance;
+    @Builder.Default private BigDecimal afaOpening = BigDecimal.ZERO;
+    @Builder.Default private BigDecimal afaIncome = BigDecimal.ZERO;
+    @Builder.Default private BigDecimal afaExpense = BigDecimal.ZERO;
     private BigDecimal afaBalance;
 
     // --- Kedvezmények (Delphi: kedvDnem, kedvBjegy, kedvArf, kedvBizonylat — max 10) ---
     private List<DiscountLineDto> discountLines;
 
-    // --- Kezelési díj és e-kereskedelem (Delphi: napikezdij, napiekerforint) ---
-    private BigDecimal dailyHandlingFee;
-    private BigDecimal ecommerceBalanceHuf;
+    // --- Kezelési díj (Delphi: Kezelesidijnyomtatas — nyitó/átvett/átadott/záró) ---
+    @Builder.Default private BigDecimal handlingFeeOpening = BigDecimal.ZERO;
+    @Builder.Default private BigDecimal handlingFeeIncome = BigDecimal.ZERO;
+    @Builder.Default private BigDecimal handlingFeeExpense = BigDecimal.ZERO;
+    private BigDecimal dailyHandlingFee;   // záró
+
+    // --- E-kereskedelem (Delphi: EkerNyomtatas — nyitó/átvett/átadott/záró) ---
+    @Builder.Default private BigDecimal ecommerceOpening = BigDecimal.ZERO;
+    @Builder.Default private BigDecimal ecommerceIncome = BigDecimal.ZERO;
+    @Builder.Default private BigDecimal ecommerceExpense = BigDecimal.ZERO;
+    private BigDecimal ecommerceBalanceHuf; // záró
 
     // --- Pénztáros nevek (Delphi: deprosnev, duprosnev) ---
     private String morningCashierName;
     private String afternoonCashierName;
+
+    // --- Pénztár nyitó készlet (Delphi: NARF tábla nyitó) ---
+    private List<CurrencyLineDto> openingStockLines;
+
+    // --- Ellenőr (Delphi: EllenorBejegyzes) ---
+    private String inspectorName;          // Delphi: ellenornev
+    private String inspectorNote;          // Delphi: ellenorbeo
 
     // --- Memo mezők (Delphi: kérek/küldök) ---
     private List<String> requestNotes;
@@ -76,7 +102,8 @@ public class DailyReportFullDto {
     public static class CurrencyLineDto {
         private String currencyCode;
         private String currencyName;
-        private BigDecimal closingStock;     // készlet
+        @Builder.Default private BigDecimal openingStock = BigDecimal.ZERO;  // nyitó készlet
+        private BigDecimal closingStock;     // záró készlet
         private BigDecimal buyAmount;        // vétel devizában
         private BigDecimal sellAmount;       // eladás devizában
         private BigDecimal buyHuf;           // vétel HUF-ban

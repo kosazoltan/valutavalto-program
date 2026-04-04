@@ -189,9 +189,11 @@ public class DailyReportService {
                 closingForeignHuf = closingForeignHuf.add(closing.multiply(midRate));
             }
 
+            BigDecimal opening = bal.getOpeningBalance() != null ? bal.getOpeningBalance() : BigDecimal.ZERO;
             currencyLines.add(DailyReportFullDto.CurrencyLineDto.builder()
                     .currencyCode(bal.getCurrencyCode())
                     .currencyName(currencyNameMap.getOrDefault(bal.getCurrencyCode(), bal.getCurrencyCode())) // B1 fix
+                    .openingStock(opening)
                     .closingStock(closing)
                     .buyAmount(purchases)
                     .sellAmount(sales)
@@ -286,21 +288,17 @@ public class DailyReportService {
             }
         }
 
-        // 4. WU/ÁFA készletek — DailySubledgerSnapshot
-        BigDecimal wuUsd = subledgerSnapshotRepository
-                .findByBranchIdAndSnapshotDateAndSubledgerTypeAndCurrencyCode(branchId, date, "WU_USD", "USD")
-                .map(DailySubledgerSnapshot::getClosingBalance).orElse(BigDecimal.ZERO);
-        BigDecimal wuHuf = subledgerSnapshotRepository
-                .findByBranchIdAndSnapshotDateAndSubledgerTypeAndCurrencyCode(branchId, date, "WU_HUF", "HUF")
-                .map(DailySubledgerSnapshot::getClosingBalance).orElse(BigDecimal.ZERO);
-        BigDecimal afa = subledgerSnapshotRepository
-                .findByBranchIdAndSnapshotDateAndSubledgerTypeAndCurrencyCode(branchId, date, "WU_VAT", "HUF")
-                .map(DailySubledgerSnapshot::getClosingBalance).orElse(BigDecimal.ZERO);
+        // 4. WU/ÁFA készletek — DailySubledgerSnapshot (nyitó/bevétel/kiadás/záró)
+        Optional<DailySubledgerSnapshot> wuUsdSnap = subledgerSnapshotRepository
+                .findByBranchIdAndSnapshotDateAndSubledgerTypeAndCurrencyCode(branchId, date, "WU_USD", "USD");
+        Optional<DailySubledgerSnapshot> wuHufSnap = subledgerSnapshotRepository
+                .findByBranchIdAndSnapshotDateAndSubledgerTypeAndCurrencyCode(branchId, date, "WU_HUF", "HUF");
+        Optional<DailySubledgerSnapshot> afaSnap = subledgerSnapshotRepository
+                .findByBranchIdAndSnapshotDateAndSubledgerTypeAndCurrencyCode(branchId, date, "WU_VAT", "HUF");
 
-        // 5. E-kereskedelem záró
-        BigDecimal ecommerce = subledgerSnapshotRepository
-                .findByBranchIdAndSnapshotDateAndSubledgerTypeAndCurrencyCode(branchId, date, "ECOMMERCE", "HUF")
-                .map(DailySubledgerSnapshot::getClosingBalance).orElse(BigDecimal.ZERO);
+        // 5. E-kereskedelem — DailySubledgerSnapshot (nyitó/bevétel/kiadás/záró)
+        Optional<DailySubledgerSnapshot> ecomSnap = subledgerSnapshotRepository
+                .findByBranchIdAndSnapshotDateAndSubledgerTypeAndCurrencyCode(branchId, date, "ECOMMERCE", "HUF");
 
         // 6. Pénztáros nevek — a nap első és második műszakjának dolgozója
         String morningCashier = null;
@@ -315,11 +313,17 @@ public class DailyReportService {
             }
         }
 
+        // B6 fix: iroda cím + adószám
+        String branchAddress = branch.getAddress();
+        String taxId = branch.getCompany() != null ? branch.getCompany().getTaxNumber() : null;
+
         return DailyReportFullDto.builder()
                 .reportDate(date.toString())
                 .branchId(branchId.toString())
                 .branchCode(branch.getCode())
                 .branchName(branch.getName())
+                .branchAddress(branchAddress)     // B6 fix
+                .taxId(taxId)                     // B6 fix
                 .closingBalanceHuf(closingHuf)
                 .closingBalanceForeign(closingForeignHuf) // B7 fix: HUF-ekvivalens
                 .closingBalanceTotal(closingHuf.add(closingForeignHuf))
@@ -338,12 +342,30 @@ public class DailyReportService {
                 .denominatedTotalHuf(denomTotal)
                 .euroCoin1Count(euroCoin1)
                 .euroCoin2Count(euroCoin2)
-                .wuUsdBalance(wuUsd)
-                .wuHufBalance(wuHuf)
-                .afaBalance(afa)
+                // B2 fix: WU/ÁFA nyitó/bevétel/kiadás/záró
+                .wuUsdOpening(wuUsdSnap.map(DailySubledgerSnapshot::getOpeningBalance).orElse(BigDecimal.ZERO))
+                .wuUsdIncome(wuUsdSnap.map(DailySubledgerSnapshot::getIncome).orElse(BigDecimal.ZERO))
+                .wuUsdExpense(wuUsdSnap.map(DailySubledgerSnapshot::getExpense).orElse(BigDecimal.ZERO))
+                .wuUsdBalance(wuUsdSnap.map(DailySubledgerSnapshot::getClosingBalance).orElse(BigDecimal.ZERO))
+                .wuHufOpening(wuHufSnap.map(DailySubledgerSnapshot::getOpeningBalance).orElse(BigDecimal.ZERO))
+                .wuHufIncome(wuHufSnap.map(DailySubledgerSnapshot::getIncome).orElse(BigDecimal.ZERO))
+                .wuHufExpense(wuHufSnap.map(DailySubledgerSnapshot::getExpense).orElse(BigDecimal.ZERO))
+                .wuHufBalance(wuHufSnap.map(DailySubledgerSnapshot::getClosingBalance).orElse(BigDecimal.ZERO))
+                .afaOpening(afaSnap.map(DailySubledgerSnapshot::getOpeningBalance).orElse(BigDecimal.ZERO))
+                .afaIncome(afaSnap.map(DailySubledgerSnapshot::getIncome).orElse(BigDecimal.ZERO))
+                .afaExpense(afaSnap.map(DailySubledgerSnapshot::getExpense).orElse(BigDecimal.ZERO))
+                .afaBalance(afaSnap.map(DailySubledgerSnapshot::getClosingBalance).orElse(BigDecimal.ZERO))
                 .discountLines(discountLines.size() > 10 ? discountLines.subList(0, 10) : discountLines)
+                // B3 fix: kezelési díj nyitó/átvett/átadott/záró
+                .handlingFeeOpening(BigDecimal.ZERO) // TODO: kezelési díj subledger snapshot-ból
+                .handlingFeeIncome(BigDecimal.ZERO)
+                .handlingFeeExpense(BigDecimal.ZERO)
                 .dailyHandlingFee(totalHandlingFee)
-                .ecommerceBalanceHuf(ecommerce)
+                // B3 fix: e-kereskedelem nyitó/átvett/átadott/záró
+                .ecommerceOpening(ecomSnap.map(DailySubledgerSnapshot::getOpeningBalance).orElse(BigDecimal.ZERO))
+                .ecommerceIncome(ecomSnap.map(DailySubledgerSnapshot::getIncome).orElse(BigDecimal.ZERO))
+                .ecommerceExpense(ecomSnap.map(DailySubledgerSnapshot::getExpense).orElse(BigDecimal.ZERO))
+                .ecommerceBalanceHuf(ecomSnap.map(DailySubledgerSnapshot::getClosingBalance).orElse(BigDecimal.ZERO))
                 .morningCashierName(morningCashier)
                 .afternoonCashierName(afternoonCashier)
                 .requestNotes(List.of()) // memo: jövőbeli feature (Delphi NIF binárisból jött)
