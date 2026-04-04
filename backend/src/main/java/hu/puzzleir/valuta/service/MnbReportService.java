@@ -709,6 +709,185 @@ public class MnbReportService {
         return errors;
     }
 
+    // ============ BATCH 7B: HÁROMSZINTŰ AGGREGÁCIÓ (pénztár → körzet → cég) ============
+
+    /**
+     * Haromszintu MNB osszesites: penztar -> koerzet -> ceg.
+     * Legacy: Delphi ForgalomGyujtes + KorzetSumma + KftSumma + CegSumma.
+     *
+     * @param date riport datuma
+     * @return hierarchikus riport (ceg + koerzetek + irodak)
+     */
+    @Transactional(readOnly = true)
+    public hu.puzzleir.valuta.dto.mnb.MnbHierarchicalReportDto generateHierarchicalReport(LocalDate date) {
+        UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
+
+        // 1. Osszes aktiv iroda, regionCode-dal
+        List<Branch> allBranches = branchRepository.findByCompanyIdAndIsActiveTrue(companyId);
+
+        // 2. Csoportositas korzetenként
+        Map<String, List<Branch>> regionMap = allBranches.stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        b -> b.getRegionCode() != null ? b.getRegionCode() : "__UNASSIGNED__"));
+
+        // 3. Ceg szintu osszesites
+        hu.puzzleir.valuta.dto.mnb.MnbDailyReportDto companyReport = generateDailyMnbReport(date);
+
+        // 4. Koerzet szintu riportok generalasa
+        List<hu.puzzleir.valuta.dto.mnb.MnbRegionReportDto> regionReports = new ArrayList<>();
+        hu.puzzleir.valuta.dto.mnb.MnbRegionReportDto unassigned = null;
+
+        for (Map.Entry<String, List<Branch>> entry : regionMap.entrySet()) {
+            String regionCode = entry.getKey();
+            List<Branch> regionBranches = entry.getValue();
+
+            hu.puzzleir.valuta.dto.mnb.MnbRegionReportDto regionReport = buildRegionReport(
+                    date, regionCode, regionBranches);
+
+            if ("__UNASSIGNED__".equals(regionCode)) {
+                unassigned = regionReport;
+                unassigned.setRegionCode(null);
+                unassigned.setRegionName("Koerzethez nem rendelt irodak");
+            } else {
+                regionReports.add(regionReport);
+            }
+        }
+
+        // Koerzetek rendezese regionCode alapjan
+        regionReports.sort(java.util.Comparator.comparing(hu.puzzleir.valuta.dto.mnb.MnbRegionReportDto::getRegionCode));
+
+        // 5. Cegnev
+        String companyName = "";
+        try {
+            List<OwnCompany> companies = ownCompanyService.listActive();
+            if (!companies.isEmpty()) {
+                companyName = companies.get(0).getName();
+            }
+        } catch (Exception e) {
+            log.warn("Cegnev nem elerheto: {}", e.getMessage());
+        }
+
+        return hu.puzzleir.valuta.dto.mnb.MnbHierarchicalReportDto.builder()
+                .date(date)
+                .companyName(companyName)
+                .totalBuyHuf(companyReport.getTotalBuyHuf())
+                .totalSellHuf(companyReport.getTotalSellHuf())
+                .totalTransactions(companyReport.getTotalTransactions())
+                .companyCurrencyLines(companyReport.getCurrencyLines())
+                .regionReports(regionReports)
+                .unassignedBranches(unassigned)
+                .build();
+    }
+
+    /**
+     * Koerzet szintu napi riport epitese.
+     */
+    private hu.puzzleir.valuta.dto.mnb.MnbRegionReportDto buildRegionReport(
+            LocalDate date, String regionCode, List<Branch> branches) {
+
+        BigDecimal totalBuyHuf = BigDecimal.ZERO;
+        BigDecimal totalSellHuf = BigDecimal.ZERO;
+        int totalTxCount = 0;
+        Map<String, CurrencyAggregation> regionAggregations = new java.util.LinkedHashMap<>();
+        List<hu.puzzleir.valuta.dto.mnb.MnbRegionReportDto.BranchSummary> branchSummaries = new ArrayList<>();
+
+        for (Branch branch : branches) {
+            List<Transaction> transactions = transactionRepository.findActiveByBranchAndDate(branch.getId(), date);
+            Map<String, CurrencyAggregation> branchAgg = aggregateTransactions(transactions);
+
+            BigDecimal branchBuyHuf = BigDecimal.ZERO;
+            BigDecimal branchSellHuf = BigDecimal.ZERO;
+            int branchTxCount = 0;
+
+            for (Map.Entry<String, CurrencyAggregation> cEntry : branchAgg.entrySet()) {
+                CurrencyAggregation agg = cEntry.getValue();
+                branchBuyHuf = branchBuyHuf.add(agg.buyHufTotal);
+                branchSellHuf = branchSellHuf.add(agg.sellHufTotal);
+                branchTxCount += agg.totalCount;
+
+                // Merge koerzeti aggregacioba
+                regionAggregations.merge(cEntry.getKey(), agg, (existing, newAgg) -> {
+                    existing.buyAmount = existing.buyAmount.add(newAgg.buyAmount);
+                    existing.sellAmount = existing.sellAmount.add(newAgg.sellAmount);
+                    existing.buyHufTotal = existing.buyHufTotal.add(newAgg.buyHufTotal);
+                    existing.sellHufTotal = existing.sellHufTotal.add(newAgg.sellHufTotal);
+                    existing.buyRateSum = existing.buyRateSum.add(newAgg.buyRateSum);
+                    existing.sellRateSum = existing.sellRateSum.add(newAgg.sellRateSum);
+                    existing.buyCount += newAgg.buyCount;
+                    existing.sellCount += newAgg.sellCount;
+                    existing.totalCount += newAgg.totalCount;
+                    return existing;
+                });
+            }
+
+            totalBuyHuf = totalBuyHuf.add(branchBuyHuf);
+            totalSellHuf = totalSellHuf.add(branchSellHuf);
+            totalTxCount += branchTxCount;
+
+            branchSummaries.add(hu.puzzleir.valuta.dto.mnb.MnbRegionReportDto.BranchSummary.builder()
+                    .branchCode(branch.getCode())
+                    .branchName(branch.getName())
+                    .buyHuf(branchBuyHuf)
+                    .sellHuf(branchSellHuf)
+                    .transactionCount(branchTxCount)
+                    .build());
+        }
+
+        // Koerzeti currency lines
+        List<hu.puzzleir.valuta.dto.mnb.MnbCurrencyLineDto> currencyLines = new ArrayList<>();
+        for (Map.Entry<String, CurrencyAggregation> entry : regionAggregations.entrySet()) {
+            CurrencyAggregation agg = entry.getValue();
+            currencyLines.add(hu.puzzleir.valuta.dto.mnb.MnbCurrencyLineDto.builder()
+                    .currencyCode(entry.getKey())
+                    .buyAmount(agg.buyAmount)
+                    .sellAmount(agg.sellAmount)
+                    .buyHuf(agg.buyHufTotal)
+                    .sellHuf(agg.sellHufTotal)
+                    .avgBuyRate(agg.getBuyCount() > 0
+                            ? agg.buyRateSum.divide(BigDecimal.valueOf(agg.getBuyCount()), 4, RoundingMode.HALF_UP)
+                            : BigDecimal.ZERO)
+                    .avgSellRate(agg.getSellCount() > 0
+                            ? agg.sellRateSum.divide(BigDecimal.valueOf(agg.getSellCount()), 4, RoundingMode.HALF_UP)
+                            : BigDecimal.ZERO)
+                    .transactionCount(agg.totalCount)
+                    .build());
+        }
+
+        // Koerzet nev meghataroza (region code mapping)
+        String regionName = getRegionName(regionCode);
+
+        return hu.puzzleir.valuta.dto.mnb.MnbRegionReportDto.builder()
+                .date(date)
+                .regionCode(regionCode)
+                .regionName(regionName)
+                .branchCount(branches.size())
+                .totalBuyHuf(totalBuyHuf)
+                .totalSellHuf(totalSellHuf)
+                .totalTransactions(totalTxCount)
+                .currencyLines(currencyLines)
+                .branchSummaries(branchSummaries)
+                .build();
+    }
+
+    /**
+     * Legacy koerzet kodok nevekre forditasa.
+     * Forras: Branch entity Javadoc (V60 migracio).
+     */
+    private String getRegionName(String regionCode) {
+        if (regionCode == null) return "Ismeretlen";
+        return switch (regionCode) {
+            case "10" -> "Szekszard";
+            case "20" -> "Szeged";
+            case "40" -> "Kecskemet";
+            case "50" -> "Debrecen";
+            case "63" -> "Nyiregyhaza";
+            case "75" -> "Bekescsaba";
+            case "120" -> "Pecs";
+            case "145" -> "Kaposvar";
+            default -> "Koerzet " + regionCode;
+        };
+    }
+
     // ============ BELSŐ SEGÉDOSZTÁLYOK ============
 
     /**
