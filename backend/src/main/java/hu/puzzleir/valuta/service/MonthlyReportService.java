@@ -297,21 +297,15 @@ public class MonthlyReportService {
     private List<MonthlyReportFullDto.TransferLineDto> buildTransferLines(
             UUID branchId, LocalDate start, LocalDate end, Map<String, String> currencyNameMap) {
 
+        // Egyetlen aggregalt query devizanementkent (N1 fix: nem N×M napi iteracio)
         Map<String, BigDecimal> inMap = new HashMap<>();
-        Map<String, BigDecimal> outMap = new HashMap<>();
+        for (Object[] row : transferRepository.sumTransfersInByPeriod(branchId, start, end)) {
+            inMap.put((String) row[0], (BigDecimal) row[1]);
+        }
 
-        // Napi bontasban aggregalunk (transferRepository.sumTransfersIn/Out napi szintu)
-        for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
-            for (String cc : currencyNameMap.keySet()) {
-                BigDecimal in = transferRepository.sumTransfersIn(branchId, d, cc);
-                BigDecimal out = transferRepository.sumTransfersOut(branchId, d, cc);
-                if (in.compareTo(BigDecimal.ZERO) != 0) {
-                    inMap.merge(cc, in, BigDecimal::add);
-                }
-                if (out.compareTo(BigDecimal.ZERO) != 0) {
-                    outMap.merge(cc, out, BigDecimal::add);
-                }
-            }
+        Map<String, BigDecimal> outMap = new HashMap<>();
+        for (Object[] row : transferRepository.sumTransfersOutByPeriod(branchId, start, end)) {
+            outMap.put((String) row[0], (BigDecimal) row[1]);
         }
 
         Set<String> allCc = new TreeSet<>();

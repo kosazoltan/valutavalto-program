@@ -16,8 +16,10 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -123,12 +125,16 @@ public class MonthlyClosingPdfService {
             w.writeLine(SEPARATOR);
             w.writeLine("VALUTANEM  NYITO KESZLET  ATVETT OSSZEG");
             w.writeLine(SEPARATOR);
+            // Transfer in adatok gyors lookup-ja devizanementkent
+            Map<String, BigDecimal> receivedByCC = new HashMap<>();
+            if (report.getTransferLines() != null) {
+                for (MonthlyReportFullDto.TransferLineDto tl : report.getTransferLines()) {
+                    receivedByCC.put(tl.getCurrencyCode(), tl.getReceivedAmount());
+                }
+            }
             for (MonthlyReportFullDto.CurrencyLineDto line : safe(report.getCurrencyLines())) {
                 if (hasActivity(line)) {
-                    // Atvett = closing - opening - buy + sell (netto bejovo transfer)
-                    BigDecimal received = nz(line.getClosingStock()).subtract(nz(line.getOpeningStock()))
-                            .subtract(nz(line.getTotalBuyAmount())).add(nz(line.getTotalSellAmount()));
-                    if (received.compareTo(BigDecimal.ZERO) < 0) received = BigDecimal.ZERO;
+                    BigDecimal received = receivedByCC.getOrDefault(line.getCurrencyCode(), BigDecimal.ZERO);
                     w.writeLine(String.format("  %-5s   %11s  %11s",
                             line.getCurrencyCode(),
                             fmt(line.getOpeningStock()),
@@ -143,9 +149,16 @@ public class MonthlyClosingPdfService {
             w.writeLine(SEPARATOR);
             w.writeLine("VALUTANEM  ATADOTT OSSZEG  ZARO KESZLET");
             w.writeLine(SEPARATOR);
+            // Transfer out adatok gyors lookup-ja devizanementkent
+            Map<String, BigDecimal> sentByCC = new HashMap<>();
+            if (report.getTransferLines() != null) {
+                for (MonthlyReportFullDto.TransferLineDto tl : report.getTransferLines()) {
+                    sentByCC.put(tl.getCurrencyCode(), tl.getSentAmount());
+                }
+            }
             for (MonthlyReportFullDto.CurrencyLineDto line : safe(report.getCurrencyLines())) {
                 if (hasActivity(line)) {
-                    BigDecimal sent = BigDecimal.ZERO; // Atadott = transfer out, kozelites
+                    BigDecimal sent = sentByCC.getOrDefault(line.getCurrencyCode(), BigDecimal.ZERO);
                     w.writeLine(String.format("  %-5s   %11s  %11s",
                             line.getCurrencyCode(),
                             fmt(sent),

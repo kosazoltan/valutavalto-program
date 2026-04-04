@@ -52,19 +52,35 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
     @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(t.transferNumber, 4) AS long)), 0) FROM Transfer t WHERE t.transferNumber LIKE :prefix%")
     long findMaxTransferNumber(@Param("prefix") String prefix);
 
-    /** H-3: BejĂ¶vĹ‘ ĂˇtadĂˇsok Ă¶sszege (DailyBalanceService-hez) */
+    /** H-3: BejĂ¶vĹ' ĂˇtadĂˇsok Ă¶sszege (DailyBalanceService-hez) */
     @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transfer t WHERE t.toBranch.id = :branchId AND t.transferDate = :date AND t.currency.code = :currencyCode AND t.status = 'COMPLETED'")
     BigDecimal sumTransfersIn(@Param("branchId") UUID branchId, @Param("date") LocalDate date, @Param("currencyCode") String currencyCode);
 
-    /** H-3: KimenĹ‘ ĂˇtadĂˇsok Ă¶sszege (DailyBalanceService-hez) */
+    /** H-3: KimenĹ' ĂˇtadĂˇsok Ă¶sszege (DailyBalanceService-hez) */
     @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transfer t WHERE t.fromBranch.id = :branchId AND t.transferDate = :date AND t.currency.code = :currencyCode AND t.status = 'COMPLETED'")
     BigDecimal sumTransfersOut(@Param("branchId") UUID branchId, @Param("date") LocalDate date, @Param("currencyCode") String currencyCode);
 
-    /** ReportService â€” kimenĹ‘ ĂˇtadĂˇsok */
+    /** Havi aggregalt bejovo transfer osszegek devizanementkent */
+    @Query("SELECT t.currency.code, COALESCE(SUM(t.amount), 0) FROM Transfer t " +
+           "WHERE t.toBranch.id = :branchId AND t.transferDate BETWEEN :startDate AND :endDate " +
+           "AND t.status = 'COMPLETED' GROUP BY t.currency.code")
+    List<Object[]> sumTransfersInByPeriod(@Param("branchId") UUID branchId,
+                                          @Param("startDate") LocalDate startDate,
+                                          @Param("endDate") LocalDate endDate);
+
+    /** Havi aggregalt kimeno transfer osszegek devizanementkent */
+    @Query("SELECT t.currency.code, COALESCE(SUM(t.amount), 0) FROM Transfer t " +
+           "WHERE t.fromBranch.id = :branchId AND t.transferDate BETWEEN :startDate AND :endDate " +
+           "AND t.status = 'COMPLETED' GROUP BY t.currency.code")
+    List<Object[]> sumTransfersOutByPeriod(@Param("branchId") UUID branchId,
+                                           @Param("startDate") LocalDate startDate,
+                                           @Param("endDate") LocalDate endDate);
+
+    /** ReportService â€" kimenĹ' ĂˇtadĂˇsok */
     @Query("SELECT t FROM Transfer t WHERE t.fromBranch.id = :branchId ORDER BY t.createdAt DESC")
     List<Transfer> findByFromBranchIdOrderByCreatedAtDesc(@Param("branchId") UUID branchId);
 
-    /** ReportService â€” bejĂ¶vĹ‘ ĂˇtadĂˇsok */
+    /** ReportService â€" bejĂ¶vĹ' ĂˇtadĂˇsok */
     @Query("SELECT t FROM Transfer t WHERE t.toBranch.id = :branchId ORDER BY t.createdAt DESC")
     List<Transfer> findByToBranchIdOrderByCreatedAtDesc(@Param("branchId") UUID branchId);
 }

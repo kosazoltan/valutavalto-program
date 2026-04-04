@@ -74,8 +74,8 @@ class MonthlyReportServiceTest {
                 any(), any(), any(), any())).thenReturn(Optional.empty());
         when(subledgerSnapshotRepository.findByBranchIdAndSnapshotDateBetweenAndSubledgerTypeAndCurrencyCode(
                 any(), any(), any(), any(), any())).thenReturn(List.of());
-        when(transferRepository.sumTransfersIn(any(), any(), any())).thenReturn(BigDecimal.ZERO);
-        when(transferRepository.sumTransfersOut(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumTransfersInByPeriod(any(), any(), any())).thenReturn(List.of());
+        when(transferRepository.sumTransfersOutByPeriod(any(), any(), any())).thenReturn(List.of());
 
         MonthlyReportFullDto result = service.generateFullReport(BRANCH_ID, "2026-03");
 
@@ -100,8 +100,8 @@ class MonthlyReportServiceTest {
         when(mnbExchangeRateService.getRatesForDate(any())).thenReturn(Map.of());
         when(exchangeRateRepository.findActiveByDateAndBranch(any(), eq(BRANCH_ID)))
                 .thenReturn(List.of());
-        when(transferRepository.sumTransfersIn(any(), any(), any())).thenReturn(BigDecimal.ZERO);
-        when(transferRepository.sumTransfersOut(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumTransfersInByPeriod(any(), any(), any())).thenReturn(List.of());
+        when(transferRepository.sumTransfersOutByPeriod(any(), any(), any())).thenReturn(List.of());
 
         // Handling fee opening (march 1)
         DailySubledgerSnapshot hfOpening = DailySubledgerSnapshot.builder()
