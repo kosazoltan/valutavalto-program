@@ -319,6 +319,166 @@ describe('SyncEngine — syncAll', () => {
 
     vi.unstubAllGlobals();
   });
+
+  // G3-G4: PEP nyilatkozat + pénzeszköz forrás mezők a POST body-ban
+  it('should include sourceOfFunds and customerIsPep in POST body when set (G3-G4)', async () => {
+    // Reset all queues to prevent stale mockReturnValue leaking from earlier tests
+    mockedGetPendingConversions.mockReturnValue([]);
+    mockedGetPendingBankTransactions.mockReturnValue([]);
+    mockedGetPendingDistributions.mockReturnValue([]);
+    mockedGetPendingTransfers.mockReturnValue([]);
+    mockedGetPendingCollections.mockReturnValue([]);
+    mockedGetPendingStornos.mockReturnValue([]);
+    mockedGetPendingHandoverOperations.mockReturnValue([]);
+
+    mockedGetPendingTransactions.mockReturnValue([
+      {
+        id: 101,
+        type: 'BUY',
+        currency_code: 'EUR',
+        foreign_amount: 1000,
+        huf_amount: 400000,
+        rounded_huf_amount: 400000,
+        rate: 400,
+        handling_fee: null,
+        discount_percent: null,
+        customer_id: null,
+        customer_identifier: 'CUST-001',
+        customer_name: 'Teszt Ügyfél',
+        customer_document_number: 'AB123456',
+        customer_address: 'Budapest, Fő u. 1.',
+        denominations: null,
+        source_of_funds: 'munkabér',
+        customer_is_pep: 0,
+        local_reference_number: 'LB-PEP-001',
+        idempotency_key: 'pep-test-key-001',
+        created_at: '2026-04-05 10:00:00',
+        synced: 0,
+      },
+    ]);
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ success: true }),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const result = await engine.syncAll('test-token');
+
+    expect(result.synced).toBe(1);
+    expect(result.failed).toBe(0);
+
+    // Verify POST body contains sourceOfFunds and customerIsPep
+    const fetchOpts = mockFetch.mock.calls[0]![1] as RequestInit;
+    const body = JSON.parse(fetchOpts.body as string) as Record<string, unknown>;
+    expect(body['sourceOfFunds']).toBe('munkabér');
+    expect(body['customerIsPep']).toBe(false); // customer_is_pep=0 → false
+
+    vi.unstubAllGlobals();
+  });
+
+  it('should include customerIsPep=true when customer_is_pep=1 (G3-G4)', async () => {
+    mockedGetPendingConversions.mockReturnValue([]);
+    mockedGetPendingBankTransactions.mockReturnValue([]);
+    mockedGetPendingDistributions.mockReturnValue([]);
+    mockedGetPendingTransfers.mockReturnValue([]);
+    mockedGetPendingCollections.mockReturnValue([]);
+    mockedGetPendingStornos.mockReturnValue([]);
+    mockedGetPendingHandoverOperations.mockReturnValue([]);
+
+    mockedGetPendingTransactions.mockReturnValue([
+      {
+        id: 102,
+        type: 'SELL',
+        currency_code: 'USD',
+        foreign_amount: 2000,
+        huf_amount: 720000,
+        rounded_huf_amount: 720000,
+        rate: 360,
+        handling_fee: null,
+        discount_percent: null,
+        customer_id: null,
+        customer_identifier: null,
+        customer_name: 'PEP Ügyfél',
+        customer_document_number: 'CD789012',
+        customer_address: null,
+        denominations: null,
+        source_of_funds: 'megtakarítás',
+        customer_is_pep: 1,
+        local_reference_number: 'LS-PEP-002',
+        idempotency_key: 'pep-test-key-002',
+        created_at: '2026-04-05 10:01:00',
+        synced: 0,
+      },
+    ]);
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ success: true }),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    await engine.syncAll('test-token');
+
+    const fetchOpts = mockFetch.mock.calls[0]![1] as RequestInit;
+    const body = JSON.parse(fetchOpts.body as string) as Record<string, unknown>;
+    expect(body['sourceOfFunds']).toBe('megtakarítás');
+    expect(body['customerIsPep']).toBe(true); // customer_is_pep=1 → true
+
+    vi.unstubAllGlobals();
+  });
+
+  it('should omit sourceOfFunds and customerIsPep from body when null (G3-G4)', async () => {
+    mockedGetPendingConversions.mockReturnValue([]);
+    mockedGetPendingBankTransactions.mockReturnValue([]);
+    mockedGetPendingDistributions.mockReturnValue([]);
+    mockedGetPendingTransfers.mockReturnValue([]);
+    mockedGetPendingCollections.mockReturnValue([]);
+    mockedGetPendingStornos.mockReturnValue([]);
+    mockedGetPendingHandoverOperations.mockReturnValue([]);
+
+    mockedGetPendingTransactions.mockReturnValue([
+      {
+        id: 103,
+        type: 'SELL',
+        currency_code: 'EUR',
+        foreign_amount: 100,
+        huf_amount: 40000,
+        rounded_huf_amount: 40000,
+        rate: 400,
+        handling_fee: null,
+        discount_percent: null,
+        customer_id: null,
+        customer_identifier: null,
+        customer_name: null,
+        customer_document_number: null,
+        customer_address: null,
+        denominations: null,
+        source_of_funds: null,
+        customer_is_pep: null,
+        local_reference_number: 'LS-NO-PEP-003',
+        idempotency_key: 'no-pep-key-003',
+        created_at: '2026-04-05 10:02:00',
+        synced: 0,
+      },
+    ]);
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ success: true }),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    await engine.syncAll('test-token');
+
+    const fetchOpts = mockFetch.mock.calls[0]![1] as RequestInit;
+    const body = JSON.parse(fetchOpts.body as string) as Record<string, unknown>;
+    // When null → must NOT appear in the body at all
+    expect(Object.prototype.hasOwnProperty.call(body, 'sourceOfFunds')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(body, 'customerIsPep')).toBe(false);
+
+    vi.unstubAllGlobals();
+  });
 });
 
 describe('SyncEngine — getStatus', () => {
