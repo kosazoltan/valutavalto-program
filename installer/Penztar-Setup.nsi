@@ -318,13 +318,13 @@ Section "Telepítés" SecInstall
     ; =====================================================================
     ; Per-install random secret generálás
     ; Külön PS1 fájl — NSIS nem tudja a PowerShell {} blokkokat inline kezelni
-    ; A script 4 sort ír: JWT_SECRET, ENCRYPTION_SALT, ENCRYPTION_KEY, DB_PASSWORD
+    ; A script 5 sort ír: JWT_SECRET, ENCRYPTION_SALT, ENCRYPTION_KEY, DB_PASSWORD, PG_ADMIN_PASSWORD
     ; =====================================================================
     SetOutPath "$INSTDIR"
     File "scripts\generate-secrets.ps1"
     nsExec::ExecToStack 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\generate-secrets.ps1"'
     Pop $1  ; exit code
-    Pop $2  ; output = 4 lines
+    Pop $2  ; output = 5 lines
 
     ; Parse 5 lines — $2=jwt, $4=salt, $6=key, $8=dbpw, $9=pgadminpw
     StrCpy $R0 $2  ; save full output
@@ -599,6 +599,9 @@ Section "Telepítés" SecInstall
         FileWrite $0 "127.0.0.1:54320:*:postgres:$9$\r$\n"
         FileClose $0
 
+        ; S6-04: Set PGPASSFILE for installer session (health check needs it)
+        System::Call 'Kernel32::SetEnvironmentVariable(t "PGPASSFILE", t "$DATA_DIR\config\.pgpass")'
+
         ; Stop temp PG
         DetailPrint "  Ideiglenes PostgreSQL leállítás..."
         nsExec::ExecToLog '"$DATA_DIR\pgsql\bin\pg_ctl.exe" stop -D "$DATA_DIR\pgsql\data" -m fast -w -t 30'
@@ -609,6 +612,11 @@ Section "Telepítés" SecInstall
         StrCpy $DB_ALREADY_EXISTS 1
         ; F-N-06 fix: Upgrade telepítés — jelszó frissítés a meglévő DB-ben
         DetailPrint "  Meglévő adatbázis — jelszó frissítés..."
+
+        ; S6-04: Set PGPASSFILE if .pgpass exists from previous v7.0+ install
+        ; This is needed because pg_hba may already be scram-sha-256 (re-upgrade scenario)
+        IfFileExists "$DATA_DIR\config\.pgpass" 0 +2
+            System::Call 'Kernel32::SetEnvironmentVariable(t "PGPASSFILE", t "$DATA_DIR\config\.pgpass")'
 
         ; Start PG temporarily
         nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\pg_ctl.exe" start -D "$DATA_DIR\pgsql\data" -l "$DATA_DIR\pgsql\log\postgresql.log" -w -t 30'
@@ -661,6 +669,9 @@ Section "Telepítés" SecInstall
         FileWrite $0 "localhost:54320:*:postgres:$9$\r$\n"
         FileWrite $0 "127.0.0.1:54320:*:postgres:$9$\r$\n"
         FileClose $0
+
+        ; S6-04: Update PGPASSFILE for installer session (upgrade — new password)
+        System::Call 'Kernel32::SetEnvironmentVariable(t "PGPASSFILE", t "$DATA_DIR\config\.pgpass")'
 
     db_done:
 
@@ -944,7 +955,12 @@ Section "un.Eltávolítás"
         DetailPrint "Binárisok törlése (adatok megmaradnak)..."
         ; S6-06 fix: Secrets törlése még keep-data módban is
         Delete "$DATA_DIR\config\application-local.properties"
-        DetailPrint "  Konfigurációs fájl törölve (titkos kulcsok eltávolítva)"
+        ; S6-04: .pgpass contains postgres admin password — must be wiped
+        FileOpen $0 "$DATA_DIR\config\.pgpass" w
+        FileWrite $0 "# WIPED"
+        FileClose $0
+        Delete "$DATA_DIR\config\.pgpass"
+        DetailPrint "  Konfigurációs fájlok törölve (titkos kulcsok eltávolítva)"
         RMDir /r "$DATA_DIR\jre"
         RMDir /r "$DATA_DIR\tools"
         RMDir /r "$DATA_DIR\scripts"
@@ -1003,6 +1019,11 @@ Function .onInstFailed
     FileWrite $0 "# WIPED"
     FileClose $0
     Delete "$INSTDIR\generate-secrets.ps1"
+    ; S6-04: .pgpass wipe on install failure
+    FileOpen $0 "$DATA_DIR\config\.pgpass" w
+    FileWrite $0 "# WIPED"
+    FileClose $0
+    Delete "$DATA_DIR\config\.pgpass"
 FunctionEnd
 
 ; F-N-02 fix: silent uninstall confirmation skip
