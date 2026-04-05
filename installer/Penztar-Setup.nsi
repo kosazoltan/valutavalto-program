@@ -1,7 +1,11 @@
 ; =============================================================================
-; Valutaváltó Pénztár — Egyfájlos Windows Telepítő v6.1
+; Valutaváltó Pénztár — Egyfájlos Windows Telepítő v7.0
 ; NSIS 3.x Script — Production Quality
 ; =============================================================================
+; v7.0: S6-04 PostgreSQL trust→scram-sha-256 hardening for ALL users including postgres.
+;       postgres superuser gets random password (generate-secrets.ps1 5th output line).
+;       .pgpass created at $DATA_DIR\config\.pgpass for service/maintenance access.
+;       Upgrade path: passwords set while PG running (trust), then pg_hba hardened after stop.
 ; v6.1: Eszter review fixes: E6-01 IfSilent +2→+1 (fatal abort in silent mode),
 ;       E6-02 config dir ACL hardening (inheritance removed, explicit grants),
 ;       E6-03 uninstaller process-death wait loop, E6-04 firewall remoteip=127.0.0.1,
@@ -322,13 +326,14 @@ Section "Telepítés" SecInstall
     Pop $1  ; exit code
     Pop $2  ; output = 4 lines
 
-    ; Parse 4 lines — $2=jwt, $4=salt, $6=key, $8=dbpw
+    ; Parse 5 lines — $2=jwt, $4=salt, $6=key, $8=dbpw, $9=pgadminpw
     StrCpy $R0 $2  ; save full output
 
     ${WordFind} $R0 "$\r$\n" "+1" $2
     ${WordFind} $R0 "$\r$\n" "+2" $4
     ${WordFind} $R0 "$\r$\n" "+3" $6
     ${WordFind} $R0 "$\r$\n" "+4" $8
+    ${WordFind} $R0 "$\r$\n" "+5" $9
 
     ; F3-C: Abort if secret generation failed (no weak fallback)
     ; E6-01 fix: IfSilent +1 (only skip MessageBox, NOT Abort)
@@ -337,6 +342,7 @@ Section "Telepítés" SecInstall
     ${OrIf} $4 == ""
     ${OrIf} $6 == ""
     ${OrIf} $8 == ""
+    ${OrIf} $9 == ""
         IfSilent +1
         MessageBox MB_OK|MB_ICONSTOP "HIBA: A biztonsági kulcsok generálása sikertelen (PowerShell).$\r$\nEllenőrizze, hogy a PowerShell elérhető-e.$\r$\nHibakód: $1"
         Abort
@@ -492,8 +498,10 @@ Section "Telepítés" SecInstall
         ${EndIf}
 
         ; Set password + grants (F3-A: random password from $8)
+        ; S6-04: Also set postgres superuser password (from $9) to eliminate trust auth
         FileOpen $0 "$DATA_DIR\scripts\setup-user.sql" w
         FileWrite $0 "ALTER USER valuta_user WITH PASSWORD '$8';$\r$\n"
+        FileWrite $0 "ALTER USER postgres WITH PASSWORD '$9';$\r$\n"
         FileWrite $0 "GRANT ALL PRIVILEGES ON DATABASE valuta TO valuta_user;$\r$\n"
         FileWrite $0 "GRANT ALL ON SCHEMA public TO valuta_user;$\r$\n"
         FileWrite $0 "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO valuta_user;$\r$\n"
@@ -572,18 +580,24 @@ Section "Telepítés" SecInstall
         IfSilent +1
         MessageBox MB_OK|MB_ICONEXCLAMATION "FONTOS: A dolgozók alapértelmezett jelszava '1234'.$\r$\n$\r$\nAz első bejelentkezés után AZONNAL változtassa meg a jelszavakat!$\r$\n$\r$\nÉrintett felhasználók: BORSI, BALI, KASZA"
 
-        ; F4-A: Harden pg_hba.conf — scram-sha-256 for app user
+        ; S6-04: Harden pg_hba.conf — scram-sha-256 for ALL users (including postgres)
         DetailPrint "  pg_hba.conf biztonsági beállítás..."
         FileOpen $0 "$DATA_DIR\pgsql\data\pg_hba.conf" w
-        FileWrite $0 "# Penztar installer — hardened auth (v1.6.0)$\r$\n"
+        FileWrite $0 "# Penztar installer — hardened auth (v1.7.0 S6-04)$\r$\n"
         FileWrite $0 "# TYPE  DATABASE  USER         ADDRESS       METHOD$\r$\n"
-        FileWrite $0 "local   all       postgres                   trust$\r$\n"
-        FileWrite $0 "host    all       postgres     127.0.0.1/32  trust$\r$\n"
-        FileWrite $0 "host    all       postgres     ::1/128       trust$\r$\n"
         FileWrite $0 "host    all       valuta_user  127.0.0.1/32  scram-sha-256$\r$\n"
         FileWrite $0 "host    all       valuta_user  ::1/128       scram-sha-256$\r$\n"
+        FileWrite $0 "host    all       postgres     127.0.0.1/32  scram-sha-256$\r$\n"
+        FileWrite $0 "host    all       postgres     ::1/128       scram-sha-256$\r$\n"
         FileClose $0
-        DetailPrint "  pg_hba.conf kész (valuta_user: scram-sha-256)"
+        DetailPrint "  pg_hba.conf kész (S6-04: minden user scram-sha-256)"
+
+        ; S6-04: Create .pgpass for service/maintenance access
+        DetailPrint "  .pgpass létrehozás (postgres admin)..."
+        FileOpen $0 "$DATA_DIR\config\.pgpass" w
+        FileWrite $0 "localhost:54320:*:postgres:$9$\r$\n"
+        FileWrite $0 "127.0.0.1:54320:*:postgres:$9$\r$\n"
+        FileClose $0
 
         ; Stop temp PG
         DetailPrint "  Ideiglenes PostgreSQL leállítás..."
@@ -606,8 +620,10 @@ Section "Telepítés" SecInstall
         ${EndIf}
 
         ; Update password to match new config
+        ; S6-04: Set BOTH valuta_user AND postgres passwords while PG still runs with trust
         FileOpen $0 "$DATA_DIR\scripts\update-password.sql" w
         FileWrite $0 "ALTER USER valuta_user WITH PASSWORD '$8';$\r$\n"
+        FileWrite $0 "ALTER USER postgres WITH PASSWORD '$9';$\r$\n"
         FileClose $0
         nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -d valuta -f "$DATA_DIR\scripts\update-password.sql"'
         Pop $0
@@ -618,7 +634,7 @@ Section "Telepítés" SecInstall
         FileClose $0
         Delete "$DATA_DIR\scripts\update-password.sql"
         ${If} $0 == 0
-            DetailPrint "  DB jelszó frissítve!"
+            DetailPrint "  DB jelszavak frissítve (valuta_user + postgres)!"
         ${Else}
             DetailPrint "  FIGYELMEZTETÉS: Jelszó frissítés sikertelen (kód: $0)"
         ${EndIf}
@@ -627,18 +643,24 @@ Section "Telepítés" SecInstall
         nsExec::ExecToLog '"$DATA_DIR\pgsql\bin\pg_ctl.exe" stop -D "$DATA_DIR\pgsql\data" -m fast -w -t 30'
         Sleep 2000
 
-        ; T-01 fix: pg_hba.conf hardening az upgrade ágban is (teszt suite finding)
+        ; S6-04: pg_hba.conf hardening az upgrade ágban is — scram-sha-256 mindenhol
         DetailPrint "  pg_hba.conf biztonsági beállítás (upgrade)..."
         FileOpen $0 "$DATA_DIR\pgsql\data\pg_hba.conf" w
-        FileWrite $0 "# Penztar installer — hardened auth (v1.6.0)$\r$\n"
+        FileWrite $0 "# Penztar installer — hardened auth (v1.7.0 S6-04 upgrade)$\r$\n"
         FileWrite $0 "# TYPE  DATABASE  USER         ADDRESS       METHOD$\r$\n"
-        FileWrite $0 "local   all       postgres                   trust$\r$\n"
-        FileWrite $0 "host    all       postgres     127.0.0.1/32  trust$\r$\n"
-        FileWrite $0 "host    all       postgres     ::1/128       trust$\r$\n"
         FileWrite $0 "host    all       valuta_user  127.0.0.1/32  scram-sha-256$\r$\n"
         FileWrite $0 "host    all       valuta_user  ::1/128       scram-sha-256$\r$\n"
+        FileWrite $0 "host    all       postgres     127.0.0.1/32  scram-sha-256$\r$\n"
+        FileWrite $0 "host    all       postgres     ::1/128       scram-sha-256$\r$\n"
         FileClose $0
-        DetailPrint "  pg_hba.conf kész (upgrade path)"
+        DetailPrint "  pg_hba.conf kész (S6-04 upgrade path)"
+
+        ; S6-04: Create .pgpass for maintenance access (upgrade)
+        DetailPrint "  .pgpass frissítés (postgres admin - upgrade)..."
+        FileOpen $0 "$DATA_DIR\config\.pgpass" w
+        FileWrite $0 "localhost:54320:*:postgres:$9$\r$\n"
+        FileWrite $0 "127.0.0.1:54320:*:postgres:$9$\r$\n"
+        FileClose $0
 
     db_done:
 

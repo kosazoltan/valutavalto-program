@@ -1,6 +1,6 @@
 #!/usr/bin/env pwsh
 # generate-secrets.ps1 — Installer secret generation (called by NSIS)
-# Output: 4 lines — JWT_SECRET, ENCRYPTION_SALT, ENCRYPTION_KEY, DB_PASSWORD
+# Output: 5 lines — JWT_SECRET, ENCRYPTION_SALT, ENCRYPTION_KEY, DB_PASSWORD, PG_ADMIN_PASSWORD
 # Compatible with PowerShell 5.1 (Windows built-in)
 
 $ErrorActionPreference = "Stop"
@@ -37,6 +37,18 @@ if ($dbPw.Length -lt 16) {
     $dbPw = $dbPw.Substring(0, 24)
 }
 
+# PG Admin Password — 24 random bytes -> alphanumeric (postgres superuser, S6-04)
+$pgAdminBytes = New-Object byte[] 24
+$rng.GetBytes($pgAdminBytes)
+$pgAdminPw = [Convert]::ToBase64String($pgAdminBytes) -replace '[+/=]',''
+if ($pgAdminPw.Length -gt 24) { $pgAdminPw = $pgAdminPw.Substring(0, 24) }
+if ($pgAdminPw.Length -lt 16) {
+    $extra = New-Object byte[] 16
+    $rng.GetBytes($extra)
+    $pgAdminPw += ([Convert]::ToBase64String($extra) -replace '[+/=]','')
+    $pgAdminPw = $pgAdminPw.Substring(0, 24)
+}
+
 $rng.Dispose()
 
 # Output each on its own line (NSIS reads all stdout)
@@ -44,3 +56,4 @@ Write-Output $jwt
 Write-Output $salt
 Write-Output $key
 Write-Output $dbPw
+Write-Output $pgAdminPw
