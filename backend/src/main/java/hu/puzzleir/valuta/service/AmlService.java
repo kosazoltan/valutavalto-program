@@ -167,6 +167,31 @@ public class AmlService {
             }
         }
 
+        // 5. BIGCTRL 6 szintű kockázati besorolás (heti + negyedéves + éves göngyölés)
+        if (customerId != null && !customerId.isBlank()) {
+            String currencyCode = null; // A checkTransaction nem kap devizakódot — classifyTransaction null-safe
+            int transactionType = classifyTransaction(customerId, hufAmount, currencyCode);
+            result.transactionType(transactionType);
+
+            if (transactionType >= 3) {
+                result.requiresIdentification(true);
+                result.requiresDetailedId(true);
+                log.warn("AML: BIGCTRL TranzTipus {} — ügyfél: {}, hufAmount: {}",
+                    transactionType, customerId, hufAmount);
+            } else if (transactionType == 2) {
+                result.requiresIdentification(true);
+                log.info("AML: Külföldi ügyfél (TranzTipus 2): {}", customerId);
+            } else if (transactionType == 1) {
+                result.requiresIdentification(true);
+                result.requiresDetailedId(true);
+                log.info("AML: PEP ügyfél (TranzTipus 1): {}", customerId);
+            } else if (transactionType == -1) {
+                result.approved(false);
+                result.rejectionReason("Külföldi ügyfél nem kaphat USD-t (TranzTipus -1)");
+                log.warn("AML: Külföldi USD blokkolás: {}", customerId);
+            }
+        }
+
         return result.build();
     }
 
@@ -236,6 +261,8 @@ public class AmlService {
         private String approvalReason;
         private BigDecimal annualTotal;
         private BigDecimal projectedTotal;
+        /** Legacy BIGCTRL TranzTipus: -1, 0, 1, 2, 3, 4, 5, 6 */
+        private int transactionType;
     }
 
     @lombok.Data
@@ -276,11 +303,13 @@ public class AmlService {
      *   _diff = Napidiff(_lastdatum, _megnyitottnap)
      *   if _diff < 8 then _hasforint = _hasforint + _hetiforint
      *   HETIOSSZ mező az ügyfél táblában
+     *
+     * FONTOS: A legacy 8 napos ablakot használ (_diff < 8), ezért minusDays(8).
      */
     @Transactional(readOnly = true)
     public BigDecimal getWeeklyTotal(String customerId) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        LocalDate sinceDate = LocalDate.now().minusDays(7);
+        LocalDate sinceDate = LocalDate.now().minusDays(8);
 
         BigDecimal total = transactionRepository.sumCustomerWeeklyTotal(
             companyId, customerId, sinceDate);

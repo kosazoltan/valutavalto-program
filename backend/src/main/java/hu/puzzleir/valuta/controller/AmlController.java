@@ -81,6 +81,21 @@ public class AmlController {
     }
 
     /**
+     * Teljes küszöb ellenőrzés (frontend hívja tranzakció rögzítéskor).
+     * GET /api/v1/aml/check-all-thresholds?customerId=&hufAmount=&currencyCode=
+     *
+     * Legacy: BIGCTRL.DLL — 6 szintű kockázati besorolás + heti/negyedéves/éves göngyölés
+     */
+    @GetMapping("/check-all-thresholds")
+    public ResponseEntity<AmlCheckResult> checkAllThresholds(
+            @RequestParam String customerId,
+            @RequestParam java.math.BigDecimal hufAmount,
+            @RequestParam(required = false) String currencyCode) {
+        AmlCheckResult result = amlService.checkAllThresholds(customerId, hufAmount, currencyCode);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
      * Structuring detektálás.
      * GET /api/v1/aml/structuring-check/{customerId}
      */
