@@ -35,15 +35,13 @@ export default function TransactionListPage() {
     setLoading(true)
     setError(null)
     try {
-      const params: Record<string, string | number | undefined> = {
+      const result = await transactionApi.list({
         page,
         size: PAGE_SIZE,
-      }
-      if (dateFrom) params.startDate = dateFrom
-      if (dateTo) params.endDate = dateTo
-      if (typeFilter) params.type = typeFilter
-
-      const result = await transactionApi.list(params as Parameters<typeof transactionApi.list>[0])
+        startDate: dateFrom || undefined,
+        endDate: dateTo || undefined,
+        type: (typeFilter as 'BUY' | 'SELL' | 'REVERSAL' | 'CONVERSION') || undefined,
+      })
       setData(result)
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Hiba a tranzakciók betöltésekor'

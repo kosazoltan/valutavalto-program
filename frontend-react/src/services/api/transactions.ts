@@ -231,7 +231,7 @@ export const transactionApi = {
     page?: number
     size?: number
   }): Promise<PagedResponse<Transaction>> => {
-    const response = await api.get<PagedResponse<Transaction>>('/transactions', { params })
+    const response = await api.get<PagedResponse<Transaction>>('/transactions', { params, _preservePaged: true } as Record<string, unknown>)
     return response.data
   },
   getById: async (id: string | number): Promise<Transaction> => {

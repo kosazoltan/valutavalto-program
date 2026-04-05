@@ -99,8 +99,10 @@ api.interceptors.response.use(
     // Auto-unwrap Spring Boot paginated responses (Page<T> → T[])
     // When backend returns { content: [...], totalElements, totalPages, ... }
     // but frontend expects a plain array, extract just the content.
+    // Skip unwrap when request has _preservePaged flag (for paginated UI components).
     const d = response.data
-    if (d && typeof d === 'object' && !Array.isArray(d) && Array.isArray(d.content) && ('totalElements' in d || 'totalPages' in d || 'number' in d)) {
+    const preservePaged = (response.config as unknown as Record<string, unknown>)?._preservePaged === true
+    if (!preservePaged && d && typeof d === 'object' && !Array.isArray(d) && Array.isArray(d.content) && ('totalElements' in d || 'totalPages' in d || 'number' in d)) {
       response.data = d.content
     }
     return response

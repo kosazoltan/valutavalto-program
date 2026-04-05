@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, beforeEach, it, expect } from 'vitest'
 import ReportsPage from './ReportsPage'
@@ -25,204 +25,114 @@ describe('ReportsPage', () => {
     expect(screen.getByText('Riportok')).toBeInTheDocument()
   })
 
-  it('riport típusokat megjelenít', () => {
+  it('riport kártyákat megjelenít', () => {
     render(<ReportsPage />)
-    const reportButtons = screen.getAllByRole('button', { name: /Napi jelentés|Havi kimutatás|Valuta statisztika|Eredmény kimutatás|Ügyfél statisztika|MNB jelentés/i })
-    expect(reportButtons.length).toBeGreaterThanOrEqual(6)
-  })
-
-  it('riport típus leírásait megjelenít', () => {
-    render(<ReportsPage />)
-    // Descriptions are rendered as part of button children
     const reportButtons = screen.getAllByRole('button')
     expect(reportButtons.length).toBeGreaterThanOrEqual(6)
   })
 
-  it('napi jelentés alapértelmezésben kiválasztott', () => {
+  it('napi forgalom kártya megjelenik', () => {
     render(<ReportsPage />)
-    const dailyButtons = screen.getAllByText('Napi jelentés')
-    const dailyButton = dailyButtons[0]?.closest('button')
-    expect(dailyButton).toHaveClass('bg-blue-100')
+    expect(screen.getByText('Napi forgalom')).toBeInTheDocument()
   })
 
-  it('riport típus választás módosítható', async () => {
+  it('napló kártya megjelenik', () => {
+    render(<ReportsPage />)
+    expect(screen.getByText('Napló (DayBook)')).toBeInTheDocument()
+  })
+
+  it('dekádzárás kártya megjelenik', () => {
+    render(<ReportsPage />)
+    expect(screen.getByText('Dekádzárás')).toBeInTheDocument()
+  })
+
+  it('eredmény kimutatás kártya megjelenik', () => {
+    render(<ReportsPage />)
+    expect(screen.getByText('Eredmény kimutatás')).toBeInTheDocument()
+  })
+
+  it('MNB jelentés kártya megjelenik', () => {
+    render(<ReportsPage />)
+    expect(screen.getByText('MNB jelentés')).toBeInTheDocument()
+  })
+
+  it('havi zárás kártya megjelenik', () => {
+    render(<ReportsPage />)
+    expect(screen.getByText('Havi zárás')).toBeInTheDocument()
+  })
+
+  it('kibővített riportok kártya megjelenik', () => {
+    render(<ReportsPage />)
+    expect(screen.getByText('Kibővített riportok')).toBeInTheDocument()
+  })
+
+  it('névtelen bejelentés kártya megjelenik', () => {
+    render(<ReportsPage />)
+    expect(screen.getByText('Névtelen bejelentés')).toBeInTheDocument()
+  })
+
+  it('gyanús tranzakciók kártya megjelenik', () => {
+    render(<ReportsPage />)
+    expect(screen.getByText('Gyanús tranzakciók')).toBeInTheDocument()
+  })
+
+  it('minden kártyának van leírása', () => {
+    render(<ReportsPage />)
+    expect(screen.getByText('Napi tranzakciók és forgalom összesítése')).toBeInTheDocument()
+    expect(screen.getByText('Hatósági (MNB) jelentés generálás')).toBeInTheDocument()
+  })
+
+  it('napi forgalom kártyára kattintás navigál', async () => {
     render(<ReportsPage />)
     const user = userEvent.setup()
-
-    const monthlyButton = screen.getByText('Havi kimutatás')
-    await user.click(monthlyButton)
-
-    await waitFor(() => {
-      expect(monthlyButton.closest('button')).toHaveClass('bg-blue-100')
-    })
+    const button = screen.getByTestId('report-link-daily-turnover')
+    await user.click(button)
+    expect(mocks.navigate).toHaveBeenCalledWith('/daily-turnover')
   })
 
-  it('dátum tartomány szűrő megjelenítése', () => {
-    render(<ReportsPage />)
-    // Labels are not properly associated, use DOM query
-    const dateInputs = document.querySelectorAll('input[type="date"]')
-    expect(dateInputs.length).toBeGreaterThanOrEqual(2)
-  })
-
-  it('letöltés gomb megjelenítése', () => {
-    render(<ReportsPage />)
-    expect(screen.getByRole('button', { name: /Excel/i })).toBeInTheDocument()
-  })
-
-  it('nyomtatás gomb megjelenítése', () => {
-    render(<ReportsPage />)
-    expect(screen.getByRole('button', { name: /Nyomtatás/i })).toBeInTheDocument()
-  })
-
-  it('exportálás gomb megjelenítése', () => {
-    render(<ReportsPage />)
-    expect(screen.getByRole('button', { name: /PDF/i })).toBeInTheDocument()
-  })
-
-  it('dátum szűrés beállítható', async () => {
+  it('MNB jelentés kártyára kattintás navigál', async () => {
     render(<ReportsPage />)
     const user = userEvent.setup()
-
-    const dateInputs = document.querySelectorAll('input[type="date"]')
-    expect(dateInputs.length).toBeGreaterThanOrEqual(2)
-    
-    const dateFromInput = dateInputs[0] as HTMLInputElement
-    const dateToInput = dateInputs[1] as HTMLInputElement
-
-    await user.type(dateFromInput, '2024-01-01')
-    await user.type(dateToInput, '2024-12-31')
-
-    expect(dateFromInput.value).toBe('2024-01-01')
-    expect(dateToInput.value).toBe('2024-12-31')
+    const button = screen.getByTestId('report-link-mnb')
+    await user.click(button)
+    expect(mocks.navigate).toHaveBeenCalledWith('/reports/mnb')
   })
 
-  it('régiót/ágat választhat', () => {
-    render(<ReportsPage />)
-    const selectElements = screen.queryAllByRole('combobox')
-    expect(selectElements.length).toBeGreaterThanOrEqual(0)
-  })
-
-  it('pénztárost választhat', () => {
-    render(<ReportsPage />)
-    const selectElements = screen.queryAllByRole('combobox')
-    expect(selectElements.length).toBeGreaterThanOrEqual(0)
-  })
-
-  it('riport előnézete megjelenítésre kerül', () => {
-    render(<ReportsPage />)
-    // Check for table with report data
-    const tables = screen.getAllByRole('table')
-    expect(tables.length).toBeGreaterThan(0)
-  })
-
-  it('riport előnézete táblázat formátumban jeleníti meg az adatokat', () => {
-    render(<ReportsPage />)
-    // Előnézet tartalom — táblázat fejléc elemek
-    expect(screen.getByText('Valuta')).toBeInTheDocument()
-  })
-
-  it('letöltés gombra kattintás letöltési dialógust nyit', async () => {
+  it('kibővített riportok kártyára kattintás navigál', async () => {
     render(<ReportsPage />)
     const user = userEvent.setup()
-
-    const downloadButton = screen.getByRole('button', { name: /Excel/i })
-    await user.click(downloadButton)
-
-    // Dialógus vagy letöltés megindul
-    expect(downloadButton).toBeInTheDocument()
+    const button = screen.getByTestId('report-link-extended')
+    await user.click(button)
+    expect(mocks.navigate).toHaveBeenCalledWith('/reports/extended')
   })
 
-  it('nyomtatás gombra kattintás nyomtatási dialógust nyit', async () => {
-    const printSpy = vi.spyOn(window, 'print').mockImplementation(() => {})
+  it('havi zárás kártyára kattintás navigál', async () => {
     render(<ReportsPage />)
     const user = userEvent.setup()
-
-    const printButton = screen.getByRole('button', { name: /Nyomtatás/i })
-    await user.click(printButton)
-
-    // Nyomtatási dialógus vagy window.print() meghívódik
-    // (component nem hívja meg jelenleg)
-    expect(printButton).toBeInTheDocument()
-
-    printSpy.mockRestore()
+    const button = screen.getByTestId('report-link-monthly')
+    await user.click(button)
+    expect(mocks.navigate).toHaveBeenCalledWith('/closing/monthly')
   })
 
-  it('exportálás gombra kattintás exportálási opciókat mutat', async () => {
+  it('darius riport kártyára kattintás navigál', async () => {
     render(<ReportsPage />)
     const user = userEvent.setup()
-
-    const exportButton = screen.getByRole('button', { name: /PDF/i })
-    await user.click(exportButton)
-
-    // Exportálási opciók megjelennek
-    expect(exportButton).toBeInTheDocument()
+    const button = screen.getByTestId('report-link-darius')
+    await user.click(button)
+    expect(mocks.navigate).toHaveBeenCalledWith('/darius')
   })
 
-  it('napi jelentés oszlopok megjelenítése', () => {
-    render(<ReportsPage />)
-    expect(screen.getByText('Valuta')).toBeInTheDocument()
-    // Table headers
-    const headers = screen.getAllByRole('columnheader')
-    expect(headers.length).toBeGreaterThan(0)
-  })
-
-  it('havi kimutatás összefoglalást mutat', async () => {
+  it('névtelen bejelentés kártyára kattintás navigál', async () => {
     render(<ReportsPage />)
     const user = userEvent.setup()
-
-    const monthlyButton = screen.getByText('Havi kimutatás')
-    await user.click(monthlyButton)
-
-    await waitFor(() => {
-      expect(monthlyButton.closest('button')).toHaveClass('bg-blue-100')
-    })
+    const button = screen.getByTestId('report-link-anonymous')
+    await user.click(button)
+    expect(mocks.navigate).toHaveBeenCalledWith('/anonymous-reports')
   })
 
-  it('valuta statisztika diagram megjelenítése', async () => {
+  it('11 riport kártya szerepel összesen', () => {
     render(<ReportsPage />)
-    const user = userEvent.setup()
-
-    const currencyButton = screen.getByText('Valuta statisztika')
-    await user.click(currencyButton)
-
-    await waitFor(() => {
-      expect(currencyButton.closest('button')).toHaveClass('bg-blue-100')
-    })
-  })
-
-  it('eredmény kimutatás profit/veszteséget mutat', async () => {
-    render(<ReportsPage />)
-    const user = userEvent.setup()
-
-    const profitButton = screen.getByText('Eredmény kimutatás')
-    await user.click(profitButton)
-
-    await waitFor(() => {
-      expect(profitButton.closest('button')).toHaveClass('bg-blue-100')
-    })
-  })
-
-  it('ügyfél statisztika ügyfélenkénti forgalmat mutat', async () => {
-    render(<ReportsPage />)
-    const user = userEvent.setup()
-
-    const customerButton = screen.getByText('Ügyfél statisztika')
-    await user.click(customerButton)
-
-    await waitFor(() => {
-      expect(customerButton.closest('button')).toHaveClass('bg-blue-100')
-    })
-  })
-
-  it('MNB jelentés hatósági adatokat mutat', async () => {
-    render(<ReportsPage />)
-    const user = userEvent.setup()
-
-    const mnbButton = screen.getByText('MNB jelentés')
-    await user.click(mnbButton)
-
-    await waitFor(() => {
-      expect(mnbButton.closest('button')).toHaveClass('bg-blue-100')
-    })
+    const buttons = screen.getAllByRole('button')
+    expect(buttons.length).toBe(11)
   })
 })
