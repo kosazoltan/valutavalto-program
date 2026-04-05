@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Search } from 'lucide-react'
 import type { CurrencyRate } from '../hooks/useTransactionRates'
 
@@ -20,7 +20,7 @@ export default function CurrencySearchInput({ currencyRates, onSelect }: Props) 
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
-  const filtered = searchText.trim()
+  const filtered = useMemo(() => searchText.trim()
     ? currencyRates
         .filter(c => {
           const q = searchText.trim().toLowerCase()
@@ -34,7 +34,7 @@ export default function CurrencySearchInput({ currencyRates, onSelect }: Props) 
           if (aStart !== bStart) return aStart - bStart
           return a.code.localeCompare(b.code)
         })
-    : []
+    : [], [searchText, currencyRates])
 
   // Reset highlight on filter change
   useEffect(() => {

@@ -528,7 +528,7 @@ export default function CashierTransactionPage() {
         })
       }
     },
-    [rows, handleSubmit]
+    [handleSubmit]
   )
 
   const handleCancel = useCallback(() => {
