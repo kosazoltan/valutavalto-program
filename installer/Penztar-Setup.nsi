@@ -618,7 +618,18 @@ Section "Telepítés" SecInstall
         IfFileExists "$DATA_DIR\config\.pgpass" 0 +2
             System::Call 'Kernel32::SetEnvironmentVariable(t "PGPASSFILE", t "$DATA_DIR\config\.pgpass")'
 
-        ; Start PG temporarily
+        ; F-N-11 fix: Temp trust pg_hba BEFORE starting PG (upgrade path)
+        ; The existing pg_hba may be scram-sha-256 from a prior install, and the
+        ; .pgpass may have an outdated postgres password. Trust mode ensures psql
+        ; can connect to update passwords, then we re-harden afterwards.
+        IfFileExists "$DATA_DIR\pgsql\data\pg_hba.conf" 0 +6
+            FileOpen $0 "$DATA_DIR\pgsql\data\pg_hba.conf" w
+            FileWrite $0 "# Temporary trust for upgrade password rotation$\r$\n"
+            FileWrite $0 "host    all       all          127.0.0.1/32  trust$\r$\n"
+            FileWrite $0 "host    all       all          ::1/128       trust$\r$\n"
+            FileClose $0
+
+        ; Start PG temporarily (now with trust auth)
         nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\pg_ctl.exe" start -D "$DATA_DIR\pgsql\data" -l "$DATA_DIR\pgsql\log\postgresql.log" -w -t 30'
         Pop $0
         Pop $1
@@ -628,7 +639,7 @@ Section "Telepítés" SecInstall
         ${EndIf}
 
         ; Update password to match new config
-        ; S6-04: Set BOTH valuta_user AND postgres passwords while PG still runs with trust
+        ; S6-04: Set BOTH valuta_user AND postgres passwords (PG runs with trust)
         FileOpen $0 "$DATA_DIR\scripts\update-password.sql" w
         FileWrite $0 "ALTER USER valuta_user WITH PASSWORD '$8';$\r$\n"
         FileWrite $0 "ALTER USER postgres WITH PASSWORD '$9';$\r$\n"
@@ -747,7 +758,9 @@ Section "Telepítés" SecInstall
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend AppParameters "-jar" "valuta-backend.jar" "--spring.config.additional-location=file:../config/" "--spring.profiles.active=local"'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend DisplayName "BestChange Backend"'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend Description "Valutavalto Penztar szerver"'
-    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend ObjectName "NT AUTHORITY\NetworkService" ""'
+    ; F-N-12 fix: Backend runs as LocalSystem (not NetworkService)
+    ; NetworkService lacks writable temp dir for Java; config ACL (E6-02) still restricts file access.
+    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend ObjectName LocalSystem'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend DependOnService BestChange-PostgreSQL'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend Start SERVICE_DEMAND_START'
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" set BestChange-Backend AppThrottle 120000'
