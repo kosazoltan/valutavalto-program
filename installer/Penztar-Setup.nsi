@@ -647,6 +647,39 @@ Section "Telepítés" SecInstall
             DetailPrint "  FIGYELMEZTETÉS: Jelszó frissítés sikertelen (kód: $0)"
         ${EndIf}
 
+        ; F-N-10 fix: Upgrade — config fájl frissítés az új jelszavakkal
+        ; (a generate-secrets.ps1 új titkokat generált, azokat KELL a config-ba írni)
+        DetailPrint "  application-local.properties frissítés (upgrade)..."
+        FileOpen $0 "$DATA_DIR\config\application-local.properties" w
+        FileWrite $0 "# Valutavalto Penztar - lokalis konfig$\r$\n"
+        FileWrite $0 "# Automatikusan generalta a telepito (upgrade)$\r$\n"
+        FileWrite $0 "server.port=8080$\r$\n"
+        FileWrite $0 "spring.datasource.url=jdbc:postgresql://localhost:54320/valuta$\r$\n"
+        FileWrite $0 "spring.datasource.username=valuta_user$\r$\n"
+        FileWrite $0 "spring.datasource.password=$8$\r$\n"
+        FileWrite $0 "spring.datasource.driver-class-name=org.postgresql.Driver$\r$\n"
+        FileWrite $0 "spring.datasource.hikari.maximum-pool-size=10$\r$\n"
+        FileWrite $0 "spring.datasource.hikari.minimum-idle=2$\r$\n"
+        FileWrite $0 "spring.jpa.hibernate.ddl-auto=update$\r$\n"
+        FileWrite $0 "spring.jpa.show-sql=false$\r$\n"
+        FileWrite $0 "spring.flyway.enabled=false$\r$\n"
+        FileWrite $0 "# Flyway disabled: JPA ddl-auto=update manages schema, seed via init-db$\r$\n"
+        FileWrite $0 "cors.allowed-origins=app://localhost$\r$\n"
+        FileWrite $0 "logging.level.root=INFO$\r$\n"
+        FileWrite $0 "logging.level.hu.puzzleir.valuta=INFO$\r$\n"
+        FileWrite $0 "springdoc.api-docs.enabled=false$\r$\n"
+        FileWrite $0 "springdoc.swagger-ui.enabled=false$\r$\n"
+        FileWrite $0 "camera.enabled=false$\r$\n"
+        FileWrite $0 "jwt.secret=$2$\r$\n"
+        FileWrite $0 "jwt.expiration=86400000$\r$\n"
+        FileWrite $0 "app.encryption.key=$6$\r$\n"
+        FileWrite $0 "app.encryption.salt=$4$\r$\n"
+        FileWrite $0 "management.endpoints.web.exposure.include=health,info$\r$\n"
+        FileWrite $0 "management.endpoint.health.show-details=never$\r$\n"
+        FileWrite $0 "management.health.mail.enabled=false$\r$\n"
+        FileClose $0
+        DetailPrint "  Config frissítve az új jelszavakkal!"
+
         ; Stop temp PG
         nsExec::ExecToLog '"$DATA_DIR\pgsql\bin\pg_ctl.exe" stop -D "$DATA_DIR\pgsql\data" -m fast -w -t 30'
         Sleep 2000
