@@ -106,7 +106,7 @@ describe('LoginPage', () => {
     })
 
     expect(mocks.loginStore).toHaveBeenCalled()
-    expect(mocks.navigate).toHaveBeenCalledWith('/dashboard')
+    expect(mocks.navigate).toHaveBeenCalledWith('/cashier')
   })
 
   it('hibás belépéskor hibaüzenetet jelenít meg', async () => {

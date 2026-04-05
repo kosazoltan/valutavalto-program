@@ -233,21 +233,21 @@ export const loggingApi = {
     const params: Record<string, string | number> = { page, size }
     if (from) params.from = from
     if (to) params.to = to
-    const response = await api.get('/logs/system', { params })
+    const response = await api.get('/logs/system', { params, _preservePaged: true } as Record<string, unknown>)
     return response.data
   },
   getPosLogs: async (from?: string, to?: string, page = 0, size = 50): Promise<{ content: AuditLog[]; totalElements: number }> => {
     const params: Record<string, string | number> = { page, size }
     if (from) params.from = from
     if (to) params.to = to
-    const response = await api.get('/logs/pos', { params })
+    const response = await api.get('/logs/pos', { params, _preservePaged: true } as Record<string, unknown>)
     return response.data
   },
   getNavLogs: async (from?: string, to?: string, page = 0, size = 50): Promise<{ content: AuditLog[]; totalElements: number }> => {
     const params: Record<string, string | number> = { page, size }
     if (from) params.from = from
     if (to) params.to = to
-    const response = await api.get('/logs/nav', { params })
+    const response = await api.get('/logs/nav', { params, _preservePaged: true } as Record<string, unknown>)
     return response.data
   },
   exportToCsv: async (from?: string, to?: string): Promise<Blob> => {
@@ -270,28 +270,28 @@ export const auditLogApi = {
     const params: Record<string, string | number> = { page, size }
     if (from) params.from = from
     if (to) params.to = to
-    const response = await api.get(`/audit/worker/${workerId}`, { params })
+    const response = await api.get(`/audit/worker/${workerId}`, { params, _preservePaged: true } as Record<string, unknown>)
     return response.data
   },
   getByBranch: async (branchId: string, from?: string, to?: string, page = 0, size = 50): Promise<{ content: AuditLog[]; totalElements: number }> => {
     const params: Record<string, string | number> = { page, size }
     if (from) params.from = from
     if (to) params.to = to
-    const response = await api.get(`/audit/branch/${branchId}`, { params })
+    const response = await api.get(`/audit/branch/${branchId}`, { params, _preservePaged: true } as Record<string, unknown>)
     return response.data
   },
   getByAction: async (action: string, from?: string, to?: string, page = 0, size = 50): Promise<{ content: AuditLog[]; totalElements: number }> => {
     const params: Record<string, string | number> = { page, size }
     if (from) params.from = from
     if (to) params.to = to
-    const response = await api.get(`/audit/action/${action}`, { params })
+    const response = await api.get(`/audit/action/${action}`, { params, _preservePaged: true } as Record<string, unknown>)
     return response.data
   },
   getAll: async (from?: string, to?: string, page = 0, size = 50): Promise<{ content: AuditLog[]; totalElements: number }> => {
     const params: Record<string, string | number> = { page, size }
     if (from) params.from = from
     if (to) params.to = to
-    const response = await api.get('/logs/system', { params })
+    const response = await api.get('/logs/system', { params, _preservePaged: true } as Record<string, unknown>)
     return response.data
   },
 }

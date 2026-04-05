@@ -1054,7 +1054,7 @@ export const transferApi = {
     page?: number
     size?: number
   }): Promise<PagedResponse<Transfer>> => {
-    const response = await api.get<PagedResponse<Transfer>>('/transfers', { params })
+    const response = await api.get<PagedResponse<Transfer>>('/transfers', { params, _preservePaged: true } as Record<string, unknown>)
     return response.data
   },
   countPending: async (): Promise<number> => {
