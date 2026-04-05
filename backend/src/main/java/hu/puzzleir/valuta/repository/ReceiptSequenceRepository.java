@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -31,4 +32,9 @@ public interface ReceiptSequenceRepository extends JpaRepository<ReceiptSequence
      * Branch szekvencia lekérése (lock nélkül, lekérdezéshez).
      */
     Optional<ReceiptSequence> findByBranchId(UUID branchId);
+
+    /**
+     * Több branch szekvenciáinak lekérése (év-nyitó tenant-izolált reset).
+     */
+    List<ReceiptSequence> findByBranchIdIn(List<UUID> branchIds);
 }

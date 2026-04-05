@@ -99,6 +99,19 @@ public class AuditLogService {
         auditLogRepository.save(entry);
     }
 
+    /**
+     * Ellenőrzi, hogy adott action + entityId kombinációra létezik-e audit log bejegyzés.
+     * Év-nyitó idempotencia-ellenőrzéshez.
+     */
+    @Transactional(readOnly = true)
+    public boolean existsByActionAndReference(String action, String reference) {
+        UUID companyId = resolveCompanyId();
+        if (companyId == null) {
+            return auditLogRepository.existsByActionAndEntityId(action, reference);
+        }
+        return auditLogRepository.existsByCompanyIdAndActionAndEntityId(companyId, action, reference);
+    }
+
     public List<AuditLog> getByEntity(String entityId) {
         UUID companyId = resolveCompanyId();
         return auditLogRepository.findByCompanyIdAndEntityIdOrderByCreatedAtDesc(companyId, entityId);

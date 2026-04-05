@@ -64,4 +64,12 @@ public interface CircularRepository extends JpaRepository<Circular, Long> {
 
     @Query("SELECT c FROM Circular c WHERE c.companyId = :companyId AND c.archiveYear = :year ORDER BY c.createdAt DESC")
     List<Circular> findByArchiveYear(@Param("companyId") UUID companyId, @Param("year") Integer year);
+
+    /**
+     * Adott évben létrehozott körlevelek (év-nyitó archiváláshoz).
+     */
+    @Query("SELECT c FROM Circular c WHERE c.companyId = :companyId " +
+           "AND YEAR(c.createdAt) = :year AND (c.archived IS NULL OR c.archived = false) " +
+           "ORDER BY c.createdAt ASC")
+    List<Circular> findByCompanyIdAndYear(@Param("companyId") UUID companyId, @Param("year") int year);
 }

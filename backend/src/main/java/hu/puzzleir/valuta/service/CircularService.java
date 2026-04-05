@@ -339,6 +339,31 @@ public class CircularService {
     }
 
     /**
+     * Adott évi körlevelek tömeges archiválása (év-nyitó workflow).
+     * Legacy: KORLEVEL→LASTYEAR (newyear/unit1.pas)
+     *
+     * @param companyId Cég azonosító
+     * @param year Az archiválandó év
+     * @return Archivált körlevelek száma
+     */
+    @Transactional
+    public int archiveByYear(UUID companyId, int year) {
+        List<Circular> circulars = circularRepository.findByCompanyIdAndYear(companyId, year);
+        int count = 0;
+        for (Circular c : circulars) {
+            if (!Boolean.TRUE.equals(c.getArchived())) {
+                c.setArchived(true);
+                c.setArchivedAt(LocalDateTime.now());
+                c.setArchiveYear(year);
+                circularRepository.save(c);
+                count++;
+            }
+        }
+        log.info("Körlevelek archiválva: company={}, year={}, count={}", companyId, year, count);
+        return count;
+    }
+
+    /**
      * Archívum év szerint.
      * Legacy: ARC2019 fájl, LASTYEAR mappa.
      */

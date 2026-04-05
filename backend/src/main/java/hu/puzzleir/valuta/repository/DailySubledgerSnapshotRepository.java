@@ -4,6 +4,10 @@ import hu.puzzleir.valuta.entity.DailySubledgerSnapshot;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -27,4 +31,11 @@ public interface DailySubledgerSnapshotRepository extends JpaRepository<DailySub
     List<DailySubledgerSnapshot> findByBranchIdAndSnapshotDateBetweenAndSubledgerTypeAndCurrencyCode(
             UUID branchId, LocalDate startDate, LocalDate endDate,
             String subledgerType, String currencyCode);
+
+    /**
+     * Év-nyitó: régi snapshot-ok törlése adott dátum előtt (tenant-izolált).
+     */
+    @Modifying
+    @Query("DELETE FROM DailySubledgerSnapshot d WHERE d.branchId IN :branchIds AND d.snapshotDate < :cutoffDate")
+    int deleteByBranchIdsAndSnapshotDateBefore(@Param("branchIds") List<UUID> branchIds, @Param("cutoffDate") LocalDate cutoffDate);
 }

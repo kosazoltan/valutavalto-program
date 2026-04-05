@@ -132,4 +132,8 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
             @Param("action") String action,
             @Param("keyword") String keyword,
             Pageable pageable);
+
+    boolean existsByActionAndEntityId(String action, String entityId);
+
+    boolean existsByCompanyIdAndActionAndEntityId(UUID companyId, String action, String entityId);
 }

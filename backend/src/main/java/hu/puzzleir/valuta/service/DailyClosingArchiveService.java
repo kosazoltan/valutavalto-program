@@ -283,4 +283,31 @@ public class DailyClosingArchiveService {
         snapshotSubledger(branchId, closingDate, "WU_HUF", "HUF");
         snapshotSubledger(branchId, closingDate, "WU_VAT", "HUF");
     }
+
+    /**
+     * Régi évek napi zárásainak archiválása/törlése (év-nyitó workflow, tenant-izolált).
+     * Legacy: DROP TABLE ARFE1812, BF1812 stb. (evnyito/unit1.pas)
+     * Modern: Régi snapshot rekordok törlése az archív táblákból.
+     *
+     * @param branchIds A céghez tartozó irodák ID-i (tenant-izolálás)
+     * @param beforeYear Az évet megelőző rekordok törlése (pl. 2025 → 2024 és régebbi törlése)
+     * @return Törölt rekordok száma
+     */
+    public int archiveBeforeYear(List<UUID> branchIds, int beforeYear) {
+        LocalDate cutoffDate = LocalDate.of(beforeYear + 1, 1, 1);
+        int deleted = 0;
+
+        // Denomination snapshots (tenant-izolált)
+        int denomDeleted = denominationSnapshotRepo.deleteByBranchIdsAndSnapshotDateBefore(branchIds, cutoffDate);
+        deleted += denomDeleted;
+
+        // Subledger snapshots (tenant-izolált)
+        int subledgerDeleted = subledgerSnapshotRepo.deleteByBranchIdsAndSnapshotDateBefore(branchIds, cutoffDate);
+        deleted += subledgerDeleted;
+
+        log.info("Év-nyitó archiválás: branchCount={}, beforeYear={}, cutoff={}, denomDeleted={}, subledgerDeleted={}",
+            branchIds.size(), beforeYear, cutoffDate, denomDeleted, subledgerDeleted);
+
+        return deleted;
+    }
 }
