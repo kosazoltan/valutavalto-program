@@ -85,7 +85,11 @@ public class TransactionConversionService {
         BigDecimal toAmount = toAmountRaw.setScale(2, RoundingMode.FLOOR);
 
         // AML ellenorzes
-        helper.performAmlCheck(roundedHufAmount, request.getCustomerId(), request.getCustomerName(),
+        // Legacy GAP-003: konverziónál az AML küszöb a KÉTSZERES összeg alapján dönt.
+        // Delphi: if _konverzio=1 then _fizetendo := _fizetendo + _fizetendo
+        // Indok: a konverzió valójában vétel+eladás, tehát a tényleges pénzmozgás kétszeres.
+        BigDecimal amlAmount = roundedHufAmount.multiply(BigDecimal.valueOf(2));
+        helper.performAmlCheck(amlAmount, request.getCustomerId(), request.getCustomerName(),
                 request.getCustomerDocumentNumber(), fromCurrency.getCode());
 
         // Keszlet ellenorzes
