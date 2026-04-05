@@ -139,6 +139,9 @@ export interface Transaction {
   workerId: number
   workerName?: string
   createdAt: string
+  // G3-G4: PEP + Jogcím nyilatkozat (Legacy Gap Fix)
+  customerIsPep?: boolean
+  sourceOfFunds?: string
   // Legacy compatibility aliases
   transactionNumber?: string // Same as receiptNumber
   type?: 'BUY' | 'SELL' | 'REVERSAL' | 'CONVERSION' // Same as transactionType
@@ -166,6 +169,8 @@ export interface BuyRequest {
   customerBirthPlace?: string
   customerBirthDate?: string
   customerMotherName?: string
+  sourceOfFunds?: string
+  customerIsPep?: boolean
   notes?: string
 }
 
@@ -185,6 +190,8 @@ export interface SellRequest {
   customerBirthPlace?: string
   customerBirthDate?: string
   customerMotherName?: string
+  sourceOfFunds?: string
+  customerIsPep?: boolean
   notes?: string
 }
 

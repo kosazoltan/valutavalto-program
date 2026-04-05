@@ -244,6 +244,8 @@ public class TransactionService {
                 .customerAddress(request.getCustomerAddress())
                 .customerDocumentNumber(request.getCustomerDocumentNumber())
                 .customerNationality(request.getCustomerNationality())
+                .sourceOfFunds(request.getSourceOfFunds())
+                .customerIsPep(Boolean.TRUE.equals(request.getCustomerIsPep()))
                 .notes(request.getNotes())
                 .build();
 
@@ -384,6 +386,8 @@ public class TransactionService {
                 .customerAddress(request.getCustomerAddress())
                 .customerDocumentNumber(request.getCustomerDocumentNumber())
                 .customerNationality(request.getCustomerNationality())
+                .sourceOfFunds(request.getSourceOfFunds())
+                .customerIsPep(Boolean.TRUE.equals(request.getCustomerIsPep()))
                 .notes(request.getNotes())
                 .build();
 
@@ -659,6 +663,8 @@ public class TransactionService {
         private String customerAddress;
         private String customerDocumentNumber;
         private String customerNationality;
+        private String sourceOfFunds;
+        private Boolean customerIsPep;
         private String notes;
         /** Fizetési mód: CASH (alapértelmezett) vagy CARD (bankkártya) */
         private PaymentMethod paymentMethod;
@@ -684,6 +690,8 @@ public class TransactionService {
         private String customerAddress;
         private String customerDocumentNumber;
         private String customerNationality;
+        private String sourceOfFunds;
+        private Boolean customerIsPep;
         private String notes;
         /** Fizetési mód: CASH (alapértelmezett) vagy CARD (bankkártya) */
         private PaymentMethod paymentMethod;

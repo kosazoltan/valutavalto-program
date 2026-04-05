@@ -632,6 +632,46 @@ public class EscPosReceiptService {
         }
         b.separator();
 
+        // PEP (közszereplő) nyilatkozat — 300k+ Ft tranzakciónál kötelező
+        // Legacy: BLOKNYOM/KozszerepNyilatkozat
+        if (Boolean.TRUE.equals(data.getRequiresPepDeclaration())) {
+            b.emptyLine();
+            b.left();
+            b.boldLine("KÖZSZEREPLŐI NYILATKOZAT");
+            b.line(data.getPepStatusText() != null
+                ? data.getPepStatusText()
+                : "Nem közszereplő");
+            b.emptyLine();
+        }
+
+        // Jogcím nyilatkozat — 300k+ Ft tranzakciónál kötelező
+        // Legacy: BLOKNYOM/Jogcimnyilatkozat
+        if (Boolean.TRUE.equals(data.getRequiresSourceDeclaration())) {
+            b.emptyLine();
+            b.left();
+            b.boldLine("JOGCÍM NYILATKOZAT");
+            b.line("Büntetőjogi felelősségem tudatá-");
+            b.line("ban nyilatkozom, hogy a fenti");
+            b.line("tranzakciót");
+            if (Boolean.TRUE.equals(data.getIsLegalEntityCustomer())
+                    && data.getLegalEntityName() != null) {
+                b.line(data.getLegalEntityName());
+                b.line("nevében bonyolítom,");
+            } else {
+                b.line("saját nevemben bonyolítom,");
+            }
+            if (data.getSourceOfFunds() != null && !data.getSourceOfFunds().isBlank()) {
+                b.line("Pénzeszközöm forrása:");
+                // Word-wrap sourceOfFunds to LINE_WIDTH - 2 (indent)
+                String src = data.getSourceOfFunds().trim();
+                int maxLen = LINE_WIDTH - 2;
+                for (int i = 0; i < src.length(); i += maxLen) {
+                    b.line("  " + src.substring(i, Math.min(i + maxLen, src.length())));
+                }
+            }
+            b.emptyLine();
+        }
+
         // Két aláírás sor: pénztáros (bal) + ügyfél (jobb)
         b.emptyLine();
         b.left();

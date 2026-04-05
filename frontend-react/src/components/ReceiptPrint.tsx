@@ -271,6 +271,32 @@ export default function ReceiptPrint({
               </div>
             )}
 
+            {/* === PEP (KÖZSZEREPLŐ) NYILATKOZAT — 300k+ Ft, JOGSZABÁLYI KÖTELEZŐ === */}
+            {transaction.hufAmount != null && Math.abs(transaction.hufAmount) >= 300000 && (
+              <div style={{ margin: '6px 0', padding: '4px', border: '1px solid #999' }}>
+                <div className="bold" style={{ marginBottom: '2px' }}>KÖZSZEREPLŐI NYILATKOZAT</div>
+                <div>{transaction.customerIsPep ? 'Az ügyfél kiemelt közszereplő' : 'Nem közszereplő'}</div>
+              </div>
+            )}
+
+            {/* === JOGCÍM NYILATKOZAT — 300k+ Ft, JOGSZABÁLYI KÖTELEZŐ === */}
+            {transaction.hufAmount != null && Math.abs(transaction.hufAmount) >= 300000 && (
+              <div style={{ margin: '6px 0', padding: '4px', border: '1px solid #999' }}>
+                <div className="bold" style={{ marginBottom: '2px' }}>JOGCÍM NYILATKOZAT</div>
+                <div style={{ fontSize: '10px', lineHeight: '1.3' }}>
+                  Büntetőjogi felelősségem tudatában
+                  nyilatkozom, hogy a fenti tranzakciót
+                  saját nevemben bonyolítom,
+                </div>
+                {transaction.sourceOfFunds && (
+                  <div style={{ marginTop: '2px' }}>
+                    <span>Pénzeszközöm forrása: </span>
+                    <span className="bold">{transaction.sourceOfFunds}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="separator" />
 
             {/* === ÁFA-MENTESSÉGI SZÖVEG (TÖRVÉNYI KÖTELEZŐ) === */}

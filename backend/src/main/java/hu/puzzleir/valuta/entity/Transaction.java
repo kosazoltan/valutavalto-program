@@ -359,6 +359,21 @@ public class Transaction {
     @Builder.Default
     private Boolean amlAnnualLimitReached = false;
 
+    /**
+     * Pénzeszköz forrása — 300.000 Ft feletti tranzakciónál kötelező.
+     * Legacy: BLOKNYOM/Jogcimnyilatkozat → _forras mező.
+     */
+    @Column(name = "source_of_funds", length = 500)
+    private String sourceOfFunds;
+
+    /**
+     * Ügyfél PEP (kiemelt közszereplő) státusza a tranzakció pillanatában.
+     * Legacy: _kozszereplo mező.
+     */
+    @Column(name = "customer_is_pep")
+    @Builder.Default
+    private Boolean customerIsPep = false;
+
     // ============ HELPER METHODS ============
 
     /**

@@ -47,6 +47,13 @@ public class SellRequestDto {
     private String customerDocumentNumber;
     private String customerNationality;
 
+    /** Pénzeszköz forrása — 300k+ Ft tranzakciónál kötelező (Legacy: Jogcimnyilatkozat) */
+    @Size(max = 500, message = "Pénzeszköz forrás max 500 karakter")
+    private String sourceOfFunds;
+
+    /** Ügyfél PEP (kiemelt közszereplő) státusza */
+    private Boolean customerIsPep;
+
     private String notes;
 
     /**

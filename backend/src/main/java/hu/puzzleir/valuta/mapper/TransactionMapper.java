@@ -99,6 +99,8 @@ public class TransactionMapper {
                 .customerAddress(dto.getCustomerAddress())
                 .customerDocumentNumber(dto.getCustomerDocumentNumber())
                 .customerNationality(dto.getCustomerNationality())
+                .sourceOfFunds(dto.getSourceOfFunds())
+                .customerIsPep(dto.getCustomerIsPep())
                 .notes(dto.getNotes())
                 .lines(toLineRequests(dto.getLines()))
                 .build();
@@ -117,6 +119,8 @@ public class TransactionMapper {
                 .customerAddress(dto.getCustomerAddress())
                 .customerDocumentNumber(dto.getCustomerDocumentNumber())
                 .customerNationality(dto.getCustomerNationality())
+                .sourceOfFunds(dto.getSourceOfFunds())
+                .customerIsPep(dto.getCustomerIsPep())
                 .notes(dto.getNotes())
                 .lines(toLineRequests(dto.getLines()))
                 .build();

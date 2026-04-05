@@ -166,6 +166,46 @@ public class ReceiptData {
     @Builder.Default
     private Boolean bilingualItems = false;
 
+    // ============ PEP ÉS JOGCÍM NYILATKOZAT (G3-G4 Legacy Gap Fix) ============
+
+    /**
+     * PEP (kiemelt közszereplő) nyilatkozat szükséges-e.
+     * Legacy: BLOKNYOM/KozszerepNyilatkozat — 300k+ tranzakciónál jogszabályi kötelezettség.
+     */
+    @Builder.Default
+    private Boolean requiresPepDeclaration = false;
+
+    /**
+     * PEP státusz szöveg: "Nem közszereplő" vagy "Az ügyfél kiemelt közszereplő".
+     */
+    private String pepStatusText;
+
+    /**
+     * Jogcím nyilatkozat szükséges-e.
+     * Legacy: BLOKNYOM/Jogcimnyilatkozat — 300k+ tranzakciónál kötelező.
+     * Tartalma: "Büntetőjogi felelősségem tudatában nyilatkozom..."
+     */
+    @Builder.Default
+    private Boolean requiresSourceDeclaration = false;
+
+    /**
+     * Pénzeszköz forrása (pl. "munkabér", "megtakarítás", "üzleti bevétel").
+     * Legacy: _forras mező.
+     */
+    private String sourceOfFunds;
+
+    /**
+     * Ügyfél típusa a nyilatkozatban: true = jogi személy, false = természetes személy.
+     * A jogcím nyilatkozat szövege eltérő a két típusnál.
+     */
+    @Builder.Default
+    private Boolean isLegalEntityCustomer = false;
+
+    /**
+     * Jogi személy neve (jogcím nyilatkozatban: "XY nevében bonyolítom").
+     */
+    private String legalEntityName;
+
     /**
      * Bizonylat sor adat
      */

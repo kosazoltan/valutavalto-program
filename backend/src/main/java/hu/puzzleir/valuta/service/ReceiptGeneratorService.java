@@ -39,6 +39,8 @@ public class ReceiptGeneratorService {
     private final ReceiptPdfService receiptPdfService;
     private final EscPosReceiptService escPosReceiptService;
 
+    /** 300.000 Ft — jogszabályi küszöb PEP és Jogcím nyilatkozathoz */
+    private static final BigDecimal HIGH_VALUE_THRESHOLD = new BigDecimal("300000");
     private static final DateTimeFormatter RECEIPT_DATE_FORMAT = DateTimeFormatter.ofPattern("yyMMdd");
     /**
      * Bizonylat sorszám — a nap + milliszekundum + AtomicLong kombináció biztosítja
@@ -368,6 +370,8 @@ public class ReceiptGeneratorService {
 
         // Kiegészítő blokkok aktiválása
         applyRuByDeclarationIfNeeded(builder, tx.getCustomerNationality());
+        applyPepDeclarationIfNeeded(builder, tx);
+        applySourceDeclarationIfNeeded(builder, tx);
         // Kedvezményes árfolyam — jövőbeli bővítés; jelenleg a helper elérhető
         // az explicit hívásokhoz (pl. VIP ár esetén)
 
@@ -429,6 +433,48 @@ public class ReceiptGeneratorService {
         if ("RU".equalsIgnoreCase(isoCode) || "BY".equalsIgnoreCase(isoCode)) {
             builder.requiresRuByDeclaration(true);
             log.debug("RU/BY nyilatkozat blokk aktiválva, ügyfél ISO: {}", isoCode);
+        }
+    }
+
+    /**
+     * PEP (kiemelt közszereplő) nyilatkozat blokk hozzáadása.
+     *
+     * Legacy: BLOKNYOM/KozszerepNyilatkozat — 300k+ Ft felett jogszabályi kötelezettség.
+     * Ha az ügyfél PEP, a bizonylaton kötelezően megjelenik a közszereplő státusz.
+     *
+     * @param builder  ReceiptData builder
+     * @param tx       tranzakció (customerIsPep, hufAmount)
+     */
+    public void applyPepDeclarationIfNeeded(ReceiptData.ReceiptDataBuilder builder, Transaction tx) {
+        boolean isHighValue = tx.getHufAmount() != null && tx.getHufAmount().abs().compareTo(HIGH_VALUE_THRESHOLD) >= 0;
+
+        if (isHighValue) {
+            boolean isPep = Boolean.TRUE.equals(tx.getCustomerIsPep());
+            builder.requiresPepDeclaration(true)
+                   .pepStatusText(isPep
+                       ? "Az ügyfél kiemelt közszereplő"
+                       : "Nem közszereplő");
+            log.debug("PEP nyilatkozat blokk aktiválva, isPep={}", isPep);
+        }
+    }
+
+    /**
+     * Jogcím nyilatkozat (pénzeszköz forrása) blokk hozzáadása.
+     *
+     * Legacy: BLOKNYOM/Jogcimnyilatkozat — 300k+ Ft tranzakciónál kötelező.
+     * "Büntetőjogi felelősségem tudatában nyilatkozom, hogy a fenti tranzakciót
+     *  saját nevemben bonyolítom / XY nevében bonyolítom."
+     *
+     * @param builder  ReceiptData builder
+     * @param tx       tranzakció (sourceOfFunds, hufAmount, customerName)
+     */
+    public void applySourceDeclarationIfNeeded(ReceiptData.ReceiptDataBuilder builder, Transaction tx) {
+        boolean isHighValue = tx.getHufAmount() != null && tx.getHufAmount().abs().compareTo(HIGH_VALUE_THRESHOLD) >= 0;
+
+        if (isHighValue) {
+            builder.requiresSourceDeclaration(true)
+                   .sourceOfFunds(tx.getSourceOfFunds());
+            log.debug("Jogcím nyilatkozat blokk aktiválva, forrás: {}", tx.getSourceOfFunds());
         }
     }
 
