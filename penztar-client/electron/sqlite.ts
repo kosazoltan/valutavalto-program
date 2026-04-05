@@ -121,12 +121,24 @@ export async function initDatabase(): Promise<void> {
         customer_document_number TEXT,
         customer_address TEXT,
         denominations TEXT,
+        source_of_funds TEXT,
+        customer_is_pep INTEGER,
         local_reference_number TEXT,
         idempotency_key TEXT,
         created_at TEXT DEFAULT (datetime('now')),
         synced INTEGER DEFAULT 0
       );
     `);
+
+    // Migrate: add PEP/source_of_funds columns if they don't exist (for existing installations)
+    const pepMigrationColumns = ['source_of_funds', 'customer_is_pep'];
+    for (const col of pepMigrationColumns) {
+      try {
+        db.run(`ALTER TABLE pending_transactions ADD COLUMN ${col} ${col === 'customer_is_pep' ? 'INTEGER' : 'TEXT'};`);
+      } catch {
+        // Column already exists — expected on fresh installs
+      }
+    }
 
     db.run(`
       CREATE TABLE IF NOT EXISTS pending_conversions (
@@ -652,6 +664,8 @@ export interface PendingTransactionRow {
   customer_document_number: string | null;
   customer_address: string | null;
   denominations: string | null;
+  source_of_funds: string | null;
+  customer_is_pep: number | null;
   local_reference_number: string | null;
   idempotency_key: string | null;
   created_at: string;
@@ -746,6 +760,8 @@ export function savePendingTransaction(
   customerDocumentNumber: string | null,
   customerAddress: string | null,
   denominations: string | null,
+  sourceOfFunds: string | null = null,
+  customerIsPep: boolean | null = null,
 ): number {
   if (!db) throw new Error('Database not initialized');
 
@@ -757,6 +773,7 @@ export function savePendingTransaction(
   const normalizedCustomerName = customerName?.trim() || null;
   const normalizedCustomerDocumentNumber = customerDocumentNumber?.trim() || null;
   const normalizedCustomerAddress = customerAddress?.trim() || null;
+  const normalizedSourceOfFunds = sourceOfFunds?.trim() || null;
 
   db.run(
     `INSERT INTO pending_transactions (
@@ -774,10 +791,12 @@ export function savePendingTransaction(
       customer_document_number,
       customer_address,
       denominations,
+      source_of_funds,
+      customer_is_pep,
       local_reference_number,
       idempotency_key
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       type,
       currencyCode,
@@ -793,6 +812,8 @@ export function savePendingTransaction(
       normalizedCustomerDocumentNumber,
       normalizedCustomerAddress,
       denominations,
+      normalizedSourceOfFunds,
+      customerIsPep === null ? null : (customerIsPep ? 1 : 0),
       localReferenceNumber,
       idempotencyKey,
     ],

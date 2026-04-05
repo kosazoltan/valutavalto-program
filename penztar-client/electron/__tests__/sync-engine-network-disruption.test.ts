@@ -93,11 +93,9 @@ function makeTx(
     customer_name: null,
     customer_document_number: null,
     customer_address: null,
-    denominations: null,
-    local_reference_number: `LS-${id}`,
+    denominations: null, source_of_funds: null, customer_is_pep: null, local_reference_number: `LS-${id}`,
     idempotency_key: `ikey-${id}`,
-    created_at: '2026-04-03 10:00:00',
-    synced: 0,
+    created_at: '2026-04-03 10:00:00',    synced: 0,
     ...overrides,
   };
 }
@@ -459,8 +457,7 @@ describe('SyncEngine — Multi-entity hálózati szakadás', () => {
         note: null,
         local_reference_number: 'LC-10',
         idempotency_key: 'conv-key-1',
-        created_at: '2026-04-03',
-        synced: 0,
+        created_at: '2026-04-03',        synced: 0,
       },
     ]);
     mockedGetPendingBankTransactions.mockReturnValue([]);

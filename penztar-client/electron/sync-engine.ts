@@ -711,6 +711,14 @@ export class SyncEngine {
       }
     }
 
+    // G3-G4: PEP nyilatkozat és pénzeszköz forrás (300k+ HUF tranzakciónál)
+    if (tx.source_of_funds && tx.source_of_funds.trim().length > 0) {
+      body['sourceOfFunds'] = tx.source_of_funds;
+    }
+    if (tx.customer_is_pep !== null && tx.customer_is_pep !== undefined) {
+      body['customerIsPep'] = tx.customer_is_pep === 1;
+    }
+
     // A tárolt idempotency_key-t használjuk — retry-nál is ugyanazt küldjük
     await httpPost(endpoint, body, token, tx.idempotency_key ?? undefined);
   }

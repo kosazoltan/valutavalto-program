@@ -257,6 +257,8 @@ ipcMain.handle('save-pending-transaction', async (
   customerDocumentNumber: string | null,
   customerAddress: string | null,
   denominations: string | null,
+  sourceOfFunds: string | null,
+  customerIsPep: boolean | null,
 ): Promise<number> => {
   return savePendingTransaction(
     type,
@@ -272,6 +274,8 @@ ipcMain.handle('save-pending-transaction', async (
     customerDocumentNumber,
     customerAddress,
     denominations,
+    sourceOfFunds,
+    customerIsPep,
   );
 });
 

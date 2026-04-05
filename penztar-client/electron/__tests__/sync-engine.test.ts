@@ -128,11 +128,9 @@ describe('SyncEngine — syncAll', () => {
         customer_name: null,
         customer_document_number: null,
         customer_address: null,
-        denominations: null,
-        local_reference_number: 'LS-20260324-ABCD',
+        denominations: null, source_of_funds: null, customer_is_pep: null, local_reference_number: 'LS-20260324-ABCD',
         idempotency_key: 'key-1',
-        created_at: '2026-03-24 10:00:00',
-        synced: 0,
+        created_at: '2026-03-24 10:00:00',        synced: 0,
       },
     ]);
 
@@ -165,7 +163,7 @@ describe('SyncEngine — syncAll', () => {
         handling_fee: null, discount_percent: null, customer_id: null,
         customer_identifier: null, customer_name: null,
         customer_document_number: null, customer_address: null,
-        denominations: null, local_reference_number: 'LS-1', idempotency_key: 'k1',
+        denominations: null, source_of_funds: null, customer_is_pep: null, local_reference_number: 'LS-1', idempotency_key: 'k1',
         created_at: '2026-03-24', synced: 0,
       },
       {
@@ -174,7 +172,7 @@ describe('SyncEngine — syncAll', () => {
         handling_fee: null, discount_percent: null, customer_id: null,
         customer_identifier: null, customer_name: null,
         customer_document_number: null, customer_address: null,
-        denominations: null, local_reference_number: 'LB-2', idempotency_key: 'k2',
+        denominations: null, source_of_funds: null, customer_is_pep: null, local_reference_number: 'LB-2', idempotency_key: 'k2',
         created_at: '2026-03-24', synced: 0,
       },
     ]);
@@ -205,7 +203,7 @@ describe('SyncEngine — syncAll', () => {
         handling_fee: null, discount_percent: null, customer_id: null,
         customer_identifier: null, customer_name: null,
         customer_document_number: null, customer_address: null,
-        denominations: null, local_reference_number: 'LS-1', idempotency_key: 'k1',
+        denominations: null, source_of_funds: null, customer_is_pep: null, local_reference_number: 'LS-1', idempotency_key: 'k1',
         created_at: '2026-03-24', synced: 0,
       },
     ]);
@@ -228,7 +226,7 @@ describe('SyncEngine — syncAll', () => {
         handling_fee: null, discount_percent: null, customer_id: null,
         customer_identifier: null, customer_name: null,
         customer_document_number: null, customer_address: null,
-        denominations: null, local_reference_number: 'LS-1', idempotency_key: 'k1',
+        denominations: null, source_of_funds: null, customer_is_pep: null, local_reference_number: 'LS-1', idempotency_key: 'k1',
         created_at: '2026-03-24', synced: 0,
       },
     ]);
@@ -269,8 +267,7 @@ describe('SyncEngine — syncAll', () => {
         note: null,
         local_reference_number: 'LC-10',
         idempotency_key: 'conv-key-1',
-        created_at: '2026-03-24',
-        synced: 0,
+        created_at: '2026-03-24',        synced: 0,
       },
     ]);
 
@@ -302,7 +299,7 @@ describe('SyncEngine — syncAll', () => {
         handling_fee: null, discount_percent: null, customer_id: null,
         customer_identifier: null, customer_name: null,
         customer_document_number: null, customer_address: null,
-        denominations: null, local_reference_number: 'LB-1',
+        denominations: null, source_of_funds: null, customer_is_pep: null, local_reference_number: 'LB-1',
         idempotency_key: 'my-idempotency-key-123',
         created_at: '2026-03-24', synced: 0,
       },
@@ -368,11 +365,9 @@ function makeTx(id: number, overrides: Partial<ReturnType<typeof getPendingTrans
     customer_name: null,
     customer_document_number: null,
     customer_address: null,
-    denominations: null,
-    local_reference_number: `LS-${id}`,
+    denominations: null, source_of_funds: null, customer_is_pep: null, local_reference_number: `LS-${id}`,
     idempotency_key: `ikey-${id}`,
-    created_at: '2026-03-31 10:00:00',
-    synced: 0,
+    created_at: '2026-03-31 10:00:00',    synced: 0,
     ...overrides,
   };
 }
@@ -395,8 +390,7 @@ function makeStorno(id: number, overrides: Partial<ReturnType<typeof getPendingS
     customer_document_number: null,
     local_reference_number: `STORNO-${id}`,
     idempotency_key: `storno-ikey-${id}`,
-    created_at: '2026-03-31 10:00:00',
-    synced: 0,
+    created_at: '2026-03-31 10:00:00',    synced: 0,
     ...overrides,
   };
 }
@@ -413,8 +407,7 @@ function makeHandoverOp(id: number, operation_type: 'GENERATE' | 'PRINT' | 'COMP
     note: null,
     local_reference_number: `HO-${id}`,
     idempotency_key: `ho-ikey-${id}`,
-    created_at: '2026-03-31 10:00:00',
-    synced: 0,
+    created_at: '2026-03-31 10:00:00',    synced: 0,
   };
 }
 
@@ -428,8 +421,7 @@ function makeDistribution(id: number): ReturnType<typeof getPendingDistributions
     note: null,
     local_reference_number: `DIST-${id}`,
     idempotency_key: `dist-ikey-${id}`,
-    created_at: '2026-03-31 10:00:00',
-    synced: 0,
+    created_at: '2026-03-31 10:00:00',    synced: 0,
   };
 }
 
@@ -442,8 +434,7 @@ function makeCollection(id: number): ReturnType<typeof getPendingCollections>[nu
     note: null,
     local_reference_number: `COL-${id}`,
     idempotency_key: `col-ikey-${id}`,
-    created_at: '2026-03-31 10:00:00',
-    synced: 0,
+    created_at: '2026-03-31 10:00:00',    synced: 0,
   };
 }
 

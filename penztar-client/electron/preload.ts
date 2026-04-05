@@ -33,6 +33,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     customerDocumentNumber: string | null,
     customerAddress: string | null,
     denominations: string | null,
+    sourceOfFunds: string | null = null,
+    customerIsPep: boolean | null = null,
   ): Promise<number> =>
     ipcRenderer.invoke(
       'save-pending-transaction',
@@ -49,6 +51,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       customerDocumentNumber,
       customerAddress,
       denominations,
+      sourceOfFunds,
+      customerIsPep,
     ),
 
   savePendingConversion: (
