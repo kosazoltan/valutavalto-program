@@ -179,7 +179,13 @@ public class GlobalExceptionHandler {
     // --- 500 Internal Server Error (catch-all) ---
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleInternalError(Exception ex, HttpServletRequest request) {
-        log.error("Unexpected internal error", ex);
+        // GAP-002: catch HttpMessageNotReadableException ha a specifikus handler nem kapta el
+        if (ex instanceof HttpMessageNotReadableException) {
+            log.warn("Request body not readable (catch-all): {}", ex.getMessage());
+            return buildResponse(HttpStatus.BAD_REQUEST, "BAD_REQUEST",
+                    "Hiányzó vagy érvénytelen request body");
+        }
+        log.error("Unexpected internal error [{}]: {}", ex.getClass().getName(), ex.getMessage(), ex);
 
         if (errorMailerService != null) {
             try {

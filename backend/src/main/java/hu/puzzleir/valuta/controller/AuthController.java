@@ -44,8 +44,12 @@ public class AuthController {
      */
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDto> login(
-            @Valid @RequestBody LoginRequestDto dto,
+            @Valid @RequestBody(required = false) LoginRequestDto dto,
             HttpServletRequest request) {
+        
+        if (dto == null) {
+            throw new ValidationException("Hiányzó request body — companyCode, workerCode és jelszó kötelező");
+        }
         
         String ipAddress = request.getRemoteAddr();
         String userAgent = request.getHeader("User-Agent");
