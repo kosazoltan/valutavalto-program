@@ -42,4 +42,25 @@ public interface AmlReportRepository extends JpaRepository<AmlReport, UUID> {
         @Param("to") LocalDateTime to,
         @Param("type") AmlReportType type
     );
+
+    /**
+     * DRAFT bejelentések, amelyek határideje lejárt (2 munkanap).
+     * 2017. LIII. tv. 33.§
+     */
+    @Query("SELECT r FROM AmlReport r WHERE r.status = 'DRAFT' " +
+           "AND r.deadlineAt IS NOT NULL AND r.deadlineAt < :now " +
+           "ORDER BY r.deadlineAt ASC")
+    List<AmlReport> findOverdueReports(@Param("now") LocalDateTime now);
+
+    /**
+     * Cégszintű overdue bejelentések.
+     */
+    @Query("SELECT r FROM AmlReport r WHERE r.company.id = :companyId " +
+           "AND r.status IN ('DRAFT', 'OVERDUE') " +
+           "AND r.deadlineAt IS NOT NULL AND r.deadlineAt < :now " +
+           "ORDER BY r.deadlineAt ASC")
+    List<AmlReport> findOverdueByCompanyId(
+        @Param("companyId") UUID companyId,
+        @Param("now") LocalDateTime now
+    );
 }

@@ -31,4 +31,8 @@ public class AmlReportDto {
     private String externalReference;
     private String createdBy;
     private LocalDateTime createdAt;
+    /** Bejelentési határidő (2 munkanap) — 2017. LIII. tv. 33.§ */
+    private LocalDateTime deadlineAt;
+    /** True ha a határidő lejárt és még nem benyújtott */
+    private boolean overdue;
 }

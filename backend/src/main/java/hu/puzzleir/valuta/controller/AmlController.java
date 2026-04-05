@@ -71,6 +71,17 @@ public class AmlController {
     }
 
     /**
+     * Lejárt határidejű (OVERDUE) bejelentések.
+     * GET /api/v1/aml/overdue
+     *
+     * 2017. LIII. tv. 33.§ — 2 munkanapon belül be kell nyújtani.
+     */
+    @GetMapping("/overdue")
+    public ResponseEntity<List<AmlReportDto>> getOverdueReports() {
+        return ResponseEntity.ok(amlService.getOverdueReports());
+    }
+
+    /**
      * Napi AML összesítő.
      * GET /api/v1/aml/summary?date=
      */

@@ -638,6 +638,69 @@ public class AmlService {
             .build();
     }
 
+    // ============ BEJELENTÉSI HATÁRIDŐ (2017. LIII. tv. 33.§) ============
+
+    /**
+     * 2 munkanap kiszámítása egy dátumtól.
+     * Hétvégét átugorja (szombat, vasárnap).
+     * TODO: Magyar munkaszüneti napok kezelése (március 15., nagypéntek, stb.)
+     */
+    private LocalDateTime calculateBusinessDayDeadline(LocalDateTime from, int businessDays) {
+        LocalDate date = from.toLocalDate();
+        int added = 0;
+        while (added < businessDays) {
+            date = date.plusDays(1);
+            java.time.DayOfWeek dow = date.getDayOfWeek();
+            if (dow != java.time.DayOfWeek.SATURDAY && dow != java.time.DayOfWeek.SUNDAY) {
+                added++;
+            }
+        }
+        return date.atTime(from.toLocalTime());
+    }
+
+    /**
+     * Lejárt (OVERDUE) bejelentések keresése és megjelölése.
+     * Naponta futtatandó (@Scheduled).
+     *
+     * DRAFT státuszú, 2 munkanapnál régebbi bejelentések → OVERDUE.
+     */
+    @Transactional
+    public int checkAndMarkOverdueReports() {
+        LocalDateTime now = LocalDateTime.now();
+        List<AmlReport> overdueReports = amlReportRepository.findOverdueReports(now);
+
+        int count = 0;
+        for (AmlReport report : overdueReports) {
+            report.setStatus(AmlReportStatus.OVERDUE);
+            amlReportRepository.save(report);
+            count++;
+
+            log.warn("AML OVERDUE: bejelentés id={}, customerId={}, deadline={}, most={}",
+                report.getId(), report.getCustomerId(), report.getDeadlineAt(), now);
+
+            auditLogService.log("AML_REPORT_OVERDUE",
+                "AML bejelentési határidő lejárt: id=" + report.getId()
+                    + ", deadline=" + report.getDeadlineAt(),
+                report.getId().toString());
+        }
+
+        if (count > 0) {
+            log.warn("AML OVERDUE: {} bejelentés határideje lejárt!", count);
+        }
+
+        return count;
+    }
+
+    /**
+     * Cégszintű overdue bejelentések listája.
+     */
+    @Transactional(readOnly = true)
+    public List<AmlReportDto> getOverdueReports() {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return amlReportRepository.findOverdueByCompanyId(companyId, LocalDateTime.now())
+            .stream().map(this::toDto).toList();
+    }
+
     /**
      * AML bejelentés létrehozása.
      */
@@ -671,8 +734,13 @@ public class AmlService {
             report.setTransaction(tx);
         }
 
+        // Bejelentési határidő: 2 munkanap (2017. LIII. tv. 33.§)
+        LocalDateTime createdNow = LocalDateTime.now();
+        report.setDeadlineAt(calculateBusinessDayDeadline(createdNow, 2));
+
         AmlReport saved = amlReportRepository.save(report);
-        log.info("AML bejelentés létrehozva: id={}, type={}, amount={}", saved.getId(), dto.getReportType(), dto.getAmountHuf());
+        log.info("AML bejelentés létrehozva: id={}, type={}, amount={}, deadline={}",
+            saved.getId(), dto.getReportType(), dto.getAmountHuf(), saved.getDeadlineAt());
         return toDto(saved);
     }
 
@@ -702,6 +770,7 @@ public class AmlService {
         for (AmlReport r : reports) {
             switch (r.getStatus()) {
                 case DRAFT -> pending++;
+                case OVERDUE -> pending++;
                 case SUBMITTED -> submitted++;
                 case FLAGGED -> flagged++;
                 default -> {}
@@ -812,8 +881,8 @@ public class AmlService {
             throw new ValidationException("Hozzáférés megtagadva: másik cég AML bejelentése");
         }
 
-        if (report.getStatus() != AmlReportStatus.DRAFT) {
-            throw new ValidationException("Csak DRAFT státuszú bejelentés nyújtható be (aktuális: " + report.getStatus() + ")");
+        if (report.getStatus() != AmlReportStatus.DRAFT && report.getStatus() != AmlReportStatus.OVERDUE) {
+            throw new ValidationException("Csak DRAFT vagy OVERDUE státuszú bejelentés nyújtható be (aktuális: " + report.getStatus() + ")");
         }
 
         report.setStatus(AmlReportStatus.SUBMITTED);
@@ -891,6 +960,7 @@ public class AmlService {
         for (AmlReport r : reports) {
             switch (r.getStatus()) {
                 case DRAFT -> draftCount++;
+                case OVERDUE -> draftCount++;
                 case SUBMITTED -> submittedCount++;
                 case ACKNOWLEDGED -> acknowledgedCount++;
                 case FLAGGED -> flaggedCount++;
@@ -940,6 +1010,11 @@ public class AmlService {
             .externalReference(r.getExternalReference())
             .createdBy(r.getCreatedBy())
             .createdAt(r.getCreatedAt())
+            .deadlineAt(r.getDeadlineAt())
+            .overdue(r.getStatus() == AmlReportStatus.OVERDUE
+                || (r.getDeadlineAt() != null
+                    && r.getDeadlineAt().isBefore(LocalDateTime.now())
+                    && r.getStatus() == AmlReportStatus.DRAFT))
             .build();
     }
 

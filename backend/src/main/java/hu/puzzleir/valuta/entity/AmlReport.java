@@ -98,6 +98,13 @@ public class AmlReport {
     @Column(name = "external_reference", length = 100)
     private String externalReference;
 
+    /**
+     * Bejelentési határidő: 2 munkanap a létrehozástól.
+     * 2017. LIII. tv. 33.§ — haladéktalanul, de legkésőbb 2 munkanapon belül.
+     */
+    @Column(name = "deadline_at")
+    private LocalDateTime deadlineAt;
+
     @Column(name = "created_by", length = 100)
     private String createdBy;
 

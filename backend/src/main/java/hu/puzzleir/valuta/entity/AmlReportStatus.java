@@ -7,5 +7,7 @@ public enum AmlReportStatus {
     DRAFT,
     SUBMITTED,
     ACKNOWLEDGED,
-    FLAGGED
+    FLAGGED,
+    /** 2017. LIII. tv. 33.§ — 2 munkanapon belüli bejelentési kötelezettség lejárt */
+    OVERDUE
 }
