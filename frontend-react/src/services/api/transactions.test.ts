@@ -54,7 +54,7 @@ describe('transactionApi', () => {
       mockApi.get.mockResolvedValue({ data: paged })
 
       const result = await transactionApi.list()
-      expect(mockApi.get).toHaveBeenCalledWith('/transactions', { params: undefined })
+      expect(mockApi.get).toHaveBeenCalledWith('/transactions', { params: undefined, _preservePaged: true })
       expect(result.content).toHaveLength(1)
       expect(result.totalElements).toBe(1)
     })
@@ -66,6 +66,7 @@ describe('transactionApi', () => {
       await transactionApi.list({ branchId: 'b1', type: 'BUY', page: 0, size: 10 })
       expect(mockApi.get).toHaveBeenCalledWith('/transactions', {
         params: { branchId: 'b1', type: 'BUY', page: 0, size: 10 },
+        _preservePaged: true,
       })
     })
   })
