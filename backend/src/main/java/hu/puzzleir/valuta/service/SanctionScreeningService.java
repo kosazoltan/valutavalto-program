@@ -231,6 +231,86 @@ public class SanctionScreeningService {
     }
 
     /**
+     * EU Financial Sanctions XML (FSF v1.1) importalasa.
+     * Formatum: https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content
+     * Schema: sanctionEntity → nameAlias/wholeName, identification, birthdate
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public int importEuSanctionList(InputStream xmlData) {
+        int importedCount = 0;
+
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document doc = builder.parse(xmlData);
+            doc.getDocumentElement().normalize();
+
+            NodeList entities = doc.getElementsByTagName("sanctionEntity");
+
+            for (int i = 0; i < entities.getLength(); i++) {
+                Element entity = (Element) entities.item(i);
+                String euRef = entity.getAttribute("euReferenceNumber");
+
+                // Nev: nameAlias → wholeName
+                String fullName = "";
+                List<String> aliases = new ArrayList<>();
+                NodeList nameAliases = entity.getElementsByTagName("nameAlias");
+                for (int j = 0; j < nameAliases.getLength(); j++) {
+                    Element na = (Element) nameAliases.item(j);
+                    String wholeName = na.getAttribute("wholeName");
+                    if (wholeName != null && !wholeName.isBlank()) {
+                        if (fullName.isEmpty()) {
+                            fullName = wholeName;
+                        } else {
+                            aliases.add(wholeName);
+                        }
+                    }
+                }
+
+                if (fullName.isBlank()) continue;
+
+                // Szuletesi datum
+                String dateOfBirth = "";
+                NodeList birthDates = entity.getElementsByTagName("birthdate");
+                if (birthDates.getLength() > 0) {
+                    Element bd = (Element) birthDates.item(0);
+                    dateOfBirth = bd.getAttribute("birthdate");
+                    if (dateOfBirth == null || dateOfBirth.isBlank()) {
+                        dateOfBirth = bd.getAttribute("year");
+                    }
+                }
+
+                String aliasesJson = aliases.isEmpty() ? null : objectMapper.writeValueAsString(aliases);
+
+                SanctionEntry entry = SanctionEntry.builder()
+                        .fullName(fullName)
+                        .aliases(aliasesJson)
+                        .dateOfBirth(dateOfBirth != null && !dateOfBirth.isBlank() ? dateOfBirth : null)
+                        .listType("EU")
+                        .listReference(euRef != null && !euRef.isBlank() ? euRef : null)
+                        .addedDate(LocalDate.now())
+                        .lastUpdated(LocalDate.now())
+                        .active(true)
+                        .build();
+
+                sanctionEntryRepository.save(entry);
+                importedCount++;
+            }
+
+            log.info("[SanctionImport] {} bejegyzes importalva az EU listabol", importedCount);
+
+        } catch (Exception e) {
+            log.error("[SanctionImport] EU XML import hiba: {}", e.getMessage(), e);
+            throw new BusinessException("EU szankcios lista import hiba: " + e.getMessage(), "EU_SANCTION_IMPORT_FAILED");
+        }
+
+        return importedCount;
+    }
+
+    /**
      * Utolsó frissítés dátuma.
      */
     public LocalDate getLastUpdateDate() {

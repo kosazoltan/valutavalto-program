@@ -82,7 +82,9 @@ public class SanctionListScheduler {
 
             if (response.statusCode() == 200) {
                 try (InputStream body = response.body()) {
-                    int count = sanctionService.importSanctionList(body);
+                    int count = "EU".equals(source)
+                            ? sanctionService.importEuSanctionList(body)
+                            : sanctionService.importSanctionList(body);
                     log.info("{} szankcios lista: {} bejegyzes importalva", source, count);
                     return count;
                 }
