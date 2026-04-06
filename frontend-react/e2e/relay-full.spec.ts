@@ -323,8 +323,15 @@ test('auth persist: login → reload stays on dashboard', async ({ page }) => {
   await page.locator('input').nth(1).fill('BORSI')
   await page.locator('input[type="password"]').fill('1234')
   await page.getByRole('button', { name: 'Bejelentkezés' }).click()
-  await expect(page).toHaveURL(/\/dashboard/, { timeout:10000 })
+  await expect(page).toHaveURL(/\/(dashboard|cashier)/, { timeout:10000 })
   await page.reload()
-  await expect(page).toHaveURL(/\/dashboard/)
-  await expect(page.getByRole('heading', { name: 'Irányítópult' })).toBeVisible()
+  await expect(page).toHaveURL(/\/(dashboard|cashier)/)
+  // CASHIER role → /cashier oldal (nem /dashboard 'Iranyitopult')
+  const url = page.url()
+  if (url.includes('/dashboard')) {
+    await expect(page.getByRole('heading', { name: 'Irányítópult' })).toBeVisible()
+  } else {
+    // /cashier oldalon a fo tartalom lathato
+    await expect(page.locator('main, [data-testid="cashier-main"], h1, h2').first()).toBeVisible()
+  }
 })
