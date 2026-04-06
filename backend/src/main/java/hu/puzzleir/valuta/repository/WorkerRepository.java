@@ -96,6 +96,12 @@ public interface WorkerRepository extends JpaRepository<Worker, Long> {
     List<Worker> findSupervisorsAndAbove(@Param("companyId") UUID companyId);
     
     /**
+     * Osszes aktiv supervisor/manager/admin — system-szintu kereseshez (pl. scheduler).
+     */
+    @Query("SELECT w FROM Worker w WHERE w.role IN ('SUPERVISOR', 'MANAGER', 'ADMIN') AND w.active = true")
+    List<Worker> findAllSupervisorsAndAbove();
+
+    /**
      * OTP enabled dolgozók
      */
     @Query("SELECT w FROM Worker w WHERE w.company.id = :companyId AND w.otpEnabled = true AND w.active = true")
