@@ -13,6 +13,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * Szankcios lista automatikus frissitese — naponta 6:00-kor.
@@ -30,12 +31,17 @@ import java.time.LocalDate;
 @Slf4j
 public class SanctionListScheduler {
 
-    private static final String UN_SANCTIONS_URL =
-            "https://scsanctions.un.org/resources/xml/en/consolidated.xml";
+    private static final List<String> SANCTION_URLS = List.of(
+            "https://scsanctions.un.org/resources/xml/en/consolidated.xml",
+            "https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content"
+    );
 
     private static final Duration TIMEOUT = Duration.ofSeconds(60);
 
     private final SanctionScreeningService sanctionService;
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .connectTimeout(TIMEOUT)
+            .build();
 
     /**
      * Naponta 6:00-kor (munkaid elott) automatikus szankcios lista frissites.
@@ -50,30 +56,42 @@ public class SanctionListScheduler {
             return;
         }
 
-        try {
-            HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(TIMEOUT)
-                    .build();
+        int totalImported = 0;
+        for (String url : SANCTION_URLS) {
+            totalImported += fetchAndImport(url);
+        }
 
+        if (totalImported > 0) {
+            log.info("Szankcios lista frissites kesz: osszesen {} bejegyzes importalva", totalImported);
+        } else {
+            log.warn("Szankcios lista frissites: egyetlen forrasbol sem sikerult importalni!");
+        }
+    }
+
+    private int fetchAndImport(String url) {
+        String source = url.contains("un.org") ? "ENSZ" : "EU";
+        try {
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(UN_SANCTIONS_URL))
+                    .uri(URI.create(url))
                     .timeout(TIMEOUT)
                     .GET()
                     .build();
 
-            HttpResponse<InputStream> response = client.send(request,
+            HttpResponse<InputStream> response = httpClient.send(request,
                     HttpResponse.BodyHandlers.ofInputStream());
 
             if (response.statusCode() == 200) {
                 try (InputStream body = response.body()) {
                     int count = sanctionService.importSanctionList(body);
-                    log.info("Szankcios lista frissitve: {} bejegyzes importalva. Datum: {}", count, LocalDate.now());
+                    log.info("{} szankcios lista: {} bejegyzes importalva", source, count);
+                    return count;
                 }
             } else {
-                log.error("Szankcios lista letoltes hiba: HTTP {}", response.statusCode());
+                log.error("{} szankcios lista letoltes hiba: HTTP {}", source, response.statusCode());
             }
         } catch (Exception e) {
-            log.error("Szankcios lista frissites hiba: {}", e.getMessage(), e);
+            log.error("{} szankcios lista frissites hiba: {}", source, e.getMessage(), e);
         }
+        return 0;
     }
 }

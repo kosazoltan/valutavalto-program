@@ -108,7 +108,7 @@ public class AuditLogService {
      */
     private void applyHashChain(AuditLog entry) {
         try {
-            String previousHash = auditLogRepository.findLastEntryHash();
+            String previousHash = auditLogRepository.findLastEntryHashForUpdate().orElse(null);
             entry.setPreviousHash(previousHash);
 
             String content = String.join("|",

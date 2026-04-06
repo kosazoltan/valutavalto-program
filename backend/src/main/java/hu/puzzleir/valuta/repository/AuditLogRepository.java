@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -139,7 +140,8 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
 
     /**
      * Utolso bejegyzes hash-enek lekerdezese a hash-lanchoz (H11 tamper-evidence).
+     * Pessimistic lock: megakadalyozza a parhuzamos olvasast (race condition vedelem).
      */
-    @Query("SELECT a.entryHash FROM AuditLog a WHERE a.entryHash IS NOT NULL ORDER BY a.createdAt DESC LIMIT 1")
-    String findLastEntryHash();
+    @Query(value = "SELECT a.entry_hash FROM audit_log a WHERE a.entry_hash IS NOT NULL ORDER BY a.created_at DESC LIMIT 1 FOR UPDATE", nativeQuery = true)
+    Optional<String> findLastEntryHashForUpdate();
 }

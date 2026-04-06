@@ -147,6 +147,52 @@ class WorkerAttendanceServiceTest {
     }
 
     @Test
+    @DisplayName("recordLogout — manager felulirhatja mas dolgozo logout-jat")
+    void testRecordLogout_managerOverride() {
+        UUID attendanceId = UUID.randomUUID();
+        Worker worker = Worker.builder().id(2L).build();
+        WorkerAttendance attendance = WorkerAttendance.builder()
+                .id(attendanceId)
+                .worker(worker)
+                .branchId(UUID.randomUUID())
+                .loginAt(LocalDateTime.now().minusHours(8))
+                .build();
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentWorkerId).thenReturn(99L); // mas dolgozo
+            su.when(SecurityUtils::isManagerOrAbove).thenReturn(true);   // de manager
+            when(attendanceRepository.findById(attendanceId)).thenReturn(Optional.of(attendance));
+            when(attendanceRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            WorkerAttendanceDto result = service.recordLogout(attendanceId);
+            assertThat(result.getLogoutAt()).isNotNull();
+        }
+    }
+
+    @Test
+    @DisplayName("recordLogout — nem-manager nem irhatja felul mas logout-jat")
+    void testRecordLogout_nonManagerCannotOverride() {
+        UUID attendanceId = UUID.randomUUID();
+        Worker worker = Worker.builder().id(2L).build();
+        WorkerAttendance attendance = WorkerAttendance.builder()
+                .id(attendanceId)
+                .worker(worker)
+                .branchId(UUID.randomUUID())
+                .loginAt(LocalDateTime.now().minusHours(8))
+                .build();
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentWorkerId).thenReturn(99L); // mas dolgozo
+            su.when(SecurityUtils::isManagerOrAbove).thenReturn(false); // nem manager
+            when(attendanceRepository.findById(attendanceId)).thenReturn(Optional.of(attendance));
+
+            assertThatThrownBy(() -> service.recordLogout(attendanceId))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("jogosultság");
+        }
+    }
+
+    @Test
     @DisplayName("getAttendanceByWorker — datum nelkul")
     void testGetAttendanceByWorker_noDates() {
         Worker worker = Worker.builder().id(2L).build();
