@@ -651,12 +651,12 @@ app.whenReady().then(async () => {
     return;
   }
 
-  // Dev default: if server_url points to local backend (often down), use production API.
+  // Dev default: use local backend for testing
   if (isDev) {
     const currentServerUrl = getConfig('server_url');
-    if (!currentServerUrl || currentServerUrl.includes('localhost:8080')) {
-      setConfig('server_url', 'https://excvaluta.com/api/v1');
-      log.info('[App] Dev default server_url set to https://excvaluta.com/api/v1');
+    if (!currentServerUrl || !currentServerUrl.includes('localhost:8080')) {
+      setConfig('server_url', 'http://localhost:8080/api/v1');
+      log.info('[App] Dev default server_url set to http://localhost:8080/api/v1');
     }
   }
 
