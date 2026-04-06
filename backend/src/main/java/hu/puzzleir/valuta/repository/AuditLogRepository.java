@@ -136,4 +136,10 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
     boolean existsByActionAndEntityId(String action, String entityId);
 
     boolean existsByCompanyIdAndActionAndEntityId(UUID companyId, String action, String entityId);
+
+    /**
+     * Utolso bejegyzes hash-enek lekerdezese a hash-lanchoz (H11 tamper-evidence).
+     */
+    @Query("SELECT a.entryHash FROM AuditLog a WHERE a.entryHash IS NOT NULL ORDER BY a.createdAt DESC LIMIT 1")
+    String findLastEntryHash();
 }

@@ -71,6 +71,7 @@ public class AuditLogService {
                 .ipAddress(ipAddress)
                 .userAgent(userAgent)
                 .build();
+        applyHashChain(entry);
         auditLogRepository.save(entry);
     }
 
@@ -96,7 +97,44 @@ public class AuditLogService {
                 .reason(reason)
                 .ipAddress(ipAddress)
                 .build();
+        applyHashChain(entry);
         auditLogRepository.save(entry);
+    }
+
+    /**
+     * Hash-lanc alkalmazasa az audit log bejegyzesre.
+     * H11 gap fix: tamper-evidence hash-lanc penzugyi audit logokhoz.
+     * Minden bejegyzes tartalmazza a sajat SHA-256 hash-et es az elozo bejegyzes hash-et.
+     */
+    private void applyHashChain(AuditLog entry) {
+        try {
+            String previousHash = auditLogRepository.findLastEntryHash();
+            entry.setPreviousHash(previousHash);
+
+            String content = String.join("|",
+                    nullSafe(entry.getAction()),
+                    nullSafe(entry.getEntityType()),
+                    nullSafe(entry.getEntityId()),
+                    nullSafe(entry.getUserId()),
+                    nullSafe(entry.getChanges()),
+                    nullSafe(entry.getOldValue()),
+                    nullSafe(entry.getNewValue()),
+                    nullSafe(previousHash));
+
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder();
+            for (byte b : hash) {
+                hex.append(String.format("%02x", b));
+            }
+            entry.setEntryHash(hex.toString());
+        } catch (Exception e) {
+            log.warn("Hash-lanc szamitas hiba (nem kritikus, audit log rogzites folytatodik): {}", e.getMessage());
+        }
+    }
+
+    private static String nullSafe(String s) {
+        return s != null ? s : "";
     }
 
     /**

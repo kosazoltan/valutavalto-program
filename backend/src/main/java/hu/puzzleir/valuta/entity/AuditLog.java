@@ -67,4 +67,18 @@ public class AuditLog {
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    /**
+     * SHA-256 hash az aktualis bejegyzes tartalmabol.
+     * H11 gap fix: tamper-evidence hash-lanc penzugyi audit logokhoz.
+     */
+    @Column(name = "entry_hash", length = 64)
+    private String entryHash;
+
+    /**
+     * Az elozo bejegyzes hash-e — lancolashoz.
+     * Ha null, ez az elso bejegyzes a lancban.
+     */
+    @Column(name = "previous_hash", length = 64)
+    private String previousHash;
 }
