@@ -167,4 +167,100 @@ class SanctionServiceTest {
         assertThat(importedCount).isEqualTo(2);
         verify(sanctionEntryRepository, times(2)).save(any(SanctionEntry.class));
     }
+
+    // ── EU FSF v1.1 XML import tesztek ──
+
+    @Test
+    @DisplayName("importEuSanctionList — happy path: 2 sanctionEntity importalva")
+    void testImportEuSanctionList_happyPath() {
+        String euXml = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <export>
+                  <sanctionEntity euReferenceNumber="EU-1234">
+                    <nameAlias wholeName="Ivan Petrov" />
+                    <nameAlias wholeName="Ivan P." />
+                    <birthdate birthdate="1975-03-15" />
+                  </sanctionEntity>
+                  <sanctionEntity euReferenceNumber="EU-5678">
+                    <nameAlias wholeName="Sergei Volkov" />
+                    <birthdate year="1980" />
+                  </sanctionEntity>
+                </export>
+                """;
+
+        InputStream xmlStream = new ByteArrayInputStream(euXml.getBytes(StandardCharsets.UTF_8));
+
+        when(sanctionEntryRepository.save(any(SanctionEntry.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        int count = service.importEuSanctionList(xmlStream);
+
+        assertThat(count).isEqualTo(2);
+
+        ArgumentCaptor<SanctionEntry> captor = ArgumentCaptor.forClass(SanctionEntry.class);
+        verify(sanctionEntryRepository, times(2)).save(captor.capture());
+
+        SanctionEntry first = captor.getAllValues().get(0);
+        assertThat(first.getFullName()).isEqualTo("Ivan Petrov");
+        assertThat(first.getListType()).isEqualTo("EU");
+        assertThat(first.getListReference()).isEqualTo("EU-1234");
+        assertThat(first.getDateOfBirth()).isEqualTo("1975-03-15");
+        assertThat(first.getAliases()).contains("Ivan P.");
+
+        SanctionEntry second = captor.getAllValues().get(1);
+        assertThat(second.getFullName()).isEqualTo("Sergei Volkov");
+        assertThat(second.getDateOfBirth()).isEqualTo("1980");
+    }
+
+    @Test
+    @DisplayName("importEuSanctionList — blank name entity kihagyva")
+    void testImportEuSanctionList_blankNameSkipped() {
+        String euXml = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <export>
+                  <sanctionEntity euReferenceNumber="EU-0001">
+                    <nameAlias wholeName="" />
+                  </sanctionEntity>
+                  <sanctionEntity euReferenceNumber="EU-0002">
+                    <nameAlias wholeName="Valid Name" />
+                  </sanctionEntity>
+                </export>
+                """;
+
+        InputStream xmlStream = new ByteArrayInputStream(euXml.getBytes(StandardCharsets.UTF_8));
+
+        when(sanctionEntryRepository.save(any(SanctionEntry.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        int count = service.importEuSanctionList(xmlStream);
+
+        assertThat(count).isEqualTo(1);
+        verify(sanctionEntryRepository, times(1)).save(any(SanctionEntry.class));
+    }
+
+    @Test
+    @DisplayName("importEuSanctionList — birthdate year fallback")
+    void testImportEuSanctionList_yearFallback() {
+        String euXml = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <export>
+                  <sanctionEntity euReferenceNumber="EU-9999">
+                    <nameAlias wholeName="Test Person" />
+                    <birthdate year="1965" />
+                  </sanctionEntity>
+                </export>
+                """;
+
+        InputStream xmlStream = new ByteArrayInputStream(euXml.getBytes(StandardCharsets.UTF_8));
+
+        when(sanctionEntryRepository.save(any(SanctionEntry.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        int count = service.importEuSanctionList(xmlStream);
+
+        assertThat(count).isEqualTo(1);
+        ArgumentCaptor<SanctionEntry> captor = ArgumentCaptor.forClass(SanctionEntry.class);
+        verify(sanctionEntryRepository).save(captor.capture());
+        assertThat(captor.getValue().getDateOfBirth()).isEqualTo("1965");
+    }
 }
