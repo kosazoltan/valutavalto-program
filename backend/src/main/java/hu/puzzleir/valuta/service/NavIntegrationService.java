@@ -25,6 +25,12 @@ public class NavIntegrationService {
     private final IntegrationTransportProperties integrationTransportProperties;
     private final FileTransportService fileTransportService;
 
+    @jakarta.annotation.PostConstruct
+    void warnBridgeMode() {
+        log.warn("⚠️ NAV INTEGRÁCIÓ BRIDGE MÓDBAN FUT — a hardver kommunikáció file-artifact alapú. "
+                + "Éles NAV pénztárgép kommunikációhoz valódi serial/API driver szükséges.");
+    }
+
     /**
      * Tranzakció küldése a NAV pénztárgépnek.
      */

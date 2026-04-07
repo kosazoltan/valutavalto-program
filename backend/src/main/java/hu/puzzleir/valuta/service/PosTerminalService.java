@@ -36,6 +36,13 @@ public class PosTerminalService {
     private final SystemParameterService systemParameterService;
     private final OtpTerminalProtocolService otpProtocol;
     private final IntegrationTransportProperties integrationTransportProperties;
+
+    @jakarta.annotation.PostConstruct
+    void warnBridgeDrivers() {
+        log.warn("⚠️ POS TERMINÁL: Borgun és Worldline driverek BRIDGE MÓDBAN futnak — "
+                + "file-artifact alapú, nem valódi terminál kommunikáció. "
+                + "OTP driver TCP/IP alapú, az működik.");
+    }
     private final FileTransportService fileTransportService;
 
     /**
