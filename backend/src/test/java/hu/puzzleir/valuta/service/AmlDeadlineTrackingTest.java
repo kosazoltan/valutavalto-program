@@ -108,18 +108,18 @@ class AmlDeadlineTrackingTest {
         }
 
         @Test
-        @DisplayName("Péntek + 2 munkanap = kedd (hétvégét átugorja)")
-        void testFriday_plus2_isTuesday() throws Exception {
-            // 2026-04-03 = péntek
+        @DisplayName("Péntek + 2 munkanap = szerda (hétvégét + húsvéthétfőt átugorja)")
+        void testFriday_plus2_isWednesday_easterMonday() throws Exception {
+            // 2026-04-03 = péntek, 2026-04-05 = húsvétvasárnap, 2026-04-06 = húsvéthétfő
             LocalDateTime friday = LocalDate.of(2026, 4, 3).atTime(10, 0);
             assertThat(friday.getDayOfWeek()).isEqualTo(DayOfWeek.FRIDAY);
 
             LocalDateTime result = callCalculateBusinessDayDeadline(friday, 2);
 
-            // +1 = szombat (skip), +2 = vasárnap (skip), +3 = hétfő (1. munkanap),
-            // +4 = kedd (2. munkanap)
-            assertThat(result.toLocalDate()).isEqualTo(LocalDate.of(2026, 4, 7));
-            assertThat(result.getDayOfWeek()).isEqualTo(DayOfWeek.TUESDAY);
+            // +1 = szombat (skip), +2 = vasárnap (skip), +3 = húsvéthétfő (skip),
+            // +4 = kedd (1. munkanap), +5 = szerda (2. munkanap)
+            assertThat(result.toLocalDate()).isEqualTo(LocalDate.of(2026, 4, 8));
+            assertThat(result.getDayOfWeek()).isEqualTo(DayOfWeek.WEDNESDAY);
         }
 
         @Test
@@ -131,15 +131,17 @@ class AmlDeadlineTrackingTest {
 
             LocalDateTime result = callCalculateBusinessDayDeadline(thursday, 2);
 
-            // +1 = péntek (1. munkanap), +2 = szombat (skip), +3 = vasárnap (skip), +4 = hétfő (2.)
-            assertThat(result.toLocalDate()).isEqualTo(LocalDate.of(2026, 4, 6));
-            assertThat(result.getDayOfWeek()).isEqualTo(DayOfWeek.MONDAY);
+            // +1 = péntek 04-03 = nagypéntek (skip!), szombat (skip), vasárnap (skip),
+            // hétfő 04-06 = húsvéthétfő (skip), kedd 04-07 (1. munkanap), szerda 04-08 (2. munkanap)
+            assertThat(result.toLocalDate()).isEqualTo(LocalDate.of(2026, 4, 8));
+            assertThat(result.getDayOfWeek()).isEqualTo(DayOfWeek.WEDNESDAY);
         }
 
         @Test
         @DisplayName("Az időpont (óra:perc) megmarad a határidőben")
         void testTimeIsPreserved() throws Exception {
-            LocalDateTime input = LocalDate.of(2026, 4, 6).atTime(14, 30);
+            // 2026-01-05 = hétfő (nem ünnepnap)
+            LocalDateTime input = LocalDate.of(2026, 1, 5).atTime(14, 30);
             LocalDateTime result = callCalculateBusinessDayDeadline(input, 2);
 
             assertThat(result.getHour()).isEqualTo(14);

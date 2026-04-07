@@ -39,6 +39,18 @@ public class BackupService {
     @Value("${app.backup.directory:./backups}")
     private String backupDirectory;
 
+    @Value("${spring.datasource.url:}")
+    private String datasourceUrl;
+
+    @Value("${spring.datasource.username:}")
+    private String datasourceUsername;
+
+    @Value("${spring.datasource.password:}")
+    private String datasourcePassword;
+
+    @Value("${app.backup.pg-dump-path:pg_dump}")
+    private String pgDumpPath;
+
     /**
      * Új backup mentés létrehozása.
      */
@@ -65,24 +77,53 @@ public class BackupService {
                 .build();
         record = backupRecordRepository.save(record);
 
-        // Szimulált mentés — valós környezetben pg_dump futtatás
+        // Valódi pg_dump mentés
         try {
-            // Létrehozzuk a fájlt placeholder tartalommal
             Path targetPath = Paths.get(filePath);
-            String content = String.format("-- Backup: %s\n-- Típus: %s\n-- Időpont: %s\n-- Készítő: %s\n",
-                    record.getId(), type, timestamp, createdBy);
-            Files.writeString(targetPath, content);
+            String dbName = extractDbName(datasourceUrl);
+            String host = extractHost(datasourceUrl);
+            String port = extractPort(datasourceUrl);
+
+            ProcessBuilder pb = new ProcessBuilder(
+                    pgDumpPath,
+                    "-h", host,
+                    "-p", port,
+                    "-U", datasourceUsername,
+                    "-d", dbName,
+                    "-F", type == BackupType.FULL ? "c" : "p",  // custom format for FULL, plain SQL for others
+                    "-f", targetPath.toString()
+            );
+            pb.environment().put("PGPASSWORD", datasourcePassword);
+            pb.redirectErrorStream(true);
+
+            log.info("pg_dump indítás: host={}, port={}, db={}, file={}", host, port, dbName, filePath);
+
+            Process process = pb.start();
+            String output = new String(process.getInputStream().readAllBytes());
+            int exitCode = process.waitFor();
+
+            if (exitCode != 0) {
+                throw new IOException("pg_dump exit code: " + exitCode + ", output: " + output);
+            }
 
             File file = targetPath.toFile();
+            if (!file.exists() || file.length() == 0) {
+                throw new IOException("pg_dump nem hozott létre érvényes fájlt: " + filePath);
+            }
+
             record.setFileSizeBytes(file.length());
             record.setStatus(BackupStatus.COMPLETED);
             record.setCompletedAt(LocalDateTime.now());
 
-            log.info("Backup sikeresen létrehozva: id={}, type={}, file={}", record.getId(), type, filePath);
-        } catch (IOException e) {
+            log.info("Backup sikeresen létrehozva: id={}, type={}, file={}, size={}",
+                    record.getId(), type, filePath, file.length());
+        } catch (IOException | InterruptedException e) {
             record.setStatus(BackupStatus.FAILED);
             record.setCompletedAt(LocalDateTime.now());
-            log.error("Backup mentés sikertelen: id={}", record.getId(), e);
+            log.error("Backup mentés sikertelen: id={}, error={}", record.getId(), e.getMessage(), e);
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
         }
 
         record = backupRecordRepository.save(record);
@@ -106,9 +147,42 @@ public class BackupService {
             throw new ResourceNotFoundException("Backup fájl nem található: " + record.getFilePath());
         }
 
-        // Valós környezetben: pg_restore futtatás
+        // Valódi pg_restore futtatás
         log.warn("Backup visszaállítás indítva: id={}, file={}", backupId, record.getFilePath());
-        log.info("Backup visszaállítás szimulálva — valós környezetben pg_restore fut.");
+        try {
+            String dbName = extractDbName(datasourceUrl);
+            String host = extractHost(datasourceUrl);
+            String port = extractPort(datasourceUrl);
+
+            ProcessBuilder pb = new ProcessBuilder(
+                    "pg_restore",
+                    "-h", host,
+                    "-p", port,
+                    "-U", datasourceUsername,
+                    "-d", dbName,
+                    "--clean",
+                    "--if-exists",
+                    record.getFilePath()
+            );
+            pb.environment().put("PGPASSWORD", datasourcePassword);
+            pb.redirectErrorStream(true);
+
+            Process process = pb.start();
+            String output = new String(process.getInputStream().readAllBytes());
+            int exitCode = process.waitFor();
+
+            if (exitCode != 0) {
+                throw new BusinessException("pg_restore hiba (exit " + exitCode + "): " + output, "RESTORE_FAILED");
+            }
+
+            log.info("Backup visszaállítás sikeres: id={}", backupId);
+        } catch (IOException | InterruptedException e) {
+            log.error("Backup visszaállítás sikertelen: id={}, error={}", backupId, e.getMessage(), e);
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            throw new BusinessException("Visszaállítás sikertelen: " + e.getMessage(), "RESTORE_FAILED");
+        }
     }
 
     /**
@@ -133,6 +207,29 @@ public class BackupService {
         } catch (IOException e) {
             throw new BusinessException("Backup fájl olvasása sikertelen: " + record.getFilePath(), "BACKUP_READ_FAILED");
         }
+    }
+
+    /**
+     * JDBC URL-ből DB név kinyerése.
+     * jdbc:postgresql://host:port/dbname?... → dbname
+     */
+    private String extractDbName(String jdbcUrl) {
+        // jdbc:postgresql://host:port/dbname
+        String withoutPrefix = jdbcUrl.replaceFirst("jdbc:postgresql://", "");
+        String afterSlash = withoutPrefix.contains("/") ? withoutPrefix.substring(withoutPrefix.indexOf('/') + 1) : "valuta";
+        return afterSlash.contains("?") ? afterSlash.substring(0, afterSlash.indexOf('?')) : afterSlash;
+    }
+
+    private String extractHost(String jdbcUrl) {
+        String withoutPrefix = jdbcUrl.replaceFirst("jdbc:postgresql://", "");
+        String hostPort = withoutPrefix.contains("/") ? withoutPrefix.substring(0, withoutPrefix.indexOf('/')) : withoutPrefix;
+        return hostPort.contains(":") ? hostPort.substring(0, hostPort.indexOf(':')) : hostPort;
+    }
+
+    private String extractPort(String jdbcUrl) {
+        String withoutPrefix = jdbcUrl.replaceFirst("jdbc:postgresql://", "");
+        String hostPort = withoutPrefix.contains("/") ? withoutPrefix.substring(0, withoutPrefix.indexOf('/')) : withoutPrefix;
+        return hostPort.contains(":") ? hostPort.substring(hostPort.indexOf(':') + 1) : "5432";
     }
 
     private BackupRecordResponse toResponse(BackupRecord record) {

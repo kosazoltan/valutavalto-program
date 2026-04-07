@@ -95,6 +95,9 @@ class TransactionServiceMultiLineTest {
     @Mock
     private TransactionOperationHelper helper;
 
+    @Mock
+    private LicenseService licenseService;
+
     private Company company;
     private Branch branch;
     private Worker worker;
@@ -106,6 +109,9 @@ class TransactionServiceMultiLineTest {
 
     @BeforeEach
     void setUp() {
+        // License valid stub
+        org.mockito.Mockito.lenient().when(licenseService.validateLicense()).thenReturn(
+                hu.puzzleir.valuta.dto.license.LicenseStatusResponse.builder().status("VALID").build());
         // Security context beallitas
         var details = new WorkerAuthenticationDetails(WORKER_ID, COMPANY_ID, BRANCH_ID, "CASHIER");
         TestingAuthenticationToken auth = new TestingAuthenticationToken("user", "pass", "ROLE_CASHIER");
@@ -462,3 +468,5 @@ class TransactionServiceMultiLineTest {
         assertThat(result.getLineCount()).isEqualTo(1);
     }
 }
+
+

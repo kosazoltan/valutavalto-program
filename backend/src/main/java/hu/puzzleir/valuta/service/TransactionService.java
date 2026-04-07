@@ -72,9 +72,21 @@ public class TransactionService {
     private final @org.springframework.context.annotation.Lazy TransactionReversalService reversalService;
     private final @org.springframework.context.annotation.Lazy TransactionConversionService conversionService;
     private final @org.springframework.context.annotation.Lazy TransactionMultiLineService multiLineService;
+    private final LicenseService licenseService;
 
     // Sztornó limit supervisor nélkül (3 db/nap)
     private static final int DAILY_REVERSAL_LIMIT = 3;
+
+    /**
+     * Licenc ellenőrzés — tranzakció csak érvényes licenccel engedélyezett (P0-6 fix).
+     */
+    private void validateActiveLicense() {
+        var status = licenseService.validateLicense();
+        if (!"VALID".equals(status.getStatus())) {
+            throw new ValidationException("Tranzakció nem engedélyezett — licenc státusz: " + status.getStatus()
+                    + ". Kérjük, vegye fel a kapcsolatot az adminisztrátorral.");
+        }
+    }
 
     // Azonosítás nélküli limit HUF-ban (300.000 Ft - NAV szabályozás)
     private static final BigDecimal IDENTIFICATION_LIMIT = new BigDecimal("300000");
@@ -143,6 +155,7 @@ public class TransactionService {
             return executeMultiLineBuy(request);
         }
 
+        validateActiveLicense();
         validateOpenSession();
 
         UUID companyId = SecurityUtils.getCurrentCompanyId();
@@ -282,6 +295,7 @@ public class TransactionService {
             return executeMultiLineSell(request);
         }
 
+        validateActiveLicense();
         validateOpenSession();
 
         UUID companyId = SecurityUtils.getCurrentCompanyId();

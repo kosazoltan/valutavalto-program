@@ -32,6 +32,7 @@ class HandlingFeeTransactionServiceTest {
 
     @Mock
     private HandlingFeeTransactionRepository repository;
+    @Mock private LicenseService licenseService;
 
     // =====================================================================
     // Díjszámítás: 0-50K → 0%
@@ -159,3 +160,7 @@ class HandlingFeeTransactionServiceTest {
                 .hasMessageContaining("Kezelési díj nem található");
     }
 }
+
+
+
+

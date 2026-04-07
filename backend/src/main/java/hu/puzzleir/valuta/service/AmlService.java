@@ -641,9 +641,55 @@ public class AmlService {
     // ============ BEJELENTÉSI HATÁRIDŐ (2017. LIII. tv. 33.§) ============
 
     /**
-     * 2 munkanap kiszámítása egy dátumtól.
-     * Hétvégét átugorja (szombat, vasárnap).
-     * TODO: Magyar munkaszüneti napok kezelése (március 15., nagypéntek, stb.)
+     * Magyar munkaszüneti napok — fix ünnepek + húsvét alapú mozgóünnepek.
+     * Forrás: 2012. évi I. törvény a munka törvénykönyvéről, 102.§ (1).
+     */
+    private static final java.util.Set<java.time.MonthDay> HUNGARIAN_FIXED_HOLIDAYS = java.util.Set.of(
+            java.time.MonthDay.of(1, 1),   // Újév
+            java.time.MonthDay.of(3, 15),  // Nemzeti ünnep
+            java.time.MonthDay.of(5, 1),   // Munka ünnepe
+            java.time.MonthDay.of(8, 20),  // Államalapítás
+            java.time.MonthDay.of(10, 23), // 1956-os forradalom
+            java.time.MonthDay.of(11, 1),  // Mindenszentek
+            java.time.MonthDay.of(12, 25), // Karácsony 1.
+            java.time.MonthDay.of(12, 26)  // Karácsony 2.
+    );
+
+    /**
+     * Húsvétvasárnap kiszámítása (Anonymous Gregorian algorithm).
+     */
+    private static LocalDate easterSunday(int year) {
+        int a = year % 19;
+        int b = year / 100;
+        int c = year % 100;
+        int d = b / 4;
+        int e = b % 4;
+        int f = (b + 8) / 25;
+        int g = (b - f + 1) / 3;
+        int h = (19 * a + b - d - g + 15) % 30;
+        int i = c / 4;
+        int k = c % 4;
+        int l = (32 + 2 * e + 2 * i - h - k) % 7;
+        int m = (a + 11 * h + 22 * l) / 451;
+        int month = (h + l - 7 * m + 114) / 31;
+        int day = ((h + l - 7 * m + 114) % 31) + 1;
+        return LocalDate.of(year, month, day);
+    }
+
+    private boolean isHungarianHoliday(LocalDate date) {
+        // Fix ünnepek
+        if (HUNGARIAN_FIXED_HOLIDAYS.contains(java.time.MonthDay.from(date))) {
+            return true;
+        }
+        // Mozgóünnepek: Nagypéntek (Easter-2), Húsvéthétfő (Easter+1), Pünkösdhétfő (Easter+50)
+        LocalDate easter = easterSunday(date.getYear());
+        return date.equals(easter.minusDays(2))   // Nagypéntek
+                || date.equals(easter.plusDays(1))  // Húsvéthétfő
+                || date.equals(easter.plusDays(50)); // Pünkösdhétfő
+    }
+
+    /**
+     * Munkanap kiszámítása — hétvége + magyar munkaszüneti napok kihagyásával.
      */
     private LocalDateTime calculateBusinessDayDeadline(LocalDateTime from, int businessDays) {
         LocalDate date = from.toLocalDate();
@@ -651,7 +697,7 @@ public class AmlService {
         while (added < businessDays) {
             date = date.plusDays(1);
             java.time.DayOfWeek dow = date.getDayOfWeek();
-            if (dow != java.time.DayOfWeek.SATURDAY && dow != java.time.DayOfWeek.SUNDAY) {
+            if (dow != java.time.DayOfWeek.SATURDAY && dow != java.time.DayOfWeek.SUNDAY && !isHungarianHoliday(date)) {
                 added++;
             }
         }

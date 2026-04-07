@@ -1,5 +1,7 @@
 package hu.puzzleir.valuta.integration;
 
+import hu.puzzleir.valuta.dto.license.LicenseStatusResponse;
+import hu.puzzleir.valuta.service.LicenseService;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
@@ -71,6 +73,7 @@ class TransactionFlowTest {
     @Mock private hu.puzzleir.valuta.service.TransactionReversalService reversalService;
     @Mock private hu.puzzleir.valuta.service.TransactionConversionService conversionService;
     @Mock private hu.puzzleir.valuta.service.TransactionMultiLineService multiLineService;
+    @Mock private LicenseService licenseService;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();
     private static final UUID BRANCH_ID = UUID.randomUUID();
@@ -89,6 +92,7 @@ class TransactionFlowTest {
     @BeforeEach
     void setUp() throws Exception {
         // Set the cachedHufCurrencyId via reflection (normally set by @PostConstruct)
+        org.mockito.Mockito.lenient().when(licenseService.validateLicense()).thenReturn(hu.puzzleir.valuta.dto.license.LicenseStatusResponse.builder().status("VALID").build());
         Field hufIdField = TransactionService.class.getDeclaredField("cachedHufCurrencyId");
         hufIdField.setAccessible(true);
         hufIdField.set(transactionService, HUF_ID);

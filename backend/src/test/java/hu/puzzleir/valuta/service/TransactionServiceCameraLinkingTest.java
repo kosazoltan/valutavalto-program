@@ -51,12 +51,16 @@ class TransactionServiceCameraLinkingTest {
     @Mock private HandlingFeeCalculator handlingFeeCalculator;
     @Mock private AmlService amlService;
     @Mock private PosTerminalService posTerminalService;
+    @Mock private LicenseService licenseService;
     @Mock private TransactionCalculationService calculationService;
     @Mock private ObjectProvider<CameraTransactionLinker> cameraTransactionLinkerProvider;
     @Mock private CameraTransactionLinker cameraTransactionLinker;
 
     @BeforeEach
     void setUp() {
+        // License valid stub
+        org.mockito.Mockito.lenient().when(licenseService.validateLicense()).thenReturn(
+                hu.puzzleir.valuta.dto.license.LicenseStatusResponse.builder().status("VALID").build());
         var details = new WorkerAuthenticationDetails(WORKER_ID, COMPANY_ID, BRANCH_ID, "CASHIER");
         TestingAuthenticationToken auth = new TestingAuthenticationToken("user", "pass", "ROLE_CASHIER");
         auth.setDetails(details);
@@ -158,3 +162,5 @@ class TransactionServiceCameraLinkingTest {
         assertThat(timeCaptor.getValue().toLocalTime()).isEqualTo(saved.getTransactionTime());
     }
 }
+
+

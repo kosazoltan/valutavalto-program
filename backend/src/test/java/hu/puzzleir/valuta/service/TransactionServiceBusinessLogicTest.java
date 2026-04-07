@@ -73,6 +73,7 @@ class TransactionServiceBusinessLogicTest {
     @Mock private HandlingFeeCalculator handlingFeeCalculator;
     @Mock private AmlService amlService;
     @Mock private PosTerminalService posTerminalService;
+    @Mock private LicenseService licenseService;
     @Mock private TransactionCalculationService calculationService;
     @Mock private TransactionReversalService reversalService;
     @Mock private TransactionConversionService conversionService;
@@ -84,6 +85,9 @@ class TransactionServiceBusinessLogicTest {
 
     @BeforeEach
     void setUp() {
+        // License valid stub
+        org.mockito.Mockito.lenient().when(licenseService.validateLicense()).thenReturn(
+                hu.puzzleir.valuta.dto.license.LicenseStatusResponse.builder().status("VALID").build());
         WorkerAuthenticationDetails details =
                 new WorkerAuthenticationDetails(WORKER_ID, COMPANY_ID, BRANCH_ID, "CASHIER");
         TestingAuthenticationToken auth =
@@ -236,3 +240,5 @@ class TransactionServiceBusinessLogicTest {
         return balance;
     }
 }
+
+

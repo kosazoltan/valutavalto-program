@@ -67,6 +67,7 @@ class PepSourceOfFundsTest {
         @Mock private ReceiptSequenceService receiptSequenceService;
         @Mock private HandlingFeeCalculator handlingFeeCalculator;
         @Mock private AmlService amlService;
+    @Mock private LicenseService licenseService;
         @Mock private PosTerminalService posTerminalService;
         @Mock private TransactionCalculationService calculationService;
         @Mock private TransactionReversalService reversalService;
@@ -80,6 +81,7 @@ class PepSourceOfFundsTest {
 
         @BeforeEach
         void setUp() {
+        org.mockito.Mockito.lenient().when(licenseService.validateLicense()).thenReturn(hu.puzzleir.valuta.dto.license.LicenseStatusResponse.builder().status("VALID").build());
             WorkerAuthenticationDetails details =
                     new WorkerAuthenticationDetails(WORKER_ID, COMPANY_ID, BRANCH_ID, "CASHIER");
             TestingAuthenticationToken auth =
@@ -637,3 +639,4 @@ class PepSourceOfFundsTest {
         }
     }
 }
+

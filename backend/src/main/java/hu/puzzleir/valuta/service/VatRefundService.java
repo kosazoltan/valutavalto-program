@@ -212,10 +212,14 @@ public class VatRefundService {
         }
     }
 
+    private static final java.util.concurrent.atomic.AtomicLong VAT_SERIAL_COUNTER =
+            new java.util.concurrent.atomic.AtomicLong(System.currentTimeMillis() % 100000);
+
     private String generateSerialNumber(VoucherType type) {
         LocalDate today = LocalDate.now();
         String datePart = String.format("%d%02d%02d", today.getYear(), today.getMonthValue(), today.getDayOfMonth());
-        return type.name() + "-" + datePart + "-" + System.nanoTime() % 100000;
+        long seq = VAT_SERIAL_COUNTER.incrementAndGet() % 100000;
+        return type.name() + "-" + datePart + "-" + String.format("%05d", seq);
     }
 
     private VatRefundTransactionDto toDto(VatRefundTransaction e) {

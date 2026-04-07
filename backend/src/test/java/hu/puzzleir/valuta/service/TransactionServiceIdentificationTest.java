@@ -51,6 +51,7 @@ class TransactionServiceIdentificationTest {
     @Mock private HandlingFeeCalculator handlingFeeCalculator;
     @Mock private AmlService amlService;
     @Mock private PosTerminalService posTerminalService;
+    @Mock private LicenseService licenseService;
     @Mock private TransactionCalculationService calculationService;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();
@@ -59,6 +60,9 @@ class TransactionServiceIdentificationTest {
 
     @BeforeEach
     void setUp() {
+        // License valid stub
+        org.mockito.Mockito.lenient().when(licenseService.validateLicense()).thenReturn(
+                hu.puzzleir.valuta.dto.license.LicenseStatusResponse.builder().status("VALID").build());
         // SecurityContext beállítása
         WorkerAuthenticationDetails details =
                 new WorkerAuthenticationDetails(WORKER_ID, COMPANY_ID, BRANCH_ID, "CASHIER");
@@ -251,3 +255,5 @@ class TransactionServiceIdentificationTest {
                                 .hasMessageContaining("egyedi eladási árfolyamnak pozitívnak kell lennie");
         }
 }
+
+
