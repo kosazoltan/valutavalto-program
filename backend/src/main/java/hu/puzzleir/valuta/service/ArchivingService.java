@@ -23,6 +23,7 @@ import java.util.UUID;
 public class ArchivingService {
 
     private final ArchiveTaskRepository archiveTaskRepository;
+    private final MonthlyArchiveService monthlyArchiveService;
 
     @Transactional(readOnly = true)
     public List<ArchiveTask> getAllTasks() {
@@ -37,8 +38,8 @@ public class ArchivingService {
     }
 
     /**
-     * Feladat végrehajtása (státusz frissítés).
-     * A tényleges archiválási logika később kerül implementálásra.
+     * Feladat végrehajtása — valódi archiválás a MonthlyArchiveService-en keresztül.
+     * A criteria mezőben JSON-ként tároljuk a paramétereket: branchId, yearMonth.
      */
     public ArchiveTask executeTask(UUID taskId) {
         ArchiveTask task = archiveTaskRepository.findById(taskId)
@@ -49,16 +50,50 @@ public class ArchivingService {
         archiveTaskRepository.save(task);
 
         try {
-            // Placeholder: tényleges archiválás később
-            log.info("Archiválási feladat végrehajtása: id={}, type={}", taskId, task.getTaskType());
+            log.info("Archiválási feladat végrehajtása: id={}, type={}, entityType={}",
+                    taskId, task.getTaskType(), task.getEntityType());
+
+            int archivedCount = 0;
+
+            if ("TRANSACTION".equalsIgnoreCase(task.getEntityType()) && task.getCriteria() != null) {
+                // Criteria parsing: "branchId=UUID;yearMonth=YYYY-MM"
+                String criteria = task.getCriteria();
+                UUID branchId = null;
+                java.time.YearMonth yearMonth = null;
+
+                for (String part : criteria.split(";")) {
+                    String[] kv = part.trim().split("=", 2);
+                    if (kv.length == 2) {
+                        if ("branchId".equals(kv[0].trim())) {
+                            branchId = UUID.fromString(kv[1].trim());
+                        } else if ("yearMonth".equals(kv[0].trim())) {
+                            yearMonth = java.time.YearMonth.parse(kv[1].trim());
+                        }
+                    }
+                }
+
+                if (branchId != null && yearMonth != null) {
+                    archivedCount = monthlyArchiveService.archiveMonth(branchId, yearMonth);
+                } else {
+                    throw new IllegalArgumentException(
+                            "Hiányzó criteria paraméter: branchId és yearMonth kötelező. Kapott: " + criteria);
+                }
+            } else {
+                log.warn("Ismeretlen entityType vagy hiányzó criteria: entityType={}, criteria={}",
+                        task.getEntityType(), task.getCriteria());
+            }
 
             task.setStatus(ArchiveTaskStatus.COMPLETED);
             task.setCompletedAt(LocalDateTime.now());
-            task.setArchiveLocation("archive/" + task.getEntityType() + "/" + taskId);
+            task.setArchiveLocation("archive/" + task.getEntityType() + "/" + taskId
+                    + " (" + archivedCount + " rekord)");
+
+            log.info("Archiválási feladat sikeres: id={}, archivedCount={}", taskId, archivedCount);
         } catch (Exception e) {
-            log.error("Archiválási feladat hiba: id={}", taskId, e);
+            log.error("Archiválási feladat hiba: id={}, error={}", taskId, e.getMessage(), e);
             task.setStatus(ArchiveTaskStatus.FAILED);
             task.setCompletedAt(LocalDateTime.now());
+            task.setArchiveLocation("FAILED: " + e.getMessage());
         }
 
         return archiveTaskRepository.save(task);

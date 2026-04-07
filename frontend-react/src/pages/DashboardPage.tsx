@@ -2,25 +2,29 @@ import { useState, useEffect } from 'react'
 import { ArrowLeftRight, Users, TrendingUp, Wallet, FileText, AlertTriangle, ArrowUp, ArrowDown, Clock } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { exchangeRateApi, type ExchangeRate } from '../services/api/exchange-rates'
+import { transactionApi, type DailyTurnoverSummary } from '../services/api/transactions'
 
-// Mock data - replace with API calls (stats & transactions still mock)
-const mockStats = {
-  todayTransactions: 47,
-  todayVolume: 12500000,
-  activeCustomers: 23,
-  pendingDeposits: 3,
+interface DashboardStats {
+  todayTransactions: number
+  todayVolume: number
+  activeCustomers: number
+  pendingDeposits: number
   yesterdayComparison: {
-    transactions: 12, // +12%
-    volume: -5.2, // -5.2%
+    transactions: number
+    volume: number
   }
 }
 
-const mockRecentTransactions = [
-  { id: 1, time: '10:45', type: 'BUY', currency: 'EUR', amount: 500, huf: 195750, customer: 'Kiss János', status: 'completed' },
-  { id: 2, time: '10:32', type: 'SELL', currency: 'USD', amount: 1000, huf: 358200, customer: 'Nagy Péter', status: 'completed' },
-  { id: 3, time: '10:15', type: 'BUY', currency: 'GBP', amount: 200, huf: 91000, customer: 'Szabó Anna', status: 'completed' },
-  { id: 4, time: '09:58', type: 'SELL', currency: 'CHF', amount: 350, huf: 140875, customer: 'Kovács Béla', status: 'pending' },
-]
+interface RecentTransaction {
+  id: number
+  time: string
+  type: string
+  currency: string
+  amount: number
+  huf: number
+  customer: string
+  status: string
+}
 
 // Fő devizák a dashboardra (top 4)
 const DASHBOARD_CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF']
@@ -28,24 +32,68 @@ const DASHBOARD_CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF']
 export default function DashboardPage() {
   const [liveRates, setLiveRates] = useState<ExchangeRate[]>([])
   const [ratesLoading, setRatesLoading] = useState(true)
+  const [stats, setStats] = useState<DashboardStats>({
+    todayTransactions: 0,
+    todayVolume: 0,
+    activeCustomers: 0,
+    pendingDeposits: 0,
+    yesterdayComparison: { transactions: 0, volume: 0 }
+  })
+  const [recentTransactions, setRecentTransactions] = useState<RecentTransaction[]>([])
 
   useEffect(() => {
     const fetchRates = async () => {
       try {
         const allRates = await exchangeRateApi.list()
-        // Szűrés: csak aktív + dashboard devizák
         const filtered = allRates
           .filter(r => r.active && DASHBOARD_CURRENCIES.includes(r.currencyCode))
           .sort((a, b) => DASHBOARD_CURRENCIES.indexOf(a.currencyCode) - DASHBOARD_CURRENCIES.indexOf(b.currencyCode))
         setLiveRates(filtered)
       } catch {
-        // Ha API nem elérhető, üres marad
         setLiveRates([])
       } finally {
         setRatesLoading(false)
       }
     }
+
+    const fetchDashboardData = async () => {
+      try {
+        // Valódi napi forgalom az API-ból
+        const turnover: DailyTurnoverSummary = await transactionApi.getDailyTurnover()
+        const totalTx = (turnover.totalBuyCount || 0) + (turnover.totalSellCount || 0)
+        const totalVol = (turnover.totalBuyHuf || 0) + (turnover.totalSellHuf || 0)
+        setStats({
+          todayTransactions: totalTx,
+          todayVolume: totalVol,
+          activeCustomers: 0, // TODO: customer API-ból ha elérhető
+          pendingDeposits: turnover.totalReversalCount || 0,
+          yesterdayComparison: { transactions: 0, volume: 0 } // TODO: tegnapi adatokkal összehasonlítás
+        })
+      } catch {
+        // API hiba esetén 0 értékek maradnak
+      }
+
+      try {
+        // Legutóbbi tranzakciók az API-ból
+        const page = await transactionApi.list({ size: 5 })
+        const txList = (page.content || []).map((tx, idx) => ({
+          id: idx + 1,
+          time: tx.transactionTime ? tx.transactionTime.substring(0, 5) : '',
+          type: tx.transactionType || '',
+          currency: tx.currencyCode || '',
+          amount: tx.currencyAmount || 0,
+          huf: tx.hufAmount || 0,
+          customer: tx.workerName || '',
+          status: (tx.status || 'COMPLETED').toLowerCase()
+        }))
+        setRecentTransactions(txList)
+      } catch {
+        setRecentTransactions([])
+      }
+    }
+
     fetchRates()
+    fetchDashboardData()
   }, [])
   return (
     <div className="space-y-6">
@@ -66,29 +114,29 @@ export default function DashboardPage() {
         <StatCard
           icon={ArrowLeftRight}
           label="Mai tranzakciók"
-          value={mockStats.todayTransactions}
-          change={mockStats.yesterdayComparison.transactions}
+          value={stats.todayTransactions}
+          change={stats.yesterdayComparison.transactions}
           color="primary"
         />
         <StatCard
           icon={Wallet}
           label="Mai forgalom"
-          value={`${(mockStats.todayVolume / 1000000).toFixed(1)}M Ft`}
-          change={mockStats.yesterdayComparison.volume}
+          value={`${(stats.todayVolume / 1000000).toFixed(1)}M Ft`}
+          change={stats.yesterdayComparison.volume}
           color="success"
         />
         <StatCard
           icon={Users}
           label="Aktív ügyfelek"
-          value={mockStats.activeCustomers}
+          value={stats.activeCustomers}
           color="info"
         />
         <StatCard
           icon={AlertTriangle}
           label="Függő foglalók"
-          value={mockStats.pendingDeposits}
+          value={stats.pendingDeposits}
           color="warning"
-          urgent={mockStats.pendingDeposits > 0}
+          urgent={stats.pendingDeposits > 0}
         />
       </div>
 
@@ -190,7 +238,7 @@ export default function DashboardPage() {
             </tr>
           </thead>
           <tbody>
-            {mockRecentTransactions.map((tx) => (
+            {recentTransactions.map((tx) => (
               <tr key={tx.id}>
                 <td className="font-mono text-sm">{tx.time}</td>
                 <td>
@@ -260,3 +308,4 @@ function StatCard({
     </div>
   )
 }
+

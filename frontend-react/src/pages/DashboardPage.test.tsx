@@ -15,6 +15,30 @@ vi.mock('react-router-dom', async () => {
   }
 })
 
+vi.mock('../services/api/transactions', () => ({
+  transactionApi: {
+    getDailyTurnover: vi.fn().mockResolvedValue({
+      totalBuyCount: 30,
+      totalSellCount: 17,
+      totalBuyHuf: 8000000,
+      totalSellHuf: 4500000,
+      totalHandlingFees: 25000,
+      totalReversalCount: 3,
+    }),
+    list: vi.fn().mockResolvedValue({
+      content: [
+        { transactionType: 'BUY', currencyCode: 'EUR', currencyAmount: 500, hufAmount: 195750, workerName: 'Kiss János', transactionTime: '10:45:00', status: 'COMPLETED' },
+        { transactionType: 'SELL', currencyCode: 'USD', currencyAmount: 1000, hufAmount: 358200, workerName: 'Nagy Péter', transactionTime: '10:32:00', status: 'COMPLETED' },
+        { transactionType: 'BUY', currencyCode: 'GBP', currencyAmount: 200, hufAmount: 91000, workerName: 'Szabó Anna', transactionTime: '10:15:00', status: 'COMPLETED' },
+      ],
+      totalElements: 3,
+      totalPages: 1,
+      number: 0,
+      size: 5,
+    }),
+  },
+}))
+
 vi.mock('../services/api/exchange-rates', () => ({
   exchangeRateApi: {
     list: vi.fn().mockResolvedValue([
@@ -72,21 +96,24 @@ describe('DashboardPage', () => {
     expect(screen.getByText('Függő foglalók')).toBeInTheDocument()
   })
 
-  it('KPI értékeket helyesen jeleníti meg', () => {
+  it('KPI értékeket helyesen jeleníti meg', async () => {
     renderDashboardPage()
-    expect(screen.getByText('47')).toBeInTheDocument() // todayTransactions
-    expect(screen.getByText('12.5M Ft')).toBeInTheDocument() // todayVolume
-    expect(screen.getByText('23')).toBeInTheDocument() // activeCustomers
-    expect(screen.getByText('3')).toBeInTheDocument() // pendingDeposits
+    await waitFor(() => {
+      expect(screen.getByText('47')).toBeInTheDocument() // totalBuyCount(30) + totalSellCount(17)
+      expect(screen.getByText('12.5M Ft')).toBeInTheDocument() // (8M+4.5M)/1M = 12.5M
+      expect(screen.getByText('3')).toBeInTheDocument() // totalReversalCount
+    })
   })
 
-  it('árfolyam táblázatot jeleníti meg', () => {
+  it('árfolyam táblázatot jeleníti meg', async () => {
     renderDashboardPage()
     expect(screen.getByText('Aktuális árfolyamok')).toBeInTheDocument()
-    expect(screen.getAllByText('EUR').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('USD').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('GBP').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('CHF').length).toBeGreaterThan(0)
+    await waitFor(() => {
+      expect(screen.getAllByText('EUR').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('USD').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('GBP').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('CHF').length).toBeGreaterThan(0)
+    })
   })
 
   it('árfolyamok vétel és eladási értékeket helyesen mutatja', async () => {
@@ -106,19 +133,22 @@ describe('DashboardPage', () => {
     expect(screen.getByText('Napi zárás')).toBeInTheDocument()
   })
 
-  it('legutóbbi tranzakciók táblázatot jeleníti meg', () => {
+  it('legutóbbi tranzakciók táblázatot jeleníti meg', async () => {
     renderDashboardPage()
     expect(screen.getByText('Legutóbbi tranzakciók')).toBeInTheDocument()
-    expect(screen.getByText('Kiss János')).toBeInTheDocument()
-    expect(screen.getByText('Nagy Péter')).toBeInTheDocument()
-    expect(screen.getByText('Szabó Anna')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('Kiss János')).toBeInTheDocument()
+      expect(screen.getByText('Nagy Péter')).toBeInTheDocument()
+      expect(screen.getByText('Szabó Anna')).toBeInTheDocument()
+    })
   })
 
-  it('tranzakciók státuszát helyesen jelöli meg', () => {
+  it('tranzakciók státuszát helyesen jelöli meg', async () => {
     renderDashboardPage()
-    const badges = screen.getAllByText('Befejezve')
-    expect(badges.length).toBeGreaterThan(0)
-    expect(screen.getByText('Folyamatban')).toBeInTheDocument()
+    await waitFor(() => {
+      const badges = screen.getAllByText('Befejezve')
+      expect(badges.length).toBeGreaterThan(0)
+    })
   })
 
   it('utolsó frissítést az aktuális idővel jeleníti meg', () => {
