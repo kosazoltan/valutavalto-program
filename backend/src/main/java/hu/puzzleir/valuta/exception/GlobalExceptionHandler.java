@@ -13,6 +13,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -91,6 +92,17 @@ public class GlobalExceptionHandler {
                 .fieldErrors(fieldErrors)
                 .build();
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    // --- 400 Bad Request (type mismatch — invalid date, number, etc.) ---
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        String paramName = ex.getName();
+        String requiredType = ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "unknown";
+        String message = String.format("Érvénytelen paraméter '%s': '%s' nem konvertálható %s típusra",
+                paramName, ex.getValue(), requiredType);
+        log.warn("Type mismatch: param={}, value={}, type={}", paramName, ex.getValue(), requiredType);
+        return buildResponse(HttpStatus.BAD_REQUEST, "BAD_REQUEST", message);
     }
 
     @ExceptionHandler(BindException.class)
