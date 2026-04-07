@@ -43,6 +43,7 @@ public class NavClosingDiscrepancyService {
 
     private final NavClosingRepository navClosingRepository;
     private final BranchRepository branchRepository;
+    private final NotificationService notificationService;
 
     /** Minimum indoklás hossz eltérés esetén (legacy: 20 karakter) */
     private static final int MIN_JUSTIFICATION_LENGTH = 20;
@@ -156,9 +157,14 @@ public class NavClosingDiscrepancyService {
                 navAmount, systemAmount, discrepancy,
                 justification.trim());
 
-        // TODO: Valódi email/push notification küldése
-        // A legacy rendszerben ez FTP-n keresztül XML email-t küldött a területi vezetőnek.
-        // Az új rendszerben a NotificationService-en keresztül küldünk email-t.
+        // Értesítés küldése az iroda dolgozóinak (P0-8 fix)
+        try {
+            String notifMessage = String.format("NAV eltérés: %s (%s), dátum: %s, eltérés: %s HUF",
+                    branch.getName(), branch.getCode(), closing.getClosingDate(), discrepancy);
+            notificationService.sendToBranch(branch.getId(), "NAV zárási eltérés", notifMessage);
+        } catch (Exception e) {
+            log.warn("NAV eltérés értesítés küldése sikertelen: {}", e.getMessage());
+        }
     }
 
     // ========== RESULT DTO ==========

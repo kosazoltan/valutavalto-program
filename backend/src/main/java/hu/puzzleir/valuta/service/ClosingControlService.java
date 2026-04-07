@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 public class ClosingControlService {
 
     private final ClosingControlRepository closingControlRepository;
+    private final NotificationService notificationService;
 
     /**
      * Összes iroda zárási állapota egy adott napon
@@ -72,8 +73,15 @@ public class ClosingControlService {
         control.setNotes(message);
         closingControlRepository.save(control);
 
-        // TODO(notification): Email/push notification küldés az irodának — NotificationService integráció szükséges
-        log.info("Figyelmeztetés rögzítve: branch={}", branchId);
+        // Értesítés küldése az iroda összes dolgozójának (P0-8 fix)
+        try {
+            notificationService.sendToBranch(branchId,
+                    "Zárási figyelmeztetés",
+                    message);
+        } catch (Exception e) {
+            log.warn("Értesítés küldése sikertelen: branch={}, error={}", branchId, e.getMessage());
+        }
+        log.info("Figyelmeztetés rögzítve és értesítés küldve: branch={}", branchId);
     }
 
     // --- Helper ---
