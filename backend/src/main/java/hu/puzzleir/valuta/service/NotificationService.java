@@ -21,6 +21,7 @@ public class NotificationService {
 
     private final NotificationRepository repo;
     private final WorkerRepository workerRepository;
+    private final EmailNotificationService emailNotificationService;
 
     public List<Notification> listByUser(String userId) {
         return repo.findByUserIdOrderByCreatedAtDesc(userId);
@@ -56,16 +57,19 @@ public class NotificationService {
     }
 
     /**
-     * Értesítés küldése egy worker-nek.
+     * Értesítés küldése egy worker-nek (in-app + email).
      */
     @Transactional(rollbackFor = Exception.class)
     public Notification sendToWorker(Long workerId, String title, String message, String type) {
         log.info("Értesítés küldése: worker={}, title={}, type={}", workerId, title, type);
-        return send(String.valueOf(workerId), title, message, type != null ? type : "INFO");
+        Notification n = send(String.valueOf(workerId), title, message, type != null ? type : "INFO");
+        // Email is küldünk (aszinkron, nem blokkolja a tranzakciót)
+        emailNotificationService.sendToWorker(workerId, title, message);
+        return n;
     }
 
     /**
-     * Értesítés küldése egy iroda összes aktív dolgozójának.
+     * Értesítés küldése egy iroda összes aktív dolgozójának (in-app + email).
      */
     @Transactional(rollbackFor = Exception.class)
     public int sendToBranch(UUID branchId, String title, String message) {
@@ -76,6 +80,8 @@ public class NotificationService {
             count++;
         }
         log.info("Értesítés küldve iroda összes dolgozójának: branch={}, count={}", branchId, count);
+        // Email is küldünk az irodának (aszinkron)
+        emailNotificationService.sendToBranch(branchId, title, message);
         return count;
     }
 

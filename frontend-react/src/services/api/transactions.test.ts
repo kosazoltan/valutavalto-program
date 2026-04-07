@@ -109,7 +109,7 @@ describe('transactionApi', () => {
       }
       mockApi.get.mockResolvedValue({ data: summary })
       const result = await transactionApi.getDailyTurnover()
-      expect(mockApi.get).toHaveBeenCalledWith('/transactions/daily-turnover')
+      expect(mockApi.get).toHaveBeenCalledWith('/transactions/daily-turnover', { params: {} })
       expect(result.totalBuyCount).toBe(5)
     })
   })

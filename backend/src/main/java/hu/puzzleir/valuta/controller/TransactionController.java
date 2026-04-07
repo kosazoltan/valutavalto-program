@@ -203,8 +203,11 @@ public class TransactionController {
      */
     @GetMapping("/daily-turnover")
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<TransactionService.DailyTurnoverSummary> getDailyTurnover() {
-        TransactionService.DailyTurnoverSummary summary = transactionService.getDailyTurnover();
+    public ResponseEntity<TransactionService.DailyTurnoverSummary> getDailyTurnover(
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate date) {
+        TransactionService.DailyTurnoverSummary summary = (date != null)
+                ? transactionService.getDailyTurnoverForDate(date)
+                : transactionService.getDailyTurnover();
         return ResponseEntity.ok(summary);
     }
 

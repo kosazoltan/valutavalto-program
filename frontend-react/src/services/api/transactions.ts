@@ -247,8 +247,9 @@ export const transactionApi = {
     const response = await api.get<Transaction[]>('/transactions/daily')
     return response.data
   },
-  getDailyTurnover: async (): Promise<DailyTurnoverSummary> => {
-    const response = await api.get<DailyTurnoverSummary>('/transactions/daily-turnover')
+  getDailyTurnover: async (date?: string): Promise<DailyTurnoverSummary> => {
+    const params = date ? { date } : {}
+    const response = await api.get<DailyTurnoverSummary>('/transactions/daily-turnover', { params })
     return response.data
   },
   buy: async (data: BuyRequest): Promise<Transaction> => {

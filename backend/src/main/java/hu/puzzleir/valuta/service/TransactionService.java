@@ -497,27 +497,33 @@ public class TransactionService {
      * Napi forgalom összesítés
      */
     @Transactional(readOnly = true)
+    public DailyTurnoverSummary getDailyTurnoverForDate(LocalDate date) {
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+        return buildTurnoverSummary(branchId, date);
+    }
+
+    @Transactional(readOnly = true)
     public DailyTurnoverSummary getDailyTurnover() {
         UUID branchId = SecurityUtils.getCurrentBranchId();
-        LocalDate today = LocalDate.now();
+        return buildTurnoverSummary(branchId, LocalDate.now());
+    }
 
-        BigDecimal buyTotal = transactionRepository.sumDailyTurnover(branchId, today, TransactionType.BUY);
-        BigDecimal sellTotal = transactionRepository.sumDailyTurnover(branchId, today, TransactionType.SELL);
-        long reversalCount = transactionRepository.countReversalsByBranchAndDate(branchId, today);
+    private DailyTurnoverSummary buildTurnoverSummary(UUID branchId, LocalDate date) {
+        BigDecimal buyTotal = transactionRepository.sumDailyTurnover(branchId, date, TransactionType.BUY);
+        BigDecimal sellTotal = transactionRepository.sumDailyTurnover(branchId, date, TransactionType.SELL);
+        long reversalCount = transactionRepository.countReversalsByBranchAndDate(branchId, date);
 
-        // Bővített mezők: count és handling fees
-        long buyCount = transactionRepository.countByBranchIdAndTransactionDateAndTransactionType(branchId, today, TransactionType.BUY);
-        long sellCount = transactionRepository.countByBranchIdAndTransactionDateAndTransactionType(branchId, today, TransactionType.SELL);
-        BigDecimal totalHandlingFees = transactionRepository.sumDailyHandlingFees(branchId, today);
+        long buyCount = transactionRepository.countByBranchIdAndTransactionDateAndTransactionType(branchId, date, TransactionType.BUY);
+        long sellCount = transactionRepository.countByBranchIdAndTransactionDateAndTransactionType(branchId, date, TransactionType.SELL);
+        BigDecimal totalHandlingFees = transactionRepository.sumDailyHandlingFees(branchId, date);
 
         return DailyTurnoverSummary.builder()
-                .date(today)
+                .date(date)
                 .buyTotal(buyTotal != null ? buyTotal : BigDecimal.ZERO)
                 .sellTotal(sellTotal != null ? sellTotal : BigDecimal.ZERO)
                 .netTotal((sellTotal != null ? sellTotal : BigDecimal.ZERO)
                         .subtract(buyTotal != null ? buyTotal : BigDecimal.ZERO))
                 .reversalCount(reversalCount)
-                // Bővített mezők
                 .totalBuyCount(buyCount)
                 .totalSellCount(sellCount)
                 .totalBuyHuf(buyTotal != null ? buyTotal : BigDecimal.ZERO)

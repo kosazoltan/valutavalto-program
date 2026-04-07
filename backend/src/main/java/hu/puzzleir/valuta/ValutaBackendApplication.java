@@ -6,12 +6,14 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.scheduling.annotation.EnableAsync;
 
 /**
  * Valutaváltó ERP — Spring Boot főosztály.
  */
 @SpringBootApplication
 @EnableJpaAuditing
+@EnableAsync
 @ComponentScan(basePackages = {"hu.puzzleir.valuta"})
 @EntityScan(basePackages = {"hu.puzzleir.valuta.entity", "hu.puzzleir.valuta.errorlog"})
 @EnableJpaRepositories(basePackages = {"hu.puzzleir.valuta.repository", "hu.puzzleir.valuta.errorlog"})
