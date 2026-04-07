@@ -72,7 +72,7 @@ export default function WesternUnionPage() {
         params: { branchId: localStorage.getItem('branchId') || '', page: 0, size: 50 }
       })
       setItems(safeArray<WuTransaction>(response.data?.content ?? response.data))
-    } catch (err) {
+    } catch {
       // Fallback to list endpoint
       try {
         const response = await api.get<WuTransaction[]>('/western-union')
