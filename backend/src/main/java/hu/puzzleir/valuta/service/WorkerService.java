@@ -541,18 +541,9 @@ public class WorkerService {
     }
 
     private Optional<Company> resolveCompanyForLogin(String normalizedCompanyCode) {
-        Optional<Company> directMatch = companyRepository.findByCode(normalizedCompanyCode)
+        // Strict company code match — no single-tenant fallback (security: T07 fix)
+        return companyRepository.findByCode(normalizedCompanyCode)
                 .or(() -> companyRepository.findByCodeIgnoreCase(normalizedCompanyCode));
-        if (directMatch.isPresent()) {
-            return directMatch;
-        }
-
-        // Single-tenant fallback: ha csak egy cég van, engedjük a bejelentkezést rá.
-        long companyCount = companyRepository.count();
-        if (companyCount == 1) {
-            return companyRepository.findAll().stream().findFirst();
-        }
-        return Optional.empty();
     }
 
     private Optional<Worker> resolveWorkerForLogin(Company company, String normalizedWorkerCode) {
