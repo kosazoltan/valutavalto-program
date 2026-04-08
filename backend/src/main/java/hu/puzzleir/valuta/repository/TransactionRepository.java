@@ -892,4 +892,24 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("dateFrom") LocalDate dateFrom,
         @Param("dateTo") LocalDate dateTo
     );
+
+    // ============ TRB EXPORT (legacy G4) ============
+
+    /**
+     * Összeg GROUP BY valutanem egy irodára, típusra, napra.
+     * TRB ügyfélforgalom export — legacy unit5.pas UgyfPrepare.
+     * Returns Object[]{currencyCode, sumAmount}
+     */
+    @Query("SELECT t.currency.code, COALESCE(SUM(t.foreignAmount), 0) FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionType = :type " +
+           "AND t.transactionDate = :date " +
+           "AND t.status = 'COMPLETED' " +
+           "GROUP BY t.currency.code " +
+           "ORDER BY t.currency.code")
+    List<Object[]> sumAmountByCurrencyAndBranchAndTypeAndDate(
+        @Param("branchId") UUID branchId,
+        @Param("type") TransactionType type,
+        @Param("date") LocalDate date
+    );
 }

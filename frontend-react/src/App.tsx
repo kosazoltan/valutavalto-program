@@ -119,6 +119,9 @@ const MovementManager = lazy(() => import('./pages/treasury/MovementManager'))
 const ReportsCirculars = lazy(() => import('./pages/treasury/ReportsCirculars'))
 const BankTransactions = lazy(() => import('./pages/treasury/BankTransactions'))
 const VatRefundPage = lazy(() => import('./pages/treasury/VatRefundPage'))
+const TrbExportPage = lazy(() => import('./pages/treasury/TrbExportPage'))
+const CustomerTurnoverPage = lazy(() => import('./pages/treasury/CustomerTurnoverPage'))
+const BankTurnoverPage = lazy(() => import('./pages/treasury/BankTurnoverPage'))
 const DaybookPage = lazy(() => import('./pages/reports/DaybookPage'))
 const DailyTurnoverPage = lazy(() => import('./pages/reports/DailyTurnoverPage'))
 const EveningClosingPage = lazy(() => import('./pages/closing/EveningClosingPage'))
@@ -411,6 +414,9 @@ export default function App() {
             <Route path="rates" element={<RateCreationDashboard />} />
             <Route path="reports" element={<ReportsCirculars />} />
             <Route path="vat" element={<VatRefundPage />} />
+            <Route path="trb-export" element={<TrbExportPage />} />
+            <Route path="customer-turnover" element={<CustomerTurnoverPage />} />
+            <Route path="bank-turnover" element={<BankTurnoverPage />} />
           </Route>
 
           {/* === Kamera Routes === */}

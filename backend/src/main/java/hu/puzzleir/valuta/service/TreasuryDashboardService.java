@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.dto.treasury.*;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.*;
+import hu.puzzleir.valuta.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +31,8 @@ public class TreasuryDashboardService {
     private final CashBalanceRepository cashBalanceRepository;
     private final InventoryMovementRepository movementRepository;
     private final BranchRepository branchRepository;
-        private final BranchGroupRepository branchGroupRepository;
+    private final BranchGroupRepository branchGroupRepository;
+    private final TransactionRepository transactionRepository;
 
     /**
      * Összes iroda összesítve (mai nap).
@@ -334,6 +336,110 @@ public class TreasuryDashboardService {
                                 .sorted(Comparator.comparing(TreasuryAggregateDto::getName, String.CASE_INSENSITIVE_ORDER))
                                 .collect(Collectors.toList());
         }
+
+    // ============ LEGACY G4: Ügyfél- és bankforgalom összesítők ============
+
+    /**
+     * Ügyfélforgalom összesítő irodánként, valutanemenként.
+     * Legacy: unit5.pas SUMUGYFELFORGALOM tábla.
+     */
+    @Transactional(readOnly = true)
+    public List<CustomerTurnoverDto> getCustomerTurnover(LocalDate date) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<Branch> branches = branchRepository.findByCompanyId(companyId);
+        List<CustomerTurnoverDto> result = new ArrayList<>();
+
+        for (Branch branch : branches) {
+            List<Object[]> sellRows = transactionRepository.sumAmountByCurrencyAndBranchAndTypeAndDate(
+                    branch.getId(), TransactionType.SELL, date);
+            List<Object[]> buyRows = transactionRepository.sumAmountByCurrencyAndBranchAndTypeAndDate(
+                    branch.getId(), TransactionType.BUY, date);
+
+            Map<String, CustomerTurnoverDto> map = new LinkedHashMap<>();
+
+            for (Object[] row : sellRows) {
+                String code = (String) row[0];
+                BigDecimal amount = row[1] != null ? (BigDecimal) row[1] : BigDecimal.ZERO;
+                map.computeIfAbsent(code, k -> CustomerTurnoverDto.builder()
+                        .branchCode(branch.getCode())
+                        .branchName(branch.getName())
+                        .currencyCode(k)
+                        .soldAmount(BigDecimal.ZERO)
+                        .boughtAmount(BigDecimal.ZERO)
+                        .sellCount(0)
+                        .buyCount(0)
+                        .build());
+                map.get(code).setSoldAmount(amount.setScale(4, RoundingMode.HALF_UP));
+            }
+
+            for (Object[] row : buyRows) {
+                String code = (String) row[0];
+                BigDecimal amount = row[1] != null ? (BigDecimal) row[1] : BigDecimal.ZERO;
+                map.computeIfAbsent(code, k -> CustomerTurnoverDto.builder()
+                        .branchCode(branch.getCode())
+                        .branchName(branch.getName())
+                        .currencyCode(k)
+                        .soldAmount(BigDecimal.ZERO)
+                        .boughtAmount(BigDecimal.ZERO)
+                        .sellCount(0)
+                        .buyCount(0)
+                        .build());
+                map.get(code).setBoughtAmount(amount.setScale(4, RoundingMode.HALF_UP));
+            }
+
+            result.addAll(map.values());
+        }
+
+        return result;
+    }
+
+    /**
+     * Bankforgalom összesítő valutanemenként.
+     * Legacy: unit5.pas SUMBANKFORGALOM tábla.
+     */
+    @Transactional(readOnly = true)
+    public List<BankTurnoverDto> getBankTurnover(LocalDate date) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<InventoryMovement> bankFlows = movementRepository.findBankFlowsByCompanyId(
+                companyId, date, date);
+
+        // Company info a branch-ön keresztül
+        List<Branch> branches = branchRepository.findByCompanyId(companyId);
+        String companyCode = "UNKNOWN";
+        String companyName = "Ismeretlen";
+        if (!branches.isEmpty() && branches.get(0).getCompany() != null) {
+            companyCode = branches.get(0).getCompany().getCode();
+            companyName = branches.get(0).getCompany().getName();
+        }
+
+        Map<String, BankTurnoverDto> flowMap = new LinkedHashMap<>();
+        for (InventoryMovement m : bankFlows) {
+            String code = m.getCurrency().getCode();
+            String finalCompanyCode = companyCode;
+            String finalCompanyName = companyName;
+            BankTurnoverDto flow = flowMap.computeIfAbsent(code,
+                    k -> BankTurnoverDto.builder()
+                            .companyCode(finalCompanyCode)
+                            .companyName(finalCompanyName)
+                            .currencyCode(code)
+                            .withdrawnAmount(BigDecimal.ZERO)
+                            .depositedAmount(BigDecimal.ZERO)
+                            .netFlow(BigDecimal.ZERO)
+                            .build());
+
+            if (m.getMovementType() == MovementType.BANK_WITHDRAW) {
+                flow.setWithdrawnAmount(flow.getWithdrawnAmount()
+                        .add(m.getAmount()).setScale(4, RoundingMode.HALF_UP));
+            } else if (m.getMovementType() == MovementType.BANK_DEPOSIT) {
+                flow.setDepositedAmount(flow.getDepositedAmount()
+                        .add(m.getAmount()).setScale(4, RoundingMode.HALF_UP));
+            }
+            flow.setNetFlow(flow.getWithdrawnAmount().subtract(flow.getDepositedAmount())
+                    .setScale(4, RoundingMode.HALF_UP));
+        }
+
+        return new ArrayList<>(flowMap.values());
+    }
 
         private BigDecimal nz(BigDecimal value) {
                 return value != null ? value : BigDecimal.ZERO;

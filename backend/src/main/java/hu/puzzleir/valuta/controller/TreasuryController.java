@@ -57,4 +57,26 @@ public class TreasuryController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(treasuryDashboardService.getCompanySummary(date));
     }
+
+    /**
+     * Ügyfélforgalom összesítő — irodánként, valutanemenként eladott/vett.
+     * Legacy: unit5.pas SUMUGYFELFORGALOM tábla nézete.
+     * GET /api/v1/treasury/customer-turnover?date=2026-04-07
+     */
+    @GetMapping("/customer-turnover")
+    public ResponseEntity<List<CustomerTurnoverDto>> getCustomerTurnover(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ResponseEntity.ok(treasuryDashboardService.getCustomerTurnover(date));
+    }
+
+    /**
+     * Bankforgalom összesítő — valutanemenként felvett/kifizetett KP, cégenként.
+     * Legacy: unit5.pas SUMBANKFORGALOM tábla nézete.
+     * GET /api/v1/treasury/bank-turnover?date=2026-04-07
+     */
+    @GetMapping("/bank-turnover")
+    public ResponseEntity<List<BankTurnoverDto>> getBankTurnover(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ResponseEntity.ok(treasuryDashboardService.getBankTurnover(date));
+    }
 }

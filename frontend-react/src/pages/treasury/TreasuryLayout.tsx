@@ -9,6 +9,9 @@ import {
   Keyboard,
   Building2,
   Receipt,
+  Download,
+  Users,
+  Landmark,
 } from 'lucide-react'
 import { useState, useCallback } from 'react'
 
@@ -20,6 +23,9 @@ const treasuryTabs = [
   { path: '/treasury/rates', label: 'Árfolyamkészítés', icon: TrendingUp, hotkey: 'F5', end: false },
   { path: '/treasury/reports', label: 'Jelentések', icon: FileText, hotkey: 'F6', end: false },
   { path: '/treasury/vat', label: 'ÁFA visszatérítés', icon: Receipt, hotkey: 'F7', end: false },
+  { path: '/treasury/trb-export', label: 'TRB Export', icon: Download, hotkey: 'F8', end: false },
+  { path: '/treasury/customer-turnover', label: 'Ügyfélforgalom', icon: Users, hotkey: 'F9', end: false },
+  { path: '/treasury/bank-turnover', label: 'Bankforgalom', icon: Landmark, hotkey: 'F10', end: false },
 ] as const
 
 export default function TreasuryLayout() {
@@ -37,6 +43,9 @@ export default function TreasuryLayout() {
   useHotkeys('f5', (e) => { e.preventDefault(); navigate('/treasury/rates') }, { enableOnFormTags: false })
   useHotkeys('f6', (e) => { e.preventDefault(); navigate('/treasury/reports') }, { enableOnFormTags: false })
   useHotkeys('f7', (e) => { e.preventDefault(); navigate('/treasury/vat') }, { enableOnFormTags: false })
+  useHotkeys('f8', (e) => { e.preventDefault(); navigate('/treasury/trb-export') }, { enableOnFormTags: false })
+  useHotkeys('f9', (e) => { e.preventDefault(); navigate('/treasury/customer-turnover') }, { enableOnFormTags: false })
+  useHotkeys('f10', (e) => { e.preventDefault(); navigate('/treasury/bank-turnover') }, { enableOnFormTags: false })
   useHotkeys('shift+/', () => toggleHelp(), { enableOnFormTags: false })
   useHotkeys('escape', () => closeHelp(), { enableOnFormTags: true })
 
@@ -96,6 +105,9 @@ export default function TreasuryLayout() {
               <HotkeyRow keys="F5" desc="Árfolyamkészítés" />
               <HotkeyRow keys="F6" desc="Jelentések" />
               <HotkeyRow keys="F7" desc="ÁFA visszatérítés" />
+              <HotkeyRow keys="F8" desc="TRB Export" />
+              <HotkeyRow keys="F9" desc="Ügyfélforgalom" />
+              <HotkeyRow keys="F10" desc="Bankforgalom" />
               <div className="border-t border-secondary-200 pt-3 mt-3">
                 <div className="text-sm font-semibold text-secondary-600 uppercase tracking-wider mb-3">Általános</div>
                 <HotkeyRow keys="?" desc="Billentyűparancsok" />
