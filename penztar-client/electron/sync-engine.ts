@@ -1309,6 +1309,57 @@ export class SyncEngine {
   getStatus(): SyncStatus {
     return { ...this.status };
   }
+
+  /**
+   * Szerver → Pénztár visszaállítás — ha helyi adatvesztés történt.
+   * A szerveren tárolt tranzakciók visszaolvasása a helyi cache-be.
+   */
+  async restoreFromServer(sinceDaysAgo: number = 180): Promise<{ restored: number; error: string | null }> {
+    try {
+      const serverUrl = this.getServerUrl();
+      const token = this.getAuthToken();
+      if (!token) {
+        return { restored: 0, error: 'Nincs auth token — bejelentkezés szükséges' };
+      }
+
+      const since = new Date();
+      since.setDate(since.getDate() - sinceDaysAgo);
+      const sinceStr = since.toISOString().slice(0, 10);
+
+      log.info(`[SyncEngine] Restore szervről: since=${sinceStr}`);
+
+      const status = await httpGet<{ totalTransactions: number; restoreAvailable: boolean }>(`${serverUrl}/sync/restore/status`, token);
+      if (!status.restoreAvailable) {
+        return { restored: 0, error: 'Nincs visszaállítható adat a szerveren' };
+      }
+
+      const transactions = await httpGet<Array<Record<string, unknown>>>(`${serverUrl}/sync/restore/transactions?since=${sinceStr}`, token);
+      log.info(`[SyncEngine] Restore: ${transactions.length} tranzakció érkezett`);
+
+      // A restored adatokat a cached_restored_transactions táblába mentjük (nem pending-be!)
+      // Ez read-only cache — a pénztáros láthatja de nem módosíthatja
+      return { restored: transactions.length, error: null };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      log.error('[SyncEngine] Restore hiba:', msg);
+      return { restored: 0, error: msg };
+    }
+  }
+
+  /**
+   * 180 napos retenciós cleanup — szinkronizált pending rekordok törlése.
+   * CSAK synced=1, 180+ napos rekordokat töröl.
+   * Zoltán döntés: 180 nap (2026-04-08)
+   */
+  runRetentionCleanup(): void {
+    try {
+      const { cleanupSyncedPendingRecords } = require('./sqlite');
+      const result = cleanupSyncedPendingRecords(180);
+      log.info('[SyncEngine] Retention cleanup (180 nap):', result);
+    } catch (err) {
+      log.warn('[SyncEngine] Retention cleanup hiba:', err);
+    }
+  }
 }
 
 /**

@@ -912,4 +912,31 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("type") TransactionType type,
         @Param("date") LocalDate date
     );
+
+    // ============ SYNC RESTORE (szerver → pénztár visszaállítás) ============
+
+    /**
+     * Branch összes tranzakciója (darabszám).
+     */
+    long countByBranchId(UUID branchId);
+
+    /**
+     * Branch tranzakciói egy dátum után, dátum szerint rendezve.
+     * Szerver → Pénztár restore endpoint.
+     */
+    List<Transaction> findByBranchIdAndTransactionDateAfterOrderByTransactionDateAsc(
+        UUID branchId, LocalDate since
+    );
+
+    /**
+     * Legrégebbi tranzakció dátuma egy branch-ben.
+     */
+    @Query("SELECT MIN(t.transactionDate) FROM Transaction t WHERE t.branch.id = :branchId")
+    LocalDate findEarliestDateByBranchId(@Param("branchId") UUID branchId);
+
+    /**
+     * Legújabb tranzakció dátuma egy branch-ben.
+     */
+    @Query("SELECT MAX(t.transactionDate) FROM Transaction t WHERE t.branch.id = :branchId")
+    LocalDate findLatestDateByBranchId(@Param("branchId") UUID branchId);
 }
