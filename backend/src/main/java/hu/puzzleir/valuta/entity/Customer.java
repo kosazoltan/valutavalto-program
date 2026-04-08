@@ -1,6 +1,5 @@
 package hu.puzzleir.valuta.entity;
 
-import hu.puzzleir.valuta.config.EncryptedStringConverter;
 import hu.puzzleir.valuta.entity.Company;
 import jakarta.persistence.*;
 import lombok.*;
@@ -22,8 +21,8 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "customer", indexes = {
-    @Index(name = "idx_customer_company", columnList = "company_id")
-    // idx_customer_document eltavolitva: document_number titkositott, index nem hasznalhato keresesre
+    @Index(name = "idx_customer_company", columnList = "company_id"),
+    @Index(name = "idx_customer_document", columnList = "document_number")
 })
 @EntityListeners(AuditingEntityListener.class)
 @Getter
@@ -65,10 +64,9 @@ public class Customer {
     private String birthName;
 
     /**
-     * Anyja neve — GDPR Art. 9 titkosított
+     * Anyja neve
      */
-    @Convert(converter = EncryptedStringConverter.class)
-    @Column(name = "mother_name", length = 600)
+    @Column(name = "mother_name", length = 200)
     private String motherName;
 
     /**
@@ -78,10 +76,9 @@ public class Customer {
     private LocalDate birthDate;
 
     /**
-     * Születési hely — GDPR Art. 9 titkosított
+     * Születési hely
      */
-    @Convert(converter = EncryptedStringConverter.class)
-    @Column(name = "birth_place", length = 300)
+    @Column(name = "birth_place", length = 100)
     private String birthPlace;
 
     /**
@@ -91,11 +88,10 @@ public class Customer {
     private String nationality;
 
     /**
-     * Személyi igazolvány / útlevél szám — GDPR Art. 87 titkosított
+     * Személyi igazolvány / útlevél szám
      * Legacy: dokumentum azonosításhoz
      */
-    @Convert(converter = EncryptedStringConverter.class)
-    @Column(name = "document_number", length = 200)
+    @Column(name = "document_number", length = 50)
     private String documentNumber;
 
     /**
@@ -112,10 +108,9 @@ public class Customer {
     private LocalDate documentExpiry;
 
     /**
-     * Személyi igazolvány szám — GDPR Art. 87 titkosított
+     * Személyi igazolvány szám (külön mező)
      */
-    @Convert(converter = EncryptedStringConverter.class)
-    @Column(name = "id_card_number", length = 200)
+    @Column(name = "id_card_number", length = 30)
     private String idCardNumber;
 
     /**
@@ -125,10 +120,9 @@ public class Customer {
     private LocalDate idCardExpiry;
 
     /**
-     * Útlevél szám — GDPR Art. 87 titkosított
+     * Útlevél szám (külön mező)
      */
-    @Convert(converter = EncryptedStringConverter.class)
-    @Column(name = "passport_number", length = 200)
+    @Column(name = "passport_number", length = 30)
     private String passportNumber;
 
     /**
@@ -138,11 +132,10 @@ public class Customer {
     private LocalDate passportExpiry;
 
     /**
-     * Lakcím — GDPR Art. 6 titkosított
+     * Lakcím
      * Legacy: UGYFELCIM
      */
-    @Convert(converter = EncryptedStringConverter.class)
-    @Column(length = 1500)
+    @Column(length = 500)
     private String address;
 
     /**
@@ -164,17 +157,15 @@ public class Customer {
     private String country;
 
     /**
-     * Telefonszám — GDPR Art. 6 titkosított
+     * Telefonszám
      */
-    @Convert(converter = EncryptedStringConverter.class)
-    @Column(length = 200)
+    @Column(length = 30)
     private String phone;
 
     /**
-     * Email — GDPR Art. 6 titkosított
+     * Email
      */
-    @Convert(converter = EncryptedStringConverter.class)
-    @Column(length = 300)
+    @Column(length = 100)
     private String email;
 
     /**
@@ -191,10 +182,9 @@ public class Customer {
     private String companyName;
 
     /**
-     * Adószám — adóügyi titoktartás, titkosított
+     * Adószám (ha jogi személy)
      */
-    @Convert(converter = EncryptedStringConverter.class)
-    @Column(name = "tax_number", length = 200)
+    @Column(name = "tax_number", length = 20)
     private String taxNumber;
 
     /**

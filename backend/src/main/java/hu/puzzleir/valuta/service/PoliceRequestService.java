@@ -88,7 +88,7 @@ public class PoliceRequestService {
             UUID companyId = SecurityUtils.getCurrentCompanyId();
             List<Customer> customers;
             if (request.getDocumentNumber() != null && !request.getDocumentNumber().isBlank()) {
-                customers = customerRepository.findByCompanyIdAndDocumentNumber(
+                customers = customerRepository.findByCompanyIdAndDocumentNumberContainingIgnoreCase(
                         companyId, request.getDocumentNumber());
             } else {
                 customers = customerRepository.findByCompanyIdAndNameContainingIgnoreCase(
