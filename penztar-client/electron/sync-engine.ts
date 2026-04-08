@@ -240,10 +240,12 @@ export class SyncEngine {
         return;
       }
     } catch (err) {
-      console.warn('[SyncEngine] Token titkosított mentése nem sikerült, plaintext fallback:', err);
+      console.warn('[SyncEngine] DPAPI titkositas sikertelen:', err);
     }
 
-    setConfig('auth_token', token);
+    // Security: NEM mentjuk plaintext-ben diskre — csak volatile in-memory
+    console.warn('[SyncEngine] safeStorage nem elerheto — token csak session-szinten tarolva');
+    (global as Record<string, unknown>).__volatile_sync_token = token;
   }
 
   private clearStoredAuthToken(): void {
