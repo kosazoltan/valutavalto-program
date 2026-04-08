@@ -126,9 +126,10 @@ public class StornoService {
                         companyId, transaction.getCurrency().getId(), branchId);
                 if (latestRateOpt.isPresent()) {
                     ExchangeRate latest = latestRateOpt.get();
-                    // A tranzakció típusától függően buy vagy sell rate
+                    // A tranzakció típusától és összegsávjától függően válasszuk az aktuális árfolyamot
                     BigDecimal latestApplicableRate = transaction.getTransactionType() == TransactionType.BUY
-                            ? latest.getBaseBuyRate() : latest.getBaseSellRate();
+                            ? latest.getBuyRateForAmount(transaction.getHufAmount())
+                            : latest.getSellRateForAmount(transaction.getHufAmount());
                     if (latestApplicableRate != null && latestApplicableRate.compareTo(BigDecimal.ZERO) > 0) {
                         currentRate = latestApplicableRate;
                         rateDifference = currentRate.subtract(originalRate);

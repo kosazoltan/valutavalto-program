@@ -9,6 +9,25 @@ let db;
 if (fs.existsSync(DB_PATH)) { db = new SQL.Database(fs.readFileSync(DB_PATH)); }
 else { db = new SQL.Database(); }
 
+db.run(`
+  CREATE TABLE IF NOT EXISTS entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category TEXT NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    importance INTEGER DEFAULT 5,
+    tags TEXT,
+    session_id TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE TABLE IF NOT EXISTS meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+`);
+
 function insertEntry(cat, title, content, imp, tags) {
   db.run('INSERT INTO entries (category, title, content, importance, tags) VALUES (?, ?, ?, ?, ?)', [cat, title, content, imp, tags]);
 }
@@ -75,7 +94,7 @@ const contexts = [
   ['TRB Export implementalva', 'TrbExportService: legacy unit5.pas WImport modern megvalositasa. Preview JSON + TXT + Excel. 3 JELENTES szekció: PENZTARALLOMANY, UGYFELFORGALOM, BANKIFORGALOM. Bankkartyás megkulonboztetes implementalva (sumCardSalesByCurrencyAndBranchAndDate).', 7, 'feature,trb'],
   ['Ketiranyu sync', 'Penztar→Szerver: sync-engine.ts syncAll() 30s-enkent. Szerver→Penztar: SyncRestoreController GET /api/v1/sync/restore/transactions. 180 napos retencio: cleanupSyncedPendingRecords.', 8, 'sync,feature'],
   ['7 cimletezesi strategia', 'DenominationOptimizationService: GREEDY, MIN_BANKNOTES, MIN_TOTAL, DYNAMIC, MIN_COINS, CUSTOM, BRANCH_SPECIFIC. MIN_COINS: bankjegy eloszor, erme maradek.', 6, 'feature,denomination'],
-  ['Arfolyam-elteres sztornokor', 'StornoCheckResultDto: +originalRate, +currentRate, +rateDifference, +rateChanged. ReversalRequest: +useCurrentRate. A tenyleges ExchangeRateService lookup meg implementalando.', 7, 'feature,storno,todo'],
+  ['Arfolyam-elteres sztornokor', 'StornoCheckResultDto: +originalRate, +currentRate, +rateDifference, +rateChanged. A checkStorno az aktualis branch-hoz tartozo ExchangeRate-bol amount-aware arfolyamot valaszt (getBuyRateForAmount / getSellRateForAmount a hufAmount alapjan).', 7, 'feature,storno'],
   ['Felmeres tudasbazis', 'docs/valuta-knowledge.sqlite: 414 Felmeres dok (DOCX, XLSX, CSV, TXT, PDF, kep, hang). 6 Whisper transzkripció. FTS5 kereso: docs/valuta-kb-search.py.', 6, 'knowledge,felmeres'],
 ];
 for (const [title, content, imp, tags] of contexts) insertEntry('context', title, content, imp, tags);
