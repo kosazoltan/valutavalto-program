@@ -3,11 +3,15 @@
 import('dotenv/config').catch(() => { /* production: dotenv not available, safe to skip */ });
 import { app, BrowserWindow, ipcMain, dialog, protocol, net, safeStorage, session } from 'electron';
 
-// Windows 11 Insider (26200+) sandbox compatibility fix
-// The Chromium sandbox fails to initialize on recent Windows Insider builds,
-// causing the Electron process to silently exit with code 0 (packaged) or 1 (dev).
-app.commandLine.appendSwitch('no-sandbox');
-app.commandLine.appendSwitch('disable-gpu-sandbox');
+// Windows 11 Insider (26200+) sandbox compatibility fix — CONDITIONAL
+// Only disable sandbox on affected Windows Insider builds (26200+).
+// Normal Windows 10/11 keeps sandbox enabled for security.
+const osRelease = require('node:os').release(); // e.g. "10.0.26200"
+const osBuild = parseInt(osRelease.split('.')[2] || '0', 10);
+if (osBuild >= 26200) {
+  app.commandLine.appendSwitch('no-sandbox');
+  app.commandLine.appendSwitch('disable-gpu-sandbox');
+}
 import log from 'electron-log/main';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -109,7 +113,7 @@ function createWindow(): void {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: osBuild < 26200, // Sandbox ON normal Windows-on, OFF Insider 26200+ builden
       webSecurity: true,
       allowRunningInsecureContent: false,
       experimentalFeatures: false,
@@ -520,8 +524,9 @@ ipcMain.handle('get-local-audit-events', async (_event, limit?: number) => {
 ipcMain.handle('secure-store-token', async (_event, token: string): Promise<boolean> => {
   try {
     if (!safeStorage.isEncryptionAvailable()) {
-      log.warn('[SafeStorage] Encryption not available, falling back to config store');
-      setConfig('auth_token', token);
+      log.warn('[SafeStorage] Encryption not available — token stored in-memory only, NOT persisted to disk');
+      // Security: NEM mentjuk plaintext-ben a diskre. Csak session-szintu valtozo.
+      (global as Record<string, unknown>).__volatile_auth_token = token;
       return true;
     }
     const encrypted = safeStorage.encryptString(token);
@@ -549,17 +554,20 @@ ipcMain.handle('secure-load-token', async (): Promise<string | null> => {
         deleteConfig('auth_token_encrypted');
       }
     }
-    // Fallback: régi plaintext token (migráció)
+    // Fallback: régi plaintext token (migráció) — torlés + encrypt
     const plaintext = getConfig('auth_token');
     if (plaintext) {
       log.info('[SafeStorage] Migrating plaintext token to encrypted storage');
+      deleteConfig('auth_token'); // AZONNAL torlés — ne maradjon plaintext a DB-ben
       if (safeStorage.isEncryptionAvailable()) {
         const enc = safeStorage.encryptString(plaintext);
         setConfig('auth_token_encrypted', enc.toString('base64'));
-        deleteConfig('auth_token');
       }
       return plaintext;
     }
+    // In-memory volatile fallback (safeStorage nem elerheto)
+    const volatile = (global as Record<string, unknown>).__volatile_auth_token;
+    if (typeof volatile === 'string') return volatile;
     return null;
   } catch (err) {
     log.error('[SafeStorage] load-token error:', err);
@@ -570,6 +578,13 @@ ipcMain.handle('secure-load-token', async (): Promise<string | null> => {
 ipcMain.handle('secure-clear-token', async (): Promise<void> => {
   deleteConfig('auth_token_encrypted');
   deleteConfig('auth_token');
+});
+
+// --- Restart App IPC Handler ---
+ipcMain.handle('restart-app', async (): Promise<void> => {
+  log.info('[App] Restart requested via IPC');
+  app.relaunch();
+  app.exit(0);
 });
 
 // --- App Lifecycle ---

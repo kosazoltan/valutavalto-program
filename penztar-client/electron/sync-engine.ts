@@ -210,7 +210,13 @@ export class SyncEngine {
   private getBootstrapCredentials(): BootstrapCredentials | null {
     const companyCode = process.env.PENZTAR_BOOTSTRAP_COMPANY_CODE?.trim() || getConfig('bootstrap_company_code')?.trim() || '';
     const workerCode = process.env.PENZTAR_BOOTSTRAP_WORKER_CODE?.trim() || getConfig('bootstrap_worker_code')?.trim() || '';
+    // Security: env var elsodleges, config fallback csak ha nincs env
+    // A bootstrap_password NEM mentodhet plaintext-ben a DB-be tobbe
     const password = process.env.PENZTAR_BOOTSTRAP_PASSWORD?.trim() || getConfig('bootstrap_password')?.trim() || '';
+    // Ha config-bol jott, azonnal toroljuk a plaintext verziót (egyhasznalatos migracio)
+    if (!process.env.PENZTAR_BOOTSTRAP_PASSWORD && getConfig('bootstrap_password')) {
+      deleteConfig('bootstrap_password');
+    }
     const roleCode = process.env.PENZTAR_BOOTSTRAP_ROLE_CODE?.trim() || getConfig('bootstrap_role_code')?.trim() || null;
 
     if (!companyCode || !workerCode || !password) {
