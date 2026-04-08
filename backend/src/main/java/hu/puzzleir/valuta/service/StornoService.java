@@ -7,10 +7,12 @@ import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.dto.storno.StornoApprovalDto;
 import hu.puzzleir.valuta.dto.storno.StornoCheckResultDto;
 import hu.puzzleir.valuta.dto.storno.StornoRequestDto;
+import hu.puzzleir.valuta.entity.ExchangeRate;
 import hu.puzzleir.valuta.entity.StornoApproval;
 import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.entity.TransactionStatus;
 import hu.puzzleir.valuta.entity.TransactionType;
+import hu.puzzleir.valuta.repository.ExchangeRateRepository;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.mapper.TransactionMapper;
 import hu.puzzleir.valuta.repository.StornoApprovalRepository;
@@ -47,6 +49,7 @@ public class StornoService {
     private final BranchRepository branchRepository;
     private final TransactionService transactionService;
     private final DictionaryRepository dictionaryRepository;
+    private final ExchangeRateRepository exchangeRateRepository;
 
     // Napi sztornó limit supervisor jóváhagyás nélkül — iroda szinten
     private static final int DAILY_STORNO_LIMIT_BRANCH = 3;
@@ -109,12 +112,44 @@ public class StornoService {
             message = "Sztornó végrehajtható.";
         }
 
+        // Árfolyam-eltérés ellenőrzés (Felmérés: sztorno.docx követelmény)
+        BigDecimal originalRate = transaction.getExchangeRate();
+        BigDecimal currentRate = originalRate; // Default: eredeti
+        BigDecimal rateDifference = BigDecimal.ZERO;
+        boolean rateChanged = false;
+
+        if (transaction.getCurrency() != null && originalRate != null) {
+            // Aktuális árfolyam lekérése az ExchangeRateRepository-ból
+            try {
+                UUID companyId = SecurityUtils.getCurrentCompanyId();
+                var latestRateOpt = exchangeRateRepository.findLatestRate(
+                        companyId, transaction.getCurrency().getId(), branchId);
+                if (latestRateOpt.isPresent()) {
+                    ExchangeRate latest = latestRateOpt.get();
+                    // A tranzakció típusától függően buy vagy sell rate
+                    BigDecimal latestApplicableRate = transaction.getTransactionType() == TransactionType.BUY
+                            ? latest.getBuyRate() : latest.getSellRate();
+                    if (latestApplicableRate != null && latestApplicableRate.compareTo(BigDecimal.ZERO) > 0) {
+                        currentRate = latestApplicableRate;
+                        rateDifference = currentRate.subtract(originalRate);
+                        rateChanged = rateDifference.abs().compareTo(BigDecimal.valueOf(0.01)) > 0;
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Árfolyam-eltérés ellenőrzés sikertelen: {}", e.getMessage());
+            }
+        }
+
         return StornoCheckResultDto.builder()
                 .requiresApproval(requiresApproval)
                 .dailyStornoCount(dailyCountBranch)
                 .transactionId(String.valueOf(transactionId))
                 .transactionNumber(transaction.getReceiptNumber())
                 .message(message)
+                .originalRate(originalRate)
+                .currentRate(currentRate)
+                .rateDifference(rateDifference)
+                .rateChanged(rateChanged)
                 .build();
     }
 
