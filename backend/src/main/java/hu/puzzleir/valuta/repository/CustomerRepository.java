@@ -67,7 +67,9 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
     List<Customer> findByCompanyIdAndNameContainingIgnoreCase(UUID companyId, String name);
 
     /**
-     * Keresés okmányszám alapján (rendőrségi adatkéréshez) — company szűréssel
+     * Keresés okmányszám alapján (rendőrségi adatkéréshez) — company szűréssel.
+     * FONTOS: documentNumber titkosított mező (@Convert) → LIKE keresés NEM lehetséges.
+     * Pontos egyezés alapján keres (a JPA automatikusan titkosítja a paramétert).
      */
-    List<Customer> findByCompanyIdAndDocumentNumberContainingIgnoreCase(UUID companyId, String documentNumber);
+    List<Customer> findByCompanyIdAndDocumentNumber(UUID companyId, String documentNumber);
 }
