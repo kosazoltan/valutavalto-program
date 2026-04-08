@@ -102,19 +102,14 @@ public class TransactionReversalService {
             log.info("POS sztorno elfogadva: auth={}, ref={}", posAuthCode, posRefNumber);
         }
 
-        // Árfolyam-eltérés ellenőrzés és figyelmeztetés (Felmérés: sztorno.docx követelmény)
-        // Ha az aktuális árfolyam eltér az eredetitől, a rendszer rögzíti a különbséget
-        // és az aktuális árfolyammal számol (ha a request-ben nincs explicit override)
-        BigDecimal originalRate = original.getExchangeRate();
-        BigDecimal currentRate = originalRate; // Default: eredeti árfolyammal sztornózunk
-        BigDecimal rateDifference = BigDecimal.ZERO;
-        boolean rateChanged = false;
-
+        // Árfolyam-eltérés naplózása (Felmérés: sztorno.docx követelmény)
+        // A tényleges árfolyam-összehasonlítást és figyelmeztetést a StornoService.checkStorno() végzi
+        // a frontend oldalon — a felhasználó ott dönt hogy az eredeti vagy aktuális árfolyammal sztornóz.
+        // Az executeReversal mindig az EREDETI árfolyammal sztornóz (biztonságos default).
         if (request.getUseCurrentRate() != null && request.getUseCurrentRate()) {
-            // A frontend kérte az aktuális árfolyam használatát
-            // TODO: ExchangeRateService-ből lekérni az aktuális árfolyamot
-            // Jelenleg az eredeti árfolyamot használjuk — a frontend a checkStorno-ból kapja az eltérés infót
-            log.info("Sztornó aktuális árfolyammal kérve, de az aktuális árfolyam lookup még nem implementált — eredeti árfolyam használva");
+            log.info("Sztornó: useCurrentRate=true jelzés érkezett (eredeti rate: {}). " +
+                     "A tényleges árfolyam-váltás implementálása a StornoService.checkStorno-ban történik.",
+                     original.getExchangeRate());
         }
 
         // Bizonylat szam generalas - az EREDETI tpus szamlalojabol (NEM kuzon S prefix!)

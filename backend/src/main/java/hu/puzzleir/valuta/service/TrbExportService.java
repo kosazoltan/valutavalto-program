@@ -127,12 +127,9 @@ public class TrbExportService {
                             .append(formatBd(line.getSold())).append("\t")
                             .append(formatBd(line.getBought())).append("\t")
                             .append("0");
-                    if ("HUF".equals(line.getCurrencyCode())) {
-                        sb.append("\t").append(formatBd(line.getBankCardAmount()))
-                                .append("\t").append(formatBd(line.getBankCardFee()));
-                    } else {
-                        sb.append("\t0\t0");
-                    }
+                    // Bankkártyás összeg és kezelési díj minden valutanemnél (nem csak HUF)
+                    sb.append("\t").append(formatBd(line.getBankCardAmount()))
+                            .append("\t").append(formatBd(line.getBankCardFee()));
                     sb.append("\r\n");
                 }
                 sb.append("JELENTES END\r\n");

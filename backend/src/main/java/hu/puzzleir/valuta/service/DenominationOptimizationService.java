@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.Denomination;
+import hu.puzzleir.valuta.entity.DenominationType;
 import hu.puzzleir.valuta.repository.DenominationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -191,12 +192,12 @@ public class DenominationOptimizationService {
      * Felmérés: 07_cimletkezeles.md követelmény.
      */
     private Map<BigDecimal, Integer> minCoins(List<Denomination> available, BigDecimal amount) {
-        // Szétválogatjuk bankjegyekre és érmékre
+        // Szétválogatjuk bankjegyekre és érmékre a denominationType alapján
         List<Denomination> banknotes = available.stream()
-                .filter(d -> !Boolean.TRUE.equals(d.getIsCoin()))
+                .filter(d -> d.getDenominationType() == DenominationType.BANKNOTE)
                 .collect(java.util.stream.Collectors.toList());
         List<Denomination> coins = available.stream()
-                .filter(d -> Boolean.TRUE.equals(d.getIsCoin()))
+                .filter(d -> d.getDenominationType() == DenominationType.COIN)
                 .collect(java.util.stream.Collectors.toList());
 
         // Először bankjegyekkel fedünk amennyit lehet
@@ -211,6 +212,15 @@ public class DenominationOptimizationService {
         if (remaining.compareTo(BigDecimal.ZERO) > 0) {
             Map<BigDecimal, Integer> coinResult = greedy(coins, remaining);
             coinResult.forEach((k, v) -> result.merge(k, v, Integer::sum));
+
+            // Ellenőrzés: a teljes összeg lefedve?
+            BigDecimal totalCovered = result.entrySet().stream()
+                    .map(e -> e.getKey().multiply(BigDecimal.valueOf(e.getValue())))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal finalRemaining = amount.subtract(totalCovered);
+            if (finalRemaining.compareTo(BigDecimal.ZERO) > 0) {
+                log.warn("MIN_COINS: nem sikerült teljesen lefedni az összeget. Maradék: {}", finalRemaining);
+            }
         }
 
         return result;
