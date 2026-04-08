@@ -325,7 +325,7 @@ public class TrbExportService {
 
         for (Object[] row : sellRows) {
             String code = (String) row[0];
-            BigDecimal amount = row[1] != null ? (BigDecimal) row[1] : BigDecimal.ZERO;
+            BigDecimal amount = row[1] != null ? ((BigDecimal) row[1]).setScale(4, RoundingMode.HALF_UP) : BigDecimal.ZERO;
             map.computeIfAbsent(code, k -> TrbCurrencyLineDto.builder()
                     .currencyCode(k)
                     .sold(BigDecimal.ZERO)
@@ -337,7 +337,7 @@ public class TrbExportService {
 
         for (Object[] row : buyRows) {
             String code = (String) row[0];
-            BigDecimal amount = row[1] != null ? (BigDecimal) row[1] : BigDecimal.ZERO;
+            BigDecimal amount = row[1] != null ? ((BigDecimal) row[1]).setScale(4, RoundingMode.HALF_UP) : BigDecimal.ZERO;
             map.computeIfAbsent(code, k -> TrbCurrencyLineDto.builder()
                     .currencyCode(k)
                     .sold(BigDecimal.ZERO)
@@ -389,7 +389,7 @@ public class TrbExportService {
     private CellStyle createNumberStyle(Workbook wb) {
         CellStyle style = wb.createCellStyle();
         DataFormat format = wb.createDataFormat();
-        style.setDataFormat(format.getFormat("### ### ###"));
+        style.setDataFormat(format.getFormat("#,##0.0000"));
         return style;
     }
 

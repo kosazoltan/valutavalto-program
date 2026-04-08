@@ -17,14 +17,17 @@ export default function CustomerTurnoverPage() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [data, setData] = useState<CustomerTurnover[]>([])
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
       const res = await api.get(`/treasury/customer-turnover?date=${date}`)
       setData(Array.isArray(res.data) ? res.data : [])
     } catch (err) {
       logger.error('CustomerTurnoverPage', 'Fetch failed', err)
+      setError('Nem sikerült betölteni az adatokat. Próbáld újra.')
     } finally {
       setLoading(false)
     }
@@ -71,6 +74,13 @@ export default function CustomerTurnoverPage() {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="rounded border border-red-300 bg-red-50 p-4 text-sm text-red-700">
+          {error}
+          <button onClick={fetchData} className="ml-3 underline">Újra</button>
+        </div>
+      )}
 
       {Object.entries(grouped).map(([branchLabel, rows]) => (
         <div key={branchLabel} className="rounded border bg-white p-4 shadow-sm">

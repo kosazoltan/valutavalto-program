@@ -16,14 +16,17 @@ export default function BankTurnoverPage() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [data, setData] = useState<BankTurnover[]>([])
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
       const res = await api.get(`/treasury/bank-turnover?date=${date}`)
       setData(Array.isArray(res.data) ? res.data : [])
     } catch (err) {
       logger.error('BankTurnoverPage', 'Fetch failed', err)
+      setError('Nem sikerült betölteni az adatokat. Próbáld újra.')
     } finally {
       setLoading(false)
     }
@@ -62,6 +65,13 @@ export default function BankTurnoverPage() {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="rounded border border-red-300 bg-red-50 p-4 text-sm text-red-700">
+          {error}
+          <button onClick={fetchData} className="ml-3 underline">Újra</button>
+        </div>
+      )}
 
       {data.length > 0 && (
         <div className="rounded border bg-white p-4 shadow-sm">

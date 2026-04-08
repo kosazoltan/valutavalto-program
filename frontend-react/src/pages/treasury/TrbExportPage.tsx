@@ -47,14 +47,17 @@ export default function TrbExportPage() {
   })
   const [data, setData] = useState<TrbExportData | null>(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const fetchPreview = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
       const res = await api.get(`/trb-export/preview?date=${date}`)
       setData(res.data)
     } catch (err) {
       logger.error('TrbExportPage', 'Preview fetch failed', err)
+      setError('Nem sikerült betölteni az adatokat. Próbáld újra.')
     } finally {
       setLoading(false)
     }
@@ -82,7 +85,7 @@ export default function TrbExportPage() {
   }
 
   const formatNum = (n: number) =>
-    n != null ? new Intl.NumberFormat('hu-HU').format(Math.round(n)) : '0'
+    n != null ? new Intl.NumberFormat('hu-HU', { maximumFractionDigits: 4 }).format(n) : '0'
 
   return (
     <div className="space-y-6">
@@ -122,6 +125,13 @@ export default function TrbExportPage() {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="rounded border border-red-300 bg-red-50 p-4 text-sm text-red-700">
+          {error}
+          <button onClick={fetchPreview} className="ml-3 underline">Újra</button>
+        </div>
+      )}
 
       {data && (
         <div className="rounded border bg-white p-4 shadow-sm">
