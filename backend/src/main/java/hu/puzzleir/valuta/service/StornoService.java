@@ -128,7 +128,7 @@ public class StornoService {
                     ExchangeRate latest = latestRateOpt.get();
                     // A tranzakció típusától függően buy vagy sell rate
                     BigDecimal latestApplicableRate = transaction.getTransactionType() == TransactionType.BUY
-                            ? latest.getBuyRate() : latest.getSellRate();
+                            ? latest.getBaseBuyRate() : latest.getBaseSellRate();
                     if (latestApplicableRate != null && latestApplicableRate.compareTo(BigDecimal.ZERO) > 0) {
                         currentRate = latestApplicableRate;
                         rateDifference = currentRate.subtract(originalRate);
