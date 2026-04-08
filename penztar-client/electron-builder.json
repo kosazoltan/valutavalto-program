@@ -29,7 +29,8 @@
     "installerIcon": "build/icons/app-icon-bestchange.ico",
     "uninstallerIcon": "build/icons/app-icon-bestchange.ico",
     "installerHeader": "build/installer-header.png",
-    "license": "LICENSE.txt"
+    "license": "LICENSE.txt",
+    "include": "build/installer-cleanup.nsh"
   },
   "publish": {
     "provider": "github",
