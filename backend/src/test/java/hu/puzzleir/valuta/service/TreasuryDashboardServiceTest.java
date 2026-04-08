@@ -9,6 +9,7 @@ import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.DailyReportRepository;
 import hu.puzzleir.valuta.repository.InventoryMovementRepository;
+import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,6 +34,7 @@ class TreasuryDashboardServiceTest {
     @Mock private InventoryMovementRepository movementRepository;
     @Mock private BranchRepository branchRepository;
     @Mock private BranchGroupRepository branchGroupRepository;
+    @Mock private TransactionRepository transactionRepository;
 
     @Test
     void getBranchGroupSummary_countsUniqueBranches_and_skips_foreign_only_groups() {
@@ -41,7 +43,8 @@ class TreasuryDashboardServiceTest {
                 cashBalanceRepository,
                 movementRepository,
                 branchRepository,
-                branchGroupRepository
+                branchGroupRepository,
+                transactionRepository
         );
 
         UUID companyId = UUID.randomUUID();
