@@ -900,7 +900,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
      * TRB ügyfélforgalom export — legacy unit5.pas UgyfPrepare.
      * Returns Object[]{currencyCode, sumAmount}
      */
-    @Query("SELECT t.currency.code, COALESCE(SUM(t.foreignAmount), 0) FROM Transaction t " +
+    @Query("SELECT t.currency.code, COALESCE(SUM(t.currencyAmount), 0) FROM Transaction t " +
            "WHERE t.branch.id = :branchId " +
            "AND t.transactionType = :type " +
            "AND t.transactionDate = :date " +
