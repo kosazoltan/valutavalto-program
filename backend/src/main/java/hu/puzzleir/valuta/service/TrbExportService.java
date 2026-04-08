@@ -335,6 +335,20 @@ public class TrbExportService {
                     .build()).setSold(amount);
         }
 
+        // Bankkártyás eladások valutanemenként (legacy: _bankkartyas + _bkkezdij)
+        List<Object[]> cardRows = transactionRepository.sumCardSalesByCurrencyAndBranchAndDate(
+                branch.getId(), date);
+        for (Object[] row : cardRows) {
+            String code = (String) row[0];
+            BigDecimal cardAmount = row[1] != null ? ((BigDecimal) row[1]).setScale(4, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+            BigDecimal cardFee = row[2] != null ? ((BigDecimal) row[2]).setScale(4, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+            TrbCurrencyLineDto dto = map.get(code);
+            if (dto != null) {
+                dto.setBankCardAmount(cardAmount);
+                dto.setBankCardFee(cardFee);
+            }
+        }
+
         for (Object[] row : buyRows) {
             String code = (String) row[0];
             BigDecimal amount = row[1] != null ? ((BigDecimal) row[1]).setScale(4, RoundingMode.HALF_UP) : BigDecimal.ZERO;

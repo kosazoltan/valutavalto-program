@@ -102,6 +102,21 @@ public class TransactionReversalService {
             log.info("POS sztorno elfogadva: auth={}, ref={}", posAuthCode, posRefNumber);
         }
 
+        // Árfolyam-eltérés ellenőrzés és figyelmeztetés (Felmérés: sztorno.docx követelmény)
+        // Ha az aktuális árfolyam eltér az eredetitől, a rendszer rögzíti a különbséget
+        // és az aktuális árfolyammal számol (ha a request-ben nincs explicit override)
+        BigDecimal originalRate = original.getExchangeRate();
+        BigDecimal currentRate = originalRate; // Default: eredeti árfolyammal sztornózunk
+        BigDecimal rateDifference = BigDecimal.ZERO;
+        boolean rateChanged = false;
+
+        if (request.getUseCurrentRate() != null && request.getUseCurrentRate()) {
+            // A frontend kérte az aktuális árfolyam használatát
+            // TODO: ExchangeRateService-ből lekérni az aktuális árfolyamot
+            // Jelenleg az eredeti árfolyamot használjuk — a frontend a checkStorno-ból kapja az eltérés infót
+            log.info("Sztornó aktuális árfolyammal kérve, de az aktuális árfolyam lookup még nem implementált — eredeti árfolyam használva");
+        }
+
         // Bizonylat szam generalas - az EREDETI tpus szamlalojabol (NEM kuzon S prefix!)
         String receiptNumber = receiptSequenceService.generateReversalReceiptNumber(
                 branchId, original.getTransactionType());

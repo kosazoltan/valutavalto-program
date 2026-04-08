@@ -913,6 +913,23 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("date") LocalDate date
     );
 
+    /**
+     * Bankkártyás eladások összege GROUP BY valutanem.
+     * TRB export — legacy unit5.pas bankkartyás/készpénzes megkülönböztetés.
+     * Returns Object[]{currencyCode, cardAmount, cardFee}
+     */
+    @Query("SELECT t.currency.code, COALESCE(SUM(t.hufAmount), 0), COALESCE(SUM(t.handlingFee), 0) FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionType = 'SELL' " +
+           "AND t.paymentMethod = hu.puzzleir.valuta.entity.PaymentMethod.CARD " +
+           "AND t.transactionDate = :date " +
+           "AND t.status = 'COMPLETED' " +
+           "GROUP BY t.currency.code")
+    List<Object[]> sumCardSalesByCurrencyAndBranchAndDate(
+        @Param("branchId") UUID branchId,
+        @Param("date") LocalDate date
+    );
+
     // ============ SYNC RESTORE (szerver → pénztár visszaállítás) ============
 
     /**

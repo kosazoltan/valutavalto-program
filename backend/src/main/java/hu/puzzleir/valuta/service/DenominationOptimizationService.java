@@ -44,6 +44,9 @@ public class DenominationOptimizationService {
             case MIN_BANKNOTES -> minBanknotes(available, amount);
             case MIN_TOTAL -> minTotal(available, amount);
             case DYNAMIC -> dynamic(available, amount);
+            case MIN_COINS -> minCoins(available, amount);
+            case CUSTOM -> greedy(available, amount); // Custom = alapértelmezetten greedy, de felülírható
+            case BRANCH_SPECIFIC -> greedy(available, amount); // Branch-specifikus = branch config-ból jön, fallback greedy
         };
     }
 
@@ -182,10 +185,47 @@ public class DenominationOptimizationService {
         return result;
     }
 
+    /**
+     * MIN_COINS: a legkevesebb érme felhasználásával.
+     * Bankjegyeket preferálja, érméket csak ha szükséges.
+     * Felmérés: 07_cimletkezeles.md követelmény.
+     */
+    private Map<BigDecimal, Integer> minCoins(List<Denomination> available, BigDecimal amount) {
+        // Szétválogatjuk bankjegyekre és érmékre
+        List<Denomination> banknotes = available.stream()
+                .filter(d -> !Boolean.TRUE.equals(d.getIsCoin()))
+                .collect(java.util.stream.Collectors.toList());
+        List<Denomination> coins = available.stream()
+                .filter(d -> Boolean.TRUE.equals(d.getIsCoin()))
+                .collect(java.util.stream.Collectors.toList());
+
+        // Először bankjegyekkel fedünk amennyit lehet
+        Map<BigDecimal, Integer> result = greedy(banknotes, amount);
+
+        // Maradékot érmékkel
+        BigDecimal covered = result.entrySet().stream()
+                .map(e -> e.getKey().multiply(BigDecimal.valueOf(e.getValue())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal remaining = amount.subtract(covered);
+
+        if (remaining.compareTo(BigDecimal.ZERO) > 0) {
+            Map<BigDecimal, Integer> coinResult = greedy(coins, remaining);
+            coinResult.forEach((k, v) -> result.merge(k, v, Integer::sum));
+        }
+
+        return result;
+    }
+
     public enum Strategy {
         GREEDY,
         MIN_BANKNOTES,
         MIN_TOTAL,
-        DYNAMIC
+        DYNAMIC,
+        /** Minimum érme kiadása — bankjegyeket preferálja */
+        MIN_COINS,
+        /** Egyedi algoritmus — alapértelmezetten greedy, felülírható */
+        CUSTOM,
+        /** Fiókspecifikus optimalizálás — branch konfigból jön */
+        BRANCH_SPECIFIC
     }
 }

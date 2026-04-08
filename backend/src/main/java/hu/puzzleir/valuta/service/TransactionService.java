@@ -729,6 +729,8 @@ public class TransactionService {
         private Long originalTransactionId;
         private String reason;
         private String approvedBy;
+        /** Ha true, az aktuális árfolyammal sztornózunk (eltérő árfolyam kezelés) */
+        private Boolean useCurrentRate;
     }
 
     @lombok.Data
