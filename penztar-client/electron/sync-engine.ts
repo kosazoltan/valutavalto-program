@@ -1336,9 +1336,12 @@ export class SyncEngine {
       const transactions = await httpGet<Array<Record<string, unknown>>>(`${serverUrl}/sync/restore/transactions?since=${sinceStr}`, token);
       log.info(`[SyncEngine] Restore: ${transactions.length} tranzakció érkezett`);
 
-      // A restored adatokat a cached_restored_transactions táblába mentjük (nem pending-be!)
-      // Ez read-only cache — a pénztáros láthatja de nem módosíthatja
-      return { restored: transactions.length, error: null };
+      // Mentés a helyi SQLite cache-be
+      const { saveRestoredTransactions } = require('./sqlite');
+      const saved = saveRestoredTransactions(transactions);
+      log.info(`[SyncEngine] Restore: ${saved} tranzakció mentve a helyi cache-be`);
+
+      return { restored: saved, error: null };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       log.error('[SyncEngine] Restore hiba:', msg);

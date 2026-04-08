@@ -599,6 +599,62 @@ export function getLocalAuditEvents(limit: number = 200): LocalAuditEventRow[] {
   return results;
 }
 
+// ============ RESTORED TRANSACTIONS (szerver → pénztár visszaállítás) ============
+
+/**
+ * Szervérről visszaállított tranzakciók mentése a helyi cache-be.
+ * Ez read-only cache — a pénztáros láthatja a történetet, de nem módosíthatja.
+ */
+export function saveRestoredTransactions(transactions: Array<Record<string, unknown>>): number {
+  if (!db || transactions.length === 0) return 0;
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS cached_restored_transactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_id TEXT,
+      type TEXT,
+      currency_code TEXT,
+      currency_amount REAL,
+      huf_amount REAL,
+      rate REAL,
+      handling_fee REAL,
+      transaction_date TEXT,
+      receipt_number TEXT,
+      status TEXT,
+      restored_at TEXT DEFAULT (datetime('now'))
+    );
+  `);
+
+  let saved = 0;
+  for (const tx of transactions) {
+    try {
+      db.run(
+        `INSERT OR IGNORE INTO cached_restored_transactions
+         (server_id, type, currency_code, currency_amount, huf_amount, rate, handling_fee, transaction_date, receipt_number, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          tx.id != null ? String(tx.id) : null,
+          tx.type != null ? String(tx.type) : null,
+          tx.currencyCode != null ? String(tx.currencyCode) : null,
+          tx.currencyAmount != null ? Number(tx.currencyAmount) : null,
+          tx.hufAmount != null ? Number(tx.hufAmount) : null,
+          tx.rate != null ? Number(tx.rate) : null,
+          tx.handlingFee != null ? Number(tx.handlingFee) : null,
+          tx.transactionDate != null ? String(tx.transactionDate) : null,
+          tx.receiptNumber != null ? String(tx.receiptNumber) : null,
+          tx.status != null ? String(tx.status) : null,
+        ],
+      );
+      saved++;
+    } catch {
+      // Duplikátum (server_id alapján) vagy egyéb hiba — kihagyjuk
+    }
+  }
+
+  saveDatabase();
+  return saved;
+}
+
 export function cleanupLocalAuditEvents(retentionDays: number = 31): void {
   if (!db) return;
   db.run(
@@ -660,6 +716,7 @@ export function cleanupSyncedPendingRecords(retentionDays: number = 180): {
     }
   }
 
+  saveDatabase();
   return result as ReturnType<typeof cleanupSyncedPendingRecords>;
 }
 
