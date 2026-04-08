@@ -43,6 +43,7 @@ import {
   type PendingTransactionRow,
 } from './sqlite';
 import { safeStorage } from 'electron';
+import log from 'electron-log';
 
 // --- Típusok ---
 
@@ -145,48 +146,58 @@ function isAuthStatusError(err: unknown): boolean {
 // --- HTTP kliens (lightweight, nincs axios az electron main-ben) ---
 
 async function httpGet<T>(url: string, token: string | null): Promise<T> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+      signal: AbortSignal.timeout(10_000),
+    });
+
+    if (!response.ok) {
+      throw new HttpStatusError(response.status, response.statusText);
+    }
+
+    return response.json() as Promise<T>;
+  } catch (err) {
+    log.error('[SyncEngine] httpGet failed:', { url, err });
+    throw err;
   }
-
-  const response = await fetch(url, {
-    method: 'GET',
-    headers,
-    signal: AbortSignal.timeout(10_000),
-  });
-
-  if (!response.ok) {
-    throw new HttpStatusError(response.status, response.statusText);
-  }
-
-  return response.json() as Promise<T>;
 }
 
 async function httpPost<T>(url: string, body: Record<string, unknown>, token: string | null, idempotencyKey?: string): Promise<T> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    // Idempotency-Key: megakadályozza a duplikált tranzakciókat újrapróbálkozás esetén
-    'Idempotency-Key': idempotencyKey ?? crypto.randomUUID(),
-  };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      // Idempotency-Key: megakadályozza a duplikált tranzakciókat újrapróbálkozás esetén
+      'Idempotency-Key': idempotencyKey ?? crypto.randomUUID(),
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15_000),
+    });
+
+    if (!response.ok) {
+      throw new HttpStatusError(response.status, response.statusText);
+    }
+
+    return response.json() as Promise<T>;
+  } catch (err) {
+    log.error('[SyncEngine] httpPost failed:', { url, err });
+    throw err;
   }
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(15_000),
-  });
-
-  if (!response.ok) {
-    throw new HttpStatusError(response.status, response.statusText);
-  }
-
-  return response.json() as Promise<T>;
 }
 
 // --- SyncEngine ---
@@ -240,11 +251,11 @@ export class SyncEngine {
         return;
       }
     } catch (err) {
-      console.warn('[SyncEngine] DPAPI titkositas sikertelen:', err);
+      log.warn('[SyncEngine] DPAPI titkositas sikertelen:', err);
     }
 
     // Security: NEM mentjuk plaintext-ben diskre — csak volatile in-memory
-    console.warn('[SyncEngine] safeStorage nem elerheto — token csak session-szinten tarolva');
+    log.warn('[SyncEngine] safeStorage nem elerheto — token csak session-szinten tarolva');
     (global as Record<string, unknown>).__volatile_sync_token = token;
   }
 
@@ -305,13 +316,13 @@ export class SyncEngine {
 
       this.persistAuthToken(token);
       this.lastTokenValidationAt = Date.now();
-      console.log('[SyncEngine] Lokális auth/session bootstrap sikeres');
+      log.info('[SyncEngine] Lokális auth/session bootstrap sikeres');
       return token;
     } catch (err) {
       if (isAuthStatusError(err)) {
-        console.warn('[SyncEngine] Lokális auth bootstrap sikertelen (401/403). Ellenőrizd a bootstrap credentialöket.');
+        log.warn('[SyncEngine] Lokális auth bootstrap sikertelen (401/403). Ellenőrizd a bootstrap credentialöket.');
       } else {
-        console.warn('[SyncEngine] Lokális auth bootstrap hiba:', err instanceof Error ? err.message : err);
+        log.warn('[SyncEngine] Lokális auth bootstrap hiba:', err instanceof Error ? err.message : err);
       }
       return null;
     }
@@ -323,7 +334,7 @@ export class SyncEngine {
       try {
         return safeStorage.decryptString(Buffer.from(encryptedToken, 'base64'));
       } catch (err) {
-        console.warn('[SyncEngine] Nem sikerült visszafejteni a tárolt auth tokent:', err);
+        log.warn('[SyncEngine] Nem sikerült visszafejteni a tárolt auth tokent:', err);
         // Corrupted/foreign DPAPI payload: remove it so sync can continue with plaintext or fresh login token.
         deleteConfig('auth_token_encrypted');
       }
@@ -336,11 +347,11 @@ export class SyncEngine {
    */
   start(intervalMs: number = 30_000): void {
     if (this.intervalId) {
-      console.log('[SyncEngine] Már fut, újraindítás...');
+      log.info('[SyncEngine] Már fut, újraindítás...');
       this.stop();
     }
 
-    console.log(`[SyncEngine] Indítás — ${intervalMs}ms intervallum`);
+    log.info(`[SyncEngine] Indítás — ${intervalMs}ms intervallum`);
 
     // Első futtatás kis késéssel (5s) — várjuk meg az app inicializálását
     setTimeout(() => {
@@ -359,7 +370,7 @@ export class SyncEngine {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
-      console.log('[SyncEngine] Leállítva');
+      log.info('[SyncEngine] Leállítva');
     }
   }
 
@@ -368,7 +379,7 @@ export class SyncEngine {
    */
   private async runSync(): Promise<void> {
     if (this.status.isRunning) {
-      console.log('[SyncEngine] Előző sync még fut, kihagyás');
+      log.info('[SyncEngine] Előző sync még fut, kihagyás');
       return;
     }
 
@@ -393,10 +404,10 @@ export class SyncEngine {
       this.status.lastSyncResult = result;
 
       if (result.synced > 0) {
-        console.log(`[SyncEngine] ${result.synced} tranzakció szinkronizálva`);
+        log.info(`[SyncEngine] ${result.synced} tranzakció szinkronizálva`);
       }
       if (result.failed > 0) {
-        console.warn(`[SyncEngine] ${result.failed} tranzakció SIKERTELEN:`, result.errors);
+        log.warn(`[SyncEngine] ${result.failed} tranzakció SIKERTELEN:`, result.errors);
       }
 
       // 2. Árfolyamok és cache frissítése (csak ha van érvényes token)
@@ -414,7 +425,7 @@ export class SyncEngine {
 
       this.status.lastSyncAt = new Date().toISOString();
     } catch (err) {
-      console.error('[SyncEngine] Sync hiba:', err);
+      log.error('[SyncEngine] Sync hiba:', err);
     } finally {
       this.status.isRunning = false;
     }
@@ -969,15 +980,15 @@ export class SyncEngine {
       }
 
       saveDatabase();
-      console.log(`[SyncEngine] ${rates.length} árfolyam frissítve`);
+      log.info(`[SyncEngine] ${rates.length} árfolyam frissítve`);
     } catch (err) {
       // Nem kritikus hiba — legközelebb újrapróbáljuk
       if (isAuthStatusError(err)) {
         this.clearStoredAuthToken();
-        console.warn('[SyncEngine] Árfolyam sync auth hiba (401/403), session újra-bootstrap szükséges.');
+        log.warn('[SyncEngine] Árfolyam sync auth hiba (401/403), session újra-bootstrap szükséges.');
         return;
       }
-      console.warn('[SyncEngine] Árfolyam sync hiba:', err instanceof Error ? err.message : err);
+      log.warn('[SyncEngine] Árfolyam sync hiba:', err instanceof Error ? err.message : err);
     }
   }
 
@@ -1025,15 +1036,15 @@ export class SyncEngine {
 
       if (circulars.length > 0) {
         saveDatabase();
-        console.log(`[SyncEngine] ${circulars.length} körlevél szinkronizálva`);
+        log.info(`[SyncEngine] ${circulars.length} körlevél szinkronizálva`);
       }
     } catch (err) {
       if (isAuthStatusError(err)) {
         this.clearStoredAuthToken();
-        console.warn('[SyncEngine] Körlevél sync auth hiba (401/403), session újra-bootstrap szükséges.');
+        log.warn('[SyncEngine] Körlevél sync auth hiba (401/403), session újra-bootstrap szükséges.');
         return;
       }
-      console.warn('[SyncEngine] Körlevél sync hiba:', err instanceof Error ? err.message : err);
+      log.warn('[SyncEngine] Körlevél sync hiba:', err instanceof Error ? err.message : err);
     }
   }
 
@@ -1066,15 +1077,15 @@ export class SyncEngine {
         } catch (err) {
           if (isAuthStatusError(err)) {
             this.clearStoredAuthToken();
-            console.warn('[SyncEngine] Distribution auth hiba (401/403), ciklus leállítva.');
+            log.warn('[SyncEngine] Distribution auth hiba (401/403), ciklus leállítva.');
             break;
           }
-          console.warn(`[SyncEngine] Distribution #${dist.id} sync hiba:`, err instanceof Error ? err.message : err);
+          log.warn(`[SyncEngine] Distribution #${dist.id} sync hiba:`, err instanceof Error ? err.message : err);
           break; // Hálózati hiba → kilépés
         }
       }
     } catch (err) {
-      console.warn('[SyncEngine] Distribution sync hiba:', err instanceof Error ? err.message : err);
+      log.warn('[SyncEngine] Distribution sync hiba:', err instanceof Error ? err.message : err);
     }
   }
 
@@ -1119,15 +1130,15 @@ export class SyncEngine {
         } catch (err) {
           if (isAuthStatusError(err)) {
             this.clearStoredAuthToken();
-            console.warn('[SyncEngine] Transfer auth hiba (401/403), ciklus leállítva.');
+            log.warn('[SyncEngine] Transfer auth hiba (401/403), ciklus leállítva.');
             break;
           }
-          console.warn(`[SyncEngine] Transfer #${tx.id} sync hiba:`, err instanceof Error ? err.message : err);
+          log.warn(`[SyncEngine] Transfer #${tx.id} sync hiba:`, err instanceof Error ? err.message : err);
           break;
         }
       }
     } catch (err) {
-      console.warn('[SyncEngine] Transfer sync hiba:', err instanceof Error ? err.message : err);
+      log.warn('[SyncEngine] Transfer sync hiba:', err instanceof Error ? err.message : err);
     }
   }
 
@@ -1157,15 +1168,15 @@ export class SyncEngine {
         } catch (err) {
           if (isAuthStatusError(err)) {
             this.clearStoredAuthToken();
-            console.warn('[SyncEngine] Collection auth hiba (401/403), ciklus leállítva.');
+            log.warn('[SyncEngine] Collection auth hiba (401/403), ciklus leállítva.');
             break;
           }
-          console.warn(`[SyncEngine] Collection #${col.id} sync hiba:`, err instanceof Error ? err.message : err);
+          log.warn(`[SyncEngine] Collection #${col.id} sync hiba:`, err instanceof Error ? err.message : err);
           break;
         }
       }
     } catch (err) {
-      console.warn('[SyncEngine] Collection sync hiba:', err instanceof Error ? err.message : err);
+      log.warn('[SyncEngine] Collection sync hiba:', err instanceof Error ? err.message : err);
     }
   }
 
@@ -1198,15 +1209,15 @@ export class SyncEngine {
       }
 
       if (branches.length > 0) {
-        console.log(`[SyncEngine] ${branches.length} pénztár státusz cache-elve`);
+        log.info(`[SyncEngine] ${branches.length} pénztár státusz cache-elve`);
       }
     } catch (err) {
       if (isAuthStatusError(err)) {
         this.clearStoredAuthToken();
-        console.warn('[SyncEngine] Branch status auth hiba (401/403), session újra-bootstrap szükséges.');
+        log.warn('[SyncEngine] Branch status auth hiba (401/403), session újra-bootstrap szükséges.');
         return;
       }
-      console.warn('[SyncEngine] Branch status cache hiba:', err instanceof Error ? err.message : err);
+      log.warn('[SyncEngine] Branch status cache hiba:', err instanceof Error ? err.message : err);
     }
   }
 
@@ -1237,15 +1248,15 @@ export class SyncEngine {
       }
 
       if (cashDesks.length > 0) {
-        console.log(`[SyncEngine] ${cashDesks.length} pénztár törzs rekord cache-elve`);
+        log.info(`[SyncEngine] ${cashDesks.length} pénztár törzs rekord cache-elve`);
       }
     } catch (err) {
       if (isAuthStatusError(err)) {
         this.clearStoredAuthToken();
-        console.warn('[SyncEngine] Pénztár törzs sync auth hiba (401/403), session újra-bootstrap szükséges.');
+        log.warn('[SyncEngine] Pénztár törzs sync auth hiba (401/403), session újra-bootstrap szükséges.');
         return;
       }
-      console.warn('[SyncEngine] Pénztár törzs sync hiba:', err instanceof Error ? err.message : err);
+      log.warn('[SyncEngine] Pénztár törzs sync hiba:', err instanceof Error ? err.message : err);
     }
   }
 
@@ -1280,15 +1291,15 @@ export class SyncEngine {
       }
 
       if (workers.length > 0) {
-        console.log(`[SyncEngine] ${workers.length} dolgozó törzs rekord cache-elve`);
+        log.info(`[SyncEngine] ${workers.length} dolgozó törzs rekord cache-elve`);
       }
     } catch (err) {
       if (isAuthStatusError(err)) {
         this.clearStoredAuthToken();
-        console.warn('[SyncEngine] Dolgozó törzs sync auth hiba (401/403), session újra-bootstrap szükséges.');
+        log.warn('[SyncEngine] Dolgozó törzs sync auth hiba (401/403), session újra-bootstrap szükséges.');
         return;
       }
-      console.warn('[SyncEngine] Dolgozó törzs sync hiba:', err instanceof Error ? err.message : err);
+      log.warn('[SyncEngine] Dolgozó törzs sync hiba:', err instanceof Error ? err.message : err);
     }
   }
 

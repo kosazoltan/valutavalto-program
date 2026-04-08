@@ -22,7 +22,12 @@ export default function WorkstationPage() {
     let mounted = true
 
     const load = async (): Promise<void> => {
-      await loadData()
+      try {
+        await loadData()
+      } catch (err) {
+        logger.error('WorkstationPage', 'Failed to load workstations:', err)
+        throw err
+      }
     }
 
     load().catch(err => {

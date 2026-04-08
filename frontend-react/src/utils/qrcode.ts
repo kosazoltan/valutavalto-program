@@ -42,18 +42,23 @@ async function getQRCodeModule(): Promise<typeof import('qrcode') | null> {
  * @returns base64 data URL (pl. "data:image/png;base64,...")
  */
 export async function generateQRCode(data: QRData): Promise<string> {
-  const content = buildQRContent(data);
+  try {
+    const content = buildQRContent(data);
 
-  const mod = await getQRCodeModule();
-  if (!mod) {
-    return '';
+    const mod = await getQRCodeModule();
+    if (!mod) {
+      return '';
+    }
+
+    return mod.toDataURL(content, {
+      width: 200,
+      margin: 1,
+      errorCorrectionLevel: 'M',
+    });
+  } catch (err) {
+    logger.error('qrcode', 'generateQRCode failed', err);
+    throw err;
   }
-
-  return mod.toDataURL(content, {
-    width: 200,
-    margin: 1,
-    errorCorrectionLevel: 'M',
-  });
 }
 
 /**

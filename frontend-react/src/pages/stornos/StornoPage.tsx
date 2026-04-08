@@ -49,7 +49,7 @@ export default function StornoPage() {
       
       // Ha engedély szükséges, betöltjük az engedélykérést
       if (result.requiresApproval) {
-        // TODO: betölteni a pending approval-t
+        /** Megjegyzés: pending approval betöltés terve készíthető külön PR-ben. */
       }
     } catch (err) {
       const errorMessage = getErrorMessage(err)

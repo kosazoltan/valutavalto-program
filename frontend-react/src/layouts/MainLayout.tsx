@@ -136,9 +136,14 @@ export default function MainLayout() {
   }, [initSession])
 
   const handleRetryOpen = async () => {
-    setShowSessionDialog(false)
-    setSessionChecking(true)
-    await initSession()
+    try {
+      setShowSessionDialog(false)
+      setSessionChecking(true)
+      await initSession()
+    } catch {
+      setSessionError('A szerver nem elérhető. Ellenőrizze a kapcsolatot!')
+      setShowSessionDialog(true)
+    }
   }
 
   const handleLogout = () => {

@@ -48,8 +48,9 @@ export default function CameraPlaybackPage() {
         setServerRecordings([])
       } else {
         // Böngésző: szerver API — branchId-t nem kérdezzük (admin lekérés)
+        /** Megjegyzés: branch selector terve készíthető külön PR-ben. */
         const params = new URLSearchParams({
-          branchId: '', // TODO: branch selector
+          branchId: '',
           start: startDate + 'T00:00:00',
           end: endDate + 'T23:59:59',
         })

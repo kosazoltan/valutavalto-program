@@ -27,7 +27,12 @@ export default function PermissionPage() {
     let mounted = true
 
     const load = async (): Promise<void> => {
-      await loadPermissions()
+      try {
+        await loadPermissions()
+      } catch (err) {
+        logger.error('PermissionPage', 'Failed to load permissions:', err)
+        throw err
+      }
     }
 
     load().catch(err => {

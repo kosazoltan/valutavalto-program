@@ -204,31 +204,41 @@ export interface PagedResponse<T> {
 
 /** Token mentése Electron-ban — DPAPI/Keychain titkosítással (ha elérhető) */
 export async function persistToken(token: string): Promise<void> {
-  if (window.electronAPI) {
-    // Titkosított tárolás (safeStorage) — fallback: config store
-    if (window.electronAPI.secureStoreToken) {
-      await window.electronAPI.secureStoreToken(token)
-    } else {
-      await window.electronAPI.setConfig('auth_token', token)
+  try {
+    if (window.electronAPI) {
+      // Titkosított tárolás (safeStorage) — fallback: config store
+      if (window.electronAPI.secureStoreToken) {
+        await window.electronAPI.secureStoreToken(token)
+      } else {
+        await window.electronAPI.setConfig('auth_token', token)
+      }
+      return
     }
-    return
-  }
 
-  window.localStorage.setItem(WEB_AUTH_TOKEN_KEY, token)
+    window.localStorage.setItem(WEB_AUTH_TOKEN_KEY, token)
+  } catch (err) {
+    logger.error('client', 'persistToken failed:', err)
+    throw err
+  }
 }
 
 /** Token törlése Electron-ból (titkosított + plaintext is) */
 export async function clearPersistedToken(): Promise<void> {
-  if (window.electronAPI) {
-    if (window.electronAPI.secureClearToken) {
-      await window.electronAPI.secureClearToken()
-    } else {
-      await window.electronAPI.deleteConfig('auth_token')
+  try {
+    if (window.electronAPI) {
+      if (window.electronAPI.secureClearToken) {
+        await window.electronAPI.secureClearToken()
+      } else {
+        await window.electronAPI.deleteConfig('auth_token')
+      }
+      return
     }
-    return
-  }
 
-  window.localStorage.removeItem(WEB_AUTH_TOKEN_KEY)
+    window.localStorage.removeItem(WEB_AUTH_TOKEN_KEY)
+  } catch (err) {
+    logger.error('client', 'clearPersistedToken failed:', err)
+    throw err
+  }
 }
 
 /** Token betöltése Electron-ból — titkosított (safeStorage) elsőbbséggel */

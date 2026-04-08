@@ -9,7 +9,7 @@
 
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-
+import log from 'electron-log';
 
 const ALGORITHM = 'aes-256-gcm';
 const NONCE_LENGTH = 12;
@@ -129,12 +129,17 @@ export function computeFileHash(filePath: string): string {
  * Streaming SHA-256 hash nagy fájlokhoz.
  */
 export async function computeFileHashStreaming(filePath: string): Promise<string> {
-  const hash = crypto.createHash('sha256');
-  const stream = fs.createReadStream(filePath);
-  for await (const chunk of stream) {
-    hash.update(chunk);
+  try {
+    const hash = crypto.createHash('sha256');
+    const stream = fs.createReadStream(filePath);
+    for await (const chunk of stream) {
+      hash.update(chunk);
+    }
+    return hash.digest('hex');
+  } catch (err) {
+    log.error('[CameraEncryption] computeFileHashStreaming failed:', err);
+    throw err;
   }
-  return hash.digest('hex');
 }
 
 /**

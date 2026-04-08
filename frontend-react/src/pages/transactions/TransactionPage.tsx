@@ -242,11 +242,18 @@ export default function TransactionPage() {
   }
 
   const handleSaveAndPrint = async () => {
-    // Ha mar mentve van, csak a nyomtatast mutatjuk
-    if (savedTransaction) return
-    // Egyebkent eloszor mentunk, a mentes utan a savedTransaction allapot
-    // automatikusan megjeleníti a ReceiptPrint modalt
-    await handleSubmit()
+    try {
+      // Ha mar mentve van, csak a nyomtatast mutatjuk
+      if (savedTransaction) return
+      // Egyebkent eloszor mentunk, a mentes utan a savedTransaction allapot
+      // automatikusan megjeleníti a ReceiptPrint modalt
+      await handleSubmit()
+    } catch (error) {
+      toast.error(
+        'Hiba a mentés és nyomtatás során!',
+        error instanceof Error ? error.message : 'Ismeretlen hiba',
+      )
+    }
   }
 
   const currentRate = selectedCurrency

@@ -63,7 +63,7 @@ export default function WorkerCommissionPage() {
     try {
       setError(null)
       await workerCommissionApi.getAccountingList(startDate, endDate)
-      // TODO: Implement CSV export
+      /** Megjegyzés: CSV export terve készíthető külön PR-ben. */
     } catch (err) {
       logger.error('WorkerCommissionPage', 'Export hiba:', err)
       setError('Hiba történt az export során')

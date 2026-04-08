@@ -1,4 +1,5 @@
 import type { ConversionRequest, Currency, ExchangeRate } from '../services/api/index'
+import { logger } from './logger'
 
 export interface ElectronCachedRate {
   currency_code: string
@@ -168,6 +169,18 @@ export function mapCachedRatesToExchangeRates(
   })
 }
 
+/**
+ * Safe wrapper async fuggvenyekhez — CRITICAL finding fix: hianyzo try/catch
+ */
+async function safeElectronOp<T>(opName: string, fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn()
+  } catch (err) {
+    logger.error('electronTransactions', opName + ' failed', err)
+    throw err
+  }
+}
+
 async function finalizeSyncOutcome(
   savedIds: number[],
   listPendingIds: () => Promise<number[]>,
@@ -197,148 +210,160 @@ async function finalizeSyncOutcome(
 export async function saveAndSyncPendingBuySell(
   entries: PendingBuySellInput[],
 ): Promise<ElectronQueueSyncOutcome> {
-  const electronAPI = getElectronAPI()
-  if (!electronAPI?.savePendingTransaction || !electronAPI.getPendingTransactions) {
-    throw new Error('Electron pending tranzakciós bridge nem érhető el')
-  }
+  return safeElectronOp('saveAndSyncPendingBuySell', async () => {
+    const electronAPI = getElectronAPI()
+    if (!electronAPI?.savePendingTransaction || !electronAPI.getPendingTransactions) {
+      throw new Error('Electron pending tranzakciós bridge nem érhető el')
+    }
 
-  const savedIds: number[] = []
-  for (const entry of entries) {
-    const savedId = await electronAPI.savePendingTransaction(
-      entry.type,
-      entry.currencyCode,
-      entry.foreignAmount,
-      entry.hufAmount,
-      entry.roundedHufAmount,
-      entry.rate,
-      entry.handlingFee,
-      entry.discountPercent,
-      normalizeOptionalText(entry.customerIdentifier),
-      normalizeOptionalText(entry.customerName),
-      normalizeOptionalText(entry.customerDocumentNumber),
-      normalizeOptionalText(entry.customerAddress),
-      entry.denominations,
-    )
-    savedIds.push(savedId)
-  }
+    const savedIds: number[] = []
+    for (const entry of entries) {
+      const savedId = await electronAPI.savePendingTransaction(
+        entry.type,
+        entry.currencyCode,
+        entry.foreignAmount,
+        entry.hufAmount,
+        entry.roundedHufAmount,
+        entry.rate,
+        entry.handlingFee,
+        entry.discountPercent,
+        normalizeOptionalText(entry.customerIdentifier),
+        normalizeOptionalText(entry.customerName),
+        normalizeOptionalText(entry.customerDocumentNumber),
+        normalizeOptionalText(entry.customerAddress),
+        entry.denominations,
+      )
+      savedIds.push(savedId)
+    }
 
-  return finalizeSyncOutcome(savedIds, async () => {
-    const pending = await electronAPI.getPendingTransactions()
-    return pending.map((row) => row.id)
+    return finalizeSyncOutcome(savedIds, async () => {
+      const pending = await electronAPI.getPendingTransactions()
+      return pending.map((row) => row.id)
+    })
   })
 }
 
 export async function saveAndSyncPendingConversion(
   entry: PendingConversionInput,
 ): Promise<ElectronQueueSyncOutcome> {
-  const electronAPI = getElectronAPI()
-  if (!electronAPI?.savePendingConversion || !electronAPI.getPendingConversions) {
-    throw new Error('Electron pending konverziós bridge nem érhető el')
-  }
+  return safeElectronOp('saveAndSyncPendingConversion', async () => {
+    const electronAPI = getElectronAPI()
+    if (!electronAPI?.savePendingConversion || !electronAPI.getPendingConversions) {
+      throw new Error('Electron pending konverziós bridge nem érhető el')
+    }
 
-  const savedId = await electronAPI.savePendingConversion(
-    entry.fromCurrencyId,
-    entry.fromCurrencyCode,
-    entry.toCurrencyId,
-    entry.toCurrencyCode,
-    entry.fromAmount,
-    entry.calculatedHufAmount,
-    entry.calculatedToAmount,
-    entry.conversionRate,
-    entry.handlingFee,
-    normalizeOptionalText(entry.customerId),
-    normalizeOptionalText(entry.customerName),
-    normalizeOptionalText(entry.customerDocumentNumber),
-    normalizeOptionalText(entry.note),
-  )
+    const savedId = await electronAPI.savePendingConversion(
+      entry.fromCurrencyId,
+      entry.fromCurrencyCode,
+      entry.toCurrencyId,
+      entry.toCurrencyCode,
+      entry.fromAmount,
+      entry.calculatedHufAmount,
+      entry.calculatedToAmount,
+      entry.conversionRate,
+      entry.handlingFee,
+      normalizeOptionalText(entry.customerId),
+      normalizeOptionalText(entry.customerName),
+      normalizeOptionalText(entry.customerDocumentNumber),
+      normalizeOptionalText(entry.note),
+    )
 
-  return finalizeSyncOutcome([savedId], async () => {
-    const pending = await electronAPI.getPendingConversions()
-    return pending.map((row) => row.id)
+    return finalizeSyncOutcome([savedId], async () => {
+      const pending = await electronAPI.getPendingConversions()
+      return pending.map((row) => row.id)
+    })
   })
 }
 
 export async function saveAndSyncPendingTransfer(
   entry: PendingTransferInput,
 ): Promise<ElectronQueueSyncOutcome> {
-  const electronAPI = getElectronAPI()
-  if (!electronAPI?.savePendingTransfer || !electronAPI.getPendingTransfers) {
-    throw new Error('Electron pending transfer bridge nem érhető el')
-  }
+  return safeElectronOp('saveAndSyncPendingTransfer', async () => {
+    const electronAPI = getElectronAPI()
+    if (!electronAPI?.savePendingTransfer || !electronAPI.getPendingTransfers) {
+      throw new Error('Electron pending transfer bridge nem érhető el')
+    }
 
-  const savedId = await electronAPI.savePendingTransfer(
-    entry.targetBranchId,
-    entry.targetBranchCode,
-    entry.currencyId,
-    entry.currencyCode,
-    entry.amount,
-    entry.hufValue,
-    entry.transferType,
-    entry.denominations,
-    normalizeOptionalText(entry.note),
-  )
+    const savedId = await electronAPI.savePendingTransfer(
+      entry.targetBranchId,
+      entry.targetBranchCode,
+      entry.currencyId,
+      entry.currencyCode,
+      entry.amount,
+      entry.hufValue,
+      entry.transferType,
+      entry.denominations,
+      normalizeOptionalText(entry.note),
+    )
 
-  return finalizeSyncOutcome([savedId], async () => {
-    const pending = await electronAPI.getPendingTransfers()
-    return pending.map((row) => row.id)
+    return finalizeSyncOutcome([savedId], async () => {
+      const pending = await electronAPI.getPendingTransfers()
+      return pending.map((row) => row.id)
+    })
   })
 }
 
 export async function saveAndSyncPendingBankTransaction(
   entry: PendingBankTransactionInput,
 ): Promise<ElectronQueueSyncOutcome> {
-  const electronAPI = getElectronAPI()
-  if (!electronAPI?.savePendingBankTransaction || !electronAPI.getPendingBankTransactions) {
-    throw new Error('Electron pending bank transaction bridge nem érhető el')
-  }
+  return safeElectronOp('saveAndSyncPendingBankTransaction', async () => {
+    const electronAPI = getElectronAPI()
+    if (!electronAPI?.savePendingBankTransaction || !electronAPI.getPendingBankTransactions) {
+      throw new Error('Electron pending bank transaction bridge nem érhető el')
+    }
 
-  const savedId = await electronAPI.savePendingBankTransaction(
-    entry.transactionType,
-    entry.currencyCode,
-    entry.amount,
-    entry.exchangeRate,
-    entry.hufAmount,
-    entry.vaultTerritoryId,
-    normalizeOptionalText(entry.bankName),
-    normalizeOptionalText(entry.bankReference),
-    normalizeOptionalText(entry.note),
-  )
+    const savedId = await electronAPI.savePendingBankTransaction(
+      entry.transactionType,
+      entry.currencyCode,
+      entry.amount,
+      entry.exchangeRate,
+      entry.hufAmount,
+      entry.vaultTerritoryId,
+      normalizeOptionalText(entry.bankName),
+      normalizeOptionalText(entry.bankReference),
+      normalizeOptionalText(entry.note),
+    )
 
-  return finalizeSyncOutcome([savedId], async () => {
-    const pending = await electronAPI.getPendingBankTransactions()
-    return pending.map((row) => row.id)
+    return finalizeSyncOutcome([savedId], async () => {
+      const pending = await electronAPI.getPendingBankTransactions()
+      return pending.map((row) => row.id)
+    })
   })
 }
 
 export async function saveAndSyncPendingStorno(
   entry: PendingStornoInput,
 ): Promise<ElectronQueueSyncOutcome> {
-  const electronAPI = getElectronAPI()
-  if (!electronAPI?.savePendingStorno || !electronAPI.getPendingStornos) {
-    throw new Error('Electron pending sztornó bridge nem érhető el')
-  }
+  return safeElectronOp('saveAndSyncPendingStorno', async () => {
+    const electronAPI = getElectronAPI()
+    if (!electronAPI?.savePendingStorno || !electronAPI.getPendingStornos) {
+      throw new Error('Electron pending sztornó bridge nem érhető el')
+    }
 
-  const savedId = await electronAPI.savePendingStorno(entry)
+    const savedId = await electronAPI.savePendingStorno(entry)
 
-  return finalizeSyncOutcome([savedId], async () => {
-    const pending = await electronAPI.getPendingStornos()
-    return pending.map((row) => row.id)
+    return finalizeSyncOutcome([savedId], async () => {
+      const pending = await electronAPI.getPendingStornos()
+      return pending.map((row) => row.id)
+    })
   })
 }
 
 export async function saveAndSyncPendingHandoverOperation(
   entry: PendingHandoverOperationInput,
 ): Promise<ElectronQueueSyncOutcome> {
-  const electronAPI = getElectronAPI()
-  if (!electronAPI?.savePendingHandoverOperation || !electronAPI.getPendingHandoverOperations) {
-    throw new Error('Electron pending handover bridge nem érhető el')
-  }
+  return safeElectronOp('saveAndSyncPendingHandoverOperation', async () => {
+    const electronAPI = getElectronAPI()
+    if (!electronAPI?.savePendingHandoverOperation || !electronAPI.getPendingHandoverOperations) {
+      throw new Error('Electron pending handover bridge nem érhető el')
+    }
 
-  const savedId = await electronAPI.savePendingHandoverOperation(entry)
+    const savedId = await electronAPI.savePendingHandoverOperation(entry)
 
-  return finalizeSyncOutcome([savedId], async () => {
-    const pending = await electronAPI.getPendingHandoverOperations()
-    return pending.map((row) => row.id)
+    return finalizeSyncOutcome([savedId], async () => {
+      const pending = await electronAPI.getPendingHandoverOperations()
+      return pending.map((row) => row.id)
+    })
   })
 }
 
