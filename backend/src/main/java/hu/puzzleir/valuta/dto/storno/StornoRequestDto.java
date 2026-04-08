@@ -18,4 +18,6 @@ public class StornoRequestDto {
     private String approvalId;
     private BigDecimal customExchangeRate;
     private String paymentMethodDid;
+    /** Ha true, az aktuális árfolyammal sztornózunk (eltérő árfolyam kezelés — Felmérés: sztorno.docx) */
+    private Boolean useCurrentRate;
 }
