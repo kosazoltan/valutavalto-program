@@ -25,10 +25,8 @@ function resolveWasmPath(): string {
   const candidates: string[] = [];
 
   if (app.isPackaged) {
+    // Egyetlen stabil cel: extraResources -> resources/sql-wasm.wasm
     candidates.push(path.join(process.resourcesPath, 'sql-wasm.wasm'));
-    candidates.push(path.join(app.getAppPath(), 'resources', 'sql-wasm.wasm'));
-    candidates.push(path.join(app.getAppPath(), 'sql-wasm.wasm'));
-    candidates.push(path.join(__dirname, 'sql-wasm.wasm'));
   } else {
     candidates.push(path.join(__dirname, '../node_modules/sql.js/dist/sql-wasm.wasm'));
     candidates.push(path.join(process.cwd(), 'node_modules/sql.js/dist/sql-wasm.wasm'));
@@ -40,7 +38,8 @@ function resolveWasmPath(): string {
     }
   }
 
-  throw new Error(`sql-wasm.wasm nem található. Próbált útvonalak: ${candidates.join(' | ')}`);
+  const mode = app.isPackaged ? 'packaged' : 'dev';
+  throw new Error(`sql-wasm.wasm nem tal\u00E1lhat\u00F3 (${mode} m\u00F3d). resourcesPath=${process.resourcesPath}, pr\u00F3b\u00E1lt \u00FAtvonalak: ${candidates.join(' | ')}`);
 }
 
 export async function initDatabase(): Promise<void> {

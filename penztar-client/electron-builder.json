@@ -6,7 +6,11 @@
     "output": "release"
   },
   "asar": true,
-  "asarUnpack": [],
+  "asarUnpack": [
+    "**/*.node",
+    "node_modules/serialport/**/*",
+    "node_modules/@serialport/**/*"
+  ],
   "files": [
     "dist/**/*",
     "dist-electron/**/*"
@@ -41,18 +45,6 @@
     {
       "from": "node_modules/sql.js/dist/sql-wasm.wasm",
       "to": "sql-wasm.wasm"
-    },
-    {
-      "from": "node_modules/sql.js/dist/sql-wasm.wasm",
-      "to": "node_modules/sql.js/dist/sql-wasm.wasm"
-    },
-    {
-      "from": "node_modules/sql.js/dist/sql-wasm.js",
-      "to": "node_modules/sql.js/dist/sql-wasm.js"
-    },
-    {
-      "from": "node_modules/sql.js/package.json",
-      "to": "node_modules/sql.js/package.json"
     }
   ]
 }
