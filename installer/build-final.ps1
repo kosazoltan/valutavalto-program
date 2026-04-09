@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-$Version = "1.6.0"
+$Version = "1.9.2"
 $BuildDate = Get-Date -Format "yyyyMMdd"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $InstallerDir = $PSScriptRoot

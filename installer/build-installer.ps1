@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env pwsh
+#!/usr/bin/env pwsh
 # =============================================================================
 # Valutaváltó Pénztár — Egyfájlos Windows Telepítő Build Script
 # =============================================================================
@@ -7,7 +7,7 @@
 # =============================================================================
 
 param(
-    [string]$Version = "1.6.0",
+    [string]$Version = "1.9.2",
     [switch]$SkipBackendBuild,
     [switch]$SkipFrontendBuild,
     [switch]$SkipDownloads,

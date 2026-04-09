@@ -6,7 +6,7 @@
 !include "MUI2.nsh"
 
 !ifndef VERSION
-  !define VERSION "1.5.0"
+  !define VERSION "1.9.2"
 !endif
 !ifndef BUILD_DATE
   !define BUILD_DATE "dev"
@@ -45,11 +45,11 @@ Section "Eltávolítás"
     ; --- 1. STOP services (NSSM + net stop fallback) ---
     DetailPrint "1/5 — Szolgáltatások leállítása..."
     IfFileExists "C:\ProgramData\BestChange\tools\nssm.exe" 0 cleanup_netstop
-        nsExec::ExecToLog '"C:\ProgramData\BestChange\tools\nssm.exe" stop BestChange-Backend 2>nul'
-        nsExec::ExecToLog '"C:\ProgramData\BestChange\tools\nssm.exe" stop BestChange-PostgreSQL 2>nul'
+        nsExec::ExecToLog '"C:\ProgramData\BestChange\tools\nssm.exe" stop BestChange-Backend'
+        nsExec::ExecToLog '"C:\ProgramData\BestChange\tools\nssm.exe" stop BestChange-PostgreSQL'
     cleanup_netstop:
-    nsExec::ExecToLog 'net stop BestChange-Backend 2>nul'
-    nsExec::ExecToLog 'net stop BestChange-PostgreSQL 2>nul'
+    nsExec::ExecToLog 'net stop BestChange-Backend'
+    nsExec::ExecToLog 'net stop BestChange-PostgreSQL'
     Sleep 3000
 
     ; pg_ctl graceful stop
@@ -60,8 +60,8 @@ Section "Eltávolítás"
 
     ; --- 2. KILL leftover processes (scoped!) ---
     DetailPrint "2/5 — Futó folyamatok leállítása..."
-    nsExec::ExecToLog 'taskkill /F /IM Penztar.exe 2>nul'
-    nsExec::ExecToLog 'taskkill /F /IM "Valutavalto Penztar.exe" 2>nul'
+    nsExec::ExecToLog 'taskkill /F /IM Penztar.exe'
+    nsExec::ExecToLog 'taskkill /F /IM "Valutavalto Penztar.exe"'
     ; Scoped kill: only BestChange-path postgres/java (nem globális!)
     nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process postgres -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
     nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process java -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
@@ -73,8 +73,8 @@ Section "Eltávolítás"
         nsExec::ExecToLog '"C:\ProgramData\BestChange\tools\nssm.exe" remove BestChange-Backend confirm'
         nsExec::ExecToLog '"C:\ProgramData\BestChange\tools\nssm.exe" remove BestChange-PostgreSQL confirm'
     cleanup_scdelete:
-    nsExec::ExecToLog 'sc.exe delete BestChange-Backend 2>nul'
-    nsExec::ExecToLog 'sc.exe delete BestChange-PostgreSQL 2>nul'
+    nsExec::ExecToLog 'sc.exe delete BestChange-Backend'
+    nsExec::ExecToLog 'sc.exe delete BestChange-PostgreSQL'
     Sleep 1000
 
     ; --- 4. Remove directories ---
@@ -100,7 +100,18 @@ Section "Eltávolítás"
     RMDir /r "$SMPROGRAMS\Valutaváltó Pénztár"
     RMDir /r "$SMPROGRAMS\Valutavalto Penztar"
 
-    ; --- 5. Registry cleanup ---
+    ; --- 4b. Firewall rules cleanup (BUG-03 fix) ---
+    DetailPrint "4b/5 - Tuzfalszabalyok torlese..."
+    nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Valutavalto-Backend"'
+    nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Valutavalto-PostgreSQL"'
+    nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="BestChange-Backend (8080)"'
+    nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="BestChange-PostgreSQL (54320)"'
+
+    ; --- 4c. PGPASSFILE environment variable cleanup (BUG-04 fix) ---
+    DetailPrint "4c/5 - PGPASSFILE kornyezeti valtozo torlese..."
+    nsExec::ExecToLog 'reg delete "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v PGPASSFILE /f'
+
+        ; --- 5. Registry cleanup ---
     DetailPrint "5/5 — Registry bejegyzések törlése..."
     DeleteRegKey HKLM "Software\BestChange"
     DeleteRegKey HKLM "Software\BestChange\ValutavaltoPenztar"

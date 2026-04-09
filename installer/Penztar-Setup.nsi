@@ -214,6 +214,48 @@ Section "Telepítés" SecInstall
     svc_delete_done:
 
     ; =====================================================================
+    ; FÁZIS 1e2: Régi fájlok, registry, tűzfal, shortcutök törlése
+    ; (Cleanup.nsi beolvasztva az egységes telepítőbe)
+    ; =====================================================================
+    DetailPrint "  Régi telepítés maradékainak törlése..."
+
+    ; Program Files helyek (x64 + legacy 32-bit)
+    RMDir /r "$PROGRAMFILES64\Valutavalto Penztar"
+    RMDir /r "$PROGRAMFILES64\ValutavaltoPenztar"
+    RMDir /r "$PROGRAMFILES64\Penztar"
+    RMDir /r "$PROGRAMFILES\Valutavalto Penztar"
+    RMDir /r "$PROGRAMFILES\ValutavaltoPenztar"
+
+    ; ProgramData (régi adatok)
+    RMDir /r "C:\ProgramData\BestChange"
+
+    ; Desktop shortcutok
+    Delete "$DESKTOP\Valutavalto Penztar.lnk"
+    Delete "$DESKTOP\Penztar.lnk"
+
+    ; Start Menu
+    RMDir /r "$SMPROGRAMS\Valutavalto Penztar"
+
+    ; Tűzfalszabályok törlése
+    nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Valutavalto-Backend"'
+    nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Valutavalto-PostgreSQL"'
+    nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="BestChange-Backend (8080)"'
+    nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="BestChange-PostgreSQL (54320)"'
+
+    ; PGPASSFILE környezeti változó törlése
+    nsExec::ExecToLog 'reg delete "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v PGPASSFILE /f'
+
+    ; Registry cleanup
+    SetRegView 64
+    DeleteRegKey HKLM "Software\BestChange"
+    DeleteRegKey HKLM "Software\BestChange\ValutavaltoPenztar"
+    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar"
+
+    ; DATA_DIR újrateremtése (az előző RMDir törölte)
+    ExpandEnvStrings $DATA_DIR "%PROGRAMDATA%\BestChange"
+    CreateDirectory $DATA_DIR
+
+    ; =====================================================================
     ; FÁZIS 1f: LockedList — locked fájlok detektálása
     ; =====================================================================
     IfFileExists "$DATA_DIR\pgsql\bin\postgres.exe" 0 skip_lockedlist
@@ -889,6 +931,9 @@ Section "Telepítés" SecInstall
     ; =====================================================================
     ; FÁZIS 8: Registry
     ; =====================================================================
+    ; BUG-07 fix: Explicit 64-bit registry view for x64 Windows
+    SetRegView 64
+
     WriteRegStr HKLM "Software\BestChange\ValutavaltoPenztar" "InstallDir" $INSTDIR
     WriteRegStr HKLM "Software\BestChange\ValutavaltoPenztar" "DataDir" $DATA_DIR
     WriteRegStr HKLM "Software\BestChange\ValutavaltoPenztar" "Version" "${VERSION}"
@@ -903,7 +948,7 @@ Section "Telepítés" SecInstall
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "InstallLocation" "$INSTDIR"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "InstallDate" "${BUILD_DATE}"
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "VersionMajor" 1
-    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "VersionMinor" 6
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "VersionMinor" 9
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "NoModify" 1
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "NoRepair" 1
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "EstimatedSize" 430080
@@ -980,10 +1025,15 @@ Section "un.Eltávolítás"
     nsExec::ExecToLog 'cmd.exe /C sc.exe delete BestChange-PostgreSQL'
     Sleep 1000
 
-    ; Firewall szabályok eltávolítása
+    ; Firewall szabályok eltávolítása (F-02 fix: mind a 4 rule törlése)
     DetailPrint "Firewall szabályok eltávolítása..."
     nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Valutavalto-Backend"'
     nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Valutavalto-PostgreSQL"'
+    nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="BestChange-Backend (8080)"'
+    nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="BestChange-PostgreSQL (54320)"'
+
+    ; F-01 fix: PGPASSFILE environment variable cleanup az uninstallerben
+    nsExec::ExecToLog 'reg delete "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v PGPASSFILE /f'
 
     DetailPrint "Alkalmazás fájlok eltávolítása..."
     RMDir /r "$INSTDIR"
@@ -1016,6 +1066,9 @@ Section "un.Eltávolítás"
 
     Delete "$DESKTOP\Valutaváltó Pénztár.lnk"
     RMDir /r "$SMPROGRAMS\Valutaváltó Pénztár"
+
+    ; BUG-07 fix: 64-bit registry view in uninstaller
+    SetRegView 64
 
     DeleteRegKey HKLM "Software\BestChange\ValutavaltoPenztar"
     DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar"
