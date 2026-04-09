@@ -201,17 +201,29 @@ export interface PagedResponse<T> {
 }
 
 // --- Electron token persist (ha Electron-ban fut) ---
+//
+// SECURITY WARNING: In web (non-Electron) mode, the JWT is stored in
+// localStorage which is accessible to any JS running on the same origin and
+// therefore vulnerable to XSS attacks.  Electron mode mitigates this via
+// OS-level encrypted storage (safeStorage / DPAPI / Keychain).
+//
+// TODO: Migrate web auth to httpOnly secure cookies (set by the backend on
+// /auth/login and /auth/refresh) so the token is never exposed to JS.  This
+// requires backend cooperation (Set-Cookie header + CSRF protection).
+
+/** Cached Electron token presence — kept in sync by persist/clear/load. */
+let _electronTokenPresent: boolean | null = null
 
 /** Token mentése Electron-ban — DPAPI/Keychain titkosítással (ha elérhető) */
 export async function persistToken(token: string): Promise<void> {
   try {
     if (window.electronAPI) {
-      // Titkosított tárolás (safeStorage) — fallback: config store
       if (window.electronAPI.secureStoreToken) {
         await window.electronAPI.secureStoreToken(token)
       } else {
         await window.electronAPI.setConfig('auth_token', token)
       }
+      _electronTokenPresent = true
       return
     }
 
@@ -231,6 +243,7 @@ export async function clearPersistedToken(): Promise<void> {
       } else {
         await window.electronAPI.deleteConfig('auth_token')
       }
+      _electronTokenPresent = false
       return
     }
 
@@ -244,18 +257,30 @@ export async function clearPersistedToken(): Promise<void> {
 /** Token betöltése Electron-ból — titkosított (safeStorage) elsőbbséggel */
 export async function loadPersistedToken(): Promise<string | null> {
   if (window.electronAPI) {
+    let token: string | null = null
     if (window.electronAPI.secureLoadToken) {
-      return window.electronAPI.secureLoadToken()
+      token = await window.electronAPI.secureLoadToken()
+    } else {
+      token = await window.electronAPI.getConfig('auth_token')
     }
-    return window.electronAPI.getConfig('auth_token')
+    _electronTokenPresent = Boolean(token)
+    return token
   }
 
   return window.localStorage.getItem(WEB_AUTH_TOKEN_KEY)
 }
 
+/**
+ * Synchronous check for persisted token presence.
+ *
+ * In Electron mode the actual storage is async, so this relies on a cached
+ * flag updated by persistToken / clearPersistedToken / loadPersistedToken.
+ * Before any of those have been called, the cache is unknown (`null`) and
+ * we optimistically return `true` so the App-level restore flow runs.
+ */
 export function hasPersistedToken(): boolean {
   if (window.electronAPI) {
-    return true
+    return _electronTokenPresent ?? (window.electronAPI.secureLoadToken != null || window.electronAPI.getConfig != null)
   }
 
   return Boolean(window.localStorage.getItem(WEB_AUTH_TOKEN_KEY))

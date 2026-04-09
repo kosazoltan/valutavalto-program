@@ -300,8 +300,8 @@ export default function ExchangeRateDisplayPage() {
                               <div className="font-bold">Deviza</div>
                               <div className="font-bold">Vétel</div>
                               <div className="font-bold">Eladás</div>
-                              {previewData.map((r, i) => (
-                                <React.Fragment key={i}><div>{r.currency}</div><div>{r.buyRate}</div><div>{r.sellRate}</div></React.Fragment>
+                              {previewData.map((r) => (
+                                <React.Fragment key={r.currency}><div>{r.currency}</div><div>{r.buyRate}</div><div>{r.sellRate}</div></React.Fragment>
                               ))}
                             </div>
                           </div>

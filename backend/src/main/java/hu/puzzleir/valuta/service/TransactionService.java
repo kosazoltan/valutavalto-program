@@ -47,7 +47,6 @@ import java.util.UUID;
  */
 @Service
 @RequiredArgsConstructor
-@Transactional(rollbackFor = Exception.class)
 @Slf4j
 public class TransactionService {
 
@@ -149,6 +148,7 @@ public class TransactionService {
      *
      * Legacy: VASARLAS.DLL - VETEL funkció
      */
+    @Transactional(rollbackFor = Exception.class)
     public Transaction executeBuy(BuyRequest request) {
         // Multi-line delegalas ha vannak tetelsorok
         if (request.getLines() != null && !request.getLines().isEmpty()) {
@@ -289,6 +289,7 @@ public class TransactionService {
      *
      * Legacy: ELADAS.DLL - ELADAS funkció
      */
+    @Transactional(rollbackFor = Exception.class)
     public Transaction executeSell(SellRequest request) {
         // Multi-line delegalas ha vannak tetelsorok
         if (request.getLines() != null && !request.getLines().isEmpty()) {
@@ -432,14 +433,17 @@ public class TransactionService {
     // - TransactionConversionService (valuta-valuta csere)
     // - TransactionMultiLineService (multi-line bizonylatok)
 
+    @Transactional(rollbackFor = Exception.class)
     public Transaction executeReversal(ReversalRequest request) {
         return reversalService.executeReversal(request);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public Transaction executePartialRefund(PartialRefundRequest request) {
         return reversalService.executePartialRefund(request);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public Transaction executeConversion(ConversionRequest request) {
         return conversionService.executeConversion(request);
     }

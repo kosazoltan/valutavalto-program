@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Outlet, NavLink, useNavigate, Navigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import { dailySessionApi } from '../services/api/index'
+import type { DailySession } from '../services/api/index'
 import {
   Home,
   ArrowLeftRight,
@@ -81,21 +82,11 @@ const menuGroups = [
   }
 ]
 
-interface SessionInfo {
-  id: number
-  sessionDate: string
-  status: string
-  openedAt?: string
-  openedByWorkerName?: string
-  openingBalanceHuf: number
-  transactionCount: number
-}
-
 export default function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sessionChecking, setSessionChecking] = useState(true)
   const [sessionReady, setSessionReady] = useState(false)
-  const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null)
+  const [sessionInfo, setSessionInfo] = useState<DailySession | null>(null)
   const [showSessionDialog, setShowSessionDialog] = useState(false)
   const [sessionError, setSessionError] = useState<string | null>(null)
   const { user, logout, hasRole } = useAuthStore()
@@ -113,7 +104,7 @@ export default function MainLayout() {
         // Már nyitott — lekérjük az infót és folytatjuk
         try {
           const current = await dailySessionApi.getCurrent()
-          setSessionInfo(current as unknown as SessionInfo)
+          setSessionInfo(current)
         } catch { /* session info nem kritikus */ }
         setSessionReady(true)
         return

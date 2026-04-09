@@ -30,13 +30,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ErrorLogController {
 
     private static final String RECIPIENT = "noraautomatizalas@gmail.com";
-    private static final String SUBJECT = "[VALUTAVALTO HIBA] [REPO: D:\\repo\\valutavalto-program]";
     private static final long RATE_LIMIT_WINDOW_MS = 60_000L;
     private static final int RATE_LIMIT_MAX_REQUESTS = 10;
 
     private final JavaMailSender mailSender;
     private final ObjectMapper objectMapper;
     private final ConcurrentHashMap<String, RateLimitEntry> rateLimits = new ConcurrentHashMap<>();
+
+    @Value("${spring.application.name:valuta-backend}")
+    private String applicationName;
 
     @Value("${errorlog.hmac.secret:}")
     private String hmacSecret;
@@ -98,7 +100,7 @@ public class ErrorLogController {
         MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
         helper.setTo(RECIPIENT);
         helper.setFrom(RECIPIENT);
-        helper.setSubject(SUBJECT);
+        helper.setSubject("[VALUTAVALTO HIBA] [APP: " + applicationName + "]");
         helper.setText(body, false);
         mailSender.send(message);
     }

@@ -116,8 +116,8 @@ export default function EveningClosingPage() {
           {preview.warnings.length > 0 && (
             <div className="bg-yellow-50 border border-yellow-200 rounded p-3 space-y-1">
               <div className="font-semibold flex items-center gap-1 text-yellow-700"><AlertTriangle size={16} /> Figyelmeztetések</div>
-              {preview.warnings.map((w, i) => (
-                <div key={i} className="text-sm text-yellow-600">• {w}</div>
+              {preview.warnings.map((w) => (
+                <div key={w} className="text-sm text-yellow-600">• {w}</div>
               ))}
             </div>
           )}
@@ -146,8 +146,8 @@ export default function EveningClosingPage() {
           <div className="form-panel">
             <h2 className="font-semibold mb-2">Záró készlet</h2>
             <div className="grid grid-cols-6 gap-2">
-              {(preview.balances || []).map((b, i) => (
-                <div key={i} className="text-center p-2 bg-gray-50 rounded">
+              {(preview.balances || []).map((b) => (
+                <div key={b.currency} className="text-center p-2 bg-gray-50 rounded">
                   <div className="font-mono text-sm font-bold">{b.currency}</div>
                   <div className="text-sm">{fmtNum(b.amount)}</div>
                 </div>

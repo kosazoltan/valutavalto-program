@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 // NOTE: @stomp/stompjs and sockjs-client must be installed:
 //   npm install @stomp/stompjs sockjs-client
 //   npm install --save-dev @types/sockjs-client
-import { Client } from '@stomp/stompjs'
+import { Client, type IStompSocket } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
 import { useAuthStore } from '../stores/authStore'
 import { useRateStore } from '../stores/rateStore'
@@ -73,7 +73,7 @@ export function useRateUpdates(): void {
 
     const endpoint = resolveWsEndpoint()
     const stompClient = new Client({
-      webSocketFactory: () => new SockJS(endpoint) as WebSocket,
+      webSocketFactory: () => new SockJS(endpoint) as IStompSocket,
       reconnectDelay: 5000,
       connectHeaders: token ? { Authorization: `Bearer ${token}` } : undefined,
       onConnect: () => {

@@ -45,8 +45,13 @@ export async function sendErrorReport(params: {
   }
 }
 
-// Auto-track clicks and navigations
-if (typeof window !== 'undefined') {
+// Auto-track clicks and navigations (guarded to run once even under HMR)
+let _listenersInstalled = false;
+
+export function installGlobalListeners(): void {
+  if (_listenersInstalled || typeof window === 'undefined') return;
+  _listenersInstalled = true;
+
   window.addEventListener('click', (e) => {
     const target = e.target as HTMLElement;
     addBreadcrumb('click', target?.tagName ?? 'unknown', { id: target?.id });
@@ -68,3 +73,5 @@ if (typeof window !== 'undefined') {
     });
   });
 }
+
+installGlobalListeners();

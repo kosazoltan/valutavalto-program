@@ -103,6 +103,8 @@ interface RateState {
  * mentette. Az új rendszerben REST API-n keresztül kéri le és
  * WebSocket STOMP-on kapja az azonnali frissítéseket.
  */
+let _fetchSeq = 0
+
 export const useRateStore = create<RateState>()((set, get) => ({
   rates: [],
   lastUpdate: null,
@@ -111,15 +113,18 @@ export const useRateStore = create<RateState>()((set, get) => ({
   autoRefreshIntervalId: null,
 
   fetchRates: async () => {
+    const seq = ++_fetchSeq
     set({ isLoading: true, error: null })
     try {
       const response = await api.get<ExchangeRate[]>('/exchange-rates')
+      if (seq !== _fetchSeq) return
       set({
         rates: response.data,
         lastUpdate: new Date().toISOString(),
         isLoading: false,
       })
     } catch (err) {
+      if (seq !== _fetchSeq) return
       const message = err instanceof Error ? err.message : 'Árfolyam lekérési hiba'
       set({ error: message, isLoading: false })
     }

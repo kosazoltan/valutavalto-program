@@ -1,5 +1,5 @@
 # Valutavalto ERP — Production Docker Compose
-# Hetzner CPX31 (135.181.39.206)
+# Hetzner CPX31 (<SERVER_IP>)
 #
 # Hasznalat:
 #   1. cp .env.example .env && nano .env  (kitolteni!)

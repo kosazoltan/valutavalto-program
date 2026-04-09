@@ -163,13 +163,17 @@ public class RateCreationController {
 
     @lombok.Data
     public static class BranchAssignmentRequest {
+        @jakarta.validation.constraints.NotNull
         private List<UUID> branchIds;
     }
 
     @lombok.Data
     public static class LimitBoundaryRequest {
+        @jakarta.validation.constraints.NotNull
         private BigDecimal limit1Boundary;
+        @jakarta.validation.constraints.NotNull
         private BigDecimal limit2Boundary;
+        @jakarta.validation.constraints.NotNull
         private BigDecimal limit3Boundary;
     }
 }

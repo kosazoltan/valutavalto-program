@@ -152,8 +152,8 @@ export default function NavIntegrationPage() {
           <table className="data-grid w-full">
             <thead><tr><th>Időpont</th><th>Bizonylatszám</th><th>Státusz</th><th>Hiba</th></tr></thead>
             <tbody>
-              {history.map((h, i) => (
-                <tr key={i}>
+              {history.map((h) => (
+                <tr key={`${h.timestamp ?? ''}-${h.receiptNumber ?? ''}`}>
                   <td className="text-sm">{h.timestamp ? new Date(h.timestamp).toLocaleString('hu-HU') : new Date().toLocaleString('hu-HU')}</td>
                   <td className="font-mono">{h.receiptNumber || '-'}</td>
                   <td>{h.success ? <span className="badge badge-green">OK</span> : <span className="badge badge-red">HIBA</span>}</td>

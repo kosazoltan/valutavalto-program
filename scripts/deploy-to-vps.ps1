@@ -42,7 +42,9 @@ Write-Host ""
 # Test SSH connection
 Write-Host "Testing SSH connection..." -ForegroundColor Yellow
 try {
-    ssh -i $SshKey -o StrictHostKeyChecking=no $SshUser@$VpsHost "echo 'SSH connection successful'" 2>&1 | Out-Null
+    # Host key verification is intentionally enabled. Run `ssh-keyscan $VpsHost >> ~/.ssh/known_hosts`
+    # before first use to register the server's host key.
+    ssh -i $SshKey $SshUser@$VpsHost "echo 'SSH connection successful'" 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) {
         throw "SSH connection failed"
     }
@@ -94,16 +96,16 @@ if ($DeployDatabase) {
             }
         }
         
+        # Pipe commands via stdin so PGPASSWORD doesn't appear in the process command line.
         $importCmd = @"
-cd $ProjectPath
 export PGPASSWORD='$dbPass'
+cd $ProjectPath
 psql -h $dbHost -p $dbPort -U $dbUser -d postgres -c "DROP DATABASE IF EXISTS $dbName;" 2>&1
 psql -h $dbHost -p $dbPort -U $dbUser -d postgres -c "CREATE DATABASE $dbName;" 2>&1
 psql -h $dbHost -p $dbPort -U $dbUser -d $dbName -f /tmp/valuta_schema.sql
 unset PGPASSWORD
 "@
-        
-        ssh -i $SshKey $SshUser@$VpsHost $importCmd
+        $importCmd | ssh -i $SshKey $SshUser@$VpsHost "bash -s"
         Write-Host "✓ Database deployed" -ForegroundColor Green
     } catch {
         Write-Host "✗ Failed to import database: $_" -ForegroundColor Red

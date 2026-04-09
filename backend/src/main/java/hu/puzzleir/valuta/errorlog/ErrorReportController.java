@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/error-report")
+@RequestMapping("/api/v1/error-report")
 @RequiredArgsConstructor
 public class ErrorReportController {
 
@@ -19,7 +19,7 @@ public class ErrorReportController {
             errorMailerService.sendErrorReport(req);
             return ResponseEntity.ok(Map.of("ok", true));
         } catch (Exception e) {
-            return ResponseEntity.ok(Map.of("ok", false));
+            return ResponseEntity.internalServerError().body(Map.of("ok", false));
         }
     }
 }

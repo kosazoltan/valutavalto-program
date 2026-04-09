@@ -40,7 +40,10 @@ const MAX_LINES = 6
 const IDENTIFICATION_LIMIT = 300_000
 const RATE_STALE_MS = 5 * 60 * 1000 // 5 perc
 
+let _rowIdSeq = 0
+
 interface TransactionRow {
+  id: string
   currencyCode: string
   currencyName: string
   exchangeRate: number
@@ -49,6 +52,7 @@ interface TransactionRow {
 }
 
 const emptyRow = (): TransactionRow => ({
+  id: `row-${++_rowIdSeq}`,
   currencyCode: '',
   currencyName: '',
   exchangeRate: 0,
@@ -655,7 +659,7 @@ export default function CashierTransactionPage() {
               <tbody>
                 {rows.map((row, idx) => (
                   <tr
-                    key={idx}
+                    key={row.id}
                     className={`border-b border-gray-100 dark:border-gray-700 transition-colors ${
                       idx === activeRow
                         ? 'bg-blue-50 dark:bg-blue-950/30 border-l-4 border-l-blue-500'

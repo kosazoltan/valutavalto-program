@@ -42,7 +42,10 @@ public class JwtTokenProvider {
     @PostConstruct
     public void validateSecret() {
         boolean isProduction = java.util.Arrays.asList(environment.getActiveProfiles()).contains("production");
-        if (isProduction && (secretKey == null || secretKey.startsWith("valuta-secret-key-change"))) {
+        if (isProduction && (secretKey == null
+                || secretKey.startsWith("CHANGE-ME")
+                || secretKey.startsWith("valutavalto-dev-secret")
+                || secretKey.startsWith("valuta-secret-key-change"))) {
             throw new IllegalStateException("FATAL: JWT_SECRET env var NINCS konfigurálva! Production-ban KÖTELEZŐ random 256-bit kulcsot használni.");
         }
         // Kulcs hossz ellenőrzés minden profilban

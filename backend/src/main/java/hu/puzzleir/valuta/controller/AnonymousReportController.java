@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.controller;
 
+import hu.puzzleir.valuta.dto.report.CreateAnonymousReportRequest;
 import hu.puzzleir.valuta.entity.AnonymousReport;
 import hu.puzzleir.valuta.service.AnonymousReportService;
 import jakarta.validation.Valid;
@@ -31,8 +32,8 @@ public class AnonymousReportController {
     }
 
     @PostMapping
-    public ResponseEntity<AnonymousReport> create(@Valid @RequestBody AnonymousReport entity) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(entity));
+    public ResponseEntity<AnonymousReport> create(@Valid @RequestBody CreateAnonymousReportRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request));
     }
 
     @PostMapping("/{id}/assign")

@@ -48,12 +48,14 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
       - name: OWASP Dependency Check
+        id: owasp
+        continue-on-error: true
         run: |
           cd backend && mvn -B org.owasp:dependency-check-maven:check \
             -DfailBuildOnCVSS=9 \
             -DnvdApiKey=$NVD_API_KEY \
             -DsuppressionFile=owasp-suppressions.xml \
-            --no-transfer-progress || true
+            --no-transfer-progress
       - name: Upload OWASP Report
         if: always()
         uses: actions/upload-artifact@v4
@@ -61,6 +63,11 @@ jobs:
           name: owasp-report
           path: backend/target/dependency-check-report.html
           retention-days: 14
+      - name: Fail on high/critical OWASP findings
+        if: steps.owasp.outcome == 'failure'
+        run: |
+          echo "::error::OWASP Dependency Check found high/critical vulnerabilities. See uploaded report."
+          exit 1
 
   npm-audit:
     name: npm audit (frontend + penztar-client)
@@ -72,14 +79,24 @@ jobs:
           node-version: '20'
 
       - name: Frontend npm audit
+        id: frontend_audit
+        continue-on-error: true
         run: |
           cd frontend-react && npm ci --legacy-peer-deps
-          npm audit --audit-level=high || true
+          npm audit --audit-level=high
 
       - name: Penztar-client npm audit
+        id: penztar_audit
+        continue-on-error: true
         run: |
           cd penztar-client && npm ci --legacy-peer-deps
-          npm audit --audit-level=high || true
+          npm audit --audit-level=high
+
+      - name: Fail on high/critical npm audit findings
+        if: steps.frontend_audit.outcome == 'failure' || steps.penztar_audit.outcome == 'failure'
+        run: |
+          echo "::error::npm audit found high/critical vulnerabilities in one or more packages."
+          exit 1
 
   penztar-lint:
     name: penztar-client Test + Lint + TypeCheck + IPC Contract

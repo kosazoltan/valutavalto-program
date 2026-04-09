@@ -8,10 +8,13 @@ import hu.puzzleir.valuta.service.TokenBlacklistService;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
+
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.UnsupportedJwtException;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -39,11 +42,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) 
             throws ServletException, IOException {
         
+        String jwt = getJwtFromRequest(request);
+        
+        if (!StringUtils.hasText(jwt)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         try {
-            String jwt = getJwtFromRequest(request);
-            
-            if (StringUtils.hasText(jwt) && jwtTokenProvider.validateToken(jwt)) {
-                // 🔴 Blacklist ellenőrzés — kijelentkeztetett token elutasítása
+            if (jwtTokenProvider.validateToken(jwt)) {
                 String tokenId = jwtTokenProvider.getTokenIdFromToken(jwt);
                 if (tokenBlacklistService.isBlacklisted(tokenId)) {
                     logger.warn("Blacklisted token used: tokenId=" + tokenId);
@@ -57,10 +64,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 UUID companyId = jwtTokenProvider.getCompanyIdFromToken(jwt);
                 UUID branchId = jwtTokenProvider.getBranchIdFromToken(jwt);
                 
-                // Authority létrehozás role alapján
                 SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role);
                 
-                // Authentication object
                 UsernamePasswordAuthenticationToken authentication = 
                     new UsernamePasswordAuthenticationToken(
                         workerCode, 
@@ -68,23 +73,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         Collections.singletonList(authority)
                     );
                 
-                // Operatív szerepkör kinyerése (V57)
                 String activeRole = jwtTokenProvider.getActiveRoleFromToken(jwt);
 
-                // Custom details (workerId, companyId, branchId, role, activeRole)
                 WorkerAuthenticationDetails details = new WorkerAuthenticationDetails(
                     workerId, companyId, branchId, role, activeRole
                 );
                 authentication.setDetails(details);
                 
-                // SecurityContext beállítás
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
+            
+            filterChain.doFilter(request, response);
+        } catch (ExpiredJwtException | MalformedJwtException | UnsupportedJwtException
+                 | io.jsonwebtoken.security.SignatureException ex) {
+            logger.warn("JWT token rejected: " + ex.getMessage());
+            SecurityContextHolder.clearContext();
+            filterChain.doFilter(request, response);
         } catch (Exception ex) {
-            logger.error("Could not set user authentication in security context", ex);
+            logger.error("Unexpected authentication error — rejecting request", ex);
+            SecurityContextHolder.clearContext();
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Authentication failed");
         }
-        
-        filterChain.doFilter(request, response);
     }
     
     /**

@@ -13,6 +13,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -55,6 +58,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
     /** POS fizetés: időablak ms-ban (alapértelmezett: 60 sec) */
     @Value("${rate-limit.payment.window-ms:60000}")
     private long paymentWindowMs;
+
+    /** Trusted proxy CIDR ranges — only these sources may set X-Forwarded-For */
+    @Value("${rate-limit.trusted-proxies:127.0.0.1/32,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}")
+    private List<String> trustedProxyCidrs;
+
+    private volatile List<CidrRange> parsedTrustedProxies;
 
     /** Cleanup: bejegyzések ennyi ms után törölhetők (alapértelmezett: 10 perc) */
     private static final long CLEANUP_THRESHOLD_MS = 600_000L;
@@ -160,16 +169,87 @@ public class RateLimitFilter extends OncePerRequestFilter {
         return removed[0];
     }
 
+    private List<CidrRange> getTrustedProxies() {
+        if (parsedTrustedProxies == null) {
+            if (trustedProxyCidrs == null || trustedProxyCidrs.isEmpty()) {
+                parsedTrustedProxies = Collections.emptyList();
+            } else {
+                parsedTrustedProxies = trustedProxyCidrs.stream()
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .map(CidrRange::parse)
+                        .filter(java.util.Objects::nonNull)
+                        .toList();
+            }
+        }
+        return parsedTrustedProxies;
+    }
+
+    private boolean isTrustedProxy(String remoteAddr) {
+        try {
+            InetAddress addr = InetAddress.getByName(remoteAddr);
+            for (CidrRange cidr : getTrustedProxies()) {
+                if (cidr.contains(addr)) {
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Cannot resolve remote address for trusted proxy check: {}", remoteAddr);
+        }
+        return false;
+    }
+
     private String resolveClientIp(HttpServletRequest request) {
-        String xff = request.getHeader("X-Forwarded-For");
-        if (xff != null && !xff.isBlank()) {
-            return xff.split(",")[0].trim();
+        String remoteAddr = request.getRemoteAddr();
+        if (isTrustedProxy(remoteAddr)) {
+            String xff = request.getHeader("X-Forwarded-For");
+            if (xff != null && !xff.isBlank()) {
+                return xff.split(",")[0].trim();
+            }
+            String realIp = request.getHeader("X-Real-IP");
+            if (realIp != null && !realIp.isBlank()) {
+                return realIp;
+            }
         }
-        String realIp = request.getHeader("X-Real-IP");
-        if (realIp != null && !realIp.isBlank()) {
-            return realIp;
+        return remoteAddr;
+    }
+
+    private static class CidrRange {
+        private final byte[] network;
+        private final int prefixLength;
+
+        CidrRange(byte[] network, int prefixLength) {
+            this.network = network;
+            this.prefixLength = prefixLength;
         }
-        return request.getRemoteAddr();
+
+        static CidrRange parse(String cidr) {
+            try {
+                String[] parts = cidr.split("/");
+                InetAddress addr = InetAddress.getByName(parts[0]);
+                int prefix = parts.length > 1 ? Integer.parseInt(parts[1]) : (addr.getAddress().length * 8);
+                return new CidrRange(addr.getAddress(), prefix);
+            } catch (Exception e) {
+                return null;
+            }
+        }
+
+        boolean contains(InetAddress address) {
+            byte[] addrBytes = address.getAddress();
+            if (addrBytes.length != network.length) {
+                return false;
+            }
+            int fullBytes = prefixLength / 8;
+            for (int i = 0; i < fullBytes && i < addrBytes.length; i++) {
+                if (addrBytes[i] != network[i]) return false;
+            }
+            int remainingBits = prefixLength % 8;
+            if (remainingBits > 0 && fullBytes < addrBytes.length) {
+                int mask = (0xFF << (8 - remainingBits)) & 0xFF;
+                if ((addrBytes[fullBytes] & mask) != (network[fullBytes] & mask)) return false;
+            }
+            return true;
+        }
     }
 
     private static class RateLimitEntry {

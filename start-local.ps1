@@ -52,12 +52,14 @@ if ($pgOk) {
 # --- 2. Start Backend ---
 Write-Host "`n[2/5] Backend indítás :8080..." -ForegroundColor Yellow
 
-$env:JWT_SECRET = "BestChangeLocalPenztarJWT2026SecretKey"
-$env:SPRING_DATASOURCE_URL = "jdbc:postgresql://localhost:54320/valuta"
-$env:SPRING_DATASOURCE_USERNAME = "valuta_user"
-$env:SPRING_DATASOURCE_PASSWORD = "BestChange2026Local"
-$env:ENCRYPTION_KEY = "LocalInstallKey2026BestChange"
-$env:ENCRYPTION_SALT = "a1b2c3d4e5f6a7b8"
+# WARNING: These are insecure dev-only defaults. In any shared or staging environment,
+# set the real values via environment variables BEFORE running this script.
+$env:JWT_SECRET         = if ($env:JWT_SECRET)         { $env:JWT_SECRET }         else { "BestChangeLocalPenztarJWT2026SecretKey" }
+$env:SPRING_DATASOURCE_URL      = if ($env:SPRING_DATASOURCE_URL)      { $env:SPRING_DATASOURCE_URL }      else { "jdbc:postgresql://localhost:54320/valuta" }
+$env:SPRING_DATASOURCE_USERNAME = if ($env:SPRING_DATASOURCE_USERNAME) { $env:SPRING_DATASOURCE_USERNAME } else { "valuta_user" }
+$env:SPRING_DATASOURCE_PASSWORD = if ($env:SPRING_DATASOURCE_PASSWORD) { $env:SPRING_DATASOURCE_PASSWORD } else { "BestChange2026Local" }
+$env:ENCRYPTION_KEY     = if ($env:ENCRYPTION_KEY)     { $env:ENCRYPTION_KEY }     else { "LocalInstallKey2026BestChange" }
+$env:ENCRYPTION_SALT    = if ($env:ENCRYPTION_SALT)    { $env:ENCRYPTION_SALT }    else { "a1b2c3d4e5f6a7b8" }
 
 $javaExe = "C:\ProgramData\BestChange\jre\bin\java.exe"
 $jarPath = "C:\ProgramData\BestChange\backend\valuta-backend.jar"
@@ -71,16 +73,16 @@ if (-not (Test-Path $jarPath)) {
 $backendArgs = @(
     "-jar", $jarPath,
     "--server.port=8080",
-    "--spring.datasource.url=jdbc:postgresql://localhost:54320/valuta",
-    "--spring.datasource.username=valuta_user",
-    "--spring.datasource.password=BestChange2026Local",
+    "--spring.datasource.url=$env:SPRING_DATASOURCE_URL",
+    "--spring.datasource.username=$env:SPRING_DATASOURCE_USERNAME",
+    "--spring.datasource.password=$env:SPRING_DATASOURCE_PASSWORD",
     "--spring.datasource.driver-class-name=org.postgresql.Driver",
     "--spring.jpa.hibernate.ddl-auto=update",
-    "--jwt.secret=BestChangeLocalPenztarJWT2026SecretKey",
+    "--jwt.secret=$env:JWT_SECRET",
     "--jwt.expiration=86400000",
     "--cors.allowed-origins=app://localhost,http://localhost:3000",
-    "--app.encryption.key=LocalInstallKey2026BestChange",
-    "--app.encryption.salt=a1b2c3d4e5f6a7b8",
+    "--app.encryption.key=$env:ENCRYPTION_KEY",
+    "--app.encryption.salt=$env:ENCRYPTION_SALT",
     "--management.endpoints.web.exposure.include=health,info",
     "--camera.enabled=false",
     "--penztar.bootstrap.company-code=EBC",

@@ -105,8 +105,21 @@ describe('persistToken / clearPersistedToken / loadPersistedToken / hasPersisted
       expect(result).toBe('electron-token')
     })
 
-    it('hasPersistedToken returns true in Electron mode', () => {
+    it('hasPersistedToken returns true when getConfig capability exists', () => {
       expect(hasPersistedToken()).toBe(true)
+    })
+
+    it('hasPersistedToken returns false after clearPersistedToken', async () => {
+      await persistToken('electron-tok')
+      expect(hasPersistedToken()).toBe(true)
+      await clearPersistedToken()
+      expect(hasPersistedToken()).toBe(false)
+    })
+
+    it('hasPersistedToken reflects loadPersistedToken result', async () => {
+      ;(window as any).electronAPI.getConfig = vi.fn().mockResolvedValue(null)
+      await loadPersistedToken()
+      expect(hasPersistedToken()).toBe(false)
     })
   })
 })

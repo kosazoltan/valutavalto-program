@@ -3,9 +3,11 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.dto.led.*;
 import hu.puzzleir.valuta.service.LedDisplayService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +21,7 @@ import java.util.UUID;
  */
 @RestController
 @RequiredArgsConstructor
+@Validated
 public class LedDisplayController {
 
     private final LedDisplayService ledDisplayService;
@@ -137,7 +140,7 @@ public class LedDisplayController {
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
     public ResponseEntity<Void> sendText(
             @PathVariable UUID branchId,
-            @RequestBody String text) {
+            @RequestBody @Size(max = 1000) String text) {
         ledDisplayService.sendCustomText(branchId, text);
         return ResponseEntity.ok().build();
     }

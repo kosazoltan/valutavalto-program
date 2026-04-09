@@ -9,9 +9,11 @@ services:
     image: postgres:16-alpine
     container_name: valuta-postgres
     environment:
-      POSTGRES_DB: valuta
-      POSTGRES_USER: valuta_user
-      POSTGRES_PASSWORD: valuta_pass
+      # DEV-ONLY defaults. For shared/staging environments override via .env file
+      # (see .env.example) or environment variables.
+      POSTGRES_DB: ${POSTGRES_DB:-valuta}
+      POSTGRES_USER: ${POSTGRES_USER:-valuta_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-valuta_pass}
     ports:
       - "5432:5432"
     volumes:
@@ -27,8 +29,9 @@ services:
     image: dpage/pgadmin4:latest
     container_name: valuta-pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@valuta.local
-      PGADMIN_DEFAULT_PASSWORD: admin
+      # DEV-ONLY defaults; override via .env for any non-local usage.
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@valuta.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
     ports:
       - "5050:80"
     depends_on:

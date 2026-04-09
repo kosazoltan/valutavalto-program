@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.dto.report.CreateAnonymousReportRequest;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.entity.AnonymousReport;
 import hu.puzzleir.valuta.entity.AnonymousReportStatus;
@@ -24,13 +25,17 @@ public class AnonymousReportService {
     }
 
     public AnonymousReport getById(UUID id) {
-        return repo.findById(id)
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return repo.findByIdAndCompanyId(id, companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Anonim bejelentés nem található: " + id));
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public AnonymousReport create(AnonymousReport entity) {
-        entity.setId(null);
+    public AnonymousReport create(CreateAnonymousReportRequest request) {
+        AnonymousReport entity = new AnonymousReport();
+        entity.setReportType(request.getReportType());
+        entity.setSubject(request.getSubject());
+        entity.setDescription(request.getDescription());
         entity.setStatus(AnonymousReportStatus.NEW);
         entity.setCompanyId(SecurityUtils.getCurrentCompanyId());
         return repo.save(entity);
