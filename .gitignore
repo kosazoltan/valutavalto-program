@@ -32,6 +32,9 @@ drive-download-*.zip
 scripts/backup-keys/*.key
 scripts/backup-keys/*.gpg
 
+# Electron ASAR extract temp
+tmp-asar-extract/
+
 # Node.js
 node_modules/
 npm-debug.log*
