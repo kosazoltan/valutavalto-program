@@ -16,7 +16,7 @@ const validWorker = {
   firstName: 'Test',
   lastName: 'User',
   fullName: 'Test User',
-  role: 'CASHIER',
+  role: 'ADMIN',
   branchId: 'branch-1',
   branchCode: 'BUD01',
   branchName: 'Budapest 01',
@@ -64,7 +64,7 @@ test('hibás login → error üzenet', async ({ page }) => {
 test('sikeres login → redirect dashboard-ra', async ({ page }) => {
   const token = createJwt({
     exp: Math.floor(Date.now() / 1000) + 3600,
-    activeRole: 'CASHIER',
+    activeRole: 'ADMIN',
     permissions: ['TRADE_EXECUTE'],
   })
 
@@ -82,9 +82,9 @@ test('sikeres login → redirect dashboard-ra', async ({ page }) => {
           tokenType: 'Bearer',
           expiresAt: new Date(Date.now() + 3600_000).toISOString(),
           worker: validWorker,
-          activeRole: 'CASHIER',
+          activeRole: 'ADMIN',
           permissions: ['TRADE_EXECUTE'],
-          roles: ['CASHIER'],
+          roles: ['ADMIN'],
           roleSelectionRequired: false,
         }),
       })
@@ -109,6 +109,6 @@ test('sikeres login → redirect dashboard-ra', async ({ page }) => {
   await page.locator('input[type="password"]').fill('1234')
   await page.getByRole('button', { name: /Bejelentkezés/i }).click()
 
-  // Redirect: CASHIER role → /cashier, egyebkent /dashboard
-  await expect(page).toHaveURL(/\/(dashboard|cashier)$/)
+  // ADMIN role → /dashboard
+  await expect(page).toHaveURL(/\/dashboard$/)
 })

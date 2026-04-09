@@ -6,7 +6,7 @@ const worker = {
   firstName: 'Borsi',
   lastName: 'Teszt',
   fullName: 'Borsi Teszt',
-  role: 'CASHIER',
+  role: 'ADMIN',
   branchId: 'branch-1',
   branchCode: 'BUD01',
   branchName: 'Budapest 01',
@@ -25,7 +25,7 @@ function createJwt(payload: Record<string, unknown>) {
 test('a webes login reload utan is bent tartja a sessiont', async ({ page }) => {
   const token = createJwt({
     exp: Math.floor(Date.now() / 1000) + 3600,
-    activeRole: 'CASHIER',
+    activeRole: 'ADMIN',
     permissions: ['TRADE_EXECUTE'],
   })
 
@@ -45,9 +45,9 @@ test('a webes login reload utan is bent tartja a sessiont', async ({ page }) => 
           tokenType: 'Bearer',
           expiresAt: new Date(Date.now() + 3600_000).toISOString(),
           worker,
-          activeRole: 'CASHIER',
+          activeRole: 'ADMIN',
           permissions: ['TRADE_EXECUTE'],
-          roles: ['CASHIER'],
+          roles: ['ADMIN'],
           roleSelectionRequired: false,
         }),
       })
@@ -81,14 +81,13 @@ test('a webes login reload utan is bent tartja a sessiont', async ({ page }) => 
   await page.locator('input[type="password"]').fill('1234')
   await page.getByRole('button', { name: 'Bejelentkezés' }).click()
 
-  await expect(page).toHaveURL(/\/(dashboard|cashier)$/)
-  // CASHIER role → /cashier (no 'Iranyitopult' heading)
+  await expect(page).toHaveURL(/\/dashboard$/)
   await expect(page.locator('main, h1, h2, [role="heading"]').first()).toBeVisible()
   await expect.poll(async () => page.evaluate(() => localStorage.getItem('auth_token'))).toBe(token)
 
   await page.reload()
 
-  await expect(page).toHaveURL(/\/(dashboard|cashier)$/)
+  await expect(page).toHaveURL(/\/dashboard$/)
   await expect(page.locator('main, h1, h2, [role="heading"]').first()).toBeVisible()
   await expect.poll(async () => page.evaluate(() => localStorage.getItem('auth_token'))).toBe(token)
   expect(workersMeRequests).toBeGreaterThanOrEqual(1)

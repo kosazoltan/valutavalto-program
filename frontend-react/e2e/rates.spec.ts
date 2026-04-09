@@ -12,11 +12,11 @@ function createJwt(payload: Record<string, unknown>) {
 
 const worker = {
   id: 1,
-  workerCode: 'RATE_MANAGER',
-  firstName: 'Rate',
+  workerCode: 'ADMIN',
+  firstName: 'Admin',
   lastName: 'Teszt',
-  fullName: 'Rate Teszt',
-  role: 'RATE_MANAGER',
+  fullName: 'Admin Teszt',
+  role: 'ADMIN',
   branchId: 'branch-1',
   branchCode: 'BUD01',
   branchName: 'Budapest 01',
@@ -28,7 +28,7 @@ const worker = {
 async function loginForRates(page: Page) {
   const token = createJwt({
     exp: Math.floor(Date.now() / 1000) + 3600,
-    activeRole: 'RATE_MANAGER',
+    activeRole: 'ADMIN',
     permissions: ['RATE_READ', 'RATE_WRITE'],
   })
 
@@ -66,9 +66,9 @@ async function loginForRates(page: Page) {
           tokenType: 'Bearer',
           expiresAt: new Date(Date.now() + 3600_000).toISOString(),
           worker,
-          activeRole: 'RATE_MANAGER',
+          activeRole: 'ADMIN',
           permissions: ['RATE_READ', 'RATE_WRITE'],
-          roles: ['RATE_MANAGER'],
+          roles: ['ADMIN'],
           roleSelectionRequired: false,
         }),
       })

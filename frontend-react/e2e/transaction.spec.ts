@@ -12,11 +12,11 @@ function createJwt(payload: Record<string, unknown>) {
 
 const worker = {
   id: 1,
-  workerCode: 'CASHIER',
-  firstName: 'Cashier',
+  workerCode: 'ADMIN',
+  firstName: 'Admin',
   lastName: 'Teszt',
-  fullName: 'Cashier Teszt',
-  role: 'CASHIER',
+  fullName: 'Admin Teszt',
+  role: 'ADMIN',
   branchId: 'branch-1',
   branchCode: 'BUD01',
   branchName: 'Budapest 01',
@@ -28,7 +28,7 @@ const worker = {
 async function loginForTransaction(page: Page) {
   const token = createJwt({
     exp: Math.floor(Date.now() / 1000) + 3600,
-    activeRole: 'CASHIER',
+    activeRole: 'ADMIN',
     permissions: ['TRADE_EXECUTE', 'TRADE_STORNO'],
   })
 
@@ -46,9 +46,9 @@ async function loginForTransaction(page: Page) {
           tokenType: 'Bearer',
           expiresAt: new Date(Date.now() + 3600_000).toISOString(),
           worker,
-          activeRole: 'CASHIER',
+          activeRole: 'ADMIN',
           permissions: ['TRADE_EXECUTE', 'TRADE_STORNO'],
-          roles: ['CASHIER'],
+          roles: ['ADMIN'],
           roleSelectionRequired: false,
         }),
       })
@@ -93,11 +93,11 @@ async function loginForTransaction(page: Page) {
   await page.goto('/login')
   const textboxes = page.getByRole('textbox')
   await textboxes.nth(0).fill('EBC')
-  await textboxes.nth(1).fill('CASHIER')
+  await textboxes.nth(1).fill('ADMIN')
   await page.locator('input[type="password"]').fill('1234')
   await page.getByRole('button', { name: /Bejelentkezés/i }).click()
 
-  await expect(page).toHaveURL(/\/(dashboard|cashier)$/)
+  await expect(page).toHaveURL(/\/dashboard$/)
 }
 
 test('tranzakciós oldal betöltődik', async ({ page }) => {

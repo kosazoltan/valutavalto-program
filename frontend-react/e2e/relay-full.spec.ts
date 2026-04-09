@@ -312,7 +312,7 @@ test('auth persist: login → reload stays on dashboard', async ({ page }) => {
       return route.fulfill({ status:200, contentType:'application/json',
         body: JSON.stringify({ token:TOKEN, tokenType:'Bearer',
           expiresAt: new Date(Date.now()+7200_000).toISOString(), worker:WORKER,
-          activeRole:'CASHIER', permissions:['TRADE_EXECUTE'], roles:['CASHIER'],
+          activeRole:'ADMIN', permissions:['TRADE_EXECUTE'], roles:['ADMIN'],
           roleSelectionRequired:false }) })
     if (p.endsWith('/workers/me'))
       return route.fulfill({ status:200, contentType:'application/json', body: JSON.stringify(WORKER) })
@@ -323,15 +323,8 @@ test('auth persist: login → reload stays on dashboard', async ({ page }) => {
   await page.locator('input').nth(1).fill('BORSI')
   await page.locator('input[type="password"]').fill('1234')
   await page.getByRole('button', { name: 'Bejelentkezés' }).click()
-  await expect(page).toHaveURL(/\/(dashboard|cashier)/, { timeout:10000 })
+  await expect(page).toHaveURL(/\/dashboard/, { timeout:10000 })
   await page.reload()
-  await expect(page).toHaveURL(/\/(dashboard|cashier)/)
-  // CASHIER role → /cashier oldal (nem /dashboard 'Iranyitopult')
-  const url = page.url()
-  if (url.includes('/dashboard')) {
-    await expect(page.getByRole('heading', { name: 'Irányítópult' })).toBeVisible()
-  } else {
-    // /cashier oldalon a fo tartalom lathato
-    await expect(page.locator('main, [data-testid="cashier-main"], h1, h2').first()).toBeVisible()
-  }
+  await expect(page).toHaveURL(/\/dashboard/)
+  await expect(page.getByRole('heading', { name: 'Irányítópult' })).toBeVisible()
 })
