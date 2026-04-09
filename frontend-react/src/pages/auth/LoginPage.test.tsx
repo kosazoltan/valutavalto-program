@@ -43,6 +43,11 @@ vi.mock('../../services/api/index', () => ({
   },
 }))
 
+// Mock useAppMode — teszt környezetben 'penztar' mód (nincs RBAC whitelist)
+vi.mock('../../hooks/useAppMode', () => ({
+  useAppMode: () => ({ mode: 'penztar', isLoading: false }),
+}))
+
 const baseResponse = {
   worker: {
     id: 1,

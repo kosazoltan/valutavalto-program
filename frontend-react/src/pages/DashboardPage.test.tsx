@@ -153,7 +153,9 @@ describe('DashboardPage', () => {
 
   it('utolsó frissítést az aktuális idővel jeleníti meg', () => {
     renderDashboardPage()
-    expect(screen.getByText(/Utolsó frissítés:/)).toBeInTheDocument()
+    // Kompakt UI: csak az idő jelenik meg, "Utolsó frissítés:" prefix eltávolítva
+    const timeRegex = /\d{1,2}:\d{2}:\d{2}/
+    expect(screen.getByText(timeRegex)).toBeInTheDocument()
   })
 
   it('árfolyam részletek linkre kattintás navigál', () => {
