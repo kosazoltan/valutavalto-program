@@ -2,11 +2,12 @@
 // NOTE: Cannot use top-level await here — CJS output format (vite-plugin-electron/rolldown)
 import('dotenv/config').catch(() => { /* production: dotenv not available, safe to skip */ });
 import { app, BrowserWindow, ipcMain, dialog, protocol, net, safeStorage, session } from 'electron';
+import { release as getOsRelease } from 'node:os';
 
 // Windows 11 Insider (26200+) sandbox compatibility fix — CONDITIONAL
 // Only disable sandbox on affected Windows Insider builds (26200+).
 // Normal Windows 10/11 keeps sandbox enabled for security.
-const osRelease = require('node:os').release(); // e.g. "10.0.26200"
+const osRelease = getOsRelease(); // e.g. "10.0.26200"
 const osBuild = parseInt(osRelease.split('.')[2] || '0', 10);
 if (osBuild >= 26200) {
   app.commandLine.appendSwitch('no-sandbox');

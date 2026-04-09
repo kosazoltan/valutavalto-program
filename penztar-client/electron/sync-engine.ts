@@ -1337,7 +1337,7 @@ export class SyncEngine {
       log.info(`[SyncEngine] Restore: ${transactions.length} tranzakció érkezett`);
 
       // Mentés a helyi SQLite cache-be
-      const { saveRestoredTransactions } = require('./sqlite');
+      const { saveRestoredTransactions } = await import('./sqlite');
       const saved = saveRestoredTransactions(transactions);
       log.info(`[SyncEngine] Restore: ${saved} tranzakció mentve a helyi cache-be`);
 
@@ -1356,9 +1356,14 @@ export class SyncEngine {
    */
   runRetentionCleanup(): void {
     try {
-      const { cleanupSyncedPendingRecords } = require('./sqlite');
-      const result = cleanupSyncedPendingRecords(180);
-      log.info('[SyncEngine] Retention cleanup (180 nap):', result);
+      import('./sqlite')
+        .then(({ cleanupSyncedPendingRecords }) => {
+          const result = cleanupSyncedPendingRecords(180);
+          log.info('[SyncEngine] Retention cleanup (180 nap):', result);
+        })
+        .catch((err) => {
+          log.warn('[SyncEngine] Retention cleanup hiba:', err);
+        });
     } catch (err) {
       log.warn('[SyncEngine] Retention cleanup hiba:', err);
     }
