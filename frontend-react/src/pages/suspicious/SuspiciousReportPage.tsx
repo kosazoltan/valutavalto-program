@@ -132,10 +132,10 @@ export default function SuspiciousReportPage() {
   };
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="container mx-auto p-4">
+      <div className="flex justify-between items-center mb-3">
         <div>
-          <h1 className="text-2xl font-bold">Gyanús ügyletek (Pmt.)</h1>
+          <h1 className="text-lg font-bold">Gyanús ügyletek (Pmt.)</h1>
           <p className="text-gray-500">Pénzmosás elleni bejelentések kezelése</p>
         </div>
         <button
@@ -146,7 +146,7 @@ export default function SuspiciousReportPage() {
         </button>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-3">
         <input
           type="text"
           placeholder="Keresés szám vagy ügyfél alapján..."
@@ -279,7 +279,7 @@ export default function SuspiciousReportPage() {
 
       {showCreateDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg p-4 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">Új gyanús ügylet bejelentés</h2>
             <CreateReportForm
               onSuccess={() => {
@@ -294,7 +294,7 @@ export default function SuspiciousReportPage() {
 
       {showDetailDialog && selectedReport && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-3xl w-full max-h-[80vh] overflow-y-auto">
+          <div className="bg-white rounded-lg p-4 max-w-3xl w-full max-h-[80vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">Bejelentés részletei - {selectedReport.reportNumber}</h2>
             <ReportDetail report={selectedReport} onClose={() => setShowDetailDialog(false)} />
           </div>

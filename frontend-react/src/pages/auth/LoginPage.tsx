@@ -5,6 +5,10 @@ import { useAuthStore } from '../../stores/authStore'
 import { authApi } from '../../services/api/index'
 import { Eye, EyeOff, User, Lock, Building2, Shield } from 'lucide-react'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { useAppMode } from '../../hooks/useAppMode'
+
+/** Szerver (full mód) whitelist: csak ezek a role-ok léphetnek be böngészőben */
+const SERVER_ALLOWED_ROLES = ['SUPERVISOR', 'MANAGER', 'ADMIN']
 
 export default function LoginPage() {
   const [companyCode, setCompanyCode] = useState('EBC')
@@ -38,8 +42,17 @@ export default function LoginPage() {
     }
   }
 
+  const { mode: appMode } = useAppMode()
+
   /** Login eredmény feldolgozása — ha multi-role, role-választó megjelenítése */
   const handleLoginResponse = (response: Awaited<ReturnType<typeof authApi.login>>) => {
+    // Szerver (full mód) whitelist: csak főértéktáros / belső ellenőr / ügyvezető
+    const effectiveRole = response.activeRole ?? response.worker.role
+    if (appMode === 'full' && !SERVER_ALLOWED_ROLES.includes(effectiveRole)) {
+      setError('Hozzáférés megtagadva. A szerverre csak főértéktáros, belső ellenőr és ügyvezető léphet be.')
+      return
+    }
+
     login(
       response.worker,
       response.token,
@@ -202,7 +215,7 @@ export default function LoginPage() {
         <div className="p-4">
           {/* Logo/Company info */}
           <div className="text-center mb-4">
-            <div className="text-2xl font-bold text-primary">RepZtecH Exclusive Best Change</div>
+            <div className="text-lg font-bold text-primary">RepZtecH Exclusive Best Change</div>
             <div className="text-xs text-gray-500">Pénzváltó Rendszer v2.0</div>
           </div>
 

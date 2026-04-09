@@ -135,12 +135,12 @@ export default function DayOpenPage() {
   return (
     <div className="flex h-screen flex-col">
       <CashierHeader />
-      <div className="flex flex-1 flex-col items-center justify-center p-6">
-        <div className="w-full max-w-lg space-y-6">
+      <div className="flex flex-1 flex-col items-center justify-center p-4">
+        <div className="w-full max-w-lg space-y-3">
           {/* Header */}
           <div className="text-center">
             <Sun className="mx-auto h-12 w-12 text-amber-500" />
-            <h1 className="mt-3 text-2xl font-bold text-gray-900">Napnyitas</h1>
+            <h1 className="mt-3 text-lg font-bold text-gray-900">Napnyitas</h1>
             <p className="mt-1 text-sm text-gray-500">
               {new Date().toLocaleDateString('hu-HU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               {' — '}

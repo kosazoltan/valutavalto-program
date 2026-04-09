@@ -127,7 +127,7 @@ export default function BankTransactions() {
   if (loading) return <TableSkeleton rows={6} cols={7} />
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -230,8 +230,8 @@ export default function BankTransactions() {
       {/* New Transaction Modal */}
       {showNewModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setShowNewModal(false)}>
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-lg w-full mx-4" onClick={e => e.stopPropagation()}>
-            <h2 className="text-xl font-bold text-secondary-900 mb-6 flex items-center gap-2">
+          <div className="bg-white rounded-lg shadow-xl p-4 max-w-lg w-full mx-4" onClick={e => e.stopPropagation()}>
+            <h2 className="text-xl font-bold text-secondary-900 mb-3 flex items-center gap-2">
               <Building2 size={24} className="text-primary-600" />
               Uj banki tranzakcio
             </h2>
@@ -320,7 +320,7 @@ export default function BankTransactions() {
               {hufAmount && (
                 <div className="p-3 rounded-lg bg-secondary-50 border border-secondary-200">
                   <div className="text-sm text-secondary-600">HUF ellenerteke:</div>
-                  <div className="text-2xl font-bold font-mono text-secondary-900">
+                  <div className="text-lg font-bold font-mono text-secondary-900">
                     {parseInt(hufAmount).toLocaleString('hu-HU')} Ft
                   </div>
                 </div>
@@ -378,7 +378,7 @@ export default function BankTransactions() {
       {/* Detail Modal */}
       {showDetailModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setShowDetailModal(null)}>
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-lg shadow-xl p-4 max-w-md w-full mx-4" onClick={e => e.stopPropagation()}>
             <h2 className="text-xl font-bold text-secondary-900 mb-4">
               Tranzakcio #{showDetailModal.id}
             </h2>

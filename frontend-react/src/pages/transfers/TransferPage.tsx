@@ -516,7 +516,7 @@ export default function TransferPage() {
       {/* New Transfer Modal */}
       {showNewTransfer && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-4">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <Send />
               Új átadás létrehozása
@@ -622,7 +622,7 @@ export default function TransferPage() {
       {/* Receive Modal */}
       {showReceiveModal && selectedTransfer && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-4">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <Download />
               Átvétel végrehajtása

@@ -117,7 +117,7 @@ export default function ReportsCirculars() {
   const totalTransactions = branchReports.reduce((sum, r) => sum + r.transactionCount, 0)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-secondary-900">Napi Jelentés &amp; Körlevél</h1>
@@ -155,7 +155,7 @@ export default function ReportsCirculars() {
 
       {/* TAB 1: Daily Reports */}
       {activeTab === 'reports' && (
-        <div className="space-y-6">
+        <div className="space-y-3">
           {/* Submission Status */}
           <div className="form-panel">
             <div className="flex items-center justify-between mb-4">
@@ -318,7 +318,7 @@ export default function ReportsCirculars() {
 
       {/* TAB 2: Circulars */}
       {activeTab === 'circulars' && (
-        <div className="space-y-6">
+        <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-secondary-900 flex items-center gap-2">
               <Bell size={20} className="text-accent-600" />
@@ -387,8 +387,8 @@ export default function ReportsCirculars() {
       {/* New Circular Modal */}
       {showNewCircular && (
         <ModalOverlay onClose={() => setShowNewCircular(false)}>
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full mx-4">
-            <div className="flex items-center justify-between mb-6">
+          <div className="bg-white rounded-lg shadow-xl p-4 max-w-2xl w-full mx-4">
+            <div className="flex items-center justify-between mb-3">
               <h2 className="text-xl font-bold text-secondary-900">Új körlevél küldése</h2>
               <button onClick={() => setShowNewCircular(false)} className="text-secondary-400 hover:text-secondary-600">
                 <X size={20} />
@@ -447,7 +447,7 @@ export default function ReportsCirculars() {
       {/* Circular Detail Modal */}
       {showCircularDetail && (
         <ModalOverlay onClose={() => setShowCircularDetail(null)}>
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-lg w-full mx-4">
+          <div className="bg-white rounded-lg shadow-xl p-4 max-w-lg w-full mx-4">
             <h2 className="text-xl font-bold text-secondary-900 mb-4">{showCircularDetail.title}</h2>
             <div className="space-y-3 text-sm">
               <div className="p-4 bg-secondary-50 rounded-lg text-secondary-700">

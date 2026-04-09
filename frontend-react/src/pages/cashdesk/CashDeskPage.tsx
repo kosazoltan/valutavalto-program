@@ -238,7 +238,7 @@ export default function CashDeskPage() {
           <div className="space-y-3">
             <div className="bg-blue-50 p-3 rounded">
               <div className="text-sm text-blue-600">Tranzakciók</div>
-              <div className="text-2xl font-bold text-blue-800">{status.todayStats.transactions}</div>
+              <div className="text-lg font-bold text-blue-800">{status.todayStats.transactions}</div>
             </div>
             <div className="bg-green-50 p-3 rounded">
               <div className="text-sm text-green-600">Vétel összesen</div>
@@ -286,7 +286,7 @@ export default function CashDeskPage() {
       {/* Movement Dialog */}
       {showMovementDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-96">
+          <div className="bg-white rounded-lg shadow-xl p-4 w-96">
             <h3 className="text-lg font-bold mb-4">
               {movementType === 'in' ? 'Pénz bevét' : 'Pénz kivét'}
             </h3>

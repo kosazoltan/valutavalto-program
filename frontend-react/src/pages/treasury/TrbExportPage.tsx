@@ -88,7 +88,7 @@ export default function TrbExportPage() {
     n != null ? new Intl.NumberFormat('hu-HU', { maximumFractionDigits: 4 }).format(n) : '0'
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">TRB Export — Import felíró</h2>
         <div className="flex items-center gap-3">
@@ -141,7 +141,7 @@ export default function TrbExportPage() {
 
           {/* Bankforgalom */}
           {data.bankFlowLines.length > 0 && (
-            <div className="mb-6">
+            <div className="mb-3">
               <h3 className="mb-2 font-medium">Bankforgalom</h3>
               <table className="w-full text-sm">
                 <thead>
@@ -166,7 +166,7 @@ export default function TrbExportPage() {
 
           {/* Irodánkénti ügyfélforgalom */}
           {data.branchReports.map((branch) => (
-            <div key={branch.branchCode} className="mb-6">
+            <div key={branch.branchCode} className="mb-3">
               <h3 className="mb-2 font-medium">
                 {branch.branchName} ({branch.branchCode})
               </h3>

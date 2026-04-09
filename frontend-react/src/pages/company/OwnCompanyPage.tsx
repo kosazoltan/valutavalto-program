@@ -117,7 +117,7 @@ export default function OwnCompanyPage() {
 
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg p-4 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold">{editingCompany ? 'Cég szerkesztése' : 'Új cég'}</h2>
               <button onClick={() => { setShowForm(false); setEditingCompany(null) }} className="text-gray-500"><X size={20} /></button>

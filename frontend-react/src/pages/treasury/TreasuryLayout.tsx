@@ -89,7 +89,7 @@ export default function TreasuryLayout() {
       {showHelp && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={closeHelp}>
           <div
-            className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4"
+            className="bg-white rounded-lg shadow-xl p-4 max-w-md w-full mx-4"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-lg font-bold text-secondary-900 mb-4 flex items-center gap-2">

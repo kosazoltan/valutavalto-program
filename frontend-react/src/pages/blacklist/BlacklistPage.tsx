@@ -246,19 +246,19 @@ export default function BlacklistPage() {
       {/* Statisztika */}
       <div className="grid grid-cols-4 gap-3">
         <div className="form-panel text-center">
-          <div className="text-2xl font-bold text-red-600">{stats.activePersons}</div>
+          <div className="text-lg font-bold text-red-600">{stats.activePersons}</div>
           <div className="text-sm text-gray-500">Aktív személy</div>
         </div>
         <div className="form-panel text-center">
-          <div className="text-2xl font-bold">{stats.totalPersons}</div>
+          <div className="text-lg font-bold">{stats.totalPersons}</div>
           <div className="text-sm text-gray-500">Összes személy</div>
         </div>
         <div className="form-panel text-center">
-          <div className="text-2xl font-bold text-red-600">{stats.activeCompanies}</div>
+          <div className="text-lg font-bold text-red-600">{stats.activeCompanies}</div>
           <div className="text-sm text-gray-500">Aktív cég</div>
         </div>
         <div className="form-panel text-center">
-          <div className="text-2xl font-bold">{stats.totalCompanies}</div>
+          <div className="text-lg font-bold">{stats.totalCompanies}</div>
           <div className="text-sm text-gray-500">Összes cég</div>
         </div>
       </div>

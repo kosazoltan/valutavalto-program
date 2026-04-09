@@ -138,11 +138,11 @@ export default function TreasuryDashboard() {
   const notClosedCount = closingStatuses.filter((s) => s.closingStatus === 'NOT_CLOSED').length
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Page header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-secondary-900">Értéktári Dashboard</h1>
+          <h1 className="text-lg font-bold text-secondary-900">Értéktári Dashboard</h1>
           <p className="text-sm text-secondary-500 mt-1">
             Összesített készlet, forgalom, irodai rangsor
           </p>
@@ -347,7 +347,7 @@ function KpiCard({
         )}
       </div>
       <div className="text-sm text-secondary-600 mb-1">{label}</div>
-      <div className="text-2xl font-bold text-secondary-900 font-mono">{value}</div>
+      <div className="text-lg font-bold text-secondary-900 font-mono">{value}</div>
     </div>
   )
 }

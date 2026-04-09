@@ -65,6 +65,14 @@ SELECT c.id, b.id, 'KASZA', 'Kasza Helga',
 FROM branch b JOIN company c ON b.company_id = c.id WHERE b.code = 'TISZA'
 ON CONFLICT (company_id, code) DO NOTHING;
 
+-- Kosa Zoltan - igazgato (ADMIN role = teljes hozzaferes)
+INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, is_active, email, created_at)
+SELECT c.id, b.id, 'KOSA', 'Kosa Zoltan',
+    '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie',
+    'ADMIN', true, 'kosa.zoltan.ebc@gmail.com', NOW()
+FROM branch b JOIN company c ON b.company_id = c.id WHERE b.code = 'TISZA'
+ON CONFLICT (company_id, code) DO NOTHING;
+
 -- Seed currencies: id=BIGSERIAL, no name_hu column, decimal_places required
 INSERT INTO currency (code, name, is_active, decimal_places, created_at)
 VALUES

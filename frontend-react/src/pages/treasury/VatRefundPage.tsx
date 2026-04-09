@@ -169,7 +169,7 @@ export default function VatRefundPage() {
   if (loading) return <TableSkeleton rows={6} cols={7} />
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-4">
@@ -296,8 +296,8 @@ export default function VatRefundPage() {
       {/* New Record Modal */}
       {showNewModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setShowNewModal(false)}>
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-xl font-bold text-secondary-900 mb-6 flex items-center gap-2">
+          <div className="bg-white rounded-lg shadow-xl p-4 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-xl font-bold text-secondary-900 mb-3 flex items-center gap-2">
               <Receipt size={24} className="text-primary-600" />
               Új ÁFA bizonylat
             </h2>
@@ -393,7 +393,7 @@ export default function VatRefundPage() {
       {/* Detail Modal */}
       {showDetailModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setShowDetailModal(null)}>
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-lg shadow-xl p-4 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-xl font-bold text-secondary-900 mb-4 flex items-center gap-2">
               <Receipt size={20} className="text-primary-600" />
               {showDetailModal.serialNumber}
@@ -430,12 +430,12 @@ export default function VatRefundPage() {
       {/* Storno Confirm Modal */}
       {stornoTarget && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setStornoTarget(null)}>
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-lg shadow-xl p-4 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-lg font-bold text-secondary-900 mb-3 flex items-center gap-2">
               <XCircle size={20} className="text-red-500" /> Sztornó megerősítés
             </h2>
             <p className="text-sm text-secondary-600 mb-2">{stornoTarget.serialNumber} sztornózása?</p>
-            <p className="text-sm font-semibold text-secondary-800 mb-6">
+            <p className="text-sm font-semibold text-secondary-800 mb-3">
               {VOUCHER_TYPE_LABELS[stornoTarget.voucherType]} — {formatCurrency(stornoTarget.grossAmount)} Ft
             </p>
             <div className="flex gap-3">

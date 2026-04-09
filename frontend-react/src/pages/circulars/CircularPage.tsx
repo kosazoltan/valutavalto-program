@@ -167,10 +167,10 @@ export default function CircularPage() {
   }, [loadCirculars]);
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="container mx-auto p-4">
+      <div className="flex justify-between items-center mb-3">
         <div>
-          <h1 className="text-2xl font-bold">Körlevelek és Szabályzatok</h1>
+          <h1 className="text-lg font-bold">Körlevelek és Szabályzatok</h1>
           <p className="text-gray-500">Vállalati dokumentumok kezelése</p>
         </div>
         <button
@@ -182,7 +182,7 @@ export default function CircularPage() {
       </div>
 
       {unacknowledged.length > 0 && (
-        <div className="mb-6 p-4 border border-orange-500 rounded bg-orange-50">
+        <div className="mb-3 p-4 border border-orange-500 rounded bg-orange-50">
           <h3 className="font-semibold text-orange-700 mb-2">
             Elolvasásra váró dokumentumok ({unacknowledged.length})
           </h3>
@@ -222,7 +222,7 @@ export default function CircularPage() {
         </div>
       )}
 
-      <div className="mb-6">
+      <div className="mb-3">
         <input
           type="text"
           placeholder="Keresés szám vagy cím alapján..."
@@ -330,7 +330,7 @@ export default function CircularPage() {
 
       {showCreateDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg p-4 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">Új dokumentum létrehozása</h2>
             <CreateCircularForm
               onSubmit={handleCreateSubmit}
@@ -342,7 +342,7 @@ export default function CircularPage() {
 
       {showViewDialog && selectedCircular && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[80vh] overflow-y-auto">
+          <div className="bg-white rounded-lg p-4 max-w-4xl w-full max-h-[80vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">{selectedCircular.title}</h2>
             <CircularView
               circular={selectedCircular}
@@ -488,7 +488,7 @@ function CircularView({
   onClose: () => void;
 }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <div className="grid grid-cols-3 gap-4 text-sm">
         <div>
           <label className="text-gray-500">Dokumentum szám</label>

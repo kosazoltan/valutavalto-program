@@ -70,7 +70,7 @@ export default function CashierMainMenu() {
     <div className="space-y-8">
       {/* Page header */}
       <div>
-        <h1 className="text-2xl font-bold text-secondary-900">Pénztáros műveletek</h1>
+        <h1 className="text-lg font-bold text-secondary-900">Pénztáros műveletek</h1>
         <p className="text-sm text-secondary-500 mt-1">
           Válasszon műveletet a listából, vagy használja a billentyűparancsokat (1-8, F1-F8)
         </p>

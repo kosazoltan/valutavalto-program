@@ -122,7 +122,7 @@ export default function FeePage() {
       )}
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
+          <div className="bg-white rounded-lg p-4 w-full max-w-2xl">
             <h2 className="text-lg font-bold mb-4">{formData.id ? 'Szerkesztés' : 'Új'}</h2>
             <div className="space-y-4">
               {activeTab === 'types' && (

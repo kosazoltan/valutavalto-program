@@ -40,7 +40,7 @@ export default function BankTurnoverPage() {
     n != null ? new Intl.NumberFormat('hu-HU', { maximumFractionDigits: 2 }).format(n) : '0'
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Landmark className="h-5 w-5 text-green-600" />

@@ -8,7 +8,7 @@ interface PepDetailProps {
 
 export default function PepDetail({ pep, onClose }: PepDetailProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <div className="grid grid-cols-3 gap-4">
         <div>
           <p className="text-gray-500 text-sm">Ügyfél neve</p>

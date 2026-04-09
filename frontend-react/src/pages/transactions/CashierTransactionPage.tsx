@@ -566,7 +566,7 @@ export default function CashierTransactionPage() {
       {/* FEE/DISCOUNT DIALOG */}
       {showFeeDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 w-96 space-y-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-4 w-96 space-y-4">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">Kezelesi dij / Kedvezmeny</h3>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kezelesi dij (HUF)</label>
@@ -644,7 +644,7 @@ export default function CashierTransactionPage() {
       </div>
 
       <main className="px-6">
-        <div className="grid grid-cols-[1fr,340px] gap-6">
+        <div className="grid grid-cols-[1fr,340px] gap-3">
           {/* BAL: 6-SOROS TABLA */}
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
             <table className="w-full">
@@ -710,7 +710,7 @@ export default function CashierTransactionPage() {
             </table>
 
             {/* OSSZEGZO */}
-            <div className="bg-gray-50 dark:bg-gray-800/80 p-6 space-y-3 border-t border-gray-200 dark:border-gray-700">
+            <div className="bg-gray-50 dark:bg-gray-800/80 p-4 space-y-3 border-t border-gray-200 dark:border-gray-700">
               <div className="flex justify-between text-base">
                 <span className="text-gray-600 dark:text-gray-400">OSSZESEN:</span>
                 <span className="font-mono font-semibold">{formatNum(subtotal)} HUF</span>
@@ -727,7 +727,7 @@ export default function CashierTransactionPage() {
               )}
               <hr className="border-gray-300 dark:border-gray-600" />
               <div className="flex justify-between items-center pt-1">
-                <span className="text-2xl font-bold">FIZETENDO:</span>
+                <span className="text-lg font-bold">FIZETENDO:</span>
                 <span
                   className="text-4xl font-mono font-black text-white px-6 py-3 rounded-lg shadow-lg"
                   style={{ backgroundColor: 'var(--primary)' }}

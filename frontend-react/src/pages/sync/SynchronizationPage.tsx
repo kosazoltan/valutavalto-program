@@ -156,12 +156,12 @@ export default function SynchronizationPage() {
       <div className="grid grid-cols-4 gap-3">
         <div className="form-panel text-center">
           <Upload size={20} className="mx-auto text-blue-500 mb-1" />
-          <div className="text-2xl font-bold">{status.pendingUpload}</div>
+          <div className="text-lg font-bold">{status.pendingUpload}</div>
           <div className="text-sm text-gray-500">Feltöltendő</div>
         </div>
         <div className="form-panel text-center">
           <Download size={20} className="mx-auto text-green-500 mb-1" />
-          <div className="text-2xl font-bold">{status.pendingDownload}</div>
+          <div className="text-lg font-bold">{status.pendingDownload}</div>
           <div className="text-sm text-gray-500">Letöltendő</div>
         </div>
         <div className="form-panel text-center">

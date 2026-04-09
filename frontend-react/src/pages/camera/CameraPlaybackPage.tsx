@@ -91,8 +91,8 @@ export default function CameraPlaybackPage() {
   const hasResults = localRecordings.length > 0 || serverRecordings.length > 0
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold flex items-center gap-2">
+    <div className="space-y-3">
+      <h1 className="text-lg font-bold flex items-center gap-2">
         <PlayCircle className="h-6 w-6" />
         Felvétel visszajátszás
         {isElectron() && <span className="text-sm font-normal text-muted-foreground">(lokális)</span>}

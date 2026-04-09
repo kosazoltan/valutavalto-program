@@ -109,10 +109,10 @@ export default function LocalQueuePage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="form-panel"><div className="text-sm text-gray-500">Receipt draft</div><div className="text-2xl font-bold">{receiptDrafts.length}</div></div>
-        <div className="form-panel"><div className="text-sm text-gray-500">Transfer queue</div><div className="text-2xl font-bold">{transfers.length}</div></div>
-        <div className="form-panel"><div className="text-sm text-gray-500">Bank queue</div><div className="text-2xl font-bold">{bankTransactions.length}</div></div>
-        <div className="form-panel"><div className="text-sm text-gray-500">Handover queue</div><div className="text-2xl font-bold">{handoverOperations.length}</div></div>
+        <div className="form-panel"><div className="text-sm text-gray-500">Receipt draft</div><div className="text-lg font-bold">{receiptDrafts.length}</div></div>
+        <div className="form-panel"><div className="text-sm text-gray-500">Transfer queue</div><div className="text-lg font-bold">{transfers.length}</div></div>
+        <div className="form-panel"><div className="text-sm text-gray-500">Bank queue</div><div className="text-lg font-bold">{bankTransactions.length}</div></div>
+        <div className="form-panel"><div className="text-sm text-gray-500">Handover queue</div><div className="text-lg font-bold">{handoverOperations.length}</div></div>
       </div>
 
       <div className="form-panel">

@@ -180,7 +180,7 @@ export default function MovementManager() {
   ).length
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -362,8 +362,8 @@ export default function MovementManager() {
       {/* New Movement Modal */}
       {showNewModal && (
         <ModalOverlay onClose={() => setShowNewModal(false)}>
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full mx-4">
-            <h2 className="text-xl font-bold text-secondary-900 mb-6">Új készlet mozgás</h2>
+          <div className="bg-white rounded-lg shadow-xl p-4 max-w-2xl w-full mx-4">
+            <h2 className="text-xl font-bold text-secondary-900 mb-3">Új készlet mozgás</h2>
             <form onSubmit={(e) => void handleSubmitNew(e)} className="space-y-4">
               {/* Movement type */}
               <div>
@@ -476,7 +476,7 @@ export default function MovementManager() {
       {/* Detail Modal */}
       {showDetailModal && (
         <ModalOverlay onClose={() => setShowDetailModal(null)}>
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-lg w-full mx-4">
+          <div className="bg-white rounded-lg shadow-xl p-4 max-w-lg w-full mx-4">
             <h2 className="text-xl font-bold text-secondary-900 mb-4">
               Mozgás részletei — #{showDetailModal.transferNumber}
             </h2>

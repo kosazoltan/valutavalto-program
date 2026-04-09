@@ -193,7 +193,7 @@ export default function CustomerDetailPage() {
           <div className="space-y-3">
             <div className="bg-blue-50 p-3 rounded">
               <div className="text-sm text-blue-600">Összes tranzakció</div>
-              <div className="text-2xl font-bold text-blue-800">{customer.transactionCount ?? 0}</div>
+              <div className="text-lg font-bold text-blue-800">{customer.transactionCount ?? 0}</div>
             </div>
             {customer.lastTransactionDate && (
               <div className="bg-gray-50 p-3 rounded">
@@ -286,7 +286,7 @@ export default function CustomerDetailPage() {
 
       {/* Metadata */}
       <div className="form-panel">
-        <div className="flex gap-6 text-sm text-gray-500">
+        <div className="flex gap-3 text-sm text-gray-500">
           <span className="flex items-center gap-1">
             <Calendar size={14} />
             Létrehozva: {customer.createdAt ? new Date(customer.createdAt).toLocaleString('hu-HU') : '-'}

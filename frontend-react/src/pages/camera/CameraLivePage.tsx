@@ -107,9 +107,9 @@ export default function CameraLivePage() {
   }, [selectedCamera])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+        <h1 className="text-lg font-bold flex items-center gap-2">
           <Camera className="h-6 w-6" />
           Élő kamerakép
           {isElectron() && <span className="text-sm font-normal text-muted-foreground">(lokális)</span>}
@@ -123,7 +123,7 @@ export default function CameraLivePage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
         {/* Camera selector */}
         <div className="lg:col-span-1 space-y-3">
           <h2 className="font-semibold text-sm text-muted-foreground uppercase">Kamerák</h2>

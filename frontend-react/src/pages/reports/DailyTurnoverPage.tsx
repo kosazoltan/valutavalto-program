@@ -98,17 +98,17 @@ export default function DailyTurnoverPage() {
           <div className="grid grid-cols-3 gap-3">
             <div className="form-panel text-center bg-green-50">
               <TrendingUp size={24} className="mx-auto text-green-600 mb-1" />
-              <div className="text-2xl font-bold text-green-700">{fmtHuf(data.totals.totalBuyHuf)}</div>
+              <div className="text-lg font-bold text-green-700">{fmtHuf(data.totals.totalBuyHuf)}</div>
               <div className="text-sm text-gray-500">Összes vétel</div>
             </div>
             <div className="form-panel text-center bg-blue-50">
               <TrendingDown size={24} className="mx-auto text-blue-600 mb-1" />
-              <div className="text-2xl font-bold text-blue-700">{fmtHuf(data.totals.totalSellHuf)}</div>
+              <div className="text-lg font-bold text-blue-700">{fmtHuf(data.totals.totalSellHuf)}</div>
               <div className="text-sm text-gray-500">Összes eladás</div>
             </div>
             <div className="form-panel text-center bg-yellow-50">
               <ArrowRightLeft size={24} className="mx-auto text-yellow-600 mb-1" />
-              <div className="text-2xl font-bold text-yellow-700">{fmtHuf(data.totals.totalProfit)}</div>
+              <div className="text-lg font-bold text-yellow-700">{fmtHuf(data.totals.totalProfit)}</div>
               <div className="text-sm text-gray-500">Profit</div>
             </div>
           </div>

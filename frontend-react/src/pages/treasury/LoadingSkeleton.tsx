@@ -50,7 +50,7 @@ export function TableSkeleton({ rows = 5, cols = 6 }: { rows?: number; cols?: nu
 
 export function DashboardSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* KPI cards */}
       <div className="grid grid-cols-4 gap-4">
         {Array.from({ length: 4 }).map((_, i) => (

@@ -432,7 +432,7 @@ export default function ConversionPage() {
             {/* HUF intermediate value */}
             <div className="text-center p-3 bg-white rounded border">
               <div className="text-sm text-gray-500 mb-1">HUF érték (köztes)</div>
-              <div className="text-2xl font-bold font-mono text-blue-600">
+              <div className="text-lg font-bold font-mono text-blue-600">
                 {formatInteger(hufAmount)} Ft
               </div>
             </div>

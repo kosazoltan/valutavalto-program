@@ -125,7 +125,7 @@ export default function EveningClosingPage() {
           {/* Összefoglaló */}
           <div className="grid grid-cols-4 gap-3">
             <div className="form-panel text-center">
-              <div className="text-2xl font-bold">{preview.transactionCount}</div>
+              <div className="text-lg font-bold">{preview.transactionCount}</div>
               <div className="text-sm text-gray-500">Tranzakció</div>
             </div>
             <div className="form-panel text-center bg-green-50">

@@ -607,20 +607,10 @@ Section "Telepítés" SecInstall
         verify_user_ok:
         DetailPrint "  valuta_user létrehozva és ellenőrizve!"
 
-        ; Seed data
-        DetailPrint "  Seed adatok betöltése..."
-        nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -d valuta -f "$DATA_DIR\scripts\seed-data.sql"'
-        Pop $0
-        Pop $1  ; stdout
-        ${If} $0 != 0
-            DetailPrint "  FIGYELMEZTETÉS: Seed script kód: $0 (lehet hogy az adatok már léteznek)"
-        ${Else}
-            DetailPrint "  Seed adatok betöltve!"
-        ${EndIf}
-
-        ; S6-01 fix: Figyelmeztetés az alapértelmezett jelszavakra
-        IfSilent +1
-        MessageBox MB_OK|MB_ICONEXCLAMATION "FONTOS: A dolgozók alapértelmezett jelszava '1234'.$\r$\n$\r$\nAz első bejelentkezés után AZONNAL változtassa meg a jelszavakat!$\r$\n$\r$\nÉrintett felhasználók: BORSI, BALI, KASZA"
+        ; Seed data — ÁTHELYEZVE Fázis 6 backend health check UTÁN-ra
+        ; (A JPA ddl-auto=update hozza létre a táblákat a backend indulásakor,
+        ;  ezért a seed-data.sql csak a backend health check UTÁN futhat le.)
+        ;  Lásd: FÁZIS 6 vége — "Seed adatok betöltése" blokk
 
         ; S6-04: Harden pg_hba.conf — scram-sha-256 for ALL users (including postgres)
         DetailPrint "  pg_hba.conf biztonsági beállítás..."
@@ -911,6 +901,45 @@ Section "Telepítés" SecInstall
         IntOp $R1 $R0 * 2
         DetailPrint "  Backend szerver kész! ($R1 mp)"
     be_svc_done:
+
+    ; --- Seed adatok (a backend MUST be running -> JPA ddl-auto=update creates tables) ---
+    DetailPrint "  Seed adatok betöltése (táblák már léteznek)..."
+    ; Temp trust for psql seed (pg_hba is scram-sha-256 by now)
+    FileOpen $0 "$DATA_DIR\pgsql\data\pg_hba.conf" r
+    FileRead $0 $R3
+    FileClose $0
+    ; Backup current pg_hba
+    CopyFiles /SILENT "$DATA_DIR\pgsql\data\pg_hba.conf" "$DATA_DIR\pgsql\data\pg_hba.conf.bak"
+    ; Set trust temporarily
+    FileOpen $0 "$DATA_DIR\pgsql\data\pg_hba.conf" w
+    FileWrite $0 "# TEMP trust for seed$\r$\n"
+    FileWrite $0 "host    all       all          127.0.0.1/32  trust$\r$\n"
+    FileWrite $0 "host    all       all          ::1/128       trust$\r$\n"
+    FileClose $0
+    nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\pg_ctl.exe" reload -D "$DATA_DIR\pgsql\data"'
+    Pop $0
+    Pop $1
+    Sleep 2000
+    ; Run seed
+    nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -h 127.0.0.1 -p 54320 -U postgres -d valuta -f "$DATA_DIR\scripts\seed-data.sql"'
+    Pop $0
+    Pop $1
+    ${If} $0 != 0
+        DetailPrint "  FIGYELMEZTETÉS: Seed script kód: $0 (lehet hogy az adatok már léteznek)"
+    ${Else}
+        DetailPrint "  Seed adatok betöltve!"
+    ${EndIf}
+    ; Restore hardened pg_hba
+    CopyFiles /SILENT "$DATA_DIR\pgsql\data\pg_hba.conf.bak" "$DATA_DIR\pgsql\data\pg_hba.conf"
+    Delete "$DATA_DIR\pgsql\data\pg_hba.conf.bak"
+    nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\pg_ctl.exe" reload -D "$DATA_DIR\pgsql\data"'
+    Pop $0
+    Pop $1
+    DetailPrint "  pg_hba.conf visszaállítva (hardened)"
+
+    ; S6-01 fix: Figyelmeztetés az alapértelmezett jelszavakra
+    IfSilent +1
+    MessageBox MB_OK|MB_ICONEXCLAMATION "FONTOS: A dolgozók alapértelmezett jelszava '1234'.$\r$\n$\r$\nAz első bejelentkezés után AZONNAL változtassa meg a jelszavakat!$\r$\n$\r$\nÉrintett felhasználók: BORSI, BALI, KASZA"
 
     ; =====================================================================
     ; FÁZIS 7: Parancsikonok

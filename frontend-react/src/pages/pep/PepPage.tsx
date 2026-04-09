@@ -40,10 +40,10 @@ export default function PepPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="container mx-auto p-4">
+      <div className="flex justify-between items-center mb-3">
         <div>
-          <h1 className="text-2xl font-bold">PEP Nyilvántartás</h1>
+          <h1 className="text-lg font-bold">PEP Nyilvántartás</h1>
           <p className="text-gray-500">Politikailag kitett személyek kezelése (Pmt. 4. § (1) d))</p>
         </div>
         <button
@@ -59,7 +59,7 @@ export default function PepPage() {
       </div>
 
       {reviewDue.length > 0 && (
-        <div className="mb-6 p-4 border border-orange-500 rounded bg-orange-50">
+        <div className="mb-3 p-4 border border-orange-500 rounded bg-orange-50">
           <h3 className="font-semibold text-orange-700 mb-2">
             Felülvizsgálat szükséges ({reviewDue.length})
           </h3>
@@ -81,30 +81,30 @@ export default function PepPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-4 gap-4 mb-3">
         <div className="p-4 bg-white rounded border">
           <p className="text-sm text-gray-500">Összes PEP</p>
-          <p className="text-2xl font-bold">{pepList.length}</p>
+          <p className="text-lg font-bold">{pepList.length}</p>
         </div>
         <div className="p-4 bg-white rounded border">
           <p className="text-sm text-gray-500">Közvetlen PEP</p>
-          <p className="text-2xl font-bold text-red-600">
+          <p className="text-lg font-bold text-red-600">
             {pepList.filter(p => p.pepCategory === 'DIRECT').length}
           </p>
         </div>
         <div className="p-4 bg-white rounded border">
           <p className="text-sm text-gray-500">EDD szükséges</p>
-          <p className="text-2xl font-bold text-orange-600">
+          <p className="text-lg font-bold text-orange-600">
             {pepList.filter(p => p.requiresEdd).length}
           </p>
         </div>
         <div className="p-4 bg-white rounded border">
           <p className="text-sm text-gray-500">Felülvizsgálandó</p>
-          <p className="text-2xl font-bold text-yellow-600">{reviewDue.length}</p>
+          <p className="text-lg font-bold text-yellow-600">{reviewDue.length}</p>
         </div>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-3">
         <input
           type="text"
           placeholder="Keresés név vagy okmányszám alapján..."
@@ -226,7 +226,7 @@ export default function PepPage() {
 
       {showDetailDialog && selectedPep && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-3xl w-full max-h-[80vh] overflow-y-auto">
+          <div className="bg-white rounded-lg p-4 max-w-3xl w-full max-h-[80vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">PEP részletei - {selectedPep.customerName}</h2>
             <PepDetail pep={selectedPep} onClose={() => setShowDetailDialog(false)} />
           </div>
@@ -235,7 +235,7 @@ export default function PepPage() {
 
       {showCreateDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg p-4 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">
               {editingPep ? 'PEP szerkesztése' : 'Új PEP személy regisztrálása'}
             </h2>

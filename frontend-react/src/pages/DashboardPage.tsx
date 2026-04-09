@@ -111,21 +111,21 @@ export default function DashboardPage() {
     fetchDashboardData()
   }, [])
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Page header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-secondary-900">Irányítópult</h1>
-          <p className="text-sm text-secondary-500 mt-1">Áttekintés és gyorsműveletek</p>
+          <h1 className="text-lg font-bold text-secondary-900">Irányítópult</h1>
+          <p className="text-xs text-secondary-500">Áttekintés és gyorsműveletek</p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-secondary-600">
-          <Clock size={16} />
-          <span>Utolsó frissítés: {new Date().toLocaleTimeString('hu-HU')}</span>
+        <div className="flex items-center gap-1.5 text-xs text-secondary-600">
+          <Clock size={14} />
+          <span>{new Date().toLocaleTimeString('hu-HU')}</span>
         </div>
       </div>
 
-      {/* MODERN KPI Cards - Bento Grid Style */}
-      <div className="grid grid-cols-4 gap-4">
+      {/* MODERN KPI Cards - Compact */}
+      <div className="grid grid-cols-4 gap-2">
         <StatCard
           icon={ArrowLeftRight}
           label="Mai tranzakciók"
@@ -156,12 +156,12 @@ export default function DashboardPage() {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-3 gap-3">
         {/* Current rates - Spans 2 columns */}
         <div className="col-span-2 form-panel">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold text-secondary-900 flex items-center gap-2">
-              <TrendingUp size={20} className="text-success-600" />
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-sm font-bold text-secondary-900 flex items-center gap-1.5">
+              <TrendingUp size={16} className="text-success-600" />
               Aktuális árfolyamok
             </h2>
             <Link to="/rates" className="text-sm font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1">
@@ -207,8 +207,8 @@ export default function DashboardPage() {
 
         {/* Quick actions - Compact card */}
         <div className="form-panel">
-          <h2 className="text-lg font-bold text-secondary-900 mb-4">Gyorsműveletek</h2>
-          <div className="flex flex-col gap-2">
+          <h2 className="text-sm font-bold text-secondary-900 mb-2">Gyorsműveletek</h2>
+          <div className="flex flex-col gap-1.5">
             <Link to="/transactions/new" className="form-button-primary justify-start">
               <ArrowLeftRight size={18} />
               <span>Új tranzakció</span>
@@ -231,9 +231,9 @@ export default function DashboardPage() {
 
       {/* Recent transactions - Full width */}
       <div className="form-panel">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-bold text-secondary-900 flex items-center gap-2">
-            <FileText size={20} className="text-primary-600" />
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-sm font-bold text-secondary-900 flex items-center gap-1.5">
+            <FileText size={16} className="text-primary-600" />
             Legutóbbi tranzakciók
           </h2>
           <Link to="/transactions" className="text-sm font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1">
@@ -309,15 +309,15 @@ function StatCard({
 
   return (
     <div className={`form-panel border ${colorClasses[color]} ${urgent ? 'ring-2 ring-yellow-400 animate-pulse' : ''}`}>
-      <div className="flex items-center gap-2 mb-1">
-        <Icon size={18} />
-        <span className="text-sm">{label}</span>
+      <div className="flex items-center gap-1.5 mb-0.5">
+        <Icon size={14} />
+        <span className="text-xs">{label}</span>
       </div>
-      <div className="text-2xl font-bold">{value}</div>
+      <div className="text-lg font-bold leading-tight">{value}</div>
       {change !== undefined && (
-        <div className={`text-xs mt-1 flex items-center gap-1 ${change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-          {change >= 0 ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
-          <span>{Math.abs(change)}% tegnaphoz képest</span>
+        <div className={`text-[10px] mt-0.5 flex items-center gap-0.5 ${change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          {change >= 0 ? <ArrowUp size={10} /> : <ArrowDown size={10} />}
+          <span>{Math.abs(change)}% tegnap</span>
         </div>
       )}
     </div>

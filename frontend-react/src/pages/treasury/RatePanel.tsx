@@ -142,7 +142,7 @@ export default function RatePanel() {
   if (loading) return <TableSkeleton rows={10} cols={7} />
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -294,8 +294,8 @@ export default function RatePanel() {
       {/* Manual Rate Modal */}
       {showManualModal && (
         <ModalOverlay onClose={() => setShowManualModal(false)}>
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
-            <div className="flex items-center justify-between mb-6">
+          <div className="bg-white rounded-lg shadow-xl p-4 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-3">
               <h2 className="text-xl font-bold text-secondary-900">
                 {editCurrency ? `${editCurrency} árfolyam szerkesztés` : 'Manuális árfolyam bevitel'}
               </h2>
@@ -371,8 +371,8 @@ export default function RatePanel() {
       {/* Spread Editor Modal */}
       {showSpreadEditor && (
         <ModalOverlay onClose={() => setShowSpreadEditor(false)}>
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-3xl w-full mx-4">
-            <div className="flex items-center justify-between mb-6">
+          <div className="bg-white rounded-lg shadow-xl p-4 max-w-3xl w-full mx-4">
+            <div className="flex items-center justify-between mb-3">
               <h2 className="text-xl font-bold text-secondary-900">Spread szerkesztő</h2>
               <button onClick={() => setShowSpreadEditor(false)} className="text-secondary-400 hover:text-secondary-600">
                 <X size={20} />

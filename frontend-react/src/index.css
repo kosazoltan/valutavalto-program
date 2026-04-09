@@ -60,7 +60,7 @@
 @layer components {
   /* MODERN Professional Input */
   .form-input {
-    @apply h-9 px-3 py-2 border border-form-border bg-white text-sm rounded-md;
+    @apply h-8 px-2.5 py-1.5 border border-form-border bg-white text-xs rounded-md;
     @apply focus:outline-none focus:border-primary-600 focus:ring-2 focus:ring-primary-200;
     @apply hover:border-secondary-400 transition-all duration-200;
     @apply placeholder:text-secondary-400;
@@ -68,7 +68,7 @@
 
   /* MODERN Professional Button */
   .form-button {
-    @apply h-9 px-4 py-2 border border-form-border bg-white text-sm font-medium rounded-md;
+    @apply h-8 px-3 py-1.5 border border-form-border bg-white text-xs font-medium rounded-md;
     @apply hover:bg-secondary-50 hover:border-secondary-400;
     @apply active:bg-secondary-100 active:scale-[0.98];
     @apply transition-all duration-200 cursor-pointer;
@@ -76,7 +76,7 @@
   }
 
   .form-button-primary {
-    @apply h-9 px-4 py-2 bg-primary-800 text-white text-sm font-medium rounded-md border-0;
+    @apply h-8 px-3 py-1.5 bg-primary-800 text-white text-xs font-medium rounded-md border-0;
     @apply hover:bg-primary-700 hover:shadow-md;
     @apply active:bg-primary-900 active:scale-[0.98];
     @apply transition-all duration-200 cursor-pointer;
@@ -84,7 +84,7 @@
   }
 
   .form-button-success {
-    @apply h-9 px-4 py-2 bg-success-600 text-white text-sm font-medium rounded-md border-0;
+    @apply h-8 px-3 py-1.5 bg-success-600 text-white text-xs font-medium rounded-md border-0;
     @apply hover:bg-success-700 hover:shadow-md;
     @apply active:bg-success-800 active:scale-[0.98];
     @apply transition-all duration-200 cursor-pointer;
@@ -92,7 +92,7 @@
   }
 
   .form-button-danger {
-    @apply h-9 px-4 py-2 bg-danger-600 text-white text-sm font-medium rounded-md border-0;
+    @apply h-8 px-3 py-1.5 bg-danger-600 text-white text-xs font-medium rounded-md border-0;
     @apply hover:bg-danger-700 hover:shadow-md;
     @apply active:bg-danger-800 active:scale-[0.98];
     @apply transition-all duration-200 cursor-pointer;
@@ -101,20 +101,20 @@
 
   /* Professional Label */
   .form-label {
-    @apply text-sm font-medium text-secondary-700 mb-1.5 block;
+    @apply text-xs font-medium text-secondary-700 mb-1 block;
   }
 
   /* Modern Panel/Card */
   .form-panel {
-    @apply border border-form-border bg-form-panel rounded-lg p-4 shadow-sm;
+    @apply border border-form-border bg-form-panel rounded-lg p-3 shadow-sm;
   }
 
   .form-group-box {
-    @apply border border-form-border bg-form-bg rounded-lg p-4 relative;
+    @apply border border-form-border bg-form-bg rounded-lg p-3 relative;
   }
 
   .form-group-box-title {
-    @apply absolute -top-2.5 left-3 px-2 bg-form-bg text-sm font-medium text-secondary-700;
+    @apply absolute -top-2 left-3 px-1.5 bg-form-bg text-xs font-medium text-secondary-700;
   }
 
   /* MODERN Data Grid */
@@ -123,12 +123,12 @@
   }
 
   .data-grid th {
-    @apply bg-secondary-50 border-b-2 border-secondary-200 px-4 py-3 text-left font-semibold text-secondary-700;
-    @apply uppercase text-xs tracking-wider;
+    @apply bg-secondary-50 border-b-2 border-secondary-200 px-3 py-2 text-left font-semibold text-secondary-700;
+    @apply uppercase text-[10px] tracking-wider;
   }
 
   .data-grid td {
-    @apply border-b border-secondary-100 px-4 py-3;
+    @apply border-b border-secondary-100 px-3 py-1.5 text-xs;
   }
 
   .data-grid tbody tr {
@@ -151,7 +151,7 @@
 
   /* MODERN Status bar */
   .status-bar {
-    @apply bg-secondary-50 border-t border-form-border px-4 py-2 text-sm text-secondary-600;
+    @apply bg-secondary-50 border-t border-form-border px-3 py-1 text-xs text-secondary-600;
     @apply flex items-center justify-between;
   }
 
