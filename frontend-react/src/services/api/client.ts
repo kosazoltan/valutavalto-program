@@ -61,7 +61,7 @@ export const api = axios.create({
 // Request interceptor - add auth token + Idempotency-Key for write requests
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = useAuthStore.getState().token
+    const {token} = useAuthStore.getState()
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`
     }

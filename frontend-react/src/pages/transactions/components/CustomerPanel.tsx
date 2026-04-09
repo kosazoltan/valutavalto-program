@@ -134,10 +134,8 @@ export default function CustomerPanel({
   const handleSaveManualCustomer = useCallback(async () => {
     if (!customerName.trim() || !customerDocNumber.trim()) return
     // FULL level: require complete data set at panel level (fail-fast)
-    if (identificationLevel === 'FULL') {
-      if (!customerBirthPlace.trim() || !customerBirthDate || !customerMotherName.trim() || !customerAddress.trim()) {
-        return // button is already disabled, but double-guard
-      }
+    if (identificationLevel === 'FULL' && (!customerBirthPlace.trim() || !customerBirthDate || !customerMotherName.trim() || !customerAddress.trim())) {
+          return // button is already disabled, but double-guard
     }
 
     setIsSaving(true)

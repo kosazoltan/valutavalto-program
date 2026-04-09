@@ -183,52 +183,52 @@ export default function TransactionPage() {
         : selectedCurrency.sellRate
 
       if (electronQueueAvailable) {
-        const outcome = await saveAndSyncPendingBuySell([
-          {
-            type: transactionType,
-            currencyCode: selectedCurrency.code,
-            foreignAmount: foreignNum,
-            hufAmount: hufNum,
-            roundedHufAmount: roundHuf(hufNum),
-            rate,
-            handlingFee: null,
-            discountPercent: null,
-            customerIdentifier: customer?.documentNumber ?? null,
-            customerName: customer?.name ?? null,
-            customerDocumentNumber: customer?.documentNumber ?? null,
-            customerAddress: customerAddress || null,
-            denominations: null,
-          },
-        ])
-
-        if (outcome.allSavedSynced) {
-          toast.success('Tranzakció sikeresen rögzítve!', 'A tétel azonnal szinkronizálva lett.')
-        } else {
-          toast.warning('Offline mentés megtörtént', 'A tranzakció helyi queue-ba került, később szinkronizálódik.')
-        }
-      } else {
-        if (transactionType === 'BUY') {
-          const request: BuyRequest = {
-            currencyId: parseInt(selectedCurrency.id),
-            currencyAmount: foreignNum,
-            customExchangeRate: rate,
-            ...customerData,
-          }
-          const result = await transactionApi.buy(request)
-          setSavedTransaction(result)
-          toast.success('Vétel tranzakció sikeresen mentve!', `Bizonylat szám: ${result.receiptNumber}`)
-        } else {
-          const request: SellRequest = {
-            currencyId: parseInt(selectedCurrency.id),
-            currencyAmount: foreignNum,
-            customExchangeRate: rate,
-            ...customerData,
-          }
-          const result = await transactionApi.sell(request)
-          setSavedTransaction(result)
-          toast.success('Eladás tranzakció sikeresen mentve!', `Bizonylat szám: ${result.receiptNumber}`)
-        }
-      }
+              const outcome = await saveAndSyncPendingBuySell([
+                {
+                  type: transactionType,
+                  currencyCode: selectedCurrency.code,
+                  foreignAmount: foreignNum,
+                  hufAmount: hufNum,
+                  roundedHufAmount: roundHuf(hufNum),
+                  rate,
+                  handlingFee: null,
+                  discountPercent: null,
+                  customerIdentifier: customer?.documentNumber ?? null,
+                  customerName: customer?.name ?? null,
+                  customerDocumentNumber: customer?.documentNumber ?? null,
+                  customerAddress: customerAddress || null,
+                  denominations: null,
+                },
+              ])
+      
+              if (outcome.allSavedSynced) {
+                toast.success('Tranzakció sikeresen rögzítve!', 'A tétel azonnal szinkronizálva lett.')
+              } else {
+                toast.warning('Offline mentés megtörtént', 'A tranzakció helyi queue-ba került, később szinkronizálódik.')
+              }
+            }
+      else if (transactionType === 'BUY') {
+                const request: BuyRequest = {
+                  currencyId: parseInt(selectedCurrency.id),
+                  currencyAmount: foreignNum,
+                  customExchangeRate: rate,
+                  ...customerData,
+                }
+                const result = await transactionApi.buy(request)
+                setSavedTransaction(result)
+                toast.success('Vétel tranzakció sikeresen mentve!', `Bizonylat szám: ${result.receiptNumber}`)
+              }
+      else {
+                const request: SellRequest = {
+                  currencyId: parseInt(selectedCurrency.id),
+                  currencyAmount: foreignNum,
+                  customExchangeRate: rate,
+                  ...customerData,
+                }
+                const result = await transactionApi.sell(request)
+                setSavedTransaction(result)
+                toast.success('Eladás tranzakció sikeresen mentve!', `Bizonylat szám: ${result.receiptNumber}`)
+              }
 
       // Don't navigate away — let user print receipt first
     } catch (error: unknown) {

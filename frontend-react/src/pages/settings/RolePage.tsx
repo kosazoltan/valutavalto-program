@@ -80,8 +80,7 @@ export default function RolePage() {
       
       if (created > 0) {
         // Újratöltjük az adatokat
-        const rolesData = await roleApi.list()
-        return rolesData
+        return await roleApi.list();
       }
 
       return existingRoles

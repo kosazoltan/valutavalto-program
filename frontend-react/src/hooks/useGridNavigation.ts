@@ -95,35 +95,33 @@ export function useGridNavigation({ rows, cols }: UseGridNavigationOptions) {
       case 'Enter':
         e.preventDefault()
         if (!editing) {
-          // Activate cell for editing
-          focusCell(row, col, true)
-        } else {
-          // Move down (or wrap to next column)
-          if (row < rows - 1) {
-            focusCell(row + 1, col)
-          } else if (col < cols - 1) {
-            focusCell(0, col + 1)
-          }
-        }
+                  // Activate cell for editing
+                  focusCell(row, col, true)
+                }
+        else if (row < rows - 1) {
+                    focusCell(row + 1, col)
+                  }
+        else if (col < cols - 1) {
+                    focusCell(0, col + 1)
+                  }
         break
 
       case 'Tab':
         e.preventDefault()
         if (e.shiftKey) {
-          // Move left (or wrap to prev row end)
-          if (col > 0) {
-            focusCell(row, col - 1)
-          } else if (row > 0) {
-            focusCell(row - 1, cols - 1)
-          }
-        } else {
-          // Move right (or wrap to next row start)
-          if (col < cols - 1) {
-            focusCell(row, col + 1)
-          } else if (row < rows - 1) {
-            focusCell(row + 1, 0)
-          }
-        }
+                  // Move left (or wrap to prev row end)
+                  if (col > 0) {
+                    focusCell(row, col - 1)
+                  } else if (row > 0) {
+                    focusCell(row - 1, cols - 1)
+                  }
+                }
+        else if (col < cols - 1) {
+                    focusCell(row, col + 1)
+                  }
+        else if (row < rows - 1) {
+                    focusCell(row + 1, 0)
+                  }
         break
 
       case 'Escape': {

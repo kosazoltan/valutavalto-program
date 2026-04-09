@@ -180,7 +180,7 @@ export default function NotificationPage() {
             <thead><tr><th>Típus</th><th>Cím</th><th>Üzenet</th><th>Dátum</th><th>Státusz</th><th>Műveletek</th></tr></thead>
             <tbody>
               {filtered.map(n => (
-                <tr key={n.id} className={!n.isRead ? 'bg-blue-50 font-medium' : ''}>
+                <tr key={n.id} className={n.isRead ? '' : 'bg-blue-50 font-medium'}>
                   <td>{getTypeIcon(n.type)} <span className="text-sm">{n.type}</span></td>
                   <td>{n.title}</td>
                   <td className="text-sm max-w-xs truncate">{n.message}</td>

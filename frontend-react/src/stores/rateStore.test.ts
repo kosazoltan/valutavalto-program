@@ -257,7 +257,7 @@ describe('rateStore', () => {
           { currencyCode: 'USD', buyRate: 350, sellRate: 365 },
         ])
       })
-      const rates = useRateStore.getState().rates
+      const {rates} = useRateStore.getState()
       expect(rates[0]!.currencyCode).toBe('EUR')
       expect(rates[1]!.currencyCode).toBe('USD')
       expect(rates[1]!.baseBuyRate).toBe(350)

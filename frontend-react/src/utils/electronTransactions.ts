@@ -117,7 +117,7 @@ function getElectronAPI() {
 
 function normalizeOptionalText(value: string | null | undefined): string | null {
   const normalized = value?.trim()
-  return normalized ? normalized : null
+  return normalized || null
 }
 
 export function isElectronQueueAvailable(): boolean {

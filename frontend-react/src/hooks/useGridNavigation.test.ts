@@ -100,7 +100,7 @@ describe('useGridNavigation', () => {
     })
 
     /** Helper: dispatch keydown from the currently focused grid-cell input */
-    function dispatchKey(key: string, opts: Partial<KeyboardEventInit> = {}) {
+    const dispatchKey = (key: string, opts: Partial<KeyboardEventInit> = {}) => {
       const active = document.activeElement as HTMLElement | null
       const target = active?.hasAttribute('data-grid-row') ? active : container
       const event = new KeyboardEvent('keydown', { key, bubbles: true, ...opts })

@@ -43,12 +43,11 @@ export default function FeePage() {
         if (formData.id) await feeApi.updateType(formData.id, formData)
         else await feeApi.createType(formData)
       } else if (activeTab === 'rates') {
-        if (formData.id) await feeApi.updateRate(formData.id, formData)
-        else await feeApi.createRate(formData)
-      } else {
-        if (formData.id) await feeApi.updateDiscount(formData.id, formData)
-        else await feeApi.createDiscount(formData)
-      }
+                     if (formData.id) await feeApi.updateRate(formData.id, formData)
+                     else await feeApi.createRate(formData)
+                   }
+             else if (formData.id) await feeApi.updateDiscount(formData.id, formData)
+             else await feeApi.createDiscount(formData)
       await loadData()
       setShowForm(false)
     } catch (err) {

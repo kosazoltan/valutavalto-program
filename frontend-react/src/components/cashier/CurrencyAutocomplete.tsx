@@ -110,14 +110,14 @@ export function CurrencyAutocomplete({
     setIsOpen(true)
 
     // Instant match: if exact 3-letter code matches an active rate
-    if (raw.length === 3) {
-      const exact = rates.find(r => r.currencyCode === raw && r.active)
-      if (exact) {
-        onChange(raw, exact)
-        setIsOpen(false)
-        onConfirm()
-        return
-      }
+    const exact = raw.length === 3
+      ? rates.find(r => r.currencyCode === raw && r.active)
+      : undefined
+    if (exact) {
+      onChange(raw, exact)
+      setIsOpen(false)
+      onConfirm()
+      return
     }
 
     // Partial: notify parent with code only, no rate yet
@@ -132,41 +132,39 @@ export function CurrencyAutocomplete({
     }
 
     if (isOpen) {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault()
-        setHighlightIdx(prev => Math.min(prev + 1, suggestions.length - 1))
-        return
-      }
-      if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        setHighlightIdx(prev => Math.max(prev - 1, 0))
-        return
-      }
-      if (e.key === 'Enter' || e.key === 'Tab') {
-        e.preventDefault()
-        if (suggestions[highlightIdx]) {
-          selectRate(suggestions[highlightIdx])
-        }
-        return
-      }
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        setIsOpen(false)
-        return
-      }
-    } else {
-      // Dropdown closed — forward Enter/Tab to parent
-      if (e.key === 'Enter' || e.key === 'Tab') {
-        if (inputText.length === 3) {
-          const exact = rates.find(r => r.currencyCode === inputText && r.active)
-          if (exact) {
+          if (e.key === 'ArrowDown') {
             e.preventDefault()
-            selectRate(exact)
+            setHighlightIdx(prev => Math.min(prev + 1, suggestions.length - 1))
+            return
+          }
+          if (e.key === 'ArrowUp') {
+            e.preventDefault()
+            setHighlightIdx(prev => Math.max(prev - 1, 0))
+            return
+          }
+          if (e.key === 'Enter' || e.key === 'Tab') {
+            e.preventDefault()
+            if (suggestions[highlightIdx]) {
+              selectRate(suggestions[highlightIdx])
+            }
+            return
+          }
+          if (e.key === 'Escape') {
+            e.preventDefault()
+            setIsOpen(false)
             return
           }
         }
-      }
-    }
+    else if (e.key === 'Enter' || e.key === 'Tab') {
+            const exact = inputText.length === 3
+              ? rates.find(r => r.currencyCode === inputText && r.active)
+              : undefined
+            if (exact) {
+              e.preventDefault()
+              selectRate(exact)
+              return
+            }
+          }
 
     // Forward other keys to external handler (ArrowUp/Down for row nav when closed)
     externalKeyDown?.(e)

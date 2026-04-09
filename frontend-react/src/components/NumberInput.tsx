@@ -62,19 +62,17 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
 
       // Negatív számok kezelése
       if (!allowNegative) {
-        cleaned = cleaned.replace(/-/g, '')
-      } else {
-        // Csak az elején lehet mínusz
-        if (cleaned.includes('-')) {
-          const minusIndex = cleaned.indexOf('-')
-          if (minusIndex !== 0) {
-            cleaned = cleaned.replace(/-/g, '')
-            if (allowNegative && !cleaned.startsWith('-')) {
-              cleaned = '-' + cleaned
+              cleaned = cleaned.replace(/-/g, '')
             }
-          }
-        }
-      }
+      else if (cleaned.includes('-')) {
+                const minusIndex = cleaned.indexOf('-')
+                if (minusIndex !== 0) {
+                  cleaned = cleaned.replace(/-/g, '')
+                  if (allowNegative && !cleaned.startsWith('-')) {
+                    cleaned = '-' + cleaned
+                  }
+                }
+              }
 
       // Tizedesjegyek kezelése
       if (!allowDecimals) {

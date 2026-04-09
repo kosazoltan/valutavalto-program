@@ -15,9 +15,7 @@ export default function OnlineIndicator() {
     ? 'Online'
     : !isNetworkOnline
       ? 'Offline (hálózat)'
-      : !isBackendReachable
-        ? 'Offline (szerver)'
-        : 'Offline';
+      : isBackendReachable ? 'Offline' : 'Offline (szerver)';
 
   return (
     <span

@@ -783,7 +783,7 @@ export default function CashierTransactionPage() {
             await window.electronAPI.printReceipt(JSON.stringify(receiptData))
           }
         }}
-        printLabel={!isElectron() ? 'Nyomtatás nem elérhető' : undefined}
+        printLabel={isElectron() ? undefined : 'Nyomtatás nem elérhető'}
       />
 
       {/* HOTKEY BAR */}
