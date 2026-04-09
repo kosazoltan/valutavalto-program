@@ -136,13 +136,13 @@ describe('CashierHeader', () => {
     expect(header).toHaveStyle(`border-color: ${mockTheme.primary}`)
   })
 
-  it('időt folyamatosan frissíti', async () => {
+  it('időt folyamatosan frissíti', { timeout: 2000 }, async () => {
     render(<CashierHeader />)
 
     // Az idő megjelenik a headerben
     const header = screen.getByRole('banner')
     expect(header.textContent).toMatch(/\d{2}:\d{2}:\d{2}/)
-  }, { timeout: 2000 })
+  })
 
   it('Shield ikont megjelenít', () => {
     const { container } = render(<CashierHeader />)
