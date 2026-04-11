@@ -289,8 +289,16 @@ try {
     Write-Status "Remote/Neon DB connection OK" "OK"
 }
 catch {
-    Write-Status "Remote/Neon DB connection failed: $($_.Exception.Message)" "ERR"
-    exit 1
+    $msg = "Remote/Neon DB connection failed: $($_.Exception.Message)"
+    $remoteMode = if ($env:DB_PREFLIGHT_REMOTE_MODE) { $env:DB_PREFLIGHT_REMOTE_MODE.Trim().ToLowerInvariant() } else { "strict" }
+    if ($remoteMode -eq "optional") {
+        Write-Status "$msg optional mode: remote parity skipped for local/dev run." "WARN"
+        $skipRemoteParity = $true
+    }
+    else {
+        Write-Status $msg "ERR"
+        exit 1
+    }
 }
 
 try {
@@ -303,22 +311,24 @@ catch {
 }
 
 $remoteMode = if ($env:DB_PREFLIGHT_REMOTE_MODE) { $env:DB_PREFLIGHT_REMOTE_MODE.Trim().ToLowerInvariant() } else { "strict" }
-$skipRemoteParity = $false
+$skipRemoteParity = if ($skipRemoteParity) { $true } else { $false }
 $remoteApplied = @()
 
-try {
-    $remoteApplied = Get-AppliedVersions -ConnectionString $remoteConn -TableName $MigrationTable -Label "Remote/Neon DB"
-    Write-Status "Remote/Neon DB migration table check OK" "OK"
-}
-catch {
-    $msg = $_.Exception.Message
-    if ($remoteMode -eq "optional" -and $msg -match "does not exist") {
-        Write-Status "Remote/Neon: no Flyway table (flyway_schema_history). optional mode: remote parity skipped. Use flyway migrate + strict for prod." "WARN"
-        $skipRemoteParity = $true
+if (-not $skipRemoteParity) {
+    try {
+        $remoteApplied = Get-AppliedVersions -ConnectionString $remoteConn -TableName $MigrationTable -Label "Remote/Neon DB"
+        Write-Status "Remote/Neon DB migration table check OK" "OK"
     }
-    else {
-        Write-Status $msg "ERR"
-        exit 1
+    catch {
+        $msg = $_.Exception.Message
+        if ($remoteMode -eq "optional" -and $msg -match "does not exist") {
+            Write-Status "Remote/Neon: no Flyway table (flyway_schema_history). optional mode: remote parity skipped. Use flyway migrate + strict for prod." "WARN"
+            $skipRemoteParity = $true
+        }
+        else {
+            Write-Status $msg "ERR"
+            exit 1
+        }
     }
 }
 

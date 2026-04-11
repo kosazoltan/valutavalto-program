@@ -24,6 +24,8 @@
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <!-- CVE-2026-22732 fix: Spring Security 6.5.0 → 6.5.9 -->
         <spring-security.version>6.5.9</spring-security.version>
+        <!-- CVE-2026-33186 fix: force patched grpc-api over Google client transitive -->
+        <grpc.version>1.80.0</grpc.version>
         <!-- Surefire argLine — ures alapertelmezett, JDK 25 profil felulirja -->
     </properties>
     
@@ -165,6 +167,20 @@
             <groupId>com.google.auth</groupId>
             <artifactId>google-auth-library-oauth2-http</artifactId>
             <version>1.43.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-context</artifactId>
+            <version>${grpc.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-api</artifactId>
+            <version>${grpc.version}</version>
+            <scope>runtime</scope>
         </dependency>
 
         <!-- Dev Tools -->
