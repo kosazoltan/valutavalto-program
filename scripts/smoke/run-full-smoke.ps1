@@ -131,7 +131,7 @@ function Invoke-LoggedProcessSmoke {
 try {
   Invoke-LoggedCommand -Name 'security_gate' -Command 'powershell -ExecutionPolicy Bypass -File scripts/security/run-security-gate.ps1'
 
-  Invoke-LoggedCommand -Name 'backend_build' -Command 'cd backend && .\mvnw.cmd -DskipTests package'
+  Invoke-LoggedCommand -Name 'backend_build' -Command 'cd backend && .\mvnw.cmd -DskipTests clean package'
 
   Invoke-LoggedProcessSmoke -Name 'backend_runtime' -FilePath 'powershell' -ArgumentList @(
     '-NoProfile',

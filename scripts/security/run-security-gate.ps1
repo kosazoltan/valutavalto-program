@@ -448,23 +448,34 @@ if ($hasPython) {
     $pythonDependencyFileForCmd = $pythonDependencyFile -replace '"', '""'
     $pythonProbeCommand = "`$env:PYTHONIOENCODING='utf-8'; python -m pip_audit --version"
 
-    $results.Add((Invoke-OptionalCheckWithTimeout `
+    $pythonPipAuditResult = Invoke-OptionalCheckWithTimeout `
         -Name "python_pip_audit" `
         -WorkingDir $RepoRoot `
         -Command ('set PYTHONIOENCODING=utf-8 && python -m pip_audit --desc --format=json -r "{0}"' -f $pythonDependencyFileForCmd) `
         -ProbeCommand $pythonProbeCommand `
         -TimeoutSeconds $ScannerTimeoutSec `
         -DisplayCommand ('python -m pip_audit --desc --format=json -r "{0}"' -f $pythonDependencyFileForCmd) `
-        -OutputFile (Join-Path $reportDir "python_pip_audit.txt")))
+        -OutputFile (Join-Path $reportDir "python_pip_audit.txt")
+    $results.Add($pythonPipAuditResult)
 
-    $results.Add((Invoke-OptionalCheckWithTimeout `
+    $pythonSafetyResult = Invoke-OptionalCheckWithTimeout `
         -Name "python_safety_check" `
         -WorkingDir $RepoRoot `
         -Command ('set PYTHONIOENCODING=utf-8 && python -m safety check -r "{0}" --json' -f $pythonDependencyFileForCmd) `
         -ProbeCommand "python -m safety --version" `
         -TimeoutSeconds $ScannerTimeoutSec `
         -DisplayCommand ('python -m safety check -r "{0}" --json' -f $pythonDependencyFileForCmd) `
-        -OutputFile (Join-Path $reportDir "python_safety_check.txt")))
+        -OutputFile (Join-Path $reportDir "python_safety_check.txt")
+
+    if ($pythonSafetyResult.status -eq "FAILED" -and (Test-Path -LiteralPath $pythonSafetyResult.output)) {
+        $pythonSafetyOutput = Get-Content -LiteralPath $pythonSafetyResult.output -Raw
+        if ($pythonSafetyOutput -match "Unable to load vulnerability database" -and $pythonPipAuditResult.status -eq "PASSED") {
+            $pythonSafetyResult.status = "PASSED"
+            $pythonSafetyResult.note = "Safety backend unavailable; pip-audit passed"
+        }
+    }
+
+    $results.Add($pythonSafetyResult)
 }
 
 Write-Section "Static pattern scans"

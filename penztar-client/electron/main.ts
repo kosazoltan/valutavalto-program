@@ -581,13 +581,6 @@ ipcMain.handle('secure-clear-token', async (): Promise<void> => {
   deleteConfig('auth_token');
 });
 
-// --- Restart App IPC Handler ---
-ipcMain.handle('restart-app', async (): Promise<void> => {
-  log.info('[App] Restart requested via IPC');
-  app.relaunch();
-  app.exit(0);
-});
-
 // --- App Lifecycle ---
 
 app.whenReady().then(async () => {

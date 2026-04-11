@@ -32,6 +32,7 @@ public class IdempotencyFilter extends OncePerRequestFilter {
             "/api/v1/email/accounts/callback",
             "/api/v1/health",
             "/api/v1/error-report",
+            "/api/v1/error-log",
             "/swagger-ui/",
             "/v3/api-docs",
             "/api-docs/",

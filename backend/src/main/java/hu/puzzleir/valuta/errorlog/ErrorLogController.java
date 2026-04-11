@@ -25,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @RestController
-@RequestMapping("/api/v1/error-report")
+@RequestMapping("/api/v1/error-log")
 @RequiredArgsConstructor
 public class ErrorLogController {
 
