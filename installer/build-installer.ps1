@@ -32,8 +32,8 @@ $NSSM_URL = "https://nssm.cc/release/nssm-${NSSM_VERSION}.zip"
 $NSIS_EXE = "C:\Program Files (x86)\NSIS\makensis.exe"
 
 # S6-02/03 fix: SHA-256 checksums for supply chain integrity
-$PG_SHA256 = "46903BB56BB0A40A81768703FA7420F0690095685DA040BED2C584B900A1124C"
-$NSSM_SHA256 = "EEE9C44C29C2BE011F1F1E43BB8C3FCA888CB81053022EC5A0060035DE16D848"  # nssm.exe binary
+$PG_SHA256 = "795196DF1B2855FD0C7FB52629C6CC16ACAA85819912E732BD4C46863E77EB30"
+$NSSM_SHA256 = "F689EE9AF94B00E9E3F0BB072B34CAAF207F32DCB4F5782FC9CA351DF9A06C97"  # nssm.exe win64
 $VCREDIST_SHA256 = "CC0FF0EB1DC3F5188AE6300FAEF32BF5BEEBA4BDD6E8E445A9184072096B713B"
 
 function Assert-FileHash($Path, $Expected, $Label) {
@@ -62,7 +62,7 @@ Write-Host "Stage dir: $StageDir"
 
 # ─── 1. Backend Build ──────────────────────────────────────────────────────
 if (-not $SkipBackendBuild) {
-    Write-Step "1/6 — Backend Build (Maven)"
+    Write-Step "1/6 - Backend Build (Maven)"
     $backendDir = Join-Path $RepoRoot "backend"
     Push-Location $backendDir
     try {
@@ -71,12 +71,12 @@ if (-not $SkipBackendBuild) {
         $jar = Get-ChildItem "target\valuta-backend-*.jar" -Exclude "*-sources.jar","*-javadoc.jar" | Select-Object -First 1
         if (-not $jar) { throw "Backend JAR not found" }
         Copy-Item $jar.FullName "$StageDir\backend\valuta-backend.jar"
-        Write-Host "Backend JAR: $($jar.Name) → staged" -ForegroundColor Green
+        Write-Host "Backend JAR: $($jar.Name) -> staged" -ForegroundColor Green
     } finally { Pop-Location }
 } else { Write-Host "Backend build SKIPPED" -ForegroundColor Yellow }
 
 # ─── 2. JRE Custom Runtime (jlink) ────────────────────────────────────────
-Write-Step "2/6 — JRE Custom Runtime (jlink)"
+Write-Step "2/6 - JRE Custom Runtime (jlink)"
 $javaHome = (Get-Command java).Source | Split-Path | Split-Path
 $jlinkExe = Join-Path $javaHome "bin\jlink.exe"
 $jreOut = "$StageDir\jre"
@@ -84,8 +84,8 @@ $jreOut = "$StageDir\jre"
 if (Test-Path "$jreOut\bin\java.exe") {
     Write-Host "JRE already staged, skipping jlink" -ForegroundColor Yellow
 } else {
-    # Clean target
-    Remove-Item "$jreOut\*" -Recurse -Force -ErrorAction SilentlyContinue
+    # jlink requires output dir to not exist (Remove-Item * leaves an empty jre/ folder)
+    Remove-Item $jreOut -Recurse -Force -ErrorAction SilentlyContinue
 
     $modules = @(
         "java.base",
@@ -121,16 +121,16 @@ if (Test-Path "$jreOut\bin\java.exe") {
 
 # ─── 3. Frontend + Electron Build ─────────────────────────────────────────
 if (-not $SkipFrontendBuild) {
-    Write-Step "3/6 — Frontend + Electron Build"
+    Write-Step "3/6 - Frontend + Electron Build"
     $clientDir = Join-Path $RepoRoot "penztar-client"
     Push-Location $clientDir
     try {
         # Set local API URL for build
-        $envContent = @"
+        $envContent = @'
 VITE_API_URL=http://localhost:8080/api/v1
 VITE_BRANCH_CODE=EBC
 VITE_COMPANY_ID=1
-"@
+'@
         # BS-A fix: No BOM (Set-Content -Encoding UTF8 writes BOM on PS 5.1)
         [System.IO.File]::WriteAllText((Join-Path (Get-Location) ".env.local-installer"), $envContent)
 
@@ -175,15 +175,14 @@ VITE_COMPANY_ID=1
             $unpackedDir = Get-ChildItem "release" -Directory | Where-Object { $_.Name -match "unpacked" } | Select-Object -First 1
         }
         if ($unpackedDir) {
-            Copy-Item (Join-Path $unpackedDir.FullName "*") "$StageDir\electron\" -Recurse -Force
+            $electronStage = Join-Path $StageDir "electron"
+            Copy-Item (Join-Path $unpackedDir.FullName "*") $electronStage -Recurse -Force
 
-            # FONTOS: Átnevezés ékezetes EXE → ASCII-safe "Penztar.exe"
-            # Az electron-builder productName-ből generál ékezetes EXE nevet,
-            # ami NSIS-ben és egyes Windows konfigurációkban problémás.
-            $exeFiles = Get-ChildItem "$StageDir\electron\*.exe" | Where-Object { $_.Name -match "Pénztár|Penztar|valuta" -and $_.Name -ne "Penztar.exe" }
+            # Rename non-ASCII product EXE to ASCII-safe Penztar.exe (NSIS / Windows paths)
+            $exeFiles = Get-ChildItem (Join-Path $electronStage "*.exe") | Where-Object { $_.Name -ne "Penztar.exe" }
             foreach ($exe in $exeFiles) {
                 $newName = "Penztar.exe"
-                Write-Host "  EXE átnevezés: $($exe.Name) → $newName" -ForegroundColor Yellow
+                Write-Host "  EXE rename: $($exe.Name) -> $newName" -ForegroundColor Yellow
                 $targetPath = Join-Path (Split-Path $exe.FullName) $newName
                 Move-Item $exe.FullName -Destination $targetPath -Force
             }
@@ -198,12 +197,14 @@ VITE_COMPANY_ID=1
             Copy-Item ".env.backup" ".env" -Force
             Remove-Item ".env.backup"
         }
+    } catch {
+        throw
     } finally { Pop-Location }
 } else { Write-Host "Frontend/Electron build SKIPPED" -ForegroundColor Yellow }
 
 # ─── 4. Download Dependencies ─────────────────────────────────────────────
 if (-not $SkipDownloads) {
-    Write-Step "4/6 — Letöltés: PostgreSQL + NSSM"
+    Write-Step "4/6 - Letoltes: PostgreSQL + NSSM"
 
     $dlDir = Join-Path $BuildDir "downloads"
     New-Item -ItemType Directory -Force $dlDir | Out-Null
@@ -252,15 +253,16 @@ if (-not $SkipDownloads) {
         Write-Host "Downloading VC++ 2015-2022 Redistributable x64..."
         Invoke-WebRequest -Uri $vcUrl -OutFile $vcRedist -UseBasicParsing
         Assert-FileHash $vcRedist $VCREDIST_SHA256 "VC++ Redistributable"
-        Write-Host "VC++ Redistributable staged ($([math]::Round((Get-Item $vcRedist).Length / 1MB, 1)) MB)" -ForegroundColor Green
+        $vcMb = [math]::Round((Get-Item $vcRedist).Length / 1MB, 1)
+        Write-Host "VC++ Redistributable staged - $vcMb MB" -ForegroundColor Green
     }
 } else { Write-Host "Downloads SKIPPED" -ForegroundColor Yellow }
 
 # ─── 5. Config + Scripts ──────────────────────────────────────────────────
-Write-Step "5/6 — Config és Scripts"
+Write-Step "5/6 - Config es Scripts"
 
 # application-local.properties template (PG_PASSWORD placeholder replaced by NSIS at install time)
-$backendConfig = @"
+$backendConfig = @'
 # Auto-generated by Penztar installer
 server.port=8080
 spring.datasource.url=jdbc:postgresql://localhost:54320/valuta
@@ -290,35 +292,35 @@ management.health.mail.enabled=false
 penztar.bootstrap.company-code=EBC
 penztar.bootstrap.worker-code=BORSI
 penztar.bootstrap.role-code=CASHIER
-"@
+'@
 # BS-A fix: No BOM for config template
 [System.IO.File]::WriteAllText("$StageDir\config\application-local.properties", $backendConfig)
 
 # Penztar .env template
-$penztarEnv = @"
+$penztarEnv = @'
 VITE_API_URL=http://localhost:8080/api/v1
 VITE_BRANCH_CODE=EBC
 VITE_COMPANY_ID=1
-"@
+'@
 [System.IO.File]::WriteAllText("$StageDir\config\penztar.env", $penztarEnv)
 
 # Init DB + seed + service scripts
-Copy-Item "$InstallerDir\scripts\init-db.bat" "$StageDir\scripts\" -ErrorAction SilentlyContinue
+Copy-Item "$InstallerDir\scripts\init-db.bat" (Join-Path $StageDir "scripts") -ErrorAction SilentlyContinue
 $seedSql = Join-Path $InstallerDir "scripts\seed-data.sql"
 if (Test-Path $seedSql) {
-    Copy-Item $seedSql "$StageDir\scripts\" -Force
+    Copy-Item $seedSql (Join-Path $StageDir "scripts") -Force
     Write-Host "seed-data.sql staged" -ForegroundColor Green
 } else {
-    throw "MISSING: seed-data.sql not found at $seedSql — installer would lack seed data!"
+    throw "MISSING: seed-data.sql not found at $seedSql - installer would lack seed data!"
 }
-Copy-Item "$InstallerDir\scripts\start-services.bat" "$StageDir\scripts\" -ErrorAction SilentlyContinue
-Copy-Item "$InstallerDir\scripts\stop-services.bat" "$StageDir\scripts\" -ErrorAction SilentlyContinue
+Copy-Item "$InstallerDir\scripts\start-services.bat" (Join-Path $StageDir "scripts") -ErrorAction SilentlyContinue
+Copy-Item "$InstallerDir\scripts\stop-services.bat" (Join-Path $StageDir "scripts") -ErrorAction SilentlyContinue
 
 Write-Host "Config + scripts staged" -ForegroundColor Green
 
 # ─── 6. NSIS Compile ──────────────────────────────────────────────────────
 if (-not $SkipNsis) {
-    Write-Step "6/6 — NSIS Compile"
+    Write-Step "6/6 - NSIS Compile"
     $nsiScript = Join-Path $InstallerDir "Penztar-Setup.nsi"
     if (-not (Test-Path $nsiScript)) { throw "NSIS script not found: $nsiScript" }
 
@@ -328,10 +330,11 @@ if (-not $SkipNsis) {
     $outputExe = Get-ChildItem "$BuildDir\Penztar-Setup-*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
     if ($outputExe) {
         $exeSize = $outputExe.Length / 1MB
-        Write-Host "`n✅ KÉSZ: $($outputExe.Name) ($([math]::Round($exeSize, 1)) MB)" -ForegroundColor Green
+        $exeSizeMb = [math]::Round($exeSize, 1)
+        Write-Host "`nKESZ: $($outputExe.Name) - $exeSizeMb MB" -ForegroundColor Green
         Write-Host "   Helye: $($outputExe.FullName)"
-        Write-Host "   Verzió: $Version ($BuildDate)" -ForegroundColor Green
-        Write-Host "   Jobb klikk → Tulajdonságok → Részletek → FileVersion, ProductVersion" -ForegroundColor DarkGray
+        Write-Host "   Verzio: $Version ($BuildDate)" -ForegroundColor Green
+        Write-Host "   Jobb klikk: Tulajdonsagok / Reszletek / FileVersion, ProductVersion" -ForegroundColor DarkGray
     }
 } else { Write-Host "NSIS compile SKIPPED" -ForegroundColor Yellow }
 
