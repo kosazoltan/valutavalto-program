@@ -72,6 +72,9 @@ frontend-react/.env.local
 .DS_Store
 Thumbs.db
 Desktop.ini
+# Windows reserved device names (accidental `> nul` redirects can create these files)
+/nul
+backend/nul
 
 # Docker volumes (helyi adatok)
 docker/postgres_data/
