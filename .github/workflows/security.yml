@@ -69,7 +69,7 @@ jobs:
 
       - name: Upload Trivy SARIF (always)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: trivy-backend-sarif
           path: trivy-backend.sarif
@@ -137,7 +137,7 @@ jobs:
 
       - name: Upload OWASP Report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: owasp-report
           path: backend/target/dependency-check-report.html
