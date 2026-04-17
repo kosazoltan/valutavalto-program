@@ -6,14 +6,20 @@ on:
   pull_request:
     branches: [ main ]
   schedule:
-    # Heti biztonsagi scan (hetfo 06:00 UTC)
+    # Heti biztonsagi scan (hetfo 06:00 UTC) — ezen az esemenyen fut a lassu OWASP Dependency Check is
     - cron: '0 6 * * 1'
   workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
 
 jobs:
   gitleaks:
     name: GitLeaks Secret Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,11 +45,57 @@ jobs:
       - name: Build backend
         run: cd backend && mvn -B package --no-transfer-progress -DskipTests
 
-  backend-dependency-check:
-    name: Backend OWASP Dependency Check
+  # -----------------------------------------------------------------------------
+  # GYORS SCA — PR gate (masodpercek alatt). A lassu OWASP Dependency Check
+  # csak schedule / workflow_dispatch esemenyre fut, lasd: backend-owasp-weekly.
+  # -----------------------------------------------------------------------------
+  trivy-backend-scan:
+    name: Trivy Backend SCA
     runs-on: ubuntu-latest
-    # 45 perc hard limit — ha NVD elérhetetlen / throttle miatt beragad, a job fail-eljen,
-    # ne égessen órákig runner-percet (korábban 90+ perc után is in_progress maradt).
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trivy fs scan (backend pom.xml)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'fs'
+          scan-ref: 'backend'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          ignore-unfixed: 'true'
+          format: 'sarif'
+          output: 'trivy-backend.sarif'
+
+      - name: Upload Trivy SARIF (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-backend-sarif
+          path: trivy-backend.sarif
+          retention-days: 14
+
+  dependency-review:
+    name: GitHub Dependency Review
+    # Csak PR-eken van ertelme — a PR-ben valtozott fuggosegeket ellenorzi.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure
+
+  # -----------------------------------------------------------------------------
+  # LASSU (NVD-fuggo) OWASP Dependency Check — csak ütemezve / kezzel inditva.
+  # Naponta / PR-enkent NEM fut, igy nem blokkol.
+  # -----------------------------------------------------------------------------
+  backend-owasp-weekly:
+    name: Backend OWASP Dependency Check (weekly)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
       NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
@@ -55,9 +107,6 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      # Heti cache key — hetente automatikusan frissul az NVD data, kozben a run-ok
-      # kozott megmarad a ~1 GB-os feed. `restore-keys` miatt elavult cache is stage-elheto,
-      # aztan a modifiedValidForHours inkrementalisan rafrissit (sokkal gyorsabb mint a full).
       - name: Compute ISO week for cache key
         id: nvd_cache_key
         run: echo "key=$(date -u +'%G-W%V')" >> "$GITHUB_OUTPUT"
@@ -85,6 +134,7 @@ jobs:
             -DsuppressionFile=owasp-suppressions.xml \
             -DdataDirectory=.owasp-dependency-check-data \
             --no-transfer-progress
+
       - name: Upload OWASP Report
         if: always()
         uses: actions/upload-artifact@v4
@@ -92,6 +142,7 @@ jobs:
           name: owasp-report
           path: backend/target/dependency-check-report.html
           retention-days: 14
+
       - name: Fail on high/critical OWASP findings
         if: steps.owasp.outcome == 'failure'
         run: |
