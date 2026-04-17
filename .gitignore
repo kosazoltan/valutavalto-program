@@ -136,6 +136,9 @@ installer/build/
 
 tmp/
 
+# OWASP Dependency-Check NVD cache (CI caches this between runs — do not commit)
+backend/.owasp-dependency-check-data/
+
 test-output.txt
 
 frontend-react/dist/

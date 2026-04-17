@@ -24,12 +24,14 @@ jobs:
   backend-build:
     name: Backend Build + Test
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
+          cache: 'maven'
       - name: Test backend
         run: cd backend && mvn -B test --no-transfer-progress
 
@@ -39,6 +41,9 @@ jobs:
   backend-dependency-check:
     name: Backend OWASP Dependency Check
     runs-on: ubuntu-latest
+    # 45 perc hard limit — ha NVD elérhetetlen / throttle miatt beragad, a job fail-eljen,
+    # ne égessen órákig runner-percet (korábban 90+ perc után is in_progress maradt).
+    timeout-minutes: 45
     env:
       NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
     steps:
@@ -47,6 +52,23 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+          cache: 'maven'
+
+      # Heti cache key — hetente automatikusan frissul az NVD data, kozben a run-ok
+      # kozott megmarad a ~1 GB-os feed. `restore-keys` miatt elavult cache is stage-elheto,
+      # aztan a modifiedValidForHours inkrementalisan rafrissit (sokkal gyorsabb mint a full).
+      - name: Compute ISO week for cache key
+        id: nvd_cache_key
+        run: echo "key=$(date -u +'%G-W%V')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache OWASP NVD database
+        uses: actions/cache@v4
+        with:
+          path: backend/.owasp-dependency-check-data
+          key: owasp-nvd-${{ runner.os }}-${{ steps.nvd_cache_key.outputs.key }}
+          restore-keys: |
+            owasp-nvd-${{ runner.os }}-
+
       - name: OWASP Dependency Check
         id: owasp
         continue-on-error: true
@@ -55,6 +77,7 @@ jobs:
             -DfailBuildOnCVSS=9 \
             -DnvdApiKey=$NVD_API_KEY \
             -DsuppressionFile=owasp-suppressions.xml \
+            -DdataDirectory=.owasp-dependency-check-data \
             --no-transfer-progress
       - name: Upload OWASP Report
         if: always()
@@ -72,6 +95,7 @@ jobs:
   npm-audit:
     name: npm audit (frontend + penztar-client)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -101,6 +125,7 @@ jobs:
   penztar-lint:
     name: penztar-client Test + Lint + TypeCheck + IPC Contract
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -117,6 +142,7 @@ jobs:
   frontend-lint:
     name: frontend-react Lint + TypeCheck
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
