@@ -7,6 +7,7 @@
 #   - Java JRE / Spring Boot backend
 #   - NSSM service manager
 # Becsult meret: ~80-120 MB (vs. ~431 MB a fat installernel)
+# Build eredmeny: Penztar-Thin-2.1.1-20260417.exe = 90 MB
 #
 # Hasznalat: powershell -ExecutionPolicy Bypass -File build-installer-thin.ps1
 # Elofeltetelek: Node.js 20+, NSIS 3.x, .env.production beallitva
@@ -75,13 +76,13 @@ if (-not $SkipFrontendBuild) {
             Write-Host "  frontend dist -> electron dist OK" -ForegroundColor Green
         }
 
-        Write-Host "electron-builder (dir target)..."
-        npx electron-builder --win dir --config electron-builder.json
+        Write-Host "electron-builder (dir target, npmRebuild=false)..."
+        npx electron-builder --win dir --config electron-builder-thin.json
         if ($LASTEXITCODE -ne 0) { throw "electron-builder failed" }
 
-        $unpackedDir = Get-Item "release\win-unpacked" -ErrorAction SilentlyContinue
+        $unpackedDir = Get-Item "release-thin\win-unpacked" -ErrorAction SilentlyContinue
         if (-not $unpackedDir) {
-            $unpackedDir = Get-ChildItem "release" -Directory | Where-Object { $_.Name -match "unpacked" } | Select-Object -First 1
+            $unpackedDir = Get-ChildItem "release-thin" -Directory | Where-Object { $_.Name -match "unpacked" } | Select-Object -First 1
         }
         if (-not $unpackedDir) { throw "Electron unpacked dir not found" }
 

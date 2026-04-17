@@ -1,0 +1,35 @@
+{
+  "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
+  "appId": "com.bestchange.penztar",
+  "productName": "Valutavalto Penztar",
+  "directories": {
+    "output": "release-thin"
+  },
+  "asar": true,
+  "asarUnpack": [
+    "**/*.node",
+    "node_modules/serialport/**/*",
+    "node_modules/@serialport/**/*"
+  ],
+  "files": [
+    "dist/**/*",
+    "dist-electron/**/*"
+  ],
+  "npmRebuild": false,
+  "win": {
+    "icon": "build/icons/app-icon-bestchange.png",
+    "target": [
+      {
+        "target": "dir",
+        "arch": ["x64"]
+      }
+    ],
+    "artifactName": "Penztar-Thin-${version}.exe"
+  },
+  "extraResources": [
+    {
+      "from": "node_modules/sql.js/dist/sql-wasm.wasm",
+      "to": "sql-wasm.wasm"
+    }
+  ]
+}
