@@ -321,6 +321,45 @@ export interface ElectronAPI {
   secureLoadToken?(): Promise<string | null>;
   secureClearToken?(): Promise<void>;
 
+  // --- First-Run Setup Wizard ---
+  setupCheck?(): Promise<{
+    isFirstRun: boolean;
+    envPath: string;
+    reason?: string;
+  }>;
+  setupGetBranches?(): Promise<Array<{
+    code: string;
+    name: string;
+    city: string;
+    address?: string;
+  }>>;
+  setupTestConnection?(params: {
+    apiUrl: string;
+    companyCode: string;
+    username: string;
+    password: string;
+  }): Promise<{
+    success: boolean;
+    httpStatus?: number;
+    errorMessage?: string;
+    latencyMs?: number;
+  }>;
+  setupSave?(payload: {
+    branchCode: string;
+    branchName: string;
+    apiUrl: string;
+    companyCode: string;
+    adminUsername: string;
+    adminPassword: string;
+    bootstrapUsername?: string;
+    bootstrapPassword?: string;
+    offlineMode: boolean;
+  }): Promise<{
+    success: boolean;
+    envPath: string;
+    errorMessage?: string;
+  }>;
+
   // --- App ---
   getAppVersion(): Promise<string>;
   restartApp(): Promise<void>;

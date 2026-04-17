@@ -56,6 +56,13 @@ import { registerCameraHandlers } from './camera';
 import { registerVideoManagerHandlers } from './video-manager';
 import { registerScannerHandlers } from './scanner';
 import { registerUpdaterHandlers } from './updater';
+import {
+  isFirstRun,
+  getBranches,
+  testConnection,
+  saveSetupConfig,
+  type SetupSavePayload,
+} from './first-run';
 
 const isDev = !app.isPackaged && !process.argv.includes('--force-packaged') && process.env.ELECTRON_FORCE_PACKAGED !== '1';
 const devServerUrl = process.env.ELECTRON_RENDERER_URL ?? 'http://127.0.0.1:3000';
@@ -245,6 +252,26 @@ ipcMain.handle('set-config', async (_event, key: string, value: string): Promise
 
 ipcMain.handle('delete-config', async (_event, key: string): Promise<void> => {
   deleteConfig(key);
+});
+
+// --- First-Run Setup Wizard IPC ---
+ipcMain.handle('setup:check', async () => {
+  return isFirstRun();
+});
+
+ipcMain.handle('setup:branches', async () => {
+  return getBranches();
+});
+
+ipcMain.handle('setup:test-connection', async (
+  _event,
+  params: { apiUrl: string; companyCode: string; username: string; password: string },
+) => {
+  return await testConnection(params.apiUrl, params.companyCode, params.username, params.password);
+});
+
+ipcMain.handle('setup:save', async (_event, payload: SetupSavePayload) => {
+  return await saveSetupConfig(payload);
 });
 
 ipcMain.handle('save-pending-transaction', async (

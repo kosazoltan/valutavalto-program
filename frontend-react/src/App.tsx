@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
 import { Toaster } from './components/ui/toaster'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -13,6 +13,7 @@ import AuthLayout from './layouts/AuthLayout'
 import LoginPage from './pages/auth/LoginPage'
 import { logger } from './utils/logger';
 
+const SetupWizard = lazy(() => import('./pages/setup/SetupWizard'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const TransactionPage = lazy(() => import('./pages/transactions/TransactionPage'))
 const TransactionListPage = lazy(() => import('./pages/transactions/TransactionListPage'))
@@ -145,6 +146,55 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+/**
+ * SetupGuard — Electron-only first-run detektálás.
+ *
+ * Ha a telepített app még nem fut le First-Run Setup Wizard-del (nincs .env vagy
+ * hiányzik a JWT_SECRET), átirányít a /setup útvonalra. Minden más kontextusban
+ * (web, setup már kész, vagy már a /setup-on van) átengedi a children-t.
+ */
+function SetupGuard({ children }: { children: React.ReactNode }) {
+  const [status, setStatus] = useState<'checking' | 'ok'>(
+    () => (window.electronAPI?.setupCheck ? 'checking' : 'ok'),
+  )
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!window.electronAPI?.setupCheck) {
+      setStatus('ok')
+      return
+    }
+
+    let cancelled = false
+    const check = async () => {
+      try {
+        const result = await window.electronAPI!.setupCheck!()
+        if (cancelled) return
+        if (result.isFirstRun && location.pathname !== '/setup') {
+          navigate('/setup', { replace: true })
+        }
+      } catch (err) {
+        logger.error('SetupGuard', 'setupCheck hiba:', err)
+      } finally {
+        if (!cancelled) setStatus('ok')
+      }
+    }
+    void check()
+    return () => { cancelled = true }
+  }, [location.pathname, navigate])
+
+  if (status === 'checking') {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p className="text-gray-500">Beállítások ellenőrzése...</p>
+      </div>
+    )
+  }
+
+  return <>{children}</>
+}
+
 export default function App() {
   const [isRestoring, setIsRestoring] = useState(() => hasPersistedToken())
 
@@ -248,7 +298,11 @@ export default function App() {
   return (
     <ErrorBoundary>
       <Suspense fallback={<RouteLoadingFallback />}>
+      <SetupGuard>
         <Routes>
+          {/* First-Run Setup Wizard — teljes képernyős, nincs layout. */}
+          <Route path="/setup" element={<SetupWizard />} />
+
           {/* Auth routes */}
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<LoginPage />} />
@@ -464,6 +518,7 @@ export default function App() {
 
           </Route>
         </Routes>
+      </SetupGuard>
       </Suspense>
       <Toaster />
     </ErrorBoundary>

@@ -612,5 +612,51 @@ contextBridge.exposeInMainWorld('electronAPI', {
   secureClearToken: (): Promise<void> =>
     ipcRenderer.invoke('secure-clear-token'),
 
+  // --- First-Run Setup Wizard ---
+  setupCheck: (): Promise<{
+    isFirstRun: boolean;
+    envPath: string;
+    reason?: string;
+  }> =>
+    ipcRenderer.invoke('setup:check'),
+
+  setupGetBranches: (): Promise<Array<{
+    code: string;
+    name: string;
+    city: string;
+    address?: string;
+  }>> =>
+    ipcRenderer.invoke('setup:branches'),
+
+  setupTestConnection: (params: {
+    apiUrl: string;
+    companyCode: string;
+    username: string;
+    password: string;
+  }): Promise<{
+    success: boolean;
+    httpStatus?: number;
+    errorMessage?: string;
+    latencyMs?: number;
+  }> =>
+    ipcRenderer.invoke('setup:test-connection', params),
+
+  setupSave: (payload: {
+    branchCode: string;
+    branchName: string;
+    apiUrl: string;
+    companyCode: string;
+    adminUsername: string;
+    adminPassword: string;
+    bootstrapUsername?: string;
+    bootstrapPassword?: string;
+    offlineMode: boolean;
+  }): Promise<{
+    success: boolean;
+    envPath: string;
+    errorMessage?: string;
+  }> =>
+    ipcRenderer.invoke('setup:save', payload),
+
   platform: process.platform,
 });
