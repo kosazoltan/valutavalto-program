@@ -10,18 +10,19 @@
 -- Érintett service: hu.puzzleir.valuta.service.NavClosingService
 -- Enum:             NavClosingService.NavTaxCode { STANDARD, REDUCED_18, REDUCED_5, ZERO }
 
-INSERT INTO system_parameter (parameter_key, parameter_value, parameter_type, category, description, is_active)
+-- system_parameter.id UUID NOT NULL DEFAULT nelkul -> gen_random_uuid() explicit kell
+INSERT INTO system_parameter (id, parameter_key, parameter_value, parameter_type, category, description, is_active)
 VALUES
-    ('nav.vat-rate.STANDARD',   '0.27', 'DECIMAL', 'NAV',
+    (gen_random_uuid(), 'nav.vat-rate.STANDARD',   '0.27', 'DECIMAL', 'NAV',
      'Általános ÁFA kulcs NAV záráshoz (kezelési díj). Magyar szabályozás szerint 27%.',
      TRUE),
-    ('nav.vat-rate.REDUCED_18', '0.18', 'DECIMAL', 'NAV',
+    (gen_random_uuid(), 'nav.vat-rate.REDUCED_18', '0.18', 'DECIMAL', 'NAV',
      'Kedvezményes 18%-os ÁFA kulcs (pl. tej, tojás, liszt).',
      TRUE),
-    ('nav.vat-rate.REDUCED_5',  '0.05', 'DECIMAL', 'NAV',
+    (gen_random_uuid(), 'nav.vat-rate.REDUCED_5',  '0.05', 'DECIMAL', 'NAV',
      'Kedvezményes 5%-os ÁFA kulcs (pl. gyógyszer, könyv, friss hús).',
      TRUE),
-    ('nav.vat-rate.ZERO',       '0.00', 'DECIMAL', 'NAV',
+    (gen_random_uuid(), 'nav.vat-rate.ZERO',       '0.00', 'DECIMAL', 'NAV',
      'Adómentes kategória (export, nemzetközi személyszállítás stb.).',
      TRUE)
 ON CONFLICT (parameter_key) DO NOTHING;

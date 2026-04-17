@@ -14,9 +14,10 @@
 -- Érintett service: hu.puzzleir.valuta.service.AdminBootstrapService
 -- Érintett controller: hu.puzzleir.valuta.controller.AuthController
 
-INSERT INTO system_parameter (parameter_key, parameter_value, parameter_type, category, description, is_active)
+-- system_parameter.id UUID NOT NULL DEFAULT nelkul -> gen_random_uuid() explicit kell
+INSERT INTO system_parameter (id, parameter_key, parameter_value, parameter_type, category, description, is_active)
 VALUES
-    ('auth.bootstrap-completed', 'false', 'BOOLEAN', 'AUTH',
+    (gen_random_uuid(), 'auth.bootstrap-completed', 'false', 'BOOLEAN', 'AUTH',
      'Első indítás admin bootstrap lezárása. true: AuthController POST /bootstrap-admin letiltott.',
      TRUE)
 ON CONFLICT (parameter_key) DO NOTHING;
