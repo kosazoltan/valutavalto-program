@@ -44,10 +44,22 @@ public class NavClosingService {
     private final SystemParameterService systemParameterService;
 
     /**
-     * ÁFA kulcs (27% — magyar szabályozás).
-     * A kezelési díjra vetítve.
+     * Magyar ÁFA-kulcs táblázat — <code>SystemParameter</code> override nélkül ezek a fallback értékek.
+     *
+     * <p>Minden kulcshoz létezik egy konfigurálható SystemParameter
+     * <code>nav.vat-rate.&lt;TAX_CODE&gt;</code> formában (ld. V143 Flyway migráció).
+     * Ha a paraméter hiányzik vagy értelmezhetetlen szám, a service loggol és
+     * visszalép erre a fallback táblára — így jogszabályváltozáskor sem omlik össze a zárás.</p>
      */
-    private static final BigDecimal VAT_RATE = new BigDecimal("0.27");
+    private static final Map<NavTaxCode, BigDecimal> DEFAULT_VAT_RATES =
+        new EnumMap<>(Map.of(
+            NavTaxCode.STANDARD,   new BigDecimal("0.27"),
+            NavTaxCode.REDUCED_18, new BigDecimal("0.18"),
+            NavTaxCode.REDUCED_5,  new BigDecimal("0.05"),
+            NavTaxCode.ZERO,       BigDecimal.ZERO
+        ));
+
+    private static final String VAT_RATE_KEY_PREFIX = "nav.vat-rate.";
 
     /**
      * Napi NAV zárás létrehozása.
@@ -133,8 +145,10 @@ public class NavClosingService {
             closing.addLine(line);
         }
 
-        // ÁFA számítás a kezelési díjra
-        BigDecimal vatAmount = totalHandlingFee.multiply(VAT_RATE)
+        // ÁFA számítás a kezelési díjra — STANDARD kulcs (jelenleg 27%).
+        // Az érték SystemParameter-ből jön (nav.vat-rate.STANDARD), így
+        // jogszabályváltozáskor redeploy nélkül módosítható.
+        BigDecimal vatAmount = totalHandlingFee.multiply(resolveVatRate(NavTaxCode.STANDARD))
             .setScale(0, java.math.RoundingMode.HALF_UP);
 
         closing.setTotalRevenue(totalRevenue);
@@ -264,6 +278,26 @@ public class NavClosingService {
         int txCount = 0;
     }
 
+    /**
+     * Magyar ÁFA kategóriák, amelyek a <code>system_parameter</code> táblában
+     * <code>nav.vat-rate.&lt;NAME&gt;</code> kulcsokkal bindolhatók.
+     *
+     * <ul>
+     *   <li>{@link #STANDARD}   &mdash; 27% (általános, alapértelmezett kezelési díjra)</li>
+     *   <li>{@link #REDUCED_18} &mdash; 18% (kedvezményes kulcs)</li>
+     *   <li>{@link #REDUCED_5}  &mdash; 5%  (kedvezményes kulcs)</li>
+     *   <li>{@link #ZERO}       &mdash; 0%  (adómentes)</li>
+     * </ul>
+     *
+     * <p>Új áfa-kategória bevezetéséhez a felsorolás + V### migráció + fallback-érték bővítése kell.</p>
+     */
+    public enum NavTaxCode {
+        STANDARD,
+        REDUCED_18,
+        REDUCED_5,
+        ZERO
+    }
+
     private String resolveNavComPort() {
         try {
             String configured = systemParameterService.getValue("nav.com-port");
@@ -274,6 +308,48 @@ public class NavClosingService {
             // Fallback handled below.
         }
         return "COM1";
+    }
+
+    /**
+     * ÁFA kulcs feloldása tax code alapján.
+     *
+     * <p>Lookup sorrend:</p>
+     * <ol>
+     *   <li>SystemParameter <code>nav.vat-rate.&lt;TAX_CODE&gt;</code> (pl. <code>nav.vat-rate.STANDARD</code>)</li>
+     *   <li>Ha nincs paraméter, hibás BigDecimal, vagy negatív érték &rarr;
+     *       {@link #DEFAULT_VAT_RATES} fallback + warn log</li>
+     * </ol>
+     *
+     * <p>Így a NAV zárás <b>soha nem hal meg</b> csak azért, mert valaki kitöröl
+     * egy paramétert, de az áfa mégis mindig a legfrissebb konfigurált értéket használja.</p>
+     *
+     * @param taxCode a keresett áfa-kulcs kategória
+     * @return a kulcs decimális értéke (0 &le; x &le; 1)
+     */
+    BigDecimal resolveVatRate(NavTaxCode taxCode) {
+        String key = VAT_RATE_KEY_PREFIX + taxCode.name();
+        BigDecimal fallback = DEFAULT_VAT_RATES.getOrDefault(taxCode, BigDecimal.ZERO);
+        try {
+            String raw = systemParameterService.getValue(key);
+            if (raw == null || raw.isBlank()) {
+                log.warn("VAT-rate paraméter üres, fallback használata: key={}, fallback={}", key, fallback);
+                return fallback;
+            }
+            BigDecimal parsed = new BigDecimal(raw.trim());
+            if (parsed.signum() < 0) {
+                log.warn("VAT-rate paraméter negatív, fallback használata: key={}, raw={}, fallback={}",
+                    key, raw, fallback);
+                return fallback;
+            }
+            return parsed;
+        } catch (NumberFormatException ex) {
+            log.warn("VAT-rate paraméter nem decimális, fallback használata: key={}, hiba={}",
+                key, ex.getMessage());
+            return fallback;
+        } catch (Exception ex) {
+            log.info("VAT-rate paraméter hiányzik, fallback: key={}, fallback={}", key, fallback);
+            return fallback;
+        }
     }
 
     private String buildNavQrPayload(NavClosing closing) {

@@ -29,6 +29,11 @@
 - `WesternUnionService.performAmlCheck` árfolyam-paraméter, USD-only tranzakciók helyes HUF-ra átszámítása.
 - `SecurityConfig`: deprecated `permissionsPolicy` → `permissionsPolicyHeader` (Spring Security 6.2+ kompatibilitás).
 - `CashBalance.version` `@Builder.Default` (Lombok warning fix).
+- **CB-016**: `NavClosingService` hardcoded `VAT_RATE = 0.27` megszüntetése. Új `NavTaxCode` enum (STANDARD / REDUCED_18 / REDUCED_5 / ZERO) + `resolveVatRate(NavTaxCode)` metódus, amely a `system_parameter` tábla `nav.vat-rate.<TAX_CODE>` kulcsaiból olvas; hiány/hiba esetén logolt fallback a beépített táblára. V143 Flyway migráció a 4 default értékkel. +7 új unit teszt (`NavClosingServiceVatRateTest`). Jogszabályváltozás redeploy nélkül kezelhető.
+- **Wizard default URL**: `frontend-react/src/pages/setup/SetupWizard.tsx` Szerver URL mezője `https://` helyett a Hetzner VPS címét tölti elő (`https://api.excvaluta.com/api/v1`).
+
+### Tools
+- `scripts/security/companyid-audit.ps1` — multi-tenant boundary statikus audit: végigmegy az entity-ken + repository-kon, és minden `@Query` / derivált `findBy/getBy/existsBy/countBy/deleteBy` metódust jelöl, amelynek sem nevében, sem SQL-jében nincs `company_id` vagy `branch` szűrő. Kimenet: `security-reports/latest/companyid-audit.md`. Első futás: 61 entity, 57 repository, 379 metódus, 172 gyanús sor manuális review-ra.
 
 ## [2.0.0] - 2026-03-06
 
