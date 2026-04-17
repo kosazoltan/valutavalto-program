@@ -1,0 +1,181 @@
+name: Deploy to Hetzner VPS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'deploy/hetzner/**'
+      - '.github/workflows/deploy-hetzner.yml'
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deploy even without backend changes'
+        required: false
+        default: 'false'
+
+concurrency:
+  group: deploy-hetzner-production
+  cancel-in-progress: false
+
+env:
+  JAVA_VERSION: '21'
+  VPS_DEPLOY_PATH: /opt/valutavalto/backend
+  VPS_USER_OWNER: valuta
+  SERVICE_NAME: valuta-backend.service
+  JAR_SYMLINK: valuta-backend-current.jar
+  HEALTH_URL: https://excvaluta.com/api/v1/auth/bootstrap-status
+
+jobs:
+  build:
+    name: Build Backend JAR
+    runs-on: ubuntu-latest
+    outputs:
+      jar_name: ${{ steps.mvn.outputs.jar_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: Maven package (skip tests — tests run in CI separately)
+        id: mvn
+        working-directory: backend
+        run: |
+          mvn -B package -DskipTests --no-transfer-progress
+          JAR=$(ls target/valuta-backend-*.jar | grep -v SNAPSHOT | tail -1)
+          echo "jar_name=$(basename $JAR)" >> $GITHUB_OUTPUT
+          echo "Built: $JAR"
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: backend/target/valuta-backend-*.jar
+          if-no-files-found: error
+          retention-days: 7
+
+  deploy:
+    name: Deploy to Hetzner
+    runs-on: ubuntu-latest
+    needs: build
+    environment: production
+    steps:
+      - name: Download JAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-jar
+          path: ./deploy-artifacts
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.VPS_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Upload JAR to VPS
+        run: |
+          JAR=$(ls ./deploy-artifacts/valuta-backend-*.jar | grep -v SNAPSHOT | tail -1)
+          JAR_NAME=$(basename $JAR)
+          echo "Uploading $JAR_NAME ..."
+          scp -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=accept-new \
+              "$JAR" \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}:${{ env.VPS_DEPLOY_PATH }}/target/$JAR_NAME"
+          echo "jar_name=$JAR_NAME" >> $GITHUB_ENV
+
+      - name: Symlink + chown + restart service
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -euo pipefail
+            DEPLOY=${{ env.VPS_DEPLOY_PATH }}
+            SYMLINK=$DEPLOY/target/${{ env.JAR_SYMLINK }}
+            JAR=$(ls $DEPLOY/target/valuta-backend-*.jar | grep -v SNAPSHOT | sort -V | tail -1)
+            echo "=== Symlinking: $JAR -> $SYMLINK ==="
+            ln -sf "$JAR" "$SYMLINK"
+            chown -h ${{ env.VPS_USER_OWNER }}:${{ env.VPS_USER_OWNER }} "$SYMLINK" || true
+            chown ${{ env.VPS_USER_OWNER }}:${{ env.VPS_USER_OWNER }} "$JAR"
+            echo "=== Restarting ${{ env.SERVICE_NAME }} ==="
+            systemctl restart ${{ env.SERVICE_NAME }}
+            sleep 15
+            systemctl is-active ${{ env.SERVICE_NAME }} || { journalctl -u ${{ env.SERVICE_NAME }} -n 30 --no-pager; exit 1; }
+            echo "=== Service is active ==="
+          ENDSSH
+
+      - name: Health check
+        run: |
+          echo "Waiting for service startup..."
+          sleep 10
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "${{ env.HEALTH_URL }}" || echo 000)
+          echo "Health check HTTP status: $STATUS"
+          if [[ "$STATUS" == "200" ]]; then
+            echo "Health check PASSED"
+          else
+            echo "Health check FAILED (status=$STATUS)"
+            exit 1
+          fi
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "## Hetzner Deploy Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Server:** ${{ secrets.VPS_SERVER_IP }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Health check URL:** ${{ env.HEALTH_URL }}" >> $GITHUB_STEP_SUMMARY
+
+  update-systemd-units:
+    name: Sync systemd units (if changed)
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: |
+      contains(github.event.commits.*.modified, 'deploy/hetzner/systemd/') ||
+      contains(github.event.commits.*.added, 'deploy/hetzner/systemd/')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.VPS_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Copy systemd units to server
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              mkdir -p /etc/systemd/system/postgresql@16-main.service.d
+
+          scp -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=accept-new \
+              deploy/hetzner/systemd/pgdata-luks.service \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}:/etc/systemd/system/pgdata-luks.service"
+
+          scp -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=accept-new \
+              deploy/hetzner/systemd/valuta-backend.service \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}:/etc/systemd/system/valuta-backend.service"
+
+          scp -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=accept-new \
+              "deploy/hetzner/systemd/postgresql@16-main.service.d/luks-dependency.conf" \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}:/etc/systemd/system/postgresql@16-main.service.d/luks-dependency.conf"
+
+          ssh -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              systemctl daemon-reload
+
+          echo "Systemd units synced and daemon reloaded."
