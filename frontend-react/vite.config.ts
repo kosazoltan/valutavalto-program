@@ -2,11 +2,21 @@
 import { defineConfig, type UserConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import fs from 'fs'
 import type { InlineConfig } from 'vitest/node'
+
+// 2.1.1: A package.json-ból olvasott verzió, hogy a LoginPage, App-cím
+// és egyéb helyek SOHA ne térjenek el a tényleges build verziótól.
+// Korábban "v2.0" hardcode volt a LoginPage-en, miközben a build 2.1.0 volt.
+const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8')) as { version?: string }
+const APP_VERSION = pkg.version ?? '0.0.0'
 
 // https://vitejs.dev/config/
 const config: UserConfig & { test: InlineConfig } = {
   plugins: [react()],
+  define: {
+    __APP_VERSION__: JSON.stringify(APP_VERSION),
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

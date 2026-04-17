@@ -216,7 +216,9 @@ export default function LoginPage() {
           {/* Logo/Company info */}
           <div className="text-center mb-4">
             <div className="text-lg font-bold text-primary">RepZtecH Exclusive Best Change</div>
-            <div className="text-xs text-gray-500">Pénzváltó Rendszer v2.0</div>
+            <div className="text-xs text-gray-500">
+              Pénzváltó Rendszer v{import.meta.env.VITE_APP_VERSION ?? __APP_VERSION__}
+            </div>
           </div>
 
           {/* Google OAuth — elsődleges belépés */}

@@ -1,6 +1,6 @@
 {
   "name": "valuta-penztar",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Valutavalto Penztar Kliens - Electron",
   "private": true,
   "main": "dist-electron/main.js",

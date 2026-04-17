@@ -620,13 +620,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   }> =>
     ipcRenderer.invoke('setup:check'),
 
-  setupGetBranches: (): Promise<Array<{
+  setupGetBranches: (params?: { apiUrl?: string; companyCode?: string }): Promise<Array<{
     code: string;
     name: string;
     city: string;
     address?: string;
   }>> =>
-    ipcRenderer.invoke('setup:branches'),
+    ipcRenderer.invoke('setup:branches', params),
 
   setupTestConnection: (params: {
     apiUrl: string;

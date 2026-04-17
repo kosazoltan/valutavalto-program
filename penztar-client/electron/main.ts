@@ -259,8 +259,11 @@ ipcMain.handle('setup:check', async () => {
   return isFirstRun();
 });
 
-ipcMain.handle('setup:branches', async () => {
-  return getBranches();
+ipcMain.handle('setup:branches', async (
+  _event,
+  params?: { apiUrl?: string; companyCode?: string },
+) => {
+  return await getBranches(params?.apiUrl, params?.companyCode);
 });
 
 ipcMain.handle('setup:test-connection', async (

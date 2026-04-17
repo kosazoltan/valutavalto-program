@@ -1,5 +1,24 @@
 # Changelog
 
+## [2.1.1] - 2026-04-17
+
+### Fixed
+- **First-Run Setup Wizard admin jelszó végre beíródik a backend-be** (kritikus 2.1.0 regresszió javítás). Korábban a wizard csak validálta a jelszót, majd `.env`-be írt és relaunch-olt — a jelszó tehát sehova sem került. Új `POST /api/v1/auth/bootstrap-admin` endpoint idempotens módon (`system_parameter.auth.bootstrap-completed`) létrehozza / frissíti az ADMIN role-ú workert a megadott jelszó BCrypt-hash-ével.
+- **Wizard iroda-listája most a valós DB-t tükrözi**. Új publikus endpoint `GET /api/v1/public/branches?companyCode=EBC` (permitAll), ami csak a {code, name, city, address} mezőket adja vissza. Ha a backend offline, a wizard a statikus `DEFAULT_BRANCHES` listára fallback-el — nem marad üres képernyő.
+- **LoginPage verzió kijelzés** korábban fix `v2.0` volt; most `package.json`-ból injektált build-idejű `__APP_VERSION__` konstanst használ, így a felület SOHA nem fog eltérni a valós build verziótól.
+- **Wizard hibakezelés**: ha a backend nem elérhető az `saveSetupConfig` során, konkrét magyar hibaüzenetet kap a user (hálózati hint, service nevek), helyette a korábbi silent fail-nek.
+
+### Added
+- `AdminBootstrapService` + 7 db JUnit 5 teszt (happy path, idempotencia, ismeretlen cégkód, branch nélküli cég, status check).
+- `PublicBranchController` (no auth, company-szűrt, 0 érzékeny mező).
+- Electron `waitForBackend()` helper: `/actuator/health` polling 45 s-ig, 1.5 s intervallummal.
+- Electron `fetchBranchesFromBackend()` + `bootstrapAdmin()` net.request alapú hívások.
+- Flyway V144: `system_parameter.auth.bootstrap-completed` flag seed.
+
+### Changed
+- `setup:branches` IPC handler most opcionálisan átveszi `{ apiUrl, companyCode }` paramétert, és a wizard ezt propagálja a 3. lépés URL/cégkód változásánál.
+- `SecurityConfig` permitAll-ra téve a `/api/v1/public/**`, `/api/v1/auth/bootstrap-admin`, `/api/v1/auth/bootstrap-status` útvonalakat.
+
 ## [2.1.0] - 2026-04-17
 
 ### Added

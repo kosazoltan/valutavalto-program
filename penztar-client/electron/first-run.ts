@@ -219,6 +219,132 @@ function buildEnvFileContent(params: {
 }
 
 // ---------------------------------------------------------------------------
+// HTTP helper (Electron net.request alapú, timeout + JSON parse)
+// ---------------------------------------------------------------------------
+
+export interface HttpResponse<T = unknown> {
+  ok: boolean;
+  status: number;
+  body?: T;
+  errorMessage?: string;
+  latencyMs: number;
+}
+
+function normalizeApiBase(apiUrl: string): string {
+  let url = apiUrl.trim().replace(/\/+$/, '');
+  if (!url.endsWith('/api/v1')) {
+    url = `${url}/api/v1`;
+  }
+  return url;
+}
+
+/**
+ * Általános HTTP segédfüggvény net.request alapon, timeouttal és JSON parse-al.
+ *
+ * <p>A wizard használja a public branches lekéréshez és a bootstrap-admin
+ * híváshoz. Szándékosan NEM axios/fetch, mert az Electron main process-ben
+ * a net modul tiszteletben tartja a rendszer proxy-beállításait és a Windows
+ * certificate store-t.</p>
+ */
+async function httpJson<T = unknown>(
+  fullUrl: string,
+  options: {
+    method: 'GET' | 'POST';
+    body?: Record<string, unknown>;
+    timeoutMs?: number;
+  },
+): Promise<HttpResponse<T>> {
+  const { method, body, timeoutMs = 8000 } = options;
+  const started = Date.now();
+
+  return await new Promise<HttpResponse<T>>((resolve) => {
+    let settled = false;
+    const safeResolve = (r: HttpResponse<T>) => {
+      if (settled) return;
+      settled = true;
+      resolve({ ...r, latencyMs: Date.now() - started });
+    };
+
+    let request: Electron.ClientRequest;
+    try {
+      request = net.request({ method, url: fullUrl });
+    } catch (err: unknown) {
+      safeResolve({
+        ok: false,
+        status: 0,
+        errorMessage: err instanceof Error ? err.message : String(err),
+        latencyMs: 0,
+      });
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      try { request.abort(); } catch { /* ignore */ }
+      safeResolve({
+        ok: false,
+        status: 0,
+        errorMessage: `Időtúllépés (${timeoutMs} ms)`,
+        latencyMs: 0,
+      });
+    }, timeoutMs);
+
+    request.setHeader('Accept', 'application/json');
+    if (body !== undefined) {
+      request.setHeader('Content-Type', 'application/json');
+    }
+
+    request.on('response', (response) => {
+      clearTimeout(timer);
+      const chunks: Buffer[] = [];
+      response.on('data', (chunk: Buffer) => chunks.push(chunk));
+      response.on('end', () => {
+        const status = response.statusCode || 0;
+        const raw = Buffer.concat(chunks).toString('utf8');
+        let parsed: T | undefined;
+        try {
+          parsed = raw ? (JSON.parse(raw) as T) : undefined;
+        } catch {
+          parsed = undefined;
+        }
+        if (status >= 200 && status < 300) {
+          safeResolve({ ok: true, status, body: parsed, latencyMs: 0 });
+        } else {
+          const message = typeof parsed === 'object' && parsed !== null && 'message' in parsed
+            ? String((parsed as { message: unknown }).message)
+            : `HTTP ${status}`;
+          safeResolve({ ok: false, status, body: parsed, errorMessage: message, latencyMs: 0 });
+        }
+      });
+    });
+
+    request.on('error', (err) => {
+      clearTimeout(timer);
+      safeResolve({
+        ok: false,
+        status: 0,
+        errorMessage: err instanceof Error ? err.message : String(err),
+        latencyMs: 0,
+      });
+    });
+
+    try {
+      if (body !== undefined) {
+        request.write(JSON.stringify(body));
+      }
+      request.end();
+    } catch (err: unknown) {
+      clearTimeout(timer);
+      safeResolve({
+        ok: false,
+        status: 0,
+        errorMessage: err instanceof Error ? err.message : String(err),
+        latencyMs: 0,
+      });
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Publikus API
 // ---------------------------------------------------------------------------
 
@@ -237,8 +363,150 @@ export function isFirstRun(): SetupCheckResult {
   return { isFirstRun: false, envPath };
 }
 
-export function getBranches(): Branch[] {
-  return DEFAULT_BRANCHES.map((b) => ({ ...b }));
+/**
+ * Iroda-lista lekérése a wizard 2. lépéshez.
+ *
+ * <p>Stratégia:</p>
+ * <ol>
+ *   <li>Ha van megadva {@code apiUrl} + {@code companyCode}, próbáljuk
+ *       a backend <code>GET /api/v1/public/branches</code> endpointját.</li>
+ *   <li>Ha a backend visszaad legalább 1 elemet → azt adjuk vissza.</li>
+ *   <li>Ha üres válasz vagy hálózati hiba → fallback a statikus
+ *       {@link DEFAULT_BRANCHES} listára, hogy a wizard ne akadjon el.</li>
+ * </ol>
+ *
+ * <p>A válasz mindig legalább 1 elemet tartalmaz — a DEFAULT_BRANCHES-ban
+ * 60 iroda van, és a backend sem indulhat fel branch nélkül.</p>
+ */
+export async function getBranches(apiUrl?: string, companyCode?: string): Promise<Branch[]> {
+  const fallback = (): Branch[] => DEFAULT_BRANCHES.map((b) => ({ ...b }));
+
+  if (!apiUrl || !companyCode) {
+    log.info('[Setup] getBranches: nincs apiUrl/companyCode, static fallback.');
+    return fallback();
+  }
+
+  try {
+    const fetched = await fetchBranchesFromBackend(apiUrl, companyCode);
+    if (fetched && fetched.length > 0) {
+      log.info(`[Setup] getBranches: backend adott ${fetched.length} branch-et.`);
+      return fetched;
+    }
+    log.info('[Setup] getBranches: backend 0 branch — static fallback.');
+    return fallback();
+  } catch (err: unknown) {
+    log.warn('[Setup] getBranches: backend hiba, static fallback:',
+      err instanceof Error ? err.message : String(err));
+    return fallback();
+  }
+}
+
+/**
+ * Backend public branches endpoint hívása.
+ *
+ * @return a válasz tömb, vagy null ha hálózati hiba / nem 2xx.
+ */
+export async function fetchBranchesFromBackend(
+  apiUrl: string,
+  companyCode: string,
+  timeoutMs = 6000,
+): Promise<Branch[] | null> {
+  const base = normalizeApiBase(apiUrl);
+  const url = `${base}/public/branches?companyCode=${encodeURIComponent(companyCode)}`;
+  const response = await httpJson<Array<{ code: string; name: string; city?: string; address?: string }>>(
+    url,
+    { method: 'GET', timeoutMs },
+  );
+  if (!response.ok || !Array.isArray(response.body)) {
+    return null;
+  }
+  return response.body.map((b) => ({
+    code: b.code,
+    name: b.name,
+    city: b.city ?? '',
+    address: b.address,
+  }));
+}
+
+/**
+ * Megvárja a backend-et a {@code /actuator/health} endpointon.
+ *
+ * <p>Polling: 1000 ms-onként, max {@code maxWaitMs} ms-ig. Akkor sikeres,
+ * ha a status 200 és a body {@code UP}.</p>
+ */
+export async function waitForBackend(
+  apiUrl: string,
+  maxWaitMs = 60000,
+  pollIntervalMs = 1000,
+): Promise<{ healthy: boolean; attempts: number; lastError?: string }> {
+  const base = apiUrl.trim().replace(/\/+$/, '').replace(/\/api\/v1$/, '');
+  const healthUrl = `${base}/actuator/health`;
+  const deadline = Date.now() + maxWaitMs;
+  let attempts = 0;
+  let lastError: string | undefined;
+
+  while (Date.now() < deadline) {
+    attempts += 1;
+    const resp = await httpJson<{ status?: string }>(healthUrl, {
+      method: 'GET',
+      timeoutMs: Math.min(pollIntervalMs + 500, 3000),
+    });
+    if (resp.ok && resp.body && typeof resp.body === 'object' && 'status' in resp.body) {
+      if (resp.body.status === 'UP') {
+        return { healthy: true, attempts };
+      }
+      lastError = `actuator status=${resp.body.status}`;
+    } else {
+      lastError = resp.errorMessage || `HTTP ${resp.status}`;
+    }
+    await new Promise((r) => setTimeout(r, pollIntervalMs));
+  }
+  return { healthy: false, attempts, lastError };
+}
+
+/**
+ * Bootstrap admin hívás: a wizardban megadott admin jelszó elküldése a
+ * backendnek, hogy beállítsa / frissítse az ADMIN role-ú workert.
+ *
+ * <p>A backend idempotens — második hívásnál HTTP 400. Ezt a hibát mi nem
+ * tekintjük blokkolónak (már megtörtént), csak logoljuk.</p>
+ */
+export async function bootstrapAdmin(
+  apiUrl: string,
+  payload: {
+    companyCode: string;
+    workerCode: string;
+    workerName: string;
+    email?: string;
+    newPassword: string;
+  },
+  timeoutMs = 15000,
+): Promise<{ success: boolean; alreadyDone: boolean; errorMessage?: string }> {
+  const base = normalizeApiBase(apiUrl);
+  const url = `${base}/auth/bootstrap-admin`;
+
+  const response = await httpJson<{ success?: boolean; message?: string }>(url, {
+    method: 'POST',
+    body: payload,
+    timeoutMs,
+  });
+
+  if (response.ok && response.body?.success === true) {
+    return { success: true, alreadyDone: false };
+  }
+
+  // 400 "beállítás már lezajlott" → idempotens no-op (ha valaki újra futtatja a wizardot)
+  const msg = (response.body as { message?: string } | undefined)?.message || response.errorMessage || '';
+  if (response.status === 400 && msg.includes('már lezajlott')) {
+    log.warn('[Setup] Bootstrap admin már lezajlott — továbbmegyünk a .env írással.');
+    return { success: true, alreadyDone: true };
+  }
+
+  return {
+    success: false,
+    alreadyDone: false,
+    errorMessage: msg || `HTTP ${response.status}`,
+  };
 }
 
 export async function testConnection(
@@ -346,6 +614,58 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
     if (!payload.adminPassword || payload.adminPassword.length < 8) {
       return { success: false, envPath, errorMessage: 'Az admin jelszónak legalább 8 karakteresnek kell lennie.' };
     }
+    if (!payload.adminUsername || payload.adminUsername.trim().length === 0) {
+      return { success: false, envPath, errorMessage: 'Hiányzó admin felhasználói kód.' };
+    }
+
+    // --- Végleges apiUrl resolve ---
+    // Offline módban a lokál backend a default, online módban a user által
+    // megadott Hetzner URL. A bootstrap-admin hívás ugyanezt az URL-t használja.
+    const resolvedApiUrl = payload.offlineMode
+      ? (payload.apiUrl && /^https?:\/\//i.test(payload.apiUrl) ? payload.apiUrl : 'http://localhost:8080/api/v1')
+      : payload.apiUrl;
+
+    // --- Backend bootstrap-admin hívás ---
+    // Ez a 2.1.1 kritikus bugfix: a wizard admin jelszó most már valóban
+    // eljut a backend-hez, és beíródik a worker.password_hash oszlopba.
+    // Ha a backend nem elérhető (offline mód és nincs felhúzva a local service),
+    // a wizard HIBÁT jelez, nem némán dobja el a jelszót, mint a 2.1.0-ban.
+
+    log.info('[Setup] Backend elérés ellenőrzése:', resolvedApiUrl);
+    const health = await waitForBackend(resolvedApiUrl, 45000, 1500);
+    if (!health.healthy) {
+      const detail = health.lastError ?? 'ismeretlen ok';
+      const hint = payload.offlineMode
+        ? 'Offline módban a lokális backend service-nek futnia kell. Ellenőrizd a "BestChange-Backend" Windows service-t (services.msc).'
+        : 'Ellenőrizd a hálózatot és a Hetzner VPS elérhetőségét.';
+      return {
+        success: false,
+        envPath,
+        errorMessage: `A backend (${resolvedApiUrl}) ${health.attempts} próbálkozás után sem elérhető. ${hint} (Részletek: ${detail})`,
+      };
+    }
+    log.info(`[Setup] Backend felhúzva ${health.attempts} próbálkozás után.`);
+
+    const normalizedCompanyCode = (payload.companyCode || 'EBC').trim().toUpperCase();
+    const bootstrap = await bootstrapAdmin(resolvedApiUrl, {
+      companyCode: normalizedCompanyCode,
+      workerCode: payload.adminUsername.trim().toUpperCase(),
+      workerName: payload.adminUsername.trim(),
+      email: undefined,
+      newPassword: payload.adminPassword,
+    });
+    if (!bootstrap.success) {
+      return {
+        success: false,
+        envPath,
+        errorMessage: `Az admin jelszó beállítása nem sikerült a backend-en: ${bootstrap.errorMessage ?? 'ismeretlen hiba'}`,
+      };
+    }
+    if (bootstrap.alreadyDone) {
+      log.info('[Setup] Bootstrap már lefutott ezen a rendszeren — folytatjuk.');
+    } else {
+      log.info('[Setup] Bootstrap admin sikeresen beállítva a backend-ben.');
+    }
 
     // --- Kulcs generálás ---
     const jwtSecret = generateSecretHex(32);               // 256 bit
@@ -359,8 +679,8 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
     const content = buildEnvFileContent({
       branchCode: payload.branchCode,
       branchName: payload.branchName,
-      apiUrl: payload.offlineMode ? (payload.apiUrl || 'http://localhost:8080/api/v1') : payload.apiUrl,
-      companyCode: payload.companyCode,
+      apiUrl: resolvedApiUrl,
+      companyCode: normalizedCompanyCode,
       bootstrapUsername: payload.bootstrapUsername ?? '',
       bootstrapPassword: payload.bootstrapPassword ?? '',
       jwtSecret,

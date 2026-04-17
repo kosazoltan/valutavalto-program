@@ -327,7 +327,7 @@ export interface ElectronAPI {
     envPath: string;
     reason?: string;
   }>;
-  setupGetBranches?(): Promise<Array<{
+  setupGetBranches?(params?: { apiUrl?: string; companyCode?: string }): Promise<Array<{
     code: string;
     name: string;
     city: string;

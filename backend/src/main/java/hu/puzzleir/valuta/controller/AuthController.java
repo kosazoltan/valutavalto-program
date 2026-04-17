@@ -1,11 +1,14 @@
 package hu.puzzleir.valuta.controller;
 
+import hu.puzzleir.valuta.dto.auth.BootstrapAdminRequestDto;
+import hu.puzzleir.valuta.dto.auth.BootstrapAdminResponseDto;
 import hu.puzzleir.valuta.dto.auth.LoginRequestDto;
 import hu.puzzleir.valuta.dto.auth.LoginResponseDto;
 import hu.puzzleir.valuta.dto.auth.SelectRoleRequestDto;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.JwtTokenProvider;
+import hu.puzzleir.valuta.service.AdminBootstrapService;
 import hu.puzzleir.valuta.service.TokenBlacklistService;
 import hu.puzzleir.valuta.service.WorkerRoleService;
 import hu.puzzleir.valuta.service.WorkerService;
@@ -35,6 +38,7 @@ public class AuthController {
     private final WorkerRepository workerRepository;
     private final WorkerRoleService workerRoleService;
     private final TokenBlacklistService tokenBlacklistService;
+    private final AdminBootstrapService adminBootstrapService;
     
     /**
      * Login endpoint
@@ -198,5 +202,41 @@ public class AuthController {
         tokenBlacklistService.blacklistToken(oldTokenId, workerId, "REFRESH", LocalDateTime.now().plusHours(24));
 
         return ResponseEntity.ok(Map.of("token", newToken));
+    }
+
+    /**
+     * First-run setup wizard admin bootstrap endpoint.
+     *
+     * <p>POST /api/v1/auth/bootstrap-admin</p>
+     *
+     * <p>Body: {@link BootstrapAdminRequestDto}:
+     * {@code companyCode, workerCode, workerName, email?, newPassword}</p>
+     *
+     * <p><strong>Egyszer használható:</strong> ha a
+     * {@code system_parameter.auth.bootstrap-completed = true}, 400-at dob
+     * (lásd {@link AdminBootstrapService#bootstrapAdmin}).</p>
+     *
+     * <p><strong>Biztonság:</strong> ez a végpont <em>szándékosan</em>
+     * permitAll, mert a wizard még nem rendelkezik JWT-vel. A használatot
+     * az idempotencia-flag korlátozza egy alkalomra. Ezenfelül a CORS és a
+     * rate limit filter is aktív.</p>
+     */
+    @PostMapping("/bootstrap-admin")
+    public ResponseEntity<BootstrapAdminResponseDto> bootstrapAdmin(
+            @Valid @RequestBody BootstrapAdminRequestDto dto) {
+        BootstrapAdminResponseDto response = adminBootstrapService.bootstrapAdmin(dto);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Opcionális read-only check a wizard számára — true, ha már lefutott
+     * a bootstrap és a {@code POST /bootstrap-admin} már 400-at dobna.
+     *
+     * <p>GET /api/v1/auth/bootstrap-status</p>
+     */
+    @GetMapping("/bootstrap-status")
+    public ResponseEntity<Map<String, Boolean>> bootstrapStatus() {
+        boolean completed = adminBootstrapService.isBootstrapAlreadyCompleted();
+        return ResponseEntity.ok(Map.of("completed", completed));
     }
 }

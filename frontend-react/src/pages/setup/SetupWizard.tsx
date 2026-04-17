@@ -81,11 +81,20 @@ export default function SetupWizard() {
   const [saveError, setSaveError] = useState<string | null>(null)
 
   // --- Iroda törzs betöltése ---
+  // 2.1.1: a backend-driven branches lekérés megpróbálja a szervert, és
+  // ha elérhető, a DB-ből vett valós branch-listát adja. Ha nem — pl. a
+  // user még nem érte el a 3. lépést, offline, vagy a backend indul —,
+  // a main process fallback-el a statikus DEFAULT_BRANCHES-re. Így a
+  // wizard sosem akad el, és amint a user megadja a helyes URL + cégkódot,
+  // a friss adat megjelenik (lásd reloadBranches hívást lejjebb).
   useEffect(() => {
     const load = async () => {
       if (window.electronAPI?.setupGetBranches) {
         try {
-          const list = await window.electronAPI.setupGetBranches()
+          const list = await window.electronAPI.setupGetBranches({
+            apiUrl,
+            companyCode,
+          })
           setBranches(list)
         } catch {
           setBranches([])
@@ -93,7 +102,7 @@ export default function SetupWizard() {
       }
     }
     void load()
-  }, [])
+  }, [apiUrl, companyCode])
 
   // --- Iroda lista szűrés ---
   const filteredBranches = useMemo(() => {
