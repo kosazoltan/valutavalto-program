@@ -13,7 +13,7 @@
 | `pgdata-luks.service` | LUKS nyitas/mount | boot |
 | `postgresql@16-main.service` | PostgreSQL 16 | pgdata-luks utan |
 | `valuta-backend.service` | Spring Boot backend | postgresql utan |
-| `valuta-backup.timer` | pg_dump -> Nextcloud | naponta 03:00 |
+| `valuta-backup.timer` | pg_dump Nextcloud feltoltes | naponta 03:00 |
 | `valuta-health.timer` | uptime monitor | 5 percenkent |
 
 ## Deploy
