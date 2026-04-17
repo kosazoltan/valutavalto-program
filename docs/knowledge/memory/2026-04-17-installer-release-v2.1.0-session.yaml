@@ -1,0 +1,251 @@
+date: 2026-04-17
+wave: installer-release-v2.1.0
+session_type: first-run-wizard-plus-standalone-eltavolito-build-plus-version-unification-plus-full-installer-pipeline
+previous_session_same_day: docs/knowledge/memory/2026-04-17-pipeline-run-session.yaml
+resumed_from: previous-session-wave-post-aml-wave1-followup-completed
+parent_agent_transcript: agent-transcripts/ac0bf5fb-6a32-4418-a5a1-fe9b337b2263
+
+final_head:
+  branch: main
+  commit: ba425304
+  tag: v2.1.0
+  remote: origin
+  pushed: true
+
+commits_this_session:
+  - sha: 87b9a56a
+    title: "feat(penztar-client): First-Run Setup Wizard (4-step Electron onboarding)"
+    delivered:
+      - penztar-client/electron/first-run.ts (new, ~397 LOC: DEFAULT_BRANCHES with ~60 offices, isFirstRun(), getBranches(), testConnection() via electron.net.request, saveSetupConfig() with crypto.randomBytes(32).toString('hex') for JWT_SECRET/SQLCIPHER_KEY/OFFLINE_LICENSE_SECRET, atomic .env write with 0o600 perms at app.getPath('userData')/.env, app.relaunch()+app.exit(0))
+      - penztar-client/electron/main.ts (4 new ipcMain.handle: setup:check, setup:branches, setup:test-connection, setup:save)
+      - penztar-client/electron/preload.ts (4 new contextBridge methods: setupCheck, setupGetBranches, setupTestConnection, setupSave)
+      - frontend-react/src/types/electron.d.ts (type defs for the 4 methods)
+      - frontend-react/src/pages/setup/SetupWizard.tsx (new, ~754 LOC, Tailwind + lucide-react, 4 steps: Welcome, Branch(2x8 grid with search+paging), Server(URL+credentials+"Kapcsolat tesztelese" button with latency display or offline-mode checkbox), Admin(min 8 char password + confirm + summary))
+      - frontend-react/src/App.tsx (new SetupGuard component wrapping Routes, calls window.electronAPI.setupCheck() on Electron, navigates to /setup if isFirstRun=true; added <Route path="/setup" element={<SetupWizard />} />)
+    ci: all green (Security Pipeline, UTF-8 Guardrail, Frontend E2E)
+    verification:
+      penztar_client_typecheck: pass
+      penztar_client_lint: pass
+      penztar_client_check_ipc: "68 invoke <-> 72 handle, 0 missing"
+      penztar_client_vitest: 97/97
+      frontend_react_typecheck: pass
+      frontend_react_lint: pass
+      frontend_react_vitest: 505/505
+
+  - sha: b73a2c56
+    title: "installer: add standalone Penztar-Eltavolito build + deployment README"
+    delivered:
+      - installer/build-cleanup.ps1 (new, ~45 LOC, compiles Penztar-Cleanup.nsi in ~1s to ~60KB standalone uninstaller EXE)
+      - installer/README.md (new, Hungarian operator guide for collegas and build engineers)
+      - installer/Penztar-Setup.nsi (NSIS source encoding hardened: UTF-8 accents -> ASCII, em-dashes -> ASCII; Windows-1252 NSIS compiler produced mojibake in EXE VersionInfo before)
+      - installer/Penztar-Cleanup.nsi (same encoding fix)
+    rationale: NSIS v3.x on Windows compiles source files in ACP (Windows-1252) by default. Previous UTF-8 accented chars + em-dashes (0xE2 0x80 0x94) were being misinterpreted as Windows-1252 bytes (garbage in Product/FileDescription metadata of generated EXE).
+
+  - sha: ba425304
+    title: "chore(release): unify all modules at v2.1.0 (was split across 1.0.0/1.9.2/2.0.0)"
+    discovery:
+      user_insight: "verziószám az már 2 felett volt legutoljára"
+      investigation_result: "CHANGELOG.md [2.0.0] released 2026-03-06 but source tree diverged"
+    module_alignment:
+      before:
+        backend_pom_xml: 1.0.0-SNAPSHOT
+        frontend_react_package_json: 1.0.0
+        penztar_client_package_json: 1.9.2
+        penztar_setup_nsi_default: 1.7.0
+        penztar_cleanup_nsi_default: 1.9.2
+        build_installer_ps1_default: 1.9.2
+        build_cleanup_ps1_default: 1.9.2
+        build_final_ps1_hardcoded: 1.9.2
+        installer_readme: 1.9.2
+      after_all_at: 2.1.0
+      semver_reasoning: "2.0.0 published in CHANGELOG, this release introduces NEW FEATURE (First-Run Setup Wizard + standalone Eltavolito build + Hungarian deployment guide) without breaking change -> minor bump to 2.1.0"
+    changelog_entry_added:
+      section: "## [2.1.0] - 2026-04-17"
+      covers:
+        - First-Run Setup Wizard (4-step, auto-generated secrets, atomic .env write, IPC channels)
+        - Standalone Penztar-Eltavolito build (build-cleanup.ps1, ~1s, 58.5 KB)
+        - Hungarian deployment guide (installer/README.md)
+        - NSIS source encoding hardening
+        - Module version unification
+        - Backend AML/WU/SecurityConfig fixes (from earlier 2026-04-17 wave)
+        - Dependency hygiene (follow-redirects, trivy-action @ 0.35.0)
+        - CI restructuring (OWASP weekly, Trivy+Dependency-Review on PR)
+    git_tag: v2.1.0
+    tag_message_includes: "First-Run Setup Wizard + unified installer build pipeline + verified build artifacts"
+
+installer_artifacts_final:
+  build_directory: installer/build/ (gitignored, confirmed in .gitignore:131)
+  artifacts:
+    - filename: Penztar-Setup-2.1.0-20260417.exe
+      size_bytes: 452148331
+      size_mb: 431.20
+      sha256: 33F48495F17B113BBCBC9FB7F8FF9AC051D3532248BF0984EE5AEB89304CEBDC
+      version_info:
+        product_name: Valutavalto Penztar
+        file_description: Valutavalto Penztar Telepito
+        file_version: "2.1.0"
+        product_version: "2.1.0 (20260417)"
+        legal_copyright: "© 2026 Exclusive Best Change Zrt."   # U+00A9 byte 0xA9 verified via System.Diagnostics.FileVersionInfo
+        language: magyar (Magyarorszag)
+      contents:
+        - PostgreSQL 17.5 (bundled, SHA-256 795196DF1B2855FD0C7FB52629C6CC16ACAA85819912E732BD4C46863E77EB30)
+        - Custom JRE (jlink from JDK 21, 19 modules, ~50 MB)
+        - Backend JAR (valuta-backend-2.1.0.jar from Maven package -DskipTests)
+        - Electron Penztar client (electron-builder --win dir, electron 41.1.1)
+        - NSSM 2.24 (bundled, SHA-256 F689EE9AF94B00E9E3F0BB072B34CAAF207F32DCB4F5782FC9CA351DF9A06C97)
+        - VC++ 2015-2022 Redistributable x64 (SHA-256 CC0FF0EB1DC3F5188AE6300FAEF32BF5BEEBA4BDD6E8E445A9184072096B713B)
+        - application-local.properties template with __PG_PASSWORD__ / __GENERATED_AT_INSTALL_TIME__ placeholders
+        - init-db.bat, seed-data.sql, start-services.bat, stop-services.bat
+    - filename: Penztar-Eltavolito-2.1.0-20260417.exe
+      size_bytes: 59879
+      size_kb: 58.5
+      sha256: D6404015F2C24A457977D0C48A6BAE97F0972F06BE93766B45FB8500073AC8CA
+      version_info:
+        product_name: Valutavalto Penztar Eltavolito
+        file_description: Valutavalto Penztar - Teljes Eltavolito
+        file_version: "2.1.0"
+        product_version: "2.1.0 (20260417)"
+        legal_copyright: "© 2026 Exclusive Best Change Zrt."
+        language: magyar (Magyarorszag)
+  delivered_to_user_downloads:
+    path: "C:\\Users\\Kósa Zoltán\\Downloads\\"
+    both_files_copied: true
+    copy_method: "Copy-Item -Force"
+  remaining_in_build_dir:
+    reason: gitignored, not pushed; also needed for subsequent -SkipDownloads rebuilds
+
+build_pipeline_metrics:
+  build_installer_ps1:
+    invocation: "powershell -ExecutionPolicy Bypass -File installer\\build-installer.ps1 -SkipDownloads"
+    elapsed_ms: 525029
+    elapsed_wallclock: "~8.75 minutes"
+    exit_code: 0
+    log_file: installer/build/build-2.1.0.log
+    phases:
+      1_backend_maven: "mvn package -DskipTests -q (~2-3 min)"
+      2_jre_jlink: "jlink cached from prior build (skipped)"
+      3_frontend_electron:
+        vite_build_electron: "tsc -b + vite build"
+        vite_build_frontend: "~1.03s, 34 JS chunks"
+        electron_builder_dir: "--win dir (unpacked), electron 41.1.1, signtool.exe signed, EXE renamed Valutavalto-Penztar.exe -> Penztar.exe"
+      4_downloads: SKIPPED (-SkipDownloads flag; cache on disk, SHA-256 verified)
+      5_config_scripts: "~1s (application-local.properties + penztar.env + batch scripts staged)"
+      6_nsis_compile:
+        invocation: "makensis /DVERSION=2.1.0 /DBUILD_DATE=20260417 /DSTAGE_DIR=... Penztar-Setup.nsi"
+        compression: "lzma (compress whole)"
+        input_bytes: 1379499168
+        output_bytes: 452148331
+        compression_ratio: 32.7
+        duration: "most of the 8.75 min was LZMA compress"
+  build_cleanup_ps1:
+    invocation: "powershell -ExecutionPolicy Bypass -File installer\\build-cleanup.ps1"
+    elapsed_ms: 1080
+    exit_code: 0
+    output: Penztar-Eltavolito-2.1.0-20260417.exe
+
+build_host_prerequisites_verified:
+  os: Windows 10.0.26200 x64
+  java: openjdk 21.0.10 LTS
+  node: v24.13.0
+  npm: bundled with node
+  nsis: "C:\\Program Files (x86)\\NSIS\\makensis.exe (3.x)"
+  nsis_plugins_in_repo:
+    - installer/plugins/x86-unicode/nsProcess.dll
+    - installer/plugins/x86-unicode/LockedList.dll
+    - installer/include/nsProcess.nsh
+    - installer/include/LockedList.nsh
+  internet: required-only-for-initial-download-phase (cached thereafter)
+  cache_state_this_session:
+    installer/build/downloads/postgresql-binaries.zip: present
+    installer/build/downloads/nssm.zip: present
+    installer/build/stage/pgsql/bin/postgres.exe: present
+    installer/build/stage/jre/bin/java.exe: present
+    installer/build/stage/tools/nssm.exe: present
+    installer/build/stage/tools/vc_redist.x64.exe: present
+
+git_state:
+  working_tree_pushed: true
+  current_main_head: ba425304
+  v2_1_0_tag_pushed: true
+  prior_tags_in_repo:
+    - v1.0.6
+    - v1.0.5
+    - v1.0.4
+    - v1.0.3
+    - v1.0.2-wasm-fix
+    - v1.0.1-tisza-teszt
+    - v1.0.0-tisza-teszt
+    - v1.0.0
+  first_v2_tag_ever_in_repo: true
+  files_NOT_committed_this_session:
+    reason: "staged only files explicitly edited by agent; avoided unrelated noise"
+    untouched_unstaged_noise:
+      - antivaluta.GPT-5.4.md (M)
+      - docs/knowledge/legacy-reverse-engineering/INDEX.md (M)
+      - frontend-react/playwright-report-live/index.html (M)
+      - penztar-client/electron-builder.json (M, +1 line, unrelated)
+      - penztar-client/test-results/.last-run.json (M)
+      - lots of ?? untracked docs/knowledge/*.md from prior sessions
+
+user_downloads_folder_snapshot_final:
+  Penztar-Setup-2.1.0-20260417.exe: 431.20 MB
+  Penztar-Eltavolito-2.1.0-20260417.exe: 0.06 MB (58.5 KB)
+  delivery_ready: true
+
+colleague_deployment_instructions:
+  primary_path:
+    step_1: "Close any running Penztar client"
+    step_2: "Right-click Penztar-Setup-2.1.0-20260417.exe -> Run as administrator"
+    step_3: "Follow 4-page NSIS wizard (Welcome -> License -> Directory -> Install)"
+    step_4: "Auto-runs FAZIS 1 cleanup (STOP services -> pg_ctl stop -> KILL -> WAIT for file locks -> REMOVE services) then fresh install"
+    step_5: "Auto-starts BestChange-PostgreSQL + BestChange-Backend Windows services via NSSM"
+    step_6: "First launch of Penztar client triggers First-Run Setup Wizard (4 steps)"
+  fallback_if_setup_blocks:
+    step_1: "Run Penztar-Eltavolito-2.1.0-20260417.exe as administrator"
+    step_2: "Reboot (for good measure)"
+    step_3: "Run Penztar-Setup-2.1.0-20260417.exe again as administrator"
+
+resume_workflow_for_future_agent:
+  how_to_rebuild_same_artifacts:
+    - step: "git checkout v2.1.0 (or ba425304)"
+    - step: "cd d:\\repo\\valutavalto-program"
+    - step: "powershell -ExecutionPolicy Bypass -File installer\\build-cleanup.ps1    # ~1s"
+    - step: "powershell -ExecutionPolicy Bypass -File installer\\build-installer.ps1  # ~10-30 min (or ~8 min with -SkipDownloads if cache present)"
+    - step: "Output: installer\\build\\Penztar-Setup-2.1.0-<yyyymmdd>.exe + Penztar-Eltavolito-2.1.0-<yyyymmdd>.exe"
+    - step: "Optional: Copy-Item installer\\build\\Penztar-*-2.1.0-*.exe -Destination $env:USERPROFILE\\Downloads"
+  version_bump_for_future_release:
+    files_to_update:
+      - CHANGELOG.md (add new ## [x.y.z] - yyyy-mm-dd section at top)
+      - backend/pom.xml (project.version)
+      - frontend-react/package.json (version)
+      - frontend-react/package-lock.json (top-level + packages."")
+      - penztar-client/package.json (version)
+      - penztar-client/package-lock.json (top-level + packages."")
+      - installer/Penztar-Setup.nsi (!define VERSION "x.y.z")
+      - installer/Penztar-Cleanup.nsi (!define VERSION "x.y.z")
+      - installer/build-installer.ps1 (param default)
+      - installer/build-cleanup.ps1 (param default)
+      - installer/build-final.ps1 ($Version hardcode)
+      - installer/README.md (version strings in examples)
+    verify_with: "git grep -l '1\\.9\\.2\\|1\\.0\\.0-SNAPSHOT\\|1\\.0\\.0' <old-version> after bump to catch leftover refs"
+
+status_summary:
+  release_v2_1_0: shipped
+  first_run_wizard: production-ready
+  standalone_eltavolito: production-ready
+  both_installers_in_user_downloads: true
+  ci_pipeline: green (Security Pipeline + UTF-8 Guardrail + Frontend E2E)
+  dependabot_open_alerts: 0
+  all_tests_pass:
+    backend: 957 (JUnit5)
+    frontend_react: 505 (Vitest)
+    penztar_client: 97 (Vitest)
+    cumulative: 1559
+
+next_primary_wave_candidates:
+  - Install acceptance test on clean Windows VM
+    suggested_tool: installer/tests/installer-validation-suite.ps1 (30 KB, already in repo, runs on build output)
+  - Release notes on GitHub Releases page (optional, gh release create v2.1.0 ...)
+  - CB-016 NavClosingService hardcoded VAT_RATE=0.27 -> tax_code mapping
+  - companyId formal repository audit (multi-tenant boundary check)
+  - watch Spring Boot 3.5.14 release (milestone 2026-04-23) -> remove explicit <tomcat.version> override once it bundles Tomcat 10.1.54+

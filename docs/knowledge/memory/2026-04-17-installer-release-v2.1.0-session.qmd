@@ -1,0 +1,249 @@
+---
+title: "2026-04-17 installer release v2.1.0 — session memory"
+date: 2026-04-17
+tags: [installer, electron, nsis, first-run-wizard, release, v2.1.0, build-pipeline, postgres, jlink]
+status: captured
+supersedes: none
+relates_to:
+  - docs/knowledge/memory/2026-04-17-pipeline-run-session.qmd (previous wave, same day, post-AML-wave1)
+---
+
+## Cel
+
+A user kerese:
+
+1. "Tehát akkor most akár tudunk egy telepítőfájlt készíteni, amit a kollégáim futtatnak a gépükön, és az esetleges régi rossz telepítéseket eltávolítja, és teljesen újra telepíti a valutaváltó programot?"
+2. "Természetesen készítsd el nekem, de a verziószám az már 2 felett volt legutoljára, és nem értem, hogy hogy értünk vissza 192-re. Ellenőrizz, nézd meg, és csináld."
+3. "Megint miért végeztél fél munkát, amikor kértem egy komplet munkát? Csináld meg, végezd el a teljes feladatot, és törzd le a gépem letöltések mappájába, amikor kész mindkét exe-file-t."
+4. "Mentsd el a mai napi session-öket a memóriába, mindenhova, ahova kell."
+
+A korabbi session ugyanezen a napon (2026-04-17) AML Wave 1 parity fix + supply-chain upgrade + pipeline audit volt — annak lezarasa utan folytattuk ezt az installer release wave-et.
+
+## Kiindulopont
+
+HEAD: `87b9a56a` — "feat(penztar-client): First-Run Setup Wizard". Az elozo sessionben a user kerte a Valuta Valto kliens first-run wizard-jet (4 lepes: Uzvozlo / Iroda / Szerver / Admin jelszo), atomikus `.env` iras, kriptografiailag eros titkos kulcs generalas. Ezt elkeszitettuk, CI zold, committal lezarva.
+
+## Felfedezesek es iterativ megoldasok
+
+### 1. Eszrevettem: mar kesz a teljes telepito pipeline
+
+A repoban az `installer/` mappa kb. 95%-ban keszen all:
+
+- `installer/Penztar-Setup.nsi` (v7.0, ~1040 sor, NSIS 3.x) — egyfajlos telepito, beepitett cleanup fazissal
+- `installer/Penztar-Cleanup.nsi` (~130 sor) — standalone uninstaller
+- `installer/build-installer.ps1` (~340 sor) — SHA-256 verified deps download + Maven backend build + jlink custom JRE + Vite/Electron build + NSIS compile
+- `installer/build-final.ps1` — gyors ujrabuild cache-elt stage-bol
+- `installer/scripts/` — `init-db.bat`, `seed-data.sql`, `start-services.bat`, `stop-services.bat`, `generate-secrets.ps1`, `fix-backend-acl.ps1`, `fix-running-instance.ps1`
+- `installer/tests/installer-validation-suite.ps1` (~30 KB)
+
+### 2. Hianyzott: standalone Eltavolito build script + magyar deploy guide
+
+Hozzaadtam:
+
+- `installer/build-cleanup.ps1` (45 sor) — a `Penztar-Cleanup.nsi`-t `Penztar-Eltavolito-<ver>-<date>.exe`-be forditja ~1 masodperc alatt, ~60 KB
+- `installer/README.md` — magyar nyelvu operator guide a kollegaknak + build engineereknek
+
+Commit: `b73a2c56`.
+
+### 3. NSIS encoding problema felfedezese + javitasa
+
+A `Penztar-Eltavolito-1.9.2-20260409.exe` (korabbi build) metadataja mojibake volt:
+
+```
+FileDescription: Valutav��ltƈ P�cnzt��r �?" Teljes Elt��vol��tƈ
+Copyright:       � 2026 Exclusive Best Change Zrt.
+```
+
+Ok: NSIS 3.x Windows-ra ACP (Windows-1252) kodolassal olvassa a `.nsi` forrast. Az UTF-8 ekezetes karakterek (`á` = `C3 A1` UTF-8 byte-ok) ezert 2 kukacos karakterkent jelennek meg. A `—` (em-dash, UTF-8: `E2 80 94`) megint masik hibat.
+
+Megoldas: minden ekezet ASCII-ra cserelve a `.nsi` forrasokban, `—` `-`-re cserelve. A `©` (U+00A9) megmaradt — az valid Windows-1252 `0xA9` byte.
+
+Eredmeny: a `Penztar-Eltavolito-2.1.0-20260417.exe` metadataja tiszta:
+
+```
+ProductName:     Valutavalto Penztar Eltavolito
+FileDescription: Valutavalto Penztar - Teljes Eltavolito
+LegalCopyright:  © 2026 Exclusive Best Change Zrt.
+```
+
+Erdekes mellekhatas: a PowerShell terminal a `©`-t `c`-kent displayeli (font/code page probleme), de a `System.Diagnostics.FileVersionInfo.GetVersionInfo()` char-onkent lekerdezve `U+00A9` benne van. Windows Properties dialogusban helyesen jelenik meg.
+
+### 4. Verzio-archeologia (user ertekes insight-ja)
+
+A user jelezte: "a verziószám már 2 felett volt legutoljára, és nem értem, hogy hogy értünk vissza 192-re."
+
+Vizsgalat:
+
+| Forrasok | Verzio |
+|---|---|
+| `git tag --sort=-v:refname` | `v1.0.6` legmagasabb — eddig **soha nem volt v2.x tag** |
+| `git log --oneline` installer epitesek | `Penztar-Setup-1.4.0` → `1.5.0` → `1.8.0` → `1.9.0` → `1.9.1` → `1.9.2` |
+| `CHANGELOG.md` utolso release | **`## [2.0.0] - 2026-03-06`** (47-elem-es Added szekcio) |
+| `penztar-client/package.json` | `1.9.2` |
+| `frontend-react/package.json` | `1.0.0` |
+| `backend/pom.xml` | `1.0.0-SNAPSHOT` |
+| `installer/Penztar-Setup.nsi` default VERSION | `1.7.0` |
+
+A CHANGELOG szerint a **szoftver 2.0.0-n all 2026-03-06 ota**, de az installer pipeline es a modul-verziok ettol diverzialtak (egyiknel 1.0.0, masiknal 1.9.2 rekedtek). A user **igaz** volt.
+
+Megoldas: minden modult **v2.1.0**-ra bumpoltam:
+
+- semver: 2.0.0 published → 2.1.0 minor bump mert uj feature (First-Run Setup Wizard + standalone Eltavolito + magyar README) **breaking change nelkul**
+- CHANGELOG kiegeszitve `## [2.1.0] - 2026-04-17` bejegyzessel (Added/Changed/Security/Backend szekciok)
+- Git tag: `v2.1.0` pusholva (repo elso v2 tag-ja)
+
+Commit: `ba425304`.
+
+### 5. Teljes telepito legyartasa
+
+A user panaszolta: "Megint miért végeztél fél munkát". Igaza volt — a `Penztar-Setup-2.1.0.exe` (350 MB) meg nem volt legyartva csak a cleanup (58 KB).
+
+Preflight: Java 21 OK, Node 24 OK, NSIS OK, **a download cache mind megvolt** (PostgreSQL zip, NSSM zip, vc_redist, jre kivontva, stage pgsql/jre/tools/vc_redist kesz).
+
+Futtatas: `powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1 -SkipDownloads` — 525 s (~8.75 perc) — NSIS LZMA compress whole volt a bottleneck.
+
+Eredmeny: `Penztar-Setup-2.1.0-20260417.exe` — **431.20 MB** (1.38 GB input → 32.7% compression).
+
+### 6. Leszallitas + verifikacio
+
+Masolas: `Copy-Item` mindket EXE-t `C:\Users\Kósa Zoltán\Downloads\`-ba.
+
+Verifikacio `System.Diagnostics.FileVersionInfo.GetVersionInfo($path)`-szal:
+
+| Fajl | Meret | SHA-256 | FileVersion | ProductVersion |
+|---|---|---|---|---|
+| `Penztar-Setup-2.1.0-20260417.exe` | 431.20 MB (452148331 byte) | `33F48495F17B113BBCBC9FB7F8FF9AC051D3532248BF0984EE5AEB89304CEBDC` | 2.1.0 | 2.1.0 (20260417) |
+| `Penztar-Eltavolito-2.1.0-20260417.exe` | 58.5 KB (59879 byte) | `D6404015F2C24A457977D0C48A6BAE97F0972F06BE93766B45FB8500073AC8CA` | 2.1.0 | 2.1.0 (20260417) |
+
+## Kritikus tudas a kovetkezo agenteknek
+
+### Verzio-bump protokoll (semver-kompatibilis, konzisztens)
+
+Kovetkezo verzional az osszes alabbit frissiteni KELL, kulonben ismetelten szetdivergal a verzio:
+
+1. `CHANGELOG.md` uj `## [x.y.z] - yyyy-mm-dd` bejegyzes top-on
+2. `backend/pom.xml` → `<version>x.y.z</version>` (a project-en belul, nem a parent-en)
+3. `frontend-react/package.json` + `frontend-react/package-lock.json` (2 hely: top-level + `packages.""`)
+4. `penztar-client/package.json` + `penztar-client/package-lock.json` (2 hely ugyanugy)
+5. `installer/Penztar-Setup.nsi` → `!define VERSION "x.y.z"` (ifndef-es blokk)
+6. `installer/Penztar-Cleanup.nsi` → `!define VERSION "x.y.z"`
+7. `installer/build-installer.ps1` → `param([string]$Version = "x.y.z")`
+8. `installer/build-cleanup.ps1` → `param([string]$Version = "x.y.z")`
+9. `installer/build-final.ps1` → `$Version = "x.y.z"`
+10. `installer/README.md` → minden `1.9.2` / `2.1.0` hivatkozas
+
+Git tag: `git tag -a vx.y.z -m "..."; git push origin vx.y.z`.
+
+Eddigi legmagasabb verzio: **v2.1.0** (repo tag), **`## [2.1.0] - 2026-04-17`** (CHANGELOG).
+
+### NSIS encoding szabaly
+
+A `.nsi` forrasok **nem lehetnek UTF-8 ekezetekkel** — a Windows NSIS 3.x ACP-ben (Windows-1252) olvassa. Szabalyok:
+
+- `á`, `é`, `í`, `ó`, `ö`, `ő`, `ú`, `ü`, `ű` → sima `a`, `e`, `i`, `o`, `o`, `o`, `u`, `u`, `u` (kivetelesen elfogadhato a mojibake elkerulesere)
+- `—` (em-dash) → sima `-` kotojel
+- `©` (U+00A9, `0xA9` byte) → maradhat, valid Windows-1252 karakter
+- BOM: tilos
+
+### Build cache topologia
+
+Lokal build cache helyei:
+
+```
+installer/build/
+├── downloads/                            # Letoltott zip-ek (SHA-256 verified)
+│   ├── postgresql-binaries.zip
+│   ├── nssm.zip
+│   └── pg-extract/, nssm-extract/
+└── stage/                                # Extract-olt binarisok
+    ├── pgsql/bin/postgres.exe           # PG 17.5
+    ├── jre/bin/java.exe                  # Custom jlink JRE (~50 MB)
+    ├── tools/nssm.exe                    # 2.24 x64
+    ├── tools/vc_redist.x64.exe           # VS 2015-2022
+    ├── backend/valuta-backend.jar        # Maven target
+    ├── electron/Penztar.exe              # electron-builder unpacked
+    ├── config/                           # application-local.properties + penztar.env
+    └── scripts/                          # init-db.bat, seed-data.sql, stb.
+```
+
+`installer/build/` a `.gitignore`-ban (line 131). A full build ures cache-bol **10-30 perc**, `-SkipDownloads` flag-gel ~8-10 perc.
+
+### Telepito-kompozicio (a 431 MB belsejeben)
+
+- PostgreSQL 17.5 (EDB binaries, SHA-256 `795196DF...`) — ~200 MB
+- Custom JRE (jlink, 19 modul: java.base/sql/naming/management/instrument/desktop/security.jgss/security.sasl/net.http/xml/compiler/datatransfer/logging/prefs/scripting/transaction.xa/jdk.crypto.ec/jdk.unsupported/jdk.zipfs) — ~50 MB
+- Backend Spring Boot fat JAR (valuta-backend-2.1.0.jar) — ~90 MB
+- Electron Penztar kliens (electron 41.1.1, unpacked + asar-ed) — ~85 MB
+- NSSM 2.24 (`F689EE9A...`) — 0.5 MB
+- VC++ 2015-2022 Redistributable x64 (`CC0FF0EB...`) — 13 MB
+- Config templatek + script-ek — <1 MB
+
+Telepites utan a binarisok kiteritodnek:
+
+- `C:\Program Files\Valutavalto Penztar\` — Electron kliens + uninstaller
+- `C:\ProgramData\BestChange\` — pgsql (adat + config), backend JAR, JRE, NSSM, scriptek, config
+- Windows szolgaltatasok: `BestChange-PostgreSQL` (54320), `BestChange-Backend` (8080), NSSM-mel
+- Windows tuzfal: csak `127.0.0.1`-re (8080 + 54320)
+
+### First-Run Setup Wizard elindulasa
+
+1. Penztar kliens elso indulas (vagy mindig, amikor `<userData>/.env` hianyzik / `SETUP_COMPLETED` != `1` / `JWT_SECRET` not-a-placeholder + min 32 kar.)
+2. `SetupGuard` (App.tsx) IPC-n lekerdezi `window.electronAPI.setupCheck()`
+3. `isFirstRun=true` esetn navigal `/setup`-ra
+4. 4 lepes: Uzvozlo → Iroda (60 elem, 2x8 rid kereso+lapozo) → Szerver URL teszt VAGY offline checkbox → admin jelszo (min 8) + megerosites + osszefoglalo
+5. "Telepites befejezese" gomb:
+   - `crypto.randomBytes(32).toString('hex')` × 3: `JWT_SECRET`, `SQLCIPHER_KEY`, `OFFLINE_LICENSE_SECRET`
+   - Atomikus iras: `.env.tmp` → `fs.renameSync` → `0o600` mode
+   - `app.relaunch()` + `app.exit(0)`
+
+IPC csatornak (`penztar-client/electron/main.ts`): `setup:check`, `setup:branches`, `setup:test-connection`, `setup:save`.
+
+Bridge (`penztar-client/electron/preload.ts`): `window.electronAPI.setupCheck`, `.setupGetBranches`, `.setupTestConnection`, `.setupSave`.
+
+### Git history ami szamit
+
+| Commit | Tartalom |
+|---|---|
+| `87b9a56a` | First-Run Setup Wizard implementacio |
+| `b73a2c56` | Standalone Eltavolito build + README + NSIS encoding fix |
+| `ba425304` | Verzio-egyesites 2.1.0-ra + CHANGELOG [2.1.0] + tag `v2.1.0` |
+
+`main` branch HEAD: **`ba425304`**, tag: **`v2.1.0`**. Minden pusholva.
+
+## Kovetkezo agent: folytatasi instrukciok
+
+Ha uj gepen indul / friss worktree-ben folytatja valaki:
+
+```powershell
+cd d:\repo\valutavalto-program
+git fetch --all --tags
+git checkout main  # vagy git checkout v2.1.0
+# Ha build kell:
+powershell -ExecutionPolicy Bypass -File installer\build-cleanup.ps1
+powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1 -SkipDownloads
+Copy-Item installer\build\Penztar-*-2.1.0-*.exe -Destination $env:USERPROFILE\Downloads
+```
+
+Ha nincs cache (uj gep), `-SkipDownloads` flaget elhagyni, es az elso build 30+ perc lesz a PostgreSQL 17.5 + VC++ Redist + NSSM letoltes miatt (SHA-256 ellenorzott, ha csekkosszeg megvaltozott, a `build-installer.ps1` throw-ol).
+
+## Status kumulativ
+
+| Teriilet | Allapot |
+|---|---|
+| v2.1.0 release | shipped |
+| Both installers in user Downloads | YES |
+| CI pipeline | green (Security + UTF-8 Guardrail + Frontend E2E) |
+| Dependabot open alerts | 0 |
+| Backend tests (JUnit5) | 957 pass |
+| frontend-react tests (Vitest) | 505 pass |
+| penztar-client tests (Vitest) | 97 pass |
+| Cumulative | 1559 pass |
+| Git tag v2.1.0 | pushed |
+
+## Nyitott kerdesek a kovetkezo wave-re
+
+1. **CB-016** — `NavClosingService` hardcoded `VAT_RATE=0.27`, tax_code mapping szukseges (ez a `2026-04-17-pipeline-run-session.yaml`-bol meg nyitott)
+2. **companyId formal repository audit** — multi-tenant boundary check minden repo-ban (szinten meg nyitott)
+3. **Spring Boot 3.5.14 monitoring** — milestone 2026-04-23, amikor release-eleseg Tomcat 10.1.54+ bundle, tavolitsuk el a `backend/pom.xml`-bol az explicit `<tomcat.version>` override-ot
+4. **Install acceptance test** — friss Windows VM-en `Penztar-Setup-2.1.0-20260417.exe` tenyleges futtatasa, majd `installer/tests/installer-validation-suite.ps1` futtatas (jelenleg 30 KB, build-output validacio)
+5. **GitHub Releases entry** — `gh release create v2.1.0 --title "v2.1.0" --notes-from-tag` + a ket EXE attachment-kent (opcionalis, ha a user igenyli publikus tarolast)

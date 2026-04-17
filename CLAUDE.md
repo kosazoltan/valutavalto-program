@@ -81,3 +81,15 @@ cd penztar-client && npm test
 - PostgreSQL (szerver), SQLite (offline kliens)
 - Flyway migrációk: `backend/src/main/resources/db/migration/`
 - Kapcsolat: `application.properties` → `spring.datasource.*`
+
+## Aktuális release-állapot (a következő agent számára folytatási horgony)
+- **Verzió:** **v2.1.0** (git tag pusholva, 2026-04-17). Minden modul (backend/pom.xml, frontend-react, penztar-client, installer/*) egységesen 2.1.0-n. Előtte szétesett: 1.0.0 / 1.0.0-SNAPSHOT / 1.9.2. Ha bump kell, lásd a `docs/knowledge/memory/2026-04-17-installer-release-v2.1.0-session.yaml` alatt a `resume_workflow_for_future_agent.version_bump_for_future_release.files_to_update` listát (12 fájl).
+- **HEAD:** `ba425304` a `main`-en, pusholva. Mai session commitjai: `87b9a56a` (First-Run Setup Wizard), `b73a2c56` (standalone Penztar-Eltavolito build + magyar README + NSIS encoding fix), `ba425304` (verzió-egyesítés + CHANGELOG [2.1.0]).
+- **Telepítő fájlok (gitignore-osak, `installer/build/`-ban):**
+  - `Penztar-Setup-2.1.0-20260417.exe` — 431.20 MB, SHA-256 `33F48495F17B113BBCBC9FB7F8FF9AC051D3532248BF0984EE5AEB89304CEBDC`
+  - `Penztar-Eltavolito-2.1.0-20260417.exe` — 58.5 KB, SHA-256 `D6404015F2C24A457977D0C48A6BAE97F0972F06BE93766B45FB8500073AC8CA`
+  - Mindkettő bemásolva a `%USERPROFILE%\Downloads\`-ba az operátornak.
+- **Újra-buildelés:** `powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1 [-SkipDownloads]` (~10-30 perc, vagy ~8 perc `-SkipDownloads`-al, ha az `installer/build/stage/` cache megvan). Standalone eltávolító: `powershell -ExecutionPolicy Bypass -File installer\build-cleanup.ps1` (~1 s, ~60 KB).
+- **NSIS encoding szabály:** `.nsi` forrásfájlok csak Windows-1252 ASCII-t tartalmazhatnak (NSIS 3.x Windows fordító ACP-t használ). Magyar ékezetek (`á`/`é`/`í`/`ó`/`ö`/`ő`/`ú`/`ü`/`ű`) → sima ASCII. Em-dash (`—`) → `-`. A `©` (U+00A9 = `0xA9` byte) megmaradhat, valid Windows-1252.
+- **Memory fájlok a mai wave-hez:** `docs/knowledge/memory/2026-04-17-installer-release-v2.1.0-session.yaml` + `.qmd`. Ugyanaznap korábbi wave (AML parity + pipeline): `docs/knowledge/memory/2026-04-17-pipeline-run-session.yaml` + `.qmd`.
+- **Nyitott következő feladatok:** CB-016 (NavClosingService hardcoded VAT_RATE=0.27 → tax_code mapping), companyId formal repository audit (multi-tenant boundary check), Spring Boot 3.5.14 monitoring (2026-04-23 milestone; amint release-eli Tomcat 10.1.54+ bundle-lel, törlendő az explicit `<tomcat.version>` override a `backend/pom.xml`-ből), installer acceptance test friss Windows VM-en az `installer/tests/installer-validation-suite.ps1` szkripttel.

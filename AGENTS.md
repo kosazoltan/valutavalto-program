@@ -81,3 +81,15 @@ cd penztar-client && npm test
 - PostgreSQL (server), SQLite (offline client)
 - Flyway migrations: `backend/src/main/resources/db/migration/`
 - Connection config: `application.properties` → `spring.datasource.*`
+
+## Current release state (resume anchor for next agent)
+- **Version:** **v2.1.0** (git tag pushed, 2026-04-17). All modules (backend/pom.xml, frontend-react, penztar-client, installer/*) unified on 2.1.0. Before this release they were split across 1.0.0 / 1.0.0-SNAPSHOT / 1.9.2. If you bump, update all 12 version files listed in `docs/knowledge/memory/2026-04-17-installer-release-v2.1.0-session.yaml` under `resume_workflow_for_future_agent.version_bump_for_future_release.files_to_update`.
+- **HEAD:** `ba425304` on `main`, pushed. Recent commits: `87b9a56a` (First-Run Setup Wizard), `b73a2c56` (standalone Penztar-Eltavolito build + Hungarian README + NSIS encoding fix), `ba425304` (version unification + CHANGELOG [2.1.0]).
+- **Installer artifacts (gitignored, in `installer/build/`):**
+  - `Penztar-Setup-2.1.0-20260417.exe` — 431.20 MB, SHA-256 `33F48495F17B113BBCBC9FB7F8FF9AC051D3532248BF0984EE5AEB89304CEBDC`
+  - `Penztar-Eltavolito-2.1.0-20260417.exe` — 58.5 KB, SHA-256 `D6404015F2C24A457977D0C48A6BAE97F0972F06BE93766B45FB8500073AC8CA`
+  - Both copied to `%USERPROFILE%\Downloads\` for the operator.
+- **Rebuild:** `powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1 [-SkipDownloads]` (~10-30 min, or ~8 min with `-SkipDownloads` if `installer/build/stage/` cache present). Standalone uninstaller: `powershell -ExecutionPolicy Bypass -File installer\build-cleanup.ps1` (~1s, ~60 KB).
+- **NSIS source encoding rule:** `.nsi` files must be Windows-1252 ASCII-only (NSIS 3.x Windows compiler uses ACP). Hungarian accents (`á`/`é`/`í`/`ó`/`ö`/`ő`/`ú`/`ü`/`ű`) must be plain ASCII; em-dashes (`—`) must be plain `-`. The `©` symbol (U+00A9 = byte `0xA9`) is valid in Windows-1252 and stays.
+- **Memory files for this wave:** `docs/knowledge/memory/2026-04-17-installer-release-v2.1.0-session.yaml` + `.qmd`. Previous same-day wave (AML parity + pipeline): `docs/knowledge/memory/2026-04-17-pipeline-run-session.yaml` + `.qmd`.
+- **Open next-wave items:** CB-016 (NavClosingService hardcoded VAT_RATE=0.27 → tax_code mapping), companyId formal repository audit (multi-tenant boundary check), Spring Boot 3.5.14 watch (milestone 2026-04-23; once Tomcat 10.1.54+ bundled, remove explicit `<tomcat.version>` override in `backend/pom.xml`), installer acceptance test on clean Windows VM via `installer/tests/installer-validation-suite.ps1`.
