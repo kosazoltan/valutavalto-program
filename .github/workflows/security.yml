@@ -8,6 +8,7 @@ on:
   schedule:
     # Heti biztonsagi scan (hetfo 06:00 UTC)
     - cron: '0 6 * * 1'
+  workflow_dispatch: {}
 
 jobs:
   gitleaks:
@@ -73,9 +74,14 @@ jobs:
         id: owasp
         continue-on-error: true
         run: |
+          if [ -z "$NVD_API_KEY" ]; then
+            echo "::warning::NVD_API_KEY is empty – falling back to anonymous NVD (slow, 5 req / 30s)"
+          fi
           cd backend && mvn -B org.owasp:dependency-check-maven:check \
             -DfailBuildOnCVSS=9 \
             -DnvdApiKey=$NVD_API_KEY \
+            -DnvdApiDelay=3500 \
+            -DnvdMaxRetryCount=10 \
             -DsuppressionFile=owasp-suppressions.xml \
             -DdataDirectory=.owasp-dependency-check-data \
             --no-transfer-progress
