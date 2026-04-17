@@ -42,7 +42,7 @@
 
 ; --- Parameterek ---
 !ifndef VERSION
-  !define VERSION "1.7.0"
+  !define VERSION "2.1.0"
 !endif
 !ifndef BUILD_DATE
   !define BUILD_DATE "dev"

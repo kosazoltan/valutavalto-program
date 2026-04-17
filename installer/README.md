@@ -14,8 +14,8 @@ szétküldeni** a munkaállomásokra:
 
 | Fájl                                  | Méret    | Mit csinál |
 |---------------------------------------|----------|------------|
-| `Penztar-Eltavolito-1.9.2-*.exe`      | ~60 KB   | Leállítja és eltávolítja a régi BestChange szolgáltatásokat, törli a `C:\ProgramData\BestChange` mappát, a Program Files-t, a tűzfalszabályokat és a registry bejegyzéseket. Egy öntisztító eszköz a "rossz" telepítések nyomainak eltüntetésére. |
-| `Penztar-Setup-1.9.2-*.exe`           | ~350 MB  | A teljes egyfájlos telepítő: **automatikusan cleanup-olja a régi telepítést**, majd tiszta új telepítést hajt végre (PostgreSQL 17.5, backend, Electron kliens, Windows szolgáltatások, tűzfal, asztali ikon). |
+| `Penztar-Eltavolito-2.1.0-*.exe`      | ~60 KB   | Leállítja és eltávolítja a régi BestChange szolgáltatásokat, törli a `C:\ProgramData\BestChange` mappát, a Program Files-t, a tűzfalszabályokat és a registry bejegyzéseket. Egy öntisztító eszköz a "rossz" telepítések nyomainak eltüntetésére. |
+| `Penztar-Setup-2.1.0-*.exe`           | ~350 MB  | A teljes egyfájlos telepítő: **automatikusan cleanup-olja a régi telepítést**, majd tiszta új telepítést hajt végre (PostgreSQL 17.5, backend, Electron kliens, Windows szolgáltatások, tűzfal, asztali ikon). |
 
 > **Fontos:** A `Penztar-Setup` már tartalmazza ugyanazt a cleanup logikát amit az
 > Eltávolító önmagában végrehajt (`FAZIS 1: Regi telepites cleanup` az
@@ -32,7 +32,7 @@ Ezt küldd el nekik e-mailben a két EXE-vel együtt:
 > **Telepítési útmutató**
 >
 > 1. Zárjátok be a Pénztár alkalmazást.
-> 2. **Jobb klikk** a `Penztar-Setup-1.9.2-*.exe` fájlra → **"Futtatás rendszergazdaként"**.
+> 2. **Jobb klikk** a `Penztar-Setup-2.1.0-*.exe` fájlra → **"Futtatás rendszergazdaként"**.
 > 3. Kövessétek a varázsló lépéseit (Következő → Következő → Telepítés).
 > 4. Amikor először elindul a Pénztár kliens, egy **4 lépéses beállító varázsló**
 >    jön be — ebben kiválasztjátok az irodát, beállítjátok a központi szerver
@@ -41,7 +41,7 @@ Ezt küldd el nekik e-mailben a két EXE-vel együtt:
 >
 > **Ha a telepítés hibaüzenettel megáll** (pl. "BestChange-PostgreSQL service cannot be removed"):
 >
-> 1. Futtasd **rendszergazdaként** az `Penztar-Eltavolito-1.9.2-*.exe`-t.
+> 1. Futtasd **rendszergazdaként** az `Penztar-Eltavolito-2.1.0-*.exe`-t.
 > 2. Várd meg amíg "KESZ! A regi telepites teljesen eltavolitva" üzenet jön.
 > 3. Indítsd újra a gépet (biztos, ami biztos).
 > 4. Utána futtasd újra a `Penztar-Setup-*.exe`-t rendszergazdaként.
@@ -68,7 +68,7 @@ Ezt küldd el nekik e-mailben a két EXE-vel együtt:
 powershell -ExecutionPolicy Bypass -File installer\build-cleanup.ps1
 ```
 
-Kimenet: `installer\build\Penztar-Eltavolito-1.9.2-<yyyymmdd>.exe` (~60 KB)
+Kimenet: `installer\build\Penztar-Eltavolito-2.1.0-<yyyymmdd>.exe` (~60 KB)
 
 ### 3.3 A **teljes telepítő** lefordítása — ~10-30 perc (first run)
 
@@ -76,7 +76,7 @@ Kimenet: `installer\build\Penztar-Eltavolito-1.9.2-<yyyymmdd>.exe` (~60 KB)
 powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1
 ```
 
-Kimenet: `installer\build\Penztar-Setup-1.9.2-<yyyymmdd>.exe` (~350 MB)
+Kimenet: `installer\build\Penztar-Setup-2.1.0-<yyyymmdd>.exe` (~350 MB)
 
 A script az alábbi lépéseket végzi el:
 1. Backend Maven build → `valuta-backend.jar`
@@ -161,11 +161,13 @@ telepítő EXE-ben.
 
 ## 7. Verziózás
 
-A build alapértelmezés szerint `1.9.2` verziót készít. Új verziót build-elni:
+A build alapértelmezés szerint `2.1.0` verziót készít (a `CHANGELOG.md`-hoz igazítva —
+ez a hivatalos program-verzió, korábban az installer 1.9.2-n rekedt míg a szoftver már
+2.0.0 volt). Új verziót build-elni:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1 -Version 1.9.3
-powershell -ExecutionPolicy Bypass -File installer\build-cleanup.ps1   -Version 1.9.3
+powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1 -Version 2.1.1
+powershell -ExecutionPolicy Bypass -File installer\build-cleanup.ps1   -Version 2.1.1
 ```
 
 A verzió beég az EXE-be (Windows Properties → Details → File/Product Version),

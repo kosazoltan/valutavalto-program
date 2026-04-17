@@ -1,5 +1,35 @@
 # Changelog
 
+## [2.1.0] - 2026-04-17
+
+### Added
+- **First-Run Setup Wizard** (Electron pénztár kliens)
+  - 4 lépéses varázsló az első indításkor: Üdvözlő → Iroda választás (60 iroda, 2×8 rács kereséssel + lapozással) → Szerver konfiguráció ("Kapcsolat tesztelése" gombbal vagy offline móddal) → Admin jelszó.
+  - Auto-generált titkos kulcsok: `JWT_SECRET`, `SQLCIPHER_KEY`, `OFFLINE_LICENSE_SECRET` (256-bit, `crypto.randomBytes`).
+  - Atomikus `.env` írás (`%APPDATA%\valutavalto-branch\.env`) `0o600` jogokkal.
+  - Szerver-teszt az Electron `net.request`-en keresztül (rendszer proxy tiszteletben tartása).
+  - Main process + React renderer szétválasztva, 4 IPC csatorna: `setup:check`, `setup:branches`, `setup:test-connection`, `setup:save`.
+- **Standalone "Penztar-Eltavolito" build** (`installer/build-cleanup.ps1`)
+  - 1 másodperc alatt lefordul, ~60 KB méretű önálló EXE.
+  - Régi / törött telepítés teljes eltávolítása: szolgáltatások, PostgreSQL, process-ek, Program Files, ProgramData, tűzfalszabályok, PGPASSFILE, registry.
+- **Telepítési útmutató kollégáknak** (`installer/README.md`, magyar nyelven).
+
+### Changed
+- **Verzió egységesítés**: `penztar-client`, `frontend-react`, `backend` és az installer pipeline mind `2.1.0`-ra (korábban az installer 1.9.2-n rekedt, miközben a szoftver már 2.0.0 volt a CHANGELOG szerint — ezt konszolidáltuk).
+- **NSIS source encoding hardening**: `Penztar-Setup.nsi` és `Penztar-Cleanup.nsi` ékezetei ASCII-ra cserélve (Windows-1252 NSIS forrás → tiszta EXE metadata, nincs több mojibake a Product/FileDescription mezőben).
+
+### Security
+- Dependabot alert #80 (`follow-redirects`) + #81 (`aquasecurity/trivy-action`) lezárva.
+- CI pipeline teljesen zöld: Security Pipeline, UTF-8 Guardrail, Frontend E2E.
+- OWASP Dependency Check átszervezve: heti ütemezésre + manual dispatch. PR / push eseményekre Trivy + GitHub Dependency Review fut (90+ perc → ~75 másodperc).
+
+### Backend
+- `AmlService.checkTransaction` 5-argumentumos overload (deviza-kód támogatás).
+- `BlacklistService.findActivePersonMatch` (aktív tiltott személy gyors keresés).
+- `WesternUnionService.performAmlCheck` árfolyam-paraméter, USD-only tranzakciók helyes HUF-ra átszámítása.
+- `SecurityConfig`: deprecated `permissionsPolicy` → `permissionsPolicyHeader` (Spring Security 6.2+ kompatibilitás).
+- `CashBalance.version` `@Builder.Default` (Lombok warning fix).
+
 ## [2.0.0] - 2026-03-06
 
 ### Added
