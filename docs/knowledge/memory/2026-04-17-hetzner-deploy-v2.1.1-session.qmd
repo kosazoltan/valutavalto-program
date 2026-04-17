@@ -1,0 +1,417 @@
+---
+title: "2026-04-17 Hetzner backend deploy v2.1.1 — session memory"
+date: 2026-04-17
+tags: [hetzner, deploy, ssh, systemd, postgres, luks, flyway, v2.1.1, public-endpoints, backend, hotfix]
+status: captured
+supersedes: none
+relates_to:
+  - docs/knowledge/memory/2026-04-17-pipeline-run-session.qmd
+  - docs/knowledge/memory/2026-04-17-installer-release-v2.1.0-session.qmd
+  - docs/knowledge/memory/2026-04-17-hetzner-deploy-v2.1.1-session.yaml
+parent_agent_transcript: agent-transcripts/ac0bf5fb-6a32-4418-a5a1-fe9b337b2263
+---
+
+## Cel
+
+A user ismetelt, egyre frusztraltabb visszajelzesei alapjan kivehetoen:
+
+> "semmi koze a programnak a valos penztarakhoz sem a hetzner szerverhez sem a neon adatbazishoz ez egy szar"
+
+> "env-ben van minden adat"
+
+> "api is van a hetznerhez! bazd meg olvasd el a repo adatait!!"
+
+Majd a jelen session kezdete:
+
+> "vps-en van neked kellene deployolni direktben a szerverre nem gh action van"
+
+A cel: a 2.1.1 backend (uj `/api/v1/public/branches` + `/api/v1/auth/bootstrap-admin` `permitAll` vegpontok) **KI KELL JUSSON a Hetzner produkciora**, mert a frissen telepitett v2.1.1 kliens a First-Run Setup Wizard-ban ettol fog elobb valos branch-listat kapni (`KORUT` + `TISZA SAROK`) a kodba egetett `DEFAULT_BRANCHES` helyett, masodsorban pedig admin jelszot tud beallitani a DB-ben.
+
+Eddig az ilyesmi nem volt dokumentalva, es **a GitHub Actions workflow-k kozott nem volt automata Hetzner deploy** (csak Render/Vercel `.disabled` yaml volt), ezert a deploy-t **direkt SSH-n kellett vegrehajtani**, a helyi `~/.ssh/hetzner_ed25519` kulccsal.
+
+## Kiindulopont
+
+- HEAD (helyi + origin/main): `70c42b55` — "release(v2.1.1): fix first-run login + dynamic branches + UI version"
+- Tag: `v2.1.1` mar letezik, pusholva, GitHub Release is megcsinalva (`gh release create`)
+- Telepitok a user Downloads mappajaban (`Penztar-Setup-2.1.1-20260417.exe`, `Penztar-Eltavolito-2.1.1-20260417.exe`)
+- User elvegezte a friss telepitest, es **kodbol bejelentkezni nem sikerult**: se az 1234-es default, se a wizard-ban beadott jelszoval. Google login "Belso szerverhiba".
+
+Az elozo session vegen mar diagnozisra allt: a `https://excvaluta.com/api/v1/public/branches` es `/auth/bootstrap-status` vegpontok `401 Unauthorized` helyett (HTML-bol kinyerve: valojaban Cloudflare 502 Bad Gateway) jottek vissza, es gyanitottuk, hogy a Hetzner backend **regi JAR-t futtat**.
+
+## Felfedezesek — a valosag rosszabb volt a vartnal
+
+### 1. SSH hozzaferes regen megvan, csak nem hasznaltam
+
+A helyi `~/.ssh/` mappaban nyugodtan ulve varta a kulcs:
+
+```
+hetzner_ed25519        2026-03-31
+id_ed25519_hetzner     2026-03-31
+exz_central_ed25519    2026-04-09
+```
+
+`known_hosts` ket Hetzner IP-t kapacitalt:
+
+- `95.216.191.162` (Hetzner Helsinki, `ubuntu-16gb-hel1-1`)
+- `135.181.39.206` (CPX31 migration target, nem kapja a `hetzner_ed25519` pubkey-t)
+
+Connect-test: **`ssh -i ~/.ssh/hetzner_ed25519 root@95.216.191.162`** ment egybol, `root` user shell-lel. A `135.181.*` permission denied — az meg bootstrapelve sincs.
+
+### 2. A Hetzner backend NEM Docker-ben fut
+
+`docker ps` **ures**. A `/opt/valutavalto/docker-compose.prod.yml` letezik, de **nem aktiv**. Helyette:
+
+```
+systemd: valuta-backend.service (User=valuta)
+  -> /usr/bin/java -jar /opt/valutavalto/backend/target/valuta-backend-1.0.0-SNAPSHOT.jar --server.port=8080
+  -> listen 0.0.0.0:8080
+
+systemd: nginx (reverse proxy :80 + :443)
+  -> proxy_pass http://127.0.0.1:8080
+
+systemd: postgresql@16-main (hardcoded cluster name)
+  -> listen 127.0.0.1:5432
+  -> data dir: /var/lib/postgresql/16/main -> /mnt/pgdata-encrypted (LUKS mount)
+```
+
+A `.env` `EnvironmentFile=/opt/valutavalto/backend/.env` szerint: `DATABASE_URL=jdbc:postgresql://localhost:5432/valuta`. **Nem Neon DB** — helyi PostgreSQL 16 Hetzneren, LUKS-titkositott volume-on (`/opt/pgdata-encrypted.img`, 2 GB image, kulcs: `/root/.pgdata-luks-key`).
+
+Nyitott kerdes, amit kesobb tisztazni kell: **eredetileg a Neon-t szantuk**, valahol kozben valaki local PostgreSQL-re allitotta at. Valoszinu biztonsagi okbol (Neon AWS eu-central-1 nem teljesen EU-kompatibilis GDPR/pmt. szemszogbol, LUKS viszont az).
+
+### 3. A PostgreSQL 6 napja nem futott
+
+`pg_lsclusters` outputja:
+
+```
+Ver Cluster Port Status
+16  main    5432 down
+```
+
+Es `journalctl -u postgresql@16-main.service -l`:
+
+```
+Apr 11 06:58:15 ... Stopped postgresql@16-main.service
+Apr 17 18:02:02 ... Dependency failed for postgresql@16-main.service
+Apr 17 18:02:02 ... postgresql@16-main.service: Job ... failed with result 'dependency'
+```
+
+**2026-04-11 06:58 ota nincs DB.** Amig a regi backend futott, csak exception-loop-olt a kepernyore, nem tudott csatlakozni:
+
+```
+Caused by: org.postgresql.util.PSQLException: Connection to localhost:5432 refused.
+```
+
+A felhasznaloi oldalon, Cloudflare-n atcsapva mindig Cloudflare `502 Bad Gateway` jott vissza — a mi eredeti diagnozisunkban (`401 Unauthorized`) **a Cloudflare HTML error page-bol vett `<title>` volt** a felrevezeto: valojaban a Hetzner oldalan az nginx 502-t adott, Cloudflare meg ezt tovabbitotta. A user tapasztalata erre teljesen osszhangban volt: a program tenyleg **nem dolgozott valos adatokkal**, mert a backend egyszeruen nem elt.
+
+### 4. A LUKS unit idempotency bugja
+
+A `pgdata-luks.service` (custom unit, `/etc/systemd/system/pgdata-luks.service`) drop-in dependency-t tesz a PG16-ra:
+
+```ini
+# /etc/systemd/system/postgresql@16-main.service.d/luks-dependency.conf
+[Unit]
+After=pgdata-luks.service
+Requires=pgdata-luks.service
+```
+
+A `pgdata-luks.service` eredeti tartalma:
+
+```
+ExecStart=/sbin/cryptsetup luksOpen /opt/pgdata-encrypted.img pgdata-crypt --key-file /root/.pgdata-luks-key
+ExecStart=/bin/mount /dev/mapper/pgdata-crypt /mnt/pgdata-encrypted
+ExecStop=/bin/umount /mnt/pgdata-encrypted
+ExecStop=/sbin/cryptsetup luksClose pgdata-crypt
+```
+
+**Idempotency bug:** ha a device mar nyitva van (pl. elozo siker utan service `restart`), `cryptsetup luksOpen` exit 5 ("Device pgdata-crypt already exists") -> systemd szerint failure -> PG16 dependency failed. Innen csak manualis tisztitas.
+
+A 2026-04-11-i allas biztos valami ilyen restart ciklusnal akadt el, es aztan hetekig senki nem vette eszre, mert:
+
+- a Hetzner nginx ment, tehat `https://excvaluta.com` valaszolt
+- a Cloudflare challenge-page 502 volt, nem teljesen uresen jott
+- admin nem volt a valudi DB-ben, a login backend `401`-gyel dobott (ha egyaltalan fel tudott allni)
+
+### 5. Flyway V143 + V144 migraciok is hibasak voltak
+
+Miutan a LUKS + PG16 + backend uj JAR-ral kiallt, a Flyway `outOfOrder` modban beakadt:
+
+```
+Caused by: org.flywaydb.core.internal.sqlscript.FlywaySqlScriptException:
+  Script V143__nav_vat_rate_parameters.sql failed
+Message : ERROR: null value in column "id" of relation "system_parameter"
+          violates not-null constraint
+```
+
+Megvizsgaltam:
+
+```
+\d system_parameter
+ id  | uuid  | not null  (no default)
+```
+
+A Spring JPA oldalrol `@GeneratedValue(generator = "UUID")` oldja meg, de **Flyway SQL script-bol ez nem mukodik**, mert ott nem fut a JPA layer. A V143 + V144 migrationok INSERT-jei **hianyoztak az `id` oszlopot**:
+
+```sql
+INSERT INTO system_parameter (parameter_key, parameter_value, parameter_type, ...) VALUES (...);
+-- id oszlop nem szerepel -> null -> NOT NULL violation
+```
+
+Javitas (commit `47acfab6`): mindket migraciban hozzaadtam `id` oszlopot es `gen_random_uuid()`-ot:
+
+```sql
+INSERT INTO system_parameter (id, parameter_key, ...) VALUES
+  (gen_random_uuid(), 'nav.vat-rate.STANDARD', '0.27', ...);
+```
+
+Push main-re, `git pull` Hetzneren, `mvn package`, `cp` a SNAPSHOT path-ra, restart. **Masodik deploy siker.** Flyway log:
+
+```
+Successfully validated 145 migrations
+outOfOrder mode is active
+Successfully applied 2 migrations to schema "public", now at version v144
+Started ValutaBackendApplication in 13.767 seconds
+Tomcat started on port 8080
+```
+
+A `system_parameter` tabla most 5 uj sort tartalmaz:
+
+```
+auth.bootstrap-completed | false  | AUTH
+nav.vat-rate.STANDARD    | 0.27   | NAV
+nav.vat-rate.REDUCED_18  | 0.18   | NAV
+nav.vat-rate.REDUCED_5   | 0.05   | NAV
+nav.vat-rate.ZERO        | 0.00   | NAV
+```
+
+### 6. Systemd service JAR-path hardcode
+
+A `valuta-backend.service` `ExecStart`-ja:
+
+```
+/usr/bin/java -jar /opt/valutavalto/backend/target/valuta-backend-1.0.0-SNAPSHOT.jar --server.port=8080
+```
+
+**Hardcode `1.0.0-SNAPSHOT`.** A `backend/pom.xml`-ben azonban a verziot mar 2.1.1-re emeltem, ezert `mvn package` `valuta-backend-2.1.1.jar`-t termel.
+
+Workaround (minimalisan invaziv, rollback-barat): build utan `cp valuta-backend-2.1.1.jar valuta-backend-1.0.0-SNAPSHOT.jar`. Igy a systemd unit nem valtozik, a backup (`.bak-20260417-175818`) visszaallithato.
+
+Alternativ megoldas, ami a kovetkezo rendbetevesnel ajanlott: symlink vagy wildcard:
+
+```
+ExecStart=/bin/sh -c '/usr/bin/java -jar /opt/valutavalto/backend/target/valuta-backend-*.jar --server.port=8080'
+```
+
+De ez glob-resolve kockazatos (ha ket jar van a target-ben, pl. `-sources.jar`). A lehetto legtisztabb: symlink:
+
+```bash
+ln -sf /opt/valutavalto/backend/target/valuta-backend-2.1.1.jar \
+       /opt/valutavalto/backend/target/valuta-backend-current.jar
+# Systemd unit: ...valuta-backend-current.jar
+```
+
+A jelen session soran nem tettem bele, mert a user mas prioritasokat adott (thin client atirashoz hozzaferni), es a SNAPSHOT-masolat mukodik.
+
+## Vegleges helyzet (minden elo, verified)
+
+### Kliens oldali smoke
+
+```powershell
+# Cloudflare-n at, Hetzner produkciora
+curl https://excvaluta.com/api/v1/actuator/health
+  -> 401 (management endpoint, JWT kotelezo, ez normalis)
+
+curl https://excvaluta.com/api/v1/auth/bootstrap-status
+  -> 200 OK
+  -> BODY: {"completed":false}
+
+curl "https://excvaluta.com/api/v1/public/branches?companyCode=EBC"
+  -> 200 OK
+  -> BODY: [
+    {"code":"KORUT","name":"Korut","city":"Szeged","address":"Korut 22, Szeged"},
+    {"code":"TISZA","name":"Tisza Sarok","city":"Szeged","address":"Tisza Sarok, Szeged"}
+  ]
+```
+
+Most a frissen telepitett v2.1.1 kliens (`penztar-client`) a wizard 2. lepesben **valos 2 branch-et** lat, nem a hardcoded 60 placeholder irodat.
+
+### Server oldal
+
+```
+valuta-backend.service   active (running)  since 2026-04-17 18:06:38 UTC
+postgresql@16-main       active (running)  Port 5432 online
+pgdata-luks.service      active            (idempotens patch utan)
+nginx                    active            (reverse proxy :80 + :443)
+
+Backend log tail:
+  Starting ValutaBackendApplication v2.1.1 using Java 21.0.10 with PID 354140
+  Database: jdbc:postgresql://localhost:5432/valuta (PostgreSQL 16.13)
+  Successfully applied 2 migrations, now at version v144
+  Started ValutaBackendApplication in 13.767 seconds
+  Tomcat started on port 8080
+```
+
+### Commit + push
+
+Egy commit kerult a repo-ba a jelen wave soran:
+
+```
+47acfab6 fix(flyway): V143+V144 system_parameter insert needs explicit UUID
+         (id NOT NULL, no default)
+```
+
+Mind a helyi, mind a Hetzner `/opt/valutavalto` HEAD-je ezen all.
+
+## Kritikus tudas a kovetkezo agenteknek
+
+### SSH deploy direktben — lepesrol lepesre
+
+Amennyiben a kovetkezo tapasztalt agent nem tud GitHub Actions-t kiepiteni (pl. time pressure, secrets nincsenek propagalva), ezt kovesse:
+
+```powershell
+# Helyi gepen
+$key = "$env:USERPROFILE\.ssh\hetzner_ed25519"
+$server = "root@95.216.191.162"
+
+# 1. Verify SSH
+ssh -i $key $server "hostname; uname -a"
+# Expected: ubuntu-16gb-hel1-1
+
+# 2. Backup current JAR
+ssh -i $key $server 'cp /opt/valutavalto/backend/target/valuta-backend-1.0.0-SNAPSHOT.jar /opt/valutavalto/backend/target/valuta-backend-1.0.0-SNAPSHOT.jar.bak-$(date +%Y%m%d-%H%M%S)'
+
+# 3. Pull main
+ssh -i $key $server 'cd /opt/valutavalto && git fetch origin main && git reset --hard origin/main && chown -R valuta:valuta /opt/valutavalto'
+
+# 4. Build (root, ~35-60 sec if m2 cache warm)
+ssh -i $key $server 'cd /opt/valutavalto/backend && /usr/bin/mvn -q -DskipTests package'
+
+# 5. Deploy: rename 2.x.y JAR to SNAPSHOT name (systemd unit hardcodes SNAPSHOT)
+ssh -i $key $server 'cp /opt/valutavalto/backend/target/valuta-backend-<VERSION>.jar /opt/valutavalto/backend/target/valuta-backend-1.0.0-SNAPSHOT.jar && chown valuta:valuta /opt/valutavalto/backend/target/valuta-backend-*.jar'
+
+# 6. Restart + wait for :8080
+ssh -i $key $server 'systemctl restart valuta-backend && for i in 1..15; do sleep 3; if ss -tlnp | grep -q ":8080"; then echo "UP"; break; fi; done'
+
+# 7. Smoke tests (localhost, Cloudflare)
+ssh -i $key $server 'curl -s -o /dev/null -w "HTTP=%{http_code}\n" http://127.0.0.1:8080/actuator/health'
+# Expected: HTTP=200 (localhost management port not blocked)
+
+# From helyi:
+Invoke-WebRequest "https://excvaluta.com/api/v1/auth/bootstrap-status" -UseBasicParsing
+# Expected: 200 {"completed": <bool>}
+```
+
+### LUKS idempotency patch (veglegesitett)
+
+A jelen session soran kicsereltem a `/etc/systemd/system/pgdata-luks.service`-t egy idempotens valtozatra:
+
+```ini
+[Unit]
+Description=Open LUKS encrypted PostgreSQL data volume
+Before=postgresql@16-main.service
+After=local-fs.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash -c 'cryptsetup status pgdata-crypt >/dev/null 2>&1 || cryptsetup luksOpen /opt/pgdata-encrypted.img pgdata-crypt --key-file /root/.pgdata-luks-key'
+ExecStart=/bin/bash -c 'mountpoint -q /mnt/pgdata-encrypted || mount /dev/mapper/pgdata-crypt /mnt/pgdata-encrypted'
+ExecStop=/bin/bash -c 'mountpoint -q /mnt/pgdata-encrypted && umount /mnt/pgdata-encrypted || true'
+ExecStop=/bin/bash -c 'cryptsetup status pgdata-crypt >/dev/null 2>&1 && cryptsetup luksClose pgdata-crypt || true'
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Mar a kovetkezo reboot utan is magatol el fog indulni a PG16. **Ezt NEM commit-oltam a repoba**, mert a jelen repoban nincs `infra/` mappa, sem `ansible/`, sem `deploy/systemd/`. Kovetkezo, akit ez erint: hozzon letre egy `deploy/hetzner/systemd/pgdata-luks.service` path-ot, copy-olja ide, es dokumentalja README-ben.
+
+### Flyway + system_parameter schema bugyor
+
+A `system_parameter.id` oszlop UUID NOT NULL **DEFAULT nelkul**. A Spring JPA `Entity`-je `@GeneratedValue(generator = "UUID")`-val oldja meg, de **minden jovobeli Flyway INSERT-be expliciten kell `gen_random_uuid()`**:
+
+```sql
+-- HELYES
+INSERT INTO system_parameter (id, parameter_key, parameter_value, parameter_type, category, description, is_active)
+VALUES (gen_random_uuid(), 'some.key', 'value', 'STRING', 'CATEGORY', 'desc', TRUE)
+ON CONFLICT (parameter_key) DO NOTHING;
+
+-- HIBAS (null id)
+INSERT INTO system_parameter (parameter_key, ...) VALUES ('some.key', ...);
+```
+
+Altalanositva: minden tabla, ahol a PK UUID NOT NULL default nelkul, a Flyway-nek explicit `gen_random_uuid()` kell. Erre egy jovobeli migracio hozzaadhat `ALTER TABLE system_parameter ALTER COLUMN id SET DEFAULT gen_random_uuid()`-t, es akkor az insert-ek tisztabbak lehetnek.
+
+### Arhitektura valosaga — miert nem Neon
+
+A `.env` `DATABASE_URL=jdbc:postgresql://localhost:5432/valuta` a produkcion. A Neon `ep-polished-morning-altxohe7.c-3.eu-central-1.aws.neon.tech` string csak a **helyi fejlesztoi `.env.example`-ben** van. Hetzner produkcion a local PG16 a forras-igazsag, LUKS-en titkositva. Ha egy jovobeli agent **valtoztatni akar Neon-ra**, pl. a multi-branch scale miatt:
+
+1. Neon DB-ben uj projekt, Flyway migraciok futtatasa (145 migracio tortenelmi, sok)
+2. `pg_dump` a Hetzner helyi DB-bol, `pg_restore` Neon-ra
+3. `/opt/valutavalto/backend/.env` atallitasa Neon connection string-re
+4. `valuta-backend.service` restart
+5. LUKS volume nem kell tobbet, de hagyni kell meg **read-only** hozzaferessel vegsokig, amig nem validalt az uj setup
+
+### Nyitott task-ok
+
+A user meg `pending` allapotban:
+
+1. **r3 — Thin client installer atiras** (~431 MB -> ~150 MB)
+2. **r4 — `VITE_API_URL=https://excvaluta.com/api/v1`** build-time a `penztar-client`-ben
+3. **r5 — SyncEngine**: periodikus push Hetznerre, exchange rate pull
+4. **r6 — Telepito meret csokkentes** (PG + backend kivonasaval)
+5. **r7 — v2.1.2 build + Downloads + commit + tag + push + Hetzner deploy**
+
+Ezekhez azonban mar NEM SHIP kell elso korben — a user jelezte, hogy most **session-lezaras + memoria-dumpolas**.
+
+## Status kumulativ (a v2.1.1 wave tekinteteben)
+
+| Teriilet | Allapot |
+|---|---|
+| v2.1.1 backend Hetzneren | **running, verified** |
+| v2.1.1 telepitok user Downloads mappaban | YES (elozo sessionbol) |
+| Cloudflare public endpoints | 200 OK |
+| `system_parameter` NAV + AUTH flags | 5 sor, seeded |
+| LUKS idempotency fix | alkalmazva a szerveren (nem repoban) |
+| Flyway V143+V144 bugfix | commit `47acfab6` pusholva |
+| Helyi HEAD | `47acfab6` |
+| Remote HEAD | `47acfab6` |
+| Hetzner HEAD | `47acfab6` |
+| Tag v2.1.1 | pushed (elozo sessionbol) |
+
+## Nyitott kerdesek a kovetkezo wave-re
+
+1. **Systemd JAR hardcode** — symlink vagy wildcard. Repo-szinten: `deploy/hetzner/systemd/` mappat letrehozni, unit-okat verziokontroll ala tenni.
+2. **Deploy automata kiepitese** — `.github/workflows/deploy-hetzner.yml` SSH-kulccsal (`VPS_SSH_PRIVATE_KEY` secret). Jelen session soran manualisan oldottuk meg, de tartos megoldasnak GH Actions kell.
+3. **Monitoring** — a PG 6 napig volt allapotban, **senki nem vette eszre**. Kell `healthchecks.io` vagy sajat uptime-monitor `/api/v1/public/branches`-ra 5 perces pollinggal, Telegram/e-mail eriesztessel.
+4. **LUKS backup** — a `/opt/pgdata-encrypted.img` 2 GB, LUKS header tobb kulcs-slottal valoszinu nincs bovitve. Recovery testprotokoll: VM-en luksOpen backup-luks-key-vel, mount, `pg_dumpall`.
+5. **`.env` tartalmaval szinkronizacio** — a Hetzner `/opt/valutavalto/backend/.env` tartalmat dokumentalni kell (redacted, placeholders) a `backend/.env.example`-ben, hogy a kovetkezo agent ne talalgasson.
+
+## Ajanlott kovetkezo first-move
+
+A user prioritasi listajaban `r3` (thin client installer) szerepel elson. De elotte egy **mini-infrastruktura commit** erdemes:
+
+1. `deploy/hetzner/systemd/pgdata-luks.service` — az idempotens unit verziokontroll ala
+2. `deploy/hetzner/systemd/valuta-backend.service` — a jelen unit (SNAPSHOT-ra hardcodeolt) + TODO a symlink atalasrol
+3. `deploy/hetzner/DEPLOY_SSH.md` — a fenti playbook magyar nyelven, user-nak szolo
+4. `.github/workflows/deploy-hetzner.yml` — stub mar most, hogy hasznalhato legyen:
+   ```yaml
+   on: workflow_dispatch:
+   jobs:
+     deploy:
+       runs-on: ubuntu-latest
+       steps:
+         - uses: actions/checkout@v4
+         - uses: webfactory/ssh-agent@v0.9.0
+           with: { ssh-private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }} }
+         - run: |
+             ssh root@${{ secrets.VPS_SERVER_IP }} << 'EOF'
+               cd /opt/valutavalto
+               git fetch origin main && git reset --hard origin/main
+               chown -R valuta:valuta /opt/valutavalto
+               cd backend && /usr/bin/mvn -q -DskipTests package
+               cp target/valuta-backend-*.jar target/valuta-backend-1.0.0-SNAPSHOT.jar
+               chown valuta:valuta target/valuta-backend-*.jar
+               systemctl restart valuta-backend
+             EOF
+   ```
+
+Ezutan johet a thin client installer (r3), ami onmagaban 2-3 napos munka (penztar-client fetch-API konfiguracio, SyncEngine, NSIS modositas a bundled PG kivonasara).

@@ -1,0 +1,351 @@
+date: 2026-04-17
+wave: hetzner-deploy-v2.1.1
+session_type: direct-ssh-deploy-plus-postgres-resurrection-plus-flyway-bugfix
+previous_session_same_day:
+  - docs/knowledge/memory/2026-04-17-pipeline-run-session.yaml
+  - docs/knowledge/memory/2026-04-17-installer-release-v2.1.0-session.yaml
+resumed_from: post-v2.1.1-release-wave-user-frustrated-login-broken
+parent_agent_transcript: agent-transcripts/ac0bf5fb-6a32-4418-a5a1-fe9b337b2263
+
+final_head:
+  branch: main
+  commit: 47acfab6
+  tag: v2.1.1
+  remote: origin
+  pushed: true
+  hetzner_server_head: 47acfab6
+
+trigger:
+  user_quote_1: "semmi koze a programnak a valos penztarakhoz sem a hetzner szerverhez sem a neon adatbazishoz ez egy szar"
+  user_quote_2: "env-ben van minden adat"
+  user_quote_3: "api is van a hetznerhez! bazd meg olvasd el a repo adatait!!"
+  user_quote_4: "vps-en van neked kellene deployolni direktben a szerverre nem gh action van"
+  real_problem: "v2.1.1 backend JAR was not deployed to Hetzner production; user's fresh install could not reach public endpoints"
+
+commits_this_session:
+  - sha: 47acfab6
+    title: "fix(flyway): V143+V144 system_parameter insert needs explicit UUID (id NOT NULL, no default)"
+    files_changed:
+      - backend/src/main/resources/db/migration/V143__nav_vat_rate_parameters.sql
+      - backend/src/main/resources/db/migration/V144__admin_bootstrap_flag.sql
+    insertion_patch:
+      - "Added `id` column to INSERT statements"
+      - "Added `gen_random_uuid()` generator"
+    evidence_before:
+      hetzner_log: "Caused by: org.postgresql.util.PSQLException: ERROR: null value in column 'id' of relation 'system_parameter' violates not-null constraint"
+      schema: "id uuid not null (no default)"
+    evidence_after:
+      flyway_log: "Successfully applied 2 migrations to schema 'public', now at version v144"
+      row_count: 5
+      rows_seeded:
+        - "auth.bootstrap-completed | false | AUTH"
+        - "nav.vat-rate.STANDARD | 0.27 | NAV"
+        - "nav.vat-rate.REDUCED_18 | 0.18 | NAV"
+        - "nav.vat-rate.REDUCED_5 | 0.05 | NAV"
+        - "nav.vat-rate.ZERO | 0.00 | NAV"
+
+hetzner_infrastructure_truth:
+  server_primary:
+    ip: 95.216.191.162
+    hostname: ubuntu-16gb-hel1-1
+    dc: Helsinki-1 (hel1)
+    specs: "16 GB RAM, Ubuntu 24 derivative, kernel 6.8.0-107-generic"
+  server_secondary_migration_target_but_not_active:
+    ip: 135.181.39.206
+    ssh_access_from_local_keys: DENIED (hetzner_ed25519 pubkey not deployed there)
+    note: "CPX31 intended migration per docs/superpowers/specs/2026-03-17-hetzner-migration-design.md, not yet operational"
+
+  docker_compose_prod_yml_present: true
+  docker_compose_prod_yml_active: false
+  actual_runtime: systemd + nginx (no containers)
+
+  systemd_services:
+    - name: valuta-backend.service
+      user: valuta
+      working_dir: /opt/valutavalto/backend
+      environment_file: /opt/valutavalto/backend/.env
+      exec_start: "/usr/bin/java -jar /opt/valutavalto/backend/target/valuta-backend-1.0.0-SNAPSHOT.jar --server.port=8080"
+      exec_start_hardcoded_SNAPSHOT: true
+      restart: on-failure
+      restart_sec: 10
+    - name: postgresql@16-main.service
+      port: 5432
+      data_dir_symlink: /var/lib/postgresql/16/main -> /mnt/pgdata-encrypted
+      drop_in: /etc/systemd/system/postgresql@16-main.service.d/luks-dependency.conf
+      drop_in_content: "[Unit]\nAfter=pgdata-luks.service\nRequires=pgdata-luks.service"
+    - name: pgdata-luks.service
+      custom_unit_path: /etc/systemd/system/pgdata-luks.service
+      idempotency_bug_present_before_session: true
+      patched_this_session: true
+      key_file: /root/.pgdata-luks-key
+      image_file: /opt/pgdata-encrypted.img
+      image_size_bytes: 2147483648
+      mount_point: /mnt/pgdata-encrypted
+    - name: nginx
+      listen: "0.0.0.0:80, 0.0.0.0:443"
+      proxy_pass: http://127.0.0.1:8080
+
+  database:
+    engine: PostgreSQL 16.13
+    encoded_via: LUKS (dm-crypt) on loop device
+    host: localhost
+    port: 5432
+    jdbc_url: "jdbc:postgresql://localhost:5432/valuta"
+    data_dir_real_path: /mnt/pgdata-encrypted
+    flyway_total_applied_after_session: 145
+    critical_tables_seeded:
+      company:
+        rows: 1
+        first_active: EBC (Exclusive Best Change Zrt.)
+      branch:
+        rows: 2_active
+        list:
+          - {code: KORUT, name: Korut, city: Szeged, address: "Korut 22, Szeged"}
+          - {code: TISZA, name: "Tisza Sarok", city: Szeged, address: "Tisza Sarok, Szeged"}
+      worker:
+        rows: 4
+      system_parameter:
+        rows_after_v143_v144: ">= 5"
+    note_neon_not_used_in_production: true
+    neon_fallback_exists_in_env_example_only: true
+
+public_endpoints_verified_this_session:
+  - url: "https://excvaluta.com/api/v1/auth/bootstrap-status"
+    status: 200
+    body: '{"completed":false}'
+    permit_all: true
+    from: cloudflare_live
+  - url: "https://excvaluta.com/api/v1/public/branches?companyCode=EBC"
+    status: 200
+    body: '[{"code":"KORUT","name":"Korut","city":"Szeged","address":"Korut 22, Szeged"},{"code":"TISZA","name":"Tisza Sarok","city":"Szeged","address":"Tisza Sarok, Szeged"}]'
+    permit_all: true
+    from: cloudflare_live
+  - url: "https://excvaluta.com/api/v1/actuator/health"
+    status: 401
+    note: "Management endpoint, JWT required; NOT under permitAll (by design, security baseline)"
+    from: cloudflare_live
+
+bugs_discovered_and_fixed:
+  bug_1_postgres_down_6_days:
+    detection: "pg_lsclusters Status=down; journalctl -u postgresql@16-main.service"
+    root_cause: "pgdata-luks.service exit 5 (Device already exists) on second run, cascade failure"
+    duration_offline: "~6 days 11 hours (2026-04-11 06:58 UTC -> 2026-04-17 18:03 UTC)"
+    user_impact: "Login silent fail in fresh v2.1.1 install; Cloudflare 502 Bad Gateway surfaced to users as '401 Unauthorized' in browser html"
+    fix_applied: "systemctl reset-failed + patched unit to idempotent ExecStart bash -c checks"
+    fix_persistence: "unit file rewritten on server; survives reboot"
+    fix_committed_to_repo: false
+    commit_recommendation: "deploy/hetzner/systemd/pgdata-luks.service (new path)"
+
+  bug_2_luks_unit_idempotency:
+    unit: /etc/systemd/system/pgdata-luks.service
+    original_issue: "Type=oneshot ExecStart /sbin/cryptsetup luksOpen fails with exit 5 if device already mapped"
+    new_unit_content: |
+      [Unit]
+      Description=Open LUKS encrypted PostgreSQL data volume
+      Before=postgresql@16-main.service
+      After=local-fs.target
+      
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      ExecStart=/bin/bash -c 'cryptsetup status pgdata-crypt >/dev/null 2>&1 || cryptsetup luksOpen /opt/pgdata-encrypted.img pgdata-crypt --key-file /root/.pgdata-luks-key'
+      ExecStart=/bin/bash -c 'mountpoint -q /mnt/pgdata-encrypted || mount /dev/mapper/pgdata-crypt /mnt/pgdata-encrypted'
+      ExecStop=/bin/bash -c 'mountpoint -q /mnt/pgdata-encrypted && umount /mnt/pgdata-encrypted || true'
+      ExecStop=/bin/bash -c 'cryptsetup status pgdata-crypt >/dev/null 2>&1 && cryptsetup luksClose pgdata-crypt || true'
+      
+      [Install]
+      WantedBy=multi-user.target
+
+  bug_3_flyway_null_uuid:
+    migrations_affected:
+      - V143__nav_vat_rate_parameters.sql
+      - V144__admin_bootstrap_flag.sql
+    root_cause: "system_parameter.id is UUID NOT NULL without DEFAULT; Spring JPA generates via @GeneratedValue but Flyway SQL bypasses JPA layer"
+    error: "ERROR: null value in column 'id' of relation 'system_parameter' violates not-null constraint"
+    fix: "Added `id` column with gen_random_uuid() to INSERT statements"
+    commit: 47acfab6
+    future_prevention_option: "ALTER TABLE system_parameter ALTER COLUMN id SET DEFAULT gen_random_uuid()"
+
+  bug_4_systemd_jar_hardcode:
+    service_unit: valuta-backend.service
+    hardcoded_path: /opt/valutavalto/backend/target/valuta-backend-1.0.0-SNAPSHOT.jar
+    problem_at_bump: "maven produces valuta-backend-<VERSION>.jar, not -SNAPSHOT"
+    workaround_applied: "cp valuta-backend-<VERSION>.jar valuta-backend-1.0.0-SNAPSHOT.jar + chown valuta:valuta"
+    workaround_location_evidence: 
+      - "/opt/valutavalto/backend/target/valuta-backend-2.1.1.jar (built)"
+      - "/opt/valutavalto/backend/target/valuta-backend-1.0.0-SNAPSHOT.jar (copy)"
+    future_recommendation: "symlink: ln -sf .../valuta-backend-<VERSION>.jar .../valuta-backend-current.jar; update unit to -current.jar"
+
+deploy_sequence_executed:
+  step_1_ssh_key_discovery:
+    location: "~/.ssh/hetzner_ed25519"
+    created: "2026-03-31 16:08:32"
+    pubkey_deployed_to: "root@95.216.191.162"
+  step_2_initial_recon:
+    duration_sec: ~30
+    findings: "docker ps empty, valuta-backend.service running, postgres down"
+  step_3_backup_jar:
+    path: /opt/valutavalto/backend/target/valuta-backend-SNAPSHOT.jar.bak-20260417-175818
+    size: 101 MB
+  step_4_git_pull:
+    method: "git fetch origin main && git reset --hard origin/main"
+    uncommitted_stashed: ["public-web/", "valutavalto-nginx.bak.20260401"]
+    head_before: fab71b7d
+    head_after: 70c42b55 (initially), then 47acfab6 (after flyway fix push)
+    ownership_fix: "chown -R valuta:valuta /opt/valutavalto"
+  step_5_mvn_package_first:
+    attempt: "sudo -u valuta /usr/bin/mvn"
+    result: "FAILED - /home/valuta does not exist, nologin shell"
+    fallback: "run mvn as root"
+    exit_code: 0
+    elapsed_sec: 38
+    m2_cache_location: /root/.m2/repository
+    output: target/valuta-backend-2.1.1.jar (101 MB)
+  step_6_first_restart_failed:
+    cause: "PostgreSQL down (see bug_1)"
+    backend_crash_loop_log_excerpt: "Connection to localhost:5432 refused. Check that the hostname and port are correct..."
+  step_7_fix_luks_unit:
+    method: patched /etc/systemd/system/pgdata-luks.service
+    reload: "systemctl daemon-reload"
+    reset_failed: "systemctl reset-failed pgdata-luks.service postgresql@16-main.service valuta-backend.service"
+    start_chain: "systemctl start pgdata-luks.service -> start postgresql@16-main.service"
+    pg_lsclusters_after: "16 main 5432 online"
+  step_8_restart_backend_second:
+    status: "Started ValutaBackendApplication v2.1.1 using Java 21.0.10"
+    startup_time_sec: 13.767
+    port_8080_listening: true
+  step_9_flyway_failed_v143:
+    detection: "journalctl excerpt from step_6 refreshed with new error"
+    error: "null value in column 'id' of relation 'system_parameter'"
+  step_10_flyway_fix_commit:
+    commit: 47acfab6
+    pushed_to_origin_main: true
+    elapsed_sec: ~60
+  step_11_second_mvn_on_server:
+    trigger: "git pull + mvn package + cp + chown + systemctl restart"
+    elapsed_sec: ~48
+  step_12_final_verification:
+    localhost_health: "HTTP=200"
+    localhost_bootstrap_status: "HTTP=200"
+    localhost_public_branches: "HTTP=200"
+    cloudflare_bootstrap_status: "HTTP=200 body={'completed':false}"
+    cloudflare_public_branches: "HTTP=200 body=[KORUT, TISZA]"
+
+critical_knowledge_for_next_agents:
+  ssh_access:
+    key_path: "~/.ssh/hetzner_ed25519"
+    target: "root@95.216.191.162"
+    fingerprint_in_known_hosts: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFfFkiTLaKIFZx4ShO4n1XVzTbW4QLQvsOql3Amh/D7H"
+    secondary_server_135: "NOT ACCESSIBLE with this key, migration target per spec"
+
+  repo_on_server:
+    path: /opt/valutavalto
+    owner: valuta (uid 996, gid 988, /home/valuta does NOT exist, /usr/sbin/nologin)
+    remote: "https://github.com/kosazoltan/valutavalto-program.git"
+    method: git clone (not sparse, not shallow)
+
+  database_reality:
+    production_database: local Hetzner PostgreSQL 16 on LUKS
+    neon_in_env_example_only: true
+    crypto_key_path: /root/.pgdata-luks-key (90 bytes, 0600, root only)
+    image_path: /opt/pgdata-encrypted.img (2 GB)
+
+  systemd_units_to_version_control:
+    target_path_in_repo: deploy/hetzner/systemd/
+    not_yet_created: true
+    files_to_add:
+      - pgdata-luks.service (idempotent version from this session)
+      - valuta-backend.service (current, with TODO to symlink the SNAPSHOT hack)
+
+  gh_action_automation_absent:
+    existing_workflows: 
+      - .github/workflows/deploy-vercel-render.yml.disabled
+    secrets_available: [VPS_SERVER_IP, VPS_SSH_USER, VPS_SSH_PRIVATE_KEY]
+    recommended_new_workflow: .github/workflows/deploy-hetzner.yml
+    template_provided_in_qmd: true
+
+public_endpoint_catalog_effective_after_this_session:
+  - path: /api/v1/actuator/health
+    auth: REQUIRED (JWT)
+    expected: 401 without token
+  - path: /api/v1/auth/bootstrap-status
+    auth: permitAll
+    expected: 200 {completed: bool}
+  - path: /api/v1/auth/bootstrap-admin
+    auth: permitAll
+    expected: "200 on first call, 409 Conflict if already bootstrapped"
+  - path: /api/v1/public/branches?companyCode=<code>
+    auth: permitAll
+    expected: "200 array of {code,name,city,address} for active branches"
+  - path: /api/v1/auth/login
+    auth: permitAll
+    expected: 200 with JWT OR 401 on bad credentials
+
+files_modified_this_session:
+  repo:
+    - backend/src/main/resources/db/migration/V143__nav_vat_rate_parameters.sql (added id + gen_random_uuid)
+    - backend/src/main/resources/db/migration/V144__admin_bootstrap_flag.sql (added id + gen_random_uuid)
+  server_non_repo:
+    - /etc/systemd/system/pgdata-luks.service (REWRITTEN with idempotent ExecStart)
+    - /opt/valutavalto/backend/target/valuta-backend-2.1.1.jar (new)
+    - /opt/valutavalto/backend/target/valuta-backend-1.0.0-SNAPSHOT.jar (overwritten copy of 2.1.1)
+    - /opt/valutavalto/backend/target/valuta-backend-SNAPSHOT.jar.bak-20260417-175818 (backup of previous)
+    - PostgreSQL 5 new rows in public.system_parameter
+
+pending_tasks_user_priority:
+  - id: r3
+    title: "Installer atiras thin client modra (no bundled PG, no bundled Spring backend)"
+    size_impact: "~431 MB -> ~150 MB"
+    touches: [penztar-client, installer/Penztar-Setup.nsi, installer/build-installer.ps1]
+  - id: r4
+    title: "penztar-client build-time VITE_API_URL=https://excvaluta.com/api/v1"
+    touches: [penztar-client/vite.config.ts, penztar-client/.env.production]
+    note: "Server wizard page can override"
+  - id: r5
+    title: "SyncEngine: periodic push to Hetzner, exchange rate poll"
+    touches: [penztar-client/electron/sync-engine.ts, backend sync endpoints]
+  - id: r6
+    title: "Telepito meret csokkentese (felesleges bundle-ok kivonasa)"
+  - id: r7
+    title: "Build 2.1.2 + Downloads + commit + tag + push + Hetzner redeploy"
+
+open_architectural_questions:
+  - topic: neon_vs_local
+    question: "Marad Hetzner local PG LUKS-on, vagy Neon-ra migrálunk?"
+    current_stance: "Hetzner local is current prod source of truth"
+  - topic: deploy_automation
+    question: "GH Actions deploy workflow letrehozasa"
+    template_in_qmd: true
+  - topic: monitoring
+    question: "Uptime monitor a 6 napig-eszrevetlen outage ellen"
+    suggested_stack: "healthchecks.io + Telegram webhook on /public/branches"
+  - topic: jar_path_hardcode
+    question: "Symlink vagy wildcard a systemd unit-ban"
+    recommendation: "symlink ...-current.jar"
+  - topic: luks_recovery
+    question: "Backup key + recovery tesztprotokoll"
+    suggested: "VM-en luksOpen backup-kulccsal, mount, pg_dumpall"
+
+status_summary:
+  hetzner_deploy_v2_1_1: shipped_verified
+  postgres_resurrection: successful
+  luks_idempotency: patched_on_server_not_in_repo
+  flyway_v143_v144: fixed_committed_pushed
+  cloudflare_public_endpoints: 200_verified
+  system_parameter_seed: 5_rows
+  branches_real_data_available: true
+  ci_pipeline: still_green (no CI changes this session)
+
+next_primary_wave_candidates:
+  priority_1:
+    action: "Commit the LUKS + systemd units to repo (deploy/hetzner/systemd/)"
+    reasoning: "Single point of failure: the unit fix exists only on the server; on server rebuild it would be lost"
+    estimated_size: "30 min + review"
+  priority_2:
+    action: "Create .github/workflows/deploy-hetzner.yml"
+    reasoning: "Future deploys should not require manual SSH"
+    estimated_size: "1-2 hours including secret test"
+  priority_3:
+    action: "User task r3-r7 (thin client installer + SyncEngine + v2.1.2)"
+    reasoning: "User's explicit priority list; but depends on priority_1 + priority_2 for sustainable operation"
+    estimated_size: "2-3 days"
