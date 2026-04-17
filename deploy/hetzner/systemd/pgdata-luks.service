@@ -1,0 +1,15 @@
+[Unit]
+Description=Open LUKS encrypted PostgreSQL data volume
+Before=postgresql@16-main.service
+After=local-fs.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash -c 'cryptsetup status pgdata-crypt >/dev/null 2>&1 || cryptsetup luksOpen /opt/pgdata-encrypted.img pgdata-crypt --key-file /root/.pgdata-luks-key'
+ExecStart=/bin/bash -c 'mountpoint -q /mnt/pgdata-encrypted || mount /dev/mapper/pgdata-crypt /mnt/pgdata-encrypted'
+ExecStop=/bin/bash -c 'mountpoint -q /mnt/pgdata-encrypted && umount /mnt/pgdata-encrypted || true'
+ExecStop=/bin/bash -c 'cryptsetup status pgdata-crypt >/dev/null 2>&1 && cryptsetup luksClose pgdata-crypt || true'
+
+[Install]
+WantedBy=multi-user.target
