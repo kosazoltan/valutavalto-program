@@ -43,6 +43,12 @@ const STEPS: readonly StepDef[] = [
   { id: 'admin',   title: 'Admin jelszó',      subtitle: 'Első belépéshez',            icon: KeyRound },
 ]
 
+// Produkciós központi backend (Hetzner CPX31, DNS: api.excvaluta.com).
+// Ha változik a hosting, csak itt cseréld — a wizard ezt használja default-nak
+// és a helyettesítő szövegnek is. A felhasználó felülírhatja kézzel.
+const DEFAULT_API_URL = 'https://api.excvaluta.com/api/v1'
+const DEFAULT_COMPANY_CODE = 'EBC'
+
 // ---------------------------------------------------------------------------
 // SetupWizard
 // ---------------------------------------------------------------------------
@@ -57,8 +63,8 @@ export default function SetupWizard() {
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null)
   const [branchPage, setBranchPage] = useState(0)
 
-  const [apiUrl, setApiUrl] = useState('https://')
-  const [companyCode, setCompanyCode] = useState('EBC')
+  const [apiUrl, setApiUrl] = useState(DEFAULT_API_URL)
+  const [companyCode, setCompanyCode] = useState(DEFAULT_COMPANY_CODE)
   const [bootstrapUsername, setBootstrapUsername] = useState('')
   const [bootstrapPassword, setBootstrapPassword] = useState('')
   const [offlineMode, setOfflineMode] = useState(false)
@@ -553,7 +559,7 @@ function ServerStep(props: ServerStepProps) {
             value={apiUrl}
             onChange={(e) => onApiUrlChange(e.target.value)}
             disabled={offlineMode}
-            placeholder="https://valuta.sajatceg.hu"
+            placeholder={DEFAULT_API_URL}
             className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none disabled:bg-slate-100 disabled:text-slate-500"
           />
         </FieldLabel>

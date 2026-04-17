@@ -35,8 +35,10 @@ Ezt küldd el nekik e-mailben a két EXE-vel együtt:
 > 2. **Jobb klikk** a `Penztar-Setup-2.1.0-*.exe` fájlra → **"Futtatás rendszergazdaként"**.
 > 3. Kövessétek a varázsló lépéseit (Következő → Következő → Telepítés).
 > 4. Amikor először elindul a Pénztár kliens, egy **4 lépéses beállító varázsló**
->    jön be — ebben kiválasztjátok az irodát, beállítjátok a központi szerver
->    URL-t (vagy offline módot), és megadtok egy admin jelszót.
+>    jön be — ebben kiválasztjátok az irodát, **a Szerver URL mezőben már ott
+>    lesz előre kitöltve a Hetzner VPS címe** (`https://api.excvaluta.com/api/v1`),
+>    csak a központi teszt-felhasználóval kell bejelentkezni (vagy offline módot
+>    választani), végül admin jelszót állítotok.
 > 5. Kész — az alkalmazás ezután használható.
 >
 > **Ha a telepítés hibaüzenettel megáll** (pl. "BestChange-PostgreSQL service cannot be removed"):
