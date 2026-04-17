@@ -1,0 +1,11 @@
+[Unit]
+Description=Valutavalto Health Monitor
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/opt/valutavalto/scripts/health-monitor.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=valuta-health

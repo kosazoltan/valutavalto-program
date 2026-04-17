@@ -1,0 +1,11 @@
+[Unit]
+Description=Valutavalto health check timer (5 percenkent)
+Requires=valuta-health.service
+
+[Timer]
+OnBootSec=60
+OnUnitActiveSec=5min
+AccuracySec=30
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,12 @@
+[Unit]
+Description=Valutavalto napi backup timer (03:00)
+Requires=valuta-backup.service
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+AccuracySec=5min
+RandomizedDelaySec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
