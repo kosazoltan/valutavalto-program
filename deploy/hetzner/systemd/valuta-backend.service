@@ -8,11 +8,10 @@ Type=simple
 User=valuta
 WorkingDirectory=/opt/valutavalto/backend
 EnvironmentFile=/opt/valutavalto/backend/.env
-# TODO: replace hardcoded SNAPSHOT path with symlink
-# Recommended: ln -sf /opt/valutavalto/backend/target/valuta-backend-<VERSION>.jar \
-#              /opt/valutavalto/backend/target/valuta-backend-current.jar
-# Then update ExecStart to use valuta-backend-current.jar
-ExecStart=/usr/bin/java -jar /opt/valutavalto/backend/target/valuta-backend-1.0.0-SNAPSHOT.jar --server.port=8080
+# Symlink managed by CI: deploy-hetzner.yml creates valuta-backend-current.jar -> valuta-backend-X.Y.Z.jar
+# To update manually: ln -sf /opt/valutavalto/backend/target/valuta-backend-<VERSION>.jar \
+#                          /opt/valutavalto/backend/target/valuta-backend-current.jar
+ExecStart=/usr/bin/java -jar /opt/valutavalto/backend/target/valuta-backend-current.jar --server.port=8080
 Restart=on-failure
 RestartSec=10
 
