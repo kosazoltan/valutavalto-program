@@ -6,15 +6,15 @@
 #   - PostgreSQL (a szerver Hetzner VPS-en fut)
 #   - Java JRE / Spring Boot backend
 #   - NSSM service manager
-# Becsult meret: ~80-120 MB (vs. ~431 MB a fat installernel)
-# Build eredmeny: Penztar-Thin-2.1.1-20260417.exe = 90 MB
+# Becsult meret: ~80-90 MB (vs. ~431 MB a fat installernel)
+# r6: Locale pruning -- csak hu.pak es en-US.pak marad
 #
 # Hasznalat: powershell -ExecutionPolicy Bypass -File build-installer-thin.ps1
 # Elofeltetelek: Node.js 20+, NSIS 3.x, .env.production beallitva
 # =============================================================================
 
 param(
-    [string]$Version = "2.1.1",
+    [string]$Version = "2.1.2",
     [switch]$SkipFrontendBuild,
     [switch]$SkipNsis,
     [string]$ApiUrl = "https://excvaluta.com/api/v1"
@@ -44,7 +44,6 @@ if (-not $SkipFrontendBuild) {
     $clientDir = Join-Path $RepoRoot "penztar-client"
     Push-Location $clientDir
     try {
-        # .env.production van -> Vite azt hasznalja production buildben
         if ($ApiUrl -ne "https://excvaluta.com/api/v1") {
             $envContent = "VITE_API_URL=$ApiUrl`nVITE_BRANCH_CODE=EBC`nVITE_COMPANY_ID=1`n"
             [System.IO.File]::WriteAllText((Join-Path (Get-Location) ".env.production"), $envContent)
@@ -97,8 +96,20 @@ if (-not $SkipFrontendBuild) {
             Move-Item $exe.FullName -Destination $target -Force
         }
 
+        # r6: Lokalizacios fajlok csoekkentese -- csak hu es en-US kell
+        $localesDir = Join-Path $electronStage "locales"
+        if (Test-Path $localesDir) {
+            $kept = @('hu.pak', 'en-US.pak')
+            $removed = 0
+            Get-ChildItem $localesDir -Filter '*.pak' | Where-Object { $_.Name -notin $kept } | ForEach-Object {
+                Remove-Item $_.FullName -Force
+                $removed++
+            }
+            Write-Host "  Locales: $removed felesleges .pak torolve, megtartva: $($kept -join ', ')" -ForegroundColor Yellow
+        }
+
         $stageSize = (Get-ChildItem $electronStage -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
-        Write-Host "  Electron app staged: $([math]::Round($stageSize, 1)) MB" -ForegroundColor Green
+        Write-Host "  Electron app staged (r6 utan): $([math]::Round($stageSize, 1)) MB" -ForegroundColor Green
     } finally { Pop-Location }
 } else {
     Write-Host "Frontend/Electron build SKIPPED" -ForegroundColor Yellow
