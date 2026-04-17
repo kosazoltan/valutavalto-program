@@ -95,7 +95,7 @@ public class SecurityConfig {
                     .maxAgeInSeconds(31536000))           // HSTS 1 year
                 .referrerPolicy(referrer -> referrer
                     .policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
-                .permissionsPolicy(permissions -> permissions
+                .permissionsPolicyHeader(permissions -> permissions
                     .policy("camera=(), microphone=(), geolocation=()"))
             )
 

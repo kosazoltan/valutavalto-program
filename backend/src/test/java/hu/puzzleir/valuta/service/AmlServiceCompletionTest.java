@@ -59,6 +59,9 @@ class AmlServiceCompletionTest {
     @Mock
     private SanctionScreeningService sanctionScreeningService;
 
+    @Mock
+    private BlacklistService blacklistService;
+
     private static final UUID TEST_COMPANY_ID = UUID.randomUUID();
     private static final UUID TEST_BRANCH_ID = UUID.randomUUID();
 
@@ -69,6 +72,7 @@ class AmlServiceCompletionTest {
         TestingAuthenticationToken auth = new TestingAuthenticationToken("test", "pass", "ROLE_CASHIER");
         auth.setDetails(details);
         SecurityContextHolder.getContext().setAuthentication(auth);
+        lenient().when(blacklistService.findActivePersonMatch(any(), any())).thenReturn(Optional.empty());
     }
 
     // ============ submitToAuthority tesztek ============
@@ -203,6 +207,58 @@ class AmlServiceCompletionTest {
             new BigDecimal("100000"), "C001", "Normál Ügyfél", "NM123456");
 
         assertThat(result.isApproved()).isTrue();
+    }
+
+    @Test
+    @DisplayName("checkTransaction: aktív tiltólista találat → blokkolva (approved=false)")
+    void testCheckTransaction_blacklistMatchBlocks() {
+        SanctionScreeningResult clearResult = SanctionScreeningResult.builder()
+            .matched(false)
+            .riskLevel("CLEAR")
+            .matches(Collections.emptyList())
+            .build();
+
+        ProhibitedPerson prohibitedPerson = ProhibitedPerson.builder()
+            .companyId(TEST_COMPANY_ID)
+            .fullName("Tiltott Ügyfél")
+            .documentNumber("BL123456")
+            .isActive(true)
+            .reason("Belső tiltólista")
+            .build();
+
+        when(sanctionScreeningService.screenCustomer(
+            eq("Tiltott Ügyfél"), any(), any(), any(), any(), any()))
+            .thenReturn(clearResult);
+        when(blacklistService.findActivePersonMatch("Tiltott Ügyfél", "BL123456"))
+            .thenReturn(Optional.of(prohibitedPerson));
+
+        AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
+            new BigDecimal("100000"), "C777", "Tiltott Ügyfél", "BL123456");
+
+        assertThat(result.isApproved()).isFalse();
+        assertThat(result.getRejectionReason()).contains("Tiltólista");
+        assertThat(result.getRejectionReason()).contains("Tiltott Ügyfél");
+    }
+
+    @Test
+    @DisplayName("checkTransaction: ha szankció és tiltólista is egyezne, a szankciós blokk élvez prioritást")
+    void testCheckTransaction_sanctionTakesPriorityOverBlacklist() {
+        SanctionScreeningResult sanctionResult = SanctionScreeningResult.builder()
+            .matched(true)
+            .riskLevel("CONFIRMED")
+            .matches(Collections.emptyList())
+            .build();
+
+        when(sanctionScreeningService.screenCustomer(
+            eq("Dupla Találat"), any(), any(), any(), any(), any()))
+            .thenReturn(sanctionResult);
+
+        AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
+            new BigDecimal("100000"), "C778", "Dupla Találat", "DUAL123");
+
+        assertThat(result.isApproved()).isFalse();
+        assertThat(result.getRejectionReason()).contains("Szankciós lista találat");
+        verify(blacklistService, never()).findActivePersonMatch("Dupla Találat", "DUAL123");
     }
 
     // ============ reverseAccumulation — highRiskFlag törlése ============

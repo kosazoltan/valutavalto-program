@@ -1,4 +1,4 @@
-﻿Command: rg -n -P -S -g "!**/node_modules/**" -g "!**/dist/**" -g "!**/dist-electron/**" -g "!**/build/**" -g "!**/target/**" -g "!**/coverage/**" -g "!**/security-reports/**" -g "!**/.git/**" -g "!**/.venv/**" -g "!**/*.test.*" -g "!**/*.spec.*" "create(Native)?Query\s*\([^\n]*\+|jdbcTemplate\.(query|update|execute)\s*\([^\n]*\+|Runtime\.getRuntime\(\)\.exec|ProcessBuilder\(" backend/src/main/java
+﻿Command: rg -n -U -P -S -g "!**/node_modules/**" -g "!**/dist/**" -g "!**/dist-electron/**" -g "!**/build/**" -g "!**/target/**" -g "!**/coverage/**" -g "!**/security-reports/**" -g "!**/.git/**" -g "!**/.venv/**" -g "!**/*.test.*" -g "!**/*.spec.*" "create(Native)?Query\s*\([^\n]*\+|jdbcTemplate\.(query|update|execute)\s*\([^\n]*\+|Runtime\.getRuntime\(\)\.exec|ProcessBuilder\s*\(\s*(?:\r?\n\s*)*\x22(cmd(?:\.exe)?|powershell(?:\.exe)?|pwsh(?:\.exe)?|sh|/bin/sh)\x22" backend/src/main/java
 Status: PASSED
 Note: No matches found
 

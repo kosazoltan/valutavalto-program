@@ -136,7 +136,7 @@ class PepSourceOfFundsTest {
                     .requiresApproval(false)
                     .requiresDetailedId(false)
                     .build();
-            when(amlService.checkTransaction(any(), any(), any(), any())).thenReturn(amlOk);
+            when(amlService.checkTransaction(any(), any(), any(), any(), any())).thenReturn(amlOk);
         }
 
         // ---- BUY ----

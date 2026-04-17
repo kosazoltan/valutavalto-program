@@ -125,7 +125,7 @@ class TransactionServiceCameraLinkingTest {
         when(amlResult.isApproved()).thenReturn(true);
         when(amlResult.isRequiresApproval()).thenReturn(false);
         when(amlResult.isRequiresDetailedId()).thenReturn(false);
-        when(amlService.checkTransaction(any(), any(), any(), any())).thenReturn(amlResult);
+        when(amlService.checkTransaction(any(), any(), any(), any(), any())).thenReturn(amlResult);
 
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> {
             Transaction tx = invocation.getArgument(0);

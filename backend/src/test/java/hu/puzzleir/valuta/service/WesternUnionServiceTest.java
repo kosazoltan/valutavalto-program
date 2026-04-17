@@ -67,7 +67,7 @@ class WesternUnionServiceTest {
     @Test
     void recordSend_validMtcn_succeeds() {
         when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
-        when(amlService.checkTransaction(any(), any(), any(), any()))
+        when(amlService.checkTransaction(any(), any(), any(), any(), any()))
                 .thenReturn(AmlService.AmlBasicCheckResult.builder().approved(true).build());
         when(wuBalanceRepository.findByBranchIdForUpdate(branchId))
                 .thenReturn(Optional.of(WuBalance.builder()
@@ -146,7 +146,7 @@ class WesternUnionServiceTest {
     @Test
     void validateMtcn_exactlyTenDigits_passes() {
         when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
-        when(amlService.checkTransaction(any(), any(), any(), any()))
+        when(amlService.checkTransaction(any(), any(), any(), any(), any()))
                 .thenReturn(AmlService.AmlBasicCheckResult.builder().approved(true).build());
         when(wuBalanceRepository.findByBranchIdForUpdate(branchId))
                 .thenReturn(Optional.of(WuBalance.builder()
@@ -333,7 +333,7 @@ class WesternUnionServiceTest {
     @Test
     void recordSend_insufficientUsdBalance_throws() {
         when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
-        when(amlService.checkTransaction(any(), any(), any(), any()))
+        when(amlService.checkTransaction(any(), any(), any(), any(), any()))
                 .thenReturn(AmlService.AmlBasicCheckResult.builder().approved(true).build());
         // Egyenleg: 50 USD — küldés: 100 USD → negatívba menne
         when(wuBalanceRepository.findByBranchIdForUpdate(branchId))
@@ -389,7 +389,7 @@ class WesternUnionServiceTest {
                 .build();
 
         when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
-        when(amlService.checkTransaction(any(), any(), any(), any()))
+        when(amlService.checkTransaction(any(), any(), any(), any(), any()))
                 .thenReturn(AmlService.AmlBasicCheckResult.builder()
                         .approved(false)
                         .rejectionReason("Szankci\u00f3s lista tal\u00e1lat")
@@ -398,5 +398,44 @@ class WesternUnionServiceTest {
         assertThatThrownBy(() -> service.recordSend(dto))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("AML ellen\u0151rz\u00e9s megtagadta");
+    }
+
+    @Test
+    void recordIcOut_amlBlocked_whenOnlyUsdAndExchangeRateProvided_throws() {
+        WuTransactionDto dto = WuTransactionDto.builder()
+                .branchId(branchId)
+                .amountUsd(new BigDecimal("200"))
+                .exchangeRate(new BigDecimal("400"))
+                .build();
+
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+        when(amlService.checkTransaction(
+                eq(new BigDecimal("80000")),
+                isNull(),
+                isNull(),
+                isNull(),
+                eq("USD")))
+                .thenReturn(AmlService.AmlBasicCheckResult.builder()
+                        .approved(false)
+                        .rejectionReason("Teszt AML blokk")
+                        .build());
+
+        assertThatThrownBy(() -> service.recordIcOut(dto))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("AML ellenőrzés megtagadta");
+    }
+
+    @Test
+    void recordIcOut_missingRateAndHuf_failsClosedForAml() {
+        WuTransactionDto dto = WuTransactionDto.builder()
+                .branchId(branchId)
+                .amountUsd(new BigDecimal("200"))
+                .build();
+
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+
+        assertThatThrownBy(() -> service.recordIcOut(dto))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("AML alapösszeg");
     }
 }

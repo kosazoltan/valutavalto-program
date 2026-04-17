@@ -6,7 +6,7 @@ Note:
 [DB-PREFLIGHT] Mandatory DB preflight started
 [DB-PREFLIGHT] Checking DB reachability and migration history
 [DB-PREFLIGHT] Local DB connection OK
-[DB-PREFLIGHT] Remote/Neon DB connection failed: psql: error: connection to server at "ep-polished-morning-altxohe7.c-3.eu-central-1.aws.neon.tech" (52.29.229.153), port 5432 failed: SSL SYSCALL error: EOF detected optional mode: remote parity skipped for local/dev run.
+[DB-PREFLIGHT] Remote/Neon DB connection failed: psql: error: connection to server at "ep-polished-morning-altxohe7.c-3.eu-central-1.aws.neon.tech" (3.127.101.230), port 5432 failed: SSL SYSCALL error: EOF detected optional mode: remote parity skipped for local/dev run.
 [DB-PREFLIGHT] Local DB migration table check OK
 [DB-PREFLIGHT] Versioned migrations in repo: 138
 [DB-PREFLIGHT] Applied migrations (local): 138

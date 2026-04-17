@@ -103,6 +103,7 @@ public class CashBalance {
 
     @Version
     @Column(columnDefinition = "bigint default 0")
+    @Builder.Default
     private Long version = 0L;
 
     @LastModifiedDate

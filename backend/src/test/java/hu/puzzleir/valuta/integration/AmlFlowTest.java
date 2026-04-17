@@ -37,6 +37,7 @@ class AmlFlowTest {
     @Mock private hu.puzzleir.valuta.repository.AmlReportRepository amlReportRepository;
     @Mock private hu.puzzleir.valuta.repository.AmlThresholdRepository amlThresholdRepository;
     @Mock private hu.puzzleir.valuta.service.SanctionScreeningService sanctionScreeningService;
+    @Mock private hu.puzzleir.valuta.service.BlacklistService blacklistService;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();
 
@@ -48,6 +49,7 @@ class AmlFlowTest {
                 .matched(false)
                 .riskLevel("CLEAR")
                 .build());
+        lenient().when(blacklistService.findActivePersonMatch(any(), any())).thenReturn(Optional.empty());
     }
 
     @Nested

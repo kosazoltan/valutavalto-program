@@ -56,6 +56,7 @@ public class AmlService {
     private final AmlThresholdRepository amlThresholdRepository;
     private final AuditLogService auditLogService;
     private final SanctionScreeningService sanctionScreeningService;
+    private final BlacklistService blacklistService;
 
     /** Azonositas nelkuli limit (NAV) */
     private static final BigDecimal IDENTIFICATION_LIMIT = new BigDecimal("300000");
@@ -80,6 +81,15 @@ public class AmlService {
             String customerId,
             String customerName,
             String documentNumber) {
+        return checkTransaction(hufAmount, customerId, customerName, documentNumber, null);
+    }
+
+    public AmlBasicCheckResult checkTransaction(
+            BigDecimal hufAmount,
+            String customerId,
+            String customerName,
+            String documentNumber,
+            String currencyCode) {
 
         // 0. Szankciós szűrés — KÖTELEZŐ, mindig az első ellenőrzés
         if (customerName != null && !customerName.isBlank()) {
@@ -95,6 +105,16 @@ public class AmlService {
                     .build();
             } else {
                 log.debug("AML: Szankciós szűrés: TISZTA — ügyfél: '{}'", customerName);
+            }
+
+            Optional<ProhibitedPerson> blacklistMatch = blacklistService.findActivePersonMatch(customerName, documentNumber);
+            if (blacklistMatch.isPresent()) {
+                ProhibitedPerson person = blacklistMatch.get();
+                log.warn("AML: Belső tiltólista találat — ügyfél: '{}', okmány: '{}'", customerName, documentNumber);
+                return AmlBasicCheckResult.builder()
+                    .approved(false)
+                    .rejectionReason("Tiltólista találat: " + person.getFullName() + " — tranzakció megtagadva")
+                    .build();
             }
         }
 
@@ -169,7 +189,6 @@ public class AmlService {
 
         // 5. BIGCTRL 6 szintű kockázati besorolás (heti + negyedéves + éves göngyölés)
         if (customerId != null && !customerId.isBlank()) {
-            String currencyCode = null; // A checkTransaction nem kap devizakódot — classifyTransaction null-safe
             int transactionType = classifyTransaction(customerId, hufAmount, currencyCode);
             result.transactionType(transactionType);
 
@@ -186,6 +205,7 @@ public class AmlService {
                 result.requiresDetailedId(true);
                 log.info("AML: PEP ügyfél (TranzTipus 1): {}", customerId);
             } else if (transactionType == -1) {
+                result.requiresIdentification(true);
                 result.approved(false);
                 result.rejectionReason("Külföldi ügyfél nem kaphat USD-t (TranzTipus -1)");
                 log.warn("AML: Külföldi USD blokkolás: {}", customerId);

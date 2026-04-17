@@ -18,6 +18,9 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -32,6 +35,16 @@ public class BlacklistService {
     public List<ProhibitedPerson> listPersons() {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         return personRepo.findAllByCompanyId(companyId);
+    }
+
+    public Optional<ProhibitedPerson> findActivePersonMatch(String fullName, String documentNumber) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        String normalizedName = normalize(fullName);
+        String normalizedDocument = normalize(documentNumber);
+
+        return personRepo.findAllByCompanyIdAndIsActiveTrue(companyId).stream()
+                .filter(person -> matchesPerson(person, normalizedName, normalizedDocument))
+                .findFirst();
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -153,5 +166,28 @@ public class BlacklistService {
             throw new BusinessException("CSV import hiba: " + e.getMessage(), "CSV_IMPORT_FAILED");
         }
         return imported;
+    }
+
+    private boolean matchesPerson(ProhibitedPerson person, String normalizedName, String normalizedDocument) {
+        if (!normalizedName.isBlank() && normalize(person.getFullName()).equals(normalizedName)) {
+            return true;
+        }
+
+        if (normalizedDocument.isBlank()) {
+            return false;
+        }
+
+        return List.of(person.getDocumentNumber(), person.getIdentityNumber(), person.getPassportNumber()).stream()
+                .filter(Objects::nonNull)
+                .map(this::normalize)
+                .anyMatch(normalizedDocument::equals);
+    }
+
+    private String normalize(String value) {
+        if (value == null) {
+            return "";
+        }
+
+        return value.trim().toLowerCase(Locale.ROOT);
     }
 }

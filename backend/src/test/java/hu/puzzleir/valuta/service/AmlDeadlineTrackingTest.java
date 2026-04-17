@@ -55,6 +55,7 @@ class AmlDeadlineTrackingTest {
     @Mock private AmlThresholdRepository amlThresholdRepository;
     @Mock private AuditLogService auditLogService;
     @Mock private SanctionScreeningService sanctionScreeningService;
+    @Mock private BlacklistService blacklistService;
 
     private static final UUID TEST_COMPANY_ID = UUID.randomUUID();
     private static final UUID TEST_BRANCH_ID  = UUID.randomUUID();
@@ -73,6 +74,7 @@ class AmlDeadlineTrackingTest {
                 any(), any(), any(), any(), any(), any()))
             .thenReturn(SanctionScreeningResult.builder()
                 .matched(false).riskLevel("CLEAR").build());
+        lenient().when(blacklistService.findActivePersonMatch(any(), any())).thenReturn(Optional.empty());
     }
 
     // =========================================================================

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { generateQRContent } from './qrcode'
 import type { QRData } from '@/types/receipt'
 
@@ -66,16 +66,8 @@ describe('generateQRContent', () => {
 })
 
 describe('generateQRCode', () => {
-  it('returns empty string when qrcode module unavailable', async () => {
-    // Mock the dynamic import to fail
-    vi.mock('qrcode', () => {
-      throw new Error('not installed')
-    })
-
-    // Since module is lazy-loaded and may have been cached, test the content function
-    // The generateQRCode is async and returns '' when module not available
+  it('returns a string (qrcode generation is lazy-loaded and optional)', async () => {
     const { generateQRCode } = await import('./qrcode')
-    // In test env qrcode may or may not be installed — just verify it's a string
     const result = await generateQRCode(sampleData)
     expect(typeof result).toBe('string')
   })

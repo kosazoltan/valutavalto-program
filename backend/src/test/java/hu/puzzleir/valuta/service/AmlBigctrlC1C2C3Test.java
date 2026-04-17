@@ -54,6 +54,7 @@ class AmlBigctrlC1C2C3Test {
     @Mock private AmlThresholdRepository amlThresholdRepository;
     @Mock private AuditLogService auditLogService;
     @Mock private SanctionScreeningService sanctionScreeningService;
+    @Mock private BlacklistService blacklistService;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();
     private static final UUID BRANCH_ID  = UUID.randomUUID();
@@ -74,6 +75,7 @@ class AmlBigctrlC1C2C3Test {
                 .matched(false)
                 .riskLevel("CLEAR")
                 .build());
+        when(blacklistService.findActivePersonMatch(any(), any())).thenReturn(Optional.empty());
     }
 
     // =========================================================
@@ -557,16 +559,12 @@ class AmlBigctrlC1C2C3Test {
                 when(customerRepository.findByCustomerCodeAndCompanyId("CFOR", COMPANY_ID))
                     .thenReturn(Optional.of(foreign));
 
-                // checkTransaction nem kap currencyCode-ot direkt — a classifyTransaction null-safe
-                // Ebben a tesztben csak a mező kitöltöttségét ellenőrizzük a lehetséges USD path-ra
-                // (checkTransaction maga null currencyCode-dal hívja classifyTransaction-t,
-                //  ezért a külföldi USD blokkolás itt NEM triggel — ez correct: csak a
-                //  check-all-thresholds-on megy át a currencyCode)
                 AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
-                    new BigDecimal("50000"), "CFOR", "Külföldi Ügyfél", "FOR99999");
+                    new BigDecimal("50000"), "CFOR", "Külföldi Ügyfél", "FOR99999", "USD");
 
-                // külföldi + null deviza → TranzTipus 2 (nem -1, mert USD=null)
-                assertThat(result.getTransactionType()).isEqualTo(2);
+                assertThat(result.getTransactionType()).isEqualTo(-1);
+                assertThat(result.isApproved()).isFalse();
+                assertThat(result.getRejectionReason()).contains("USD");
                 assertThat(result.isRequiresIdentification()).isTrue();
             }
         }

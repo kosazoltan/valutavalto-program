@@ -74,10 +74,24 @@ public class WesternUnionService {
      *
      * @throws ValidationException ha az AML check blokkol
      */
-    private void performAmlCheck(String customerName, String documentNumber, BigDecimal amountHuf, BigDecimal amountUsd) {
+    private void performAmlCheck(String customerName, String documentNumber,
+                                 BigDecimal amountHuf, BigDecimal amountUsd, BigDecimal exchangeRate) {
         BigDecimal hufForCheck = amountHuf;
+        if ((hufForCheck == null || hufForCheck.compareTo(BigDecimal.ZERO) == 0)
+                && amountUsd != null && exchangeRate != null
+                && amountUsd.compareTo(BigDecimal.ZERO) > 0
+                && exchangeRate.compareTo(BigDecimal.ZERO) > 0) {
+            hufForCheck = amountUsd.multiply(exchangeRate);
+        }
+
+        if ((hufForCheck == null || hufForCheck.compareTo(BigDecimal.ZERO) == 0)
+                && amountUsd != null && amountUsd.compareTo(BigDecimal.ZERO) > 0) {
+            throw new ValidationException(
+                    "WU AML alapösszeg nem számítható: HUF összeg vagy pozitív árfolyam szükséges");
+        }
+
         if (hufForCheck == null || hufForCheck.compareTo(BigDecimal.ZERO) == 0) {
-            // Ha nincs HUF összeg, nem fut AML ellenőrzés (pl. IC tranzakciók)
+            // Ha sem HUF összeg, sem becsülhető HUF nincs, nincs mire AML küszöböt számolni.
             return;
         }
 
@@ -85,7 +99,8 @@ public class WesternUnionService {
                 hufForCheck,
                 null,          // WU ügyfélnek nincs belső customerId
                 customerName,
-                documentNumber
+                documentNumber,
+                "USD"
         );
 
         if (!result.isApproved()) {
@@ -109,7 +124,7 @@ public class WesternUnionService {
     public WuTransaction recordSend(WuTransactionDto dto) {
         validateMtcn(dto.getMtcn());
         Branch branch = findBranch(dto.getBranchId());
-        performAmlCheck(dto.getSenderName(), null, dto.getAmountHuf(), dto.getAmountUsd());
+        performAmlCheck(dto.getSenderName(), null, dto.getAmountHuf(), dto.getAmountUsd(), dto.getExchangeRate());
 
         WuTransaction tx = WuTransaction.builder()
                 .branch(branch)
@@ -155,7 +170,7 @@ public class WesternUnionService {
     public WuTransaction recordReceive(WuTransactionDto dto) {
         validateMtcn(dto.getMtcn());
         Branch branch = findBranch(dto.getBranchId());
-        performAmlCheck(dto.getReceiverName(), null, dto.getAmountHuf(), dto.getAmountUsd());
+        performAmlCheck(dto.getReceiverName(), null, dto.getAmountHuf(), dto.getAmountUsd(), dto.getExchangeRate());
 
         WuTransaction tx = WuTransaction.builder()
                 .branch(branch)
@@ -204,6 +219,7 @@ public class WesternUnionService {
     @Transactional(rollbackFor = Exception.class)
     public WuTransaction recordIcIn(WuTransactionDto dto) {
         Branch branch = findBranch(dto.getBranchId());
+        performAmlCheck(null, null, dto.getAmountHuf(), dto.getAmountUsd(), dto.getExchangeRate());
 
         WuTransaction tx = WuTransaction.builder()
                 .branch(branch)
@@ -232,6 +248,7 @@ public class WesternUnionService {
     @Transactional(rollbackFor = Exception.class)
     public WuTransaction recordIcOut(WuTransactionDto dto) {
         Branch branch = findBranch(dto.getBranchId());
+        performAmlCheck(null, null, dto.getAmountHuf(), dto.getAmountUsd(), dto.getExchangeRate());
 
         WuTransaction tx = WuTransaction.builder()
                 .branch(branch)
