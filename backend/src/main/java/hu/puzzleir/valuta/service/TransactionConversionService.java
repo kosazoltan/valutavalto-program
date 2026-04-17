@@ -89,8 +89,11 @@ public class TransactionConversionService {
         // Delphi: if _konverzio=1 then _fizetendo := _fizetendo + _fizetendo
         // Indok: a konverzió valójában vétel+eladás, tehát a tényleges pénzmozgás kétszeres.
         BigDecimal amlAmount = roundedHufAmount.multiply(BigDecimal.valueOf(2));
-        helper.performAmlCheck(amlAmount, request.getCustomerId(), request.getCustomerName(),
-                request.getCustomerDocumentNumber(), fromCurrency.getCode());
+        // A foreign-USD blokk a kapott valutara vonatkozik, nem a leadott devizara.
+        // Legacy parity (CB-018): az AML flagek a parent CONVERSION bizonylatra kerulnek.
+        AmlService.AmlBasicCheckResult amlResult = helper.performAmlCheck(
+                amlAmount, request.getCustomerId(), request.getCustomerName(),
+                request.getCustomerDocumentNumber(), toCurrency.getCode());
 
         // Keszlet ellenorzes
         helper.validateCurrencyStock(branchId, toCurrency.getId(), toAmount);
@@ -124,6 +127,13 @@ public class TransactionConversionService {
                 .roundingAmount(roundingDifference)
                 .customerId(request.getCustomerId())
                 .customerName(request.getCustomerName())
+                .customerAddress(request.getCustomerAddress())
+                .customerDocumentNumber(request.getCustomerDocumentNumber())
+                .customerNationality(request.getCustomerNationality())
+                .sourceOfFunds(request.getSourceOfFunds())
+                .customerIsPep(Boolean.TRUE.equals(request.getCustomerIsPep()))
+                .amlSuspicious(amlResult.isSuspiciousFlag())
+                .amlAnnualLimitReached(amlResult.isAnnualLimitReached())
                 .notes(String.format("Konverzio: %s %s -> %s %s",
                     request.getFromAmount(), fromCurrency.getCode(),
                     toAmount, toCurrency.getCode()))

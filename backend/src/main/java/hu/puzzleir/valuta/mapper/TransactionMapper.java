@@ -159,7 +159,11 @@ public class TransactionMapper {
                 .handlingFee(dto.getHandlingFee())
                 .customerId(dto.getCustomerId())
                 .customerName(dto.getCustomerName())
+                .customerAddress(dto.getCustomerAddress())
                 .customerDocumentNumber(dto.getCustomerDocumentNumber())
+                .customerNationality(dto.getCustomerNationality())
+                .sourceOfFunds(dto.getSourceOfFunds())
+                .customerIsPep(dto.getCustomerIsPep())
                 .build();
     }
 }

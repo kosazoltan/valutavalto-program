@@ -110,6 +110,18 @@ penztar-client/.dev-app/
 frontend-react/test-results/
 frontend-react/e2e-relay-final-report.json
 frontend-react/e2e-relay-results/
+frontend-react/e2e-result.json
+
+# Nagy binarisok — NEM commitolhatok (GitHub 100MB limit + 50MB figyelmeztetes).
+# Ezek lokalis build-artefaktumok, a knowledge index / whisper modellek scripttel
+# (re)generalhatok.
+docs/valuta-knowledge.sqlite
+tools/whisper-models/
+
+# Python bytecode cache
+__pycache__/
+*.pyc
+*.pyo
 frontend-react/tsconfig.node.tsbuildinfo
 frontend-react/tsconfig.tsbuildinfo
 .vite/
@@ -129,6 +141,7 @@ test-output.txt
 frontend-react/dist/
 penztar-client/dist/
 penztar-client/dist-electron/
+.worktrees/
 
 configs/secrets.json
 security-reports/

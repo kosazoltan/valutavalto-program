@@ -11,8 +11,15 @@ if (!proc || !logger) {
 const rootDir = proc.cwd();
 const preloadFile = path.join(rootDir, 'electron', 'preload.ts');
 const electronDir = path.join(rootDir, 'electron');
+// Belső sync handler whitelist — ezek nem a preload-on keresztül futnak,
+// hanem a sync-engine / sync-queue IPC dispatcher közvetlenül hívja meg őket
+// a főfolyamaton belül. A check:ipc ezért nem warn-olja őket hiányzó preload
+// invoke miatt.
 const internalOnlyHandlers = new Set([
   'mark-transaction-synced',
+  'mark-conversion-synced',
+  'mark-bank-transaction-synced',
+  'mark-storno-synced',
 ]);
 
 function readText(filePath) {

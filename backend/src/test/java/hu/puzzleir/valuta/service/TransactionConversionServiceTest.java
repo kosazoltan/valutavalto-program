@@ -48,6 +48,13 @@ class TransactionConversionServiceTest {
     void setUp() {
         lenient().when(helper.resolveCurrencyId(eq(EUR_ID), any())).thenReturn(EUR_ID);
         lenient().when(helper.resolveCurrencyId(eq(USD_ID), any())).thenReturn(USD_ID);
+        // CB-018 parity: AML result must propagate to Transaction.amlSuspicious / amlAnnualLimitReached
+        lenient().when(helper.performAmlCheck(any(), any(), any(), any(), any()))
+                .thenReturn(AmlService.AmlBasicCheckResult.builder()
+                        .approved(true)
+                        .suspiciousFlag(false)
+                        .annualLimitReached(false)
+                        .build());
     }
 
     @Test
@@ -163,6 +170,126 @@ class TransactionConversionServiceTest {
             // Cash balance updated for both currencies
             verify(helper).updateCashBalance(eq(BRANCH_ID), eq(EUR_ID), any(), eq(true));
             verify(helper).updateCashBalance(eq(BRANCH_ID), eq(USD_ID), any(), eq(false));
+        }
+    }
+
+    @Test
+    @DisplayName("CB-018 parity - AML suspicious/annualLimitReached flags persisted on CONVERSION transaction")
+    void executeConversion_propagatesAmlFlagsToTransactionEntity() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            su.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
+
+            Company company = mock(Company.class);
+            Branch branch = mock(Branch.class);
+            Worker worker = mock(Worker.class);
+            when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+            when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+
+            Currency eur = mock(Currency.class);
+            when(eur.getCode()).thenReturn("EUR");
+            when(eur.getId()).thenReturn(EUR_ID);
+            Currency usd = mock(Currency.class);
+            when(usd.getCode()).thenReturn("USD");
+            when(usd.getId()).thenReturn(USD_ID);
+            when(currencyRepository.findById(EUR_ID)).thenReturn(Optional.of(eur));
+            when(currencyRepository.findById(USD_ID)).thenReturn(Optional.of(usd));
+
+            ExchangeRate eurRate = mock(ExchangeRate.class);
+            when(eurRate.getBaseBuyRate()).thenReturn(new BigDecimal("390.50"));
+            ExchangeRate usdRate = mock(ExchangeRate.class);
+            when(usdRate.getBaseSellRate()).thenReturn(new BigDecimal("360.20"));
+            when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
+            when(exchangeRateService.getCurrentRate(USD_ID)).thenReturn(usdRate);
+
+            when(receiptSequenceService.generateReceiptNumber(eq(BRANCH_ID), any()))
+                    .thenReturn("R201", "R202", "R203");
+            when(handlingFeeCalculator.calculate(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+            when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            // Override AML mock to simulate BIGCTRL-flagged suspicious + annual-limit scenario
+            when(helper.performAmlCheck(any(), any(), any(), any(), any()))
+                    .thenReturn(AmlService.AmlBasicCheckResult.builder()
+                            .approved(true)
+                            .suspiciousFlag(true)
+                            .annualLimitReached(true)
+                            .build());
+
+            ConversionRequest req = new ConversionRequest();
+            req.setFromCurrencyId(EUR_ID);
+            req.setToCurrencyId(USD_ID);
+            req.setFromAmount(new BigDecimal("100"));
+            req.setCustomerId("C-777");
+            req.setCustomerName("Gyanus Ugyfel");
+            req.setCustomerDocumentNumber("ID-777");
+            req.setSourceOfFunds("munkaber");
+            req.setCustomerIsPep(Boolean.TRUE);
+
+            Transaction result = conversionService.executeConversion(req);
+            assertThat(result).isNotNull();
+            assertThat(result.getTransactionType()).isEqualTo(TransactionType.CONVERSION);
+            assertThat(result.getAmlSuspicious()).as("CB-018 parity: suspiciousFlag").isTrue();
+            assertThat(result.getAmlAnnualLimitReached()).as("CB-018 parity: annualLimitReached").isTrue();
+            assertThat(result.getSourceOfFunds()).as("CB-004 parity: sourceOfFunds").isEqualTo("munkaber");
+            assertThat(result.getCustomerIsPep()).as("CB-004 parity: customerIsPep").isTrue();
+            assertThat(result.getCustomerDocumentNumber()).isEqualTo("ID-777");
+        }
+    }
+
+    @Test
+    @DisplayName("executeConversion - AML receives doubled rounded HUF and target currency code")
+    void executeConversion_passesDoubledRoundedHufAndTargetCurrencyToAml() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            su.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
+
+            Company company = mock(Company.class);
+            Branch branch = mock(Branch.class);
+            Worker worker = mock(Worker.class);
+            when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+            when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+
+            Currency eur = mock(Currency.class);
+            when(eur.getCode()).thenReturn("EUR");
+            when(eur.getId()).thenReturn(EUR_ID);
+            Currency usd = mock(Currency.class);
+            when(usd.getCode()).thenReturn("USD");
+            when(usd.getId()).thenReturn(USD_ID);
+            when(currencyRepository.findById(EUR_ID)).thenReturn(Optional.of(eur));
+            when(currencyRepository.findById(USD_ID)).thenReturn(Optional.of(usd));
+
+            ExchangeRate eurRate = mock(ExchangeRate.class);
+            when(eurRate.getBaseBuyRate()).thenReturn(new BigDecimal("390.52"));
+            ExchangeRate usdRate = mock(ExchangeRate.class);
+            when(usdRate.getBaseSellRate()).thenReturn(new BigDecimal("360.20"));
+            when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
+            when(exchangeRateService.getCurrentRate(USD_ID)).thenReturn(usdRate);
+
+            when(receiptSequenceService.generateReceiptNumber(eq(BRANCH_ID), any()))
+                    .thenReturn("R101", "R102", "R103");
+            when(handlingFeeCalculator.calculate(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+            when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            ConversionRequest req = new ConversionRequest();
+            req.setFromCurrencyId(EUR_ID);
+            req.setToCurrencyId(USD_ID);
+            req.setFromAmount(new BigDecimal("100"));
+            req.setCustomerId("FOREIGN-1");
+            req.setCustomerName("Foreign Customer");
+            req.setCustomerDocumentNumber("DOC-1");
+
+            conversionService.executeConversion(req);
+
+            verify(helper).performAmlCheck(
+                    eq(new BigDecimal("78100")),
+                    eq("FOREIGN-1"),
+                    eq("Foreign Customer"),
+                    eq("DOC-1"),
+                    eq("USD"));
         }
     }
 }

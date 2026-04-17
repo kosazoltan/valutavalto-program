@@ -3,7 +3,18 @@ Status: PASSED
 Note: 
 
 --- STDOUT ---
-found 0 vulnerabilities
+# npm audit report
+
+follow-redirects  <=1.15.11
+Severity: moderate
+follow-redirects leaks Custom Authentication Headers to Cross-Domain Redirect Targets - https://github.com/advisories/GHSA-r4q5-vmmm-2653
+fix available via `npm audit fix`
+node_modules/follow-redirects
+
+1 moderate severity vulnerability
+
+To address all issues, run:
+  npm audit fix
 
 
 --- STDERR ---

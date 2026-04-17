@@ -33,5 +33,13 @@ public class ConversionRequestDto {
 
     private String customerId;
     private String customerName;
+    private String customerAddress;
     private String customerDocumentNumber;
+    private String customerNationality;
+
+    /** Pénzeszköz forrása — 300.000 Ft feletti tranzakciónál ajánlott (Pmt. parity) */
+    private String sourceOfFunds;
+
+    /** PEP (kiemelt közszereplő) státusz */
+    private Boolean customerIsPep;
 }

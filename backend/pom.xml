@@ -8,7 +8,10 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.11</version>
+        <!-- Supply-chain upgrade: 3.5.11 -> 3.5.13
+             - CVE-2026-22731 (Spring Boot Actuator auth bypass) fixed in 3.5.12
+             - CVE-2026-29145 (Tomcat 10.1.52 CLIENT_CERT) fixed by bundled Tomcat 10.1.53 in 3.5.13 -->
+        <version>3.5.13</version>
         <relativePath/>
     </parent>
     
@@ -26,6 +29,10 @@
         <spring-security.version>6.5.9</spring-security.version>
         <!-- CVE-2026-33186 fix: force patched grpc-api over Google client transitive -->
         <grpc.version>1.80.0</grpc.version>
+        <!-- Supply-chain override: Spring Boot 3.5.13 bundles Tomcat 10.1.53, de a
+             2026 április CVE-k (CVE-2026-34483/34486/34487, CVSS 7.5) csak 10.1.54-ben
+             javítottak. Spring Boot 3.5.14 még nincs kiadva (milestone 2026-04-23). -->
+        <tomcat.version>10.1.54</tomcat.version>
         <!-- Surefire argLine — ures alapertelmezett, JDK 25 profil felulirja -->
     </properties>
     
@@ -107,11 +114,13 @@
             <scope>runtime</scope>
         </dependency>
         
-        <!-- SpringDoc OpenAPI / Swagger UI -->
+        <!-- SpringDoc OpenAPI / Swagger UI
+             Supply-chain upgrade: 2.8.16 -> 2.8.17
+             - Brings swagger-ui 5.32.2 which bumps DOMPurify 3.2.6 -> 3.3.2 (mXSS fix) -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>2.8.16</version>
+            <version>2.8.17</version>
         </dependency>
 
         <!-- Webcam capture for USB cameras -->

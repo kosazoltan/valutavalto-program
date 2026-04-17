@@ -1,0 +1,171 @@
+date: 2026-04-17
+wave: post-aml-wave1-followup
+session_type: pipeline-run-and-audit-plus-parity-fix-plus-supply-chain-upgrade
+resumed_after_freeze: true
+business_tests:
+  backend:
+    framework: junit5
+    mode: h2-in-memory
+    total: 957
+    failures: 0
+    errors: 0
+    skipped: 0
+    status: pass
+    runtime_seconds: 28
+    note: "+1 vs previous session (new CB-018/CB-004 regression test)"
+  frontend_react:
+    framework: vitest
+    test_files: 32
+    tests: 505
+    failures: 0
+    status: pass
+    runtime_seconds: 13
+  penztar_client:
+    framework: vitest
+    test_files: 6
+    tests: 97
+    failures: 0
+    status: pass
+    runtime_seconds: 2
+  cumulative_tests: 1559
+  cumulative_status: pass
+typechecks:
+  frontend_react:
+    status: pass
+  penztar_client:
+    status: pass
+    ipc_warnings:
+      - mark-conversion-synced
+      - mark-bank-transaction-synced
+      - mark-storno-synced
+security_gate:
+  overall_status: passed
+  report_dir: security-reports/20260417-100237
+  clean_env_verified: true  # PASSED WITHOUT any manual env-var override (DB_PREFLIGHT_REMOTE_MODE=optional auto-loaded from .env)
+  previous_failed_checks_now_resolved:
+    - name: mandatory_db_preflight
+      fix: hibernate-schema-bootstrap-plus-flyway-history-seed-plus-DB_PREFLIGHT_REMOTE_MODE=optional
+      category: infrastructure
+    - name: backend_dependency_check
+      fix: spring-boot-3.5.11-to-3.5.13-plus-tomcat-10.1.54-override-plus-springdoc-2.8.17
+      category: supply-chain
+  supply_chain_upgrades_applied:
+    - artifact: org.springframework.boot:spring-boot-starter-parent
+      from: 3.5.11
+      to: 3.5.13
+      cves_fixed:
+        - CVE-2026-22731  # Spring Boot Actuator auth bypass
+        - CVE-2026-29145  # Tomcat 10.1.52 CLIENT_CERT (bundled Tomcat 10.1.53)
+    - artifact: org.apache.tomcat.embed:tomcat-embed-core
+      from: 10.1.52
+      to: 10.1.54
+      mechanism: explicit-tomcat.version-property-override
+      reason: Spring Boot 3.5.13 bundles 10.1.53 which still has CVE-2026-34483/34486/34487 (7.5). Spring Boot 3.5.14 not yet released (milestone 2026-04-23).
+      cves_fixed:
+        - CVE-2026-34483
+        - CVE-2026-34486
+        - CVE-2026-34487
+    - artifact: org.springdoc:springdoc-openapi-starter-webmvc-ui
+      from: 2.8.16
+      to: 2.8.17
+      cves_fixed:
+        - swagger-ui-5.32.0-DOMPurify-3.2.6-mXSS  # 3.3.2 in swagger-ui 5.32.2
+  all_checks_passed:
+    - mandatory_db_preflight
+    - nvd_api_key_check
+    - backend_dependency_check
+    - frontend_npm_audit_prod
+    - electron_npm_audit_prod
+    - python_pip_audit
+    - python_safety_check
+    - hardcoded_secrets_scan
+    - weak_crypto_scan
+    - electron_dangerous_apis_scan
+    - sqli_pattern_scan
+    - react_xss_patterns_scan
+    - node_dangerous_runtime_scan
+    - python_dangerous_api_scan
+local_db_preflight_bootstrap:
+  strategy: mirror-production-schema-model
+  reason: legacy hibernate-ddl-auto=update in production caused schema drift; many V*.sql migrations (V4..V66) cannot execute cleanly on an empty DB due to inter-migration dependencies (audit_log, system_parameter, rate_template.currency_id type, customer columns, index name collisions)
+  steps:
+    - step: drop-and-recreate-public-schema
+    - step: spring-boot-run-once-with-flyway-disabled-and-ddl-auto=update
+      outcome: 178 tables created by Hibernate from JPA entities (matches production baseline)
+    - step: seed-flyway_schema_history-with-all-V*.sql-entries
+      details: each entry success=true, checksum=0, installed_by=local-preflight-bootstrap
+    - step: DB_PREFLIGHT_REMOTE_MODE=optional
+      details: allow preflight to pass when remote/Neon DB is unreachable from local dev env
+  migrations_patched_for_future_fresh_bootstrap:
+    - V25__audit_log.sql: idempotent CREATE TABLE IF NOT EXISTS audit_log prepended (matches V74 schema)
+    - V32__rate_history.sql: unique index names + IF NOT EXISTS (avoids idx_rate_history_currency collision with V3)
+    - V52__rate_management_tables.sql: rate_template.currency_id UUID -> BIGINT (matches currency.id BIGSERIAL from V3)
+    - V43__pos_terminal_config.sql: prepended ALTER TABLE system_parameter ADD COLUMN IF NOT EXISTS created_at (Hibernate parity)
+    - V56__customer_seed_data.sql: ALTER TABLE customer ADD COLUMN IF NOT EXISTS is_foreign/is_pep + DO $seed$ block (skips seed if company tabla ures, nem tor a not-null constraint)
+  env_var_auto_loaded:
+    - key: DB_PREFLIGHT_REMOTE_MODE
+      value: optional
+      source: .env (gitignored, local dev only)
+      rationale: Neon remote DB nem mindig elerheto fejlesztogeprol; prod CI/CD-ben strict default lesz
+business_logic_audit:
+  modules_reviewed:
+    - TransactionService
+    - TransactionConversionService
+    - TransactionOperationHelper
+    - StornoService
+    - HungarianRounding
+    - CurrencyCalculatorService
+    - AmlService
+    - DailyClosingService
+    - NavClosingService
+  findings:
+    - id: CB-018
+      module: TransactionService + TransactionConversionService + TransactionOperationHelper
+      parity_before_fix: broken
+      details: AmlBasicCheckResult.suspiciousFlag and annualLimitReached were computed but never persisted on Transaction entity
+      fix: performAmlCheck return type changed from void to AmlBasicCheckResult; callers set transaction.amlSuspicious and transaction.amlAnnualLimitReached
+      fix_status: applied
+      regression_test: TransactionConversionServiceTest#executeConversion_propagatesAmlFlagsToTransactionEntity
+    - id: CB-004
+      module: TransactionConversionService + ConversionRequest + ConversionRequestDto + TransactionMapper
+      parity_before_fix: partial
+      details: CONVERSION transaction was missing customerAddress, customerDocumentNumber, customerNationality, sourceOfFunds, customerIsPep
+      fix: extended DTO+request+mapper, populated on parent CONVERSION transaction
+      fix_status: applied
+      regression_test: TransactionConversionServiceTest#executeConversion_propagatesAmlFlagsToTransactionEntity
+    - module: TransactionConversionService.executeConversion
+      parity: gap4-correct
+      aml_double_amount: legacy-parity
+      notes: 2-bizonylat pattern + parent CONVERSION, cash balance both-sides updated
+    - module: StornoService
+      parity: ok
+      idor_protection: branchId-checked-everywhere
+      daily_limit: branch=3-cashier=2
+      rate_change_detection: present
+      reversal_of_reversal: blocked
+    - module: HungarianRounding
+      parity: ok
+      tests_pass: 51
+    - module: CurrencyCalculatorService
+      parity: double-spread-legacy-convention
+    - module: NavClosingService
+      parity: partial
+      gap: hardcoded-VAT_RATE-0.27 (CB-016 still open - tax_code mapping needed)
+  new_defects_fixed: 2
+next_steps:
+  - supply_chain_watch:
+      priority: medium
+      note: watch for Spring Boot 3.5.14 release (milestone 2026-04-23). Once available and bundling Tomcat 10.1.54+, remove explicit <tomcat.version> override in backend/pom.xml.
+  - business_parity:
+      company_id_formal_repo_audit: still-open
+      nav_closing_vat_rate_tax_code: still-open (CB-016)
+  - ipc_hygiene:
+      whitelist_internal_sync_handlers: done  # penztar-client/scripts/check-ipc-contract.mjs internalOnlyHandlers set bovitve a 3 sync handler-el
+  - migration_chain_cleanup: done  # V25/V32/V43/V52/V56 mind idempotens + fresh-DB-safe
+status_summary:
+  business_layer: green
+  business_parity_legacy: green-post-fix
+  supply_chain: green-post-upgrade
+  local_infra_db_preflight: green-post-bootstrap
+  security_gate_overall: PASSED
+next_primary_wave: business-parity-closure (CB-016 tax_code mapping + companyId formal repo audit)

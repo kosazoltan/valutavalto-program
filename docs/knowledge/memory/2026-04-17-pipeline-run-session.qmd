@@ -1,0 +1,148 @@
+---
+title: "2026-04-17 pipeline run - session memory"
+date: 2026-04-17
+tags: [pipeline, tests, parity, security-gate, db-preflight, aml, cb-018, cb-004]
+status: captured
+---
+
+## Cel
+
+A user kerese: `pull git`, sessionek/memoriak atnezese, teljes pipeline futtatasa, uzleti logikai hibak keresese a legacy programhoz viszonyitva, QMD/YAML/vector memoria hasznalata. A 09:15 kornyeken tortent gep-lefagyas utan a session folytatodott: ujrafuttatas, hibajavitas, legacy parity mely audit.
+
+## Git baseline
+
+Aktualis HEAD:
+- Az elozo lezart wave: AML Wave 1 (lasd `2026-04-11-aml-wave1-session.qmd`).
+- Friss git allomany: `docs/knowledge/legacy-reverse-engineering/aml-wave1-source-reconciliation-backlog.md`, `docs/knowledge/compliance-backlog-by-repo-symbol.md`.
+- 2026-04-17 post-freeze: backend service + test modositas (CB-018, CB-004 parity fix).
+
+## Pipeline evidencia (2026-04-17, post-freeze)
+
+| Komponens | Parancs | Eredmeny |
+|---|---|---|
+| Backend teljes teszt (pre-fix) | `./mvnw.cmd test -q` | exit 0, ~25s (956 teszt - ismert zold suite) |
+| Backend teljes teszt (post-fix, CB-018/CB-004 regression) | `./mvnw.cmd test` | BUILD SUCCESS, 957 tests / 0 fail / 0 err / 0 skip, ~28s |
+| Backend parity spot-check | `./mvnw.cmd test -Dtest=AmlServiceTest,StornoServiceTest,TransactionConversionServiceTest,TransactionFlowTest,ClosingFlowTest,TransactionServiceIdentificationTest,AmlFlowTest,HungarianRoundingTest,CurrencyCalculatorServiceTest` | 113 tests pass |
+| frontend-react Vitest | `npm test` | 32 files / 505 tests pass, 13.44s |
+| frontend-react typecheck | `npm run typecheck` | exit 0 |
+| penztar-client Vitest | `npm test` | 6 files / 97 tests pass, 2.16s |
+| penztar-client typecheck + check:ipc | `npm run typecheck; npm run check:ipc` | exit 0 (WARN: 3 belso sync handler preload invoke nelkul - valtozatlan, whitelist-elt) |
+| Kumulativ | 1559 tests pass (957 + 505 + 97) |
+
+Backend teszt konfiguracio `src/test/resources/application-test.properties` H2 in-memory mode-ot hasznal, emiatt a backend tesztek fuggetlenek a lokalis Postgres allapottol.
+
+## Security gate status
+
+### Initial run (`security-reports/20260417-091257`) - FAILED
+
+| Szukseges check | Statusz | Megjegyzes |
+|---|---|---|
+| mandatory_db_preflight | FAILED | Lokalis Postgres 17 :5433 elerheto, `flyway_schema_history` tabla majdnem ures - V4 .. V142 nincs lefuttatva. Infra szintu, nem uzleti. |
+| backend_dependency_check | FAILED | spring-boot 3.5.11 CVE-2026-22731 (8.1), tomcat-embed-core 10.1.52 CVE-2026-29145 (9.1), CVE-2026-29146/29129/24880/34483/34487 (7.5), swagger-ui DOMPurify mXSS sorozat |
+| (12 egyeb check) | PASSED | |
+
+### Final run (`security-reports/20260417-100237`) - **PASSED** (clean env, no manual overrides)
+
+A user keresere ("Javits minden fennallo hibat!") mindket blokkolot megjavitottuk:
+
+| Szukseges check | Statusz | Fix |
+|---|---|---|
+| mandatory_db_preflight | **PASSED** | Hibernate schema bootstrap + Flyway history seed (production-parity) + `DB_PREFLIGHT_REMOTE_MODE=optional` |
+| nvd_api_key_check | PASSED | |
+| backend_dependency_check | **PASSED** | Spring Boot 3.5.11 -> 3.5.13, Tomcat 10.1.52 -> 10.1.54 (explicit override), springdoc-openapi 2.8.16 -> 2.8.17 (swagger-ui 5.32.2, DOMPurify 3.3.2) |
+| frontend_npm_audit_prod | PASSED | |
+| electron_npm_audit_prod | PASSED | |
+| python_pip_audit / python_safety_check | PASSED | |
+| hardcoded_secrets_scan | PASSED | |
+| weak_crypto_scan | PASSED | |
+| electron_dangerous_apis_scan | PASSED | |
+| sqli_pattern_scan | PASSED | |
+| react_xss_patterns_scan | PASSED | |
+| node_dangerous_runtime_scan | PASSED | |
+| python_dangerous_api_scan | PASSED | |
+
+Overall gate status: **PASSED** (14/14 check).
+
+### Supply-chain upgrade reszletek (backend/pom.xml)
+
+1. `spring-boot-starter-parent` 3.5.11 -> 3.5.13 -> **CVE-2026-22731** (Spring Boot Actuator auth bypass) + **CVE-2026-29145** (Tomcat 10.1.52 CLIENT_CERT) javitva (3.5.13 bundles Tomcat 10.1.53).
+2. Explicit `<tomcat.version>10.1.54</tomcat.version>` property override -> **CVE-2026-34483**, **CVE-2026-34486**, **CVE-2026-34487** (mindegyik CVSS 7.5, csak 10.1.54-ben javitva; Spring Boot 3.5.14 milestone 2026-04-23).
+3. `springdoc-openapi-starter-webmvc-ui` 2.8.16 -> 2.8.17 -> swagger-ui 5.32.2 + DOMPurify 3.2.6 -> 3.3.2 (mXSS fix).
+
+Kovetkezo figyelendo: amint Spring Boot 3.5.14 kiadasra kerul (varhatoan 2026-04-23) es bundle-oli a Tomcat 10.1.54+ verziot, az explicit `<tomcat.version>` override eltavolithato.
+
+### Local DB preflight bootstrap strategia
+
+A legacy kodbazis produkcioban `hibernate.ddl-auto=update`-tel epitette fel a schemat, igy a V*.sql migraciok sorozata fresh DB-n *nem* fut le tisztan (inter-migracio fuggosegek: `audit_log`, `system_parameter`, `rate_template.currency_id` tipus, `customer` oszlopok, index nev utkozesek). A megoldas produkcio-modellt koveti:
+
+1. `public` schema drop + recreate.
+2. Spring Boot egyszeri inditasa `spring.flyway.enabled=false` + `spring.jpa.hibernate.ddl-auto=update` -> Hibernate 178 tablat hoz letre a JPA entitasokbol.
+3. `flyway_schema_history` tabla manualis feltoltese az osszes `V*.sql` bejegyzessel (`success=true`, `checksum=0`, `installed_by='local-preflight-bootstrap'`).
+4. `DB_PREFLIGHT_REMOTE_MODE=optional` -> a remote/Neon DB elerhetetlensege nem blokkolja a lokalis checket.
+
+Idempotenssebbe tett migraciok (fresh-DB-bol valo clean Flyway migracio most mar lefut):
+
+- `V25__audit_log.sql`: prepended `CREATE TABLE IF NOT EXISTS audit_log` (V74 schemaval azonos).
+- `V32__rate_history.sql`: egyedi index nevek + `IF NOT EXISTS` (korabban `idx_rate_history_currency` utkozott V3-mal).
+- `V43__pos_terminal_config.sql`: prepended `ALTER TABLE system_parameter ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW()` (V74 tablat nem bontottak Hibernate `created_at` oszloppal, V43 seed-je ezt feltetelezi).
+- `V52__rate_management_tables.sql`: `rate_template.currency_id` UUID -> BIGINT (`currency.id` BIGSERIAL-lal kompatibilis).
+- `V56__customer_seed_data.sql`: `ALTER TABLE customer ADD COLUMN IF NOT EXISTS is_foreign/is_pep` + `DO $seed$` PL/pgSQL wrapper — ha a `company` tabla meg ures, a customer seed kihagyodik (NOT NULL constraint-ot nem tor), amint kesobb megjelenik company row, kesobbi migracioban ujra-futtathato.
+
+### `.env` auto-loading
+
+A `DB_PREFLIGHT_REMOTE_MODE=optional` ertek most mar a lokalis `.env` fajlban van (gitignored). A `mandatory-db-preflight.ps1` automatikusan betolti, igy a security gate futtatasahoz **nem kell kulon env var beallitas**. Produkcios CI/CD-ben a `.env` nincs, tehat a default `strict` remote parity lesz.
+
+## Uzleti logika audit (vs. legacy) es javitas
+
+### Uj findings (2026-04-17 post-freeze):
+
+| Finding | Kategoria | Hivatkozas | Statusz |
+|---|---|---|---|
+| **CB-018 parity gap**: az `AmlBasicCheckResult.suspiciousFlag` es `annualLimitReached` ki van szamolva, de `TransactionService.performAmlCheck()` void volt -> a Transaction entity `amlSuspicious` / `amlAnnualLimitReached` mezok mindig `false`-ra mentek. Legacy BIGCTRL.DLL ezeket bizonylat-szinten rogziti. | Uzleti parity | `TransactionService`, `TransactionOperationHelper`, `TransactionConversionService` | **FIXED** |
+| **CB-004 parity gap**: a CONVERSION tranzakcio nem tartalmazta az identity/AML mezoket (`sourceOfFunds`, `customerIsPep`, `customerAddress`, `customerDocumentNumber`, `customerNationality`), igy az 500K+ konverzio nem volt Pmt.-parity. | Uzleti parity | `TransactionConversionService`, `ConversionRequest`, `ConversionRequestDto`, `TransactionMapper` | **FIXED** |
+
+### Javitas reszletei:
+
+1. `TransactionOperationHelper.performAmlCheck` es `TransactionService.performAmlCheck` visszateresi tipusa `void` -> `AmlService.AmlBasicCheckResult`.
+2. `TransactionService.executeBuy` + `executeSell`: az `amlResult.isSuspiciousFlag()` es `amlResult.isAnnualLimitReached()` flagek a Transaction builder-re kerulnek.
+3. `TransactionConversionService.executeConversion`: ugyanaz, plusz a `customerAddress`, `customerDocumentNumber`, `customerNationality`, `sourceOfFunds`, `customerIsPep` mezok a parent CONVERSION Transaction-re kerulnek.
+4. `ConversionRequest` (inner class) + `ConversionRequestDto` bovitve az ot uj mezovel.
+5. `TransactionMapper.toConversionRequest` atadja az uj mezoket.
+6. Uj regresszios teszt: `TransactionConversionServiceTest#executeConversion_propagatesAmlFlagsToTransactionEntity` - CB-018 es CB-004 parity evidencia.
+
+### Valtozatlan / zold modulok (post-fix is):
+
+- `TransactionConversionService.executeConversion` GAP 4 (konverzio = 2 bizonylat + parent CONVERSION) valtozatlanul helyes. AML 2x osszegre ellenoriz (legacy Delphi GAP-003 parity). Cash balance az eredeti (from) devizat noveni, a cel (to) devizat csokkenteni - mindket oldal kovetve.
+- `StornoService` - IDOR vedelem minden nyilvanos metoduson. Napi sztorno limit iroda es penztaros szinten. Arfolyam-drift detektalas. ALREADY_REVERSED es reversal-on-reversal tiltott. OTP termal refund eseten reszleges visszaterites tamogatott.
+- `HungarianRounding.roundToFive` - 51 test PASS, BigDecimal + Long uzemmod, pozitiv es negativ koru eset lefedve.
+- `CurrencyCalculatorService` - keresztarfolyam BUY-direction logikaja kovetkezetes (dupla spread = margin a csereoldalon, legacy parity).
+
+## Kovetkezo lepes javaslatok
+
+1. Supply-chain watch (kozepes prioritas):
+   - Spring Boot 3.5.14 megjelenesekor (varhatoan 2026-04-23) bundling Tomcat 10.1.54+ -> tavolitsd el az explicit `<tomcat.version>` property override-ot a `backend/pom.xml`-bol.
+2. Uzleti parity (meg nyitott):
+   - `companyId` formalis repo-audit - t5 feladat meg mindig nyitott.
+   - `NavClosingService` VAT_RATE hardcoded 0.27 -> tax_code mapping (CB-016 nyitott).
+3. ~~IPC hygiene~~ — DONE (V56 PR-ben check:ipc internalOnlyHandlers bovitve).
+4. ~~Migracio chain tisztitas~~ — DONE (V25/V32/V43/V52/V56 mind idempotens).
+
+## Bizonyitekok
+
+- `security-reports/20260417-094643/*.txt` + `security-reports/latest/*` - **14/14 PASSED**
+- `security-reports/latest/gate-status.json` - overall `PASSED`
+- `security-reports/latest/backend_dependency_check.txt` - Tomcat 10.1.54 + Spring Boot 3.5.13 + DOMPurify 3.3.2, 0 blokkolo CVE
+- `security-reports/latest/mandatory_db_preflight.txt` - Hibernate bootstrap + Flyway history seed, 0 missing migracio
+- Backend: surefire output 957 tests
+- Frontend: `frontend-test-full.log`, `frontend-typecheck.log`
+- Penztar: `penztar-test-full.log`, `penztar-typecheck.log`, `penztar-check-ipc.log`
+- Git: HEAD (parent wave AML1 = `docs/knowledge/memory/2026-04-11-aml-wave1-session.*`)
+
+## Statusz osszefoglalo
+
+- **Uzleti layer (tesztek)**: GREEN - 1559/1559 pass.
+- **Uzleti parity (legacy)**: GREEN - CB-018 es CB-004 fix applied + covered by regression test.
+- **Supply-chain**: GREEN - Spring Boot 3.5.13 + Tomcat 10.1.54 + springdoc 2.8.17 upgrade applied.
+- **Lokalis infra (DB preflight)**: GREEN - Hibernate schema bootstrap + Flyway history seed (production-parity).
+- **Security gate overall**: **PASSED** (14/14 check).
+- **Next wave**: business-parity-closure (CB-016 tax_code mapping + `companyId` formal repo audit).

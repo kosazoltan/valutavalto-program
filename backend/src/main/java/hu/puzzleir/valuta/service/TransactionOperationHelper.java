@@ -52,12 +52,15 @@ public class TransactionOperationHelper {
 
     /**
      * AML ellenorzes a tranzakcio elott.
+     *
+     * Legacy parity (CB-018): a visszakapott `AmlBasicCheckResult` flagek
+     * (`suspiciousFlag`, `annualLimitReached`) a hivo oldalon a Transaction entitasba
+     * kerulnek, hogy a bizonylat tartalmazza az AML besorolast (legacy BIGCTRL mezokkel parity).
      */
-    public void performAmlCheck(BigDecimal hufAmount, String customerId,
+    public AmlService.AmlBasicCheckResult performAmlCheck(BigDecimal hufAmount, String customerId,
                                  String customerName, String documentNumber, String currencyCode) {
-        // 1. Alapszintes AML ellenorzes (azonositas + gonyolodes + gyanusagi flag)
         AmlService.AmlBasicCheckResult basicResult = amlService.checkTransaction(
-                hufAmount, customerId, customerName, documentNumber);
+                hufAmount, customerId, customerName, documentNumber, currencyCode);
 
         if (basicResult == null) {
             log.error("AML checkTransaction null eredmenyt adott, tranzakcio blokkolva");
@@ -76,7 +79,6 @@ public class TransactionOperationHelper {
                     : "Supervisor jovahagyas szukseges (AML limit)!");
         }
 
-        // 2. Legacy BIGCTRL.DLL klasszifikacio - blokkolo TranzTipus -1 ellenorzes
         if (customerId != null && !customerId.isBlank()) {
             var thresholdResult = amlService.checkAllThresholds(customerId, hufAmount, currencyCode);
             if (thresholdResult != null && thresholdResult.isBlocked()) {
@@ -87,10 +89,11 @@ public class TransactionOperationHelper {
             }
         }
 
-        // 3. Reszletes azonositas logolasa (1.5M+ Ft)
         if (basicResult.isRequiresDetailedId()) {
             log.warn("AML: Reszletes azonositas szukseges - {} Ft, ugyfel: {}", hufAmount, customerId);
         }
+
+        return basicResult;
     }
 
     /**

@@ -200,8 +200,9 @@ public class TransactionService {
         // 300K+ tranzakcio eseten ugyfelazonositas kotelezo.
         validateIdentification(payableAmount, request.getCustomerName(), request.getCustomerDocumentNumber());
 
-        // AML ellenőrzés (Pmt. 2017. évi LIII. tv.)
-        performAmlCheck(payableAmount, request.getCustomerId(), request.getCustomerName(),
+        // AML ellenőrzés (Pmt. 2017. évi LIII. tv.) — flagek a Transaction-be CB-018 szerint
+        AmlService.AmlBasicCheckResult amlResult = performAmlCheck(
+                payableAmount, request.getCustomerId(), request.getCustomerName(),
                 request.getCustomerDocumentNumber(), currency.getCode());
 
         // Bizonylat szám generálása (új szekvencia rendszer)
@@ -259,6 +260,8 @@ public class TransactionService {
                 .customerNationality(request.getCustomerNationality())
                 .sourceOfFunds(request.getSourceOfFunds())
                 .customerIsPep(Boolean.TRUE.equals(request.getCustomerIsPep()))
+                .amlSuspicious(amlResult.isSuspiciousFlag())
+                .amlAnnualLimitReached(amlResult.isAnnualLimitReached())
                 .notes(request.getNotes())
                 .build();
 
@@ -344,8 +347,9 @@ public class TransactionService {
         // 300K+ tranzakció esetén ügyfél-azonosítás kötelező (NAV jogi követelmény).
         validateIdentification(payableAmount, request.getCustomerName(), request.getCustomerDocumentNumber());
 
-        // AML ellenőrzés (Pmt. 2017. évi LIII. tv.)
-        performAmlCheck(payableAmount, request.getCustomerId(), request.getCustomerName(),
+        // AML ellenőrzés (Pmt. 2017. évi LIII. tv.) — flagek a Transaction-be CB-018 szerint
+        AmlService.AmlBasicCheckResult amlResult = performAmlCheck(
+                payableAmount, request.getCustomerId(), request.getCustomerName(),
                 request.getCustomerDocumentNumber(), currency.getCode());
 
         // Bizonylat szám generálása (új szekvencia rendszer)
@@ -403,6 +407,8 @@ public class TransactionService {
                 .customerNationality(request.getCustomerNationality())
                 .sourceOfFunds(request.getSourceOfFunds())
                 .customerIsPep(Boolean.TRUE.equals(request.getCustomerIsPep()))
+                .amlSuspicious(amlResult.isSuspiciousFlag())
+                .amlAnnualLimitReached(amlResult.isAnnualLimitReached())
                 .notes(request.getNotes())
                 .build();
 
@@ -551,12 +557,17 @@ public class TransactionService {
      * Hívja az AmlService.checkTransaction()-t az alapszintű ellenőrzéshez
      * (azonosítás, éves göngyölés, napi gyanúsági limit), valamint a
      * checkAllThresholds()-t a legacy BIGCTRL.DLL klasszifikációhoz (TranzTipus).
+     *
+     * Legacy parity (CB-018): a visszaadott {@link AmlService.AmlBasicCheckResult}
+     * {@code suspiciousFlag} es {@code annualLimitReached} boolean-ja a hivo oldalon
+     * a Transaction entitasba kerul (amlSuspicious / amlAnnualLimitReached), hogy a
+     * bizonylat ora-szintben tartalmazza az AML besorolast - ugy, ahogy a legacy
+     * BIGCTRL.DLL a blokkra kiirta.
      */
-    private void performAmlCheck(BigDecimal hufAmount, String customerId,
+    private AmlService.AmlBasicCheckResult performAmlCheck(BigDecimal hufAmount, String customerId,
                                  String customerName, String documentNumber, String currencyCode) {
-        // 1. Alapszintű AML ellenőrzés (azonosítás + göngyölés + gyanúsági flag)
         AmlService.AmlBasicCheckResult basicResult = amlService.checkTransaction(
-                hufAmount, customerId, customerName, documentNumber);
+                hufAmount, customerId, customerName, documentNumber, currencyCode);
 
         if (basicResult == null) {
             log.error("AML checkTransaction null eredmenyt adott, tranzakcio blokkolva");
@@ -575,7 +586,6 @@ public class TransactionService {
                     : "Supervisor jóváhagyás szükséges (AML limit)!");
         }
 
-        // 2. Legacy BIGCTRL.DLL klasszifikáció - blokkoló TranzTipus -1 ellenőrzés
         if (customerId != null && !customerId.isBlank()) {
             var thresholdResult = amlService.checkAllThresholds(customerId, hufAmount, currencyCode);
             if (thresholdResult != null && thresholdResult.isBlocked()) {
@@ -586,10 +596,11 @@ public class TransactionService {
             }
         }
 
-        // 3. Részletes azonosítás logolása (1.5M+ Ft)
         if (basicResult.isRequiresDetailedId()) {
             log.warn("AML: Részletes azonosítás szükséges - {} Ft, ügyfél: {}", hufAmount, customerId);
         }
+
+        return basicResult;
     }
 
     private void validateIdentification(BigDecimal hufAmount, String customerName, String documentNumber) {
@@ -764,7 +775,11 @@ public class TransactionService {
         private BigDecimal handlingFee;
         private String customerId;
         private String customerName;
+        private String customerAddress;
         private String customerDocumentNumber;
+        private String customerNationality;
+        private String sourceOfFunds;
+        private Boolean customerIsPep;
     }
 
     /**

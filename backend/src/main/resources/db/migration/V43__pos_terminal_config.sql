@@ -1,6 +1,15 @@
 -- V43: POS terminál konfiguráció és fizetési mód bővítés
 -- Legacy: OTP terminál integráció (OtpTermStorno, OtpAruvisszavet, otpterminal DLL-ek)
 -- Modern: többféle terminál típus támogatása (OTP, Borgun, Worldline, MOCK)
+--
+-- NOTE: Production baseline=67, V43 nem fut produkción; V74 formalizalta a
+-- system_parameter tablat created_at NELKUL, mert Hibernate ddl-auto=update
+-- korabban mar hozzaadta ott. Friss lokalis DB-n ezt itt idempotensen potoljuk.
+
+-- ============================================================
+-- 0. Hianyzo oszlopok biztositasa (Hibernate-szeru schema parity)
+-- ============================================================
+ALTER TABLE system_parameter ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW();
 
 -- ============================================================
 -- 1. POS_TERMINAL tábla bővítése — terminál típus és JSON konfiguráció

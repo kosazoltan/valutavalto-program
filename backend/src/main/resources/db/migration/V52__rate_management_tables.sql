@@ -15,9 +15,12 @@ CREATE TABLE IF NOT EXISTS rate_workgroup_branch (
     PRIMARY KEY (workgroup_id, branch_id)
 );
 
+-- NOTE: currency.id runtime schemája BIGSERIAL (V3), ezért currency_id itt BIGINT.
+-- Production baseline=67 miatt V52 nem fut produkción; V71_1 a Hibernate által
+-- létrehozott rate_template.currency_id-t már BIGINT-re igazítja.
 CREATE TABLE IF NOT EXISTS rate_template (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    currency_id UUID NOT NULL REFERENCES currency(id),
+    currency_id BIGINT NOT NULL REFERENCES currency(id),
     workgroup_id UUID NOT NULL REFERENCES rate_workgroup(id),
     base_buy_rate NUMERIC(18,6) NOT NULL,
     base_sell_rate NUMERIC(18,6) NOT NULL,
