@@ -150,3 +150,5 @@ configs/secrets.json
 security-reports/
 update_pw.sql
 penztar-client/test-results/
+
+penztar-client/release-thin/

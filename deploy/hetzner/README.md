@@ -51,7 +51,7 @@ bash setup-healthcheck.sh
 # 2. Opcionalis: email alert beallitasa
 nano /opt/valutavalto/.health.env   # ALERT_EMAIL=admin@example.com
 
-# 3. Log kovetes
+# 3. Log kovetest
 journalctl -u valuta-health -f
 cat /var/log/valutavalto/health.log
 ```
@@ -75,7 +75,7 @@ cat /var/log/valutavalto/health.log
 
 ## Backup retention
 
-- Helyi: 30 nap (konfiguralahto: BACKUP_RETENTION_DAYS a .backup.env-ben)
+- Helyi: 30 nap (konfiguralahto: `BACKUP_RETENTION_DAYS` a .backup.env-ben)
 - Nextcloud: 30 nap (automatikus PROPFIND/DELETE, HTTP statusz ellenorzott)
 - Atomikus iras: tmp fajl + mv, felkesz backup nem maradhat
 

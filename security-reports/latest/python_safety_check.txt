@@ -36,7 +36,7 @@ We highly encourage switching to the new `scan` command which is easier to use, 
         "account": "",
         "local_database_path": null,
         "safety_version": "3.7.0",
-        "timestamp": "2026-04-17 10:57:36",
+        "timestamp": "2026-04-18 14:18:54",
         "packages_found": 8,
         "vulnerabilities_found": 0,
         "vulnerabilities_ignored": 6,
@@ -61,7 +61,7 @@ We highly encourage switching to the new `scan` command which is easier to use, 
         "git": {
             "branch": "main",
             "tag": "",
-            "commit": "6d688ec80a8e007e7af41124c769b126a2607bf3",
+            "commit": "3308c70388a45404d3b8b94c4d6388f8c15da6ab",
             "dirty": "True",
             "origin": "https://github.com/kosazoltan/valutavalto-program.git"
         },
@@ -555,4 +555,6 @@ We highly encourage switching to the new `scan` command which is easier to use, 
 
 
 --- STDERR ---
+
+
 

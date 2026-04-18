@@ -1,0 +1,93 @@
+path,extension,size_bytes
+Anti\SZERVER\_extracted\ERTEKTAR\database\engedely.fdb,.fdb,1064960
+Anti\SZERVER\_extracted\ERTEKTAR\database\hazihrk.fdb,.fdb,802816
+Anti\SZERVER\_extracted\ERTEKTAR\database\korlevel.fdb,.fdb,933888
+Anti\SZERVER\_extracted\ERTEKTAR\database\mentes\engedely.fdb,.fdb,1064960
+Anti\SZERVER\_extracted\ERTEKTAR\database\mentes\korlevel.fdb,.fdb,933888
+Anti\SZERVER\_extracted\ERTEKTAR\database\mentes\valdata.fdb,.fdb,9437184
+Anti\SZERVER\_extracted\ERTEKTAR\database\mentes\valuta.fdb,.fdb,5160960
+Anti\SZERVER\_extracted\ERTEKTAR\database\valdata.fdb,.fdb,26398720
+Anti\SZERVER\_extracted\ERTEKTAR\database\valuta.fdb,.fdb,15310848
+Anti\SZERVER\_extracted\SZERVER\fejleszt\arfolyam\old\database\arfolyam.fdb,.fdb,1589248
+Anti\SZERVER\_extracted\SZERVER\fejleszt\booking\database\booking.fdb,.fdb,1064960
+Anti\SZERVER\_extracted\SZERVER\fejleszt\lemento\lemento.fdb,.fdb,802816
+Anti\SZERVER\_extracted\SZERVER\fejleszt\personal\perseek\perseek.gdb,.gdb,802816
+Anti\SZERVER\_extracted\SZERVER\fejleszt\police\police.gdb,.gdb,802816
+Anti\SZERVER\_extracted\SZERVER\fejleszt\ugyfelcontrol\bizlatok.fdb,.fdb,2367488
+Anti\SZERVER\_extracted\SZERVER\fejleszt\verseny_mend\darius.fdb,.fdb,802816
+Anti\SZERVER\_extracted\VALUTA\TRADE\fejleszt\database\trade.gdb,.gdb,1720320
+Anti\SZERVER\_extracted\firebird\expedvet.fdb,.fdb,671744
+Anti\SZERVER\_extracted_auto\camera2\camera\camera-office\deploy\Camera system installation_unpacked\Camera system installation\Camera MySQL\share\fill_help_tables.sql,.sql,583827
+Anti\SZERVER\_extracted_auto\camera2\camera\camera-office\deploy\Camera system installation_unpacked\Camera system installation\Camera MySQL\share\install_spider.sql,.sql,20300
+Anti\SZERVER\_extracted_auto\camera2\camera\camera-office\deploy\Camera system installation_unpacked\Camera system installation\Camera MySQL\share\maria_add_gis_sp.sql,.sql,1686
+Anti\SZERVER\_extracted_auto\camera2\camera\camera-office\deploy\Camera system installation_unpacked\Camera system installation\Camera MySQL\share\maria_add_gis_sp_bootstrap.sql,.sql,1664
+Anti\SZERVER\_extracted_auto\camera2\camera\camera-office\deploy\Camera system installation_unpacked\Camera system installation\Camera MySQL\share\mysql_performance_tables.sql,.sql,1955
+Anti\SZERVER\_extracted_auto\camera2\camera\camera-office\deploy\Camera system installation_unpacked\Camera system installation\Camera MySQL\share\mysql_system_tables.sql,.sql,28948
+Anti\SZERVER\_extracted_auto\camera2\camera\camera-office\deploy\Camera system installation_unpacked\Camera system installation\Camera MySQL\share\mysql_system_tables_data.sql,.sql,3649
+Anti\SZERVER\_extracted_auto\camera2\camera\camera-office\deploy\Camera system installation_unpacked\Camera system installation\Camera MySQL\share\mysql_test_data_timezone.sql,.sql,10411
+Anti\SZERVER\_extracted_auto\camera2\camera\camera-office\deploy\Camera system installation_unpacked\Camera system installation\Camera MySQL\share\mysql_test_db.sql,.sql,1665
+Anti\SZERVER\_extracted_auto\camera2\camera\camera-office\deploy\Camera system installation_unpacked\Camera system installation\Camera MySQL\share\mysql_to_mariadb.sql,.sql,1210
+Anti\SZERVER\_extracted_auto\camera2\camera\camera-office\deploy\database\Camera DB_unpacked\Camera MySQL\share\fill_help_tables.sql,.sql,583827
+Anti\SZERVER\_extracted_auto\camera2\camera\camera-office\deploy\database\Camera DB_unpacked\Camera MySQL\share\install_spider.sql,.sql,20300
+Anti\SZERVER\_extracted_auto\camera2\camera\camera-office\deploy\database\Camera DB_unpacked\Camera MySQL\share\maria_add_gis_sp.sql,.sql,1686
+Anti\SZERVER\_extracted_auto\camera2\camera\camera-office\deploy\database\Camera DB_unpacked\Camera MySQL\share\maria_add_gis_sp_bootstrap.sql,.sql,1664
+Anti\SZERVER\_extracted_auto\camera2\camera\camera-office\deploy\database\Camera DB_unpacked\Camera MySQL\share\mysql_performance_tables.sql,.sql,1955
+Anti\SZERVER\_extracted_auto\camera2\camera\camera-office\deploy\database\Camera DB_unpacked\Camera MySQL\share\mysql_system_tables.sql,.sql,28948
+Anti\SZERVER\_extracted_auto\camera2\camera\camera-office\deploy\database\Camera DB_unpacked\Camera MySQL\share\mysql_system_tables_data.sql,.sql,3649
+Anti\SZERVER\_extracted_auto\camera2\camera\camera-office\deploy\database\Camera DB_unpacked\Camera MySQL\share\mysql_test_data_timezone.sql,.sql,10411
+Anti\SZERVER\_extracted_auto\camera2\camera\camera-office\deploy\database\Camera DB_unpacked\Camera MySQL\share\mysql_test_db.sql,.sql,1665
+Anti\SZERVER\_extracted_auto\camera2\camera\camera-office\deploy\database\Camera DB_unpacked\Camera MySQL\share\mysql_to_mariadb.sql,.sql,1210
+Anti\SZERVER\_extracted_auto\camera_unpacked\camera\camera-config\src\main\resources\sql\westernunion_exclusiveuser.sql,.sql,135332
+Anti\SZERVER\_extracted_auto\camera_unpacked\camera\camera-office\deploy\Camera system installation_unpacked\Camera system installation\Camera MySQL\share\fill_help_tables.sql,.sql,583827
+Anti\SZERVER\_extracted_auto\camera_unpacked\camera\camera-office\deploy\Camera system installation_unpacked\Camera system installation\Camera MySQL\share\install_spider.sql,.sql,20300
+Anti\SZERVER\_extracted_auto\camera_unpacked\camera\camera-office\deploy\Camera system installation_unpacked\Camera system installation\Camera MySQL\share\maria_add_gis_sp.sql,.sql,1686
+Anti\SZERVER\_extracted_auto\camera_unpacked\camera\camera-office\deploy\Camera system installation_unpacked\Camera system installation\Camera MySQL\share\maria_add_gis_sp_bootstrap.sql,.sql,1664
+Anti\SZERVER\_extracted_auto\camera_unpacked\camera\camera-office\deploy\Camera system installation_unpacked\Camera system installation\Camera MySQL\share\mysql_performance_tables.sql,.sql,1955
+Anti\SZERVER\_extracted_auto\camera_unpacked\camera\camera-office\deploy\Camera system installation_unpacked\Camera system installation\Camera MySQL\share\mysql_system_tables.sql,.sql,28948
+Anti\SZERVER\_extracted_auto\camera_unpacked\camera\camera-office\deploy\Camera system installation_unpacked\Camera system installation\Camera MySQL\share\mysql_system_tables_data.sql,.sql,3649
+Anti\SZERVER\_extracted_auto\camera_unpacked\camera\camera-office\deploy\Camera system installation_unpacked\Camera system installation\Camera MySQL\share\mysql_test_data_timezone.sql,.sql,10411
+Anti\SZERVER\_extracted_auto\camera_unpacked\camera\camera-office\deploy\Camera system installation_unpacked\Camera system installation\Camera MySQL\share\mysql_test_db.sql,.sql,1665
+Anti\SZERVER\_extracted_auto\camera_unpacked\camera\camera-office\deploy\Camera system installation_unpacked\Camera system installation\Camera MySQL\share\mysql_to_mariadb.sql,.sql,1210
+Anti\SZERVER\_extracted_auto\camera_unpacked\camera\camera-office\deploy\database\Camera DB_unpacked\Camera MySQL\share\fill_help_tables.sql,.sql,583827
+Anti\SZERVER\_extracted_auto\camera_unpacked\camera\camera-office\deploy\database\Camera DB_unpacked\Camera MySQL\share\install_spider.sql,.sql,20300
+Anti\SZERVER\_extracted_auto\camera_unpacked\camera\camera-office\deploy\database\Camera DB_unpacked\Camera MySQL\share\maria_add_gis_sp.sql,.sql,1686
+Anti\SZERVER\_extracted_auto\camera_unpacked\camera\camera-office\deploy\database\Camera DB_unpacked\Camera MySQL\share\maria_add_gis_sp_bootstrap.sql,.sql,1664
+Anti\SZERVER\_extracted_auto\camera_unpacked\camera\camera-office\deploy\database\Camera DB_unpacked\Camera MySQL\share\mysql_performance_tables.sql,.sql,1955
+Anti\SZERVER\_extracted_auto\camera_unpacked\camera\camera-office\deploy\database\Camera DB_unpacked\Camera MySQL\share\mysql_system_tables.sql,.sql,28948
+Anti\SZERVER\_extracted_auto\camera_unpacked\camera\camera-office\deploy\database\Camera DB_unpacked\Camera MySQL\share\mysql_system_tables_data.sql,.sql,3649
+Anti\SZERVER\_extracted_auto\camera_unpacked\camera\camera-office\deploy\database\Camera DB_unpacked\Camera MySQL\share\mysql_test_data_timezone.sql,.sql,10411
+Anti\SZERVER\_extracted_auto\camera_unpacked\camera\camera-office\deploy\database\Camera DB_unpacked\Camera MySQL\share\mysql_test_db.sql,.sql,1665
+Anti\SZERVER\_extracted_auto\camera_unpacked\camera\camera-office\deploy\database\Camera DB_unpacked\Camera MySQL\share\mysql_to_mariadb.sql,.sql,1210
+Anti\SZERVER\_extracted_auto\forrasok_unpacked\ERTEKTAR\database\engedely.fdb,.fdb,1064960
+Anti\SZERVER\_extracted_auto\forrasok_unpacked\ERTEKTAR\database\hazihrk.fdb,.fdb,802816
+Anti\SZERVER\_extracted_auto\forrasok_unpacked\ERTEKTAR\database\korlevel.fdb,.fdb,933888
+Anti\SZERVER\_extracted_auto\forrasok_unpacked\ERTEKTAR\database\mentes\engedely.fdb,.fdb,1064960
+Anti\SZERVER\_extracted_auto\forrasok_unpacked\ERTEKTAR\database\mentes\korlevel.fdb,.fdb,933888
+Anti\SZERVER\_extracted_auto\forrasok_unpacked\ERTEKTAR\database\mentes\valdata.fdb,.fdb,9437184
+Anti\SZERVER\_extracted_auto\forrasok_unpacked\ERTEKTAR\database\mentes\valuta.fdb,.fdb,5160960
+Anti\SZERVER\_extracted_auto\forrasok_unpacked\ERTEKTAR\database\valdata.fdb,.fdb,26398720
+Anti\SZERVER\_extracted_auto\forrasok_unpacked\ERTEKTAR\database\valuta.fdb,.fdb,15310848
+Anti\SZERVER\_extracted_auto\forrasok_unpacked\SZERVER\fejleszt\arfolyam\old\database\arfolyam.fdb,.fdb,1589248
+Anti\SZERVER\_extracted_auto\forrasok_unpacked\SZERVER\fejleszt\booking\database\booking.fdb,.fdb,1064960
+Anti\SZERVER\_extracted_auto\forrasok_unpacked\SZERVER\fejleszt\lemento\lemento.fdb,.fdb,802816
+Anti\SZERVER\_extracted_auto\forrasok_unpacked\SZERVER\fejleszt\personal\perseek\perseek.gdb,.gdb,802816
+Anti\SZERVER\_extracted_auto\forrasok_unpacked\SZERVER\fejleszt\police\police.gdb,.gdb,802816
+Anti\SZERVER\_extracted_auto\forrasok_unpacked\SZERVER\fejleszt\ugyfelcontrol\bizlatok.fdb,.fdb,2367488
+Anti\SZERVER\_extracted_auto\forrasok_unpacked\SZERVER\fejleszt\verseny_mend\darius.fdb,.fdb,802816
+Anti\SZERVER\_extracted_auto\forrasok_unpacked\VALUTA\TRADE\fejleszt\database\trade.gdb,.gdb,1720320
+Anti\SZERVER\_extracted_auto\forrasok_unpacked\firebird\expedvet.fdb,.fdb,671744
+Anti\SZERVER\_extracted_auto\old_unpacked\old\excold-citysim-client\updater installer\valuta\database\CITYSIM.FDB,.fdb,933888
+Anti\SZERVER\_extracted_auto\old_unpacked\old\excold-citysim-prod\CitySIM Client\updater installer\valuta\database\CITYSIM.FDB,.fdb,933888
+Anti\SZERVER\_extracted_auto\old_unpacked\old\excold-citysim-prod\sql\CITYSIM SQL2.sql,.sql,622
+Anti\SZERVER\_extracted_auto\old_unpacked\old\excold-citysim-prod\sql\CITYSIM_SQL.sql,.sql,2855
+Anti\SZERVER\_extracted_auto\old_unpacked\old\excold-desktop-client\src\main\resources\sql\init.sql,.sql,37
+Anti\VALUTA\TRADE\fejleszt\database\trade.gdb,.gdb,1720320
+Anti\camera2\camera\camera-config\src\main\resources\sql\westernunion_exclusiveuser.sql,.sql,135332
+Anti\camera2\camera\camera-config\target\classes\sql\westernunion_exclusiveuser.sql,.sql,135332
+Anti\camera3\old\excold-citysim-client\updater installer\valuta\database\CITYSIM.FDB,.fdb,933888
+Anti\camera3\old\excold-citysim-prod\CitySIM Client\updater installer\valuta\database\CITYSIM.FDB,.fdb,933888
+Anti\camera3\old\excold-citysim-prod\sql\CITYSIM SQL2.sql,.sql,622
+Anti\camera3\old\excold-citysim-prod\sql\CITYSIM_SQL.sql,.sql,2855
+Anti\camera3\old\excold-desktop-client\src\main\resources\sql\init.sql,.sql,37
+Anti\camera3\old\excold-desktop-client\target\classes\sql\init.sql,.sql,37
+Anti\firebird\expedvet.fdb,.fdb,671744

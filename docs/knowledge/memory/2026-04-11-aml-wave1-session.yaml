@@ -1,0 +1,63 @@
+session_id: 2026-04-11-aml-wave1
+scope: workspace-shared
+status: closed
+focus_area: aml-bigctrl-kyc-sanctions
+
+current_state:
+  aml_wave1: closed
+  security_gate: passed
+  next_primary_wave: transactions-fee-rounding-storno
+
+completed_fixes:
+  - id: aml-currency-propagation
+    summary: currencyCode now reaches the transaction AML call chain
+    evidence:
+      - backend/src/main/java/hu/puzzleir/valuta/service/AmlService.java
+      - backend/src/test/java/hu/puzzleir/valuta/service/AmlBigctrlC1C2C3Test.java
+  - id: wu-ic-aml
+    summary: Western Union IC_IN and IC_OUT now run AML
+    evidence:
+      - backend/src/main/java/hu/puzzleir/valuta/service/WesternUnionService.java
+      - backend/src/test/java/hu/puzzleir/valuta/service/WesternUnionServiceTest.java
+  - id: blacklist-transaction-block
+    summary: active internal blacklist match blocks AML transaction flow
+    evidence:
+      - backend/src/main/java/hu/puzzleir/valuta/service/BlacklistService.java
+      - backend/src/main/java/hu/puzzleir/valuta/service/AmlService.java
+      - backend/src/test/java/hu/puzzleir/valuta/service/AmlServiceCompletionTest.java
+  - id: sanctions-priority
+    summary: sanctions screening short-circuits blacklist follow-up
+    evidence:
+      - backend/src/test/java/hu/puzzleir/valuta/service/AmlServiceCompletionTest.java
+  - id: wu-fail-closed
+    summary: WU flow now fails closed if USD amount exists but AML base amount cannot be computed
+    evidence:
+      - backend/src/main/java/hu/puzzleir/valuta/service/WesternUnionService.java
+      - backend/src/test/java/hu/puzzleir/valuta/service/WesternUnionServiceTest.java
+
+durable_rules:
+  - rule_id: R-type--1
+    statement: foreign customer cannot receive USD
+  - rule_id: R-blacklist
+    statement: active internal prohibition must block transaction flow
+  - rule_id: R-sanctions
+    statement: sanctions match has priority over blacklist evaluation
+  - rule_id: R-WU-aml
+    statement: WU AML must cover send, receive, IC, and fail closed without computable AML base
+
+verification:
+  tests:
+    - AmlServiceTest
+    - AmlBigctrlC1C2C3Test
+    - AmlDeadlineTrackingTest
+    - AmlFlowTest
+    - AmlServiceCompletionTest
+    - WesternUnionServiceTest
+  gate:
+    command: scripts/security/run-security-gate.ps1
+    status: PASSED
+
+next_actions:
+  - reconcile parity review and gap sources into one closure backlog
+  - close transaction, fee, rounding, and storno parity regression wave
+  - prove conversion AML double-count parity

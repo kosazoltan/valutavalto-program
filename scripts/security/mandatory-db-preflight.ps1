@@ -311,6 +311,7 @@ catch {
 }
 
 $remoteMode = if ($env:DB_PREFLIGHT_REMOTE_MODE) { $env:DB_PREFLIGHT_REMOTE_MODE.Trim().ToLowerInvariant() } else { "strict" }
+if (-not (Get-Variable -Name 'skipRemoteParity' -Scope Local -ErrorAction SilentlyContinue)) { $skipRemoteParity = $false }
 $skipRemoteParity = if ($skipRemoteParity) { $true } else { $false }
 $remoteApplied = @()
 
@@ -360,7 +361,12 @@ if (-not $skipRemoteParity) {
     }
 }
 
-$hasMismatch = ($missingInLocal.Count -gt 0) -or ($missingInRemote.Count -gt 0) -or ($driftOnlyLocal.Count -gt 0) -or ($driftOnlyRemote.Count -gt 0)
+# In optional remote mode: only local mismatches are blocking; remote drift is a warning only
+if ($remoteMode -eq 'optional' -and -not $skipRemoteParity) {
+    $hasMismatch = ($missingInLocal.Count -gt 0)
+} else {
+    $hasMismatch = ($missingInLocal.Count -gt 0) -or ($missingInRemote.Count -gt 0) -or ($driftOnlyLocal.Count -gt 0) -or ($driftOnlyRemote.Count -gt 0)
+}
 
 if ($hasMismatch) {
     Write-Status "DB migration parity mismatch detected. Mandatory reconciliation required." "ERR"

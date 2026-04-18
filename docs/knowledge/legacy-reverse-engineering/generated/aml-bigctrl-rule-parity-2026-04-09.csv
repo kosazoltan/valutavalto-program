@@ -1,0 +1,21 @@
+rule_id,legacy_meaning,modern_implementation,endpoint_or_caller,test_evidence,status,risk
+R-300K,Identification required above 300000 HUF,AmlService.checkTransaction,transaction aml call chain,backend/src/test/java/hu/puzzleir/valuta/integration/AmlFlowTest.java,full,P0
+R-1.5M,Detailed identification above 1500000 HUF,AmlService.checkTransaction,transaction aml call chain,backend/src/test/java/hu/puzzleir/valuta/integration/AmlFlowTest.java,full,P0
+R-3.6M-annual,Annual rolling limit,AmlService.checkTransaction,transaction aml call chain,backend/src/test/java/hu/puzzleir/valuta/integration/AmlFlowTest.java,full,P0
+R-daily-900K,Daily suspicious threshold,AmlService.checkTransaction,transaction aml call chain,backend/src/test/java/hu/puzzleir/valuta/integration/AmlFlowTest.java,full,P0
+R-weekly-8day,Eight-day weekly window,AmlService.getWeeklyTotal,/api/v1/aml/check-all-thresholds,backend/src/test/java/hu/puzzleir/valuta/service/AmlBigctrlC1C2C3Test.java,full,P0
+R-type-6,Transaction type 6 at 50M,AmlService.classifyTransaction,/api/v1/aml/check-all-thresholds,backend/src/test/java/hu/puzzleir/valuta/service/AmlBigctrlC1C2C3Test.java,full,P0
+R-type-5,Transaction type 5 at 10M,AmlService.classifyTransaction,/api/v1/aml/check-all-thresholds,backend/src/test/java/hu/puzzleir/valuta/service/AmlBigctrlC1C2C3Test.java,full,P0
+R-type-4,Quarterly 4+ and 25M,AmlService.classifyTransaction,/api/v1/aml/check-all-thresholds,backend/src/test/java/hu/puzzleir/valuta/service/AmlBigctrlC1C2C3Test.java,full,P0
+R-type-3,Yearly max and 8M,AmlService.classifyTransaction,/api/v1/aml/check-all-thresholds,backend/src/test/java/hu/puzzleir/valuta/service/AmlBigctrlC1C2C3Test.java,full,P0
+R-type-2,Foreign customer,AmlService.classifyTransaction,/api/v1/aml/check-all-thresholds,backend/src/test/java/hu/puzzleir/valuta/service/AmlBigctrlC1C2C3Test.java,full,P1
+R-type-1,Domestic PEP,AmlService.classifyTransaction,/api/v1/aml/check-all-thresholds,backend/src/test/java/hu/puzzleir/valuta/service/AmlBigctrlC1C2C3Test.java,full,P1
+R-type--1,Foreign customer cannot get USD,"AmlService.checkTransaction + WesternUnionService.performAmlCheck + AmlService.checkAllThresholds","transaction flow + WU flow + /api/v1/aml/check-all-thresholds","backend/src/test/java/hu/puzzleir/valuta/service/AmlBigctrlC1C2C3Test.java; backend/src/test/java/hu/puzzleir/valuta/service/WesternUnionServiceTest.java; backend/src/test/java/hu/puzzleir/valuta/controller/AmlControllerCheckAllThresholdsTest.java",full,P0
+R-sanctions,Sanctions screening,"SanctionScreeningService + AmlService","aml transaction chain",backend/src/test/java/hu/puzzleir/valuta/integration/AmlFlowTest.java; backend/src/test/java/hu/puzzleir/valuta/service/AmlServiceCompletionTest.java,full,P0
+R-blacklist,Blacklist block,"BlacklistService + AmlService.checkTransaction","blacklist customer flow + aml transaction chain",backend/src/test/java/hu/puzzleir/valuta/service/AmlServiceCompletionTest.java,full,P1
+R-structuring,Structuring detection,AmlService.isStructuring,aml reporting flow,backend/src/test/java/hu/puzzleir/valuta/integration/AmlFlowTest.java,full,P1
+R-reverse,Reverse accumulation on storno,AmlService.reverseAccumulation,reversal flow,backend/src/test/java/hu/puzzleir/valuta/service/AmlReverseAccumulationTest.java,full,P1
+R-overdue-report,AML deadline tracking,AmlDeadlineScheduler,aml reporting endpoints,backend/src/test/java/hu/puzzleir/valuta/service/AmlDeadlineTrackingTest.java,full,P1
+R-conversion-double,Conversion amount doubled for threshold,TransactionConversionService.executeConversion -> doubled rounded HUF AML base + target currency code,conversion flow,backend/src/test/java/hu/puzzleir/valuta/service/TransactionConversionServiceTest.java,full,P0
+R-100K-ui,100K UI identification restriction,frontend or UX parity,legacy only,no dedicated test,partial,P2
+R-WU-aml,Western Union AML,"WesternUnionService.performAmlCheck (fail-closed without HUF or valid USD rate)","WU send/receive + IC flow",backend/src/test/java/hu/puzzleir/valuta/service/WesternUnionServiceTest.java,full,P1

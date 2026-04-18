@@ -1,0 +1,24 @@
+endpoint,handler,auth,evidence,test_evidence,status
+GET /api/v1/camera/stream/{cameraId},CameraController.getLiveFrame,"MANAGER|ADMIN",CameraController.java,backend/src/test/java/hu/puzzleir/valuta/controller/CameraControllerSecurityTest.java,implemented
+GET /api/v1/camera/status,CameraController.getCameraStatus,"MANAGER|ADMIN",CameraController.java,backend/src/test/java/hu/puzzleir/valuta/controller/CameraControllerSecurityTest.java,implemented
+GET /api/v1/camera/recordings,CameraController.getRecordings,"MANAGER|ADMIN",CameraController.java,backend/src/test/java/hu/puzzleir/valuta/controller/CameraControllerSecurityTest.java,implemented
+GET /api/v1/camera/recordings/{id},CameraController.getRecording,"MANAGER|ADMIN",CameraController.java,backend/src/test/java/hu/puzzleir/valuta/controller/CameraControllerSecurityTest.java,implemented
+GET /api/v1/camera/recordings/by-receipt/{receiptNumber},CameraController.findByReceipt,"MANAGER|ADMIN",CameraController.java,no dedicated controller test,partial
+GET /api/v1/camera/recordings/by-transaction/{transactionId},CameraController.findByTransaction,"MANAGER|ADMIN",CameraController.java,backend/src/test/java/hu/puzzleir/valuta/controller/CameraControllerSecurityTest.java,partial
+GET /api/v1/camera/admin/configs,CameraAdminController.getConfigs,ADMIN,CameraAdminController.java,backend/src/test/java/hu/puzzleir/valuta/controller/CameraAdminControllerSecurityTest.java,implemented
+POST /api/v1/camera/admin/configs,CameraAdminController.saveConfig,ADMIN,CameraAdminController.java,backend/src/test/java/hu/puzzleir/valuta/controller/CameraAdminControllerSecurityTest.java,partial
+DELETE /api/v1/camera/admin/configs/{id},CameraAdminController.deleteConfig,ADMIN,CameraAdminController.java,backend/src/test/java/hu/puzzleir/valuta/controller/CameraAdminControllerSecurityTest.java,partial
+GET /api/v1/camera/admin/storage-stats,CameraAdminController.getStorageStats,ADMIN,CameraAdminController.java,no dedicated test,missing-test
+POST /api/v1/camera/admin/cleanup,CameraAdminController.manualCleanup,ADMIN,CameraAdminController.java,no dedicated test,missing-test
+GET /api/v1/camera/admin/upload-status,CameraAdminController.getUploadStatus,ADMIN,CameraAdminController.java,no dedicated test,missing-test
+GET /api/v1/camera/admin/access-logs/{recordingId},CameraAdminController.getAccessLogs,ADMIN,CameraAdminController.java,backend/src/test/java/hu/puzzleir/valuta/controller/CameraAdminControllerSecurityTest.java,partial
+POST /api/v1/camera/export/request,CameraExportController.createRequest,export authorities,CameraExportController.java,no dedicated MockMvc or integration test,missing-test
+POST /api/v1/camera/export/{requestId}/approve,CameraExportController.approve,approve authorities,CameraExportController.java,no dedicated test,missing-test
+POST /api/v1/camera/export/{requestId}/reject,CameraExportController.reject,approve authorities,CameraExportController.java,no dedicated test,missing-test
+POST /api/v1/camera/export/{requestId}/execute,CameraExportController.execute,export authorities,CameraExportController.java,no dedicated test,missing-test
+GET /api/v1/camera/export/{requestId},CameraExportController.getById,export and compliance authorities,CameraExportController.java,no dedicated test,missing-test
+GET /api/v1/camera/export/pending,CameraExportController.getPending,approve authorities,CameraExportController.java,no dedicated test,missing-test
+GET /api/v1/camera/export/branch/{branchId},CameraExportController.getByBranch,export and compliance authorities,CameraExportController.java,no dedicated test,missing-test
+GET /api/v1/camera/export/{requestId}/custody,CameraExportController.getCustody,export and compliance authorities,CameraExportController.java,no dedicated test,missing-test
+POST /api/v1/camera/export/verify-chain,CameraExportController.verifyChain,local compliance and IT authorities,CameraExportController.java,backend/src/test/java/hu/puzzleir/valuta/controller/DariusAndCameraPathCompatibilityTest.java,implemented
+POST /api/camera/export/verify-chain,CameraExportController.verifyChain legacy alias,local compliance and IT authorities,CameraExportController.java,backend/src/test/java/hu/puzzleir/valuta/controller/DariusAndCameraPathCompatibilityTest.java,implemented

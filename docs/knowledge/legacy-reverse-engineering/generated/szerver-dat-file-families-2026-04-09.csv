@@ -1,0 +1,15 @@
+family,count,sample_path
+ARFDATA.DAT,48,Anti\ARFOLYAM\arfdata.dat
+DATA.DAT,8,Anti\SZERVER\_extracted_auto\SZERVER\_extracted\SZERVER\fejleszt\makeszlt\keszlex_unpacked\DATA.DAT
+F1415_SETTINGS.DAT,2,Anti\SZERVER\_extracted_auto\camera-20260306T145042Z-1-001_unpacked\camera\Data (2017_03_30 19_50_04 UTC)_unpacked\F1415_settings.dat
+F1464_IDENTITY.DAT,2,Anti\SZERVER\_extracted_auto\camera-20260306T145042Z-1-001_unpacked\camera\Data (2017_03_30 19_50_04 UTC)_unpacked\F1464_identity.dat
+FOGLALO.DAT,12,Anti\SZERVER\_extracted_auto\SZERVER\_extracted\SZERVER\fejleszt\makeszlt\keszlex_unpacked\FOGLALO.DAT
+OLDDATA.DAT,41,Anti\SZERVER\_extracted_auto\SZERVER\_extracted\SZERVER\fejleszt\arfolyam\verzio22\arfolyam_unpacked\olddata.dat
+OLDWDATA.DAT,41,Anti\SZERVER\_extracted_auto\SZERVER\_extracted\SZERVER\fejleszt\arfolyam\verzio22\arfolyam_unpacked\oldwdata.dat
+OLD_ARFDATA.DAT,3,Anti\ARFOLYAM\old_arfdata.dat
+SORSZAM.DAT,35,Anti\SZERVER\_extracted_auto\SZERVER\_extracted\SZERVER\fejleszt\arfolyam\verzio22\arfolyam_unpacked\SORSZAM.DAT
+TESZTDATA.DAT,2,Anti\SZERVER\_extracted_auto\forrasok_unpacked\SZERVER\fejleszt\_arfteszt\tesztdata.dat
+UJDATA.DAT,44,Anti\ARFOLYAM\ujdata.dat
+UJWDATA.DAT,24,Anti\SZERVER\_extracted_auto\SZERVER\_extracted\SZERVER\fejleszt\arfolyam\verzio22\old_unpacked\UJWDATA.DAT
+WDATA.DAT,41,Anti\SZERVER\_extracted_auto\SZERVER\_extracted\SZERVER\fejleszt\arfolyam\verzio22\arfolyam_unpacked\wdata.dat
+Y_CURATE.DAT,2,Anti\SZERVER\_extracted_auto\forrasok_unpacked\SZERVER\fejleszt\tranzacs\y_curate.dat

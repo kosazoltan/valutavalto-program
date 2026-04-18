@@ -4,7 +4,7 @@
 # Javitasok (Eszter review):
 #   - Log konyvtar letrehozasa inditaskor (CRITICAL fix)
 #   - Fail counter: flock alapu vedelem race condition ellen (MINOR fix)
-#   - Email konfig: sajat .health.env, NEM a backup env-re tamaszkodik (MAJOR fix)
+#   - Email konfig: sajat .backup.env, NEM a backup env-re tamaszkodik (MAJOR fix)
 # =============================================================================
 set -euo pipefail
 
@@ -21,7 +21,7 @@ mkdir -p "$LOG_DIR"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG"; }
 
-# Alert email betoltese: sajat .health.env ha letezik, fallback .backup.env
+# Alert email betoltese: sajat env ha letezik, fallback backup env
 HEALTH_ENV=/opt/valutavalto/.health.env
 if [ -f "$HEALTH_ENV" ]; then
     # shellcheck source=/dev/null
@@ -54,6 +54,7 @@ else
         fi
         echo "$FAILS" > "$CONSECUTIVE_FAIL_FILE"
     ) 9>"$LOCK_FILE"
+    # Olvassuk vissza a tnyleges erteket
     FAILS=$(cat "$CONSECUTIVE_FAIL_FILE" 2>/dev/null || echo "1")
 
     log "Egymast koveto hibak: $FAILS"

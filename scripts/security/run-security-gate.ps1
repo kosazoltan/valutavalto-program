@@ -406,18 +406,20 @@ if ($env:NVD_API_KEY -and $env:NVD_API_KEY.Trim().Length -gt 0) {
 
 if ($hasJava -and (Test-Path -LiteralPath $backendDir)) {
     # Use Maven Wrapper to avoid local Maven PATH dependency and apply explicit timeout.
-    $backendCommand = "mvnw.cmd dependency-check:check -DfailBuildOnCVSS=7"
+    # Use absolute path to mvnw.cmd so cmd.exe /d can find it without CWD search.
+    $mvnwPath = Join-Path $backendDir "mvnw.cmd"
+    $backendCommand = "$mvnwPath dependency-check:check -DfailBuildOnCVSS=7"
     $backendDisplayCommand = "mvnw.cmd dependency-check:check -DfailBuildOnCVSS=7"
     if ($env:NVD_API_KEY -and $env:NVD_API_KEY.Trim().Length -gt 0) {
-        $backendCommand = "mvnw.cmd dependency-check:check -DfailBuildOnCVSS=7 -DnvdApiKey=$env:NVD_API_KEY"
+        $backendCommand = "$mvnwPath dependency-check:check -DfailBuildOnCVSS=7 -DnvdApiKey=$env:NVD_API_KEY"
         $backendDisplayCommand = "mvnw.cmd dependency-check:check -DfailBuildOnCVSS=7 -DnvdApiKey=***"
     }
 
-    $results.Add((Invoke-OptionalCheckWithTimeout `
+    # No ProbeCommand needed: hasJava already verified Java availability above.
+    $results.Add((Invoke-CheckWithTimeout `
         -Name "backend_dependency_check" `
         -WorkingDir $backendDir `
         -Command $backendCommand `
-        -ProbeCommand "./mvnw.cmd -version" `
         -TimeoutSeconds $BackendDependencyCheckTimeoutSec `
         -DisplayCommand $backendDisplayCommand `
         -OutputFile (Join-Path $reportDir "backend_dependency_check.txt")))

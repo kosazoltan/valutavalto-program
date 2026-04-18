@@ -1,0 +1,47 @@
+---
+title: "2026-04-11 AML Wave 1 Session Snapshot"
+format: gfm
+execute: false
+freeze: auto
+---
+
+## Session Scope
+
+- Goal: close AML wave 1 parity and restore trustworthy verification.
+- Result: AML wave 1 closed, WU AML hardened, security gate passed.
+
+## Closed Rules
+
+| Rule | Outcome | Evidence |
+|---|---|---|
+| `R-type--1` | full | `AmlBigctrlC1C2C3Test`, `AmlControllerCheckAllThresholdsTest`, `WesternUnionServiceTest` |
+| `R-blacklist` | full | `AmlServiceCompletionTest` |
+| `R-sanctions` priority | proven | `AmlServiceCompletionTest` |
+| `R-WU-aml` | full | `WesternUnionServiceTest` |
+
+## Key Decisions
+
+1. WU AML cannot silently skip when only `amountUsd` is present.
+2. If AML base amount is not computable, WU flow must fail closed.
+3. Sanctions screening short-circuits blacklist follow-up.
+4. Rule parity must be proven at caller-chain level, not only service-internal helper level.
+
+## Three-Layer Memory
+
+### Episodic
+
+- Sequence: currency propagation -> WU IC AML -> blacklist block -> sanctions priority -> missing-rate fail-closed -> gate pass.
+
+### Semantic
+
+- Durable rules now encoded in `aml-bigctrl-rule-parity.md`.
+
+### Execution
+
+- Next queue: source reconciliation, then transaction / fee / rounding / storno parity wave.
+
+## Verification
+
+- AML regression pack: pass
+- WU regression pack: pass
+- Security gate: pass

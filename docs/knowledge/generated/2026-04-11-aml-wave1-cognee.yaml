@@ -1,0 +1,82 @@
+ingest_profile: cognee-ready-memory
+session_id: 2026-04-11-aml-wave1
+kind: knowledge_bundle
+
+nodes:
+  - id: aml_wave1_closure
+    type: session
+    title: AML wave 1 closure
+    summary: AML wave 1 parity closed with caller-chain evidence and passing security gate.
+    tags: [aml, bigctrl, kyc, sanctions, parity, western-union]
+
+  - id: aml_rule_r_type_minus1
+    type: rule
+    title: Foreign customer cannot get USD
+    tags: [aml, usd, foreign-customer, parity]
+
+  - id: aml_rule_blacklist_block
+    type: rule
+    title: Active blacklist match blocks transaction
+    tags: [aml, blacklist, transaction-block]
+
+  - id: aml_rule_sanctions_priority
+    type: rule
+    title: Sanctions screening has priority over blacklist follow-up
+    tags: [aml, sanctions, blacklist, priority]
+
+  - id: aml_rule_wu_fail_closed
+    type: rule
+    title: WU AML fails closed without computable base amount
+    tags: [western-union, aml, fail-closed]
+
+  - id: verification_gate_2026_04_11
+    type: verification
+    title: Security gate after AML wave 1
+    tags: [security-gate, verification, passed]
+
+edges:
+  - from: aml_wave1_closure
+    to: aml_rule_r_type_minus1
+    relation: closed_rule
+  - from: aml_wave1_closure
+    to: aml_rule_blacklist_block
+    relation: closed_rule
+  - from: aml_wave1_closure
+    to: aml_rule_sanctions_priority
+    relation: proven_priority
+  - from: aml_wave1_closure
+    to: aml_rule_wu_fail_closed
+    relation: hardened_rule
+  - from: aml_wave1_closure
+    to: verification_gate_2026_04_11
+    relation: verified_by
+
+evidence:
+  - node: aml_rule_r_type_minus1
+    files:
+      - backend/src/main/java/hu/puzzleir/valuta/service/AmlService.java
+      - backend/src/test/java/hu/puzzleir/valuta/service/AmlBigctrlC1C2C3Test.java
+      - backend/src/test/java/hu/puzzleir/valuta/service/WesternUnionServiceTest.java
+      - backend/src/test/java/hu/puzzleir/valuta/controller/AmlControllerCheckAllThresholdsTest.java
+  - node: aml_rule_blacklist_block
+    files:
+      - backend/src/main/java/hu/puzzleir/valuta/service/BlacklistService.java
+      - backend/src/main/java/hu/puzzleir/valuta/service/AmlService.java
+      - backend/src/test/java/hu/puzzleir/valuta/service/AmlServiceCompletionTest.java
+  - node: aml_rule_sanctions_priority
+    files:
+      - backend/src/test/java/hu/puzzleir/valuta/service/AmlServiceCompletionTest.java
+  - node: aml_rule_wu_fail_closed
+    files:
+      - backend/src/main/java/hu/puzzleir/valuta/service/WesternUnionService.java
+      - backend/src/test/java/hu/puzzleir/valuta/service/WesternUnionServiceTest.java
+  - node: verification_gate_2026_04_11
+    files:
+      - security-reports/latest/mandatory_db_preflight.txt
+      - security-reports/latest/sqli_and_command_injection_patterns.txt
+
+lessons:
+  - Do not trust stale security report snapshots; always re-run the gate.
+  - Parity proof must be caller-chain level, not only internal helper level.
+  - WU AML needs an explicit fail-closed path when base amount is missing.
+  - Sanctions and blacklist controls must be tested for ordering, not only independent blocking.

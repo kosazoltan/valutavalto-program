@@ -1,0 +1,153 @@
+{
+  "generated_at": "2026-04-09",
+  "inventory_path": "docs\\knowledge\\legacy-reverse-engineering\\generated\\legacy-binary-inventory-2026-04-09.csv",
+  "total_binaries": 2157,
+  "area_counts": {
+    "ARFOLYAM": {
+      "exe": 2,
+      "dll": 0
+    },
+    "VALUTA": {
+      "exe": 155,
+      "dll": 129
+    },
+    "SZERVER": {
+      "exe": 430,
+      "dll": 294
+    },
+    "SZERVER_EXTRACTED_AUTO": {
+      "exe": 705,
+      "dll": 406
+    },
+    "CAMERA": {
+      "exe": 6,
+      "dll": 0
+    },
+    "CAMERA2": {
+      "exe": 2,
+      "dll": 0
+    },
+    "CAMERA3": {
+      "exe": 20,
+      "dll": 2
+    },
+    "FIREBIRD": {
+      "exe": 3,
+      "dll": 0
+    },
+    "KESZLEX": {
+      "exe": 1,
+      "dll": 0
+    },
+    "KORLEVEL_ZIP": {
+      "exe": 1,
+      "dll": 0
+    },
+    "OTHER": {
+      "exe": 1,
+      "dll": 0
+    }
+  },
+  "top_clusters": [
+    [
+      "legacy-dll",
+      726
+    ],
+    [
+      "unclassified",
+      370
+    ],
+    [
+      "camera",
+      274
+    ],
+    [
+      "display",
+      105
+    ],
+    [
+      "rates",
+      74
+    ],
+    [
+      "denomination",
+      71
+    ],
+    [
+      "customer-aml",
+      64
+    ],
+    [
+      "reservation",
+      41
+    ],
+    [
+      "western-union",
+      36
+    ],
+    [
+      "trade-module",
+      33
+    ],
+    [
+      "auth-cashier",
+      32
+    ],
+    [
+      "vault-transfer",
+      25
+    ],
+    [
+      "year-opening",
+      25
+    ],
+    [
+      "cash-stock",
+      24
+    ],
+    [
+      "supervisor",
+      24
+    ],
+    [
+      "server-core",
+      24
+    ],
+    [
+      "server-import",
+      22
+    ],
+    [
+      "server-receptor",
+      21
+    ],
+    [
+      "closing",
+      20
+    ],
+    [
+      "storno",
+      18
+    ],
+    [
+      "rates-sync",
+      16
+    ],
+    [
+      "compliance-rates",
+      14
+    ],
+    [
+      "aml-sanctions",
+      12
+    ],
+    [
+      "firebird-runtime",
+      12
+    ],
+    [
+      "partner-citysim",
+      12
+    ]
+  ]
+}

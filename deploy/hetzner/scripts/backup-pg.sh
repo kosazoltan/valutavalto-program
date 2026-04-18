@@ -65,6 +65,7 @@ else
     log "HIBA: Nextcloud feltoltes sikertelen (HTTP $HTTP_CODE)"
     cat "$NC_RESULT_FILE" >> "$LOG" 2>/dev/null || true
     rm -f "$NC_RESULT_FILE"
+    # Helyi backup megtartjuk hiba eseten
     log "Helyi backup megtartva: $BACKUP_FILE"
     exit 3
 fi
