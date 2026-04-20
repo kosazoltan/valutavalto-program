@@ -159,5 +159,7 @@ installer/scripts/seed-data/*.json
 # Monorepo root
 node_modules/
 packages/*/node_modules/
-packages/shared-api/src/openapi.json
-packages/shared-api/src/openapi.d.ts
+# NOTE: openapi.d.ts + openapi.json generated files ARE committed.
+# CI cannot regenerate them (needs running backend + DB), so the snapshot is
+# the source of truth. Regenerate locally with `npm run typegen` when backend
+# OpenAPI spec changes, then commit.
