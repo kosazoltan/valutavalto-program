@@ -139,20 +139,17 @@ public class ReceiptSequenceService {
                 continue;
             }
 
-            // Prefix: első nem-numerikus karakter(ek), majd branchCode (3), majd sorszám (6)
-            // FF és UF kétjegyű prefix, többi 1 jegyű
-            String prefix;
-            String numericPart;
-            if (receipt.length() >= 2 && !Character.isDigit(receipt.charAt(1))
-                    && receipt.charAt(0) != receipt.charAt(1)) {
-                // Kétjegyű prefix (FF, UF)
-                prefix = receipt.substring(0, 2);
-                numericPart = receipt.substring(2);
-            } else {
-                // Egyjegyű prefix
-                prefix = receipt.substring(0, 1);
-                numericPart = receipt.substring(1);
+            // Prefix: összes vezető nem-numerikus karakter (pl. V, E, K, AA, AV, PR, FF, UF — legacy)
+            // majd branchCode (3) + sorszám (6).
+            int prefixLen = 0;
+            while (prefixLen < receipt.length() && !Character.isDigit(receipt.charAt(prefixLen))) {
+                prefixLen++;
             }
+            if (prefixLen == 0 || prefixLen >= receipt.length()) {
+                continue;
+            }
+            String prefix = receipt.substring(0, prefixLen);
+            String numericPart = receipt.substring(prefixLen);
 
             // numericPart = branchCode(3) + sorszám(6) → sorszám az utolsó 6 jegy
             if (numericPart.length() < 6) {
@@ -179,9 +176,10 @@ public class ReceiptSequenceService {
 
             // BranchCode kinyerése az első bizonylatból
             String firstReceipt = seqMap.firstEntry().getValue();
-            String branchCodePart = (prefix.length() == 2)
-                ? firstReceipt.substring(2, 5)
-                : firstReceipt.substring(1, 4);
+            int pLen = prefix.length();
+            String branchCodePart = firstReceipt.length() >= pLen + 3
+                ? firstReceipt.substring(pLen, pLen + 3)
+                : "000";
 
             long prev = seqMap.firstKey();
             for (long seq : seqMap.tailMap(prev + 1).keySet()) {

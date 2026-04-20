@@ -492,10 +492,11 @@ export async function registerCashRegisterDevice(
     if (!branchResp.ok || !Array.isArray(branchResp.body) || branchResp.body.length === 0) {
       return { success: false, errorMessage: `Branch lookup sikertelen: ${payload.branchCode}` };
     }
-    const branchId = branchResp.body.find((b) => b.code === payload.branchCode)?.id || branchResp.body[0]?.id;
-    if (!branchId) {
-      return { success: false, errorMessage: `Branch id nem talalhato: ${payload.branchCode}` };
+    const matchedBranch = branchResp.body.find((b) => b.code === payload.branchCode);
+    if (!matchedBranch) {
+      return { success: false, errorMessage: `Branch code nem egyezik a szerver valaszaval: ${payload.branchCode}` };
     }
+    const branchId = matchedBranch.id;
 
     // Step 2: POST /cash-register/register
     const regResp = await httpJson<{ id: string }>(
@@ -762,7 +763,8 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
     log.info('[Setup] .env sikeresen kiírva:', envPath);
 
     // v2.1.4: Az SQLite server_url config-ba is beirjuk, a syncEngine ezt olvassa
-    let installUuid = '';
+    // NGM: az installUuid-t a try BLOKK ELOTT generaljuk, hogy kivetel eseten se legyen ures.
+    let installUuid: string = crypto.randomUUID();
     try {
       const { setConfig, getConfig } = await import('./sqlite');
       setConfig('server_url', resolvedApiUrl);
@@ -782,10 +784,9 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       // V100: stabil install uuid — eszkoz-azonositohoz
       const existingUuid = getConfig('install_uuid');
       if (existingUuid) {
-        installUuid = existingUuid;
+        installUuid = existingUuid; // re-install eseten megtartjuk a regit
       } else {
-        installUuid = crypto.randomUUID();
-        setConfig('install_uuid', installUuid);
+        setConfig('install_uuid', installUuid); // mar generalva a try elott
       }
       log.info('[Setup] SQLite server_url elmentve:', resolvedApiUrl, 'offline_mode:', payload.offlineMode);
     } catch (err) {

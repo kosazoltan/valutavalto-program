@@ -1,4 +1,5 @@
 /**
+import crypto from 'node:crypto';
  * SyncEngine — Offline → Online szinkronizáció.
  *
  * Feladatai:
@@ -240,10 +241,9 @@ export class SyncEngine {
     // Security: env var elsodleges, config fallback csak ha nincs env
     // A bootstrap_password NEM mentodhet plaintext-ben a DB-be tobbe
     const password = process.env.PENZTAR_BOOTSTRAP_PASSWORD?.trim() || getConfig('bootstrap_password')?.trim() || '';
-    // Ha config-bol jott, azonnal toroljuk a plaintext verziót (egyhasznalatos migracio)
-    if (!process.env.PENZTAR_BOOTSTRAP_PASSWORD && getConfig('bootstrap_password')) {
-      deleteConfig('bootstrap_password');
-    }
+    // FIGYELEM: a bootstrap_password torlese CSAK sikeres login UTAN tortenjen meg
+    // (bootstrapAuthSession success agaban). Itt NE toroljuk, mert ha a login hibazik
+    // (pl. rossz companyCode), a user elveszti a plaintext jelszavat es nem tud ujra login-olni.
     const roleCode = process.env.PENZTAR_BOOTSTRAP_ROLE_CODE?.trim() || getConfig('bootstrap_role_code')?.trim() || null;
 
     if (!companyCode || !workerCode || !password) {
@@ -332,6 +332,11 @@ export class SyncEngine {
 
       this.persistAuthToken(token);
       this.lastTokenValidationAt = Date.now();
+      // Security: sikeres login utan torolheto a plaintext bootstrap_password (ha a DB-ben volt)
+      if (!process.env.PENZTAR_BOOTSTRAP_PASSWORD && getConfig('bootstrap_password')) {
+        deleteConfig('bootstrap_password');
+        log.info('[SyncEngine] bootstrap_password torolve (sikeres login utan)');
+      }
       log.info('[SyncEngine] Lokális auth/session bootstrap sikeres');
       return token;
     } catch (err) {

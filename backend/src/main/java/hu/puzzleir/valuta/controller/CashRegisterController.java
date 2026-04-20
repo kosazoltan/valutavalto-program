@@ -103,7 +103,7 @@ public class CashRegisterController {
      * Idempotens: a (companyId, code) parra uniqueness - ugyanaz a penztar ismetelten hivhato frissitesi celbol.
      */
     @PostMapping("/register")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'UGYVEZETO', 'FOERTEKTAR')")
     public ResponseEntity<CashRegisterDeviceDto> registerDevice(
             @Valid @RequestBody RegisterCashRegisterDeviceRequest request) {
         return ResponseEntity.ok(cashRegisterDeviceService.register(request));

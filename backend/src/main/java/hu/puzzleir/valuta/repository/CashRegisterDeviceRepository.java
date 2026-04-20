@@ -13,7 +13,8 @@ public interface CashRegisterDeviceRepository extends JpaRepository<CashRegister
 
     Optional<CashRegisterDevice> findByCompanyIdAndCode(UUID companyId, String code);
 
-    Optional<CashRegisterDevice> findByDeviceFingerprint(String deviceFingerprint);
+    /** Cross-tenant biztonsag: mindig companyId-val szurve. */
+    Optional<CashRegisterDevice> findByCompanyIdAndDeviceFingerprint(UUID companyId, String deviceFingerprint);
 
     List<CashRegisterDevice> findByBranchIdOrderByCodeAsc(UUID branchId);
 

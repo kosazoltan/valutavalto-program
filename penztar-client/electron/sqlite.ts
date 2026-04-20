@@ -555,7 +555,7 @@ export function generateStrictReceiptNumber(prefix: string, branchCode: string):
   const row = stmt.getAsObject();
   stmt.free();
   const seq = Number(row['last_seq'] ?? 1);
-  saveDatabase();
+  // NGM 23/2014: NINCS kulon save itt - a savePendingTransaction/Conversion atomi save-el egyszerre
   return `${prefix}${normBranch}${String(seq).padStart(6, '0')}`;
 }
 
@@ -926,7 +926,10 @@ export function savePendingTransaction(
   // Stabil idempotency key — retry-nál is ugyanazt küldjük a szervernek
   const idempotencyKey = crypto.randomUUID();
   // NGM-kompatibilis helyi bizonylatszam: V (vetel) / E (eladas) prefix + branchCode3 + seq6
-  const branchCodeForReceipt = getConfig('branch_code') ?? '000';
+  const branchCodeForReceipt = getConfig('branch_code');
+  if (!branchCodeForReceipt) {
+    throw new Error('SetupWizard nem futott le: branch_code SQLite config hianyzik. Ujra-telepites szukseges.');
+  }
   const localReferenceNumber = generateStrictReceiptNumber(type === 'BUY' ? 'V' : 'E', branchCodeForReceipt);
 
   const normalizedCustomerIdentifier = customerIdentifier?.trim() || null;
@@ -1057,7 +1060,10 @@ export function savePendingConversion(
 
   const idempotencyKey = crypto.randomUUID();
   // NGM-kompatibilis: K (konverzio) prefix
-  const branchCodeForReceipt = getConfig('branch_code') ?? '000';
+  const branchCodeForReceipt = getConfig('branch_code');
+  if (!branchCodeForReceipt) {
+    throw new Error('SetupWizard nem futott le: branch_code SQLite config hianyzik. Ujra-telepites szukseges.');
+  }
   const localReferenceNumber = generateStrictReceiptNumber('K', branchCodeForReceipt);
 
   db.run(

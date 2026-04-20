@@ -37,6 +37,11 @@ function launchElectronIfReady() {
   if (!fs.existsSync(mainJs) || !fs.existsSync(preloadJs)) {
     return; // Még nincs kész mindkét entry — a következő onstart majd elindítja
   }
+  // Idempotency: ha mar fut egy electronDevProcess, NE indits ujat (hirtelen kill+spawn roncsol)
+  // Csak a kezdeti inditas csinalja meg az ASAR-t; HMR reload-ok a preload-on at futnak.
+  if (electronDevProcess && !electronDevProcess.killed) {
+    return;
+  }
 
   const electronExe = path.resolve('node_modules/electron/dist/electron.exe');
   const tmpAppDir = path.resolve('.dev-app');
@@ -89,7 +94,8 @@ function launchElectronIfReady() {
     execSync(`npx asar pack "${tmpAppDir}" "${asarPath}"`, { stdio: 'pipe' });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
-    console.error('Failed to create ASAR:', message);
+    console.error('[vite-electron] ASAR pack HIBA — Electron NEM indul (korrupt archivum helyett inkabb nem indul):', message);
+    return; // ne spawn-oljuk az Electron-t korrupt ASAR-ral
   }
 
   if (electronDevProcess && !electronDevProcess.killed) {
@@ -123,6 +129,12 @@ export default defineConfig({
       {
         entry: 'electron/main.ts',
         onstart(_args) {
+          // main.ts valtozasnal full Electron-restart kell (a preloadJs maradhat).
+          // Eloszor leallitjuk a regi process-t, hogy az idempotency-guard ne skip-eljen.
+          if (electronDevProcess && !electronDevProcess.killed) {
+            electronDevProcess.kill();
+            electronDevProcess = null;
+          }
           launchElectronIfReady();
         },
         vite: {
@@ -138,8 +150,14 @@ export default defineConfig({
       {
         entry: 'electron/preload.ts',
         onstart(args) {
-          args.reload();
-          launchElectronIfReady();
+          // Elso inditasnal (main onstart elott futhat) elinditjuk az Electron-t, ha
+          // mindket fajl mar letezik. Kesobbi HMR preload-valtozasoknal args.reload()
+          // frissiti a renderer-t ujrainditas nelkul.
+          if (!electronDevProcess || electronDevProcess.killed) {
+            launchElectronIfReady();
+          } else {
+            args.reload();
+          }
         },
         vite: {
           build: {

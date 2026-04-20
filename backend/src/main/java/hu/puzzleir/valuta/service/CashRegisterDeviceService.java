@@ -5,6 +5,8 @@ import hu.puzzleir.valuta.dto.cashregister.RegisterCashRegisterDeviceRequest;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.CashRegisterDevice;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CashRegisterDeviceRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -46,6 +48,19 @@ public class CashRegisterDeviceService {
                         .companyId(companyId)
                         .code(request.getCode())
                         .build());
+
+        // Device-hijacking vedelem: ha mar letezik a (companyId, code) eszkoz, de MAS
+        // device_fingerprint-tel ujra-regisztralnak, az egy masik fizikai gep -> 409 Conflict.
+        // Kivetel: ha a regi fingerprint ures (legacy rekord), frissitest engedelyezunk.
+        if (device.getId() != null
+                && device.getDeviceFingerprint() != null && !device.getDeviceFingerprint().isBlank()
+                && request.getDeviceFingerprint() != null && !request.getDeviceFingerprint().isBlank()
+                && !device.getDeviceFingerprint().equals(request.getDeviceFingerprint())) {
+            log.warn("Device-hijacking kiserlet: code={}, existing_fp={}, requested_fp={}",
+                    device.getCode(), device.getDeviceFingerprint(), request.getDeviceFingerprint());
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Ez a penztar-kod mar egy masik fizikai gephez tartozik. Valassz masik kodot vagy kerj torlest az adminisztratortol.");
+        }
 
         device.setBranchId(request.getBranchId());
         device.setName(request.getName());
