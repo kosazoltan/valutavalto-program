@@ -30,10 +30,8 @@ import java.util.UUID;
  * Prefix-ek:
  *   E  = Eladás (SELL)
  *   V  = Vétel (BUY)
- *   F  = Átadás (TRANSFER_OUT)
- *   U  = Átvétel (TRANSFER_IN)
- *   FF = Forint átadás (TRANSFER_OUT ha HUF)
- *   UF = Forint átvétel (TRANSFER_IN ha HUF)
+ *   AA = Átadás (TRANSFER_OUT)
+ *   AV = Átvétel (TRANSFER_IN)
  *   K  = Konverzió (CONVERSION)
  *   W  = Western Union (WU_SEND/WU_RECEIVE → vétel/eladás számláló)
  *   M  = MoneyGram (MG_SEND/MG_RECEIVE → vétel/eladás számláló)
@@ -238,8 +236,8 @@ public class ReceiptSequenceService {
             case SELL -> "E";
             case BUY -> "V";
             case CONVERSION -> "K";
-            case TRANSFER_OUT -> "F";
-            case TRANSFER_IN -> "U";
+            case TRANSFER_OUT -> "AA";
+            case TRANSFER_IN -> "AV";
             // Western Union: W prefix, vétel/eladás számlálót használ (lásd incrementSequence)
             case WESTERN_UNION_SEND -> "W";
             case WESTERN_UNION_RECEIVE -> "W";

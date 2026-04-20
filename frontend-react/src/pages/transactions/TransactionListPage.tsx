@@ -53,7 +53,7 @@ export default function TransactionListPage() {
             const rows = await api.getPendingTransactions()
             localPending = rows.map((r) => ({
               id: -(1_000_000 + Number(r.id)),
-              receiptNumber: `L-${String(r.id).padStart(8, '0')}`, // Local szigoru-szamadas sorszam
+              receiptNumber: (r as { local_reference_number?: string }).local_reference_number ?? `L-${String(r.id).padStart(8, '0')}`, // NGM helyi bizonylatszam (V/E/K/AA/AV prefix)
               transactionDate: (r as { created_at?: string }).created_at?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
               transactionTime: (r as { created_at?: string }).created_at?.slice(11, 19) ?? '',
               transactionType: (String(r.type).toUpperCase() as Transaction['transactionType']) || 'BUY',

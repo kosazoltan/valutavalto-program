@@ -213,9 +213,25 @@ export class SyncEngine {
     isRunning: false,
   };
 
-  private getServerUrl(): string {
-    const stored = getConfig('server_url');
-    return stored ?? 'http://localhost:8080/api/v1';
+  /**
+   * Szerver URL lekérése a SQLite config-ból.
+   * NULL-t ad vissza, ha:
+   *   - nincs beállítva (server_url config hiányzik/üres)
+   *   - explicit offline módban van az app (offline_mode=true config)
+   *
+   * A runSync() ekkor NEM indít hálózati hívást — offline pénztárnál NEM spamel HTTP 400-at.
+   * A SetupWizard online-regisztrációkor állítja be a server_url + offline_mode=false configot.
+   */
+  private getServerUrl(): string | null {
+    const offlineFlag = (getConfig('offline_mode') ?? '').toLowerCase();
+    if (offlineFlag === 'true' || offlineFlag === '1') {
+      return null;
+    }
+    const stored = (getConfig('server_url') ?? '').trim();
+    if (!stored) {
+      return null;
+    }
+    return stored;
   }
 
   private getBootstrapCredentials(): BootstrapCredentials | null {
@@ -387,6 +403,10 @@ export class SyncEngine {
 
     try {
       const serverUrl = this.getServerUrl();
+      if (!serverUrl) {
+        log.debug('[SyncEngine] Offline mód vagy server_url hiányzik — sync kihagyva');
+        return;
+      }
       let token = this.getAuthToken();
 
       if (token) {
@@ -459,6 +479,7 @@ export class SyncEngine {
     }
 
     const serverUrl = this.getServerUrl();
+    if (!serverUrl) { result.errors.push('Offline mód — szerver URL nincs beállítva'); return result; }
     const token = tokenOverride ?? this.getAuthToken();
 
     if (!token) {
@@ -937,6 +958,7 @@ export class SyncEngine {
   async syncRates(): Promise<void> {
     try {
       const serverUrl = this.getServerUrl();
+      if (!serverUrl) { return; }
       const token = this.getAuthToken();
 
       const rates = await httpGet<RateResponse[]>(
@@ -998,6 +1020,7 @@ export class SyncEngine {
   async syncCirculars(): Promise<void> {
     try {
       const serverUrl = this.getServerUrl();
+      if (!serverUrl) { return; }
       const token = this.getAuthToken();
 
       const circulars = await httpGet<CircularResponse[]>(
@@ -1057,6 +1080,7 @@ export class SyncEngine {
       if (pending.length === 0) return;
 
       const serverUrl = this.getServerUrl();
+      if (!serverUrl) { return; }
       const token = this.getAuthToken();
       if (!token) return;
 
@@ -1098,6 +1122,7 @@ export class SyncEngine {
       if (pending.length === 0) return;
 
       const serverUrl = this.getServerUrl();
+      if (!serverUrl) { return; }
       const token = this.getAuthToken();
       if (!token) return;
 
@@ -1151,6 +1176,7 @@ export class SyncEngine {
       if (pending.length === 0) return;
 
       const serverUrl = this.getServerUrl();
+      if (!serverUrl) { return; }
       const token = this.getAuthToken();
       if (!token) return;
 
@@ -1186,6 +1212,7 @@ export class SyncEngine {
   async cacheBranchStatus(): Promise<void> {
     try {
       const serverUrl = this.getServerUrl();
+      if (!serverUrl) { return; }
       const token = this.getAuthToken();
 
       const branches = await httpGet<BranchStatusResponse[]>(
@@ -1227,6 +1254,7 @@ export class SyncEngine {
   async syncCashDeskMasterData(): Promise<void> {
     try {
       const serverUrl = this.getServerUrl();
+      if (!serverUrl) { return; }
       const token = this.getAuthToken();
 
       const cashDesks = await httpGet<CashDeskResponse[]>(
@@ -1266,6 +1294,7 @@ export class SyncEngine {
   async syncWorkerMasterData(): Promise<void> {
     try {
       const serverUrl = this.getServerUrl();
+      if (!serverUrl) { return; }
       const token = this.getAuthToken();
 
       const workers = await httpGet<WorkerResponse[]>(
@@ -1317,6 +1346,7 @@ export class SyncEngine {
   async restoreFromServer(sinceDaysAgo: number = 180): Promise<{ restored: number; error: string | null }> {
     try {
       const serverUrl = this.getServerUrl();
+      if (!serverUrl) { return { restored: 0, error: 'offline' }; }
       const token = this.getAuthToken();
       if (!token) {
         return { restored: 0, error: 'Nincs auth token — bejelentkezés szükséges' };
