@@ -9,3 +9,6 @@ export * from './decade-reports'
 
 export { publicApi } from "./public"
 export type { PublicWorker, PublicBranch } from "./public"
+
+export { transitApi } from "./transit"
+export type { TransitItem } from "./transit"

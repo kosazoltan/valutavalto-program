@@ -15,6 +15,7 @@ import { logger } from './utils/logger';
 
 const SetupWizard = lazy(() => import('./pages/setup/SetupWizard'))
 const WorkerPage = lazy(() => import('./pages/workers/WorkerPage'))
+const TransitPage = lazy(() => import('./pages/transit/TransitPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const TransactionPage = lazy(() => import('./pages/transactions/TransactionPage'))
 const TransactionListPage = lazy(() => import('./pages/transactions/TransactionListPage'))
@@ -508,6 +509,7 @@ export default function App() {
           <Route path="/email-settings" element={<EmailPage />} />
           <Route path="/employees" element={<EmployeePage />} />
           <Route path="/workers" element={<WorkerPage />} />
+          <Route path="/transit" element={<TransitPage />} />
           <Route path="/hrk" element={<HrkPage />} />
           <Route path="/led-display" element={<LedDisplayPage />} />
           <Route path="/data-import" element={<DataImportPage />} />
