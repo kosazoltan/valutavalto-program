@@ -16,7 +16,8 @@ interface Worker {
   phone?: string
   branchId?: string
   branchName?: string
-  isActive: boolean
+  isActive?: boolean
+  active?: boolean
   createdAt?: string
 }
 
@@ -121,7 +122,7 @@ export default function WorkerPage() {
 
   const handleToggle = async (w: Worker) => {
     try {
-      if (w.isActive) {
+      if (w.active ?? w.isActive) {
         await api.post(`/workers/${w.id}/deactivate`)
       } else {
         await api.post(`/workers/${w.id}/activate`)
@@ -277,8 +278,8 @@ export default function WorkerPage() {
                   <td>{w.phone ?? '-'}</td>
                   <td>{w.branchName ?? '-'}</td>
                   <td>
-                    <span className={`badge ${w.isActive ? 'badge-green' : 'badge-red'}`}>
-                      {w.isActive ? 'Aktív' : 'Inaktív'}
+                    <span className={`badge ${(w.active ?? w.isActive) ? 'badge-green' : 'badge-red'}`}>
+                      {(w.active ?? w.isActive) ? 'Aktív' : 'Inaktív'}
                     </span>
                   </td>
                   <td>
@@ -295,7 +296,7 @@ export default function WorkerPage() {
                         className="form-button text-xs flex items-center gap-1"
                       >
                         <Power size={12} />
-                        {w.isActive ? 'Deaktiválás' : 'Aktiválás'}
+                        {(w.active ?? w.isActive) ? 'Deaktiválás' : 'Aktiválás'}
                       </button>
                     </div>
                   </td>
