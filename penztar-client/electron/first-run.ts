@@ -382,7 +382,9 @@ export async function waitForBackend(
   pollIntervalMs = 1000,
 ): Promise<{ healthy: boolean; attempts: number; lastError?: string }> {
   const base = apiUrl.trim().replace(/\/+$/, '').replace(/\/api\/v1$/, '');
-  const healthUrl = `${base}/actuator/health`;
+  // A production Caddy az /actuator/* path-ot 403-mal blokkolja (management csak 127.0.0.1).
+  // Ezert publikus /api/v1/auth/bootstrap-status-t hasznaljuk health checkhez.
+  const healthUrl = `${base}/api/v1/auth/bootstrap-status`;
   const deadline = Date.now() + maxWaitMs;
   let attempts = 0;
   let lastError: string | undefined;
@@ -393,11 +395,9 @@ export async function waitForBackend(
       method: 'GET',
       timeoutMs: Math.min(pollIntervalMs + 500, 3000),
     });
-    if (resp.ok && resp.body && typeof resp.body === 'object' && 'status' in resp.body) {
-      if (resp.body.status === 'UP') {
-        return { healthy: true, attempts };
-      }
-      lastError = `actuator status=${resp.body.status}`;
+    if (resp.ok) {
+      // bootstrap-status 200 = backend el, status mezo nem kell
+      return { healthy: true, attempts };
     } else {
       lastError = resp.errorMessage || `HTTP ${resp.status}`;
     }
