@@ -2,7 +2,11 @@
   "compilerOptions": {
     "target": "ES2022",
     "useDefineForClassFields": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "bundler",
@@ -17,7 +21,18 @@
     "noUncheckedIndexedAccess": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "baseUrl": "."
+    "paths": {
+      "@valuta/shared-api": [
+        "../packages/shared-api/src/index.ts"
+      ],
+      "@valuta/shared-ipc": [
+        "../packages/shared-ipc/src/index.ts"
+      ]
+    }
   },
-  "include": ["electron"]
+  "include": [
+    "electron",
+    "../packages/shared-api/src",
+    "../packages/shared-ipc/src"
+  ]
 }
