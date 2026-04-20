@@ -112,6 +112,6 @@ public interface WorkerRepository extends JpaRepository<Worker, Long> {
      * Used by the login-prefill public endpoint - any cashier in the region
      * can log in from any branch of that region.
      */
-    List<Worker> findByCompanyIdAndRegionAndIsActiveTrue(UUID companyId, String region);
+    List<Worker> findByCompanyIdAndRegionAndActiveTrue(UUID companyId, String region);
 
 }

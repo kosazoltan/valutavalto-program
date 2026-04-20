@@ -122,7 +122,7 @@ public class PublicBranchController {
             return ResponseEntity.ok(Collections.emptyList());
         }
         List<Worker> workers = workerRepository
-                .findByCompanyIdAndRegionAndIsActiveTrue(branch.getCompany().getId(), region);
+                .findByCompanyIdAndRegionAndActiveTrue(branch.getCompany().getId(), region);
         List<PublicWorkerDto> dtos = workers.stream()
                 .sorted(Comparator.comparing(Worker::getName, Comparator.nullsLast(String::compareToIgnoreCase)))
                 .map(w -> PublicWorkerDto.builder()
