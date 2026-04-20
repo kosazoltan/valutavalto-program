@@ -1,5 +1,46 @@
 # Changelog
 
+## [2.1.5] - 2026-04-20
+
+### Added (valos munkakor-adatok + 3+1 program-tipus)
+- **V145-V149 Flyway migraciok**: 64 penztar + 194 dolgozo EBC-xlsx alapjan, 4 duplikatum deaktivalas (BORSI/KASZA/KOSA V111+V145 atfedes, Madar Zoltan xlsx-ben ketszeres), BALI=ertektar, BORSI+KASZA=foertektar.
+- **EBCiroda kanonikus 14 role integracio** (V147): ugyvezeto, irodavezeto, foertektar, irodai_dolgozo, teruleti_vezeto, ertektar, belso_ellenor, biztonsagi_vezeto, berszamfejto, csoportvezeto, penzugyi_vezeto, penztar, ertekszallito, arfolyam_nezo.
+- **V150 permission seed**: 28 system permission + 14 role-permission mapping (penztar 7, ertektar 10, foertektar 14, teruleti_vezeto 19, ugyvezeto 28 teljes).
+- **3+1 program-tipus szeparacio**:
+  - Lokal Valutavalto Penztar (penztar role, 140 dolgozo)
+  - Lokal Ertektar (ertektar role, 15 dolgozo)
+  - Lokal Ertekszallitas (ertekszallito role, 22 dolgozo - csak fizikai szallitas dokumentalas)
+  - Szerver bongeszo (ugyvezeto+foertektar+irodavezeto+belso_ellenor+teruleti_vezeto+egyeb szerver role, 22 dolgozo)
+- **Backend validAppModes**: login response tartalmazza a dolgozo role-jabol szarmaztatott engedelyezett program-tipusokat (penztar / ertektar / ertekszallito / full).
+- **SetupWizard uj 'program' lepes**: 3 kartya valasztas + SQLite app_mode save.
+- **Transit tracking** (uton levo csomagok, csomagvesztes csokkentes):
+  - TransitController: GET /incoming + /outgoing, POST /{type}/{id}/acknowledge
+  - TransitPage.tsx: 2 tab (Bejovo + Kimeno), 30s auto-poll, Atvetel gomb validalasra
+  - TransitBadge topbar widget: pending csomag count + gyors navigacio
+- **Admin bulk email import** (WorkerPage): CSV/Excel paste modal, PATCH /workers/bulk-email, szuletes idempotencia-kulcs per hivas.
+- **/workers admin route** + isActive/active JSON kulcs compat (eddig minden Inaktivnak tunt).
+- **Regio-alapu dolgozo dropdown a LoginPage-en** (/public/workers?branchCode=XXX): Hetzner-rol tolti a penztarosokat, no cache.
+- **Dolgozoi ID-KOD mapping**: xlsx 127 penztaros ID osszekotesse (W007570 BORSI, stb.).
+
+### Fixed
+- **SetupWizard DNS**: api.excvaluta.com -> excvaluta.com (nem letezo aldomain, csak root domain a Cloudflare-en).
+- **DEFAULT_BRANCHES**: 60 fiktiv iroda -> 2 valos (KORUT + TISZA Szeged), fallback esetben.
+- **Flyway lokalis telepito**: spring.flyway.enabled=true + ddl-auto=none (eddig false miatt ures DB).
+- **CORS**: app://localhost + http://localhost:3000/5173/8080 + file:// (Electron + dev szerverek).
+- **fix-backend-acl.ps1**: LocalSystem SID (nem NetworkService - az NSIS ObjectName egyez).
+- **V150 permission INSERT created_at NOT NULL**: NOW() hozzaadva az INSERT-ekhez.
+- **WorkerRepository.findByCompanyIdAndRegionAndActiveTrue**: property 'active' (nem 'isActive', a Worker.java entity fieldje ezt hasznalja).
+
+### Changed
+- Verzio: 2.1.3 -> 2.1.5 (2.1.4 kihagyva - belso fejlesztesi iteracio).
+- Menustruktura teljesen ujra - 4 program-tipus szerint szurve (canonicalRoles array + appMode metszet).
+- LoginPage SERVER_ALLOWED_ROLES -> SERVER_ALLOWED_CANONICAL_ROLES (EBCiroda 14 role hozzadva).
+- Default login route: canonical role szerint (penztar -> /cashier, ertektar -> /treasury, ertekszallito -> /shipments, szerver -> /dashboard).
+
+### Hetzner deploy realtime
+- 66 branch + 197 worker (193 aktiv) a prod DB-ben.
+- /api/v1/public/branches + /public/workers + /transit/* + /workers/bulk-email mind elo a https://excvaluta.com-on.
+
 ## [2.1.3] - 2026-04-20
 
 ### Fixed

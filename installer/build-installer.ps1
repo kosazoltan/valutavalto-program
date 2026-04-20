@@ -7,7 +7,7 @@
 # =============================================================================
 
 param(
-    [string]$Version = "2.1.3",
+    [string]$Version = "2.1.5",
     [switch]$SkipBackendBuild,
     [switch]$SkipFrontendBuild,
     [switch]$SkipDownloads,
@@ -225,7 +225,7 @@ if (-not $SkipDownloads) {
     }
     Copy-Item (Join-Path $pgExtracted.FullName "*") "$StageDir\pgsql\" -Recurse -Force
 
-    # v2.1.3: pgAdmin 4 + doc + include + symbols + StackBuilder eltavolitasa a stage-bol
+    # v2.1.5: pgAdmin 4 + doc + include + symbols + StackBuilder eltavolitasa a stage-bol
     # Ok: pgAdmin 4 deep nested paths meghaladjak a Windows MAX_PATH = 260 limitet,
     # NSIS fordito nem tudja megnyitni. Ezek nem kellenek a Penztar szerver runtime-hoz.
     foreach ($dir in @("pgAdmin 4", "doc", "include", "symbols", "StackBuilder")) {
