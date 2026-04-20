@@ -354,6 +354,7 @@ export interface ElectronAPI {
     bootstrapUsername?: string;
     bootstrapPassword?: string;
     offlineMode: boolean;
+    appMode?: "penztar" | "ertektar" | "ertekszallito";
   }): Promise<{
     success: boolean;
     envPath: string;

@@ -28,7 +28,7 @@ interface Branch {
   address?: string
 }
 
-type StepId = 'welcome' | 'branch' | 'server' | 'admin'
+type StepId = 'welcome' | 'branch' | 'program' | 'server' | 'admin'
 
 interface StepDef {
   id: StepId
@@ -40,6 +40,7 @@ interface StepDef {
 const STEPS: readonly StepDef[] = [
   { id: 'welcome', title: 'Üdvözöljük',    subtitle: 'A telepítés véghezvitele',     icon: Rocket },
   { id: 'branch',  title: 'Fiók kiválasztása', subtitle: 'Ezen a gépen dolgozó iroda', icon: Building2 },
+  { id: 'program', title: 'Program típus',       subtitle: 'Milyen szerepben indul ez a gép', icon: Server },
   { id: 'server',  title: 'Szerver kapcsolat', subtitle: 'Központi backend elérése',   icon: Server },
   { id: 'admin',   title: 'Admin jelszó',      subtitle: 'Első belépéshez',            icon: KeyRound },
 ]
@@ -69,6 +70,7 @@ export default function SetupWizard() {
   const [bootstrapUsername, setBootstrapUsername] = useState('')
   const [bootstrapPassword, setBootstrapPassword] = useState('')
   const [offlineMode, setOfflineMode] = useState(false)
+  const [appModeChoice, setAppModeChoice] = useState<'penztar' | 'ertektar' | 'ertekszallito'>('penztar')
   const [connectionTest, setConnectionTest] = useState<
     { state: 'idle' | 'testing' | 'ok' | 'fail'; message?: string }
   >({ state: 'idle' })
@@ -143,6 +145,8 @@ export default function SetupWizard() {
         return true
       case 'branch':
         return !!selectedBranch
+      case 'program':
+        return !!appModeChoice
       case 'server':
         if (offlineMode) return true
         return connectionTest.state === 'ok'
@@ -151,7 +155,7 @@ export default function SetupWizard() {
       default:
         return false
     }
-  }, [currentStep, selectedBranch, offlineMode, connectionTest.state, adminPassword, adminPasswordConfirm, adminUsername])
+  }, [currentStep, selectedBranch, offlineMode, connectionTest.state, adminPassword, adminPasswordConfirm, adminUsername, appModeChoice])
 
   // --- Kapcsolat teszt ---
   const runConnectionTest = useCallback(async () => {
@@ -208,6 +212,7 @@ export default function SetupWizard() {
         bootstrapUsername: bootstrapUsername.trim(),
         bootstrapPassword,
         offlineMode,
+        appMode: appModeChoice,
       })
       if (!result.success) {
         setSaveError(result.errorMessage || 'Ismeretlen hiba a telepítés során.')
@@ -252,6 +257,48 @@ export default function SetupWizard() {
               selected={selectedBranch}
               onSelect={setSelectedBranch}
             />
+          )}
+          {currentStep === 'program' && (
+            <div>
+              <h2 className="text-xl font-bold text-slate-800 mb-2">Program típus kiválasztása</h2>
+              <p className="text-sm text-slate-600 mb-6">
+                Mit futtat ez a gép? Ez határozza meg, milyen menüpontok jelennek meg, és hogy ki tud bejelentkezni.
+                A választás a telepítés után is módosítható a Beállításokban.
+              </p>
+              <div className="space-y-3">
+                {([
+                  {
+                    id: 'penztar' as const,
+                    title: 'Valutaváltó Pénztár',
+                    desc: 'Pénztárosi munka: valuta vétel / eladás / konverzió, napnyitás, napzárás, ügyfélkezelés, címletezés. Local-first.',
+                  },
+                  {
+                    id: 'ertektar' as const,
+                    title: 'Értéktár',
+                    desc: 'Értéktáros munka: pénztárak ellátása / átadás-átvétel bank és más értéktárak felé, napi + havi + dekádzárás. Local-first.',
+                  },
+                  {
+                    id: 'ertekszallito' as const,
+                    title: 'Értékszállítás',
+                    desc: 'Csak a fizikai szállítás dokumentálása: szállítólevelek, átadás-átvétel bizonylatok. Kézből kézbe nyomon követés.',
+                  },
+                ]).map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setAppModeChoice(opt.id)}
+                    className={`w-full text-left p-4 border-2 rounded-lg transition ${appModeChoice === opt.id ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}
+                  >
+                    <div className="font-bold text-slate-800 mb-1">{opt.title}</div>
+                    <div className="text-sm text-slate-600">{opt.desc}</div>
+                  </button>
+                ))}
+              </div>
+              <p className="mt-4 text-xs text-slate-500">
+                A bejelentkezett dolgozó munkaköre alapján a szerver ellenőrzi, hogy jogosult-e erre a program-típusra.
+                Ha nem, hibaüzenetet kap a login-nal.
+              </p>
+            </div>
           )}
           {currentStep === 'server' && (
             <ServerStep

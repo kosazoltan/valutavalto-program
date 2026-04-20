@@ -62,4 +62,17 @@ public class LoginResponseDto {
      */
     @Builder.Default
     private Boolean passwordChangeRequired = false;
+
+    /**
+     * v2.1.4: A dolgozo canonical role-jaibol szarmazo engedelyezett Electron
+     * appMode-ok. A frontend login utan ellenorzi: ha az aktualis Electron
+     * appMode nincs a listaban -> 'Hozzaferes megtagadva' hiba.
+     *
+     * Lehetseges ertekek:
+     *   penztar       - ha a worker 'penztar' role-lal rendelkezik
+     *   ertektar      - ha a worker 'ertektar' role-lal rendelkezik
+     *   ertekszallito - ha a worker 'ertekszallito' role-lal rendelkezik
+     *   full          - ha a worker barmely szerver role-lal rendelkezik
+     */
+    private List<String> validAppModes;
 }

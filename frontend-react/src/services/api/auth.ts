@@ -34,6 +34,7 @@ export interface LoginResponse {
   activeRole?: string | null
   permissions?: string[]
   roleSelectionRequired?: boolean
+  validAppModes?: string[]
 }
 
 export const authApi = {

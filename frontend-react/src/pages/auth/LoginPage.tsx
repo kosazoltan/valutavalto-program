@@ -99,7 +99,21 @@ export default function LoginPage() {
     const effectiveRole = response.activeRole ?? response.worker.role
     const canonicalAllowed = SERVER_ALLOWED_CANONICAL_ROLES.includes(effectiveRole.toLowerCase())
     const legacyAllowed = SERVER_ALLOWED_LEGACY_ROLES.includes(effectiveRole)
-    if (appMode === 'full' && !canonicalAllowed && !legacyAllowed) {
+
+    // v2.1.4: Backend adta validAppModes ellenorzese (robusztusabb mint egyedi role-check)
+    if (response.validAppModes && response.validAppModes.length > 0) {
+      if (!response.validAppModes.includes(appMode)) {
+        const allowedProgs = response.validAppModes.map((m) => {
+          if (m === 'penztar') return 'Valutaváltó Pénztár (lokál)'
+          if (m === 'ertektar') return 'Értéktár (lokál)'
+          if (m === 'ertekszallito') return 'Értékszállítás (lokál)'
+          if (m === 'full') return 'Szerver (böngésző)'
+          return m
+        }).join(', ')
+        setError('Hozzáférés megtagadva. A munkaköröd alapján ezekbe a programokba léphetsz be: ' + allowedProgs + '. Most "' + appMode + '" módban próbálsz belépni.')
+        return
+      }
+    } else if (appMode === 'full' && !canonicalAllowed && !legacyAllowed) {
       setError('Hozzáférés megtagadva. A szerverre csak főértéktáros, belső ellenőr, irodavezető, ügyvezető és egyéb szerver-oldali munkakörök léphetnek be. Pénztárosok és értéktárosok a lokál alkalmazást használják.')
       return
     }

@@ -47,6 +47,13 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional(rollbackFor = Exception.class)
 public class WorkerService {
+
+    /** v2.1.4: Szerver-role-ok listaja (browser-modhoz jogosult) */
+    private static final List<String> SERVER_CANONICAL_ROLES = List.of(
+        "ugyvezeto", "foertektar", "irodavezeto", "belso_ellenor",
+        "teruleti_vezeto", "biztonsagi_vezeto", "berszamfejto",
+        "penzugyi_vezeto", "irodai_dolgozo", "csoportvezeto", "arfolyam_nezo"
+    );
     
     private final WorkerRepository workerRepository;
     private final WorkerSessionRepository sessionRepository;
@@ -436,6 +443,19 @@ public class WorkerService {
         long expiresInMs = 86400000L; // 24 óra millisec
         LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(expiresInMs / 1000);
 
+        // v2.1.4: validAppModes szamitasa a canonical role-okbol
+        List<String> validAppModes = new ArrayList<>();
+        if (roleCodes.contains("penztar")) validAppModes.add("penztar");
+        if (roleCodes.contains("ertektar")) validAppModes.add("ertektar");
+        if (roleCodes.contains("ertekszallito")) validAppModes.add("ertekszallito");
+        if (roleCodes.stream().anyMatch(SERVER_CANONICAL_ROLES::contains)) {
+            validAppModes.add("full");
+        }
+        // Fallback: ha a worker.role enum ADMIN, akkor legyen full is
+        if (worker.getRole() == WorkerRole.ADMIN && !validAppModes.contains("full")) {
+            validAppModes.add("full");
+        }
+
         return LoginResponseDto.builder()
                 .token(token)
                 .worker(WorkerDto.from(worker))
@@ -446,6 +466,7 @@ public class WorkerService {
                 .permissions(permissions)
                 .roleSelectionRequired(roleSelectionRequired)
                 .passwordChangeRequired(worker.getPasswordChangedAt() == null)
+                .validAppModes(validAppModes)
                 .build();
     }
     

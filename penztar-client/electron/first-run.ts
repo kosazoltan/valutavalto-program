@@ -50,6 +50,7 @@ export interface SetupSavePayload {
   bootstrapUsername?: string;    // wizardbeli teszt-felhasználó (opcionális, csak offline módban üres)
   bootstrapPassword?: string;
   offlineMode: boolean;          // ha true, a szerver kapcsolatot kihagyjuk a wizardban
+  appMode?: 'penztar' | 'ertektar' | 'ertekszallito';  // v2.1.4: program-tipus
 }
 
 export interface SetupSaveResult {
@@ -640,6 +641,10 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
     try {
       const { setConfig } = await import('./sqlite');
       setConfig('server_url', resolvedApiUrl);
+      if (payload.appMode) {
+        setConfig('app_mode', payload.appMode);
+        log.info('[Setup] SQLite app_mode elmentve:', payload.appMode);
+      }
       setConfig('bootstrap_company_code', normalizedCompanyCode);
       if (payload.bootstrapUsername) {
         setConfig('bootstrap_worker_code', payload.bootstrapUsername.trim());
