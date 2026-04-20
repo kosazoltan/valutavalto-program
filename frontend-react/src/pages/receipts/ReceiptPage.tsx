@@ -108,7 +108,7 @@ export default function ReceiptPage() {
             <h2 className="text-lg font-bold">Helyi, függő bizonylatok</h2>
           </div>
           <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            Ezek a bizonylatok már mentve vannak Electronban, de még nem kaptak végleges szerveres bizonylatszámot.
+            Ezek a bizonylatok helyileg végleges szigorú számadású sorszámmal rendelkeznek (NGM 23/2014). A szerver-szinkron folyamatban van — a sorszám NEM fog megváltozni, csak a szerver-oldali audit-napló egészül ki.
           </div>
           <table className="data-grid w-full">
             <thead>
@@ -193,7 +193,7 @@ export default function ReceiptPage() {
         receiptData={selectedDraft?.receiptData ?? null}
         qrCodeDataUrl={null}
         variant="draft"
-        statusMessage="Ez helyi vázlat. A hivatalos bizonylat csak a szerveres szinkron és a végleges bizonylatszám kiosztása után tekinthető lezártnak."
+        statusMessage="Szigorú számadású bizonylat — helyileg már véglegesítve, lezárva. Szerver-szinkron függőben (auditnapló kiegészítése)."
         onPrint={async () => {
           if (!selectedDraft) {
             return

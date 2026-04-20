@@ -132,7 +132,7 @@ export default function ReceiptPreviewModal({
         <div className="flex-1 overflow-y-auto p-4">
           {(variant === 'draft' || statusMessage) && (
             <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              {statusMessage ?? 'Ez helyi, függő bizonylatvázlat. A hivatalos bizonylatszám és végleges nyomtatási életciklus csak szerveres szinkron után érvényes.'}
+              {statusMessage ?? 'Szigorú számadású bizonylat — helyileg már véglegesítve (NGM 23/2014). Szerver-szinkron folyamatban, a sorszám nem változik.'}
             </div>
           )}
           <div
