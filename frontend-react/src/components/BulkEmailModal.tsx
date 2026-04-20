@@ -46,7 +46,12 @@ export default function BulkEmailModal({ open, onClose, onSuccess }: Props) {
     setLoading(true)
     setResult(null)
     try {
-      const r = await api.patch<BulkResult>("/workers/bulk-email", rows)
+      const idempKey = (typeof crypto !== "undefined" && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : String(Date.now()) + "-" + Math.random().toString(36).slice(2)
+      const r = await api.patch<BulkResult>("/workers/bulk-email", rows, {
+        headers: { "Idempotency-Key": idempKey },
+      })
       setResult(r.data)
       if (r.data.updated > 0) onSuccess()
     } catch (err) {
