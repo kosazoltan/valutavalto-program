@@ -6,10 +6,10 @@
   "scripts": {
     "dev": "npm run dev:all",
     "dev:all": "concurrently -k -n db,backend,frontend,electron -c \"green.bold,yellow.bold,cyan.bold,magenta.bold\" \"npm:dev:db\" \"npm:dev:backend\" \"npm:dev:frontend\" \"npm:dev:electron\"",
-    "dev:db": "docker start valuta-postgres 2>/dev/null || docker compose up -d postgres",
-    "dev:backend": "wait-on tcp:localhost:5432 -t 30000 && cd backend && ./mvnw spring-boot:run -Dspring-boot.run.jvmArguments=\"-DENCRYPTION_SALT=00112233445566778899aabbccddeeff -DENCRYPTION_KEY=dev-only-local-key-32chars-xxxxx\"",
+    "dev:db": "node scripts/dev-db.mjs",
+    "dev:backend": "wait-on tcp:localhost:5432 -t 30000 && node scripts/dev-backend.mjs",
     "dev:frontend": "wait-on http://localhost:8080/api/v1/auth/bootstrap-status -t 120000 && npm --prefix frontend-react run dev -- --host 127.0.0.1 --port 3000",
-    "dev:electron": "wait-on http://localhost:3000 -t 180000 && npm --prefix penztar-client run dev",
+    "dev:electron": "wait-on http://localhost:3000 -t 180000 && cd penztar-client && npx vite",
     "dev:frontend-only": "npm --prefix frontend-react run dev",
     "dev:backend-only": "cd backend && ./mvnw spring-boot:run",
     "test": "concurrently -n frontend,penztar -c \"cyan,magenta\" \"npm --prefix frontend-react test\" \"npm --prefix penztar-client test\"",

@@ -1,4 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import {
+  IPC_CHANNELS,
+  type IpcRequest,
+  type IpcResponse,
+} from '@valuta/shared-ipc';
 
 contextBridge.exposeInMainWorld('electronAPI', {
   printReceipt: (data: string): Promise<boolean> =>
@@ -628,35 +633,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   }>> =>
     ipcRenderer.invoke('setup:branches', params),
 
-  setupTestConnection: (params: {
-    apiUrl: string;
-    companyCode: string;
-    username: string;
-    password: string;
-  }): Promise<{
-    success: boolean;
-    httpStatus?: number;
-    errorMessage?: string;
-    latencyMs?: number;
-  }> =>
-    ipcRenderer.invoke('setup:test-connection', params),
+  setupTestConnection: (
+    params: IpcRequest<'setup:test-connection'>,
+  ): Promise<IpcResponse<'setup:test-connection'>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SETUP_TEST_CONNECTION, params),
 
-  setupSave: (payload: {
-    branchCode: string;
-    branchName: string;
-    apiUrl: string;
-    companyCode: string;
-    adminUsername: string;
-    adminPassword: string;
-    bootstrapUsername?: string;
-    bootstrapPassword?: string;
-    offlineMode: boolean;
-  }): Promise<{
-    success: boolean;
-    envPath: string;
-    errorMessage?: string;
-  }> =>
-    ipcRenderer.invoke('setup:save', payload),
+  setupSave: (
+    payload: IpcRequest<'setup:save'>,
+  ): Promise<IpcResponse<'setup:save'>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SETUP_SAVE, payload),
 
   platform: process.platform,
 });

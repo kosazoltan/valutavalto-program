@@ -6,21 +6,15 @@ import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
+import type { components } from '@valuta/shared-api'
 
-interface Worker {
-  id: number
-  workerCode: string
-  firstName: string
-  lastName: string
-  fullName: string
-  email?: string
-  phone?: string
-  branchId?: string
-  branchName?: string
-  isActive?: boolean
-  active?: boolean
-  createdAt?: string
-}
+type WorkerDto = components['schemas']['WorkerDto']
+// Runtime-ban mindig megletszo mezok: a backend JPA entitas @NotNull-lal
+// kenyszeriti, de az OpenAPI spec nincs 'required' annotaciokkal marklosva.
+// Local kontraktus: Required<Pick> a stabil mezoket nem-null-kent kezeli.
+type Worker = Required<Pick<WorkerDto,
+  'id' | 'workerCode' | 'firstName' | 'lastName' | 'fullName'
+>> & Partial<WorkerDto> & { isActive?: boolean }
 
 interface WorkerForm {
   workerCode: string
