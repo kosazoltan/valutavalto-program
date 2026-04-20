@@ -136,7 +136,7 @@ export default function ReceiptPreviewModal({
             </div>
           )}
           <div
-            className="mx-auto w-[260px] rounded-lg border border-dashed border-gray-300 bg-gray-50 p-3 font-mono text-[11px] leading-normal text-gray-800"
+            className="mx-auto w-[180px] rounded-lg border border-dashed border-gray-300 bg-gray-50 p-2 font-mono text-[10px] leading-snug text-gray-800"
             style={{ fontFamily: 'Courier New, monospace' }}
           >
             {/* Fejléc */}
