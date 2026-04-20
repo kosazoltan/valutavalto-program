@@ -1,4 +1,4 @@
-﻿Command: python -m pip_audit --desc --format=json -r "D:\repo\valutavalto-program\.worktrees\repo-memory-ingest\tools\ztype\requirements.txt"
+﻿Command: python -m pip_audit --desc --format=json -r "D:\repo\valutavalto-program\.claude\worktrees\youthful-shannon-8ac321\tools\ztype\requirements.txt"
 Status: PASSED
 Note: 
 

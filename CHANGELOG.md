@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.1.3] - 2026-04-20
+
+### Fixed
+- **Setup Wizard Hetzner kapcsolat** (kritikus blokker, user report: "nem akarja csatlakoztatni a Hetznerhez a lokalisan futo modellt"): `DEFAULT_API_URL` `https://api.excvaluta.com/api/v1` -> `https://excvaluta.com/api/v1`. A `api.` aldomain NEM letezik DNS-ben (`nslookup api.excvaluta.com` Non-existent domain), csak a Cloudflare-en keresztul futo root domain fogad kereseket (`curl https://excvaluta.com/api/v1/auth/bootstrap-status` -> 200 `{"completed":false}`). A 2.1.0 / 2.1.1 kliensek nem tudtak csatlakozni. Fajlok: `frontend-react/src/pages/setup/SetupWizard.tsx`, `deploy/nginx/*.conf`, `deploy/docker-compose.prod.yml`, `deploy/.env.example`, `deploy/README.md`, `backend/src/main/resources/application-production.properties`.
+- **First-run wizard hamis branch-fallback** (user report: "nem olvassa be a dolgozoi es penztar adatbazist, nem azonositja a dolgozot"): `penztar-client/electron/first-run.ts` `DEFAULT_BRANCHES` korabban 60 fiktiv iroda. Ha a backend nem volt elerheto (DNS bug miatt mindig az), wizard fallbackelt erre a listara. Felhasznalo valasztott hamis branchet, bootstrap-admin "A ceghez nincs branch" HTTP 400 (AdminBootstrapService.java:137). Most KORUT + TISZA (Szeged, EBC), egyezik a Hetzner DB seed-jevel.
+- **Lokalis backend Flyway letiltva** (ures DB uj install utan): `installer/Penztar-Setup.nsi` (install + upgrade ag) + `build-installer.ps1` + `build-final.ps1` mind `spring.flyway.enabled=false` + `spring.jpa.hibernate.ddl-auto=update` kombinacioval generaltak az `application-local.properties`-t. V110-V144 seed-migraciok (company `EBC`, branches, workers) nem futottak le. AdminBootstrapService 400. Most `spring.flyway.enabled=true` + `spring.flyway.baseline-on-migrate=true` + `out-of-order=true` + `ddl-auto=none`. A 144 V-migracio auto-lefut.
+- **CORS tul szuk**: `cors.allowed-origins` most `http://localhost:3000,http://localhost:5173,http://localhost:8080,app://localhost,file://`.
+- **fix-backend-acl.ps1 helytelen SID**: `NetworkService` -> `*S-1-5-18` (LocalSystem) grant, megegyezoen az NSIS L795 `ObjectName LocalSystem`-mel.
+
+### Changed
+- **Verzio bump**: `2.1.1` / `2.1.2` (thin) -> `2.1.3` egysegesen. 11 fajl: `backend/pom.xml`, `frontend-react/package.json`, `penztar-client/package.json`, `installer/build-installer.ps1`, `installer/build-final.ps1`, `installer/build-installer-thin.ps1`, `installer/build-cleanup.ps1`, `installer/Penztar-Setup.nsi`, `installer/Penztar-Cleanup.nsi`, `installer/Penztar-Setup-Thin.nsi`, `installer/tests/installer-validation-suite.ps1` (`1.5.0` -> `2.1.3`).
+
+### Hetzner deploy realtime
+- `excvaluta.com` GET/POST `/api/v1/auth/bootstrap-status`, `/public/branches?companyCode=EBC`, `/auth/login` mind 200 vagy 401 (ertelmes) valaszt adnak 2026-04-20-an. `api.excvaluta.com` DNS Non-existent.
+
 ## [2.1.1] - 2026-04-17
 
 ### Fixed

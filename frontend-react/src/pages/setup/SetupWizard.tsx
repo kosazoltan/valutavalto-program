@@ -43,10 +43,10 @@ const STEPS: readonly StepDef[] = [
   { id: 'admin',   title: 'Admin jelszó',      subtitle: 'Első belépéshez',            icon: KeyRound },
 ]
 
-// Produkciós központi backend (Hetzner CPX31, DNS: api.excvaluta.com).
+// Produkciós központi backend (Hetzner CPX31, DNS: excvaluta.com (api. aldomain nem letezik)).
 // Ha változik a hosting, csak itt cseréld — a wizard ezt használja default-nak
 // és a helyettesítő szövegnek is. A felhasználó felülírhatja kézzel.
-const DEFAULT_API_URL = 'https://api.excvaluta.com/api/v1'
+const DEFAULT_API_URL = 'https://excvaluta.com/api/v1'
 const DEFAULT_COMPANY_CODE = 'EBC'
 
 // ---------------------------------------------------------------------------

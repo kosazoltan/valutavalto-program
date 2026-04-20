@@ -1,18 +1,10 @@
-﻿Command: powershell -NoProfile -ExecutionPolicy Bypass -File "D:\repo\valutavalto-program\scripts\security\mandatory-db-preflight.ps1" -RepoRoot "D:\repo\valutavalto-program"
-Status: PASSED
-Note: 
+﻿Command: powershell -NoProfile -ExecutionPolicy Bypass -File "D:\repo\valutavalto-program\.claude\worktrees\youthful-shannon-8ac321\scripts\security\mandatory-db-preflight.ps1" -RepoRoot "D:\repo\valutavalto-program\.claude\worktrees\youthful-shannon-8ac321"
+Status: FAILED
+Note: Exit code 1
 
 --- STDOUT ---
 [DB-PREFLIGHT] Mandatory DB preflight started
-[DB-PREFLIGHT] Checking DB reachability and migration history
-[DB-PREFLIGHT] Local DB connection OK
-[DB-PREFLIGHT] Remote/Neon DB connection OK
-[DB-PREFLIGHT] Local DB migration table check OK
-[DB-PREFLIGHT] Remote/Neon DB migration table check OK
-[DB-PREFLIGHT] Versioned migrations in repo: 140
-[DB-PREFLIGHT] Applied migrations (local): 140
-[DB-PREFLIGHT] Applied migrations (remote/Neon): 1
-[DB-PREFLIGHT] Mandatory DB preflight PASSED
+[DB-PREFLIGHT] Remote/Neon DB connection string could not be resolved.
 
 
 --- STDERR ---

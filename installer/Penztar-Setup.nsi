@@ -42,7 +42,7 @@
 
 ; --- Parameterek ---
 !ifndef VERSION
-  !define VERSION "2.1.1"
+  !define VERSION "2.1.3"
 !endif
 !ifndef BUILD_DATE
   !define BUILD_DATE "dev"
@@ -407,12 +407,16 @@ Section "Telepites" SecInstall
     FileWrite $0 "spring.datasource.driver-class-name=org.postgresql.Driver$\r$\n"
     FileWrite $0 "spring.datasource.hikari.maximum-pool-size=10$\r$\n"
     FileWrite $0 "spring.datasource.hikari.minimum-idle=2$\r$\n"
-    FileWrite $0 "spring.jpa.hibernate.ddl-auto=update$\r$\n"
+    FileWrite $0 "spring.jpa.hibernate.ddl-auto=none$\r$\n"
     FileWrite $0 "spring.jpa.show-sql=false$\r$\n"
-    FileWrite $0 "spring.flyway.enabled=false$\r$\n"
-    FileWrite $0 "# Flyway disabled: JPA ddl-auto=update manages schema, seed via init-db$\r$\n"
+    FileWrite $0 "spring.flyway.enabled=true$\r$\n"
+    FileWrite $0 "spring.flyway.locations=classpath:db/migration$\r$\n"
+    FileWrite $0 "spring.flyway.baseline-on-migrate=true$\r$\n"
+    FileWrite $0 "spring.flyway.validate-on-migrate=true$\r$\n"
+    FileWrite $0 "spring.flyway.out-of-order=true$\r$\n"
+    FileWrite $0 "# Flyway kezeli a schemat: V0_1..V144 auto-lefutnak, seed-data.sql kiegeszit$\r$\n"
     ; S6-07 fix: dev CORS origin eltavolitva (csak Electron app origin kell)
-    FileWrite $0 "cors.allowed-origins=app://localhost$\r$\n"
+    FileWrite $0 "cors.allowed-origins=http://localhost:3000,http://localhost:5173,http://localhost:8080,app://localhost,file://$\r$\n"
     FileWrite $0 "logging.level.root=INFO$\r$\n"
     FileWrite $0 "logging.level.hu.puzzleir.valuta=INFO$\r$\n"
     FileWrite $0 "springdoc.api-docs.enabled=false$\r$\n"
@@ -608,7 +612,7 @@ Section "Telepites" SecInstall
         DetailPrint "  valuta_user letrehozva es ellenorizve!"
 
         ; Seed data — ATHELYEZVE Fazis 6 backend health check UTAN-ra
-        ; (A JPA ddl-auto=update hozza letre a tablakat a backend indulasakor,
+        ; (A Flyway migraciok hozzak letre a tablakat a backend indulasakor,
         ;  ezert a seed-data.sql csak a backend health check UTAN futhat le.)
         ;  Lasd: FAZIS 6 vege — "Seed adatok betoltese" blokk
 
@@ -703,11 +707,15 @@ Section "Telepites" SecInstall
         FileWrite $0 "spring.datasource.driver-class-name=org.postgresql.Driver$\r$\n"
         FileWrite $0 "spring.datasource.hikari.maximum-pool-size=10$\r$\n"
         FileWrite $0 "spring.datasource.hikari.minimum-idle=2$\r$\n"
-        FileWrite $0 "spring.jpa.hibernate.ddl-auto=update$\r$\n"
+        FileWrite $0 "spring.jpa.hibernate.ddl-auto=none$\r$\n"
         FileWrite $0 "spring.jpa.show-sql=false$\r$\n"
-        FileWrite $0 "spring.flyway.enabled=false$\r$\n"
-        FileWrite $0 "# Flyway disabled: JPA ddl-auto=update manages schema, seed via init-db$\r$\n"
-        FileWrite $0 "cors.allowed-origins=app://localhost$\r$\n"
+        FileWrite $0 "spring.flyway.enabled=true$\r$\n"
+        FileWrite $0 "spring.flyway.locations=classpath:db/migration$\r$\n"
+        FileWrite $0 "spring.flyway.baseline-on-migrate=true$\r$\n"
+        FileWrite $0 "spring.flyway.validate-on-migrate=true$\r$\n"
+        FileWrite $0 "spring.flyway.out-of-order=true$\r$\n"
+        FileWrite $0 "# Flyway kezeli a schemat: V0_1..V144 auto-lefutnak, seed-data.sql kiegeszit$\r$\n"
+        FileWrite $0 "cors.allowed-origins=http://localhost:3000,http://localhost:5173,http://localhost:8080,app://localhost,file://$\r$\n"
         FileWrite $0 "logging.level.root=INFO$\r$\n"
         FileWrite $0 "logging.level.hu.puzzleir.valuta=INFO$\r$\n"
         FileWrite $0 "springdoc.api-docs.enabled=false$\r$\n"
@@ -902,7 +910,7 @@ Section "Telepites" SecInstall
         DetailPrint "  Backend szerver kesz! ($R1 mp)"
     be_svc_done:
 
-    ; --- Seed adatok (a backend MUST be running -> JPA ddl-auto=update creates tables) ---
+    ; --- Seed adatok (a backend MUST be running -> Flyway migrations create tables) ---
     DetailPrint "  Seed adatok betoltese (tablak mar leteznek)..."
     ; Temp trust for psql seed (pg_hba is scram-sha-256 by now)
     FileOpen $0 "$DATA_DIR\pgsql\data\pg_hba.conf" r

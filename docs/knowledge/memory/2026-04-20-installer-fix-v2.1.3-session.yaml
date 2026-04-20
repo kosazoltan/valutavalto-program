@@ -1,0 +1,131 @@
+date: 2026-04-20
+wave: installer-fix-v2.1.3
+session_type: dns-fallback-flyway-default-branches-fix
+previous_sessions:
+  - docs/knowledge/memory/2026-04-17-hetzner-deploy-v2.1.1-session.yaml
+  - docs/knowledge/memory/2026-04-17-installer-release-v2.1.0-session.yaml
+resumed_from: user-frustrated-installer-not-working
+
+trigger:
+  user_quote_1: "Nezd at a teljes repo-ban a teljes dokumentaciot, hogy mit orokoltunk"
+  user_quote_2: "A legelso, legfontosabb problema, hogy egy olyan telepitot keszitsunk, egy exe telepitofaljt, ami a teljes futtatokornyezetet letre tudja hozni hibatlanul"
+  user_quote_3_setupwizard: "A SetupWizard-nak a legnagyobb problemaja, hogy nem akarja csatlakoztatni a Hetznerhez a lokalisan futo modellt"
+
+root_causes_identified:
+  cause_1_dns_api_excvaluta:
+    description: "SetupWizard.tsx DEFAULT_API_URL set to api.excvaluta.com, but that aldomain does not resolve"
+    evidence_nslookup: "api.excvaluta.com -> Non-existent domain"
+    evidence_curl: "excvaluta.com/api/v1/auth/bootstrap-status -> 200 completed:false"
+    impact: "Setup Wizard timeouted on Hetzner kapcsolat test, fell back to DEFAULT_BRANCHES"
+    files_affected:
+      - frontend-react/src/pages/setup/SetupWizard.tsx L49
+      - deploy/nginx/nginx.conf
+      - deploy/nginx/nginx-initial.conf
+      - deploy/docker-compose.prod.yml
+      - deploy/.env.example
+      - deploy/README.md
+      - backend/src/main/resources/application-production.properties (google.redirect.uri)
+  cause_2_fake_default_branches:
+    description: "DEFAULT_BRANCHES 60 fiktiv Budapest/videki iroda a penztar-client/electron/first-run.ts-ben"
+    impact: "Ha Hetzner nem elerheto (cause_1 miatt mindig az), a wizard erre fallback-elt. User valasztott hamis branchet, bootstrap-admin 400"
+    code_reference: AdminBootstrapService.java:137
+    fix: "DEFAULT_BRANCHES -> KORUT + TISZA (Szeged, EBC company) - valos Hetzner DB seed"
+  cause_3_flyway_disabled_local:
+    description: "NSIS install+upgrade agban, build-installer.ps1 es build-final.ps1 template mind spring.flyway.enabled=false"
+    impact: "Csak JPA ddl-auto=update hozta letre az entity tablakat, de V110-V144 seed-migraciok (company EBC, branches, workers, system_parameter) nem futottak. AdminBootstrapService 400."
+    fix: "spring.flyway.enabled=true + baseline-on-migrate=true + out-of-order=true + ddl-auto=none - 144 V-migracio auto-lefut"
+  cause_4_cors_too_narrow:
+    description: "cors.allowed-origins csak app://localhost"
+    fix: "http://localhost:3000,http://localhost:5173,http://localhost:8080,app://localhost,file://"
+  cause_5_acl_wrong_sid:
+    description: "fix-backend-acl.ps1 NetworkService grantet adott, de a service LocalSystem-kent fut (NSIS L795)"
+    fix: "S-1-5-18 (LocalSystem) grant + NetworkService remove"
+  cause_6_npm_ci_lock_sync:
+    description: "build-installer.ps1 L142 npm ci --silent, de a package-lock.json nem volt sync-ben (missing electron-builder-squirrel-windows transitive deps)"
+    fix: "npm install --ignore-scripts --no-audit --no-fund --loglevel=error (elkeruli a node-gyp rebuild VS Build Tools fuggoseget)"
+
+hetzner_reality_snapshot_2026_04_20:
+  probe_1:
+    url: https://api.excvaluta.com/api/v1/auth/bootstrap-status
+    result: "curl 6 Could not resolve host"
+    verdict: DNS Non-existent
+  probe_2:
+    url: https://excvaluta.com/api/v1/auth/bootstrap-status
+    status: 200
+    body: completed:false
+    latency_sec: 0.43
+  probe_3:
+    url: https://excvaluta.com/api/v1/public/branches?companyCode=EBC
+    status: 200
+    body_summary: KORUT+TISZA array
+  probe_4_health:
+    url: https://excvaluta.com/api/v1/actuator/health
+    status: 401
+    note: JWT required by design
+  probe_5_auth_login:
+    url: https://excvaluta.com/api/v1/auth/login
+    status: 401
+    note: Hibas penztaros kod vagy jelszo - endpoint elo
+
+files_modified_this_session:
+  frontend:
+    - frontend-react/src/pages/setup/SetupWizard.tsx
+    - frontend-react/package.json
+  penztar_client:
+    - penztar-client/electron/first-run.ts
+    - penztar-client/package.json
+  backend:
+    - backend/pom.xml
+    - backend/src/main/resources/application-production.properties
+  installer:
+    - installer/Penztar-Setup.nsi (install + upgrade agban Flyway enable + CORS + VERSION)
+    - installer/Penztar-Cleanup.nsi (VERSION)
+    - installer/Penztar-Setup-Thin.nsi (VERSION)
+    - installer/build-installer.ps1 (config template + Version + npm install javitas)
+    - installer/build-final.ps1 (config template + Version)
+    - installer/build-installer-thin.ps1 (Version)
+    - installer/build-cleanup.ps1 (Version)
+    - installer/scripts/fix-backend-acl.ps1 (NetworkService -> LocalSystem)
+    - installer/tests/installer-validation-suite.ps1 (VERSION)
+  deploy:
+    - deploy/nginx/nginx.conf
+    - deploy/nginx/nginx-initial.conf
+    - deploy/docker-compose.prod.yml
+    - deploy/.env.example
+    - deploy/README.md
+  meta:
+    - CHANGELOG.md
+
+key_knowledge_for_next_agents:
+  bash_heredoc_single_quoted_gotcha:
+    discovered_this_session: true
+    rule: "Bash heredoc <<SINGLE-QUOTED egy backslash-t lenyel. 4x backslash vagy Python raw string (r...) kell ha literal \r akarsz a Python fajlba irni"
+  sed_vs_python_for_nsi:
+    encoding: cp1252 Windows-1252 ACP - NSIS 3.x compiler requirement
+    simple_csere: sed
+    multi_line_insert: "Python raw string + splitlines(keepends=True)"
+  dns_reality_check_rule:
+    rule: "Mielott hibakeresni kezdenenk a Setup Wizard Hetzner kapcsolatat, ALWAYS curl / nslookup a DEFAULT_API_URL-t - ez az elsodleges DNS trap"
+  npm_ci_vs_install:
+    rule: "Lock-out-of-sync eseten a build-installer.ps1 npm ci buktat. Hasznalj npm install --ignore-scripts (node-gyp VS Build Tools elkerulese)"
+
+pending_tasks_after_session:
+  priority_1_build_verify:
+    action: "Telepito build verifikacio - build-installer.ps1 masodik futtatas folyamatban"
+    expected_output: installer/build/Penztar-Setup-2.1.3-20260420.exe
+  priority_2_acceptance_test:
+    action: "Tiszta Windows 11 VM-re telepites + install-validation-suite.ps1"
+  priority_3_hetzner_redeploy:
+    action: "Hetzner redeploy a 2.1.3 JAR-ral + nginx.conf (most excvaluta.com kozpontu)"
+  priority_4_jar_symlink_fix:
+    action: "CB-016 kovetkezo wave: valuta-backend-current.jar symlink + systemd unit update (a SNAPSHOT hack elkerulese)"
+
+status_summary:
+  telepito_fix_v2.1.3: in_progress_build_running
+  hetzner_backend_live: true_excvaluta_com_200
+  setupwizard_hetzner_kapcsolat: fixed
+  default_branches_korrekt: fixed
+  flyway_lokal_db: fixed
+  cors_electron: fixed
+  acl_localsystem: fixed
+  verzio_konszolidalva: 2.1.3

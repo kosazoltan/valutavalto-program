@@ -7,7 +7,7 @@
 # =============================================================================
 
 param(
-    [string]$Version = "2.1.1",
+    [string]$Version = "2.1.3",
     [switch]$SkipBackendBuild,
     [switch]$SkipFrontendBuild,
     [switch]$SkipDownloads,
@@ -141,7 +141,7 @@ VITE_COMPANY_ID=1
         # Install deps if needed
         if (-not (Test-Path "node_modules")) {
             Write-Host "Installing npm dependencies..."
-            npm ci --silent
+            npm install --ignore-scripts --no-audit --no-fund --loglevel=error
         }
 
         # Build: step-by-step to avoid dist lock issues on Windows
@@ -224,7 +224,20 @@ if (-not $SkipDownloads) {
         $pgExtracted = Get-ChildItem "$dlDir\pg-extract" -Directory | Select-Object -First 1
     }
     Copy-Item (Join-Path $pgExtracted.FullName "*") "$StageDir\pgsql\" -Recurse -Force
-    Write-Host "PostgreSQL staged" -ForegroundColor Green
+
+    # v2.1.3: pgAdmin 4 + doc + include + symbols + StackBuilder eltavolitasa a stage-bol
+    # Ok: pgAdmin 4 deep nested paths meghaladjak a Windows MAX_PATH = 260 limitet,
+    # NSIS fordito nem tudja megnyitni. Ezek nem kellenek a Penztar szerver runtime-hoz.
+    foreach ($dir in @("pgAdmin 4", "doc", "include", "symbols", "StackBuilder")) {
+        $pruneTarget = Join-Path "$StageDir\pgsql" $dir
+        if (Test-Path $pruneTarget) {
+            Remove-Item $pruneTarget -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Host "  Pruned: pgsql\$dir" -ForegroundColor DarkGray
+        }
+    }
+
+    $pgStagedSize = [math]::Round((Get-ChildItem "$StageDir\pgsql" -Recurse -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum / 1MB, 1)
+    Write-Host "PostgreSQL staged - $pgStagedSize MB (pgAdmin/doc pruned)" -ForegroundColor Green
 
     # NSSM
     # NSSM — skip download if already staged
@@ -271,11 +284,16 @@ spring.datasource.password=__PG_PASSWORD__
 spring.datasource.driver-class-name=org.postgresql.Driver
 spring.datasource.hikari.maximum-pool-size=10
 spring.datasource.hikari.minimum-idle=2
-spring.jpa.hibernate.ddl-auto=update
+spring.jpa.hibernate.ddl-auto=none
 spring.jpa.show-sql=false
-spring.flyway.enabled=false
-# Flyway disabled: JPA ddl-auto=update manages schema, seed via init-db
-cors.allowed-origins=app://localhost
+# Flyway kezeli a schemat: V0_1 ... V144 migraciok automatikusan lefutnak eloszor
+spring.flyway.enabled=true
+spring.flyway.locations=classpath:db/migration
+spring.flyway.baseline-on-migrate=true
+spring.flyway.validate-on-migrate=true
+spring.flyway.out-of-order=true
+# CORS: Electron renderer (app://localhost), web dev (3000/5173), local backend (8080)
+cors.allowed-origins=http://localhost:3000,http://localhost:5173,http://localhost:8080,app://localhost,file://
 logging.level.root=INFO
 springdoc.api-docs.enabled=false
 springdoc.swagger-ui.enabled=false

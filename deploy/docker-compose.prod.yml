@@ -43,7 +43,7 @@ services:
       - JAVA_OPTS=${JAVA_OPTS:--Xmx512m -Xms256m}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
-      - GOOGLE_REDIRECT_URI=https://${DOMAIN:-api.excvaluta.com}/api/v1/email/accounts/callback
+      - GOOGLE_REDIRECT_URI=https://${DOMAIN:-excvaluta.com}/api/v1/email/accounts/callback
       - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
       - ENCRYPTION_SALT=${ENCRYPTION_SALT:-}
       - ERRORLOG_HMAC_SECRET=${ERRORLOG_HMAC_SECRET:-}

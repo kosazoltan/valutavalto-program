@@ -30,7 +30,7 @@ $global:StartTime = Get-Date
 # --- Konfigurálás ---
 $INSTDIR = "C:\Program Files\Valutavalto Penztar"
 $DATA_DIR = "C:\ProgramData\BestChange"
-$VERSION = "1.5.0"
+$VERSION = "2.1.3"
 $PG_PORT = 54320
 $BE_PORT = 8080
 $SVC_PG = "BestChange-PostgreSQL"

@@ -20,7 +20,9 @@
     "target": [
       {
         "target": "nsis",
-        "arch": ["x64"]
+        "arch": [
+          "x64"
+        ]
       }
     ],
     "artifactName": "Penztar-Setup-${version}.exe"
@@ -46,5 +48,6 @@
       "from": "node_modules/sql.js/dist/sql-wasm.wasm",
       "to": "sql-wasm.wasm"
     }
-  ]
+  ],
+  "npmRebuild": false
 }

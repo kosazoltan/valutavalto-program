@@ -3,7 +3,7 @@
 ## Elofeltetelek
 
 - Hetzner szerver (CPX31+): Docker + Docker Compose telepitve
-- DNS: `api.excvaluta.com` -> szerver IP (A record, TTL: 300)
+- DNS: `excvaluta.com` -> szerver IP (A record, TTL: 300)
 - SSH hozzaferes a szerverhez
 
 ## Elso telepites
@@ -45,7 +45,7 @@ docker compose -f docker-compose.prod.yml up -d
 
 # Certbot — elso tanusitvany beszerzese
 docker compose -f docker-compose.prod.yml run --rm certbot \
-    certonly --webroot -w /var/www/certbot -d api.excvaluta.com \
+    certonly --webroot -w /var/www/certbot -d excvaluta.com \
     --email admin@excvaluta.com --agree-tos --no-eff-email
 
 # Nginx atkapcsolas SSL-re
@@ -57,7 +57,7 @@ docker compose -f docker-compose.prod.yml restart nginx
 
 ```bash
 # Health check
-curl -s https://api.excvaluta.com/actuator/health
+curl -s https://excvaluta.com/actuator/health
 # Elvart: {"status":"UP"}
 
 # Backend logok
@@ -112,7 +112,7 @@ gunzip -c /backups/valuta/valuta_YYYYMMDD_HHMMSS.sql.gz | \
 
 ## Monitoring
 
-- **UptimeRobot:** `https://api.excvaluta.com/actuator/health` (5 perces intervallum)
+- **UptimeRobot:** `https://excvaluta.com/actuator/health` (5 perces intervallum)
 - **Logok:** `docker compose -f docker-compose.prod.yml logs -f valuta-backend`
 - **Backup log:** `tail -f /var/log/valuta-backup.log`
 - **Disk:** `df -h /`
@@ -120,5 +120,5 @@ gunzip -c /backups/valuta/valuta_YYYYMMDD_HHMMSS.sql.gz | \
 ## Rollback (ha valami nem mukodik)
 
 1. Render backend ujrainditasa (Render Dashboard)
-2. DNS `api.excvaluta.com` visszairanyitas Render-re
+2. DNS `excvaluta.com` visszairanyitas Render-re
 3. Frontend VITE_API_URL visszaallitas
