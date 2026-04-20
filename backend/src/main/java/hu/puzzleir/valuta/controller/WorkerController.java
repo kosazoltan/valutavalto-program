@@ -7,6 +7,7 @@ import hu.puzzleir.valuta.dto.worker.WorkerDto;
 import hu.puzzleir.valuta.entity.WorkerRoleDefinition;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.WorkerRoleService;
+import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.service.WorkerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ import java.util.UUID;
 public class WorkerController {
     
     private final WorkerService workerService;
+    private final WorkerRepository workerRepository;
     private final WorkerRoleService workerRoleService;
     
     /**
@@ -213,4 +215,45 @@ public class WorkerController {
         workerRoleService.removeRole(id, roleCode);
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * v2.1.4: Bulk email import (admin) - CSV paste / Excel format.
+     * PATCH /api/v1/workers/bulk-email
+     * Body: [{"workerCode": "W007570", "email": "peldaul@gmail.com"}, ...]
+     * Visszater: {"updated": N, "skipped": M, "errors": [...]}
+     */
+    @PatchMapping("/bulk-email")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public ResponseEntity<java.util.Map<String, Object>> bulkEmailUpdate(
+            @RequestBody java.util.List<java.util.Map<String, String>> items) {
+        int updated = 0;
+        int skipped = 0;
+        java.util.List<String> errors = new java.util.ArrayList<>();
+        java.util.UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
+
+        for (java.util.Map<String, String> item : items) {
+            String code = item.get("workerCode");
+            String email = item.get("email");
+            if (code == null || code.isBlank()) { skipped++; continue; }
+            try {
+                hu.puzzleir.valuta.entity.Worker w = workerRepository
+                        .findByCompanyIdAndCodeIgnoreCase(companyId, code.trim())
+                        .orElse(null);
+                if (w == null) { errors.add(code + ": nem letezik"); skipped++; continue; }
+                w.setEmail(email == null || email.isBlank() ? null : email.trim());
+                workerRepository.save(w);
+                updated++;
+            } catch (Exception e) {
+                errors.add(code + ": " + e.getMessage());
+                skipped++;
+            }
+        }
+
+        java.util.Map<String, Object> response = new java.util.HashMap<>();
+        response.put("updated", updated);
+        response.put("skipped", skipped);
+        response.put("errors", errors);
+        return ResponseEntity.ok(response);
+    }
+
 }

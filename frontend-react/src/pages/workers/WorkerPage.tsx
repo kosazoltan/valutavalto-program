@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Users, Plus, Edit, Search, X, Save, Power } from 'lucide-react'
+import { Users, Plus, Edit, Search, X, Save, Power, Upload } from 'lucide-react'
+import BulkEmailModal from '../../components/BulkEmailModal'
 import { api } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
@@ -48,6 +49,7 @@ export default function WorkerPage() {
   const [editingWorker, setEditingWorker] = useState<Worker | null>(null)
   const [form, setForm] = useState<WorkerForm>(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [showBulkModal, setShowBulkModal] = useState(false)
 
   const filtered = useMemo(() => {
     if (!searchTerm) return workers
@@ -143,12 +145,14 @@ export default function WorkerPage() {
 
   return (
     <div className="space-y-4">
+      <BulkEmailModal open={showBulkModal} onClose={() => setShowBulkModal(false)} onSuccess={() => { void load(); setShowBulkModal(false); }} />
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Users />
           Dolgozók
         </h1>
-        <button onClick={openCreate} className="form-button-primary flex items-center gap-2">
+        <button onClick={() => setShowBulkModal(true)} className="mr-2 flex items-center gap-2 px-3 py-1.5 border border-primary-300 text-primary-700 rounded hover:bg-primary-50 text-sm"><Upload size={14} /> Email import</button>
+                <button onClick={openCreate} className="form-button-primary flex items-center gap-2">
           <Plus size={16} />
           Új dolgozó
         </button>
