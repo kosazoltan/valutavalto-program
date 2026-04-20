@@ -82,14 +82,29 @@ export default defineConfig({
               fs.cpSync(src, dest, { recursive: true });
             }
           }
-          // Copy transitive deps (flatten)
-          const transitiveDeps = ['lazy-val', 'semver', 'lodash.isequal', 'js-yaml',
-            'builder-util-runtime', 'sax', 'global-agent', 'roarr', 'serialize-error',
-            'matcher', 'boolean', 'detect-node', 'es6-error',
-            'globalthis', 'pngjs', 'dijkstrajs', 'encode-utf8'];
-          for (const dep of transitiveDeps) {
-            const src = path.resolve('node_modules', dep);
-            const dest = path.join(tmpAppDir, 'node_modules', dep);
+          // Copy transitive deps (auto-walk - 2026-04-20 audit)
+          // Rekurzivan bejarjuk az osszes transitive dep-et a prodDeps-bol kiindulva.
+          // Elony: nem kell kezzel frissiteni a listat amikor uj dep jon be.
+          const walkedDeps = new Set<string>(prodDeps);
+          const walkDep = (pkgName: string) => {
+            const pkgJsonPath = path.resolve("node_modules", pkgName, "package.json");
+            if (!fs.existsSync(pkgJsonPath)) return;
+            try {
+              const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, "utf-8")) as { dependencies?: Record<string, string> };
+              for (const dep of Object.keys(pkg.dependencies ?? {})) {
+                if (!walkedDeps.has(dep)) {
+                  walkedDeps.add(dep);
+                  walkDep(dep);
+                }
+              }
+            } catch { /* pkg.json nem parseolhato - skip */ }
+          };
+          prodDeps.forEach(walkDep);
+          // Masoljuk az osszes talalt deps-et
+          for (const dep of walkedDeps) {
+            if (prodDeps.includes(dep)) continue; // mar masolva
+            const src = path.resolve("node_modules", dep);
+            const dest = path.join(tmpAppDir, "node_modules", dep);
             if (fs.existsSync(src) && !fs.existsSync(dest)) {
               fs.cpSync(src, dest, { recursive: true });
             }
