@@ -636,6 +636,19 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
 
     log.info('[Setup] .env sikeresen kiírva:', envPath);
 
+    // v2.1.4: Az SQLite server_url config-ba is beirjuk, a syncEngine ezt olvassa
+    try {
+      const { setConfig } = await import('./sqlite');
+      setConfig('server_url', resolvedApiUrl);
+      setConfig('bootstrap_company_code', normalizedCompanyCode);
+      if (payload.bootstrapUsername) {
+        setConfig('bootstrap_worker_code', payload.bootstrapUsername.trim());
+      }
+      log.info('[Setup] SQLite server_url elmentve:', resolvedApiUrl);
+    } catch (err) {
+      log.warn('[Setup] SQLite server_url mentes sikertelen:', err);
+    }
+
     // --- Relaunch ---
     setTimeout(() => {
       try {
