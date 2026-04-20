@@ -15,6 +15,10 @@ const nodeExternals = [
   'better-sqlite3',
   'dotenv',
   'dotenv/config',
+  // graceful-fs + serialport + nan - nativ dep-ek, nem bundle-olhatok
+  'graceful-fs',
+  'serialport', '@serialport/bindings-cpp',
+  'nan', 'node-gyp-build',
   ...builtinModules,
   ...builtinModules.map((m) => `node:${m}`),
 ];
