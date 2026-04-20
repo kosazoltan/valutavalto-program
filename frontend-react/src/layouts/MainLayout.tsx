@@ -4,13 +4,6 @@ import { useAuthStore } from '../stores/authStore'
 import { dailySessionApi } from '../services/api/index'
 import type { DailySession } from '../services/api/index'
 import {
-  Home,
-  ArrowLeftRight,
-  Users,
-  TrendingUp,
-  Wallet,
-  FileText,
-  Settings,
   LogOut,
   Menu,
   X,
@@ -18,76 +11,12 @@ import {
   Bell,
   User,
   Building2,
-  LayoutDashboard,
-  Shield,
   Sun,
   Loader2,
-  HardDrive,
-  Camera,
-  Download,
-  PlusCircle,
 } from 'lucide-react'
 import { useAppMode } from '../hooks/useAppMode'
 
-// Menüpontok csoportosítva (professzionális sidebar struktúra)
-// modes: mely app módokban jelenjen meg (undefined = mindenhol)
-const menuGroups = [
-  {
-    label: 'Főoldal',
-    items: [
-      { path: '/dashboard', label: 'Irányítópult', icon: Home },
-      { path: '/cashier', label: 'Pénztáros műveletek', icon: LayoutDashboard, modes: ['penztar', 'ertektar'] as const },
-    ]
-  },
-  {
-    label: 'Tranzakciók',
-    modes: ['penztar', 'ertektar'] as const,
-    items: [
-      { path: '/transactions/new', label: 'Új tranzakció', icon: ArrowLeftRight },
-      { path: '/transactions', label: 'Tranzakciólista', icon: FileText },
-    ]
-  },
-  {
-    label: 'Ügyfelek & Árfolyamok',
-    items: [
-      { path: '/customers', label: 'Ügyfelek', icon: Users },
-      { path: '/rates', label: 'Árfolyamok', icon: TrendingUp },
-      { path: '/rates/creation', label: 'Árfolyam készítés', icon: PlusCircle },
-    ]
-  },
-  {
-    label: 'Pénztár & Riportok',
-    modes: ['penztar', 'ertektar'] as const,
-    items: [
-      { path: '/cashdesk', label: 'Pénztár', icon: Wallet },
-      { path: '/reports', label: 'Riportok', icon: FileText },
-    ]
-  },
-  {
-    label: 'Értéktár',
-    items: [
-      { path: '/treasury', label: 'Értéktári Dashboard', icon: LayoutDashboard },
-    ]
-  },
-  {
-    label: 'Kamera',
-    modes: ['penztar', 'ertektar'] as const,
-    items: [
-      { path: '/camera/live', label: 'Élő kép', icon: Camera },
-      { path: '/camera/playback', label: 'Visszajátszás', icon: Camera },
-      { path: '/camera/export', label: 'Export & Custody', icon: Download },
-      { path: '/camera/status', label: 'Állapot', icon: Camera },
-    ]
-  },
-  {
-    label: 'Adminisztráció',
-    items: [
-      { path: '/audit-log', label: 'Audit Log', icon: Shield },
-      { path: '/local-queue', label: 'Helyi Queue', icon: HardDrive },
-      { path: '/settings', label: 'Rendszer beállítások', icon: Settings },
-    ]
-  }
-]
+import { menuGroups } from "./menuGroups"
 
 export default function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -96,7 +25,7 @@ export default function MainLayout() {
   const [sessionInfo, setSessionInfo] = useState<DailySession | null>(null)
   const [showSessionDialog, setShowSessionDialog] = useState(false)
   const [sessionError, setSessionError] = useState<string | null>(null)
-  const { user, logout, hasRole } = useAuthStore()
+  const { user, logout, hasRole, hasCanonicalRole } = useAuthStore()
   const { mode: appMode } = useAppMode()
   const navigate = useNavigate()
 
@@ -230,7 +159,8 @@ export default function MainLayout() {
         {/* Navigation Groups */}
         <nav className="flex-1 py-2 overflow-y-auto">
           {menuGroups
-            .filter((group) => !('modes' in group) || (group.modes as readonly string[]).includes(appMode))
+            .filter((group) => !group.modes || (group.modes as readonly string[]).includes(appMode))
+            .filter((group) => !group.canonicalRoles || (group.canonicalRoles as readonly string[]).some((r) => hasCanonicalRole(r)))
             .map((group) => (
             <div key={group.label} className="mb-3">
               {sidebarOpen && (
@@ -239,8 +169,9 @@ export default function MainLayout() {
                 </div>
               )}
               {group.items
-                .filter((item) => !('modes' in item) || (item.modes as readonly string[]).includes(appMode))
-                .filter((item) => !('minRole' in item) || hasRole((item as { minRole: string }).minRole))
+                .filter((item) => !item.modes || (item.modes as readonly string[]).includes(appMode))
+                .filter((item) => !item.canonicalRoles || (item.canonicalRoles as readonly string[]).some((r) => hasCanonicalRole(r)))
+                .filter((item) => !item.minRole || hasRole(item.minRole))
                 .map((item) => (
                 <NavLink
                   key={item.path}

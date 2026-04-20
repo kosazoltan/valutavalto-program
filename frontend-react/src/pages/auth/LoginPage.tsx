@@ -8,7 +8,13 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { useAppMode } from '../../hooks/useAppMode'
 
 /** Szerver (full mód) whitelist: csak ezek a role-ok léphetnek be böngészőben */
-const SERVER_ALLOWED_ROLES = ['SUPERVISOR', 'MANAGER', 'ADMIN']
+const SERVER_ALLOWED_CANONICAL_ROLES = [
+  'ugyvezeto', 'foertektar', 'irodavezeto', 'belso_ellenor', 'teruleti_vezeto',
+  'biztonsagi_vezeto', 'berszamfejto', 'penzugyi_vezeto', 'irodai_dolgozo',
+  'csoportvezeto', 'arfolyam_nezo',
+]
+// Legacy enum fallback
+const SERVER_ALLOWED_LEGACY_ROLES = ['SUPERVISOR', 'MANAGER', 'ADMIN']
 
 export default function LoginPage() {
   const [companyCode, setCompanyCode] = useState('EBC')
@@ -62,8 +68,17 @@ export default function LoginPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configuredBranchCode])
 
-  /** Role-alapú default route meghatározása */
+  /**
+   * v2.1.4: EBCiroda kanonikus role-alapu default route.
+   * - penztar / ertekszallito -> /cashier (Lokal Valutavalto)
+   * - ertektar -> /treasury (Lokal Ertektar)
+   * - egyeb szerver role (ugyvezeto, foertektar, stb.) -> /dashboard
+   */
   const getDefaultRouteForRole = (role?: string | null): string => {
+    const canonical = (role ?? '').toLowerCase()
+    if (canonical === 'penztar' || canonical === 'ertekszallito') return '/cashier'
+    if (canonical === 'ertektar') return '/treasury'
+    // Legacy enum fallback (CASHIER/MANAGER/ADMIN)
     switch (role) {
       case 'MANAGER':
       case 'TREASURY_MANAGER':
@@ -81,8 +96,10 @@ export default function LoginPage() {
   const handleLoginResponse = (response: Awaited<ReturnType<typeof authApi.login>>) => {
     // Szerver (full mód) whitelist: csak főértéktáros / belső ellenőr / ügyvezető
     const effectiveRole = response.activeRole ?? response.worker.role
-    if (appMode === 'full' && !SERVER_ALLOWED_ROLES.includes(effectiveRole)) {
-      setError('Hozzáférés megtagadva. A szerverre csak főértéktáros, belső ellenőr és ügyvezető léphet be.')
+    const canonicalAllowed = SERVER_ALLOWED_CANONICAL_ROLES.includes(effectiveRole.toLowerCase())
+    const legacyAllowed = SERVER_ALLOWED_LEGACY_ROLES.includes(effectiveRole)
+    if (appMode === 'full' && !canonicalAllowed && !legacyAllowed) {
+      setError('Hozzáférés megtagadva. A szerverre csak főértéktáros, belső ellenőr, irodavezető, ügyvezető és egyéb szerver-oldali munkakörök léphetnek be. Pénztárosok és értéktárosok a lokál alkalmazást használják.')
       return
     }
 

@@ -33,6 +33,7 @@ interface AuthState {
   selectRole: (token: string, activeRole: string, permissions: string[]) => void
   logout: () => void
   hasRole: (role: string) => boolean
+  hasCanonicalRole: (canonicalRoles: string | string[]) => boolean
   hasPermission: (permission: string) => boolean
   isManagerOrAbove: () => boolean
   isSupervisorOrAbove: () => boolean
@@ -118,6 +119,19 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     if (!worker) return false
     const effectiveRole = activeRole || worker.role
     return ['MANAGER', 'ADMIN'].includes(effectiveRole)
+  },
+
+  /**
+   * v2.1.4: EBCiroda kanonikus role check.
+   * A V147 migracio utan minden worker a canonical role kodokkal rendelkezik
+   * (penztar, ertekszallito, ertektar, foertektar, ugyvezeto, stb.).
+   * Backend response roles lista es activeRole tartalmazza.
+   */
+  hasCanonicalRole: (canonicalRoles: string | string[]) => {
+    const { roles, activeRole } = get()
+    const list = Array.isArray(canonicalRoles) ? canonicalRoles : [canonicalRoles]
+    if (activeRole && list.includes(activeRole)) return true
+    return (roles ?? []).some((r: string) => list.includes(r))
   },
 
   isSupervisorOrAbove: () => {
