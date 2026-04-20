@@ -236,7 +236,7 @@ export default function SetupWizard() {
       if (!resp.ok) {
         const body = await resp.json().catch(() => ({} as Record<string, unknown>))
         const msg = (body as { message?: string }).message || `HTTP ${resp.status}`
-        if (resp.status !== 400 || !msg.includes('mar lezajlott')) {
+        if (resp.status !== 400 || !msg.toLowerCase().includes('lezajlott')) {
           setSaveError(`Admin letrehozasi hiba: ${msg}`)
           setIsSaving(false)
           return
