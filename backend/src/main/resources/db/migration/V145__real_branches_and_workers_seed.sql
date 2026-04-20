@@ -94,67 +94,67 @@ DO $$ DECLARE v_cid UUID; v_bid UUID; v_acol TEXT; BEGIN
   SELECT id INTO v_bid FROM branch WHERE code = 'BR012' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S001') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S001', 'Apaceller-Marcsik Brigitta', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'MANAGER', 'SZEKSZARD', 'brigitta.apaceller@gmail.com';
+      USING v_cid, v_bid, 'W-S001', 'Apaceller-Marcsik Brigitta', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'MANAGER', 'SZEKSZARD', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR076' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W007570') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W007570', 'Bainé Priskin Erzsébet', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', 'priskinzsoka@gmail.com';
+      USING v_cid, v_bid, 'W007570', 'Bainé Priskin Erzsébet', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR150' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W014517') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W014517', 'Barabás Marietta', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', 'marietta.barabas@gmail.com';
+      USING v_cid, v_bid, 'W014517', 'Barabás Marietta', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W006376') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W006376', 'Belej Hanna', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'belejhanna66@gmail.com';
+      USING v_cid, v_bid, 'W006376', 'Belej Hanna', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR150' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W014519') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W014519', 'Bencze Ildikó', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', 'best.ildi@gmail.com';
+      USING v_cid, v_bid, 'W014519', 'Bencze Ildikó', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S006') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S006', 'Benka László', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'benka.laszlo@gmail.com';
+      USING v_cid, v_bid, 'W-S006', 'Benka László', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR076' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W007551') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W007551', 'Bezdán Nikolett', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', 'playgirlmail8@gmail.com';
+      USING v_cid, v_bid, 'W007551', 'Bezdán Nikolett', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR076' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S008') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S008', 'Blochné Sarkadi Tünde', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', 'sarkadi.tunde@gmail.com';
+      USING v_cid, v_bid, 'W-S008', 'Blochné Sarkadi Tünde', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR076' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W007532') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W007532', 'Bodonyi Gabriella', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', 'bodonyigab@gmail.com';
+      USING v_cid, v_bid, 'W007532', 'Bodonyi Gabriella', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W005043') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W005043', 'Bognárné Dominyák Dóra', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'dora.dominyak@gmail.com';
+      USING v_cid, v_bid, 'W005043', 'Bognárné Dominyák Dóra', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR027' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S011') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S011', 'Borossebesiné Bali Henriett Anita', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', 'bali.henriett.ebc@gmail.com';
+      USING v_cid, v_bid, 'W-S011', 'Borossebesiné Bali Henriett Anita', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR027' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S012') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S012', 'Borsi Tamás', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', 'borsi.tamas.ebc@gmail.com';
+      USING v_cid, v_bid, 'W-S012', 'Borsi Tamás', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR027' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S013') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S013', 'Börcsök Éva Katalin', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', 'borcsok.eva.katalin@gmail.com';
+      USING v_cid, v_bid, 'W-S013', 'Börcsök Éva Katalin', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S014') THEN
@@ -164,67 +164,67 @@ DO $$ DECLARE v_cid UUID; v_bid UUID; v_acol TEXT; BEGIN
   SELECT id INTO v_bid FROM branch WHERE code = 'BR027' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S015') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S015', 'Bürgés József', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', 'szallito1966@gmail.com';
+      USING v_cid, v_bid, 'W-S015', 'Bürgés József', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR027' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S016') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S016', 'Cziczinger Antal Sándorné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', 'cziczingerneibolya@gmail.com';
+      USING v_cid, v_bid, 'W-S016', 'Cziczinger Antal Sándorné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR150' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S017') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S017', 'Cziráki Rita', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', 'ritucii71@gmail.com';
+      USING v_cid, v_bid, 'W-S017', 'Cziráki Rita', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR150' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W014565') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W014565', 'Csák Melinda', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', 'g.melinda0108@freemail.hu';
+      USING v_cid, v_bid, 'W014565', 'Csák Melinda', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W005004') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W005004', 'Csepák Klára', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'csepakklara@freemail.hu';
+      USING v_cid, v_bid, 'W005004', 'Csepák Klára', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR150' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W014594') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W014594', 'Cser Tímea Tünde', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', 'szikszike1516@gmail.com';
+      USING v_cid, v_bid, 'W014594', 'Cser Tímea Tünde', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W005074') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W005074', 'Csige-Kiss Eszter', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'kisseszter290@gmail.com';
+      USING v_cid, v_bid, 'W005074', 'Csige-Kiss Eszter', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR076' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S022') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S022', 'Csókási Katalin', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', 'csokasi.katalin09@gmail.com';
+      USING v_cid, v_bid, 'W-S022', 'Csókási Katalin', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR150' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S023') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S023', 'Dakos Gergő', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', 'landek23@gmail.com';
+      USING v_cid, v_bid, 'W-S023', 'Dakos Gergő', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W005070') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W005070', 'Dancs Tiborné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'hrab58@gmail.com';
+      USING v_cid, v_bid, 'W005070', 'Dancs Tiborné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR013' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W012003') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W012003', 'Dávid Viktória', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', 'david.viktoria23@gmail.com';
+      USING v_cid, v_bid, 'W012003', 'Dávid Viktória', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W006305') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W006305', 'Dávidné Péczeli Erika', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'davidne61@freemail.hu';
+      USING v_cid, v_bid, 'W006305', 'Dávidné Péczeli Erika', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR150' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S027') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S027', 'Dedics József Jánosné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', 'dedicseta@gmail.com';
+      USING v_cid, v_bid, 'W-S027', 'Dedics József Jánosné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S028') THEN
@@ -234,22 +234,22 @@ DO $$ DECLARE v_cid UUID; v_bid UUID; v_acol TEXT; BEGIN
   SELECT id INTO v_bid FROM branch WHERE code = 'BR150' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W014588') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W014588', 'Durczi Dalma', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', 'dalma.durczi@gmail.com';
+      USING v_cid, v_bid, 'W014588', 'Durczi Dalma', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR027' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S030') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S030', 'Endre Magdolna', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', 'endre.magdolna@gmail.com';
+      USING v_cid, v_bid, 'W-S030', 'Endre Magdolna', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR013' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S031') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S031', 'Erb Levente', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', 'colops120@gmail.com';
+      USING v_cid, v_bid, 'W-S031', 'Erb Levente', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S032') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S032', 'Erdélyi Tibor', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'etibi3739@gmail.com';
+      USING v_cid, v_bid, 'W-S032', 'Erdélyi Tibor', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S033') THEN
@@ -259,112 +259,112 @@ DO $$ DECLARE v_cid UUID; v_bid UUID; v_acol TEXT; BEGIN
   SELECT id INTO v_bid FROM branch WHERE code = 'BR076' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W007530') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W007530', 'Érfalvi-Tenkei Tünde', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', 'fferlen@gmail.com';
+      USING v_cid, v_bid, 'W007530', 'Érfalvi-Tenkei Tünde', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR013' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W012006') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W012006', 'Erős Brigitta', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', 'brixi78@gmail.com';
+      USING v_cid, v_bid, 'W012006', 'Erős Brigitta', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR076' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S036') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S036', 'Fabulya Zsuzsanna', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'MANAGER', 'BEKESCSABA', 'fabulyazsuzsa@gmail.com';
+      USING v_cid, v_bid, 'W-S036', 'Fabulya Zsuzsanna', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'MANAGER', 'BEKESCSABA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W006307') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W006307', 'Fássi Csaba', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'csabafassi@gmail.com';
+      USING v_cid, v_bid, 'W006307', 'Fássi Csaba', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S038') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S038', 'Fazekas József Jánosné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'beimli.katalin1@gmail.com';
+      USING v_cid, v_bid, 'W-S038', 'Fazekas József Jánosné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR150' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S039') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S039', 'Felczán Gyula', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', 'felczan.ibolya@freemail.hu';
+      USING v_cid, v_bid, 'W-S039', 'Felczán Gyula', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR013' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S040') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S040', 'Fellegváriné Kádas Katalin', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', 'kadaskati@gmail.com';
+      USING v_cid, v_bid, 'W-S040', 'Fellegváriné Kádas Katalin', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR027' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S041') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S041', 'Felletár Dániel Emil', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', 'dfel85@gmail.com';
+      USING v_cid, v_bid, 'W-S041', 'Felletár Dániel Emil', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR150' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W014550') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W014550', 'Fias Tímea', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', 'timcsifias71@gmail.com';
+      USING v_cid, v_bid, 'W014550', 'Fias Tímea', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR076' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W007515') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W007515', 'Földesi Istvánné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', 'harybaba@freemail.hu';
+      USING v_cid, v_bid, 'W007515', 'Földesi Istvánné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W005006') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W005006', 'Földvári Gyuláné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'foldvarineerzsike@gmail.com';
+      USING v_cid, v_bid, 'W005006', 'Földvári Gyuláné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR046' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S045') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S045', 'Gál Gyula', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', 'baltigi@gmail.com';
+      USING v_cid, v_bid, 'W-S045', 'Gál Gyula', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR150' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S046') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S046', 'Gál Józsefné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', 'kisskornel81@gmail.com';
+      USING v_cid, v_bid, 'W-S046', 'Gál Józsefné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S047') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S047', 'Gálfi János', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'gefu07@gmail.com';
+      USING v_cid, v_bid, 'W-S047', 'Gálfi János', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR012' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S048') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S048', 'Gallusz Gábor József', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', 'galluszga@gmail.com';
+      USING v_cid, v_bid, 'W-S048', 'Gallusz Gábor József', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR150' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W014592') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W014592', 'Gazdig Katalin', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', 'gazdigkatalin@gmail.com';
+      USING v_cid, v_bid, 'W014592', 'Gazdig Katalin', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR012' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W001058') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W001058', 'Gecő Erzsébet', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', 'gecoerzsebet@gmail.com';
+      USING v_cid, v_bid, 'W001058', 'Gecő Erzsébet', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W005054') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W005054', 'Geraszimec Katalin', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'geraszimeckata@gmail.com';
+      USING v_cid, v_bid, 'W005054', 'Geraszimec Katalin', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W006340') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W006340', 'Gerzsenyi Margit', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'gkom.marika@gmail.com';
+      USING v_cid, v_bid, 'W006340', 'Gerzsenyi Margit', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S053') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S053', 'Grásl Diána', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'diacska25@gmail.com';
+      USING v_cid, v_bid, 'W-S053', 'Grásl Diána', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR150' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W014090') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W014090', 'Gubián Kitti', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', 'gubiankitti@gmail.com';
+      USING v_cid, v_bid, 'W014090', 'Gubián Kitti', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S055') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S055', 'Gyántiné Vadász Tímea Zsuzsanna', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'IRODA', 'vadasztimi87@gmail.com';
+      USING v_cid, v_bid, 'W-S055', 'Gyántiné Vadász Tímea Zsuzsanna', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'IRODA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR013' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S056') THEN
@@ -374,7 +374,7 @@ DO $$ DECLARE v_cid UUID; v_bid UUID; v_acol TEXT; BEGIN
   SELECT id INTO v_bid FROM branch WHERE code = 'BR046' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W004024') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W004024', 'Havasi Szilvia', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', 'haszilvi@gmail.com';
+      USING v_cid, v_bid, 'W004024', 'Havasi Szilvia', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR027' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S058') THEN
@@ -384,107 +384,107 @@ DO $$ DECLARE v_cid UUID; v_bid UUID; v_acol TEXT; BEGIN
   SELECT id INTO v_bid FROM branch WHERE code = 'BR150' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S059') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S059', 'Hefler Éva Margit', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', 'picurieva2014@gmail.com';
+      USING v_cid, v_bid, 'W-S059', 'Hefler Éva Margit', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR013' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W012008') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W012008', 'Herczeg Zsuzsanna', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', '2.zsuzsuzsu67@gmail.com';
+      USING v_cid, v_bid, 'W012008', 'Herczeg Zsuzsanna', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S061') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S061', 'Hirschné Tóth Tünde', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'tothtunde292@gmail.com';
+      USING v_cid, v_bid, 'W-S061', 'Hirschné Tóth Tünde', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S062') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S062', 'Holes Andrea', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'holesandrea77@gmail.com';
+      USING v_cid, v_bid, 'W-S062', 'Holes Andrea', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR013' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W012052') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W012052', 'Horváth Gábor', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', 'moondark76@gmail.com';
+      USING v_cid, v_bid, 'W012052', 'Horváth Gábor', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR013' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W012076') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W012076', 'Horváth Ágnes', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', 'hagnees08@gmail.com';
+      USING v_cid, v_bid, 'W012076', 'Horváth Ágnes', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR012' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S065') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S065', 'Hosnyánszki-Bölcsföldi Zsuzsanna', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', 'lorelaigilmore1971@gmail.com';
+      USING v_cid, v_bid, 'W-S065', 'Hosnyánszki-Bölcsföldi Zsuzsanna', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S066') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S066', 'Hrabina Krisztián', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'MANAGER', 'NYIREGYHAZA', 'hrabina.krisztian@gmail.com';
+      USING v_cid, v_bid, 'W-S066', 'Hrabina Krisztián', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'MANAGER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W006313') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W006313', 'Hruskáné Kiss Judit', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'hruskanejudit10@gmail.com';
+      USING v_cid, v_bid, 'W006313', 'Hruskáné Kiss Judit', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S068') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S068', 'Iglódi Attila Ferenc', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'igiatika@gmail.com';
+      USING v_cid, v_bid, 'W-S068', 'Iglódi Attila Ferenc', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR046' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W004084') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W004084', 'Igyártó Judit', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', 'judytka67@gmail.com';
+      USING v_cid, v_bid, 'W004084', 'Igyártó Judit', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR012' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W001036') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W001036', 'Imre Melinda', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', 'mimre9432@gmail.com';
+      USING v_cid, v_bid, 'W001036', 'Imre Melinda', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W006366') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W006366', 'Jackánics Laura', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'jackanics.laura@gmail.com';
+      USING v_cid, v_bid, 'W006366', 'Jackánics Laura', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR046' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S072') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S072', 'Jankovicsné Dallos Sarolta', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', 'jankovics2@t-online.hu';
+      USING v_cid, v_bid, 'W-S072', 'Jankovicsné Dallos Sarolta', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S073') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S073', 'Jékel Ella Ida', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'idajekel@gmail.com';
+      USING v_cid, v_bid, 'W-S073', 'Jékel Ella Ida', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR150' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S074') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S074', 'Juhász Csaba', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', 'csabajuhasz22@gmail.com';
+      USING v_cid, v_bid, 'W-S074', 'Juhász Csaba', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR046' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S075') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S075', 'Juhos Lőrinc', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', 'juhosslocii88@gmail.com';
+      USING v_cid, v_bid, 'W-S075', 'Juhos Lőrinc', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR013' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W012077') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W012077', 'Kádas István', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', 'istvankadas72@gmail.com';
+      USING v_cid, v_bid, 'W012077', 'Kádas István', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W006316') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W006316', 'Kalauz Edit', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'edit.ke@hotmail.com';
+      USING v_cid, v_bid, 'W006316', 'Kalauz Edit', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR150' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W014503') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W014503', 'Kanizsai Mária', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', 'kanizsai11@t-online.hu';
+      USING v_cid, v_bid, 'W014503', 'Kanizsai Mária', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S079') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S079', 'Kántor-Gombos Mária Adrienn', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'gombos.maria.a@gmail.com';
+      USING v_cid, v_bid, 'W-S079', 'Kántor-Gombos Mária Adrienn', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR012' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S080') THEN
@@ -499,47 +499,47 @@ DO $$ DECLARE v_cid UUID; v_bid UUID; v_acol TEXT; BEGIN
   SELECT id INTO v_bid FROM branch WHERE code = 'BR027' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W002085') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W002085', 'Kardos Andrea', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', 'andreakardos0818@gmail.com';
+      USING v_cid, v_bid, 'W002085', 'Kardos Andrea', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR013' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S083') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S083', 'Kassai Lajos Róbert', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', 'robertkassai@freemail.hu';
+      USING v_cid, v_bid, 'W-S083', 'Kassai Lajos Róbert', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W005062') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W005062', 'Kasuba Ádám', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'adamkasuba79@gmail.com';
+      USING v_cid, v_bid, 'W005062', 'Kasuba Ádám', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR027' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S085') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S085', 'Kasza Helga', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', 'kasza.helga.ebc@gmail.com';
+      USING v_cid, v_bid, 'W-S085', 'Kasza Helga', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR013' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S086') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S086', 'Kaszás János Péter', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', 'kaszas.janos1967@gmail.com';
+      USING v_cid, v_bid, 'W-S086', 'Kaszás János Péter', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR012' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W001055') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W001055', 'Kelemen Dorka', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', 'keledodi2@gmail.com';
+      USING v_cid, v_bid, 'W001055', 'Kelemen Dorka', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W005009') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W005009', 'Kenéz Adrienn', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'adriennkenez@gmail.com';
+      USING v_cid, v_bid, 'W005009', 'Kenéz Adrienn', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S089') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S089', 'Kenéz Éva', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'MANAGER', 'DEBRECEN', 'kenezeva2017@gmail.com';
+      USING v_cid, v_bid, 'W-S089', 'Kenéz Éva', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'MANAGER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR012' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S090') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S090', 'Kerekes Zoltán Imréné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', 'zsike.kerekesne@gmail.com';
+      USING v_cid, v_bid, 'W-S090', 'Kerekes Zoltán Imréné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR046' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S091') THEN
@@ -549,17 +549,17 @@ DO $$ DECLARE v_cid UUID; v_bid UUID; v_acol TEXT; BEGIN
   SELECT id INTO v_bid FROM branch WHERE code = 'BR012' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S092') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S092', 'Kispál Attila', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', 'k.palee@outlook.hu';
+      USING v_cid, v_bid, 'W-S092', 'Kispál Attila', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR012' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W001045') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W001045', 'Kiss Julianna', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', 'julianna065@gmail.com';
+      USING v_cid, v_bid, 'W001045', 'Kiss Julianna', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR150' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S094') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S094', 'Kiss Kornél', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', 'kisskornel81@gmail.com';
+      USING v_cid, v_bid, 'W-S094', 'Kiss Kornél', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR076' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S095') THEN
@@ -569,27 +569,27 @@ DO $$ DECLARE v_cid UUID; v_bid UUID; v_acol TEXT; BEGIN
   SELECT id INTO v_bid FROM branch WHERE code = 'BR013' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S096') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S096', 'Klobucsár Judit Márta', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', 'klobucsar11@gmail.com';
+      USING v_cid, v_bid, 'W-S096', 'Klobucsár Judit Márta', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S097') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S097', 'Kocsis Angéla', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'kocsisangela2006@gmail.com';
+      USING v_cid, v_bid, 'W-S097', 'Kocsis Angéla', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W006368') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W006368', 'Kocsisné Palicska Rita', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'palicska.rita74@freemail.hu';
+      USING v_cid, v_bid, 'W006368', 'Kocsisné Palicska Rita', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W006319') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W006319', 'Kojsza Zsuzsanna', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'kojszazsuzsanna@gmail.com';
+      USING v_cid, v_bid, 'W006319', 'Kojsza Zsuzsanna', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR076' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S100') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S100', 'Koncz Andrea', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', 'koncz.sza@gmail.com';
+      USING v_cid, v_bid, 'W-S100', 'Koncz Andrea', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S101') THEN
@@ -604,22 +604,22 @@ DO $$ DECLARE v_cid UUID; v_bid UUID; v_acol TEXT; BEGIN
   SELECT id INTO v_bid FROM branch WHERE code = 'BR046' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S103') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S103', 'Kósa-Gallusz Ildikó', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'MANAGER', 'KECSKEMET', 'naposcsibe911@gmail.com';
+      USING v_cid, v_bid, 'W-S103', 'Kósa-Gallusz Ildikó', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'MANAGER', 'KECSKEMET', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S104') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S104', 'Kosztyu Csaba', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'kosztyu.csaba.ebc@gmail.com';
+      USING v_cid, v_bid, 'W-S104', 'Kosztyu Csaba', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR013' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W012024') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W012024', 'Kovács Mercedes', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', 'mercedes.kovacs67@gmail.com';
+      USING v_cid, v_bid, 'W012024', 'Kovács Mercedes', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR150' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W014570') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W014570', 'Kovács Renáta', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', 'kovacsrenata2021@freemail.hu';
+      USING v_cid, v_bid, 'W014570', 'Kovács Renáta', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W006374') THEN
@@ -629,27 +629,27 @@ DO $$ DECLARE v_cid UUID; v_bid UUID; v_acol TEXT; BEGIN
   SELECT id INTO v_bid FROM branch WHERE code = 'BR027' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W002064') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W002064', 'Kovácsi Luca Ágnes', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', 'kovacsi.luca1@gmail.com';
+      USING v_cid, v_bid, 'W002064', 'Kovácsi Luca Ágnes', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR076' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W007531') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W007531', 'Kovalovszki Anikó', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', 'kovalovszkiani@gmail.com';
+      USING v_cid, v_bid, 'W007531', 'Kovalovszki Anikó', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR046' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W004008') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W004008', 'Kozla Zsolt Tamásné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', 'kozlazsne847@gmail.com';
+      USING v_cid, v_bid, 'W004008', 'Kozla Zsolt Tamásné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR012' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S111') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S111', 'Kőhegyi-Balogh Zita Mária', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', 'kbzita81@gmail.com';
+      USING v_cid, v_bid, 'W-S111', 'Kőhegyi-Balogh Zita Mária', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR027' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W002017') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W002017', 'Kracsin Attila', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', 'kracsina@freemail.hu';
+      USING v_cid, v_bid, 'W002017', 'Kracsin Attila', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S113') THEN
@@ -659,57 +659,57 @@ DO $$ DECLARE v_cid UUID; v_bid UUID; v_acol TEXT; BEGIN
   SELECT id INTO v_bid FROM branch WHERE code = 'BR076' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S114') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S114', 'Kun Éva Ildikó', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', 'kuneva524@gmail.com';
+      USING v_cid, v_bid, 'W-S114', 'Kun Éva Ildikó', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR027' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W002090') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W002090', 'Lehoczki Andrea Éva', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', 'dia781031@gmail.com';
+      USING v_cid, v_bid, 'W002090', 'Lehoczki Andrea Éva', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR012' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W001009') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W001009', 'Lengyel Adrienn', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', 'adrilen@freemail.hu';
+      USING v_cid, v_bid, 'W001009', 'Lengyel Adrienn', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR046' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S117') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S117', 'Lipák Csilla Mária', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', 'lipak.cs@gmail.com';
+      USING v_cid, v_bid, 'W-S117', 'Lipák Csilla Mária', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W006367') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W006367', 'Lizákné Nagy Mária', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'lizaknenagy@freemail.hu';
+      USING v_cid, v_bid, 'W006367', 'Lizákné Nagy Mária', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR076' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S119') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S119', 'Lovász János', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', 'lovaszjancsika@gmail.com';
+      USING v_cid, v_bid, 'W-S119', 'Lovász János', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR027' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S120') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S120', 'Madár Zoltán', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'MANAGER', 'SZEGED', 'madarzoltan.ebc@gmail.com';
+      USING v_cid, v_bid, 'W-S120', 'Madár Zoltán', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'MANAGER', 'SZEGED', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR027' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S121') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S121', 'Madár Zoltán', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', 'madarzoltan.ebc@gmail.com';
+      USING v_cid, v_bid, 'W-S121', 'Madár Zoltán', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W006370') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W006370', 'Magyar Tünde', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'magyartunde995@gmail.com';
+      USING v_cid, v_bid, 'W006370', 'Magyar Tünde', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR076' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W007564') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W007564', 'Mahler Zoltán László', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', 'zoltan.lion@gmail.com';
+      USING v_cid, v_bid, 'W007564', 'Mahler Zoltán László', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR012' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S124') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S124', 'Marosiné Fang Dóra', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', 'aventara87@gmail.com';
+      USING v_cid, v_bid, 'W-S124', 'Marosiné Fang Dóra', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR150' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W014596') THEN
@@ -719,177 +719,177 @@ DO $$ DECLARE v_cid UUID; v_bid UUID; v_acol TEXT; BEGIN
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S126') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S126', 'Márton Péterné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'erzsikemartone@freemail.hu';
+      USING v_cid, v_bid, 'W-S126', 'Márton Péterné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W006362') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W006362', 'Máté Györgyné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'matenetunde1970@gmail.com';
+      USING v_cid, v_bid, 'W006362', 'Máté Györgyné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR027' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S128') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S128', 'Maxi Attila Gábor', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', 'maxi.attila1@gmail.com';
+      USING v_cid, v_bid, 'W-S128', 'Maxi Attila Gábor', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S129') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S129', 'Méhész Tibor', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'mehesztibi73@gmail.com';
+      USING v_cid, v_bid, 'W-S129', 'Méhész Tibor', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W005079') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W005079', 'Molnár Edit', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'editmolnar557@gmail.com';
+      USING v_cid, v_bid, 'W005079', 'Molnár Edit', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR027' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W002019') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W002019', 'Molnárné Buka Mariann', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', 'trabikadld@gmail.com';
+      USING v_cid, v_bid, 'W002019', 'Molnárné Buka Mariann', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR012' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S132') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S132', 'Nagy Zoltán', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', 'nagydzsi79@gmail.com';
+      USING v_cid, v_bid, 'W-S132', 'Nagy Zoltán', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W006331') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W006331', 'Nagy Attiláné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'kadar.timea1982@gmail.com';
+      USING v_cid, v_bid, 'W006331', 'Nagy Attiláné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W006375') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W006375', 'Nagy Katalin', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'nagy.kata1966@gmail.hu';
+      USING v_cid, v_bid, 'W006375', 'Nagy Katalin', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR013' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W012078') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W012078', 'Nagy Tímea', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', 'timea.nagy12340@gmail.com';
+      USING v_cid, v_bid, 'W012078', 'Nagy Tímea', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W005035') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W005035', 'Nagyné Árvai Erzsébet', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'arvai.erzsike@gmail.com';
+      USING v_cid, v_bid, 'W005035', 'Nagyné Árvai Erzsébet', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S137') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S137', 'Nagyné Marsi Viktória', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'marsi.viktoria19890329@gmail.com';
+      USING v_cid, v_bid, 'W-S137', 'Nagyné Marsi Viktória', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR046' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W004011') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W004011', 'Narancsik Zsanett', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', 'narzsani@gmail.com';
+      USING v_cid, v_bid, 'W004011', 'Narancsik Zsanett', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR027' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S139') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S139', 'Németh Zsuzsa', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', 'kamuleon@hotmail.com';
+      USING v_cid, v_bid, 'W-S139', 'Németh Zsuzsa', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR150' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W014586') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W014586', 'Novák Anita', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', 'novakanita1996@gmail.com';
+      USING v_cid, v_bid, 'W014586', 'Novák Anita', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR046' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W004085') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W004085', 'Nyitrainé Feke Katalin', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', 'feke.katalin8@gmail.com';
+      USING v_cid, v_bid, 'W004085', 'Nyitrainé Feke Katalin', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W005018') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W005018', 'Oksz Attila', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'attilaok@freemail.hu';
+      USING v_cid, v_bid, 'W005018', 'Oksz Attila', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR046' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W004049') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W004049', 'Orbán Melinda', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', 'orban.melinda47@gmail.com';
+      USING v_cid, v_bid, 'W004049', 'Orbán Melinda', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR150' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W050102') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W050102', 'Ősz Viktória', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', 'oszviki1993@gmail.com';
+      USING v_cid, v_bid, 'W050102', 'Ősz Viktória', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W006324') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W006324', 'Pakot Katalin', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'pakot59@gmail.com';
+      USING v_cid, v_bid, 'W006324', 'Pakot Katalin', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR013' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S146') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S146', 'Pál Heléna Marianna', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', 'mariannahelena10@gmail.com';
+      USING v_cid, v_bid, 'W-S146', 'Pál Heléna Marianna', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W006359') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W006359', 'Paládi Erika', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'oroszerika555@gmail.com';
+      USING v_cid, v_bid, 'W006359', 'Paládi Erika', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR076' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S148') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S148', 'Piatkó Zoltán', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', 'zoltanpiatko@gmail.com';
+      USING v_cid, v_bid, 'W-S148', 'Piatkó Zoltán', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR027' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W002023') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W002023', 'Pongor Natália', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', 'pongornati79@gmail.com';
+      USING v_cid, v_bid, 'W002023', 'Pongor Natália', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR046' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W004040') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W004040', 'Porok László', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', 'porok.laszlo@freemail.hu';
+      USING v_cid, v_bid, 'W004040', 'Porok László', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR046' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W004012') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W004012', 'Puskásné Gál Tünde', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', 'tpuskasne@gmail.com';
+      USING v_cid, v_bid, 'W004012', 'Puskásné Gál Tünde', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR046' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S152') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S152', 'Putnoki Mariann', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', 'mariann.putnoki@gmail.com';
+      USING v_cid, v_bid, 'W-S152', 'Putnoki Mariann', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR012' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S153') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S153', 'Radics Rita', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', 'rita.radics23@gmail.com';
+      USING v_cid, v_bid, 'W-S153', 'Radics Rita', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR027' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W002024') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W002024', 'Rengei Marianna', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', 'rengei.marianna@gmail.com';
+      USING v_cid, v_bid, 'W002024', 'Rengei Marianna', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W005081') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W005081', 'Sain Tímea', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'saintimea@gmail.com';
+      USING v_cid, v_bid, 'W005081', 'Sain Tímea', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR012' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W001057') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W001057', 'Sáy Zoltán', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', 'zoltharoo@gmail.com';
+      USING v_cid, v_bid, 'W001057', 'Sáy Zoltán', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S157') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S157', 'Schnellné Balogh Edit', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'IRODA', 'schnell.edit.ebc@gmail.com';
+      USING v_cid, v_bid, 'W-S157', 'Schnellné Balogh Edit', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'IRODA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR012' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S158') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S158', 'Schumacher Tímea', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', 'sumitimi76@gmail.com';
+      USING v_cid, v_bid, 'W-S158', 'Schumacher Tímea', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W005077') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W005077', 'Sebestyén Andrea', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'sebiandi.67@gmail.com';
+      USING v_cid, v_bid, 'W005077', 'Sebestyén Andrea', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W005022') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W005022', 'Sinai Éva', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'eva.sinai@gmail.com';
+      USING v_cid, v_bid, 'W005022', 'Sinai Éva', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S161') THEN
@@ -899,42 +899,42 @@ DO $$ DECLARE v_cid UUID; v_bid UUID; v_acol TEXT; BEGIN
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S162') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S162', 'Staviarszki Istvánné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'staviarszkine@gmail.com';
+      USING v_cid, v_bid, 'W-S162', 'Staviarszki Istvánné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR013' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W012017') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W012017', 'Stefán Katalin', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', 'kati.stefan@freemail.hu';
+      USING v_cid, v_bid, 'W012017', 'Stefán Katalin', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W005053') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W005053', 'Steinbinder Eszter', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'segyszerke@gmail.com';
+      USING v_cid, v_bid, 'W005053', 'Steinbinder Eszter', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR150' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S165') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S165', 'Szabó Katalin Jolán', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', 'szabokatalin02@freemail.hu';
+      USING v_cid, v_bid, 'W-S165', 'Szabó Katalin Jolán', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR013' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S166') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S166', 'Szabó László Donát', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', 'szabold1977@gmail.com';
+      USING v_cid, v_bid, 'W-S166', 'Szabó László Donát', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR150' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S167') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S167', 'Szabó Rudolfné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', 'szaborudolfne49@gmail.com';
+      USING v_cid, v_bid, 'W-S167', 'Szabó Rudolfné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KAPOSVAR', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR013' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S168') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S168', 'Szabó Mihály László', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', 'szabold1977@gmail.com';
+      USING v_cid, v_bid, 'W-S168', 'Szabó Mihály László', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S169') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S169', 'Szilágyi István', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'szilagyi75@gmail.com';
+      USING v_cid, v_bid, 'W-S169', 'Szilágyi István', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W006379') THEN
@@ -944,32 +944,32 @@ DO $$ DECLARE v_cid UUID; v_bid UUID; v_acol TEXT; BEGIN
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W006369') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W006369', 'Takács Jánosné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'epervari.anita79@gmail.com';
+      USING v_cid, v_bid, 'W006369', 'Takács Jánosné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR012' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W001016') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W001016', 'Takácsné Auth Anikó', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', 'anikoauth@gmail.com';
+      USING v_cid, v_bid, 'W001016', 'Takácsné Auth Anikó', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W005080') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W005080', 'Tamas Tímea', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'tamas.timea.95@gmail.com';
+      USING v_cid, v_bid, 'W005080', 'Tamas Tímea', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W005033') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W005033', 'Tenkely Viktória', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'viktoriatenkely@gmail.com';
+      USING v_cid, v_bid, 'W005033', 'Tenkely Viktória', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR027' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W002073') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W002073', 'Tóth Andrásné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', 'sejbenmaria68@gmail.com';
+      USING v_cid, v_bid, 'W002073', 'Tóth Andrásné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S176') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S176', 'Tóth Ágnes', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'toth.agica0120@gmail.com';
+      USING v_cid, v_bid, 'W-S176', 'Tóth Ágnes', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR027' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W002093') THEN
@@ -979,62 +979,62 @@ DO $$ DECLARE v_cid UUID; v_bid UUID; v_acol TEXT; BEGIN
   SELECT id INTO v_bid FROM branch WHERE code = 'BR013' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W012020') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W012020', 'Türk Mátyás', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', 'matyas.turk@gmail.com';
+      USING v_cid, v_bid, 'W012020', 'Türk Mátyás', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR046' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W004047') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W004047', 'Varga Éva Veronika', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', 'vargaeva968@gmail.com';
+      USING v_cid, v_bid, 'W004047', 'Varga Éva Veronika', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR013' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S181') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S181', 'Varga Ildikó Anna', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', 'vargaildi11@gmail.com';
+      USING v_cid, v_bid, 'W-S181', 'Varga Ildikó Anna', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'PECS', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR150' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W014587') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W014587', 'Vargáné Nagy Viktória', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'MANAGER', 'KAPOSVAR', 'versenysarkany@gmail.com';
+      USING v_cid, v_bid, 'W014587', 'Vargáné Nagy Viktória', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'MANAGER', 'KAPOSVAR', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR046' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W004021') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W004021', 'Vári Istvánné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', 'bakosmarika416@gmail.com';
+      USING v_cid, v_bid, 'W004021', 'Vári Istvánné', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR012' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W001053') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W001053', 'Városi István', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', 'varosi86@gmail.com';
+      USING v_cid, v_bid, 'W001053', 'Városi István', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEKSZARD', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W005082') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W005082', 'Vécseiné Stáhl Edit', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'estahl@freemail.hu';
+      USING v_cid, v_bid, 'W005082', 'Vécseiné Stáhl Edit', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR076' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S186') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S186', 'Verebné Szín Rozália Tünde', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', 'tunde@verebne.hu';
+      USING v_cid, v_bid, 'W-S186', 'Verebné Szín Rozália Tünde', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR027' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W002003') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W002003', 'Vida Veronika', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', 'veronika0170@gmail.com';
+      USING v_cid, v_bid, 'W002003', 'Vida Veronika', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'SZEGED', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR092' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W005028') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W005028', 'Vince Ildikó', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', 'vinceildiko65@gmail.com';
+      USING v_cid, v_bid, 'W005028', 'Vince Ildikó', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'DEBRECEN', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR076' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W007526') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W007526', 'Virág Margit', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', 'virag.margit52@gmail.com';
+      USING v_cid, v_bid, 'W007526', 'Virág Margit', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'BEKESCSABA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR046' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S190') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S190', 'Vízi-Molnár Anikó', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', 'molnaraniko99@gmail.com';
+      USING v_cid, v_bid, 'W-S190', 'Vízi-Molnár Anikó', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR012' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S191') THEN
@@ -1049,12 +1049,12 @@ DO $$ DECLARE v_cid UUID; v_bid UUID; v_acol TEXT; BEGIN
   SELECT id INTO v_bid FROM branch WHERE code = 'BR057' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W-S193') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W-S193', 'Zsidai Sándor', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', 'osmagyar69@gmail.com';
+      USING v_cid, v_bid, 'W-S193', 'Zsidai Sándor', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'NYIREGYHAZA', NULL;
   END IF;
   SELECT id INTO v_bid FROM branch WHERE code = 'BR046' AND company_id = v_cid LIMIT 1;
   IF v_bid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM worker WHERE company_id = v_cid AND code = 'W004026') THEN
     EXECUTE format('INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, region, email, %I, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())', v_acol)
-      USING v_cid, v_bid, 'W004026', 'Zsigmond Tamás', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', 'fleisch82@gmail.com';
+      USING v_cid, v_bid, 'W004026', 'Zsigmond Tamás', '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie', 'CASHIER', 'KECSKEMET', NULL;
   END IF;
 END $$;
 
