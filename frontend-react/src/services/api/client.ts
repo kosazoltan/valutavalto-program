@@ -203,14 +203,19 @@ export interface PagedResponse<T> {
 
 // --- Electron token persist (ha Electron-ban fut) ---
 //
-// SECURITY WARNING: In web (non-Electron) mode, the JWT is stored in
-// localStorage which is accessible to any JS running on the same origin and
-// therefore vulnerable to XSS attacks.  Electron mode mitigates this via
-// OS-level encrypted storage (safeStorage / DPAPI / Keychain).
+// ACCESS TOKEN:
+//   - Web: localStorage (XSS-expozicio, kompromisszum - a silent refresh
+//     minden 24h-nal ujat ad, a backend token blacklist logout-kor torli)
+//   - Electron: OS-level titkositas (safeStorage / DPAPI / Keychain)
 //
-// TODO: Migrate web auth to httpOnly secure cookies (set by the backend on
-// /auth/login and /auth/refresh) so the token is never exposed to JS.  This
-// requires backend cooperation (Set-Cookie header + CSRF protection).
+// REFRESH TOKEN (vezerlokonyv par.12.3, 2026-04-20 implementacio):
+//   - Web: HttpOnly Secure SameSite=Strict cookie, Path=/api/v1/auth,
+//     MaxAge=7d. JS-bol NEM elerheto, silent refresh interceptor
+//     automatikusan hasznalja (axios withCredentials: true).
+//   - Electron: safeStorage tokentárolás mellett a cookie is rendelkezesre
+//     all (ugyanaz a backend /auth/login endpoint adja ki).
+//   - DB: refresh_token tabla, BCrypt-hashelt token_value, token rotation
+//     minden refresh-kor (regi revoke, uj issue).
 
 /** Cached Electron token presence — kept in sync by persist/clear/load. */
 let _electronTokenPresent: boolean | null = null

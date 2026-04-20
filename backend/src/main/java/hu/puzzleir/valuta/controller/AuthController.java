@@ -46,6 +46,8 @@ public class AuthController {
     private final TokenBlacklistService tokenBlacklistService;
     private final AdminBootstrapService adminBootstrapService;
     private final RefreshTokenService refreshTokenService;
+    private final hu.puzzleir.valuta.repository.RefreshTokenRepository refreshTokenRepository;
+    private final org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder bcrypt10 = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder(10);
     
     /**
      * Login endpoint
@@ -124,6 +126,63 @@ public class AuthController {
         httpResponse.addHeader(HttpHeaders.SET_COOKIE, clearCookie.toString());
 
         return ResponseEntity.noContent().build();
+    }
+
+
+    /**
+     * Refresh endpoint - HttpOnly cookie path (vezerlokonyv par.12.3).
+     *
+     * <p>Ezt a silent refresh interceptor automatikusan hivja, ha a felhasznalo
+     * hosszu idore pihent (access token lejart), de a 7 napos refresh cookie
+     * meg aktiv. A tenyleges refresh tokent az agy a jelentkezes ota nem latta -
+     * csak a browser cookie-jar tartja.</p>
+     *
+     * <p>POST /api/v1/auth/refresh-cookie</p>
+     * <p>Cookie: refreshToken=uuid-v4</p>
+     * <p>Response: {"token": "uj-access-jwt"} + Set-Cookie rotation</p>
+     *
+     * <p>Token rotation: a regi refresh token revoke-olva, uj random UUID jon.
+     * Ha valaki ellopta a regi cookie-t, a refresh megvan, a regi mar nem
+     * hasznalhato.</p>
+     */
+    @PostMapping("/refresh-cookie")
+    @PreAuthorize("permitAll()")
+    public ResponseEntity<Map<String, String>> refreshCookie(
+            HttpServletRequest request,
+            HttpServletResponse httpResponse) {
+        String rawRefresh = extractRefreshCookie(request);
+        if (rawRefresh == null) return ResponseEntity.status(401).build();
+
+        // Aktiv refresh tokenek kozul BCrypt.matches() alapjan valasztjuk a megfelelot.
+        // O(aktiv-tokenek), gyakorlatban < 100, BCrypt-hash bruteforceolhatatlan.
+        java.util.Optional<hu.puzzleir.valuta.entity.RefreshToken> matched = refreshTokenRepository.findAll().stream()
+            .filter(rt -> rt.getRevokedAt() == null && rt.getExpiresAt().isAfter(java.time.Instant.now()))
+            .filter(rt -> bcrypt10.matches(rawRefresh, rt.getTokenHash()))
+            .findFirst();
+        if (matched.isEmpty()) return ResponseEntity.status(401).build();
+
+        hu.puzzleir.valuta.entity.RefreshToken oldRefresh = matched.get();
+        Worker worker = workerRepository.findById(oldRefresh.getWorkerId())
+            .filter(w -> Boolean.TRUE.equals(w.getActive()))
+            .orElse(null);
+        if (worker == null) return ResponseEntity.status(401).build();
+
+        // Uj access token generalas (aktiv role + permissions)
+        java.util.List<String> roleCodes = workerRoleService.getRoleCodesForWorker(worker.getId());
+        String defaultRole = roleCodes.isEmpty() ? null : roleCodes.get(0);
+        java.util.List<String> perms = defaultRole != null
+            ? workerRoleService.getPermissionCodesForRole(defaultRole)
+            : java.util.List.of();
+        String newAccess = jwtTokenProvider.generateToken(worker, defaultRole, perms);
+
+        // Token rotation - regi revoke + uj issue
+        RefreshTokenService.IssuedToken newIssued = refreshTokenService.rotate(oldRefresh, worker, request);
+        ResponseCookie rotated = ResponseCookie.from("refreshToken", newIssued.rawUuid())
+            .httpOnly(true).secure(request.isSecure()).sameSite("Strict")
+            .path("/api/v1/auth").maxAge(Duration.ofDays(7)).build();
+        httpResponse.addHeader(HttpHeaders.SET_COOKIE, rotated.toString());
+
+        return ResponseEntity.ok(Map.of("token", newAccess));
     }
 
     /** Cookie-bol kiolvassa a refreshToken ertekt (null, ha nincs). */

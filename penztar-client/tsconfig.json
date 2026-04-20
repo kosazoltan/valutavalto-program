@@ -34,5 +34,13 @@
     "electron",
     "../packages/shared-api/src",
     "../packages/shared-ipc/src"
+  ],
+  "exclude": [
+    "electron/__tests__/**",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "node_modules",
+    "dist",
+    "dist-electron"
   ]
 }
