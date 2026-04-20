@@ -17,6 +17,7 @@ import {
 import { useAppMode } from '../hooks/useAppMode'
 
 import { menuGroups } from "./menuGroups"
+import TransitBadge from "../components/TransitBadge"
 
 export default function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -238,6 +239,9 @@ export default function MainLayout() {
           </div>
           
           <div className="flex items-center gap-4">
+            {/* v2.1.4: Uton levo csomagok badge */}
+            <TransitBadge />
+
             {/* Notification Bell */}
             <button className="relative p-1.5 hover:bg-secondary-50 rounded-lg transition-colors">
               <Bell size={16} className="text-secondary-600" />
