@@ -446,6 +446,8 @@ export class SyncEngine {
         await this.cacheBranchStatus();
         await this.syncCashDeskMasterData();
         await this.syncWorkerMasterData();
+        // Heartbeat: last_seen_at frissitese a backenden (online/offline monitoring).
+        await this.sendHeartbeat(serverUrl, token);
       }
 
       this.status.lastSyncAt = new Date().toISOString();
@@ -1401,6 +1403,36 @@ export class SyncEngine {
         });
     } catch (err) {
       log.warn('[SyncEngine] Retention cleanup hiba:', err);
+    }
+  }
+  /**
+   * Periodikus heartbeat a backend cash_register_device tablara.
+   * A cash_register_device_id a SetupWizard online-regisztracio utan kerul a SQLite-ba.
+   * Ha nincs device_id -> skip (a wizard offline modban telepult, vagy nem regisztralt).
+   * Ritka throttle: csak 5 percenkent kuldunk heartbeat-et (nincs ertelme 30s-enkent, a last_seen granularitasa 5 perc).
+   */
+  private lastHeartbeatAt = 0;
+  private readonly heartbeatIntervalMs = 5 * 60 * 1000; // 5 perc
+
+  private async sendHeartbeat(serverUrl: string, token: string): Promise<void> {
+    const now = Date.now();
+    if (now - this.lastHeartbeatAt < this.heartbeatIntervalMs) {
+      return; // throttle
+    }
+    const deviceId = getConfig('cash_register_device_id');
+    if (!deviceId) {
+      return; // nincs regisztralt eszkoz (offline telepites)
+    }
+    try {
+      await httpPost<unknown>(
+        `${serverUrl}/cash-register/device/${deviceId}/heartbeat`,
+        {},
+        token,
+      );
+      this.lastHeartbeatAt = now;
+      log.debug('[SyncEngine] Heartbeat sikeres:', deviceId);
+    } catch (err) {
+      log.warn('[SyncEngine] Heartbeat sikertelen (nem blokkolo):', err instanceof Error ? err.message : err);
     }
   }
 }
