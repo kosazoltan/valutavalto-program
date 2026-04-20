@@ -1,11 +1,12 @@
 import { Home, ArrowLeftRight, Users, TrendingUp, Wallet, FileText, Settings, Sun, Shield, LayoutDashboard, PlusCircle, Download, Camera } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
-export const PENZTAR_ROLES = ["penztar", "ertekszallito"] as const
+export const PENZTAR_ROLES = ["penztar"] as const
 export const ERTEKTAR_ROLES = ["ertektar"] as const
+export const ERTEKSZALLITO_ROLES = ["ertekszallito"] as const
 export const SZERVER_ROLES = ["ugyvezeto", "foertektar", "irodavezeto", "belso_ellenor", "teruleti_vezeto", "biztonsagi_vezeto", "berszamfejto", "penzugyi_vezeto", "irodai_dolgozo", "csoportvezeto", "arfolyam_nezo"] as const
 
-export type AppMode = "full" | "penztar" | "ertektar"
+export type AppMode = "full" | "penztar" | "ertektar" | "ertekszallito"
 
 export interface MenuItem {
   path: string
@@ -147,7 +148,8 @@ export const menuGroups: MenuGroup[] = [
 export function getDefaultRouteForRoles(roles: readonly string[] | undefined, activeRole: string | null | undefined): string {
   const active = activeRole ?? ""
   const all = new Set([active, ...(roles ?? [])].filter(Boolean))
-  if (all.has("penztar") || all.has("ertekszallito")) return "/cashier"
+  if (all.has("penztar")) return "/cashier"
+  if (all.has("ertekszallito")) return "/shipments"
   if (all.has("ertektar")) return "/treasury"
   return "/dashboard"
 }

@@ -76,7 +76,8 @@ export default function LoginPage() {
    */
   const getDefaultRouteForRole = (role?: string | null): string => {
     const canonical = (role ?? '').toLowerCase()
-    if (canonical === 'penztar' || canonical === 'ertekszallito') return '/cashier'
+    if (canonical === 'penztar') return '/cashier'
+    if (canonical === 'ertekszallito') return '/shipments'
     if (canonical === 'ertektar') return '/treasury'
     // Legacy enum fallback (CASHIER/MANAGER/ADMIN)
     switch (role) {

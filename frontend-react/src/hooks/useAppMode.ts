@@ -9,7 +9,7 @@ import { logger } from '../utils/logger';
  * - 'penztar':   Electron pénztáros mód (F1-F12 menü)
  * - 'ertektar':  Electron értéktár / regionális központ mód
  */
-export type AppMode = 'full' | 'penztar' | 'ertektar';
+export type AppMode = 'full' | 'penztar' | 'ertektar' | 'ertekszallito';
 
 /**
  * App mód betöltése:
@@ -23,7 +23,7 @@ async function loadAppMode(): Promise<AppMode> {
 
   try {
     const stored = await window.electronAPI?.getConfig('app_mode');
-    if (stored === 'penztar' || stored === 'ertektar') {
+    if (stored === 'penztar' || stored === 'ertektar' || stored === 'ertekszallito') {
       return stored;
     }
   } catch (err) {
