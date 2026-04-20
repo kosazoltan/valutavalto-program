@@ -99,7 +99,7 @@ jobs:
             set -euo pipefail
             DEPLOY=${{ env.VPS_DEPLOY_PATH }}
             SYMLINK=$DEPLOY/target/${{ env.JAR_SYMLINK }}
-            JAR=$(ls $DEPLOY/target/valuta-backend-*.jar | grep -v SNAPSHOT | sort -V | tail -1)
+            JAR=$(ls $DEPLOY/target/valuta-backend-*.jar | grep -v SNAPSHOT | grep -v current | sort -V | tail -1)
             echo "=== Symlinking: $JAR -> $SYMLINK ==="
             ln -sf "$JAR" "$SYMLINK"
             chown -h ${{ env.VPS_USER_OWNER }}:${{ env.VPS_USER_OWNER }} "$SYMLINK" || true
