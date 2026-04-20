@@ -101,9 +101,15 @@ public class CashRegisterController {
     /**
      * Penztar-client Electron eszkoz online regisztracioja a SetupWizard-bol.
      * Idempotens: a (companyId, code) parra uniqueness - ugyanaz a penztar ismetelten hivhato frissitesi celbol.
+     *
+     * Security: barmely authentikalt worker regisztralhat UJ eszkozt (self-registration,
+     * hogy a SetupWizard barmely role-u credentials-szel tudja hasznalni). A device-hijacking
+     * vedelmet (letezo rekord MAS fingerprint-tel) a CashRegisterDeviceService ellenorzi
+     * (409 Conflict). Update eseten (letezo rekord ugyanazzal a fingerprint-tel) az elemi
+     * authentikacio elegendo, mert a companyId-t a JWT token adja.
      */
     @PostMapping("/register")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'UGYVEZETO', 'FOERTEKTAR')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<CashRegisterDeviceDto> registerDevice(
             @Valid @RequestBody RegisterCashRegisterDeviceRequest request) {
         return ResponseEntity.ok(cashRegisterDeviceService.register(request));
