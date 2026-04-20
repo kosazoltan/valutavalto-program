@@ -25,7 +25,6 @@ public class TransitController {
 
     private final VaultDistributionRepository distributionRepository;
     private final VaultCollectionRepository collectionRepository;
-    private final SecurityUtils securityUtils;
 
     private static final List<VaultOperationStatus> PENDING_STATUSES = List.of(
             VaultOperationStatus.REQUESTED, VaultOperationStatus.IN_PROGRESS);
@@ -33,7 +32,7 @@ public class TransitController {
     @GetMapping("/incoming")
     public ResponseEntity<List<TransitItemDto>> getIncoming(
             @RequestParam(required = false) String branchCode) {
-        UUID companyId = securityUtils.getCurrentCompanyId();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         List<TransitItemDto> result = new ArrayList<>();
         for (VaultOperationStatus st : PENDING_STATUSES) {
             List<VaultDistribution> dists = distributionRepository
@@ -65,7 +64,7 @@ public class TransitController {
     @GetMapping("/outgoing")
     public ResponseEntity<List<TransitItemDto>> getOutgoing(
             @RequestParam(required = false) String branchCode) {
-        UUID companyId = securityUtils.getCurrentCompanyId();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         List<TransitItemDto> result = new ArrayList<>();
         if (branchCode != null) {
             for (VaultOperationStatus st : PENDING_STATUSES) {
@@ -94,7 +93,7 @@ public class TransitController {
     @PostMapping("/distribution/{id}/acknowledge")
     @Transactional
     public ResponseEntity<TransitItemDto> acknowledgeDistribution(@PathVariable Long id) {
-        UUID companyId = securityUtils.getCurrentCompanyId();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         VaultDistribution d = distributionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("VaultDistribution not found: " + id));
         if (!companyId.equals(d.getCompanyId())) {
@@ -119,7 +118,7 @@ public class TransitController {
     @PostMapping("/collection/{id}/acknowledge")
     @Transactional
     public ResponseEntity<TransitItemDto> acknowledgeCollection(@PathVariable Long id) {
-        UUID companyId = securityUtils.getCurrentCompanyId();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         VaultCollection c = collectionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("VaultCollection not found: " + id));
         if (!companyId.equals(c.getCompanyId())) {
