@@ -115,7 +115,7 @@ export default function ReceiptPreviewModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl">
+      <div className="relative w-full max-w-sm max-h-[90vh] rounded-2xl bg-white shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between border-b px-6 py-4">
           <h2 className="text-xl font-bold text-gray-800">Bizonylat Előnézet</h2>
@@ -129,14 +129,14 @@ export default function ReceiptPreviewModal({
         </div>
 
         {/* Receipt content — 80mm thermal printer format */}
-        <div className="max-h-[600px] overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-4">
           {(variant === 'draft' || statusMessage) && (
             <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               {statusMessage ?? 'Ez helyi, függő bizonylatvázlat. A hivatalos bizonylatszám és végleges nyomtatási életciklus csak szerveres szinkron után érvényes.'}
             </div>
           )}
           <div
-            className="mx-auto w-[300px] rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-4 font-mono text-xs leading-relaxed text-gray-800"
+            className="mx-auto w-[260px] rounded-lg border border-dashed border-gray-300 bg-gray-50 p-3 font-mono text-[11px] leading-normal text-gray-800"
             style={{ fontFamily: 'Courier New, monospace' }}
           >
             {/* Fejléc */}
