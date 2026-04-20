@@ -1,0 +1,36 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: telegram-default
+  group_by: [alertname, severity]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 3h
+  routes:
+    - receiver: telegram-critical
+      matchers: [severity="critical"]
+      continue: true
+
+receivers:
+  - name: telegram-default
+    telegram_configs:
+      - bot_token_file: /run/secrets/telegram_bot_token
+        chat_id: ${TELEGRAM_CHAT_ID}
+        parse_mode: HTML
+        message: |
+          <b>{{ .GroupLabels.alertname }}</b>
+          {{ range .Alerts }}
+          Severity: {{ .Labels.severity }}
+          Summary: {{ .Annotations.summary }}
+          Desc: {{ .Annotations.description }}
+          Service: {{ .Labels.service }}
+          Started: {{ .StartsAt }}
+          {{ end }}
+
+  - name: telegram-critical
+    telegram_configs:
+      - bot_token_file: /run/secrets/telegram_bot_token
+        chat_id: ${TELEGRAM_CHAT_ID}
+        parse_mode: HTML
+        message: "CRITICAL: {{ .GroupLabels.alertname }} - {{ .CommonAnnotations.summary }}"

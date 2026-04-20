@@ -1,0 +1,8 @@
+; userlist.txt - SCRAM-SHA-256 hashelt jelszavak (valuta user + app user)
+; Generalas:
+;   psql -U postgres -c "SELECT rolname, rolpassword FROM pg_authid WHERE rolname='valuta_user';"
+; Vagy kezi:
+;   python3 -c "import hashlib, os, base64; pw = input('pw: '); salt = os.urandom(16); ..."
+;
+; Peldasor (NEM hasznald ezt!):
+; "valuta_user" "SCRAM-SHA-256$4096:BASE64_SALT$STORED_KEY:SERVER_KEY"

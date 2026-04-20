@@ -53,6 +53,7 @@ if (!API_BASE_URL) {
 // Create axios instance
 export const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,  // HttpOnly refresh cookie (vezerlokonyv par.12.3)
   headers: {
     'Content-Type': 'application/json',
   },

@@ -14,6 +14,12 @@ import hu.puzzleir.valuta.service.WorkerRoleService;
 import hu.puzzleir.valuta.service.WorkerService;
 import hu.puzzleir.valuta.exception.ValidationException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import hu.puzzleir.valuta.service.RefreshTokenService;
+import hu.puzzleir.valuta.entity.RefreshToken;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
+import java.time.Duration;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -39,6 +45,7 @@ public class AuthController {
     private final WorkerRoleService workerRoleService;
     private final TokenBlacklistService tokenBlacklistService;
     private final AdminBootstrapService adminBootstrapService;
+    private final RefreshTokenService refreshTokenService;
     
     /**
      * Login endpoint
@@ -49,7 +56,8 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDto> login(
             @Valid @RequestBody(required = false) LoginRequestDto dto,
-            HttpServletRequest request) {
+            HttpServletRequest request,
+            HttpServletResponse httpResponse) {
         
         if (dto == null) {
             throw new ValidationException("Hiányzó request body — companyCode, workerCode és jelszó kötelező");
@@ -59,6 +67,26 @@ public class AuthController {
         String userAgent = request.getHeader("User-Agent");
         
         LoginResponseDto response = workerService.login(dto, ipAddress, userAgent);
+
+        // HttpOnly refresh cookie (vezerlokonyv par.12.3)
+        // A raw UUID csak a cookie-ban utazik; a DB-ben BCrypt-hashelve van.
+        try {
+            Worker worker = workerRepository.findById(response.getWorker().getId())
+                .orElseThrow(() -> new ValidationException("Worker nem talalhato login utan"));
+            RefreshTokenService.IssuedToken issued = refreshTokenService.issue(worker, request);
+            ResponseCookie cookie = ResponseCookie.from("refreshToken", issued.rawUuid())
+                .httpOnly(true)
+                .secure(request.isSecure())
+                .sameSite("Strict")
+                .path("/api/v1/auth")
+                .maxAge(Duration.ofDays(7))
+                .build();
+            httpResponse.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(AuthController.class)
+                .warn("HttpOnly refresh cookie kiadas bukott: {}", e.getMessage());
+        }
+
         return ResponseEntity.ok(response);
     }
     
@@ -70,15 +98,41 @@ public class AuthController {
      */
     @PostMapping("/logout")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Void> logout(HttpServletRequest request) {
-        // JWT kinyerése a headerből — blacklisting-hez
+    public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse httpResponse) {
+        // JWT kinyerese a headerből - blacklisting-hez
         String token = null;
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             token = authHeader.substring(7);
         }
         workerService.logout(token);
+
+        // Refresh cookie torlese + DB-ben revoke (vezerlokonyv par.12.3)
+        String rawRefresh = extractRefreshCookie(request);
+        if (rawRefresh != null && token != null) {
+            try {
+                Long workerId = jwtTokenProvider.getWorkerIdFromToken(token);
+                if (workerId != null) {
+                    refreshTokenService.findActiveForWorker(workerId, rawRefresh)
+                        .ifPresent(refreshTokenService::revoke);
+                }
+            } catch (Exception ignore) { /* logout ne bukjon el rajta */ }
+        }
+        ResponseCookie clearCookie = ResponseCookie.from("refreshToken", "")
+            .httpOnly(true).secure(request.isSecure()).sameSite("Strict")
+            .path("/api/v1/auth").maxAge(0).build();
+        httpResponse.addHeader(HttpHeaders.SET_COOKIE, clearCookie.toString());
+
         return ResponseEntity.noContent().build();
+    }
+
+    /** Cookie-bol kiolvassa a refreshToken ertekt (null, ha nincs). */
+    private static String extractRefreshCookie(HttpServletRequest request) {
+        if (request.getCookies() == null) return null;
+        for (jakarta.servlet.http.Cookie c : request.getCookies()) {
+            if ("refreshToken".equals(c.getName())) return c.getValue();
+        }
+        return null;
     }
     
     /**

@@ -1,0 +1,128 @@
+# Caddy 2 config a Hetzner VPS-re (vezerlokonyv par.23.1)
+# Telepitesi utvonal: /etc/caddy/Caddyfile
+#
+# Elony a jelenlegi kozvetlen Spring Boot 8080 expozicio helyett:
+#  - Automatikus TLS (Let's Encrypt ACME; Cloudflare orient-pont elott OK)
+#  - HTTP/2 + HTTP/3 (QUIC) tamogatas
+#  - Rate limiting, request_size limit
+#  - Precompressed static files (gzip + zstd)
+#  - Access log Prometheus scrape-elheto formatumban
+#
+# Cloudflare proxy status:
+#  - Cloudflare proxy (narancssarga felho) -> Full (strict) mod Caddy-vel jo
+#  - Origin cert: Let's Encrypt eleg, mert Cloudflare mindig Full-ba fordul
+
+{
+	# Global options
+	email operator@excvaluta.com
+	admin 127.0.0.1:2019
+	servers {
+		metrics
+	}
+	# HTTP/3 engedelyezese
+	servers {
+		protocols h1 h2 h3
+	}
+}
+
+# --- API subdomain ---
+excvaluta.com, www.excvaluta.com {
+	encode zstd gzip
+
+	# Security headers
+	header {
+		# HSTS - egyszer meghataroz, utana 2 evig
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		# Clickjacking
+		X-Frame-Options "DENY"
+		# MIME sniffing
+		X-Content-Type-Options "nosniff"
+		# Referrer
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Permissions - minimum jogok
+		Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=()"
+		# Server header elrejtes
+		-Server
+	}
+
+	# Backend REST API
+	handle /api/* {
+		reverse_proxy localhost:8080 {
+			header_up X-Real-IP {remote}
+			header_up X-Forwarded-For {remote}
+			header_up X-Forwarded-Proto https
+			# Backend timeout-ok
+			transport http {
+				read_timeout 60s
+				write_timeout 60s
+				dial_timeout 10s
+			}
+			# Health check circuit breaker
+			health_uri /api/v1/auth/bootstrap-status
+			health_interval 30s
+			health_timeout 5s
+		}
+	}
+
+	# WebSocket / STOMP (kesobbi hasznalatra - vezerlokonyv par.8)
+	handle /ws/* {
+		reverse_proxy localhost:8080 {
+			transport http {
+				# WebSocket uzenetekhez hosszabb timeout
+				read_timeout 300s
+			}
+		}
+	}
+
+	# Actuator csak lokalisan (nem kulso forgalombol)!
+	# A management port 9090 @ 127.0.0.1-en van (lasd application.properties)
+	handle /actuator/prometheus {
+		# Csak a Grafana/Prometheus scrape-eli lokalisan
+		@not-local not remote_ip 127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
+		respond @not-local 404
+		reverse_proxy localhost:9090
+	}
+
+	# Frontend static files (dist/)
+	handle {
+		root * /var/www/excvaluta/dist
+		try_files {path} /index.html
+		file_server {
+			precompressed gzip zstd
+		}
+	}
+
+	# Access log Prometheus-kompatibilis formatumban
+	log {
+		output file /var/log/caddy/access.log {
+			roll_size 100mb
+			roll_keep 10
+			roll_keep_for 720h
+		}
+		format json
+		level INFO
+	}
+
+	# Rate limiting alapveto reteg (a /api/auth/login-en is ovja a brute-force-ot)
+	@login_post {
+		method POST
+		path /api/v1/auth/login
+	}
+	rate_limit @login_post {
+		zone login
+		events 10
+		window 1m
+	}
+}
+
+# --- Monitoring subdomain (csak belso halozatbol) ---
+monitoring.excvaluta.com {
+	# Csak VPN/Tailscale-rol elerheto
+	@trusted remote_ip 10.0.0.0/8 100.64.0.0/10
+	handle @trusted {
+		reverse_proxy localhost:3000  # Grafana
+	}
+	handle {
+		respond "Access denied" 403
+	}
+}

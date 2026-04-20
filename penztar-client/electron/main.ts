@@ -2,6 +2,7 @@
 // NOTE: Cannot use top-level await here — CJS output format (vite-plugin-electron/rolldown)
 import('dotenv/config').catch(() => { /* production: dotenv not available, safe to skip */ });
 import { app, BrowserWindow, ipcMain, dialog, protocol, net, safeStorage, session } from 'electron';
+import { initAutoUpdate } from './auto-update';
 import { release as getOsRelease } from 'node:os';
 
 // Windows 11 Insider (26200+) sandbox compatibility fix — CONDITIONAL
@@ -704,6 +705,13 @@ app.whenReady().then(async () => {
   // SyncEngine indítás — 30 másodperces intervallum
   syncEngine.start(30_000);
   log.info('[App] SyncEngine elindítva');
+
+  // Electron auto-update (vezerlokonyv par.29)
+  if (app.isPackaged) {
+    initAutoUpdate(mainWindow);
+  } else {
+    log.info('[App] Auto-update kihagyva (dev mode)');
+  }
 });
 
 app.on('will-quit', () => {
