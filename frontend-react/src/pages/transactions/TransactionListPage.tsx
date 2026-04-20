@@ -4,6 +4,7 @@ import { Search, Plus, FileText, Printer, Eye, XCircle, ChevronLeft, ChevronRigh
 import { transactionApi, type Transaction } from '../../services/api/transactions'
 import type { PagedResponse } from '../../services/api/client'
 import { toast } from '../../components/ui/toaster'
+import { isElectron, getElectronAPI } from '../../utils/electron'
 
 const PAGE_SIZE = 25
 
@@ -42,7 +43,46 @@ export default function TransactionListPage() {
         endDate: dateTo || undefined,
         type: (typeFilter as 'BUY' | 'SELL' | 'REVERSAL' | 'CONVERSION') || undefined,
       })
-      setData(result)
+
+      // Electron: a helyi SQLite pending (meg fel nem kuldott) bizonylatai is latszodjanak
+      let localPending: Transaction[] = []
+      if (isElectron() && page === 0) {
+        const api = getElectronAPI()
+        if (api?.getPendingTransactions) {
+          try {
+            const rows = await api.getPendingTransactions()
+            localPending = rows.map((r) => ({
+              id: -(1_000_000 + Number(r.id)),
+              receiptNumber: `P-${r.id}-draft`,
+              transactionDate: (r as { created_at?: string }).created_at?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+              transactionTime: (r as { created_at?: string }).created_at?.slice(11, 19) ?? '',
+              transactionType: (String(r.type).toUpperCase() as Transaction['transactionType']) || 'BUY',
+              currencyId: 0,
+              currencyCode: r.currency_code,
+              currencyAmount: Number(r.foreign_amount),
+              exchangeRate: Number(r.rate),
+              hufAmount: Number(r.huf_amount),
+              roundedHufAmount: Number(r.rounded_huf_amount ?? r.huf_amount),
+              status: 'PENDING' as const,
+              customerName: r.customer_name ?? undefined,
+              workerName: undefined,
+              workerId: 0,
+              branchId: '',
+              printed: false,
+              handlingFee: r.handling_fee != null ? Number(r.handling_fee) : 0,
+              discountAmount: 0,
+              discountPercent: r.discount_percent != null ? Number(r.discount_percent) : 0,
+              createdAt: (r as { created_at?: string }).created_at ?? new Date().toISOString(),
+            } as Transaction))
+          } catch { /* SQLite nem elerheto */ }
+        }
+      }
+
+      setData({
+        ...result,
+        content: [...localPending, ...result.content],
+        totalElements: result.totalElements + localPending.length,
+      })
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Hiba a tranzakciók betöltésekor'
       setError(msg)
