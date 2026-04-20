@@ -195,7 +195,7 @@ export default function CashierTransactionPage() {
   // ====== HOTKEYS ======
   useHotkeys('f2', () => setMode('buy'), { enableOnFormTags: true })
   useHotkeys('f3', () => setMode('sell'), { enableOnFormTags: true })
-  useHotkeys('f5', () => navigate('/stornos'), { enableOnFormTags: true })
+  useHotkeys('f5', () => navigate('/transactions?action=storno'), { enableOnFormTags: true })
   useHotkeys('f8', () => navigate('/rates'), { enableOnFormTags: true })
   useHotkeys('f9', () => {
     setFeeInput(String(handlingFee || ''))
@@ -791,7 +791,7 @@ export default function CashierTransactionPage() {
         left={[
           { key: 'F2', label: 'Vetel', onClick: () => setMode('buy'), active: mode === 'buy' },
           { key: 'F3', label: 'Eladas', onClick: () => setMode('sell'), active: mode === 'sell' },
-          { key: 'F5', label: 'Storno', onClick: () => navigate('/stornos'), variant: 'danger' },
+          { key: 'F5', label: 'Storno', onClick: () => navigate('/transactions?action=storno'), variant: 'danger' },
           { key: 'F8', label: 'Árfolyam', onClick: () => navigate('/rates') },
           { key: 'F9', label: 'Dij/Kedv.', onClick: () => { setFeeInput(String(handlingFee || '')); setDiscountInput(String(discount || '')); setShowFeeDialog(true) } },
         ]}
