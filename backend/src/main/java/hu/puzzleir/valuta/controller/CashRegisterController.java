@@ -3,8 +3,11 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.dto.cashregister.CashRegisterEventDto;
 import hu.puzzleir.valuta.dto.cashregister.CashRegisterReceiptRequest;
 import hu.puzzleir.valuta.dto.cashregister.CashRegisterStornoRequest;
+import hu.puzzleir.valuta.dto.cashregister.CashRegisterDeviceDto;
+import hu.puzzleir.valuta.dto.cashregister.RegisterCashRegisterDeviceRequest;
 import hu.puzzleir.valuta.service.BranchService;
 import hu.puzzleir.valuta.service.CashRegisterService;
+import hu.puzzleir.valuta.service.CashRegisterDeviceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -26,6 +29,7 @@ import java.util.UUID;
 public class CashRegisterController {
 
     private final CashRegisterService cashRegisterService;
+    private final CashRegisterDeviceService cashRegisterDeviceService;
     private final BranchService branchService;
 
     @PostMapping("/open")
@@ -91,5 +95,35 @@ public class CashRegisterController {
         branchService.findById(branchId); // IDOR védelem: cég ellenőrzés
         LocalDate effectiveDate = date != null ? date : LocalDate.now();
         return ResponseEntity.ok(cashRegisterService.getDailyEvents(branchId, effectiveDate));
+    }
+// ============ PENZTAR-ESZKOZ REGISZTRACIO (V100) ============
+
+    /**
+     * Penztar-client Electron eszkoz online regisztracioja a SetupWizard-bol.
+     * Idempotens: a (companyId, code) parra uniqueness - ugyanaz a penztar ismetelten hivhato frissitesi celbol.
+     */
+    @PostMapping("/register")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'UGYVEZETO', 'FOERTEKTAR')")
+    public ResponseEntity<CashRegisterDeviceDto> registerDevice(
+            @Valid @RequestBody RegisterCashRegisterDeviceRequest request) {
+        return ResponseEntity.ok(cashRegisterDeviceService.register(request));
+    }
+
+    /**
+     * Heartbeat: last_seen_at frissitese. SyncEngine hivja periodikusan online modban.
+     */
+    @PostMapping("/device/{deviceId}/heartbeat")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<CashRegisterDeviceDto> heartbeat(@PathVariable UUID deviceId) {
+        return ResponseEntity.ok(cashRegisterDeviceService.heartbeat(deviceId));
+    }
+
+    /**
+     * A bejelentkezett ceg osszes aktiv penztar-eszkozenek listaja.
+     */
+    @GetMapping("/devices")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<List<CashRegisterDeviceDto>> listDevices() {
+        return ResponseEntity.ok(cashRegisterDeviceService.listForCurrentCompany());
     }
 }

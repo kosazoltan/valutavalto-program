@@ -294,7 +294,21 @@ export async function initDatabase(): Promise<void> {
       );
     `);
 
-    // Értéktár offline mód — pending_distributions
+    // NGM 23/2014 szigoru szamadasu helyi bizonylat-sorszamozo
+    // Formatum: {prefix}{branchCode3}{seq6} (pl. V039000042)
+    // Per-branch + per-prefix, folyamatos sorszam az elso indulas ota.
+    db.run(`
+      CREATE TABLE IF NOT EXISTS local_receipt_sequence (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        branch_code TEXT NOT NULL,
+        prefix TEXT NOT NULL,
+        last_seq INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT DEFAULT (datetime('now')),
+        UNIQUE (branch_code, prefix)
+      );
+    `);
+
+        // Értéktár offline mód — pending_distributions
     db.run(`
       CREATE TABLE IF NOT EXISTS pending_distributions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -511,7 +525,40 @@ function generateLocalReference(prefix: string): string {
   const stamp = new Date().toISOString().replace(/\D/g, '').slice(0, 14);
   const suffix = crypto.randomBytes(2).toString('hex').toUpperCase();
   return `${prefix}-${stamp}-${suffix}`;
+}
+/**
+ * NGM 23/2014 szigoru szamadasu helyi bizonylat-sorszamozo.
+ * Formatum: {prefix}{branchCode3}{seq6} pl. V039000042
+ * Per-branch + per-prefix folyamatos seq (nincs hezag/duplikacio).
+ *
+ * @param prefix V (vetel), E (eladas), K (konverzio), F (kimeno), U (bejovo), stb.
+ * @param branchCode pl. BR039 -> "039"
+ */
+export function generateStrictReceiptNumber(prefix: string, branchCode: string): string {
+  if (!db) throw new Error('Database not initialized');
+  const normBranch = branchCode.replace(/^BR/i, '').padStart(3, '0').slice(-3);
+
+  // UPSERT: ha nincs, hozz letre; ha van, inkrement
+  db.run(
+    `INSERT INTO local_receipt_sequence (branch_code, prefix, last_seq, updated_at)
+     VALUES (?, ?, 1, datetime('now'))
+     ON CONFLICT(branch_code, prefix) DO UPDATE SET
+       last_seq = last_seq + 1,
+       updated_at = datetime('now')`,
+    [normBranch, prefix],
+  );
+  const stmt = db.prepare(
+    'SELECT last_seq FROM local_receipt_sequence WHERE branch_code = ? AND prefix = ?'
+  );
+  stmt.bind([normBranch, prefix]);
+  stmt.step();
+  const row = stmt.getAsObject();
+  stmt.free();
+  const seq = Number(row['last_seq'] ?? 1);
+  // NGM 23/2014: NINCS kulon save itt - a savePendingTransaction/Conversion atomi save-el egyszerre
+  return `${prefix}${normBranch}${String(seq).padStart(6, '0')}`;
 }
+
 
 function toJsonOrNull(value: unknown): string | null {
   if (value === null || value === undefined) {
@@ -878,7 +925,12 @@ export function savePendingTransaction(
 
   // Stabil idempotency key — retry-nál is ugyanazt küldjük a szervernek
   const idempotencyKey = crypto.randomUUID();
-  const localReferenceNumber = generateLocalReference(type === 'BUY' ? 'LB' : 'LS');
+  // NGM-kompatibilis helyi bizonylatszam: V (vetel) / E (eladas) prefix + branchCode3 + seq6
+  const branchCodeForReceipt = getConfig('branch_code');
+  if (!branchCodeForReceipt) {
+    throw new Error('SetupWizard nem futott le: branch_code SQLite config hianyzik. Ujra-telepites szukseges.');
+  }
+  const localReferenceNumber = generateStrictReceiptNumber(type === 'BUY' ? 'V' : 'E', branchCodeForReceipt);
 
   const normalizedCustomerIdentifier = customerIdentifier?.trim() || null;
   const normalizedCustomerName = customerName?.trim() || null;
@@ -1007,7 +1059,12 @@ export function savePendingConversion(
   if (!db) throw new Error('Database not initialized');
 
   const idempotencyKey = crypto.randomUUID();
-  const localReferenceNumber = generateLocalReference('LC');
+  // NGM-kompatibilis: K (konverzio) prefix
+  const branchCodeForReceipt = getConfig('branch_code');
+  if (!branchCodeForReceipt) {
+    throw new Error('SetupWizard nem futott le: branch_code SQLite config hianyzik. Ujra-telepites szukseges.');
+  }
+  const localReferenceNumber = generateStrictReceiptNumber('K', branchCodeForReceipt);
 
   db.run(
     `INSERT INTO pending_conversions (

@@ -194,9 +194,10 @@ async function httpJson<T = unknown>(
     method: 'GET' | 'POST';
     body?: Record<string, unknown>;
     timeoutMs?: number;
+    headers?: Record<string, string>;
   },
 ): Promise<HttpResponse<T>> {
-  const { method, body, timeoutMs = 8000 } = options;
+  const { method, body, timeoutMs = 8000, headers: customHeaders } = options;
   const started = Date.now();
 
   return await new Promise<HttpResponse<T>>((resolve) => {
@@ -233,6 +234,11 @@ async function httpJson<T = unknown>(
     request.setHeader('Accept', 'application/json');
     if (body !== undefined) {
       request.setHeader('Content-Type', 'application/json');
+    }
+    if (customHeaders) {
+      for (const [k, v] of Object.entries(customHeaders)) {
+        try { request.setHeader(k, v); } catch { /* ignore header errors */ }
+      }
     }
 
     request.on('response', (response) => {
@@ -451,6 +457,125 @@ export async function bootstrapAdmin(
   };
 }
 
+
+// ============ PENZTAR-ESZKOZ ONLINE REGISZTRACIO (V100) ============
+
+/**
+ * Pentarar-client eszkoz bejelentese a backend cash_register_device tablajaba.
+ * A SetupWizard sikeres bootstrap-admin utan hivja, hogy a szerver tudja melyik
+ * fizikai penztar telepult fel ehhez a branch-hez.
+ */
+export async function registerCashRegisterDevice(
+  apiUrl: string,
+  token: string,
+  payload: {
+    branchCode: string;    // NEM UUID - a code (pl. BR039), a szerver lookup-olja az id-t
+    code: string;          // Egyedi eszkoz kod pl. BR039-penztar-3f2a9b0c
+    name?: string;
+    appMode: string;       // penztar | ertektar | ertekszallito | full
+    appVersion?: string;
+    deviceFingerprint?: string;
+    osInfo?: string;
+  },
+  timeoutMs = 15000,
+): Promise<{ success: boolean; deviceId?: string; errorMessage?: string }> {
+  const base = normalizeApiBase(apiUrl);
+
+  // A backend UUID-t var, nem branchCode-ot -> elso lepes: branch lookup a /public endpoint-on
+  // (vagy masik endpoint). De a bootstrap-token-t birtokoljuk -> a /branches keresunk.
+  try {
+    // Step 1: branch UUID lookup by code
+    const branchResp = await httpJson<Array<{ id: string; code: string }>>(
+      `${base}/branches?code=${encodeURIComponent(payload.branchCode)}`,
+      { method: 'GET', headers: { Authorization: `Bearer ${token}` }, timeoutMs },
+    );
+    if (!branchResp.ok || !Array.isArray(branchResp.body) || branchResp.body.length === 0) {
+      return { success: false, errorMessage: `Branch lookup sikertelen: ${payload.branchCode}` };
+    }
+    const matchedBranch = branchResp.body.find((b) => b.code === payload.branchCode);
+    if (!matchedBranch) {
+      return { success: false, errorMessage: `Branch code nem egyezik a szerver valaszaval: ${payload.branchCode}` };
+    }
+    const branchId = matchedBranch.id;
+
+    // Step 2: POST /cash-register/register
+    const regResp = await httpJson<{ id: string }>(
+      `${base}/cash-register/register`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Idempotency-Key': `setup-${payload.code}-${Date.now()}`,
+        },
+        body: {
+          branchId,
+          code: payload.code,
+          name: payload.name,
+          appMode: payload.appMode,
+          appVersion: payload.appVersion,
+          deviceFingerprint: payload.deviceFingerprint,
+          osInfo: payload.osInfo,
+        },
+        timeoutMs,
+      },
+    );
+    if (!regResp.ok || !regResp.body?.id) {
+      const msg = (regResp.body as { message?: string } | undefined)?.message || regResp.errorMessage || `HTTP ${regResp.status}`;
+      return { success: false, errorMessage: msg };
+    }
+    return { success: true, deviceId: regResp.body.id };
+  } catch (err: unknown) {
+    return { success: false, errorMessage: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/**
+ * Bootstrap-credentialokkel valo gyors login, hogy tokent szerezzunk a register hivashoz.
+ */
+export async function bootstrapLogin(
+  apiUrl: string,
+  payload: { companyCode: string; workerCode: string; password: string },
+  timeoutMs = 10000,
+): Promise<{ success: boolean; token?: string; errorMessage?: string }> {
+  const base = normalizeApiBase(apiUrl);
+  try {
+    const resp = await httpJson<{ token?: string; roleSelectionRequired?: boolean; availableRoles?: Array<{ roleCode: string }> }>(
+      `${base}/auth/login`,
+      {
+        method: 'POST',
+        body: {
+          companyCode: payload.companyCode,
+          workerCode: payload.workerCode,
+          password: payload.password,
+        },
+        timeoutMs,
+      },
+    );
+    if (!resp.ok || !resp.body?.token) {
+      const msg = (resp.body as { message?: string } | undefined)?.message || resp.errorMessage || `HTTP ${resp.status}`;
+      return { success: false, errorMessage: msg };
+    }
+    // Ha role selection kell, vegyuk az elso rendelkezesre allot
+    let token = resp.body.token;
+    const firstRole = resp.body.availableRoles?.[0];
+    if (resp.body.roleSelectionRequired && firstRole) {
+      const selectedResp = await httpJson<{ token?: string }>(
+        `${base}/auth/login/select-role`,
+        {
+          method: 'POST',
+          body: { token, roleCode: firstRole.roleCode },
+          timeoutMs,
+        },
+      );
+      if (selectedResp.ok && selectedResp.body?.token) {
+        token = selectedResp.body.token;
+      }
+    }
+    return { success: true, token };
+  } catch (err: unknown) {
+    return { success: false, errorMessage: err instanceof Error ? err.message : String(err) };
+  }
+}
 export async function testConnection(
   apiUrl: string,
   companyCode: string,
@@ -638,9 +763,14 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
     log.info('[Setup] .env sikeresen kiírva:', envPath);
 
     // v2.1.4: Az SQLite server_url config-ba is beirjuk, a syncEngine ezt olvassa
+    // NGM: az installUuid-t a try BLOKK ELOTT generaljuk, hogy kivetel eseten se legyen ures.
+    let installUuid: string = crypto.randomUUID();
     try {
-      const { setConfig } = await import('./sqlite');
+      const { setConfig, getConfig } = await import('./sqlite');
       setConfig('server_url', resolvedApiUrl);
+      if (payload.branchCode) {
+        setConfig('branch_code', payload.branchCode);
+      }
       if (payload.appMode) {
         setConfig('app_mode', payload.appMode);
         log.info('[Setup] SQLite app_mode elmentve:', payload.appMode);
@@ -649,9 +779,54 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       if (payload.bootstrapUsername) {
         setConfig('bootstrap_worker_code', payload.bootstrapUsername.trim());
       }
-      log.info('[Setup] SQLite server_url elmentve:', resolvedApiUrl);
+      // V100: offline_mode flag — a SyncEngine ezt nezi, es offline modban NEM kuld
+      setConfig('offline_mode', payload.offlineMode ? 'true' : 'false');
+      // V100: stabil install uuid — eszkoz-azonositohoz
+      const existingUuid = getConfig('install_uuid');
+      if (existingUuid) {
+        installUuid = existingUuid; // re-install eseten megtartjuk a regit
+      } else {
+        setConfig('install_uuid', installUuid); // mar generalva a try elott
+      }
+      log.info('[Setup] SQLite server_url elmentve:', resolvedApiUrl, 'offline_mode:', payload.offlineMode);
     } catch (err) {
       log.warn('[Setup] SQLite server_url mentes sikertelen:', err);
+    }
+
+    // V100: Online-modban regisztraljuk a penztar-eszkozt a backend-en
+    if (!payload.offlineMode && payload.bootstrapUsername && payload.bootstrapPassword) {
+      try {
+        const login = await bootstrapLogin(resolvedApiUrl, {
+          companyCode: normalizedCompanyCode,
+          workerCode: payload.bootstrapUsername.trim(),
+          password: payload.bootstrapPassword,
+        });
+        if (login.success && login.token) {
+          const deviceCode = `${payload.branchCode}-${payload.appMode ?? 'penztar'}-${installUuid.slice(0, 8)}`;
+          const reg = await registerCashRegisterDevice(resolvedApiUrl, login.token, {
+            branchCode: payload.branchCode,
+            code: deviceCode,
+            name: payload.branchName ? `${payload.branchName} — ${payload.appMode ?? 'penztar'}` : deviceCode,
+            appMode: payload.appMode ?? 'penztar',
+            appVersion: app.getVersion(),
+            deviceFingerprint: installUuid,
+            osInfo: `${process.platform} ${process.arch}`,
+          });
+          if (reg.success && reg.deviceId) {
+            const { setConfig } = await import('./sqlite');
+            setConfig('cash_register_device_id', reg.deviceId);
+            setConfig('cash_register_device_code', deviceCode);
+            log.info('[Setup] Penztar-eszkoz online regisztralva:', reg.deviceId);
+          } else {
+            log.warn('[Setup] Penztar-eszkoz regisztracio sikertelen:', reg.errorMessage);
+            // Nem blokkolo — a telepites tovabb megy offline modban
+          }
+        } else {
+          log.warn('[Setup] Bootstrap-login sikertelen a device regisztraciohoz:', login.errorMessage);
+        }
+      } catch (err: unknown) {
+        log.warn('[Setup] Penztar-eszkoz regisztracio kivetel:', err instanceof Error ? err.message : err);
+      }
     }
 
     // --- Relaunch ---

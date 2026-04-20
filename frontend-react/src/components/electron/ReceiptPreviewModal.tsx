@@ -87,7 +87,8 @@ export default function ReceiptPreviewModal({
           name: 'BEST CHANGE',
           fullName: 'EXCLUSIVE BEST CHANGE ZRT.',
           taxNumber: '32313332-2-02',
-          address: 'Szeged, Kárász u. 5.',
+          regNumber: '02 10 060505',
+          address: '7621 Pécs, Citrom utca 2-6. földszint 26. ajtó',
         }
       : {
           name: 'EXPRESSZ',
@@ -145,6 +146,7 @@ export default function ReceiptPreviewModal({
               <p className="text-xs">{company.fullName}</p>
               <p className="text-xs">{company.address}</p>
               <p className="text-xs">Adószám: {company.taxNumber}</p>
+              {company.regNumber && <p className="text-xs">Cégjegyzékszám: {company.regNumber}</p>}
             </div>
 
             <div className="my-3 border-t-2 border-gray-400" />

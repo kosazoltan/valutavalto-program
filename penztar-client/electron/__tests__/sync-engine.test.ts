@@ -231,8 +231,11 @@ describe('SyncEngine — syncAll', () => {
       },
     ]);
 
-    // No stored token
-    mockedGetConfig.mockReturnValue(null);
+    // No stored auth token, but server_url IS configured (online mode)
+    mockedGetConfig.mockImplementation((key: string) => {
+      if (key === 'server_url') return 'http://localhost:8080/api/v1';
+      return null;
+    });
 
     const result = await engine.syncAll(null);
     expect(result.failed).toBe(1);
