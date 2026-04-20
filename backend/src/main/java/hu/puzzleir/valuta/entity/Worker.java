@@ -88,6 +88,10 @@ public class Worker {
     @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean active = true;
+
+    /** Region identifier (BEKESCSABA, DEBRECEN, NYIREGYHAZA, KECSKEMET, SZEGED, KAPOSVAR, PECS, SZEKSZARD, IRODA). */
+    @Column(name = "region", length = 40)
+    private String region;
     
     /**
      * Telefonszám

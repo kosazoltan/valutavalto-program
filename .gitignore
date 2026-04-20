@@ -152,3 +152,6 @@ update_pw.sql
 penztar-client/test-results/
 
 penztar-client/release-thin/
+
+# V145 seed regen source (JSON exports from internal HR xlsx) - privacy
+installer/scripts/seed-data/*.json

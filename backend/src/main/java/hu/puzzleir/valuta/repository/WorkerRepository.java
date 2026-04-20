@@ -106,4 +106,12 @@ public interface WorkerRepository extends JpaRepository<Worker, Long> {
      */
     @Query("SELECT w FROM Worker w WHERE w.company.id = :companyId AND w.otpEnabled = true AND w.active = true")
     List<Worker> findOtpEnabledWorkers(@Param("companyId") UUID companyId);
+
+    /**
+     * All active workers for a given company and region.
+     * Used by the login-prefill public endpoint - any cashier in the region
+     * can log in from any branch of that region.
+     */
+    List<Worker> findByCompanyIdAndRegionAndIsActiveTrue(UUID companyId, String region);
+
 }

@@ -88,6 +88,10 @@ public class Branch {
     @Column(name = "region_code", length = 10)
     private String regionCode;
 
+    /** Region grouping (BEKESCSABA, DEBRECEN, NYIREGYHAZA, KECSKEMET, SZEGED, KAPOSVAR, PECS, SZEKSZARD, IRODA) for login-prefill. */
+    @Column(name = "region", length = 40)
+    private String region;
+
     @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = true;
