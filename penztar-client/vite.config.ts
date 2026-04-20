@@ -124,7 +124,9 @@ export default defineConfig({
             electronDevProcess.kill();
           }
 
-          const devUserData = path.join(tmpAppDir, 'user-data');
+          // user-data kulon mappaban marad (ne torolje a .dev-app cleanup), hogy
+          // a setup utan a .env+SQLite perzisztaljon a restart-okon at.
+          const devUserData = path.resolve('.dev-user-data');
           fs.mkdirSync(devUserData, { recursive: true });
 
           // Launch electron — it will find resources/app.asar automatically

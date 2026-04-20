@@ -8,3 +8,4 @@ playwright-artifacts/
 .e2e-test*/
 test-argv.cjs
 test-*.png
+.dev-user-data/
