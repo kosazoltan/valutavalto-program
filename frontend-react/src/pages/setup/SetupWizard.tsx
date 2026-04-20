@@ -15,6 +15,7 @@ import {
   WifiOff,
   XCircle,
 } from 'lucide-react'
+import { publicApi } from '../../services/api/index'
 
 // ---------------------------------------------------------------------------
 // Típusok
@@ -96,6 +97,14 @@ export default function SetupWizard() {
             companyCode,
           })
           setBranches(list)
+        } catch {
+          setBranches([])
+        }
+      } else {
+        // v2.1.4: Web mode (no Electron) — direct HTTP fetch via publicApi
+        try {
+          const list = await publicApi.getBranchesByCompany(companyCode)
+          setBranches(list.map((b) => ({ code: b.code, name: b.name, city: b.city ?? '', address: b.address })))
         } catch {
           setBranches([])
         }
