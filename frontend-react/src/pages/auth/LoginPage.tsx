@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CredentialResponse, GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google'
 import { useAuthStore } from '../../stores/authStore'
-import { authApi } from '../../services/api/index'
-import { Eye, EyeOff, User, Lock, Building2, Shield } from 'lucide-react'
+import { authApi, publicApi, type PublicWorker } from '../../services/api/index'
+import { Eye, EyeOff, User, Lock, Building2, Shield, RefreshCw, ChevronDown } from 'lucide-react'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { useAppMode } from '../../hooks/useAppMode'
 
@@ -18,6 +18,13 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // v2.1.4: Branch-alapu dolgozo dropdown. VITE_BRANCH_CODE a Setup Wizard altal kiirt
+  // .env-bol jon; ha nincs (webes, offline), text input fallback marad.
+  const configuredBranchCode = String(import.meta.env.VITE_BRANCH_CODE ?? '').trim().toUpperCase()
+  const [workers, setWorkers] = useState<PublicWorker[]>([])
+  const [workersLoading, setWorkersLoading] = useState(false)
+  const [workersError, setWorkersError] = useState<string | null>(null)
+
   // V57: Role-választó modal state
   const [showRoleSelector, setShowRoleSelector] = useState(false)
   const [pendingLoginResponse, setPendingLoginResponse] = useState<Awaited<ReturnType<typeof authApi.login>> | null>(null)
@@ -28,6 +35,32 @@ export default function LoginPage() {
   const selectRole = useAuthStore((state) => state.selectRole)
   const navigate = useNavigate()
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+
+  /**
+   * v2.1.4: Penztarosok lekerese a penztar regioja alapjan (no cache, mindig friss).
+   */
+  const fetchWorkers = async () => {
+    if (!configuredBranchCode) return
+    setWorkersLoading(true)
+    setWorkersError(null)
+    try {
+      const list = await publicApi.getWorkersByBranch(configuredBranchCode)
+      setWorkers(list)
+      if (list.length === 0) {
+        setWorkersError(`Nincs aktiv dolgozo a ${configuredBranchCode} penztar regiojahoz rendelve.`)
+      }
+    } catch (err) {
+      setWorkersError('A dolgozo-lista lekerese nem sikerult a szerverrol. Kezi bevitel.')
+      console.warn('[LoginPage] publicApi.getWorkersByBranch failed:', err)
+    } finally {
+      setWorkersLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (configuredBranchCode) fetchWorkers()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [configuredBranchCode])
 
   /** Role-alapú default route meghatározása */
   const getDefaultRouteForRole = (role?: string | null): string => {
@@ -267,20 +300,57 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Worker code field */}
+            {/* Worker code - v2.1.4 dropdown (regio-alapu) + szoveges fallback */}
             <div className="form-group-box pt-4">
-              <span className="form-group-box-title">Pénztáros kód</span>
+              <span className="form-group-box-title">
+                Pénztáros {configuredBranchCode ? `(${configuredBranchCode} régió)` : 'kód'}
+              </span>
               <div className="flex items-center gap-2">
                 <User size={18} className="text-gray-400" />
-                <input
-                  type="text"
-                  value={workerCode}
-                  onChange={(e) => setWorkerCode(e.target.value.toUpperCase())}
-                  className="form-input flex-1"
-                  autoFocus
-                  data-testid="login-worker-code"
-                />
+                {configuredBranchCode && workers.length > 0 ? (
+                  <div className="flex-1 flex items-center gap-1">
+                    <div className="relative flex-1">
+                      <select
+                        value={workerCode}
+                        onChange={(e) => setWorkerCode(e.target.value.toUpperCase())}
+                        className="form-input flex-1 w-full pr-8 appearance-none"
+                        data-testid="login-worker-code"
+                        autoFocus
+                      >
+                        <option value="">-- Válasszon pénztárost --</option>
+                        {workers.map((w) => (
+                          <option key={w.code} value={w.code}>
+                            {w.name}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={fetchWorkers}
+                      disabled={workersLoading}
+                      className="p-1 hover:bg-gray-100 rounded"
+                      title="Dolgozó-lista frissítése a szerverről"
+                    >
+                      <RefreshCw size={14} className={workersLoading ? 'animate-spin text-gray-300' : 'text-gray-500'} />
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    value={workerCode}
+                    onChange={(e) => setWorkerCode(e.target.value.toUpperCase())}
+                    className="form-input flex-1"
+                    autoFocus
+                    data-testid="login-worker-code"
+                    placeholder={workersLoading ? 'Dolgozók betöltése...' : configuredBranchCode ? 'Pénztáros kód vagy név' : 'Pénztáros kód'}
+                  />
+                )}
               </div>
+              {workersError && (
+                <div className="text-xs text-amber-600 mt-1">{workersError}</div>
+              )}
             </div>
 
             {/* Password field */}
