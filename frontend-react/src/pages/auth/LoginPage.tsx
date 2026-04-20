@@ -102,7 +102,10 @@ export default function LoginPage() {
 
     // v2.1.4: Backend adta validAppModes ellenorzese (robusztusabb mint egyedi role-check)
     if (response.validAppModes && response.validAppModes.length > 0) {
-      if (!response.validAppModes.includes(appMode)) {
+      // A 'full' (szerver admin - ugyvezeto, foertektar, belso_ellenor, irodavezeto)
+      // minden appMode-ba belep (supervisory hozzaferes a penztar/ertektar gepekhez is).
+      const hasFullAccess = response.validAppModes.includes('full')
+      if (!hasFullAccess && !response.validAppModes.includes(appMode)) {
         const allowedProgs = response.validAppModes.map((m) => {
           if (m === 'penztar') return 'Valutaváltó Pénztár (lokál)'
           if (m === 'ertektar') return 'Értéktár (lokál)'

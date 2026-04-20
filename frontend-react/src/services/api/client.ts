@@ -22,6 +22,14 @@ const WEB_AUTH_TOKEN_KEY = 'auth_token'
 // 4. Web production: relatív URL
 let API_BASE_URL = import.meta.env.VITE_API_URL
 
+// Electron DEV mode: a Vite dev szerver proxyzza a /api kereseket a backend-re,
+// igy NINCS CORS (az origin: http://127.0.0.1:3000 ugyanaz mint ahova a kerest
+// kuldjuk). Ezert override-oljuk a VITE_API_URL-t relativra.
+// Electron production (app://): az electronAPI.getConfig('server_url')-t nezi lejjebb.
+if (import.meta.env.DEV && typeof window !== 'undefined' && window.electronAPI) {
+  API_BASE_URL = '/api/v1'
+}
+
 // Production hardening: excvaluta domainen mindig a sajat /api reverse-proxy legyen az alap,
 // hogy a browser ne kozvetlen cross-origin hivasokkal dolgozzon (CORS preload hibak elkerulese).
 if (!import.meta.env.DEV && typeof window !== 'undefined' && !window.electronAPI) {
