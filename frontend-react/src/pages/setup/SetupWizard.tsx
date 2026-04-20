@@ -159,66 +159,98 @@ export default function SetupWizard() {
 
   // --- Kapcsolat teszt ---
   const runConnectionTest = useCallback(async () => {
-    if (!window.electronAPI?.setupTestConnection) {
-      setConnectionTest({ state: 'fail', message: 'Az Electron API nem elérhető.' })
-      return
-    }
     setConnectionTest({ state: 'testing' })
+    const started = performance.now()
     try {
-      const result = await window.electronAPI.setupTestConnection({
-        apiUrl: apiUrl.trim(),
-        companyCode: companyCode.trim(),
-        username: bootstrapUsername.trim(),
-        password: bootstrapPassword,
-      })
-      if (result.success) {
-        setConnectionTest({
-          state: 'ok',
-          message: `Sikeres (HTTP ${result.httpStatus ?? '?'}${
-            result.latencyMs !== undefined ? `, ${result.latencyMs} ms` : ''
-          })`,
+      if (window.electronAPI?.setupTestConnection) {
+        const result = await window.electronAPI.setupTestConnection({
+          apiUrl: apiUrl.trim(),
+          companyCode: companyCode.trim(),
+          username: bootstrapUsername.trim(),
+          password: bootstrapPassword,
         })
+        if (result.success) {
+          setConnectionTest({
+            state: 'ok',
+            message: `Sikeres (HTTP ${result.httpStatus ?? '?'}${
+              result.latencyMs !== undefined ? `, ${result.latencyMs} ms` : ''
+            })`,
+          })
+        } else {
+          setConnectionTest({ state: 'fail', message: result.errorMessage || 'Ismeretlen hiba.' })
+        }
+        return
+      }
+      const normalized = apiUrl.trim().replace(/\/+$/, '').replace(/\/api\/v1$/, '')
+      const url = `${normalized}/api/v1/auth/bootstrap-status`
+      const resp = await fetch(url, { method: 'GET' })
+      const latency = Math.round(performance.now() - started)
+      if (resp.ok) {
+        setConnectionTest({ state: 'ok', message: `Sikeres (HTTP ${resp.status}, ${latency} ms)` })
       } else {
-        setConnectionTest({
-          state: 'fail',
-          message: result.errorMessage || 'Ismeretlen hiba.',
-        })
+        setConnectionTest({ state: 'fail', message: `Szerver hiba: HTTP ${resp.status}` })
       }
     } catch (err: unknown) {
-      setConnectionTest({
-        state: 'fail',
-        message: err instanceof Error ? err.message : String(err),
-      })
+      setConnectionTest({ state: 'fail', message: err instanceof Error ? err.message : String(err) })
     }
   }, [apiUrl, companyCode, bootstrapUsername, bootstrapPassword])
 
   // --- Telepítés befejezése ---
   const handleFinish = async () => {
     if (!selectedBranch) return
-    if (!window.electronAPI?.setupSave) {
-      setSaveError('Az Electron API nem elérhető.')
-      return
-    }
     setIsSaving(true)
     setSaveError(null)
     try {
-      const result = await window.electronAPI.setupSave({
+      if (window.electronAPI?.setupSave) {
+        const result = await window.electronAPI.setupSave({
+          branchCode: selectedBranch.code,
+          branchName: selectedBranch.name,
+          apiUrl: apiUrl.trim(),
+          companyCode: companyCode.trim(),
+          adminUsername: adminUsername.trim(),
+          adminPassword,
+          bootstrapUsername: bootstrapUsername.trim(),
+          bootstrapPassword,
+          offlineMode,
+          appMode: appModeChoice,
+        })
+        if (!result.success) {
+          setSaveError(result.errorMessage || 'Ismeretlen hiba a telepites soran.')
+          setIsSaving(false)
+        }
+        return
+      }
+      const normalized = apiUrl.trim().replace(/\/+$/, '').replace(/\/api\/v1$/, '')
+      const bootstrapUrl = `${normalized}/api/v1/auth/bootstrap-admin`
+      const resp = await fetch(bootstrapUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyCode: companyCode.trim(),
+          workerCode: adminUsername.trim().toUpperCase(),
+          workerName: 'Rendszer Admin',
+          email: '',
+          newPassword: adminPassword,
+        }),
+      })
+      if (!resp.ok) {
+        const body = await resp.json().catch(() => ({} as Record<string, unknown>))
+        const msg = (body as { message?: string }).message || `HTTP ${resp.status}`
+        if (resp.status !== 400 || !msg.includes('mar lezajlott')) {
+          setSaveError(`Admin letrehozasi hiba: ${msg}`)
+          setIsSaving(false)
+          return
+        }
+      }
+      localStorage.setItem('valuta-setup-config', JSON.stringify({
         branchCode: selectedBranch.code,
         branchName: selectedBranch.name,
         apiUrl: apiUrl.trim(),
         companyCode: companyCode.trim(),
-        adminUsername: adminUsername.trim(),
-        adminPassword,
-        bootstrapUsername: bootstrapUsername.trim(),
-        bootstrapPassword,
-        offlineMode,
         appMode: appModeChoice,
-      })
-      if (!result.success) {
-        setSaveError(result.errorMessage || 'Ismeretlen hiba a telepítés során.')
-        setIsSaving(false)
-      }
-      // Sikeres mentés után az app automatikusan relaunch-ol, UI frissítésre már nincs szükség.
+        installedAt: new Date().toISOString(),
+      }))
+      window.location.href = '/login'
     } catch (err: unknown) {
       setSaveError(err instanceof Error ? err.message : String(err))
       setIsSaving(false)
@@ -314,6 +346,7 @@ export default function SetupWizard() {
               onOfflineModeChange={setOfflineMode}
               connectionTest={connectionTest}
               onTestConnection={runConnectionTest}
+              selectedBranchCode={selectedBranch?.code ?? null}
             />
           )}
           {currentStep === 'admin' && (
@@ -598,17 +631,39 @@ interface ServerStepProps {
   onOfflineModeChange: (value: boolean) => void
   connectionTest: { state: 'idle' | 'testing' | 'ok' | 'fail'; message?: string }
   onTestConnection: () => void
+  selectedBranchCode: string | null
 }
 
 function ServerStep(props: ServerStepProps) {
   const {
-    apiUrl, onApiUrlChange,
+    apiUrl,
     companyCode, onCompanyCodeChange,
     bootstrapUsername, onBootstrapUsernameChange,
     bootstrapPassword, onBootstrapPasswordChange,
     offlineMode, onOfflineModeChange,
     connectionTest, onTestConnection,
+    selectedBranchCode,
   } = props
+
+  const [workerList, setWorkerList] = useState<{ code: string; name: string }[]>([])
+  const [workerListLoading, setWorkerListLoading] = useState(false)
+
+  useEffect(() => {
+    if (!selectedBranchCode || offlineMode) {
+      setWorkerList([])
+      return
+    }
+    let cancelled = false
+    setWorkerListLoading(true)
+    publicApi.getWorkersByBranch(selectedBranchCode)
+      .then((list) => {
+        if (cancelled) return
+        setWorkerList(list.map((w) => ({ code: w.code, name: w.name })))
+      })
+      .catch(() => { if (!cancelled) setWorkerList([]) })
+      .finally(() => { if (!cancelled) setWorkerListLoading(false) })
+    return () => { cancelled = true }
+  }, [selectedBranchCode, offlineMode])
 
   return (
     <div>
@@ -618,15 +673,15 @@ function ServerStep(props: ServerStepProps) {
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-3xl">
-        <FieldLabel label="Szerver URL" icon={<Globe className="w-4 h-4" />}>
+        <FieldLabel label="Szerver URL (rögzített)" icon={<Globe className="w-4 h-4" />}>
           <input
             type="url"
             value={apiUrl}
-            onChange={(e) => onApiUrlChange(e.target.value)}
-            disabled={offlineMode}
-            placeholder={DEFAULT_API_URL}
-            className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none disabled:bg-slate-100 disabled:text-slate-500"
+            readOnly
+            title="A központi backend URL-je — telepítéskor rögzített, csak szervizélra módosítható."
+            className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed outline-none"
           />
+          <p className="text-xs text-slate-500 mt-1">Központi Hetzner backend — automatikusan beállítva.</p>
         </FieldLabel>
 
         <FieldLabel label="Cégkód" icon={<Building2 className="w-4 h-4" />}>
@@ -640,15 +695,29 @@ function ServerStep(props: ServerStepProps) {
           />
         </FieldLabel>
 
-        <FieldLabel label="Teszt felhasználónév">
-          <input
-            type="text"
-            value={bootstrapUsername}
-            onChange={(e) => onBootstrapUsernameChange(e.target.value)}
-            disabled={offlineMode}
-            placeholder="admin"
-            className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none disabled:bg-slate-100"
-          />
+        <FieldLabel label="Teszt pénztáros">
+          {workerList.length > 0 ? (
+            <select
+              value={bootstrapUsername}
+              onChange={(e) => onBootstrapUsernameChange(e.target.value)}
+              disabled={offlineMode || workerListLoading}
+              className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none disabled:bg-slate-100 bg-white"
+            >
+              <option value="">-- Válasszon pénztárost --</option>
+              {workerList.map((w) => (
+                <option key={w.code} value={w.code}>{w.name} ({w.code})</option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="text"
+              value={bootstrapUsername}
+              onChange={(e) => onBootstrapUsernameChange(e.target.value)}
+              disabled={offlineMode}
+              placeholder={workerListLoading ? "Pénztárosok betöltése..." : "Pénztáros kód (pl. ADMIN)"}
+              className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none disabled:bg-slate-100"
+            />
+          )}
         </FieldLabel>
 
         <FieldLabel label="Teszt jelszó">
