@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import { useAppMode } from '../hooks/useAppMode'
 
-import { menuGroups } from "./menuGroups"
+import { menuGroups, SZERVER_ROLES } from "./menuGroups"
 import TransitBadge from "../components/TransitBadge"
 
 export default function MainLayout() {
@@ -27,6 +27,10 @@ export default function MainLayout() {
   const [showSessionDialog, setShowSessionDialog] = useState(false)
   const [sessionError, setSessionError] = useState<string | null>(null)
   const { user, logout, hasRole, hasCanonicalRole } = useAuthStore()
+  // Supervisory hozzaferes: ha a felhasznalonak van szerver-szintu canonicalRole-ja
+  // (ugyvezeto, foertektar, belso_ellenor, stb.), minden lokal appMode-ban
+  // lathatja a teljes menut, hogy ellenorizhesse a penztar/ertektar muveleteket.
+  const hasSupervisoryAccess = SZERVER_ROLES.some((r) => hasCanonicalRole(r))
   const { mode: appMode } = useAppMode()
   const navigate = useNavigate()
 
@@ -161,7 +165,7 @@ export default function MainLayout() {
         <nav className="flex-1 py-2 overflow-y-auto">
           {menuGroups
             .filter((group) => !group.modes || (group.modes as readonly string[]).includes(appMode))
-            .filter((group) => !group.canonicalRoles || (group.canonicalRoles as readonly string[]).some((r) => hasCanonicalRole(r)))
+            .filter((group) => hasSupervisoryAccess || !group.canonicalRoles || (group.canonicalRoles as readonly string[]).some((r) => hasCanonicalRole(r)))
             .map((group) => (
             <div key={group.label} className="mb-3">
               {sidebarOpen && (
@@ -171,7 +175,7 @@ export default function MainLayout() {
               )}
               {group.items
                 .filter((item) => !item.modes || (item.modes as readonly string[]).includes(appMode))
-                .filter((item) => !item.canonicalRoles || (item.canonicalRoles as readonly string[]).some((r) => hasCanonicalRole(r)))
+                .filter((item) => hasSupervisoryAccess || !item.canonicalRoles || (item.canonicalRoles as readonly string[]).some((r) => hasCanonicalRole(r)))
                 .filter((item) => !item.minRole || hasRole(item.minRole))
                 .map((item) => (
                 <NavLink
