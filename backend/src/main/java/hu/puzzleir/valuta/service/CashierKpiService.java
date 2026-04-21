@@ -63,9 +63,12 @@ public class CashierKpiService {
                         .divide(BigDecimal.valueOf(txCount), 2, RoundingMode.HALF_UP)
                     : BigDecimal.ZERO;
 
+            // Safe cast: PostgreSQL driver Long/BigInteger varianciara felkeszulve
+            Long workerId = r[0] instanceof Number n ? n.longValue() : null;
+            String workerName = r[1] != null ? r[1].toString() : null;
             rows.add(CashierKpiRowDto.builder()
-                    .workerId((Long) r[0])
-                    .workerName((String) r[1])
+                    .workerId(workerId)
+                    .workerName(workerName)
                     .txCount(txCount)
                     .buyCount(buyCount)
                     .sellCount(sellCount)

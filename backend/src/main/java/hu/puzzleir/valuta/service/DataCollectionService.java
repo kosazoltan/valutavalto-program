@@ -152,6 +152,7 @@ public class DataCollectionService {
     /**
      * Összes aktív iroda adatgyűjtése az adott napra.
      */
+    @SuppressWarnings("deprecation") // Scheduled batch job: szandekos cross-tenant. REST controller atallitasa kulon feladat.
     public List<DataCollection> collectAllBranches(LocalDate date) {
         log.info("Összes iroda adatgyűjtés indítása: date={}", date);
 

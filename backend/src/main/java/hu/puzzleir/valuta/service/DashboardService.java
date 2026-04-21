@@ -46,8 +46,9 @@ public class DashboardService {
                 .map(t -> t.getHufAmount() != null ? t.getHufAmount() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Aktív irodák száma
-        List<Branch> activeBranches = branchRepository.findByIsActiveTrue();
+        // Aktív irodák száma (multi-tenant-safe: ceg-scoped)
+        UUID dashboardCompanyId = SecurityUtils.getCurrentCompanyId();
+        List<Branch> activeBranches = branchRepository.findByCompanyIdAndIsActiveTrue(dashboardCompanyId);
         int activeBranchCount = activeBranches.size();
 
         // Nyitott tranzakciók (mai)

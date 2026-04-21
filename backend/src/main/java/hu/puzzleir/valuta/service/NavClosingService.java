@@ -12,6 +12,7 @@ import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.NavClosingRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -61,6 +62,23 @@ public class NavClosingService {
         ));
 
     private static final String VAT_RATE_KEY_PREFIX = "nav.vat-rate.";
+
+    /**
+     * Startup-time validation: biztositja hogy minden NavTaxCode enum ertekhez van fallback rate.
+     * Ha uj enum ertek bejon es nincs DEFAULT_VAT_RATES-ben, IllegalStateException -> applikacio nem indul.
+     * Ez megvedi a rendszert a silent-ZERO fallback regressziotol.
+     */
+    @PostConstruct
+    void validateVatRateCoverage() {
+        for (NavTaxCode code : NavTaxCode.values()) {
+            if (!DEFAULT_VAT_RATES.containsKey(code)) {
+                throw new IllegalStateException(
+                    "VAT rate coverage missing for NavTaxCode." + code.name() +
+                    ". Add it to DEFAULT_VAT_RATES in NavClosingService.");
+            }
+        }
+        log.info("NavClosingService VAT rate coverage validated: {} codes OK", NavTaxCode.values().length);
+    }
 
     /**
      * Napi NAV zárás létrehozása.

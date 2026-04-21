@@ -61,23 +61,25 @@ export default function CashierKpiPage() {
     const [err, setErr] = useState<string | null>(null)
     const [sortBy, setSortBy] = useState<'name' | 'totalHuf' | 'txCount' | 'reversalRatio'>('totalHuf')
 
-    const load = useCallback(async () => {
-        setLoading(true)
-        setErr(null)
-        try {
-            const res = await cashierKpiApi.get(dateFrom, dateTo)
-            setData(res)
-        } catch (e) {
-            logger.error('CashierKpi', 'load err', e)
-            setErr(e instanceof Error ? e.message : String(e))
-        } finally {
-            setLoading(false)
-        }
-    }, [dateFrom, dateTo])
+    const [reloadTick, setReloadTick] = useState(0)
+    const load = useCallback(() => setReloadTick(t => t + 1), [])
 
     useEffect(() => {
-        void load()
-    }, [load])
+        // Race condition safety: ha a deps gyorsan valtoznak, a regi fetch elvesz
+        let cancelled = false
+        setLoading(true)
+        setErr(null)
+        cashierKpiApi.get(dateFrom, dateTo)
+            .then(res => { if (!cancelled) setData(res) })
+            .catch(e => {
+                if (!cancelled) {
+                    logger.error('CashierKpi', 'load err', e)
+                    setErr(e instanceof Error ? e.message : String(e))
+                }
+            })
+            .finally(() => { if (!cancelled) setLoading(false) })
+        return () => { cancelled = true }
+    }, [dateFrom, dateTo, reloadTick])
 
     const handleQuick = (q: QuickRange) => {
         setQuick(q)
@@ -98,7 +100,13 @@ export default function CashierKpiPage() {
         return rows
     }, [data, sortBy])
 
-    const topWorker = sortedRows[0]
+    // Codex P2 fix: a top performer MINDIG a legnagyobb forgalmu — fuggetlen a sortBy-tol
+    const topWorkerByTurnover = useMemo(() => {
+        if (!data || data.rows.length === 0) return null
+        const first = data.rows[0]
+        if (!first) return null
+        return data.rows.reduce((max, r) => (r.totalHuf > max.totalHuf ? r : max), first)
+    }, [data])
 
     return (
         <div className="p-6 space-y-6">
@@ -147,20 +155,25 @@ export default function CashierKpiPage() {
                         type="date"
                         className="form-input h-9 text-xs"
                         value={dateFrom}
+                        max={dateTo}
                         onChange={e => {
                             setDateFrom(e.target.value)
                             setQuick('custom')
                         }}
+                        aria-label="Kezdo datum"
                     />
                     <span className="text-secondary-400 text-xs">-</span>
                     <input
                         type="date"
                         className="form-input h-9 text-xs"
                         value={dateTo}
+                        min={dateFrom}
+                        max={isoDate(new Date())}
                         onChange={e => {
                             setDateTo(e.target.value)
                             setQuick('custom')
                         }}
+                        aria-label="Veg datum"
                     />
                 </div>
             </div>
@@ -205,14 +218,14 @@ export default function CashierKpiPage() {
             )}
 
             {/* Top performer highlight */}
-            {topWorker && !loading && (
+            {topWorkerByTurnover && !loading && (
                 <div className="form-panel p-4 flex items-center gap-4 bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200">
                     <Award className="text-yellow-600" size={32} />
                     <div>
                         <div className="text-xs text-secondary-500 uppercase tracking-wide">Legnagyobb forgalom</div>
-                        <div className="text-xl font-bold text-secondary-900">{topWorker.workerName}</div>
+                        <div className="text-xl font-bold text-secondary-900">{topWorkerByTurnover.workerName}</div>
                         <div className="text-sm text-secondary-600">
-                            {formatHuf(topWorker.totalHuf)} - {formatInt(topWorker.txCount)} tranzakcio - atlag {formatHuf(topWorker.avgTxHuf)}
+                            {formatHuf(topWorkerByTurnover.totalHuf)} - {formatInt(topWorkerByTurnover.txCount)} tranzakcio - atlag {formatHuf(topWorkerByTurnover.avgTxHuf)}
                         </div>
                     </div>
                 </div>

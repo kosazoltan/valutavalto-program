@@ -104,6 +104,7 @@ public class PublicBranchController {
      * mindig friss a szerverrol (no cache).
      */
     @GetMapping("/workers")
+    @SuppressWarnings("deprecation") // Szandekos: pre-login wizard, nincs SecurityContext. A branch code globalis unique.
     public ResponseEntity<List<PublicWorkerDto>> getPublicWorkersByBranch(
             @RequestParam(required = false) String branchCode) {
         if (branchCode == null || branchCode.isBlank()) {
