@@ -1,5 +1,32 @@
 # Changelog
 
+## [2.1.7] - 2026-04-21 (kumulalt AI review + production URL SSOT)
+
+### Added
+- **config/production-urls.json**: Single Source of Truth a production URL-ekre (domain, base_url, api_url, health_url, type_base, CORS origins). Minden komponens innen olvashatja build-time vagy deploy-time.
+- **backend/.../ProductionUrls.java**: Java konstans osztaly (DOMAIN, BASE_URL, API_URL, HEALTH_URL, TYPE_BASE, FALLBACK_*). AI review PR #97 Sourcery P2 javaslat kielegitese.
+- **installer/build-common.ps1**: Get-VersionFromPackageJson helper (DRY kozos version-olvas, JSON validation, clear error), mind a 4 installer build script dot-sources.
+
+### Fixed (PR #104 - kumulalt AI review javitasok)
+
+**P1 bug_risk:**
+- **V155 migration duplicate pre-cleanup** (PR #98 Codex): production DB duplikatum eseten a CREATE UNIQUE INDEX elszallt volna. Pre-check DO block RAISE EXCEPTION + duplicate listing.
+- **Launcher path quoting** (PR #100 Sourcery): Set-Location apostrophe-s path-on elszallt. Fix: Start-Process -WorkingDirectory.
+- **Penztar-client main.ts packaged-client .env read** (PR #97 Codex): dotenv CSAK dev modban mukodik, packaged appban a process.env ures. Fix: userData/.env kozvetlen parsolas.
+
+**P2 suggestion:**
+- **RateCreationService competitorCode empty guard** (PR #98 Sourcery): non-alphanumeric name eseten fallback "COMP".
+- **ConversionPage reset outputs** (PR #98 Codex): baseSellRate<=0 eseten reset.
+- **fix-branch-code.mjs hardening** (PR #97): explicit args + cwd-independent wasm resolve.
+- **Installer version helper centralization + JSON validation** (PR #103 Sourcery).
+
+### Refactored (production URL SSOT)
+- **ProblemDetailBuilder.TYPE_BASE** mostantol ProductionUrls.TYPE_BASE-rol olvas (backward-compat alias marad).
+- Docu: config/production-urls.json a hibagyujto pont, minden uj URL-hivatkozas ott dokumentalando.
+
+### Dependency bumps (dependabot)
+- actions/checkout 4 -> 6 (PR #22)
+
 ## [2.1.6] - 2026-04-21
 
 ### Kotelezo ervenyu alaptorveny (CLAUDE.md)

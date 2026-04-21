@@ -1,6 +1,6 @@
 {
   "name": "@valuta/shared-api",
-  "version": "2.1.6",
+  "version": "2.1.7",
   "private": true,
   "description": "OpenAPI-generalt TS tipusok: single source of truth a backend-hez",
   "main": "./src/index.ts",
