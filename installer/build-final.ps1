@@ -1,11 +1,10 @@
+param([string]$Version)
 $ErrorActionPreference = "Stop"
-# v2.1.6 (AI review #102 P2): single source of truth - package.json root
-$pkgPath = Join-Path (Split-Path -Parent $PSScriptRoot) "package.json"
-if (Test-Path $pkgPath) {
-    $Version = (Get-Content $pkgPath -Raw | ConvertFrom-Json).version
-    Write-Host "Version auto-loaded from package.json: $Version" -ForegroundColor DarkGray
-} else {
-    throw "package.json nem talalhato: $pkgPath"
+# v2.1.6 (AI review #103): centralized version via build-common.ps1,
+# add optional -Version override capability (consistency with other scripts).
+. (Join-Path $PSScriptRoot 'build-common.ps1')
+if (-not $Version) {
+    $Version = Get-VersionFromPackageJson -ScriptRoot $PSScriptRoot
 }
 $BuildDate = Get-Date -Format "yyyyMMdd"
 $RepoRoot = Split-Path -Parent $PSScriptRoot

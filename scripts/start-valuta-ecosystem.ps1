@@ -68,11 +68,14 @@ if ($feAlready) {
     # Windows PowerShell kavar: Start-Process -FilePath "npm" a "C:\Program Files\nodejs\npm"
     # Unix shell scriptet talalja elobb -> "%1: nem Win32 alkalmazas" hiba.
     # Fix: child powershell.exe indit, az megkeresi az npm.cmd-et es lefuttatja.
+    # AI REVIEW FIX (PR #100 Sourcery bug_risk): -WorkingDirectory helyettesiti a
+    # Set-Location '$feDir' interpolaciot -> apostrophe-s path nem torik el.
     $feDir = Join-Path $RepoRoot "frontend-react"
+    $env:VITE_PROXY_TARGET = 'https://excvaluta.com'
     Start-Process -FilePath "powershell.exe" -ArgumentList @(
         "-NoProfile", "-NoLogo", "-ExecutionPolicy", "Bypass",
-        "-Command", "Set-Location '$feDir'; `$env:VITE_PROXY_TARGET='https://excvaluta.com'; npm run dev -- --host 0.0.0.0"
-    ) -WindowStyle Hidden `
+        "-Command", "npm run dev -- --host 0.0.0.0"
+    ) -WorkingDirectory $feDir -WindowStyle Hidden `
         -RedirectStandardOutput "$env:TEMP\valuta-frontend.log" `
         -RedirectStandardError "$env:TEMP\valuta-frontend-err.log"
     Write-Step "Vite inditva - var..."
@@ -80,18 +83,19 @@ if ($feAlready) {
     while ($true) {
         Start-Sleep -Seconds 2
         try { if ((Invoke-WebRequest -Uri "http://127.0.0.1:3000/" -TimeoutSec 2 -UseBasicParsing).StatusCode -eq 200) { Write-OK "Frontend READY"; break } } catch {}
-        if (((Get-Date) - $start).TotalSeconds -gt 45) { Write-Err "Vite nem indult el 45 masodpercen belul - ld. $env:TEMP\valuta-frontend-err.log"; exit 1 }
+        if (((Get-Date) - $start).TotalSeconds -gt 45) { Write-Err "Vite nem indult el 45 masodpercen belul - ld. $env:TEMP\valuta-frontend.log (stdout) es ..-err.log (stderr)"; exit 1 }
     }
 }
 
 # 3) Electron penztar-client
 if (-not $SkipElectron) {
     Write-Step "3/3 - Electron penztar-client (npm run dev:main)"
+    # AI REVIEW FIX (PR #100 Sourcery bug_risk): -WorkingDirectory quote-mentes.
     $elDir = Join-Path $RepoRoot "penztar-client"
     Start-Process -FilePath "powershell.exe" -ArgumentList @(
         "-NoProfile", "-NoLogo", "-ExecutionPolicy", "Bypass",
-        "-Command", "Set-Location '$elDir'; npm run dev:main"
-    ) -WindowStyle Hidden `
+        "-Command", "npm run dev:main"
+    ) -WorkingDirectory $elDir -WindowStyle Hidden `
         -RedirectStandardOutput "$env:TEMP\valuta-electron.log" `
         -RedirectStandardError "$env:TEMP\valuta-electron-err.log"
     Write-OK "Electron inditva"
