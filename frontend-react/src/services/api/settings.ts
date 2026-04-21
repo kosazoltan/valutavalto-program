@@ -722,6 +722,10 @@ export interface BankTransaction {
   note?: string
   createdAt: string
   completedAt?: string
+  receivedAt?: string
+  receivedBy?: number
+  paidAt?: string
+  paidBy?: number
   vaultTerritoryId?: number
   vaultTerritoryName?: string
 }
@@ -824,6 +828,8 @@ export const ertektarApi = {
   getBankTransactions: async (): Promise<BankTransaction[]> => (await api.get<BankTransaction[]>('/ertektar/bank-transactions')).data,
   getBankTransactionsByType: async (type: string): Promise<BankTransaction[]> => (await api.get<BankTransaction[]>('/ertektar/bank-transactions/by-type', { params: { type } })).data,
   createBankTransaction: async (data: BankTransactionRequest): Promise<BankTransaction> => (await api.post<BankTransaction>('/ertektar/bank-transactions', data)).data,
+  confirmBankTransactionReceived: async (id: number): Promise<BankTransaction> => (await api.post<BankTransaction>(`/ertektar/bank-transactions/${id}/confirm-received`)).data,
+  confirmBankTransactionPaid: async (id: number): Promise<BankTransaction> => (await api.post<BankTransaction>(`/ertektar/bank-transactions/${id}/confirm-paid`)).data,
   getTransfers: async (): Promise<VaultTransferItem[]> => (await api.get<VaultTransferItem[]>('/ertektar/transfers')).data,
   getPendingTransfers: async (): Promise<VaultTransferItem[]> => (await api.get<VaultTransferItem[]>('/ertektar/transfers/pending')).data,
   createTransfer: async (data: VaultTransferRequest): Promise<VaultTransferItem> => (await api.post<VaultTransferItem>('/ertektar/transfers', data)).data,

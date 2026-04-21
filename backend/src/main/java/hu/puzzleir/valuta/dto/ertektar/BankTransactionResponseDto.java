@@ -23,4 +23,10 @@ public class BankTransactionResponseDto {
     private LocalDateTime completedAt;
     private Integer vaultTerritoryId;
     private String vaultTerritoryName;
+    /** B3 workflow extension: mikor erkezett be a deviza / adtak at a banknak */
+    private LocalDateTime receivedAt;
+    private Long receivedBy;
+    /** B3 workflow extension: mikor utalta at a HUF-ot */
+    private LocalDateTime paidAt;
+    private Long paidBy;
 }

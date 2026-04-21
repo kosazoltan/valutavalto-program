@@ -7,6 +7,8 @@ import {
   RefreshCw,
   CheckCircle,
   Eye,
+  Package,
+  Banknote,
 } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { ertektarApi, currencyApi } from '../../services/api/index'
@@ -39,6 +41,7 @@ export default function BankTransactions() {
   const [bankRef, setBankRef] = useState('')
   const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [workflowSubmitting, setWorkflowSubmitting] = useState(false)
 
   const fetchData = useCallback(async () => {
     try {
@@ -106,6 +109,32 @@ export default function BankTransactions() {
       setSubmitting(false)
     }
   }, [txType, currencyCode, amount, exchangeRate, bankName, bankRef, note, fetchData, electronQueueAvailable])
+
+  const handleConfirmReceived = useCallback(async (id: number) => {
+    setWorkflowSubmitting(true)
+    try {
+      const updated = await ertektarApi.confirmBankTransactionReceived(id)
+      setShowDetailModal(updated)
+      void fetchData()
+    } catch (err) {
+      logger.error('BankTransactions', 'confirmReceived error:', err)
+    } finally {
+      setWorkflowSubmitting(false)
+    }
+  }, [fetchData])
+
+  const handleConfirmPaid = useCallback(async (id: number) => {
+    setWorkflowSubmitting(true)
+    try {
+      const updated = await ertektarApi.confirmBankTransactionPaid(id)
+      setShowDetailModal(updated)
+      void fetchData()
+    } catch (err) {
+      logger.error('BankTransactions', 'confirmPaid error:', err)
+    } finally {
+      setWorkflowSubmitting(false)
+    }
+  }, [fetchData])
 
   const resetForm = () => {
     setCurrencyCode('')
@@ -392,8 +421,42 @@ export default function BankTransactions() {
               <Row label="Ref." value={showDetailModal.bankReference || '-'} />
               <Row label="Státusz" value={showDetailModal.status} />
               <Row label="Dátum" value={formatDateTime(showDetailModal.createdAt)} />
+              {showDetailModal.receivedAt && <Row label="Deviza beerkezett" value={formatDateTime(showDetailModal.receivedAt)} />}
+              {showDetailModal.paidAt && <Row label="HUF atutalva" value={formatDateTime(showDetailModal.paidAt)} />}
+              {showDetailModal.completedAt && <Row label="Teljesitve" value={formatDateTime(showDetailModal.completedAt)} />}
               {showDetailModal.note && <Row label="Megjegyzes" value={showDetailModal.note} />}
             </div>
+
+            {/* Workflow gombok — csak amig nem COMPLETED */}
+            {showDetailModal.status !== 'COMPLETED' && (
+              <div className="mt-4 space-y-2 border-t pt-4">
+                <div className="text-xs font-semibold text-secondary-600 mb-2">Workflow lepesek</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    className={showDetailModal.receivedAt ? 'form-button cursor-default opacity-60' : 'form-button-primary'}
+                    disabled={!!showDetailModal.receivedAt || workflowSubmitting}
+                    onClick={() => void handleConfirmReceived(showDetailModal.id)}
+                  >
+                    <Package size={16} />
+                    <span>{showDetailModal.receivedAt ? 'Deviza ok' : 'Deviza beerkezett'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={showDetailModal.paidAt ? 'form-button cursor-default opacity-60' : 'form-button-primary'}
+                    disabled={!!showDetailModal.paidAt || workflowSubmitting}
+                    onClick={() => void handleConfirmPaid(showDetailModal.id)}
+                  >
+                    <Banknote size={16} />
+                    <span>{showDetailModal.paidAt ? 'HUF ok' : 'HUF atutalva'}</span>
+                  </button>
+                </div>
+                <div className="text-xs text-secondary-500">
+                  Ha mindket oldal megerositve, a tranzakcio automatikusan COMPLETED allapotba kerul.
+                </div>
+              </div>
+            )}
+
             <button onClick={() => setShowDetailModal(null)} className="form-button-primary w-full mt-6">
               Bezaras
             </button>
