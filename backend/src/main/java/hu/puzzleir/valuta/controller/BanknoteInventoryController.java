@@ -20,7 +20,7 @@ public class BanknoteInventoryController {
     private final BanknoteInventoryService service;
 
     @GetMapping("/branch/{branchId}")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<List<BanknoteInventoryDto>> getByBranch(@PathVariable UUID branchId,
                                                                     @RequestParam(required = false) String currencyCode) {
         List<BanknoteInventory> items = currencyCode != null
@@ -30,19 +30,19 @@ public class BanknoteInventoryController {
     }
 
     @GetMapping("/branch/{branchId}/low-stock")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<List<BanknoteInventoryDto>> getLowStock(@PathVariable UUID branchId) {
         return ResponseEntity.ok(service.getLowStock(branchId).stream().map(this::toDto).toList());
     }
 
     @GetMapping("/branch/{branchId}/over-stock")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<List<BanknoteInventoryDto>> getOverStock(@PathVariable UUID branchId) {
         return ResponseEntity.ok(service.getOverStock(branchId).stream().map(this::toDto).toList());
     }
 
     @PostMapping("/branch/{branchId}/add")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<BanknoteInventoryDto> addStock(@PathVariable UUID branchId,
                                                           @RequestParam Long currencyId,
                                                           @RequestParam String currencyCode,
@@ -52,7 +52,7 @@ public class BanknoteInventoryController {
     }
 
     @PostMapping("/branch/{branchId}/remove")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<BanknoteInventoryDto> removeStock(@PathVariable UUID branchId,
                                                               @RequestParam Long currencyId,
                                                               @RequestParam BigDecimal faceValue,
@@ -61,7 +61,7 @@ public class BanknoteInventoryController {
     }
 
     @PostMapping("/{inventoryId}/count")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<BanknoteInventoryDto> recordCount(@PathVariable Long inventoryId,
                                                               @RequestParam int actualQuantity,
                                                               @RequestParam String workerId) {
@@ -69,7 +69,7 @@ public class BanknoteInventoryController {
     }
 
     @PutMapping("/{inventoryId}/thresholds")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<BanknoteInventoryDto> setThresholds(@PathVariable Long inventoryId,
                                                                 @RequestParam(required = false) Integer minQuantity,
                                                                 @RequestParam(required = false) Integer maxQuantity) {

@@ -26,7 +26,7 @@ public class StockSnapshotController {
     private final StockSnapshotExcelService excelService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<StockSnapshotDto> getSnapshot() {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         StockSnapshotDto snapshot = snapshotService.getFullSnapshot(companyId);
@@ -34,7 +34,7 @@ public class StockSnapshotController {
     }
 
     @GetMapping("/excel")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<byte[]> downloadExcel() throws IOException {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         StockSnapshotDto snapshot = snapshotService.getFullSnapshot(companyId);

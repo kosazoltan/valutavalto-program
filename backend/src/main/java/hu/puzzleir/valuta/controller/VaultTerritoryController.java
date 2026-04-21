@@ -28,13 +28,13 @@ public class VaultTerritoryController {
     private final WacService wacService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<List<VaultTerritory>> list() {
         return ResponseEntity.ok(vaultTerritoryService.getAll());
     }
 
     @GetMapping("/{id}/profit")
-    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<WacService.ProfitSummary> territoryProfit(
             @PathVariable Integer id,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
