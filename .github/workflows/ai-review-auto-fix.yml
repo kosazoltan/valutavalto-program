@@ -1,0 +1,149 @@
+# Automatikus AI review fix workflow
+#
+# Cel: ha a sourcery-ai[bot] vagy a chatgpt-codex-connector[bot] PR review-t kuld,
+# azonnal triggel egy Claude Code agent-et, ami:
+#   1. Lekeri a review comment-eket (reviews + inline comments)
+#   2. Elemzi a talalatokat (P1 bug_risk, P2 suggestion, false positive)
+#   3. Javitja a kodot a feature branch-en egy uj commit-tal
+#   4. (Opcional) @claude/sourcery-ai resolved comment-et kuld a fixelt eszrevetelekre
+#
+# Szabaly: CLAUDE.md "Kotelezo AI code review workflow" ezt manualis workflow volt,
+# most automatizalt.
+#
+# Setup (egyszeri):
+#   1. `ANTHROPIC_API_KEY` secret a repo Settings > Secrets and variables > Actions alatt
+#   2. Telepitsd a Claude GitHub App-ot: https://github.com/apps/claude
+#   3. Commit ezt a fajlt a main-re -> mukodik
+
+name: AI Review Auto-Fix
+
+on:
+  pull_request_review:
+    types: [submitted]
+  # (Opcional) inline comment reaction - pl. Sourcery reply-olas
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  auto-fix:
+    # Csak AI reviewer event-ekre triggereljen (Sourcery + Codex)
+    # github.event.review.user.login (pull_request_review event)
+    # github.event.comment.user.login (pull_request_review_comment event)
+    if: |
+      (github.event_name == 'pull_request_review' &&
+        contains(fromJSON('["sourcery-ai[bot]", "chatgpt-codex-connector[bot]"]'), github.event.review.user.login)) ||
+      (github.event_name == 'pull_request_review_comment' &&
+        contains(fromJSON('["sourcery-ai[bot]", "chatgpt-codex-connector[bot]"]'), github.event.comment.user.login))
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # feature branch-re uj commit push
+      pull-requests: write  # comment, label update a PR-en
+      issues: write         # issue comment-ek (reviewer's guide)
+
+    # Timeout: max 15 perc egy auto-fix ciklus
+    timeout-minutes: 15
+
+    # Concurrency: ugyanarra a PR-re max 1 fix futhat egyszerre
+    concurrency:
+      group: ai-review-fix-${{ github.event.pull_request.number }}
+      cancel-in-progress: false  # NE kill-elje a folyamatban levo fix-et
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          # Feature branch, nem a merge commit -> hogy tudjunk push-olni
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          # Teljes git history a commit-hez
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Setup Java 21 (backend tesztekhez)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Node 20 (frontend tesztekhez)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Claude Code — auto-fix reviewer feedback
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Max 5 iteracio a fixre (token + cost limit)
+          claude_args: --max-turns 5 --model claude-sonnet-4-5
+          prompt: |
+            AI code reviewer (Sourcery AI vagy ChatGPT Codex Connector) egy PR-re review-t kuldott.
+            Feladatod: automatikusan javitani a talalatokat + commitolni a feature branch-re.
+
+            KONTEXTUS:
+            - PR szam: #${{ github.event.pull_request.number }}
+            - PR title: "${{ github.event.pull_request.title }}"
+            - PR branch: ${{ github.event.pull_request.head.ref }}
+            - Reviewer: ${{ github.event_name == 'pull_request_review' && github.event.review.user.login || github.event.comment.user.login }}
+            - Repo: ${{ github.repository }}
+
+            LEPESEK:
+            1. Olvasd el a CLAUDE.md-t a "Kotelezo AI code review workflow" szekciojat (kotelezo szabalyok).
+            2. Kerd le a review-t + inline comment-eket:
+               `gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews"`
+               `gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments"`
+            3. Elemezd a talalatokat P1 (bug_risk, critical) / P2 (suggestion) / P3 (style) szerint.
+            4. Szurd a false positive-okat (pl. balanced brackets AI mis-interpret), jeloljek `NO_FIX:` kommenttel.
+            5. Fix implementalasa: Read + Edit tool, kotelezo lokalis validacio:
+               - Backend: `cd backend && ./mvnw compile -DskipTests` (ha Java modositas)
+               - Frontend: `cd frontend-react && npx tsc --noEmit` (ha TS modositas)
+               - Scripts: `node --check FILENAME` (ha .js/.mjs modositas)
+            6. Commit: `fix(ai-review): [Reviewer] - [short desc]` prefix-szel.
+            7. Push a feature branch-re (automatikus checkout-bol).
+
+            FONTOS:
+            - Ha a fix >3 fajlt erint vagy breaking change: NE commitolj, inkabb comment-elj a PR-en
+              egy javasolt megoldassal, es kerj emberi jovahagyast.
+            - A "looks great!" review-kra NE csinalj semmit, zard le a ciklust.
+            - Minden fix utan push -> trigger-eli a CI-t -> ha fail: automatikusan probaljuk kijavitani
+              max 2 iteracioval, utana escalalj.
+
+            CELDNUZEST:
+            - 1 fix commit / review trigger (nem kontrolalatlan series)
+            - Idempotent: ha nincs fix-elni valo, no-op (ne commitolj ures diff-et)
+            - Magyar kommentek a commit message-ben (projekt konvencio)
+
+            KEZDJ: `gh api` + teljes review lekeres + priorizalas.
+
+      - name: Post-fix validation summary
+        if: always()
+        run: |
+          echo "=== Commit history post-fix ==="
+          git log --oneline -5
+          echo "=== CI will re-trigger on push ==="
+
+  # Auxiliary job: notify on failure
+  notify-failure:
+    if: failure()
+    needs: auto-fix
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `🤖 **AI Review Auto-Fix FAILED**\n\n` +
+              `A ${{ github.event.review.user.login || github.event.comment.user.login }} review-ra automatikus fix elindult, ` +
+              `de nem sikerult befejezni (timeout vagy hiba).\n\n` +
+              `Manualis javitas szukseges. Logok: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ github.event.pull_request.number }},
+              body
+            });
