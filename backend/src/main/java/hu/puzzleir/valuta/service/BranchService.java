@@ -89,14 +89,11 @@ public class BranchService {
     @Transactional(readOnly = true)
     public BranchDto findByCode(String code) {
         log.debug("Finding branch by code: {}", code);
-        Branch branch = branchRepository.findByCode(code)
-                .orElseThrow(() -> new ResourceNotFoundException("Fiók nem található kóddal: " + code));
-
-        // IDOR védelem
+        // Multi-tenant-safe: ceg-scoped lookup (cross-tenant leak elkerulese)
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        if (branch.getCompany() != null && !branch.getCompany().getId().equals(companyId)) {
-            throw new ResourceNotFoundException("Fiók nem található kóddal: " + code);
-        }
+        Branch branch = branchRepository.findByCompanyIdAndCode(companyId, code)
+                .orElseThrow(() -> new ResourceNotFoundException("Fiók nem található kóddal: " + code));
+        // (korabbi IDOR redundans ellenorzes megszunt, mert a query eleve szur)
 
         return branchMapper.toDto(branch);
     }
@@ -298,7 +295,9 @@ public class BranchService {
     // ===== Private Helper Methods =====
 
     private void validateBranchCode(String code) {
-        if (branchRepository.existsByCode(code)) {
+        // Multi-tenant-safe: csak a sajat cegben ellenorizni
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (branchRepository.existsByCompanyIdAndCode(companyId, code)) {
             throw new ValidationException("Már létezik fiók ezzel a kóddal: " + code);
         }
     }

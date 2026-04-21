@@ -74,3 +74,41 @@
 A mai audit NEM igaz kriptikus hibak listaja — a `branch_id` alapu szures sok esetben de-facto mukodik, mert a branch-ek cegekhez tartoznak. A riskelet a jovobeli fejlesztok akik hanyagul vagy frissen erkezve irnak olyan kodot, ami a kontextust elfogadja (pl. audit export endpoint ami egyszerre lat minden tenant tranzakcioját ha valaki modifialt request-parametert ad be).
 
 Elkeszitette: Claude Sonnet 4.5 Agent SDK
+
+---
+
+## UPDATE — 2026-04-21 kesobb (masodik iteracio)
+
+A riport elso verzioja utan a kovetkezo serulekenysegek kerultek megoldasra:
+
+### FIXED / DEPRECATED
+
+- CRITICAL #1 ExchangeRateRepository.findActiveByDateAndBranch — FIXED (PR #75)
+- HIGH #2 BranchRepository.findByCode — @Deprecated + findByCompanyIdAndCode ajanlva (PR #76)
+- HIGH #3 BranchRepository.existsByCode — @Deprecated + existsByCompanyIdAndCode uj (PR #76)
+- HIGH #4 NavClosingRepository.findWithFilters — FIXED: companyId parameter hozzaadva (PR #76)
+- MEDIUM #5 BranchRepository.findByIsActiveTrue — @Deprecated
+- MEDIUM #6 BranchRepository.findByBranchTypeCode — @Deprecated + company-scoped variant
+- MEDIUM #7 BranchRepository.findByBranchStatusCode — @Deprecated
+- MEDIUM #8 BranchRepository.searchByNameOrCode — @Deprecated + company-scoped variant
+- MEDIUM #9 BranchRepository.findByCity — @Deprecated + findByCompanyIdAndCity uj
+- MEDIUM #10 BranchRepository.findByVaultTerritoryId — @Deprecated + company-scoped variant
+- MEDIUM #11 BranchRepository.findRootBranches — @Deprecated + findRootBranchesByCompanyId uj
+- MEDIUM #12 NavClosingRepository.findByStatus — @Deprecated + findByBranchCompanyIdAndStatus uj
+- LOW #13 TransactionRepository.findByBranchAndDate — kiegeszitve findByCompanyIdAndBranchAndDate variansal (opcional usage)
+
+### CALL SITES UPDATED
+
+- BranchService.findByCode -> findByCompanyIdAndCode
+- BranchService.validateBranchCode -> existsByCompanyIdAndCode
+- NavClosingService.listClosings -> companyId parameter
+
+### STILL OPEN
+
+- LOW #14 TransactionRepository.findByWorkerAndDate — nincs atirva, de branch implicit ved
+- LOW #15 TransactionRepository.findByWorkerIdAndTransactionDateBetween — nincs atirva, de worker-company FK implicit ved
+
+### Kovetkezo lepesek
+
+- Spring AOP @TenantFilter aspect / Hibernate @Where globalis filter bevezetese — Q3 2026
+- @Deprecated metodusok eltavolitasa 6+ honap utan (mikor minden hivo atallt)
