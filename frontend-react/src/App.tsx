@@ -18,6 +18,7 @@ const WorkerPage = lazy(() => import('./pages/workers/WorkerPage'))
 const TransitPage = lazy(() => import('./pages/transit/TransitPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const CentralVaultDashboard = lazy(() => import('./pages/foertektar/CentralVaultDashboard'))
+const RateMasterWorkflowPage = lazy(() => import('./pages/rate-management/RateMasterWorkflowPage'))
 const TransactionPage = lazy(() => import('./pages/transactions/TransactionPage'))
 const TransactionListPage = lazy(() => import('./pages/transactions/TransactionListPage'))
 const ConversionPage = lazy(() => import('./pages/transactions/ConversionPage'))
@@ -325,6 +326,7 @@ export default function App() {
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/foertektar" element={<CentralVaultDashboard />} />
+            <Route path="/rate-management/workflow" element={<RateMasterWorkflowPage />} />
           
           {/* Cashier (penztaros) routes */}
           <Route path="/cashier" element={<CashierMainMenu />} />
