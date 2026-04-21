@@ -39,6 +39,7 @@ public class TransactionReversalService {
     private final AmlService amlService;
     private final CashBalanceRepository cashBalanceRepository;
     private final TransactionOperationHelper helper;
+    private final AuditLogService auditLogService;
 
     /**
      * Sztorno vegrehajtasa.
@@ -186,6 +187,19 @@ public class TransactionReversalService {
         log.info("Sztorno tranzakcio: {} - eredeti: {} - ok: {}",
                 receiptNumber, original.getReceiptNumber(), request.getReason());
 
+        auditLogService.logWithDetails(
+                "TRANSACTION_STORNO",
+                "TRANSACTION",
+                original.getId().toString(),
+                workerId != null ? workerId.toString() : null,
+                worker.getName(),
+                branchId != null ? branchId.toString() : null,
+                branch.getName(),
+                original.getReceiptNumber() + " (" + original.getTransactionType() + ")",
+                savedReversal.getReceiptNumber() + " (REVERSAL)",
+                request.getReason(),
+                null);
+
         return savedReversal;
     }
 
@@ -300,6 +314,19 @@ public class TransactionReversalService {
 
         log.info("Reszleges visszaterites: {} - eredeti: {} - osszeg: {} Ft - ok: {}",
                 receiptNumber, original.getReceiptNumber(), refundHuf.toPlainString(), request.getReason());
+
+        auditLogService.logWithDetails(
+                "TRANSACTION_PARTIAL_REFUND",
+                "TRANSACTION",
+                original.getId().toString(),
+                workerId != null ? workerId.toString() : null,
+                worker.getName(),
+                branchId != null ? branchId.toString() : null,
+                branch.getName(),
+                original.getReceiptNumber() + " (teljes: " + original.getHufAmount().toPlainString() + " Ft)",
+                saved.getReceiptNumber() + " (visszateritett: " + refundHuf.toPlainString() + " Ft)",
+                request.getReason(),
+                null);
 
         return saved;
     }
