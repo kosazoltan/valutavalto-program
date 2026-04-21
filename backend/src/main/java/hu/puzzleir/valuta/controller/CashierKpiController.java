@@ -26,7 +26,14 @@ public class CashierKpiController {
     private final CashierKpiService service;
 
     /**
-     * Max 1 eves idotartomany - DoS + teljesitmenyi okokbol (sok tranzakcio, sok penztaros).
+     * Maximum intervallum SIZE - ChronoUnit.DAYS.between exclusive,
+     * ezert 366 = max 367 inclusive day (szokoev + 1 extra). DoS + teljesitmenyi korlat.
+     *
+     * Peldak:
+     *  - dateFrom=2026-01-01, dateTo=2026-01-01 -> days=0 (engedjen, 1 napos keres)
+     *  - dateFrom=2026-01-01, dateTo=2027-01-01 -> days=365 (engedjen, 1 ev)
+     *  - dateFrom=2026-01-01, dateTo=2027-01-02 -> days=366 (engedjen, 367 nap inclusive)
+     *  - dateFrom=2026-01-01, dateTo=2027-01-03 -> days=367 -> VALIDATION ERROR
      */
     private static final long MAX_RANGE_DAYS = 366;
 
@@ -52,7 +59,7 @@ public class CashierKpiController {
         }
         long days = ChronoUnit.DAYS.between(dateFrom, dateTo);
         if (days > MAX_RANGE_DAYS) {
-            throw new ValidationException("Maximum " + MAX_RANGE_DAYS + " nap kerheto egyszerre (jelenleg: " + days + " nap)");
+            throw new ValidationException("Maximum " + (MAX_RANGE_DAYS + 1) + " napos (inclusive) intervallum engedely. Jelenleg kert: " + (days + 1) + " nap.");
         }
         if (dateFrom.isAfter(LocalDate.now().plusDays(1))) {
             throw new ValidationException("dateFrom nem lehet a jovoben");
