@@ -14,13 +14,23 @@
 # =============================================================================
 
 param(
-    [string]$Version = "2.1.6",
+    [string]$Version,
     [switch]$SkipFrontendBuild,
     [switch]$SkipNsis,
     [string]$ApiUrl = "https://excvaluta.com/api/v1"
 )
 
 $BuildDate = Get-Date -Format "yyyyMMdd"
+
+# v2.1.6 (AI review #102 P2): single source of truth - package.json root
+if (-not $Version) {
+    $pkgPath = Join-Path (Split-Path -Parent $PSScriptRoot) "package.json"
+    if (Test-Path $pkgPath) {
+        $Version = (Get-Content $pkgPath -Raw | ConvertFrom-Json).version
+        Write-Host "Version auto-loaded from package.json: $Version" -ForegroundColor DarkGray
+    } else { throw "package.json nem talalhato: $pkgPath - add meg -Version parametert" }
+}
+
 Write-Host "Thin client build: v$Version ($BuildDate)" -ForegroundColor Cyan
 Write-Host "API URL: $ApiUrl" -ForegroundColor Cyan
 

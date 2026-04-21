@@ -15,8 +15,17 @@
 # =============================================================================
 
 param(
-    [string]$Version = "2.1.6"
+    [string]$Version
 )
+
+# v2.1.6 (AI review #102 P2): single source of truth - package.json root
+if (-not $Version) {
+    $pkgPath = Join-Path (Split-Path -Parent $PSScriptRoot) "package.json"
+    if (Test-Path $pkgPath) {
+        $Version = (Get-Content $pkgPath -Raw | ConvertFrom-Json).version
+        Write-Host "Version auto-loaded from package.json: $Version" -ForegroundColor DarkGray
+    } else { throw "package.json nem talalhato: $pkgPath - add meg -Version parametert" }
+}
 
 $ErrorActionPreference = "Stop"
 $BuildDate    = Get-Date -Format "yyyyMMdd"

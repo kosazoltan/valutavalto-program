@@ -1,5 +1,12 @@
 $ErrorActionPreference = "Stop"
-$Version = "2.1.6"
+# v2.1.6 (AI review #102 P2): single source of truth - package.json root
+$pkgPath = Join-Path (Split-Path -Parent $PSScriptRoot) "package.json"
+if (Test-Path $pkgPath) {
+    $Version = (Get-Content $pkgPath -Raw | ConvertFrom-Json).version
+    Write-Host "Version auto-loaded from package.json: $Version" -ForegroundColor DarkGray
+} else {
+    throw "package.json nem talalhato: $pkgPath"
+}
 $BuildDate = Get-Date -Format "yyyyMMdd"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $InstallerDir = $PSScriptRoot
