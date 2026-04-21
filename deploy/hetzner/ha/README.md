@@ -1,0 +1,143 @@
+# High-Availability (HA) - Warm-standby VPS setup
+
+A 60 pénztárhoz szükséges üzletfolytonossági rendszer. Ha a primary Hetzner VPS leáll, a pénztárak 2-5 percen belül átállnak a standby VPS-re, és a munka folytatódik.
+
+## Architektúra
+
+```
++------------------+    WAL streaming    +------------------+
+|  PRIMARY  HEL1   |  ---------------->  |  STANDBY  HEL2   |
+|  excvaluta.com   |                     |  (read-only)     |
+|  95.216.191.162  |                     |  <új IP>         |
++--------+---------+                     +---------+--------+
+         |                                         |
+         v                                         v
+     Cloudflare DNS (TTL 60s, manual or health-check failover)
+                         |
+                         v
+              Pénztárak (Electron, primary URL + fallback)
+```
+
+**Költség: ~5 EUR/hó** (Hetzner CX22 HEL2 régióban)
+
+## Telepítés - 4 lépés
+
+### 1. Új Hetzner VPS rendelése
+
+- https://console.hetzner.cloud -> Új projekt "valuta-ha-standby"
+- CX22 (2 vCPU, 4 GB RAM, 40 GB SSD) ~4.51 EUR/ho
+- Régió: Helsinki 2 (földrajzilag redundáns HEL1-hez)
+- OS: Ubuntu 24.04 LTS
+- SSH kulcs: `~/.ssh/hetzner_ed25519.pub` (ugyanaz mint primary)
+
+### 2. Primary VPS-en - replikáció engedélyezése
+
+```bash
+ssh root@95.216.191.162
+cd /opt/valutavalto && git pull
+STANDBY_IP=<uj_standby_ip> \
+REPLICATION_PASSWORD="$(openssl rand -hex 24)" \
+    bash deploy/hetzner/ha/install-primary.sh
+
+# Mentsd el a REPLICATION_PASSWORD-ot jelszókezelőbe!
+```
+
+### 3. Standby VPS-en - bootstrap
+
+```bash
+ssh root@<uj_standby_ip>
+git clone https://github.com/kosazoltan/valutavalto-program.git /opt/valutavalto
+cd /opt/valutavalto
+
+# Alap hardening
+sudo bash deploy/hetzner/bootstrap-vps.sh
+# -> Step 1 (SSH hardening): Y
+# -> Tobbi: N (nincs szuksegunk Caddy/Redis/Monitoring-ra a standby-n)
+
+# Replikáció setup
+PRIMARY_IP=95.216.191.162 \
+REPLICATION_PASSWORD=<ugyanaz mint primary-n> \
+    bash deploy/hetzner/ha/install-standby.sh
+```
+
+### 4. Cloudflare DNS
+
+1. https://dash.cloudflare.com -> Domain `excvaluta.com` (ingyenes plan)
+2. API token: https://dash.cloudflare.com/profile/api-tokens
+   - "Create Token" -> "Edit zone DNS" template
+   - Zone: excvaluta.com
+3. Zone ID: az `excvaluta.com` oldalon, jobb alsó sarok
+4. Primary VPS-en:
+
+```bash
+CF_API_TOKEN=<token> \
+CF_ZONE_ID=<zone_id> \
+STANDBY_IP=<standby_ip> \
+    bash /opt/valutavalto/deploy/hetzner/ha/cloudflare-dns-failover.sh
+```
+
+Ez leszállítja a TTL-t 60s-re és kiírja a failover parancsot.
+
+## Failover menete (manuális)
+
+Ha a primary VPS leáll:
+
+```bash
+# 1. A standby VPS-en - promote:
+ssh root@<standby_ip>
+bash /opt/valutavalto/deploy/hetzner/ha/failover-to-standby.sh
+
+# 2. Cloudflare DNS atallitas (a kiirt parancs):
+curl -X PATCH "https://api.cloudflare.com/client/v4/zones/<zone_id>/dns_records/<record_id>" \
+  -H "Authorization: Bearer <cf_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"content":"<standby_ip>"}'
+
+# 3. 60s-en belul a penztarak automatikusan csatlakoznak az uj primary-ra.
+```
+
+## Visszatérés az eredeti primary-ra
+
+Miután az eredeti primary újraindul:
+
+```bash
+ssh root@<old_primary>
+systemctl stop postgresql@16-main
+
+# Rewind az uj primary-hez:
+sudo -u postgres pg_rewind \
+    --target-pgdata=/var/lib/postgresql/16/main \
+    --source-server="host=<new_primary> user=replicator password=<REPLICATION_PASSWORD>"
+
+# Aztan install-standby.sh-val csatlakozik replikakent:
+PRIMARY_IP=<new_primary> \
+REPLICATION_PASSWORD=<...> \
+    bash /opt/valutavalto/deploy/hetzner/ha/install-standby.sh
+
+# Amikor ready: DNS vissza-atallitas.
+```
+
+## Monitoring
+
+A Grafana dashboardra kerülnek majd:
+- Primary <-> standby replication lag (Prometheus: `pg_replication_lag_seconds`)
+- Mindkét backend health
+- A Főértéktár képernyőjén piros jelzés, ha a lag > 30s
+
+## Ingyenes health-check alternatíva
+
+Cloudflare Load Balancing Monitors = 20 USD/ho (Pro plan). Ingyenes helyette:
+
+- UptimeRobot (https://uptimerobot.com) - ingyenes 50 monitor + webhook
+- BetterUptime (https://betterstack.com/better-uptime) - ingyenes 10 monitor
+- Beallitod: monitor a `https://excvaluta.com/api/v1/auth/bootstrap-status`-ra
+- Ha DOWN -> webhook -> a CF API failover parancs
+
+## Kockázatok és mitigáció
+
+| Kockázat | Mitigáció |
+|----------|-----------|
+| Split-brain (két primary) | Failover script kötelezően először promote, utána DNS. Old-primary csak REWIND után indítható. |
+| Replication lag nő | Prometheus alert > 30s. Főértéktár látja. |
+| Cloudflare API outage | Manuális DNS-váltás a registrar oldalán (registrar = ahol a domain) |
+| Rosszul időzített DNS cache | TTL = 60s, de ISP resolverek ignorálják. Ezért a client-oldali fallback fontos. |

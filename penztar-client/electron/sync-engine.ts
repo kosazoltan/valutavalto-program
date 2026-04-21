@@ -223,6 +223,10 @@ export class SyncEngine {
    * A runSync() ekkor NEM indít hálózati hívást — offline pénztárnál NEM spamel HTTP 400-at.
    * A SetupWizard online-regisztrációkor állítja be a server_url + offline_mode=false configot.
    */
+  /**
+   * Primary server URL (vagy null ha offline).
+   * HA: a runSync hibanal probalja a fallback URL-t, ha be van allitva.
+   */
   private getServerUrl(): string | null {
     const offlineFlag = (getConfig('offline_mode') ?? '').toLowerCase();
     if (offlineFlag === 'true' || offlineFlag === '1') {
@@ -234,6 +238,22 @@ export class SyncEngine {
     }
     return stored;
   }
+
+  /**
+   * Fallback (standby) server URL - opcionalis HA setup-hoz.
+   * A SetupWizard vagy egy admin UI beallithatja a `server_url_fallback` configot.
+   * Ha be van allitva es a primary HTTP hibat ad, a runSync megprobalja ezt.
+   */
+  private getServerUrlFallback(): string | null {
+    const stored = (getConfig('server_url_fallback') ?? '').trim();
+    return stored || null;
+  }
+
+  /**
+   * Jelzi, hogy most melyik szerveren dolgozunk (primary vagy fallback).
+   * A runSync egy sikeres request utan erre allitja a statust.
+   */
+  private activeServerKind: 'primary' | 'fallback' = 'primary';
 
   private getBootstrapCredentials(): BootstrapCredentials | null {
     const companyCode = process.env.PENZTAR_BOOTSTRAP_COMPANY_CODE?.trim() || getConfig('bootstrap_company_code')?.trim() || '';
@@ -407,7 +427,13 @@ export class SyncEngine {
     this.status.isRunning = true;
 
     try {
-      const serverUrl = this.getServerUrl();
+      // HA: fallback URL support. Ha az elozo ciklus a fallback-en volt, ujra megprobaljuk a primary-t.
+      const primaryUrl = this.getServerUrl();
+      const fallbackUrl = this.getServerUrlFallback();
+      let serverUrl = primaryUrl;
+      if (!serverUrl && fallbackUrl && this.activeServerKind === 'fallback') {
+        serverUrl = fallbackUrl;
+      }
       if (!serverUrl) {
         log.debug('[SyncEngine] Offline mód vagy server_url hiányzik — sync kihagyva');
         return;
@@ -452,6 +478,11 @@ export class SyncEngine {
 
       this.status.lastSyncAt = new Date().toISOString();
     } catch (err) {
+      // HA: primary hibara ment - a kovetkezo ciklusra fallback-re valtunk
+      if (this.getServerUrlFallback() && this.activeServerKind === 'primary') {
+        log.warn('[SyncEngine] Primary hibazott, kovetkezo ciklusban a fallback URL-t probaljuk');
+        this.activeServerKind = 'fallback';
+      }
       log.error('[SyncEngine] Sync hiba:', err);
     } finally {
       this.status.isRunning = false;
