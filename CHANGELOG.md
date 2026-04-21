@@ -1,5 +1,35 @@
 # Changelog
 
+## [2.1.6] - 2026-04-21
+
+### Kotelezo ervenyu alaptorveny (CLAUDE.md)
+- **Production-first**: TILOS divergens lokalis fejleszto stack. Minden dev a Hetzner production (https://excvaluta.com) ellen megy. Lokalis DB seed/manualis INSERT TILOS - Flyway migration az egyetlen ut.
+- **Session memory workflow**: minden session elejen .remember/remember.md + docs/knowledge/memory/*.yaml be-olvasas, session vegen automatikus mentes (YAML + QMD + Cognee + Obsidian TODO).
+- **Komplex okoszisztema**: a user "valuta program megnyitasat" utasitva TILOS reszlegesen (csak frontend vagy csak Electron) indulni - a teljes stack (frontend + Electron + Hetzner backend) egyben indul.
+- **AI code review automation**: Sourcery + Codex PR review-k Claude Code Action-nel auto-javitas (.github/workflows/ai-review-auto-fix.yml).
+
+### Added
+- **scripts/start-valuta-ecosystem.ps1**: production-first launcher - Hetzner health check + Vite + Electron.
+- **scripts/stop-valuta-ecosystem.ps1**: teljes leallitas (electron/node/Vite processek + port 3000/8080).
+- **penztar-client/scripts/fix-branch-code.mjs**: one-off SQLite javito script a regebbi SetupWizard-telepitesekhez.
+- **V155 migration**: @Version optimistic locking Customer/DailyBalance/DailySession/AmlReport entitasokon + unique constraint-ek (uq_daily_session_branch_date, uq_transaction_receipt_branch_date).
+- **Auto-migration main.ts-ben**: regebbi SetupWizard (v2.1.3 elotti) telepiteseken VITE_BRANCH_CODE .env-bol SQLite config-ba at-masolas.
+- **docs/LESSONS_LEARNED.md**: 14 lecke 8 kategoriaban (PowerShell, Vite/Dev szerverek, GitHub Actions, JPQL, React/TS, stb.).
+
+### Fixed
+- **Launcher npm.cmd bug** (PR #100): Start-Process -FilePath "npm" Unix shell scriptre nyilt -> %1: nem Win32 alkalmazas. Fix: child powershell.exe, ami megtalalja az npm.cmd-et.
+- **SetupWizard Tovabb gomb levagodik** (PR #101): kartya max-h-[95vh] + content min-h-[520px] + overflow-hidden kombo kivagta a footert. Fix: content overflow-y-auto, footer/header shrink-0.
+- **Penztar-client savePendingTransaction** (PR #97): "SetupWizard nem futott le: branch_code SQLite config hianyzik" hiba - a v2.1.3 elotti SetupWizard nem irta SQLite-ba a branch_code-ot.
+- **RateCreationService NPE** (PR #98, cherry-pick cbe3c819): cr.getCompetitor() null-guard hozzaadva (toCompetitorRateDTO).
+- **PrintTemplateService.valueOf NPE** (PR #98, cherry-pick cbe3c819+7a09acb4): valueOf() -> parseTemplateType() wrapper, null/blank input ValidationException.
+- **RateCategoryService.valueOf** (PR #98): RateCategoryType.valueOf() try-catch -> 404 helyett 500.
+- **CameraConfigPage JSON.parse** (PR #98): try-catch defense korrupt electron config ellen.
+- **ConversionPage div-by-zero** (PR #98): toRate.baseSellRate > 0 guard.
+- **Penztar-client dev default localhost override** (PR #97): TILOS a server_url automatikus localhost:8080-ra iras dev modban. Helyette: VITE_API_URL-t hasznaljuk, fallback https://excvaluta.com/api/v1.
+
+### Removed (deprecate)
+- **scripts/start-all-dev.{cmd,ps1}** (PR #99): legacy dev launcher torolve - Docker PostgreSQL + mvn spring-boot:run + frontend dev - sertette a production-first alaptorvenyt.
+
 ## [2.1.5] - 2026-04-20
 
 ### Added (valos munkakor-adatok + 3+1 program-tipus)
