@@ -85,3 +85,45 @@ cat /var/log/valutavalto/health.log
 |---|---|
 | `/opt/valutavalto/.backup.env` | Nextcloud URL/user/pass, retention, alert email |
 | `/opt/valutavalto/.health.env` | Alert email a health monitorhoz (fuggetlentul) |
+
+
+## Gyors bootstrap - egyetlen parancs
+
+A VPS elso telepitesekor (vagy uj gepre) futtasd:
+
+```bash
+# 1. Klonold a repo-t a VPS-re (ha meg nincs):
+sudo mkdir -p /opt/valutavalto && sudo chown $USER /opt/valutavalto
+cd /opt/valutavalto && git clone https://github.com/kosazoltan/valutavalto-program.git .
+
+# 2. Root-kent futtasd a bootstrap-ot:
+sudo bash /opt/valutavalto/deploy/hetzner/bootstrap-vps.sh
+```
+
+A script vegigmegy a 7 opcionalis lepesen, minden lepesnel Y/N kerdest tesz fel,
+a secret-eket biztonsagosan (echo nelkul) bekeri. Automatikusan generalja a helyben
+generalhato ertekeket (JWT secret, encryption salt/key, DB jelszo).
+
+**Kezzel bekerendo secret-ek (opcionalis — csak ha az adott lepest valasztod):**
+
+| Lepes | Secret | Forras |
+|-------|--------|--------|
+| 5. Tailscale | `TAILSCALE_AUTHKEY` | https://login.tailscale.com/admin/settings/keys |
+| 6. B2 backup | `B2_KEY_ID` + `B2_APP_KEY` | https://secure.backblaze.com/app_keys.htm |
+| 7. Monitoring | `GRAFANA_ADMIN_PASSWORD` | sajat valasztas (min 8 char) |
+| 7. Monitoring | `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` | @BotFather, opcionalis |
+
+**Non-interactive mod** (env var-okkal elore):
+
+```bash
+export TAILSCALE_AUTHKEY=tskey-auth-xxxx
+export B2_KEY_ID=005xxxx B2_APP_KEY=K005xxxxx
+export GRAFANA_ADMIN_PASSWORD="$(openssl rand -base64 24)"
+export TELEGRAM_BOT_TOKEN=123:ABC TELEGRAM_CHAT_ID=-1001234567890
+sudo -E bash /opt/valutavalto/deploy/hetzner/bootstrap-vps.sh
+```
+
+A bootstrap idempotens — ujra es ujra futtathato. Mar telepitett komponenseknel
+ellenorzi a `systemctl is-active` / `docker ps` statust, es skip-el.
+
+Log: `/var/log/valuta-bootstrap.log`
