@@ -948,6 +948,70 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     /**
      * Legrégebbi tranzakció dátuma egy branch-ben.
      */
+    // ============ B2: CASHIER KPI DASHBOARD ============
+
+    /**
+     * B2: Penztaros KPI aggregalas ceg szinten, adott idoszakra.
+     * GROUP BY worker, visszaad:
+     *   [0] workerId (Long)
+     *   [1] workerName (String)
+     *   [2] txCount (long) - osszes tranzakcio (aktiv)
+     *   [3] buyCount (long)
+     *   [4] sellCount (long)
+     *   [5] reversalCount (long) - REVERSAL tipusu tranzakciok szama
+     *   [6] totalHuf (BigDecimal) - BUY+SELL osszeg
+     *   [7] buyHuf (BigDecimal)
+     *   [8] sellHuf (BigDecimal)
+     *   [9] totalFees (BigDecimal)
+     *   [10] customerCount (long) - egyedi ugyfel azonositok szama
+     *
+     * Csak COMPLETED tranzakciok. A REVERSED statusz sorok nem szamolodnak.
+     */
+    @Query("SELECT w.id, w.name, " +
+           "COUNT(t), " +
+           "SUM(CASE WHEN t.transactionType = hu.puzzleir.valuta.entity.TransactionType.BUY THEN 1 ELSE 0 END), " +
+           "SUM(CASE WHEN t.transactionType = hu.puzzleir.valuta.entity.TransactionType.SELL THEN 1 ELSE 0 END), " +
+           "SUM(CASE WHEN t.transactionType = hu.puzzleir.valuta.entity.TransactionType.REVERSAL THEN 1 ELSE 0 END), " +
+           "COALESCE(SUM(CASE WHEN t.transactionType IN (hu.puzzleir.valuta.entity.TransactionType.BUY, hu.puzzleir.valuta.entity.TransactionType.SELL) THEN t.hufAmount ELSE 0 END), 0), " +
+           "COALESCE(SUM(CASE WHEN t.transactionType = hu.puzzleir.valuta.entity.TransactionType.BUY THEN t.hufAmount ELSE 0 END), 0), " +
+           "COALESCE(SUM(CASE WHEN t.transactionType = hu.puzzleir.valuta.entity.TransactionType.SELL THEN t.hufAmount ELSE 0 END), 0), " +
+           "COALESCE(SUM(t.handlingFee), 0), " +
+           "COUNT(DISTINCT t.customerId) " +
+           "FROM Transaction t JOIN t.worker w " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
+           "AND t.status = 'COMPLETED' " +
+           "GROUP BY w.id, w.name " +
+           "ORDER BY w.name ASC")
+    List<Object[]> cashierKpiByCompanyAndDateRange(
+        @Param("companyId") UUID companyId,
+        @Param("dateFrom") LocalDate dateFrom,
+        @Param("dateTo") LocalDate dateTo
+    );
+
+    /**
+     * B2: Ceges osszesito penztaros KPI-khez (felette a cards).
+     * Visszaad: [txCount, buyCount, sellCount, reversalCount, totalHuf, totalFees, workerCount, customerCount]
+     */
+    @Query("SELECT " +
+           "COUNT(t), " +
+           "SUM(CASE WHEN t.transactionType = hu.puzzleir.valuta.entity.TransactionType.BUY THEN 1 ELSE 0 END), " +
+           "SUM(CASE WHEN t.transactionType = hu.puzzleir.valuta.entity.TransactionType.SELL THEN 1 ELSE 0 END), " +
+           "SUM(CASE WHEN t.transactionType = hu.puzzleir.valuta.entity.TransactionType.REVERSAL THEN 1 ELSE 0 END), " +
+           "COALESCE(SUM(CASE WHEN t.transactionType IN (hu.puzzleir.valuta.entity.TransactionType.BUY, hu.puzzleir.valuta.entity.TransactionType.SELL) THEN t.hufAmount ELSE 0 END), 0), " +
+           "COALESCE(SUM(t.handlingFee), 0), " +
+           "COUNT(DISTINCT t.worker.id), " +
+           "COUNT(DISTINCT t.customerId) " +
+           "FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
+           "AND t.status = 'COMPLETED'")
+    Object[] cashierKpiCompanyTotals(
+        @Param("companyId") UUID companyId,
+        @Param("dateFrom") LocalDate dateFrom,
+        @Param("dateTo") LocalDate dateTo
+    );
+
     @Query("SELECT MIN(t.transactionDate) FROM Transaction t WHERE t.branch.id = :branchId")
     LocalDate findEarliestDateByBranchId(@Param("branchId") UUID branchId);
 

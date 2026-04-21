@@ -20,6 +20,7 @@ const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const CentralVaultDashboard = lazy(() => import('./pages/foertektar/CentralVaultDashboard'))
 const RateMasterWorkflowPage = lazy(() => import('./pages/rate-management/RateMasterWorkflowPage'))
 const MnbReportsPage = lazy(() => import('./pages/mnb/MnbReportsPage'))
+const CashierKpiPage = lazy(() => import('./pages/statistics/CashierKpiPage'))
 const TransactionPage = lazy(() => import('./pages/transactions/TransactionPage'))
 const TransactionListPage = lazy(() => import('./pages/transactions/TransactionListPage'))
 const ConversionPage = lazy(() => import('./pages/transactions/ConversionPage'))
@@ -329,6 +330,7 @@ export default function App() {
             <Route path="/foertektar" element={<CentralVaultDashboard />} />
             <Route path="/rate-management/workflow" element={<RateMasterWorkflowPage />} />
             <Route path="/mnb/reports" element={<MnbReportsPage />} />
+            <Route path="/statistics/cashier-kpi" element={<CashierKpiPage />} />
           
           {/* Cashier (penztaros) routes */}
           <Route path="/cashier" element={<CashierMainMenu />} />

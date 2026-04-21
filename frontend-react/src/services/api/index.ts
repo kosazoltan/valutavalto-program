@@ -12,3 +12,6 @@ export type { PublicWorker, PublicBranch } from "./public"
 
 export { transitApi } from "./transit"
 export type { TransitItem } from "./transit"
+
+export { cashierKpiApi } from './cashierKpi'
+export type { CashierKpiRow, CashierKpiSummary } from './cashierKpi'

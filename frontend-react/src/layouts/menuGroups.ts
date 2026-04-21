@@ -34,6 +34,7 @@ export const menuGroups: MenuGroup[] = [
       { path: "/rates/creation", label: "Árfolyam készítés", icon: PlusCircle },
       { path: "/rate-management/workflow", label: "Árfolyam publikálás", icon: Send },
       { path: "/mnb/reports", label: "MNB jelentések", icon: FileText },
+      { path: "/statistics/cashier-kpi", label: "Pénztáros KPI", icon: Users },
       { path: "/inventory", label: "Országos készlet", icon: Wallet },
       { path: "/stock-snapshot", label: "Készlet-snapshot", icon: FileText },
     ],

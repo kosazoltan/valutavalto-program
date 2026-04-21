@@ -1,0 +1,320 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+    Users,
+    TrendingUp,
+    TrendingDown,
+    RefreshCw,
+    AlertTriangle,
+    Award,
+    Calendar,
+    DollarSign,
+} from 'lucide-react'
+import { cashierKpiApi, type CashierKpiSummary } from '../../services/api/cashierKpi'
+import { logger } from '../../utils/logger'
+
+type QuickRange = 'today' | 'week' | 'month' | 'custom'
+
+function formatInt(n: number | undefined | null): string {
+    if (n == null) return '0'
+    return Math.round(n).toLocaleString('hu-HU')
+}
+
+function formatHuf(n: number | undefined | null): string {
+    return `${formatInt(n)} Ft`
+}
+
+function formatPct(n: number | undefined | null): string {
+    if (n == null) return '0%'
+    return `${Number(n).toFixed(1)}%`
+}
+
+function isoDate(d: Date): string {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+}
+
+function rangeFor(quick: QuickRange): { from: string; to: string } {
+    const today = new Date()
+    const to = isoDate(today)
+    if (quick === 'today') return { from: to, to }
+    if (quick === 'week') {
+        const w = new Date(today)
+        w.setDate(w.getDate() - 6)
+        return { from: isoDate(w), to }
+    }
+    if (quick === 'month') {
+        const first = new Date(today.getFullYear(), today.getMonth(), 1)
+        return { from: isoDate(first), to }
+    }
+    return { from: to, to }
+}
+
+export default function CashierKpiPage() {
+    const [quick, setQuick] = useState<QuickRange>('month')
+    const initialRange = useMemo(() => rangeFor('month'), [])
+    const [dateFrom, setDateFrom] = useState<string>(initialRange.from)
+    const [dateTo, setDateTo] = useState<string>(initialRange.to)
+    const [data, setData] = useState<CashierKpiSummary | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [err, setErr] = useState<string | null>(null)
+    const [sortBy, setSortBy] = useState<'name' | 'totalHuf' | 'txCount' | 'reversalRatio'>('totalHuf')
+
+    const load = useCallback(async () => {
+        setLoading(true)
+        setErr(null)
+        try {
+            const res = await cashierKpiApi.get(dateFrom, dateTo)
+            setData(res)
+        } catch (e) {
+            logger.error('CashierKpi', 'load err', e)
+            setErr(e instanceof Error ? e.message : String(e))
+        } finally {
+            setLoading(false)
+        }
+    }, [dateFrom, dateTo])
+
+    useEffect(() => {
+        void load()
+    }, [load])
+
+    const handleQuick = (q: QuickRange) => {
+        setQuick(q)
+        if (q !== 'custom') {
+            const r = rangeFor(q)
+            setDateFrom(r.from)
+            setDateTo(r.to)
+        }
+    }
+
+    const sortedRows = useMemo(() => {
+        if (!data) return []
+        const rows = [...data.rows]
+        if (sortBy === 'name') rows.sort((a, b) => a.workerName.localeCompare(b.workerName, 'hu'))
+        else if (sortBy === 'totalHuf') rows.sort((a, b) => b.totalHuf - a.totalHuf)
+        else if (sortBy === 'txCount') rows.sort((a, b) => b.txCount - a.txCount)
+        else if (sortBy === 'reversalRatio') rows.sort((a, b) => b.reversalRatio - a.reversalRatio)
+        return rows
+    }, [data, sortBy])
+
+    const topWorker = sortedRows[0]
+
+    return (
+        <div className="p-6 space-y-6">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-secondary-900 flex items-center gap-2">
+                        <Users className="text-primary-600" size={28} />
+                        Penztaros KPI Dashboard
+                    </h1>
+                    <p className="text-sm text-secondary-500 mt-1">
+                        Forgalom, tranzakcioszam es sztorno arany penztarosonkent.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    onClick={() => void load()}
+                    disabled={loading}
+                    className="form-button"
+                >
+                    <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                    <span>Frissit</span>
+                </button>
+            </div>
+
+            {/* Date range selector */}
+            <div className="form-panel p-4 flex flex-wrap items-end gap-3">
+                <div className="flex gap-1">
+                    {(['today', 'week', 'month', 'custom'] as QuickRange[]).map(q => (
+                        <button
+                            key={q}
+                            type="button"
+                            onClick={() => handleQuick(q)}
+                            className={`px-3 py-2 text-xs font-semibold rounded border transition-all ${
+                                quick === q
+                                    ? 'bg-primary-600 text-white border-primary-700'
+                                    : 'bg-white text-secondary-700 border-secondary-200 hover:border-primary-400'
+                            }`}
+                        >
+                            {q === 'today' ? 'Ma' : q === 'week' ? 'Utolso 7 nap' : q === 'month' ? 'Ez a honap' : 'Egyeni'}
+                        </button>
+                    ))}
+                </div>
+                <div className="flex items-center gap-2 ml-2">
+                    <Calendar size={16} className="text-secondary-400" />
+                    <input
+                        type="date"
+                        className="form-input h-9 text-xs"
+                        value={dateFrom}
+                        onChange={e => {
+                            setDateFrom(e.target.value)
+                            setQuick('custom')
+                        }}
+                    />
+                    <span className="text-secondary-400 text-xs">-</span>
+                    <input
+                        type="date"
+                        className="form-input h-9 text-xs"
+                        value={dateTo}
+                        onChange={e => {
+                            setDateTo(e.target.value)
+                            setQuick('custom')
+                        }}
+                    />
+                </div>
+            </div>
+
+            {/* Error */}
+            {err && (
+                <div className="p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 flex items-center gap-2">
+                    <AlertTriangle size={18} />
+                    <span className="text-sm">{err}</span>
+                </div>
+            )}
+
+            {/* Summary cards */}
+            {data && !loading && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <KpiCard
+                        icon={<DollarSign className="text-blue-500" size={20} />}
+                        label="Osszforgalom"
+                        value={formatHuf(data.totalHuf)}
+                        sub={`${formatInt(data.totalTxCount)} tranzakcio`}
+                    />
+                    <KpiCard
+                        icon={<TrendingUp className="text-green-500" size={20} />}
+                        label="Vetel / Eladas"
+                        value={`${formatInt(data.totalBuyCount)} / ${formatInt(data.totalSellCount)}`}
+                        sub="aktiv tranzakciok"
+                    />
+                    <KpiCard
+                        icon={<TrendingDown className="text-orange-500" size={20} />}
+                        label="Sztorno arany"
+                        value={formatPct(data.reversalRatio)}
+                        sub={`${formatInt(data.totalReversalCount)} db`}
+                        danger={data.reversalRatio > 5}
+                    />
+                    <KpiCard
+                        icon={<Users className="text-purple-500" size={20} />}
+                        label="Aktiv penztarosok"
+                        value={formatInt(data.activeWorkerCount)}
+                        sub={`${formatInt(data.totalCustomerCount)} egyedi ugyfel`}
+                    />
+                </div>
+            )}
+
+            {/* Top performer highlight */}
+            {topWorker && !loading && (
+                <div className="form-panel p-4 flex items-center gap-4 bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200">
+                    <Award className="text-yellow-600" size={32} />
+                    <div>
+                        <div className="text-xs text-secondary-500 uppercase tracking-wide">Legnagyobb forgalom</div>
+                        <div className="text-xl font-bold text-secondary-900">{topWorker.workerName}</div>
+                        <div className="text-sm text-secondary-600">
+                            {formatHuf(topWorker.totalHuf)} - {formatInt(topWorker.txCount)} tranzakcio - atlag {formatHuf(topWorker.avgTxHuf)}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Worker table */}
+            <div className="form-panel">
+                <div className="px-4 py-3 border-b border-secondary-200 flex items-center justify-between">
+                    <h2 className="font-semibold text-secondary-900">Penztarosok bontasa</h2>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-secondary-500">Rendezes:</span>
+                        <select
+                            className="form-input h-8 text-xs w-40"
+                            value={sortBy}
+                            onChange={e => setSortBy(e.target.value as typeof sortBy)}
+                        >
+                            <option value="totalHuf">Forgalom (csokkeno)</option>
+                            <option value="txCount">Tranzakcio szam</option>
+                            <option value="reversalRatio">Sztorno %</option>
+                            <option value="name">Nev</option>
+                        </select>
+                    </div>
+                </div>
+                <table className="data-grid w-full">
+                    <thead>
+                        <tr>
+                            <th>Penztaros</th>
+                            <th className="text-right">Tranzakcio</th>
+                            <th className="text-right">Vetel</th>
+                            <th className="text-right">Eladas</th>
+                            <th className="text-right">Sztorno</th>
+                            <th className="text-right">Sztorno %</th>
+                            <th className="text-right">Forgalom</th>
+                            <th className="text-right">Atlag tx</th>
+                            <th className="text-right">Kezelesi dij</th>
+                            <th className="text-right">Ugyfel</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {loading && (
+                            <tr>
+                                <td colSpan={10} className="text-center text-sm text-secondary-400 py-8">
+                                    Betoltes...
+                                </td>
+                            </tr>
+                        )}
+                        {!loading && sortedRows.length === 0 && (
+                            <tr>
+                                <td colSpan={10} className="text-center text-sm text-secondary-400 py-8">
+                                    Nincs tranzakcio ebben az idoszakban.
+                                </td>
+                            </tr>
+                        )}
+                        {!loading &&
+                            sortedRows.map(r => (
+                                <tr key={r.workerId}>
+                                    <td className="font-semibold">{r.workerName}</td>
+                                    <td className="text-right font-mono">{formatInt(r.txCount)}</td>
+                                    <td className="text-right font-mono text-blue-700">{formatInt(r.buyCount)}</td>
+                                    <td className="text-right font-mono text-orange-700">{formatInt(r.sellCount)}</td>
+                                    <td className="text-right font-mono text-red-700">{formatInt(r.reversalCount)}</td>
+                                    <td className={`text-right font-mono text-xs ${r.reversalRatio > 5 ? 'text-red-600 font-bold' : 'text-secondary-600'}`}>
+                                        {formatPct(r.reversalRatio)}
+                                    </td>
+                                    <td className="text-right font-mono font-semibold">{formatHuf(r.totalHuf)}</td>
+                                    <td className="text-right font-mono text-xs text-secondary-600">{formatHuf(r.avgTxHuf)}</td>
+                                    <td className="text-right font-mono text-xs">{formatHuf(r.totalFees)}</td>
+                                    <td className="text-right font-mono text-xs">{formatInt(r.customerCount)}</td>
+                                </tr>
+                            ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    )
+}
+
+function KpiCard({
+    icon,
+    label,
+    value,
+    sub,
+    danger,
+}: {
+    icon: React.ReactNode
+    label: string
+    value: string
+    sub?: string
+    danger?: boolean
+}) {
+    return (
+        <div
+            className={`p-4 rounded-lg border bg-white shadow-sm ${
+                danger ? 'border-red-300' : 'border-secondary-200'
+            }`}
+        >
+            <div className="flex items-center gap-2 mb-2">
+                {icon}
+                <span className="text-xs font-medium text-secondary-500 uppercase tracking-wide">{label}</span>
+            </div>
+            <div className={`text-2xl font-bold ${danger ? 'text-red-600' : 'text-secondary-900'}`}>{value}</div>
+            {sub && <div className="text-xs text-secondary-500 mt-1">{sub}</div>}
+        </div>
+    )
+}
