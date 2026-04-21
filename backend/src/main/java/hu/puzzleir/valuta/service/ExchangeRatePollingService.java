@@ -8,6 +8,7 @@ import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.repository.ExchangeRateRepository;
 import hu.puzzleir.valuta.repository.ExchangeRateSourceRepository;
 import hu.puzzleir.valuta.repository.SystemParameterRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -538,8 +539,9 @@ public class ExchangeRatePollingService {
     public void snapshotDailyRates(UUID branchId, LocalDate date) {
         log.info("Napi árfolyam snapshot indítása: fiók={}, dátum={}", branchId, date);
 
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         List<ExchangeRate> activeRates = exchangeRateRepository
-            .findActiveByDateAndBranch(date, branchId);
+            .findActiveByDateAndBranch(companyId, date, branchId);
 
         if (activeRates.isEmpty()) {
             log.warn("Nincs aktív árfolyam snapshot-hoz: fiók={}, dátum={}", branchId, date);

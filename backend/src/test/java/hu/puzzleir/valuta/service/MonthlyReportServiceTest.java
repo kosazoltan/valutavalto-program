@@ -68,7 +68,7 @@ class MonthlyReportServiceTest {
         when(transactionRepository.findActiveByBranchAndDateRange(eq(BRANCH_ID), any(), any()))
                 .thenReturn(List.of());
         when(mnbExchangeRateService.getRatesForDate(any())).thenReturn(Map.of());
-        when(exchangeRateRepository.findActiveByDateAndBranch(any(), eq(BRANCH_ID)))
+        when(exchangeRateRepository.findActiveByDateAndBranch(any(), any(), eq(BRANCH_ID)))
                 .thenReturn(List.of());
         when(subledgerSnapshotRepository.findByBranchIdAndSnapshotDateAndSubledgerTypeAndCurrencyCode(
                 any(), any(), any(), any())).thenReturn(Optional.empty());
@@ -98,7 +98,7 @@ class MonthlyReportServiceTest {
         when(transactionRepository.findActiveByBranchAndDateRange(eq(BRANCH_ID), any(), any()))
                 .thenReturn(List.of());
         when(mnbExchangeRateService.getRatesForDate(any())).thenReturn(Map.of());
-        when(exchangeRateRepository.findActiveByDateAndBranch(any(), eq(BRANCH_ID)))
+        when(exchangeRateRepository.findActiveByDateAndBranch(any(), any(), eq(BRANCH_ID)))
                 .thenReturn(List.of());
         when(transferRepository.sumTransfersInByPeriod(any(), any(), any())).thenReturn(List.of());
         when(transferRepository.sumTransfersOutByPeriod(any(), any(), any())).thenReturn(List.of());

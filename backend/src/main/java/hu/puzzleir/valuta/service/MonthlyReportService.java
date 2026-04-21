@@ -70,6 +70,7 @@ public class MonthlyReportService {
 
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem talalhato: " + branchId));
+        UUID companyId = branch.getCompany() != null ? branch.getCompany().getId() : null;
 
         // Currency name map
         Map<String, String> currencyNameMap = new HashMap<>();
@@ -111,7 +112,7 @@ public class MonthlyReportService {
         Map<String, MnbExchangeRateCache> mnbRates = mnbExchangeRateService.getRatesForDate(lastBusinessDay);
 
         // Arfolyam — atlagos arfolyam szamitashoz a napi rate-ek
-        List<ExchangeRate> lastDayRates = exchangeRateRepository.findActiveByDateAndBranch(monthEnd, branchId);
+        List<ExchangeRate> lastDayRates = exchangeRateRepository.findActiveByDateAndBranch(companyId, monthEnd, branchId);
         Map<String, ExchangeRate> rateMap = new HashMap<>();
         for (ExchangeRate er : lastDayRates) {
             if (er.getCurrency() != null) {

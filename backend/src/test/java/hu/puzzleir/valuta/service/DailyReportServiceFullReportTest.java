@@ -41,15 +41,19 @@ class DailyReportServiceFullReportTest {
     private DailyReportService service;
 
     private static final UUID BRANCH_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final UUID COMPANY_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
     private static final LocalDate DATE = LocalDate.of(2026, 4, 4);
     private Branch branch;
 
     @BeforeEach
     void setUp() {
+        Company company = new Company();
+        company.setId(COMPANY_ID);
         branch = new Branch();
         branch.setId(BRANCH_ID);
         branch.setCode("101");
         branch.setName("Test Iroda");
+        branch.setCompany(company);
     }
 
     @Test
@@ -68,7 +72,7 @@ class DailyReportServiceFullReportTest {
         eurBal.setPurchases(new BigDecimal("100"));
         eurBal.setSales(new BigDecimal("50"));
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(BRANCH_ID, DATE)).thenReturn(List.of(eurBal));
-        when(exchangeRateRepository.findActiveByDateAndBranch(DATE, BRANCH_ID)).thenReturn(List.of());
+        when(exchangeRateRepository.findActiveByDateAndBranch(any(), eq(DATE), eq(BRANCH_ID))).thenReturn(List.of());
         when(transactionRepository.findActiveByBranchAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
         when(denominationBalanceRepository.findByBranchIdAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
         stubSubledger();
@@ -100,7 +104,7 @@ class DailyReportServiceFullReportTest {
         er.setCurrency(eur);
         er.setBaseBuyRate(new BigDecimal("395.50"));
         er.setBaseSellRate(new BigDecimal("401.20"));
-        when(exchangeRateRepository.findActiveByDateAndBranch(DATE, BRANCH_ID)).thenReturn(List.of(er));
+        when(exchangeRateRepository.findActiveByDateAndBranch(any(), eq(DATE), eq(BRANCH_ID))).thenReturn(List.of(er));
         when(transactionRepository.findActiveByBranchAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
         when(denominationBalanceRepository.findByBranchIdAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
         stubSubledger();
@@ -120,7 +124,7 @@ class DailyReportServiceFullReportTest {
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
         when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of());
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(BRANCH_ID, DATE)).thenReturn(List.of());
-        when(exchangeRateRepository.findActiveByDateAndBranch(DATE, BRANCH_ID)).thenReturn(List.of());
+        when(exchangeRateRepository.findActiveByDateAndBranch(any(), eq(DATE), eq(BRANCH_ID))).thenReturn(List.of());
         when(transactionRepository.findActiveByBranchAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
 
         // Denomination setup
@@ -158,7 +162,7 @@ class DailyReportServiceFullReportTest {
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
         when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of());
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(BRANCH_ID, DATE)).thenReturn(List.of());
-        when(exchangeRateRepository.findActiveByDateAndBranch(DATE, BRANCH_ID)).thenReturn(List.of());
+        when(exchangeRateRepository.findActiveByDateAndBranch(any(), eq(DATE), eq(BRANCH_ID))).thenReturn(List.of());
         when(denominationBalanceRepository.findByBranchIdAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
         stubSubledger();
 
@@ -185,7 +189,7 @@ class DailyReportServiceFullReportTest {
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
         when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of());
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(BRANCH_ID, DATE)).thenReturn(List.of());
-        when(exchangeRateRepository.findActiveByDateAndBranch(DATE, BRANCH_ID)).thenReturn(List.of());
+        when(exchangeRateRepository.findActiveByDateAndBranch(any(), eq(DATE), eq(BRANCH_ID))).thenReturn(List.of());
         when(transactionRepository.findActiveByBranchAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
         when(denominationBalanceRepository.findByBranchIdAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
 
@@ -221,7 +225,7 @@ class DailyReportServiceFullReportTest {
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
         when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of());
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(BRANCH_ID, DATE)).thenReturn(List.of());
-        when(exchangeRateRepository.findActiveByDateAndBranch(DATE, BRANCH_ID)).thenReturn(List.of());
+        when(exchangeRateRepository.findActiveByDateAndBranch(any(), eq(DATE), eq(BRANCH_ID))).thenReturn(List.of());
         when(denominationBalanceRepository.findByBranchIdAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
         stubSubledger();
 
@@ -267,7 +271,7 @@ class DailyReportServiceFullReportTest {
         er.setCurrency(eur);
         er.setBaseBuyRate(new BigDecimal("395.50"));
         er.setBaseSellRate(new BigDecimal("401.20"));
-        when(exchangeRateRepository.findActiveByDateAndBranch(DATE, BRANCH_ID)).thenReturn(List.of(er));
+        when(exchangeRateRepository.findActiveByDateAndBranch(any(), eq(DATE), eq(BRANCH_ID))).thenReturn(List.of(er));
         when(denominationBalanceRepository.findByBranchIdAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
         stubSubledger();
 
@@ -308,7 +312,7 @@ class DailyReportServiceFullReportTest {
         er.setCurrency(eur);
         er.setBaseBuyRate(new BigDecimal("394.00"));
         er.setBaseSellRate(new BigDecimal("402.00"));
-        when(exchangeRateRepository.findActiveByDateAndBranch(DATE, BRANCH_ID)).thenReturn(List.of(er));
+        when(exchangeRateRepository.findActiveByDateAndBranch(any(), eq(DATE), eq(BRANCH_ID))).thenReturn(List.of(er));
         when(transactionRepository.findActiveByBranchAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
         when(denominationBalanceRepository.findByBranchIdAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
         stubSubledger();
