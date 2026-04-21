@@ -11,6 +11,7 @@ import hu.puzzleir.valuta.dto.nav.NavSubmissionResult;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.NavClosingRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -264,7 +265,8 @@ public class NavClosingService {
     public Page<NavClosing> listClosings(UUID branchId, NavClosingType closingType,
                                           NavClosingStatus status, LocalDate dateFrom,
                                           LocalDate dateTo, Pageable pageable) {
-        return navClosingRepository.findWithFilters(branchId, closingType, status, dateFrom, dateTo, pageable);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return navClosingRepository.findWithFilters(companyId, branchId, closingType, status, dateFrom, dateTo, pageable);
     }
 
     // ============ BELSŐ SEGÉDOSZTÁLY ============

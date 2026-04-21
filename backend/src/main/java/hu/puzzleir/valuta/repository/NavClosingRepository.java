@@ -28,9 +28,24 @@ public interface NavClosingRepository extends JpaRepository<NavClosing, UUID> {
         UUID branchId, LocalDate closingDate, NavClosingType closingType);
 
     /**
-     * Zárások státusz alapján
+     * Zárások státusz alapján (GLOBALIS - minden ceg).
+     *
+     * <p><b>FIGYELEM:</b> multi-tenant kontextusban NE hasznald! Cross-tenant leak.
+     * Hasznald a {@link #findByBranchCompanyIdAndStatus(UUID, NavClosingStatus)}-t.</p>
      */
+    @Deprecated(since = "2026-04-21", forRemoval = false)
     List<NavClosing> findByStatus(NavClosingStatus status);
+
+    /**
+     * Zárások státusz alapján CEG-en BELUL. Multi-tenant-safe.
+     */
+    @Query("SELECT nc FROM NavClosing nc " +
+           "WHERE nc.branch.company.id = :companyId " +
+           "AND nc.status = :status")
+    List<NavClosing> findByBranchCompanyIdAndStatus(
+        @Param("companyId") UUID companyId,
+        @Param("status") NavClosingStatus status
+    );
 
     /**
      * Zárások iroda és időszak szerint
@@ -38,16 +53,18 @@ public interface NavClosingRepository extends JpaRepository<NavClosing, UUID> {
     List<NavClosing> findByBranchIdAndClosingDateBetween(UUID branchId, LocalDate from, LocalDate to);
 
     /**
-     * Zárások szűrése lapozással
+     * Zárások szűrése lapozással — multi-tenant-safe (companyId kotelezo).
      */
     @Query("SELECT nc FROM NavClosing nc " +
-           "WHERE (:branchId IS NULL OR nc.branch.id = :branchId) " +
+           "WHERE nc.branch.company.id = :companyId " +
+           "AND (:branchId IS NULL OR nc.branch.id = :branchId) " +
            "AND (:closingType IS NULL OR nc.closingType = :closingType) " +
            "AND (:status IS NULL OR nc.status = :status) " +
            "AND (:dateFrom IS NULL OR nc.closingDate >= :dateFrom) " +
            "AND (:dateTo IS NULL OR nc.closingDate <= :dateTo) " +
            "ORDER BY nc.closingDate DESC")
     Page<NavClosing> findWithFilters(
+        @Param("companyId") UUID companyId,
         @Param("branchId") UUID branchId,
         @Param("closingType") NavClosingType closingType,
         @Param("status") NavClosingStatus status,

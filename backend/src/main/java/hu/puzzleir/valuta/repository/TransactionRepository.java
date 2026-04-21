@@ -38,7 +38,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("companyId") UUID companyId);
 
     /**
-     * Napi tranzakciók egy fiókhoz (JOIN FETCH a lazy proxy hiba elkerüléséhez)
+     * Napi tranzakciók egy fiókhoz (JOIN FETCH a lazy proxy hiba elkerüléséhez).
+     *
+     * <p>MEGJEGYZES: a branch.id uniq garantalva van, es branch->company FK biztositja az
+     * implicit tenant-elvalasztast, ezert nincs explicit companyId szures.</p>
      */
     @Query("SELECT t FROM Transaction t " +
            "JOIN FETCH t.branch " +
@@ -50,6 +53,26 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "AND t.transactionDate = :date " +
            "ORDER BY t.transactionTime DESC")
     List<Transaction> findByBranchAndDate(
+        @Param("branchId") UUID branchId,
+        @Param("date") LocalDate date
+    );
+
+    /**
+     * Napi tranzakciók egy fiókhoz CEG-en BELUL (explicit multi-tenant szures).
+     * Akkor hasznald, amikor a branchId a felhasznalotol jon (IDOR veszely).
+     */
+    @Query("SELECT t FROM Transaction t " +
+           "JOIN FETCH t.branch " +
+           "JOIN FETCH t.company " +
+           "LEFT JOIN FETCH t.currency " +
+           "LEFT JOIN FETCH t.worker " +
+           "LEFT JOIN FETCH t.originalTransaction " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.branch.id = :branchId " +
+           "AND t.transactionDate = :date " +
+           "ORDER BY t.transactionTime DESC")
+    List<Transaction> findByCompanyIdAndBranchAndDate(
+        @Param("companyId") UUID companyId,
         @Param("branchId") UUID branchId,
         @Param("date") LocalDate date
     );

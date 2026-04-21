@@ -14,29 +14,66 @@ import java.util.UUID;
 public interface BranchRepository extends JpaRepository<Branch, UUID> {
 
     /**
-     * Keresés kód alapján
+     * Keresés kód alapján (GLOBALIS - minden ceg).
+     *
+     * <p><b>FIGYELEM: multi-tenant kontextusban NE hasznald!</b>
+     * Cross-tenant adat leak veszelye. Hasznald a {@link #findByCompanyIdAndCode(UUID, String)}-t.
+     *
+     * <p>Ez a metodus CSAK pre-login wizard / public endpoint kontextusban hasznalhato,
+     * ahol nincs bejelentkezett felhasznalo es a branch-code ceg-globalis unique.</p>
      */
+    @Deprecated(since = "2026-04-21", forRemoval = false)
     Optional<Branch> findByCode(String code);
 
     /**
-     * Ellenőrzi, hogy létezik-e adott kóddal fiók
+     * Ellenőrzi, hogy létezik-e adott kóddal fiók (GLOBALIS - minden ceg).
+     *
+     * <p><b>FIGYELEM: multi-tenant kontextusban NE hasznald!</b>
+     * Hasznald a {@link #existsByCompanyIdAndCode(UUID, String)}-t.</p>
      */
+    @Deprecated(since = "2026-04-21", forRemoval = false)
     boolean existsByCode(String code);
 
     /**
-     * Összes aktív fiók lekérdezése
+     * Ellenőrzi, hogy létezik-e adott kóddal fiók CEG-en BELUL.
+     * Multi-tenant-safe validalashoz.
      */
+    boolean existsByCompanyIdAndCode(UUID companyId, String code);
+
+    /**
+     * Összes aktív fiók lekérdezése (GLOBALIS - minden ceg).
+     *
+     * <p><b>FIGYELEM:</b> multi-tenant kontextusban NE hasznald!
+     * Hasznald a {@link #findByCompanyIdAndIsActiveTrue(UUID)}-t.</p>
+     */
+    @Deprecated(since = "2026-04-21", forRemoval = false)
     List<Branch> findByIsActiveTrue();
 
     /**
-     * Fiókok típus szerint
+     * Fiókok típus szerint (GLOBALIS).
+     *
+     * <p><b>FIGYELEM:</b> multi-tenant kontextusban NE hasznald!
+     * Hasznald a {@link #findByCompanyIdAndBranchTypeCode(UUID, String)}-t.</p>
      */
+    @Deprecated(since = "2026-04-21", forRemoval = false)
     @Query("SELECT b FROM Branch b WHERE b.branchType.code = :typeCode")
     List<Branch> findByBranchTypeCode(@Param("typeCode") String typeCode);
 
     /**
-     * Fiókok státusz szerint
+     * Fiókok típus szerint CEG-en BELUL. Multi-tenant-safe.
      */
+    @Query("SELECT b FROM Branch b WHERE b.company.id = :companyId AND b.branchType.code = :typeCode")
+    List<Branch> findByCompanyIdAndBranchTypeCode(
+        @Param("companyId") UUID companyId,
+        @Param("typeCode") String typeCode
+    );
+
+    /**
+     * Fiókok státusz szerint (GLOBALIS).
+     *
+     * <p><b>FIGYELEM:</b> multi-tenant kontextusban NE hasznald!</p>
+     */
+    @Deprecated(since = "2026-04-21", forRemoval = false)
     @Query("SELECT b FROM Branch b WHERE b.branchStatus.code = :statusCode")
     List<Branch> findByBranchStatusCode(@Param("statusCode") String statusCode);
 
@@ -47,23 +84,57 @@ public interface BranchRepository extends JpaRepository<Branch, UUID> {
     List<Branch> findByParentBranchId(@Param("parentId") UUID parentId);
 
     /**
-     * Gyökér fiókok (nincs szülő)
+     * Gyökér fiókok (nincs szülő) — GLOBALIS.
+     *
+     * <p><b>FIGYELEM:</b> multi-tenant kontextusban NE hasznald!
+     * Hasznald a {@link #findRootBranchesByCompanyId(UUID)}-t.</p>
      */
+    @Deprecated(since = "2026-04-21", forRemoval = false)
     @Query("SELECT b FROM Branch b WHERE b.parentBranch IS NULL")
     List<Branch> findRootBranches();
 
     /**
-     * Keresés név vagy kód szerint (partial match)
+     * Gyökér fiókok CEG-en BELUL. Multi-tenant-safe.
      */
+    @Query("SELECT b FROM Branch b WHERE b.company.id = :companyId AND b.parentBranch IS NULL")
+    List<Branch> findRootBranchesByCompanyId(@Param("companyId") UUID companyId);
+
+    /**
+     * Keresés név vagy kód szerint (partial match) — GLOBALIS.
+     *
+     * <p><b>FIGYELEM:</b> multi-tenant kontextusban NE hasznald!
+     * Hasznald a {@link #searchByCompanyIdAndNameOrCode(UUID, String)}-t.</p>
+     */
+    @Deprecated(since = "2026-04-21", forRemoval = false)
     @Query("SELECT b FROM Branch b WHERE " +
            "LOWER(b.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "LOWER(b.code) LIKE LOWER(CONCAT('%', :search, '%'))")
     List<Branch> searchByNameOrCode(@Param("search") String search);
 
     /**
-     * Fiókok város szerint
+     * Keresés név vagy kód szerint CEG-en BELUL. Multi-tenant-safe.
      */
+    @Query("SELECT b FROM Branch b WHERE b.company.id = :companyId AND (" +
+           "LOWER(b.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(b.code) LIKE LOWER(CONCAT('%', :search, '%')))")
+    List<Branch> searchByCompanyIdAndNameOrCode(
+        @Param("companyId") UUID companyId,
+        @Param("search") String search
+    );
+
+    /**
+     * Fiókok város szerint (GLOBALIS).
+     *
+     * <p><b>FIGYELEM:</b> multi-tenant kontextusban NE hasznald!
+     * Hasznald a {@link #findByCompanyIdAndCity(UUID, String)}-t.</p>
+     */
+    @Deprecated(since = "2026-04-21", forRemoval = false)
     List<Branch> findByCity(String city);
+
+    /**
+     * Fiókok város szerint CEG-en BELUL. Multi-tenant-safe.
+     */
+    List<Branch> findByCompanyIdAndCity(UUID companyId, String city);
 
     /**
      * Fiókok cégen belül
@@ -106,9 +177,18 @@ public interface BranchRepository extends JpaRepository<Branch, UUID> {
     List<Branch> findAllDescendants(@Param("branchId") UUID branchId);
 
     /**
-     * Fiókok értéktári terület szerint (vault_territory_id)
+     * Fiókok értéktári terület szerint — GLOBALIS.
+     *
+     * <p><b>FIGYELEM:</b> multi-tenant kontextusban NE hasznald!
+     * Hasznald a {@link #findByCompanyIdAndVaultTerritoryId(UUID, Integer)}-t.</p>
      */
+    @Deprecated(since = "2026-04-21", forRemoval = false)
     List<Branch> findByVaultTerritoryId(Integer vaultTerritoryId);
+
+    /**
+     * Fiókok értéktári terület szerint CEG-en BELUL. Multi-tenant-safe.
+     */
+    List<Branch> findByCompanyIdAndVaultTerritoryId(UUID companyId, Integer vaultTerritoryId);
 
     /**
      * Rekurzív lekérdezés: teljes útvonal a gyökérig
