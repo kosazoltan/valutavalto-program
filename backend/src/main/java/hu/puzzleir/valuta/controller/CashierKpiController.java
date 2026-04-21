@@ -38,6 +38,13 @@ public class CashierKpiController {
     private static final long MAX_RANGE_DAYS = 366;
 
     /**
+     * Maximum megengedett jovobeli eltolas (timezone/clock-skew tolerancia).
+     * 1 nap: kliens-gep orajele +/- 24h eltolva lehet a szervertol (pl. timezone).
+     * Nagyobb eltolas -> validation error (nem enged jovobeli query-ket).
+     */
+    private static final long MAX_ALLOWED_FUTURE_SKEW_DAYS = 1;
+
+    /**
      * Osszesito penztaros KPI adott idotartomanyra (pl. ma, ez a honap, etc.).
      *
      * GET /api/v1/cashier-kpis?dateFrom=2026-04-01&dateTo=2026-04-21
@@ -61,8 +68,13 @@ public class CashierKpiController {
         if (days > MAX_RANGE_DAYS) {
             throw new ValidationException("Maximum " + (MAX_RANGE_DAYS + 1) + " napos (inclusive) intervallum engedely. Jelenleg kert: " + (days + 1) + " nap.");
         }
-        if (dateFrom.isAfter(LocalDate.now().plusDays(1))) {
-            throw new ValidationException("dateFrom nem lehet a jovoben");
+        // Sourcery: dateFrom ES dateTo is jovobeli eltolast ellenorizni kell
+        LocalDate maxAllowed = LocalDate.now().plusDays(MAX_ALLOWED_FUTURE_SKEW_DAYS);
+        if (dateFrom.isAfter(maxAllowed)) {
+            throw new ValidationException("dateFrom nem lehet a jovoben (max skew: " + MAX_ALLOWED_FUTURE_SKEW_DAYS + " nap)");
+        }
+        if (dateTo.isAfter(maxAllowed)) {
+            throw new ValidationException("dateTo nem lehet a jovoben (max skew: " + MAX_ALLOWED_FUTURE_SKEW_DAYS + " nap)");
         }
     }
 }
