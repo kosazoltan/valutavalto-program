@@ -38,6 +38,10 @@ public class DailySession {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @jakarta.persistence.Version
+    @Column(name = "version", nullable = false)
+    private Long version = 0L;
+
     /**
      * MULTI-TENANT: Cég kapcsolat
      */

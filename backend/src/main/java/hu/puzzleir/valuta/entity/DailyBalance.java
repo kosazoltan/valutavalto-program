@@ -46,6 +46,10 @@ public class DailyBalance {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @jakarta.persistence.Version
+    @Column(name = "version", nullable = false)
+    private Long version = 0L;
+
     /**
      * Iroda ID
      */
