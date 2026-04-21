@@ -40,6 +40,8 @@ jobs:
       contents: write       # feature branch-re uj commit push
       pull-requests: write  # comment, label update a PR-en
       issues: write         # issue comment-ek (reviewer's guide)
+      id-token: write       # OIDC token a claude-code-action v1-hez (KOTELEZO)
+      actions: read         # workflow metadata olvasasa
 
     # Timeout: max 15 perc egy auto-fix ciklus
     timeout-minutes: 15
