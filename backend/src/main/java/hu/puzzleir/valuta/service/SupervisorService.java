@@ -66,9 +66,10 @@ public class SupervisorService {
             throw new ValidationException("Nincs supervisor jogosultság!");
         }
 
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         // Find the active rate for this currency and branch, then update it
         List<ExchangeRate> rates = exchangeRateRepository.findActiveByDateAndBranch(
-                java.time.LocalDate.now(), branchId);
+                companyId, java.time.LocalDate.now(), branchId);
         ExchangeRate rate = rates.stream()
                 .filter(r -> r.getCurrency().getCode().equals(currency))
                 .findFirst()

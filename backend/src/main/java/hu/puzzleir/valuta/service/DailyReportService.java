@@ -70,6 +70,7 @@ public class DailyReportService {
 
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem talalhato: " + branchId));
+        UUID companyId = branch.getCompany() != null ? branch.getCompany().getId() : SecurityUtils.getCurrentCompanyId();
 
         DailyReport report = DailyReport.builder()
                 .branch(branch)
@@ -137,6 +138,7 @@ public class DailyReportService {
 
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem talalhato: " + branchId));
+        UUID companyId = branch.getCompany() != null ? branch.getCompany().getId() : SecurityUtils.getCurrentCompanyId();
 
         // B1 fix: Currency name map
         Map<String, String> currencyNameMap = new HashMap<>();
@@ -149,7 +151,7 @@ public class DailyReportService {
         BigDecimal closingForeignHuf = BigDecimal.ZERO; // B7 fix: HUF-ekvivalens összeg
 
         // Árfolyam map: currencyCode -> ExchangeRate
-        List<ExchangeRate> activeRates = exchangeRateRepository.findActiveByDateAndBranch(date, branchId);
+        List<ExchangeRate> activeRates = exchangeRateRepository.findActiveByDateAndBranch(companyId, date, branchId);
         Map<String, ExchangeRate> rateMap = new HashMap<>();
         for (ExchangeRate er : activeRates) {
             if (er.getCurrency() != null) {

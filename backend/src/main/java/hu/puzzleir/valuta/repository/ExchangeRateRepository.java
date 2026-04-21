@@ -133,13 +133,15 @@ public interface ExchangeRateRepository extends JpaRepository<ExchangeRate, Long
 
     /**
      * Aktív árfolyamok adott napon egy branch-hez (vagy branch IS NULL).
-     * Branch implicit company szűrést biztosít.
+     * Multi-tenant: KOTELEZO companyId szures — cross-tenant leak megakadalyozasa.
      */
     @Query("SELECT er FROM ExchangeRate er " +
            "WHERE er.active = true " +
+           "AND er.company.id = :companyId " +
            "AND er.validDate = :date " +
            "AND (er.branch IS NULL OR er.branch.id = :branchId)")
     List<ExchangeRate> findActiveByDateAndBranch(
+        @Param("companyId") UUID companyId,
         @Param("date") LocalDate date,
         @Param("branchId") UUID branchId
     );
