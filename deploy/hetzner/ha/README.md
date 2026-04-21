@@ -2,6 +2,47 @@
 
 A 60 pénztárhoz szükséges üzletfolytonossági rendszer. Ha a primary Hetzner VPS leáll, a pénztárak 2-5 percen belül átállnak a standby VPS-re, és a munka folytatódik.
 
+## FONTOS: MULTI-PROVIDER standby (nem csak Hetzner!)
+
+A standby-t **másik szolgáltatónál** érdemes elhelyezni, hogy a cég-szintű Hetzner incidensek (BGP/DNS/billing/account-suspension/hacker-támadás) NE vigyenek el mindent egyszerre. Tapasztalati esetek: 2023 szept. Hetzner globális outage (BGP), 2021 márc. OVH Strasbourg tűz.
+
+### Ajánlott standby providerek (60 pénztárhoz)
+
+| Provider | Ár/hó | Spec | Régió | Regisztráció |
+|----------|-------|------|-------|--------------|
+| **Contabo VPS S** | **4.50 EUR** | 4 vCPU, 8 GB RAM, 50 GB NVMe | Nürnberg (DE) | https://contabo.com/en/vps/ |
+| **Scaleway DEV1-M** | ~6 EUR | 3 vCPU, 4 GB, 40 GB SSD | Párizs (FR) | https://www.scaleway.com/en/pricing/ |
+| **OVH VPS Essential** | ~6 EUR | 2 vCPU, 4 GB, 80 GB NVMe | Gravelines (FR) | https://www.ovhcloud.com/en/vps/ |
+| **DigitalOcean 2GB** | ~11 EUR | 2 vCPU, 2 GB, 60 GB SSD | Frankfurt (DE) | https://www.digitalocean.com |
+| **Linode Shared 4GB** | ~22 EUR | 2 vCPU, 4 GB, 80 GB SSD | Frankfurt (DE) | https://www.linode.com |
+
+**Ajánlásaim:**
+
+- **Legolcsóbb multi-provider** (~9.50 EUR össz): **Hetzner + Contabo** - két német cég, két adatközpont (Helsinki + Nürnberg), max ár-érték
+- **Geo-redundáns** (~11 EUR össz): **Hetzner + Scaleway** - két ország (DE + FR), két cég
+- **Teljes HA** (~14.50 EUR össz): **Hetzner + Contabo + Scaleway** - 3-régiós, failover prioritás: primary -> Contabo -> Scaleway
+
+### A scriptek provider-agnosztikusak
+
+Az `install-standby.sh` + `install-primary.sh` NEM Hetzner-specifikus. Bármely Ubuntu 24.04 + PostgreSQL 16 + SSH VPS-en működnek. Provider-specifikus megjegyzések:
+
+- **Contabo**: első belépés után SSH kulcs feltöltése (console -> My Services -> server -> SSH Keys); `PermitRootLogin prohibit-password`-re vált
+- **Scaleway**: console-ba előre feltöltöd a SSH kulcsot (Settings -> SSH Keys), a VPS-hez már attached
+- **OVH**: SoYouStart / OVH manager-ben setupolod a SSH kulcsot
+- **DigitalOcean / Linode**: a fiók oldalról SSH kulcs feltöltés, aztán a VPS-hez auto-attached
+
+### Kiváltott kockázatok
+
+| Kockázat | Egy-provider (Hetzner×2) | Multi-provider (Hetzner + Contabo/Scaleway) |
+|----------|--------------------------|----------------------------------------------|
+| Hardver hiba | Védett | Védett |
+| Adatközpont kiesés | Védett (HEL1 != HEL2) | Védett (két cég, két DC) |
+| Provider hálózati outage | NEM védett (mindkettő Hetzner) | Védett (másik független) |
+| Account suspension / billing | NEM védett (egy account) | Védett (külön fiók) |
+| Cég-szintű incidens | NEM védett | Védett |
+| EU-szintű katasztrófa | Nem védett | Részlegesen (EU-n belül) |
+
+
 ## Architektúra
 
 ```
