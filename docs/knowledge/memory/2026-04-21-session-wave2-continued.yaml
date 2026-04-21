@@ -1,0 +1,136 @@
+---
+session_date: 2026-04-21
+session_type: continuation-wave
+wave: 2
+author: Claude Sonnet 4.5 (Agent SDK)
+parent_session: 2026-04-21-ha-deploy-and-b-wave-session.yaml
+tags:
+  - cashier-kpi-dashboard
+  - audit-trail-integration
+  - multi-tenant-security-fix
+  - repository-audit
+  - gitignore-cleanup
+
+summary: >
+  Az elso hullam (#72) utan folytatoldott 4 PR: B2 Penztaros KPI dashboard,
+  B1 audit trail integracio (Rate+Storno), multi-tenant CRITICAL fix
+  (ExchangeRate companyId leak), es HIGH+MEDIUM multi-tenant javitasok
+  (BranchRepo + NavClosing). Kesobb: gitignore takaritas + utility scripts
+  bekotese.
+
+merged_prs_this_wave:
+  - pr: 73
+    commit: 3eb6a3a65cbc407b066a52991682ce295a40d841
+    title: feat(cashier-kpi) - Penztaros KPI dashboard (B2)
+    files_added:
+      - backend/src/main/java/hu/puzzleir/valuta/controller/CashierKpiController.java
+      - backend/src/main/java/hu/puzzleir/valuta/dto/dashboard/CashierKpiRowDto.java
+      - backend/src/main/java/hu/puzzleir/valuta/dto/dashboard/CashierKpiSummaryDto.java
+      - backend/src/main/java/hu/puzzleir/valuta/service/CashierKpiService.java
+      - frontend-react/src/pages/statistics/CashierKpiPage.tsx
+      - frontend-react/src/services/api/cashierKpi.ts
+    features:
+      - GROUP BY worker aggregation (11 columns)
+      - 4 KPI cards (forgalom, BUY/SELL, sztorno%, aktiv penztarosok)
+      - Top performer highlight
+      - Sortable worker table (nev/forgalom/tx szam/sztorno%)
+      - Quick range (Ma/Het/Honap/Egyeni) + custom date picker
+      - Sztorno > 5% piros warning
+    api: GET /api/v1/cashier-kpis?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD
+    route: /statistics/cashier-kpi
+    menu: Foertektar -> Penztaros KPI
+
+  - pr: 74
+    commit: 2dde7411dbe7914b3e80c8727f388d2db42105ab
+    title: feat(audit-trail) - arfolyam + sztorno audit integracio (B1)
+    explanation: |
+      AuditLog infra mar megvolt (entity, service, controller, UI). Ez a PR
+      bekoti a 2 kritikus muvelet-kategoriat a meglevo rendszerbe.
+    rate_events_added:
+      - RATE_APPROVE (approveMasterRate)
+      - RATE_PUBLISH (publishAndDistribute - branch count + succ/fail)
+      - RATE_REVOKE (revokeMasterRate)
+    transaction_events_added:
+      - TRANSACTION_STORNO (executeReversal - eredeti vs sztorno receipt + worker+branch)
+      - TRANSACTION_PARTIAL_REFUND (executePartialRefund - teljes vs visszateritett osszeg)
+    frontend: AuditLogPage.tsx ACTION_TYPES bovitve az uj akciokkal
+    tamper_evidence: SHA-256 hash-chain (auditLogService.logWithDetails)
+
+  - pr: 75
+    commit: c03e69361a9acb38b72d53af756b0b2a60f97d2e
+    title: fix(security) - multi-tenant leak ExchangeRate + formal audit riport
+    severity: CRITICAL
+    description: |
+      ExchangeRateRepository.findActiveByDateAndBranch WHERE ag-a `er.branch IS NULL`
+      minden ceg null-branch-u rate-jet visszadhatta. Plusz nem szurt companyId-ra.
+    fix:
+      - Repository: +@Param("companyId") UUID companyId + AND er.company.id = :companyId
+      - 4 call site frissitve (ExchangeRatePolling, DailyReport, SupervisorService, MonthlyReport)
+      - 2 teszt frissitve (Branch.setCompany setUp-ban + any() matcher)
+    audit_report: docs/security/multi-tenant-repository-audit-2026-04-21.md
+    tests: 14/14 passed
+
+  - pr: 76
+    commit: c1d56aa83b5a75c2a3e77380ba07cea8bc7878d4
+    title: fix(security) - multi-tenant HIGH+MEDIUM javitasok (BranchRepo + NavClosing)
+    severity: HIGH+MEDIUM
+    fixed_count: 12
+    high_fixes:
+      - BranchRepository.findByCode - @Deprecated + findByCompanyIdAndCode hasznalat
+      - BranchRepository.existsByCode - @Deprecated + existsByCompanyIdAndCode uj
+      - NavClosingRepository.findWithFilters - companyId parameter hozzaadva
+    medium_fixes:
+      - BranchRepository.findByIsActiveTrue (meglevo findByCompanyIdAndIsActiveTrue)
+      - BranchRepository.findByBranchTypeCode (+ findByCompanyIdAndBranchTypeCode)
+      - BranchRepository.findByBranchStatusCode (csak deprecate)
+      - BranchRepository.searchByNameOrCode (+ searchByCompanyIdAndNameOrCode)
+      - BranchRepository.findByCity (+ findByCompanyIdAndCity)
+      - BranchRepository.findByVaultTerritoryId (+ findByCompanyIdAndVaultTerritoryId)
+      - BranchRepository.findRootBranches (+ findRootBranchesByCompanyId)
+      - NavClosingRepository.findByStatus (+ findByBranchCompanyIdAndStatus)
+    low_fix:
+      - TransactionRepository.findByBranchAndDate (+ findByCompanyIdAndBranchAndDate)
+    call_sites_updated:
+      - BranchService.findByCode - IDOR redundancia megszunt
+      - BranchService.validateBranchCode - VALODI BUG javitas (ket ceg ugyanaz a kod)
+      - NavClosingService.listClosings - companyId parameter
+
+multi_tenant_audit_final:
+  total_vulnerabilities_identified: 15
+  fixed_or_deprecated: 13
+  still_open_low_severity: 2
+  still_open:
+    - TransactionRepository.findByWorkerAndDate (branch implicit ved)
+    - TransactionRepository.findByWorkerIdAndTransactionDateBetween (worker FK implicit ved)
+  coverage_percent: 87
+
+cb_016_status:
+  task: NavClosingService hardcoded VAT_RATE=0.27 -> tax_code mapping
+  status: ALREADY_SOLVED
+  evidence:
+    - NavClosingService.java DEFAULT_VAT_RATES EnumMap<NavTaxCode, BigDecimal>
+    - resolveVatRate(NavTaxCode taxCode) dynamic SystemParameter lookup
+    - V143__nav_vat_rate_parameters.sql Flyway migracio
+    - NavClosingServiceVatRateTest 7/7 passed
+
+spring_boot_status:
+  current: 3.5.13
+  target: 3.5.14 (2026-04-23 milestone)
+  check_result: 3.5.13 is latest on Maven Central, 3.5.14 not yet released
+  action: wait until 2026-04-23
+
+gitignore_cleanup:
+  added:
+    - .claude/scheduled_tasks.lock
+    - .claude/worktrees/*/tmp/
+    - .remember/
+  reason: runtime/AI handoff helyi fajlok, nem kerulnek a repo-ba
+
+next_session_starting_point:
+  git_state:
+    main_head: c1d56aa83b5a75c2a3e77380ba07cea8bc7878d4
+  open_tasks:
+    - Installer acceptance test friss Windows VM-en (user oldalon)
+    - Spring Boot 3.5.14 monitoring + upgrade amint megjelenik (2026-04-23 utan)
+    - Q3 2026 Hibernate @Where / Spring AOP globalis tenant filter
+    - Contabo EUR 91.20 refund (user handling)
