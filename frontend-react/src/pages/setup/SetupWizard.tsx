@@ -270,12 +270,14 @@ export default function SetupWizard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-slate-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-3xl max-h-[95vh] bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col">
+      <div className="w-full max-w-3xl max-h-[98vh] bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col">
         {/* Fejléc + progress */}
-        <SetupHeader currentIndex={currentIndex} />
+        <div className="shrink-0">
+          <SetupHeader currentIndex={currentIndex} />
+        </div>
 
-        {/* Tartalom */}
-        <div className="flex-1 px-10 py-8 min-h-[520px]">
+        {/* Tartalom — scroll-os, hogy a nav footer mindig lathato maradjon */}
+        <div className="flex-1 overflow-y-auto px-10 py-8">
           {currentStep === 'welcome' && <WelcomeStep />}
           {currentStep === 'branch' && (
             <BranchStep
@@ -360,8 +362,8 @@ export default function SetupWizard() {
           )}
         </div>
 
-        {/* Láb: navigációs gombok */}
-        <div className="px-10 py-5 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+        {/* Láb: navigációs gombok — shrink-0, hogy sose tunjon el a footer */}
+        <div className="shrink-0 px-10 py-5 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
           <button
             type="button"
             onClick={goPrev}
