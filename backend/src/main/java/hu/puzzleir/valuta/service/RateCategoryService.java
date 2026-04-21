@@ -67,7 +67,12 @@ public class RateCategoryService {
         Branch branch = branchRepository.findById(dto.getBranchId())
             .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + dto.getBranchId()));
 
-        RateCategoryType catType = RateCategoryType.valueOf(dto.getCategory());
+        RateCategoryType catType;
+        try {
+            catType = RateCategoryType.valueOf(dto.getCategory());
+        } catch (IllegalArgumentException e) {
+            throw new ResourceNotFoundException("Érvénytelen árfolyam kategória: " + dto.getCategory());
+        }
 
         RateCategory rc = rateCategoryRepository
             .findByBranchIdAndCurrencyCodeAndCategory(dto.getBranchId(), dto.getCurrencyCode(), catType)

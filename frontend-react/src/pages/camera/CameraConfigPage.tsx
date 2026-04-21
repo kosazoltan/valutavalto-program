@@ -41,7 +41,12 @@ export default function CameraConfigPage() {
         // Electron: lokális konfiguráció a config store-ból
         const configJson = await window.electronAPI!.getConfig('camera_configs')
         if (configJson) {
-          setConfigs(JSON.parse(configJson))
+          try {
+            setConfigs(JSON.parse(configJson))
+          } catch {
+            console.error('Hibás kamera konfigurációs JSON, alapértelmezett használata')
+            setConfigs([])
+          }
         } else {
           setConfigs([])
         }

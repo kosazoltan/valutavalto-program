@@ -11,6 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import hu.puzzleir.valuta.exception.ValidationException;
+
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -33,7 +35,7 @@ public class PrintTemplateService {
      */
     @Transactional(readOnly = true)
     public PrintTemplateResponse getTemplate(String type, Integer companyId) {
-        PrintTemplateType templateType = PrintTemplateType.valueOf(type.toUpperCase());
+        PrintTemplateType templateType = parseTemplateType(type);
 
         // Először cég-specifikus keresés
         if (companyId != null) {
@@ -59,7 +61,7 @@ public class PrintTemplateService {
     public PrintTemplateResponse saveTemplate(PrintTemplateDto dto) {
         PrintTemplate template = PrintTemplate.builder()
                 .name(dto.getName())
-                .templateType(PrintTemplateType.valueOf(dto.getTemplateType().toUpperCase()))
+                .templateType(parseTemplateType(dto.getTemplateType()))
                 .content(dto.getContent())
                 .isDefault(dto.getIsDefault() != null ? dto.getIsDefault() : false)
                 .companyId(dto.getCompanyId())
@@ -79,7 +81,7 @@ public class PrintTemplateService {
                 .orElseThrow(() -> new ResourceNotFoundException("Sablon nem található: " + id));
 
         template.setName(dto.getName());
-        template.setTemplateType(PrintTemplateType.valueOf(dto.getTemplateType().toUpperCase()));
+        template.setTemplateType(parseTemplateType(dto.getTemplateType()));
         template.setContent(dto.getContent());
         if (dto.getIsDefault() != null) {
             template.setIsDefault(dto.getIsDefault());
@@ -109,7 +111,7 @@ public class PrintTemplateService {
      */
     @Transactional(readOnly = true)
     public List<PrintTemplateResponse> getTemplatesByType(String type) {
-        PrintTemplateType templateType = PrintTemplateType.valueOf(type.toUpperCase());
+        PrintTemplateType templateType = parseTemplateType(type);
         return printTemplateRepository.findByTemplateType(templateType)
                 .stream()
                 .map(this::toResponse)
@@ -145,6 +147,17 @@ public class PrintTemplateService {
         }
 
         return rendered;
+    }
+
+    private PrintTemplateType parseTemplateType(String type) {
+        if (type == null || type.isBlank()) {
+            throw new ValidationException("Sablon típus nem lehet üres");
+        }
+        try {
+            return PrintTemplateType.valueOf(type.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException("Érvénytelen sablon típus: " + type);
+        }
     }
 
     private PrintTemplateResponse toResponse(PrintTemplate entity) {

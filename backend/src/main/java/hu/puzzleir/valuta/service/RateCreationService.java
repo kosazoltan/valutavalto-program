@@ -212,15 +212,18 @@ public class RateCreationService {
                     .divide(BigDecimal.valueOf(2), 4, RoundingMode.HALF_UP);
         }
         // Versenytárs kód: a neve alapján generált rövidítés (első 6 karakter, nagybetű)
-        String competitorCode = cr.getCompetitor().getName() != null
-                ? cr.getCompetitor().getName().replaceAll("[^A-Za-z0-9]", "")
-                        .toUpperCase()
-                        .substring(0, Math.min(6, cr.getCompetitor().getName().replaceAll("[^A-Za-z0-9]", "").length()))
-                : "COMP";
+        String competitorName = cr.getCompetitor() != null ? cr.getCompetitor().getName() : null;
+        String competitorCode;
+        if (competitorName != null) {
+            String cleaned = competitorName.replaceAll("[^A-Za-z0-9]", "").toUpperCase();
+            competitorCode = cleaned.substring(0, Math.min(6, cleaned.length()));
+        } else {
+            competitorCode = "COMP";
+        }
 
         return CompetitorRateDTO.builder()
                 .id(cr.getId())
-                .competitorName(cr.getCompetitor().getName())
+                .competitorName(competitorName)
                 .competitorCode(competitorCode)
                 .currencyCode(cr.getCurrency().getCode())
                 .buyRate(cr.getBuyRate())
