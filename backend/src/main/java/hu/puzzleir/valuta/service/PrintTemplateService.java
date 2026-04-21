@@ -150,6 +150,9 @@ public class PrintTemplateService {
     }
 
     private PrintTemplateType parseTemplateType(String type) {
+        if (type == null || type.isBlank()) {
+            throw new ValidationException("Sablon típus nem lehet üres");
+        }
         try {
             return PrintTemplateType.valueOf(type.toUpperCase());
         } catch (IllegalArgumentException e) {
