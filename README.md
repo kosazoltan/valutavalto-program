@@ -2,6 +2,42 @@
 
 Modern valutaváltó / pénzváltó ERP rendszer — Spring Boot + React + Electron desktop klienssel.
 
+## Alaptörvény — KOMPLEX ÖKOSZISZTÉMA
+
+> **A Valutaváltó program egyetlen egységként működik.**
+> TILOS csak a frontend-et, csak a backend-et vagy csak az Electron klienst külön megnyitni a normál működéshez.
+> A dolgozók egy kattintással indítják az egész rendszert.
+
+### Egységes indítás
+
+```powershell
+# Teljes stack (backend + frontend + Electron) egyben
+powershell -ExecutionPolicy Bypass -File scripts\start-valuta-ecosystem.ps1
+
+# Leállítás
+powershell -ExecutionPolicy Bypass -File scripts\stop-valuta-ecosystem.ps1
+```
+
+### Mit indít el
+1. **Helyi PostgreSQL** ellenőrzése (port 5432)
+2. **Spring Boot backend** (port 8080)
+3. **React webes admin** (port 3000) — főértéktár, audit, KPI, compliance
+4. **Electron pénztáros kliens** — offline-képes GUI
+
+A 3 komponens **együtt telepszik, együtt indul, együtt áll le**. Health check-ek biztosítják, hogy csak akkor tekinti készen a rendszert, amikor mindenki beszélget.
+
+### Telepítő és Windows shortcut
+A pénztáros munkaállomásokon egy **egyetlen asztali ikon** (Telepítő: `installer/build/Penztar-Setup-*.exe`) indítja az egész rendszert. Nincs külön "Backend.exe", "Frontend.exe" — a Telepítő egy szolgáltatást regisztrál (`ValutaEcosystem`) + egy Start menü shortcut.
+
+### Debug célú részindítás (**CSAK FEJLESZTŐKNEK**)
+Ha csak egy komponenst akarsz indítani (pl. Spring Boot backend tesztelésre):
+```powershell
+powershell -File scripts\start-valuta-ecosystem.ps1 -SkipElectron -SkipBackend
+```
+**Produkciós környezetben TILOS!**
+
+---
+
 ## Tech Stack
 
 | Layer     | Technológia                                                |
