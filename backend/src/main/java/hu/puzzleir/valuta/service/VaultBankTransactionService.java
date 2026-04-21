@@ -147,6 +147,54 @@ public class VaultBankTransactionService {
         return toDto(bankTransactionRepository.save(tx));
     }
 
+    /**
+     * Deviza oldali megerositese — a bankunktol beerkezett a deviza.
+     * Ha a HUF oldal is megerositve van, a tranzakcio COMPLETED lesz.
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public BankTransactionResponseDto confirmReceived(Long id) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+        VaultBankTransaction tx = bankTransactionRepository.findById(id)
+                .filter(t -> t.getCompanyId().equals(companyId))
+                .orElseThrow(() -> new ResourceNotFoundException("Banki tranzakcio nem talalhato: " + id));
+
+        tx.setReceivedAt(LocalDateTime.now());
+        tx.setReceivedBy(workerId);
+        maybeCompleteIfBothSidesDone(tx);
+        return toDto(bankTransactionRepository.save(tx));
+    }
+
+    /**
+     * HUF oldali megerositese — atutaltuk a banknak a HUF-ot.
+     * Ha a deviza oldal is megerositve van, a tranzakcio COMPLETED lesz.
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public BankTransactionResponseDto confirmPaid(Long id) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+        VaultBankTransaction tx = bankTransactionRepository.findById(id)
+                .filter(t -> t.getCompanyId().equals(companyId))
+                .orElseThrow(() -> new ResourceNotFoundException("Banki tranzakcio nem talalhato: " + id));
+
+        tx.setPaidAt(LocalDateTime.now());
+        tx.setPaidBy(workerId);
+        maybeCompleteIfBothSidesDone(tx);
+        return toDto(bankTransactionRepository.save(tx));
+    }
+
+    /**
+     * Ha mindket oldal (deviza + HUF) megerositve van, a tranzakcio COMPLETED-re megy.
+     */
+    private void maybeCompleteIfBothSidesDone(VaultBankTransaction tx) {
+        if (tx.getReceivedAt() != null && tx.getPaidAt() != null
+                && tx.getStatus() != VaultOperationStatus.COMPLETED) {
+            tx.setStatus(VaultOperationStatus.COMPLETED);
+            tx.setCompletedAt(LocalDateTime.now());
+            tx.setApprovedBy(SecurityUtils.getCurrentWorkerId());
+        }
+    }
+
     private CurrencyStock getOrCreateStock(UUID companyId, String entityType, String entityId, String currencyCode) {
         return currencyStockRepository.findForUpdate(companyId, entityType, entityId, currencyCode)
                 .orElseGet(() -> {
@@ -177,6 +225,10 @@ public class VaultBankTransactionService {
                 .note(entity.getNote())
                 .createdAt(entity.getCreatedAt())
                 .completedAt(entity.getCompletedAt())
+                .receivedAt(entity.getReceivedAt())
+                .receivedBy(entity.getReceivedBy())
+                .paidAt(entity.getPaidAt())
+                .paidBy(entity.getPaidBy())
                 .vaultTerritoryId(entity.getVaultTerritory() != null ? entity.getVaultTerritory().getId() : null)
                 .vaultTerritoryName(entity.getVaultTerritory() != null ? entity.getVaultTerritory().getName() : null)
                 .build();

@@ -141,7 +141,25 @@ public class ErtektarController {
         return ResponseEntity.ok(vaultBankTransactionService.updateStatus(id, status));
     }
 
-    // === ERTEKKTAR KOEZI ATTETEL (Vault Transfers — ATADVET) ===
+    /**
+     * Deviza beerkezett a bankunktol - deviza oldali megerositese.
+     * POST /api/v1/ertektar/bank-transactions/{id}/confirm-received
+     */
+    @PostMapping("/bank-transactions/{id}/confirm-received")
+    public ResponseEntity<BankTransactionResponseDto> confirmBankTransactionReceived(@PathVariable Long id) {
+        return ResponseEntity.ok(vaultBankTransactionService.confirmReceived(id));
+    }
+
+    /**
+     * HUF atutalas megtortent a banknak - HUF oldali megerositese.
+     * POST /api/v1/ertektar/bank-transactions/{id}/confirm-paid
+     */
+    @PostMapping("/bank-transactions/{id}/confirm-paid")
+    public ResponseEntity<BankTransactionResponseDto> confirmBankTransactionPaid(@PathVariable Long id) {
+        return ResponseEntity.ok(vaultBankTransactionService.confirmPaid(id));
+    }
+
+    // === ERTEKKTAR KOEZI ATTETEL (Vault Transfers - ATADVET) ===
 
     /**
      * Attelek listazasa.

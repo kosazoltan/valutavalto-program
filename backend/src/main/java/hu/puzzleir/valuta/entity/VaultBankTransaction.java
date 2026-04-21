@@ -73,4 +73,18 @@ public class VaultBankTransaction {
 
     @Column(name = "approved_by")
     private Long approvedBy;
+
+    // Workflow: deviza oldali megerositese (a bankunktol megerkezett a deviza)
+    @Column(name = "received_at")
+    private LocalDateTime receivedAt;
+
+    @Column(name = "received_by")
+    private Long receivedBy;
+
+    // Workflow: HUF oldali megerositese (atutaltuk a banknak a HUF-ot)
+    @Column(name = "paid_at")
+    private LocalDateTime paidAt;
+
+    @Column(name = "paid_by")
+    private Long paidBy;
 }
