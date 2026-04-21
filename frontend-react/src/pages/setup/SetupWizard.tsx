@@ -70,7 +70,7 @@ export default function SetupWizard() {
   const [bootstrapUsername, setBootstrapUsername] = useState('')
   const [bootstrapPassword, setBootstrapPassword] = useState('')
   const [offlineMode, setOfflineMode] = useState(false)
-  const [appModeChoice, setAppModeChoice] = useState<'penztar' | 'ertektar' | 'ertekszallito'>('penztar')
+  const [appModeChoice, setAppModeChoice] = useState<'penztar' | 'ertektar'>('penztar')
   const [connectionTest, setConnectionTest] = useState<
     { state: 'idle' | 'testing' | 'ok' | 'fail'; message?: string }
   >({ state: 'idle' })
@@ -308,11 +308,6 @@ export default function SetupWizard() {
                     id: 'ertektar' as const,
                     title: 'Értéktár',
                     desc: 'Értéktáros munka: pénztárak ellátása / átadás-átvétel bank és más értéktárak felé, napi + havi + dekádzárás. Local-first.',
-                  },
-                  {
-                    id: 'ertekszallito' as const,
-                    title: 'Értékszállítás',
-                    desc: 'Csak a fizikai szállítás dokumentálása: szállítólevelek, átadás-átvétel bizonylatok. Kézből kézbe nyomon követés.',
                   },
                 ]).map((opt) => (
                   <button

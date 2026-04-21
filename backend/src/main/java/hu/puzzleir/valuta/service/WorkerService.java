@@ -447,7 +447,6 @@ public class WorkerService {
         List<String> validAppModes = new ArrayList<>();
         if (roleCodes.contains("penztar")) validAppModes.add("penztar");
         if (roleCodes.contains("ertektar")) validAppModes.add("ertektar");
-        if (roleCodes.contains("ertekszallito")) validAppModes.add("ertekszallito");
         if (roleCodes.stream().anyMatch(SERVER_CANONICAL_ROLES::contains)) {
             validAppModes.add("full");
         }

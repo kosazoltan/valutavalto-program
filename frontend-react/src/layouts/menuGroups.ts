@@ -3,10 +3,9 @@ import type { LucideIcon } from "lucide-react"
 
 export const PENZTAR_ROLES = ["penztar"] as const
 export const ERTEKTAR_ROLES = ["ertektar"] as const
-export const ERTEKSZALLITO_ROLES = ["ertekszallito"] as const
 export const SZERVER_ROLES = ["ugyvezeto", "foertektar", "irodavezeto", "belso_ellenor", "teruleti_vezeto", "biztonsagi_vezeto", "berszamfejto", "penzugyi_vezeto", "irodai_dolgozo", "csoportvezeto", "arfolyam_nezo"] as const
 
-export type AppMode = "full" | "penztar" | "ertektar" | "ertekszallito"
+export type AppMode = "full" | "penztar" | "ertektar"
 
 export interface MenuItem {
   path: string
@@ -151,7 +150,8 @@ export function getDefaultRouteForRoles(roles: readonly string[] | undefined, ac
   const active = activeRole ?? ""
   const all = new Set([active, ...(roles ?? [])].filter(Boolean))
   if (all.has("penztar")) return "/cashier"
-  if (all.has("ertekszallito")) return "/shipments"
+  // ertekszallito role: az atadas-atveteli bizonylat alairasanak UI-ja
+  if (all.has("ertekszallito")) return "/transfers"
   if (all.has("ertektar")) return "/treasury"
   return "/dashboard"
 }
