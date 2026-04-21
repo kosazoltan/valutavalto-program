@@ -264,15 +264,18 @@ if ([string]::IsNullOrWhiteSpace($localConn)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($remoteConn)) {
-    # Dev env: ha a DB_PREFLIGHT_REMOTE_MODE = "optional" es nincs remote conn string,
-    # csak figyelmeztetunk es tovabblepunk (lokalis fejlesztes). CI-ban strict mode (default).
-    if ($env:DB_PREFLIGHT_REMOTE_MODE -eq "optional") {
-        Write-Status "Remote/Neon DB connection string not configured (optional mode). Dev env - tovabbaadas figyelmeztetessel." "WARN"
-        Write-Status "Lokalis fejlesztes: ez nem blokkolo. Production CI-ban NEON_DATABASE_URL szukseges." "WARN"
-        exit 0
+    # Dev env: ha a DB_PREFLIGHT_REMOTE_MODE = "optional" (case-insensitive) es nincs remote conn string,
+    # skippeljuk a remote validaciot, de a LOKALIS DB validaciot tovabbra is futtatjuk.
+    # CI-ban strict mode (default) -> ERR+exit.
+    $remoteModeCheck = if ($env:DB_PREFLIGHT_REMOTE_MODE) { $env:DB_PREFLIGHT_REMOTE_MODE.Trim().ToLowerInvariant() } else { "strict" }
+    if ($remoteModeCheck -eq "optional") {
+        Write-Status "Remote/Neon DB connection string not configured (optional mode)." "WARN"
+        Write-Status "Dev env: local DB validation continues. Production CI requires NEON_DATABASE_URL." "WARN"
+        $skipRemoteParity = $true
+    } else {
+        Write-Status "Remote/Neon DB connection string could not be resolved." "ERR"
+        exit 1
     }
-    Write-Status "Remote/Neon DB connection string could not be resolved." "ERR"
-    exit 1
 }
 
 $migrationDir = Join-Path $RepoRoot "backend\src\main\resources\db\migration"
@@ -291,20 +294,24 @@ catch {
     exit 1
 }
 
-try {
-    $null = Invoke-PsqlLines -ConnectionString $remoteConn -Sql "SELECT 1;"
-    Write-Status "Remote/Neon DB connection OK" "OK"
-}
-catch {
-    $msg = "Remote/Neon DB connection failed: $($_.Exception.Message)"
-    $remoteMode = if ($env:DB_PREFLIGHT_REMOTE_MODE) { $env:DB_PREFLIGHT_REMOTE_MODE.Trim().ToLowerInvariant() } else { "strict" }
-    if ($remoteMode -eq "optional") {
-        Write-Status "$msg optional mode: remote parity skipped for local/dev run." "WARN"
-        $skipRemoteParity = $true
+# A remote connectivity tesztet csak akkor futtatjuk, ha van remote conn string.
+# Ha nincs + optional mode, a fenti agban mar $skipRemoteParity=true lett allitva.
+if (-not [string]::IsNullOrWhiteSpace($remoteConn)) {
+    try {
+        $null = Invoke-PsqlLines -ConnectionString $remoteConn -Sql "SELECT 1;"
+        Write-Status "Remote/Neon DB connection OK" "OK"
     }
-    else {
-        Write-Status $msg "ERR"
-        exit 1
+    catch {
+        $msg = "Remote/Neon DB connection failed: $($_.Exception.Message)"
+        $remoteMode = if ($env:DB_PREFLIGHT_REMOTE_MODE) { $env:DB_PREFLIGHT_REMOTE_MODE.Trim().ToLowerInvariant() } else { "strict" }
+        if ($remoteMode -eq "optional") {
+            Write-Status "$msg optional mode: remote parity skipped for local/dev run." "WARN"
+            $skipRemoteParity = $true
+        }
+        else {
+            Write-Status $msg "ERR"
+            exit 1
+        }
     }
 }
 
