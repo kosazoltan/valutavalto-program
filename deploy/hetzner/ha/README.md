@@ -61,65 +61,84 @@ Az `install-standby.sh` + `install-primary.sh` NEM Hetzner-specifikus. Bármely 
 
 **Költség: ~5 EUR/hó** (Hetzner CX22 HEL2 régióban)
 
-## Telepítés - 4 lépés
+## Telepítés - 3-régiós (Hetzner + Contabo + Scaleway)
 
-### 1. Új Hetzner VPS rendelése
+### 1. lépés — VPS-ek rendelése
 
-- https://console.hetzner.cloud -> Új projekt "valuta-ha-standby"
-- CX22 (2 vCPU, 4 GB RAM, 40 GB SSD) ~4.51 EUR/ho
-- Régió: Helsinki 2 (földrajzilag redundáns HEL1-hez)
+**Standby #1 (warm) - Contabo Nürnberg:**
+- https://contabo.com/en/vps/ -> VPS S (4 vCPU, 8 GB, 50 GB NVMe) ~4.50 EUR/hó
 - OS: Ubuntu 24.04 LTS
-- SSH kulcs: `~/.ssh/hetzner_ed25519.pub` (ugyanaz mint primary)
+- Kezdeti root jelszó a visszaigazoló e-mailben; első SSH után kulcsot feltölteni
 
-### 2. Primary VPS-en - replikáció engedélyezése
+**Standby #2 (cold) - Scaleway Paris:**
+- https://www.scaleway.com -> Instance -> DEV1-M (3 vCPU, 4 GB, 40 GB SSD) ~6 EUR/hó
+- Régió: fr-par-1 (Paris)
+- OS: Ubuntu 24.04 LTS
+- SSH kulcs előre feltöltendő az account-ba
+
+Jegyezd fel mindkét VPS publikus IPv4 címét.
+
+### 2. lépés — Primary (Hetzner) konfigurálása
 
 ```bash
 ssh root@95.216.191.162
 cd /opt/valutavalto && git pull
-STANDBY_IP=<uj_standby_ip> \
-REPLICATION_PASSWORD="$(openssl rand -hex 24)" \
-    bash deploy/hetzner/ha/install-primary.sh
 
-# Mentsd el a REPLICATION_PASSWORD-ot jelszókezelőbe!
+# STANDBY_IPS sorrend számít: 0. a warm (Contabo), 1. a cold (Scaleway).
+STANDBY_IPS="<CONTABO_IP>,<SCALEWAY_IP>" REPLICATION_PASSWORD="$(openssl rand -hex 24)"     bash deploy/hetzner/ha/install-primary.sh
+
+# Mentsd el a REPLICATION_PASSWORD-öt jelszókezelőbe! A primary kiírja.
 ```
 
-### 3. Standby VPS-en - bootstrap
+Ez létrehoz 2 replication slot-ot: `standby_slot_0` (Contabo), `standby_slot_1` (Scaleway).
+
+### 3. lépés — Contabo (warm standby) bootstrap
 
 ```bash
-ssh root@<uj_standby_ip>
+ssh root@<CONTABO_IP>
+apt update && apt install -y fail2ban git
 git clone https://github.com/kosazoltan/valutavalto-program.git /opt/valutavalto
 cd /opt/valutavalto
 
-# Alap hardening
-sudo bash deploy/hetzner/bootstrap-vps.sh
-# -> Step 1 (SSH hardening): Y
-# -> Tobbi: N (nincs szuksegunk Caddy/Redis/Monitoring-ra a standby-n)
-
-# Replikáció setup
-PRIMARY_IP=95.216.191.162 \
-REPLICATION_PASSWORD=<ugyanaz mint primary-n> \
-    bash deploy/hetzner/ha/install-standby.sh
+PRIMARY_IP=95.216.191.162 REPLICATION_PASSWORD="<ugyanaz>" SLOT_NAME=standby_slot_0     bash deploy/hetzner/ha/install-standby.sh
 ```
 
-### 4. Cloudflare DNS
-
-1. https://dash.cloudflare.com -> Domain `excvaluta.com` (ingyenes plan)
-2. API token: https://dash.cloudflare.com/profile/api-tokens
-   - "Create Token" -> "Edit zone DNS" template
-   - Zone: excvaluta.com
-3. Zone ID: az `excvaluta.com` oldalon, jobb alsó sarok
-4. Primary VPS-en:
+### 4. lépés — Scaleway (cold standby) bootstrap
 
 ```bash
-CF_API_TOKEN=<token> \
-CF_ZONE_ID=<zone_id> \
-STANDBY_IP=<standby_ip> \
-    bash /opt/valutavalto/deploy/hetzner/ha/cloudflare-dns-failover.sh
+ssh root@<SCALEWAY_IP>
+apt update && apt install -y fail2ban git
+git clone https://github.com/kosazoltan/valutavalto-program.git /opt/valutavalto
+cd /opt/valutavalto
+
+PRIMARY_IP=95.216.191.162 REPLICATION_PASSWORD="<ugyanaz>" SLOT_NAME=standby_slot_1     bash deploy/hetzner/ha/install-standby.sh
 ```
 
-Ez leszállítja a TTL-t 60s-re és kiírja a failover parancsot.
+### 5. lépés — Cloudflare DNS setup
 
-## Failover menete (manuális)
+```bash
+ssh root@95.216.191.162
+CF_API_TOKEN=<token> CF_ZONE_ID=<zone_id> STANDBY_IP=<CONTABO_IP>     bash /opt/valutavalto/deploy/hetzner/ha/cloudflare-dns-failover.sh
+# TTL -> 60s, DNS manual failover parancs a kimenetben.
+```
+
+### 6. lépés — Pénztár Electron client config
+
+3 URL a SQLite config táblában:
+
+```sql
+UPDATE config SET value='https://excvaluta.com/api/v1' WHERE key='server_url';
+INSERT INTO config VALUES('server_url_fallback_primary', 'https://contabo.excvaluta.com/api/v1');
+INSERT INTO config VALUES('server_url_fallback_secondary', 'https://scaleway.excvaluta.com/api/v1');
+```
+
+A `sync-engine.ts` automatikusan lépked a 3 URL között:
+1. Primary HTTP hiba → 30s múlva Contabo
+2. Contabo is hiba → Scaleway
+3. Mind 3 hiba → primary újrapróbál
+4. Primary visszajött → 30 s múlva visszaáll
+
+## Failover menete## Failover menete (manuális)
 
 Ha a primary VPS leáll:
 

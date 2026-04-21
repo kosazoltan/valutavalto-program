@@ -240,20 +240,39 @@ export class SyncEngine {
   }
 
   /**
-   * Fallback (standby) server URL - opcionalis HA setup-hoz.
-   * A SetupWizard vagy egy admin UI beallithatja a `server_url_fallback` configot.
-   * Ha be van allitva es a primary HTTP hibat ad, a runSync megprobalja ezt.
+   * Fallback-primary (warm standby) - 1. prioritasu fallback.
+   * Peldaul: Hetzner primary -> Contabo warm standby (Nurnberg).
+   * Config: 'server_url_fallback_primary' vagy backward-compat 'server_url_fallback'.
    */
-  private getServerUrlFallback(): string | null {
-    const stored = (getConfig('server_url_fallback') ?? '').trim();
+  private getServerUrlFallbackPrimary(): string | null {
+    const stored = (getConfig('server_url_fallback_primary') ?? getConfig('server_url_fallback') ?? '').trim();
     return stored || null;
   }
 
   /**
-   * Jelzi, hogy most melyik szerveren dolgozunk (primary vagy fallback).
-   * A runSync egy sikeres request utan erre allitja a statust.
+   * Fallback-secondary (cold standby) - 2. prioritasu fallback.
+   * Csak akkor probaljuk, ha a warm standby is elerhetetlen.
+   * Peldaul: Hetzner + Contabo leallt -> Scaleway (Paris).
+   * Config: 'server_url_fallback_secondary'.
    */
-  private activeServerKind: 'primary' | 'fallback' = 'primary';
+  private getServerUrlFallbackSecondary(): string | null {
+    const stored = (getConfig('server_url_fallback_secondary') ?? '').trim();
+    return stored || null;
+  }
+
+  /**
+   * DEPRECATED: backward-compat only. Uj kod hasznalja a Primary/Secondary-t.
+   */
+  private getServerUrlFallback(): string | null {
+    return this.getServerUrlFallbackPrimary();
+  }
+
+  /**
+   * 3-regios HA: primary -> fallback_primary (Contabo) -> fallback_secondary (Scaleway).
+   * A runSync hiba eseten lepked egyet az elso irany, sikere eseten visszaprobalja
+   * az elozo szintet a kovetkezo ciklusban.
+   */
+  private activeServerKind: 'primary' | 'fallback_primary' | 'fallback_secondary' = 'primary';
 
   private getBootstrapCredentials(): BootstrapCredentials | null {
     const companyCode = process.env.PENZTAR_BOOTSTRAP_COMPANY_CODE?.trim() || getConfig('bootstrap_company_code')?.trim() || '';
@@ -427,14 +446,23 @@ export class SyncEngine {
     this.status.isRunning = true;
 
     try {
-      // HA: fallback URL support. Ha az elozo ciklus a fallback-en volt, ujra megprobaljuk a primary-t.
+      // 3-regios HA URL-valasztas:
+      //   activeServerKind === 'primary'            -> primary (Hetzner)
+      //   activeServerKind === 'fallback_primary'   -> warm standby (Contabo)
+      //   activeServerKind === 'fallback_secondary' -> cold standby (Scaleway)
+      // Mindig a prioritasi sorrendben probaljuk. Hiba eseten a catch ugrik a kovetkezo szintre.
       const primaryUrl = this.getServerUrl();
-      const fallbackUrl = this.getServerUrlFallback();
-      let serverUrl = primaryUrl;
-      if (!serverUrl && fallbackUrl && this.activeServerKind === 'fallback') {
-        serverUrl = fallbackUrl;
+      const fallbackPrimaryUrl = this.getServerUrlFallbackPrimary();
+      const fallbackSecondaryUrl = this.getServerUrlFallbackSecondary();
+      let serverUrl: string | null = null;
+      if (this.activeServerKind === 'primary') {
+        serverUrl = primaryUrl ?? fallbackPrimaryUrl ?? fallbackSecondaryUrl;
+      } else if (this.activeServerKind === 'fallback_primary') {
+        serverUrl = fallbackPrimaryUrl ?? primaryUrl ?? fallbackSecondaryUrl;
+      } else {
+        serverUrl = fallbackSecondaryUrl ?? fallbackPrimaryUrl ?? primaryUrl;
       }
-      if (!serverUrl) {
+            if (!serverUrl) {
         log.debug('[SyncEngine] Offline mód vagy server_url hiányzik — sync kihagyva');
         return;
       }
@@ -478,12 +506,19 @@ export class SyncEngine {
 
       this.status.lastSyncAt = new Date().toISOString();
     } catch (err) {
-      // HA: primary hibara ment - a kovetkezo ciklusra fallback-re valtunk
-      if (this.getServerUrlFallback() && this.activeServerKind === 'primary') {
-        log.warn('[SyncEngine] Primary hibazott, kovetkezo ciklusban a fallback URL-t probaljuk');
-        this.activeServerKind = 'fallback';
+      // 3-regios HA: failover lepked egy szintet tovabb.
+      // primary -> fallback_primary (Contabo) -> fallback_secondary (Scaleway) -> (ujra) primary
+      if (this.activeServerKind === 'primary' && this.getServerUrlFallbackPrimary()) {
+        log.warn('[SyncEngine] Primary hibazott, kovetkezo ciklus: fallback_primary (Contabo warm standby)');
+        this.activeServerKind = 'fallback_primary';
+      } else if (this.activeServerKind === 'fallback_primary' && this.getServerUrlFallbackSecondary()) {
+        log.warn('[SyncEngine] Fallback_primary is hibazott, kovetkezo ciklus: fallback_secondary (Scaleway cold standby)');
+        this.activeServerKind = 'fallback_secondary';
+      } else if (this.activeServerKind === 'fallback_secondary') {
+        log.warn('[SyncEngine] Mindharom HA szint hibazott, kovetkezo ciklus: primary ujraprobalas');
+        this.activeServerKind = 'primary';
       }
-      log.error('[SyncEngine] Sync hiba:', err);
+            log.error('[SyncEngine] Sync hiba:', err);
     } finally {
       this.status.isRunning = false;
     }
