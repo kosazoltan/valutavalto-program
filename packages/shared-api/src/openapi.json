@@ -9980,6 +9980,68 @@
         }
       }
     },
+    "/api/v1/ertektar/bank-transactions/{id}/confirm-received": {
+      "post": {
+        "tags": [
+          "ertektar-controller"
+        ],
+        "operationId": "confirmBankTransactionReceived",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankTransactionResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ertektar/bank-transactions/{id}/confirm-paid": {
+      "post": {
+        "tags": [
+          "ertektar-controller"
+        ],
+        "operationId": "confirmBankTransactionPaid",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankTransactionResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/error-report": {
       "post": {
         "tags": [
@@ -12747,6 +12809,36 @@
         }
       }
     },
+    "/api/v1/cash-register/register": {
+      "post": {
+        "tags": [
+          "cash-register-controller"
+        ],
+        "operationId": "registerDevice",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterCashRegisterDeviceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashRegisterDeviceDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/cash-register/receipt": {
       "post": {
         "tags": [
@@ -12801,6 +12893,37 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/CashRegisterEventDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cash-register/device/{deviceId}/heartbeat": {
+      "post": {
+        "tags": [
+          "cash-register-controller"
+        ],
+        "operationId": "heartbeat_1",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashRegisterDeviceDto"
                 }
               }
             }
@@ -14478,6 +14601,29 @@
           "auth-controller"
         ],
         "operationId": "refreshToken",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/refresh-cookie": {
+      "post": {
+        "tags": [
+          "auth-controller"
+        ],
+        "operationId": "refreshCookie",
         "responses": {
           "200": {
             "description": "OK",
@@ -25915,6 +26061,46 @@
         }
       }
     },
+    "/api/v1/cashier-kpis": {
+      "get": {
+        "tags": [
+          "cashier-kpi-controller"
+        ],
+        "operationId": "getKpis",
+        "parameters": [
+          {
+            "name": "dateFrom",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "dateTo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashierKpiSummaryDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/cash-register/z-report/{branchId}": {
       "get": {
         "tags": [
@@ -26064,6 +26250,29 @@
                   "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/CashRegisterEventDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cash-register/devices": {
+      "get": {
+        "tags": [
+          "cash-register-controller"
+        ],
+        "operationId": "listDevices_1",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CashRegisterDeviceDto"
                   }
                 }
               }
@@ -36716,6 +36925,22 @@
           },
           "vaultTerritoryName": {
             "type": "string"
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "receivedBy": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "paidAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "paidBy": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -38532,6 +38757,95 @@
           }
         }
       },
+      "RegisterCashRegisterDeviceRequest": {
+        "type": "object",
+        "properties": {
+          "branchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 0
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "appMode": {
+            "type": "string",
+            "maxLength": 30,
+            "minLength": 0
+          },
+          "appVersion": {
+            "type": "string",
+            "maxLength": 30,
+            "minLength": 0
+          },
+          "deviceFingerprint": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "osInfo": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "branchId",
+          "code"
+        ]
+      },
+      "CashRegisterDeviceDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "branchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "appMode": {
+            "type": "string"
+          },
+          "appVersion": {
+            "type": "string"
+          },
+          "deviceFingerprint": {
+            "type": "string"
+          },
+          "osInfo": {
+            "type": "string"
+          },
+          "installedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastSeenAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        }
+      },
       "CashRegisterReceiptRequest": {
         "type": "object",
         "properties": {
@@ -39785,11 +40099,11 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "pageSize": {
+          "pageNumber": {
             "type": "integer",
             "format": "int32"
           },
-          "pageNumber": {
+          "pageSize": {
             "type": "integer",
             "format": "int32"
           },
@@ -44116,6 +44430,108 @@
           },
           "notes": {
             "type": "string"
+          }
+        }
+      },
+      "CashierKpiRowDto": {
+        "type": "object",
+        "properties": {
+          "workerId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "workerName": {
+            "type": "string"
+          },
+          "txCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "buyCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sellCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reversalCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalHuf": {
+            "type": "number"
+          },
+          "buyHuf": {
+            "type": "number"
+          },
+          "sellHuf": {
+            "type": "number"
+          },
+          "totalFees": {
+            "type": "number"
+          },
+          "customerCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "avgTxHuf": {
+            "type": "number"
+          },
+          "reversalRatio": {
+            "type": "number"
+          }
+        }
+      },
+      "CashierKpiSummaryDto": {
+        "type": "object",
+        "properties": {
+          "dateFrom": {
+            "type": "string",
+            "format": "date"
+          },
+          "dateTo": {
+            "type": "string",
+            "format": "date"
+          },
+          "totalTxCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalBuyCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalSellCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalReversalCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalHuf": {
+            "type": "number"
+          },
+          "totalFees": {
+            "type": "number"
+          },
+          "activeWorkerCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalCustomerCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reversalRatio": {
+            "type": "number"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CashierKpiRowDto"
+            }
           }
         }
       },
