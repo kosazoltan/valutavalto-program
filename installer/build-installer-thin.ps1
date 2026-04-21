@@ -14,7 +14,7 @@
 # =============================================================================
 
 param(
-    [string]$Version = "2.1.5",
+    [string]$Version = "2.1.6",
     [switch]$SkipFrontendBuild,
     [switch]$SkipNsis,
     [string]$ApiUrl = "https://excvaluta.com/api/v1"
