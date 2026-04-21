@@ -1,0 +1,61 @@
+---
+session_date: 2026-04-21
+session_type: full-day-multi-wave-plus-rules
+author: Claude Sonnet 4.5 (Agent SDK)
+parent_sessions:
+  - 2026-04-21-ha-deploy-and-b-wave-session.yaml
+  - 2026-04-21-session-wave2-continued.yaml
+  - 2026-04-21-c-wave-compliance-admin.yaml
+tags:
+  - b-wave
+  - c-wave-compliance
+  - ai-review-automation
+  - ecosystem-alaptorveny
+  - production-first
+  - session-memory-workflow
+
+summary: >
+  Mai osszesitett 25+ PR (02fef02 -> 26ca628) + 4 uj alaptorveny szabaly
+  bevezetese (komplex okoszisztema, regi hibak azonnali javitasa, AI review
+  auto-fix, production-first + session memory workflow).
+
+waves_merged:
+  a_features: [73, 74]   # B2 Cashier KPI, B1 Audit Trail
+  b_security: [75, 76, 79, 81, 83, 84, 86, 87]  # Multi-tenant + AI review fixes
+  c_compliance: [92, 93, 94]  # Sanction, Attendance, Permission Matrix
+  d_automation: [88, 90, 91]  # AI Review Auto-Fix (Claude self-healing!)
+  e_cleanup: [77, 78, 80, 82, 85, 96]  # CI, gitignore, launcher, alaptorveny
+  f_dep_triage:
+    merged: [49, 44, 57, 56, 50, 42, 24, 36]
+    closed_risky: [48, 52, 45, 54, 35, 43, 26, 39, 55, 51, 47]
+  g_docs: [72, 89, 95, 96]  # Session handoff memory + alaptorveny
+
+alaptorveny_rules_added:
+  1_complex_ecosystem: "TILOS kulon inditani a komponenseket. scripts/start-valuta-ecosystem.ps1 (ma UTAN production-first)."
+  2_old_bugs_instant_fix: "Audit kozben talalt regi hibak azonnal javitandok, nem halasztandok."
+  3_ai_review_auto_fix: ".github/workflows/ai-review-auto-fix.yml + CLAUDE.md kotelezo. Claude self-healing igazolt PR #91-ben."
+  4_production_first: "TILOS divergens lokalis stack. Hetzner HA (https://excvaluta.com) a master. Flyway migracio a seed megoldasa, nem manual psql INSERT."
+  5_session_memory_workflow: "Minden session elejen: .remember/remember.md + docs/knowledge/memory/*.yaml olvasas. Minden session vegen: YAML+QMD mentes + .remember/remember.md update."
+
+what_went_well:
+  - "Self-healing Claude Code Action (PR #91): az automation magat javitotta"
+  - "13/15 multi-tenant security gap lezarva (PR #75, #76, #83)"
+  - "3 compliance modul (Sanction, Attendance, Permission Matrix) 3 PR-ben"
+  - "20+ Dependabot PR triage: 8 merged safely, 11 closed risky"
+
+what_went_wrong:
+  - "Divergens lokalis dev stack: kezzel insert-eltem licencet + 6 arfolyamot lokalis Postgres-be. HIBA: production-first szabaly megsertese."
+  - "User ezert jogosan jelezte: 'mellefejleszt' — a helyi seed amit utana se a produktum sosem fog igazolni."
+  - "sed-alapu refactor collect-logs.mjs-n brace-parity bug (PR #84 -> #85 fix)."
+  - "Start-Process launcher script gyerek processzei nem maradtak eletben"
+
+final_git_state:
+  main_head: b26ca62814c25abcb957c120cc1193f0d5ee72045  # docs/ecosystem-alaptorveny merged
+
+open_tasks_for_next_session:
+  - "LESSONS_LEARNED.md draft commit + merge (14 tanulsag)"
+  - "Installer acceptance test friss Windows VM-en (user feladat)"
+  - "Spring Boot 3.5.14 monitoring (2026-04-23 milestone)"
+  - "Q3 2026 Hibernate @Where AOP tenant filter"
+  - "User kerte: penztar happy path teszt production-ellen (excvaluta.com)"
+  - "Cognee MCP + Obsidian vault integracio (amint telepitve)"

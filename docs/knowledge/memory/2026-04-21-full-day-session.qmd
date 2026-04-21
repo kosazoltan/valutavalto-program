@@ -1,0 +1,39 @@
+---
+title: "Valuta ERP session: 2026-04-21 — full day"
+author: "Claude Sonnet 4.5"
+date: "2026-04-21"
+format: html
+toc: true
+---
+
+# Osszefoglalas
+
+Ma merged: **25+ PR** (02fef02 -> 26ca628). 4 uj alaptorveny szabaly.
+
+## Waves
+
+1. **A (Features):** B1 Audit, B2 Cashier KPI
+2. **B (Security):** Multi-tenant fix (13/15) + AI review cycles
+3. **C (Compliance):** Sanction (#92), Attendance (#93), Permission Matrix (#94)
+4. **D (Automation):** AI Review Auto-Fix workflow (#88/#90/#91 — Claude self-healing)
+5. **E (Cleanup):** CI, gitignore, launcher, alaptorveny (#96)
+6. **F (Dep triage):** 8 merged, 11 closed risky, 1 pending
+7. **G (Docs):** Handoff memory + alaptorveny
+
+## Uj kotelezo szabalyok (CLAUDE.md)
+
+1. Komplex okoszisztema egyben
+2. Regi hibak azonnali javitasa
+3. AI review auto-fix workflow
+4. **Production-first** (TILOS divergens lokalis stack)
+5. **Session memory workflow** (YAML + QMD + remember + cognee/obsidian)
+
+## Hiba amit a user jelzett
+
+Divergens lokalis dev: kezzel seed-eltem licencet + arfolyamot a lokalis Postgres-be. HIBA. Production-first szabaly kotelezo: a fejlesztes kozvetlen a https://excvaluta.com elelen illeszkedik.
+
+## Next session feladatok
+
+- LESSONS_LEARNED.md commit
+- Production happy path teszt (excvaluta.com)
+- Spring Boot 3.5.14 (2026-04-23 milestone)

@@ -691,12 +691,47 @@ app.whenReady().then(async () => {
     return;
   }
 
-  // Dev default: use local backend for testing
-  if (isDev) {
+  // v2.1.6 Auto-migration: regebbi SetupWizard verziok (v2.1.3 elott) NEM irtak
+  // be a branch_code-ot az SQLite config tablaba, csak a .env-be. Ez a blokk
+  // idempotens: ha hianyzik, atemeli a VITE_BRANCH_CODE-ot. Igy a
+  // savePendingTransaction nem szall el a
+  // "SetupWizard nem futott le: branch_code SQLite config hianyzik" hibaval.
+  try {
+    const existingBranchCode = getConfig('branch_code');
+    if (!existingBranchCode) {
+      const envBranchCode = process.env.VITE_BRANCH_CODE?.trim();
+      if (envBranchCode) {
+        setConfig('branch_code', envBranchCode);
+        log.info(`[App] Auto-migration: branch_code='${envBranchCode}' atmasolva a .env-bol az SQLite config-ba.`);
+      } else {
+        log.warn('[App] branch_code hianyzik az SQLite config-bol ES a .env VITE_BRANCH_CODE-bol is. A tranzakciok elszalnak - futtasd a SetupWizardot vagy toltsd ki a .env-et.');
+      }
+    }
+    const existingCompany = getConfig('bootstrap_company_code');
+    if (!existingCompany) {
+      const envCompany = (process.env.VITE_COMPANY_CODE || process.env.PENZTAR_BOOTSTRAP_COMPANY_CODE)?.trim();
+      if (envCompany) {
+        setConfig('bootstrap_company_code', envCompany);
+        log.info(`[App] Auto-migration: bootstrap_company_code='${envCompany}' atmasolva a .env-bol.`);
+      }
+    }
+  } catch (migrationErr) {
+    log.warn('[App] Auto-migration warning (nem kritikus):', migrationErr);
+  }
+
+  // v2.1.6 Production-first alaptorveny: TILOS lokalis divergens fejlesztes.
+  // Dev modban is a VITE_API_URL-t hasznaljuk (default: Hetzner production),
+  // NEM overrideoljuk localhost:8080-ra. Ha lokalis backenddel akarsz tesztelni,
+  // tedd a .env-be: VITE_API_URL=http://localhost:8080/api/v1
+  {
+    const envApiUrl = process.env.VITE_API_URL?.trim();
     const currentServerUrl = getConfig('server_url');
-    if (!currentServerUrl || !currentServerUrl.includes('localhost:8080')) {
-      setConfig('server_url', 'http://localhost:8080/api/v1');
-      log.info('[App] Dev default server_url set to http://localhost:8080/api/v1');
+    if (envApiUrl && currentServerUrl !== envApiUrl) {
+      setConfig('server_url', envApiUrl);
+      log.info(`[App] server_url szinkronizalva a .env VITE_API_URL-rel: ${envApiUrl}`);
+    } else if (!currentServerUrl) {
+      setConfig('server_url', 'https://excvaluta.com/api/v1');
+      log.info('[App] server_url default: https://excvaluta.com/api/v1 (Hetzner production)');
     }
   }
 

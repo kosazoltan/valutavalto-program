@@ -1,125 +1,61 @@
 <#
 .SYNOPSIS
-  Valuta ERP komplex okoszisztema elindit - egyben (backend + frontend + Electron).
+  Valuta ERP komplex okoszisztema inditas - PRODUCTION-FIRST (2026-04-21+).
 
 .DESCRIPTION
-  KOTELEZO ERVENYU launcher: a Valuta program megnyitasa mindig az osszes
-  komponenst parhuzamosan indit, TILOS kulon megnyitni.
+  KOTELEZO ERVENYU launcher. A fejlesztes KOZVETLENUL a produktumhoz illeszkedik
+  (Hetzner HA: https://excvaluta.com). NINCS divergens lokalis backend.
 
-  Komponensek:
-  1. Lokalis Postgres ellenorzes (5432)
-  2. Backend (Spring Boot, port 8080)
-  3. Frontend-react admin (Vite, port 3000)
-  4. Penztar-client Electron (renderer: 3000)
+  Komponensek (production-first):
+  1. Hetzner produktum elerhetoseg ellenorzes (https://excvaluta.com)
+  2. Frontend-react (Vite, port 3000, proxy -> excvaluta.com)
+  3. Penztar-client Electron (a renderer: http://127.0.0.1:3000 proxy-n keresztul)
 
-.PARAMETER SkipElectron
-  Ne inditsa az Electron klienst (csak webes dashboard).
-
-.PARAMETER SkipBackend
-  Ne inditsa a backend-et (ha mar fut).
+.PARAMETER WithLocalBackend
+  CSAK MVN TESZT-HEZ: lokalis backend indit 8080-on (NEM ajanlott integracioshoz).
 
 .EXAMPLE
   powershell -File scripts/start-valuta-ecosystem.ps1
 #>
 param(
-    [switch]$SkipElectron,
-    [switch]$SkipBackend,
-    [int]$HealthCheckTimeoutSec = 90
+    [switch]$WithLocalBackend,
+    [switch]$SkipElectron
 )
 
 $ErrorActionPreference = 'Stop'
 
-$RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
-$LogDir = "$env:TEMP\valuta-logs"
-New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
-
-function Write-Step { param($Msg) Write-Host "[START-ECOSYSTEM] $Msg" -ForegroundColor Cyan }
+function Write-Step { param($Msg) Write-Host "[START] $Msg" -ForegroundColor Cyan }
 function Write-OK   { param($Msg) Write-Host "[OK] $Msg" -ForegroundColor Green }
 function Write-Err  { param($Msg) Write-Host "[ERR] $Msg" -ForegroundColor Red }
-function Write-Warn { param($Msg) Write-Host "[WARN] $Msg" -ForegroundColor Yellow }
 
-# 1) Env betoltes
-Write-Step "1/5 - Env fajl betoltese (.env)"
-$envFile = Join-Path $RepoRoot ".env"
-if (-not (Test-Path $envFile)) {
-    Write-Err "Nincs .env fajl a repo rootban! Masold at a konfigot (.env.example alapjan)."
+$RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+
+# 1) Hetzner produktum health check
+Write-Step "1/3 - Hetzner produktum (https://excvaluta.com) health check"
+try {
+    $r = Invoke-WebRequest -Uri "https://excvaluta.com/api/v1/auth/bootstrap-status" -TimeoutSec 10 -UseBasicParsing
+    if ($r.StatusCode -eq 200) {
+        Write-OK "Produktum elerheto (HTTP $($r.StatusCode))"
+    } else {
+        Write-Err "Produktum nem 200 valaszol: $($r.StatusCode)"
+        exit 1
+    }
+} catch {
+    Write-Err "Produktum NEM elerheto: $_"
+    Write-Err "HA failover szukseges. Ld. deploy/hetzner/ha/failover-to-standby.sh"
     exit 1
 }
-foreach ($line in Get-Content $envFile) {
-    if ($line -match "^\s*([^#=][^=]*)=(.*)$") {
-        $key = $matches[1].Trim()
-        $value = $matches[2].Trim()
-        if ($value.StartsWith('"') -and $value.EndsWith('"')) { $value = $value.Substring(1, $value.Length - 2) }
-        [Environment]::SetEnvironmentVariable($key, $value, "Process")
-    }
-}
-# Kikapcsolom a Neon-t, hasznaljuk a lokalis Postgres-t
-[Environment]::SetEnvironmentVariable('DATABASE_URL', '', 'Process')
-[Environment]::SetEnvironmentVariable('DATABASE_USERNAME', '', 'Process')
-[Environment]::SetEnvironmentVariable('DATABASE_PASSWORD', '', 'Process')
-Write-OK "Env betoltve - lokalis Postgres mode (.env-bol LOCAL_DB_*)"
 
-# 2) Lokalis Postgres ellenorzes
-Write-Step "2/5 - Lokalis Postgres (5432) ellenorzes"
-try {
-    $pg = Test-NetConnection -ComputerName '127.0.0.1' -Port 5432 -InformationLevel Quiet -WarningAction SilentlyContinue
-    if ($pg) { Write-OK "Postgres 5432 nyitva" }
-    else {
-        Write-Warn "Postgres 5432-n NEM valaszol - indits docker compose up -d postgres (vagy lokalis psql service)"
-        $continueAnyway = Read-Host "Folytassam? (y/N)"
-        if ($continueAnyway -ne 'y') { exit 1 }
-    }
-} catch { Write-Warn "Port teszt nem volt sikeres, folytatas..." }
-
-# 3) Backend
-if (-not $SkipBackend) {
-    Write-Step "3/5 - Backend (Spring Boot) inditasa - 8080"
-    $backendLog = Join-Path $LogDir "backend.log"
-    $backendDir = Join-Path $RepoRoot "backend"
-
-    # Meglevo backend ellenorzes
-    $already = $false
-    try {
-        $code = (Invoke-WebRequest -Uri "http://localhost:8080/api/v1/auth/bootstrap-status" -TimeoutSec 2 -UseBasicParsing -ErrorAction SilentlyContinue).StatusCode
-        if ($code -eq 200) { $already = $true }
-    } catch {}
-
-    if ($already) {
-        Write-OK "Backend mar fut 8080-on - skip"
-    } else {
-        Start-Process -FilePath "$backendDir\mvnw.cmd" `
-            -ArgumentList "spring-boot:run" `
-            -WorkingDirectory $backendDir `
-            -RedirectStandardOutput $backendLog `
-            -RedirectStandardError "$backendLog.err" `
-            -WindowStyle Hidden
-        Write-Step "Backend indul... log: $backendLog"
-
-        # Wait for health
-        $start = Get-Date
-        while ($true) {
-            Start-Sleep -Seconds 3
-            try {
-                $code = (Invoke-WebRequest -Uri "http://localhost:8080/api/v1/auth/bootstrap-status" -TimeoutSec 2 -UseBasicParsing).StatusCode
-                if ($code -eq 200) { Write-OK "Backend READY (HTTP $code)"; break }
-            } catch {}
-            $elapsed = ((Get-Date) - $start).TotalSeconds
-            if ($elapsed -gt $HealthCheckTimeoutSec) {
-                Write-Err "Backend nem indul el $HealthCheckTimeoutSec mp alatt - log: $backendLog"
-                exit 1
-            }
-            Write-Host "  ... varok backend-re ($([int]$elapsed)s)" -ForegroundColor DarkGray
-        }
-    }
-} else {
-    Write-Step "3/5 - Backend SKIP"
+# Opcionalisan: lokalis backend debug-hoz
+if ($WithLocalBackend) {
+    Write-Step "OPT - Lokalis backend (mvn spring-boot:run) - CSAK TESZT-HEZ"
+    Write-Host "  (kulonallo shell-ben kepzelt: 'cd backend && ./mvnw spring-boot:run')" -ForegroundColor DarkGray
+    Write-Host "  Jelen launcher NEM inditja - hasznald a konkurrens terminalban" -ForegroundColor DarkGray
 }
 
-# 4) Frontend-react
-Write-Step "4/5 - Frontend-react (Vite) - 3000"
-$frontendLog = Join-Path $LogDir "frontend.log"
-$frontendDir = Join-Path $RepoRoot "frontend-react"
-
+# 2) Frontend-react (Vite) - proxy production-re
+Write-Step "2/3 - Frontend-react (Vite, --host 0.0.0.0, VITE_PROXY_TARGET=https://excvaluta.com)"
+$env:VITE_PROXY_TARGET = 'https://excvaluta.com'
 $feAlready = $false
 try {
     $code = (Invoke-WebRequest -Uri "http://localhost:3000/" -TimeoutSec 2 -UseBasicParsing -ErrorAction SilentlyContinue).StatusCode
@@ -127,62 +63,47 @@ try {
 } catch {}
 
 if ($feAlready) {
-    Write-OK "Frontend mar fut 3000-on - skip"
+    Write-OK "Frontend mar fut 3000-on"
 } else {
-    Start-Process -FilePath "npm" `
-        -ArgumentList "run", "dev" `
-        -WorkingDirectory $frontendDir `
-        -RedirectStandardOutput $frontendLog `
-        -RedirectStandardError "$frontendLog.err" `
-        -WindowStyle Hidden
-    Write-Step "Frontend indul... log: $frontendLog"
-
+    Push-Location (Join-Path $RepoRoot "frontend-react")
+    Start-Process -FilePath "npm" -ArgumentList "run","dev","--","--host","0.0.0.0" -WindowStyle Hidden `
+        -RedirectStandardOutput "$env:TEMP\valuta-frontend.log" -RedirectStandardError "$env:TEMP\valuta-frontend-err.log"
+    Pop-Location
+    Write-Step "Vite inditva - var..."
     $start = Get-Date
     while ($true) {
         Start-Sleep -Seconds 2
-        try {
-            $code = (Invoke-WebRequest -Uri "http://localhost:3000/" -TimeoutSec 2 -UseBasicParsing).StatusCode
-            if ($code -eq 200) { Write-OK "Frontend READY (HTTP $code)"; break }
-        } catch {}
-        $elapsed = ((Get-Date) - $start).TotalSeconds
-        if ($elapsed -gt 30) { Write-Err "Frontend nem indul - log: $frontendLog"; exit 1 }
+        try { if ((Invoke-WebRequest -Uri "http://127.0.0.1:3000/" -TimeoutSec 2 -UseBasicParsing).StatusCode -eq 200) { Write-OK "Frontend READY"; break } } catch {}
+        if (((Get-Date) - $start).TotalSeconds -gt 45) { Write-Err "Vite not up in 45s"; exit 1 }
     }
 }
 
-# 5) Penztar-client Electron
+# 3) Electron penztar-client
 if (-not $SkipElectron) {
-    Write-Step "5/5 - Penztar-client Electron (main)"
-    $electronLog = Join-Path $LogDir "penztar-electron.log"
-    $electronDir = Join-Path $RepoRoot "penztar-client"
-
-    Start-Process -FilePath "npm" `
-        -ArgumentList "run", "dev:main" `
-        -WorkingDirectory $electronDir `
-        -RedirectStandardOutput $electronLog `
-        -RedirectStandardError "$electronLog.err" `
-        -WindowStyle Hidden
-    Write-OK "Electron inditva - log: $electronLog"
-    Write-Host "  (A GUI ablakot kb. 15-30 mp mulva lathatod)" -ForegroundColor DarkGray
+    Write-Step "3/3 - Electron penztar-client (npm run dev:main)"
+    Push-Location (Join-Path $RepoRoot "penztar-client")
+    Start-Process -FilePath "npm" -ArgumentList "run","dev:main" -WindowStyle Hidden `
+        -RedirectStandardOutput "$env:TEMP\valuta-electron.log" -RedirectStandardError "$env:TEMP\valuta-electron-err.log"
+    Pop-Location
+    Write-OK "Electron inditva"
 } else {
-    Write-Step "5/5 - Electron SKIP"
+    Write-Step "Electron SKIP"
 }
 
-# Osszegzo
 Write-Host ""
-Write-Host "===========================================================" -ForegroundColor Green
-Write-Host "  VALUTA OKOSZISZTEMA ELINDULT" -ForegroundColor Green
-Write-Host "===========================================================" -ForegroundColor Green
+Write-Host "=============================================" -ForegroundColor Green
+Write-Host "  VALUTA OKOSZISZTEMA (production-first) UP" -ForegroundColor Green
+Write-Host "=============================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Frontend (webes admin):  http://localhost:3000"
-Write-Host "  Backend API:              http://localhost:8080"
-Write-Host "  OpenAPI Swagger:          http://localhost:8080/swagger-ui.html"
+Write-Host "  Backend:      https://excvaluta.com  (Hetzner HA primary)"
+Write-Host "  Frontend:     http://localhost:3000  (Vite proxy -> excvaluta.com)"
+Write-Host "  Electron:     GUI window (Pentztar-Rendszer)"
 Write-Host ""
 Write-Host "  Belepes: EBC / ADMIN / Admin1234!"
 Write-Host ""
-Write-Host "  Log-ok:"
-Write-Host "    - Backend:  $LogDir\backend.log"
-Write-Host "    - Frontend: $LogDir\frontend.log"
-Write-Host "    - Electron: $LogDir\penztar-electron.log"
+Write-Host "  Logok:"
+Write-Host "    - Frontend:  $env:TEMP\valuta-frontend.log"
+Write-Host "    - Electron:  $env:TEMP\valuta-electron.log"
 Write-Host ""
 Write-Host "  Leallitas: powershell -File scripts\stop-valuta-ecosystem.ps1"
-Write-Host "===========================================================" -ForegroundColor Green
+Write-Host "============================================="
