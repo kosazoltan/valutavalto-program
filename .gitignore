@@ -163,3 +163,10 @@ packages/*/node_modules/
 # CI cannot regenerate them (needs running backend + DB), so the snapshot is
 # the source of truth. Regenerate locally with `npm run typegen` when backend
 # OpenAPI spec changes, then commit.
+
+# Claude Code helyi runtime fajlok
+.claude/scheduled_tasks.lock
+.claude/worktrees/*/tmp/
+
+# .remember/ — lokális AI handoff jegyzetek (nem kerulnek a repo-ba)
+.remember/
