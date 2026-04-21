@@ -57,6 +57,7 @@ public class SecurityConfig {
 
                 // Health check — csak health és info, nem az összes actuator endpoint
                 .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                .requestMatchers("/actuator/prometheus").permitAll()
                 .requestMatchers("/actuator/**").hasRole("ADMIN")
                 .requestMatchers("/api/v1/health").permitAll()
                 .requestMatchers("/api/v1/health/**").authenticated()
