@@ -1,0 +1,129 @@
+---
+session_date: 2026-04-21
+session_type: c-wave
+author: Claude Sonnet 4.5 (Agent SDK)
+parent_session: 2026-04-21-session-wave2-continued.yaml
+tags:
+  - compliance
+  - aml-kyc
+  - sanction-list
+  - worker-attendance
+  - permission-matrix
+  - ai-review-automation
+  - dependabot-cleanup
+
+summary: >
+  C-wave 3 admin/compliance UI (C1 sanction, C2 attendance, C3 permission matrix)
+  + teljes Dependabot PR triázs + AI Review Auto-Fix workflow uzembe allitas
+  (self-healing a Claude Code Action-nel).
+
+merged_prs_this_wave:
+  - pr: 92
+    commit: c62db70b162e1175c982b8441e42019434e6fd64
+    title: C1 — Szankcios lista (AML/KYC) frontend
+    files_added:
+      - frontend-react/src/services/api/sanction.ts
+      - frontend-react/src/pages/sanction/SanctionPage.tsx
+    features:
+      - 3-tab page (Szures, Listazas, Admin/Import)
+      - CLEAR/POSSIBLE/CONFIRMED risk level a screening-nel
+      - Status widget (aktiv bejegyzesek, utolso frissites)
+      - XML multipart import (UN, EU, OFAC linkekkel)
+    api: /api/v1/sanctions/{screen,list,import,status}
+    route: /sanction
+    menu: "AML / Compliance" -> "Szankcios lista (AML)"
+
+  - pr: 93
+    commit: 95de2212278d88243338fa4b86ca72f8e68fae2b
+    title: C2 — Munkaido nyilvantartas dashboard
+    files_added:
+      - frontend-react/src/services/api/workerAttendance.ts
+      - frontend-react/src/pages/attendance/AttendancePage.tsx
+    features:
+      - 2-tab page (Sajat naplom / Csapattag)
+      - Date range selector (default: last 7 days)
+      - Summary cards (bejel. szam, nyitott session, ossz. munkaido)
+      - Aktiv session highlight (zold)
+    api: /api/v1/attendance/{my,worker/{id}}
+    route: /attendance
+    menu: "Adminisztracio" -> "Munkaido nyilvantartas"
+
+  - pr: 94
+    commit: b2f438d40586b2a10a1b10748bc3d5b2e56fdee2
+    title: C3 — Permission matrix
+    files_added:
+      - frontend-react/src/pages/settings/PermissionMatrixPage.tsx
+    features:
+      - Role x Permission grid (module szerint csoportositott oszlopok)
+      - Checkbox matrix, dirty tracking + bulk save
+      - Filter, sticky headers, isSystemRole indicator
+    api: permissionApi.getActive + roleApi.list + roleApi.update bulk
+    route: /settings/permission-matrix
+    menu: "Adminisztracio" -> "Jogosultsag matrix"
+
+ai_review_automation:
+  pr: 88
+  commit: 6cf4f34c951686fdfdd55a12c88ad78c65d45f51
+  files:
+    - .github/workflows/ai-review-auto-fix.yml
+    - docs/AI_REVIEW_AUTOMATION.md
+  trigger:
+    - pull_request_review.submitted (Sourcery + Codex)
+    - pull_request_review_comment.created
+  action: anthropics/claude-code-action@v1
+  model: claude-sonnet-4-5
+  max_turns: 5
+  secrets_needed:
+    - ANTHROPIC_API_KEY (auto-uploaded from configs/secrets.json)
+  permissions:
+    - contents:write, pull-requests:write, issues:write
+    - id-token:write (OIDC for claude-code-action v1 - PR #90)
+    - actions:read
+  allowed_bots: 'sourcery-ai,chatgpt-codex-connector' (PR #91 - Claude self-fix!)
+  self_healing_demo: |
+    PR #89 teszt -> Sourcery review -> workflow fail (OIDC)
+    -> PR #90 (human fix) -> retry -> workflow fail (allowed_bots)
+    -> Claude Code Action SAJAT MAGAT javitotta -> PR #91
+    -> next review cycle: SUCCESS
+
+dependabot_triage:
+  merged:
+    - 49 jSerialComm 2.10->2.11
+    - 44 jsoup 1.18->1.22
+    - 57 actions/cache 4->5
+    - 56 dotenv 17.3->17.4
+    - 50 @playwright/test 1.58->1.59
+    - 42 actions/setup-java 4->5
+    - 24 actions/setup-node 4->6
+    - 36 react-hotkeys-hook 4->5
+  closed_as_too_risky:
+    - 48 Spring Boot 3.5.13->4.0.5 (MAJOR, wait for 3.5.14 release)
+    - 52 Flyway 10.10->12.3 (MAJOR DB tool)
+    - 45 Tailwind 3.4->4.2 (MAJOR config breaking)
+    - 54 lucide-react 0.x->1.x (MAJOR API)
+    - 35 react major
+    - 43 springdoc-openapi 2.x->3.x
+    - 26 actions/upload-artifact 4->7 (3-version jump)
+    - 39 eslint-plugin-react-hooks 5->7
+    - 55, 51, 47 eslint 9->10 (flat config breaking)
+  pending:
+    - 22 actions/checkout 4->6 (merge conflict - dependabot rebase varunk)
+
+technical_notes:
+  role_permissions_name_not_id: |
+    A Role.permissions backend response string[] (nevek), de a matrix edit-hez
+    permission ID-kra kell mappolnom. Frontend csinalja a name->ID lookupot.
+  shield_title_prop: |
+    lucide-react Shield komponensnek nincs `title` propertye. Wrap-elni kell
+    <span title="...">-be. Ez egy gyakori TS2322 hiba.
+
+next_tasks_post_c_wave:
+  - installer acceptance test friss Windows VM-en (user feladat)
+  - Spring Boot 3.5.14 monitoring (2026-04-23 - holnap)
+  - AI Review Auto-Fix figyeles PR #92-94-re (ha feedback jon, workflow javit)
+  - Q3 2026 Hibernate @Where AOP tenant filter
+
+mai_day_total_prs_merged: 24
+git_state:
+  main_head_post_c_wave: b2f438d40586b2a10a1b10748bc3d5b2e56fdee2
+  worktree_path: D:\repo\valutavalto-program\.claude\worktrees\youthful-shannon-8ac321
