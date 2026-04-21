@@ -1,0 +1,74 @@
+---
+title: 2026-04-21 Session - AI Review Automation + Production-First + Installer v2.1.7
+author: Claude Sonnet 4.5 + Kosa Zoltan
+date: 2026-04-21
+format: html
+---
+
+# Session osszefoglalo
+
+## Kontextus
+- Idotartam: ~12 ora
+- Merged PR-ek: 10 darab
+- Main HEAD valtozas: b26ca628 -> 51a9c591
+- Verzio valtozas: v2.1.5 -> v2.1.6 -> v2.1.7
+
+## 4 alaptorveny bevezetve (CLAUDE.md)
+
+1. **Production-first**: TILOS lokalis divergens stack. Minden dev a Hetzner (https://excvaluta.com) ellen megy.
+2. **Session memory workflow**: YAML + QMD + (TODO) Cognee + Obsidian mentes session vegen.
+3. **Komplex okoszisztema**: TILOS reszlegesen inditani - teljes stack egyben.
+4. **AI code review automation**: Sourcery + Codex + Claude Code Action auto-fix.
+
+## PR wave (10 mergelve)
+
+| PR   | Title                                                | Impact |
+|------|------------------------------------------------------|--------|
+| 97   | production-first + branch_code migration             | CLAUDE.md alaptorveny |
+| 98   | claude-review 3 P0 cherry-pick                       | NPE guards + V155 migration |
+| 99   | legacy start-all-dev torolve                         | alaptorveny-compliance |
+| 100  | launcher npm.cmd bug fix                             | asztali shortcut mukodik |
+| 101  | SetupWizard Tovabb gomb scroll layout                | kis viewport-on lathato |
+| 102  | bump v2.1.5 -> v2.1.6                                | 13 file |
+| 103  | version single source (package.json)                 | installer auto-load |
+| 104  | kumulalt AI review P1+P2 (7 hiba)                    | V155 pre-check, path quote |
+| 22   | dependabot actions/checkout 4 -> 6                   | security |
+| 105  | bump v2.1.7 + Production URL SSOT                    | ProductionUrls.java |
+
+## Installer v2.1.7
+
+- **Setup**: Penztar-Setup-2.1.7-20260421.exe (273.53 MB, SHA256: 648FDF20...)
+- **Eltavolito**: Penztar-Eltavolito-2.1.7-20260421.exe (60 KB, SHA256: FFFE8FDD...)
+- **Hely**: C:/Users/Kosa Zoltan/Downloads/
+- **Regi v2.1.6 torolve** a Downloads-bol.
+
+## Asztali shortcutok
+
+- Valuta Penztar Fejlesztoi mod INDITAS.lnk (dev Vite+Electron)
+- Valuta Penztar Fejlesztoi mod LEALLITAS.lnk
+- Valuta Penztar Eles kliens (telepitett).lnk (C:/Program Files/Valutavalto Penztar/Penztar.exe)
+
+## Nyitott feladatok (next session)
+
+### P0
+1. V155 migration Hetzner production-on auto-flyway-vel
+2. User v2.1.7 reinstall eles penztar gepen
+
+### P1
+3. Happy path teszt (Kapcsolat tesztelese gombot MEG KELL NYOMNIA)
+4. Production URL SSOT teljes refactor (Java konstans kesz, tobbi deferred)
+
+### P2
+5. Cognee MCP + Obsidian vault integracio
+6. Spring Boot 3.5.14 upgrade (2026-04-23)
+7. Installer acceptance test friss Windows VM-en
+
+## Lessons learned
+
+- Start-Process npm Windows-on Unix shell scriptet talal elobb -> Win32 hiba. Fix: child PS wrapper.
+- PowerShell Set-Location quote-interpolation apostrophe-s path-on elszall. Fix: -WorkingDirectory.
+- Electron packaged dotenv csak dev-ben mukodik. Fix: userData .env kozvetlen parsolas.
+- Flyway unique index elszall ha mar van duplikatum. Fix: DO block RAISE EXCEPTION pre-check.
+- Tailwind max-h + overflow-hidden + fix min-h kivagja a footert. Fix: shrink-0 + content overflow-y-auto.
+- V104 Flyway szam mar foglalt volt (V104_daily_checklist). Fix: V155-re atszamozas.
+- AI review bot kommenteket tomeggyujtes: for pr in ...; do gh api /pulls/N/reviews; done.

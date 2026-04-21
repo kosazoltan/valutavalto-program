@@ -158,13 +158,27 @@ Lasd: `docs/AI_REVIEW_AUTOMATION.md`
 - Kapcsolat: `application.properties` → `spring.datasource.*`
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.1.0** (git tag pusholva, 2026-04-17). Minden modul (backend/pom.xml, frontend-react, penztar-client, installer/*) egységesen 2.1.0-n. Előtte szétesett: 1.0.0 / 1.0.0-SNAPSHOT / 1.9.2. Ha bump kell, lásd a `docs/knowledge/memory/2026-04-17-installer-release-v2.1.0-session.yaml` alatt a `resume_workflow_for_future_agent.version_bump_for_future_release.files_to_update` listát (12 fájl).
-- **HEAD:** `ba425304` a `main`-en, pusholva. Mai session commitjai: `87b9a56a` (First-Run Setup Wizard), `b73a2c56` (standalone Penztar-Eltavolito build + magyar README + NSIS encoding fix), `ba425304` (verzió-egyesítés + CHANGELOG [2.1.0]).
-- **Telepítő fájlok (gitignore-osak, `installer/build/`-ban):**
-  - `Penztar-Setup-2.1.0-20260417.exe` — 431.20 MB, SHA-256 `33F48495F17B113BBCBC9FB7F8FF9AC051D3532248BF0984EE5AEB89304CEBDC`
-  - `Penztar-Eltavolito-2.1.0-20260417.exe` — 58.5 KB, SHA-256 `D6404015F2C24A457977D0C48A6BAE97F0972F06BE93766B45FB8500073AC8CA`
-  - Mindkettő bemásolva a `%USERPROFILE%\Downloads\`-ba az operátornak.
-- **Újra-buildelés:** `powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1 [-SkipDownloads]` (~10-30 perc, vagy ~8 perc `-SkipDownloads`-al, ha az `installer/build/stage/` cache megvan). Standalone eltávolító: `powershell -ExecutionPolicy Bypass -File installer\build-cleanup.ps1` (~1 s, ~60 KB).
-- **NSIS encoding szabály:** `.nsi` forrásfájlok csak Windows-1252 ASCII-t tartalmazhatnak (NSIS 3.x Windows fordító ACP-t használ). Magyar ékezetek (`á`/`é`/`í`/`ó`/`ö`/`ő`/`ú`/`ü`/`ű`) → sima ASCII. Em-dash (`—`) → `-`. A `©` (U+00A9 = `0xA9` byte) megmaradhat, valid Windows-1252.
-- **Memory fájlok a mai wave-hez:** `docs/knowledge/memory/2026-04-17-installer-release-v2.1.0-session.yaml` + `.qmd`. Ugyanaznap korábbi wave (AML parity + pipeline): `docs/knowledge/memory/2026-04-17-pipeline-run-session.yaml` + `.qmd`.
-- **Nyitott következő feladatok:** CB-016 (NavClosingService hardcoded VAT_RATE=0.27 → tax_code mapping), companyId formal repository audit (multi-tenant boundary check), Spring Boot 3.5.14 monitoring (2026-04-23 milestone; amint release-eli Tomcat 10.1.54+ bundle-lel, törlendő az explicit `<tomcat.version>` override a `backend/pom.xml`-ből), installer acceptance test friss Windows VM-en az `installer/tests/installer-validation-suite.ps1` szkripttel.
+- **Verzió:** **v2.1.7** (2026-04-21 este). Minden modul egységesen 2.1.7-n. Főbb vízcsömök ma: v2.1.5 (reggel) → v2.1.6 (PR #102, 20:17) → v2.1.7 (PR #105, 21:32).
+- **Main HEAD:** `51a9c591` (chore: bump v2.1.6 → v2.1.7 + Production URL SSOT, PR #105).
+- **Mai 10 merge:** PR #97 (production-first + branch_code), #98 (claude-review 3 P0 cherry-pick), #99 (legacy dev launcher törölve), #100 (launcher npm.cmd fix), #101 (SetupWizard scroll), #102 (bump v2.1.6), #103 (version single source), #104 (kumulált AI review P1+P2), #22 (dependabot actions/checkout 4→6), #105 (bump v2.1.7 + Production URL SSOT).
+- **Telepítő fájlok v2.1.7** (gitignore-osak, `installer/build/`-ban + másolva `%USERPROFILE%\Downloads\`-ba):
+  - `Penztar-Setup-2.1.7-20260421.exe` — **273.53 MB**, SHA-256 `648FDF20F728E57D258CDD131B5EA11FF270E383FDEDE1B520FE2471C9F92C65`
+  - `Penztar-Eltavolito-2.1.7-20260421.exe` — **60 KB**, SHA-256 `FFFE8FDD250D0A577607EE544CF5BE6873C6E86A945DBCB8EA21ADD7AC587B86`
+  - Régi v2.1.6 installerek törölve a Downloads-ból.
+- **Újra-buildelés:** `powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1 [-SkipDownloads]`. A `$Version` PARAMETER most auto-load a monorepo root `package.json`-ból (PR #103 + #104 `build-common.ps1` helperrel).
+- **NSIS encoding szabály:** `.nsi` csak Windows-1252 ASCII. Ékezetek → sima ASCII. Em-dash → `-`.
+- **Memory fájlok a mai wave-hez:** `docs/knowledge/memory/2026-04-21-session-ai-review-v2.1.7.yaml` + `.qmd`. `.remember/remember.md` frissítve.
+- **Asztali shortcutok** (`C:\Users\Kósa Zoltán\OneDrive\Desktop\`): `Valuta Pénztár — Fejlesztői mód (INDÍTÁS).lnk`, `Valuta Pénztár — Fejlesztői mód (LEÁLLÍTÁS).lnk`, `Valuta Pénztár — Éles kliens (telepített).lnk`.
+- **AI review automation:** `.github/workflows/ai-review-auto-fix.yml` minden PR merge után triggerel. A kötelező gyűjtő-script minta: `for pr in 97 98 100 101 102 103 104; do gh api "/repos/kosazoltan/valutavalto-program/pulls/$pr/reviews"; done`. PR #104 ezzel 7 hibát javított.
+- **Production URL SSOT (v2.1.7 új):** `config/production-urls.json` + `backend/.../config/ProductionUrls.java` Java konstans osztály. PROBLEMADETAILBUILDER.TYPE_BASE mostantól onnan olvas. **Deferred:** minden @Value default, PS1 launcher hardcoded és Electron `main.ts` fallback teljes refactor a config-ból.
+- **Nyitott következő feladatok:**
+- **Nyitott következő feladatok (2026-04-22+):**
+  - **P0 (éles pénztár frissítés):** user v2.1.7 reinstall az éles gépen — 1) `Penztar-Eltavolito-2.1.7-20260421.exe` admin joggal, 2) `Penztar-Setup-2.1.7-20260421.exe` admin joggal, 3) SetupWizard 5 lépés (Iroda → Program típus → Szerver (**Kapcsolat tesztelése** gomb kötelező!) → Admin jelszó → Telepítés), 4) belépés `EBC / ADMIN / Admin1234!`, 5) új VÉTEL teszt → `VEBC000001` NGM-bizonylat.
+  - **P0 (V155 migration Hetzner production-on):** a Spring Boot következő indulásakor a Flyway automatikusan lefuttatja. Ha duplikált `daily_session` vagy `transaction.receipt_number` van, a `DO $$ RAISE EXCEPTION` pre-check megállítja — admin döntheti el a takarítást. Fájl: `backend/src/main/resources/db/migration/V155__add_version_and_unique_constraints.sql`.
+  - **P1:** happy path teszt dev módban (Fejlesztői mód INDÍTÁS shortcut) — a SetupWizard 4. lépésnél **Kapcsolat tesztelése gombot** kell nyomni (connectionTest.state=ok kötelező a Továbbhoz).
+  - **P1:** Production URL SSOT teljes refaktor — Java konstans osztály (`ProductionUrls.java`) + `config/production-urls.json` meglelve, **deferred**: minden @Value default, PS1 launcher hardcoded és Electron `main.ts` fallback a config-ból lazy-load-olni.
+  - **P2:** CB-016 (NavClosingService hardcoded VAT_RATE=0.27 → tax_code mapping).
+  - **P2:** Cognee MCP integráció (amint elérhető) — auto-save session memóriába.
+  - **P2:** Obsidian vault sync (amint telepítve) — auto-save session memóriába.
+  - **P2:** Spring Boot 3.5.14 upgrade (2026-04-23 milestone; amint release-eli Tomcat 10.1.54+ bundle-lel, törlendő az explicit `<tomcat.version>` override a `backend/pom.xml`-ből).
+  - **P2:** Installer acceptance test friss Windows VM-en az `installer/tests/installer-validation-suite.ps1` szkripttel.
