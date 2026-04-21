@@ -102,3 +102,25 @@ Egy PR automatikus fix-elesebol:
 - Security guide: https://github.com/anthropics/claude-code-action/blob/main/docs/security.md
 - Anthropic API console: https://console.anthropic.com
 - Claude GitHub App: https://github.com/apps/claude
+
+## Ismert csapdak (troubleshooting)
+
+### 1. Could not fetch an OIDC token
+
+**Tunet:** A workflow run fail-el `Could not fetch an OIDC token. Did you remember to add id-token: write to your workflow permissions?` hibauzenettel.
+
+**Ok:** A claude-code-action@v1 OIDC token-t probal lekerni akkor is ha anthropic_api_key explicit konfiguralva van. Ez a docs-ban nem volt eleg egyertelmu.
+
+**Megoldas:** A permissions blokkhoz hozzaadva:
+
+```yaml
+permissions:
+  id-token: write       # OIDC token fetch (KOTELEZO)
+  actions: read
+```
+
+**Fix commit:** PR #90 (c97eb15c)
+
+### 2. A workflow ismetelt concurrent run-oknal nem cancel-el
+
+Szandekos! A `concurrency.cancel-in-progress: false` biztositja, hogy egy folyamatban levo fix ne legyen megszakitva egy uj review erkezesekor.

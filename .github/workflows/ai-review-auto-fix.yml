@@ -81,6 +81,8 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Allowed bots: Sourcery AI + Codex automatikus trigger-elhet (default: only humans)
+          allowed_bots: 'sourcery-ai,chatgpt-codex-connector'
           # Max 5 iteracio a fixre (token + cost limit)
           claude_args: --max-turns 5 --model claude-sonnet-4-5
           prompt: |
