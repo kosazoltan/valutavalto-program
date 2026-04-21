@@ -40,9 +40,8 @@ for (const { src, dst } of LINKS) {
     console.log(`[collect-logs] created empty: ${src}`);
   }
   try {
-    if (existsSync(dst)) {
-      rmSync(dst, { force: true });
-    }
+    // Codex P2: existsSync(dangling_symlink)=false -> rmSync skipped -> symlinkSync EEXIST. Unconditional rm kell.
+    rmSync(dst, { force: true });
     symlinkSync(src, dst);
     console.log(`[collect-logs] symlink: ${dst} -> ${src}`);
   } catch (e) {
@@ -51,7 +50,6 @@ for (const { src, dst } of LINKS) {
       copyFileSync(src, dst);
     } catch (copyErr) {
       console.error(`[collect-logs] copy fallback also failed: ${dst}`, copyErr.message);
-    }
   }
 }
 
@@ -65,7 +63,6 @@ try {
       console.log(`  ${f}\t${st.size} bytes\t${st.mtime.toISOString()}`);
     } catch {
       console.log(`  ${f}\t(stat failed)`);
-    }
   }
 } catch (e) {
   console.warn('[collect-logs] listing failed:', e.message);

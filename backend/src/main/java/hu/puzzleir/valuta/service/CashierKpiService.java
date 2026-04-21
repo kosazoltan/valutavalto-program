@@ -125,7 +125,7 @@ public class CashierKpiService {
         return 0L;
     }
 
-    private static BigDecimal toBigDecimal(Object o) {
+    private BigDecimal toBigDecimal(Object o) {
         if (o == null) return BigDecimal.ZERO;
         if (o instanceof BigDecimal b) return b;
         // Sourcery AI bug_risk: doubleValue() precision loss — helyette String conversion
@@ -133,6 +133,9 @@ public class CashierKpiService {
         if (o instanceof Integer i) return BigDecimal.valueOf(i);
         if (o instanceof java.math.BigInteger bi) return new BigDecimal(bi);
         if (o instanceof Number n) return new BigDecimal(n.toString());
+        // Sourcery: silent BigDecimal.ZERO maskolna data issue-kat — most loggoljuk
+        log.warn("Unsupported object type in toBigDecimal: {} (value={}). Returning ZERO fallback.",
+                o.getClass().getName(), o);
         return BigDecimal.ZERO;
     }
 }

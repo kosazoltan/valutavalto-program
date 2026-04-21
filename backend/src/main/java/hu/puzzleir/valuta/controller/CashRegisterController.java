@@ -120,7 +120,7 @@ public class CashRegisterController {
      */
     @PostMapping("/device/{deviceId}/heartbeat")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<CashRegisterDeviceDto> heartbeat(@PathVariable UUID deviceId) {
+    public ResponseEntity<CashRegisterDeviceDto> recordDeviceHeartbeat(@PathVariable UUID deviceId) {
         return ResponseEntity.ok(cashRegisterDeviceService.heartbeat(deviceId));
     }
 
@@ -129,7 +129,7 @@ public class CashRegisterController {
      */
     @GetMapping("/devices")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<List<CashRegisterDeviceDto>> listDevices() {
+    public ResponseEntity<List<CashRegisterDeviceDto>> listCashRegisterDevices() {
         return ResponseEntity.ok(cashRegisterDeviceService.listForCurrentCompany());
     }
 }

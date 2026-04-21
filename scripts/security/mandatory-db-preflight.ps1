@@ -168,6 +168,15 @@ function Resolve-RemoteConnection {
     return $null
 }
 
+function Get-RemoteMode {
+    # Sourcery: egyetlen forras a DB_PREFLIGHT_REMOTE_MODE normalizaciora.
+    # [string]::IsNullOrWhiteSpace a truthy check-nel expliciteb (empty string is strict-re megy).
+    if ([string]::IsNullOrWhiteSpace($env:DB_PREFLIGHT_REMOTE_MODE)) {
+        return 'strict'
+    }
+    return $env:DB_PREFLIGHT_REMOTE_MODE.Trim().ToLowerInvariant()
+}
+
 function Invoke-PsqlLines {
     param(
         [string]$ConnectionString,
@@ -267,7 +276,7 @@ if ([string]::IsNullOrWhiteSpace($remoteConn)) {
     # Dev env: ha a DB_PREFLIGHT_REMOTE_MODE = "optional" (case-insensitive) es nincs remote conn string,
     # skippeljuk a remote validaciot, de a LOKALIS DB validaciot tovabbra is futtatjuk.
     # CI-ban strict mode (default) -> ERR+exit.
-    $remoteModeCheck = if ($env:DB_PREFLIGHT_REMOTE_MODE) { $env:DB_PREFLIGHT_REMOTE_MODE.Trim().ToLowerInvariant() } else { "strict" }
+    $remoteModeCheck = Get-RemoteMode
     if ($remoteModeCheck -eq "optional") {
         Write-Status "Remote/Neon DB connection string not configured (optional mode)." "WARN"
         Write-Status "Dev env: local DB validation continues. Production CI requires NEON_DATABASE_URL." "WARN"
@@ -303,7 +312,7 @@ if (-not [string]::IsNullOrWhiteSpace($remoteConn)) {
     }
     catch {
         $msg = "Remote/Neon DB connection failed: $($_.Exception.Message)"
-        $remoteMode = if ($env:DB_PREFLIGHT_REMOTE_MODE) { $env:DB_PREFLIGHT_REMOTE_MODE.Trim().ToLowerInvariant() } else { "strict" }
+        $remoteMode = Get-RemoteMode
         if ($remoteMode -eq "optional") {
             Write-Status "$msg optional mode: remote parity skipped for local/dev run." "WARN"
             $skipRemoteParity = $true
@@ -324,7 +333,7 @@ catch {
     exit 1
 }
 
-$remoteMode = if ($env:DB_PREFLIGHT_REMOTE_MODE) { $env:DB_PREFLIGHT_REMOTE_MODE.Trim().ToLowerInvariant() } else { "strict" }
+$remoteMode = Get-RemoteMode
 if (-not (Get-Variable -Name 'skipRemoteParity' -Scope Local -ErrorAction SilentlyContinue)) { $skipRemoteParity = $false }
 $skipRemoteParity = if ($skipRemoteParity) { $true } else { $false }
 $remoteApplied = @()
