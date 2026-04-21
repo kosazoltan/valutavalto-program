@@ -156,7 +156,7 @@ export default function ConversionPage() {
     // Calculate to amount if target currency selected
     if (toCurrencyId) {
       const toRate = getRate(toCurrencyId)
-      if (toRate) {
+      if (toRate && toRate.baseSellRate > 0) {
         // Calculate target amount using sell rate (customer buys this currency)
         const result = huf / toRate.baseSellRate
         setToAmount(result.toFixed(2).replace('.', ','))
