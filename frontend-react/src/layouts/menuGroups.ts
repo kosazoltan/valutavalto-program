@@ -127,6 +127,7 @@ export const menuGroups: MenuGroup[] = [
     items: [
       { path: "/workers", label: "Dolgozók", icon: Users },
       { path: "/employees", label: "HR (munkavállalók)", icon: Users },
+      { path: "/attendance", label: "Munkaidő nyilvántartás", icon: Users },
       { path: "/licenses", label: "Engedélyek", icon: Shield },
       { path: "/settings", label: "Rendszerbeállítások", icon: Settings, canonicalRoles: ["ugyvezeto"] },
       { path: "/scheduler", label: "Ütemező", icon: FileText, canonicalRoles: ["ugyvezeto", "irodavezeto"] },
