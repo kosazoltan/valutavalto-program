@@ -188,6 +188,11 @@ public class ExchangeRateMasterService {
 
         if (targetBranches.isEmpty()) {
             log.warn("Nincs célpénztár az árfolyam elosztáshoz! workgroupId={}", workgroupId);
+            // Codex AI P2: audit log akkor is kell, ha 0 penztar kapott — a status valtozas (PUBLISHED) megtortent
+            auditLogService.log("RATE_PUBLISH",
+                    String.format("Arfolyam publikalva: %s v%d -> 0 penztar (no target branches)",
+                            currency.getCode(), master.getVersionNumber()),
+                    masterRateId.toString());
             return master;
         }
 

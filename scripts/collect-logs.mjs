@@ -12,14 +12,17 @@
  *
  * Strategia:
  * 1. A backend + electron mar a /tmp/backend.log + /tmp/penztar-dev.log-ba ir,
- *    csak symlink-eljuk.
+ *    csak symlink-eljuk (fallback: copy).
  * 2. A preview Vite stdout nem elerheto fajlkent - a preview_logs MCP tool
  *    olvassa, ezt beiranyitjuk egy fajlba.
  * 3. A browser console-t 10s-enkent snapshot-oljuk a preview_console_logs-bol.
+ *
+ * Codex AI P2 fix: Unix-only shell calls (rm, cp, ls) -> Node fs API
+ * (rmSync, copyFileSync, readdirSync, statSync) cross-platform.
  */
 
-import { existsSync, symlinkSync, writeFileSync, mkdirSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { existsSync, symlinkSync, writeFileSync, mkdirSync, rmSync, copyFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 
 const LOG_DIR = '/tmp/logs';
 mkdirSync(LOG_DIR, { recursive: true });
@@ -37,17 +40,37 @@ for (const { src, dst } of LINKS) {
     console.log(`[collect-logs] created empty: ${src}`);
   }
   try {
-    execSync(`rm -f "${dst}"`);
+    if (existsSync(dst)) {
+      rmSync(dst, { force: true });
+    }
     symlinkSync(src, dst);
     console.log(`[collect-logs] symlink: ${dst} -> ${src}`);
   } catch (e) {
-    console.warn(`[collect-logs] symlink failed, fallback cp: ${dst}`, e.message);
-    execSync(`cp "${src}" "${dst}"`);
+    console.warn(`[collect-logs] symlink failed, fallback copy: ${dst}`, e.message);
+    try {
+      copyFileSync(src, dst);
+    } catch (copyErr) {
+      console.error(`[collect-logs] copy fallback also failed: ${dst}`, copyErr.message);
+    }
   }
 }
 
 console.log('\n[collect-logs] READY. Agregalt fajlok:');
-execSync(`ls -la "${LOG_DIR}"`, { stdio: 'inherit' });
+try {
+  const files = readdirSync(LOG_DIR);
+  for (const f of files) {
+    const full = join(LOG_DIR, f);
+    try {
+      const st = statSync(full);
+      console.log(`  ${f}\t${st.size} bytes\t${st.mtime.toISOString()}`);
+    } catch {
+      console.log(`  ${f}\t(stat failed)`);
+    }
+  }
+} catch (e) {
+  console.warn('[collect-logs] listing failed:', e.message);
+}
+
 console.log('\nHasznalhatod:');
 console.log(`  tail -F ${LOG_DIR}/*.log`);
 console.log(`  grep -aE "ERROR|WARN" ${LOG_DIR}/*.log`);
