@@ -74,7 +74,12 @@ cd penztar-client && npm test
 - Ez kiterjeszti a jelenlegi PR scope szabalyt — a user szerint minden ismert hiba surgos.
 - Kivetel: ha a javitas tobb napos refactort igenyelne, akkor GitHub Issue-t nyitni + kommentalni a kodban.
 
-## Kötelező AI code review workflow (Sourcery + Codex)
+## AUTOMATIZALT AI code review workflow (Sourcery + Codex)
+**2026-04-21 ota automatikus**: a `.github/workflows/ai-review-auto-fix.yml` a Claude Code Action-t triggereli, amikor Sourcery vagy Codex review erkezik. Ez automatikusan javit + push-ol a feature branch-re. A manualis workflow az `agent` fallback.
+
+Lasd: `docs/AI_REVIEW_AUTOMATION.md`
+
+## Kötelező AI code review workflow (Sourcery + Codex) — manualis fallback
 - **Minden PR MERGE UTAN automatikusan:**
   1. Lekerni a Sourcery-AI es ChatGPT-Codex review-kat: `gh api repos/OWNER/REPO/pulls/PR_NUM/reviews` es `/pulls/PR_NUM/comments` (filter: user.login matches `sourcery-ai|chatgpt-codex-connector`).
   2. **Automatikusan javitani a jelzett hibakat.** Priorizalas: P1 (bug_risk, kritikus) > P2 (suggestions) > style.
