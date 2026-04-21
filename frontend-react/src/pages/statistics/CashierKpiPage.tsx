@@ -155,7 +155,7 @@ export default function CashierKpiPage() {
                         type="date"
                         className="form-input h-9 text-xs"
                         value={dateFrom}
-                        max={dateTo}
+                        max={dateTo || isoDate(new Date())}
                         onChange={e => {
                             setDateFrom(e.target.value)
                             setQuick('custom')
