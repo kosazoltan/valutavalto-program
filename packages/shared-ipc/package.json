@@ -1,6 +1,6 @@
 {
   "name": "@valuta/shared-ipc",
-  "version": "2.1.6",
+  "version": "2.1.7",
   "private": true,
   "description": "Type-safe Electron IPC kontraktus - main+preload+renderer egy forrasbol",
   "main": "./src/index.ts",

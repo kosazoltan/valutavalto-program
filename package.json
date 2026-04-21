@@ -1,6 +1,6 @@
 {
   "name": "valutavalto-monorepo",
-  "version": "2.1.6",
+  "version": "2.1.7",
   "private": true,
   "description": "RepZtecH Exclusive Best Change - teljes ERP \u0102\u00b6kosziszt\u0102\u00a9ma (backend + frontend-react + penztar-client)",
   "scripts": {

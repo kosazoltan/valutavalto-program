@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.exception;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import hu.puzzleir.valuta.config.ProductionUrls;
 
 import java.net.URI;
 import java.time.Instant;
@@ -41,7 +42,8 @@ public final class ProblemDetailBuilder {
      * Alap domain az RFC 7807 "type" mezo URI-jaihoz.
      * Production-ban a type URI egy valos dokumentacios oldalra mutathat.
      */
-    public static final String TYPE_BASE = "https://excvaluta.com/errors";
+    /** @deprecated hasznaljuk {@link ProductionUrls#TYPE_BASE}-t. Itt a backward-compat alias. */
+    public static final String TYPE_BASE = ProductionUrls.TYPE_BASE;
 
     private final ProblemDetail pd;
 
