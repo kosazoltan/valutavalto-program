@@ -37,6 +37,20 @@ database/                 # Extra migrációk, seed-ek
 scripts/                  # Utility szkriptek
 ```
 
+## KÖTELEZŐ ÉRVÉNYŰ: Komplex ökoszisztéma megnyitás
+Amikor a user "nyissuk meg a valuta programot / indítsd az ökoszisztémát / teljes rendszer / program elindítása" utasítást ad, **MINDIG az összes komponenst együtt kell indítani**, TILOS csak egy részt:
+
+1. **Lokális PostgreSQL** (localhost:5432) — ellenőrzés + V154 migration alkalmazva
+2. **Backend** (Spring Boot, port 8080) — `backend/mvnw spring-boot:run`
+3. **Frontend-react admin** (Vite, port 3000) — `frontend-react/npm run dev`
+4. **Penztar-client Electron** — `penztar-client/npm run dev:main` (a renderer a frontend-react 3000-esét használja)
+
+**Launcher:** `scripts/start-valuta-ecosystem.ps1` — egyetlen paranccsal az összes komponens elindul + health check + log path-ok listázva.
+
+**Leállítás:** `scripts/stop-valuta-ecosystem.ps1` (vagy `Get-Process java,node,electron | Stop-Process -Force`)
+
+**TILOS külön megnyitni!** A helyes állapot ellenőrzése csak komplex rendszer-szinten érvényes — pl. a frontend authentication hitelesítése a backend-hez, az Electron sync a backend-hez és a frontend-hez stb. Külön indítás csak debug célra megengedett, explicit user-megerősítéssel.
+
 ## Build és futtatás
 ```bash
 # Backend
