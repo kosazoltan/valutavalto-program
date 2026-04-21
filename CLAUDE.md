@@ -69,6 +69,11 @@ cd penztar-client && npm test
 - **Árfolyam frissesség:** 24 órás TTL — lejárt rátával nem szabad tranzakciót engedni
 - **Security:** `@PreAuthorize` annotáció minden controlleren, JWT auth, CORS nem lehet wildcard (`*`)
 
+## Kotelezo regi hibak azonnali javitasa
+- Ha egy audit vagy kódreview soran barmilyen korabbi hibat megtalalsz (scope-on kivul, mas modulban), azonnal javitani kell, nem dokumentalni kesobbre.
+- Ez kiterjeszti a jelenlegi PR scope szabalyt — a user szerint minden ismert hiba surgos.
+- Kivetel: ha a javitas tobb napos refactort igenyelne, akkor GitHub Issue-t nyitni + kommentalni a kodban.
+
 ## Kötelező AI code review workflow (Sourcery + Codex)
 - **Minden PR MERGE UTAN automatikusan:**
   1. Lekerni a Sourcery-AI es ChatGPT-Codex review-kat: `gh api repos/OWNER/REPO/pulls/PR_NUM/reviews` es `/pulls/PR_NUM/comments` (filter: user.login matches `sourcery-ai|chatgpt-codex-connector`).

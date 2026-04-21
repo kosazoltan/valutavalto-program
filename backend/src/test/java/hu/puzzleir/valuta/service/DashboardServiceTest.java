@@ -41,6 +41,7 @@ class DashboardServiceTest {
     private NotificationRepository notificationRepository;
 
     private static final UUID BRANCH_ID = UUID.randomUUID();
+    private static final UUID COMPANY_ID = UUID.randomUUID();
     private static final Long WORKER_ID = 42L;
 
     // =====================================================================
@@ -52,6 +53,7 @@ class DashboardServiceTest {
         try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
             secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
             secUtils.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
 
             // Mock tranzakciók
             Transaction tx = Transaction.builder()
@@ -64,7 +66,7 @@ class DashboardServiceTest {
             Branch branch = new Branch();
             branch.setCode("B01");
             branch.setName("Teszt Iroda");
-            when(branchRepository.findByIsActiveTrue()).thenReturn(List.of(branch));
+            when(branchRepository.findByCompanyIdAndIsActiveTrue(COMPANY_ID)).thenReturn(List.of(branch));
 
             // Mock notifications
             when(notificationRepository.findByUserIdAndIsReadFalseOrderByCreatedAtDesc(anyString()))
@@ -88,13 +90,14 @@ class DashboardServiceTest {
         try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
             secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
             secUtils.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
 
             // Nincs tranzakció
             when(transactionRepository.findActiveByBranchAndDate(eq(BRANCH_ID), any(LocalDate.class)))
                     .thenReturn(Collections.emptyList());
 
             // Nincs aktív iroda
-            when(branchRepository.findByIsActiveTrue()).thenReturn(Collections.emptyList());
+            when(branchRepository.findByCompanyIdAndIsActiveTrue(COMPANY_ID)).thenReturn(Collections.emptyList());
 
             // Nincs notification
             when(notificationRepository.findByUserIdAndIsReadFalseOrderByCreatedAtDesc(anyString()))

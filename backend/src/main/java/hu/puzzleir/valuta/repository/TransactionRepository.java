@@ -1003,7 +1003,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "FROM Transaction t JOIN t.worker w " +
            "WHERE t.company.id = :companyId " +
            "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
-           "AND t.status = 'COMPLETED' " +
+           "AND t.status = hu.puzzleir.valuta.entity.TransactionStatus.COMPLETED " +
            "GROUP BY w.id, w.name " +
            "ORDER BY w.name ASC")
     List<Object[]> cashierKpiByCompanyAndDateRange(
@@ -1028,7 +1028,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "FROM Transaction t " +
            "WHERE t.company.id = :companyId " +
            "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
-           "AND t.status = 'COMPLETED'")
+           "AND t.status = hu.puzzleir.valuta.entity.TransactionStatus.COMPLETED")
     Object[] cashierKpiCompanyTotals(
         @Param("companyId") UUID companyId,
         @Param("dateFrom") LocalDate dateFrom,

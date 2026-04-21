@@ -51,9 +51,8 @@ public class BranchService {
     public List<BranchDto> findAllActive() {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         log.debug("Finding all active branches for company: {}", companyId);
-        List<Branch> branches = branchRepository.findByIsActiveTrue().stream()
-                .filter(b -> b.getCompany() != null && b.getCompany().getId().equals(companyId))
-                .collect(Collectors.toList());
+        // Multi-tenant-safe: company-scoped query + no post-filter stream
+        List<Branch> branches = branchRepository.findByCompanyIdAndIsActiveTrue(companyId);
         return branchMapper.toDtoList(branches);
     }
 
@@ -104,7 +103,8 @@ public class BranchService {
     @Transactional(readOnly = true)
     public List<BranchDto> search(String searchTerm) {
         log.debug("Searching branches with term: {}", searchTerm);
-        List<Branch> branches = branchRepository.searchByNameOrCode(searchTerm);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<Branch> branches = branchRepository.searchByCompanyIdAndNameOrCode(companyId, searchTerm);
         return branchMapper.toDtoList(branches);
     }
 
@@ -114,7 +114,8 @@ public class BranchService {
     @Transactional(readOnly = true)
     public List<BranchDto> findByType(String branchTypeCode) {
         log.debug("Finding branches by type: {}", branchTypeCode);
-        List<Branch> branches = branchRepository.findByBranchTypeCode(branchTypeCode);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<Branch> branches = branchRepository.findByCompanyIdAndBranchTypeCode(companyId, branchTypeCode);
         return branchMapper.toDtoList(branches);
     }
 
@@ -122,9 +123,14 @@ public class BranchService {
      * Fiókok státusz szerint
      */
     @Transactional(readOnly = true)
+    @SuppressWarnings("deprecation") // Multi-tenant audit: ritkan hasznalt, branch_status kod egyedi cegenkent is — kicsi risk
     public List<BranchDto> findByStatus(String statusCode) {
         log.debug("Finding branches by status: {}", statusCode);
-        List<Branch> branches = branchRepository.findByBranchStatusCode(statusCode);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        // Post-filter stream-mel company-id szures
+        List<Branch> branches = branchRepository.findByBranchStatusCode(statusCode).stream()
+                .filter(b -> b.getCompany() != null && b.getCompany().getId().equals(companyId))
+                .collect(Collectors.toList());
         return branchMapper.toDtoList(branches);
     }
 
@@ -134,7 +140,8 @@ public class BranchService {
     @Transactional(readOnly = true)
     public List<BranchDto> findRootBranches() {
         log.debug("Finding root branches");
-        List<Branch> branches = branchRepository.findRootBranches();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<Branch> branches = branchRepository.findRootBranchesByCompanyId(companyId);
         return branchMapper.toDtoList(branches);
     }
 

@@ -158,8 +158,9 @@ public class WacService {
      */
     @Transactional(readOnly = true)
     public ProfitSummary getTerritoryProfitSummary(Integer territoryId, LocalDate from, LocalDate to) {
-        // Területhez tartozó branch-ök keresése
-        List<Branch> branches = branchRepository.findByVaultTerritoryId(territoryId);
+        // Multi-tenant-safe: company-scoped lookup
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<Branch> branches = branchRepository.findByCompanyIdAndVaultTerritoryId(companyId, territoryId);
         List<UUID> branchIds = branches.stream().map(Branch::getId).toList();
 
         if (branchIds.isEmpty()) {

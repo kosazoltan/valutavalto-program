@@ -62,6 +62,8 @@ public class EmailAccountService {
         if (activeRole == null) {
             return List.of();
         }
+        // Multi-tenant-safe: resolve companyId from security context
+        UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
 
         return switch (activeRole) {
             case "CASHIER" -> {
@@ -82,7 +84,8 @@ public class EmailAccountService {
                 Branch myBranch = branchRepository.findById(branchId).orElse(null);
                 if (myBranch != null && myBranch.getVaultTerritoryId() != null) {
                     Integer vaultId = myBranch.getVaultTerritoryId();
-                    List<Branch> territoryBranches = branchRepository.findByVaultTerritoryId(vaultId);
+                    // Multi-tenant-safe: company-scoped lookup
+                    List<Branch> territoryBranches = branchRepository.findByCompanyIdAndVaultTerritoryId(companyId, vaultId);
                     for (Branch b : territoryBranches) {
                         accounts.addAll(emailAccountRepository.findByBranchId(b.getId()));
                     }
@@ -116,7 +119,8 @@ public class EmailAccountService {
                 Branch myBranch = branchRepository.findById(branchId).orElse(null);
                 if (myBranch != null && myBranch.getVaultTerritoryId() != null) {
                     Integer vaultId = myBranch.getVaultTerritoryId();
-                    List<Branch> territoryBranches = branchRepository.findByVaultTerritoryId(vaultId);
+                    // Multi-tenant-safe: company-scoped lookup
+                    List<Branch> territoryBranches = branchRepository.findByCompanyIdAndVaultTerritoryId(companyId, vaultId);
                     for (Branch b : territoryBranches) {
                         accounts.addAll(emailAccountRepository.findByBranchId(b.getId()));
                     }
