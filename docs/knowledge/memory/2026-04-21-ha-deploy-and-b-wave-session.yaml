@@ -1,0 +1,124 @@
+---
+session_date: 2026-04-21
+session_type: multi-wave
+author: Claude Sonnet 4.5 (Agent SDK)
+tags:
+  - high-availability
+  - postgresql-streaming-replication
+  - multi-provider-ha
+  - scaleway
+  - contabo-lemondas
+  - b7-rate-workflow
+  - b4-mnb-monthly-reports
+  - b3-bank-trade-workflow
+
+summary: >
+  Teljes HA (high availability) setup + 3 alkalmazasmodul (B7/B4/B3) merge-je
+  egy napon. 3-regios warm-standby: Hetzner primary (NBG1, DE) + Scaleway standby
+  (Paris, FR). Contabo torolve (EUR 91,20 visszaigenylese folyamatban). Utana
+  alkalmazasfejlesztes: B7 arfolyam-publikalas workflow UI, B4 MNB havi riport UI,
+  B3 banki tranzakcio 2-oldali workflow (deviza + HUF egyeztetes).
+
+context:
+  user: Kosa Zoltan (EBC Zrt., Pecs, 60 penztaros tervezve)
+  environment: Windows 11 Pro, AMD Ryzen 9 9950X3D, 96GB RAM
+  node: v24.13.0
+  java: 21
+  postgresql: 16
+
+ha_infrastructure:
+  primary:
+    provider: Hetzner Cloud
+    location: Nuremberg (NBG1), DE
+    plan: CX22
+    ip: 95.216.191.162
+    hostname: primary.excvaluta.com
+    role: postgres primary + spring boot backend + nginx TLS
+  standby:
+    provider: Scaleway
+    location: Paris (par1), FR
+    plan: DEV1-S
+    ip: 163.172.152.234
+    hostname: standby1.excvaluta.com
+    role: postgres standby (streaming replication) + spring boot hot backend + nginx
+  dns:
+    provider: Cloudflare
+    zone: excvaluta.com
+    record: api.excvaluta.com -> 95.216.191.162 (TTL 60s)
+    failover_script: deploy/hetzner/ha/cloudflare-dns-failover.sh
+  replication:
+    slot_name: scaleway_standby
+    user: replicator
+    verification: SELECT state, replay_lsn FROM pg_stat_replication WHERE application_name=scaleway_standby
+    expected_state: streaming
+
+contabo_cancellation:
+  order_id: 14887271
+  amount_eur: 91.20
+  status: refund_requested
+  reason: API/credentials tul bonyolultak, Scaleway helyettesiti
+
+b_wave_merged_prs:
+  - pr_number: 68
+    title: feat(rate-workflow) - Foertektar arfolyam publikalas workflow UI
+    workflow: DRAFT -> APPROVED -> PUBLISHED -> REVOKED -> ARCHIVED
+    frontend_added:
+      - frontend-react/src/services/api/exchangeRateMaster.ts
+      - frontend-react/src/pages/rate-management/RateMasterWorkflowPage.tsx
+  - pr_number: 70
+    title: feat(mnb-reports) - Foertektari havi MNB riport UI
+    frontend_added:
+      - frontend-react/src/services/api/mnbReports.ts
+      - frontend-react/src/pages/mnb/MnbReportsPage.tsx
+    features: year/month selector, status lista, XML download, submit gomb
+  - pr_number: 71
+    title: feat(bank-trade) - banki valuta vetel/eladas 2-oldali workflow
+    migration: V154__vault_bank_transaction_workflow.sql
+    schema_changes:
+      - received_at TIMESTAMP - deviza oldal
+      - received_by BIGINT FK worker(id)
+      - paid_at TIMESTAMP - HUF oldal
+      - paid_by BIGINT FK worker(id)
+    api_additions:
+      - POST /api/v1/ertektar/bank-transactions/{id}/confirm-received
+      - POST /api/v1/ertektar/bank-transactions/{id}/confirm-paid
+    auto_completion: maybeCompleteIfBothSidesDone - ha mindket timestamp kitoltve, COMPLETED lesz
+    frontend: BankTransactions.tsx detail modalban 2 workflow gomb
+    merge_commit: e70c16fea8455ac4c977b3a9ac71d027fc46b55a
+
+technical_challenges:
+  contabo_oauth2_fail: credential web login volt, nem VPS root
+  ufw_rule_order_bug: DENY 5432 torolve, default deny eleg
+  postgresql_listen_addresses: hozzaadva 95.216.191.162, RESTART
+  pg_basebackup_lost_found: chown + chmod 750
+  primary_nginx_502: certbot --nginx --expand + server_name javitas
+  pr_rebase_cache_lag: close + new PR cherry-pick-kel
+  typescript_distData_undefined: IIFE local const dists
+  replication_password_leak: ALTER ROLE + auto.conf sed + shred
+
+settings_permanent:
+  yolo_mode: settings.json permissions.defaultMode = bypassPermissions + 32 wildcard
+
+next_tasks:
+  - B2 - Penztaros KPI dashboard
+  - B1 - Audit trail UI
+  - Spring Boot 3.5.14 monitoring (2026-04-23)
+  - CB-016 - NavClosingService VAT_RATE tax_code mapping
+  - CompanyId formal repository audit
+
+git_state:
+  main_head_post_merge: b wave merged
+  worktree_path: D:\repo\valutavalto-program\.claude\worktrees\youthful-shannon-8ac321
+
+resume_workflow_for_future_agent:
+  continuation_point: |
+    B-wave 3 modul merge-elve. A createBankTransaction legacy egylepeses
+    (COMPLETED statussza zaruljk). Uj workflow: createBankTransaction REQUESTED +
+    confirmReceived/confirmPaid. Ez meg nincs bekotve createBankTransaction-ba.
+    Amikor az ertektarosok hasznalni akarjak: request kibovites workflow flag-gel.
+  suggestion: createBankTransaction({workflow: request | immediate})
+  ha_verification:
+    primary_health: curl https://api.excvaluta.com/actuator/health -> 200
+    standby_health: curl https://standby1.excvaluta.com/actuator/health -> 200
+    replication: SSH primary, sudo -u postgres psql -c SELECT state, replay_lsn FROM pg_stat_replication
+  failover_command: ssh primary@95.216.191.162 bash deploy/hetzner/ha/failover-to-standby.sh
