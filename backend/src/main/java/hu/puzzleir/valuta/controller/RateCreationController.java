@@ -33,11 +33,11 @@ public class RateCreationController {
 
     /** Csak felügyelő szinttől felfelé: publikálás, munkacsoport szerkesztés, tömeges előkészítés. */
     private static final String RATE_CREATION_WRITE_ROLES =
-            "hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')";
+            "hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')";
 
     /** Olvasás + egyedi valuta előkészítés: pénztáros is (pl. árfolyamkészítés nézet betöltése). */
     private static final String RATE_CREATION_READ_ROLES =
-            "hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')";
+            "hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO', 'PENZTAR', 'ERTEKTAR')";
 
     private final RateCreationService rateCreationService;
 

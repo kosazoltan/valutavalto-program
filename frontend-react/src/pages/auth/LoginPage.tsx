@@ -70,14 +70,15 @@ export default function LoginPage() {
 
   /**
    * v2.1.4: EBCiroda kanonikus role-alapu default route.
-   * - penztar / ertekszallito -> /cashier (Lokal Valutavalto)
+   * - penztar -> /cashier (Lokal Valutavalto)
+   * - ertekszallito -> /transfers (atadas-atvetel bizonylat-alairas)
    * - ertektar -> /treasury (Lokal Ertektar)
    * - egyeb szerver role (ugyvezeto, foertektar, stb.) -> /dashboard
    */
   const getDefaultRouteForRole = (role?: string | null): string => {
     const canonical = (role ?? '').toLowerCase()
     if (canonical === 'penztar') return '/cashier'
-    if (canonical === 'ertekszallito') return '/shipments'
+    if (canonical === 'ertekszallito') return '/transfers'
     if (canonical === 'ertektar') return '/treasury'
     // Legacy enum fallback (CASHIER/MANAGER/ADMIN)
     switch (role) {
@@ -109,7 +110,6 @@ export default function LoginPage() {
         const allowedProgs = response.validAppModes.map((m) => {
           if (m === 'penztar') return 'Valutaváltó Pénztár (lokál)'
           if (m === 'ertektar') return 'Értéktár (lokál)'
-          if (m === 'ertekszallito') return 'Értékszállítás (lokál)'
           if (m === 'full') return 'Szerver (böngésző)'
           return m
         }).join(', ')

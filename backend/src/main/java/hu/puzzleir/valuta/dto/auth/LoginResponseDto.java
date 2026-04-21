@@ -71,7 +71,6 @@ public class LoginResponseDto {
      * Lehetseges ertekek:
      *   penztar       - ha a worker 'penztar' role-lal rendelkezik
      *   ertektar      - ha a worker 'ertektar' role-lal rendelkezik
-     *   ertekszallito - ha a worker 'ertekszallito' role-lal rendelkezik
      *   full          - ha a worker barmely szerver role-lal rendelkezik
      */
     private List<String> validAppModes;
