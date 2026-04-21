@@ -65,26 +65,35 @@ try {
 if ($feAlready) {
     Write-OK "Frontend mar fut 3000-on"
 } else {
-    Push-Location (Join-Path $RepoRoot "frontend-react")
-    Start-Process -FilePath "npm" -ArgumentList "run","dev","--","--host","0.0.0.0" -WindowStyle Hidden `
-        -RedirectStandardOutput "$env:TEMP\valuta-frontend.log" -RedirectStandardError "$env:TEMP\valuta-frontend-err.log"
-    Pop-Location
+    # Windows PowerShell kavar: Start-Process -FilePath "npm" a "C:\Program Files\nodejs\npm"
+    # Unix shell scriptet talalja elobb -> "%1: nem Win32 alkalmazas" hiba.
+    # Fix: child powershell.exe indit, az megkeresi az npm.cmd-et es lefuttatja.
+    $feDir = Join-Path $RepoRoot "frontend-react"
+    Start-Process -FilePath "powershell.exe" -ArgumentList @(
+        "-NoProfile", "-NoLogo", "-ExecutionPolicy", "Bypass",
+        "-Command", "Set-Location '$feDir'; `$env:VITE_PROXY_TARGET='https://excvaluta.com'; npm run dev -- --host 0.0.0.0"
+    ) -WindowStyle Hidden `
+        -RedirectStandardOutput "$env:TEMP\valuta-frontend.log" `
+        -RedirectStandardError "$env:TEMP\valuta-frontend-err.log"
     Write-Step "Vite inditva - var..."
     $start = Get-Date
     while ($true) {
         Start-Sleep -Seconds 2
         try { if ((Invoke-WebRequest -Uri "http://127.0.0.1:3000/" -TimeoutSec 2 -UseBasicParsing).StatusCode -eq 200) { Write-OK "Frontend READY"; break } } catch {}
-        if (((Get-Date) - $start).TotalSeconds -gt 45) { Write-Err "Vite not up in 45s"; exit 1 }
+        if (((Get-Date) - $start).TotalSeconds -gt 45) { Write-Err "Vite nem indult el 45 masodpercen belul - ld. $env:TEMP\valuta-frontend-err.log"; exit 1 }
     }
 }
 
 # 3) Electron penztar-client
 if (-not $SkipElectron) {
     Write-Step "3/3 - Electron penztar-client (npm run dev:main)"
-    Push-Location (Join-Path $RepoRoot "penztar-client")
-    Start-Process -FilePath "npm" -ArgumentList "run","dev:main" -WindowStyle Hidden `
-        -RedirectStandardOutput "$env:TEMP\valuta-electron.log" -RedirectStandardError "$env:TEMP\valuta-electron-err.log"
-    Pop-Location
+    $elDir = Join-Path $RepoRoot "penztar-client"
+    Start-Process -FilePath "powershell.exe" -ArgumentList @(
+        "-NoProfile", "-NoLogo", "-ExecutionPolicy", "Bypass",
+        "-Command", "Set-Location '$elDir'; npm run dev:main"
+    ) -WindowStyle Hidden `
+        -RedirectStandardOutput "$env:TEMP\valuta-electron.log" `
+        -RedirectStandardError "$env:TEMP\valuta-electron-err.log"
     Write-OK "Electron inditva"
 } else {
     Write-Step "Electron SKIP"
