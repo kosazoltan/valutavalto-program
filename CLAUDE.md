@@ -37,6 +37,48 @@ database/                 # Extra migrációk, seed-ek
 scripts/                  # Utility szkriptek
 ```
 
+## KÖTELEZŐ ÉRVÉNYŰ: Production-first fejlesztés
+> **A fejlesztés közvetlenül a produktumhoz (Hetzner HA: https://excvaluta.com) illeszkedik.**
+> TILOS divergens lokális stack-et használni seed-adattal, amit a produktum nem tartalmaz.
+
+### Szabályok
+1. **Frontend + Electron** az `excvaluta.com`-ra mutat (production API URL). Lokális backend CSAK Maven teszt-futtatáshoz (mvn test), nem integrációs fejlesztéshez.
+2. **Lokális DB seed** TILOS, ami nincs a produktum DB-n. Ha új seed kell: **Flyway migráció** -> commit -> push -> Hetzner deploy (auto) -> NEKI ott is futni kell.
+3. **Adatbázis migráció** esetén: `backend/src/main/resources/db/migration/V{N}__{name}.sql` — a CI/CD deploy pipeline futtatja produktum-on is.
+4. **Manuális INSERT `psql`-lel** a lokális DB-be **csak reprodukciós tesztre**, utána **azonnal rollback vagy DROP**. TILOS elfelejtve hagyni.
+5. **Ha produktum DB-ben valami hiányzik** (pl. licence, árfolyam), **Flyway migration** a fix útja — ne kézi `psql INSERT`.
+
+### "Local-only" szabályok
+- `docker-compose up postgres` csak mvn test + fejlesztői debug-hoz
+- `npm run dev` + backend lokálisan CSAK unit-szintű frontend debug-hoz
+- **Integrációs teszt** = Hetzner produktum + `VITE_API_URL=https://excvaluta.com/api/v1` env
+
+### Session kezdőlépés (KÖTELEZŐ)
+Minden új session elején:
+```bash
+curl -s https://excvaluta.com/api/v1/auth/bootstrap-status   # >= 200
+curl -s https://excvaluta.com/api/v1/public/branches?companyCode=EBC   # non-empty
+```
+Ha **DOWN**: először helyreállítani (Hetzner + Scaleway HA failover), utána kezdeni a fejlesztést.
+
+## KÖTELEZŐ ÉRVÉNYŰ: Session memory workflow
+**Minden session elején** olvasd be:
+1. `.remember/remember.md` — rövid handoff az előző session-től
+2. `docs/knowledge/memory/*.yaml` — részletes session-enkénti memory (legfrissebbet)
+3. `docs/knowledge/memory/*.qmd` — ugyanaz Quarto formátumban
+4. `C:\Users\Kósa Zoltán\.claude\projects\D--repo-valutavalto-program\memory\MEMORY.md` — globális memory index (Claude runtime)
+5. `docs/LESSONS_LEARNED.md` — korábbi hibák, amiket NE ismételj
+
+**Minden session végén** (új session előtt) mentsd:
+1. YAML → `docs/knowledge/memory/YYYY-MM-DD-session-name.yaml`
+2. QMD → `docs/knowledge/memory/YYYY-MM-DD-session-name.qmd`
+3. Cognee (MCP) → amint elérhető (TODO)
+4. Obsidian vault → amint telepítve (TODO)
+5. `.remember/remember.md` — rövid handoff (remember skill)
+6. CLAUDE.md "Nyitott következő feladatok" → frissítés
+
+Ezek **kötelező érvényűek**, nem választható.
+
 ## KÖTELEZŐ ÉRVÉNYŰ: Komplex ökoszisztéma megnyitás
 Amikor a user "nyissuk meg a valuta programot / indítsd az ökoszisztémát / teljes rendszer / program elindítása" utasítást ad, **MINDIG az összes komponenst együtt kell indítani**, TILOS csak egy részt:
 

@@ -128,7 +128,10 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
    * Backend response roles lista es activeRole tartalmazza.
    */
   hasCanonicalRole: (canonicalRoles: string | string[]) => {
-    const { roles, activeRole } = get()
+    const { roles, activeRole, worker } = get()
+    // ADMIN fallback: teljes hozzaferes minden canonical role-hoz (konzisztens a tobbi helperrel)
+    const effectiveRole = activeRole || worker?.role
+    if (effectiveRole === 'ADMIN') return true
     const list = Array.isArray(canonicalRoles) ? canonicalRoles : [canonicalRoles]
     if (activeRole && list.includes(activeRole)) return true
     return (roles ?? []).some((r: string) => list.includes(r))
