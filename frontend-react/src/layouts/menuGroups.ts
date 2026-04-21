@@ -1,4 +1,4 @@
-import { Send, Home, ArrowLeftRight, Users, TrendingUp, Wallet, FileText, Settings, Sun, Shield, LayoutDashboard, PlusCircle, Download, Camera } from "lucide-react"
+import { Send, Home, ArrowLeftRight, Users, TrendingUp, Wallet, FileText, Settings, Sun, Shield, ShieldAlert, LayoutDashboard, PlusCircle, Download, Camera } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
 export const PENZTAR_ROLES = ["penztar"] as const
@@ -108,6 +108,7 @@ export const menuGroups: MenuGroup[] = [
     items: [
       { path: "/police-requests", label: "Rendőrségi megkeresések", icon: Shield },
       { path: "/audit-log", label: "Audit napló", icon: Shield },
+      { path: "/sanction", label: "Szankciós lista (AML)", icon: ShieldAlert },
       { path: "/seal-tracking", label: "Plomba nyilvántartás", icon: Shield },
     ],
   },
