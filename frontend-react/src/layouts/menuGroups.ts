@@ -1,4 +1,4 @@
-import { Home, ArrowLeftRight, Users, TrendingUp, Wallet, FileText, Settings, Sun, Shield, LayoutDashboard, PlusCircle, Download, Camera } from "lucide-react"
+import { Send, Home, ArrowLeftRight, Users, TrendingUp, Wallet, FileText, Settings, Sun, Shield, LayoutDashboard, PlusCircle, Download, Camera } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
 export const PENZTAR_ROLES = ["penztar"] as const
@@ -32,6 +32,7 @@ export const menuGroups: MenuGroup[] = [
       { path: "/foertektar", label: "Országos dashboard", icon: LayoutDashboard },
       { path: "/rate-management", label: "Árfolyam kezelés", icon: TrendingUp },
       { path: "/rates/creation", label: "Árfolyam készítés", icon: PlusCircle },
+      { path: "/rate-management/workflow", label: "Árfolyam publikálás", icon: Send },
       { path: "/inventory", label: "Országos készlet", icon: Wallet },
       { path: "/stock-snapshot", label: "Készlet-snapshot", icon: FileText },
     ],
