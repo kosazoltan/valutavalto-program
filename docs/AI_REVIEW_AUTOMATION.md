@@ -3,7 +3,7 @@
 Teljesen automatikus pipeline, ami a Sourcery AI + ChatGPT Codex Connector
 review-it azonnal javitja Claude Code GitHub Action-nel.
 
-## Mukodes
+## Mukodes (teljes automatizacio)
 
 ```
 PR nyit / push
