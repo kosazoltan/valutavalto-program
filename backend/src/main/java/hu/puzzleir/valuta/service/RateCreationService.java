@@ -212,11 +212,13 @@ public class RateCreationService {
                     .divide(BigDecimal.valueOf(2), 4, RoundingMode.HALF_UP);
         }
         // Versenytárs kód: a neve alapján generált rövidítés (első 6 karakter, nagybetű)
+        // AI REVIEW FIX (PR #98 Sourcery P2): ha competitorName csak non-alphanumeric (pl. "***", "   "),
+        // cleaned = "" -> empty competitorCode. Consumer (DTO) non-empty ID-t var. Fallback "COMP".
         String competitorName = cr.getCompetitor() != null ? cr.getCompetitor().getName() : null;
         String competitorCode;
         if (competitorName != null) {
             String cleaned = competitorName.replaceAll("[^A-Za-z0-9]", "").toUpperCase();
-            competitorCode = cleaned.substring(0, Math.min(6, cleaned.length()));
+            competitorCode = cleaned.isEmpty() ? "COMP" : cleaned.substring(0, Math.min(6, cleaned.length()));
         } else {
             competitorCode = "COMP";
         }

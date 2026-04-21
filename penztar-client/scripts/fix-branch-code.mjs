@@ -18,8 +18,16 @@ const require = createRequire(import.meta.url);
 const initSqlJs = require('sql.js');
 
 const DB_PATH = path.join(os.homedir(), '.valuta', 'local.db');
-const FALLBACK_BRANCH = process.argv[2] || process.env.VITE_BRANCH_CODE || 'EBC';
-const FALLBACK_COMPANY = process.argv[3] || process.env.VITE_COMPANY_CODE || 'EBC';
+// AI REVIEW FIX (PR #97 Codex P2 + Sourcery): kerunk EXPLICIT argumentumot vagy env valtozot -
+// nincs csendes 'EBC' fallback, mert az masik ceg gepen hibas configot ir.
+const FALLBACK_BRANCH = process.argv[2] || process.env.VITE_BRANCH_CODE || '';
+const FALLBACK_COMPANY = process.argv[3] || process.env.VITE_COMPANY_CODE || process.env.PENZTAR_BOOTSTRAP_COMPANY_CODE || '';
+if (!FALLBACK_BRANCH || !FALLBACK_COMPANY) {
+  console.error('[fix-branch-code] HIBA: branch_code es/vagy company_code hianyzik!');
+  console.error('  Hasznalat:  node scripts/fix-branch-code.mjs <branch_code> <company_code>');
+  console.error('  vagy env:   VITE_BRANCH_CODE=EBC VITE_COMPANY_CODE=EBC node scripts/fix-branch-code.mjs');
+  process.exit(2);
+}
 
 async function main() {
   if (!fs.existsSync(DB_PATH)) {
@@ -28,8 +36,17 @@ async function main() {
     process.exit(1);
   }
 
-  const wasmPath = path.resolve('node_modules/sql.js/dist/sql-wasm.wasm');
-  if (!fs.existsSync(wasmPath)) {
+  // AI REVIEW FIX (PR #97 Sourcery P2): cwd-independent wasm resolve.
+  // A process.cwd() brittle ha a script mashonnan hivjak, pl. global install.
+  // Helyette import.meta.url alapjan a script-relativ node_modules-t kutatjuk.
+  const scriptDir = path.dirname(new URL(import.meta.url).pathname.replace(/^\//, ''));
+  const wasmCandidates = [
+    path.resolve(scriptDir, '../node_modules/sql.js/dist/sql-wasm.wasm'),
+    path.resolve(scriptDir, '../../node_modules/sql.js/dist/sql-wasm.wasm'),
+    path.resolve(process.cwd(), 'node_modules/sql.js/dist/sql-wasm.wasm'),
+  ];
+  const wasmPath = wasmCandidates.find((p) => fs.existsSync(p));
+  if (!wasmPath) {
     console.error('[fix-branch-code] sql-wasm.wasm nem talalhato: ' + wasmPath);
     console.error('  Futtasd: npm install');
     process.exit(1);

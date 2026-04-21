@@ -16,6 +16,7 @@ if (osBuild >= 26200) {
 }
 import log from 'electron-log/main';
 import path from 'node:path';
+import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   initDatabase,
@@ -692,46 +693,69 @@ app.whenReady().then(async () => {
   }
 
   // v2.1.6 Auto-migration: regebbi SetupWizard verziok (v2.1.3 elott) NEM irtak
-  // be a branch_code-ot az SQLite config tablaba, csak a .env-be. Ez a blokk
-  // idempotens: ha hianyzik, atemeli a VITE_BRANCH_CODE-ot. Igy a
-  // savePendingTransaction nem szall el a
-  // "SetupWizard nem futott le: branch_code SQLite config hianyzik" hibaval.
+  // be a branch_code-ot az SQLite config tablaba, csak a .env-be.
+  //
+  // AI REVIEW FIX (PR #97 Codex P1): packaged Electron appban a dotenv CSAK dev modban
+  // fut le (main.ts:3: import('dotenv/config').catch(...)). Production buildben a
+  // process.env NEM tartalmazza a VITE_BRANCH_CODE-ot - az userData/.env-bol kell olvasni.
+  const readPersistedEnv = (): Record<string, string> => {
+    try {
+      const envPath = path.join(app.getPath("userData"), ".env");
+      if (!fs.existsSync(envPath)) return {};
+      const raw = fs.readFileSync(envPath, "utf8");
+      const out: Record<string, string> = {};
+      for (const rawLine of raw.split(/\r?\n/)) {
+        const line = rawLine.trim();
+        if (!line || line.startsWith("#")) continue;
+        const eq = line.indexOf("=");
+        if (eq <= 0) continue;
+        const key = line.slice(0, eq).trim();
+        let value = line.slice(eq + 1).trim();
+        if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.slice(1, -1);
+        }
+        out[key] = value;
+      }
+      return out;
+    } catch {
+      return {};
+    }
+  };
+  const persistedEnv = readPersistedEnv();
+  const envBranchCode = (process.env.VITE_BRANCH_CODE ?? persistedEnv.VITE_BRANCH_CODE ?? "").trim();
+  const envCompanyCode = (process.env.VITE_COMPANY_CODE ?? process.env.PENZTAR_BOOTSTRAP_COMPANY_CODE
+    ?? persistedEnv.VITE_COMPANY_CODE ?? persistedEnv.PENZTAR_BOOTSTRAP_COMPANY_CODE ?? "").trim();
+  const envApiUrl = (process.env.VITE_API_URL ?? persistedEnv.VITE_API_URL ?? "").trim();
+
   try {
-    const existingBranchCode = getConfig('branch_code');
+    const existingBranchCode = getConfig("branch_code");
     if (!existingBranchCode) {
-      const envBranchCode = process.env.VITE_BRANCH_CODE?.trim();
       if (envBranchCode) {
-        setConfig('branch_code', envBranchCode);
+        setConfig("branch_code", envBranchCode);
         log.info(`[App] Auto-migration: branch_code='${envBranchCode}' atmasolva a .env-bol az SQLite config-ba.`);
       } else {
-        log.warn('[App] branch_code hianyzik az SQLite config-bol ES a .env VITE_BRANCH_CODE-bol is. A tranzakciok elszalnak - futtasd a SetupWizardot vagy toltsd ki a .env-et.');
+        log.warn("[App] branch_code hianyzik az SQLite config-bol ES a .env VITE_BRANCH_CODE-bol is. A tranzakciok elszalnak - futtasd a SetupWizardot vagy toltsd ki a .env-et.");
       }
     }
-    const existingCompany = getConfig('bootstrap_company_code');
-    if (!existingCompany) {
-      const envCompany = (process.env.VITE_COMPANY_CODE || process.env.PENZTAR_BOOTSTRAP_COMPANY_CODE)?.trim();
-      if (envCompany) {
-        setConfig('bootstrap_company_code', envCompany);
-        log.info(`[App] Auto-migration: bootstrap_company_code='${envCompany}' atmasolva a .env-bol.`);
-      }
+    const existingCompany = getConfig("bootstrap_company_code");
+    if (!existingCompany && envCompanyCode) {
+      setConfig("bootstrap_company_code", envCompanyCode);
+      log.info(`[App] Auto-migration: bootstrap_company_code='${envCompanyCode}' atmasolva a .env-bol.`);
     }
   } catch (migrationErr) {
-    log.warn('[App] Auto-migration warning (nem kritikus):', migrationErr);
+    log.warn("[App] Auto-migration warning (nem kritikus):", migrationErr);
   }
 
   // v2.1.6 Production-first alaptorveny: TILOS lokalis divergens fejlesztes.
-  // Dev modban is a VITE_API_URL-t hasznaljuk (default: Hetzner production),
-  // NEM overrideoljuk localhost:8080-ra. Ha lokalis backenddel akarsz tesztelni,
-  // tedd a .env-be: VITE_API_URL=http://localhost:8080/api/v1
+  // Dev modban is a VITE_API_URL-t hasznaljuk (default: Hetzner production).
   {
-    const envApiUrl = process.env.VITE_API_URL?.trim();
-    const currentServerUrl = getConfig('server_url');
+    const currentServerUrl = getConfig("server_url");
     if (envApiUrl && currentServerUrl !== envApiUrl) {
-      setConfig('server_url', envApiUrl);
+      setConfig("server_url", envApiUrl);
       log.info(`[App] server_url szinkronizalva a .env VITE_API_URL-rel: ${envApiUrl}`);
     } else if (!currentServerUrl) {
-      setConfig('server_url', 'https://excvaluta.com/api/v1');
-      log.info('[App] server_url default: https://excvaluta.com/api/v1 (Hetzner production)');
+      setConfig("server_url", "https://excvaluta.com/api/v1");
+      log.info("[App] server_url default: https://excvaluta.com/api/v1 (Hetzner production)");
     }
   }
 

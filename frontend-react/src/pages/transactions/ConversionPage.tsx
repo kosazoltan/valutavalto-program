@@ -154,6 +154,8 @@ export default function ConversionPage() {
     setHufAmount(roundHuf(huf))
 
     // Calculate to amount if target currency selected
+    // AI REVIEW FIX (PR #98 Codex P2): ha toRate.baseSellRate <= 0 vagy toRate missing,
+    // reseteljuk a toAmount es conversionRate-t, nehogy az elozo ertek megtevesszen.
     if (toCurrencyId) {
       const toRate = getRate(toCurrencyId)
       if (toRate && toRate.baseSellRate > 0) {
@@ -164,7 +166,13 @@ export default function ConversionPage() {
         // Direct conversion rate
         const directRate = fromRate.baseBuyRate / toRate.baseSellRate
         setConversionRate(directRate)
+      } else {
+        setToAmount('')
+        setConversionRate(0)
       }
+    } else {
+      setToAmount('')
+      setConversionRate(0)
     }
   // getRate and roundHuf are stable closures that only depend on `rates`, which is in the dep array
   // eslint-disable-next-line react-hooks/exhaustive-deps -- getRate/roundHuf are derived from `rates` already in deps

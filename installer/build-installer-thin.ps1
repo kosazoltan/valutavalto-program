@@ -22,13 +22,10 @@ param(
 
 $BuildDate = Get-Date -Format "yyyyMMdd"
 
-# v2.1.6 (AI review #102 P2): single source of truth - package.json root
+# v2.1.6 (AI review #102+103): centralized version resolution via build-common.ps1
+. (Join-Path $PSScriptRoot 'build-common.ps1')
 if (-not $Version) {
-    $pkgPath = Join-Path (Split-Path -Parent $PSScriptRoot) "package.json"
-    if (Test-Path $pkgPath) {
-        $Version = (Get-Content $pkgPath -Raw | ConvertFrom-Json).version
-        Write-Host "Version auto-loaded from package.json: $Version" -ForegroundColor DarkGray
-    } else { throw "package.json nem talalhato: $pkgPath - add meg -Version parametert" }
+    $Version = Get-VersionFromPackageJson -ScriptRoot $PSScriptRoot
 }
 
 Write-Host "Thin client build: v$Version ($BuildDate)" -ForegroundColor Cyan
