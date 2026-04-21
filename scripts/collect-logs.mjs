@@ -4,7 +4,7 @@
  * Futtatas: node scripts/collect-logs.mjs
  *
  * Kimenet: /tmp/logs/
- *   backend.log           - Spring Boot (tail-F a futo JVM output-rol)
+ *   backend.log           - Spring Boot
  *   electron-main.log     - Electron main process (electron-log)
  *   electron-renderer.log - Electron renderer console (main folyamatbol)
  *   frontend-vite.log     - Webes Vite (preview_start stdout-ja)
@@ -17,8 +17,7 @@
  *    olvassa, ezt beiranyitjuk egy fajlba.
  * 3. A browser console-t 10s-enkent snapshot-oljuk a preview_console_logs-bol.
  *
- * Codex AI P2 fix: Unix-only shell calls (rm, cp, ls) -> Node fs API
- * (rmSync, copyFileSync, readdirSync, statSync) cross-platform.
+ * Codex AI P2 fix: Unix-only shell calls -> Node fs API cross-platform.
  */
 
 import { existsSync, symlinkSync, writeFileSync, mkdirSync, rmSync, copyFileSync, readdirSync, statSync } from 'node:fs';
@@ -40,7 +39,9 @@ for (const { src, dst } of LINKS) {
     console.log(`[collect-logs] created empty: ${src}`);
   }
   try {
-    // Codex P2: existsSync(dangling_symlink)=false -> rmSync skipped -> symlinkSync EEXIST. Unconditional rm kell.
+    // Codex P2 + Sourcery: existsSync(dangling_symlink) = false -> rm skipped ->
+    // symlinkSync EEXIST fail. Unconditional rmSync (force:true) handles both
+    // missing and dangling symlink cases.
     rmSync(dst, { force: true });
     symlinkSync(src, dst);
     console.log(`[collect-logs] symlink: ${dst} -> ${src}`);
@@ -50,6 +51,7 @@ for (const { src, dst } of LINKS) {
       copyFileSync(src, dst);
     } catch (copyErr) {
       console.error(`[collect-logs] copy fallback also failed: ${dst}`, copyErr.message);
+    }
   }
 }
 
@@ -63,6 +65,7 @@ try {
       console.log(`  ${f}\t${st.size} bytes\t${st.mtime.toISOString()}`);
     } catch {
       console.log(`  ${f}\t(stat failed)`);
+    }
   }
 } catch (e) {
   console.warn('[collect-logs] listing failed:', e.message);
