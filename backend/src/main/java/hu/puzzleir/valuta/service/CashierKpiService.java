@@ -125,7 +125,11 @@ public class CashierKpiService {
     private static BigDecimal toBigDecimal(Object o) {
         if (o == null) return BigDecimal.ZERO;
         if (o instanceof BigDecimal b) return b;
-        if (o instanceof Number n) return BigDecimal.valueOf(n.doubleValue());
+        // Sourcery AI bug_risk: doubleValue() precision loss — helyette String conversion
+        if (o instanceof Long l) return BigDecimal.valueOf(l);
+        if (o instanceof Integer i) return BigDecimal.valueOf(i);
+        if (o instanceof java.math.BigInteger bi) return new BigDecimal(bi);
+        if (o instanceof Number n) return new BigDecimal(n.toString());
         return BigDecimal.ZERO;
     }
 }

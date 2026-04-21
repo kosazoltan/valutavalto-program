@@ -69,6 +69,15 @@ cd penztar-client && npm test
 - **Árfolyam frissesség:** 24 órás TTL — lejárt rátával nem szabad tranzakciót engedni
 - **Security:** `@PreAuthorize` annotáció minden controlleren, JWT auth, CORS nem lehet wildcard (`*`)
 
+## Kötelező AI code review workflow (Sourcery + Codex)
+- **Minden PR MERGE UTAN automatikusan:**
+  1. Lekerni a Sourcery-AI es ChatGPT-Codex review-kat: `gh api repos/OWNER/REPO/pulls/PR_NUM/reviews` es `/pulls/PR_NUM/comments` (filter: user.login matches `sourcery-ai|chatgpt-codex-connector`).
+  2. **Automatikusan javitani a jelzett hibakat.** Priorizalas: P1 (bug_risk, kritikus) > P2 (suggestions) > style.
+  3. Follow-up PR-t nyitni: `fix(ai-review): ...` prefix-szel.
+  4. Helyi teszt-futtatas kotelezo a merge elott (backend mvn test + frontend vitest + tsc).
+- **Helyes-pozitiv kizarasa:** Ha egy AI flag hamis riasztas (pl. balanced brackets), dokumentalni a PR-ben miert nem javitasra vonatkozo. Ne ignoralni, csak megjelolni.
+- **Kovetkezo session handoff:** minden AI javitas a session handoff memory YAML-ban dokumentalando.
+
 ## Kötelező security gate minden agentnek
 - **Always-on szabály:** Kötelező alkalmazni `.cursor/rules/mandatory-security-gate.mdc`.
 - **Kötelező skill:** Minden programozási feladatnál kötelező a `.cursor/skills/security-deploy-gate/SKILL.md`.

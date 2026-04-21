@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.dto.report.MonthlyReportFullDto;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.repository.*;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -70,7 +71,8 @@ public class MonthlyReportService {
 
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem talalhato: " + branchId));
-        UUID companyId = branch.getCompany() != null ? branch.getCompany().getId() : null;
+        // Sourcery AI bug_risk: null companyId silent empty — DailyReportService-konzisztens SecurityUtils fallback
+        UUID companyId = branch.getCompany() != null ? branch.getCompany().getId() : SecurityUtils.getCurrentCompanyId();
 
         // Currency name map
         Map<String, String> currencyNameMap = new HashMap<>();
