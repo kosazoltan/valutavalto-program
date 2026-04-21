@@ -23,6 +23,7 @@ const MnbReportsPage = lazy(() => import('./pages/mnb/MnbReportsPage'))
 const CashierKpiPage = lazy(() => import('./pages/statistics/CashierKpiPage'))
 const SanctionPage = lazy(() => import('./pages/sanction/SanctionPage'))
 const AttendancePage = lazy(() => import('./pages/attendance/AttendancePage'))
+const PermissionMatrixPage = lazy(() => import('./pages/settings/PermissionMatrixPage'))
 const TransactionPage = lazy(() => import('./pages/transactions/TransactionPage'))
 const TransactionListPage = lazy(() => import('./pages/transactions/TransactionListPage'))
 const ConversionPage = lazy(() => import('./pages/transactions/ConversionPage'))
@@ -335,6 +336,7 @@ export default function App() {
             <Route path="/statistics/cashier-kpi" element={<CashierKpiPage />} />
             <Route path="/sanction" element={<SanctionPage />} />
             <Route path="/attendance" element={<AttendancePage />} />
+            <Route path="/settings/permission-matrix" element={<PermissionMatrixPage />} />
           
           {/* Cashier (penztaros) routes */}
           <Route path="/cashier" element={<CashierMainMenu />} />
