@@ -1,0 +1,70 @@
+session_meta:
+  date: 2026-04-21
+  session_name: ai-review-automation + production-first + installer v2.1.7
+  duration_hours: 12
+  main_head_end: 51a9c591
+  merged_prs_count: 10
+
+alaptorvenyek_4:
+  production_first: TILOS divergens lokalis stack - Hetzner https://excvaluta.com ellen fejlesztunk
+  session_memory_workflow: YAML + QMD + Cognee (TODO) + Obsidian (TODO) session-vegi mentes
+  komplex_okoszisztema: teljes stack egyben indul (frontend + Electron + Hetzner)
+  ai_review_automation: Sourcery + Codex + Claude Code Action auto-fix
+
+merged_prs:
+  - {pr: 97, head: de694521, title: production-first + branch_code migration}
+  - {pr: 98, head: f745765c, title: claude-review 3 P0 cherry-pick}
+  - {pr: 99, head: fdc6845f, title: legacy start-all-dev torolve}
+  - {pr: 100, head: 9321bd9a, title: launcher npm.cmd bug fix}
+  - {pr: 101, head: 78439646, title: SetupWizard Tovabb gomb layout}
+  - {pr: 102, head: 3d295ac5, title: bump v2.1.5 to v2.1.6}
+  - {pr: 103, head: 75f16cc1, title: version single source package.json}
+  - {pr: 104, head: dfbe37f6, title: kumulalt AI review P1+P2 (7 hiba)}
+  - {pr: 22,  head: f0de73fc, title: dependabot actions/checkout 4 to 6}
+  - {pr: 105, head: 51a9c591, title: bump v2.1.7 + Production URL SSOT}
+
+installer_v2_1_7:
+  setup:
+    file: Penztar-Setup-2.1.7-20260421.exe
+    size_mb: 273.53
+    sha256: 648FDF20F728E57D258CDD131B5EA11FF270E383FDEDE1B520FE2471C9F92C65
+    location: C:/Users/Kosa Zoltan/Downloads/
+  uninstaller:
+    file: Penztar-Eltavolito-2.1.7-20260421.exe
+    sha256: FFFE8FDD250D0A577607EE544CF5BE6873C6E86A945DBCB8EA21ADD7AC587B86
+
+asztali_shortcutok:
+  aktiv_3:
+    - Valuta Penztar Fejlesztoi mod INDITAS.lnk (dev Vite+Electron, Hetzner backend)
+    - Valuta Penztar Fejlesztoi mod LEALLITAS.lnk
+    - Valuta Penztar Eles kliens (telepitett).lnk (C:/Program Files/Valutavalto Penztar/Penztar.exe v2.1.3 - updateoljon)
+
+nyitott_feladatok_next_session:
+  p0_1: V155 migration Hetzner production-on (Spring boot auto-flyway-vel)
+  p0_2: User v2.1.7 reinstall eles penztar gepen (Eltavolito + Setup)
+  p1_1: Happy path teszt (Kapcsolat tesztelese gombot meg kell nyomnia)
+  p1_2: Production URL SSOT teljes refactor (Java konstans kesz, tobbi deferred)
+  p2_1: Cognee MCP + Obsidian vault integracio (TODO amint elerheto)
+  p2_2: Spring Boot 3.5.14 upgrade (2026-04-23)
+  p2_3: Installer acceptance test friss Windows VM-en
+
+lessons_learned:
+  - Windows Start-Process npm Unix shell scriptet talal - Fix: child powershell.exe wrapper (PR 100)
+  - PowerShell Set-Location quote-interpolation apostrophe-s path elszall - Fix WorkingDirectory (PR 104)
+  - Tailwind max-h + overflow-hidden + fix min-h kivagja footert - Fix shrink-0 + overflow-y-auto (PR 101)
+  - Electron packaged app dotenv csak dev-ben mukodik - Fix userData .env kozvetlen parsolas (PR 104)
+  - Flyway unique index elszall production duplikatum eseten - Fix DO block RAISE EXCEPTION pre-check (PR 104)
+  - V104 Flyway szam mar foglalt - fix atszamozas V155-re (PR 98)
+  - AI review bot kommenteket tomeggyujtes gh api /pulls/N/reviews (PR 104)
+
+kredencialok:
+  admin_login: EBC / ADMIN / Admin1234! (case-sensitive)
+  prod_api_url: https://excvaluta.com/api/v1
+  ha_infra: Hetzner 95.216.191.162 + Scaleway 163.172.152.234 (warm-active, CF DNS TTL 60s)
+  secrets: /root/replication_password.txt, /opt/valutavalto/backend/.env, /tmp/cf_token.txt
+
+context_for_future_agent:
+  main_repo: D:/repo/valutavalto-program/ (main head 51a9c591 - git pull kell)
+  worktree: D:/repo/valutavalto-program/.claude/worktrees/youthful-shannon-8ac321 (chore/bump-v2.1.7-production-url-ssot branch mergelve)
+  sqlite: C:/Users/Kosa Zoltan/.valuta/local.db
+  electron_userdata: C:/Users/Kosa Zoltan/AppData/Roaming/valuta-penztar
