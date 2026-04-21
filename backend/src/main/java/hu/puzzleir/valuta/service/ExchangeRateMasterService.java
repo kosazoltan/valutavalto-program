@@ -43,6 +43,7 @@ public class ExchangeRateMasterService {
     private final BranchRepository branchRepository;
     private final RateWorkgroupRepository workgroupRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final AuditLogService auditLogService;
 
     /**
      * Törzs árfolyam létrehozása (DRAFT állapotban).
@@ -120,6 +121,9 @@ public class ExchangeRateMasterService {
 
         master = masterRepository.save(master);
         log.info("Törzs árfolyam jóváhagyva: {}", masterRateId);
+        auditLogService.log("RATE_APPROVE",
+                String.format("Arfolyam jovahagyva: currencyId=%d v%d", master.getCurrencyId(), master.getVersionNumber()),
+                masterRateId.toString());
 
         return master;
     }
@@ -221,6 +225,11 @@ public class ExchangeRateMasterService {
         log.info("Árfolyam publikálva és elosztva: {} v{} - {} pénztárnak sikeresen, {} hibával",
                 currency.getCode(), master.getVersionNumber(), successCount, failCount);
 
+        auditLogService.log("RATE_PUBLISH",
+                String.format("Arfolyam publikalva: %s v%d -> %d penztar (%d OK, %d hiba)",
+                        currency.getCode(), master.getVersionNumber(), targetBranches.size(), successCount, failCount),
+                masterRateId.toString());
+
         return master;
     }
 
@@ -243,6 +252,9 @@ public class ExchangeRateMasterService {
         master = masterRepository.save(master);
 
         log.info("Törzs árfolyam visszavonva: {}", masterRateId);
+        auditLogService.log("RATE_REVOKE",
+                String.format("Arfolyam visszavonva: currencyId=%d v%d", master.getCurrencyId(), master.getVersionNumber()),
+                masterRateId.toString());
         return master;
     }
 
