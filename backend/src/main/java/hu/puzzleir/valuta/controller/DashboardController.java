@@ -12,7 +12,7 @@ import java.util.UUID;
 /**
  * Dashboard controller — admin összesítő.
  */
-@PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+@PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
 @RestController
 @RequestMapping("/api/v1/dashboard")
 @RequiredArgsConstructor

@@ -25,6 +25,18 @@ export interface MenuGroup {
 
 export const menuGroups: MenuGroup[] = [
   {
+    label: "Főértéktár",
+    canonicalRoles: ["foertektar", "ugyvezeto"],
+    modes: ["full"],
+    items: [
+      { path: "/foertektar", label: "Országos dashboard", icon: LayoutDashboard },
+      { path: "/rate-management", label: "Árfolyam kezelés", icon: TrendingUp },
+      { path: "/rates/creation", label: "Árfolyam készítés", icon: PlusCircle },
+      { path: "/inventory", label: "Országos készlet", icon: Wallet },
+      { path: "/stock-snapshot", label: "Készlet-snapshot", icon: FileText },
+    ],
+  },
+  {
     label: "Pénztár (Valutaváltó)",
     canonicalRoles: PENZTAR_ROLES,
     modes: ["penztar"],
