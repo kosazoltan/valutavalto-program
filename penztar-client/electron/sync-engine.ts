@@ -260,12 +260,7 @@ export class SyncEngine {
     return stored || null;
   }
 
-  /**
-   * DEPRECATED: backward-compat only. Uj kod hasznalja a Primary/Secondary-t.
-   */
-  private getServerUrlFallback(): string | null {
-    return this.getServerUrlFallbackPrimary();
-  }
+
 
   /**
    * 3-regios HA: primary -> fallback_primary (Contabo) -> fallback_secondary (Scaleway).
