@@ -3658,6 +3658,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ertektar/bank-transactions/{id}/confirm-received": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["confirmBankTransactionReceived"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ertektar/bank-transactions/{id}/confirm-paid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["confirmBankTransactionPaid"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/error-report": {
         parameters: {
             query?: never;
@@ -4785,6 +4817,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cash-register/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["registerDevice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cash-register/receipt": {
         parameters: {
             query?: never;
@@ -4811,6 +4859,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["openDay_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash-register/device/{deviceId}/heartbeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["heartbeat_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5403,6 +5467,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["refreshToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/refresh-cookie": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["refreshCookie"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10710,6 +10790,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cashier-kpis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getKpis"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cash-register/z-report/{branchId}": {
         parameters: {
             query?: never;
@@ -10766,6 +10862,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getDailyEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash-register/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listDevices_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -14937,6 +15049,14 @@ export interface components {
             /** Format: int32 */
             vaultTerritoryId?: number;
             vaultTerritoryName?: string;
+            /** Format: date-time */
+            receivedAt?: string;
+            /** Format: int64 */
+            receivedBy?: number;
+            /** Format: date-time */
+            paidAt?: string;
+            /** Format: int64 */
+            paidBy?: number;
         };
         ErrorReportRequest: {
             errorType?: string;
@@ -15618,6 +15738,35 @@ export interface components {
             eventTimestamp?: string;
             rawResponse?: string;
         };
+        RegisterCashRegisterDeviceRequest: {
+            /** Format: uuid */
+            branchId: string;
+            code: string;
+            name?: string;
+            appMode?: string;
+            appVersion?: string;
+            deviceFingerprint?: string;
+            osInfo?: string;
+        };
+        CashRegisterDeviceDto: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            companyId?: string;
+            /** Format: uuid */
+            branchId?: string;
+            code?: string;
+            name?: string;
+            appMode?: string;
+            appVersion?: string;
+            deviceFingerprint?: string;
+            osInfo?: string;
+            /** Format: date-time */
+            installedAt?: string;
+            /** Format: date-time */
+            lastSeenAt?: string;
+            isActive?: boolean;
+        };
         CashRegisterReceiptRequest: {
             /** Format: uuid */
             branchId: string;
@@ -16055,9 +16204,9 @@ export interface components {
             offset?: number;
             sort?: components["schemas"]["SortObject"];
             /** Format: int32 */
-            pageSize?: number;
-            /** Format: int32 */
             pageNumber?: number;
+            /** Format: int32 */
+            pageSize?: number;
             paged?: boolean;
             unpaged?: boolean;
         };
@@ -17715,6 +17864,49 @@ export interface components {
             lastTransactionAt?: string;
             alertLevel?: string;
             notes?: string;
+        };
+        CashierKpiRowDto: {
+            /** Format: int64 */
+            workerId?: number;
+            workerName?: string;
+            /** Format: int64 */
+            txCount?: number;
+            /** Format: int64 */
+            buyCount?: number;
+            /** Format: int64 */
+            sellCount?: number;
+            /** Format: int64 */
+            reversalCount?: number;
+            totalHuf?: number;
+            buyHuf?: number;
+            sellHuf?: number;
+            totalFees?: number;
+            /** Format: int64 */
+            customerCount?: number;
+            avgTxHuf?: number;
+            reversalRatio?: number;
+        };
+        CashierKpiSummaryDto: {
+            /** Format: date */
+            dateFrom?: string;
+            /** Format: date */
+            dateTo?: string;
+            /** Format: int64 */
+            totalTxCount?: number;
+            /** Format: int64 */
+            totalBuyCount?: number;
+            /** Format: int64 */
+            totalSellCount?: number;
+            /** Format: int64 */
+            totalReversalCount?: number;
+            totalHuf?: number;
+            totalFees?: number;
+            /** Format: int64 */
+            activeWorkerCount?: number;
+            /** Format: int64 */
+            totalCustomerCount?: number;
+            reversalRatio?: number;
+            rows?: components["schemas"]["CashierKpiRowDto"][];
         };
         BranchBalanceSummary: {
             /** Format: int32 */
@@ -25236,6 +25428,50 @@ export interface operations {
             };
         };
     };
+    confirmBankTransactionReceived: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BankTransactionResponseDto"];
+                };
+            };
+        };
+    };
+    confirmBankTransactionPaid: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BankTransactionResponseDto"];
+                };
+            };
+        };
+    };
     reportError: {
         parameters: {
             query?: never;
@@ -27174,6 +27410,30 @@ export interface operations {
             };
         };
     };
+    registerDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterCashRegisterDeviceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CashRegisterDeviceDto"];
+                };
+            };
+        };
+    };
     printReceipt: {
         parameters: {
             query?: never;
@@ -27216,6 +27476,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["CashRegisterEventDto"];
+                };
+            };
+        };
+    };
+    heartbeat_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deviceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CashRegisterDeviceDto"];
                 };
             };
         };
@@ -28236,6 +28518,28 @@ export interface operations {
         };
     };
     refreshToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
+    };
+    refreshCookie: {
         parameters: {
             query?: never;
             header?: never;
@@ -35703,6 +36007,29 @@ export interface operations {
             };
         };
     };
+    getKpis: {
+        parameters: {
+            query: {
+                dateFrom: string;
+                dateTo: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CashierKpiSummaryDto"];
+                };
+            };
+        };
+    };
     generateZReport: {
         parameters: {
             query?: {
@@ -35793,6 +36120,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["CashRegisterEventDto"][];
+                };
+            };
+        };
+    };
+    listDevices_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CashRegisterDeviceDto"][];
                 };
             };
         };
