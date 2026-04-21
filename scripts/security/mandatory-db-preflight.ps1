@@ -264,6 +264,13 @@ if ([string]::IsNullOrWhiteSpace($localConn)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($remoteConn)) {
+    # Dev env: ha a DB_PREFLIGHT_REMOTE_MODE = "optional" es nincs remote conn string,
+    # csak figyelmeztetunk es tovabblepunk (lokalis fejlesztes). CI-ban strict mode (default).
+    if ($env:DB_PREFLIGHT_REMOTE_MODE -eq "optional") {
+        Write-Status "Remote/Neon DB connection string not configured (optional mode). Dev env - tovabbaadas figyelmeztetessel." "WARN"
+        Write-Status "Lokalis fejlesztes: ez nem blokkolo. Production CI-ban NEON_DATABASE_URL szukseges." "WARN"
+        exit 0
+    }
     Write-Status "Remote/Neon DB connection string could not be resolved." "ERR"
     exit 1
 }
