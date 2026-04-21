@@ -130,6 +130,7 @@ export const menuGroups: MenuGroup[] = [
       { path: "/attendance", label: "Munkaidő nyilvántartás", icon: Users },
       { path: "/licenses", label: "Engedélyek", icon: Shield },
       { path: "/settings", label: "Rendszerbeállítások", icon: Settings, canonicalRoles: ["ugyvezeto"] },
+      { path: "/settings/permission-matrix", label: "Jogosultság mátrix", icon: Shield, canonicalRoles: ["ugyvezeto"] },
       { path: "/scheduler", label: "Ütemező", icon: FileText, canonicalRoles: ["ugyvezeto", "irodavezeto"] },
       { path: "/email-settings", label: "E-mail beállítások", icon: Settings, canonicalRoles: ["ugyvezeto", "irodavezeto"] },
     ],
