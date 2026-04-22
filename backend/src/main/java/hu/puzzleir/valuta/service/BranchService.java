@@ -236,12 +236,13 @@ public class BranchService {
 
         // Issue #110: automatikus kassza egyenleg inicializálás.
         // Idempotens — ha bármi okból már létezne, skip. Nem dob hibát.
+        // Sourcery PR #112: narrow catch + full stack trace.
         try {
             int created = cashBalanceService.initializeBranchBalances(saved.getId());
             log.info("Branch {} cash_balance auto-init: {} új rekord", saved.getId(), created);
-        } catch (Exception e) {
-            log.error("Branch {} cash_balance auto-init FAILED (admin kézi init szükséges): {}",
-                    saved.getId(), e.getMessage());
+        } catch (RuntimeException e) {
+            log.error("Branch {} cash_balance auto-init FAILED (admin kézi init szükséges)",
+                    saved.getId(), e);
             // NE dobj tovább — a branch létrehozás már sikeres, az init admin-kézi javítható.
         }
 

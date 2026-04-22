@@ -44,6 +44,15 @@ public interface CashBalanceRepository extends JpaRepository<CashBalance, Long> 
     List<CashBalance> findByBranchId(@Param("branchId") UUID branchId);
 
     /**
+     * Issue #110 / Sourcery feedback: létezik-e cash_balance erre a branch-re?
+     *
+     * Könnyebb query — csak COUNT, nem lekéri az összes rekordot.
+     * Használat: SessionOpenService lazy-init check.
+     */
+    @Query("SELECT CASE WHEN COUNT(cb) > 0 THEN true ELSE false END FROM CashBalance cb WHERE cb.branch.id = :branchId")
+    boolean existsByBranchId(@Param("branchId") UUID branchId);
+
+    /**
      * Összes egyenleg egy céghez (JOIN FETCH a lazy proxy hiba elkerüléséhez)
      */
     @Query("SELECT cb FROM CashBalance cb " +

@@ -64,15 +64,17 @@ public class SessionOpenService {
         // Issue #110: lazy kassza egyenleg init — ha ez a branch még nem kapott
         // egy cash_balance rekordot sem, inicializálunk. Idempotens + safe.
         // Ez kezeli a régi (pre-Issue #110) branch-ek production-ba deployment-jét.
-        if (cashBalanceRepository.findByBranchId(branchId).isEmpty()) {
+        // Sourcery PR #112: existsByBranchId (COUNT query) — nem kell az összes balance-t lekérni.
+        if (!cashBalanceRepository.existsByBranchId(branchId)) {
             log.warn("Branch {} nem rendelkezik cash_balance rekorddal — auto-init (Issue #110 fallback)",
                     branchId);
             try {
                 int created = cashBalanceService.initializeBranchBalances(branchId);
                 log.info("Branch {} cash_balance lazy-init: {} új rekord", branchId, created);
-            } catch (Exception e) {
-                log.error("Branch {} cash_balance lazy-init FAILED — munkamenet nyitás folytatódik: {}",
-                        branchId, e.getMessage());
+            } catch (RuntimeException e) {
+                // Sourcery PR #112: narrow catch + full stack trace (ne csak e.getMessage())
+                log.error("Branch {} cash_balance lazy-init FAILED — munkamenet nyitás folytatódik",
+                        branchId, e);
             }
         }
 

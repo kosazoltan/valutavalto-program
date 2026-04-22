@@ -131,10 +131,12 @@ public class CashBalanceService {
         }
 
         // Multi-tenant security: ha van SecurityContext, cross-tenant init tiltott.
+        // Sourcery PR #112: AccessDeniedException (401/403 HTTP) security-specific exception.
         try {
             UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
             if (currentCompanyId != null && !currentCompanyId.equals(branch.getCompany().getId())) {
-                throw new ValidationException("Csak saját cég branch-eire inicializálhat kassza egyenleget");
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Csak saját cég branch-eire inicializálhat kassza egyenleget (cross-tenant tiltott)");
             }
         } catch (IllegalStateException e) {
             // Nincs autentikált user (pl. startup/async hook) — branch.company megfelelő forrás
@@ -174,25 +176,31 @@ public class CashBalanceService {
      * Használat: új currency hozzáadása után, vagy új branch létrehozása után,
      * vagy deploy utáni egyszeri "retrofit" bestelés.
      *
-     * @return (branchId -> new_records_count) map
+     * Sourcery PR #112: dedikált result record (totalCreated single-sourced).
      */
-    public Map<UUID, Integer> initializeAllBranchBalancesForCurrentCompany() {
+    public BulkInitResult initializeAllBranchBalancesForCurrentCompany() {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         List<Branch> branches = branchRepository.findByCompanyIdAndIsActiveTrue(companyId);
 
-        Map<UUID, Integer> result = new LinkedHashMap<>();
+        Map<UUID, Integer> perBranch = new LinkedHashMap<>();
         int totalCreated = 0;
 
         for (Branch branch : branches) {
             int created = initializeBranchBalances(branch.getId());
-            result.put(branch.getId(), created);
+            perBranch.put(branch.getId(), created);
             totalCreated += created;
         }
 
         log.info("initializeAllBranchBalancesForCurrentCompany: company={}, {} branch, {} új rekord",
                 companyId, branches.size(), totalCreated);
-        return result;
+        return new BulkInitResult(perBranch, totalCreated, branches.size());
     }
+
+    /**
+     * Issue #110 bulk init result record — Sourcery PR #112 feedback
+     * (single-sourced totalCreated, nem kell a controller-ben újraszámolni).
+     */
+    public record BulkInitResult(Map<UUID, Integer> perBranch, int totalCreated, int branchCount) {}
 
     /**
      * HIGH FIX #9: Negatív készlet ellenőrzés ELADÁSNÁL.

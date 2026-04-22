@@ -200,18 +200,19 @@ public class CashBalanceController {
      *
      * POST /api/v1/cash-balances/init-all-branches
      *
+     * Sourcery PR #112: service BulkInitResult record single-sourced totalCreated.
+     *
      * @return (branchId -> new_records_count) map + summary
      */
     @PostMapping("/init-all-branches")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ResponseEntity<java.util.Map<String, Object>> initAllBranchBalances() {
-        java.util.Map<java.util.UUID, Integer> perBranch =
+        CashBalanceService.BulkInitResult result =
                 cashBalanceService.initializeAllBranchBalancesForCurrentCompany();
-        int totalCreated = perBranch.values().stream().mapToInt(Integer::intValue).sum();
         return ResponseEntity.ok(java.util.Map.of(
-                "perBranch", perBranch,
-                "totalCreated", totalCreated,
-                "branchCount", perBranch.size(),
+                "perBranch", result.perBranch(),
+                "totalCreated", result.totalCreated(),
+                "branchCount", result.branchCount(),
                 "idempotent", true
         ));
     }
