@@ -28,6 +28,8 @@ public interface DenominationRepository extends JpaRepository<Denomination, Long
      * Összes címlet egy fiókhoz és valutához
      */
     @Query("SELECT d FROM Denomination d " +
+           "LEFT JOIN FETCH d.branch " +
+           "LEFT JOIN FETCH d.currency " +
            "WHERE d.branch.id = :branchId " +
            "AND d.currency.id = :currencyId " +
            "AND d.active = true " +
@@ -41,6 +43,8 @@ public interface DenominationRepository extends JpaRepository<Denomination, Long
      * Összes címlet egy fiókhoz
      */
     @Query("SELECT d FROM Denomination d " +
+           "LEFT JOIN FETCH d.branch " +
+           "LEFT JOIN FETCH d.currency " +
            "WHERE d.branch.id = :branchId " +
            "AND d.active = true " +
            "ORDER BY d.currency.displayOrder, d.faceValue DESC")
