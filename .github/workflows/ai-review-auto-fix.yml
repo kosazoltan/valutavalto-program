@@ -148,6 +148,10 @@ jobs:
     if: failure()
     needs: auto-fix
     runs-on: ubuntu-latest
+    # notify-failure nem orokoli az auto-fix job permissions-jet - explicit kell
+    permissions:
+      issues: write
+      pull-requests: write
     steps:
       - name: Comment on PR
         uses: actions/github-script@v7
