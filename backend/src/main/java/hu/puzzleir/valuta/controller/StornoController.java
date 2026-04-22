@@ -32,14 +32,17 @@ public class StornoController {
     /**
      * Sztornó ellenőrzés - szükséges-e jóváhagyás?
      *
-     * GET /api/v1/stornos/check/{transactionId}?workerId=
+     * GET /api/v1/stornos/check/{transactionIdOrReceipt}?workerId=
+     *
+     * PR #115 fix: elfogad Long id-t VAGY receipt_number string-et (pl. "V017100005").
+     * A frontend és Penztar-client a tx.receiptNumber || tx.id fallback-et használja.
      */
-    @GetMapping("/check/{transactionId}")
+    @GetMapping("/check/{transactionIdOrReceipt}")
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<StornoCheckResultDto> checkStorno(
-            @PathVariable Long transactionId) {
+            @PathVariable String transactionIdOrReceipt) {
         Long workerId = SecurityUtils.getCurrentWorkerId();
-        StornoCheckResultDto result = stornoService.checkStorno(transactionId, workerId);
+        StornoCheckResultDto result = stornoService.checkStorno(transactionIdOrReceipt, workerId);
         return ResponseEntity.ok(result);
     }
 
