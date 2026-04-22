@@ -16,6 +16,7 @@ import { logger } from './utils/logger';
 const SetupWizard = lazy(() => import('./pages/setup/SetupWizard'))
 const WorkerPage = lazy(() => import('./pages/workers/WorkerPage'))
 const TransitPage = lazy(() => import('./pages/transit/TransitPage'))
+const NotFoundPage = lazy(() => import('./pages/common/NotFoundPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const CentralVaultDashboard = lazy(() => import('./pages/foertektar/CentralVaultDashboard'))
 const RateMasterWorkflowPage = lazy(() => import('./pages/rate-management/RateMasterWorkflowPage'))
@@ -534,6 +535,11 @@ export default function App() {
           <Route path="/transfer-documents" element={<TransferDocumentPage />} />
           <Route path="/booking-export" element={<BookingExportPage />} />
 
+          {/* PR #116: /conversion alias -> /transactions/conversion (user typed the short URL) */}
+          <Route path="/conversion" element={<Navigate to="/transactions/conversion" replace />} />
+
+          {/* PR #116: 404 NotFound - silent failure kikuszobolese */}
+          <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Routes>
       </SetupGuard>

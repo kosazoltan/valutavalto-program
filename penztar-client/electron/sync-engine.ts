@@ -208,6 +208,20 @@ export class SyncEngine {
   private lastTokenValidationAt = 0;
   private readonly tokenValidationTtlMs = 120_000;
 
+  // PR #116: business-error (HTTP 4xx kivéve 401/403/429) tranzakciók in-memory
+  // abandoned-listája. Ezek NEM kerülnek újra sync-elésre a setInterval auto-run-ban,
+  // így nem történik végtelen retry rate-mismatch, insufficient-balance stb. üzleti
+  // validációs hibákra. Az app restart esetén a set resetelődik — user kézzel is
+  // retry-olhat az "offline sync" menüpontban.
+  private abandonedTxIds = new Set<number>();
+  private abandonedConvIds = new Set<number>();
+  private abandonedStornoIds = new Set<number>();
+  private abandonedBankTxIds = new Set<number>();
+  private abandonedDistribIds = new Set<number>();
+  private abandonedTransferIds = new Set<number>();
+  private abandonedCollectionIds = new Set<number>();
+  private abandonedHandoverIds = new Set<number>();
+
   private status: SyncStatus = {
     lastSyncAt: null,
     lastSyncResult: null,
@@ -522,17 +536,57 @@ export class SyncEngine {
   /**
    * Pending tranzakciók szinkronizálása a szerverrel.
    */
+
+  /**
+   * PR #116: HTTP 4xx (kivéve auth 401/403 és rate-limit 429) = üzleti validációs hiba.
+   * Ezek NEM transient hibák → ne retry-oljuk újra és újra az intervalban.
+   *
+   * Példák: rate mismatch, insufficient balance, invalid customer data stb.
+   */
+  private isBusinessValidationError(errorMsg: string): boolean {
+    if (!errorMsg) return false;
+    // 401/403: auth hiba — más kezeli (break)
+    // 429: rate limit — érdemes retry-olni később
+    // 4xx egyebek: business validation — NE retry
+    const match = errorMsg.match(/HTTP (4\d\d)/);
+    if (!match) return false;
+    const code = Number(match[1]);
+    return code >= 400 && code < 500 && code !== 401 && code !== 403 && code !== 429;
+  }
+
   async syncAll(tokenOverride?: string | null): Promise<SyncResult> {
     const result: SyncResult = { synced: 0, failed: 0, errors: [] };
 
-    const pendingTransactions = getPendingTransactions();
-    const pendingConversions = getPendingConversions();
-    const pendingBankTransactions = getPendingBankTransactions();
-    const pendingDistributions = getPendingDistributions();
-    const pendingTransfers = getPendingTransfers();
-    const pendingCollections = getPendingCollections();
-    const pendingStornos = getPendingStornos();
-    const pendingHandoverOperations = getPendingHandoverOperations();
+    // PR #116: abandoned (business-validation-failed) kizárása az auto-sync-ből
+    const allPendingTx = getPendingTransactions();
+    const pendingTransactions = allPendingTx.filter((tx) => !this.abandonedTxIds.has(tx.id));
+    const allPendingConv = getPendingConversions();
+    const pendingConversions = allPendingConv.filter((c) => !this.abandonedConvIds.has(c.id));
+    const allPendingBankTx = getPendingBankTransactions();
+    const pendingBankTransactions = allPendingBankTx.filter((b) => !this.abandonedBankTxIds.has(b.id));
+    const allPendingDistrib = getPendingDistributions();
+    const pendingDistributions = allPendingDistrib.filter((d) => !this.abandonedDistribIds.has(d.id));
+    const allPendingTransfer = getPendingTransfers();
+    const pendingTransfers = allPendingTransfer.filter((t) => !this.abandonedTransferIds.has(t.id));
+    const allPendingCollect = getPendingCollections();
+    const pendingCollections = allPendingCollect.filter((c) => !this.abandonedCollectionIds.has(c.id));
+    const allPendingStorno = getPendingStornos();
+    const pendingStornos = allPendingStorno.filter((s) => !this.abandonedStornoIds.has(s.id));
+    const allPendingHandover = getPendingHandoverOperations();
+    const pendingHandoverOperations = allPendingHandover.filter((h) => !this.abandonedHandoverIds.has(h.id));
+
+    const skippedAbandoned =
+      (allPendingTx.length - pendingTransactions.length) +
+      (allPendingConv.length - pendingConversions.length) +
+      (allPendingBankTx.length - pendingBankTransactions.length) +
+      (allPendingDistrib.length - pendingDistributions.length) +
+      (allPendingTransfer.length - pendingTransfers.length) +
+      (allPendingCollect.length - pendingCollections.length) +
+      (allPendingStorno.length - pendingStornos.length) +
+      (allPendingHandover.length - pendingHandoverOperations.length);
+    if (skippedAbandoned > 0) {
+      log.info(`[SyncEngine] PR #116: ${skippedAbandoned} abandoned (business error) tranzakció kihagyva`);
+    }
     const totalPending = pendingTransactions.length
       + pendingConversions.length
       + pendingBankTransactions.length
@@ -565,6 +619,11 @@ export class SyncEngine {
         const errorMsg = err instanceof Error ? err.message : String(err);
         result.failed++;
         result.errors.push(`TX #${tx.id} (${tx.type} ${tx.currency_code}): ${errorMsg}`);
+        // PR #116: business-validation-error -> abandon (ne retry-oljon végtelenül)
+        if (this.isBusinessValidationError(errorMsg)) {
+          this.abandonedTxIds.add(tx.id);
+          log.warn(`[SyncEngine] TX #${tx.id} abandoned (business error): ${errorMsg}`);
+        }
         if (isAuthStatusError(err) || errorMsg.includes('HTTP 401') || errorMsg.includes('HTTP 403')) {
           result.errors.push('Auth/session hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
@@ -594,6 +653,10 @@ export class SyncEngine {
         result.errors.push(
           `CONV #${conversion.id} (${conversion.from_currency_code}->${conversion.to_currency_code}): ${errorMsg}`,
         );
+        if (this.isBusinessValidationError(errorMsg)) {
+          this.abandonedConvIds.add(conversion.id);
+          log.warn(`[SyncEngine] CONV #${conversion.id} abandoned (business error): ${errorMsg}`);
+        }
         if (isAuthStatusError(err) || errorMsg.includes('HTTP 401') || errorMsg.includes('HTTP 403')) {
           result.errors.push('Auth/session hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
@@ -620,6 +683,10 @@ export class SyncEngine {
         const errorMsg = err instanceof Error ? err.message : String(err);
         result.failed++;
         result.errors.push(`BANK #${bankTransaction.id} (${bankTransaction.transaction_type} ${bankTransaction.currency_code}): ${errorMsg}`);
+        if (this.isBusinessValidationError(errorMsg)) {
+          this.abandonedBankTxIds.add(bankTransaction.id);
+          log.warn(`[SyncEngine] BANK #${bankTransaction.id} abandoned (business error): ${errorMsg}`);
+        }
         if (isAuthStatusError(err) || errorMsg.includes('HTTP 401') || errorMsg.includes('HTTP 403')) {
           result.errors.push('Auth/session hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
@@ -646,6 +713,10 @@ export class SyncEngine {
         const errorMsg = err instanceof Error ? err.message : String(err);
         result.failed++;
         result.errors.push(`DIST #${distribution.id} (${distribution.currency_code}): ${errorMsg}`);
+        if (this.isBusinessValidationError(errorMsg)) {
+          this.abandonedDistribIds.add(distribution.id);
+          log.warn(`[SyncEngine] DIST #${distribution.id} abandoned (business error): ${errorMsg}`);
+        }
         if (isAuthStatusError(err) || errorMsg.includes('HTTP 401') || errorMsg.includes('HTTP 403')) {
           result.errors.push('Auth/session hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
@@ -672,6 +743,10 @@ export class SyncEngine {
         const errorMsg = err instanceof Error ? err.message : String(err);
         result.failed++;
         result.errors.push(`TRANSFER #${transfer.id} (${transfer.currency_code}): ${errorMsg}`);
+        if (this.isBusinessValidationError(errorMsg)) {
+          this.abandonedTransferIds.add(transfer.id);
+          log.warn(`[SyncEngine] TRANSFER #${transfer.id} abandoned (business error): ${errorMsg}`);
+        }
         if (isAuthStatusError(err) || errorMsg.includes('HTTP 401') || errorMsg.includes('HTTP 403')) {
           result.errors.push('Auth/session hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
@@ -698,6 +773,10 @@ export class SyncEngine {
         const errorMsg = err instanceof Error ? err.message : String(err);
         result.failed++;
         result.errors.push(`COLLECTION #${collection.id} (${collection.currency_code}): ${errorMsg}`);
+        if (this.isBusinessValidationError(errorMsg)) {
+          this.abandonedCollectionIds.add(collection.id);
+          log.warn(`[SyncEngine] COLLECTION #${collection.id} abandoned (business error): ${errorMsg}`);
+        }
         if (isAuthStatusError(err) || errorMsg.includes('HTTP 401') || errorMsg.includes('HTTP 403')) {
           result.errors.push('Auth/session hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
@@ -724,6 +803,10 @@ export class SyncEngine {
         const errorMsg = err instanceof Error ? err.message : String(err);
         result.failed++;
         result.errors.push(`STORNO #${storno.id} (${storno.original_receipt_number}): ${errorMsg}`);
+        if (this.isBusinessValidationError(errorMsg)) {
+          this.abandonedStornoIds.add(storno.id);
+          log.warn(`[SyncEngine] STORNO #${storno.id} abandoned (business error): ${errorMsg}`);
+        }
         if (isAuthStatusError(err) || errorMsg.includes('HTTP 401') || errorMsg.includes('HTTP 403')) {
           result.errors.push('Auth/session hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
@@ -750,6 +833,10 @@ export class SyncEngine {
         const errorMsg = err instanceof Error ? err.message : String(err);
         result.failed++;
         result.errors.push(`HANDOVER #${operation.id} (${operation.operation_type}): ${errorMsg}`);
+        if (this.isBusinessValidationError(errorMsg)) {
+          this.abandonedHandoverIds.add(operation.id);
+          log.warn(`[SyncEngine] HANDOVER #${operation.id} abandoned (business error): ${errorMsg}`);
+        }
         if (isAuthStatusError(err) || errorMsg.includes('HTTP 401') || errorMsg.includes('HTTP 403')) {
           result.errors.push('Auth/session hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;

@@ -109,6 +109,12 @@ export interface ElectronQueueSyncOutcome {
   syncedCount: number
   pendingCount: number
   allSavedSynced: boolean
+  /**
+   * PR #116: a sync-engine utolso ciklusanak hibauzenetei.
+   * A TransactionPage toast logikaja hasznalja: pending+errors -> "server-error" toast,
+   * pending-no-errors -> "offline" toast, 0-pending -> "success" toast.
+   */
+  syncErrors: string[]
 }
 
 function getElectronAPI() {
@@ -199,11 +205,23 @@ async function finalizeSyncOutcome(
   const pendingIds = new Set(await listPendingIds())
   const pendingCount = savedIds.filter((id) => pendingIds.has(id)).length
 
+  // PR #116: sync-engine utolso ciklusanak hibauzeneteit is visszaadjuk,
+  // hogy a UI meg tudja kulonboztetni az "offline" vs "server-error" esetet.
+  let syncErrors: string[] = []
+  try {
+    const statusStr = await electronAPI.getSyncStatus()
+    const status = typeof statusStr === 'string' ? JSON.parse(statusStr) : statusStr
+    syncErrors = status?.lastSyncResult?.errors ?? []
+  } catch (err) {
+    logger.error('electronTransactions', 'Failed to read syncStatus', err)
+  }
+
   return {
     savedIds,
     syncedCount: savedIds.length - pendingCount,
     pendingCount,
     allSavedSynced: pendingCount === 0,
+    syncErrors,
   }
 }
 
