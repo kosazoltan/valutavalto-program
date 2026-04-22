@@ -24,6 +24,8 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -109,18 +111,41 @@ public class CashBalanceService {
     }
 
     /**
-     * Egyenleg inicializálása új irodához
+     * Egyenleg inicializálása új irodához (Issue #110).
+     *
+     * A company-t a Branch entity-ből veszi — NEM függ SecurityContext-től,
+     * így startup hook-ból és admin endpoint-ból is hívható egyaránt.
+     *
+     * Multi-tenant-safe: ha van autentikált user, a saját cégére kell, hogy érvényes legyen.
+     * Ha nincs (pl. startup hook), akkor a branch.company a forrás.
+     *
+     * @param branchId iroda ID
+     * @return inicializált cash_balance-ok száma (0 = minden már létezett, idempotens)
      */
-    public void initializeBranchBalances(UUID branchId) {
-        UUID companyId = SecurityUtils.getCurrentCompanyId();
-
-        Company company = companyRepository.findById(companyId)
-                .orElseThrow(() -> new ResourceNotFoundException("Company nem található"));
+    public int initializeBranchBalances(UUID branchId) {
         Branch branch = branchRepository.findById(branchId)
-                .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található"));
+                .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
+
+        if (branch.getCompany() == null) {
+            throw new ValidationException("Branch company nincs beállítva: " + branchId);
+        }
+
+        // Multi-tenant security: ha van SecurityContext, cross-tenant init tiltott.
+        try {
+            UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+            if (currentCompanyId != null && !currentCompanyId.equals(branch.getCompany().getId())) {
+                throw new ValidationException("Csak saját cég branch-eire inicializálhat kassza egyenleget");
+            }
+        } catch (IllegalStateException e) {
+            // Nincs autentikált user (pl. startup/async hook) — branch.company megfelelő forrás
+            log.debug("initializeBranchBalances SecurityContext nélkül fut (startup/async): {}", branchId);
+        }
+
+        Company company = branch.getCompany();
 
         // Összes aktív valutához egyenleg létrehozása
         List<Currency> currencies = currencyRepository.findAllActiveOrdered();
+        int created = 0;
 
         for (Currency currency : currencies) {
             // Ellenőrzés, hogy nincs-e már
@@ -133,11 +158,40 @@ public class CashBalanceService {
                         .openingBalance(BigDecimal.ZERO)
                         .build();
                 cashBalanceRepository.save(balance);
+                created++;
                 log.debug("Kassza egyenleg inicializálva: {} - {}", branch.getName(), currency.getCode());
             }
         }
 
-        log.info("Iroda kassza egyenlegek inicializálva: {}", branch.getName());
+        log.info("Iroda kassza egyenlegek inicializálva: {} ({} új rekord)", branch.getName(), created);
+        return created;
+    }
+
+    /**
+     * Issue #110: cég összes aktív branch-jére cash_balance init (admin bulk op).
+     *
+     * Idempotens: csak a hiányzó (branch, currency) párosokra hoz létre 0-ás balance rekordot.
+     * Használat: új currency hozzáadása után, vagy új branch létrehozása után,
+     * vagy deploy utáni egyszeri "retrofit" bestelés.
+     *
+     * @return (branchId -> new_records_count) map
+     */
+    public Map<UUID, Integer> initializeAllBranchBalancesForCurrentCompany() {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<Branch> branches = branchRepository.findByCompanyIdAndIsActiveTrue(companyId);
+
+        Map<UUID, Integer> result = new LinkedHashMap<>();
+        int totalCreated = 0;
+
+        for (Branch branch : branches) {
+            int created = initializeBranchBalances(branch.getId());
+            result.put(branch.getId(), created);
+            totalCreated += created;
+        }
+
+        log.info("initializeAllBranchBalancesForCurrentCompany: company={}, {} branch, {} új rekord",
+                companyId, branches.size(), totalCreated);
+        return result;
     }
 
     /**

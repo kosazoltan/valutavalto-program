@@ -170,4 +170,49 @@ public class CashBalanceController {
         CashBalanceService.CompanyCashPosition position = cashBalanceService.getCompanyCashPosition();
         return ResponseEntity.ok(position);
     }
+
+    /**
+     * Issue #110: kassza egyenleg inicializálás egy adott iroda számára.
+     *
+     * Idempotens — minden aktív valutához 0-ás balance rekordot hoz létre,
+     * ha még nincs. Ha van, átugorja (nem módosít létező balance-t).
+     *
+     * POST /api/v1/cash-balances/init-branch/{branchId}
+     *
+     * @return inicializált (új) cash_balance rekordok száma
+     */
+    @PostMapping("/init-branch/{branchId}")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public ResponseEntity<java.util.Map<String, Object>> initBranchBalances(@PathVariable java.util.UUID branchId) {
+        int created = cashBalanceService.initializeBranchBalances(branchId);
+        return ResponseEntity.ok(java.util.Map.of(
+                "branchId", branchId,
+                "created", created,
+                "idempotent", true
+        ));
+    }
+
+    /**
+     * Issue #110: cég összes aktív branch-jére cash_balance bulk init.
+     *
+     * Idempotens — csak a hiányzó (branch, currency) párosokhoz hoz létre rekordot.
+     * Használat: deploy utáni egyszeri "retrofit" régebbi branch-ekre.
+     *
+     * POST /api/v1/cash-balances/init-all-branches
+     *
+     * @return (branchId -> new_records_count) map + summary
+     */
+    @PostMapping("/init-all-branches")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public ResponseEntity<java.util.Map<String, Object>> initAllBranchBalances() {
+        java.util.Map<java.util.UUID, Integer> perBranch =
+                cashBalanceService.initializeAllBranchBalancesForCurrentCompany();
+        int totalCreated = perBranch.values().stream().mapToInt(Integer::intValue).sum();
+        return ResponseEntity.ok(java.util.Map.of(
+                "perBranch", perBranch,
+                "totalCreated", totalCreated,
+                "branchCount", perBranch.size(),
+                "idempotent", true
+        ));
+    }
 }
