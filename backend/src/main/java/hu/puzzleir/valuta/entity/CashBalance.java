@@ -121,14 +121,20 @@ public class CashBalance {
     }
 
     /**
-     * Egyenleg levonás (kimenő valuta)
+     * Egyenleg levonás (kimenő valuta).
+     *
+     * PR #114 fix: korábban IllegalStateException-t dobtunk, ami HTTP 500-ra
+     * mapelődött a GlobalExceptionHandler-ben (rossz). Most InsufficientBalanceException
+     * (ValidationException leszármazott) -> HTTP 400 Bad Request (helyes business validation).
      */
     public void subtractBalance(BigDecimal amount) {
         if (this.currentBalance.compareTo(amount) >= 0) {
             this.currentBalance = this.currentBalance.subtract(amount);
             this.lastTransactionAt = LocalDateTime.now();
         } else {
-            throw new IllegalStateException("Nincs elegendő egyenleg: " + this.currentBalance + " < " + amount);
+            String currencyCode = (this.currency != null ? this.currency.getCode() : "?");
+            throw new hu.puzzleir.valuta.exception.InsufficientBalanceException(
+                    currencyCode, this.currentBalance, amount);
         }
     }
 
