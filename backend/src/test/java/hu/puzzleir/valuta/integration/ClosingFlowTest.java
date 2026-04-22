@@ -54,6 +54,11 @@ class ClosingFlowTest {
     @Mock private CashBalanceRepository cashBalanceRepository;
     @Mock private DailySessionRepository dailySessionRepository;
     @Mock private DailyClosingService dailyClosingService;
+    @Mock private hu.puzzleir.valuta.repository.TransactionRepository transactionRepository;
+    // Issue #117: uj mockok a countDenominations perzisztalashoz
+    @Mock private hu.puzzleir.valuta.repository.DenominationRepository denominationRepository;
+    @Mock private hu.puzzleir.valuta.repository.DenominationBalanceRepository denominationBalanceRepository;
+    @Mock private hu.puzzleir.valuta.repository.CurrencyRepository currencyRepository;
 
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -146,6 +151,35 @@ class ClosingFlowTest {
             Map<String, Map<Integer, Integer>> denomCounts = new LinkedHashMap<>();
             denomCounts.put("HUF", Map.of(20000, 5, 10000, 3, 5000, 2));
             denomCounts.put("EUR", Map.of(100, 10, 50, 5));
+
+            // Issue #117: uj mockok a perzisztalashoz
+            hu.puzzleir.valuta.entity.Currency hufC = new hu.puzzleir.valuta.entity.Currency();
+            hufC.setId(3L); hufC.setCode("HUF");
+            hu.puzzleir.valuta.entity.Currency eurC = new hu.puzzleir.valuta.entity.Currency();
+            eurC.setId(4L); eurC.setCode("EUR");
+            when(currencyRepository.findByCode("HUF")).thenReturn(Optional.of(hufC));
+            when(currencyRepository.findByCode("EUR")).thenReturn(Optional.of(eurC));
+
+            // Denomination auto-create path: mindig ures Optional -> save-el ujat
+            when(denominationRepository.findByBranchIdAndCurrencyIdAndFaceValue(eq(BRANCH_ID), any(), any()))
+                    .thenReturn(Optional.empty());
+            when(denominationRepository.save(any(hu.puzzleir.valuta.entity.Denomination.class)))
+                    .thenAnswer(inv -> {
+                        hu.puzzleir.valuta.entity.Denomination d = inv.getArgument(0);
+                        if (d.getId() == null) d.setId(1L);
+                        return d;
+                    });
+
+            // Branch lookup a auto-create-hez
+            hu.puzzleir.valuta.entity.Company company = new hu.puzzleir.valuta.entity.Company();
+            company.setId(UUID.randomUUID());
+            branch.setCompany(company);
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+
+            when(denominationBalanceRepository.findByCashDeskIdAndDenominationId(eq(BRANCH_ID), any()))
+                    .thenReturn(Optional.empty());
+            when(denominationBalanceRepository.save(any(hu.puzzleir.valuta.entity.DenominationBalance.class)))
+                    .thenAnswer(inv -> inv.getArgument(0));
 
             Map<String, Object> result = closingWizardService.countDenominations(BRANCH_ID, denomCounts);
 

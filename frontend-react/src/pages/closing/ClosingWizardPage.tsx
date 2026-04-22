@@ -90,7 +90,15 @@ export default function ClosingWizardPage() {
               ? {
                   ...s,
                   status: passed ? 'done' : 'failed',
-                  message: passed ? 'Rendben' : (stepData?.stepDescription ?? 'Eltérés találva!'),
+                  // Issue #117: a backend stepData.message mezo tartalmazza a valodi hibauzenetet,
+                  // NEM a stepDescription (ami a lepes leirasa). Priority: stepData.message -> stepDescription -> fallback.
+                  message: passed
+                    ? 'Rendben'
+                    : (
+                        (typeof stepData?.stepData?.message === 'string' ? stepData.stepData.message : undefined)
+                        ?? stepData?.stepDescription
+                        ?? 'Eltérés találva!'
+                      ),
                   completedAt: now,
                 }
               : s

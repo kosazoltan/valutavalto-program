@@ -12,7 +12,10 @@ import hu.puzzleir.valuta.dto.closingwizard.ClosingWizardStepDto;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.ClosingWizardRepository;
+import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.repository.DailySessionRepository;
+import hu.puzzleir.valuta.repository.DenominationBalanceRepository;
+import hu.puzzleir.valuta.repository.DenominationRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -46,6 +49,10 @@ public class ClosingWizardService {
     private final TransactionRepository transactionRepository;
     private final DailyClosingService dailyClosingService;
     private final ObjectMapper objectMapper;
+    // Issue #117: countDenominations most mar menti a DenominationBalance rekordokat.
+    private final DenominationRepository denominationRepository;
+    private final DenominationBalanceRepository denominationBalanceRepository;
+    private final CurrencyRepository currencyRepository;
 
     /**
      * Zárási varázsló indítása
@@ -255,16 +262,28 @@ public class ClosingWizardService {
     }
 
     /**
-     * Step 2: Címletolvasó — valutánként címletek rögzítése.
-     * Visszaadja a számolt összesítést.
+     * Step 2: Cimletolvaso - valutankent cimletek rogzitese + PERZISZTALAS.
+     *
+     * Issue #117: korabban csak aggregalt objektumot adott vissza, NEM mentette el
+     * a DenominationBalance tablaba. Emiatt a DailyClosingService.checkEveningDenomination()
+     * mindig "Hianyzik az esti penztar cimletezese!" hibat adott -> napzaras beragadt Step 2-n.
+     *
+     * Most a DenominationBalance rekordokat upsert-elve ment (EVENING kategoria),
+     * igy a checkEveningDenomination a existsByBranchIdAndDate es sumDenominatedAmount
+     * query-kkel megtalalja azokat.
      */
     public Map<String, Object> countDenominations(UUID branchId, Map<String, Map<Integer, Integer>> denomCounts) {
         Map<String, Object> result = new LinkedHashMap<>();
         Map<String, BigDecimal> totals = new LinkedHashMap<>();
+        int savedRecords = 0;
 
         for (Map.Entry<String, Map<Integer, Integer>> entry : denomCounts.entrySet()) {
             String currencyCode = entry.getKey();
             Map<Integer, Integer> denoms = entry.getValue();
+
+            hu.puzzleir.valuta.entity.Currency currency = currencyRepository.findByCode(currencyCode)
+                    .orElseThrow(() -> new ValidationException(
+                            "Ismeretlen valuta a cimletezesnel: " + currencyCode));
 
             BigDecimal total = BigDecimal.ZERO;
             List<Map<String, Object>> denomDetails = new ArrayList<>();
@@ -280,6 +299,10 @@ public class ClosingWizardService {
                         "count", count,
                         "subtotal", subtotal
                 ));
+
+                // Issue #117: persist DenominationBalance rekordot
+                saveDenominationBalance(branchId, currency, BigDecimal.valueOf(value), count, subtotal);
+                savedRecords++;
             }
 
             totals.put(currencyCode, total);
@@ -287,7 +310,48 @@ public class ClosingWizardService {
         }
 
         result.put("totals", totals);
+        result.put("savedRecords", savedRecords);
+        log.info("countDenominations: branchId={}, savedRecords={}, currencies={}",
+                branchId, savedRecords, denomCounts.keySet());
         return result;
+    }
+
+    /**
+     * Issue #117: upsert DenominationBalance rekord.
+     * Idempotens: ha letezik (branchId, denominationId) rekord -> UPDATE. Ha nem -> INSERT.
+     * Denomination auto-create, ha a branch-currency-faceValue kombora meg nem letezik.
+     */
+    private void saveDenominationBalance(UUID branchId, hu.puzzleir.valuta.entity.Currency currency, BigDecimal faceValue, int quantity, BigDecimal subtotal) {
+        Denomination denomination = denominationRepository
+                .findByBranchIdAndCurrencyIdAndFaceValue(branchId, currency.getId(), faceValue)
+                .orElseGet(() -> {
+                    Branch branch = branchRepository.findById(branchId)
+                            .orElseThrow(() -> new ResourceNotFoundException("Iroda nem talalhato: " + branchId));
+                    Denomination d = Denomination.builder()
+                            .company(branch.getCompany())
+                            .branch(branch)
+                            .currency(currency)
+                            .faceValue(faceValue)
+                            .active(true)
+                            .build();
+                    log.debug("Denomination auto-create: branch={}, currency={}, faceValue={}",
+                            branchId, currency.getCode(), faceValue);
+                    return denominationRepository.save(d);
+                });
+
+        DenominationBalance balance = denominationBalanceRepository
+                .findByCashDeskIdAndDenominationId(branchId, denomination.getId())
+                .orElseGet(() -> DenominationBalance.builder()
+                        .cashDeskId(branchId)
+                        .denomination(denomination)
+                        .quantity(0)
+                        .totalValue(BigDecimal.ZERO)
+                        .denominationCategory(DenominationCategory.EVENING)
+                        .build());
+        balance.setQuantity(quantity);
+        balance.setTotalValue(subtotal);
+        balance.setDenominationCategory(DenominationCategory.EVENING);
+        denominationBalanceRepository.save(balance);
     }
 
     /**
