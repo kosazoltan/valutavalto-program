@@ -698,25 +698,37 @@ app.whenReady().then(async () => {
   // AI REVIEW FIX (PR #97 Codex P1): packaged Electron appban a dotenv CSAK dev modban
   // fut le (main.ts:3: import('dotenv/config').catch(...)). Production buildben a
   // process.env NEM tartalmazza a VITE_BRANCH_CODE-ot - az userData/.env-bol kell olvasni.
+  // Sourcery AI P2 fix: manualis .env parser reimplementalja dotenv-et es divergalhat
+  // (escaping, multiline, quote-folding). Delegaljuk a dotenv.parse-nak a konzisztens
+  // parsing szemantika erdekeben (dev+packaged egyforman viselkedik).
   const readPersistedEnv = (): Record<string, string> => {
     try {
       const envPath = path.join(app.getPath("userData"), ".env");
       if (!fs.existsSync(envPath)) return {};
       const raw = fs.readFileSync(envPath, "utf8");
-      const out: Record<string, string> = {};
-      for (const rawLine of raw.split(/\r?\n/)) {
-        const line = rawLine.trim();
-        if (!line || line.startsWith("#")) continue;
-        const eq = line.indexOf("=");
-        if (eq <= 0) continue;
-        const key = line.slice(0, eq).trim();
-        let value = line.slice(eq + 1).trim();
-        if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-          value = value.slice(1, -1);
+      // Dinamikus import - dev modban dotenv elerheto, production ASAR-ban is bundle-olva.
+      // Ha valami miatt nem elerheto (pl. regressio), fallback a korabbi manualis parserra.
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const dotenv = require("dotenv") as { parse: (input: string | Buffer) => Record<string, string> };
+        return dotenv.parse(raw);
+      } catch {
+        // Fallback: minimal inline parser (csak ha dotenv nem elerheto)
+        const out: Record<string, string> = {};
+        for (const rawLine of raw.split(/\r?\n/)) {
+          const line = rawLine.trim();
+          if (!line || line.startsWith("#")) continue;
+          const eq = line.indexOf("=");
+          if (eq <= 0) continue;
+          const key = line.slice(0, eq).trim();
+          let value = line.slice(eq + 1).trim();
+          if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+            value = value.slice(1, -1);
+          }
+          out[key] = value;
         }
-        out[key] = value;
+        return out;
       }
-      return out;
     } catch {
       return {};
     }

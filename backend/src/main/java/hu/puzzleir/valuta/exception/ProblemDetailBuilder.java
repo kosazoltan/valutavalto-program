@@ -42,7 +42,11 @@ public final class ProblemDetailBuilder {
      * Alap domain az RFC 7807 "type" mezo URI-jaihoz.
      * Production-ban a type URI egy valos dokumentacios oldalra mutathat.
      */
-    /** @deprecated hasznaljuk {@link ProductionUrls#TYPE_BASE}-t. Itt a backward-compat alias. */
+    /**
+     * @deprecated hasznaljuk {@link ProductionUrls#TYPE_BASE}-t. Itt a backward-compat alias.
+     *             Sourcery AI P3 fix: explicit @Deprecated annotacio is kell, hogy a compiler/IDE jelezze a hasznalatot.
+     */
+    @Deprecated(since = "2.1.7", forRemoval = true)
     public static final String TYPE_BASE = ProductionUrls.TYPE_BASE;
 
     private final ProblemDetail pd;

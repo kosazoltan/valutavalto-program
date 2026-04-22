@@ -23,7 +23,9 @@ DECLARE
     duplicate_count INT;
     duplicate_info TEXT;
 BEGIN
-    SELECT COUNT(*), STRING_AGG(DISTINCT CONCAT(company_id::text, '/', branch_id::text, '/', session_date::text), ', ')
+    -- Sourcery AI P2 fix: COUNT(*) csak a duplicate KEY-eket szamolta, nem az ERINTETT ROW-okat.
+    -- SUM(dup.cnt) = duplikatum-csoportok osszes sor-szama, igazan informativ.
+    SELECT COALESCE(SUM(dup.cnt), 0), STRING_AGG(DISTINCT CONCAT(dup.company_id::text, '/', dup.branch_id::text, '/', dup.session_date::text, ' (', dup.cnt, ' sor)'), ', ')
         INTO duplicate_count, duplicate_info
     FROM (
         SELECT company_id, branch_id, session_date, COUNT(*) AS cnt
@@ -44,7 +46,8 @@ DECLARE
     duplicate_count INT;
     duplicate_info TEXT;
 BEGIN
-    SELECT COUNT(*), STRING_AGG(DISTINCT CONCAT(branch_id::text, '/', transaction_date::text, '/', receipt_number), ', ')
+    -- Sourcery AI P2 fix: SUM(dup.cnt) = osszes erintett sor szama + cnt megjelenitese
+    SELECT COALESCE(SUM(dup.cnt), 0), STRING_AGG(DISTINCT CONCAT(dup.branch_id::text, '/', dup.transaction_date::text, '/', dup.receipt_number, ' (', dup.cnt, ' sor)'), ', ')
         INTO duplicate_count, duplicate_info
     FROM (
         SELECT branch_id, transaction_date, receipt_number, COUNT(*) AS cnt

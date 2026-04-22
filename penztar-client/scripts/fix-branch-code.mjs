@@ -47,8 +47,12 @@ async function main() {
   ];
   const wasmPath = wasmCandidates.find((p) => fs.existsSync(p));
   if (!wasmPath) {
-    console.error('[fix-branch-code] sql-wasm.wasm nem talalhato: ' + wasmPath);
-    console.error('  Futtasd: npm install');
+    // Sourcery P2 fix: wasmPath undefined, helyette a kerestett path-ok listaja informativ
+    console.error('[fix-branch-code] sql-wasm.wasm egyik keresett path-on sem talalhato:');
+    for (const p of wasmCandidates) {
+      console.error('  - ' + p);
+    }
+    console.error('  Futtasd: npm install (penztar-client modulon belul)');
     process.exit(1);
   }
 
