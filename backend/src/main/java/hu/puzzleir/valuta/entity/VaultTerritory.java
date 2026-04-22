@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import hu.puzzleir.valuta.entity.Company;
 import jakarta.persistence.*;
 import lombok.*;
@@ -28,6 +29,7 @@ public class VaultTerritory {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Company company;
 
     @Column(nullable = false, length = 100)
