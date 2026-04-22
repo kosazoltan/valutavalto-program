@@ -54,6 +54,10 @@ class SessionOpenServiceTest {
     @Mock
     private BranchRepository branchRepository;
 
+    // Issue #110: lazy cash_balance init dependency
+    @Mock
+    private CashBalanceService cashBalanceService;
+
     private static final UUID COMPANY_ID = UUID.randomUUID();
     private static final UUID BRANCH_ID = UUID.randomUUID();
     private static final Long WORKER_ID = 1L;

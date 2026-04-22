@@ -41,6 +41,8 @@ public class SessionOpenService {
     private final WorkerRepository workerRepository;
     private final CompanyRepository companyRepository;
     private final BranchRepository branchRepository;
+    // Issue #110: lazy kassza egyenleg init ha a branch-en még nincs egy rekord sem.
+    private final CashBalanceService cashBalanceService;
 
     /**
      * Pénztár megnyitása.
@@ -58,6 +60,23 @@ public class SessionOpenService {
 
         Worker worker = workerRepository.findById(workerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található: " + workerId));
+
+        // Issue #110: lazy kassza egyenleg init — ha ez a branch még nem kapott
+        // egy cash_balance rekordot sem, inicializálunk. Idempotens + safe.
+        // Ez kezeli a régi (pre-Issue #110) branch-ek production-ba deployment-jét.
+        // Sourcery PR #112: existsByBranchId (COUNT query) — nem kell az összes balance-t lekérni.
+        if (!cashBalanceRepository.existsByBranchId(branchId)) {
+            log.warn("Branch {} nem rendelkezik cash_balance rekorddal — auto-init (Issue #110 fallback)",
+                    branchId);
+            try {
+                int created = cashBalanceService.initializeBranchBalances(branchId);
+                log.info("Branch {} cash_balance lazy-init: {} új rekord", branchId, created);
+            } catch (RuntimeException e) {
+                // Sourcery PR #112: narrow catch + full stack trace (ne csak e.getMessage())
+                log.error("Branch {} cash_balance lazy-init FAILED — munkamenet nyitás folytatódik",
+                        branchId, e);
+            }
+        }
 
         LocalDate today = LocalDate.now();
 

@@ -15,6 +15,8 @@ import hu.puzzleir.valuta.repository.DictionaryRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,7 +25,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 @Transactional(rollbackFor = Exception.class)
 public class BranchService {
@@ -32,6 +33,22 @@ public class BranchService {
     private final CompanyRepository companyRepository;
     private final DictionaryRepository dictionaryRepository;
     private final BranchMapper branchMapper;
+    // Issue #110: kassza egyenleg auto-init új branch-nél. @Lazy a potenciális circular
+    // dependency elkerülésére (CashBalanceService branchRepository-t is használ).
+    private final CashBalanceService cashBalanceService;
+
+    @Autowired
+    public BranchService(BranchRepository branchRepository,
+                         CompanyRepository companyRepository,
+                         DictionaryRepository dictionaryRepository,
+                         BranchMapper branchMapper,
+                         @Lazy CashBalanceService cashBalanceService) {
+        this.branchRepository = branchRepository;
+        this.companyRepository = companyRepository;
+        this.dictionaryRepository = dictionaryRepository;
+        this.branchMapper = branchMapper;
+        this.cashBalanceService = cashBalanceService;
+    }
 
     /**
      * Összes fiók lekérése
@@ -216,6 +233,18 @@ public class BranchService {
 
         Branch saved = branchRepository.save(branch);
         log.info("Branch created successfully: {}", saved.getId());
+
+        // Issue #110: automatikus kassza egyenleg inicializálás.
+        // Idempotens — ha bármi okból már létezne, skip. Nem dob hibát.
+        // Sourcery PR #112: narrow catch + full stack trace.
+        try {
+            int created = cashBalanceService.initializeBranchBalances(saved.getId());
+            log.info("Branch {} cash_balance auto-init: {} új rekord", saved.getId(), created);
+        } catch (RuntimeException e) {
+            log.error("Branch {} cash_balance auto-init FAILED (admin kézi init szükséges)",
+                    saved.getId(), e);
+            // NE dobj tovább — a branch létrehozás már sikeres, az init admin-kézi javítható.
+        }
 
         return branchMapper.toDto(saved);
     }
