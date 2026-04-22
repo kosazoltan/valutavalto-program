@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.dto.closingwizard.ClosingWizardDto;
 import hu.puzzleir.valuta.dto.closingwizard.ClosingWizardStepDto;
 import hu.puzzleir.valuta.entity.*;
+import hu.puzzleir.valuta.entity.DenominationType;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.ClosingWizardRepository;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
@@ -327,11 +328,16 @@ public class ClosingWizardService {
                 .orElseGet(() -> {
                     Branch branch = branchRepository.findById(branchId)
                             .orElseThrow(() -> new ResourceNotFoundException("Iroda nem talalhato: " + branchId));
+                    // HUF szabaly: >= 200 Ft bankjegy, < 200 Ft erme; nem-HUF-ra is BANKNOTE default.
+                    DenominationType denomType = faceValue.compareTo(BigDecimal.valueOf(200)) >= 0
+                            ? DenominationType.BANKNOTE
+                            : DenominationType.COIN;
                     Denomination d = Denomination.builder()
                             .company(branch.getCompany())
                             .branch(branch)
                             .currency(currency)
                             .faceValue(faceValue)
+                            .denominationType(denomType)
                             .active(true)
                             .build();
                     log.debug("Denomination auto-create: branch={}, currency={}, faceValue={}",
