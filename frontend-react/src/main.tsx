@@ -7,7 +7,31 @@ import './index.css'
 import ErrorBoundary from './components/ErrorBoundary'
 import { CompanyThemeProvider } from './contexts/CompanyThemeContext'
 import './components/ErrorReporter' // auto-registers global error listeners
-
+// Polyfill: crypto.randomUUID a NEM secure context-ekre (HTTP non-localhost).
+// RFC4122 v4 uuid implementacio fallback-kent, ha a Web Crypto API nem elerheto.
+if (!globalThis.crypto || typeof globalThis.crypto.randomUUID !== 'function') {
+  const cryptoObj: Crypto = globalThis.crypto ?? ({} as Crypto)
+  const fallbackRandomUUID = (): string => {
+    if (typeof cryptoObj.getRandomValues === 'function') {
+      const bytes = new Uint8Array(16)
+      cryptoObj.getRandomValues(bytes)
+      bytes[6] = ((bytes[6] ?? 0) & 0x0f) | 0x40
+      bytes[8] = ((bytes[8] ?? 0) & 0x3f) | 0x80
+      const hex: string[] = []
+      for (let i = 0; i < 16; i++) hex.push((bytes[i] ?? 0).toString(16).padStart(2, '0'))
+      return [hex.slice(0,4).join(''), hex.slice(4,6).join(''), hex.slice(6,8).join(''), hex.slice(8,10).join(''), hex.slice(10).join('')].join('-')
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = Math.random() * 16 | 0
+      return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
+    })
+  }
+  // Explicit cast unknown-on keresztul, mert a template literal type-ok miatt a TS szigorubb
+  ;(cryptoObj as unknown as { randomUUID: () => string }).randomUUID = fallbackRandomUUID
+  if (!globalThis.crypto) {
+    ;(globalThis as unknown as { crypto: Crypto }).crypto = cryptoObj
+  }
+}
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
