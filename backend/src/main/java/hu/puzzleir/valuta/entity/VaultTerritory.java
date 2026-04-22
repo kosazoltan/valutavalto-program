@@ -1,6 +1,8 @@
 package hu.puzzleir.valuta.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import hu.puzzleir.valuta.entity.Company;
 import jakarta.persistence.*;
 import lombok.*;
@@ -29,8 +31,18 @@ public class VaultTerritory {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @JsonIgnore
     private Company company;
+
+    /**
+     * JSON-ban megjeleno company ID (transient, kiolvasva a company proxy-bol).
+     * Elkerulli a lazy-init 'Could not initialize proxy - no session' hibat.
+     */
+    @JsonProperty("companyId")
+    @Transient
+    public java.util.UUID getCompanyIdForJson() {
+        return company != null ? company.getId() : null;
+    }
 
     @Column(nullable = false, length = 100)
     private String name;
