@@ -6,7 +6,7 @@
 !include "MUI2.nsh"
 
 !ifndef VERSION
-  !define VERSION "2.1.7"
+  !define VERSION "2.1.8"
 !endif
 !ifndef BUILD_DATE
   !define BUILD_DATE "dev"
