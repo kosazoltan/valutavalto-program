@@ -59,12 +59,49 @@ public class StornoService {
     private static final int DAILY_STORNO_LIMIT_CASHIER = 2;
 
     /**
-     * Sztornó ellenőrzés - szükséges-e jóváhagyás?
+     * PR #115: Sztornó ellenőrzés receipt_number-rel VAGY id-vel.
+     *
+     * A frontend és Penztar-client a `tx.receiptNumber || tx.id` fallback-et
+     * használja URL path param-ban — mindkét forma működik.
+     */
+    @Transactional(readOnly = true)
+    public StornoCheckResultDto checkStorno(String transactionIdOrReceipt, Long workerId) {
+        Transaction transaction = resolveTransaction(transactionIdOrReceipt);
+        return doCheckStorno(transaction, workerId);
+    }
+
+    /**
+     * Backward-compat overload: régi Long id-s hívás.
      */
     @Transactional(readOnly = true)
     public StornoCheckResultDto checkStorno(Long transactionId, Long workerId) {
         Transaction transaction = transactionRepository.findById(transactionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tranzakció nem található: " + transactionId));
+        return doCheckStorno(transaction, workerId);
+    }
+
+    /**
+     * Tranzakció feloldás id (numerikus) VAGY receipt_number (string) alapján.
+     */
+    private Transaction resolveTransaction(String idOrReceipt) {
+        if (idOrReceipt == null || idOrReceipt.isBlank()) {
+            throw new ResourceNotFoundException("Tranzakció azonosító hiányzik");
+        }
+        try {
+            Long id = Long.parseLong(idOrReceipt);
+            return transactionRepository.findById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException("Tranzakció nem található: " + id));
+        } catch (NumberFormatException e) {
+            // Multi-tenant: receipt_number csak cégen belül egyedi.
+            java.util.UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
+            return transactionRepository.findByReceiptNumberAndCompanyId(idOrReceipt, companyId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Tranzakció nem található bizonylat szám alapján: " + idOrReceipt));
+        }
+    }
+
+    private StornoCheckResultDto doCheckStorno(Transaction transaction, Long workerId) {
+        Long transactionId = transaction.getId();
 
         UUID branchId = SecurityUtils.getCurrentBranchId();
 
