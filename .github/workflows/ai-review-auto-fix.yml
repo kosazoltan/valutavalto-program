@@ -84,7 +84,7 @@ jobs:
           # Allowed bots: Sourcery AI + Codex automatikus trigger-elhet (default: only humans)
           allowed_bots: 'sourcery-ai,chatgpt-codex-connector'
           # Max 5 iteracio a fixre (token + cost limit)
-          claude_args: --max-turns 5 --model claude-sonnet-4-5
+          claude_args: --max-turns 10 --model claude-sonnet-4-5
           prompt: |
             AI code reviewer (Sourcery AI vagy ChatGPT Codex Connector) egy PR-re review-t kuldott.
             Feladatod: automatikusan javitani a talalatokat + commitolni a feature branch-re.
@@ -96,34 +96,46 @@ jobs:
             - Reviewer: ${{ github.event_name == 'pull_request_review' && github.event.review.user.login || github.event.comment.user.login }}
             - Repo: ${{ github.repository }}
 
-            LEPESEK:
-            1. Olvasd el a CLAUDE.md-t a "Kotelezo AI code review workflow" szekciojat (kotelezo szabalyok).
+            LEPESEK (mindet kotelezoen vegrehajtani):
+            1. Olvasd el a CLAUDE.md "Kotelezo AI code review workflow" szekciojat.
             2. Kerd le a review-t + inline comment-eket:
                `gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews"`
                `gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments"`
             3. Elemezd a talalatokat P1 (bug_risk, critical) / P2 (suggestion) / P3 (style) szerint.
-            4. Szurd a false positive-okat (pl. balanced brackets AI mis-interpret), jeloljek `NO_FIX:` kommenttel.
-            5. Fix implementalasa: Read + Edit tool, kotelezo lokalis validacio:
-               - Backend: `cd backend && ./mvnw compile -DskipTests` (ha Java modositas)
-               - Frontend: `cd frontend-react && npx tsc --noEmit` (ha TS modositas)
-               - Scripts: `node --check FILENAME` (ha .js/.mjs modositas)
+            4. Szurd a false positive-okat. Ha nem egyertelmu, azt is javitsd es jegyezd be a commit-msg-be.
+            5. Fix implementalasa: Read + Edit tool. LOKALIS VALIDACIO:
+               - Backend Java mod: `cd backend && ./mvnw compile -DskipTests`
+               - Frontend TS mod:  `cd frontend-react && npx tsc --noEmit`
+               - Script .js/.mjs:  `node --check FILENAME`
             6. Commit: `fix(ai-review): [Reviewer] - [short desc]` prefix-szel.
-            7. Push a feature branch-re (automatikus checkout-bol).
+            7. Push a feature branch-re (automatikus).
 
-            FONTOS:
-            - Ha a fix >3 fajlt erint vagy breaking change: NE commitolj, inkabb comment-elj a PR-en
-              egy javasolt megoldassal, es kerj emberi jovahagyast.
-            - A "looks great!" review-kra NE csinalj semmit, zard le a ciklust.
-            - Minden fix utan push -> trigger-eli a CI-t -> ha fail: automatikusan probaljuk kijavitani
-              max 2 iteracioval, utana escalalj.
+            FONTOS (AGRESSZIV mode):
+            - **AKTIVAN FIXELJ**: ha a review-ban barmilyen kritika (overall VAGY inline) van, alkalmazd
+              a fixet es commit+push. Ne halasztgass.
+            - A high-level feedback is fix-kotelezo (nem csak inline comments).
+            - A "looks great!" review-kra: hagyd el a fixes, de **kotelezo** egy PR comment:
+              `gh pr comment PR_NUM --body "Auto-fix: looks great, no changes needed."`
+            - Ha a fix >5 fajlt erint: comment-elj javaslattal, kerj emberi reviewot (ne commit-olj).
 
-            CELDNUZEST:
-            - 1 fix commit / review trigger (nem kontrolalatlan series)
-            - Idempotent: ha nincs fix-elni valo, no-op (ne commitolj ures diff-et)
-            - Magyar kommentek a commit message-ben (projekt konvencio)
+            KOTELEZO VEGUL: **MINDIG tegyel PR comment-et** a futas eredmenyerol:
+            `gh pr comment ${{ github.event.pull_request.number }} --body "$(cat <<EOF
+            ## Auto-fix report
+            - Reviewer: ...
+            - Talalatok: N db (P1: X, P2: Y, P3: Z)
+            - Javitva: ...
+            - Nem javitva: ... (indok)
+            - Commit: <hash ha van>
+            EOF
+            )"`
 
-            KEZDJ: `gh api` + teljes review lekeres + priorizalas.
+            CELKEZVETES:
+            - 1 fix commit / review trigger.
+            - Idempotent: ne commitolj ures diff-et.
+            - Magyar kommentek a commit message-ben.
+            - KOTELEZO PR comment (sikerrel vagy no-op eseten is).
 
+            KEZDJ: `gh api` + review lekeres + priorizalas.
       - name: Post-fix validation summary
         if: always()
         run: |
