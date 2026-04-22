@@ -383,6 +383,14 @@ public class DailyClosingService {
      * Legacy: navzarocontrol + napijelrutin + DekzarCtrl + napzarnyomtatorutin
      */
     private StepCheckResult checkNavControlAndReport(UUID branchId, LocalDate date) {
+        // Issue #120: ha nincs NAV integracio a branch-en, SKIP (ne blokkolja a napzarast).
+        // A meglevo checkUnreportedTransactions query a printed=false flag-et nezi, ami valojaban
+        // NEM a NAV-jelentes allapota. Amig nincs valodi nav_report integracio,
+        // a hasFeature check szerint az egesz step kihagyhato.
+        if (!hasFeature(branchId, "NAV_INTEGRATION")) {
+            return StepCheckResult.skipped("NAV integracio nem aktiv ezen az irodan");
+        }
+
         // NAV: ellenorizzuk hogy minden tranzakcio jelentve van-e
         long unreportedCount = transactionRepository.countUnreportedTransactions(branchId, date);
         if (unreportedCount > 0) {
