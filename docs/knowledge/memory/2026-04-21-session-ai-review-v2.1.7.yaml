@@ -58,10 +58,12 @@ lessons_learned:
   - AI review bot kommenteket tomeggyujtes gh api /pulls/N/reviews (PR 104)
 
 kredencialok:
-  admin_login: EBC / ADMIN / Admin1234! (case-sensitive)
-  prod_api_url: https://excvaluta.com/api/v1
-  ha_infra: Hetzner 95.216.191.162 + Scaleway 163.172.152.234 (warm-active, CF DNS TTL 60s)
-  secrets: /root/replication_password.txt, /opt/valutavalto/backend/.env, /tmp/cf_token.txt
+  # Codex AI P1 fix: plaintext credentials REDACTED - biztonsagi szabaly szerint
+  # nem lehet a repo-ban (meg private-ben sem ajanlott, ha forkolhato vagy CI log-ba kerulhet)
+  admin_login: <REDACTED - bootstrap user EBC, admin worker-kod, see 1Password/env store>
+  prod_api_url: <REDACTED - see config/production-urls.json (PR 105 SSOT)>
+  ha_infra: <REDACTED - see deploy/hetzner/ha/README.md + 1Password HA vault>
+  secrets: <REDACTED - NEM dokumentalasra szant absolut path-ok, lasd CLAUDE.md security gate>
 
 context_for_future_agent:
   main_repo: D:/repo/valutavalto-program/ (main head 51a9c591 - git pull kell)
