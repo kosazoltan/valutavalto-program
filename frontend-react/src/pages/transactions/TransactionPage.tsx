@@ -201,8 +201,13 @@ export default function TransactionPage() {
                 },
               ])
       
+              // PR #116: 3-agu toast - sikeres sync / server-error / offline queue
               if (outcome.allSavedSynced) {
                 toast.success('Tranzakció sikeresen rögzítve!', 'A tétel azonnal szinkronizálva lett.')
+              } else if (outcome.syncErrors && outcome.syncErrors.length > 0) {
+                // Server-oldali hiba (pl. rate mismatch, insufficient balance)
+                const firstError = outcome.syncErrors[0]
+                toast.error('Szinkron hiba - a tranzakció lokálisan mentve, de a szerver elutasitotta', firstError)
               } else {
                 toast.warning('Offline mentés megtörtént', 'A tranzakció helyi queue-ba került, később szinkronizálódik.')
               }
