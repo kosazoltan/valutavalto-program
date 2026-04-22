@@ -171,7 +171,7 @@ Lasd: `docs/AI_REVIEW_AUTOMATION.md`
 - **Asztali shortcutok** (`C:\Users\Kósa Zoltán\OneDrive\Desktop\`): `Valuta Pénztár — Fejlesztői mód (INDÍTÁS).lnk`, `Valuta Pénztár — Fejlesztői mód (LEÁLLÍTÁS).lnk`, `Valuta Pénztár — Éles kliens (telepített).lnk`.
 - **AI review automation:** `.github/workflows/ai-review-auto-fix.yml` minden PR merge után triggerel. A kötelező gyűjtő-script minta: `for pr in 97 98 100 101 102 103 104; do gh api "/repos/kosazoltan/valutavalto-program/pulls/$pr/reviews"; done`. PR #104 ezzel 7 hibát javított.
 - **Production URL SSOT (v2.1.7 új):** `config/production-urls.json` + `backend/.../config/ProductionUrls.java` Java konstans osztály. PROBLEMADETAILBUILDER.TYPE_BASE mostantól onnan olvas. **Deferred:** minden @Value default, PS1 launcher hardcoded és Electron `main.ts` fallback teljes refactor a config-ból.
-- **Nyitott következő feladatok (2026-04-22+):**
+- **Nyitott következő feladatok (2026-04-22 ota, friss session utan):**
   - **P0 (éles pénztár frissítés):** user v2.1.7 reinstall az éles gépen — 1) `Penztar-Eltavolito-2.1.7-20260421.exe` admin joggal, 2) `Penztar-Setup-2.1.7-20260421.exe` admin joggal, 3) SetupWizard 5 lépés (Iroda → Program típus → Szerver (**Kapcsolat tesztelése** gomb kötelező!) → Admin jelszó → Telepítés), 4) belépés a bootstrap admin credentials-szel (ld. setup wizard SetupWizard 4. lepes + 1Password/secure vault), 5) új VÉTEL teszt → `VEBC000001` NGM-bizonylat.
   - **P0 (V155 migration Hetzner production-on):** a Spring Boot következő indulásakor a Flyway automatikusan lefuttatja. Ha duplikált `daily_session` vagy `transaction.receipt_number` van, a `DO $$ RAISE EXCEPTION` pre-check megállítja — admin döntheti el a takarítást. Fájl: `backend/src/main/resources/db/migration/V155__add_version_and_unique_constraints.sql`.
   - **P1:** happy path teszt dev módban (Fejlesztői mód INDÍTÁS shortcut) — a SetupWizard 4. lépésnél **Kapcsolat tesztelése gombot** kell nyomni (connectionTest.state=ok kötelező a Továbbhoz).
@@ -181,3 +181,26 @@ Lasd: `docs/AI_REVIEW_AUTOMATION.md`
   - **P2:** Obsidian vault sync (amint telepítve) — auto-save session memóriába.
   - **P2:** Spring Boot 3.5.14 upgrade (2026-04-23 milestone; amint release-eli Tomcat 10.1.54+ bundle-lel, törlendő az explicit `<tomcat.version>` override a `backend/pom.xml`-ből).
   - **P2:** Installer acceptance test friss Windows VM-en az `installer/tests/installer-validation-suite.ps1` szkripttel.
+
+
+## Session zarasa (2026-04-22 07:20)
+
+Main HEAD: `38594cb94b97` (PR #108 merge utan). Mai session: 20+ PR merge-elve.
+Fobb terkepek:
+- B2 Cashier KPI dashboard (#73) + B1 Audit trail (#74)
+- Multi-tenant security 13/15 fix (#75, #76, #83)
+- AI review automation: GitHub Actions + Claude Code Action (#88, #90, #108)
+- 6 hullam AI reviewer feedback javitasa (#81-87, #107)
+- Credentials redact P1 (#107) - plaintext jelszo torolve a session memory-bol
+
+Tesztek: Backend 972/972, Frontend 505/505, Penztar 97/97, Security 14/14.
+
+**Folytatas egy uj session-ben:**
+```bash
+cd D:/repo/valutavalto-program
+git pull origin main
+cat .remember/remember.md
+cat docs/knowledge/memory/2026-04-22-session-b-wave-ai-automation.yaml
+```
+
+Kovetkezo feladatok: lasd "Nyitott következő feladatok" fent.

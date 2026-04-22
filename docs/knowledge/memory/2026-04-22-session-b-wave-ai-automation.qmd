@@ -1,0 +1,97 @@
+---
+title: "Session: B-Wave + AI Review Automation"
+date: 2026-04-22
+author: Claude Sonnet 4.5 (Agent SDK)
+tags: [b-wave, multi-tenant, openapi, ai-review, github-actions]
+format: html
+---
+
+## Session scope
+
+A 2026-04-21 parent sessions folytatasa 2026-04-22-ig. Ket nagy temakor:
+
+1. **Alkalmazasmodul feilesztes** — B2 Penztaros KPI + B1 Audit trail integralas
+2. **AI review automatizacio** — Sourcery + ChatGPT Codex + Claude Code Action GitHub Actions workflow
+
+## Merge-elt PR-ek: 20+ db
+
+| PR | Tema | Kategoria |
+|---|---|---|
+| #73 | B2 Cashier KPI dashboard | feature |
+| #74 | B1 Audit trail integracio | feature |
+| #75 | Multi-tenant CRITICAL fix | security |
+| #76 | Multi-tenant HIGH+MED | security |
+| #77 | gitignore + devops | infra |
+| #78 | CI regresszio fix | ci |
+| #79 | DB preflight dev env | security |
+| #80 | LOCAL_DB fallback + OpenAPI | dev-infra |
+| #81-87 | AI review waves 1-5 | ai-review |
+| #83 | Comprehensive audit 13 hiba | audit |
+| #88 | **AI auto-fix workflow setup** | automation |
+| #90 | OIDC token permission | automation-fix |
+| #107 | AI review wave 6 + credentials redact | ai-review + security |
+| #108 | Workflow aggressive mode | automation-enhance |
+
+## Foho eredmenyek
+
+### Biztonsag
+- **KRITIKUS P1**: plaintext admin credentials REDAKTALVA a session YAML-ben (PR #107)
+- **Multi-tenant audit**: 13/15 vulnerability fixed, 87% -> 100% coverage
+- **XXE defenses** teljes OWASP compliance (PR #83)
+- **@PostConstruct NavTaxCode coverage** validation (PR #83)
+
+### Automatizacio
+- **GitHub Actions workflow** — Sourcery/Codex review -> Claude Code Action -> auto-fix
+- **ANTHROPIC_API_KEY** uploaded from `configs/secrets.json`
+- **Workflow success** PR #106-on, de prompt upgradelve AGRESSZIV mode-ra (#108)
+
+### Infrastruktura
+- LOCAL_DB_* env fallback (port 5432 default, docker-compose konzisztens)
+- OpenAPI snapshot: 753 paths, 435 schemas, unique operationId-k
+- **Main HEAD**: `38594cb94b97`
+
+## Nyitott feladatok (kovetkezo session)
+
+| P | Task |
+|---|------|
+| P2 | Cognee MCP integration amint elerheto |
+| P2 | Obsidian vault sync amint telepitve |
+| P2 | Spring Boot 3.5.14 upgrade (2026-04-23 milestone) |
+| P2 | B5 heartbeat monitoring UI bovites |
+| P3 | Hibernate @Where tenant filter (Q3 2026) |
+
+## User feladatok
+
+1. **Codex GitHub integration activation**: https://chatgpt.com/codex → Connect GitHub → valutavalto-program
+2. **Contabo EUR 91.20 refund** (order_id 14887271)
+3. **v2.1.7 installer deployment** eles penztar gepen
+
+## Resume path
+
+Uj session elejen:
+
+```bash
+cd D:/repo/valutavalto-program
+git pull origin main
+cat .remember/remember.md  # quick handoff
+cat docs/knowledge/memory/2026-04-22-session-b-wave-ai-automation.yaml
+cat CLAUDE.md  # project rules + open tasks
+```
+
+Verifikacio:
+
+```bash
+gh run list --workflow=ai-review-auto-fix.yml --limit 5  # automation alive?
+gh pr list --state open  # pending reviews
+gh api repos/kosazoltan/valutavalto-program/pulls/PR_NUM/reviews  # AI feedback
+```
+
+## Related files
+
+- `.remember/remember.md`
+- `docs/knowledge/memory/2026-04-21-ha-deploy-and-b-wave-session.yaml` (wave 1)
+- `docs/knowledge/memory/2026-04-21-session-wave2-continued.yaml` (wave 2)
+- `docs/security/multi-tenant-repository-audit-2026-04-21.md`
+- `docs/AI_REVIEW_AUTOMATION.md`
+- `.github/workflows/ai-review-auto-fix.yml`
+- `CLAUDE.md` (project root)

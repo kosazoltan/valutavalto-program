@@ -1,0 +1,244 @@
+---
+session_date: 2026-04-22
+session_type: multi-wave-continuation
+author: Claude Sonnet 4.5 (Agent SDK)
+parent_sessions:
+  - 2026-04-21-ha-deploy-and-b-wave-session.yaml (wave 1)
+  - 2026-04-21-session-wave2-continued.yaml (wave 2)
+tags:
+  - b-wave-features
+  - multi-tenant-security
+  - openapi-regen
+  - ai-review-automation
+  - github-actions-claude-code
+  - credentials-redact-p1
+
+summary: >
+  A 2026-04-21 session folytatasa 2026-04-22-ig. Foleg ket nagy temakor:
+  (1) alkalmazasmodul feilesztes (B2 Penztaros KPI + B1 Audit trail) es
+  (2) AI review automatizacio Sourcery + ChatGPT Codex Connector GitHub App-okkal.
+  Kozben teljes multi-tenant security audit javitassal, LOCAL_DB fallback,
+  OpenAPI snapshot regen es comprehensive code audit (13+2 hiba javitva).
+  Vegul teljes GitHub Actions workflow-t epitettunk (anthropics/claude-code-action@v1)
+  amelyik automatikusan javitja a AI reviewer eszreveteleit.
+
+main_head_at_session_end: 38594cb94b97cb77ddf164acf5a4677525c7f891 (PR #108 merge)
+total_prs_merged: 20+
+session_duration_hours: ~18 (intermittent)
+
+merged_prs_summary:
+  - pr: 72
+    title: docs(memory) - 2026-04-21 wave1 handoff
+  - pr: 73
+    title: feat(cashier-kpi) - Penztaros KPI dashboard (B2)
+    category: feature
+  - pr: 74
+    title: feat(audit-trail) - arfolyam + sztorno audit integracio (B1)
+    category: feature
+  - pr: 75
+    title: fix(security) - multi-tenant leak ExchangeRate (CRITICAL)
+    category: security
+  - pr: 76
+    title: fix(security) - multi-tenant HIGH+MEDIUM (BranchRepo + NavClosing)
+    category: security
+  - pr: 77
+    title: chore - gitignore + devops + wave2 handoff
+  - pr: 78
+    title: fix(ci) - zold CI visszaallitas (missing mock + unused method)
+    category: ci
+  - pr: 79
+    title: fix(security) - DB preflight dev env warn+pass
+    category: security
+  - pr: 80
+    title: fix(dev) - LOCAL_DB_* datasource fallback + OpenAPI regen
+    category: dev-infra
+  - pr: 81
+    title: fix(security) - AI review preflight case-insensitive + keep local DB
+    category: ai-review-fix
+  - pr: 82
+    title: fix(ai-review) - Sourcery + Codex wave feedback
+    category: ai-review-fix
+  - pr: 83
+    title: fix(audit) - comprehensive audit 13 hiba (11 uj + 2 regi)
+    category: audit
+  - pr: 84
+    title: fix(ai-review) - wave 2b Sourcery+Codex (operationId, port, dangling symlink)
+    category: ai-review-fix
+  - pr: 85
+    title: fix(ai-review) - KRITIKUS P1 brace fix (collect-logs.mjs)
+    category: ai-review-fix
+  - pr: 86
+    title: fix(ai-review) - MAX_RANGE_DAYS inclusive clarity
+    category: ai-review-fix
+  - pr: 87
+    title: fix(ai-review) - wave 5 dateTo future check + frontend align
+    category: ai-review-fix
+  - pr: 88
+    title: feat(ci) - AI review auto-fix GitHub Actions workflow (anthropics/claude-code-action@v1)
+    category: automation
+  - pr: 89
+    title: (TEST) E2E test PR for automation workflow
+    category: test
+    merged: false (or yes-empty)
+  - pr: 90
+    title: fix(ci) - id-token write permission for OIDC
+    category: automation-fix
+  - pr: 107
+    title: fix(ai-review) - wave 6 PR #104 #105 #106 feedback + credentials redact
+    category: ai-review-fix + security
+  - pr: 108
+    title: fix(ci) - AI review workflow aggressive prompt + max-turns 10
+    category: automation-enhance
+
+main_accomplishments:
+  # 1. Feature modules
+  b2_cashier_kpi:
+    backend_service: CashierKpiService (company-scoped KPI aggregation)
+    backend_controller: CashierKpiController (/api/v1/cashier-kpis)
+    frontend_page: frontend-react/src/pages/statistics/CashierKpiPage.tsx
+    features: date range (Ma/Het/Honap/Egyeni), KPI cards, top performer, sortable table
+  b1_audit_trail:
+    integrations_added:
+      - ExchangeRateMasterService (RATE_APPROVE, RATE_PUBLISH, RATE_REVOKE)
+      - TransactionReversalService (TRANSACTION_STORNO, TRANSACTION_PARTIAL_REFUND)
+    ui_enhancements: AuditLogPage ACTION_TYPES filter bovitve
+
+  # 2. Multi-tenant security
+  multi_tenant_audit:
+    vulnerabilities_found: 15
+    fixed: 13 (CRITICAL 1 + HIGH 3 + MEDIUM 8 + LOW 1)
+    remaining_low: 2 (TransactionRepository.findByWorker* - implicit branch FK ved)
+    report_file: docs/security/multi-tenant-repository-audit-2026-04-21.md
+    p1_p2_p3_coverage: 100% (regiek is javitva)
+
+  # 3. OpenAPI + LOCAL_DB
+  openapi_snapshot:
+    regenerated: 753 paths, 435 schemas
+    new_endpoints:
+      - /api/v1/cashier-kpis
+      - /api/v1/ertektar/bank-transactions/{id}/confirm-received
+      - /api/v1/ertektar/bank-transactions/{id}/confirm-paid
+    operation_id_fix: recordDeviceHeartbeat + listCashRegisterDevices (no _1 suffix)
+  local_db_fallback:
+    datasource_props: LOCAL_DB_HOST/PORT/NAME/USERNAME/PASSWORD env fallback
+    default_port: 5432 (consistent with docker-compose + preflight)
+
+  # 4. AI review automation
+  ai_review_automation:
+    workflow_file: .github/workflows/ai-review-auto-fix.yml
+    github_app: anthropics/claude-code-action@v1
+    secrets_configured: [ANTHROPIC_API_KEY] (from configs/secrets.json claude_user)
+    triggers: pull_request_review submitted + pull_request_review_comment created
+    bot_filter: sourcery-ai[bot], chatgpt-codex-connector[bot]
+    max_turns: 10
+    model: claude-sonnet-4-5
+    cost_per_fix: ~$0.50-3
+    current_status: workflow SUCCESS runs, but PR #106 did not commit -> prompt upgraded AGRESSZIV mode (PR #108)
+
+  # 5. Comprehensive audit (PR #83)
+  code_audit:
+    total_findings: 13 (11 uj + 2 regi)
+    fixes:
+      p1_bug_risk:
+        - CashierKpiService unsafe (Long) cast -> Number.longValue
+        - TransactionRepository hardcoded COMPLETED -> enum
+        - 5 BranchService deprecated method -> company-scoped
+        - DashboardService.findByIsActiveTrue -> company-scoped
+        - EmailAccountService 2x findByVaultTerritoryId -> company-scoped
+        - WacService.findByVaultTerritoryId -> company-scoped
+      p2_suggestion:
+        - CashierKpiController input validation (ValidationException)
+        - CashierKpiPage race condition (cancelled flag)
+        - CashierKpiPage topWorkerByTurnover separate memo
+      p2_old_bugs:
+        - ExchangeRatePollingService full OWASP XXE defenses
+        - NavClosingService @PostConstruct validateVatRateCoverage
+
+  # 6. AI review feedback waves
+  ai_review_waves:
+    wave_1_pr_81: case-insensitive + local DB keep
+    wave_2_pr_82: Sourcery+Codex 5 PR (existsSync, toBigDecimal, etc.)
+    wave_2b_pr_84: 5 AI review fixes (dangling symlink, operationId, port)
+    wave_3_pr_85: P1 brace fix (KRITIKUS - collect-logs.mjs parse error)
+    wave_4_pr_86: MAX_RANGE_DAYS clarity
+    wave_5_pr_87: dateTo future check + frontend align
+    wave_6_pr_107: P1 credentials redact + V155 SUM + dotenv.parse + ProductionUrls sync test
+
+technical_challenges:
+  claude_github_app_ansible:
+    desc: "A Claude Code Action@v1 OIDC token-t is kert, akkor is ha anthropic_api_key configol"
+    fix: "permissions: id-token: write + actions: read (PR #90)"
+  allowed_bots_blocker:
+    desc: "Workflow initiated by non-human actor: sourcery-ai (type: Bot)"
+    fix: "allowed_bots: 'sourcery-ai,chatgpt-codex-connector'"
+  credentials_in_yaml:
+    desc: "PR #106 session-memory YAML tartalmaz plaintext admin jelszot"
+    fix: "REDAKTALVA (PR #107) - placeholder <REDACTED - see secure vault>"
+  sed_brace_regression:
+    desc: "sed-alapu refactor collect-logs.mjs-en 2 closing brace-et elvesztett"
+    fix: "teljes fajl rewrite balanced braces (PR #85)"
+    lesson: "sed JavaScript-en RIZIKOS - kotelezo node --check commit elott"
+  workflow_claude_no_commit:
+    desc: "PR #106-on workflow SUCCESS de num_turns=3, nem commitolt"
+    fix: "max-turns 10 + aggressive prompt + KOTELEZO PR comment (PR #108)"
+
+credentials_and_secrets:
+  # Codex AI P1 szabaly: SOHA plaintext a repo-ban
+  # Referencia: configs/secrets.json (gitignore-olt) + secure vault
+  how_to_retrieve: "Lasd CLAUDE.md 'Kotelezo security gate' es configs/secrets.json structure"
+
+infrastructure_state:
+  main_head: 38594cb94b97cb77ddf164acf5a4677525c7f891
+  production:
+    frontend_url: "lasd config/production-urls.json"
+    ha_primary: "Hetzner NBG1 (lasd deploy/hetzner/ha/README.md)"
+    ha_standby: "Scaleway par1"
+    replication: streaming (lasd deploy/hetzner/ha/ scripts)
+  local_dev:
+    postgres_port: 5432 (docker-compose default)
+    sqlite_path: "C:\\Users\\Kosa Zoltan\\.valuta\\local.db"
+    worktree: "D:\\repo\\valutavalto-program\\.claude\\worktrees\\youthful-shannon-8ac321"
+  anthropic_api:
+    secret_uploaded: ANTHROPIC_API_KEY (2026-04-21 17:19 UTC, from configs/secrets.json claude_user)
+    github_app: https://github.com/apps/claude (user installed)
+
+next_session_starting_point:
+  resume_branch: main (or fresh worktree)
+  verify_automation:
+    - Check PR #108 workflow still triggers on reviews
+    - If AI review still no-op: adjust prompt further or switch to @claude/sourcery-ai direct mention
+  pending_user_tasks:
+    - Codex GitHub integration activation: https://chatgpt.com/codex -> Connect GitHub -> valutavalto-program
+    - Contabo EUR 91.20 refund (user handling, order_id 14887271)
+    - v2.1.7 installer deployment on live cash register (SetupWizard 5 lepes)
+    - V155 migration Hetzner production (auto-run on next Spring Boot start)
+  roadmap:
+    p2:
+      - B5 heartbeat monitoring UI (mar alapokban kesz, CentralVaultDashboard-ben lathato)
+      - Cognee MCP integration (amint elerheto)
+      - Obsidian vault sync (amint telepitve)
+      - Spring Boot 3.5.14 upgrade (2026-04-23 milestone)
+      - Installer acceptance test friss Windows VM-en
+    p3:
+      - Hibernate @Where aspect tenant filter (Q3 2026)
+      - @Deprecated Branch methods eltavolitasa (6+ honap utan)
+
+resume_workflow_for_future_agent:
+  context_load_order:
+    - .remember/remember.md (quick handoff)
+    - docs/knowledge/memory/2026-04-21-*.yaml (wave 1+2)
+    - docs/knowledge/memory/2026-04-22-session-b-wave-ai-automation.yaml (this file)
+    - CLAUDE.md (project rules + open tasks)
+    - docs/security/multi-tenant-repository-audit-2026-04-21.md
+
+  quick_checks:
+    - Is AI review auto-fix workflow still triggering? -> check .github/workflows/ai-review-auto-fix.yml
+    - Are there unresolved Sourcery/Codex comments? -> gh pr list + gh api reviews
+    - Is local DB tiszta (no LB-prefix)? -> lasd scripts/scan-local-db*.cjs
+    - Is main CI green? -> gh run list --limit 5
+
+  known_quirks:
+    - configs/secrets.json gitignore-olt, de gep-helyi (ne committold, Codex P1)
+    - sed-alapu refactor JS-en RIZIKOS (lasd PR #85)
+    - Claude Code Action OIDC token kotelezoen id-token: write (PR #90)
+    - Workflow prompt most AGRESSZIV mode, max-turns 10 (PR #108)
