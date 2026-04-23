@@ -24,7 +24,7 @@ export default function SchedulerPage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get<SchedulerJobItem[]>('/scheduler')
+      const response = await api.get<SchedulerJobItem[]>('/scheduler/tasks')
       setItems(safeArray<typeof items[0]>(response.data))
     } catch (err) {
       const msg = getErrorMessage(err)
@@ -50,7 +50,7 @@ export default function SchedulerPage() {
   const handleDelete = async (id: string | number) => {
     if (!confirm('Biztosan törli?')) return
     try {
-      await api.delete(`/scheduler/${id}`)
+      await api.delete(`/scheduler/tasks/${id}`)
       await loadData()
     } catch (err) {
       const msg = getErrorMessage(err)

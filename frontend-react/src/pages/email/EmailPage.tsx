@@ -23,7 +23,7 @@ export default function EmailPage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get<EmailAccountItem[]>('/email-accounts')
+      const response = await api.get<EmailAccountItem[]>('/email/accounts')
       setItems(safeArray<typeof items[0]>(response.data))
     } catch (err) {
       const msg = getErrorMessage(err)
@@ -49,7 +49,7 @@ export default function EmailPage() {
   const handleDelete = async (id: string | number) => {
     if (!confirm('Biztosan törli?')) return
     try {
-      await api.delete(`/email-accounts/${id}`)
+      await api.delete(`/email/accounts/${id}`)
       await loadData()
     } catch (err) {
       const msg = getErrorMessage(err)
