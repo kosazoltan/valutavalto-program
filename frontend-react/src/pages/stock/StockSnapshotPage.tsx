@@ -15,16 +15,16 @@ import { getErrorMessage } from '../../utils/errorHandling'
  *                      currencies: [CurrencyStockDetailDto],
  *                      wuBalance, reservations }
  * BranchStockTotalsDto: { currencies, wuBalance, reservations }
- * CurrencyStockDetailDto: { currencyCode, amount, valueHuf, ... }
+ * CurrencyStockDetailDto: { currencyCode, amount, stockHuf, ... }
  *
  * Fix #148 re-verify: a korabbi feltetelezes (totals.totalValueHuf) rossz volt.
  * A totals valojaban currencies LIST-et tartalmaz, az aggregalt HUF ertek
- * a currencies[].valueHuf osszege.
+ * a currencies[].stockHuf osszege.
  */
 interface CurrencyStockDetail {
   currencyCode?: string
   amount?: number | string
-  valueHuf?: number | string
+  stockHuf?: number | string
 }
 interface BranchStockTotals {
   currencies?: CurrencyStockDetail[]
@@ -53,7 +53,7 @@ interface StockSnapshot {
 function sumHuf(currencies: CurrencyStockDetail[] | undefined): number {
   if (!currencies) return 0
   return currencies.reduce((sum, c) => {
-    const v = typeof c.valueHuf === 'string' ? Number(c.valueHuf) : (c.valueHuf ?? 0)
+    const v = typeof c.stockHuf === 'string' ? Number(c.stockHuf) : (c.stockHuf ?? 0)
     return sum + (Number.isNaN(v) ? 0 : v)
   }, 0)
 }
@@ -172,6 +172,34 @@ export default function StockSnapshotPage() {
               </div>
             )
           })}
+
+          {/* Fallback: ha nincs regio besorolas, companyTotals.currencies tabla */}
+          {(snapshot.regions?.length ?? 0) === 0 && (snapshot.companyTotals?.currencies?.length ?? 0) > 0 && (
+            <div className="bg-white rounded shadow">
+              <div className="bg-gray-50 px-4 py-2 border-b">
+                <h2 className="font-semibold">Ceg szintu keszlet osszesito (devizanemenkent)</h2>
+                <div className="text-xs text-gray-500">{snapshot.companyTotals?.currencies?.length ?? 0} devizanem</div>
+              </div>
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Deviza</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">Keszlet</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">HUF ertek</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {(snapshot.companyTotals?.currencies ?? []).map((c, i) => (
+                    <tr key={(c.currencyCode ?? "") + i} className="hover:bg-gray-50">
+                      <td className="px-4 py-2 text-sm font-mono">{c.currencyCode ?? "-"}</td>
+                      <td className="px-4 py-2 text-right text-sm font-mono">{c.amount ?? "-"}</td>
+                      <td className="px-4 py-2 text-right text-sm font-mono">{formatHuf(c.stockHuf)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>
