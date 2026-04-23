@@ -105,12 +105,22 @@ public class ContributionService {
      * @return érvényes, nem-negatív BigDecimal
      */
     private BigDecimal resolveRate(String key, BigDecimal fallback) {
+        String raw;
         try {
-            String raw = systemParameterService.getValue(key, null);
-            if (raw == null || raw.isBlank()) {
-                log.debug("Rate parameter hianyzik, fallback: key={}, fallback={}", key, fallback);
-                return fallback;
-            }
+            raw = systemParameterService.getValue(key, null);
+        } catch (org.springframework.dao.DataAccessException e) {
+            // Sourcery PR #128 fix: narrower catch + key-specific logging
+            log.warn("Rate parameter DB-hiba, fallback: key={}, fallback={}, hiba={}",
+                    key, fallback, e.getMessage(), e);
+            return fallback;
+        }
+
+        if (raw == null || raw.isBlank()) {
+            log.debug("Rate parameter hianyzik, fallback: key={}, fallback={}", key, fallback);
+            return fallback;
+        }
+
+        try {
             BigDecimal value = new BigDecimal(raw.trim());
             if (value.signum() < 0) {
                 log.warn("Rate parameter negativ, fallback: key={}, raw={}, fallback={}", key, raw, fallback);
@@ -118,10 +128,9 @@ public class ContributionService {
             }
             return value;
         } catch (NumberFormatException e) {
-            log.warn("Rate parameter nem decimalis, fallback: key={}, hiba={}", key, e.getMessage());
-            return fallback;
-        } catch (Exception e) {
-            log.warn("Rate parameter lekeresi hiba, fallback: key={}, hiba={}", key, e.getMessage());
+            // Sourcery PR #128 fix: raw value-t is loggoljuk hogy visszakovetheto legyen
+            log.warn("Rate parameter nem decimalis, fallback: key={}, raw='{}', fallback={}, hiba={}",
+                    key, raw, fallback, e.getMessage());
             return fallback;
         }
     }

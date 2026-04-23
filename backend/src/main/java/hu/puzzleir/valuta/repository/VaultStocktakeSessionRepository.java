@@ -14,8 +14,12 @@ public interface VaultStocktakeSessionRepository extends JpaRepository<VaultStoc
     @Query("SELECT s FROM VaultStocktakeSession s WHERE s.company.id = :companyId ORDER BY s.startedAt DESC")
     List<VaultStocktakeSession> findByCompanyIdOrderByStartedAtDesc(UUID companyId);
 
-    @Query("SELECT s FROM VaultStocktakeSession s WHERE s.company.id = :companyId AND s.status = hu.puzzleir.valuta.entity.VaultStocktakeSession$Status.OPEN")
-    List<VaultStocktakeSession> findOpenByCompanyId(UUID companyId);
+    /**
+     * Sourcery PR #128 fix: parameter-based enum compare JPQL standard.
+     * Hivas: findOpenByCompanyId(companyId, VaultStocktakeSession.Status.OPEN)
+     */
+    @Query("SELECT s FROM VaultStocktakeSession s WHERE s.company.id = :companyId AND s.status = :status")
+    List<VaultStocktakeSession> findByCompanyIdAndStatus(UUID companyId, hu.puzzleir.valuta.entity.VaultStocktakeSession.Status status);
 
     @Query("SELECT s FROM VaultStocktakeSession s LEFT JOIN FETCH s.items WHERE s.id = :id")
     java.util.Optional<VaultStocktakeSession> findByIdWithItems(UUID id);

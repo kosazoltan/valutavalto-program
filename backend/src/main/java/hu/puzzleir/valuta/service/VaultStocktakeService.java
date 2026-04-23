@@ -26,6 +26,7 @@ public class VaultStocktakeService {
     private final VaultStocktakeItemRepository itemRepo;
     private final CompanyRepository companyRepo;
     private final BranchRepository branchRepo;
+    private final VaultTerritoryRepository vaultTerritoryRepository;
     private final BanknoteInventoryService banknoteInventoryService;
     private final AuditLogService auditLogService;
 
@@ -45,9 +46,20 @@ public class VaultStocktakeService {
             }
         }
 
+        // Sourcery PR #128 fix (P1 bug_risk): territoryId resolve + tenant check
+        VaultTerritory territory = null;
+        if (territoryId != null) {
+            territory = vaultTerritoryRepository.findById(territoryId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Ertektari terulet nem talalhato: " + territoryId));
+            if (territory.getCompany() == null || !territory.getCompany().getId().equals(companyId)) {
+                throw new ValidationException("Cross-tenant tiltott: ertektari terulet mas ceghez tartozik");
+            }
+        }
+
         VaultStocktakeSession session = VaultStocktakeSession.builder()
                 .company(company)
                 .branch(branch)
+                .territory(territory)
                 .sessionName(sessionName)
                 .note(note)
                 .status(VaultStocktakeSession.Status.OPEN)

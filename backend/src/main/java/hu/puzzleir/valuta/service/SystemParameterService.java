@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.entity.SystemParameter;
 import hu.puzzleir.valuta.repository.SystemParameterRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,6 +12,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
+@lombok.extern.slf4j.Slf4j
 @RequiredArgsConstructor
 public class SystemParameterService {
 
@@ -45,6 +47,10 @@ public class SystemParameterService {
             }
             return p.getParameterValue();
         } catch (Exception e) {
+            // Sourcery PR #128 fix: log WARN before fallback, do NOT swallow silently.
+            // Misconfigured rates / DB issue elreszett hidden maradhatott volna.
+            log.warn("SystemParameter lekeres sikertelen, fallback default: key={}, default={}, hiba={}",
+                    key, defaultValue, e.getMessage(), e);
             return defaultValue;
         }
     }

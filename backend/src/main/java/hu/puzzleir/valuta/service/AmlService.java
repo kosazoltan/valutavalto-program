@@ -1137,10 +1137,20 @@ public class AmlService {
     public java.util.List<hu.puzzleir.valuta.dto.aml.RollingWindowAuditDto> getRollingWindowAudit(BigDecimal thresholdHuf) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         LocalDate sinceDate = LocalDate.now().minusDays(ROLLING_WINDOW_DAYS);
+
+        // Sourcery PR #128 fix (P1 bug_risk): validate threshold > 0 before division.
         BigDecimal threshold = thresholdHuf != null ? thresholdHuf : ROLLING_WINDOW_LIMIT_HUF;
+        if (threshold == null || threshold.compareTo(BigDecimal.ZERO) <= 0) {
+            log.warn("getRollingWindowAudit: invalid threshold {}, falling back to ROLLING_WINDOW_LIMIT_HUF={}",
+                thresholdHuf, ROLLING_WINDOW_LIMIT_HUF);
+            threshold = ROLLING_WINDOW_LIMIT_HUF;
+        }
 
         java.util.List<Object[]> rows = transactionRepository.findRollingWindowAuditCandidates(
             companyId, sinceDate, threshold);
+
+        // Sourcery PR #128 fix: capture timestamp once, reuse for all DTOs (consistent auditAt).
+        LocalDateTime auditAt = LocalDateTime.now();
 
         java.util.List<hu.puzzleir.valuta.dto.aml.RollingWindowAuditDto> result = new ArrayList<>();
         for (Object[] row : rows) {
@@ -1156,13 +1166,17 @@ public class AmlService {
                 highRiskFlag = Boolean.TRUE.equals(customerOpt.get().getHighRiskFlag());
             }
 
+            // exceedPercent: threshold mar validalva > 0, igy nincs div-by-zero
+            BigDecimal exceedPercent = total.multiply(new BigDecimal("100"))
+                    .divide(threshold, 1, RoundingMode.HALF_UP);
+
             result.add(hu.puzzleir.valuta.dto.aml.RollingWindowAuditDto.builder()
                 .customerId(customerId)
                 .customerName(customerName)
                 .rollingWindowTotalHuf(total)
                 .rollingWindowLimitHuf(threshold)
-                .exceedPercent(total.multiply(new BigDecimal("100")).divide(threshold, 1, RoundingMode.HALF_UP))
-                .auditAt(LocalDateTime.now())
+                .exceedPercent(exceedPercent)
+                .auditAt(auditAt)
                 .sinceDate(sinceDate)
                 .windowDays(ROLLING_WINDOW_DAYS)
                 .highRiskFlag(highRiskFlag)
