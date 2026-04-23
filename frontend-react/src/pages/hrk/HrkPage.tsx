@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { ArrowRightLeft, Search, RefreshCw, AlertTriangle } from 'lucide-react'
 import { api } from '../../services/api/index'
+import { useAuthStore } from '../../stores/authStore'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
@@ -15,6 +16,7 @@ interface HrkConversionItem {
 }
 
 export default function HrkPage() {
+  const branchId = useAuthStore(s => s.user?.branchId)
   const [items, setItems] = useState<HrkConversionItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -24,7 +26,9 @@ export default function HrkPage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get<HrkConversionItem[]>('/hrk/journal')
+      const response = await api.get<HrkConversionItem[]>('/hrk/journal', {
+        headers: branchId ? { 'X-Branch-Id': branchId } : {}
+      })
       setItems(safeArray<typeof items[0]>(response.data))
     } catch (err) {
       const msg = getErrorMessage(err)
@@ -33,7 +37,7 @@ export default function HrkPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [branchId])
 
   useEffect(() => {
     void loadData()

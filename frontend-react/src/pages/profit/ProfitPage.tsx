@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { TrendingUp, Search, RefreshCw, AlertTriangle } from 'lucide-react'
 import { api } from '../../services/api/index'
+import { useAuthStore } from '../../stores/authStore'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
@@ -25,7 +26,11 @@ export default function ProfitPage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get<ProfitItem[]>('/profit/company', { params: { dateFrom: new Date().toISOString().slice(0,10), dateTo: new Date().toISOString().slice(0,10) } })
+      const response = await (() => {
+        const companyId = useAuthStore.getState().user?.companyId
+        const month = new Date().toISOString().slice(0, 7)
+        return api.get<ProfitItem[]>('/profit/company', { params: { companyId, month } })
+      })()
       setItems(safeArray<typeof items[0]>(response.data))
     } catch (err) {
       const msg = getErrorMessage(err)
