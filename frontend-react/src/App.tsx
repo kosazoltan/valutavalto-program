@@ -87,6 +87,7 @@ const SystemParameterPage = lazy(() => import('./pages/settings/SystemParameterP
 const UserPage = lazy(() => import('./pages/settings/UserPage'))
 
 // === Kamera modul ===
+import CameraGuard from './components/CameraGuard'
 const CameraLivePage = lazy(() => import('./pages/camera/CameraLivePage'))
 const CameraPlaybackPage = lazy(() => import('./pages/camera/CameraPlaybackPage'))
 const CameraConfigPage = lazy(() => import('./pages/camera/CameraConfigPage'))
@@ -496,11 +497,11 @@ export default function App() {
           </Route>
 
           {/* === Kamera Routes === */}
-          <Route path="/camera/live" element={<CameraLivePage />} />
-          <Route path="/camera/playback" element={<CameraPlaybackPage />} />
-          <Route path="/camera/config" element={<CameraConfigPage />} />
-          <Route path="/camera/status" element={<CameraStatusPage />} />
-          <Route path="/camera/export" element={<CameraExportPage />} />
+          <Route path="/camera/live" element={<CameraGuard><CameraLivePage /></CameraGuard>} />
+          <Route path="/camera/playback" element={<CameraGuard><CameraPlaybackPage /></CameraGuard>} />
+          <Route path="/camera/config" element={<CameraGuard><CameraConfigPage /></CameraGuard>} />
+          <Route path="/camera/status" element={<CameraGuard><CameraStatusPage /></CameraGuard>} />
+          <Route path="/camera/export" element={<CameraGuard><CameraExportPage /></CameraGuard>} />
           <Route path="/darius" element={<DariusReportPage />} />
           <Route path="/decade" element={<DecadeReportPage />} />
           <Route path="/daybook" element={<DaybookPage />} />

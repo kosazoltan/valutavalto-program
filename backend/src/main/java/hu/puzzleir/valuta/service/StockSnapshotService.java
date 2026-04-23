@@ -24,10 +24,11 @@ public class StockSnapshotService {
     private final WuBalanceRepository wuBalanceRepository;
     private final ReservationRepository reservationRepository;
     private final TransactionRepository transactionRepository;
+    private final CompanyRepository companyRepository;
 
     public static final List<String> CURRENCY_CODES = List.of(
             "AUD", "BAM", "BGN", "BRL", "CAD", "CHF",
-            "CNY", "CZK", "DKK", "EUR", "GBP", "HRK",
+            "CNY", "CZK", "DKK", "EUR", "GBP",
             "HUF", "ILS", "JPY", "MXN", "NOK", "NZD",
             "PLN", "RON", "RSD", "RUB", "SEK", "THB",
             "TRY", "UAH", "USD"
@@ -49,12 +50,15 @@ public class StockSnapshotService {
         LocalDateTime snapshotTime = LocalDateTime.now();
         LocalDate today = LocalDate.now();
 
+        String companyName = companyRepository.findById(companyId).map(hu.puzzleir.valuta.entity.Company::getName).orElse(null);
+
         List<Branch> branches = branchRepository.findActiveWithRegionByCompanyId(companyId);
 
         if (branches.isEmpty()) {
             return StockSnapshotDto.builder()
                     .snapshotTime(snapshotTime)
                     .companyId(companyId)
+                    .companyName(companyName)
                     .regions(List.of())
                     .companyTotals(createEmptyTotals())
                     .build();
@@ -101,6 +105,7 @@ public class StockSnapshotService {
         return StockSnapshotDto.builder()
                 .snapshotTime(snapshotTime)
                 .companyId(companyId)
+                .companyName(companyName)
                 .regions(regions)
                 .companyTotals(aggregateTotals(allBranches))
                 .build();
