@@ -41,6 +41,9 @@ public class DailySessionService {
     private final WorkerRepository workerRepository;
     private final CompanyRepository companyRepository;
     private final BranchRepository branchRepository;
+    // Issue #110: auto-init cash_balance rekordok napnyitaskor, hogy a tranzakcio-sync
+    // ne essen el 404-gyel uj branch-eken, ahol meg nincs inicializalva semmi.
+    private final CashBalanceService cashBalanceService;
 
     /**
      * Napi nyitás
@@ -292,9 +295,16 @@ public class DailySessionService {
     }
 
     /**
-     * Kassza egyenlegek frissítése nyitáskor
+     * Kassza egyenlegek frissítése nyitáskor.
+     *
+     * Issue #110: elso lepes az idempotens auto-init — ha uj branch,
+     * minden aktiv currency-re letrehozza a 0-s balance rekordokat.
+     * Igy a tranzakcio-sync nem esik el 404-gyel.
      */
     private void updateCashBalancesForOpening(UUID branchId) {
+        // Issue #110: idempotens auto-init
+        cashBalanceService.initializeBranchBalances(branchId);
+
         List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
         for (CashBalance balance : balances) {
             if (balance.getCurrentBalance() == null) {
