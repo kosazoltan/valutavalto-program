@@ -1,4 +1,4 @@
-﻿# GitHub Actions hardening checker - AGENTS.md #18
+# GitHub Actions hardening checker - AGENTS.md #18
 # Ellenorzesek a .github/workflows/*.yml fajlokon:
 # 1. Top-level permissions: contents: read (vagy explicit definialva)
 # 2. Third-party action SHA-pin (nem tag/branch)
@@ -53,7 +53,7 @@ foreach ($wf in $workflows) {
 
     # 3. pull_request_target + checkout fork
     if ($content -match 'pull_request_target') {
-        if ($content -match 'actions/checkout.*ref:\s*\$\{\{\s*github\.event\.pull_request\.head\.sha\s*\}\}') {
+        if ($content -match 'actions/checkout[\s\S]*?ref:\s*\$\{\{\s*github\.event\.pull_request\.head\.sha\s*\}\}') {
             Write-Host "    [BLOCK] pull_request_target + fork checkout!" -ForegroundColor Red
             $blockers += "$($wf.Name): pull_request_target + fork checkout TILOS"
         } else {

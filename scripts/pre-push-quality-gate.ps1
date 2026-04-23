@@ -62,7 +62,7 @@ if ($SkipFrontend) {
     Write-Step "1b. Frontend (React) - lint"
     Push-Location $feDir
     try {
-        $hasLintConfig = (Test-Path ".eslintrc*") -or ((Get-Content package.json -Raw) -match '"lint"')
+        $hasLintConfig = (Test-Path ".eslintrc*") -or ((Test-Path "package.json") -and ((Get-Content package.json -Raw) -match '"lint"'))
         if ($hasLintConfig) {
             & npm run lint --if-present
             if ($LASTEXITCODE -eq 0) { Write-OK "npm run lint: 0 error" }
@@ -74,9 +74,9 @@ if ($SkipFrontend) {
         Write-Step "1c. Frontend (React) - vitest (gyors: csak changed)"
         Push-Location $feDir
         try {
-            $hasTest = (Get-Content package.json -Raw) -match '"test"'
+            $hasTest = (Test-Path "package.json") -and ((Get-Content package.json -Raw) -match '"test"')
             if ($hasTest) {
-                & npm test -- --run --reporter=dot 2>&1 | Select-Object -Last 15
+                & npm test -- --run --reporter=dot 2>&1 | Select-Object -Last 100
                 if ($LASTEXITCODE -eq 0) { Write-OK "vitest: 0 failure" }
                 else { Write-Warn "vitest FAIL (optional)"; $warnings += "frontend vitest" }
             } else { Write-Host "  (nincs test config)" -ForegroundColor DarkGray }
@@ -124,12 +124,12 @@ if ($SkipBackend) {
 
 # 3. LOCKFILE INTEGRITY (V2 #17)
 Write-Step "3. Lockfile integrity (V2 #17)"
-& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'lockfile-integrity-check.ps1')
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'lockfile-integrity-check.ps1') -Strict
 if ($LASTEXITCODE -ne 0) { $failed += "lockfile integrity" }
 
 # 4. ACTIONS HARDENING (V2 #18)
 Write-Step "4. GitHub Actions hardening (V2 #18)"
-& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'actions-hardening-check.ps1')
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'actions-hardening-check.ps1') -Strict
 if ($LASTEXITCODE -ne 0) { $failed += "actions hardening" }
 
 # 3. SUMMARY
