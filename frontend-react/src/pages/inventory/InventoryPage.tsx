@@ -23,7 +23,7 @@ export default function InventoryPage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get<InventoryItem[]>('/inventory')
+      const response = await api.get<InventoryItem[]>('/inventory/stock')
       setItems(safeArray<typeof items[0]>(response.data))
     } catch (err) {
       const msg = getErrorMessage(err)

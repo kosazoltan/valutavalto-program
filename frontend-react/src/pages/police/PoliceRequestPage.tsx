@@ -24,7 +24,7 @@ export default function PoliceRequestPage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get<PoliceRequestItem[]>('/police-requests')
+      const response = await api.get<PoliceRequestItem[]>('/police/requests')
       setItems(safeArray<typeof items[0]>(response.data))
     } catch (err) {
       const msg = getErrorMessage(err)
@@ -50,7 +50,7 @@ export default function PoliceRequestPage() {
   const handleDelete = async (id: string | number) => {
     if (!confirm('Biztosan törli?')) return
     try {
-      await api.delete(`/police-requests/${id}`)
+      await api.delete(`/police/requests/${id}`)
       await loadData()
     } catch (err) {
       const msg = getErrorMessage(err)

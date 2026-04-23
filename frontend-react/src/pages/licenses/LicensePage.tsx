@@ -24,7 +24,7 @@ export default function LicensePage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get<LicenseItem[]>('/licenses')
+      const response = await api.get<LicenseItem[]>('/license/current')
       setItems(safeArray<typeof items[0]>(response.data))
     } catch (err) {
       const msg = getErrorMessage(err)

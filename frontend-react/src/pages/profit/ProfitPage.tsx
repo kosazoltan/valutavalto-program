@@ -25,7 +25,7 @@ export default function ProfitPage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get<ProfitItem[]>('/profit')
+      const response = await api.get<ProfitItem[]>('/profit/company', { params: { dateFrom: new Date().toISOString().slice(0,10), dateTo: new Date().toISOString().slice(0,10) } })
       setItems(safeArray<typeof items[0]>(response.data))
     } catch (err) {
       const msg = getErrorMessage(err)
