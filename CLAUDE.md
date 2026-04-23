@@ -130,6 +130,38 @@ cd penztar-client && npm test
 - Ez kiterjeszti a jelenlegi PR scope szabalyt — a user szerint minden ismert hiba surgos.
 - Kivetel: ha a javitas tobb napos refactort igenyelne, akkor GitHub Issue-t nyitni + kommentalni a kodban.
 
+## KÖTELEZŐ ÉRVÉNYŰ: push = commit + merge to main
+**2026-04-23 óta kötelező** (user-direktíva, üzletmenet-kritikus):
+
+- **Minden push-nak merge-elnie kell a main-re AZONNAL**. Nem maradhat nyitott PR vagy uncommitted feature branch hosszabb ideig.
+- A feature branch-en **minden fejlesztést azonnal commit + push + merge** kell, hogy a javítások ténylegesen érvényesüljenek a kódban (production + main).
+- **Tilos**: nyitott PR napokig "CI várakozás" ürügyén, uncommitted fejlesztések, feledésbe merült branch-ek.
+
+### Push-merge folyamat (minden kód-módosításkor)
+1. **Code change + commit** a feature branch-en
+2. **Push** a feature branch-re (`git push`)
+3. **CI zöld** (várj amíg minden check SUCCESS)
+4. **AI review fix** (Sourcery/Codex feedback azonnal javítva, `gh api pulls/N/reviews + comments` lekérése kötelező)
+5. **Merge to main** (`gh pr merge N --squash --auto`), ha CI zöld és nincs nyitott review
+6. **Branch törlés** vagy archiválás (worktree tisztítás)
+7. **Hetzner auto-deploy** triggerelődik a main push-ra
+
+### Miért kötelező?
+- **Uncommitted fejlesztés** hibái miatt nem lehet látni, miért "nem javul" egy reported bug: a fix a branch-en van, de a main-en NEM, így éles rendszer továbbra is buggy.
+- **AI ügynökök munkája** (Sourcery fixek, Codex javaslatok) ugyanígy elvészhetnek, ha a PR napokig nyitva marad.
+- **Hetzner production** csak a main branch-ről deploy-ol — ha a fix nincs main-en, production sem javul.
+
+### Kivétel
+- Ha egy PR **explicit merge-blokkoló** feedback-kel rendelkezik (pl. Codex CHANGES_REQUESTED DISMISS nélkül, vagy user explicit WIP jelzés), akkor várni kell.
+- Ha a **CI failure** legitim (nem flaky), akkor javítás előbb, merge csak utána.
+
+### Auto-merge CLI script
+```bash
+# A user által jóváhagyott auto-merge minden PR-re:
+gh pr merge $PR_NUM --squash --auto --delete-branch=false
+# --auto: CI-re várakozik, utána automatikusan merge-el
+```
+
 ## AUTOMATIZALT AI code review workflow (Sourcery + Codex)
 **2026-04-21 ota automatikus**: a `.github/workflows/ai-review-auto-fix.yml` a Claude Code Action-t triggereli, amikor Sourcery vagy Codex review erkezik. Ez automatikusan javit + push-ol a feature branch-re. A manualis workflow az `agent` fallback.
 
