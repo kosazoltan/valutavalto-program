@@ -98,9 +98,12 @@ public class StockSnapshotService {
                     .build());
         }
 
-        // Company totals
-        List<BranchSnapshotDto> allBranches = regions.stream()
-                .flatMap(r -> r.getBranches().stream()).collect(Collectors.toList());
+        // Company totals - Codex P2 #157 fix:
+        // branchesByRegion.values() MINDEN branch-et tartalmaz (ismeretlen region-code is),
+        // regions.flatMap(branches) viszont CSAK a REGION_NAMES-ben felsorolt region-code-uakat.
+        // Igy az ismeretlen region-u branch-ek stockjai nem vesznek el a companyTotals fallback-bol.
+        List<BranchSnapshotDto> allBranches = branchesByRegion.values().stream()
+                .flatMap(List::stream).collect(Collectors.toList());
 
         return StockSnapshotDto.builder()
                 .snapshotTime(snapshotTime)
