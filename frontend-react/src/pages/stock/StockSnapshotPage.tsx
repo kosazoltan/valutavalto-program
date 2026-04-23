@@ -23,6 +23,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
  */
 interface CurrencyStockDetail {
   currencyCode?: string
+  stock?: number | string
   amount?: number | string
   stockHuf?: number | string
 }
@@ -86,6 +87,7 @@ export default function StockSnapshotPage() {
 
   async function downloadExcel() {
     try {
+      setError(null)
       const r = await api.get('/stock-snapshot/excel', { responseType: 'blob' })
       const blob = new Blob([r.data as BlobPart], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -95,10 +97,16 @@ export default function StockSnapshotPage() {
       a.href = url; a.download = 'keszlet-export-' + new Date().toISOString().slice(0, 10) + '.xlsx'
       document.body.appendChild(a); a.click(); a.remove()
       URL.revokeObjectURL(url)
-    } catch (err) { setError(getErrorMessage(err)) }
+    } catch (err) {
+      logger.error('StockSnapshotPage', 'Excel letoltes hiba:', err)
+      setError(getErrorMessage(err))
+    }
   }
 
   const companyTotal = snapshot?.companyTotals ? sumHuf(snapshot.companyTotals.currencies) : 0
+  const hasCompanyTotalsFallback =
+    (snapshot?.regions?.length ?? 0) === 0 &&
+    (snapshot?.companyTotals?.currencies?.length ?? 0) > 0
 
   return (
     <div className="form-panel space-y-4">
@@ -174,7 +182,7 @@ export default function StockSnapshotPage() {
           })}
 
           {/* Fallback: ha nincs regio besorolas, companyTotals.currencies tabla */}
-          {(snapshot.regions?.length ?? 0) === 0 && (snapshot.companyTotals?.currencies?.length ?? 0) > 0 && (
+          {hasCompanyTotalsFallback && (
             <div className="bg-white rounded shadow">
               <div className="bg-gray-50 px-4 py-2 border-b">
                 <h2 className="font-semibold">Ceg szintu keszlet osszesito (devizanemenkent)</h2>
@@ -192,7 +200,7 @@ export default function StockSnapshotPage() {
                   {(snapshot.companyTotals?.currencies ?? []).map((c, i) => (
                     <tr key={(c.currencyCode ?? "") + i} className="hover:bg-gray-50">
                       <td className="px-4 py-2 text-sm font-mono">{c.currencyCode ?? "-"}</td>
-                      <td className="px-4 py-2 text-right text-sm font-mono">{c.amount ?? "-"}</td>
+                      <td className="px-4 py-2 text-right text-sm font-mono">{c.stock ?? c.amount ?? "-"}</td>
                       <td className="px-4 py-2 text-right text-sm font-mono">{formatHuf(c.stockHuf)}</td>
                     </tr>
                   ))}

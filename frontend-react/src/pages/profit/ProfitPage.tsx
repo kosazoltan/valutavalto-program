@@ -53,7 +53,7 @@ export default function ProfitPage() {
     // csak store creation-kor fut). A worker a valos, reaktiv mezoi - minden mas oldal ezt hasznalja.
     const companyId = useAuthStore.getState().worker?.companyId
     if (!companyId) {
-      setError('Nincs bejelentkezett ceg (companyId hianyzik) - haszon kimutatas nem tolthet oe')
+      setError('Nincs bejelentkezett ceg (companyId hianyzik) - haszon kimutatas nem tolthet')
       setLoading(false)
       setReport(null)
       return
