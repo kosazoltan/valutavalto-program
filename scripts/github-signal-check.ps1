@@ -234,8 +234,8 @@ if ($LASTEXITCODE -eq 0) {
 
 # 15. Rulesets + branch protection
 Write-Section "15. Rulesets + branch protection"
-$rsAccess = Test-GhApiAccess -Path "/repos/$OWNER/$REPO/rulesets?includes_parents=true"
-if ($rsAccess -eq 'OK') {
+$rsRaw = & gh api "/repos/$OWNER/$REPO/rulesets?includes_parents=true" 2>&1
+if ($LASTEXITCODE -eq 0) {
     $rs = Invoke-GhApi -Path "/repos/$OWNER/$REPO/rulesets?includes_parents=true" -JqFilter '.[] | {name,target,enforcement}'
     foreach ($r in $rs) {
         Write-Host "  [$($r.enforcement)] $($r.name)"
@@ -243,8 +243,8 @@ if ($rsAccess -eq 'OK') {
     }
     if ($rs.Count -eq 0) { $warnings += "nincs ruleset (#15)" }
 }
-$bpAccess = Test-GhApiAccess -Path "/repos/$OWNER/$REPO/branches/main/protection"
-if ($bpAccess -eq 'OK') {
+$bpRaw = & gh api "/repos/$OWNER/$REPO/branches/main/protection" 2>&1
+if ($LASTEXITCODE -eq 0) {
     $bp = & gh api "/repos/$OWNER/$REPO/branches/main/protection" 2>&1 | ConvertFrom-Json
     Write-Host "  main allow_force_pushes: $($bp.allow_force_pushes.enabled)"
     if ($bp.allow_force_pushes.enabled -eq $true) { $warnings += "allow_force_pushes=true (#15)" }
@@ -295,8 +295,8 @@ if ($LASTEXITCODE -eq 0) {
 # 20. Bizonyitasi minimum + Dep Review
 Write-Section "20. Bizonyitasi minimum + Dep Review"
 $baseRef = if ($prInfo.baseRefName) { $prInfo.baseRefName } else { 'main' }
-$drvAccess = Test-GhApiAccess -Path "/repos/$OWNER/$REPO/dependency-graph/compare/$baseRef...$HEAD_SHA"
-if ($drvAccess -eq 'OK') {
+$drvRaw = & gh api "/repos/$OWNER/$REPO/dependency-graph/compare/$baseRef...$HEAD_SHA" 2>&1
+if ($LASTEXITCODE -eq 0) {
     $drv = Invoke-GhApi -Path "/repos/$OWNER/$REPO/dependency-graph/compare/$baseRef...$HEAD_SHA" -JqFilter '.[] | select(.vulnerabilities != null and (.vulnerabilities | length) > 0) | {name:.name,severity:(.vulnerabilities[0].severity),change_type:.change_type}'
     foreach ($d in $drv) {
         if ($d.severity -in @('high','critical')) { $blockers += "Dep review $($d.severity): $($d.name) (#20)" }
