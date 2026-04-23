@@ -13,9 +13,23 @@ import java.util.UUID;
 @Repository
 public interface VaultTerritoryRepository extends JpaRepository<VaultTerritory, Integer> {
 
-    List<VaultTerritory> findByCompanyIdAndActiveTrue(UUID companyId);
+    /**
+     * PRODUCTION HOTFIX v2.2.1: a PR #126 Sourcery `getCompanyIdForJson -> getCompanyId` rename
+     * konfliktusba kerult a Spring Data JPA derived query parser-rel. A parser azt hitte, hogy
+     * `VaultTerritory.companyId` persistent mezo kene, de az csak @Transient getter volt
+     * (csak JSON-hez a Company proxy lazy-init elkerulese miatt).
+     * 
+     * Eredmeny: Hibernate `PathElementException: Could not resolve attribute 'companyId'` 
+     * startup-kor -> valuta-backend.service exit 1 -> Hetzner 502 Bad Gateway.
+     * 
+     * Fix: explicit @Query, amely NEM tol a Spring Data parser-re. A `company.id` JPQL
+     * path egyertelmu (ManyToOne association).
+     */
+    @Query("SELECT vt FROM VaultTerritory vt WHERE vt.company.id = :companyId AND vt.active = true")
+    List<VaultTerritory> findByCompanyIdAndActiveTrue(@Param("companyId") UUID companyId);
 
-    List<VaultTerritory> findByCompanyId(UUID companyId);
+    @Query("SELECT vt FROM VaultTerritory vt WHERE vt.company.id = :companyId")
+    List<VaultTerritory> findByCompanyId(@Param("companyId") UUID companyId);
 
     /**
      * Codex AI review #125 P1: multi-tenant safe lookup by id + companyId kombinacio.
