@@ -53,6 +53,42 @@ Sourcery+Codex review javitasokkal).
 
 **Related:** Issue #110 (cash_balance deployment gap) - mar regisztralt.
 
+### [P0] Bank transaction create 500-as hiba (vaultTerritory pair)
+
+**Detektalva:** 2026-04-23 v2.2.1 ertektari teszt soran
+**Modul:** ertektar/bank-transactions
+**Endpoint:** `POST /api/v1/ertektar/bank-transactions`
+
+**Tunet:**
+```
+POST /api/v1/ertektar/bank-transactions
+Body: {"transactionType":"BUY", "currencyCode":"EUR", "amount":1000, 
+       "exchangeRate":395.5, "vaultTerritoryId":1, "bankName":"Raiffeisen"}
+-> HTTP 500 "Belso szerverhiba tortent"
+```
+
+**Pre-check OK:**
+- GET /api/v1/territories -> id=1 Fo Ertektar active=true (tehat van territory)
+- JWT: ADMIN role EBC-ben
+
+**Potencialis gyoker-ok (kozos a #6 Transfer complete-vel):**
+- VaultBankTransactionService internal state handling (cash_balance update)
+- Transaction boundary Hibernate ManyToOne proxy conflict
+- V156/V158 vault_territory adat valami belso inkonzisztencia
+
+**Javitasi irany (v2.2.2):**
+- SSH Hetzner -> journalctl -u valuta-backend.service -n 200
+- Stacktrace analysis VaultBankTransactionService.createBankTransaction()
+- Ha ugyanaz mint #6 Transfer complete -> kozos fix
+
+**Workaround v2.2.1-ben:**
+- Frontend GUI-bol mukodhet (mas transaction boundary)
+- Manualis SQL:
+  ```sql
+  INSERT INTO vault_bank_transaction(...) VALUES(...);
+  ```
+
+
 ---
 
 ## v2.3.0 (Sprint 8 candidate)
