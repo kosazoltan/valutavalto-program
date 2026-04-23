@@ -1,35 +1,46 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Key, Search, RefreshCw, AlertTriangle } from 'lucide-react'
+import { Key, RefreshCw, AlertTriangle, CheckCircle, XCircle } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
-import { safeArray } from '../../utils/safeArray'
 
-interface LicenseItem {
-  id: string | number
+/**
+ * LicenseResponse shape (backend: LicenseService.getCurrentLicense)
+ *
+ * Fix #146+ live UI test: a korabbi safeArray<LicenseItem[]> uresre esett
+ * mert a backend egy LicenseResponse OBJEKTUMOT ad vissza (nem array).
+ */
+interface LicenseResponse {
+  id?: string | number
   licenseKey?: string
+  licenseCode?: string
   branchName?: string
+  companyName?: string
   validFrom?: string
   validUntil?: string
+  active?: boolean
   isActive?: boolean
+  type?: string
+  maxUsers?: number
+  features?: string[]
 }
 
 export default function LicensePage() {
-  const [items, setItems] = useState<LicenseItem[]>([])
+  const [license, setLicense] = useState<LicenseResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [searchTerm, setSearchTerm] = useState('')
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get<LicenseItem[]>('/license/current')
-      setItems(safeArray<typeof items[0]>(response.data))
+      const response = await api.get<LicenseResponse>('/license/current')
+      setLicense(response.data ?? null)
     } catch (err) {
       const msg = getErrorMessage(err)
-      logger.error('LicensePage', 'Betöltési hiba:', err)
+      logger.error('LicensePage', 'Betoltesi hiba:', err)
       setError(msg)
+      setLicense(null)
     } finally {
       setLoading(false)
     }
@@ -39,38 +50,19 @@ export default function LicensePage() {
     void loadData()
   }, [loadData])
 
-  const filtered = items.filter(item => {
-    if (!searchTerm) return true
-    const term = searchTerm.toLowerCase()
-    return Object.values(item).some(v =>
-      v != null && String(v).toLowerCase().includes(term)
-    )
-  })
+  const active = license?.active ?? license?.isActive ?? false
 
   return (
     <div className="form-panel space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="form-title flex items-center gap-2">
           <Key className="h-6 w-6" />
-          Licencek
+          Licenc (aktualis)
         </h1>
         <div className="flex items-center gap-2">
-          <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
+          <button onClick={() => void loadData()} className="form-button p-2" title="Frissites">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Keresés..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="form-input w-full pl-10"
-          />
         </div>
       </div>
 
@@ -81,38 +73,40 @@ export default function LicensePage() {
         </div>
       )}
 
-      <div className="data-grid overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Kulcs</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Penztar</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Ervenyes</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Lejar</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Aktiv</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 bg-white">
-            {loading ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">Nincs adat</td></tr>
-            ) : filtered.map(item => (
-              <tr key={item.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm">{item.licenseKey ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.branchName ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.validFrom ? new Date(item.validFrom).toLocaleString('hu-HU') : '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.validUntil ? new Date(item.validUntil).toLocaleString('hu-HU') : '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.isActive ? 'Igen' : 'Nem'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="text-sm text-gray-500">
-        Összesen: {filtered.length} / {items.length}
-      </div>
+      {loading ? (
+        <div className="text-center text-sm text-gray-500 py-8">Betoltes...</div>
+      ) : !license ? (
+        <div className="text-center text-sm text-gray-500 py-8">Nincs aktiv licenc</div>
+      ) : (
+        <div className="bg-white rounded shadow p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            {active ? (
+              <><CheckCircle className="h-5 w-5 text-green-600" /> <span className="font-semibold text-green-700">Aktiv</span></>
+            ) : (
+              <><XCircle className="h-5 w-5 text-red-600" /> <span className="font-semibold text-red-700">Inaktiv</span></>
+            )}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div><span className="text-gray-500">Kulcs / Kod:</span> <span className="font-mono">{license.licenseKey ?? license.licenseCode ?? '-'}</span></div>
+            <div><span className="text-gray-500">Tipus:</span> {license.type ?? '-'}</div>
+            <div><span className="text-gray-500">Ceg:</span> {license.companyName ?? '-'}</div>
+            <div><span className="text-gray-500">Penztar:</span> {license.branchName ?? '-'}</div>
+            <div><span className="text-gray-500">Ervenyes:</span> {license.validFrom ? new Date(license.validFrom).toLocaleDateString('hu-HU') : '-'}</div>
+            <div><span className="text-gray-500">Lejar:</span> {license.validUntil ? new Date(license.validUntil).toLocaleDateString('hu-HU') : '-'}</div>
+            {license.maxUsers != null && <div><span className="text-gray-500">Max user:</span> {license.maxUsers}</div>}
+          </div>
+          {license.features && license.features.length > 0 && (
+            <div>
+              <div className="text-gray-500 text-sm mb-1">Feature-ek:</div>
+              <div className="flex flex-wrap gap-1">
+                {license.features.map((f) => (
+                  <span key={f} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">{f}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

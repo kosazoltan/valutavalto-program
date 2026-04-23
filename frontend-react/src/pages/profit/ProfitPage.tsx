@@ -49,7 +49,9 @@ export default function ProfitPage() {
   const loadData = useCallback(async () => {
     // Sourcery PR #145 P2 fix: companyId check BEFORE setLoading(true)
     // hogy ne legyen briefly loading state ha tudjuk, hogy a call nem megy.
-    const companyId = useAuthStore.getState().user?.companyId
+    // Fix: useAuthStore.user getter legacy compat, de zustand snapshot-ban always null (getter
+    // csak store creation-kor fut). A worker a valos, reaktiv mezoi - minden mas oldal ezt hasznalja.
+    const companyId = useAuthStore.getState().worker?.companyId
     if (!companyId) {
       setError('Nincs bejelentkezett ceg (companyId hianyzik) - haszon kimutatas nem tolthet oe')
       setLoading(false)
