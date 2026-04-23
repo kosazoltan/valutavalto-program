@@ -1,4 +1,4 @@
-﻿# Valutaváltó ERP — Claude Code kontextus
+# Valutaváltó ERP — Claude Code kontextus
 
 ## Projekt áttekintés
 Magyar valutaváltó / pénzváltó ERP rendszer. Multi-tenant (több iroda), offline-képes.
@@ -139,7 +139,7 @@ cd penztar-client && npm test
 ### Alapelv
 Opus nem „programozó asszisztensként”, hanem **auditált GitHub-operátorként** dolgozik. **NINCS** „kész”, „ready”, „done”, „pusholható”, „merge-ready”, „deploy-ready” deklaráció gépileg ellenőrzött bizonyíték nélkül.
 
-### Kapumatriz (10 kapu)
+### Kapumátrix (10 kapu)
 
 | Kapu | Kötelező bizonyíték | Ha nem zöld |
 |---|---|---|

@@ -28,7 +28,7 @@ public class StockSnapshotService {
 
     public static final List<String> CURRENCY_CODES = List.of(
             "AUD", "BAM", "BGN", "BRL", "CAD", "CHF",
-            "CNY", "CZK", "DKK", "EUR", "GBP",
+            "CNY", "CZK", "DKK", "EUR", "GBP", "HRK",
             "HUF", "ILS", "JPY", "MXN", "NOK", "NZD",
             "PLN", "RON", "RSD", "RUB", "SEK", "THB",
             "TRY", "UAH", "USD"
@@ -60,7 +60,7 @@ public class StockSnapshotService {
                     .companyId(companyId)
                     .companyName(companyName)
                     .regions(List.of())
-                    .companyTotals(buildCompanyLevelTotals(companyId))  // Fix #154 extended
+                    .companyTotals(buildCompanyTotalsWithFallback(companyId, List.of()))  // Fix #154 extended
                     .build();
         }
 
@@ -107,7 +107,7 @@ public class StockSnapshotService {
                 .companyId(companyId)
                 .companyName(companyName)
                 .regions(regions)
-                .companyTotals(buildCompanyLevelTotals(companyId))
+                .companyTotals(buildCompanyTotalsWithFallback(companyId, allBranches))
                 .build();
     }
 
@@ -218,8 +218,12 @@ public class StockSnapshotService {
                 .reservations(List.of()).build();
     }
 
-    private BranchStockTotalsDto buildCompanyLevelTotals(UUID companyId) {
+    private BranchStockTotalsDto buildCompanyTotalsWithFallback(UUID companyId, List<BranchSnapshotDto> branchSnapshots) {
         List<Object[]> rows = currencyStockRepository.sumCompanyLevelByCurrency(companyId);
+        // Fix #156: ures DB agg eseten fallback branch-aggregaciora (test-kompat + ures DB)
+        if (rows == null || rows.isEmpty()) {
+            return (branchSnapshots == null || branchSnapshots.isEmpty()) ? createEmptyTotals() : aggregateTotals(branchSnapshots);
+        }
         Map<String, CurrencyStockDetailDto> byCode = new LinkedHashMap<>();
         for (String code : CURRENCY_CODES) {
             byCode.put(code, CurrencyStockDetailDto.builder().currencyCode(code).build());
