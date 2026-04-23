@@ -102,6 +102,32 @@ log.initialize();
 log.transports.file.level = 'info';
 log.transports.console.level = isDev ? 'debug' : 'warn';
 
+// ===========================================================================
+// Singleton instance lock (Sprint fix: 12+ electron process eseten)
+// ===========================================================================
+// Ha mar fut egy penztar-client instance, a masodik indulas azonnal kilep,
+// es az elso ablakot hozza elotertbe. Ez megszunteti a multi-process bloat-ot
+// (12 electron process, 3 main window cacheloda al a Task Manager-ben).
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+    log.info('[Electron] Mar fut egy penztar-client instance, exit.');
+    app.quit();
+    process.exit(0);
+}
+
+app.on('second-instance', (_event, _commandLine, _workingDirectory) => {
+    // Masodik indulaskor: az elso ablakot hozza elotertbe es focus-olja
+    const allWindows = BrowserWindow.getAllWindows();
+    const mainWin = allWindows.length > 0 ? allWindows[0] : undefined;
+    if (mainWin) {
+        if (mainWin.isMinimized()) mainWin.restore();
+        mainWin.focus();
+        log.info('[Electron] Second-instance blocked, focused existing window.');
+    } else {
+        log.warn('[Electron] Second-instance event, but no main window found.');
+    }
+});
+
 process.on('uncaughtException', (err) => {
   log.error('[Process] uncaughtException', err);
 });

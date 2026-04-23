@@ -36,13 +36,11 @@ public class VaultTerritoryService {
     @Transactional(readOnly = true)
     public VaultTerritory getById(Integer id) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        VaultTerritory territory = vaultTerritoryRepository.findById(id)
+        // Codex AI review #125 P1 fix: multi-tenant szint query-ben, NEM Java-ban.
+        // findByIdAndCompanyId garantalja, hogy cross-tenant rekord soha nem
+        // kerul be az ORM cache-be, se a Hibernate L1 cache-be, se a logba.
+        return vaultTerritoryRepository.findByIdAndCompanyId(id, companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Terulet nem talalhato: " + id));
-        // Multi-tenant IDOR vedelme: csak sajat ceg teruletet adhatunk vissza
-        if (territory.getCompany() != null && !territory.getCompany().getId().equals(companyId)) {
-            throw new ResourceNotFoundException("Terulet nem talalhato: " + id);
-        }
-        return territory;
     }
 
     /**
@@ -55,17 +53,27 @@ public class VaultTerritoryService {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ceg nem talalhato: " + companyId));
 
-        // Duplikacio ellenorzes (unique constraint amugy is nem engedne, de elegansabb elore)
-        List<VaultTerritory> existing = vaultTerritoryRepository.findByCompanyId(companyId);
-        boolean nameTaken = existing.stream()
-                .anyMatch(vt -> vt.getName() != null && vt.getName().equalsIgnoreCase(request.getName()));
+        // Sourcery + Codex PR #129 fix: trim egyszer, hasznosits mindenhol
+        // (validacio, DB duplikacio check, ERROR msg, persistence).
+        if (request.getName() == null || request.getName().isBlank()) {
+            throw new ValidationException("Terulet neve kotelezo");
+        }
+        String normalizedName = request.getName().trim();
+        if (normalizedName.isEmpty()) {
+            throw new ValidationException("Terulet neve nem lehet csak whitespace");
+        }
+
+        // DB-szintu duplikacio check (Sourcery PR #125 performance).
+        // A (company_id, name) unique constraint a vegso safety-net, race condition ellen.
+        boolean nameTaken = vaultTerritoryRepository
+                .existsByCompanyIdAndNameIgnoreCase(companyId, normalizedName);
         if (nameTaken) {
-            throw new ValidationException("Mar letezik ertektari terulet ezzel a nevvel: " + request.getName());
+            throw new ValidationException("Mar letezik ertektari terulet ezzel a nevvel: " + normalizedName);
         }
 
         VaultTerritory territory = VaultTerritory.builder()
                 .company(company)
-                .name(request.getName())
+                .name(normalizedName)  // trimmed - consistent DB storage
                 .baseCapital(request.getBaseCapital())
                 .baseCapitalApprovedAt(request.getBaseCapitalApprovedAt())
                 .active(true)

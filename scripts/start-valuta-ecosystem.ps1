@@ -87,18 +87,30 @@ if ($feAlready) {
     }
 }
 
-# 3) Electron penztar-client
+# 3) Electron penztar-client - IDEMPOTENT (singleton, uzletmenet-kritikus)
 if (-not $SkipElectron) {
     Write-Step "3/3 - Electron penztar-client (npm run dev:main)"
-    # AI REVIEW FIX (PR #100 Sourcery bug_risk): -WorkingDirectory quote-mentes.
-    $elDir = Join-Path $RepoRoot "penztar-client"
-    Start-Process -FilePath "powershell.exe" -ArgumentList @(
-        "-NoProfile", "-NoLogo", "-ExecutionPolicy", "Bypass",
-        "-Command", "npm run dev:main"
-    ) -WorkingDirectory $elDir -WindowStyle Hidden `
-        -RedirectStandardOutput "$env:TEMP\valuta-electron.log" `
-        -RedirectStandardError "$env:TEMP\valuta-electron-err.log"
-    Write-OK "Electron inditva"
+    # UZLETMENET-KRITIKUS: a penztar-client csak 1 peldanyban futhat.
+    # Ha mar fut electron process, NE inditsunk ujat - a main.ts
+    # app.requestSingleInstanceLock() is vedi, de itt hamarabb elkapjuk.
+    $existingElectron = Get-Process -Name 'electron' -ErrorAction SilentlyContinue
+    if ($existingElectron) {
+        Write-OK "Electron mar fut ($($existingElectron.Count) process), skip (singleton)."
+        $mainElectron = $existingElectron | Where-Object { $_.MainWindowTitle -ne "" } | Select-Object -First 1
+        if ($mainElectron) {
+            Write-Host "  Meglevo ablak PID $($mainElectron.Id)" -ForegroundColor DarkGray
+        }
+    } else {
+        # AI REVIEW FIX (PR #100 Sourcery bug_risk): -WorkingDirectory quote-mentes.
+        $elDir = Join-Path $RepoRoot "penztar-client"
+        Start-Process -FilePath "powershell.exe" -ArgumentList @(
+            "-NoProfile", "-NoLogo", "-ExecutionPolicy", "Bypass",
+            "-Command", "npm run dev:main"
+        ) -WorkingDirectory $elDir -WindowStyle Hidden `
+            -RedirectStandardOutput "$env:TEMPaluta-electron.log" `
+            -RedirectStandardError "$env:TEMPaluta-electron-err.log"
+        Write-OK "Electron inditva"
+    }
 } else {
     Write-Step "Electron SKIP"
 }

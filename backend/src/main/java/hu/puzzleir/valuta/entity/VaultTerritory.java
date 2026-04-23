@@ -35,12 +35,15 @@ public class VaultTerritory {
     private Company company;
 
     /**
-     * JSON-ban megjeleno company ID (transient, kiolvasva a company proxy-bol).
-     * Elkerulli a lazy-init 'Could not initialize proxy - no session' hibat.
+     * Sourcery #126 rename: getCompanyIdForJson -> getCompanyId (Java bean convention).
+     * Transient JSON-convenience getter, ami csak a company ID-t olvassa ki,
+     * nem a teljes Company entity-t -> elkerulli a lazy-init
+     * 'Could not initialize proxy - no session' hibat.
+     * A @JsonProperty("companyId") miatt a JSON kulcs valtozatlan.
      */
     @JsonProperty("companyId")
     @Transient
-    public java.util.UUID getCompanyIdForJson() {
+    public java.util.UUID getCompanyId() {
         return company != null ? company.getId() : null;
     }
 
