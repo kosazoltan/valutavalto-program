@@ -107,6 +107,19 @@ public class AmlController {
     }
 
     /**
+     * Sprint 6.2: 8 napos rolling window compliance audit.
+     * GET /api/v1/aml/rolling-window-audit?thresholdHuf=4500000
+     *
+     * Pmt. (2017. LIII. tv.) szerinti hatosagi audit lista — azon ugyfelek,
+     * akiknek a gongyolt 8 napos osszege eleri vagy meghaladja a kuszobot.
+     */
+    @GetMapping("/rolling-window-audit")
+    public ResponseEntity<List<hu.puzzleir.valuta.dto.aml.RollingWindowAuditDto>> getRollingWindowAudit(
+            @RequestParam(required = false) java.math.BigDecimal thresholdHuf) {
+        return ResponseEntity.ok(amlService.getRollingWindowAudit(thresholdHuf));
+    }
+
+    /**
      * Structuring detektálás.
      * GET /api/v1/aml/structuring-check/{customerId}
      */

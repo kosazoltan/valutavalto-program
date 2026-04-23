@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.entity.SystemParameter;
 import hu.puzzleir.valuta.repository.SystemParameterRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,6 +12,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
+@lombok.extern.slf4j.Slf4j
 @RequiredArgsConstructor
 public class SystemParameterService {
 
@@ -27,6 +29,30 @@ public class SystemParameterService {
 
     public String getValue(String key) {
         return getByKey(key).getParameterValue();
+    }
+
+    /**
+     * Sprint 7.2 CB-016: null-safe getValue overload.
+     * Visszaadja a paraméter értékét, vagy a defaultValue-t ha nincs.
+     * NEM dob ResourceNotFoundException-t — fallback-barat.
+     *
+     * @param key          SystemParameter kulcs
+     * @param defaultValue ha nincs a paraméter vagy üres érték
+     */
+    public String getValue(String key, String defaultValue) {
+        try {
+            SystemParameter p = repo.findByParameterKey(key).orElse(null);
+            if (p == null || p.getParameterValue() == null || p.getParameterValue().isBlank()) {
+                return defaultValue;
+            }
+            return p.getParameterValue();
+        } catch (Exception e) {
+            // Sourcery PR #128 fix: log WARN before fallback, do NOT swallow silently.
+            // Misconfigured rates / DB issue elreszett hidden maradhatott volna.
+            log.warn("SystemParameter lekeres sikertelen, fallback default: key={}, default={}, hiba={}",
+                    key, defaultValue, e.getMessage(), e);
+            return defaultValue;
+        }
     }
 
     @Transactional(rollbackFor = Exception.class)

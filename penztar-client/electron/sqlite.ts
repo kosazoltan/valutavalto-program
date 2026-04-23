@@ -382,6 +382,22 @@ export async function initDatabase(): Promise<void> {
       );
     `);
 
+    // Sprint 7.1: pending_stocktake_items - offline leltar felvetel queue
+    db.run(`
+      CREATE TABLE IF NOT EXISTS pending_stocktake_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        item_id TEXT NOT NULL,
+        actual_quantity INTEGER NOT NULL,
+        note TEXT,
+        idempotency_key TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        synced INTEGER DEFAULT 0,
+        sync_error TEXT,
+        retry_count INTEGER DEFAULT 0
+      );
+    `);
+    db.run(`CREATE INDEX IF NOT EXISTS idx_pending_stocktake_synced ON pending_stocktake_items(synced);`);
+
     const pendingTransferColumns = [
       'target_branch_id TEXT',
       'currency_id INTEGER',
@@ -525,7 +541,8 @@ function generateLocalReference(prefix: string): string {
   const stamp = new Date().toISOString().replace(/\D/g, '').slice(0, 14);
   const suffix = crypto.randomBytes(2).toString('hex').toUpperCase();
   return `${prefix}-${stamp}-${suffix}`;
-}
+}
+
 /**
  * NGM 23/2014 szigoru szamadasu helyi bizonylat-sorszamozo.
  * Formatum: {prefix}{branchCode3}{seq6} pl. V039000042
@@ -1761,6 +1778,67 @@ export function getPendingCollections(): PendingCollectionRow[] {
 export function markCollectionSynced(id: number): void {
   if (!db) return;
   db.run('UPDATE pending_collections SET synced = 1 WHERE id = ?', [id]);
+  saveDatabase();
+}
+
+// Sprint 7.1: Stocktake offline queue API
+export interface PendingStocktakeItemRow {
+  id: number;
+  item_id: string;
+  actual_quantity: number;
+  note: string | null;
+  idempotency_key: string | null;
+  created_at: string;
+  synced: number;
+  sync_error: string | null;
+  retry_count: number;
+}
+
+export function queueStocktakeCount(
+  itemId: string,
+  actualQuantity: number,
+  note: string | null,
+  idempotencyKey: string | null,
+): number {
+  if (!db) return 0;
+  const stmt = db.prepare(
+    'INSERT INTO pending_stocktake_items (item_id, actual_quantity, note, idempotency_key) VALUES (?, ?, ?, ?)',
+  );
+  stmt.run([itemId, actualQuantity, note, idempotencyKey]);
+  stmt.free();
+  saveDatabase();
+  const idStmt = db.prepare('SELECT last_insert_rowid() as id');
+  idStmt.step();
+  const row = idStmt.getAsObject() as { id: number };
+  idStmt.free();
+  return row.id;
+}
+
+export function getPendingStocktakeItems(): PendingStocktakeItemRow[] {
+  if (!db) return [];
+  const results: PendingStocktakeItemRow[] = [];
+  const stmt = db.prepare(
+    'SELECT * FROM pending_stocktake_items WHERE synced = 0 ORDER BY created_at ASC LIMIT 100',
+  );
+  while (stmt.step()) {
+    results.push(stmt.getAsObject() as unknown as PendingStocktakeItemRow);
+  }
+  stmt.free();
+  return results;
+}
+
+export function markStocktakeItemSynced(id: number): void {
+  if (!db) return;
+  db.run('UPDATE pending_stocktake_items SET synced = 1 WHERE id = ?', [id]);
+  saveDatabase();
+}
+
+export function markStocktakeItemError(id: number, error: string): void {
+  if (!db) return;
+  db.run(
+    'UPDATE pending_stocktake_items SET sync_error = ?, retry_count = retry_count + 1 WHERE id = ?',
+    [error, id],
+  );
   saveDatabase();
 }
 

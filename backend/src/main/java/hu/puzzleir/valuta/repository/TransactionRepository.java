@@ -334,6 +334,29 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     );
 
     /**
+     * Sprint 6.2 C2 audit: 8 napos gordulo limit felett levo ugyfelek.
+     * Visszaadja a customerId-ket es a gongyolt osszeget az elmult 8 napra,
+     * ahol a gongyolt osszeg >= thresholdHuf.
+     *
+     * Hasznalt: Compliance dashboard, Pmt. kotelezo audit.
+     */
+    @Query("SELECT t.customerId, COALESCE(SUM(t.hufAmount), 0) as total " +
+           "FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.customerId IS NOT NULL " +
+           "AND t.customerId <> '' " +
+           "AND t.transactionDate >= :sinceDate " +
+           "AND t.status = 'COMPLETED' " +
+           "GROUP BY t.customerId " +
+           "HAVING COALESCE(SUM(t.hufAmount), 0) >= :thresholdHuf " +
+           "ORDER BY total DESC")
+    java.util.List<Object[]> findRollingWindowAuditCandidates(
+        @Param("companyId") UUID companyId,
+        @Param("sinceDate") LocalDate sinceDate,
+        @Param("thresholdHuf") BigDecimal thresholdHuf
+    );
+
+    /**
      * Éves maximum tranzakció összeg.
      * Legacy: EVIMAX mező
      */

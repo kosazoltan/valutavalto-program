@@ -39,6 +39,7 @@ import {
   savePendingDistribution,
   savePendingTransfer,
   savePendingCollection,
+  queueStocktakeCount,
   getPendingTransfers,
   savePendingHandoverOperation,
   getPendingHandoverOperations,
@@ -487,6 +488,17 @@ ipcMain.handle('save-pending-collection', async (
   note: string | null,
 ): Promise<number> => {
   return savePendingCollection(sourceBranchCode, currencyCode, amount, note);
+});
+
+// Sprint 7.1: offline stocktake item count queue
+ipcMain.handle('queue-stocktake-count', async (
+  _event,
+  itemId: string,
+  actualQuantity: number,
+  note: string | null,
+  idempotencyKey: string | null,
+): Promise<number> => {
+  return queueStocktakeCount(itemId, actualQuantity, note, idempotencyKey);
 });
 
 ipcMain.handle('save-pending-handover-operation', async (_event, payload: {

@@ -81,11 +81,22 @@ public class TransactionOperationHelper {
 
         if (customerId != null && !customerId.isBlank()) {
             var thresholdResult = amlService.checkAllThresholds(customerId, hufAmount, currencyCode);
-            if (thresholdResult != null && thresholdResult.isBlocked()) {
-                String warnings = thresholdResult.getWarnings() != null && !thresholdResult.getWarnings().isEmpty()
-                        ? String.join("; ", thresholdResult.getWarnings())
-                        : "AML szabaly alapjan blokkolva";
-                throw new ValidationException(warnings);
+            if (thresholdResult != null) {
+                if (thresholdResult.isBlocked()) {
+                    String warnings = thresholdResult.getWarnings() != null && !thresholdResult.getWarnings().isEmpty()
+                            ? String.join("; ", thresholdResult.getWarnings())
+                            : "AML szabaly alapjan blokkolva";
+                    throw new ValidationException(warnings);
+                }
+
+                // Sprint 5.3 C2: 8 napos gordulo limit + manager approval kotelezoseg
+                if (thresholdResult.isRequiresManagerApproval()
+                        && !hu.puzzleir.valuta.security.SecurityUtils.isSupervisorOrAbove()) {
+                    String reason = thresholdResult.getManagerApprovalReason() != null
+                            ? thresholdResult.getManagerApprovalReason()
+                            : "Supervisor/Manager jovahagyas szukseges (AML magas kockazatu tranzakcio)";
+                    throw new ValidationException(reason);
+                }
             }
         }
 
