@@ -88,6 +88,78 @@ Body: {"transactionType":"BUY", "currencyCode":"EUR", "amount":1000,
   INSERT INTO vault_bank_transaction(...) VALUES(...);
   ```
 
+### [P0] Collection complete NEM tolja a keszletet
+
+**Detektalva:** 2026-04-23 teljes ertektari API teszt
+**Modul:** VaultCollectionService.updateStatus()
+**Endpoint:** `PATCH /api/v1/ertektar/collections/{id}/status?status=COMPLETED`
+
+**Tunet:**
+- Collection #2 BR017 -> ertektar 500 EUR letrehozva + COMPLETED
+- De: GET /inventory/stock (VAULT entity) -> 0 item
+- Tehat a bekerult EUR NEM megjelenik a vault CurrencyStock-ban
+
+**Kovetkezmeny:**
+- Bank transaction SELL 500-at dob (nincs valuta a vault-ban)
+- Bank transaction BUY 500-at dob (nincs HUF a vault-ban)
+- Teljes ertektari cash-flow workflow megszakad
+
+**Forras:** 
+`backend/.../service/VaultCollectionService.java:70+` updateStatus() csak
+`collection.setStatus(newStatus)` + `collection.setCompletedAt()`, de NEM
+hivja a `CurrencyStock.receiveStock()`-ot.
+
+**Javitasi irany (v2.2.2):**
+```java
+if (newStatus == VaultOperationStatus.COMPLETED) {
+    // CurrencyStock frissites a vault_territory-ra
+    VaultTerritory territory = getFirstActiveTerritory(companyId);
+    CurrencyStock vaultStock = getOrCreateStock(companyId, "VAULT",
+        territory.getId().toString(), collection.getCurrencyCode());
+    vaultStock.receiveStock(collection.getAmount(), currentExchangeRate);
+    currencyStockRepository.save(vaultStock);
+    
+    // Source branch cash_balance csokkentes (BranchCashBalance)
+    // ...
+}
+```
+
+### [P0] Distribution complete NEM tolja a keszletet (hasonlo)
+
+**Ugyanaz mint a Collection-ben:**
+- Distribution.items (target branches) NEM kap CurrencyStock delta-t
+- BranchCashBalance nem frissul
+- Csak a status valtozik
+
+**Forras:** `VaultDistributionService.updateStatus()` ugyanaz a bug.
+
+### [P1] GET /distribution list items=0 (lazy init)
+
+**Tunet:**
+- `GET /ertektar/distribution` -> items=[] (ures)
+- DE: `POST` utani response-ban items van (3 tetel)
+
+**Javitasi irany:**
+- `DistributionRepository.findByCompanyId()` -> @Query("... LEFT JOIN FETCH d.items ...")
+
+### [P2] Collection status enum APPROVED ertek nem letezik
+
+**Tunet:**
+- PATCH /collections/{id}/status?status=APPROVED -> 400 "Failed to convert 'status' with value: 'APPROVED'"
+
+**Valid enum:** REQUESTED, IN_PROGRESS, COMPLETED, REJECTED (nincs APPROVED)
+
+**Javitas:** vagy enum boviteve vagy docs frissiteni
+
+### [P3] Rolling window audit threshold nem config param
+
+**Tunet:**
+- GET /aml/rolling-window-audit?thresholdHuf=100000 -> hasznalja ezt
+- De: default 4.5M HUF (.env vagy SystemParameter-ben kene)
+
+**Jo hir:** mukodik elesen, TESZT-001 ugyfel 393%-on van (393K HUF / 100K limit).
+
+
 
 ---
 
