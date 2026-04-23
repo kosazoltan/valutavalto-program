@@ -1,0 +1,122 @@
+---
+title: "Multi-modell GitHub/PUSH minosegbiztositasi mandate v2"
+subtitle: "Anthropic + OpenAI + Gemini kotelezo utasitasrendszer"
+date: "2026-04-23"
+author: "Kosa Zoltan + Claude Opus 4.7 (1M context)"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+categories: [mandate, policy, github, ai-agent, multimodel]
+tags:
+  - anthropic
+  - openai
+  - gemini
+  - quality-gate
+  - v2
+status: ACTIVE
+supersedes: "v1 (OPUS_GITHUB_QUALITY_MANDATE.md)"
+---
+
+## TL;DR
+
+A user 2026-04-23 este kiadott egy **multi-modell GitHub/PUSH minosegbiztositasi utasitasrendszer v2**-t (53 KB, 8 korös kutatas). A v1 csak Claude Opus 4.7-re vonatkozott; **a v2 kötelező minden Anthropic, OpenAI és Google Gemini modellre**.
+
+Memóriába mentve: `~/.claude/projects/D--repo-valutavalto-program/memory/MULTIMODEL_GITHUB_QUALITY_MANDATE_V2.md`
+
+## Fő változások v1 → v2
+
+| Dimenzió | v1 | v2 |
+|---|---|---|
+| Hatály | csak Claude Opus 4.7 | **minden Anthropic + OpenAI + Gemini** |
+| Kutatási körök | 5 | **8** |
+| Projekt fájlok | CLAUDE.md | **AGENTS.md + AI_CONTRACT.md + CLAUDE.md + GEMINI.md + .github/copilot-instructions.md** |
+| Protokoll szekciók | 10 | **20** (10 új: PR state polling, legacy statuses, workflow jobs+logs, GraphQL threads, rulesets+merge queue, slopsquatting, lockfile, Actions hardening, attestation, bizonyitasi minimum) |
+| Válaszformátum | "Modell és szerep" nem kötelező | **Modell/vendor + szabályzat hatály kötelező mező** |
+| Pending required check | warning | **BLOCKER** (v1 fix már benne volt PR #157-ben) |
+
+## Kapumátrix (10 kapu) — változatlan
+
+```{mermaid}
+flowchart TD
+    START[Push/Merge/Deploy szandek] --> GATE1[lint]
+    GATE1 --> GATE2[typecheck]
+    GATE2 --> GATE3[test]
+    GATE3 --> GATE4[build]
+    GATE4 --> GATE5[GitHub Checks]
+    GATE5 --> GATE6[Codex review]
+    GATE6 --> GATE7[Sourcery review]
+    GATE7 --> GATE8[Dependabot]
+    GATE8 --> GATE9[CodeQL]
+    GATE9 --> GATE10[Secret scanning]
+    GATE10 --> OK[Merge/Deploy ready]
+
+    GATE1 -. fail .-> BLOCK[TILOS push/merge/deploy]
+    GATE2 -. fail .-> BLOCK
+    GATE3 -. fail .-> BLOCK
+    GATE4 -. fail .-> BLOCK
+    GATE5 -. fail/pending .-> BLOCK
+    GATE6 -. P0/P1 unresolved .-> BLOCK
+    GATE7 -. security/test/complexity .-> BLOCK
+    GATE8 -. open high/critical .-> BLOCK
+    GATE9 -. high/critical .-> BLOCK
+    GATE10 -. secret leak .-> BLOCK
+```
+
+## Uj fajlok (projekt szint)
+
+### `AGENTS.md`
+Modellfuggetlen igazsagforras. **Elsodleges**. Symlinkezni lehet CLAUDE.md-re es GEMINI.md-re, a tartalom egyezik.
+
+### `AI_CONTRACT.md`
+Kemeny tiltasok + plafonok:
+
+- 300 LOC vagy 5 fájl feletti PR = bontás kötelező
+- Teszt manipuláció = CI failure + human review
+- `--no-verify` tiltott
+- Secret leak history cleanup + rotation
+- Untrusted context `run:` scriptben tiltott
+- `pull_request_target` + fork checkout explicit security-approval nélkül tiltott
+
+### `GEMINI.md` + `.github/copilot-instructions.md`
+Platform-specifikus konfig. Tartalom = AGENTS.md (+ minor vendor-specific kiegeszitesek).
+
+## 10 uj reszletes protokoll szekcio
+
+1. **PR state és mergeability polling** — `mergeable=null` eseten POLLING nem dontes
+2. **Checks API + legacy Commit Statuses együtt** — mindket forras lekerese kotelezo
+3. **Workflow run/job/log bizonyitas** — `gh run view --log-failed`, failure-log bejegyzes
+4. **Review threadek GraphQL-alapon** — `isResolved`, `isOutdated`, `reviewDecision`
+5. **Rulesets + required workflows + merge queue** — `gh api /rulesets`, `on: merge_group:`
+6. **Dependency és slopsquatting kapu** — `actions/dependency-review-action`, registry-ellenorzes
+7. **Lockfile, registry és hash integritas** — `npm ci`, `pnpm --frozen-lockfile`, `pip --require-hashes`
+8. **GitHub Actions hardening** — least privilege permissions, third-party SHA-pin, untrusted input via env
+9. **Release artifact bizonyitas** — SBOM, SLSA attestation, `gh attestation verify`, Sigstore
+10. **Bizonyitasi minimum minden valasz vegen** — 16 kotelezo mezo (modell, PR, SHA, ellenorzesek, review, dependabot, codeql, secret, ruleset, supply-chain, deploy)
+
+## Skillek (implementacio terv)
+
+```
+.claude/skills/
+├── github-quality-gate/
+│   └── SKILL.md          # pre-push gate wrapper + signal check
+├── ai-review-responder/
+│   └── SKILL.md          # Codex/Sourcery auto-fix loop
+├── deploy-verification/
+│   └── SKILL.md          # SBOM + attestation + env gates
+└── agents-md-generator/
+    └── SKILL.md          # AGENTS.md + AI_CONTRACT.md + platform specific generálas
+```
+
+## Kovetkezo lepesek (ebben a sessionben)
+
+- [x] Global memoria mentve (v1 superseded, v2 ACTIVE)
+- [x] MEMORY.md index frissitve
+- [x] YAML session memory
+- [x] QMD session memory (ez a fajl)
+- [ ] Obsidian vault masolat
+- [ ] AGENTS.md + AI_CONTRACT.md + GEMINI.md letrehozas
+- [ ] 4 Claude skill
+- [ ] signal-check.ps1 bovites 10 uj ellenorzessel
+- [ ] Commit + PR + merge a sajat mandate szerint (pre-push gate + signal check)

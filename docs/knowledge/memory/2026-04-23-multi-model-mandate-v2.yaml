@@ -1,0 +1,177 @@
+# Multi-modell GitHub/PUSH minosegbiztositasi utasitasrendszer v2
+# Session: 2026-04-23 (este, 20:54 utani direktiva)
+# User: Kosa Zoltan
+# Mandate forras: C:\Users\Kosa Zoltan\Downloads\opus-4-7-github-push-minosegbiztositas (1).md (53 KB)
+
+session:
+  date: "2026-04-23T20:54+02:00"
+  type: "mandatory_policy_update"
+  trigger: "user_directive_file_drop"
+  supersedes: "v1 (OPUS_GITHUB_QUALITY_MANDATE.md, 2026-04-23T18:00+02:00)"
+
+mandate:
+  version: "v2.0-multimodel"
+  title: "Anthropic + OpenAI + Gemini kötelező GitHub/PUSH minosegbiztositasi utasitasrendszer"
+  hatály:
+    vendor:
+      - anthropic: ["Claude Opus 4.7", "Claude Sonnet", "Claude Haiku", "minden jovobeli Claude"]
+      - openai: ["GPT-4/5", "Codex", "o-series", "ChatGPT agent", "GitHub-kódoló felhasználás"]
+      - google: ["Gemini", "Gemini Code Assist", "Gemini CLI", "Jules", "minden Gemini-alapú coding agent"]
+    mentessegek: []  # SEMMI (modell/vendor/tool mode nem ad felmentést)
+
+  alapelvek:
+    - "Auditalt GitHub-operator, NEM programozo asszisztens"
+    - "A bizonyitek kizarolag gepileg ellenorizheto (parancs-kimenet / GitHub API JSON / CI log / review thread state / security alert / artifact verification). A modell sajat allitasa NEM bizonyitek."
+    - "Sem 'kesz', sem 'merge-ready', sem 'deploy-ready' deklaracio zold bizonyitek nelkul"
+    - "Email-bol AI review bemasolgatas MEGSZUNTETVE - agent MAGA kerdezi le"
+
+kutatasi_korok:
+  szam: 8  # v1-ben 5 volt
+  korok:
+    1: "Hivatalos GitHub-minosegkapuk (protected branches, required status checks, CodeQL, secret scanning, Dependabot, Actions hardening)"
+    2: "AI-kodhibák es onellenorzes (vulnerable code, hallucinated packages, false success signals, test manipulation)"
+    3: "Workflow-mintak es tool-matrix (pre-commit, GitHub Actions, Semgrep, Gitleaks, OpenSSF Scorecard, MegaLinter)"
+    4: "Agent-fegyelem CLAUDE.md/AGENTS.md/hooks (PreToolUse/PostToolUse/Stop, exit code+JSON decisions)"
+    5: "Deploy/release/supply-chain kapuk (SBOM, SLSA, artifact attestation, pinned actions, least privilege, environment protection)"
+    6: "GitHub API gate-ek es gepi bizonyitas (Checks API, legacy Commit Statuses, workflow runs/jobs/logok, review threads, branch protection, rulesets, merge queue)"  # UJ
+    7: "Supply-chain/dependency/release integritas (Dependabot, Dependency Review, lockfile-integrity, slopsquatting, Scorecard, SHA-pinning, OIDC, SBOM, attestation)"  # UJ
+    8: "Modellfuggetlen agent-fegyelem (hamis kesz allapot, tesztmanipulacio, self-review vakfoltok, TDD red-green-refactor, független review agent, AI_CONTRACT.md, hook-alapu befejezesi kapuk)"  # UJ
+
+projekt_fajlok:
+  igazsagforras:
+    - "AGENTS.md"  # elsodleges, modellfuggetlen
+    - "AI_CONTRACT.md"  # kemeny tiltasok + plafonok
+  platform_specifikus:
+    - "CLAUDE.md"  # Claude kiegeszites vagy symlink AGENTS.md-re
+    - "GEMINI.md"  # Gemini kiegeszites
+    - ".github/copilot-instructions.md"  # GitHub Copilot projekt utasitasok
+    - ".claude/settings.json"
+    - ".codex/config.toml"
+    - ".gemini/settings.json"
+  kiegeszito:
+    - "REVIEW.md"  # review-szabalyok Codex/Sourcery/Copilot/Claude-hoz
+
+# 10 kapu (Anthropic + OpenAI + Gemini kozos)
+kapuk:
+  lokalis_lint:
+    kotelezo: "0 error"
+    blokkolo: "bármely lint error"
+  typecheck:
+    kotelezo: "tsc --noEmit / mypy / cargo check / golangci-lint 0 error"
+    blokkolo: "bármely type error"
+  teszt:
+    kotelezo: "Unit+integration+e2e releváns suite zöld"
+    blokkolo: "bármely failure"
+  build:
+    kotelezo: "Reprodukálható build sikeres"
+    blokkolo: "build failure"
+  github_checks:
+    kotelezo: "Required checks pass/pending/fail lekérdezve"
+    blokkolo: "fail VAGY pending (v2 frissites: pending is blocker!)"
+  codex_review:
+    kotelezo: "P0/P1 finding nincs vagy indokoltan dismissed"
+    blokkolo: "unresolved P0/P1"
+  sourcery_review:
+    kotelezo: "Security/testing/complexity findingek kezelve"
+    blokkolo: "unresolved security/testing/complexity"
+  dependabot:
+    kotelezo: "Nyitott high/critical alert nincs"
+    blokkolo: "bármely open high/critical = deploy BLOCK"
+  codeql:
+    kotelezo: "Új open high/critical nincs"
+    blokkolo: "high/critical = merge/deploy BLOCK"
+  secret_scanning:
+    kotelezo: "Új secret alert vagy bypass nincs"
+    blokkolo: "secret leak = merge/deploy BLOCK"
+
+# 10 reszletes protokoll szekcio (v2 uj)
+uj_protokollok_v2:
+  1_pr_state_polling:
+    api: "GET /repos/{owner}/{repo}/pulls/{number}"
+    mezok: [state, draft, merged, mergeable, mergeable_state, head_sha, base_ref]
+    blokkolo: "state!=open | draft=true | mergeable=false | mergeable_state!=clean | mergeStateStatus!=CLEAN"
+    rule: "mergeable=null eseten POLLING, nem dontes; uj push eseten MINDEN gate-et ujra kell futtatni az uj head_sha-ra"
+  2_checks_api_plus_legacy:
+    api: "GET /commits/{sha}/check-runs + GET /commits/{sha}/status"
+    blokkolo: "status!=completed | conclusion in [failure,timed_out,cancelled,action_required,stale] | legacy combined state!=success"
+    rule: "azonos nevu job tobb workflow-ban ambiguity - required check nevnek EGYEDI kell legyen"
+  3_workflow_jobs_logs:
+    api: "GET /actions/runs?head_sha={sha} + GET /actions/runs/{id}/jobs + gh run view --log-failed"
+    blokkolo: "ugyanaz a CI-hiba ketszer ugyanazzal a hipotezissel"
+    rule: "failure-log bejegyzes kotelezo (bukott job/step, hibauzenet, feltetelezett ok, modositott fajl, ujrafuttatas eredmenye)"
+  4_graphql_review_threads:
+    api: "GraphQL: repository.pullRequest.reviewThreads[isResolved,isOutdated,comments]"
+    blokkolo: "reviewDecision=CHANGES_REQUESTED | isResolved=false thread"
+    rule: "isOutdated=true NEM automatikusan lezart - ellenorizni, hogy a problema tenylegesen megszunt"
+  5_rulesets_merge_queue:
+    api: "GET /branches/{base}/protection + /rulesets + /rules/branches/{base}"
+    blokkolo: "ruleset enforcement=evaluate nem veder | bypass actor admin/humán review nelkul | allow_force_pushes=true | allow_deletions=true"
+    merge_queue_trigger: "on: { pull_request:, merge_group: }"
+  6_dependency_slopsquatting:
+    kotelezo_ellenorzes:
+      - "registry letezes pontos nevegyezessel"
+      - "minimum verzio es lockfile jelenlét"
+      - "npm preinstall/install/postinstall script audit"
+      - "hivatalos registry URL a PR leirasban"
+      - "license policy"
+      - "dependency-review + Dependabot alert"
+      - "uj/ismeretlen csomag -> humán approval"
+    tool: "actions/dependency-review-action@da24556b548a50705dd671f47852072ea4c105d9"
+  7_lockfile_integrity:
+    kotelezo_parancsok:
+      npm: "npm ci (NEM npm install!)"
+      pnpm: "pnpm install --frozen-lockfile"
+      python: "pip install --require-hashes"
+    blokkolo: "lockfile nelkuli modositas | lockfile/manifest elteres | HTTP registry | ismeretlen registry | hianyzo integrity/hash"
+  8_github_actions_hardening:
+    kotelezo_workflow:
+      top_level: "permissions: contents: read (vagy read-all)"
+      iras: "csak job-szinten, indokolt"
+      third_party_action: "CSAK teljes commit SHA-val (nem tag/branch)"
+      pull_request_target_fork: "TILOS, kiveve explicit security-approved workflow"
+      untrusted_input: "env-en keresztul, NEM kozvetlenul run: scriptben"
+    openssf_scorecard_checkek:
+      - "Token-Permissions (magas kockazat ha nem least privilege)"
+      - "Dangerous-Workflow (kritikus: untrusted checkout, pull_request_target, shell context interpolation)"
+  9_release_artifact_bizonyitas:
+    sbom: "SPDX vagy CycloneDX"
+    attestation: "gh attestation verify ./dist/app --repo $OWNER/$REPO"
+    container: "scan high/critical nelkul"
+    release_kapuk:
+      - "build artifact letezik"
+      - "SBOM generalva"
+      - "attestation ellenorizve"
+      - "image alairva (ha image deploy)"
+      - "production environment required reviewer approval"
+      - "release artifact ugyanazhoz a head_sha/tag SHA-hoz kotodik ahol a checks zoldek voltak"
+  10_bizonyitasi_minimum:
+    kotelezo_valasz_vege_mezok:
+      - modell_es_szerep
+      - pr_azonosito
+      - head_sha_es_ellenorzes_idopont
+      - lokalis_ellenorzesek_output
+      - checks_api_statusz
+      - legacy_statuses
+      - workflow_log
+      - review_state_es_unresolved_threadek
+      - codex_futott_findingek
+      - sourcery_futott_findingek
+      - dependabot
+      - codeql
+      - secret_scanning
+      - branch_ruleset_allapot
+      - supply_chain_dependency_diff
+      - deploy_artifact_sbom_attestation
+
+# Zaro validacio a saj?t workflow szerint
+validacio_onmagunkra:
+  pr_vart: "docs/... uj PR a mandate v2 alkalmazasara"
+  pre_push_gate: "scripts/pre-push-quality-gate.ps1 kötelező LINT + TYPECHECK + TEST + BUILD"
+  signal_check_gate: "scripts/github-signal-check.ps1 {PR_NUM} 8 lepeses lekerdezes"
+  modell_info_valasz: "Ctrl-I: minden valasz tartalmazza a modell nevet es a szabalyzat hatalyat"
+
+elozo_session_tanulsag:
+  problema: "PR #154-#155 StockSnapshot test regression production main RED-re"
+  ok: "pre-push gate csak mvn compile-t futtatott, mvn test-et NEM -> regressziok atmentek a gate-en"
+  javitas: "PR #157 (hotfix): mvn test + mvn package default mode, SkipTests csak hotfix-hez"
+  tanulsag: "A mandate SAJAT MAGA ELSO ALKALMAZASA talalta a gate-ben a P1 hibat. V2-ben ez mar default."
