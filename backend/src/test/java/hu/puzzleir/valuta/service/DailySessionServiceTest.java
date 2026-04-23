@@ -35,6 +35,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -57,6 +59,9 @@ class DailySessionServiceTest {
 
     @Mock
     private BranchRepository branchRepository;
+
+    @Mock
+    private CashBalanceService cashBalanceService;
 
     @InjectMocks
     private DailySessionService service;
@@ -126,5 +131,45 @@ class DailySessionServiceTest {
         assertEquals(BigDecimal.ZERO, brokenBalance.getCurrentBalance());
         assertEquals(BigDecimal.ZERO, brokenBalance.getOpeningBalance());
         assertEquals(0L, brokenBalance.getVersion());
+    }
+    @Test
+    @DisplayName("Issue #110: openDay auto-init cash_balance rekordokat hiv uj branch-en")
+    void openDay_autoInitsCashBalancesForNewBranch() {
+        Company company = Company.builder().id(companyId).code("EBC").name("EBC").build();
+        Branch branch = Branch.builder().id(branchId).code("B99").name("Uj Iroda").company(company).build();
+        Worker worker = Worker.builder()
+                .id(workerId)
+                .code("ADMIN")
+                .name("Admin")
+                .passwordHash("x")
+                .role(WorkerRole.CASHIER)
+                .company(company)
+                .branch(branch)
+                .build();
+
+        DailySession savedSession = DailySession.builder()
+                .id(2L)
+                .branch(branch)
+                .company(company)
+                .sessionDate(LocalDate.now())
+                .openingBalanceHuf(BigDecimal.ZERO)
+                .build();
+
+        when(dailySessionRepository.findOpenSessionsByBranch(branchId)).thenReturn(List.of());
+        when(dailySessionRepository.findByBranchIdAndSessionDate(eq(branchId), eq(LocalDate.now())))
+                .thenReturn(Optional.empty());
+        when(dailySessionRepository.findLatest(branchId)).thenReturn(Optional.empty());
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+        when(workerRepository.findById(workerId)).thenReturn(Optional.of(worker));
+        // Uj branch: cash_balance meg ures
+        when(cashBalanceRepository.findByBranchId(branchId)).thenReturn(List.of());
+        when(dailySessionRepository.save(any(DailySession.class))).thenReturn(savedSession);
+
+        DailySession result = service.openDay();
+
+        assertNotNull(result);
+        // Issue #110: auto-init kell hogy meghivva legyen pontosan 1x
+        verify(cashBalanceService, times(1)).initializeBranchBalances(branchId);
     }
 }
