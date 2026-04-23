@@ -1,4 +1,4 @@
-import { Send, Home, ArrowLeftRight, Users, TrendingUp, Wallet, FileText, Settings, Sun, Shield, ShieldAlert, LayoutDashboard, PlusCircle, Download, Camera } from "lucide-react"
+import { Send, Home, ArrowLeftRight, Users, TrendingUp, Wallet, FileText, Settings, Sun, Shield, ShieldAlert, LayoutDashboard, PlusCircle, Download, Camera, Package, ClipboardCheck } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
 export const PENZTAR_ROLES = ["penztar"] as const
@@ -37,6 +37,7 @@ export const menuGroups: MenuGroup[] = [
       { path: "/statistics/cashier-kpi", label: "Pénztáros KPI", icon: Users },
       { path: "/inventory", label: "Országos készlet", icon: Wallet },
       { path: "/stock-snapshot", label: "Készlet-snapshot", icon: FileText },
+      { path: "/vault-stocktake", label: "Értéktár leltár", icon: Package },
     ],
   },
   {
@@ -110,6 +111,7 @@ export const menuGroups: MenuGroup[] = [
       { path: "/audit-log", label: "Audit napló", icon: Shield },
       { path: "/sanction", label: "Szankciós lista (AML)", icon: ShieldAlert },
       { path: "/seal-tracking", label: "Plomba nyilvántartás", icon: Shield },
+      { path: "/compliance", label: "Compliance Dashboard", icon: ClipboardCheck },
     ],
   },
   {
