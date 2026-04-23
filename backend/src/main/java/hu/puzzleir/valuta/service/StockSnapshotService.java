@@ -60,7 +60,7 @@ public class StockSnapshotService {
                     .companyId(companyId)
                     .companyName(companyName)
                     .regions(List.of())
-                    .companyTotals(createEmptyTotals())
+                    .companyTotals(buildCompanyLevelTotals(companyId))  // Fix #154 extended
                     .build();
         }
 
