@@ -107,7 +107,7 @@ public class StockSnapshotService {
                 .companyId(companyId)
                 .companyName(companyName)
                 .regions(regions)
-                .companyTotals(aggregateTotals(allBranches))
+                .companyTotals(buildCompanyLevelTotals(companyId))
                 .build();
     }
 
@@ -216,5 +216,28 @@ public class StockSnapshotService {
                 .currencies(CURRENCY_CODES.stream().map(code -> CurrencyStockDetailDto.builder().currencyCode(code).build()).collect(Collectors.toList()))
                 .wuBalance(WuBalanceDetailDto.builder().build())
                 .reservations(List.of()).build();
+    }
+
+    private BranchStockTotalsDto buildCompanyLevelTotals(UUID companyId) {
+        List<Object[]> rows = currencyStockRepository.sumCompanyLevelByCurrency(companyId);
+        Map<String, CurrencyStockDetailDto> byCode = new LinkedHashMap<>();
+        for (String code : CURRENCY_CODES) {
+            byCode.put(code, CurrencyStockDetailDto.builder().currencyCode(code).build());
+        }
+        for (Object[] row : rows) {
+            String code = (String) row[0];
+            BigDecimal qty = row[1] != null ? (BigDecimal) row[1] : BigDecimal.ZERO;
+            BigDecimal huf = row[2] != null ? (BigDecimal) row[2] : BigDecimal.ZERO;
+            byCode.put(code, CurrencyStockDetailDto.builder()
+                    .currencyCode(code)
+                    .stock(qty.longValue())
+                    .stockHuf(huf.longValue())
+                    .build());
+        }
+        return BranchStockTotalsDto.builder()
+                .currencies(new ArrayList<>(byCode.values()))
+                .wuBalance(WuBalanceDetailDto.builder().build())
+                .reservations(List.of())
+                .build();
     }
 }

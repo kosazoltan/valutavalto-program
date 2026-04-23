@@ -52,4 +52,8 @@ public interface CurrencyStockRepository extends JpaRepository<CurrencyStock, Lo
            "WHERE cs.entityType = 'CASHIER' " +
            "AND cs.entityId IN :branchIds")
     List<CurrencyStock> findAllByBranchIds(@Param("branchIds") List<String> branchIds);
+    @Query("SELECT cs.currencyCode, SUM(cs.quantity), SUM(cs.quantity * cs.weightedAvgCost) " +
+           "FROM CurrencyStock cs WHERE cs.company.id = :companyId " +
+           "GROUP BY cs.currencyCode ORDER BY cs.currencyCode")
+    List<Object[]> sumCompanyLevelByCurrency(@Param("companyId") UUID companyId);
 }
