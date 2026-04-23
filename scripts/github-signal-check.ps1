@@ -177,6 +177,136 @@ if ($LASTEXITCODE -eq 0) {
     if ($pp -eq "disabled") { $warnings += "push_protection DISABLED a repon" }
 }
 
+# V2 addon szekciok (11-20) - source az AGENTS.md + MULTIMODEL_GITHUB_QUALITY_MANDATE_V2.md
+# Ez a fajl append-elodik a github-signal-check.ps1 vegere, DONTES elott.
+
+# 11. PR state + mergeability polling
+Write-Section "11. PR state + mergeability polling (V2)"
+$prDet = & gh api "/repos/$OWNER/$REPO/pulls/$PR" 2>&1
+if ($LASTEXITCODE -eq 0) {
+    $pd = $prDet | ConvertFrom-Json
+    Write-Host "  mergeable: $($pd.mergeable) | mergeable_state: $($pd.mergeable_state)"
+    if ($pd.state -ne 'open' -and -not $pd.merged) { $blockers += "PR state!=open (#11)" }
+    if ($pd.draft -eq $true) { $blockers += "PR draft (#11)" }
+    if ($pd.mergeable -eq $false) { $blockers += "mergeable=false (#11)" }
+    if ($null -eq $pd.mergeable) { $warnings += "mergeable=null POLLING (#11)" }
+}
+
+# 12. Legacy Commit Statuses
+Write-Section "12. Legacy Commit Statuses API"
+$leg = & gh api "/repos/$OWNER/$REPO/commits/$HEAD_SHA/status" 2>&1
+if ($LASTEXITCODE -eq 0) {
+    $legacy = $leg | ConvertFrom-Json
+    Write-Host "  combined state: $($legacy.state) | total: $($legacy.total_count)"
+    if ($legacy.state -eq 'failure' -and $legacy.total_count -gt 0) { $blockers += "Legacy state=failure (#12)" }
+    elseif ($legacy.state -eq 'pending' -and $legacy.total_count -gt 0) { $warnings += "Legacy state=pending (#12)" }
+}
+
+# 13. Workflow runs (failed detailed)
+Write-Section "13. Workflow runs (failed)"
+$runsRawV2 = & gh api "/repos/$OWNER/$REPO/actions/runs?head_sha=$HEAD_SHA&per_page=10" 2>&1
+$failedRunsV2 = @()
+if ($LASTEXITCODE -eq 0) {
+    $rdV2 = $runsRawV2 | ConvertFrom-Json
+    $failedRunsV2 = @($rdV2.workflow_runs | Where-Object { $_.conclusion -in @('failure','timed_out','cancelled') })
+    foreach ($fr in $failedRunsV2) {
+        Write-Host "  [FAILED] $($fr.name) - run #$($fr.run_number)" -ForegroundColor Red
+        $blockers += "Workflow FAIL: $($fr.name) (#13)"
+    }
+    if ($failedRunsV2.Count -eq 0) { Write-Host "  (nincs bukott run)" -ForegroundColor Green }
+}
+
+# 14. GraphQL review threads
+Write-Section "14. Review threadek (GraphQL isResolved)"
+$gqlQ = 'query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$number){reviewThreads(first:100){nodes{isResolved isOutdated}}}}}'
+$gqlRaw = & gh api graphql -f "query=$gqlQ" -F "owner=$OWNER" -F "repo=$REPO" -F "number=$PR" 2>&1
+if ($LASTEXITCODE -eq 0) {
+    try {
+        $gql = $gqlRaw | ConvertFrom-Json
+        $threads = $gql.data.repository.pullRequest.reviewThreads.nodes
+        if ($threads) {
+            $unresolved = @($threads | Where-Object { $_.isResolved -eq $false })
+            Write-Host "  threads: $($threads.Count) | unresolved: $($unresolved.Count)"
+            if ($unresolved.Count -gt 0) { $blockers += "$($unresolved.Count) unresolved thread (#14)" }
+        } else { Write-Host "  (nincs thread)" -ForegroundColor DarkGray }
+    } catch { Write-Host "  (GraphQL nem parseolhato)" -ForegroundColor DarkGray }
+}
+
+# 15. Rulesets + branch protection
+Write-Section "15. Rulesets + branch protection"
+$rsAccess = Test-GhApiAccess -Path "/repos/$OWNER/$REPO/rulesets?includes_parents=true"
+if ($rsAccess -eq 'OK') {
+    $rs = Invoke-GhApi -Path "/repos/$OWNER/$REPO/rulesets?includes_parents=true" -JqFilter '.[] | {name,target,enforcement}'
+    foreach ($r in $rs) {
+        Write-Host "  [$($r.enforcement)] $($r.name)"
+        if ($r.enforcement -eq 'evaluate') { $warnings += "Ruleset enforcement=evaluate (#15)" }
+    }
+    if ($rs.Count -eq 0) { $warnings += "nincs ruleset (#15)" }
+}
+$bpAccess = Test-GhApiAccess -Path "/repos/$OWNER/$REPO/branches/main/protection"
+if ($bpAccess -eq 'OK') {
+    $bp = & gh api "/repos/$OWNER/$REPO/branches/main/protection" 2>&1 | ConvertFrom-Json
+    Write-Host "  main allow_force_pushes: $($bp.allow_force_pushes.enabled)"
+    if ($bp.allow_force_pushes.enabled -eq $true) { $warnings += "allow_force_pushes=true (#15)" }
+}
+
+# 16. Dependency diff + slopsquatting
+Write-Section "16. Dependency diff (slopsquatting)"
+$df = & gh api "/repos/$OWNER/$REPO/pulls/$PR/files?per_page=100" 2>&1
+$lockfiles = @(); $manifests = @(); $filesV2 = @()
+if ($LASTEXITCODE -eq 0) {
+    $filesV2 = $df | ConvertFrom-Json
+    $lockfiles = @($filesV2 | Where-Object { $_.filename -match '(package-lock\.json|pnpm-lock\.yaml|yarn\.lock|Cargo\.lock|poetry\.lock|Pipfile\.lock|go\.sum)$' })
+    foreach ($f in $lockfiles) {
+        Write-Host "  lockfile: $($f.filename) (+$($f.additions) -$($f.deletions))" -ForegroundColor Yellow
+        $warnings += "Lockfile diff audit: $($f.filename) (#16)"
+    }
+    if ($lockfiles.Count -eq 0) { Write-Host "  (nincs lockfile diff)" -ForegroundColor Green }
+    $manifests = @($filesV2 | Where-Object { $_.filename -match '(package\.json|pom\.xml|pyproject\.toml|requirements\.txt|Cargo\.toml|go\.mod)$' })
+}
+
+# 17. Lockfile integrity
+Write-Section "17. Lockfile integrity (manifest lockfile nelkul TILOS)"
+if ($manifests.Count -gt 0 -and $lockfiles.Count -eq 0) {
+    Write-Host "  MANIFEST lockfile nelkul!" -ForegroundColor Red
+    $blockers += "Manifest lockfile nelkul TILOS (#17)"
+} else { Write-Host "  (OK)" -ForegroundColor Green }
+
+# 18. Actions hardening
+Write-Section "18. Workflow hardening check"
+if ($filesV2.Count -gt 0) {
+    $wf = @($filesV2 | Where-Object { $_.filename -match '^\.github/workflows/.*\.ya?ml$' })
+    foreach ($w in $wf) {
+        Write-Host "  workflow: $($w.filename)" -ForegroundColor Yellow
+        $warnings += "Workflow audit (permissions, SHA-pin): $($w.filename) (#18)"
+    }
+    if ($wf.Count -eq 0) { Write-Host "  (nincs workflow diff)" -ForegroundColor Green }
+}
+
+# 19. Release attestation
+Write-Section "19. Release artifact attestation"
+$relRaw = & gh api "/repos/$OWNER/$REPO/releases/latest" 2>&1
+if ($LASTEXITCODE -eq 0) {
+    $rel = $relRaw | ConvertFrom-Json
+    Write-Host "  Utolso release: $($rel.tag_name)"
+    Write-Host "  (gh attestation verify release-elott kotelezo)" -ForegroundColor DarkGray
+} else { Write-Host "  (nincs release)" -ForegroundColor DarkGray }
+
+# 20. Bizonyitasi minimum + Dep Review
+Write-Section "20. Bizonyitasi minimum + Dep Review"
+$baseRef = if ($prInfo.baseRefName) { $prInfo.baseRefName } else { 'main' }
+$drvAccess = Test-GhApiAccess -Path "/repos/$OWNER/$REPO/dependency-graph/compare/$baseRef...$HEAD_SHA"
+if ($drvAccess -eq 'OK') {
+    $drv = Invoke-GhApi -Path "/repos/$OWNER/$REPO/dependency-graph/compare/$baseRef...$HEAD_SHA" -JqFilter '.[] | select(.vulnerabilities != null and (.vulnerabilities | length) > 0) | {name:.name,severity:(.vulnerabilities[0].severity),change_type:.change_type}'
+    foreach ($d in $drv) {
+        if ($d.severity -in @('high','critical')) { $blockers += "Dep review $($d.severity): $($d.name) (#20)" }
+    }
+    if ($drv.Count -eq 0) { Write-Host "  (nincs vulnerable dep)" -ForegroundColor Green }
+}
+$ev = [ordered]@{ model = "Claude Opus 4.7"; mandate = "V2"; timestamp = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssK"); pr = "#$PR ($OWNER/$REPO)"; head_sha = $HEAD_SHA; blockers = $blockers.Count; warnings = $warnings.Count }
+$ev.GetEnumerator() | ForEach-Object { Write-Host ("  " + $_.Key.PadRight(12) + ": " + $_.Value) }
+
+
 # Final decision
 Write-Section "DONTES"
 if ($warnings.Count -gt 0) {

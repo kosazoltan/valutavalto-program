@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Opus 4.7 GitHub quality mandate - pre-push lokalis kapu (lint + typecheck + test + build).
 
@@ -121,6 +121,16 @@ if ($SkipBackend) {
         } finally { Pop-Location }
     }
 }
+
+# 3. LOCKFILE INTEGRITY (V2 #17)
+Write-Step "3. Lockfile integrity (V2 #17)"
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'lockfile-integrity-check.ps1')
+if ($LASTEXITCODE -ne 0) { $failed += "lockfile integrity" }
+
+# 4. ACTIONS HARDENING (V2 #18)
+Write-Step "4. GitHub Actions hardening (V2 #18)"
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'actions-hardening-check.ps1')
+if ($LASTEXITCODE -ne 0) { $failed += "actions hardening" }
 
 # 3. SUMMARY
 Write-Step "Eredmeny"
