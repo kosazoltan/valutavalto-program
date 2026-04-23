@@ -5,24 +5,29 @@ import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 
 /**
- * LicenseResponse shape (backend: LicenseService.getCurrentLicense)
- *
- * Fix #146+ live UI test: a korabbi safeArray<LicenseItem[]> uresre esett
- * mert a backend egy LicenseResponse OBJEKTUMOT ad vissza (nem array).
+ * Fix #148 live UI re-test P1: LicenseResponse tenyleges mezonevek:
+ *   - validTo (nem validUntil)
+ *   - isActive, maxBranches, maxWorkers, remainingDays, status
+ *   - features: STRING (nem array!) - valoszinuleg vesszo-separated
  */
 interface LicenseResponse {
   id?: string | number
+  companyId?: string | number
   licenseKey?: string
-  licenseCode?: string
-  branchName?: string
-  companyName?: string
   validFrom?: string
-  validUntil?: string
-  active?: boolean
+  validTo?: string
+  maxBranches?: number
+  maxWorkers?: number
+  features?: string
   isActive?: boolean
-  type?: string
-  maxUsers?: number
-  features?: string[]
+  status?: string
+  remainingDays?: number
+}
+
+function parseFeatures(s: string | undefined): string[] {
+  if (!s) return []
+  // Comma, semicolon vagy pipe separator fallback
+  return s.split(/[,;|]/).map(x => x.trim()).filter(Boolean)
 }
 
 export default function LicensePage() {
@@ -46,11 +51,10 @@ export default function LicensePage() {
     }
   }, [])
 
-  useEffect(() => {
-    void loadData()
-  }, [loadData])
+  useEffect(() => { void loadData() }, [loadData])
 
-  const active = license?.active ?? license?.isActive ?? false
+  const active = license?.isActive ?? false
+  const features = parseFeatures(license?.features)
 
   return (
     <div className="form-panel space-y-4">
@@ -61,7 +65,7 @@ export default function LicensePage() {
         </h1>
         <div className="flex items-center gap-2">
           <button onClick={() => void loadData()} className="form-button p-2" title="Frissites">
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
           </button>
         </div>
       </div>
@@ -85,21 +89,21 @@ export default function LicensePage() {
             ) : (
               <><XCircle className="h-5 w-5 text-red-600" /> <span className="font-semibold text-red-700">Inaktiv</span></>
             )}
+            {license.status && <span className="text-sm text-gray-500 ml-2">({license.status})</span>}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-            <div><span className="text-gray-500">Kulcs / Kod:</span> <span className="font-mono">{license.licenseKey ?? license.licenseCode ?? '-'}</span></div>
-            <div><span className="text-gray-500">Tipus:</span> {license.type ?? '-'}</div>
-            <div><span className="text-gray-500">Ceg:</span> {license.companyName ?? '-'}</div>
-            <div><span className="text-gray-500">Penztar:</span> {license.branchName ?? '-'}</div>
+            <div><span className="text-gray-500">Kulcs:</span> <span className="font-mono">{license.licenseKey ?? '-'}</span></div>
             <div><span className="text-gray-500">Ervenyes:</span> {license.validFrom ? new Date(license.validFrom).toLocaleDateString('hu-HU') : '-'}</div>
-            <div><span className="text-gray-500">Lejar:</span> {license.validUntil ? new Date(license.validUntil).toLocaleDateString('hu-HU') : '-'}</div>
-            {license.maxUsers != null && <div><span className="text-gray-500">Max user:</span> {license.maxUsers}</div>}
+            <div><span className="text-gray-500">Lejar:</span> {license.validTo ? new Date(license.validTo).toLocaleDateString('hu-HU') : '-'}</div>
+            {license.remainingDays != null && <div><span className="text-gray-500">Hatralevo napok:</span> <b>{license.remainingDays}</b></div>}
+            {license.maxBranches != null && <div><span className="text-gray-500">Max penztari egyseg:</span> {license.maxBranches}</div>}
+            {license.maxWorkers != null && <div><span className="text-gray-500">Max dolgozo:</span> {license.maxWorkers}</div>}
           </div>
-          {license.features && license.features.length > 0 && (
+          {features.length > 0 && (
             <div>
               <div className="text-gray-500 text-sm mb-1">Feature-ek:</div>
               <div className="flex flex-wrap gap-1">
-                {license.features.map((f) => (
+                {features.map((f) => (
                   <span key={f} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">{f}</span>
                 ))}
               </div>

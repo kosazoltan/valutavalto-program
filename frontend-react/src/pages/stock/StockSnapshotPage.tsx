@@ -5,40 +5,57 @@ import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 
 /**
- * StockSnapshotDto shape (backend: /api/v1/stock-snapshot):
- * {
- *   snapshotTime, companyId, companyName,
- *   regions: [{ regionName, branches: [{ branchId, branchName, totals: {...} }] }],
- *   companyTotals: { totalValueHuf, currencyCount, ... }
- * }
+ * StockSnapshotDto shape (backend dto/stocksnapshot/*):
+ *   { snapshotTime, companyId, companyName,
+ *     regions: [RegionSnapshotDto],
+ *     companyTotals: BranchStockTotalsDto }
  *
- * Fix #146+ live UI test:
- *  - URL javitas: /stock-snapshots (plural, 404) -> /stock-snapshot (singular, backend matching)
- *  - Objektum kezelesi: safeArray helyett single DTO (regionok + company totals)
+ * RegionSnapshotDto: { regionCode, regionName, branches: [BranchSnapshotDto], totals }
+ * BranchSnapshotDto: { branchId, branchName, branchCode, lastUpdated,
+ *                      currencies: [CurrencyStockDetailDto],
+ *                      wuBalance, reservations }
+ * BranchStockTotalsDto: { currencies, wuBalance, reservations }
+ * CurrencyStockDetailDto: { currencyCode, amount, valueHuf, ... }
+ *
+ * Fix #148 re-verify: a korabbi feltetelezes (totals.totalValueHuf) rossz volt.
+ * A totals valojaban currencies LIST-et tartalmaz, az aggregalt HUF ertek
+ * a currencies[].valueHuf osszege.
  */
-interface BranchTotals {
-  totalValueHuf?: number
-  currencyCount?: number
+interface CurrencyStockDetail {
+  currencyCode?: string
+  amount?: number | string
+  valueHuf?: number | string
 }
-
-interface BranchStock {
+interface BranchStockTotals {
+  currencies?: CurrencyStockDetail[]
+}
+interface BranchSnapshot {
   branchId?: string
   branchName?: string
-  totals?: BranchTotals
+  branchCode?: string
+  lastUpdated?: string
+  currencies?: CurrencyStockDetail[]
 }
-
 interface RegionSnapshot {
+  regionCode?: string
   regionName?: string
-  branches?: BranchStock[]
-  regionTotals?: BranchTotals
+  branches?: BranchSnapshot[]
+  totals?: BranchStockTotals
 }
-
 interface StockSnapshot {
   snapshotTime?: string
   companyId?: string
   companyName?: string
   regions?: RegionSnapshot[]
-  companyTotals?: BranchTotals
+  companyTotals?: BranchStockTotals
+}
+
+function sumHuf(currencies: CurrencyStockDetail[] | undefined): number {
+  if (!currencies) return 0
+  return currencies.reduce((sum, c) => {
+    const v = typeof c.valueHuf === 'string' ? Number(c.valueHuf) : (c.valueHuf ?? 0)
+    return sum + (Number.isNaN(v) ? 0 : v)
+  }, 0)
 }
 
 function formatHuf(v: number | string | undefined): string {
@@ -55,23 +72,17 @@ export default function StockSnapshotPage() {
 
   const loadData = useCallback(async () => {
     try {
-      setLoading(true)
-      setError(null)
+      setLoading(true); setError(null)
       const response = await api.get<StockSnapshot>('/stock-snapshot')
       setSnapshot(response.data ?? null)
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('StockSnapshotPage', 'Betoltesi hiba:', err)
-      setError(msg)
-      setSnapshot(null)
-    } finally {
-      setLoading(false)
-    }
+      setError(msg); setSnapshot(null)
+    } finally { setLoading(false) }
   }, [])
 
-  useEffect(() => {
-    void loadData()
-  }, [loadData])
+  useEffect(() => { void loadData() }, [loadData])
 
   async function downloadExcel() {
     try {
@@ -81,14 +92,13 @@ export default function StockSnapshotPage() {
       })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
-      a.href = url
-      a.download = 'keszlet-export-' + new Date().toISOString().slice(0, 10) + '.xlsx'
+      a.href = url; a.download = 'keszlet-export-' + new Date().toISOString().slice(0, 10) + '.xlsx'
       document.body.appendChild(a); a.click(); a.remove()
       URL.revokeObjectURL(url)
-    } catch (err) {
-      setError(getErrorMessage(err))
-    }
+    } catch (err) { setError(getErrorMessage(err)) }
   }
+
+  const companyTotal = snapshot?.companyTotals ? sumHuf(snapshot.companyTotals.currencies) : 0
 
   return (
     <div className="form-panel space-y-4">
@@ -123,37 +133,45 @@ export default function StockSnapshotPage() {
           <div className="bg-white rounded shadow p-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
             <div><span className="text-gray-500">Ceg:</span> <b>{snapshot.companyName ?? '-'}</b></div>
             <div><span className="text-gray-500">Snapshot ido:</span> {snapshot.snapshotTime ? new Date(snapshot.snapshotTime).toLocaleString('hu-HU') : '-'}</div>
-            <div><span className="text-gray-500">Osszes HUF ertek:</span> <b className="font-mono">{formatHuf(snapshot.companyTotals?.totalValueHuf)}</b></div>
+            <div><span className="text-gray-500">Osszes HUF ertek:</span> <b className="font-mono">{formatHuf(companyTotal)}</b></div>
           </div>
 
-          {(snapshot.regions ?? []).map((region, ri) => (
-            <div key={(region.regionName ?? 'r') + ri} className="bg-white rounded shadow">
-              <div className="bg-gray-50 px-4 py-2 border-b">
-                <h2 className="font-semibold">{region.regionName ?? 'Regio'}</h2>
-                <div className="text-xs text-gray-500">
-                  Regio osszesen: {formatHuf(region.regionTotals?.totalValueHuf)} / {region.branches?.length ?? 0} penztar
+          {(snapshot.regions ?? []).map((region, ri) => {
+            const regionTotal = sumHuf(region.totals?.currencies)
+            return (
+              <div key={(region.regionCode ?? 'r') + ri} className="bg-white rounded shadow">
+                <div className="bg-gray-50 px-4 py-2 border-b">
+                  <h2 className="font-semibold">{region.regionName ?? region.regionCode ?? 'Regio'}</h2>
+                  <div className="text-xs text-gray-500">
+                    Regio osszesen: {formatHuf(regionTotal)} / {region.branches?.length ?? 0} penztar
+                  </div>
                 </div>
-              </div>
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Penztar</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">Osszes ertek (HUF)</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">Valutak szama</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {(region.branches ?? []).map((b) => (
-                    <tr key={b.branchId} className="hover:bg-gray-50">
-                      <td className="px-4 py-2 text-sm">{b.branchName ?? '-'}</td>
-                      <td className="px-4 py-2 text-right text-sm font-mono">{formatHuf(b.totals?.totalValueHuf)}</td>
-                      <td className="px-4 py-2 text-right text-sm">{b.totals?.currencyCount ?? '-'}</td>
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Penztar</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Utolso frissites</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">HUF ertek</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">Valutak</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ))}
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {(region.branches ?? []).map((b) => {
+                      const branchTotal = sumHuf(b.currencies)
+                      return (
+                        <tr key={b.branchId} className="hover:bg-gray-50">
+                          <td className="px-4 py-2 text-sm">{b.branchName ?? b.branchCode ?? '-'}</td>
+                          <td className="px-4 py-2 text-sm">{b.lastUpdated ? new Date(b.lastUpdated).toLocaleString('hu-HU') : '-'}</td>
+                          <td className="px-4 py-2 text-right text-sm font-mono">{formatHuf(branchTotal)}</td>
+                          <td className="px-4 py-2 text-right text-sm">{b.currencies?.length ?? 0}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
