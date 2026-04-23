@@ -43,6 +43,7 @@ public class VaultTransferService {
     private final VaultTransferRepository vaultTransferRepository;
     private final CurrencyStockRepository currencyStockRepository;
     private final VaultTerritoryRepository vaultTerritoryRepository;
+    private final VaultStockFlowService vaultStockFlowService;  // v2.2.2 hotfix
 
     @Transactional(readOnly = true)
     public List<VaultTransferResponseDto> getTransfers() {
@@ -184,18 +185,36 @@ public class VaultTransferService {
             targetId = transfer.getTargetBranchCode();
         }
 
-        // Forrásból kivesszük
-        CurrencyStock sourceStock = currencyStockRepository.findForUpdate(
-                companyId, sourceType, sourceId, transfer.getCurrencyCode())
-                .orElseThrow(() -> new IllegalStateException(
-                        "Forrás készlet nem található: " + sourceType + "/" + sourceId + "/" + transfer.getCurrencyCode()));
+        // v2.2.2 hotfix: branch -> branch eseten a CashBalance-t hasznaljuk (nem CurrencyStock-ot),
+        // mert a penztar szintjen a CashBalance a hivatalos nyilvantartas,
+        // nem a WAC-alapu CurrencyStock. A VAULT resztveszos atteteleknel
+        // marad az eredeti WAC logika.
+        boolean isBranchToBranch = "CASHIER".equals(sourceType) && "CASHIER".equals(targetType);
 
-        BigDecimal wacAtIssue = sourceStock.issueStock(transfer.getAmount());
-        transfer.setWacAtTransfer(wacAtIssue);
+        if (isBranchToBranch) {
+            // CashBalance alapu transfer (nem WAC)
+            vaultStockFlowService.applyTransfer(
+                    companyId,
+                    transfer.getSourceBranchCode(),
+                    transfer.getTargetBranchCode(),
+                    transfer.getCurrencyCode(),
+                    transfer.getAmount()
+            );
+            // WAC tracking nem ertelmes branch-branch-en, 0-ra allitjuk
+            transfer.setWacAtTransfer(BigDecimal.ZERO);
+        } else {
+            // Eredeti VAULT-CASHIER / VAULT-VAULT logika (CurrencyStock + WAC)
+            CurrencyStock sourceStock = currencyStockRepository.findForUpdate(
+                    companyId, sourceType, sourceId, transfer.getCurrencyCode())
+                    .orElseThrow(() -> new IllegalStateException(
+                            "Forrás készlet nem található: " + sourceType + "/" + sourceId + "/" + transfer.getCurrencyCode()));
 
-        // Célba betesszük az átadó WAC-ján
-        CurrencyStock targetStock = getOrCreateStock(companyId, targetType, targetId, transfer.getCurrencyCode());
-        targetStock.receiveStock(transfer.getAmount(), wacAtIssue);
+            BigDecimal wacAtIssue = sourceStock.issueStock(transfer.getAmount());
+            transfer.setWacAtTransfer(wacAtIssue);
+
+            CurrencyStock targetStock = getOrCreateStock(companyId, targetType, targetId, transfer.getCurrencyCode());
+            targetStock.receiveStock(transfer.getAmount(), wacAtIssue);
+        }
 
         // Státusz frissítés
         transfer.setStatus(VaultOperationStatus.COMPLETED);
@@ -205,7 +224,7 @@ public class VaultTransferService {
 
         log.info("Áttétel végrehajtva: {} - {} {} (WAC: {}), {} → {}",
                 transfer.getTransferNumber(), transfer.getAmount(), transfer.getCurrencyCode(),
-                wacAtIssue, sourceType + "/" + sourceId, targetType + "/" + targetId);
+                transfer.getWacAtTransfer(), sourceType + "/" + sourceId, targetType + "/" + targetId);
 
         return toDto(vaultTransferRepository.save(transfer));
     }

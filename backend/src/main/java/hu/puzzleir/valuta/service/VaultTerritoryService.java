@@ -6,6 +6,9 @@ import hu.puzzleir.valuta.entity.VaultTerritory;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.CompanyRepository;
+import hu.puzzleir.valuta.entity.Company;
+import hu.puzzleir.valuta.entity.CurrencyStock;
+import hu.puzzleir.valuta.repository.CurrencyStockRepository;
 import hu.puzzleir.valuta.repository.VaultTerritoryRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +29,7 @@ public class VaultTerritoryService {
 
     private final VaultTerritoryRepository vaultTerritoryRepository;
     private final CompanyRepository companyRepository;
+    private final CurrencyStockRepository currencyStockRepository;  // v2.2.2 hotfix
 
     @Transactional(readOnly = true)
     public List<VaultTerritory> getAll() {
@@ -82,6 +86,23 @@ public class VaultTerritoryService {
         VaultTerritory saved = vaultTerritoryRepository.save(territory);
         log.info("Uj vault_territory letrehozva: id={}, name={}, company={}",
                 saved.getId(), saved.getName(), companyId);
+
+        // v2.2.2 hotfix: HUF CurrencyStock auto-init a baseCapital-lal,
+        // hogy a VaultBankTransaction.createBankTransaction BUY ne dobjon 500-at.
+        if (saved.getBaseCapital() != null && saved.getBaseCapital().signum() > 0) {
+            CurrencyStock hufStock = CurrencyStock.builder()
+                    .company(Company.builder().id(companyId).build())
+                    .entityType("VAULT")
+                    .entityId(saved.getId().toString())
+                    .currencyCode("HUF")
+                    .quantity(saved.getBaseCapital())
+                    .weightedAvgCost(java.math.BigDecimal.ONE)
+                    .lastUpdated(java.time.LocalDateTime.now())
+                    .build();
+            currencyStockRepository.save(hufStock);
+            log.info("Vault HUF stock inicializalva: territory={}, baseCapital={}",
+                    saved.getId(), saved.getBaseCapital());
+        }
         return saved;
     }
 }

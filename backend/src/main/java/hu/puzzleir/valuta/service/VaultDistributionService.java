@@ -29,6 +29,7 @@ public class VaultDistributionService {
 
     private final VaultDistributionRepository vaultDistributionRepository;
     private final BranchRepository branchRepository;
+    private final VaultStockFlowService vaultStockFlowService;  // v2.2.2 hotfix
 
     @Transactional(readOnly = true)
     public List<DistributionResponseDto> getDistributions() {
@@ -82,9 +83,25 @@ public class VaultDistributionService {
                 .filter(d -> d.getCompanyId().equals(companyId))
                 .orElseThrow(() -> new ResourceNotFoundException("Szétosztás nem található: " + id));
 
+        VaultOperationStatus oldStatus = distribution.getStatus();
         distribution.setStatus(newStatus);
         if (newStatus == VaultOperationStatus.COMPLETED) {
             distribution.setCompletedAt(LocalDateTime.now());
+
+            // v2.2.2 hotfix: COMPLETED statuszra valtaskor a kenyleges
+            // keszletmozgas bejegyzese per line (vault CurrencyStock -= amount,
+            // target branch cash_balance += amount). Idempotent: csak ha
+            // valtott COMPLETED-re.
+            if (oldStatus != VaultOperationStatus.COMPLETED) {
+                for (VaultDistributionLine line : distribution.getLines()) {
+                    vaultStockFlowService.applyDistributionLine(
+                            companyId,
+                            line.getTargetBranchCode(),
+                            line.getCurrencyCode(),
+                            line.getAmount()
+                    );
+                }
+            }
         }
 
         return toDto(vaultDistributionRepository.save(distribution));
