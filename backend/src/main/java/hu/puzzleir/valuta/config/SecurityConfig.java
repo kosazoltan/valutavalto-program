@@ -54,6 +54,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/email/accounts/callback").permitAll()
                 .requestMatchers("/api/v1/error-report", "/api/v1/error-log").permitAll()
                 .requestMatchers("/api/v1/version").permitAll()
+                .requestMatchers("/api/v1/features").permitAll()
 
                 // Health check — csak health és info, nem az összes actuator endpoint
                 .requestMatchers("/actuator/health", "/actuator/info").permitAll()

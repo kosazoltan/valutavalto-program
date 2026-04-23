@@ -17,9 +17,11 @@ import {
 import { useAppMode } from '../hooks/useAppMode'
 
 import { menuGroups, SZERVER_ROLES } from "./menuGroups"
+import { useFeatureFlags } from "../hooks/useFeatureFlags"
 import TransitBadge from "../components/TransitBadge"
 
 export default function MainLayout() {
+  const featureFlags = useFeatureFlags()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sessionChecking, setSessionChecking] = useState(true)
   const [sessionReady, setSessionReady] = useState(false)
@@ -166,6 +168,7 @@ export default function MainLayout() {
           {menuGroups
             .filter((group) => !group.modes || (group.modes as readonly string[]).includes(appMode))
             .filter((group) => hasSupervisoryAccess || !group.canonicalRoles || (group.canonicalRoles as readonly string[]).some((r) => hasCanonicalRole(r)))
+            .filter((group) => group.label !== "Kamera" || featureFlags.camera)
             .map((group) => (
             <div key={group.label} className="mb-3">
               {sidebarOpen && (
