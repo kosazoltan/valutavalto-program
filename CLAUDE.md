@@ -130,6 +130,18 @@ cd penztar-client && npm test
 - Ez kiterjeszti a jelenlegi PR scope szabalyt — a user szerint minden ismert hiba surgos.
 - Kivetel: ha a javitas tobb napos refactort igenyelne, akkor GitHub Issue-t nyitni + kommentalni a kodban.
 
+
+## V2 AKTIV: Multi-modell GitHub mandate (2026-04-23 este)
+
+- HATALY: Minden Anthropic + OpenAI + Gemini coding agent (NINCS mentesseg)
+- IGAZSAGFORRAS: AGENTS.md (projekt gyoker, modellfuggetlen)
+- KEMENY TILTASOK: AI_CONTRACT.md (300 LOC plafon, test manipulation tilos, Actions hardening)
+- SKILLEK: .claude/skills/{github-quality-gate,ai-review-responder,deploy-verification,agents-md-generator}/
+- GLOBAL MEMORY: ~/.claude/projects/D--repo-valutavalto-program/memory/MULTIMODEL_GITHUB_QUALITY_MANDATE_V2.md (53 KB)
+- OBSIDIAN: docs/obsidian-vault/MANDATE_V2.md
+- QMD+YAML: docs/knowledge/memory/2026-04-23-multi-model-mandate-v2.{qmd,yaml}
+
+A v2 KIEGESZITI a kovetkezo [LEGACY v1] szekciot, NEM helyettesiti. A v1 szekcio 10 kapu + GitHub-jelzes lekerdezesi protokoll resz valtozatlan, viszont a v2 tovabbi 10 protokoll szekcioval bovult (PR state polling, GraphQL threads, rulesets, workflow logs, Actions hardening, SLSA attestation, stb).
 ## KÖTELEZŐ ÉRVÉNYŰ: Opus 4.7 GitHub minőségbiztosítási mandate (v3, 2026-04-23+)
 
 > **User-direktíva:** `C:\Users\Kósa Zoltán\Downloads\opus-4-7-github-push-minosegbiztositas.md` (33 KB, 10 pontos munkaszerződés + GitHub-jelzés lekérdezési protokoll)

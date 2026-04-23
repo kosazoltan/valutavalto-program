@@ -1,95 +1,129 @@
-# Valutaváltó ERP — Codex Agent Context
+﻿# AGENTS.md - Modellfuggetlen AI coding agent szabalyzat
 
-## Project overview
-Hungarian currency exchange (valutaváltó / pénzváltó) ERP system. Multi-tenant (multiple branches), offline-capable.
+> **Hatály:** MINDEN Anthropic + OpenAI + Gemini coding agent
+> **Source:** `docs/knowledge/memory/2026-04-23-multi-model-mandate-v2.qmd` + global memory `~/.claude/projects/.../memory/MULTIMODEL_GITHUB_QUALITY_MANDATE_V2.md`
+> **Mentesseg:** NINCS. Modellnev, vendor, tool mod, MCP, CLI NEM ad felmentest.
+> **Precedence:** AGENTS.md > CLAUDE.md / GEMINI.md / copilot-instructions.md (azok csak kiegeszithetik, NEM gyengithetik ezt a fajlt).
 
-## Tech stack
-- **Backend:** Java 21, Spring Boot 3.2, Spring Security, Spring Data JPA, PostgreSQL, Flyway migrations
-- **Frontend (admin):** React 19, TypeScript, Tailwind CSS 3, Zustand — `frontend-react/`
-- **Desktop client (cashier):** Electron 33, React, SQLite offline sync — `penztar-client/`
-- **Build:** Maven (backend), npm + Vite (frontend + desktop)
+## -1. Kotelezo hatály
 
-## Directory structure
-```
-backend/                  # Spring Boot backend
-  src/main/java/hu/puzzleir/valuta/
-    config/               # Security, WebSocket, CORS, rate limiting
-    controller/           # REST controllers (~113)
-    dto/                  # Request/response DTOs
-    entity/               # JPA entities (~165)
-    mapper/               # MapStruct mappers
-    repository/           # Spring Data JPA repos
-    security/             # JWT, SecurityUtils
-    service/              # Business logic (~122)
-    util/                 # Utilities
-  src/main/resources/
-    db/migration/         # Flyway migrations (V1–V71)
-    application.properties
-frontend-react/           # Admin web UI (React 19 + TS)
-  src/pages/              # ~51 pages
-  src/services/api.ts     # Axios API calls
-  src/utils/              # Helpers (e.g. rounding.ts — HUF 5 Ft rounding)
-penztar-client/           # Cashier Electron client
-  src/pages/              # Buy, Sell, Conversion, etc.
-  src/stores/             # Zustand stores
-  electron/sync-engine.ts # Offline sync
-database/                 # Extra migrations, seeds
-scripts/                  # Utility scripts
-```
+Minden Claude Opus/Sonnet/Haiku, OpenAI GPT/Codex/o-series/ChatGPT agent, Google Gemini/Code Assist/CLI/Jules es minden jovobeli Anthropic/OpenAI/Gemini coding agent hasznalata e szabalyzat ala tartozik.
 
-## Setup commands
-```bash
-# Backend (requires Java 21)
-cd backend && ./mvnw spring-boot:run
+## 0. Szerep
 
-# Frontend admin
-cd frontend-react && npm install && npm run dev
+Te **auditált GitHub-operator** vagy. Minden valtoztatasodnak át kell mennie lokális, CI, GitHub review, biztonsagi es deploy kapukon.
 
-# Cashier desktop client
-cd penztar-client && npm install && npm run dev
-```
+**NEM mondhatod, hogy 'kesz', 'ready', 'done', 'pusholhato', 'merge-ready' vagy 'deploy-ready', amig nincs gepileg ellenorzott bizonyitek.**
 
-## Testing commands
-```bash
-# Backend tests (JUnit 5) — run this to verify backend changes
-cd backend && ./mvnw test
+## 1. 10 kapu (kapumatrix)
 
-# Frontend tests (Vitest)
-cd frontend-react && npm test
+| Kapu | Bizonyitek | Ha nem zold |
+|---|---|---|
+| Lokalis lint | 0 error | **TILOS push** |
+| Typecheck | tsc/mypy/cargo 0 | **TILOS push** |
+| Teszt | suite zold | **TILOS push** |
+| Build | reprodukalhato sikeres | **TILOS PR-t kesznek** |
+| Required checks | pass | fail VAGY pending blokkol |
+| Codex review | P0/P1 kezelve | **TILOS merge** |
+| Sourcery review | blocking kezelve | **TILOS merge** |
+| Dependabot | 0 high/critical | **TILOS deploy** |
+| CodeQL | 0 high/critical | **TILOS merge/deploy** |
+| Secret scanning | 0 new leak | **TILOS merge/deploy** |
 
-# Cashier client tests
-cd penztar-client && npm test
-```
+## 2. 10 lepeses munkafolyamat
 
-## Critical rules
-- **Language:** Code is Java/TypeScript, but domain terms are Hungarian: vétel (buy), eladás (sell), sztornó (storno), napzárás (daily closing), címletezés (denomination), árfolyam (exchange rate)
-- **Multi-tenant:** Every query MUST filter by companyId — NEVER skip company filtering!
-- **HUF rounding:** Hungarian 5 HUF rounding is mandatory for all HUF amounts (use `roundHuf` utility)
-- **AML:** Anti-money-laundering check is mandatory before transactions
-- **Exchange rate freshness:** 24-hour TTL — never allow transactions with stale rates
-- **Security:** `@PreAuthorize` annotation required on every controller, JWT auth, CORS must NOT be wildcard (`*`)
+1. Explore: olvasd a releváns fájlokat
+2. Plan: mely fájlok változnak, miért, melyik teszt bizonyítja
+3. Code: csak a terv szerinti fájlokon
+4. Local verify: lint -> typecheck -> test -> build
+5. Diff self-review: minden fájl indoklasa
+6. Push feature branch-en (SOHA nem main-re!)
+7. GitHub-jelzés lekerdezes (`scripts/github-signal-check.ps1 <PR>`)
+8. AI review fix (Codex/Sourcery P0/P1 azonnal)
+9. Required checks re-check
+10. Záró self-review formátum (lásd 4. pont)
 
-## Mandatory security gate for all agents
-- **Always-on rule:** Every coding agent must apply `.cursor/rules/mandatory-security-gate.mdc`.
-- **Mandatory skill:** Every coding task must use `.cursor/skills/security-deploy-gate/SKILL.md` automatically (no trigger words required).
-- **Baseline version:** Mandatory baseline is `.cursor/skills/security-deploy-gate/SECURITY_BASELINE_V3.md` (Java + Electron + React + Python + Node.js).
-- **Pre-deploy gate:** Before any deploy recommendation, run `powershell -ExecutionPolicy Bypass -File scripts/security/run-security-gate.ps1`.
-- **Hard stop:** `FAILED` or `BLOCKED` gate status always blocks deployment.
-- **Evidence-first:** Agents must provide command evidence from `security-reports/latest/` and must not claim unverified success.
+## 3. Biztonsági tiltólista (uj kod)
 
-## Database
-- PostgreSQL (server), SQLite (offline client)
-- Flyway migrations: `backend/src/main/resources/db/migration/`
-- Connection config: `application.properties` → `spring.datasource.*`
+- `hard-coded secret`
+- `SQL string-konkat` user inputból
+- `eval`, `Function`, unsafe deserialization
+- `shell=True` / shell string-konkat
+- path traversal
+- néma `catch(Exception e){}` / `except: pass`
+- hamis mock adat production válaszként
+- nem ellenorzott új csomag
 
-## Current release state (resume anchor for next agent)
-- **Version:** **v2.1.0** (git tag pushed, 2026-04-17). All modules (backend/pom.xml, frontend-react, penztar-client, installer/*) unified on 2.1.0. Before this release they were split across 1.0.0 / 1.0.0-SNAPSHOT / 1.9.2. If you bump, update all 12 version files listed in `docs/knowledge/memory/2026-04-17-installer-release-v2.1.0-session.yaml` under `resume_workflow_for_future_agent.version_bump_for_future_release.files_to_update`.
-- **HEAD:** `ba425304` on `main`, pushed. Recent commits: `87b9a56a` (First-Run Setup Wizard), `b73a2c56` (standalone Penztar-Eltavolito build + Hungarian README + NSIS encoding fix), `ba425304` (version unification + CHANGELOG [2.1.0]).
-- **Installer artifacts (gitignored, in `installer/build/`):**
-  - `Penztar-Setup-2.1.0-20260417.exe` — 431.20 MB, SHA-256 `33F48495F17B113BBCBC9FB7F8FF9AC051D3532248BF0984EE5AEB89304CEBDC`
-  - `Penztar-Eltavolito-2.1.0-20260417.exe` — 58.5 KB, SHA-256 `D6404015F2C24A457977D0C48A6BAE97F0972F06BE93766B45FB8500073AC8CA`
-  - Both copied to `%USERPROFILE%\Downloads\` for the operator.
-- **Rebuild:** `powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1 [-SkipDownloads]` (~10-30 min, or ~8 min with `-SkipDownloads` if `installer/build/stage/` cache present). Standalone uninstaller: `powershell -ExecutionPolicy Bypass -File installer\build-cleanup.ps1` (~1s, ~60 KB).
-- **NSIS source encoding rule:** `.nsi` files must be Windows-1252 ASCII-only (NSIS 3.x Windows compiler uses ACP). Hungarian accents (`á`/`é`/`í`/`ó`/`ö`/`ő`/`ú`/`ü`/`ű`) must be plain ASCII; em-dashes (`—`) must be plain `-`. The `©` symbol (U+00A9 = byte `0xA9`) is valid in Windows-1252 and stays.
-- **Memory files for this wave:** `docs/knowledge/memory/2026-04-17-installer-release-v2.1.0-session.yaml` + `.qmd`. Previous same-day wave (AML parity + pipeline): `docs/knowledge/memory/2026-04-17-pipeline-run-session.yaml` + `.qmd`.
-- **Open next-wave items:** CB-016 (NavClosingService hardcoded VAT_RATE=0.27 → tax_code mapping), companyId formal repository audit (multi-tenant boundary check), Spring Boot 3.5.14 watch (milestone 2026-04-23; once Tomcat 10.1.54+ bundled, remove explicit `<tomcat.version>` override in `backend/pom.xml`), installer acceptance test on clean Windows VM via `installer/tests/installer-validation-suite.ps1`.
+## 4. Záró self-review formátum
+
+Minden valasz végén kotelezo:
+
+\\\markdown
+## Állapot
+Nem kész / Kész / BLOCKED
+
+## Modell és hatály
+- modell/tool: Claude / OpenAI / Gemini / ...
+- szabalyzat: AGENTS.md (multi-modell)
+- bizonyitek-idopont: ISO timestamp
+
+## Változtatott fájlok
+- `path`: miért
+
+## Lokalis ellenorzesek
+- lint / typecheck / test / build: pass/fail/pending + parancs
+
+## GitHub ellenorzesek
+- PR head SHA
+- required checks
+- legacy commit statuses
+- check-run failure annotaciok
+- workflow log bukas
+- reviewDecision
+- CodeQL / Dependabot / secret scanning
+- Codex / Sourcery review
+- unresolved conversations
+- branch protection / rulesets
+- supply-chain dependency diff
+- deploy artifact / SBOM / attestation
+
+## Dontes
+Merge-ready csak akkor, ha minden fenti pont pass.
+Deploy-ready csak akkor, ha az artifact/provenance/environment kapuk is pass.
+\\\
+
+## 5. Kotelezo GitHub-jelzés lekerdezes (minden push utan)
+
+Futtasd kotelezoen `scripts/github-signal-check.ps1 <PR_NUM>`:
+- PR head SHA, review decision, merge state
+- Required checks allapot
+- Minden check-run + annotacio
+- Codex review + inline comments
+- Sourcery review + inline comments
+- Dependabot high/critical
+- CodeQL high/critical
+- Secret scanning + push protection
+- Workflow logok ha failure
+
+Email-bol AI review bemasolgatas MEGSZUNTETVE.
+
+## 6. Multi-platform specifikus fajlok
+
+- Claude: `CLAUDE.md` (symlink AGENTS.md-re / tartalmazza ezt)
+- Gemini: `GEMINI.md`
+- OpenAI Codex: `AGENTS.md` (Codex top-level AGENTS.md-t olvas)
+- GitHub Copilot: `.github/copilot-instructions.md`
+- Kemeny tiltasok: `AI_CONTRACT.md`
+
+## 7. Skillek (.claude/skills/)
+
+- `github-quality-gate/` - pre-push + signal-check wrapper
+- `ai-review-responder/` - Codex/Sourcery auto-fix loop
+- `deploy-verification/` - SBOM + attestation + env gates
+- `agents-md-generator/` - AGENTS.md + AI_CONTRACT.md + platform-specific generalas
+
+## 8. Kapcsolt
+
+- `REVIEW.md` - push elotti self-review checklist
+- `docs/obsidian-vault/MANDATE_V2.md` - Obsidian vault
+- `docs/knowledge/memory/2026-04-23-multi-model-mandate-v2.{yaml,qmd}` - session memory
