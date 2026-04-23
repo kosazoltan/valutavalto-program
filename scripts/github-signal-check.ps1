@@ -241,7 +241,7 @@ if ($LASTEXITCODE -eq 0) {
         Write-Host "  [$($r.enforcement)] $($r.name)"
         if ($r.enforcement -eq 'evaluate') { $warnings += "Ruleset enforcement=evaluate (#15)" }
     }
-    if ($rs.Count -eq 0) { $warnings += "nincs ruleset (#15)" }
+    if (-not $rs -or @($rs).Count -eq 0) { $warnings += "nincs ruleset (#15)" }
 }
 $bpRaw = & gh api "/repos/$OWNER/$REPO/branches/main/protection" 2>&1
 if ($LASTEXITCODE -eq 0) {
