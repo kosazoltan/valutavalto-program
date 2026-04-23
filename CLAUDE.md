@@ -1,4 +1,4 @@
-# Valutaváltó ERP — Claude Code kontextus
+﻿# Valutaváltó ERP — Claude Code kontextus
 
 ## Projekt áttekintés
 Magyar valutaváltó / pénzváltó ERP rendszer. Multi-tenant (több iroda), offline-képes.
@@ -130,6 +130,68 @@ cd penztar-client && npm test
 - Ez kiterjeszti a jelenlegi PR scope szabalyt — a user szerint minden ismert hiba surgos.
 - Kivetel: ha a javitas tobb napos refactort igenyelne, akkor GitHub Issue-t nyitni + kommentalni a kodban.
 
+## KÖTELEZŐ ÉRVÉNYŰ: Opus 4.7 GitHub minőségbiztosítási mandate (v3, 2026-04-23+)
+
+> **User-direktíva:** `C:\Users\Kósa Zoltán\Downloads\opus-4-7-github-push-minosegbiztositas.md` (33 KB, 10 pontos munkaszerződés + GitHub-jelzés lekérdezési protokoll)
+> **Globális memória:** `C:\Users\Kósa Zoltán\.claude\projects\D--repo-valutavalto-program\memory\OPUS_GITHUB_QUALITY_MANDATE.md` (automatikusan betöltött MEMORY.md index első sora)
+> **Projekt checklist:** `REVIEW.md` (minden push elott kovetendo)
+
+### Alapelv
+Opus nem „programozó asszisztensként”, hanem **auditált GitHub-operátorként** dolgozik. **NINCS** „kész”, „ready”, „done”, „pusholható”, „merge-ready”, „deploy-ready” deklaráció gépileg ellenőrzött bizonyíték nélkül.
+
+### Kapumatriz (10 kapu)
+
+| Kapu | Kötelező bizonyíték | Ha nem zöld |
+|---|---|---|
+| Lokális lint | `lint` 0 error | Tilos pusholni |
+| Typecheck | `tsc --noEmit`, `mypy`, `cargo check` | Tilos pusholni |
+| Teszt | Unit/integration/e2e releváns suite zöld | Tilos pusholni |
+| Build | Reprodukálható build sikeres | Tilos PR-t késznek jelölni |
+| GitHub Checks | Required checks pass/pending/fail lekérdezve | Fail/pending esetén folytatni kell |
+| Codex review | P0/P1 finding nincs / dismissed | Tilos merge-ready |
+| Sourcery review | Security/testing/complexity findingek kezelve | Tilos merge-ready |
+| Dependabot | Nyitott high/critical alert nincs | Tilos deploy |
+| CodeQL | Új open high/critical nincs | Tilos merge/deploy |
+| Secret scanning | Új secret alert / bypass nincs | Tilos merge/deploy |
+
+### Kötelező munkafolyamat (mindig ebben a sorrendben)
+1. **Explore** - releváns fájlok olvasása
+2. **Plan** - mely fájlok változnak, miért, melyik teszt bizonyítja
+3. **Code** - csak a terv szerinti fájlokon
+4. **Local verify** - `lint → typecheck → test → build`
+5. **Diff self-review** - minden fájl indoklása
+6. **Push** feature branch-en
+7. **GitHub jelzés lekérdezés** (`scripts/github-signal-check.ps1 <PR>`)
+8. **AI review fix** (Codex / Sourcery P0/P1 azonnal)
+9. **Required checks újra** - csak zöld állapotban merge
+10. **Záró self-review formátum** (REVIEW.md végén leírt blokk)
+
+### Biztonsági tiltólista (új kód)
+- hard-coded secret / SQL string-konkat input-ból / `eval`/`Function` / `shell=True` / path traversal / néma catch / hamis mock prod-ban / nem ellenőrzött dependency
+
+### Fail loud, never fake
+- Hiány (külső API/DB/service/file/secret) esetén: **explicit error + log**
+- Fallback CSAK `degraded` jelzéssel
+- Tilos úgy tenni mintha élő adat lenne, ha mock/cache van
+
+### AI review jelzések (KÖTELEZŐ módszer változás — user-direktíva)
+**EDDIG:** email-ben érkezik review → user bemásolgatja → agent javítja.  
+**EZENTÚL (MEGSZÜNTETVE a bemásolgatás):** minden PR push után az **agent MAGA** futtatja:
+```bash
+gh api "/repos/kosazoltan/valutavalto-program/pulls/$PR/reviews" --jq '.[] | select((.user.login | ascii_downcase | contains("codex")) or (.user.login | ascii_downcase | contains("sourcery"))) | {reviewer:.user.login,state,body}'
+gh api "/repos/kosazoltan/valutavalto-program/pulls/$PR/comments" --jq '.[] | select((.user.login | ascii_downcase | contains("codex")) or (.user.login | ascii_downcase | contains("sourcery"))) | {user:.user.login,path,line,body}'
+```
+
+### Helper scriptek
+- `scripts/pre-push-quality-gate.ps1` — lint + typecheck + test + build futtatas, exit=0 kell a push-hoz
+- `scripts/github-signal-check.ps1 <PR_NUM>` — osszes GitHub jelzes egyben (required checks, Codex, Sourcery, Dependabot, CodeQL)
+
+### Zéró-tolerancia tiltólista
+- ❌ "Tudtommal működik" / "Szerintem kész"
+- ❌ "Majd a CI kiszűri"
+- ❌ `--no-verify` flag
+- ❌ AI review email → bemásolás → javítás (**megszüntetve**)
+- ❌ "Sikeres a fordítás" ≠ "deploy-ready"
 ## KÖTELEZŐ ÉRVÉNYŰ: push = commit + merge + BRANCH DELETE (v2 szigoritas)
 **2026-04-23 óta kötelező** (user-direktíva, üzletmenet-kritikus, **v2 szigorítás** a branch-halmozódás miatt):
 

@@ -35,7 +35,7 @@ export default function BookingExportPage() {
     try {
       const r = await api.get<BranchDto[]>('/branches')
       setBranches(Array.isArray(r.data) ? r.data : [])
-      if (!branchId && workerBranchId) setBranchId(workerBranchId)
+      setBranchId(prev => prev ? prev : workerBranchId)
     } catch (err) {
       logger.warn('BookingExportPage', 'Branch load failed', err)
     }
