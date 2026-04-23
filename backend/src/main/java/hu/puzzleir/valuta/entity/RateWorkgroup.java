@@ -1,5 +1,7 @@
 package hu.puzzleir.valuta.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import hu.puzzleir.valuta.entity.Branch;
 import jakarta.persistence.*;
 import lombok.*;
@@ -23,6 +25,7 @@ public class RateWorkgroup {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id", nullable = false)
+    @JsonIgnore
     private Company company;
 
     @Column(nullable = false, length = 100)
@@ -52,6 +55,7 @@ public class RateWorkgroup {
     private BigDecimal limit3Boundary;
 
     @ManyToMany
+    @JsonIgnore
     @JoinTable(
         name = "rate_workgroup_branch",
         joinColumns = @JoinColumn(name = "workgroup_id"),
@@ -59,4 +63,11 @@ public class RateWorkgroup {
     )
     @Builder.Default
     private Set<Branch> branches = new HashSet<>();
+
+    /** Fix #146+ live UI test P1: Jackson LazyInit bypass - expose companyId as flat field */
+    @JsonProperty("companyId")
+    @Transient
+    public UUID getCompanyId() {
+        return company != null ? company.getId() : null;
+    }
 }

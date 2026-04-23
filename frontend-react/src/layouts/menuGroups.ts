@@ -105,7 +105,7 @@ export const menuGroups: MenuGroup[] = [
       { path: "/reports/mnb", label: "MNB riportok", icon: FileText },
       { path: "/daily-turnover", label: "Napi forgalom", icon: TrendingUp },
       { path: "/profit", label: "Nyereség (haszon)", icon: TrendingUp },
-      { path: "/stock-snapshots", label: "Készlet pillanatképek", icon: FileText },
+      { path: "/stock-snapshot", label: "Készlet pillanatképek", icon: FileText },
       { path: "/booking-export", label: "Könyvelés export", icon: Download },
     ],
   },

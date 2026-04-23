@@ -1,84 +1,92 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Download, Search, RefreshCw, AlertTriangle } from 'lucide-react'
+import { Download, AlertTriangle } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
-import { safeArray } from '../../utils/safeArray'
+import { useAuthStore } from '../../stores/authStore'
 
-interface BookingExportItem {
-  id: string | number
-  exportType?: string
-  periodStart?: string
-  periodEnd?: string
-  status?: string
-  exportedAt?: string
+/**
+ * Fix #146 live UI test: a korabbi page a nemletezo GET /booking-export-ot
+ * hivta (404). A backend 3 sub-endpointot exposol CSV letoltessel:
+ *  - GET /api/v1/booking/daily?branchId=&date=
+ *  - GET /api/v1/booking/monthly?branchId=&month=YYYY-MM
+ *  - GET /api/v1/booking/inventory?branchId=&date=
+ *
+ * Ezert a page 3-gombos export launcher (branch+datum valaszto + letoltes).
+ */
+
+interface BranchDto {
+  id: string
+  code?: string
+  name: string
 }
 
 export default function BookingExportPage() {
-  const [items, setItems] = useState<BookingExportItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const workerBranchId = useAuthStore((s) => s.worker?.branchId ?? '')
+  const [branches, setBranches] = useState<BranchDto[]>([])
+  const [branchId, setBranchId] = useState<string>(workerBranchId)
+  const [date, setDate] = useState<string>(() => new Date().toISOString().slice(0, 10))
+  const [month, setMonth] = useState<string>(() => new Date().toISOString().slice(0, 7))
+  const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
+  const [info, setInfo] = useState<string | null>(null)
 
-  const loadData = useCallback(async () => {
+  const loadBranches = useCallback(async () => {
     try {
-      setLoading(true)
-      setError(null)
-      const response = await api.get<BookingExportItem[]>('/booking-export')
-      setItems(safeArray<typeof items[0]>(response.data))
+      const r = await api.get<BranchDto[]>('/branches')
+      setBranches(Array.isArray(r.data) ? r.data : [])
+      if (!branchId && workerBranchId) setBranchId(workerBranchId)
+    } catch (err) {
+      logger.warn('BookingExportPage', 'Branch load failed', err)
+    }
+  }, [branchId, workerBranchId])
+
+  useEffect(() => { void loadBranches() }, [loadBranches])
+
+  async function downloadCsv(path: string, params: Record<string, string>, filename: string) {
+    if (!branchId) { setError('Valassz penztari egyseget (branch)'); return }
+    try {
+      setBusy(path); setError(null); setInfo(null)
+      const response = await api.get(path, { params: { branchId, ...params }, responseType: 'blob' })
+      const blob = new Blob([response.data as BlobPart], { type: 'text/csv;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove()
+      URL.revokeObjectURL(url)
+      setInfo('Letoltes: ' + filename)
     } catch (err) {
       const msg = getErrorMessage(err)
-      logger.error('BookingExportPage', 'Betöltési hiba:', err)
+      logger.error('BookingExportPage', 'Export error: ' + path, err)
       setError(msg)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    void loadData()
-  }, [loadData])
-
-  const filtered = items.filter(item => {
-    if (!searchTerm) return true
-    const term = searchTerm.toLowerCase()
-    return Object.values(item).some(v =>
-      v != null && String(v).toLowerCase().includes(term)
-    )
-  })
+    } finally { setBusy(null) }
+  }
 
   return (
     <div className="form-panel space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="form-title flex items-center gap-2">
           <Download className="h-6 w-6" />
-          Konyveles export
+          Konyveles export (CSV)
         </h1>
-        <div className="flex items-center gap-2">
-          <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
       </div>
 
-      <div className="flex items-center gap-2">
-          <div className="flex gap-2">
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-              className="form-input px-2 py-1" />
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-              className="form-input px-2 py-1" />
-          </div>
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Keresés..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="form-input w-full pl-10"
-          />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-white rounded shadow p-4">
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Penztari egyseg</label>
+          <select value={branchId} onChange={(e) => setBranchId(e.target.value)} className="form-input w-full">
+            <option value="">-- Valassz --</option>
+            {branches.map((b) => (
+              <option key={b.id} value={b.id}>{b.name}{b.code ? ' (' + b.code + ')' : ''}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Datum (napi / keszlet)</label>
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="form-input w-full" />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Honap (havi)</label>
+          <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="form-input w-full" />
         </div>
       </div>
 
@@ -88,38 +96,40 @@ export default function BookingExportPage() {
           {error}
         </div>
       )}
+      {info && (
+        <div className="bg-green-50 text-green-700 border border-green-200 rounded p-2 text-sm">{info}</div>
+      )}
 
-      <div className="data-grid overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Tipus</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Idoszak kezdete</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Idoszak vege</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Allapot</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Exportalva</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 bg-white">
-            {loading ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">Nincs adat</td></tr>
-            ) : filtered.map(item => (
-              <tr key={item.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm">{item.exportType ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.periodStart ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.periodEnd ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.status ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.exportedAt ? new Date(item.exportedAt).toLocaleString('hu-HU') : '-'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <button
+          onClick={() => void downloadCsv('/booking/daily', { date }, 'konyveles-napi-' + date + '.csv')}
+          disabled={busy !== null}
+          className="form-button-primary flex items-center justify-center gap-2 py-4"
+        >
+          <Download className="h-5 w-5" />
+          Napi export ({date})
+        </button>
+        <button
+          onClick={() => void downloadCsv('/booking/monthly', { month }, 'konyveles-havi-' + month + '.csv')}
+          disabled={busy !== null}
+          className="form-button-primary flex items-center justify-center gap-2 py-4"
+        >
+          <Download className="h-5 w-5" />
+          Havi export ({month})
+        </button>
+        <button
+          onClick={() => void downloadCsv('/booking/inventory', { date }, 'keszlet-' + date + '.csv')}
+          disabled={busy !== null}
+          className="form-button-primary flex items-center justify-center gap-2 py-4"
+        >
+          <Download className="h-5 w-5" />
+          Keszlet export ({date})
+        </button>
       </div>
 
-      <div className="text-sm text-gray-500">
-        Összesen: {filtered.length} / {items.length}
+      <div className="text-xs text-gray-500">
+        Tipp: a letoltott CSV fajl konvertalhato Excel-be (UTF-8 encoding), vagy kozvetlenul
+        beolvashato a konyvelesi rendszerbe.
       </div>
     </div>
   )

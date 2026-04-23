@@ -533,6 +533,7 @@ export default function App() {
           <Route path="/led-display" element={<LedDisplayPage />} />
           <Route path="/data-import" element={<DataImportPage />} />
           <Route path="/stamps" element={<StampPage />} />
+          <Route path="/stock-snapshot" element={<StockSnapshotPage />} />
           <Route path="/stock-snapshots" element={<StockSnapshotPage />} />
           <Route path="/rates/categories" element={<RateCategoryPage />} />
           <Route path="/rates/history" element={<RateHistoryPage />} />
