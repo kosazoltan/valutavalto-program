@@ -26,11 +26,12 @@ export default function ProfitPage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await (() => {
-        const companyId = useAuthStore.getState().user?.companyId
-        const month = new Date().toISOString().slice(0, 7)
-        return api.get<ProfitItem[]>('/profit/company', { params: { companyId, month } })
-      })()
+      const companyId = useAuthStore.getState().user?.companyId
+      if (!companyId) {
+        throw new Error('Nincs bejelentkezett ceg (companyId hianyzik) - profile profit lekerdezeshez szukseges')
+      }
+      const month = new Date().toISOString().slice(0, 7)
+      const response = await api.get<ProfitItem[]>('/profit/company', { params: { companyId, month } })
       setItems(safeArray<typeof items[0]>(response.data))
     } catch (err) {
       const msg = getErrorMessage(err)

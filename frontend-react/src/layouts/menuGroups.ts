@@ -142,7 +142,6 @@ export const menuGroups: MenuGroup[] = [
     canonicalRoles: ["berszamfejto", "ugyvezeto"],
     modes: ["full"],
     items: [
-      { path: "/hrk", label: "HRK", icon: Users },
       { path: "/employees", label: "Munkavállalók", icon: Users },
     ],
   },

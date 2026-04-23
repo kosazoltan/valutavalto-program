@@ -41,7 +41,6 @@ const DEFAULT_THRESHOLDS: Record<string, { low: number; critical: number }> = {
   CZK: { low: 5000, critical: 2000 },
   PLN: { low: 2000, critical: 800 },
   RON: { low: 2000, critical: 800 },
-  HRK: { low: 3000, critical: 1000 },
 }
 
 /** Classify stock level by currency and amount */
