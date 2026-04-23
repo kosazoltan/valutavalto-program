@@ -53,21 +53,27 @@ public class VaultTerritoryService {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ceg nem talalhato: " + companyId));
 
-        // Sourcery AI review #125 performance: DB-szintu duplikacio check.
-        // Nem tolti be az osszes teruletet memoriaba (skalazodo + race condition csokkentes).
-        // A (company_id, name) unique constraint a vegso safety-net.
+        // Sourcery + Codex PR #129 fix: trim egyszer, hasznosits mindenhol
+        // (validacio, DB duplikacio check, ERROR msg, persistence).
         if (request.getName() == null || request.getName().isBlank()) {
             throw new ValidationException("Terulet neve kotelezo");
         }
+        String normalizedName = request.getName().trim();
+        if (normalizedName.isEmpty()) {
+            throw new ValidationException("Terulet neve nem lehet csak whitespace");
+        }
+
+        // DB-szintu duplikacio check (Sourcery PR #125 performance).
+        // A (company_id, name) unique constraint a vegso safety-net, race condition ellen.
         boolean nameTaken = vaultTerritoryRepository
-                .existsByCompanyIdAndNameIgnoreCase(companyId, request.getName().trim());
+                .existsByCompanyIdAndNameIgnoreCase(companyId, normalizedName);
         if (nameTaken) {
-            throw new ValidationException("Mar letezik ertektari terulet ezzel a nevvel: " + request.getName());
+            throw new ValidationException("Mar letezik ertektari terulet ezzel a nevvel: " + normalizedName);
         }
 
         VaultTerritory territory = VaultTerritory.builder()
                 .company(company)
-                .name(request.getName())
+                .name(normalizedName)  // trimmed - consistent DB storage
                 .baseCapital(request.getBaseCapital())
                 .baseCapitalApprovedAt(request.getBaseCapitalApprovedAt())
                 .active(true)

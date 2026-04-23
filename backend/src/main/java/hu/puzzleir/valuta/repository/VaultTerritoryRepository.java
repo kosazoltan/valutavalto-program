@@ -31,6 +31,6 @@ public interface VaultTerritoryRepository extends JpaRepository<VaultTerritory, 
      * Nem tolti be az osszes teruletet memoriaba (skalazhatossag + race condition
      * csokkentes, a unique constraint a vegsp biztositek).
      */
-    @Query("SELECT COUNT(vt) > 0 FROM VaultTerritory vt WHERE vt.company.id = :companyId AND LOWER(vt.name) = LOWER(:name)")
+    @Query("SELECT CASE WHEN COUNT(vt) > 0 THEN true ELSE false END FROM VaultTerritory vt WHERE vt.company.id = :companyId AND LOWER(vt.name) = LOWER(:name)")
     boolean existsByCompanyIdAndNameIgnoreCase(@Param("companyId") UUID companyId, @Param("name") String name);
 }
