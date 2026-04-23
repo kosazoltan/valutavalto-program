@@ -11,9 +11,9 @@
 -- stock snapshot company totals stb.).
 --
 -- Reversibilis: ha valaha vissza kellene allitani, egy kezi
--- UPDATE currencies SET is_active = true WHERE code = 'HRK' elegendo.
+-- UPDATE currency SET is_active = true WHERE code = 'HRK' elegendo.
 
-UPDATE currencies
+UPDATE currency
 SET is_active = false
 WHERE code = 'HRK'
   AND is_active = true;

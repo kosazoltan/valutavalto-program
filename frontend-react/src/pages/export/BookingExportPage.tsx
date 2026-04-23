@@ -39,7 +39,7 @@ export default function BookingExportPage() {
     } catch (err) {
       logger.warn('BookingExportPage', 'Branch load failed', err)
     }
-  }, [branchId, workerBranchId])
+  }, [workerBranchId])
 
   useEffect(() => { void loadBranches() }, [loadBranches])
 
