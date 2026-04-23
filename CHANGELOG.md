@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.2.2] - 2026-04-23 hotfix (vault cash flow javitas)
+
+### Fixed - Uzletmenet-kritikus vault/ertektar cash flow
+
+**Root cause:** a v2.2.1 elesi teszt soran detektaltuk, hogy a Collection/Distribution/Transfer COMPLETED statuszra valtasa NEM tolta a kenyleges penzt a CurrencyStock + CashBalance tablakba. Csak status update tortent, tehat az ertektari cash flow kompletten inkonzisztens volt.
+
+**Javitasok (egy hotfix-ben):**
+- **V159 migration**: minden aktiv vault_territory-hez `currency_stock` HUF rekord a base_capital alapjan (WAC=1.0). Ez elintezi, hogy a VaultBankTransaction.createBankTransaction BUY ne dobjon 500-at "Nincs elegendo keszlet" hibaval.
+- **VaultStockFlowService (uj)**: kozos helper service a Collection/Distribution/Transfer-hez. A `applyCollection` / `applyDistributionLine` / `applyTransfer` metodusok tolakolnak a vault CurrencyStock + branch CashBalance rekordokon.
+- **VaultCollectionService.updateStatus**: COMPLETED-kor source branch CashBalance csokken + vault CurrencyStock no. Idempotent (csak ha oldStatus != COMPLETED).
+- **VaultDistributionService.updateStatus**: COMPLETED-kor vault CurrencyStock csokken + target branch CashBalance no (per line). Idempotent.
+- **VaultTransferService.completeTransfer**: branch->branch eseten CashBalance-t hasznaljuk (nem CurrencyStock WAC-ot), a PR #131 BR017->BR035 500 hiba megszunik. VAULT erintettseg eseten eredeti WAC logika marad.
+- **VaultTerritoryService.create**: uj territory-hez HUF CurrencyStock auto-init a baseCapital alapjan.
+- **VaultDistributionRepository**: `LEFT JOIN FETCH d.lines` a list query-khez, hogy a GET /distribution items=0 bug megszunjon.
+
+### Verzio bump
+- `package.json`, `penztar-client/package.json`, `frontend-react/package.json`, `backend/pom.xml`: 2.2.1 -> 2.2.2
+
 ## [2.2.0] - 2026-04-23 (Sprint 5-7 roadmap + Electron singleton + 9 AI review fix)
 
 ### Kotelezo ervenyu alaptorveny (CLAUDE.md)

@@ -26,6 +26,7 @@ public class VaultCollectionService {
 
     private final VaultCollectionRepository vaultCollectionRepository;
     private final BranchRepository branchRepository;
+    private final VaultStockFlowService vaultStockFlowService;  // v2.2.2 hotfix
 
     @Transactional(readOnly = true)
     public List<CollectionResponseDto> getCollections() {
@@ -73,9 +74,24 @@ public class VaultCollectionService {
                 .filter(c -> c.getCompanyId().equals(companyId))
                 .orElseThrow(() -> new ResourceNotFoundException("Begyujtés nem található: " + id));
 
+        VaultOperationStatus oldStatus = collection.getStatus();
         collection.setStatus(newStatus);
         if (newStatus == VaultOperationStatus.COMPLETED) {
             collection.setCompletedAt(LocalDateTime.now());
+
+            // v2.2.2 hotfix: a COMPLETED allapotra valtaskor a kenyleges
+            // keszletmozgas bejegyzese (source branch cash_balance -= amount,
+            // vault CurrencyStock += amount). Csak akkor fut, ha meg NEM volt
+            // COMPLETED (idempotent).
+            if (oldStatus != VaultOperationStatus.COMPLETED) {
+                vaultStockFlowService.applyCollection(
+                        companyId,
+                        collection.getSourceBranchCode(),
+                        collection.getCurrencyCode(),
+                        collection.getAmount(),
+                        null  // default WAC (HUF=1, deviza=1 ha nincs rate)
+                );
+            }
         }
 
         return toDto(vaultCollectionRepository.save(collection));
