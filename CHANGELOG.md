@@ -1,5 +1,64 @@
 # Changelog
 
+## [2.2.0] - 2026-04-23 (Sprint 5-7 roadmap + Electron singleton + 9 AI review fix)
+
+### Kotelezo ervenyu alaptorveny (CLAUDE.md)
+- **Push = commit + merge to main AZONNAL**: Tilos nyitott PR / uncommitted feature branch hosszabb ideig - AI ugynokok javitasai es reported bugok fixei nem ernek el main-re, production nem javul.
+
+### Added - Sprint 7.1 Ertektar leltar (Stocktake) modul
+- **V157 Flyway migration**: `vault_stocktake_session` + `vault_stocktake_item` tablak generated `discrepancy` + `discrepancy_value` oszlopokkal (PostgreSQL).
+- **Backend entity-k**: `VaultStocktakeSession` (Workflow: OPEN -> IN_PROGRESS -> REVIEW -> CLOSED / CANCELLED), `VaultStocktakeItem` (cimletenkent expected vs. actual).
+- **VaultStocktakeService**: createSession (auto-init banknote_inventory-bol), setItemActual, moveToReview, closeSession (FOERTEKTAR+), cancelSession, getSummary discrepancy listaval, territoryId resolve + cross-tenant check.
+- **VaultStocktakeController**: 7 REST endpoint (/api/v1/vault-stocktake).
+- **Frontend pages**: `VaultStocktakeListPage` (session lista, KPI kartyak, uj leltar modal) + `VaultStocktakeDetailPage` (cimletenkenti felvetel, REVIEW/CLOSE workflow).
+- **Penztar-client offline SyncEngine**: `pending_stocktake_items` SQLite tabla, `queueStocktakeCount` IPC handler, `syncStocktakeItems` sync-engine metodus retry + error tracking-gel.
+
+### Added - Sprint 6.2 Compliance Dashboard (Pmt. 2017. LIII. tv.)
+- **GET /api/v1/aml/rolling-window-audit** endpoint: 8 napos gordulo limit feletti ugyfelek listaja + high-risk flag.
+- **Frontend ComplianceDashboardPage**: OVERDUE bejelentesek, Pending bejelentesek, 8 napos rolling window, napi AML summary KPI kartyakon.
+- **RollingWindowAuditDto**: customerId, exceedPercent, windowDays, highRiskFlag.
+- **TransactionRepository.findRollingWindowAuditCandidates**: `GROUP BY customerId HAVING SUM >= threshold` query.
+
+### Added - Sprint 5.3 C2 AML hard-block (Pmt. 8 napos gordulo)
+- **AmlCheckResult uj mezok**: `rollingWindowExceeded`, `rollingWindowLimit`, `rollingWindowTotal`, `rollingWindowDays`, `requiresManagerApproval`, `managerApprovalReason`.
+- **AmlService.checkAllThresholds**: 4.5M HUF rolling limit explicit ellenorzes + TranzTipus >= 4 eseten manager approval kotelezo.
+- **TransactionOperationHelper**: ValidationException hard-block ha `requiresManagerApproval=true` es nem supervisor+.
+
+### Added - Sprint 7.2 CB-016 VAT dinamikus resolution
+- **ContributionService.resolveRate**: SystemParameter-bol olvas (`nav.vat-rate.STANDARD`, `mnb.supervisory-fee-rate`) fallback-barat logikaval, hardcoded 0.27/0.0001 kulcsok helyett.
+- **SystemParameterService.getValue(key, defaultValue)** overload: null-safe, @Slf4j log.warn fallback elott.
+
+### Added - Sprint 6.1 C3 Evnyito scheduler
+- **YearOpeningScheduler**: @Scheduled cron `0 15 0 1-7 1 *` (januar 1-7, 00:15 Europe/Budapest), minden ceghez idempotensen futtatja az evnyitot.
+
+### Added - Cognee + Obsidian MCP integracio
+- **docker-compose.mcp.yml** `knowledge-mcp` profile: `mcp-cognee` (port 8820), `mcp-obsidian` (port 8821).
+- **.mcp.json**: Claude Code MCP server lista (filesystem, git, fetch, postgres, cognee, obsidian).
+- **docs/MCP_INTEGRATION.md**: setup guide (env, Obsidian Local REST API plugin, troubleshoot).
+- **scripts/session-memory-save.sh**: session handoff auto-save (YAML -> Cognee ingestion + Obsidian PUT).
+
+### Fixed - Uzletmenet-kritikus Electron singleton lock
+- **main.ts `app.requestSingleInstanceLock()`**: ha mar fut egy penztar-client instance, a masodik indulas azonnal kilep es az elso ablakot hozza elotertbe.
+- **start-valuta-ecosystem.ps1 idempotent Electron check**: `Get-Process electron` ellenorzes, duplikalt instance NEM indul.
+- **Hiba elotte**: 12+ Electron process (3 main window + 9 helper) fut parhuzamosan, amibol duplikalt tranzakciok, versengo SQLite write-ok, offline queue inkonzisztens allapot keletkezhetett.
+
+### Fixed - 9 AI review feedback (Sourcery + Codex)
+- **PR #128 Sourcery 5 issue**: JPQL `$Status.OPEN` startup-breaker, division-by-zero threshold=0, territoryId silent ignore, LocalDateTime.now() loopon belul, SystemParameterService exception swallow.
+- **PR #129 Sourcery + Codex**: V156 ON CONFLICT DO NOTHING (V158 backport idempotency fix), JPQL CASE WHEN COUNT > 0 portability, name trim consistency (validacio+DB+persistence), getCompanyIdForJson -> getCompanyId rename, findByIdAndCompanyId multi-tenant query filter, existsByCompanyIdAndNameIgnoreCase DB-szintu check.
+
+### Security
+- **@xmldom/xmldom 0.8.12 -> 0.8.13**: 4 high severity CVE fix (GHSA-2v35-w6hq-6mfw, f6ww-3ggp-fr8h, x6wf-f3px-wcqx, j759-j44w-7fr8).
+- **crypto.randomUUID polyfill**: non-secure context (HTTP LAN IP) eseten fallback implementacio (PR #124).
+
+### Frontend
+- **index.html title**: `RepZtecH Exclusive Best Change - Pénztári Rendszer` (elirasi hiba) -> `Valuta Pénztári Rendszer - Best Change`.
+- **3 uj route**: `/vault-stocktake`, `/vault-stocktake/:id`, `/compliance`.
+
+### Dependency bumps
+- Lombok 1.18.44 -> 1.18.46 (pom.xml)
+- Spring Boot 3.5.13 (latest stable, 3.5.14 meg nem letezik)
+- Tomcat 10.1.54 override (CVE-2026-34483/34486/34487 miatt)
+
 ## [2.1.7] - 2026-04-21 (kumulalt AI review + production URL SSOT)
 
 ### Added
