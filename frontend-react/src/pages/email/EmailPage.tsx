@@ -23,8 +23,9 @@ export default function EmailPage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get<EmailAccountItem[]>('/email/accounts')
-      setItems(safeArray<typeof items[0]>(response.data))
+      // Codex PR #144 P1 fix: backend payload = { accounts, configurable }, nem bare array.
+      const response = await api.get<{ accounts?: EmailAccountItem[]; configurable?: EmailAccountItem[] }>('/email/accounts')
+      setItems(safeArray<EmailAccountItem>(response.data?.accounts))
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('EmailPage', 'Betöltési hiba:', err)

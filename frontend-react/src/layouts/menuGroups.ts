@@ -16,11 +16,18 @@ export interface MenuItem {
   minRole?: string
 }
 
+export type FeatureFlagKey = "camera" | "yearOpeningScheduler" | "navIntegration"
+
 export interface MenuGroup {
   label: string
   items: MenuItem[]
   modes?: readonly AppMode[]
   canonicalRoles?: readonly string[]
+  /**
+   * Sourcery PR #146 P2 fix: feature flag key (stabil id) cimke helyett.
+   * Lokalizacio es rename biztonsagos.
+   */
+  featureFlagKey?: FeatureFlagKey
 }
 
 export const menuGroups: MenuGroup[] = [
@@ -149,6 +156,7 @@ export const menuGroups: MenuGroup[] = [
     label: "Kamera",
     canonicalRoles: ["biztonsagi_vezeto", "ugyvezeto", "foertektar"],
     modes: ["full"],
+    featureFlagKey: "camera",
     items: [
       { path: "/camera/live", label: "Élő kép", icon: Camera },
       { path: "/camera/playback", label: "Visszajátszás", icon: Camera },
