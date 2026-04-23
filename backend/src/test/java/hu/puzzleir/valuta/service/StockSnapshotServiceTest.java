@@ -42,6 +42,8 @@ class StockSnapshotServiceTest {
     private ReservationRepository reservationRepository;
     @Mock
     private TransactionRepository transactionRepository;
+    @Mock
+    private hu.puzzleir.valuta.repository.CompanyRepository companyRepository;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();
     private static final UUID BRANCH_1_ID = UUID.randomUUID();
@@ -60,6 +62,9 @@ class StockSnapshotServiceTest {
                 .thenReturn(BigDecimal.ZERO);
         // Default mocks for reservations (return empty)
         when(reservationRepository.getReservedStockByBranch(any())).thenReturn(List.of());
+        Company _mockCompany = Company.builder().id(COMPANY_ID).code("TEST").name("Test Company").build();
+        when(companyRepository.findById(any())).thenReturn(Optional.of(_mockCompany));
+        when(currencyStockRepository.sumCompanyLevelByCurrency(any())).thenReturn(List.of());
     }
 
     // ===== HELPER =====

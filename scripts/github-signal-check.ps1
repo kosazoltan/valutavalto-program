@@ -76,7 +76,7 @@ if ($LASTEXITCODE -eq 0 -and $checksRaw) {
             $color = if ($c.bucket -eq "pass") { "Green" } elseif ($c.bucket -eq "fail" -or $c.bucket -eq "cancel") { "Red" } else { "Yellow" }
             Write-Host "  [$($c.bucket.ToUpper())] $($c.name) ($($c.workflow))" -ForegroundColor $color
             if ($c.bucket -eq "fail" -or $c.bucket -eq "cancel") { $blockers += "required check FAIL: $($c.name)" }
-            if ($c.bucket -eq "pending") { $warnings += "required check PENDING: $($c.name)" }
+            if ($c.bucket -eq "pending") { $blockers += "required check PENDING: $($c.name)" }  # Codex P1 #2
         }
     } else { Write-Host "  (nincs required check beallitva)" -ForegroundColor DarkGray }
 } else { Write-Host "  (gh pr checks nem adott adatot)" -ForegroundColor DarkGray }
