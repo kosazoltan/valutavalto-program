@@ -130,37 +130,66 @@ cd penztar-client && npm test
 - Ez kiterjeszti a jelenlegi PR scope szabalyt — a user szerint minden ismert hiba surgos.
 - Kivetel: ha a javitas tobb napos refactort igenyelne, akkor GitHub Issue-t nyitni + kommentalni a kodban.
 
-## KÖTELEZŐ ÉRVÉNYŰ: push = commit + merge to main
-**2026-04-23 óta kötelező** (user-direktíva, üzletmenet-kritikus):
+## KÖTELEZŐ ÉRVÉNYŰ: push = commit + merge + BRANCH DELETE (v2 szigoritas)
+**2026-04-23 óta kötelező** (user-direktíva, üzletmenet-kritikus, **v2 szigorítás** a branch-halmozódás miatt):
 
-- **Minden push-nak merge-elnie kell a main-re AZONNAL**. Nem maradhat nyitott PR vagy uncommitted feature branch hosszabb ideig.
-- A feature branch-en **minden fejlesztést azonnal commit + push + merge** kell, hogy a javítások ténylegesen érvényesüljenek a kódban (production + main).
-- **Tilos**: nyitott PR napokig "CI várakozás" ürügyén, uncommitted fejlesztések, feledésbe merült branch-ek.
+- **Minden push-nak merge-elnie kell a main-re AZONNAL + a branch-et tÖrÖlni** (remote + local).
+- Nem maradhat nyitott PR, feature branch, vagy uncommitted fejlesztés hosszabb ideig.
+- **Tilos**:
+  - Nyitott PR napokig "CI várakozás" ürügyén
+  - Uncommitted fejlesztések
+  - Feledésbe merült branch-ek (2026-04-23 állapot: **91 lokális + 30 remote branch** halmozódott fel, SOHA többé!)
+  - `--delete-branch=false` flag használata — **VISSZAVONVA**
 
 ### Push-merge folyamat (minden kód-módosításkor)
 1. **Code change + commit** a feature branch-en
 2. **Push** a feature branch-re (`git push`)
 3. **CI zöld** (várj amíg minden check SUCCESS)
 4. **AI review fix** (Sourcery/Codex feedback azonnal javítva, `gh api pulls/N/reviews + comments` lekérése kötelező)
-5. **Merge to main** (`gh pr merge N --squash --auto`), ha CI zöld és nincs nyitott review
-6. **Branch törlés** vagy archiválás (worktree tisztítás)
-7. **Hetzner auto-deploy** triggerelődik a main push-ra
+5. **Merge to main** — `gh pr merge N --squash --auto --delete-branch` (a `--delete-branch` KÖTELEZŐ, NEM `=false`)
+6. **Lokális branch törlés** (`git branch -d BRANCH`)
+7. **Hetzner auto-deploy** (backend + frontend)
 
 ### Miért kötelező?
-- **Uncommitted fejlesztés** hibái miatt nem lehet látni, miért "nem javul" egy reported bug: a fix a branch-en van, de a main-en NEM, így éles rendszer továbbra is buggy.
-- **AI ügynökök munkája** (Sourcery fixek, Codex javaslatok) ugyanígy elvészhetnek, ha a PR napokig nyitva marad.
-- **Hetzner production** csak a main branch-ről deploy-ol — ha a fix nincs main-en, production sem javul.
+- **Uncommitted fejlesztés** hibái miatt a bug "nem javul": a fix a branch-en van, de a main-en NEM → production továbbra is buggy.
+- **AI ügynökök munkája** (Sourcery, Codex) elvészhet, ha a PR napokig nyitva marad.
+- **Hetzner production** csak a main branch-ről deploy-ol → ha a fix nincs main-en, production sem javul.
+- **Branch-halmozódás** (91+30 a 2026-04-23 állapotban) nehezíti a navigációt, rejti az aktív fejlesztéseket, duplikált kódot tárol.
 
 ### Kivétel
-- Ha egy PR **explicit merge-blokkoló** feedback-kel rendelkezik (pl. Codex CHANGES_REQUESTED DISMISS nélkül, vagy user explicit WIP jelzés), akkor várni kell.
-- Ha a **CI failure** legitim (nem flaky), akkor javítás előbb, merge csak utána.
+- Explicit merge-blokkoló AI review feedback (CHANGES_REQUESTED DISMISS nélkül)
+- Legitim CI failure (nem flaky)
+- Dependabot PR-ek: batch merge hetente 1x, NEM egyenként.
 
-### Auto-merge CLI script
+### Auto-merge + cleanup CLI script (KÖTELEZŐ szintaxis)
 ```bash
-# A user által jóváhagyott auto-merge minden PR-re:
-gh pr merge $PR_NUM --squash --auto --delete-branch=false
-# --auto: CI-re várakozik, utána automatikusan merge-el
+# Minden uj PR auto-merge ezzel:
+gh pr merge $PR_NUM --squash --auto --delete-branch
+
+# Lokalis cleanup merge utan:
+git checkout main && git pull origin main
+git branch -d $BRANCH_NAME
 ```
+
+### Periodikus cleanup (hetente 1x, KÖTELEZŐ)
+```bash
+# Remote merged branch-ek torlese:
+gh api "repos/OWNER/REPO/branches" --paginate -q '.[] | select(.protected==false) | .name'   | while read branch; do
+      if git merge-base --is-ancestor "origin/$branch" origin/main 2>/dev/null; then
+        gh api -X DELETE "repos/OWNER/REPO/git/refs/heads/$branch"
+      fi
+    done
+
+# Lokalis merged branch torles:
+git branch --merged main | grep -v "main\|\*" | xargs -r git branch -d
+
+# Remote reference cleanup:
+git fetch --prune origin
+```
+
+### Monitoring (heti)
+Elvart: `gh pr list --state open` = 0 PR, `git branch -r | grep -v main | wc -l` < 5.
+Ha ennel tobb: azonnal futtatni a cleanup scriptet.
 
 ## AUTOMATIZALT AI code review workflow (Sourcery + Codex)
 **2026-04-21 ota automatikus**: a `.github/workflows/ai-review-auto-fix.yml` a Claude Code Action-t triggereli, amikor Sourcery vagy Codex review erkezik. Ez automatikusan javit + push-ol a feature branch-re. A manualis workflow az `agent` fallback.
