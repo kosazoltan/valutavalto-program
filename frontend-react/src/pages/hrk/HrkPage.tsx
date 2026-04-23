@@ -24,7 +24,7 @@ export default function HrkPage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get<HrkConversionItem[]>('/hrk')
+      const response = await api.get<HrkConversionItem[]>('/hrk/journal')
       setItems(safeArray<typeof items[0]>(response.data))
     } catch (err) {
       const msg = getErrorMessage(err)

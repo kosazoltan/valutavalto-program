@@ -24,7 +24,7 @@ export default function SealTrackingPage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get<SealTrackingItem[]>('/seal-tracking')
+      const response = await api.get<SealTrackingItem[]>('/seal-tracking/active')
       setItems(safeArray<typeof items[0]>(response.data))
     } catch (err) {
       const msg = getErrorMessage(err)
