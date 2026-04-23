@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save, CheckCircle2, XCircle, FileCheck, Ban, AlertTriangle } from 'lucide-react'
 import { vaultStocktakeApi, VaultStocktakeSession, VaultStocktakeItem, StocktakeStatus } from '../../services/api/vaultStocktake'
@@ -21,7 +21,7 @@ export default function VaultStocktakeDetailPage() {
     const [saving, setSaving] = useState<string | null>(null)  // itemId lementve
     const [editValues, setEditValues] = useState<Record<string, string>>({})
 
-    const load = async () => {
+    const load = useCallback(async () => {
         if (!id) return
         setLoading(true)
         try {
@@ -33,9 +33,9 @@ export default function VaultStocktakeDetailPage() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [id])
 
-    useEffect(() => { load() }, [id])
+    useEffect(() => { load() }, [id, load])
 
     const handleCountItem = async (item: VaultStocktakeItem) => {
         const val = editValues[item.id]
