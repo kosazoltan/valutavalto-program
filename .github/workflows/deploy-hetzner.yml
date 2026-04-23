@@ -137,10 +137,11 @@ jobs:
   deploy-frontend:
     name: Build + Deploy frontend-react
     runs-on: ubuntu-latest
-    # NEM needs: deploy - csak a backend trigger-re futna akkor
-    # A frontend-re kulon path-triggerrel is futnia kell (lasd on.push.paths)
-    needs: [build-backend]
-    if: always() && needs.build-backend.result == 'success'
+    # Fuggetlen a deploy (backend) futasatol - a frontend akkor is deploy-olunk,
+    # ha csak frontend valtozott (backend JAR valtozatlan maradhat).
+    # A build job csak JAR-epit, nem backend deploy-t.
+    needs: [build]
+    if: always() && needs.build.result == 'success'
     timeout-minutes: 10
     steps:
       - name: Checkout
