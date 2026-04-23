@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '../services/api/client'
+import { logger } from '../utils/logger'
 
 export interface FeatureFlags {
   camera: boolean
@@ -16,6 +17,9 @@ const DEFAULT_FEATURES: FeatureFlags = {
 /**
  * Backend feature flag-ek (runtime).
  * A menuGroups szur szerinte: pl. camera=false -> Kamera csoport rejtve.
+ *
+ * Sourcery PR #146 P2 fix: catch blokk NEM swallow-ol, logger.warn monitorozhato.
+ * Codex PR #146 P1 fix: authenticated endpoint - 401 eseten default fallback.
  */
 export function useFeatureFlags(): FeatureFlags {
   const [flags, setFlags] = useState<FeatureFlags>(DEFAULT_FEATURES)
@@ -26,8 +30,10 @@ export function useFeatureFlags(): FeatureFlags {
       .then(r => {
         if (!cancelled) setFlags({ ...DEFAULT_FEATURES, ...r.data })
       })
-      .catch(() => {
-        // Backend nem elerheto vagy 401: default flag-ek maradnak
+      .catch(err => {
+        // 401 (pre-login) eseten a default flag-ekkel megyunk tovabb.
+        // Minden mas hibat logger-rel monitorozzuk (Sentry stb.)
+        logger.warn('useFeatureFlags', 'Feature flag fetch failed, using defaults', err)
       })
     return () => { cancelled = true }
   }, [])

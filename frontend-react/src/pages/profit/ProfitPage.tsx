@@ -1,42 +1,74 @@
 import { useState, useEffect, useCallback } from 'react'
-import { TrendingUp, Search, RefreshCw, AlertTriangle } from 'lucide-react'
+import { TrendingUp, RefreshCw, AlertTriangle } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
-import { safeArray } from '../../utils/safeArray'
 
-interface ProfitItem {
-  id: string | number
-  branchName?: string
-  date?: string
-  totalProfit?: number
-  transactionCount?: string
+/**
+ * ProfitReport shape (backend: ProfitCalculationService.ProfitReport)
+ * - revenue, expenses, grossProfit, netProfit (BigDecimal -> number/string)
+ * - totalTransactions (int)
+ * - profitByCurrency: [{ currency, buyCount, sellCount, buyHuf, sellHuf, fees, profit }]
+ *
+ * Codex PR #144 P1 fix: GET /api/v1/profit/company EGY ProfitReport objektumot
+ * ad vissza, NEM array-t. A korabbi safeArray<ProfitItem[]> mindig uresre esett.
+ */
+interface CurrencyProfitRow {
+  currency?: string
+  currencyCode?: string
+  buyCount?: number
+  sellCount?: number
+  buyHuf?: number | string
+  sellHuf?: number | string
+  fees?: number | string
+  profit?: number | string
+}
+
+interface ProfitReport {
+  revenue?: number | string
+  expenses?: number | string
+  grossProfit?: number | string
+  netProfit?: number | string
+  totalTransactions?: number
+  profitByCurrency?: CurrencyProfitRow[]
+}
+
+function formatHuf(v: number | string | undefined): string {
+  if (v == null) return '-'
+  const n = typeof v === 'string' ? Number(v) : v
+  if (Number.isNaN(n)) return String(v)
+  return n.toLocaleString('hu-HU')
 }
 
 export default function ProfitPage() {
-  const [items, setItems] = useState<ProfitItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const [report, setReport] = useState<ProfitReport | null>(null)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
 
   const loadData = useCallback(async () => {
+    // Sourcery PR #145 P2 fix: companyId check BEFORE setLoading(true)
+    // hogy ne legyen briefly loading state ha tudjuk, hogy a call nem megy.
+    const companyId = useAuthStore.getState().user?.companyId
+    if (!companyId) {
+      setError('Nincs bejelentkezett ceg (companyId hianyzik) - haszon kimutatas nem tolthet oe')
+      setLoading(false)
+      setReport(null)
+      return
+    }
+
     try {
       setLoading(true)
       setError(null)
-      const companyId = useAuthStore.getState().user?.companyId
-      if (!companyId) {
-        throw new Error('Nincs bejelentkezett ceg (companyId hianyzik) - profile profit lekerdezeshez szukseges')
-      }
       const month = new Date().toISOString().slice(0, 7)
-      const response = await api.get<ProfitItem[]>('/profit/company', { params: { companyId, month } })
-      setItems(safeArray<typeof items[0]>(response.data))
+      const response = await api.get<ProfitReport>('/profit/company', { params: { companyId, month } })
+      // Codex PR #144 P1 fix: object wrapper, nem safeArray
+      setReport(response.data ?? null)
     } catch (err) {
       const msg = getErrorMessage(err)
-      logger.error('ProfitPage', 'Betöltési hiba:', err)
+      logger.error('ProfitPage', 'Betoltesi hiba:', err)
       setError(msg)
+      setReport(null)
     } finally {
       setLoading(false)
     }
@@ -46,13 +78,7 @@ export default function ProfitPage() {
     void loadData()
   }, [loadData])
 
-  const filtered = items.filter(item => {
-    if (!searchTerm) return true
-    const term = searchTerm.toLowerCase()
-    return Object.values(item).some(v =>
-      v != null && String(v).toLowerCase().includes(term)
-    )
-  })
+  const rows: CurrencyProfitRow[] = report?.profitByCurrency ?? []
 
   return (
     <div className="form-panel space-y-4">
@@ -62,28 +88,9 @@ export default function ProfitPage() {
           Haszon kimutatas
         </h1>
         <div className="flex items-center gap-2">
-          <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
+          <button onClick={() => void loadData()} className="form-button p-2" title="Frissites">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2">
-          <div className="flex gap-2">
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-              className="form-input px-2 py-1" />
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-              className="form-input px-2 py-1" />
-          </div>
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Keresés..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="form-input w-full pl-10"
-          />
         </div>
       </div>
 
@@ -94,27 +101,52 @@ export default function ProfitPage() {
         </div>
       )}
 
+      {/* Osszesitett sor */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded shadow p-3">
+          <div className="text-xs text-gray-500">Bevetel</div>
+          <div className="text-xl font-mono">{formatHuf(report?.revenue)}</div>
+        </div>
+        <div className="bg-white rounded shadow p-3">
+          <div className="text-xs text-gray-500">Koltsegek</div>
+          <div className="text-xl font-mono">{formatHuf(report?.expenses)}</div>
+        </div>
+        <div className="bg-white rounded shadow p-3">
+          <div className="text-xs text-gray-500">Brutto haszon</div>
+          <div className="text-xl font-mono">{formatHuf(report?.grossProfit)}</div>
+        </div>
+        <div className="bg-white rounded shadow p-3">
+          <div className="text-xs text-gray-500">Netto haszon</div>
+          <div className="text-xl font-mono">{formatHuf(report?.netProfit)}</div>
+        </div>
+      </div>
+
+      {/* Devizanemenkent */}
       <div className="data-grid overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Penztar</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Datum</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Haszon</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Tranzakciok</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Deviza</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Vetel db</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Eladas db</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Vetel HUF</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Eladas HUF</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Haszon</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
-              <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">Nincs adat</td></tr>
-            ) : filtered.map(item => (
-              <tr key={item.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm">{item.branchName ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.date ?? '-'}</td>
-                <td className="px-4 py-3 text-sm text-right font-mono">{typeof item.totalProfit === 'number' ? item.totalProfit.toLocaleString('hu-HU') : item.totalProfit ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.transactionCount ?? '-'}</td>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">Betoltes...</td></tr>
+            ) : rows.length === 0 ? (
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">Nincs adat</td></tr>
+            ) : rows.map((r, i) => (
+              <tr key={`${r.currencyCode ?? r.currency ?? 'idx'}-${i}`} className="hover:bg-gray-50">
+                <td className="px-4 py-3 text-sm">{r.currencyCode ?? r.currency ?? '-'}</td>
+                <td className="px-4 py-3 text-right text-sm font-mono">{r.buyCount ?? '-'}</td>
+                <td className="px-4 py-3 text-right text-sm font-mono">{r.sellCount ?? '-'}</td>
+                <td className="px-4 py-3 text-right text-sm font-mono">{formatHuf(r.buyHuf)}</td>
+                <td className="px-4 py-3 text-right text-sm font-mono">{formatHuf(r.sellHuf)}</td>
+                <td className="px-4 py-3 text-right text-sm font-mono">{formatHuf(r.profit)}</td>
               </tr>
             ))}
           </tbody>
@@ -122,7 +154,7 @@ export default function ProfitPage() {
       </div>
 
       <div className="text-sm text-gray-500">
-        Összesen: {filtered.length} / {items.length}
+        Tranzakciok: {report?.totalTransactions ?? 0}
       </div>
     </div>
   )

@@ -168,7 +168,7 @@ export default function MainLayout() {
           {menuGroups
             .filter((group) => !group.modes || (group.modes as readonly string[]).includes(appMode))
             .filter((group) => hasSupervisoryAccess || !group.canonicalRoles || (group.canonicalRoles as readonly string[]).some((r) => hasCanonicalRole(r)))
-            .filter((group) => group.label !== "Kamera" || featureFlags.camera)
+            .filter((group) => !group.featureFlagKey || featureFlags[group.featureFlagKey])
             .map((group) => (
             <div key={group.label} className="mb-3">
               {sidebarOpen && (

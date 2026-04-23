@@ -17,7 +17,10 @@ import java.util.Map;
  * vannak engedelyezve production-on (pl. camera.enabled=false
  * eseten a Camera menu elrejtheto).
  *
- * Publikus (JWT nem kotelezo) mert a menuGroups render elott fut.
+ * AUTHENTICATED (Codex PR #146 P1 fix): a bejelentkezes utan mountolt
+ * MainLayout-ban hivjuk, igy a uthenticated() rule vonatkozik ra.
+ * Unauthenticated 401-gyel vegzodik, a useFeatureFlags hook catch blokkja
+ * fallback default flag-ekre esik (camera=false).
  */
 @RestController
 @RequestMapping("/api/v1/features")
