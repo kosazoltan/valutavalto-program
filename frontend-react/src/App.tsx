@@ -114,7 +114,6 @@ const LicensePage = lazy(() => import('./pages/licenses/LicensePage'))
 const SchedulerPage = lazy(() => import('./pages/scheduler/SchedulerPage'))
 const EmailPage = lazy(() => import('./pages/email/EmailPage'))
 const EmployeePage = lazy(() => import('./pages/employees/EmployeePage'))
-const HrkPage = lazy(() => import('./pages/hrk/HrkPage'))
 const LedDisplayPage = lazy(() => import('./pages/led/LedDisplayPage'))
 const DataImportPage = lazy(() => import('./pages/import/DataImportPage'))
 const StampPage = lazy(() => import('./pages/stamps/StampPage'))
@@ -531,7 +530,6 @@ export default function App() {
           <Route path="/employees" element={<EmployeePage />} />
           <Route path="/workers" element={<WorkerPage />} />
           <Route path="/transit" element={<TransitPage />} />
-          <Route path="/hrk" element={<HrkPage />} />
           <Route path="/led-display" element={<LedDisplayPage />} />
           <Route path="/data-import" element={<DataImportPage />} />
           <Route path="/stamps" element={<StampPage />} />
