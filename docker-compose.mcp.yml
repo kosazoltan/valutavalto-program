@@ -86,3 +86,58 @@ services:
     ports:
       - "8815:8815"
     restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Sprint roadmap - Cognee knowledge engine (AI memory auto-save)
+  # Enable: docker compose -f docker-compose.yml -f docker-compose.mcp.yml --profile knowledge-mcp up -d
+  # ---------------------------------------------------------------------------
+  mcp-cognee:
+    image: python:3.12-slim
+    container_name: mcp-cognee
+    profiles: ["knowledge-mcp"]
+    working_dir: /workspace
+    environment:
+      LLM_PROVIDER: ${COGNEE_LLM_PROVIDER:-openai}
+      LLM_API_KEY: ${COGNEE_LLM_API_KEY:-}
+      LLM_MODEL: ${COGNEE_LLM_MODEL:-gpt-4o-mini}
+      COGNEE_DB_PROVIDER: sqlite
+      COGNEE_DATABASE_PATH: /workspace/.cognee/cognee.db
+    command: >
+      sh -lc "pip install --no-cache-dir cognee supergateway &&
+      mkdir -p /workspace/.cognee &&
+      supergateway --port 8820 --stdio 'cognee-mcp'"
+    volumes:
+      - ./:/workspace:rw
+      - cognee-data:/workspace/.cognee
+    ports:
+      - "8820:8820"
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Sprint roadmap - Obsidian vault MCP (session memory auto-sync)
+  # Elofeltetel: Obsidian Local REST API plugin telepitve a vault-on
+  #              (https://github.com/coddingtonbear/obsidian-local-rest-api)
+  #              alapertelmezett port: 27124 (https) vagy 27123 (http)
+  # Enable: docker compose -f docker-compose.yml -f docker-compose.mcp.yml --profile knowledge-mcp up -d
+  # ---------------------------------------------------------------------------
+  mcp-obsidian:
+    image: node:20-alpine
+    container_name: mcp-obsidian
+    profiles: ["knowledge-mcp"]
+    environment:
+      OBSIDIAN_API_KEY: ${OBSIDIAN_API_KEY:-}
+      # host.docker.internal mukodik Docker Desktop (Windows/macOS) eseteben
+      OBSIDIAN_HOST: ${OBSIDIAN_HOST:-host.docker.internal}
+      OBSIDIAN_PORT: ${OBSIDIAN_PORT:-27124}
+      OBSIDIAN_PROTOCOL: ${OBSIDIAN_PROTOCOL:-https}
+    command: >
+      sh -lc "npx -y supergateway --port 8821 --stdio
+      'npx -y obsidian-mcp-server'"
+    ports:
+      - "8821:8821"
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  cognee-data:

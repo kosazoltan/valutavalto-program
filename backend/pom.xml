@@ -31,7 +31,8 @@
         <grpc.version>1.80.0</grpc.version>
         <!-- Supply-chain override: Spring Boot 3.5.13 bundles Tomcat 10.1.53, de a
              2026 április CVE-k (CVE-2026-34483/34486/34487, CVSS 7.5) csak 10.1.54-ben
-             javítottak. Spring Boot 3.5.14 még nincs kiadva (milestone 2026-04-23). -->
+             javítottak. Sprint roadmap P2: amint Spring Boot 3.5.14 ki lesz adva
+             (bundled Tomcat 10.1.54+), ezt az override-ot el lehet tavolitani. -->
         <tomcat.version>10.1.54</tomcat.version>
         <!-- Surefire argLine — ures alapertelmezett, JDK 25 profil felulirja -->
     </properties>
@@ -291,7 +292,7 @@
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
-                            <version>1.18.44</version>
+                            <version>1.18.46</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>

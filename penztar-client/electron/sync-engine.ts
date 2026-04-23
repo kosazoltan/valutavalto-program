@@ -32,6 +32,9 @@ import {
   markTransferSynced,
   getPendingCollections,
   markCollectionSynced,
+  getPendingStocktakeItems,
+  markStocktakeItemSynced,
+  markStocktakeItemError,
   getPendingHandoverOperations,
   markHandoverOperationSynced,
   saveCachedBranchStatus,
@@ -506,6 +509,7 @@ export class SyncEngine {
         await this.syncDistributions();
         await this.syncTransfers();
         await this.syncCollections();
+        await this.syncStocktakeItems();
         await this.cacheBranchStatus();
         await this.syncCashDeskMasterData();
         await this.syncWorkerMasterData();
@@ -1358,6 +1362,58 @@ export class SyncEngine {
       }
     } catch (err) {
       log.warn('[SyncEngine] Collection sync hiba:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  /**
+   * Sprint 7.1 - Offline stocktake item felvetelek sync-elese.
+   *
+   * A worker offline modban rogzitheti az actualQuantity-t, ami a
+   * pending_stocktake_items tablaba kerul. Online-ra visszaterve itt
+   * sync-elodik a backend /api/v1/vault-stocktake/items/{itemId}/count endpointra.
+   *
+   * Hiba eseten retry_count++ es sync_error elmentve. Idempotency-key
+   * biztositja a duplikat felvetel elkerutleset.
+   */
+  async syncStocktakeItems(): Promise<void> {
+    try {
+      const pending = getPendingStocktakeItems();
+      if (pending.length === 0) return;
+
+      const serverUrl = this.getServerUrl();
+      if (!serverUrl) { return; }
+      const token = this.getAuthToken();
+      if (!token) return;
+
+      for (const row of pending) {
+        try {
+          const body: Record<string, unknown> = {
+            actualQuantity: row.actual_quantity,
+          };
+          if (row.note) body['note'] = row.note;
+
+          await httpPost(
+            `${serverUrl}/vault-stocktake/items/${row.item_id}/count`,
+            body,
+            token,
+            row.idempotency_key ?? undefined,
+          );
+          markStocktakeItemSynced(row.id);
+          log.info(`[SyncEngine] Stocktake item #${row.id} (${row.item_id}) sync OK`);
+        } catch (err) {
+          if (isAuthStatusError(err)) {
+            this.clearStoredAuthToken();
+            log.warn('[SyncEngine] Stocktake auth hiba (401/403), ciklus leállítva.');
+            break;
+          }
+          const errMsg = err instanceof Error ? err.message : String(err);
+          markStocktakeItemError(row.id, errMsg);
+          log.warn(`[SyncEngine] Stocktake item #${row.id} sync hiba:`, errMsg);
+          break;
+        }
+      }
+    } catch (err) {
+      log.warn('[SyncEngine] Stocktake sync hiba:', err instanceof Error ? err.message : err);
     }
   }
 

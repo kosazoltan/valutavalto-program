@@ -1,0 +1,42 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "transport": {
+        "type": "http",
+        "url": "http://localhost:8810/mcp"
+      }
+    },
+    "git": {
+      "transport": {
+        "type": "http",
+        "url": "http://localhost:8811/mcp"
+      }
+    },
+    "fetch": {
+      "transport": {
+        "type": "http",
+        "url": "http://localhost:8812/mcp"
+      }
+    },
+    "postgres": {
+      "transport": {
+        "type": "http",
+        "url": "http://localhost:8813/mcp"
+      }
+    },
+    "cognee": {
+      "transport": {
+        "type": "http",
+        "url": "http://localhost:8820/mcp"
+      },
+      "description": "Cognee knowledge engine - AI memory auto-save session zaraskor"
+    },
+    "obsidian": {
+      "transport": {
+        "type": "http",
+        "url": "http://localhost:8821/mcp"
+      },
+      "description": "Obsidian vault sync - session memory markdown-ba auto-expose"
+    }
+  }
+}

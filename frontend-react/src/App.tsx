@@ -25,6 +25,9 @@ const CashierKpiPage = lazy(() => import('./pages/statistics/CashierKpiPage'))
 const SanctionPage = lazy(() => import('./pages/sanction/SanctionPage'))
 const AttendancePage = lazy(() => import('./pages/attendance/AttendancePage'))
 const PermissionMatrixPage = lazy(() => import('./pages/settings/PermissionMatrixPage'))
+const VaultStocktakeListPage = lazy(() => import('./pages/vaultStocktake/VaultStocktakeListPage'))
+const VaultStocktakeDetailPage = lazy(() => import('./pages/vaultStocktake/VaultStocktakeDetailPage'))
+const ComplianceDashboardPage = lazy(() => import('./pages/compliance/ComplianceDashboardPage'))
 const TransactionPage = lazy(() => import('./pages/transactions/TransactionPage'))
 const TransactionListPage = lazy(() => import('./pages/transactions/TransactionListPage'))
 const ConversionPage = lazy(() => import('./pages/transactions/ConversionPage'))
@@ -338,6 +341,9 @@ export default function App() {
             <Route path="/sanction" element={<SanctionPage />} />
             <Route path="/attendance" element={<AttendancePage />} />
             <Route path="/settings/permission-matrix" element={<PermissionMatrixPage />} />
+            <Route path="/vault-stocktake" element={<VaultStocktakeListPage />} />
+            <Route path="/vault-stocktake/:id" element={<VaultStocktakeDetailPage />} />
+            <Route path="/compliance" element={<ComplianceDashboardPage />} />
           
           {/* Cashier (penztaros) routes */}
           <Route path="/cashier" element={<CashierMainMenu />} />

@@ -300,6 +300,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
       sourceBranchCode, currencyCode, amount, note,
     ),
 
+  // Sprint 7.1: offline stocktake count
+  queueStocktakeCount: (
+    itemId: string,
+    actualQuantity: number,
+    note: string | null,
+    idempotencyKey: string | null,
+  ): Promise<number> =>
+    ipcRenderer.invoke('queue-stocktake-count', itemId, actualQuantity, note, idempotencyKey),
+
   savePendingHandoverOperation: (payload: {
     operationType: 'GENERATE' | 'PRINT' | 'COMPLETE';
     sheetId?: string | null;
