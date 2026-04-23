@@ -25,11 +25,17 @@ A Sprint 5-7 (PR #128) uj oldalakat adott, de a sidebar-ban NEM jelennek meg:
 
 A oldalak mukodnek (browser-tesztelve), csak a navigacio nem mutatja.
 
-**Javitasi irany (v2.3.0)**: Sidebar.tsx-be hozzaadni:
-```tsx
-{ path: '/vault-stocktake', icon: Package, label: 'Ertektar leltar', category: 'Foertektar' }
-{ path: '/compliance', icon: Shield, label: 'Compliance Dashboard', category: 'AML / Compliance' }
+**Javitas (PR #139, MERGED 2026-04-23)**: `frontend-react/src/layouts/menuGroups.ts`-be hozzaadva:
+```ts
+// Foertektar csoport (canonicalRoles: foertektar, ugyvezeto):
+{ path: "/vault-stocktake", label: "Ertektar leltar", icon: Package }
+
+// AML / Compliance csoport (canonicalRoles: belso_ellenor, biztonsagi_vezeto, ugyvezeto):
+{ path: "/compliance", label: "Compliance Dashboard", icon: ClipboardCheck }
 ```
+
+Import-hoz hozzaadva: `Package, ClipboardCheck` a lucide-react-bol.
+NINCS kulon `Sidebar.tsx` fajl - a menuGroups.ts-t a MainLayout.tsx hasznalja render-hez.
 
 ## Legacy Delphi szerver modulok inventoryja (Anti/SZERVER)
 
@@ -125,7 +131,7 @@ A oldalak mukodnek (browser-tesztelve), csak a navigacio nem mutatja.
 
 ## Backlog / TODO (v2.3.0-nak)
 
-1. **[P0]** Sidebar.tsx bovitese: /vault-stocktake + /compliance menupont
+1. **[P0] DONE** menuGroups.ts bovitese: /vault-stocktake + /compliance linkek (PR #139 MERGED)
 2. **[P1]** Cognee MCP live: a docker-compose mcp-cognee profile indit + auto-save session memoriabol
 3. **[P1]** Obsidian Vault live: Local REST API plugin + session handoff
 4. **[P2]** Legacy migration deep-dive: 5% maradt gap (pl. tilcopy, recguard)

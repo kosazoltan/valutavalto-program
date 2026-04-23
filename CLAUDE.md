@@ -172,24 +172,50 @@ git branch -d $BRANCH_NAME
 ```
 
 ### Periodikus cleanup (hetente 1x, KÖTELEZŐ)
+
+**AI review fix v2.1** (2026-04-23 Sourcery + Codex feedback beepitve):
+- Codex P1: origin/main KIZARVA a cleanup-bol (branch protection-off eseten is biztonsagos)
+- Sourcery P2: shell variable-ok quoted formaban + fetch --all --prune a skript elejen
+
 ```bash
-# Remote merged branch-ek torlese:
-gh api "repos/OWNER/REPO/branches" --paginate -q '.[] | select(.protected==false) | .name'   | while read branch; do
+# 0. Fetch + prune (Sourcery P2 #138): mindig friss remote allapot a merge-base check-hez
+git fetch --all --prune
+
+# 1. Remote merged branch-ek torlese (KIVEVE origin/main!)
+gh api "repos/OWNER/REPO/branches" --paginate -q '.[] | select(.protected==false) | .name'   | while IFS= read -r branch; do
+      # Codex P1 #138: KOTELEZO main-t explicit KIZARNI a cleanup-bol
+      # Branch protection-off eseten az ancestor check igaz lenne origin/main-re is
+      # es a weekly cleanup letorolne a default branch-et (CI/deploy breaking!)
+      if [ "$branch" = "main" ] || [ "$branch" = "master" ]; then
+        continue
+      fi
       if git merge-base --is-ancestor "origin/$branch" origin/main 2>/dev/null; then
         gh api -X DELETE "repos/OWNER/REPO/git/refs/heads/$branch"
+        echo "Deleted remote: $branch"
       fi
     done
 
-# Lokalis merged branch torles:
-git branch --merged main | grep -v "main\|\*" | xargs -r git branch -d
+# 2. Lokalis merged branch torles (quoted variable - Sourcery P2):
+git branch --merged main | grep -v -E "^\*| main$"   | while IFS= read -r branch; do
+      branch=$(echo "$branch" | xargs)  # trim whitespace
+      if [ -n "$branch" ] && [ "$branch" != "main" ]; then
+        git branch -d "$branch"
+      fi
+    done
 
-# Remote reference cleanup:
-git fetch --prune origin
+# 3. Lokalis stale remote references cleanup (ha valami remote-rol eltunt):
+git remote prune origin
 ```
 
 ### Monitoring (heti)
-Elvart: `gh pr list --state open` = 0 PR, `git branch -r | grep -v main | wc -l` < 5.
-Ha ennel tobb: azonnal futtatni a cleanup scriptet.
+Elvart: `gh pr list --state open` = 0 PR, aktiv remote branch szam:
+```bash
+# Sourcery P2 #138 fix: 'main$' regex - NEM szuri az origin/HEAD -> origin/main pointer-t
+# ami az egyszeru 'main' match hibasan szurtte (off-by-one)
+git branch -r | grep -v -E '(main$|HEAD)' | wc -l
+```
+
+Ha az ertek **> 5**: azonnal futtatni a cleanup scriptet.
 
 ## AUTOMATIZALT AI code review workflow (Sourcery + Codex)
 **2026-04-21 ota automatikus**: a `.github/workflows/ai-review-auto-fix.yml` a Claude Code Action-t triggereli, amikor Sourcery vagy Codex review erkezik. Ez automatikusan javit + push-ol a feature branch-re. A manualis workflow az `agent` fallback.

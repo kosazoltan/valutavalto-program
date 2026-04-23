@@ -71,14 +71,18 @@ A `deploy-hetzner.yml` eddig **csak backend JAR-t deploy-olt**, a frontend SPA-t
 
 **Kovetkezmeny**: a felhasznalok **nem fogjak megtalalni** ezeket az uj funkciokat a GUI-ban.
 
-**Javitas (v2.3.0 P0)**: `Sidebar.tsx` boviteses 2 uj link:
-```typescript
-// FOERTEKTAR kategoriahoz:
-{ path: '/vault-stocktake', icon: Package, label: 'Ertektar leltar' }
+**Javitas (PR #139 MERGED 2026-04-23)**: `frontend-react/src/layouts/menuGroups.ts` bovitese 2 uj link:
+```ts
+// Foertektar csoport (canonicalRoles: foertektar, ugyvezeto):
+{ path: "/vault-stocktake", label: "Ertektar leltar", icon: Package }
 
-// AML / COMPLIANCE kategoriahoz:
-{ path: '/compliance', icon: Shield, label: 'Compliance Dashboard' }
+// AML / Compliance csoport:
+{ path: "/compliance", label: "Compliance Dashboard", icon: ClipboardCheck }
 ```
+
+**NEM Sidebar.tsx**: a projekt nem hasznal kulon Sidebar komponenst, hanem
+a `MainLayout.tsx` rendereli a `menuGroups.ts` listajat. Az ikonok a
+lucide-react csomagbol: `Package` (Stocktake-hez) es `ClipboardCheck` (Compliance-hez).
 
 ## 5. Legacy Delphi szerver inventory
 
