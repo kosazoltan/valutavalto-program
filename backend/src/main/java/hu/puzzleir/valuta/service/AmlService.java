@@ -559,6 +559,25 @@ public class AmlService {
                 break;
         }
 
+        // Sprint 5.3 C2 - 8 napos rolling window explicit check
+        boolean rollingWindowExceeded = false;
+        boolean requiresManagerApproval = false;
+        String managerApprovalReason = null;
+
+        if (hasforint.compareTo(ROLLING_WINDOW_LIMIT_HUF) >= 0) {
+            rollingWindowExceeded = true;
+            warnings.add("8 NAPOS ABLAK: gördülő összeg " + hasforint.toPlainString()
+                + " Ft >= " + ROLLING_WINDOW_LIMIT_HUF.toPlainString() + " Ft limit (Pmt. 33.§)");
+        }
+
+        // Manager jóváhagyás kötelező: TranzTipus 4, 5, 6 vagy rolling window túllépés
+        if (transactionType >= 4 || rollingWindowExceeded) {
+            requiresManagerApproval = true;
+            managerApprovalReason = "TranzTipus " + transactionType
+                + (rollingWindowExceeded ? " + 8 napos ablak túllépés" : "")
+                + " — SUPERVISOR vagy MANAGER jóváhagyás szükséges";
+        }
+
         return hu.puzzleir.valuta.dto.aml.AmlCheckResult.builder()
             .transactionType(transactionType)
             .weeklyTotal(weeklyTotal)
@@ -568,6 +587,12 @@ public class AmlService {
             .requiresId(requiresId)
             .requiresEnhanced(requiresEnhanced)
             .blocked(blocked)
+            .rollingWindowExceeded(rollingWindowExceeded)
+            .rollingWindowLimit(ROLLING_WINDOW_LIMIT_HUF)
+            .rollingWindowTotal(hasforint)
+            .rollingWindowDays(ROLLING_WINDOW_DAYS)
+            .requiresManagerApproval(requiresManagerApproval)
+            .managerApprovalReason(managerApprovalReason)
             .warnings(warnings)
             .build();
     }
@@ -590,6 +615,19 @@ public class AmlService {
 
     /** 2017. LIII. tv.: Fokozott átvilágítási küszöb */
     private static final BigDecimal ENHANCED_THRESHOLD = new BigDecimal("4500000");
+
+    /**
+     * Sprint 5.3 C2 — 8 napos rolling window limit (HUF).
+     * Pmt. (2017. LIII. tv.) szerint a fokozott átvilágítási küszöb felett
+     * kötelező a manager jóváhagyás + részletes dokumentálás.
+     * A BIGCTRL.DLL TranzTipus 5, 6 szintek ezen limit feletti eseteket kezelték.
+     */
+    private static final BigDecimal ROLLING_WINDOW_LIMIT_HUF = new BigDecimal("4500000");
+
+    /**
+     * Sprint 5.3 — Rolling window hossza napokban (legacy BIGCTRL: _diff < 8 → minusDays(8)).
+     */
+    private static final int ROLLING_WINDOW_DAYS = 8;
 
     /** Structuring detektálás: limit alatti tranzakciók száma egy napon belül */
     private static final int STRUCTURING_MIN_TRANSACTIONS = 3;
@@ -1082,6 +1120,58 @@ public class AmlService {
                     && r.getDeadlineAt().isBefore(LocalDateTime.now())
                     && r.getStatus() == AmlReportStatus.DRAFT))
             .build();
+    }
+
+    // ============ SPRINT 6.2: ROLLING WINDOW AUDIT ============
+
+    /**
+     * Sprint 6.2 C2 compliance audit: 8 napos gordulo limit felett levo ugyfelek listaja.
+     * 
+     * Pmt. (2017. LIII. tv.) szerint a fokozott atvilagitasu ugyfelek rendszeres
+     * felulvizsgalat alatt kell legyenek. Ez a lista a hatosagi auditra hasznalhato.
+     *
+     * @param thresholdHuf opcionalis kuszob (alapertelmezett: ROLLING_WINDOW_LIMIT_HUF = 4.5M)
+     * @return rolling window audit DTO-k listaja
+     */
+    @Transactional(readOnly = true)
+    public java.util.List<hu.puzzleir.valuta.dto.aml.RollingWindowAuditDto> getRollingWindowAudit(BigDecimal thresholdHuf) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        LocalDate sinceDate = LocalDate.now().minusDays(ROLLING_WINDOW_DAYS);
+        BigDecimal threshold = thresholdHuf != null ? thresholdHuf : ROLLING_WINDOW_LIMIT_HUF;
+
+        java.util.List<Object[]> rows = transactionRepository.findRollingWindowAuditCandidates(
+            companyId, sinceDate, threshold);
+
+        java.util.List<hu.puzzleir.valuta.dto.aml.RollingWindowAuditDto> result = new ArrayList<>();
+        for (Object[] row : rows) {
+            String customerId = (String) row[0];
+            BigDecimal total = (BigDecimal) row[1];
+
+            // Ugyfel info lekerese
+            String customerName = null;
+            boolean highRiskFlag = false;
+            Optional<Customer> customerOpt = customerRepository.findByCustomerCodeAndCompanyId(customerId, companyId);
+            if (customerOpt.isPresent()) {
+                customerName = customerOpt.get().getName();
+                highRiskFlag = Boolean.TRUE.equals(customerOpt.get().getHighRiskFlag());
+            }
+
+            result.add(hu.puzzleir.valuta.dto.aml.RollingWindowAuditDto.builder()
+                .customerId(customerId)
+                .customerName(customerName)
+                .rollingWindowTotalHuf(total)
+                .rollingWindowLimitHuf(threshold)
+                .exceedPercent(total.multiply(new BigDecimal("100")).divide(threshold, 1, RoundingMode.HALF_UP))
+                .auditAt(LocalDateTime.now())
+                .sinceDate(sinceDate)
+                .windowDays(ROLLING_WINDOW_DAYS)
+                .highRiskFlag(highRiskFlag)
+                .build());
+        }
+
+        log.info("Rolling window audit: company={}, threshold={}, {} candidate(s)",
+                companyId, threshold, result.size());
+        return result;
     }
 
     // ============ NAPI CACHE RESET (NAPZÁRÁS) ============

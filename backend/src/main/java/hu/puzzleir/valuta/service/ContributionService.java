@@ -6,6 +6,7 @@ import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.repository.ContributionRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,10 +21,20 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@Slf4j
 public class ContributionService {
+
+    /** Sprint 7.2 CB-016: konfigurálható MNB felügyeleti díj kulcs (alapértelmezett 0.01%) */
+    private static final String MNB_FEE_RATE_KEY = "mnb.supervisory-fee-rate";
+    private static final BigDecimal DEFAULT_MNB_FEE_RATE = new BigDecimal("0.0001");
+
+    /** Sprint 7.2 CB-016: konfigurálható ÁFA kulcs (alapértelmezett 27%) */
+    private static final String VAT_RATE_KEY = "nav.vat-rate.STANDARD";
+    private static final BigDecimal DEFAULT_VAT_RATE = new BigDecimal("0.27");
 
     private final ContributionRepository repository;
     private final TransactionRepository transactionRepository;
+    private final SystemParameterService systemParameterService;
 
     public List<Contribution> findAll(UUID branchId, String contributionType) {
         return repository.findWithFilters(branchId, contributionType);
@@ -58,7 +69,7 @@ public class ContributionService {
         Contribution mnbContribution = Contribution.builder()
                 .contributionType("MNB_SUPERVISORY_FEE")
                 .branchId(branchId)
-                .amount(totalTurnover.multiply(new BigDecimal("0.0001")).setScale(2, RoundingMode.HALF_UP))
+                .amount(totalTurnover.multiply(resolveRate(MNB_FEE_RATE_KEY, DEFAULT_MNB_FEE_RATE)).setScale(2, RoundingMode.HALF_UP))
                 .periodStart(periodStart)
                 .periodEnd(periodEnd)
                 .status(Contribution.ContributionStatus.CALCULATED)
@@ -70,7 +81,7 @@ public class ContributionService {
         Contribution feeContribution = Contribution.builder()
                 .contributionType("HANDLING_FEE_TAX")
                 .branchId(branchId)
-                .amount(totalFees.multiply(new BigDecimal("0.27")).setScale(2, RoundingMode.HALF_UP))
+                .amount(totalFees.multiply(resolveRate(VAT_RATE_KEY, DEFAULT_VAT_RATE)).setScale(2, RoundingMode.HALF_UP))
                 .periodStart(periodStart)
                 .periodEnd(periodEnd)
                 .status(Contribution.ContributionStatus.CALCULATED)
@@ -83,5 +94,35 @@ public class ContributionService {
 
     public List<Contribution> findByPeriod(UUID branchId, LocalDate periodStart, LocalDate periodEnd) {
         return repository.findByBranchAndPeriod(branchId, periodStart, periodEnd);
+    }
+
+    /**
+     * Sprint 7.2 CB-016: SystemParameter-bol lekert kulcs (ÁFA, MNB díj).
+     * Fallback ha nincs beállítva vagy hibás érték.
+     *
+     * @param key      SystemParameter kulcs (pl. "nav.vat-rate.STANDARD")
+     * @param fallback default értek ha a paraméter hiányzik vagy érvénytelen
+     * @return érvényes, nem-negatív BigDecimal
+     */
+    private BigDecimal resolveRate(String key, BigDecimal fallback) {
+        try {
+            String raw = systemParameterService.getValue(key, null);
+            if (raw == null || raw.isBlank()) {
+                log.debug("Rate parameter hianyzik, fallback: key={}, fallback={}", key, fallback);
+                return fallback;
+            }
+            BigDecimal value = new BigDecimal(raw.trim());
+            if (value.signum() < 0) {
+                log.warn("Rate parameter negativ, fallback: key={}, raw={}, fallback={}", key, raw, fallback);
+                return fallback;
+            }
+            return value;
+        } catch (NumberFormatException e) {
+            log.warn("Rate parameter nem decimalis, fallback: key={}, hiba={}", key, e.getMessage());
+            return fallback;
+        } catch (Exception e) {
+            log.warn("Rate parameter lekeresi hiba, fallback: key={}, hiba={}", key, e.getMessage());
+            return fallback;
+        }
     }
 }

@@ -29,6 +29,26 @@ public class SystemParameterService {
         return getByKey(key).getParameterValue();
     }
 
+    /**
+     * Sprint 7.2 CB-016: null-safe getValue overload.
+     * Visszaadja a paraméter értékét, vagy a defaultValue-t ha nincs.
+     * NEM dob ResourceNotFoundException-t — fallback-barat.
+     *
+     * @param key          SystemParameter kulcs
+     * @param defaultValue ha nincs a paraméter vagy üres érték
+     */
+    public String getValue(String key, String defaultValue) {
+        try {
+            SystemParameter p = repo.findByParameterKey(key).orElse(null);
+            if (p == null || p.getParameterValue() == null || p.getParameterValue().isBlank()) {
+                return defaultValue;
+            }
+            return p.getParameterValue();
+        } catch (Exception e) {
+            return defaultValue;
+        }
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public SystemParameter create(String key, String value, String type, String category, String description) {
         SystemParameter p = SystemParameter.builder()
