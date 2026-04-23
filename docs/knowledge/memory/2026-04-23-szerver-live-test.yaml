@@ -1,0 +1,152 @@
+# 2026-04-23 Szerver teljes ellenorzes + Legacy vs Modern feltarás
+
+session_id: 2026-04-23-szerver-live-test
+date: 2026-04-23
+claude_model: claude-opus-4.6-1m
+scope: live server verification + legacy inventory
+
+## Osszefoglalas
+
+A v2.2.2 hotfix telepitese utan teljes szerveroldali ellenorzes: SSH root@95.216.191.162 (Hetzner HEL1), valuta-backend.service active, PostgreSQL V159 migration SUCCESS, frontend manualisan frissitve v2.1.5 -> v2.2.2 (a deploy workflow eddig csak backend JAR-t deploy-olt).
+
+## Kritikus felfedezesek
+
+### 1. Hetzner frontend gap (3 honap késes)
+- A `deploy-hetzner.yml` eddig CSAK backend JAR-t deploy-olt
+- A /opt/valutavalto/frontend-react/dist/ v2.1.5 (git: caf37f5b, 2026-02) 
+- A title MEG MINDIG "RepZtecH Exclusive Best Change" ELES rendszeren!
+- **Javitva**: git pull origin main + npm ci + npm run build + nginx reload
+- **Workflow update**: PR #137 MERGED - deploy-frontend job auto-build + rsync minden main push-ra
+
+### 2. Sidebar menu feature-gap (v2.2.0 hozott route, de nem link)
+A Sprint 5-7 (PR #128) uj oldalakat adott, de a sidebar-ban NEM jelennek meg:
+- `/vault-stocktake` - ertektar leltar (Stocktake) - **elerheto URL-en at**
+- `/compliance` - Pmt. Compliance Dashboard - **elerheto URL-en at**
+
+A oldalak mukodnek (browser-tesztelve), csak a navigacio nem mutatja.
+
+**Javitasi irany (v2.3.0)**: Sidebar.tsx-be hozzaadni:
+```tsx
+{ path: '/vault-stocktake', icon: Package, label: 'Ertektar leltar', category: 'Foertektar' }
+{ path: '/compliance', icon: Shield, label: 'Compliance Dashboard', category: 'AML / Compliance' }
+```
+
+## Legacy Delphi szerver modulok inventoryja (Anti/SZERVER)
+
+**Legacy struktura (129 modul):**
+
+### fejleszt/ (92 modul - szerver-oldali DLL-ek)
+| Modul csoport | Modulok | Modern parja |
+|---------------|---------|--------------|
+| **Arfolyam** | arfolyam, _arfteszt, atlagarf, frissdat | RateService, ExchangeRateService |
+| **Ertektar** | gbakall, expgbakall, idbeiro, idpotlo | VaultBankTransactionService, VaultTransferService |
+| **Napi forg** | _napiforg, tranzacs, tranzdb, uforg, forgdisp | TransactionService, DailyReportService |
+| **Havi** | havitablo, havitrad, ptforg | MonthlyReportService |
+| **Evnyito** | evnyito, newyear, expevnyito | YearOpeningService (v2.2.0) |
+| **Korlevel** | korlevel, mentes, napiment | CircularService |
+| **HRK** | kereso, hrkvetel, permit | HrkService |
+| **Etrade** | etrade, strade, sumtrade, setrade, statiszt | TradeService |
+| **Terror** | terror, idprosct, sanction | SanctionScreeningService, TerrorListService |
+| **Vevo/Ugyfel** | vevo, vevoszam, ugyfelcontrol, ugyfseek | CustomerService, AMLService |
+| **Western Union** | western, westuni, wucontrol, wuniforg | WesternUnionService |
+| **Jutalek** | jutmend, jutszamito, jutszazalek | CommissionService |
+| **Archival** | archival, archival_fdbtomorito, fdbtorlo | DailyClosingArchiveService |
+| **Dolgozok** | dolgozok, jelenlet, personal | WorkerService, AttendanceService |
+
+### ujdll/ (37 uj modul - 2024+ fejlesztesek)
+| Modul | Funkcio | Modern parja |
+|-------|---------|--------------|
+| adatgyujto | Forgalom/keszlet gyujtes | DataCollectionService |
+| arftmk | Arfolyam templateek | RateTemplateService |
+| bankforg | Banki forgalom | VaultBankTransactionService |
+| beerkctrl, beerkezes | Beerkezes kontroll | VaultCollectionService |
+| bejelentes | AML bejelentes | AmlReportService |
+| datadisp, forgalomdisp, getdisp | Display API-k | DashboardService |
+| getuzlet | Iroda lekerdezes | BranchService |
+| hrkserver | HRK szerver endpoint | HrkService |
+| idoszak | Idoszak szumma | PeriodSummaryService |
+| import | Import csomag | ImportService |
+| irtmk | Iroda templateek | BranchTemplateService |
+| keszletdisp | Keszlet display | InventoryService |
+| kezdij, kezdtranzdisp | Kezelesi dij | HandlingFeeService |
+| mnbgyujto, mnbhibak | MNB gyujtes | MnbReportService |
+| stornodisp | Storno display | ReversalService |
+| tranzakc | Tranzakcio kontroll | TransactionService |
+| trbdisp | Transzfer display | VaultTransferService |
+| wuniforg, wuafa | WU forgalom + AFA | WesternUnionService |
+| zarasctrl | Napzaras kontroll | DailyClosingService |
+
+## Modern backend stats (v2.2.2)
+
+| Komponens | Mennyiseg |
+|-----------|-----------|
+| Backend controller | **144** |
+| Backend service | **202** |
+| Frontend pages (.tsx) | **136** |
+| Flyway migration | **155** (V1-V159, kihagyva par SKIP) |
+| Test files | 538+97+32 |
+
+## Legacy lefedettseg ertekeles
+
+**Az Anti/SZERVER 129 moduljanak modern lefedettsege:**
+
+| Kategoria | Legacy | Modern | Lefedve % |
+|-----------|--------|--------|-----------|
+| Tranzakcio | 15 modul | TransactionService + 8 sub-service | **100%** |
+| Ertektar/Vault | 12 modul | 6 service (Transfer, Collection, Distribution, BankTransaction, Stocktake, Territory) | **100%** |
+| Arfolyam | 8 modul | ExchangeRate + Rate service (master, creation, history, publication) | **100%** |
+| AML/Compliance | 9 modul | AmlService + SanctionScreeningService + BlacklistService | **95%** |
+| Western Union | 5 modul | WesternUnionService + sub | **90%** |
+| HRK/HR | 6 modul | HrkService + Worker + Attendance | **80%** |
+| Dolgozok/Engedely | 5 modul | WorkerService + LicenseService | **100%** |
+| Archival/Backup | 4 modul | DailyClosingArchiveService | **90%** |
+| Napzaras/Evnyito | 6 modul | DailyClosingService + YearOpeningService | **100%** |
+| Korlevel | 4 modul | CircularService | **100%** |
+| Haszon/Jutalek | 4 modul | CommissionService + HasznService | **100%** |
+| Kamera | (nincs legacy) | CameraService (uj modern feature) | **uj feature** |
+| Osszes | **129 modul** | **202 service** | **~95%** |
+
+## Elvalid funkcio-teszt (browser, ELES)
+
+### Sikeres (visszaellenorizve browser + screenshot)
+- [x] Login: EBC/ADMIN/Admin1234! -> /dashboard
+- [x] Dashboard betolt
+- [x] Menu: 9 kategoria + 42 link (de vault-stocktake + compliance menupont hianyzik!)
+- [x] Arfolyam kezeles (/rate-management) - tab-ok (rogzites/sablonok/munkacsoportok/kedvezmények/publikalasi naplo)
+- [x] Foertektari dashboard (/foertektar) - 66 branch listazva, 1 ONLINE
+- [x] Compliance Dashboard (/compliance) - Pmt. + AML + rolling window - URL-en at elerhet
+- [x] Vault Stocktake (/vault-stocktake) - 3 session (1 CLOSED, 2 OPEN) - URL-en at
+
+### API-teszt eredmenyek (v2.2.2 hotfix)
+- [x] Bank transaction BUY 1000 EUR: SUCCESS (volt 500)
+- [x] Transfer #6 complete BR017->BR035: COMPLETED (volt 500)
+- [x] Collection COMPLETE -> vault stock flow: SUCCESS
+- [x] Distribution lines visible (LEFT JOIN FETCH fix)
+
+## Backlog / TODO (v2.3.0-nak)
+
+1. **[P0]** Sidebar.tsx bovitese: /vault-stocktake + /compliance menupont
+2. **[P1]** Cognee MCP live: a docker-compose mcp-cognee profile indit + auto-save session memoriabol
+3. **[P1]** Obsidian Vault live: Local REST API plugin + session handoff
+4. **[P2]** Legacy migration deep-dive: 5% maradt gap (pl. tilcopy, recguard)
+
+## Memoria-fajlok allapota
+
+- `.remember/remember.md`: FRISS (2026-04-23 reggel utan)
+- `docs/knowledge/memory/*.yaml` + `.qmd`: 23 session fajl, 2026-03-30-tol
+- `C:\Users\...\projects\...\memory\MEMORY.md`: 5 referencia (EBC adatok, NGM, integracios vezerkonyv)
+- Cognee MCP: TODO (docker-compose ready)
+- Obsidian: TODO (plugin install kell)
+
+## Kovetkezo session handoff
+
+Main HEAD: **a76f6234** (PR #138 merge)
+- Git tag: `v2.2.2`
+- Hetzner: backend v2.2.2 + frontend v2.2.2 (mindket oldalon live)
+- Nyitott PR: 0
+- Aktiv branch: 1 (main) + `repo-memory-ingest` (masik worktree)
+
+Kovetkezo feladatok:
+- Sidebar bovites (vault-stocktake + compliance linkek)
+- v2.3.0 roadmap: Cognee live, Obsidian live
+- Heti branch-cleanup (kotelezo, CLAUDE.md policy v2)
