@@ -70,11 +70,16 @@ foreach ($wf in $workflows) {
         '\$\{\{\s*github\.event\.issue\.body\s*\}\}',
         '\$\{\{\s*github\.event\.comment\.body\s*\}\}'
     )
-    foreach ($pattern in $untrustedPatterns) {
-        $runMatches = [regex]::Matches($content, "run:\s*\|[\s\S]*?$pattern")
-        if ($runMatches.Count -gt 0) {
-            Write-Host "    [BLOCK] untrusted input kozvetlen run: scriptben ($pattern)" -ForegroundColor Red
-            $blockers += "$($wf.Name): untrusted input run: (env kell)"
+    $stepBlocks = [regex]::Split($content, "(?m)^\s{6,8}-\s+(?=(?:name|uses|id|run):)")
+    foreach ($step in $stepBlocks) {
+        if ($step -notmatch "(?m)^\s+run:\s*[\|>]") { continue }
+        $runIdx = $step.IndexOf("run:")
+        $runPart = $step.Substring([Math]::Max(0, $runIdx))
+        foreach ($pattern in $untrustedPatterns) {
+            if ($runPart -match $pattern) {
+                Write-Host "    [BLOCK] untrusted run: ($pattern)" -ForegroundColor Red
+                $blockers += "$($wf.Name): untrusted run:"
+            }
         }
     }
 }

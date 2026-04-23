@@ -242,4 +242,36 @@ class StockSnapshotServiceTest {
         assertThat(result.getCompanyTotals().getCurrencies()).hasSize(27);
         assertThat(result.getCompanyTotals().getReservations()).isEmpty();
     }
+
+    /**
+     * Codex P2 PR #157 regression test:
+     * Ha egy branch-nek olyan region-code-ja van ami NINCS a REGION_NAMES hardcoded map-ben,
+     * a branch-e NEM vesz el a companyTotals-bol (fallback aggregation minden branch-et kell latnia).
+     */
+    @Test
+    @DisplayName("getFullSnapshot - ismeretlen region-code-u branch IS szerepel a companyTotals fallback-ben")
+    void getFullSnapshot_branchWithUnknownRegion_includedInCompanyTotalsFallback() {
+        // UNKNOWN_REGION nincs a REGION_NAMES-ben ("10","20","40","50","63","75","120","145")
+        Branch branch = createBranch(BRANCH_1_ID, "B01", "Iroda-UNKNOWN", "UNKNOWN_REGION_99");
+        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of(branch));
+
+        CurrencyStock usdStock = CurrencyStock.builder()
+                .entityType("CASHIER").entityId(BRANCH_1_ID.toString())
+                .currencyCode("USD").quantity(new BigDecimal("5000"))
+                .weightedAvgCost(new BigDecimal("370"))
+                .lastUpdated(LocalDateTime.now()).build();
+        when(currencyStockRepository.findAllByBranchIds(anyList())).thenReturn(List.of(usdStock));
+
+        StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
+
+        // regions ures (REGION_NAMES nem tartalmazza UNKNOWN_REGION_99-et)
+        assertThat(result.getRegions()).isEmpty();
+
+        // DE a companyTotals fallback agregalja a branch stock-jat
+        CurrencyStockDetailDto usdTotal = result.getCompanyTotals().getCurrencies().stream()
+                .filter(c -> "USD".equals(c.getCurrencyCode())).findFirst().orElseThrow();
+        // 5000 USD * 370 HUF = 1,850,000 HUF
+        assertThat(usdTotal.getStock()).as("USD stock aggregalva fallback-bol").isEqualTo(5000);
+        assertThat(usdTotal.getStockHuf()).as("USD stockHuf aggregalva fallback-bol").isEqualTo(1_850_000);
+    }
 }
