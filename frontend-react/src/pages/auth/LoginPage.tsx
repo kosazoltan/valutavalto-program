@@ -276,14 +276,14 @@ export default function LoginPage() {
         {/* Title bar */}
         <div className="header-bar flex items-center gap-2 h-8">
           <Lock size={16} />
-          <span>RepZtecH Exclusive Best Change - Bejelentkezés</span>
+          <span>Exclusive Best Change - Bejelentkezés</span>
         </div>
 
         {/* Content */}
         <div className="p-4">
           {/* Logo/Company info */}
           <div className="text-center mb-4">
-            <div className="text-lg font-bold text-primary">RepZtecH Exclusive Best Change</div>
+            <div className="text-lg font-bold text-primary">Exclusive Best Change</div>
             <div className="text-xs text-gray-500">
               Pénzváltó Rendszer v{import.meta.env.VITE_APP_VERSION ?? __APP_VERSION__}
             </div>
@@ -435,7 +435,7 @@ export default function LoginPage() {
 
           {/* Footer info */}
           <div className="mt-4 pt-3 border-t border-form-border text-xs text-gray-500 text-center">
-            <div>© 2026 RepZtecH Exclusive Best Change Zrt.</div>
+            <div>© 2026 Exclusive Best Change Zrt.</div>
             <div>Minden jog fenntartva.</div>
           </div>
         </div>
