@@ -75,9 +75,20 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`
     }
     // Idempotency-Key header for write methods (required by backend IdempotencyFilter)
+    // Fix: axios 1.x AxiosHeaders set() API hasznalata a direkt assignment helyett
     const method = (config.method ?? '').toUpperCase()
-    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && config.headers && !config.headers['Idempotency-Key']) {
-      config.headers['Idempotency-Key'] = crypto.randomUUID()
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && config.headers) {
+      const existing = typeof config.headers.get === 'function'
+        ? config.headers.get('Idempotency-Key')
+        : config.headers['Idempotency-Key']
+      if (!existing) {
+        const newKey = crypto.randomUUID()
+        if (typeof config.headers.set === 'function') {
+          config.headers.set('Idempotency-Key', newKey)
+        } else {
+          config.headers['Idempotency-Key'] = newKey
+        }
+      }
     }
     return config
   },
