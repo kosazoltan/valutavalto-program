@@ -31,7 +31,7 @@ jobs:
     steps:
       - name: Check if already reviewed in this push
         id: check
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const { data: comments } = await github.rest.issues.listComments({
@@ -50,7 +50,7 @@ jobs:
 
       - name: Post review trigger comment
         if: steps.check.outputs.already == 'false'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           STATE_KEY: ${{ steps.check.outputs.state_key }}
         with:
