@@ -937,6 +937,61 @@ function normalizeShipmentRequest(raw: Record<string, unknown>): ShipmentRequest
     } as ShipmentRequest
 }
 
+/**
+ * Paginazott lekeres helper a Spring Data Page<T> formatumhoz.
+ *
+ * AI review (Sourcery PR #193): extract pagination loop -> reusable helper.
+ * A `_preservePaged: true` flag miatt a client.ts interceptor NEM unwrap-olja
+ * a Page<T> strukturat, igy a `last`/`totalPages` mezok elerhetoek.
+ *
+ * @param path Backend URL (pl. '/shipments')
+ * @param extraParams Kiegeszito query paramok (size override, filter stb.)
+ * @param opts.maxPages safety cap (default 20 = 2000 rekord ha size=100).
+ *                      Ha elerjuk es NINCS `last=true`, console.warn-olunk,
+ *                      hogy ne legyen silent truncation.
+ * @param opts.pageSize oldal meret (default 100)
+ */
+async function fetchPaged<T>(
+  path: string,
+  extraParams: Record<string, unknown> = {},
+  opts: { maxPages?: number; pageSize?: number } = {}
+): Promise<T[]> {
+  const pageSize = opts.pageSize ?? 100
+  const maxPages = opts.maxPages ?? 20
+  const all: T[] = []
+  let page = 0
+  let lastPageReached = false
+  while (page < maxPages) {
+    const response = await api.get<{ content: T[]; totalPages?: number; last?: boolean }>(
+      path,
+      {
+        params: { ...extraParams, page, size: pageSize },
+        _preservePaged: true,
+      } as Record<string, unknown>
+    )
+    const batch = asArray<T>(response.data?.content)
+    all.push(...batch)
+    if (
+      response.data?.last === true ||
+      response.data?.totalPages === undefined ||
+      page + 1 >= response.data.totalPages
+    ) {
+      lastPageReached = true
+      break
+    }
+    page++
+  }
+  if (!lastPageReached) {
+    // AI review (Sourcery PR #193): silent truncation risk elleni explicit figyelmeztetes.
+    // eslint-disable-next-line no-console -- ez diagnosztikus, scalability problema bizonyiteka
+    console.warn(
+      `[fetchPaged] MAX_PAGES=${maxPages} (size=${pageSize}) elerve ${path}-on, `
+      + `lehetseges silent truncation. Backend-oldali filter kell vagy maxPages emelese.`
+    )
+  }
+  return all
+}
+
 export const shipmentRequestApi = {
   /**
    * @deprecated Sourcery PR #180 bug_risk + PR #187 improvement: backend
@@ -977,26 +1032,11 @@ export const shipmentRequestApi = {
     // Megoldas: paginazott osszes lista lekeres + client-side filter.
     // AI review (Codex PR #180 P1): backend mezonevek `fromBranchId` / `toBranchId`
     // (NEM `requestingBranchId` / `targetBranchId`). A korabbi filter SOHA NEM illesztett.
-    // AI review (Sourcery PR #180): nem csak size=200 helyett pagination loop, ha
-    // a lista >200 elemet tartalmaz (scalability fix)
-    // TODO: backend /api/v1/shipments?branchId=... natív filter - GitHub Issue.
-    const PAGE_SIZE = 100
-    let all: ShipmentRequest[] = []
-    let page = 0
-    const MAX_PAGES = 20  // 2000 shipment upper bound - safety
-    for (; page < MAX_PAGES; page++) {
-      // _preservePaged flag: keruljuk az auto-unwrap-et, hogy totalPages-t lassuk
-      const response = await api.get<{ content: unknown[]; totalPages?: number; last?: boolean }>(
-        `/shipments`,
-        {
-          params: { page, size: PAGE_SIZE },
-          _preservePaged: true,
-        } as Record<string, unknown>
-      )
-      const batch = asArray<Record<string, unknown>>(response.data?.content).map(normalizeShipmentRequest)
-      all = all.concat(batch)
-      if (response.data?.last === true || response.data?.totalPages === undefined || page + 1 >= response.data.totalPages) break
-    }
+    // AI review (Sourcery PR #180 + #193): pagination loop `fetchPaged<T>` helperbe
+    // kiemelve, MAX_PAGES cap eseten console.warn (silent truncation elkerulese).
+    // TODO: backend /api/v1/shipments?branchId=... nativ filter - GitHub Issue.
+    const rawPages = await fetchPaged<Record<string, unknown>>(`/shipments`)
+    const all: ShipmentRequest[] = rawPages.map(normalizeShipmentRequest)
     type ShipmentWithBackendFields = ShipmentRequest & { fromBranchId?: string; toBranchId?: string }
     return all.filter(s => {
       const sb = s as ShipmentWithBackendFields
