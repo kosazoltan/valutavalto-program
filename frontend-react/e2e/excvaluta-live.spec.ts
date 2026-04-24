@@ -293,12 +293,21 @@ test('T09 — authenticated login → dashboard/cashier accessible', async ({ pa
     return
   }
 
-  // 1. Navigate to login
+  // 1. Navigate to login + wait for React hydration
   await page.goto(BASE + '/login', { waitUntil: 'networkidle', timeout: 30000 })
-  await page.waitForTimeout(2000) // CSR hydration
+  // Sourcery PR #175: explicit ready signal helyett fixed waitForTimeout
+  await page.locator('input:not([type=\"hidden\"])').first().waitFor({ state: 'visible', timeout: 10000 })
 
-  // 2. Fill credentials
-  const inputs = page.locator('input:not([type="hidden"])')
+  // 2. Stabil selector-ok (Sourcery PR #175: DOM layout valtozasra robusztusabb)
+  const companyField = page.locator(
+    'input[name*=\"company\" i], input[id*=\"company\" i], input[placeholder*=\"company\" i]'
+  ).first()
+  const workerField = page.locator(
+    'input[name*=\"worker\" i], input[id*=\"worker\" i], input[placeholder*=\"worker\" i], input[placeholder*=\"user\" i]'
+  ).first()
+  const passwordField = page.locator('input[type=\"password\"]').first()
+
+  const inputs = page.locator('input:not([type=\"hidden\"])')
   const count = await inputs.count()
   if (count < 3) {
     console.log(`SKIP T09: Expected >=3 form inputs, got ${count}`)
@@ -306,16 +315,26 @@ test('T09 — authenticated login → dashboard/cashier accessible', async ({ pa
     return
   }
 
-  // Form structure: companyCode, workerCode, password
-  await inputs.nth(0).fill(companyCode)
-  await inputs.nth(1).fill(workerCode)
-  await inputs.nth(2).fill(password)
-  await page.waitForTimeout(500)
+  if (await companyField.isVisible().catch(() => false)
+      && await workerField.isVisible().catch(() => false)
+      && await passwordField.isVisible().catch(() => false)) {
+    await companyField.fill(companyCode)
+    await workerField.fill(workerCode)
+    await passwordField.fill(password)
+  } else {
+    console.log('Stable selectors nem elerhetok, fallback nth()-re')
+    await inputs.nth(0).fill(companyCode)
+    await inputs.nth(1).fill(workerCode)
+    await inputs.nth(2).fill(password)
+  }
 
-  // 3. Submit
-  const submitBtn = page.locator('button[type="submit"]').first()
+  // 3. Submit + explicit wait URL change VAGY error
+  const submitBtn = page.locator('button[type=\"submit\"]').first()
   await submitBtn.click()
-  await page.waitForTimeout(5000) // login request + redirect
+  await Promise.race([
+    page.waitForURL(url => !url.toString().includes('/login'), { timeout: 15000 }).catch(() => null),
+    page.locator('[role=\"alert\"], .error, [class*=\"error\"]').first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => null),
+  ])
 
   const afterLoginUrl = page.url()
   const ss = screenshotPath('T09-authenticated-dashboard')
