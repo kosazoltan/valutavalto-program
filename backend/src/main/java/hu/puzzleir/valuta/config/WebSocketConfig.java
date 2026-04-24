@@ -42,9 +42,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                         .toList()
         );
 
+        // SSOT refaktor (2026-04-24): excvaluta.com konstansok a ProductionUrls-bol
         List<String> mandatoryOrigins = List.of(
-            "https://excvaluta.com",
-            "https://www.excvaluta.com",
+            ProductionUrls.BASE_URL,
+            ProductionUrls.WWW_BASE_URL,
             "https://valutavalto.vercel.app",
             "app://localhost"
         );
