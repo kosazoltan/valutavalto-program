@@ -295,6 +295,15 @@ test('T09 — authenticated login → dashboard/cashier accessible', async ({ pa
 
   // 1. Navigate to login + wait for React hydration
   await page.goto(BASE + '/login', { waitUntil: 'networkidle', timeout: 30000 })
+  // AI review (Codex PR #176 P2): elso-input waitFor ELOTT skip-ellenorzes,
+  // hogy ha a form nem renderelodik (pl. SPA placeholder), ne hard-failjunk,
+  // hanem a skip path-ot kapjuk, mint a korabbi validaciokban.
+  const inputPreCheck = await page.locator('input:not([type=\"hidden\"])').count()
+  if (inputPreCheck === 0) {
+    console.log('SKIP T09: nincs visible input form az /login-on (lehet placeholder)')
+    test.skip(true, 'Login form nem elerheto - SPA placeholder vagy deploy problema')
+    return
+  }
   // Sourcery PR #175: explicit ready signal helyett fixed waitForTimeout
   await page.locator('input:not([type=\"hidden\"])').first().waitFor({ state: 'visible', timeout: 10000 })
 

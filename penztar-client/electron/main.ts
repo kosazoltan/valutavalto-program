@@ -84,7 +84,8 @@ function loadProductionUrls(): { api_url: string; base_url: string; domain: stri
     // mert az extraResources kotelezi a production-urls.json-t). Ha megis ide jutunk,
     // biztositjuk, hogy legalabb egy ismert-jo default-tal ujrainduljon az app.
     // Ez NEM SSOT violation - ez szandekos duplikacio utolso menedekkent.
-    log.error(`[ProductionUrls] CRITICAL: config load failed (${configPath}): ${(err as Error).message}. Fallback to hardcoded defaults - ez a build-csomag serult!`);
+    // AI review (Sourcery PR #174): full error object logging, hogy a stack trace megmaradjon
+    log.error(`[ProductionUrls] CRITICAL: config load failed (${configPath}). Fallback to hardcoded defaults - ez a build-csomag serult!`, err);
     return {
       api_url: 'https://excvaluta.com/api/v1',
       base_url: 'https://excvaluta.com',
