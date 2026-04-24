@@ -47,6 +47,10 @@
     {
       "from": "node_modules/sql.js/dist/sql-wasm.wasm",
       "to": "sql-wasm.wasm"
+    },
+    {
+      "from": "../config/production-urls.json",
+      "to": "production-urls.json"
     }
   ],
   "npmRebuild": false

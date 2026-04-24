@@ -60,12 +60,34 @@ import { registerVideoManagerHandlers } from './video-manager';
 import { registerScannerHandlers } from './scanner';
 import { registerUpdaterHandlers } from './updater';
 import {
+
   isFirstRun,
   getBranches,
   testConnection,
   saveSetupConfig,
   type SetupSavePayload,
 } from './first-run';
+
+// SSOT (2026-04-24): Production URL config lazy-load
+// Packaged app: process.resourcesPath/production-urls.json (electron-builder extraResources)
+// Dev: ../../config/production-urls.json relative a dist-electron-hez
+function loadProductionUrls(): { api_url: string; base_url: string; domain: string } {
+  const packagedPath = path.join(process.resourcesPath, 'production-urls.json');
+  const devPath = path.join(__dirname, '..', '..', 'config', 'production-urls.json');
+  const configPath = app.isPackaged ? packagedPath : devPath;
+  try {
+    const raw = fs.readFileSync(configPath, 'utf8');
+    const cfg = JSON.parse(raw);
+    return { api_url: cfg.api_url, base_url: cfg.base_url, domain: cfg.domain };
+  } catch (err) {
+    log.warn(`[ProductionUrls] Config load failed (${configPath}): ${(err as Error).message}. Fallback: excvaluta.com`);
+    return {
+      api_url: 'https://excvaluta.com/api/v1',
+      base_url: 'https://excvaluta.com',
+      domain: 'excvaluta.com',
+    };
+  }
+}
 
 const isDev = !app.isPackaged && !process.argv.includes('--force-packaged') && process.env.ELECTRON_FORCE_PACKAGED !== '1';
 const devServerUrl = process.env.ELECTRON_RENDERER_URL ?? 'http://127.0.0.1:3000';
@@ -804,8 +826,10 @@ app.whenReady().then(async () => {
       setConfig("server_url", envApiUrl);
       log.info(`[App] server_url szinkronizalva a .env VITE_API_URL-rel: ${envApiUrl}`);
     } else if (!currentServerUrl) {
-      setConfig("server_url", "https://excvaluta.com/api/v1");
-      log.info("[App] server_url default: https://excvaluta.com/api/v1 (Hetzner production)");
+      // SSOT (2026-04-24): config/production-urls.json lazy-load
+      const prodUrls = loadProductionUrls();
+      setConfig("server_url", prodUrls.api_url);
+      log.info(`[App] server_url default: ${prodUrls.api_url} (Hetzner production, SSOT)`);
     }
   }
 

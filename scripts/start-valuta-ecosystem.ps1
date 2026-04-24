@@ -4,11 +4,11 @@
 
 .DESCRIPTION
   KOTELEZO ERVENYU launcher. A fejlesztes KOZVETLENUL a produktumhoz illeszkedik
-  (Hetzner HA: https://excvaluta.com). NINCS divergens lokalis backend.
+  (Hetzner HA: lasd config/production-urls.json). NINCS divergens lokalis backend.
 
   Komponensek (production-first):
-  1. Hetzner produktum elerhetoseg ellenorzes (https://excvaluta.com)
-  2. Frontend-react (Vite, port 3000, proxy -> excvaluta.com)
+  1. Hetzner produktum elerhetoseg ellenorzes (config/production-urls.json)
+  2. Frontend-react (Vite, port 3000, proxy -> config/production-urls.json)
   3. Penztar-client Electron (a renderer: http://127.0.0.1:3000 proxy-n keresztul)
 
 .PARAMETER WithLocalBackend
@@ -30,10 +30,13 @@ function Write-Err  { param($Msg) Write-Host "[ERR] $Msg" -ForegroundColor Red }
 
 $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 
+# SSOT: production URL-ek a config/production-urls.json-bol
+. (Join-Path $PSScriptRoot '_production-urls.ps1')
+
 # 1) Hetzner produktum health check
-Write-Step "1/3 - Hetzner produktum (https://excvaluta.com) health check"
+Write-Step "1/3 - Hetzner produktum ($($PRODUCTION_URLS.base_url)) health check"
 try {
-    $r = Invoke-WebRequest -Uri "https://excvaluta.com/api/v1/auth/bootstrap-status" -TimeoutSec 10 -UseBasicParsing
+    $r = Invoke-WebRequest -Uri $PRODUCTION_URLS.health_url -TimeoutSec 10 -UseBasicParsing
     if ($r.StatusCode -eq 200) {
         Write-OK "Produktum elerheto (HTTP $($r.StatusCode))"
     } else {
@@ -54,8 +57,8 @@ if ($WithLocalBackend) {
 }
 
 # 2) Frontend-react (Vite) - proxy production-re
-Write-Step "2/3 - Frontend-react (Vite, --host 0.0.0.0, VITE_PROXY_TARGET=https://excvaluta.com)"
-$env:VITE_PROXY_TARGET = 'https://excvaluta.com'
+Write-Step "2/3 - Frontend-react (Vite, --host 0.0.0.0, VITE_PROXY_TARGET=$($PRODUCTION_URLS.base_url))"
+$env:VITE_PROXY_TARGET = $PRODUCTION_URLS.base_url
 $feAlready = $false
 try {
     $code = (Invoke-WebRequest -Uri "http://localhost:3000/" -TimeoutSec 2 -UseBasicParsing -ErrorAction SilentlyContinue).StatusCode
@@ -71,7 +74,7 @@ if ($feAlready) {
     # AI REVIEW FIX (PR #100 Sourcery bug_risk): -WorkingDirectory helyettesiti a
     # Set-Location '$feDir' interpolaciot -> apostrophe-s path nem torik el.
     $feDir = Join-Path $RepoRoot "frontend-react"
-    $env:VITE_PROXY_TARGET = 'https://excvaluta.com'
+    $env:VITE_PROXY_TARGET = $PRODUCTION_URLS.base_url
     Start-Process -FilePath "powershell.exe" -ArgumentList @(
         "-NoProfile", "-NoLogo", "-ExecutionPolicy", "Bypass",
         "-Command", "npm run dev -- --host 0.0.0.0"
@@ -120,8 +123,8 @@ Write-Host "=============================================" -ForegroundColor Gree
 Write-Host "  VALUTA OKOSZISZTEMA (production-first) UP" -ForegroundColor Green
 Write-Host "=============================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Backend:      https://excvaluta.com  (Hetzner HA primary)"
-Write-Host "  Frontend:     http://localhost:3000  (Vite proxy -> excvaluta.com)"
+Write-Host "  Backend:      $($PRODUCTION_URLS.base_url)  (Hetzner HA primary)"
+Write-Host "  Frontend:     http://localhost:3000  (Vite proxy -> $($PRODUCTION_URLS.domain))"
 Write-Host "  Electron:     GUI window (Pentztar-Rendszer)"
 Write-Host ""
 Write-Host "  Belepes: EBC / ADMIN / Admin1234!"

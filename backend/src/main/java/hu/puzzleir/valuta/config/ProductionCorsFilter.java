@@ -58,10 +58,11 @@ public class ProductionCorsFilter extends OncePerRequestFilter {
             }
         }
 
+        // SSOT refaktor (2026-04-24): excvaluta.com a ProductionUrls konstansosztalybol
         for (String mandatoryOrigin : List.of(
                 "http://localhost:3000",
                 "http://localhost:5173",
-                "https://excvaluta.com"
+                ProductionUrls.BASE_URL
         )) {
             if (!allowedOrigins.contains(mandatoryOrigin)) {
                 allowedOrigins.add(mandatoryOrigin);
