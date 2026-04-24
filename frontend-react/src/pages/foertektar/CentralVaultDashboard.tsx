@@ -40,6 +40,25 @@ interface StockRow {
     amount: number
 }
 
+// Fix 2026-04-24: backend /api/v1/stock-snapshot response shape (StockSnapshotDto)
+interface CurrencyDetail { currencyCode: string; stock: number }
+interface BackendBranch { branchId: string; currencies: CurrencyDetail[] }
+interface BackendRegion { branches: BackendBranch[] }
+interface StockSnapshotResponse { regions: BackendRegion[] }
+
+function flattenStockSnapshot(snap: StockSnapshotResponse | null): StockRow[] {
+    if (!snap?.regions) return []
+    const rows: StockRow[] = []
+    for (const region of snap.regions) {
+        for (const branch of region.branches ?? []) {
+            for (const cur of branch.currencies ?? []) {
+                rows.push({ branchId: branch.branchId, currencyCode: cur.currencyCode, amount: cur.stock ?? 0 })
+            }
+        }
+    }
+    return rows
+}
+
 interface BranchSummary {
     branch: Branch
     device?: CashRegisterDevice
@@ -72,11 +91,12 @@ export default function CentralVaultDashboard() {
             const [branchesRes, devicesRes, stocksRes] = await Promise.all([
                 api.get<Branch[]>('/branches'),
                 api.get<CashRegisterDevice[]>('/cash-register/devices').catch(() => ({ data: [] as CashRegisterDevice[] })),
-                api.get<StockRow[]>('/stock-snapshot/current').catch(() => ({ data: [] as StockRow[] })),
+                // Fix 2026-04-24: /stock-snapshot (nem /current) + hierarchikus response flatten
+                api.get<StockSnapshotResponse>('/stock-snapshot').catch(() => ({ data: null as StockSnapshotResponse | null })),
             ])
             const branches = branchesRes.data || []
             const devices = devicesRes.data || []
-            const stocks = stocksRes.data || []
+            const stocks = flattenStockSnapshot(stocksRes.data ?? null)
             const now = Date.now()
 
             const rows: BranchSummary[] = branches
