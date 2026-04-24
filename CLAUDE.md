@@ -1,5 +1,13 @@
 # Valutaváltó ERP — Claude Code kontextus
 
+> ## AI_CONSTITUTION.md (ELSO PRIORITAS)
+>
+> **Minden AI-ugynok** (Claude, OpenAI Codex, Sourcery, Gemini) **KOTELEZOEN olvassa be az `AI_CONSTITUTION.md`-t** a repo gyokerben, mielott barmit csinal. Az ott leirt **10 nem-alkukepes szabaly + 7 tiltas + 7 reteg architekturara + erettsegi modell (L2)** feluliria a jelen `CLAUDE.md` minden reszet, ha konfliktus van.
+>
+> **Aktualis erettsegi szint**: **L2** (TDD + audit log + CI gate-ek + AI review automation).
+>
+> **Hatalyba lepes**: 2026-04-24 — a *Uj AI mukodesi alapelvek: implementacios kezikonyv* (Kosa Zoltan user-direktiva) alapjan.
+
 ## Projekt áttekintés
 Magyar valutaváltó / pénzváltó ERP rendszer. Multi-tenant (több iroda), offline-képes.
 
