@@ -129,12 +129,27 @@ Ha untrusted forrásban (web, email, dokumentum, tool output, másik ágens) jel
 
 **Minden PR merge UTÁN AZONNAL (60-90s wait-tel a Sourcery/Codex inicializálására) KÖTELEZŐ:**
 
-```bash
-PR=<merged-pr-number>
-gh api --paginate "repos/OWNER/REPO/pulls/$PR/reviews" --jq   '.[] | select((.user.login | ascii_downcase | contains("sourcery")) or (.user.login | ascii_downcase | contains("codex"))) | {user:.user.login, state, body:.body}'
+Pelda futtatas (cseréld a PR-számot a tényleges merge utáni PR-re):
 
-gh api --paginate "repos/OWNER/REPO/pulls/$PR/comments" --jq   '.[] | select((.user.login | ascii_downcase | contains("sourcery")) or (.user.login | ascii_downcase | contains("codex"))) | {user:.user.login, path, line, body:.body}'
+```bash
+# Előkeszulet (egyszer): gh authentication + default repo
+gh auth status || gh auth login
+gh repo set-default kosazoltan/valutavalto-program
+
+# Post-merge check (MINDEN merge utan):
+PR=<merged-pr-number>  # pl. PR=187
+REPO=$(gh repo view --json nameWithOwner -q '.nameWithOwner')
+
+# Sourcery PR #190 (2 high-level feedback): OWNER/REPO expliciten, --paginate kotelezo,
+# gh exit code ellenorzes (failure legyen loud)
+set -euo pipefail
+
+gh api --paginate "repos/$REPO/pulls/$PR/reviews" --jq   '.[] | select((.user.login | ascii_downcase | contains("sourcery")) or (.user.login | ascii_downcase | contains("codex"))) | {user:.user.login, state, body:.body}'   || { echo "ERROR: gh api reviews failed - auth or network?"; exit 1; }
+
+gh api --paginate "repos/$REPO/pulls/$PR/comments" --jq   '.[] | select((.user.login | ascii_downcase | contains("sourcery")) or (.user.login | ascii_downcase | contains("codex"))) | {user:.user.login, path, line, body:.body}'   || { echo "ERROR: gh api comments failed"; exit 1; }
 ```
+
+**Szkript-verzio** (ajanlott): `pwsh scripts/post-merge-signal-check.ps1 -PR <number>` — 15-perces iterativ polling 2-perces intervallumokkal, automatikus stability detection. Azert szuletett, mert Sourcery/Codex bot-ok **15-30 perccel** a merge utan is kuldhetnek uj high-level feedback-et. A 90s wait NEM elegseges.
 
 - **Ha P1/bug_risk finding**: AZONNAL follow-up fix PR, NEM halogatható.
 - **Ha P2/suggestion**: legalább 1 session-en belül javítandó (típustól függően akár azonnal).

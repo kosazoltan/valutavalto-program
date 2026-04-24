@@ -915,6 +915,28 @@ export interface ShipmentCreateRequest {
   notes?: string
 }
 
+/**
+ * AI review (Codex PR #187 P1): backend ShipmentRequest entity mezonevek ELTERNEK
+ * a frontend ShipmentRequest interface-tol. A normalizer leforditja a backend
+ * `{status, deliveryDate, fromBranchId, toBranchId, requestedBy, ...}`-t a
+ * frontend `{requestStatus, requestedDeliveryDate, requestingBranchId, targetBranchId, ...}`-ra.
+ */
+function normalizeShipmentRequest(raw: Record<string, unknown>): ShipmentRequest {
+    const r = raw as Partial<ShipmentRequest> & Record<string, unknown>
+    return {
+        ...r,
+        // Ha a backend raw mezot kuldott, de frontend-kompat mezoje hianyzik, masoljuk at
+        requestStatus: (r.requestStatus ?? r['status']) as ShipmentRequest['requestStatus'],
+        requestedDeliveryDate: (r.requestedDeliveryDate ?? r['deliveryDate']) as ShipmentRequest['requestedDeliveryDate'],
+        requestingBranchId: (r.requestingBranchId ?? r['fromBranchId']) as ShipmentRequest['requestingBranchId'],
+        targetBranchId: (r.targetBranchId ?? r['toBranchId']) as ShipmentRequest['targetBranchId'],
+        requestingBranchName: (r.requestingBranchName ?? r['fromBranchName']) as ShipmentRequest['requestingBranchName'],
+        targetBranchName: (r.targetBranchName ?? r['toBranchName']) as ShipmentRequest['targetBranchName'],
+        requestedByWorkerName: (r.requestedByWorkerName ?? r['requestedBy']) as ShipmentRequest['requestedByWorkerName'],
+        requestNumber: (r.requestNumber ?? r['number']) as ShipmentRequest['requestNumber'],
+    } as ShipmentRequest
+}
+
 export const shipmentRequestApi = {
   /**
    * @deprecated Sourcery PR #180 bug_risk + PR #187 improvement: backend
@@ -941,14 +963,14 @@ export const shipmentRequestApi = {
   findByStatus: async (status: string): Promise<ShipmentRequest[]> => {
     if (!status) {
       // Sourcery PR #180: empty status == 'Mind' -> omit param
-      const response = await api.get<ShipmentRequest[]>(`/shipments`, { params: { page: 0, size: 100 } })
-      return asArray<ShipmentRequest>(response.data)
+      const response = await api.get<unknown[]>(`/shipments`, { params: { page: 0, size: 100 } })
+      return asArray<Record<string, unknown>>(response.data).map(normalizeShipmentRequest)
     }
-    const response = await api.get<ShipmentRequest[]>(
+    const response = await api.get<unknown[]>(
       `/shipments`,
       { params: { status, page: 0, size: 100 } }
     )
-    return asArray<ShipmentRequest>(response.data)
+    return asArray<Record<string, unknown>>(response.data).map(normalizeShipmentRequest)
   },
   findByBranch: async (branchId: string): Promise<ShipmentRequest[]> => {
     // Backend jelenleg nem tamogatja a branch-parametert kozvetlenul.
@@ -956,11 +978,11 @@ export const shipmentRequestApi = {
     // AI review (Codex PR #180 P1): backend mezonevek `fromBranchId` / `toBranchId`
     // (NEM `requestingBranchId` / `targetBranchId`). A korabbi filter SOHA NEM illesztett.
     // TODO: backend /api/v1/shipments?branchId=... natív filter - kulon issue #184 utan.
-    const response = await api.get<ShipmentRequest[]>(
+    const response = await api.get<unknown[]>(
       `/shipments`,
       { params: { page: 0, size: 200 } }
     )
-    const all = asArray<ShipmentRequest>(response.data)
+    const all = asArray<Record<string, unknown>>(response.data).map(normalizeShipmentRequest)
     type ShipmentWithBackendFields = ShipmentRequest & { fromBranchId?: string; toBranchId?: string }
     return all.filter(s => {
       const sb = s as ShipmentWithBackendFields
