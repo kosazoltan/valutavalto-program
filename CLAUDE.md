@@ -327,9 +327,9 @@ Lasd: `docs/AI_REVIEW_AUTOMATION.md`
 - Kapcsolat: `application.properties` → `spring.datasource.*`
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.2.3** (2026-04-24). Minden modul egységesen 2.2.3-n. GitHub Release: https://github.com/kosazoltan/valutavalto-program/releases/tag/v2.2.3 (2 asset uploaded).
+- **Verzió:** **v2.2.4** (2026-04-24 hotfix). Minden modul egységesen 2.2.4-n. GitHub Release: https://github.com/kosazoltan/valutavalto-program/releases/tag/v2.2.4 (2 asset uploaded).
 - **Main HEAD:** `6fd63cb8` (release: v2.2.3 — version bump + CHANGELOG, 13 PR aggregate, PR #177).
-- **Mai 5 uj merge (2026-04-24):** PR #172 (legacy coverage 100% audit), #173 (Production URL SSOT 3-reteg refactor), #175 (Playwright live e2e + CI workflow), #177 (v2.2.3 version bump + CHANGELOG) + AI review follow-up (#174, #176).
+- **Mai 9 merge (2026-04-24):** PR #172, #173, #174, #175, #176, #177, #178, #179 (AI constitution), #180 (shipment fix), #181 (v2.2.4 release).
 - **Telepítő fájlok v2.2.3** (gitignore-osak, `installer/build/`-ban + másolva `%USERPROFILE%\Downloads\`-ba):
   - `Penztar-Setup-2.2.3-20260424.exe` — **273.59 MB**, SHA-256 `C52663EFA7A3EE5BB0B9ECDFD46D7F63B10F8D966C7B2A334972EBBD67148145`
   - `Penztar-Eltavolito-2.2.3-20260424.exe` — **58.47 KB**, SHA-256 `9B492A38443C87BF6D095224B1E312A0CA1DD1D090A5527A0B6ED2C420A06B02`
