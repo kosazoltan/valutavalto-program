@@ -10,7 +10,11 @@
 # Sourcery PR #173: scoped, dot-source esetén ne mutálja a caller globalját
 $script:ErrorActionPreference = 'Stop'
 
-$script:_prodUrlsConfigPath = Join-Path $PSScriptRoot '..' 'config' 'production-urls.json'
+# AI review (Codex PR #173 P1): PS 5.1-kompat kaszkadolt Join-Path.
+# A 4-arg invocation PS 5.1-ben parameter-binding error -> a launcher elsokent elesik.
+$script:_prodUrlsConfigPath = Join-Path $PSScriptRoot '..'
+$script:_prodUrlsConfigPath = Join-Path $script:_prodUrlsConfigPath 'config'
+$script:_prodUrlsConfigPath = Join-Path $script:_prodUrlsConfigPath 'production-urls.json'
 if (-not (Test-Path $script:_prodUrlsConfigPath)) {
     throw "Production URL config nem letezik: $script:_prodUrlsConfigPath. Hivatkozott file: config/production-urls.json"
 }

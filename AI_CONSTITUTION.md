@@ -66,7 +66,7 @@
 - **Részletes érvelés** csak magas kockázatú döntésnél, konfliktus esetén, kód-architektúra változásnál, jogi/pénzügyi/orvosi témában vagy benchmark-bukásnál.
 - **Stop feltétel**: válasz-konfidencia ≥ 0.85 ÉS evidence count ≥ 2, VAGY új információ < 5% ÉS iteráció ≥ 2, VAGY token keret > 80%.
 
-## TDD kötelező állapotgép (L9 alapelv)
+## TDD kötelező állapotgép (alapelv, L2+ érettségi követelmény)
 
 ```
 PLAN -> RED -> GREEN -> REFACTOR -> VERIFY -> DONE

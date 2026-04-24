@@ -974,15 +974,29 @@ export const shipmentRequestApi = {
   },
   findByBranch: async (branchId: string): Promise<ShipmentRequest[]> => {
     // Backend jelenleg nem tamogatja a branch-parametert kozvetlenul.
-    // Megoldas: osszes lista lekeres + client-side filter.
+    // Megoldas: paginazott osszes lista lekeres + client-side filter.
     // AI review (Codex PR #180 P1): backend mezonevek `fromBranchId` / `toBranchId`
     // (NEM `requestingBranchId` / `targetBranchId`). A korabbi filter SOHA NEM illesztett.
-    // TODO: backend /api/v1/shipments?branchId=... natív filter - kulon issue #184 utan.
-    const response = await api.get<unknown[]>(
-      `/shipments`,
-      { params: { page: 0, size: 200 } }
-    )
-    const all = asArray<Record<string, unknown>>(response.data).map(normalizeShipmentRequest)
+    // AI review (Sourcery PR #180): nem csak size=200 helyett pagination loop, ha
+    // a lista >200 elemet tartalmaz (scalability fix)
+    // TODO: backend /api/v1/shipments?branchId=... natív filter - GitHub Issue.
+    const PAGE_SIZE = 100
+    let all: ShipmentRequest[] = []
+    let page = 0
+    const MAX_PAGES = 20  // 2000 shipment upper bound - safety
+    for (; page < MAX_PAGES; page++) {
+      // _preservePaged flag: keruljuk az auto-unwrap-et, hogy totalPages-t lassuk
+      const response = await api.get<{ content: unknown[]; totalPages?: number; last?: boolean }>(
+        `/shipments`,
+        {
+          params: { page, size: PAGE_SIZE },
+          _preservePaged: true,
+        } as Record<string, unknown>
+      )
+      const batch = asArray<Record<string, unknown>>(response.data?.content).map(normalizeShipmentRequest)
+      all = all.concat(batch)
+      if (response.data?.last === true || response.data?.totalPages === undefined || page + 1 >= response.data.totalPages) break
+    }
     type ShipmentWithBackendFields = ShipmentRequest & { fromBranchId?: string; toBranchId?: string }
     return all.filter(s => {
       const sb = s as ShipmentWithBackendFields

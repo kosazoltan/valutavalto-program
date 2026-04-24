@@ -209,12 +209,14 @@ describe('shipmentRequestApi (backend /api/v1/shipments)', () => {
 
   it('findByBranch: fromBranchId/toBranchId backend-mezok alapjan szur', async () => {
     // Fix PR #180 Codex P1: backend mezok fromBranchId/toBranchId (NEM requesting/target)
+    // Fix PR #180 Sourcery (post-merge): pagination loop _preservePaged flag-gel,
+    // ezert a mock most Page<T> format (content + last).
     const shipments = [
       { id: '1', fromBranchId: 'BR-A', toBranchId: 'BR-B' },
       { id: '2', fromBranchId: 'BR-B', toBranchId: 'BR-A' },
       { id: '3', fromBranchId: 'BR-X', toBranchId: 'BR-Y' },
     ]
-    mockApi.get.mockResolvedValue({ data: shipments })
+    mockApi.get.mockResolvedValue({ data: { content: shipments, totalPages: 1, last: true } })
     const result = await shipmentRequestApi.findByBranch('BR-A')
     expect(result).toHaveLength(2)
     expect(result.map((s: { id: string }) => s.id)).toEqual(['1', '2'])
