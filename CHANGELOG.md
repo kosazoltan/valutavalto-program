@@ -5,6 +5,52 @@ A `valutavalto-program` monorepo verzió-történet.
 Formátum: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 verziószám: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.5] — 2026-04-24 (hotfix batch — 12 PR a v2.2.4 után)
+
+### Critical — PenztarClient launcher PS 5.1-kompat fix (merge-blokkoló)
+- **PR #193** — `scripts/_production-urls.ps1`: 4-arg `Join-Path` PS 5.1-ben parameter-binding error → **a launcher elsőként elesett** default Windows 10/11-en. Javítás: kaszkadolt `Join-Path` hívások. Nélküle a telepített pénztáros kliens indításkor azonnal crash-elt.
+
+### Fixed — Frontend UI menük HTTP 400/404 crash-ek
+- **PR #185** (Issue #184) — `RateHistoryController` + `RateCategoryPage`: `rate-history` és `rate-categories` menü 400 Bad Request. Backend default params (30 napos default ablak) + `RateHistoryRepository` optional query. Frontend `formatLocalDate()` UTC off-by-one javítás (este dátumváltás).
+- **PR #183** — `CentralVaultDashboard` + `MnbReportPage`: stock-snapshot és MNB jelentések URL path typo (`/mnb-reports` → `/mnb/reports`). Új full menu Playwright e2e spec (44 authenticated oldal traversal).
+- **PR #186** — `RateHistoryController` single `LocalDate.now()` (midnight race fix), swap logic csak akkor érvényesül, ha mindkét bound explicit megadva.
+- **PR #187, #188, #192** — `MnbReportPage` backend field names (`reportDate` a `periodStart/End` helyett), `asArray<T>()` helper generikus safe-cast minden API hívásnál.
+- **PR #192** — `CentralVaultDashboard` `hasStockData` gate + explicit "STOCK UNKNOWN" warning (üres snapshot esetén látszik, hogy adathiány).
+
+### Fixed — Shipment API + Electron stack trace
+- **PR #193** — `penztar-client/electron/main.ts`: `log.error()` 2nd arg full error object (nem csak `.message`), hogy a stack trace megmaradjon production config load failure esetén.
+- **PR #194** — `shipmentRequestApi.findByBranch`: pagination loop `fetchPaged<T>()` reusable helperbe kiemelve. MAX_PAGES cap esetén `console.warn` silent truncation elkerülésére.
+
+### Fixed — E2E test infrastructure
+- **PR #176** (Codex P2, PR #193-ban javítva) — T09 login flow test skip path helyreállítva.
+- **PR #183** — Playwright `full-menu.config.ts` authenticated storage state reuse.
+
+### Fixed — AI_CONSTITUTION maturity labeling
+- **PR #179** (Sourcery, PR #193-ban javítva) — "TDD kötelező állapotgép (L9 alapelv)" → "(alapelv, L2+ érettségi követelmény)".
+
+### Added — AI review process scripts
+- **PR #192** — `scripts/post-merge-signal-check.ps1` 15-perces iteratív polling (Sourcery/Codex bot-ok 15-30 perccel a merge után is küldhetnek új feedback-et).
+- **PR #194** — script `-MinMinutes` paraméter (default 15) - **stability-exit NEM lehetséges** ezelőtt. KRITIKUS fix: a korábbi 4-perces korai kilépés miatt a Sourcery multi-round review-kat elvesztettük.
+
+### Audit events
+- **#187** — 9 mai-merge kihagyott finding utólagos javítása (1. protokoll-violation)
+- **#193** — retroaktív scan 5 elmulasztott finding (PR #173, #174, #176, #179, #180) (4. audit event)
+- **#194** — script design-hiba: stability-exit túl agresszív, Sourcery high-level feedback időzítése 15-25 min (5. audit event)
+
+### Version bump
+- `package.json` × 3: 2.2.4 → 2.2.5
+- `backend/pom.xml`: nincs változtatás
+
+### Upgrade path
+- **Backend (Hetzner)**: ✅ automatikus deploy — a 12 PR backend-érintő része (`RateHistoryController`) már éles a https://excvaluta.com-on (main HEAD `16bb7e9a`)
+- **Frontend admin (Hetzner)**: ✅ automatikus deploy
+- **Pénztáros Electron kliens**: **v2.2.5 installer telepítése KÖTELEZŐ** a 12 PR fix-ért. A v2.2.4 client `app.asar`-jában még a régi bundle van (főleg: rate-history 400 crash, MNB reports 404, launcher PS 5.1 elesés).
+
+### Breaking changes
+- Nincs. Minden fix backward-compatible.
+
+---
+
 ## [2.2.4] — 2026-04-24 (hotfix)
 
 ### Fixed — Szállítmányigények oldal 404 (pre-existing bug)
