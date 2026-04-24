@@ -830,12 +830,16 @@ app.whenReady().then(async () => {
   // localhost-ot tartalmazott (dev build / .env.local maradvany).
   //
   // Uj logika:
-  // 1. Ha az SQLite-ban van server_url es prod URL -> megtartjuk (user-beallitas)
-  // 2. Ha nincs -> SSOT production-urls.json default-ra allitjuk
-  // 3. A .env VITE_API_URL csak dev mode-ban szamit, production-ban ignore
+  // 1. Ha offline_mode=true -> MEGTARTJUK a server_url-t (lokalis backend legitim)
+  // 2. Ha van SQLite server_url es prod URL -> megtartjuk (user-beallitas)
+  // 3. Ha nincs -> SSOT production-urls.json default-ra allitjuk
+  // 4. A .env VITE_API_URL csak dev mode-ban szamit, production-ban ignore
   {
     const currentServerUrl = getConfig("server_url");
     const isDev = !app.isPackaged;
+    // v2.3.1 Codex P1 fix #219: offline mode eseten a SetupWizard szandekosan
+    // localhost/LAN URL-t ment. Ezt NEM szabad prod URL-re felulirni!
+    const offlineMode = getConfig("offline_mode") === "true";
 
     const isLocalhost = (url: string | null | undefined): boolean => {
       if (!url) return false;
@@ -843,7 +847,11 @@ app.whenReady().then(async () => {
       return lower.includes("localhost") || lower.includes("127.0.0.1") || lower.includes("192.168.");
     };
 
-    if (currentServerUrl && !isLocalhost(currentServerUrl)) {
+    if (offlineMode && currentServerUrl) {
+      // v2.3.1 Codex P1 fix #219: offline install - a user szandekkal lokalis
+      // backend-et hasznal, NE irjuk felul prod URL-re indulaskor.
+      log.info(`[App] offline_mode=true -> server_url megtartva: ${currentServerUrl}`);
+    } else if (currentServerUrl && !isLocalhost(currentServerUrl)) {
       // User-beallitott prod URL -> megtartjuk, ne irja felul a .env
       log.info(`[App] server_url megtartva (user-beallitas): ${currentServerUrl}`);
     } else if (isDev && envApiUrl) {
