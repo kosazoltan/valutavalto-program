@@ -823,18 +823,41 @@ app.whenReady().then(async () => {
     log.warn("[App] Auto-migration warning (nem kritikus):", migrationErr);
   }
 
-  // v2.1.6 Production-first alaptorveny: TILOS lokalis divergens fejlesztes.
-  // Dev modban is a VITE_API_URL-t hasznaljuk (default: Hetzner production).
+  // v2.3.0 kritikus bugfix: Electron Network Error (localhost:8080) megoldasa.
+  //
+  // A korabbi logika minden indulaskor felulirta a SQLite server_url-t a .env
+  // VITE_API_URL-lel. Ez toerte a telepito-wizard-ban megadott URL-t, ha a .env
+  // localhost-ot tartalmazott (dev build / .env.local maradvany).
+  //
+  // Uj logika:
+  // 1. Ha az SQLite-ban van server_url es prod URL -> megtartjuk (user-beallitas)
+  // 2. Ha nincs -> SSOT production-urls.json default-ra allitjuk
+  // 3. A .env VITE_API_URL csak dev mode-ban szamit, production-ban ignore
   {
     const currentServerUrl = getConfig("server_url");
-    if (envApiUrl && currentServerUrl !== envApiUrl) {
+    const isDev = !app.isPackaged;
+
+    const isLocalhost = (url: string | null | undefined): boolean => {
+      if (!url) return false;
+      const lower = url.toLowerCase();
+      return lower.includes("localhost") || lower.includes("127.0.0.1") || lower.includes("192.168.");
+    };
+
+    if (currentServerUrl && !isLocalhost(currentServerUrl)) {
+      // User-beallitott prod URL -> megtartjuk, ne irja felul a .env
+      log.info(`[App] server_url megtartva (user-beallitas): ${currentServerUrl}`);
+    } else if (isDev && envApiUrl) {
+      // Dev mode: .env VITE_API_URL-t respektaljuk (gyakori dev override)
       setConfig("server_url", envApiUrl);
-      log.info(`[App] server_url szinkronizalva a .env VITE_API_URL-rel: ${envApiUrl}`);
-    } else if (!currentServerUrl) {
-      // SSOT (2026-04-24): config/production-urls.json lazy-load
+      log.info(`[App] server_url (dev): ${envApiUrl}`);
+    } else {
+      // Production + ures / localhost server_url -> SSOT prod URL-re
       const prodUrls = loadProductionUrls();
       setConfig("server_url", prodUrls.api_url);
-      log.info(`[App] server_url default: ${prodUrls.api_url} (Hetzner production, SSOT)`);
+      log.info(`[App] server_url default (SSOT prod): ${prodUrls.api_url}`);
+      if (isLocalhost(currentServerUrl)) {
+        log.warn(`[App] Elozo server_url (${currentServerUrl}) localhost volt -> felulirva prod-ra`);
+      }
     }
   }
 
