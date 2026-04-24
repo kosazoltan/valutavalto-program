@@ -79,7 +79,8 @@ public class RateHistoryService {
     }
 
     /**
-     * Árfolyam változások listázása időszakra
+     * Árfolyam változások listázása időszakra (valuta opcionális).
+     * Fix 2026-04-24 (Issue #184): currency = null -> minden valuta history.
      */
     @Transactional(readOnly = true)
     public List<RateHistoryDto> getRateChanges(String currency, LocalDate from, LocalDate to) {
@@ -88,8 +89,12 @@ public class RateHistoryService {
         LocalDateTime fromDt = from.atStartOfDay();
         LocalDateTime toDt = to.atTime(LocalTime.MAX);
 
-        List<RateHistory> history = rateHistoryRepository
-                .findByCurrencyAndDateRange(companyId, currency, fromDt, toDt);
+        List<RateHistory> history;
+        if (currency == null || currency.isBlank()) {
+            history = rateHistoryRepository.findByDateRange(companyId, fromDt, toDt);
+        } else {
+            history = rateHistoryRepository.findByCurrencyAndDateRange(companyId, currency, fromDt, toDt);
+        }
 
         return history.stream()
                 .map(this::toDto)

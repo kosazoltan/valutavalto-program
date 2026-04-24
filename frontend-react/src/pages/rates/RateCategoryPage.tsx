@@ -4,6 +4,7 @@ import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
+import { useAuthStore } from '../../stores/authStore'
 
 interface RateCategoryItem {
   id: string | number
@@ -19,11 +20,19 @@ export default function RateCategoryPage() {
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
 
+  // Fix 2026-04-24 (Issue #184): user.branchId-t kuldjuk + /all endpoint-ot
+  const { user } = useAuthStore()
   const loadData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get<RateCategoryItem[]>('/rate-categories')
+      if (!user?.branchId) {
+        setItems([])
+        return
+      }
+      const response = await api.get<RateCategoryItem[]>('/rate-categories/all', {
+        params: { branchId: user.branchId }
+      })
       setItems(safeArray<typeof items[0]>(response.data))
     } catch (err) {
       const msg = getErrorMessage(err)
@@ -32,7 +41,7 @@ export default function RateCategoryPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [user?.branchId])
 
   useEffect(() => {
     void loadData()

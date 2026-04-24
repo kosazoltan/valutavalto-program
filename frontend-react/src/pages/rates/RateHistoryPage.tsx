@@ -22,11 +22,20 @@ export default function RateHistoryPage() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
 
+  // Fix 2026-04-24 (Issue #184): default utolso 30 nap + from/to parameter
+  // A backend uj opcionalis currency paramot tamogat, ha nincs -> minden valuta
   const loadData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get<RateHistoryItem[]>('/rate-history')
+      const today = new Date()
+      const defaultFrom = new Date(today)
+      defaultFrom.setDate(today.getDate() - 30)
+      const fromStr = dateFrom || defaultFrom.toISOString().split('T')[0]
+      const toStr = dateTo || today.toISOString().split('T')[0]
+      const response = await api.get<RateHistoryItem[]>('/rate-history', {
+        params: { from: fromStr, to: toStr }
+      })
       setItems(safeArray<typeof items[0]>(response.data))
     } catch (err) {
       const msg = getErrorMessage(err)
@@ -35,7 +44,7 @@ export default function RateHistoryPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [dateFrom, dateTo])
 
   useEffect(() => {
     void loadData()
