@@ -521,7 +521,10 @@ export default function LoginPage() {
                         } else {
                           setForgotMessage('Ha az email regisztrált, a reset tokent elküldtük.')
                         }
-                      } catch (err) {
+                      } catch {
+                        // Anti-enumeration: egyseges uzenet akkor is, ha a request elhasalt
+                        // (pl. halozati error). Nem logoljuk az err-t, mert nem szeretnenk
+                        // timing/visibility alapjan sem informaciot szivargatni.
                         setForgotMessage('Ha az email regisztrált, a reset tokent elküldtük.')
                       } finally {
                         setForgotLoading(false)
