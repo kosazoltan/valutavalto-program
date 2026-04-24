@@ -5,6 +5,40 @@ A `valutavalto-program` monorepo verzió-történet.
 Formátum: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 verziószám: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.4] — 2026-04-24 (hotfix)
+
+### Fixed — Szállítmányigények oldal 404 (pre-existing bug)
+- **PR #180** — `frontend-react/src/services/api/transactions.ts` + `pages/shipments/ShipmentListPage.tsx`:
+  A `shipmentRequestApi` `/api/v1/shipment-requests/*` URL-eket hívott, de a backend
+  csak `/api/v1/shipments/*` alapján volt regisztrálva. `ShipmentListPage` HTTP 404-el
+  esett el. Javítás:
+  - `findByStatus(status)` → `/shipments?status={}&size=100` (Page<> content kifejtés)
+  - `findByBranch(branchId)` → `/shipments?size=200` + client-side filter
+  - `approve(id, …)` → `/shipments/{id}/approve`
+  - `reject(id, workerId, reason)` → `/shipments/{id}/cancel` (backend nincs dedikált reject)
+  - Status enum alignment: `REQUESTED/REJECTED/PREPARING/…` → backend `SUBMITTED/CANCELLED/DRAFT/APPROVED/IN_TRANSIT/DELIVERED`
+- **6 új unit teszt** (`transactions.test.ts`): 511/511 frontend zöld.
+- Live production verify: mind 6 backend enum érték HTTP 200 (volt 400).
+
+### Added — AI Working Constitution
+- **PR #179** — `AI_CONSTITUTION.md` új fájl a repo gyökérben (10 nem-alkuképes szabály + 7 tiltás + 7 réteg architektúra + L0–L5 érettségi modell). Forrás: *Új AI működési alapelvek: implementációs kézikönyv* (Kósa Zoltán user-direktíva, 2026-04-24). `CLAUDE.md` header mostantól ELSŐ PRIORITÁS-ként erre mutat. Jelen érettségi szint: **L2** (TDD + audit log + CI gate-ek + AI review automation).
+
+### Version bump
+- `package.json` × 3 + `backend/pom.xml`: 2.2.3 → 2.2.4
+
+### Upgrade path
+- **Backend**: ✅ automatikus Hetzner deploy (nincs backend-változás ebben a release-ben)
+- **Frontend (admin)**: ✅ automatikus Hetzner deploy (PR #180 fix már éles)
+- **Pénztáros Electron kliens**: **v2.2.4 installer telepítése JAVASOLT** — a v2.2.3 desktop app `app.asar`-jában még a régi frontend build van, ami a Szállítmányigények oldalon 404-et dob.
+
+### Visszamaradó nagyobb refaktor (későbbi release)
+- Backend `GET /shipments?branchId=…` natív branch-filter
+- Backend `POST /shipments/{id}/reject` dedikált endpoint (audit trail)
+- Backend `POST /shipments/{id}/prepare` endpoint
+- `shipmentRequestApi.create` body-semantika backend-del egyeztetés
+
+---
+
 ## [2.2.3] — 2026-04-24
 
 ### Kritikus bug-fix (frontend / desktop klienst érinti)
