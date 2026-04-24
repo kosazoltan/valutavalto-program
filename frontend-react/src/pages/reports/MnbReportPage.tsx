@@ -4,6 +4,7 @@ import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
+import { asArray } from '../../utils/asArray'
 
 // Fix 2026-04-24 (Codex PR #183 P2): backend MnbReportDto tenyleges mezoi
 // (NEM periodStart/periodEnd, hanem reportDate + egyeb)
@@ -35,7 +36,7 @@ export default function MnbReportPage() {
       // MAR auto-unwrappeli Page<T> -> T[] (`response.data` maga az array). AI review
       // (Codex PR #180 P1 interceptor figyelmeztetes).
       const response = await api.get<MnbReportItem[]>('/mnb/reports', { params: { size: 100 } })
-      setItems(safeArray<MnbReportItem>(Array.isArray(response.data) ? response.data : []))
+      setItems(safeArray<MnbReportItem>(asArray<MnbReportItem>(response.data)))
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('MnbReportPage', 'Betöltési hiba:', err)
