@@ -1,0 +1,157 @@
+---
+title: "2026-04-24 AI Working Constitution + v2.2.3 Release"
+author: "Claude Opus 4.7 (1M context)"
+date: "2026-04-24"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    theme: cosmo
+---
+# 2026-04-24 AI working constitution + v2.2.3 release + shipment bug
+
+session_id: 2026-04-24-ai-operating-constitution
+date: 2026-04-24
+claude_model: claude-opus-4.6-1m
+scope: AI mukodesi alapelvek implementacios kezikonyv befogadasa + v2.2.3 release cut + teljes kort teszt
+main_head_before: 6fd63cb8
+main_head_current: adfd3cd5
+
+## Osszefoglalas
+
+Kosa Zoltan (felhasznalo) atadott egy komplex AI mukodesi alapelvek dokumentumot
+*Uj AI mukodesi alapelvek: implementacios kezikonyv* cimmel. A dokumentum 10 kotelezo szabalyt, 7 tiltast, 7 reteg architekturat, L0-L5 erettsegi modellt,
+tobb mint 10 alapelvet (onfejlesztes, metaproduktivitas, memoria, hosszu kontextus,
+tokenhatekonysag, A2A interop, biztonsag, tudomanyos kodolas, TDD, reprodukalhatosag)
+ir le kodmintakkal egyutt.
+
+Ezen session alkotmanyosanak beerkezese + korabbi v2.2.3 release cut
+es teljes kort teszt (telepito + backend + frontend + penztar-client + Playwright)
+tartoznak egy napra.
+
+## Fo eredmenyek
+
+### 1. v2.2.3 release cut (korabban)
+
+- **PR #177**: version bump 2.2.2 -> 2.2.3 (package.json x3 + pom.xml)
+- **PR #178**: CLAUDE.md release-allapot v2.2.3-re
+- **Installer artifactok**:
+  - Penztar-Setup-2.2.3-20260424.exe (273.59 MB, SHA-256 C52663EFA7A3EE5BB0B9ECDFD46D7F63B10F8D966C7B2A334972EBBD67148145)
+  - Penztar-Eltavolito-2.2.3-20260424.exe (58.47 KB, SHA-256 9B492A38443C87BF6D095224B1E312A0CA1DD1D090A5527A0B6ED2C420A06B02)
+- **GitHub Release v2.2.3**: https://github.com/kosazoltan/valutavalto-program/releases/tag/v2.2.3
+
+### 2. Teljes kort teszt
+
+**Unit**:
+- Backend: 978/978 zold (mvnw test)
+- Penztar-client: 97/97 zold (npm test)
+- Frontend-react: 505/505 zold (npm test)
+
+**E2E**:
+- Playwright live (T01-T08 + T10): 9/9 zold
+
+**API smoke (production)**:
+- https://excvaluta.com/api/v1/auth/login: OK, token 1224 karakter, activeRole ugyvezeto
+- /api/v1/transactions: totalElements 18, utolso V017100012 10 EUR VETEL 2026-04-23 20:05
+- /api/v1/cash-balances/company-totals: 18 currency (HUF: 4.58M, EUR: 16772, USD: 10056.89)
+- /api/v1/public/branches?companyCode=EBC: 66 branch
+
+**Desktop install verify**:
+- v2.2.1 eltavolitas (UAC) -> C:\Program Files\Valutavalto Penztar torolve
+- v2.2.3 telepites (UAC + SetupWizard 5 lepes) -> C:\Program Files\Valutavalto Penztar\Penztar.exe
+- ProductVersion: 2.2.3.0 OK
+- Disk usage: 370 MB
+- SSOT bundled: resources\production-urls.json OK (PR #173 VALIDALVA ELESEN)
+- 4 Electron child process, 442 MB
+- Main window title: Valuta Penztari Rendszer - Best Change
+- SyncEngine: 17 arfolyam + 66 penztar + 194 dolgozo cache-elve
+
+### 3. Pre-existing bug feltaras: Szallitmanyigenyek 404
+
+A telepites utani smoke test rajott egy nem v2.2.3-hoz kotheto, **pre-existing** bugra:
+- `frontend-react/src/services/api/transactions.ts:917-958` `shipmentRequestApi`
+  URL-ek: `/shipment-requests/branch/{id}`, `/shipment-requests/status/{status}`,
+  `/shipment-requests/{id}/approve|reject|prepare` - **egyik sem letezik backend-en**
+- `backend/.../controller/ShipmentController.java:22` csak `/api/v1/shipments`-et
+  regisztralja (`findAll`, `findById`, `create`, `update`, `/{id}/submit|approve|deliver|cancel`)
+- A bug a commit `8ed079f1`-tol (initial deployment) benne van, tehat regota
+- Halasztott: frontend quick-fix PR + GitHub Issue a backend endpoint hianyokrol
+
+### 4. AI working constitution (KOTELEZO)
+
+**AI_CONSTITUTION.md uj fajl** a repo gyokeren. CLAUDE.md header mostantol elso
+prioritaskent erre mutat.
+
+**10 nem-alkukepes szabaly osszefoglaloja**:
+1. Cel bontasa ellenorizheto feladatokra
+2. Tartos dontes -> strukturalt memoria
+3. Long context != memory
+4. Kod elott teszt (TDD)
+5. Sajat modositas kulso verifikacio nelkul tilos
+6. Sajat sikerallitas nem bizonyitek
+7. A2A: capability + task_id
+8. Kulso tartalom = untrusted
+9. Veszelyes muvelet elott emberi approval
+10. Bizonytalansag -> stop/kerdez
+
+**7 reteg architektura**: Alkotmany / Memoria / Tervezes / Vegrehajtas /
+Ellenorzes / Interoperabilitas / Biztonsag
+
+**Erettsegi modell**:
+- L0: nincs memoria / teszt -> csak valasz
+- L1: alkotmany + memoria -> javaslat
+- **L2: TDD + audit log -> korlatozott kodmodositas** (JELEN SZINT)
+- L3: A2A + gateway policy -> multi-agent workflow
+- L4: sandboxed onfejlesztes
+- L5: metaproduktivitas + benchmark-archivum
+
+**Elvek beepitese**:
+- TDD: `next_tdd_state(state, checks)` allapotgep
+- Prompt injection: `SUSPICIOUS_PATTERNS` + trust boundary szabalyok
+- Tokenhatekonysag: default concise, expand high-risk-nal
+- Memoria szabaly: `should_write_memory(event)` + secret-free
+
+## Tech stack + policy compliance
+
+- Backend: Spring Boot 3.5.13, Java 21, PostgreSQL HA Hetzner
+- Branch policy v2: 0 open PR, 1 remote branch (main)
+- Merge pattern: gh pr merge N --squash --auto --delete-branch
+- AI review automation: Sourcery + Codex GitHub Actions
+- Obsidian live sync: session memory auto-save mukodik
+
+## Ma merge-elt PR-ek
+
+- PR #172: legacy coverage audit (100% lefedes)
+- PR #173: Production URL SSOT refactor (3 reteg)
+- PR #174: AI review fix PR #173
+- PR #175: Playwright live e2e + CI workflow
+- PR #176: AI review fix PR #175
+- PR #177: v2.2.3 version bump + CHANGELOG
+- PR #178: CLAUDE.md release-allapot v2.2.3
+
+## Nyitott feladatok
+
+### P0 (azonnali)
+
+- [x] v2.2.3 release DONE
+- [x] teljes kort teszt DONE
+- [ ] Shipment 404 bug fix (quick: frontend shipmentRequestApi -> /shipments endpoint)
+- [ ] Shipment backend endpoint pot-lasok (approve/reject/prepare) - GitHub Issue
+
+### P1
+- Cognee MCP container start (docker compose --profile knowledge-mcp up -d)
+- Dependabot heti batch merge
+
+### P2
+- Frontend e2e Playwright tovabbi flow-k (VETEL/ELADAS/STORNO UI szintu)
+- Legacy 5% gap deep-dive (mar 100% lefedett PR #172 audit szerint)
+
+## Memoria fajl-elerhetosegek
+
+- `AI_CONSTITUTION.md` (UJ, repo gyoker) - 10 kotelezo szabaly
+- `.remember/remember.md` - session handoff
+- `docs/knowledge/memory/2026-04-24-ai-operating-constitution.yaml` (EZ)
+- `docs/knowledge/memory/2026-04-24-cash-balance-issue110-v155-closure.yaml` (korabbi ma)
+- `CLAUDE.md` - projekt utmutato, AI_CONSTITUTION-re mutat
+- `C:/Users/Kosa Zoltan/.claude/projects/D--repo-valutavalto-program/memory/MEMORY.md` - globalis index
