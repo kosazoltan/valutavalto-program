@@ -49,7 +49,7 @@ if (-not $PSBoundParameters.ContainsKey('TimeoutSec')) {
 }
 if (-not $PSBoundParameters.ContainsKey('StrictCertCheck')) {
     # Env-based fallback: csak explicit truthy string kapcsolja be
-    if ($env:SESSION_SAVE_STRICT_CERT -match '^(1|true|yes|y)$') {
+    if ($env:SESSION_SAVE_STRICT_CERT -match '(?i)^(1|true|yes|y)$') {
         $StrictCertCheck = [switch]$true
     }
 }
