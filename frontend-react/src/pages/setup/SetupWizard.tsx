@@ -221,33 +221,79 @@ export default function SetupWizard() {
         return
       }
       const normalized = apiUrl.trim().replace(/\/+$/, '').replace(/\/api\/v1$/, '')
-      const bootstrapUrl = `${normalized}/api/v1/auth/bootstrap-admin`
-      const resp = await fetch(bootstrapUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          companyCode: companyCode.trim(),
-          workerCode: adminUsername.trim().toUpperCase(),
-          workerName: 'Rendszer Admin',
-          email: '',
-          newPassword: adminPassword,
-        }),
-      })
-      if (!resp.ok) {
-        const body = await resp.json().catch(() => ({} as Record<string, unknown>))
-        const msg = (body as { message?: string }).message || `HTTP ${resp.status}`
-        if (resp.status !== 400 || !msg.toLowerCase().includes('lezajlott')) {
-          setSaveError(`Admin letrehozasi hiba: ${msg}`)
+
+      // Eldontes: ha bootstrapUsername kitoltve es kulonbozik az adminUsername-tol,
+      // akkor a user egy LETEZO workert valasztott ki — /auth/first-time-worker-setup
+      // kell meghivni, ami a worker sajat role-jat megorzi (nem eroltet ADMIN-t).
+      // Kulonben a regi bootstrap-admin flow (admin user letrehozas).
+      const selectedWorkerCode = bootstrapUsername.trim().toUpperCase()
+      const useWorkerSetup = selectedWorkerCode.length > 0 && selectedWorkerCode !== adminUsername.trim().toUpperCase()
+      let workerIdentity: { workerCode: string; workerName?: string; workerRole?: string; branchCode?: string } | null = null
+
+      if (useWorkerSetup) {
+        const setupUrl = `${normalized}/api/v1/auth/first-time-worker-setup`
+        const setupResp = await fetch(setupUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            companyCode: companyCode.trim(),
+            workerCode: selectedWorkerCode,
+            newPassword: adminPassword,
+            currentPassword: bootstrapPassword || undefined,
+          }),
+        })
+        if (!setupResp.ok) {
+          const body = await setupResp.json().catch(() => ({} as Record<string, unknown>))
+          const msg = (body as { message?: string }).message || `HTTP ${setupResp.status}`
+          setSaveError(`Dolgozoi jelszo beallitas hiba: ${msg}`)
           setIsSaving(false)
           return
         }
+        const setupBody = await setupResp.json().catch(() => ({}))
+        workerIdentity = {
+          workerCode: setupBody.workerCode || selectedWorkerCode,
+          workerName: setupBody.workerName,
+          workerRole: setupBody.workerRole,
+          branchCode: setupBody.branchCode,
+        }
+      } else {
+        const bootstrapUrl = `${normalized}/api/v1/auth/bootstrap-admin`
+        const resp = await fetch(bootstrapUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            companyCode: companyCode.trim(),
+            workerCode: adminUsername.trim().toUpperCase(),
+            workerName: 'Rendszer Admin',
+            email: '',
+            newPassword: adminPassword,
+          }),
+        })
+        if (!resp.ok) {
+          const body = await resp.json().catch(() => ({} as Record<string, unknown>))
+          const msg = (body as { message?: string }).message || `HTTP ${resp.status}`
+          if (resp.status !== 400 || !msg.toLowerCase().includes('lezajlott')) {
+            setSaveError(`Admin letrehozasi hiba: ${msg}`)
+            setIsSaving(false)
+            return
+          }
+        }
+        workerIdentity = {
+          workerCode: adminUsername.trim().toUpperCase(),
+          workerName: 'Rendszer Admin',
+          workerRole: 'ADMIN',
+        }
       }
+
       localStorage.setItem('valuta-setup-config', JSON.stringify({
         branchCode: selectedBranch.code,
         branchName: selectedBranch.name,
         apiUrl: apiUrl.trim(),
         companyCode: companyCode.trim(),
         appMode: appModeChoice,
+        workerCode: workerIdentity?.workerCode,
+        workerName: workerIdentity?.workerName,
+        workerRole: workerIdentity?.workerRole,
         installedAt: new Date().toISOString(),
       }))
       window.location.href = '/login'

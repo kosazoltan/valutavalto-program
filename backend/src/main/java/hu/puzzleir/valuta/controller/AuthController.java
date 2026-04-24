@@ -3,12 +3,15 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.dto.auth.BootstrapAdminRequestDto;
 import hu.puzzleir.valuta.dto.auth.BootstrapAdminResponseDto;
 import hu.puzzleir.valuta.dto.auth.LoginRequestDto;
+import hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupRequestDto;
+import hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupResponseDto;
 import hu.puzzleir.valuta.dto.auth.LoginResponseDto;
 import hu.puzzleir.valuta.dto.auth.SelectRoleRequestDto;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.JwtTokenProvider;
 import hu.puzzleir.valuta.service.AdminBootstrapService;
+import hu.puzzleir.valuta.service.WorkerFirstTimeSetupService;
 import hu.puzzleir.valuta.service.TokenBlacklistService;
 import hu.puzzleir.valuta.service.WorkerRoleService;
 import hu.puzzleir.valuta.service.WorkerService;
@@ -46,6 +49,7 @@ public class AuthController {
     private final WorkerRoleService workerRoleService;
     private final TokenBlacklistService tokenBlacklistService;
     private final AdminBootstrapService adminBootstrapService;
+    private final WorkerFirstTimeSetupService workerFirstTimeSetupService;
     private final RefreshTokenService refreshTokenService;
     private final hu.puzzleir.valuta.repository.RefreshTokenRepository refreshTokenRepository;
     private final org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder bcrypt10 = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder(10);
@@ -353,5 +357,28 @@ public class AuthController {
     public ResponseEntity<Map<String, Boolean>> bootstrapStatus() {
         boolean completed = adminBootstrapService.isBootstrapAlreadyCompleted();
         return ResponseEntity.ok(Map.of("completed", completed));
+    }
+
+    /**
+     * Worker first-time password setup — a telepito wizard-ban a kivalasztott
+     * dolgozo elso jelszavanak beallitasa.
+     *
+     * <p>POST /api/v1/auth/first-time-worker-setup</p>
+     *
+     * <p>Body: {@link WorkerFirstTimeSetupRequestDto}:
+     * {@code companyCode, workerCode, newPassword, currentPassword?}</p>
+     *
+     * <p>Kulonbseg a bootstrap-admin-tol:</p>
+     * <ul>
+     *   <li>NEM forcolja ADMIN role-t</li>
+     *   <li>NEM one-shot — minden worker-nek kulon</li>
+     *   <li>JWT token-t ad vissza auto-login-hoz</li>
+     * </ul>
+     */
+    @PostMapping("/first-time-worker-setup")
+    public ResponseEntity<WorkerFirstTimeSetupResponseDto> firstTimeWorkerSetup(
+            @Valid @RequestBody WorkerFirstTimeSetupRequestDto dto) {
+        WorkerFirstTimeSetupResponseDto response = workerFirstTimeSetupService.setupWorkerPassword(dto);
+        return ResponseEntity.ok(response);
     }
 }
