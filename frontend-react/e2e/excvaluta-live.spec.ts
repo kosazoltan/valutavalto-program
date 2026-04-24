@@ -370,11 +370,31 @@ test('T09 — authenticated login → dashboard/cashier accessible', async ({ pa
 
 // ─────────────────────────────────────────────
 // TEST 10 — Bootstrap-status endpoint (public health)
+//
+// Flakiness prevention (post-PR#223): a test pont a Hetzner deploy window-ban
+// futhat, amikor a Caddy reload-ol vagy a backend restart-ol. Ilyenkor egyszeri
+// 502/503 elofordulhat. Retry 3x 2 sec-es kozokkel elimininalja a false-fail-t
+// anelkul hogy elfedne egy valos production outage-t.
 // ─────────────────────────────────────────────
 test('T10 — API bootstrap-status: HTTP 200 + JSON response', async ({ request }) => {
-  const response = await request.get(BASE + '/api/v1/auth/bootstrap-status', { timeout: 10000 })
-  expect(response.status()).toBe(200)
-  const body = await response.json().catch(() => null)
-  expect(body, 'bootstrap-status body nem JSON').not.toBeNull()
-  console.log(`bootstrap-status body: ${JSON.stringify(body)}`)
+  const maxAttempts = 3
+  let lastStatus = 0
+  let lastBody: unknown = null
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const response = await request.get(BASE + '/api/v1/auth/bootstrap-status', { timeout: 10000 })
+    lastStatus = response.status()
+    if (lastStatus === 200) {
+      lastBody = await response.json().catch(() => null)
+      if (lastBody !== null) {
+        console.log(`bootstrap-status body (attempt ${attempt}): ${JSON.stringify(lastBody)}`)
+        break
+      }
+    }
+    if (attempt < maxAttempts) {
+      console.log(`T10 attempt ${attempt}: HTTP ${lastStatus}, retrying in 2s...`)
+      await new Promise((r) => setTimeout(r, 2000))
+    }
+  }
+  expect(lastStatus, `bootstrap-status HTTP non-200 after ${maxAttempts} attempts`).toBe(200)
+  expect(lastBody, 'bootstrap-status body nem JSON').not.toBeNull()
 })
