@@ -240,7 +240,13 @@ export default function SetupWizard() {
         // A workerList elemeiben a name megvan. A role nincs a public endpoint-on,
         // de az optional; a backend /first-time-worker-setup visszaadja.
         const trimmedWorkerCode = bootstrapUsername.trim().toUpperCase()
-        const hasWorkerSelection = trimmedWorkerCode.length > 0 && trimmedWorkerCode !== adminUsername.trim().toUpperCase()
+        // v2.3.1 Codex P2 fix #217: offline mode-ban NINCS worker-first-time-setup
+        // (a helyi backend nem biztos hogy mar fel van huzva + a user a legacy
+        //  bootstrap-admin flow-t akarja). Csak online modban aktivaljuk a
+        //  selectedWorkerCode-ot.
+        const hasWorkerSelection = !offlineMode
+          && trimmedWorkerCode.length > 0
+          && trimmedWorkerCode !== adminUsername.trim().toUpperCase()
         const result = await window.electronAPI.setupSave({
           branchCode: selectedBranch.code,
           branchName: selectedBranch.name,

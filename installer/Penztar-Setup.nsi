@@ -102,6 +102,8 @@ SetCompressorDictSize 64
 ; --- Valtozok ---
 Var DATA_DIR
 Var DB_ALREADY_EXISTS
+; v2.3.1 Codex P1 fix: upgrade mode flag — ha "1", a SecInstall NEM torli a ProgramData-t
+Var UPGRADE_MODE
 
 ; =============================================================================
 ; Telepites
@@ -227,7 +229,13 @@ Section "Telepites" SecInstall
     RMDir /r "$PROGRAMFILES\ValutavaltoPenztar"
 
     ; ProgramData (regi adatok)
-    RMDir /r "C:\ProgramData\BestChange"
+    ; v2.3.1 Codex P1 fix #220: upgrade mode-ban MEGTARTJUK a ProgramData-t (DB + config),
+    ; egyebkent (wipe mode / virgin install / legacy flow) toroljuk
+    ${If} $UPGRADE_MODE == "1"
+        DetailPrint "  Upgrade mode: C:\ProgramData\BestChange adatok MEGTARTVA (DB + config)."
+    ${Else}
+        RMDir /r "C:\ProgramData\BestChange"
+    ${EndIf}
 
     ; Desktop shortcutok
     Delete "$DESKTOP\Valutavalto Penztar.lnk"
@@ -1143,6 +1151,11 @@ Function .onInit
     ; Silent mode-ban (/S):
     ;   - /WIPE=1 parancssori flag -> gyari reset
     ;   - Egyebkent -> frissites (default, biztonsagos)
+    ; v2.3.1 Codex P2 fix #220: 64-bit registry view (SetRegView 64) KOTELEZO,
+    ; mert a WriteRegStr alul SetRegView 64-gyel ir, es 64-bit Windows-on a default
+    ; olvasas a Wow6432Node-bol hozna az ertekt, igy nem talalja a telepitest.
+    SetRegView 64
+    StrCpy $UPGRADE_MODE "0"
     ReadRegStr $R0 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "UninstallString"
     ${If} $R0 != ""
         ; Silent mode handling (CI / enterprise deploy)
@@ -1175,6 +1188,9 @@ MEGSE = Telepites megszakitasa" \
             DetailPrint "=== FRISSITES MOD ==="
             DetailPrint "Elozo verzio eltavolitasa (silent, PRESERVE_DATA=1)..."
             DetailPrint "Az adatbazis + config MEGMARAD."
+            ; v2.3.1 Codex P1 fix #220: UPGRADE_MODE flag jelzi a SecInstall-nak,
+            ; hogy NE torolje a ProgramData-t (Fazis 1e2)
+            StrCpy $UPGRADE_MODE "1"
             ExecWait '$R0 /S /PRESERVE_DATA=1' $R1
             DetailPrint "Elozo verzio eltavolitva (exit code: $R1). Adatok megorizve."
             Sleep 2000

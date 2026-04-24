@@ -920,10 +920,23 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
     // V100: Online-modban regisztraljuk a penztar-eszkozt a backend-en
     if (!payload.offlineMode && payload.bootstrapUsername && payload.bootstrapPassword) {
       try {
+        // v2.3.1 Codex P2 fix #217 first-run.ts:926: ha a workerFirstTimeSetup
+        // utat vettuk (selectedWorkerCode), akkor most mar az ADMIN-PASSWORD
+        // ervenyes, NEM a bootstrapPassword (amit felulirtunk).
+        // A bootstrapUsername = selectedWorkerCode eseten az uj jelszoval loginolunk,
+        // egyebkent a legacy bootstrap credentials-szel.
+        const bootstrapUsernameUpper = payload.bootstrapUsername.trim().toUpperCase();
+        const selectedWorkerUpper = payload.selectedWorkerCode?.trim().toUpperCase() ?? "";
+        const usedWorkerSetup = selectedWorkerUpper.length > 0
+          && bootstrapUsernameUpper === selectedWorkerUpper;
+        const loginPassword = usedWorkerSetup ? payload.adminPassword : payload.bootstrapPassword;
+        if (usedWorkerSetup) {
+          log.info('[Setup] V100 device-reg: a selectedWorker uj (adminPassword) jelszaval loginolunk.');
+        }
         const login = await bootstrapLogin(resolvedApiUrl, {
           companyCode: normalizedCompanyCode,
           workerCode: payload.bootstrapUsername.trim(),
-          password: payload.bootstrapPassword,
+          password: loginPassword,
         });
         if (login.success && login.token) {
           const deviceCode = `${payload.branchCode}-${payload.appMode ?? 'penztar'}-${installUuid.slice(0, 8)}`;
