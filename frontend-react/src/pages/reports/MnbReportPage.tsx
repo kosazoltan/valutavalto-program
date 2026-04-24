@@ -5,13 +5,25 @@ import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 
+// Fix 2026-04-24 (Codex PR #183 P2): backend MnbReportDto tenyleges mezoi
+// (NEM periodStart/periodEnd, hanem reportDate + egyeb)
 interface MnbReportItem {
   id: string | number
   reportType?: string
-  periodStart?: string
-  periodEnd?: string
+  reportDate?: string
   status?: string
   submittedAt?: string
+  branchId?: string
+  totalBuyHuf?: number
+  totalSellHuf?: number
+  totalTransactions?: number
+}
+
+// Spring Data Page<> response tipus
+interface MnbReportPage {
+  content: MnbReportItem[]
+  totalElements?: number
+  totalPages?: number
 }
 
 export default function MnbReportPage() {
@@ -24,8 +36,9 @@ export default function MnbReportPage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get<MnbReportItem[]>('/mnb/reports')  // Fix 2026-04-24: backend mapping /api/v1/mnb/reports
-      setItems(safeArray<typeof items[0]>(response.data))
+      // Fix 2026-04-24 (Codex PR #183 P2): backend Page<MnbReportDto> -> content extrakt
+      const response = await api.get<MnbReportPage>('/mnb/reports', { params: { size: 100 } })
+      setItems(safeArray<MnbReportItem>(response.data?.content))
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('MnbReportPage', 'Betöltési hiba:', err)
@@ -86,8 +99,8 @@ export default function MnbReportPage() {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Tipus</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Idoszak kezdete</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Idoszak vege</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Riport datum</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Tranzakcio db</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Allapot</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Bekuldes</th>
             </tr>
@@ -100,8 +113,8 @@ export default function MnbReportPage() {
             ) : filtered.map(item => (
               <tr key={item.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm">{item.reportType ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.periodStart ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.periodEnd ?? '-'}</td>
+                <td className="px-4 py-3 text-sm">{item.reportDate ?? '-'}</td>
+                <td className="px-4 py-3 text-sm">{item.totalTransactions ?? '-'}</td>
                 <td className="px-4 py-3 text-sm">{item.status ?? '-'}</td>
                 <td className="px-4 py-3 text-sm">{item.submittedAt ? new Date(item.submittedAt).toLocaleString('hu-HU') : '-'}</td>
               </tr>

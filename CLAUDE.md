@@ -327,7 +327,7 @@ Lasd: `docs/AI_REVIEW_AUTOMATION.md`
 - Kapcsolat: `application.properties` → `spring.datasource.*`
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.2.4** (2026-04-24 hotfix). Minden modul egységesen 2.2.4-n. GitHub Release: https://github.com/kosazoltan/valutavalto-program/releases/tag/v2.2.4 (2 asset uploaded).
+- **Verzió:** **v2.2.4** (2026-04-24 hotfix). Minden modul egységesen 2.2.4-n. GitHub Release: https://github.com/kosazoltan/valutavalto-program/releases/tag/v2.2.4 (2 assets uploaded).
 - **Main HEAD:** `6fd63cb8` (release: v2.2.3 — version bump + CHANGELOG, 13 PR aggregate, PR #177).
 - **Mai 9 merge (2026-04-24):** PR #172, #173, #174, #175, #176, #177, #178, #179 (AI constitution), #180 (shipment fix), #181 (v2.2.4 release).
 - **Telepítő fájlok v2.2.3** (gitignore-osak, `installer/build/`-ban + másolva `%USERPROFILE%\Downloads\`-ba):
