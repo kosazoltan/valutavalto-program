@@ -24,7 +24,7 @@ export default function MnbReportPage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get<MnbReportItem[]>('/reports/mnb')
+      const response = await api.get<MnbReportItem[]>('/mnb/reports')  // Fix 2026-04-24: backend mapping /api/v1/mnb/reports
       setItems(safeArray<typeof items[0]>(response.data))
     } catch (err) {
       const msg = getErrorMessage(err)
