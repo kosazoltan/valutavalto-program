@@ -26,15 +26,18 @@ public class RateHistoryController {
     private final RateHistoryService rateHistoryService;
 
     /**
-     * Árfolyam változások lekérdezése időszakra
+     * Árfolyam változások lekérdezése időszakra.
+     * Fix 2026-04-24 (Issue #184): params opcionálisak, default utolsó 30 nap + minden valuta.
      */
     @GetMapping
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<RateHistoryDto>> getRateHistory(
-            @RequestParam String currency,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return ResponseEntity.ok(rateHistoryService.getRateChanges(currency, from, to));
+            @RequestParam(required = false) String currency,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        LocalDate effectiveFrom = (from != null) ? from : LocalDate.now().minusDays(30);
+        LocalDate effectiveTo = (to != null) ? to : LocalDate.now();
+        return ResponseEntity.ok(rateHistoryService.getRateChanges(currency, effectiveFrom, effectiveTo));
     }
 
     /**

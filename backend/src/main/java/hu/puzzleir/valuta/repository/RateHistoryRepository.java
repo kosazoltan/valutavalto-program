@@ -55,4 +55,18 @@ public interface RateHistoryRepository extends JpaRepository<RateHistory, Long> 
             @Param("companyId") UUID companyId,
             @Param("currency") String currency,
             @Param("dateTime") LocalDateTime dateTime);
+
+    /**
+     * Fix 2026-04-24 (Issue #184): osszes currency history datum-tartomanyban.
+     * Frontend RateHistoryPage a teljes listat keri, nem valuta-szerint.
+     */
+    @Query("SELECT rh FROM RateHistory rh " +
+           "WHERE rh.companyId = :companyId " +
+           "AND rh.effectiveFrom >= :fromDate " +
+           "AND rh.effectiveFrom <= :toDate " +
+           "ORDER BY rh.effectiveFrom DESC")
+    List<RateHistory> findByDateRange(
+            @Param("companyId") UUID companyId,
+            @Param("fromDate") LocalDateTime fromDate,
+            @Param("toDate") LocalDateTime toDate);
 }
