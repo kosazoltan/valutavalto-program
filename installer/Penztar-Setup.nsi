@@ -1131,33 +1131,80 @@ Function .onInit
     ${EndIf}
 
     ; =====================================================================
-    ; v2.3.0: Elozo verzio detektalasa + auto-uninstall (adat-megorzes)
+    ; v2.3.0: Egysegest flow — egyetlen telepito kezel minden forgatokonyvet
     ; =====================================================================
-    ; Ha mar van egy telepites (registry-ben UninstallString), automatikusan
-    ; eltavolitjuk silent mode-ban + PRESERVE_DATA=1 flag-gel. Igy a DB,
-    ; config es SetupWizard adatok megmaradnak, de a program reszek (electron,
-    ; backend jar, runtime) tisztan telepitodnek.
+    ; 3 eset:
+    ;   (1) SZUZ TELEPITES: nincs elozo verzio -> direct telepit
+    ;   (2) FRISSITES (ajanlott): van elozo verzio, adat MEGMARAD
+    ;   (3) TELJES UJRATELEPITES (gyari reset): adat TOROLVE, szuzen indul
     ;
-    ; Felhasznalo megerositese: non-silent mode-ban MessageBox; silent mode-ban
-    ; (pl. MSI-ből hivva) automatikusan lefut.
+    ; A felhasznalonak 3-gombos MessageBox: Frissites (Yes) / Gyari reset (No) / Megse (Cancel)
+    ;
+    ; Silent mode-ban (/S):
+    ;   - /WIPE=1 parancssori flag -> gyari reset
+    ;   - Egyebkent -> frissites (default, biztonsagos)
     ReadRegStr $R0 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "UninstallString"
     ${If} $R0 != ""
-        IfSilent auto_uninstall
+        ; Silent mode handling (CI / enterprise deploy)
+        IfSilent silent_mode_check
 
-        MessageBox MB_YESNO|MB_ICONQUESTION "Elozo Penztar telepites detektalva.$\r$\n$\r$\nEltavolitjuk az elozo verziot es frissen telepitjuk?$\r$\n$\r$\n(Az adatbazis es a beallitasok MEGMARADNAK.)" /SD IDYES IDYES auto_uninstall IDNO abort_install
+        ; Interactive user dialog (3 opcio)
+        MessageBox MB_YESNOCANCEL|MB_ICONQUESTION \
+            "Mar van egy telepitett Penztar verzio.$\r$\n$\r$\nMit szeretnel tenni?$\r$\n$\r$\n\
+IGEN = FRISSITES (ajanlott)$\r$\n    Az adatbazis es a beallitasok MEGMARADNAK.$\r$\n\
+    Csak a program reszei frissulnek.$\r$\n$\r$\n\
+NEM = GYARI RESET (teljes wipe)$\r$\n    MINDEN adat TOROLVE lesz (DB, config, tranzakciok).$\r$\n\
+    Szuzen indul, mintha elso telepites lenne.$\r$\n$\r$\n\
+MEGSE = Telepites megszakitasa" \
+            /SD IDYES \
+            IDYES upgrade_mode \
+            IDNO wipe_mode \
+            IDCANCEL abort_install
 
-        auto_uninstall:
+        silent_mode_check:
+            ; Silent mode: /WIPE=1 flag dont
+            ClearErrors
+            ${GetOptions} "$CMDLINE" "/WIPE=" $R2
+            ${If} $R2 == "1"
+                Goto wipe_mode
+            ${Else}
+                Goto upgrade_mode
+            ${EndIf}
+
+        upgrade_mode:
+            DetailPrint "=== FRISSITES MOD ==="
             DetailPrint "Elozo verzio eltavolitasa (silent, PRESERVE_DATA=1)..."
-            ; Silent mode + PRESERVE_DATA flag — a Cleanup.nsi ertelmezi
-            ; Quotolt path + parameters — idezojeles command line
+            DetailPrint "Az adatbazis + config MEGMARAD."
             ExecWait '$R0 /S /PRESERVE_DATA=1' $R1
-            DetailPrint "Elozo verzio eltavolitasa befejezve (exit code: $R1)"
-            ; Kis delay a file handle release-hez
+            DetailPrint "Elozo verzio eltavolitva (exit code: $R1). Adatok megorizve."
+            Sleep 2000
+            Goto continue_install
+
+        wipe_mode:
+            ; Megerositjuk a wipe-ot, mert az adatveszeles VISSZAFORDITHATATLAN
+            IfSilent wipe_confirm_silent
+            MessageBox MB_YESNO|MB_ICONWARNING \
+                "FIGYELEM! Gyari reset kivalasztva.$\r$\n$\r$\n\
+MINDEN adat TOROLVE lesz:$\r$\n\
+  - Teljes adatbazis (tranzakciok, ugyfelek, arfolyam)$\r$\n\
+  - Konfiguracio (dolgozo, szerver URL, jelszavak)$\r$\n\
+  - Setup wizard beallitasok$\r$\n$\r$\n\
+Ez VISSZAFORDITHATATLAN! Biztosan folytatod?" \
+                /SD IDNO \
+                IDYES wipe_confirm_silent \
+                IDNO abort_install
+
+        wipe_confirm_silent:
+            DetailPrint "=== GYARI RESET MOD ==="
+            DetailPrint "Elozo verzio TELJES eltavolitasa (silent, PRESERVE_DATA=0)..."
+            DetailPrint "MINDEN ADAT TOROLVE LESZ."
+            ExecWait '$R0 /S /PRESERVE_DATA=0' $R1
+            DetailPrint "Teljes eltavolitva (exit code: $R1). Szuzen indul."
             Sleep 2000
             Goto continue_install
 
         abort_install:
-            MessageBox MB_OK|MB_ICONSTOP "Telepites megszakitva. Az elozo verzio eltavolitasa nelkul nem lehet uj verziot telepiteni."
+            DetailPrint "Felhasznalo megszakitotta a telepites."
             Abort
 
         continue_install:
