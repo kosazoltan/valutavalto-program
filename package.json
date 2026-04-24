@@ -1,8 +1,8 @@
 {
   "name": "valutavalto-monorepo",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "private": true,
-  "description": "RepZtecH Exclusive Best Change - teljes ERP \u00c4\u201a\u00c2\u00b6kosziszt\u00c4\u201a\u00c2\u00a9ma (backend + frontend-react + penztar-client)",
+  "description": "RepZtecH Exclusive Best Change - teljes ERP Ä‚Â¶koszisztÄ‚Â©ma (backend + frontend-react + penztar-client)",
   "scripts": {
     "dev": "npm run dev:all",
     "dev:all": "concurrently -k -n db,backend,frontend,electron -c \"green.bold,yellow.bold,cyan.bold,magenta.bold\" \"npm:dev:db\" \"npm:dev:backend\" \"npm:dev:frontend\" \"npm:dev:electron\"",
