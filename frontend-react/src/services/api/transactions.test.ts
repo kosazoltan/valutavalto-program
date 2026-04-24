@@ -193,33 +193,31 @@ describe('shipmentRequestApi (backend /api/v1/shipments)', () => {
     )
   })
 
-  it('findByStatus: Page.content array-t ad vissza', async () => {
+  it('findByStatus: interceptor-unwrapped array-t ad vissza', async () => {
+    // Fix PR #180 Codex P1: client.ts interceptor MAR unwrapped Page<T> -> T[]
     const mockShipment = { id: 'uuid-1', requestNumber: 'SH-001' }
-    mockApi.get.mockResolvedValue({
-      data: { content: [mockShipment], totalElements: 1 }
-    })
-    const result = await shipmentRequestApi.findByStatus('KERTE')
+    mockApi.get.mockResolvedValue({ data: [mockShipment] })
+    const result = await shipmentRequestApi.findByStatus('SUBMITTED')
     expect(result).toEqual([mockShipment])
   })
 
-  it('findByStatus: ures content array-t nem-hibasan kezel', async () => {
-    mockApi.get.mockResolvedValue({
-      data: { totalElements: 0 }  // nincs content mezo
-    })
-    const result = await shipmentRequestApi.findByStatus('KERTE')
+  it('findByStatus: null/nem-array response nem-hibasan kezel', async () => {
+    mockApi.get.mockResolvedValue({ data: null })
+    const result = await shipmentRequestApi.findByStatus('SUBMITTED')
     expect(result).toEqual([])
   })
 
-  it('findByBranch: az osszes shipment-et lekeri + client-side szuri branchId szerint', async () => {
+  it('findByBranch: fromBranchId/toBranchId backend-mezok alapjan szur', async () => {
+    // Fix PR #180 Codex P1: backend mezok fromBranchId/toBranchId (NEM requesting/target)
     const shipments = [
-      { id: '1', requestingBranchId: 'BR-A', targetBranchId: 'BR-B' },
-      { id: '2', requestingBranchId: 'BR-B', targetBranchId: 'BR-A' },
-      { id: '3', requestingBranchId: 'BR-X', targetBranchId: 'BR-Y' },
+      { id: '1', fromBranchId: 'BR-A', toBranchId: 'BR-B' },
+      { id: '2', fromBranchId: 'BR-B', toBranchId: 'BR-A' },
+      { id: '3', fromBranchId: 'BR-X', toBranchId: 'BR-Y' },
     ]
-    mockApi.get.mockResolvedValue({ data: { content: shipments, totalElements: 3 } })
+    mockApi.get.mockResolvedValue({ data: shipments })
     const result = await shipmentRequestApi.findByBranch('BR-A')
     expect(result).toHaveLength(2)
-    expect(result.map(s => s.id)).toEqual(['1', '2'])
+    expect(result.map((s: { id: string }) => s.id)).toEqual(['1', '2'])
   })
 
   it('approve: a /shipments/{id}/approve endpoint-ot hivja', async () => {

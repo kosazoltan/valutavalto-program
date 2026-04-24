@@ -78,9 +78,9 @@ verziószám: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **PR #171** — Obsidian host IPv4 (`127.0.0.1`) default
 
 ### AI review follow-up
-- **PR #166, #167, #168, #169** — Sourcery 8 finding javítva (`session-memory-auto-save.ps1`, 4 iteráció)
-- **PR #174** — Sourcery 3 finding javítva (`$script:ErrorActionPreference` scope, summary, fallback log)
-- **PR #176** — Sourcery 4 finding javítva (explicit waits, stabil selectors, health check exit 1, `--with-deps` komment)
+- **PR #166, #167, #168, #169** — Sourcery 8 findings javítva (`session-memory-auto-save.ps1`, 4 iteráció)
+- **PR #174** — Sourcery 3 findings javítva (`$script:ErrorActionPreference` scope, summary, fallback log)
+- **PR #176** — Sourcery 4 findings javítva (explicit waits, stabil selectors, health check exit 1, `--with-deps` komment)
 
 ### Quality gate
 - Backend: **978/978 zöld**

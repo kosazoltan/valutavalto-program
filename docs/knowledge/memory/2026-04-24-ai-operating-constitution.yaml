@@ -143,4 +143,4 @@ Ellenorzes / Interoperabilitas / Biztonsag
 - `docs/knowledge/memory/2026-04-24-ai-operating-constitution.yaml` (EZ)
 - `docs/knowledge/memory/2026-04-24-cash-balance-issue110-v155-closure.yaml` (korabbi ma)
 - `CLAUDE.md` - projekt utmutato, AI_CONSTITUTION-re mutat
-- `C:/Users/Kosa Zoltan/.claude/projects/D--repo-valutavalto-program/memory/MEMORY.md` - globalis index
+- `~/.claude/projects/<repo-slug>/memory/MEMORY.md` (user-specific, lokalis) - globalis index
