@@ -45,17 +45,20 @@ interface StockRow {
 interface CurrencyDetail { currencyCode: string; stock: number }
 interface BackendBranch { branchId: string; currencies: CurrencyDetail[] }
 interface BackendRegion { regionCode?: string; branches: BackendBranch[] }
-interface StockSnapshotResponse { regions?: BackendRegion[]; companyTotals?: unknown }
+interface StockSnapshotResponse { regions?: BackendRegion[] }
 
 /**
  * Lapoz a hierarchikus StockSnapshotDto-t flat StockRow[]-ba.
  *
- * Codex P2 #183 javitas: ha a backend regions listan kivul keveri egyes branch-eket
- * a companyTotals-ba (pl. ismeretlen region_code), a flatten nem vesz rajuk
- * figyelembe -> a branch-nek nem lesz "stocks" rekordja, igy a dashboard
- * CRITICAL threshold alert hibasan piros lesz rajta. A missing branch-eket
- * `null`-koent jelezzuk: a dashboard logika a feltetelt atadja, fallback nelkul
- * csak a "stockAlert empty" marad -> NEM false-positive alert.
+ * Sourcery PR #186: a JSDoc most valosan tukrozi a viselkedest.
+ * A backend /stock-snapshot response kizárólag `regions[].branches[].currencies[]`
+ * strukturaban ad stock rekordokat. A `companyTotals` NEM tartalmaz branch-szintu
+ * adatot, csak aggregalt company-level osszeget (currency-szintu totalBalance).
+ *
+ * Ha egy aktiv branch nincs a `regions` listaban (pl. unmapped region_code),
+ * a flatten NEM kapja meg a stock adatait. A dashboard logikaja (lasd loadData)
+ * ezt UNKNOWN jelzovel kezeli - NEM false-positive CRITICAL alert, de NEM is
+ * silent healthy state (Codex P1 PR #186 javitas).
  */
 function flattenStockSnapshot(snap: StockSnapshotResponse | null): StockRow[] {
     if (!snap?.regions) return []
@@ -120,9 +123,10 @@ export default function CentralVaultDashboard() {
                     stocks.filter((s) => s.branchId === b.id).forEach((s) => {
                         branchStocks[s.currencyCode] = (branchStocks[s.currencyCode] || 0) + (s.amount || 0)
                     })
-                    // Codex PR #183 P2: csak ha a branch-nek VAN legalabb 1 stock rekord a snapshot-ban,
-                    // akkor ertekeljuk a CRITICAL threshold-okat. Ha nincs adat (unmapped region),
-                    // NE dobjunk false-positive alert-et.
+                    // AI review (Codex PR #186 P1): ha a branch-nek NINCS stock adat (pl. unmapped
+                    // region vagy /stock-snapshot unavailable), NEM healthy state-et mutatunk -
+                    // expliciten UNKNOWN warning-ot. A threshold-check elmarad, helyette egy
+                    // dedikalt "STOCK UNKNOWN" jelzo, ami a UI-n latthato es NEM false-negative.
                     const hasStockData = Object.keys(branchStocks).length > 0
                     const stockAlert: string[] = []
                     if (hasStockData) {
@@ -130,6 +134,9 @@ export default function CentralVaultDashboard() {
                             const amt = branchStocks[ccy] || 0
                             if (amt < threshold) stockAlert.push(`${ccy} < ${threshold.toLocaleString('hu-HU')}`)
                         }
+                    } else {
+                        // UNKNOWN jelzo: keszlet NEM ERTEKELHETO (unmapped region vagy snapshot hiba)
+                        stockAlert.push('STOCK UNKNOWN - snapshot nem tartalmaz adatot erre a branch-re')
                     }
                     const lastSeenAt = device?.lastSeenAt ? new Date(device.lastSeenAt).getTime() : null
                     const mins = lastSeenAt ? Math.floor((now - lastSeenAt) / 60_000) : null

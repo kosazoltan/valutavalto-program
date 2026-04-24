@@ -41,8 +41,9 @@ public class RateHistoryController {
         LocalDate effectiveFrom = (from != null) ? from : now.minusDays(30);
         LocalDate effectiveTo = (to != null) ? to : now;
 
-        // Inverz intervallum eseten csere (fallback - nem hibauzenet)
-        if (effectiveFrom.isAfter(effectiveTo)) {
+        // AI review (Codex PR #186 P2): swap CSAK ha MINDKETTO explicit bounded.
+        // Ha csak egyik default, NE modositsuk silent-ben a user intent-et.
+        if (from != null && to != null && effectiveFrom.isAfter(effectiveTo)) {
             LocalDate tmp = effectiveFrom;
             effectiveFrom = effectiveTo;
             effectiveTo = tmp;

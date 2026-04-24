@@ -35,7 +35,9 @@ export default function MnbReportPage() {
       // Fix 2026-04-24: backend Page<MnbReportDto>, DE a client.ts interceptor
       // MAR auto-unwrappeli Page<T> -> T[] (`response.data` maga az array). AI review
       // (Codex PR #180 P1 interceptor figyelmeztetes).
-      const response = await api.get<MnbReportItem[]>('/mnb/reports', { params: { size: 100 } })
+      // AI review (Sourcery PR #186): magic konstans helyett megneves (silent truncation kockazat >100 rekord-nal)
+      const MNB_REPORTS_PAGE_SIZE = 500
+      const response = await api.get<MnbReportItem[]>('/mnb/reports', { params: { size: MNB_REPORTS_PAGE_SIZE } })
       setItems(safeArray<MnbReportItem>(asArray<MnbReportItem>(response.data)))
     } catch (err) {
       const msg = getErrorMessage(err)
