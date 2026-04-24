@@ -43,17 +43,25 @@ jobs:
         working-directory: frontend-react
         run: npm ci --prefer-offline
 
-      - name: Install Playwright browsers (chromium only, no deps)
+      - name: Install Playwright browsers (chromium + system deps)
+        # Sourcery PR #175: komment + --with-deps egyesitve
         working-directory: frontend-react
         run: npx playwright install chromium --with-deps
 
       - name: Production health check (pre-flight)
+        # Sourcery PR #175: gate tests on healthy env - exit 1 on non-2xx
         run: |
           set -eo pipefail
           HEALTH_URL=$(node -p "require('./config/production-urls.json').health_url")
           echo "Health check: $HEALTH_URL"
-          curl -sS -o /tmp/health.json -w "HTTP: %{http_code}\n" "$HEALTH_URL"
+          HTTP_CODE=$(curl -sS -o /tmp/health.json -w "%{http_code}" "$HEALTH_URL")
+          echo "HTTP: $HTTP_CODE"
           cat /tmp/health.json
+          echo ""
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "Production unhealthy (HTTP $HTTP_CODE), aborting e2e run"
+            exit 1
+          fi
 
       - name: Playwright live tests (T01-T08, T10)
         working-directory: frontend-react
