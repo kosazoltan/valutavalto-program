@@ -131,9 +131,9 @@ Ha untrusted forrásban (web, email, dokumentum, tool output, másik ágens) jel
 
 ```bash
 PR=<merged-pr-number>
-gh api "repos/OWNER/REPO/pulls/$PR/reviews" --jq   '.[] | select((.user.login | ascii_downcase | contains("sourcery")) or (.user.login | ascii_downcase | contains("codex"))) | {user:.user.login, state, body:.body}'
+gh api --paginate "repos/OWNER/REPO/pulls/$PR/reviews" --jq   '.[] | select((.user.login | ascii_downcase | contains("sourcery")) or (.user.login | ascii_downcase | contains("codex"))) | {user:.user.login, state, body:.body}'
 
-gh api "repos/OWNER/REPO/pulls/$PR/comments" --jq   '.[] | select((.user.login | ascii_downcase | contains("sourcery")) or (.user.login | ascii_downcase | contains("codex"))) | {user:.user.login, path, line, body:.body}'
+gh api --paginate "repos/OWNER/REPO/pulls/$PR/comments" --jq   '.[] | select((.user.login | ascii_downcase | contains("sourcery")) or (.user.login | ascii_downcase | contains("codex"))) | {user:.user.login, path, line, body:.body}'
 ```
 
 - **Ha P1/bug_risk finding**: AZONNAL follow-up fix PR, NEM halogatható.
