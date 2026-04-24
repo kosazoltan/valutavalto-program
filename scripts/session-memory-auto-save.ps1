@@ -31,7 +31,10 @@
 
 param(
     [string]$SessionFile,
-    [switch]$DryRun
+    [switch]$DryRun,
+    # Sourcery PR #165 P2 fix: env-kompat opciokat is ad meg
+    [int]$TimeoutSec = $(if ($env:SESSION_SAVE_TIMEOUT_SEC) { [int]$env:SESSION_SAVE_TIMEOUT_SEC } else { 3 }),
+    [switch]$StrictCertCheck = $(if ($env:SESSION_SAVE_STRICT_CERT) { [switch]::new($true) } else { $false })
 )
 
 $ErrorActionPreference = 'Stop'
@@ -51,7 +54,11 @@ function Write-Log {
 # 1. Session file felismerese
 if (-not $SessionFile) {
     $today = Get-Date -Format 'yyyy-MM-dd'
-    $memoryDir = Join-Path $PSScriptRoot '..\docs\knowledge\memory'
+    # Sourcery PR #165 P2: tobbszegmenses Join-Path, nem backslash-hardcoded
+    $memoryDir = Join-Path $PSScriptRoot '..'
+    $memoryDir = Join-Path $memoryDir 'docs'
+    $memoryDir = Join-Path $memoryDir 'knowledge'
+    $memoryDir = Join-Path $memoryDir 'memory'
     if (-not (Test-Path $memoryDir)) {
         Write-Log 'ERR' "Memory dir nem letezik: $memoryDir"
         exit 1
@@ -86,7 +93,7 @@ foreach ($sf in $sessionFiles) {
 
     $cogneeAlive = $false
     try {
-        $null = Invoke-WebRequest -Uri "$cogneeUrl/health" -TimeoutSec 3 -UseBasicParsing -ErrorAction Stop
+        $null = Invoke-WebRequest -Uri "$cogneeUrl/health" -TimeoutSec $TimeoutSec -UseBasicParsing -ErrorAction Stop
         $cogneeAlive = $true
     } catch { }
 
@@ -130,8 +137,10 @@ foreach ($sf in $sessionFiles) {
 
     $obsAlive = $false
     try {
+        $obsExtraArgs = @{}
+        if (-not $StrictCertCheck) { $obsExtraArgs['SkipCertificateCheck'] = $true }
         $null = Invoke-WebRequest -Uri "$obsUrl/" -Headers @{ Authorization = "Bearer $obsKey" } `
-            -TimeoutSec 3 -UseBasicParsing -SkipCertificateCheck -ErrorAction Stop
+            -TimeoutSec $TimeoutSec -UseBasicParsing @obsExtraArgs -ErrorAction Stop
         $obsAlive = $true
     } catch { }
 
@@ -155,11 +164,13 @@ foreach ($sf in $sessionFiles) {
         Write-Log 'INFO' "[DRY] Obsidian PUT $obsPath ($size bytes)"
     } else {
         try {
+            $obsPutArgs = @{}
+            if (-not $StrictCertCheck) { $obsPutArgs['SkipCertificateCheck'] = $true }
             $resp = Invoke-WebRequest -Uri "$obsUrl/vault/$obsPath" -Method Put `
                 -Headers @{ Authorization = "Bearer $obsKey"; 'Content-Type' = 'text/markdown; charset=utf-8' } `
                 -Body ([System.Text.Encoding]::UTF8.GetBytes($content)) `
-                -SkipCertificateCheck -UseBasicParsing -ErrorAction Stop
-            if ($resp.StatusCode -in 200, 204) {
+                -UseBasicParsing @obsPutArgs -ErrorAction Stop
+            if ($resp.StatusCode -ge 200 -and $resp.StatusCode -lt 300) {  # Sourcery PR #165 P1: REST PUT 2xx (201 Created-et is)
                 Write-Log 'OK' "Obsidian: PUT $obsPath (HTTP $($resp.StatusCode))"
             } else {
                 Write-Log 'ERR' "Obsidian PUT unexpected HTTP $($resp.StatusCode)"
