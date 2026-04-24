@@ -29,6 +29,7 @@ param(
     [Parameter(Mandatory = $true)]
     [int]$PR,
     [int]$MaxMinutes = 15,
+    [int]$MinMinutes = 15,   # PR #193 Sourcery: NEM lepheto at. A Sourcery high-level feedback 10-15 perccel merge utan erkezik.
     [int]$Interval = 120
 )
 
@@ -49,7 +50,7 @@ $iteration = 0
 $lastReviewCount = 0
 $lastCommentCount = 0
 $stableIterations = 0
-$STABILITY_THRESHOLD = 2  # 2 egymas utani nullnovekedes = stable
+$STABILITY_THRESHOLD = 3  # 3 no-change iter (6 min), de csak MinMinutes UTAN hasznalhato
 
 while ((Get-Date) -lt $deadline) {
     $iteration++
@@ -74,9 +75,12 @@ while ((Get-Date) -lt $deadline) {
     $lastReviewCount = $reviewCount
     $lastCommentCount = $commentCount
 
-    if ($stableIterations -ge $STABILITY_THRESHOLD) {
+    # PR #193 CRITICAL FIX: stability detection csak MinMinutes UTAN engedheto
+    # (Sourcery high-level review 15 perccel merge utan is jon, early-exit = finding-miss)
+    $elapsedNow = ((Get-Date) - ($deadline.AddMinutes(-$MaxMinutes))).TotalMinutes
+    if ($stableIterations -ge $STABILITY_THRESHOLD -and $elapsedNow -ge $MinMinutes) {
         Write-Host ""
-        Write-Host "=== Stable (2 iter no-change), korai kilepe ===" -ForegroundColor Green
+        Write-Host "=== Stable (>= $STABILITY_THRESHOLD iter no-change) es elapsed >= $MinMinutes min, kilepes ===" -ForegroundColor Green
         break
     }
 
