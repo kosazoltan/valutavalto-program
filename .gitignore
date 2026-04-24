@@ -2,6 +2,11 @@
 .env
 .env.local
 .env.production
+# v2.3.0 kivetel: a production API URL-t tartalmazo .env.production fajlok
+# commit-olhatoak (nem secret). Build-time kell hogy a bundle-be ne egyen
+# be localhost. A root .env / .env.local tovabbra is ignore-olt.
+!frontend-react/.env.production
+!penztar-client/.env.production
 
 # SSH Keys (KRITIKUS - ne commitold!)
 ssh-keys/
