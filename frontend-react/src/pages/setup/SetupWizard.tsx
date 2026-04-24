@@ -157,7 +157,40 @@ export default function SetupWizard() {
     }
   }, [currentStep, selectedBranch, offlineMode, connectionTest.state, adminPassword, adminPasswordConfirm, adminUsername, appModeChoice])
 
-  // --- Kapcsolat teszt ---
+  // --- v2.3.0: Auto connection test a server step belepeskor ---
+  // No manualis gomb: ha a user a server step-re lep, auto fut a teszt
+  // (ha offline mode off). Ha siker - zold banner. Ha fail - piros + retry gomb.
+  useEffect(() => {
+    if (currentStep !== 'server' || offlineMode) return
+    if (connectionTest.state === 'testing') return
+    if (connectionTest.state === 'ok') return // mar sikeres — ne fusson ujra
+    // csak akkor indul, ha van apiUrl + companyCode
+    if (!apiUrl.trim() || !companyCode.trim()) return
+    // ne fusson ha a user meg nem tesztelt + semmi input sincs
+    if (!bootstrapUsername.trim() && !bootstrapPassword) {
+      // elso alkalommal az auto-test a bootstrap-status endpoint-ra megy
+      // (nem kell a user kod/jelszo)
+      setConnectionTest({ state: 'testing' })
+      const normalized = apiUrl.trim().replace(/\/+$/, '').replace(/\/api\/v1$/, '')
+      const url = `${normalized}/api/v1/auth/bootstrap-status`
+      const started = performance.now()
+      fetch(url, { method: 'GET' })
+        .then((resp) => {
+          const latency = Math.round(performance.now() - started)
+          if (resp.ok) {
+            setConnectionTest({ state: 'ok', message: `Kapcsolodva (HTTP ${resp.status}, ${latency} ms)` })
+          } else {
+            setConnectionTest({ state: 'fail', message: `Szerver hiba: HTTP ${resp.status}` })
+          }
+        })
+        .catch((err: unknown) => {
+          setConnectionTest({ state: 'fail', message: err instanceof Error ? err.message : String(err) })
+        })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep, apiUrl, companyCode, offlineMode])
+
+  // --- Kapcsolat teszt (kezi, retry gombnak) ---
   const runConnectionTest = useCallback(async () => {
     setConnectionTest({ state: 'testing' })
     const started = performance.now()
@@ -202,6 +235,12 @@ export default function SetupWizard() {
     setSaveError(null)
     try {
       if (window.electronAPI?.setupSave) {
+        // v2.3.0: kereses a worker listaban a kivalasztott dolgozo neve + role szerint
+        // A ServerStep-bol a bootstrapUsername = a workerCode (pl. BORSI).
+        // A workerList elemeiben a name megvan. A role nincs a public endpoint-on,
+        // de az optional; a backend /first-time-worker-setup visszaadja.
+        const trimmedWorkerCode = bootstrapUsername.trim().toUpperCase()
+        const hasWorkerSelection = trimmedWorkerCode.length > 0 && trimmedWorkerCode !== adminUsername.trim().toUpperCase()
         const result = await window.electronAPI.setupSave({
           branchCode: selectedBranch.code,
           branchName: selectedBranch.name,
@@ -213,6 +252,10 @@ export default function SetupWizard() {
           bootstrapPassword,
           offlineMode,
           appMode: appModeChoice,
+          // v2.3.0: worker identity atadasa az electron-nak ha van kivalasztott dolgozo
+          ...(hasWorkerSelection ? {
+            selectedWorkerCode: trimmedWorkerCode,
+          } : {}),
         })
         if (!result.success) {
           setSaveError(result.errorMessage || 'Ismeretlen hiba a telepites soran.')
