@@ -915,47 +915,49 @@ export interface ShipmentCreateRequest {
 }
 
 export const shipmentRequestApi = {
-  // TODO (2026-04-24): `create` es `prepare` metodusok regi `/shipment-requests/*` URL-t hasznalnak,
-  // ami jelenleg NINCS regisztralva a backend-en. A ShipmentListPage nem hivja, de ha valaki
-  // ujabb fejlesztes soran rajuk tamaszkodik, 404-re megbukik.
-  // Backend refaktor szukseges: ShipmentController-ben vagy uj endpoint-ok, vagy URL aliasolas.
-  create: async (branchId: string, request: ShipmentCreateRequest, workerId: string): Promise<ShipmentRequest> => {
-    const response = await api.post<ShipmentRequest>(
-      `/shipment-requests/branch/${branchId}/create`,
-      request,
-      { params: { workerId } }
-    )
-    return response.data
+  // DEPRECATED (Sourcery PR #180 bug_risk): `create` es `prepare` regi `/shipment-requests/*`
+  // NEM letezo endpoint-ot hivnak. Csendes 404 helyett explicit runtime error.
+  create: async (_branchId: string, _request: ShipmentCreateRequest, _workerId: string): Promise<ShipmentRequest> => {
+    throw new Error('shipmentRequestApi.create() DEPRECATED: backend endpoint hianyzik (Sourcery PR #180)')
   },
-  // TODO (2026-04-24): prepare metodus regi /shipment-requests/{id}/prepare URL-t hasznal,
-  // ami NINCS a backend-en. Ha frontend hivja, 404. A ShipmentListPage nem hivja.
-  prepare: async (requestId: string, sourceCashDeskId: string, targetCashDeskId: string, workerId: string): Promise<{ shipmentId: string; success: boolean }> => {
-    const response = await api.post(
-      `/shipment-requests/${requestId}/prepare`,
-      null,
-      { params: { sourceCashDeskId, targetCashDeskId, workerId } }
-    )
-    return response.data
+  // DEPRECATION (Sourcery PR #180 bug_risk): prepare() NEM letezo endpoint -> MINDIG 404
+  prepare: async (_requestId: string, _sourceCashDeskId: string, _targetCashDeskId: string, _workerId: string): Promise<{ shipmentId: string; success: boolean }> => {
+    throw new Error('shipmentRequestApi.prepare() DEPRECATED: backend /shipment-requests/{}/prepare endpoint nem letezik.')
   },
-  // Fix 2026-04-24: a backend /api/v1/shipments endpoint-ot hasznalja (nem /shipment-requests).
-  // Response: Spring Data Page<ShipmentRequest> (content + pagination metadata).
+  // Fix 2026-04-24: a backend /api/v1/shipments endpoint-ot hasznalja.
+  // AI review (Codex PR #180 P1): a shared client.ts interceptor MAR auto-unwrappel-i
+  // a Spring Page<T>-et plain array-ra (kivéve _preservePaged=true). Tehat a
+  // response.data MAR maga az array, NEM {content: [...]}. Ha paginated UI kell,
+  // a config-ra `_preservePaged: true` kell.
   findByStatus: async (status: string): Promise<ShipmentRequest[]> => {
-    const response = await api.get<{ content: ShipmentRequest[] }>(
+    if (!status) {
+      // Sourcery PR #180: empty status == 'Mind' -> omit param
+      const response = await api.get<ShipmentRequest[]>(`/shipments`, { params: { page: 0, size: 100 } })
+      return Array.isArray(response.data) ? response.data : []
+    }
+    const response = await api.get<ShipmentRequest[]>(
       `/shipments`,
       { params: { status, page: 0, size: 100 } }
     )
-    return response.data.content ?? []
+    return Array.isArray(response.data) ? response.data : []
   },
   findByBranch: async (branchId: string): Promise<ShipmentRequest[]> => {
     // Backend jelenleg nem tamogatja a branch-parametert kozvetlenul.
     // Megoldas: osszes lista lekeres + client-side filter.
-    // TODO: backend /api/v1/shipments?branchId=... tamogatas - kulon issue.
-    const response = await api.get<{ content: ShipmentRequest[] }>(
+    // AI review (Codex PR #180 P1): backend mezonevek `fromBranchId` / `toBranchId`
+    // (NEM `requestingBranchId` / `targetBranchId`). A korabbi filter SOHA NEM illesztett.
+    // TODO: backend /api/v1/shipments?branchId=... natív filter - kulon issue #184 utan.
+    const response = await api.get<ShipmentRequest[]>(
       `/shipments`,
       { params: { page: 0, size: 200 } }
     )
-    const all = response.data.content ?? []
-    return all.filter(s => s.requestingBranchId === branchId || s.targetBranchId === branchId)
+    const all: ShipmentRequest[] = Array.isArray(response.data) ? response.data : []
+    type ShipmentWithBackendFields = ShipmentRequest & { fromBranchId?: string; toBranchId?: string }
+    return all.filter(s => {
+      const sb = s as ShipmentWithBackendFields
+      return sb.fromBranchId === branchId || sb.toBranchId === branchId
+        || s.requestingBranchId === branchId || s.targetBranchId === branchId
+    })
   },
   // Approve: backend POST /api/v1/shipments/{id}/approve (params ignoralva: workerId + approvedItems + notes)
   approve: async (requestId: string, workerId: string, approvedItems?: ShipmentRequestItem[], notes?: string): Promise<ShipmentRequest> => {

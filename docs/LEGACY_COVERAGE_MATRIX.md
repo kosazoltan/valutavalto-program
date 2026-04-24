@@ -83,7 +83,7 @@
 | KFT szuro | Multi-tenant `companyId` JWT token-bol (Spring Security `SecurityUtils.getCurrentCompanyId()`) |
 | Korzet szuro | `Branch.regionCode` + `REGION_NAMES` map (`StockSnapshotService`) - 8 korzet lefedve (v2.1.7 ota) |
 | Penztar szuro | `@RequestParam branchId` |
-| Forint range | `@RequestParam minAmount`, `maxAmount` ($TransactionService findByHufAmountRange) |
+| Forint range | **NINCS natív támogatás** (Codex PR #172 P2 audit): `TransactionService.findByHufAmountRange()` NEM létezik. Frontend `TransactionController.searchTransactions()`-t hívja (startDate/endDate/type), majd kliens-oldali szűrés. Külön backend issue nyitandó a natív `minAmount/maxAmount` query-param-hez. |
 | Lista + szuro | `CustomerController` 11 endpoint + `TransactionController` filter-ek |
 
 **Fajlok**:

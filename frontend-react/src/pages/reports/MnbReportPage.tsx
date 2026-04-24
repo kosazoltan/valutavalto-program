@@ -19,12 +19,7 @@ interface MnbReportItem {
   totalTransactions?: number
 }
 
-// Spring Data Page<> response tipus
-interface MnbReportPage {
-  content: MnbReportItem[]
-  totalElements?: number
-  totalPages?: number
-}
+// (Page<> interface-re nincs szukseg: interceptor unwrap-olja array-ra)
 
 export default function MnbReportPage() {
   const [items, setItems] = useState<MnbReportItem[]>([])
@@ -36,9 +31,11 @@ export default function MnbReportPage() {
     try {
       setLoading(true)
       setError(null)
-      // Fix 2026-04-24 (Codex PR #183 P2): backend Page<MnbReportDto> -> content extrakt
-      const response = await api.get<MnbReportPage>('/mnb/reports', { params: { size: 100 } })
-      setItems(safeArray<MnbReportItem>(response.data?.content))
+      // Fix 2026-04-24: backend Page<MnbReportDto>, DE a client.ts interceptor
+      // MAR auto-unwrappeli Page<T> -> T[] (`response.data` maga az array). AI review
+      // (Codex PR #180 P1 interceptor figyelmeztetes).
+      const response = await api.get<MnbReportItem[]>('/mnb/reports', { params: { size: 100 } })
+      setItems(safeArray<MnbReportItem>(Array.isArray(response.data) ? response.data : []))
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('MnbReportPage', 'Betöltési hiba:', err)
