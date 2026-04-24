@@ -145,7 +145,8 @@ foreach ($sf in $sessionFiles) {
         continue
     }
 
-    $obsHost = if ($env:OBSIDIAN_HOST) { $env:OBSIDIAN_HOST } else { 'localhost' }
+    # Default: 127.0.0.1 (az Obsidian Local REST API plugin csak IPv4-re bind-ol, a 'localhost' IPv6 fail-t okozhat)
+    $obsHost = if ($env:OBSIDIAN_HOST) { $env:OBSIDIAN_HOST } else { '127.0.0.1' }
     $obsPort = if ($env:OBSIDIAN_PORT) { $env:OBSIDIAN_PORT } else { '27124' }
     $obsProto = if ($env:OBSIDIAN_PROTOCOL) { $env:OBSIDIAN_PROTOCOL } else { 'https' }
     $obsUrl = "${obsProto}://${obsHost}:${obsPort}"
