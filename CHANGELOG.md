@@ -1,5 +1,69 @@
 # Changelog
 
+A `valutavalto-program` monorepo verzió-történet.
+
+Formátum: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+verziószám: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [2.2.3] — 2026-04-24
+
+### Kritikus bug-fix (frontend / desktop klienst érinti)
+- **PR #163** — `frontend-react/src/services/api/client.ts`: Idempotency-Key header
+  AxiosHeaders 1.x kompatibilis `set()` API használat (direkt assignment helyett).
+  A pénztáros Electron kliens ugyanezt a frontend build-et használja, tehát
+  ez a fix desktop-on is blokkoló volt a VETEL/ELADÁS/STORNO flow-ra.
+  Live verify: **V017100012 10 EUR VETEL** sikeresen szerveren 2026-04-23 20:05.
+
+### Új feature-k
+- **PR #164** — `backend/DailySessionService`: új `cash_balance` auto-init
+  `updateCashBalancesForOpening()`-ben (Issue #110 lezárás). Új branch-ek
+  napnyitáskor automatikusan kapnak üres cash_balance rekordokat minden
+  aktív valutára, így a tranzakció-sync nem esik el 404-gyel.
+
+- **PR #175** — `.github/workflows/playwright-live.yml`: új GitHub Actions
+  workflow manuális + nightly 03:30 UTC Playwright e2e tesztekhez
+  `excvaluta.com` ellen. 10 teszt (T01–T10), T09 authenticated flow
+  GitHub Secrets credentials-szel.
+
+### Refaktor
+- **PR #172** — `docs/LEGACY_COVERAGE_MATRIX.md`: 2026-04-24 legacy audit,
+  129/129 = 100% modern lefedés bizonyítva (tiltcopy, recguard, vevo_mend
+  mind `SanctionScreeningService`, `CameraCleanupService`, `CustomerController`
+  révén lefedve).
+
+- **PR #173** — Production URL SSOT teljes propagáció (3 réteg):
+  - Backend: `WebSocketConfig` + `ProductionCorsFilter` `List.of(...)` → `ProductionUrls.BASE_URL + WWW_BASE_URL`
+  - **ÚJ** `scripts/_production-urls.ps1` shared PS helper (`$PRODUCTION_URLS` hash + getter-ek)
+  - `scripts/start-valuta-ecosystem.ps1`: dot-source helper, minden hardcoded URL `$PRODUCTION_URLS.*`
+  - Electron `main.ts`: új `loadProductionUrls()` (packagedPath vs devPath)
+  - `electron-builder.json`: `extraResources += config/production-urls.json`
+
+### Infrastruktúra
+- **PR #165** — `scripts/session-memory-auto-save.ps1` Windows PS wrapper + 2026-04-24 session handoff YAML+QMD
+- **PR #170** — `scripts/setup-knowledge-mcp.ps1` diagnostic + `docs/knowledge/COGNEE_OBSIDIAN_SETUP.md`
+- **PR #171** — Obsidian host IPv4 (`127.0.0.1`) default
+
+### AI review follow-up
+- **PR #166, #167, #168, #169** — Sourcery 8 finding javítva (`session-memory-auto-save.ps1`, 4 iteráció)
+- **PR #174** — Sourcery 3 finding javítva (`$script:ErrorActionPreference` scope, summary, fallback log)
+- **PR #176** — Sourcery 4 finding javítva (explicit waits, stabil selectors, health check exit 1, `--with-deps` komment)
+
+### Quality gate
+- Backend: **978/978 zöld**
+- Penztar-client: **97/97 zöld**
+- Frontend-react: zöld
+- Playwright live (T10 smoke): zöld
+- Open PR: 0 / remote branch: 1 (main) — branch policy v2 teljesítve
+- Hetzner deploy: minden merge után SUCCESS
+
+### Upgrade path
+- **Backend**: automatikus Hetzner deploy main merge után (nincs manuális lépés)
+- **Frontend (admin)**: automatikus Hetzner deploy (deploy-frontend job)
+- **Pénztáros Electron kliens**: **v2.2.3 installer telepítése JAVASOLT** a PR #163 fix miatt.
+  A régi v2.2.2 desktop app-ban a VETEL tranzakció 400-as hibával elesik, amíg a user nem frissíti.
+
+---
+
 ## [2.2.2] - 2026-04-23 hotfix (vault cash flow javitas)
 
 ### Fixed - Uzletmenet-kritikus vault/ertektar cash flow
