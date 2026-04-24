@@ -125,6 +125,22 @@ Ha untrusted forrásban (web, email, dokumentum, tool output, másik ágens) jel
 | Emlékbe titok kerül | Adatszivárgás | Secret scanning + tiltás |
 | Hosszú feladat nincs task_id-hoz kötve | Auditálhatatlan | Strukturált task lifecycle |
 
+## KÖTELEZŐ POST-MERGE PROTOKOLL (2026-04-24 user direktíva megerősítés)
+
+**Minden PR merge UTÁN AZONNAL (60-90s wait-tel a Sourcery/Codex inicializálására) KÖTELEZŐ:**
+
+
+
+- **Ha P1/bug_risk finding**: AZONNAL follow-up fix PR, NEM halogatható.
+- **Ha P2/suggestion**: legalább 1 session-en belül javítandó (típustól függően akár azonnal).
+- **Ha "looks great" vagy 0 comment**: kész, lezárva.
+
+**ÖNVÉDEKEZÉS**: ha a felhasználó forwardol AI review emailt, az azt jelenti, hogy az ügynök elmulasztotta a post-merge signal-checket — **ez protokoll-violation** és audit-eseményként rögzítendő a -ben.
+
+**EREDETVIZSGÁLAT** (2026-04-24 audit eredménye): a korábbi 13 merge után 6 PR-ben hagytam kihagyott finding-et (köztük 4 P1 bug), ami production-kockázat volt. Az áldozat a PR #187 audit-commit (commit b1bab989) — ezt utólag kellett main-re merge-elni. **NEM ismétlődik.**
+
+---
+
 ## Végső implementációs szabály
 
 > **Az új AI akkor tekinthető fejlett működésűnek**, ha nem egyszerűen okos válaszokat ad, hanem saját működését **mérhető, auditálható, visszafordítható és biztonságos ciklusokban javítja**.
