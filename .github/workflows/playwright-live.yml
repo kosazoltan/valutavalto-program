@@ -1,0 +1,85 @@
+name: Playwright Live E2E (excvaluta.com)
+
+# Eles produkcio ellen fut, NEM deploy-hoz kotodik.
+# Triggers:
+#   - Manual (workflow_dispatch)
+#   - Nightly 03:30 UTC (cron)
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_authenticated:
+        description: 'Futtassa-e a T09 authenticated login tesztet (TEST_* secret-ekkel)?'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+  schedule:
+    # Minden nap 03:30 UTC = 04:30/05:30 CET/CEST (nyaron)
+    - cron: '30 3 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  playwright-live:
+    name: Playwright vs excvaluta.com
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: frontend-react/package-lock.json
+
+      - name: Install frontend-react deps
+        working-directory: frontend-react
+        run: npm ci --prefer-offline
+
+      - name: Install Playwright browsers (chromium only, no deps)
+        working-directory: frontend-react
+        run: npx playwright install chromium --with-deps
+
+      - name: Production health check (pre-flight)
+        run: |
+          set -eo pipefail
+          HEALTH_URL=$(node -p "require('./config/production-urls.json').health_url")
+          echo "Health check: $HEALTH_URL"
+          curl -sS -o /tmp/health.json -w "HTTP: %{http_code}\n" "$HEALTH_URL"
+          cat /tmp/health.json
+
+      - name: Playwright live tests (T01-T08, T10)
+        working-directory: frontend-react
+        run: npx playwright test --config=playwright.live.config.ts --grep-invert "T09"
+
+      - name: Playwright authenticated test (T09)
+        if: ${{ github.event_name == 'schedule' || github.event.inputs.run_authenticated == 'true' }}
+        working-directory: frontend-react
+        env:
+          TEST_COMPANY_CODE: ${{ secrets.TEST_COMPANY_CODE }}
+          TEST_WORKER_CODE: ${{ secrets.TEST_WORKER_CODE }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+        run: npx playwright test --config=playwright.live.config.ts --grep "T09"
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: playwright-report-live-${{ github.run_id }}
+          path: frontend-react/playwright-report-live/
+          retention-days: 14
+
+      - name: Upload screenshots (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: playwright-screenshots-${{ github.run_id }}
+          path: frontend-react/test-results/live-screenshots/
+          retention-days: 14
