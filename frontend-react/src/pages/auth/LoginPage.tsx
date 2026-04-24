@@ -5,6 +5,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { authApi, publicApi, type PublicWorker } from '../../services/api/index'
 import { Eye, EyeOff, User, Lock, Building2, Shield, RefreshCw, ChevronDown } from 'lucide-react'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { logger } from '../../utils/logger'
 import { useAppMode } from '../../hooks/useAppMode'
 
 /** Szerver (full mód) whitelist: csak ezek a role-ok léphetnek be böngészőben */
@@ -521,10 +522,13 @@ export default function LoginPage() {
                         } else {
                           setForgotMessage('Ha az email regisztrált, a reset tokent elküldtük.')
                         }
-                      } catch {
-                        // Anti-enumeration: egyseges uzenet akkor is, ha a request elhasalt
-                        // (pl. halozati error). Nem logoljuk az err-t, mert nem szeretnenk
-                        // timing/visibility alapjan sem informaciot szivargatni.
+                      } catch (err) {
+                        // Anti-enumeration: a user-nek megjelenő üzenet EGYSÉGES (sikeres + fail + network
+                        // error ugyanazt mutatja). A hiba-reszleteket CSAK dev mode-ban logoljuk
+                        // (logger.debug production-ban suppressed), hogy ne szivargjon info a networkon.
+                        // Sourcery PR #223 P3 fix: non-user-visible error capture dev-only log-gal.
+                        logger.debug('LoginPage', 'forgotPassword request failed (dev-only):',
+                          err instanceof Error ? err.message : String(err))
                         setForgotMessage('Ha az email regisztrált, a reset tokent elküldtük.')
                       } finally {
                         setForgotLoading(false)
