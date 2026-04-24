@@ -40,12 +40,31 @@ Unicode true
 Var PreserveData
 
 Function .onInit
-    ; Parameter parsolas: /PRESERVE_DATA=1 vagy /P=1
-    ; NSIS: a ${GetParameters} macro jon a FileFunc-bol
+    ; Parameter parsolas: /PRESERVE_DATA=1 (Setup.exe-bol hivva upgrade-hez)
+    ; vagy ures (manualis futtatas -> teljes eltavolitas)
     ${GetOptions} "$CMDLINE" "/PRESERVE_DATA=" $PreserveData
     ${If} $PreserveData == ""
         StrCpy $PreserveData "0"
     ${EndIf}
+
+    ; v2.3.0: Ha a user manualisan futtatta a Cleanup-ot (non-silent, PreserveData=0),
+    ; figyelmeztetjuk az adatveszelesrol. Silent mode-ban (Setup-bol hivva) kimarad.
+    IfSilent skip_confirm
+    ${If} $PreserveData == "0"
+        MessageBox MB_YESNO|MB_ICONWARNING \
+            "FIGYELEM! Teljes Penztar eltavolitas kezdodik.$\r$\n$\r$\n\
+MINDEN adat TOROLVE lesz:$\r$\n\
+  - Adatbazis (tranzakciok, ugyfelek, arfolyam)$\r$\n\
+  - Konfiguracio (dolgozo, szerver URL)$\r$\n\
+  - Naplok, beallitasok$\r$\n$\r$\n\
+Ha CSAK frissiteni akarsz (adat megorzessel), futtasd inkabb$\r$\n\
+a uj Penztar-Setup-X.Y.Z.exe-t kozvetlenul — automatikusan frissit!$\r$\n$\r$\n\
+Biztosan folytatod a TELJES eltavolitast?" \
+            IDYES skip_confirm
+        Abort
+    ${EndIf}
+
+    skip_confirm:
     ${If} $PreserveData == "1"
         DetailPrint "Cleanup: PRESERVE_DATA=1 mod - C:\ProgramData\BestChange MEGTARTVA"
     ${EndIf}
