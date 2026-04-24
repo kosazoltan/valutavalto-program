@@ -1,0 +1,117 @@
+# 2026-04-24 Session - Live verify + Issue #110 + V155 closure
+
+session_id: 2026-04-24-cash-balance-issue110-v155-closure
+date: 2026-04-24
+claude_model: claude-opus-4.6-1m
+scope: live production verify + 2 P0 zaras + memory auto-save elokeszites
+main_head_start: 2697ddde
+main_head_end: 6b097fd3
+
+## Osszefoglalas
+
+Folytatas a 2026-04-23 szerver live verify session utan. Elso lepes:
+live production verify a PR #163 (Idempotency-Key header) utan - 10 EUR VETEL
+sikeres (V017100012, 3930 HUF, COMPLETED). Majd 2 P0 feladat lezarasa:
+Issue #110 cash_balance auto-init (PR #164 squash merge) + V155 migration
+Hetzner status-check (mar applied, V159/V160 is live). Minden P0 zarva,
+kovetkezo: P1 (Cognee MCP, Obsidian, session-memory-save auto-save).
+
+## Fo eredmenyek
+
+### 1. Live VETEL verify (PR #163 post-fix)
+
+- Tranzakcio: id=810, receiptNumber=V017100012, BUY EUR 10, hufAmount 3930
+- Workflow: browser (Chrome) frontend-react UI -> POST /api/v1/transactions/buy
+- Statusz: COMPLETED, worker=ADMIN (ugyvezeto), branch=Baja Tesco (017)
+- Idopont: 2026-04-23 20:05:57.041
+- Bizonyitek: API query /api/v1/transactions?page=0&size=5&sort=id,desc
+- Total count: 17 -> 18 (inkrementalva)
+
+### 2. Sidebar feature-gap (korabbi P0 TODO) - DONE korabban
+
+- .remember/remember.md elavult volt: a 2026-04-23 17:39 PR #139 mar megoldotta
+- Commit: 244060b7 feat(sidebar): +vault-stocktake +compliance linkek + memoria update (#139)
+- Verify: frontend-react/src/layouts/menuGroups.ts L47 + L121, App.tsx L344-346
+- User (ADMIN=ugyvezeto) latja mindket linket
+- Nem kellett uj PR, csak remember.md frissites.
+
+### 3. Issue #110 cash_balance deployment gap (PR #164 - UJ)
+
+Root cause:
+- Uj branch-eken a cash_balance tabla ures
+- DailySessionService.openDay() a updateCashBalancesForOpening(branchId) metodust hivta
+- Ez CSAK LETEZO balance rekordokat iteralt -> no-op ures listan
+- Tranzakcio-sync / reservation / transfer -> 404 Kassza egyenleg nem talalhato
+
+Fix (2 file, +56/-1 lines):
+- backend DailySessionService.java: CashBalanceService injection + initializeBranchBalances() hivas
+- backend DailySessionServiceTest.java: openDay_autoInitsCashBalancesForNewBranch teszt
+
+Quality gate eredmeny:
+- Backend mvn test: 978/978 zold
+- CI Backend Build + Test: SUCCESS
+- AI review: Sourcery looks great (0 finding), Codex 0 inline comment
+- Auto-merge squash --delete-branch: SIKER, main HEAD 6b097fd3
+- Hetzner deploy: SUCCESS (run 24863409097)
+
+Admin endpoint (PR #112 ota letezik):
+- POST /api/v1/cash-balances/init-branch/{branchId}
+- POST /api/v1/cash-balances/init-all-branches
+- PreAuthorize MANAGER/ADMIN
+
+### 4. V155 migration Hetzner status-check (ZARVA - korabban applied)
+
+V155__add_version_and_unique_constraints.sql tartalom:
+1. @Version BIGINT NOT NULL DEFAULT 0: daily_session, aml_report, daily_balance, customer
+2. Pre-check duplicate daily_session (RAISE EXCEPTION)
+3. Pre-check duplicate receipt_number (RAISE EXCEPTION, NGM 23/2014)
+4. CREATE UNIQUE INDEX uq_daily_session_branch_date
+5. CREATE UNIQUE INDEX uq_transaction_receipt_branch_date WHERE receipt_number IS NOT NULL
+
+Status-check eredmeny:
+- spring.flyway.validate-on-migrate=true production
+- V160 mar live -> V155..V160 mind applied
+- PR #164 deploy health 200 -> Flyway nem akadt meg
+- Nincs duplikalt daily_session vagy receipt_number produktum DB-n
+- NGM 23/2014 szabaly teljesul
+
+## Tech stack + Policy compliance
+
+- Backend: Spring Boot 3.5.13, Java 21, PostgreSQL HA Hetzner
+- Branch policy v2: 0 open PR, 1 remote branch (main)
+- Merge pattern: gh pr merge N --squash --auto --delete-branch
+- Auto-deploy: Hetzner VPS 5-10 perc a main push utan
+
+## Metrikak
+
+- Teszt: 978/978 zold
+- Mai PR: 1 (#164)
+- Mai commit: 1 squash
+- Mai branch created/deleted: 1
+- Open PR end: 0
+- Live production tranzakcio ma: 9
+
+## Nyitott feladatok a kovetkezo session-re
+
+### P0 - MIND KESZ, nincs azonnali
+
+### P1 (1-2 napon belul)
+
+- Cognee MCP live: docker compose --profile knowledge-mcp up -d
+- Obsidian Vault Local REST API plugin
+- scripts/session-memory-save.sh auto-save integracio (post-commit hook)
+
+### P2 (heti)
+
+- Legacy 5% gap deep-dive (tiltcopy, recguard, vevo_mend)
+- Frontend e2e playwright.live.config.ts setup
+- Dependabot batch merge (heti 1x)
+- Production URL SSOT teljes refaktor
+
+## Memoria fajl-hivatkozasok
+
+- .remember/remember.md (frissitve)
+- docs/knowledge/memory/2026-04-24-cash-balance-issue110-v155-closure.yaml (EZ)
+- docs/knowledge/memory/2026-04-24-cash-balance-issue110-v155-closure.qmd (Quarto)
+- C:/Users/.../MEMORY.md globalis index
+- docs/knowledge/memory/2026-04-23-szerver-live-test.yaml (elozo session)
