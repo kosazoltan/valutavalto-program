@@ -171,3 +171,76 @@ describe('transactionApi', () => {
     })
   })
 })
+
+// ============ shipmentRequestApi tesztek (Fix 2026-04-24: /shipments endpoint) ============
+import { shipmentRequestApi } from './transactions'
+
+describe('shipmentRequestApi (backend /api/v1/shipments)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('findByStatus: a /shipments endpoint-ot hivja status param-mal', async () => {
+    mockApi.get.mockResolvedValue({
+      data: { content: [], totalElements: 0 }
+    })
+    await shipmentRequestApi.findByStatus('KERTE')
+    expect(mockApi.get).toHaveBeenCalledWith(
+      '/shipments',
+      expect.objectContaining({
+        params: expect.objectContaining({ status: 'KERTE', page: 0, size: 100 })
+      })
+    )
+  })
+
+  it('findByStatus: Page.content array-t ad vissza', async () => {
+    const mockShipment = { id: 'uuid-1', requestNumber: 'SH-001' }
+    mockApi.get.mockResolvedValue({
+      data: { content: [mockShipment], totalElements: 1 }
+    })
+    const result = await shipmentRequestApi.findByStatus('KERTE')
+    expect(result).toEqual([mockShipment])
+  })
+
+  it('findByStatus: ures content array-t nem-hibasan kezel', async () => {
+    mockApi.get.mockResolvedValue({
+      data: { totalElements: 0 }  // nincs content mezo
+    })
+    const result = await shipmentRequestApi.findByStatus('KERTE')
+    expect(result).toEqual([])
+  })
+
+  it('findByBranch: az osszes shipment-et lekeri + client-side szuri branchId szerint', async () => {
+    const shipments = [
+      { id: '1', requestingBranchId: 'BR-A', targetBranchId: 'BR-B' },
+      { id: '2', requestingBranchId: 'BR-B', targetBranchId: 'BR-A' },
+      { id: '3', requestingBranchId: 'BR-X', targetBranchId: 'BR-Y' },
+    ]
+    mockApi.get.mockResolvedValue({ data: { content: shipments, totalElements: 3 } })
+    const result = await shipmentRequestApi.findByBranch('BR-A')
+    expect(result).toHaveLength(2)
+    expect(result.map(s => s.id)).toEqual(['1', '2'])
+  })
+
+  it('approve: a /shipments/{id}/approve endpoint-ot hivja', async () => {
+    mockApi.post.mockResolvedValue({ data: { id: 'shipment-1' } })
+    await shipmentRequestApi.approve('shipment-1', 'worker-1')
+    expect(mockApi.post).toHaveBeenCalledWith(
+      '/shipments/shipment-1/approve',
+      null,
+      expect.objectContaining({ params: expect.objectContaining({ workerId: 'worker-1' }) })
+    )
+  })
+
+  it('reject: a /shipments/{id}/cancel endpoint-ot hivja (reject aliasa)', async () => {
+    mockApi.post.mockResolvedValue({ data: { id: 'shipment-1' } })
+    await shipmentRequestApi.reject('shipment-1', 'worker-1', 'teszt ok')
+    expect(mockApi.post).toHaveBeenCalledWith(
+      '/shipments/shipment-1/cancel',
+      null,
+      expect.objectContaining({
+        params: expect.objectContaining({ workerId: 'worker-1', reason: 'teszt ok' })
+      })
+    )
+  })
+})

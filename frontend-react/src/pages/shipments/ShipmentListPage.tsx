@@ -14,7 +14,7 @@ export default function ShipmentListPage() {
   const [shipments, setShipments] = useState<ShipmentRequest[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [statusFilter, setStatusFilter] = useState<string>('REQUESTED')
+  const [statusFilter, setStatusFilter] = useState<string>('SUBMITTED')
 
   const loadShipments = useCallback(async (): Promise<void> => {
     try {
@@ -76,16 +76,15 @@ export default function ShipmentListPage() {
     }
   }
 
+  // Backend enum: DRAFT, SUBMITTED, APPROVED, IN_TRANSIT, DELIVERED, CANCELLED (ShipmentRequestStatus.java)
   const getStatusBadge = (status: string) => {
     const statusMap: Record<string, { label: string; className: string }> = {
-      REQUESTED: { label: 'Kérve', className: 'bg-yellow-100 text-yellow-700' },
+      DRAFT: { label: 'Vázlat', className: 'bg-gray-100 text-gray-700' },
+      SUBMITTED: { label: 'Kérve', className: 'bg-yellow-100 text-yellow-700' },
       APPROVED: { label: 'Jóváhagyva', className: 'bg-green-100 text-green-700' },
-      REJECTED: { label: 'Elutasítva', className: 'bg-red-100 text-red-700' },
-      PREPARING: { label: 'Előkészítés', className: 'bg-blue-100 text-blue-700' },
-      READY_FOR_PICKUP: { label: 'Átvételre kész', className: 'bg-purple-100 text-purple-700' },
       IN_TRANSIT: { label: 'Úton', className: 'bg-indigo-100 text-indigo-700' },
       DELIVERED: { label: 'Kézbesítve', className: 'bg-green-100 text-green-700' },
-      COMPLETED: { label: 'Befejezve', className: 'bg-gray-100 text-gray-700' }
+      CANCELLED: { label: 'Megszakítva', className: 'bg-red-100 text-red-700' }
     }
     const statusInfo = statusMap[status] || { label: status, className: 'bg-gray-100 text-gray-700' }
     return (
@@ -122,14 +121,12 @@ export default function ShipmentListPage() {
               className="form-input"
             >
               <option value="">Mind</option>
-              <option value="REQUESTED">Kérve</option>
+              <option value="DRAFT">Vázlat</option>
+              <option value="SUBMITTED">Kérve</option>
               <option value="APPROVED">Jóváhagyva</option>
-              <option value="REJECTED">Elutasítva</option>
-              <option value="PREPARING">Előkészítés</option>
-              <option value="READY_FOR_PICKUP">Átvételre kész</option>
               <option value="IN_TRANSIT">Úton</option>
               <option value="DELIVERED">Kézbesítve</option>
-              <option value="COMPLETED">Befejezve</option>
+              <option value="CANCELLED">Megszakítva</option>
             </select>
           </div>
           <button
@@ -198,7 +195,7 @@ export default function ShipmentListPage() {
                       >
                         <Eye size={14} />
                       </button>
-                      {shipment.requestStatus === 'REQUESTED' && (
+                      {shipment.requestStatus === 'SUBMITTED' && (
                         <>
                           <button
                             onClick={() => handleApprove(shipment.id)}

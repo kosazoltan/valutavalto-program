@@ -915,6 +915,10 @@ export interface ShipmentCreateRequest {
 }
 
 export const shipmentRequestApi = {
+  // TODO (2026-04-24): `create` es `prepare` metodusok regi `/shipment-requests/*` URL-t hasznalnak,
+  // ami jelenleg NINCS regisztralva a backend-en. A ShipmentListPage nem hivja, de ha valaki
+  // ujabb fejlesztes soran rajuk tamaszkodik, 404-re megbukik.
+  // Backend refaktor szukseges: ShipmentController-ben vagy uj endpoint-ok, vagy URL aliasolas.
   create: async (branchId: string, request: ShipmentCreateRequest, workerId: string): Promise<ShipmentRequest> => {
     const response = await api.post<ShipmentRequest>(
       `/shipment-requests/branch/${branchId}/create`,
@@ -923,22 +927,8 @@ export const shipmentRequestApi = {
     )
     return response.data
   },
-  approve: async (requestId: string, workerId: string, approvedItems?: ShipmentRequestItem[], notes?: string): Promise<ShipmentRequest> => {
-    const response = await api.post<ShipmentRequest>(
-      `/shipment-requests/${requestId}/approve`,
-      approvedItems || null,
-      { params: { workerId, notes } }
-    )
-    return response.data
-  },
-  reject: async (requestId: string, workerId: string, reason: string): Promise<ShipmentRequest> => {
-    const response = await api.post<ShipmentRequest>(
-      `/shipment-requests/${requestId}/reject`,
-      null,
-      { params: { workerId, reason } }
-    )
-    return response.data
-  },
+  // TODO (2026-04-24): prepare metodus regi /shipment-requests/{id}/prepare URL-t hasznal,
+  // ami NINCS a backend-en. Ha frontend hivja, 404. A ShipmentListPage nem hivja.
   prepare: async (requestId: string, sourceCashDeskId: string, targetCashDeskId: string, workerId: string): Promise<{ shipmentId: string; success: boolean }> => {
     const response = await api.post(
       `/shipment-requests/${requestId}/prepare`,
@@ -947,12 +937,43 @@ export const shipmentRequestApi = {
     )
     return response.data
   },
+  // Fix 2026-04-24: a backend /api/v1/shipments endpoint-ot hasznalja (nem /shipment-requests).
+  // Response: Spring Data Page<ShipmentRequest> (content + pagination metadata).
   findByStatus: async (status: string): Promise<ShipmentRequest[]> => {
-    const response = await api.get<ShipmentRequest[]>(`/shipment-requests/status/${status}`)
-    return response.data
+    const response = await api.get<{ content: ShipmentRequest[] }>(
+      `/shipments`,
+      { params: { status, page: 0, size: 100 } }
+    )
+    return response.data.content ?? []
   },
   findByBranch: async (branchId: string): Promise<ShipmentRequest[]> => {
-    const response = await api.get<ShipmentRequest[]>(`/shipment-requests/branch/${branchId}`)
+    // Backend jelenleg nem tamogatja a branch-parametert kozvetlenul.
+    // Megoldas: osszes lista lekeres + client-side filter.
+    // TODO: backend /api/v1/shipments?branchId=... tamogatas - kulon issue.
+    const response = await api.get<{ content: ShipmentRequest[] }>(
+      `/shipments`,
+      { params: { page: 0, size: 200 } }
+    )
+    const all = response.data.content ?? []
+    return all.filter(s => s.requestingBranchId === branchId || s.targetBranchId === branchId)
+  },
+  // Approve: backend POST /api/v1/shipments/{id}/approve (params ignoralva: workerId + approvedItems + notes)
+  approve: async (requestId: string, workerId: string, approvedItems?: ShipmentRequestItem[], notes?: string): Promise<ShipmentRequest> => {
+    const response = await api.post<ShipmentRequest>(
+      `/shipments/${requestId}/approve`,
+      approvedItems || null,
+      { params: { workerId, notes } }
+    )
+    return response.data
+  },
+  // Reject: backend jelenleg NINCS /reject endpoint - a /cancel legkozelebbi ekvivalens.
+  // TODO: backend dedikalt /reject endpoint (audit trail szempontjabol) - kulon issue.
+  reject: async (requestId: string, workerId: string, reason: string): Promise<ShipmentRequest> => {
+    const response = await api.post<ShipmentRequest>(
+      `/shipments/${requestId}/cancel`,
+      null,
+      { params: { workerId, reason } }
+    )
     return response.data
   }
 }
