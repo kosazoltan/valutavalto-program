@@ -51,6 +51,12 @@ export interface SetupSavePayload {
   bootstrapPassword?: string;
   offlineMode: boolean;          // ha true, a szerver kapcsolatot kihagyjuk a wizardban
   appMode?: 'penztar' | 'ertektar' | 'ertekszallito';  // v2.1.4: program-tipus
+  // v2.3.0: a telepito dolgozoi dropdown-bol kivalasztott worker identity.
+  // Ha kitoltve -> /auth/first-time-worker-setup (meglevo worker jelszo beallitas,
+  // megtartott role-lel), egyebkent /auth/bootstrap-admin (uj admin letrehozas).
+  selectedWorkerCode?: string;
+  selectedWorkerName?: string;
+  selectedWorkerRole?: string;
 }
 
 export interface SetupSaveResult {
@@ -457,6 +463,72 @@ export async function bootstrapAdmin(
   };
 }
 
+// ============ v2.3.0: WORKER FIRST-TIME SETUP (valodi dolgozo + jelszo) ============
+
+/**
+ * POST /auth/first-time-worker-setup — a telepito wizard dolgozoi dropdown-bol
+ * kivalasztott worker-hez allit be jelszot. NEM erolteti ADMIN role-t; a worker
+ * sajat role-ja (CASHIER, MANAGER, SUPERVISOR stb.) megmarad.
+ *
+ * Ellentet a bootstrapAdmin-nal:
+ *  - NEM one-shot (minden worker-nek sajat setup)
+ *  - NEM ir rendszer-flag-et
+ *  - JWT token-t ad vissza auto-login-hoz (most nem hasznaljuk, de keszen van)
+ */
+export async function workerFirstTimeSetup(
+  apiUrl: string,
+  payload: {
+    companyCode: string;
+    workerCode: string;
+    newPassword: string;
+    currentPassword?: string;
+  },
+  timeoutMs = 15000,
+): Promise<{
+  success: boolean;
+  errorMessage?: string;
+  workerIdentity?: {
+    workerCode: string;
+    workerName?: string;
+    workerRole?: string;
+    branchCode?: string;
+  };
+}> {
+  const base = normalizeApiBase(apiUrl);
+  const url = `${base}/auth/first-time-worker-setup`;
+
+  const response = await httpJson<{
+    success?: boolean;
+    message?: string;
+    workerCode?: string;
+    workerName?: string;
+    workerRole?: string;
+    branchCode?: string;
+  }>(url, {
+    method: 'POST',
+    body: payload,
+    timeoutMs,
+  });
+
+  if (response.ok && response.body?.success === true) {
+    return {
+      success: true,
+      workerIdentity: {
+        workerCode: response.body.workerCode || payload.workerCode,
+        workerName: response.body.workerName,
+        workerRole: response.body.workerRole,
+        branchCode: response.body.branchCode,
+      },
+    };
+  }
+
+  const msg = (response.body as { message?: string } | undefined)?.message || response.errorMessage || '';
+  return {
+    success: false,
+    errorMessage: msg || `HTTP ${response.status}`,
+  };
+}
+
 
 // ============ PENZTAR-ESZKOZ ONLINE REGISZTRACIO (V100) ============
 
@@ -714,24 +786,64 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
     log.info(`[Setup] Backend felhúzva ${health.attempts} próbálkozás után.`);
 
     const normalizedCompanyCode = (payload.companyCode || 'EBC').trim().toUpperCase();
-    const bootstrap = await bootstrapAdmin(resolvedApiUrl, {
-      companyCode: normalizedCompanyCode,
-      workerCode: payload.adminUsername.trim().toUpperCase(),
-      workerName: payload.adminUsername.trim(),
-      email: undefined,
-      newPassword: payload.adminPassword,
-    });
-    if (!bootstrap.success) {
-      return {
-        success: false,
-        envPath,
-        errorMessage: `Az admin jelszó beállítása nem sikerült a backend-en: ${bootstrap.errorMessage ?? 'ismeretlen hiba'}`,
+
+    // v2.3.0: Eldontes — worker first-time setup vagy legacy admin bootstrap?
+    // Ha a wizard-ban kivalasztott worker (selectedWorkerCode), az uj flow-t
+    // hasznaljuk. Ha nincs, fallback a legacy bootstrap-admin-ra.
+    let resolvedWorkerIdentity: {
+      workerCode: string;
+      workerName?: string;
+      workerRole?: string;
+      branchCode?: string;
+    } | null = null;
+
+    if (payload.selectedWorkerCode && payload.selectedWorkerCode.trim().length > 0) {
+      log.info('[Setup] Worker first-time-setup uton (kivalasztott dolgozo):', payload.selectedWorkerCode);
+      const workerSetup = await workerFirstTimeSetup(resolvedApiUrl, {
+        companyCode: normalizedCompanyCode,
+        workerCode: payload.selectedWorkerCode.trim().toUpperCase(),
+        newPassword: payload.adminPassword,
+        currentPassword: payload.bootstrapPassword || undefined,
+      });
+      if (!workerSetup.success) {
+        return {
+          success: false,
+          envPath,
+          errorMessage: `A dolgozoi jelszo beallitasa nem sikerult: ${workerSetup.errorMessage ?? 'ismeretlen hiba'}`,
+        };
+      }
+      resolvedWorkerIdentity = workerSetup.workerIdentity ?? {
+        workerCode: payload.selectedWorkerCode.trim().toUpperCase(),
+        workerName: payload.selectedWorkerName,
+        workerRole: payload.selectedWorkerRole,
       };
-    }
-    if (bootstrap.alreadyDone) {
-      log.info('[Setup] Bootstrap már lefutott ezen a rendszeren — folytatjuk.');
+      log.info('[Setup] Worker first-time setup sikeres:', resolvedWorkerIdentity);
     } else {
-      log.info('[Setup] Bootstrap admin sikeresen beállítva a backend-ben.');
+      // Legacy: bootstrap-admin (uj admin worker + rendszer-flag)
+      const bootstrap = await bootstrapAdmin(resolvedApiUrl, {
+        companyCode: normalizedCompanyCode,
+        workerCode: payload.adminUsername.trim().toUpperCase(),
+        workerName: payload.adminUsername.trim(),
+        email: undefined,
+        newPassword: payload.adminPassword,
+      });
+      if (!bootstrap.success) {
+        return {
+          success: false,
+          envPath,
+          errorMessage: `Az admin jelszó beállítása nem sikerült a backend-en: ${bootstrap.errorMessage ?? 'ismeretlen hiba'}`,
+        };
+      }
+      if (bootstrap.alreadyDone) {
+        log.info('[Setup] Bootstrap már lefutott ezen a rendszeren — folytatjuk.');
+      } else {
+        log.info('[Setup] Bootstrap admin sikeresen beállítva a backend-ben.');
+      }
+      resolvedWorkerIdentity = {
+        workerCode: payload.adminUsername.trim().toUpperCase(),
+        workerName: 'Rendszer Admin',
+        workerRole: 'ADMIN',
+      };
     }
 
     // --- Kulcs generálás ---
@@ -778,6 +890,18 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       setConfig('bootstrap_company_code', normalizedCompanyCode);
       if (payload.bootstrapUsername) {
         setConfig('bootstrap_worker_code', payload.bootstrapUsername.trim());
+      }
+      // v2.3.0: a telepito-ban kivalasztott (es jelszot beallitott) dolgozo identity
+      // tarolasa — ezt olvassa a LoginPage prefill-hez es UI displayhez.
+      if (resolvedWorkerIdentity) {
+        setConfig('worker_code', resolvedWorkerIdentity.workerCode);
+        if (resolvedWorkerIdentity.workerName) {
+          setConfig('worker_name', resolvedWorkerIdentity.workerName);
+        }
+        if (resolvedWorkerIdentity.workerRole) {
+          setConfig('worker_role', resolvedWorkerIdentity.workerRole);
+        }
+        log.info('[Setup] Worker identity mentve SQLite configba:', resolvedWorkerIdentity);
       }
       // V100: offline_mode flag — a SyncEngine ezt nezi, es offline modban NEM kuld
       setConfig('offline_mode', payload.offlineMode ? 'true' : 'false');
