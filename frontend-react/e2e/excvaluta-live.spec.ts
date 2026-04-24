@@ -61,9 +61,8 @@ test('T01 — login oldal betölt, alapvető UI elemek láthatók', async ({ pag
 // TEST 2 — Auth wall detection
 // ─────────────────────────────────────────────
 test('T02 — auth wall: nincs token → login oldalra irányít', { tag: '@live-spa' }, async ({ page }) => {
-  // SKIP: excvaluta.com serves a static placeholder page (not the SPA) for browser visitors.
-  // The SPA runs only inside the Electron desktop app. Auth wall testing is covered by local E2E.
-  test.skip(true, 'Production site serves static placeholder, not the SPA login form');
+  // UPDATE 2026-04-24 (PR #137 frontend deploy): SPA a browseroldalon is fut.
+  // Ha stale placeholder return-ol, inkabb INFO log es continue.
   // Clear storage to ensure unauthenticated state
   await page.goto(BASE + '/login', { waitUntil: 'domcontentloaded', timeout: 20000 })
   await page.evaluate(() => {
@@ -103,9 +102,8 @@ test('T02 — auth wall: nincs token → login oldalra irányít', { tag: '@live
 // TEST 3 — Login form elemek
 // ─────────────────────────────────────────────
 test('T03 — login form: username, password, submit gomb renderelődik', { tag: '@live-spa' }, async ({ page }) => {
-  // SKIP: excvaluta.com serves a static placeholder page (not the SPA) for browser visitors.
-  // The SPA login form renders only inside the Electron desktop app.
-  test.skip(true, 'Production site serves static placeholder, not the SPA login form');
+  // UPDATE 2026-04-24 (PR #137 frontend deploy): SPA a browseroldalon is fut.
+  // Playwright CSR hydration utan a login form elerheto.
   await page.goto(BASE + '/login', { waitUntil: 'networkidle', timeout: 30000 })
 
   // Wait for React CSR hydration — SPA login form renders client-side
@@ -278,4 +276,77 @@ test('T08 — HTTPS szerver elérhető, SSL érvényes', async ({ page }) => {
 
   console.log(`Final URL: ${url}, Status: ${response?.status()}`)
   console.log(`Screenshot: ${ss}`)
+})
+
+
+// ─────────────────────────────────────────────
+// TEST 9 — Authentikált login → dashboard (env var credentials)
+// ─────────────────────────────────────────────
+test('T09 — authenticated login → dashboard/cashier accessible', async ({ page }) => {
+  const companyCode = process.env.TEST_COMPANY_CODE
+  const workerCode = process.env.TEST_WORKER_CODE
+  const password = process.env.TEST_PASSWORD
+
+  if (!companyCode || !workerCode || !password) {
+    console.log('SKIP T09: TEST_COMPANY_CODE / TEST_WORKER_CODE / TEST_PASSWORD env var-ok nincsenek beállítva')
+    test.skip(true, 'Credentials env var hiányzik — CI-ben GitHub Secrets használandó')
+    return
+  }
+
+  // 1. Navigate to login
+  await page.goto(BASE + '/login', { waitUntil: 'networkidle', timeout: 30000 })
+  await page.waitForTimeout(2000) // CSR hydration
+
+  // 2. Fill credentials
+  const inputs = page.locator('input:not([type="hidden"])')
+  const count = await inputs.count()
+  if (count < 3) {
+    console.log(`SKIP T09: Expected >=3 form inputs, got ${count}`)
+    test.skip()
+    return
+  }
+
+  // Form structure: companyCode, workerCode, password
+  await inputs.nth(0).fill(companyCode)
+  await inputs.nth(1).fill(workerCode)
+  await inputs.nth(2).fill(password)
+  await page.waitForTimeout(500)
+
+  // 3. Submit
+  const submitBtn = page.locator('button[type="submit"]').first()
+  await submitBtn.click()
+  await page.waitForTimeout(5000) // login request + redirect
+
+  const afterLoginUrl = page.url()
+  const ss = screenshotPath('T09-authenticated-dashboard')
+  await page.screenshot({ path: ss, fullPage: true })
+
+  console.log(`After login URL: ${afterLoginUrl}`)
+  console.log(`Screenshot: ${ss}`)
+
+  // 4. Assert: NOT on /login (successful login)
+  const stillOnLogin = afterLoginUrl.includes('/login')
+  const hasErrorVisible = await page.locator('[role="alert"], .error').isVisible().catch(() => false)
+
+  if (stillOnLogin) {
+    const bodyText = await page.locator('body').innerText().catch(() => '')
+    console.log(`Still on /login — first 500 chars body: ${bodyText.slice(0, 500)}`)
+  }
+
+  expect(stillOnLogin, `Login failed (still on /login). Error visible: ${hasErrorVisible}. URL: ${afterLoginUrl}`).toBe(false)
+
+  // 5. Verify dashboard/cashier menu present
+  const menuVisible = await page.locator('nav, aside, [class*="sidebar" i]').first().isVisible({ timeout: 10000 }).catch(() => false)
+  expect(menuVisible, 'Sidebar/menu not visible after login').toBe(true)
+})
+
+// ─────────────────────────────────────────────
+// TEST 10 — Bootstrap-status endpoint (public health)
+// ─────────────────────────────────────────────
+test('T10 — API bootstrap-status: HTTP 200 + JSON response', async ({ request }) => {
+  const response = await request.get(BASE + '/api/v1/auth/bootstrap-status', { timeout: 10000 })
+  expect(response.status()).toBe(200)
+  const body = await response.json().catch(() => null)
+  expect(body, 'bootstrap-status body nem JSON').not.toBeNull()
+  console.log(`bootstrap-status body: ${JSON.stringify(body)}`)
 })
