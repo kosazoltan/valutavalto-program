@@ -28,6 +28,8 @@ public class RateHistoryController {
     /**
      * Árfolyam változások lekérdezése időszakra.
      * Fix 2026-04-24 (Issue #184): params opcionálisak, default utolsó 30 nap + minden valuta.
+     * AI review fix (Sourcery PR #185): egyetlen LocalDate.now() hasznalata (midnight race ellen)
+     * + from/to swap ha a kliens inverz intervallumot kuld.
      */
     @GetMapping
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
@@ -35,8 +37,17 @@ public class RateHistoryController {
             @RequestParam(required = false) String currency,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        LocalDate effectiveFrom = (from != null) ? from : LocalDate.now().minusDays(30);
-        LocalDate effectiveTo = (to != null) ? to : LocalDate.now();
+        LocalDate now = LocalDate.now();
+        LocalDate effectiveFrom = (from != null) ? from : now.minusDays(30);
+        LocalDate effectiveTo = (to != null) ? to : now;
+
+        // Inverz intervallum eseten csere (fallback - nem hibauzenet)
+        if (effectiveFrom.isAfter(effectiveTo)) {
+            LocalDate tmp = effectiveFrom;
+            effectiveFrom = effectiveTo;
+            effectiveTo = tmp;
+        }
+
         return ResponseEntity.ok(rateHistoryService.getRateChanges(currency, effectiveFrom, effectiveTo));
     }
 

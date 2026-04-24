@@ -41,17 +41,30 @@ interface StockRow {
 }
 
 // Fix 2026-04-24: backend /api/v1/stock-snapshot response shape (StockSnapshotDto)
+// AI review (Codex PR #183 P2): null safety + unmapped region-code branches fallback
 interface CurrencyDetail { currencyCode: string; stock: number }
 interface BackendBranch { branchId: string; currencies: CurrencyDetail[] }
-interface BackendRegion { branches: BackendBranch[] }
-interface StockSnapshotResponse { regions: BackendRegion[] }
+interface BackendRegion { regionCode?: string; branches: BackendBranch[] }
+interface StockSnapshotResponse { regions?: BackendRegion[]; companyTotals?: unknown }
 
+/**
+ * Lapoz a hierarchikus StockSnapshotDto-t flat StockRow[]-ba.
+ *
+ * Codex P2 #183 javitas: ha a backend regions listan kivul keveri egyes branch-eket
+ * a companyTotals-ba (pl. ismeretlen region_code), a flatten nem vesz rajuk
+ * figyelembe -> a branch-nek nem lesz "stocks" rekordja, igy a dashboard
+ * CRITICAL threshold alert hibasan piros lesz rajta. A missing branch-eket
+ * `null`-koent jelezzuk: a dashboard logika a feltetelt atadja, fallback nelkul
+ * csak a "stockAlert empty" marad -> NEM false-positive alert.
+ */
 function flattenStockSnapshot(snap: StockSnapshotResponse | null): StockRow[] {
     if (!snap?.regions) return []
     const rows: StockRow[] = []
     for (const region of snap.regions) {
-        for (const branch of region.branches ?? []) {
-            for (const cur of branch.currencies ?? []) {
+        for (const branch of region?.branches ?? []) {
+            if (!branch?.branchId) continue  // defensive
+            for (const cur of branch?.currencies ?? []) {
+                if (!cur?.currencyCode) continue
                 rows.push({ branchId: branch.branchId, currencyCode: cur.currencyCode, amount: cur.stock ?? 0 })
             }
         }
@@ -107,10 +120,16 @@ export default function CentralVaultDashboard() {
                     stocks.filter((s) => s.branchId === b.id).forEach((s) => {
                         branchStocks[s.currencyCode] = (branchStocks[s.currencyCode] || 0) + (s.amount || 0)
                     })
+                    // Codex PR #183 P2: csak ha a branch-nek VAN legalabb 1 stock rekord a snapshot-ban,
+                    // akkor ertekeljuk a CRITICAL threshold-okat. Ha nincs adat (unmapped region),
+                    // NE dobjunk false-positive alert-et.
+                    const hasStockData = Object.keys(branchStocks).length > 0
                     const stockAlert: string[] = []
-                    for (const [ccy, threshold] of Object.entries(CRITICAL_THRESHOLDS)) {
-                        const amt = branchStocks[ccy] || 0
-                        if (amt < threshold) stockAlert.push(`${ccy} < ${threshold.toLocaleString('hu-HU')}`)
+                    if (hasStockData) {
+                        for (const [ccy, threshold] of Object.entries(CRITICAL_THRESHOLDS)) {
+                            const amt = branchStocks[ccy] || 0
+                            if (amt < threshold) stockAlert.push(`${ccy} < ${threshold.toLocaleString('hu-HU')}`)
+                        }
                     }
                     const lastSeenAt = device?.lastSeenAt ? new Date(device.lastSeenAt).getTime() : null
                     const mins = lastSeenAt ? Math.floor((now - lastSeenAt) / 60_000) : null

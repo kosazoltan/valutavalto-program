@@ -27,7 +27,7 @@ interface PageProbeResult {
   screenshot: string
 }
 
-const RESULTS: PageProbeResult[] = []
+// Sourcery PR #183 #3: mutable top-level RESULTS eltavolitva; local to test + afterAll disposal
 
 // menuGroups.ts-bol szarmaztatott teljes lista (2026-04-24 allapot)
 // Minden path-hoz tartozik egy label + csoport
@@ -170,6 +170,9 @@ test.describe('T20 — Full menu traversal live e2e', () => {
   test.beforeAll(async () => {
     ensureDir()
   })
+
+  // Sourcery PR #183 #3: RESULTS local to test instead of module-scoped mutable
+  let RESULTS: PageProbeResult[] = []
 
   test.afterAll(async () => {
     // Report generalasa

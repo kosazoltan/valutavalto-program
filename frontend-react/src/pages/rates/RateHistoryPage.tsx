@@ -24,6 +24,15 @@ export default function RateHistoryPage() {
 
   // Fix 2026-04-24 (Issue #184): default utolso 30 nap + from/to parameter
   // A backend uj opcionalis currency paramot tamogat, ha nincs -> minden valuta
+  // AI review fix (Sourcery + Codex PR #185 P2): local date komponenseket hasznaljuk,
+  // NEM toISOString() (UTC-t adna, es CET/CEST este off-by-one hiba lehet)
+  const formatLocalDate = (d: Date): string => {
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true)
@@ -31,8 +40,8 @@ export default function RateHistoryPage() {
       const today = new Date()
       const defaultFrom = new Date(today)
       defaultFrom.setDate(today.getDate() - 30)
-      const fromStr = dateFrom || defaultFrom.toISOString().split('T')[0]
-      const toStr = dateTo || today.toISOString().split('T')[0]
+      const fromStr = dateFrom || formatLocalDate(defaultFrom)
+      const toStr = dateTo || formatLocalDate(today)
       const response = await api.get<RateHistoryItem[]>('/rate-history', {
         params: { from: fromStr, to: toStr }
       })
