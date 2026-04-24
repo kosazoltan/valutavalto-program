@@ -124,7 +124,7 @@ Write-Host "  VALUTA OKOSZISZTEMA (production-first) UP" -ForegroundColor Green
 Write-Host "=============================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Backend:      $($PRODUCTION_URLS.base_url)  (Hetzner HA primary)"
-Write-Host "  Frontend:     http://localhost:3000  (Vite proxy -> $($PRODUCTION_URLS.domain))"
+Write-Host "  Frontend:     http://localhost:3000  (Vite proxy -> $($PRODUCTION_URLS.base_url))"
 Write-Host "  Electron:     GUI window (Pentztar-Rendszer)"
 Write-Host ""
 Write-Host "  Belepes: EBC / ADMIN / Admin1234!"

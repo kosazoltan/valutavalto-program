@@ -7,7 +7,8 @@
 #
 # utana: $PRODUCTION_URLS.base_url, $PRODUCTION_URLS.health_url, stb.
 
-$ErrorActionPreference = 'Stop'
+# Sourcery PR #173: scoped, dot-source esetén ne mutálja a caller globalját
+$script:ErrorActionPreference = 'Stop'
 
 $script:_prodUrlsConfigPath = Join-Path $PSScriptRoot '..' 'config' 'production-urls.json'
 if (-not (Test-Path $script:_prodUrlsConfigPath)) {

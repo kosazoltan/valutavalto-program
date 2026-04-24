@@ -80,7 +80,11 @@ function loadProductionUrls(): { api_url: string; base_url: string; domain: stri
     const cfg = JSON.parse(raw);
     return { api_url: cfg.api_url, base_url: cfg.base_url, domain: cfg.domain };
   } catch (err) {
-    log.warn(`[ProductionUrls] Config load failed (${configPath}): ${(err as Error).message}. Fallback: excvaluta.com`);
+    // Sourcery PR #173: fallback csak EMERGENCY (packaged build-ben nem terjedhetne ide,
+    // mert az extraResources kotelezi a production-urls.json-t). Ha megis ide jutunk,
+    // biztositjuk, hogy legalabb egy ismert-jo default-tal ujrainduljon az app.
+    // Ez NEM SSOT violation - ez szandekos duplikacio utolso menedekkent.
+    log.error(`[ProductionUrls] CRITICAL: config load failed (${configPath}): ${(err as Error).message}. Fallback to hardcoded defaults - ez a build-csomag serult!`);
     return {
       api_url: 'https://excvaluta.com/api/v1',
       base_url: 'https://excvaluta.com',
