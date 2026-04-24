@@ -1,4 +1,5 @@
 import { api } from './client'
+import { asArray } from '../../utils/asArray'
 import type { PagedResponse } from './client'
 import { branchApi } from './settings'
 import type { BranchInfo } from './settings'
@@ -915,13 +916,21 @@ export interface ShipmentCreateRequest {
 }
 
 export const shipmentRequestApi = {
-  // DEPRECATED (Sourcery PR #180 bug_risk): `create` es `prepare` regi `/shipment-requests/*`
-  // NEM letezo endpoint-ot hivnak. Csendes 404 helyett explicit runtime error.
-  create: async (_branchId: string, _request: ShipmentCreateRequest, _workerId: string): Promise<ShipmentRequest> => {
+  /**
+   * @deprecated Sourcery PR #180 bug_risk + PR #187 improvement: backend
+   *   `/shipment-requests/branch/{}/create` NEM letezik. Runtime throw helyett
+   *   Promise<never> ami TypeScript compile-time figyelmeztetest is ad.
+   *   Backend refaktor szukseges: `ShipmentController.create()` uj endpoint.
+   */
+  create: async (_branchId: string, _request: ShipmentCreateRequest, _workerId: string): Promise<never> => {
     throw new Error('shipmentRequestApi.create() DEPRECATED: backend endpoint hianyzik (Sourcery PR #180)')
   },
-  // DEPRECATION (Sourcery PR #180 bug_risk): prepare() NEM letezo endpoint -> MINDIG 404
-  prepare: async (_requestId: string, _sourceCashDeskId: string, _targetCashDeskId: string, _workerId: string): Promise<{ shipmentId: string; success: boolean }> => {
+  /**
+   * @deprecated Sourcery PR #180 + PR #187 improvement: backend
+   *   `/shipment-requests/{}/prepare` NEM letezik. Promise<never> return-tipus
+   *   TypeScript compile-time jelzesre.
+   */
+  prepare: async (_requestId: string, _sourceCashDeskId: string, _targetCashDeskId: string, _workerId: string): Promise<never> => {
     throw new Error('shipmentRequestApi.prepare() DEPRECATED: backend /shipment-requests/{}/prepare endpoint nem letezik.')
   },
   // Fix 2026-04-24: a backend /api/v1/shipments endpoint-ot hasznalja.
@@ -933,13 +942,13 @@ export const shipmentRequestApi = {
     if (!status) {
       // Sourcery PR #180: empty status == 'Mind' -> omit param
       const response = await api.get<ShipmentRequest[]>(`/shipments`, { params: { page: 0, size: 100 } })
-      return Array.isArray(response.data) ? response.data : []
+      return asArray<ShipmentRequest>(response.data)
     }
     const response = await api.get<ShipmentRequest[]>(
       `/shipments`,
       { params: { status, page: 0, size: 100 } }
     )
-    return Array.isArray(response.data) ? response.data : []
+    return asArray<ShipmentRequest>(response.data)
   },
   findByBranch: async (branchId: string): Promise<ShipmentRequest[]> => {
     // Backend jelenleg nem tamogatja a branch-parametert kozvetlenul.
@@ -951,7 +960,7 @@ export const shipmentRequestApi = {
       `/shipments`,
       { params: { page: 0, size: 200 } }
     )
-    const all: ShipmentRequest[] = Array.isArray(response.data) ? response.data : []
+    const all = asArray<ShipmentRequest>(response.data)
     type ShipmentWithBackendFields = ShipmentRequest & { fromBranchId?: string; toBranchId?: string }
     return all.filter(s => {
       const sb = s as ShipmentWithBackendFields
