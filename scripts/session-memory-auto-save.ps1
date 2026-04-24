@@ -33,7 +33,7 @@ param(
     [string]$SessionFile,
     [switch]$DryRun,
     [int]$TimeoutSec,
-    [bool]$StrictCertCheck
+    [switch]$StrictCertCheck
 )
 
 $ErrorActionPreference = 'Stop'
@@ -48,7 +48,10 @@ if (-not $PSBoundParameters.ContainsKey('TimeoutSec')) {
     }
 }
 if (-not $PSBoundParameters.ContainsKey('StrictCertCheck')) {
-    $StrictCertCheck = ($env:SESSION_SAVE_STRICT_CERT -match '^(1|true|yes|y)$')
+    # Env-based fallback: csak explicit truthy string kapcsolja be
+    if ($env:SESSION_SAVE_STRICT_CERT -match '^(1|true|yes|y)$') {
+        $StrictCertCheck = [switch]$true
+    }
 }
 
 function Write-Log {
@@ -147,16 +150,19 @@ foreach ($sf in $sessionFiles) {
     $obsProto = if ($env:OBSIDIAN_PROTOCOL) { $env:OBSIDIAN_PROTOCOL } else { 'https' }
     $obsUrl = "${obsProto}://${obsHost}:${obsPort}"
 
+    # Sourcery PR #167 DRY: kozos splat-hash, csak SkipCertificateCheck-et toggeljuk
+    $obsHealthArgs = @{
+        Uri             = "$obsUrl/"
+        Headers         = @{ Authorization = "Bearer $obsKey" }
+        TimeoutSec      = $TimeoutSec
+        UseBasicParsing = $true
+        ErrorAction     = 'Stop'
+    }
+    if (-not $StrictCertCheck) { $obsHealthArgs['SkipCertificateCheck'] = $true }
     $obsAlive = $false
     try {
-        # Sourcery PR #166 bug_risk: splat helyett inline if/else
-        if ($StrictCertCheck) {
-            $null = Invoke-WebRequest -Uri "$obsUrl/" -Headers @{ Authorization = "Bearer $obsKey" } `
-                -TimeoutSec $TimeoutSec -UseBasicParsing -ErrorAction Stop
-        } else {
-            $null = Invoke-WebRequest -Uri "$obsUrl/" -Headers @{ Authorization = "Bearer $obsKey" } `
-                -TimeoutSec $TimeoutSec -UseBasicParsing -SkipCertificateCheck -ErrorAction Stop
-        }
+        # Sourcery PR #166: standalone splat (NINCS inline arg mellette)
+        $null = Invoke-WebRequest @obsHealthArgs
         $obsAlive = $true
     } catch { }
 
@@ -179,19 +185,18 @@ foreach ($sf in $sessionFiles) {
         $size = [System.Text.Encoding]::UTF8.GetByteCount($content)
         Write-Log 'INFO' "[DRY] Obsidian PUT $obsPath ($size bytes)"
     } else {
+        # Sourcery PR #167 DRY: kozos splat-hash PUT-hoz
+        $obsPutArgs = @{
+            Uri             = "$obsUrl/vault/$obsPath"
+            Method          = 'Put'
+            Headers         = @{ Authorization = "Bearer $obsKey"; 'Content-Type' = 'text/markdown; charset=utf-8' }
+            Body            = [System.Text.Encoding]::UTF8.GetBytes($content)
+            UseBasicParsing = $true
+            ErrorAction     = 'Stop'
+        }
+        if (-not $StrictCertCheck) { $obsPutArgs['SkipCertificateCheck'] = $true }
         try {
-            # Sourcery PR #166 bug_risk: splat helyett inline if/else
-            if ($StrictCertCheck) {
-                $resp = Invoke-WebRequest -Uri "$obsUrl/vault/$obsPath" -Method Put `
-                    -Headers @{ Authorization = "Bearer $obsKey"; 'Content-Type' = 'text/markdown; charset=utf-8' } `
-                    -Body ([System.Text.Encoding]::UTF8.GetBytes($content)) `
-                    -UseBasicParsing -ErrorAction Stop
-            } else {
-                $resp = Invoke-WebRequest -Uri "$obsUrl/vault/$obsPath" -Method Put `
-                    -Headers @{ Authorization = "Bearer $obsKey"; 'Content-Type' = 'text/markdown; charset=utf-8' } `
-                    -Body ([System.Text.Encoding]::UTF8.GetBytes($content)) `
-                    -UseBasicParsing -SkipCertificateCheck -ErrorAction Stop
-            }
+            $resp = Invoke-WebRequest @obsPutArgs
             if ($resp.StatusCode -ge 200 -and $resp.StatusCode -lt 300) {  # Sourcery PR #165 P1: REST PUT 2xx (201 Created-et is)
                 Write-Log 'OK' "Obsidian: PUT $obsPath (HTTP $($resp.StatusCode))"
             } else {
