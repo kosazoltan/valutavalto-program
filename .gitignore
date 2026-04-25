@@ -102,12 +102,9 @@ docs/legacy-drive/
 Anti/
 
 Felmérés/
-Felmérés/
 
 # Nagy fájlok kizárása
 *.m4a
-Felmérés/
-Felmérés/
 .tmp_*.txt
 
 # Runtime / test / local artifacts
