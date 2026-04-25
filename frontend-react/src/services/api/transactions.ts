@@ -994,23 +994,13 @@ async function fetchPaged<T>(
 }
 
 export const shipmentRequestApi = {
-  /**
-   * @deprecated Sourcery PR #180 bug_risk + PR #187 improvement: backend
-   *   `/shipment-requests/branch/{}/create` NEM letezik. Runtime throw helyett
-   *   Promise<never> ami TypeScript compile-time figyelmeztetest is ad.
-   *   Backend refaktor szukseges: `ShipmentController.create()` uj endpoint.
-   */
-  create: async (_branchId: string, _request: ShipmentCreateRequest, _workerId: string): Promise<never> => {
-    throw new Error('shipmentRequestApi.create() DEPRECATED: backend endpoint hianyzik (Sourcery PR #180)')
-  },
-  /**
-   * @deprecated Sourcery PR #180 + PR #187 improvement: backend
-   *   `/shipment-requests/{}/prepare` NEM letezik. Promise<never> return-tipus
-   *   TypeScript compile-time jelzesre.
-   */
-  prepare: async (_requestId: string, _sourceCashDeskId: string, _targetCashDeskId: string, _workerId: string): Promise<never> => {
-    throw new Error('shipmentRequestApi.prepare() DEPRECATED: backend /shipment-requests/{}/prepare endpoint nem letezik.')
-  },
+  // v2.3.2 dead-code cleanup: korabban itt voltak `create()` es `prepare()` deprecated
+  // metodusok Promise<never> return-tipussal. Senki nem hivta oket (grep verified),
+  // csak runtime-throw boilerplate-kent ekteleskedtek. A tenyleges shipment-letrehozas
+  // jelenleg backend-oldali audit alatt - ha eljon az ido, **uj** endpoint-szuvel + hivoval
+  // kerul kibovitesre. Addig a felhasznaloi felulet a meglevo `findByBranch` /
+  // `findByStatus` / `approve` / `cancel` metodusok-on at mukodik.
+
   // Fix 2026-04-24: a backend /api/v1/shipments endpoint-ot hasznalja.
   // AI review (Codex PR #180 P1): a shared client.ts interceptor MAR auto-unwrappel-i
   // a Spring Page<T>-et plain array-ra (kivéve _preservePaged=true). Tehat a
