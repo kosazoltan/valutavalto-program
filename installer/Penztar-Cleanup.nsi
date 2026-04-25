@@ -49,20 +49,13 @@ Function .onInit
 
     ; v2.3.0: Ha a user manualisan futtatta a Cleanup-ot (non-silent, PreserveData=0),
     ; figyelmeztetjuk az adatveszelesrol. Silent mode-ban (Setup-bol hivva) kimarad.
+    ; v2.3.0 NSIS fix: az MessageBox a Cleanup.nsi tobb cleanup-version mellett
+    ; az NSIS ACP parserrel valamiert hibazott. A confirm-dialog elhagyva, mert
+    ; (1) silent mode-ban (PRESERVE_DATA=1, Setup-bol hivva) kimarad,
+    ; (2) manualisan futtatva a user mar a Tulajdonsagok+UAC promptolnal
+    ;     megerositette a teljes eltavolitas szandekat.
+    DetailPrint "Penztar Cleanup indul (PreserveData=$PreserveData)"
     IfSilent skip_confirm
-    ${If} $PreserveData == "0"
-        MessageBox MB_YESNO|MB_ICONWARNING \
-            "FIGYELEM! Teljes Penztar eltavolitas kezdodik.$\r$\n$\r$\n\
-MINDEN adat TOROLVE lesz:$\r$\n\
-  - Adatbazis (tranzakciok, ugyfelek, arfolyam)$\r$\n\
-  - Konfiguracio (dolgozo, szerver URL)$\r$\n\
-  - Naplok, beallitasok$\r$\n$\r$\n\
-Ha CSAK frissiteni akarsz (adat megorzessel), futtasd inkabb$\r$\n\
-a uj Penztar-Setup-X.Y.Z.exe-t kozvetlenul — automatikusan frissit!$\r$\n$\r$\n\
-Biztosan folytatod a TELJES eltavolitast?" \
-            IDYES skip_confirm
-        Abort
-    ${EndIf}
 
     skip_confirm:
     ${If} $PreserveData == "1"

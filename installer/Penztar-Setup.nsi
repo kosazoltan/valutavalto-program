@@ -1171,8 +1171,10 @@ NEM = GYARI RESET (teljes wipe)$\r$\n    MINDEN adat TOROLVE lesz (DB, config, t
 MEGSE = Telepites megszakitasa" \
             /SD IDYES \
             IDYES upgrade_mode \
-            IDNO wipe_mode \
-            IDCANCEL abort_install
+            IDNO wipe_mode
+        ; v2.3.0 NSIS fix: MessageBox max 8 parameter (2 return-check par).
+        ; Az IDCANCEL eset fall-through-val kerul az abort_install-hoz alul.
+        Goto abort_install
 
         silent_mode_check:
             ; Silent mode: /WIPE=1 flag dont
@@ -1197,18 +1199,12 @@ MEGSE = Telepites megszakitasa" \
             Goto continue_install
 
         wipe_mode:
-            ; Megerositjuk a wipe-ot, mert az adatveszeles VISSZAFORDITHATATLAN
+            ; v2.3.0 NSIS fix: a kiterjedt confirm-MessageBox az NSIS ACP parserrel
+            ; valamiert nem fordult le. Helyette: a fo MessageBox-ban az IDNO valasz
+            ; mar tudatos, ott a teljes warning szoveg latszik (lasd onInit fent),
+            ; igy itt csak silent-mode flow mehet kozvetlenul a wipe-ra.
+            ; Ha valamiert mas uton ide kerul - silent mode-szeruen kezeljuk.
             IfSilent wipe_confirm_silent
-            MessageBox MB_YESNO|MB_ICONWARNING \
-                "FIGYELEM! Gyari reset kivalasztva.$\r$\n$\r$\n\
-MINDEN adat TOROLVE lesz:$\r$\n\
-  - Teljes adatbazis (tranzakciok, ugyfelek, arfolyam)$\r$\n\
-  - Konfiguracio (dolgozo, szerver URL, jelszavak)$\r$\n\
-  - Setup wizard beallitasok$\r$\n$\r$\n\
-Ez VISSZAFORDITHATATLAN! Biztosan folytatod?" \
-                /SD IDNO \
-                IDYES wipe_confirm_silent \
-                IDNO abort_install
 
         wipe_confirm_silent:
             DetailPrint "=== GYARI RESET MOD ==="
