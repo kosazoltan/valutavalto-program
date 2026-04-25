@@ -35,7 +35,8 @@ test('T01 — login oldal betölt, alapvető UI elemek láthatók', async ({ pag
 
   // Should land on login (redirect or direct)
   const url = page.url()
-  const isLoginPage = url.includes('/login') || url === BASE + '/' || url === BASE
+  const _isLoginPage = url.includes('/login') || url === BASE + '/' || url === BASE
+  void _isLoginPage // documenting the heuristic; not asserted directly to keep the test resilient
 
   // Title check
   const title = await page.title()
@@ -66,8 +67,8 @@ test('T02 — auth wall: nincs token → login oldalra irányít', { tag: '@live
   // Clear storage to ensure unauthenticated state
   await page.goto(BASE + '/login', { waitUntil: 'domcontentloaded', timeout: 20000 })
   await page.evaluate(() => {
-    try { localStorage.clear() } catch {}
-    try { sessionStorage.clear() } catch {}
+    try { localStorage.clear() } catch { /* DOMException: storage disabled */ }
+    try { sessionStorage.clear() } catch { /* DOMException: storage disabled */ }
   })
 
   // Try to access protected route
@@ -298,25 +299,25 @@ test('T09 — authenticated login → dashboard/cashier accessible', async ({ pa
   // AI review (Codex PR #176 P2): elso-input waitFor ELOTT skip-ellenorzes,
   // hogy ha a form nem renderelodik (pl. SPA placeholder), ne hard-failjunk,
   // hanem a skip path-ot kapjuk, mint a korabbi validaciokban.
-  const inputPreCheck = await page.locator('input:not([type=\"hidden\"])').count()
+  const inputPreCheck = await page.locator('input:not([type="hidden"])').count()
   if (inputPreCheck === 0) {
     console.log('SKIP T09: nincs visible input form az /login-on (lehet placeholder)')
     test.skip(true, 'Login form nem elerheto - SPA placeholder vagy deploy problema')
     return
   }
   // Sourcery PR #175: explicit ready signal helyett fixed waitForTimeout
-  await page.locator('input:not([type=\"hidden\"])').first().waitFor({ state: 'visible', timeout: 10000 })
+  await page.locator('input:not([type="hidden"])').first().waitFor({ state: 'visible', timeout: 10000 })
 
   // 2. Stabil selector-ok (Sourcery PR #175: DOM layout valtozasra robusztusabb)
   const companyField = page.locator(
-    'input[name*=\"company\" i], input[id*=\"company\" i], input[placeholder*=\"company\" i]'
+    'input[name*="company" i], input[id*="company" i], input[placeholder*="company" i]'
   ).first()
   const workerField = page.locator(
-    'input[name*=\"worker\" i], input[id*=\"worker\" i], input[placeholder*=\"worker\" i], input[placeholder*=\"user\" i]'
+    'input[name*="worker" i], input[id*="worker" i], input[placeholder*="worker" i], input[placeholder*="user" i]'
   ).first()
-  const passwordField = page.locator('input[type=\"password\"]').first()
+  const passwordField = page.locator('input[type="password"]').first()
 
-  const inputs = page.locator('input:not([type=\"hidden\"])')
+  const inputs = page.locator('input:not([type="hidden"])')
   const count = await inputs.count()
   if (count < 3) {
     console.log(`SKIP T09: Expected >=3 form inputs, got ${count}`)
@@ -338,11 +339,11 @@ test('T09 — authenticated login → dashboard/cashier accessible', async ({ pa
   }
 
   // 3. Submit + explicit wait URL change VAGY error
-  const submitBtn = page.locator('button[type=\"submit\"]').first()
+  const submitBtn = page.locator('button[type="submit"]').first()
   await submitBtn.click()
   await Promise.race([
     page.waitForURL(url => !url.toString().includes('/login'), { timeout: 15000 }).catch(() => null),
-    page.locator('[role=\"alert\"], .error, [class*=\"error\"]').first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => null),
+    page.locator('[role="alert"], .error, [class*="error"]').first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => null),
   ])
 
   const afterLoginUrl = page.url()
