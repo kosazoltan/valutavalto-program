@@ -133,11 +133,9 @@ Section "Eltavolitas"
 
     ; Desktop shortcuts
     Delete "$DESKTOP\Valutavalto Penztar.lnk"
-    Delete "$DESKTOP\Valutavalto Penztar.lnk"
     Delete "$DESKTOP\Penztar.lnk"
 
     ; Start menu
-    RMDir /r "$SMPROGRAMS\Valutavalto Penztar"
     RMDir /r "$SMPROGRAMS\Valutavalto Penztar"
 
     ; --- 4b. Firewall rules cleanup (BUG-03 fix) ---
