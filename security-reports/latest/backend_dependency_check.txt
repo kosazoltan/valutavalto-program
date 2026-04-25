@@ -4,17 +4,29 @@ Note:
 
 --- STDOUT ---
 [INFO] Scanning for projects...
+Downloading from central: https://repo.maven.apache.org/maven2/org/apache/logging/log4j/log4j-bom/2.25.4/log4j-bom-2.25.4.pom
+Progress (1): 793 BProgress (1): 1.8 kBProgress (1): 5.0 kBProgress (1): 10 kB Progress (1): 12 kB                   Downloaded from central: https://repo.maven.apache.org/maven2/org/apache/logging/log4j/log4j-bom/2.25.4/log4j-bom-2.25.4.pom (12 kB at 51 kB/s)
 [INFO] 
 [INFO] --------------------< com.puzzleir:valuta-backend >---------------------
-[INFO] Building Valutaváltó Backend 2.1.3
+[INFO] Building Valutaváltó Backend 2.3.0
 [INFO]   from pom.xml
 [INFO] --------------------------------[ jar ]---------------------------------
+Downloading from central: https://repo.maven.apache.org/maven2/org/apache/logging/log4j/log4j-to-slf4j/2.25.4/log4j-to-slf4j-2.25.4.pom
+Progress (1): 807 BProgress (1): 1.7 kBProgress (1): 4.7 kBProgress (1): 5.5 kB                    Downloaded from central: https://repo.maven.apache.org/maven2/org/apache/logging/log4j/log4j-to-slf4j/2.25.4/log4j-to-slf4j-2.25.4.pom (5.5 kB at 103 kB/s)
+Downloading from central: https://repo.maven.apache.org/maven2/org/apache/logging/log4j/log4j/2.25.4/log4j-2.25.4.pom
+Progress (1): 724 BProgress (1): 1.7 kBProgress (1): 3.5 kBProgress (1): 5.4 kBProgress (1): 6.8 kBProgress (1): 12 kB Progress (1): 19 kBProgress (1): 23 kBProgress (1): 28 kBProgress (1): 31 kBProgress (1): 33 kBProgress (1): 35 kBProgress (1): 38 kBProgress (1): 41 kBProgress (1): 41 kB                   Downloaded from central: https://repo.maven.apache.org/maven2/org/apache/logging/log4j/log4j/2.25.4/log4j-2.25.4.pom (41 kB at 1.1 MB/s)
+Downloading from central: https://repo.maven.apache.org/maven2/org/apache/logging/log4j/log4j-api/2.25.4/log4j-api-2.25.4.pom
+Progress (1): 817 BProgress (1): 1.7 kBProgress (1): 3.5 kBProgress (1): 4.5 kB                    Downloaded from central: https://repo.maven.apache.org/maven2/org/apache/logging/log4j/log4j-api/2.25.4/log4j-api-2.25.4.pom (4.5 kB at 87 kB/s)
+Downloading from central: https://repo.maven.apache.org/maven2/org/apache/logging/log4j/log4j-to-slf4j/2.25.4/log4j-to-slf4j-2.25.4.jar
+Progress (1): 0.9/24 kBProgress (1): 2.3/24 kBProgress (1): 3.6/24 kBProgress (1): 5.0/24 kBProgress (1): 6.4/24 kBProgress (1): 7.7/24 kBProgress (1): 9.1/24 kBProgress (1): 10/24 kB Progress (1): 12/24 kBProgress (1): 13/24 kBProgress (1): 15/24 kBProgress (1): 15/24 kBProgress (1): 17/24 kBProgress (1): 18/24 kBProgress (1): 20/24 kBProgress (1): 21/24 kBProgress (1): 22/24 kBProgress (1): 24/24 kBProgress (1): 24 kB                      Downloaded from central: https://repo.maven.apache.org/maven2/org/apache/logging/log4j/log4j-to-slf4j/2.25.4/log4j-to-slf4j-2.25.4.jar (24 kB at 590 kB/s)
+Downloading from central: https://repo.maven.apache.org/maven2/org/apache/logging/log4j/log4j-api/2.25.4/log4j-api-2.25.4.jar
+Progress (1): 1.4/351 kBProgress (1): 2.7/351 kBProgress (1): 4.1/351 kBProgress (1): 5.5/351 kBProgress (1): 6.8/351 kBProgress (1): 11/351 kB Progress (1): 15/351 kBProgress (1): 20/351 kBProgress (1): 24/351 kBProgress (1): 25/351 kBProgress (1): 29/351 kBProgress (1): 33/351 kBProgress (1): 37/351 kBProgress (1): 41/351 kBProgress (1): 46/351 kBProgress (1): 50/351 kBProgress (1): 54/351 kBProgress (1): 58/351 kBProgress (1): 63/351 kBProgress (1): 66/351 kBProgress (1): 70/351 kBProgress (1): 74/351 kBProgress (1): 78/351 kBProgress (1): 82/351 kBProgress (1): 87/351 kBProgress (1): 91/351 kBProgress (1): 95/351 kBProgress (1): 99/351 kBProgress (1): 104/351 kBProgress (1): 108/351 kBProgress (1): 112/351 kBProgress (1): 116/351 kBProgress (1): 121/351 kBProgress (1): 125/351 kBProgress (1): 129/351 kBProgress (1): 133/351 kBProgress (1): 137/351 kBProgress (1): 142/351 kBProgress (1): 146/351 kBProgress (1): 150/351 kBProgress (1): 154/351 kBProgress (1): 159/351 kBProgress (1): 163/351 kBProgress (1): 167/351 kBProgress (1): 171/351 kBProgress (1): 188/351 kBProgress (1): 197/351 kBProgress (1): 213/351 kBProgress (1): 229/351 kBProgress (1): 246/351 kBProgress (1): 262/351 kBProgress (1): 279/351 kBProgress (1): 295/351 kBProgress (1): 311/351 kBProgress (1): 328/351 kBProgress (1): 344/351 kBProgress (1): 351 kB                        Downloaded from central: https://repo.maven.apache.org/maven2/org/apache/logging/log4j/log4j-api/2.25.4/log4j-api-2.25.4.jar (351 kB at 3.6 MB/s)
 [INFO] 
 [INFO] --- dependency-check:12.2.0:check (default-cli) @ valuta-backend ---
 [INFO] Checking for updates
 [INFO] Skipping the NVD API Update as it was completed within the last 240 minutes
 [INFO] Skipping Known Exploited Vulnerabilities update check since last check was within 24 hours.
-[INFO] Check for updates complete (556 ms)
+[INFO] Check for updates complete (345 ms)
 [INFO] 
 
 Dependency-Check is an open source tool performing a best effort analysis of 3rd party dependencies; false positives and false negatives may exist in the analysis performed by the tool. Use of the tool and the reporting provided constitutes acceptance for use in an AS IS condition, and there are NO warranties, implied or otherwise, with regard to the analysis or its use. Any use of the tool and the reporting provided is at the user's risk. In no event shall the copyright holder or OWASP be held liable for any damages whatsoever arising out of or in connection with the use of this tool, the analysis performed, or the resulting report.
@@ -43,10 +55,12 @@ Dependency-Check is an open source tool performing a best effort analysis of 3rd
 [INFO] Finished Vulnerability Suppression Analyzer (0 seconds)
 [INFO] Finished Known Exploited Vulnerability Analyzer (0 seconds)
 [INFO] Finished Dependency Bundling Analyzer (0 seconds)
-[INFO] Suppression Rule had zero matches: SuppressionRule{packageUrl=PropertyType{value=^pkg:javascript/DOMPurify@.*$, regex=true, caseSensitive=false},cve={CVE-2025-15599,CVE-2026-0540,}}
+[INFO] Suppression Rule had zero matches: SuppressionRule{packageUrl=PropertyType{value=^pkg:maven/org\.apache\.logging\.log4j/log4j-api@.*$, regex=true, caseSensitive=false},cve={CVE-2025-68161,}}
+[INFO] Suppression Rule had zero matches: SuppressionRule{packageUrl=PropertyType{value=^pkg:maven/org\.apache\.logging\.log4j/log4j-api@.*$, regex=true, caseSensitive=false},cve={CVE-2026-34478,CVE-2026-34480,CVE-2026-34481,}}
+[INFO] Suppression Rule had zero matches: SuppressionRule{packageUrl=PropertyType{value=^pkg:maven/org\.apache\.pdfbox/pdfbox@.*$, regex=true, caseSensitive=false},cve={CVE-2026-33929,}}
 [INFO] Finished Unused Suppression Rule Analyzer (0 seconds)
 [INFO] Analysis Complete (8 seconds)
-[INFO] Writing HTML report to: D:\repo\valutavalto-program\.claude\worktrees\youthful-shannon-8ac321\backend\target\dependency-check-report.html
+[INFO] Writing HTML report to: D:\repo\valutavalto-program\backend\target\dependency-check-report.html
 [WARNING] 
 
 One or more dependencies were identified with known vulnerabilities in Valutaváltó Backend:
@@ -115,8 +129,8 @@ See the dependency-check report for more details.
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  13.811 s
-[INFO] Finished at: 2026-04-20T09:43:30+02:00
+[INFO] Total time:  12.224 s
+[INFO] Finished at: 2026-04-25T07:52:45+02:00
 [INFO] ------------------------------------------------------------------------
 
 

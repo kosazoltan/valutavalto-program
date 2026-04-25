@@ -25,8 +25,10 @@
         <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>${java.version}</maven.compiler.release>
-        <!-- CVE-2026-22732 fix: Spring Security 6.5.0 → 6.5.9 -->
-        <spring-security.version>6.5.9</spring-security.version>
+        <!-- CVE-2026-22746/22748 fix: Spring Security 6.5.9 -> 6.5.10 -->
+        <spring-security.version>6.5.10</spring-security.version>
+        <!-- CVE-2026-34478/34480/34481 fix: log4j explicit override 2.24.3 -> 2.25.4 -->
+        <log4j2.version>2.25.4</log4j2.version>
         <!-- CVE-2026-33186 fix: force patched grpc-api over Google client transitive -->
         <grpc.version>1.80.0</grpc.version>
         <!-- Supply-chain override: Spring Boot 3.5.13 bundles Tomcat 10.1.53, de a
@@ -126,9 +128,10 @@
             <scope>runtime</scope>
         </dependency>
         
-        <!-- SpringDoc OpenAPI / Swagger UI
-             Supply-chain upgrade: 2.8.16 -> 2.8.17
-             - Brings swagger-ui 5.32.2 which bumps DOMPurify 3.2.6 -> 3.3.2 (mXSS fix) -->
+        <!-- SpringDoc OpenAPI / Swagger UI - 2.8.17 marad (Spring Boot 3.5 kompat)
+             A 3.0.x ag Spring Boot 4.0.5-ot huz be (Jackson 3.x = inkompat 3.5-tel),
+             ezert maradunk a 2.x-en. A swagger-ui 5.32.2 (DOMPurify 3.3.2) mXSS CVE-k
+             exploit-vektora production-ben tiltott (ld. owasp-suppressions.xml). -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
@@ -252,7 +255,9 @@
             <version>5.5.1</version>
         </dependency>
 
-        <!-- PDF generation for receipts -->
+        <!-- PDF generation for receipts
+             pdfbox 3.0.7 (legfrissebb 3.0.x stable; CVE-2026-33929 fix csak 4.x-ben elerheto,
+             ami breaking changes-ekkel jar - suppression-helye .owasp-suppressions.xml-ben). -->
         <dependency>
             <groupId>org.apache.pdfbox</groupId>
             <artifactId>pdfbox</artifactId>
