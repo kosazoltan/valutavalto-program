@@ -102,6 +102,8 @@ docs/legacy-drive/
 Anti/
 
 Felmérés/
+# macOS NFD encoding variant (byte-exact .gitignore match)
+Felmérés/
 
 # Nagy fájlok kizárása
 *.m4a
