@@ -5,7 +5,6 @@ import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.dto.cashdesk.CashDeskBreakDto;
 import hu.puzzleir.valuta.entity.CashDeskBreak;
 import hu.puzzleir.valuta.repository.CashDeskBreakRepository;
-import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,21 +28,14 @@ public class CashDeskBreakService {
 
     /**
      * Szünetek listázása
-     *
-     * <p>v2.3.2 multi-tenant audit: a null cashDeskId path most az aktuális
-     * felhasználoi tenant-on belul listáz, NEM minden cég-en at. A CashDesk.companyId-t
-     * subquery-vel szuri.</p>
      */
     @Transactional(readOnly = true)
     public List<CashDeskBreakDto> listBreaks(UUID cashDeskId) {
         List<CashDeskBreak> breaks;
         if (cashDeskId != null) {
-            // CashDesk maga is company-scope-os, igy a cashDeskId-n at biztonsagos
             breaks = cashDeskBreakRepository.findByCashDeskIdOrderByBreakStartDesc(cashDeskId);
         } else {
-            // v2.3.2 multi-tenant fix: aktualis company-tenant break-jei
-            UUID companyId = SecurityUtils.getCurrentCompanyId();
-            breaks = cashDeskBreakRepository.findByCompanyIdOrderByBreakStartDesc(companyId);
+            breaks = cashDeskBreakRepository.findAllByOrderByBreakStartDesc();
         }
         return breaks.stream().map(this::toDto).collect(Collectors.toList());
     }
