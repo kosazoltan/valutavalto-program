@@ -5,6 +5,36 @@ A `valutavalto-program` monorepo verzió-történet.
 Formátum: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 verziószám: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] — 2026-04-25 (8 PR session audit + tisztaság-iteráció — installer P1 data-loss fix!)
+
+### CRITICAL — Installer P1 data-loss fix (MEGKÖTELEZŐ frissítés!)
+- **PR #222** — `installer/Penztar-Setup.nsi:230`: A SecInstall Fázis 1e2 unconditional `RMDir /r "C:\ProgramData\BestChange"`-t hajtott végre. **Az auto-upgrade flow ellenére az adatbázis + konfigurációs adatok TÖRLÖDTEK az új verzió telepítésekor!** Bevezetve `$UPGRADE_MODE` flag, conditional RMDir + `.onInit` upgrade ágában `StrCpy "1"`. Most az upgrade ténylegesen megőrzi a DB-t és a configot.
+- **PR #222** — `installer/Penztar-Setup.nsi:.onInit`: `ReadRegStr` `SetRegView 64` nélkül futott, a 64-bit Windows-on a `Wow6432Node` redirect miatt nem találta a meglévő telepítést. Hozzáadva `SetRegView 64` az `UninstallString` lookup elé.
+- **PR #222** — `penztar-client/electron/main.ts`: offline mode-ban (LAN-ban telepített pénztár, lokális backenddel) a SetupWizard `offline_mode=true`-t mentett, de a startup logika minden indításkor felülírta a `server_url`-t prod URL-re → offline telepítések törődtek indításkor. Új `offlineMode` ellenőrzés.
+- **PR #222** — `frontend-react/src/pages/setup/SetupWizard.tsx`: offline mode + `selectedWorkerCode` konfliktus — offline-ban is worker-first-time-setup-ot indított. Most `!offlineMode` feltétel.
+- **PR #222** — `penztar-client/electron/first-run.ts`: V100 device-registration `bootstrapPassword`-del loginolt a `workerFirstTimeSetup` után, ami már átállította a jelszót. Új `usedWorkerSetup` detection + `adminPassword` használat.
+
+### Fixed — CI / lint / warning teljes tisztogatás
+- **PR #223** — `LoginPage.tsx:524` `catch (err)` unused variable + `transactions.ts:986` obsolete `eslint-disable-next-line no-console` directive (Security Pipeline 5x failure unblock).
+- **PR #224** — Sourcery P3: `LoginPage.tsx` catch blokk dev-mode logger.debug (anti-enumeration mellett dev-debugging) + E2E T10 `bootstrap-status` 3x retry (Hetzner deploy-window flakiness elimináció).
+- **PR #225** — 4 db Lombok `@Builder` warning entitás-fájlokon (`DailyBalance`, `Customer`, `AmlReport`, `DailySession`): `@Builder.Default` annotáció hozzáadva. `GmailOAuthConfig.setApprovalPrompt("force")` deprecated API: `@SuppressWarnings("deprecation")` + indokló komment (Google API Builder nem expose-olja `setPrompt(String)`-et). Maven [WARNING] szám: 5 → **0**.
+- **PR #226** — 32 e2e lint hiba (`no-useless-escape × 28`, `no-empty × 2`, `prefer-const × 1`, `unused-vars × 1`) az `e2e/excvaluta-live.spec.ts` és `excvaluta-full-menu.spec.ts` fájlokban. `npx eslint .`: 32 → **0**.
+
+### Fixed — `.gitignore` Unicode byte-exact (Codex P2 + Sourcery P3)
+- **PR #227** — Cosmetic dedupe: 4 db duplikált `Felmérés/` egyetlen-re reduce-olva, NSIS Cleanup duplikátok eltávolítva.
+- **PR #228** — Codex P2 finding (#227 follow-up): a `.gitignore` pattern matching **byte-exact**, NEM Unicode-aware. A korábbi dedupe behavioral regression volt: macOS HFS+ NFD-encoded `Felmérés/` mappa nem lett volna kizárva. NFD pattern visszahozva a NFC mellé.
+- **PR #229** — Sourcery P3 (#228 follow-up): bővített figyelmeztető komment a NFD entry mellett (NFC + NFD bytes hex form, ATTENTION: editor / formatter NE auto-normalizálja).
+
+### Megjegyzések
+- **Sentry** (24h): 0 frontend + 0 backend issue.
+- **Production health** (`https://excvaluta.com/api/v1/auth/bootstrap-status`): HTTP 200 stabil.
+- **CI**: `Security Pipeline`, `Frontend E2E`, `Deploy to Hetzner VPS`, `UTF-8 Guardrail` mind 8/8 PASS.
+
+### Telepítő fájlok
+- `Penztar-Setup-2.3.0-2026MMDD.exe` — kb. 273 MB, NSIS Unicode v3.x bundle (PG 17.5, NSSM 2.24, Eclipse Temurin JRE 21)
+- `Penztar-Eltavolito-2.3.0-2026MMDD.exe` — kb. 60 KB, standalone uninstaller (`/PRESERVE_DATA=1` upgrade-mode-hoz, `/PRESERVE_DATA=0` factory reset)
+- **Upgrade flow**: a Setup `.onInit` automatikusan futtatja a régi `Penztar-Eltavolito.exe`-t silent + PRESERVE_DATA=1-gyel, megőrizve az adatbázist + configot.
+
 ## [2.2.5] — 2026-04-24 (hotfix batch — 12 PR a v2.2.4 után)
 
 ### Critical — PenztarClient launcher PS 5.1-kompat fix (merge-blokkoló)
