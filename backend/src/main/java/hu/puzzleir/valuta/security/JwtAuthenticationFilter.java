@@ -53,9 +53,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (jwtTokenProvider.validateToken(jwt)) {
                 String tokenId = jwtTokenProvider.getTokenIdFromToken(jwt);
                 if (tokenBlacklistService.isBlacklisted(tokenId)) {
-                    // CodeQL java/sensitive-log + log-injection fix: hash-elt tokenId,
-                    // SLF4J parameterized format (string concat helyett), nem-rekonstrualhato.
-                    logger.warn("Blacklisted token used: tokenIdHash={}", Integer.toHexString(tokenId.hashCode()));
+                    // CodeQL java/sensitive-log + log-injection fix:
+                    // - parent OncePerRequestFilter.logger Apache Commons Logging Log,
+                    //   ami String.format-os "{}" placeholder-t NEM tamogat.
+                    // - Hash-elt tokenId (Integer.toHexString) String.format()-tal,
+                    //   szandekosan int->hex (NEM user-input string-szel concat-elt
+                    //   tokenId, ezert log-injection sem aktiv).
+                    logger.warn(String.format("Blacklisted token used: tokenIdHash=%s",
+                            Integer.toHexString(tokenId.hashCode())));
                     response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token blacklisted");
                     return;
                 }
