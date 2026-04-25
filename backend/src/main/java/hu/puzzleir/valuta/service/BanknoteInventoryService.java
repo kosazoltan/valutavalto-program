@@ -68,7 +68,11 @@ public class BanknoteInventoryService {
         BanknoteInventory inv = repository.findById(inventoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Inventory not found: " + inventoryId));
 
-        int diff = actualQuantity - (inv.getQuantity() != null ? inv.getQuantity() : 0);
+        // CodeQL java/tainted-arithmetic fix: Math.subtractExact() overflow/underflow eseten
+        // ArithmeticException-t dob, igy a user-input (actualQuantity) nem koppintja silent
+        // mode-ban az integer-tartomanyt.
+        int currentQty = inv.getQuantity() != null ? inv.getQuantity() : 0;
+        int diff = Math.subtractExact(actualQuantity, currentQty);
         if (diff != 0) {
             log.warn("Count discrepancy for inventory {}: expected={}, actual={}, diff={}",
                     inventoryId, inv.getQuantity(), actualQuantity, diff);

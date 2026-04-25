@@ -81,8 +81,10 @@ public class PasswordResetService {
                 Instant.now().plus(TOKEN_TTL)
         ));
 
-        log.info("Forgot password token generalva: worker id={}, email={}, token={}...",
-                worker.getId(), email, token.substring(0, 8));
+        // CodeQL java/sensitive-log fix: NEM logoljuk az emailt (PII/GDPR) es a tokent
+        // (security-sensitive) - csak worker id-t es egy nem-rekonstrualhato hashet a tokenrol.
+        log.info("Forgot password token generalva: worker id={}, tokenHash={}",
+                worker.getId(), Integer.toHexString(token.hashCode()));
 
         // TODO v2.3.1: Gmail API-n kikuldeni email-ben. Production-ban ez
         // kotelezo; most a token vissza van adva a response-ban tesztelheto
