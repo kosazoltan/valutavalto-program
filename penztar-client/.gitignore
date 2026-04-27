@@ -9,3 +9,6 @@ playwright-artifacts/
 test-argv.cjs
 test-*.png
 .dev-user-data/
+
+# Build output (audit-iter3 P1, CodeQL js/incomplete-sanitization fix)
+tmp-asar-extract/
