@@ -166,6 +166,18 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.BAD_REQUEST, "BAD_REQUEST", ex.getMessage());
     }
 
+    // --- 400 Bad Request (ArithmeticException — Math.addExact / subtractExact overflow) ---
+    // Codex P2 fix #235 follow-up: a Math.addExact/subtractExact overflow ArithmeticException-t
+    // dob, ami korabban catch-all 500-as hibakent ment ki. Ez user-input szelsoertekenel (pl.
+    // BanknoteInventory.addQuantity Integer.MAX_VALUE - quantity-vel) tortenhet, igy a 400 BAD_REQUEST
+    // a megfelelo HTTP statusz.
+    @ExceptionHandler(ArithmeticException.class)
+    public ResponseEntity<ErrorResponse> handleArithmetic(ArithmeticException ex) {
+        log.warn("Arithmetic boundary error: {}", ex.getMessage());
+        return buildResponse(HttpStatus.BAD_REQUEST, "BAD_REQUEST",
+                "Szamtani hiba: a megadott ertek a megengedett tartomanyon kivul esik (overflow/underflow).");
+    }
+
     // --- 409 Conflict (Optimistic Lock) ---
     @ExceptionHandler(OptimisticLockException.class)
     public ResponseEntity<ErrorResponse> handleConflict(OptimisticLockException ex) {
