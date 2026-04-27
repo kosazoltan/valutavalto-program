@@ -6,6 +6,11 @@ on:
     branches:
       - main
 
+# Audit-iter3 P1 (2026-04-27, CodeQL actions/missing-workflow-permissions fix):
+# UTF-8 guardrail csak olvas (checkout + diff). Default contents: read elegendo.
+permissions:
+  contents: read
+
 jobs:
   utf8-guardrail:
     name: UTF-8 Guardrail Check

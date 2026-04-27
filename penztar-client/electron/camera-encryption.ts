@@ -96,7 +96,17 @@ export async function decryptFile(
   const decipher = crypto.createDecipheriv(ALGORITHM, key, nonce, { authTagLength: AUTH_TAG_LENGTH });
   decipher.setAuthTag(authTag);
   const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
-  fs.writeFileSync(plainPath, decrypted);
+  // Audit-iter3 P0 (CodeQL js/insecure-temporary-file fix, 2026-04-27):
+  // O_NOFOLLOW: ellenall symlink-attack-nek (a target NEM lehet symlink), O_TRUNC:
+  // re-decrypt eseten felulir, mode 0o600: csak owner read/write.
+  // A plainPath user-input mar validalva path.resolve+startsWith ellenorzessel
+  // (camera.ts:361-368), igy CSAK CAMERA_DIR alatt lehet.
+  const fd = fs.openSync(plainPath, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_TRUNC | fs.constants.O_NOFOLLOW, 0o600);
+  try {
+    fs.writeFileSync(fd, decrypted);
+  } finally {
+    fs.closeSync(fd);
+  }
 }
 
 /**
