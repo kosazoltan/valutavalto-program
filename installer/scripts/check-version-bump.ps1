@@ -1,16 +1,21 @@
 #!/usr/bin/env pwsh
 # =============================================================================
-# check-version-bump.ps1 - Version bump enforcement gate
+# check-version-bump.ps1 - Version bump enforcement gate (FULL 4-way sync)
 # =============================================================================
 # Strategy: dot-sources `build-common.ps1` (CLAUDE.md established pattern,
 # PR #103 + #104) and uses the official `npm version patch` CLI command
-# (industry standard: https://docs.npmjs.com/cli/v10/commands/npm-version).
+# (industry standard: https://docs.npmjs.com/cli/v10/commands/npm-version)
+# plus Maven pom.xml manipulation.
+#
+# IMPORTANT: This repo has 4 version locations that MUST be kept in sync
+# (per CLAUDE.md release process and PR #177):
+#   1. package.json (monorepo root)
+#   2. frontend-react/package.json
+#   3. penztar-client/package.json
+#   4. backend/pom.xml (top-level <version>)
 #
 # Behavior (DEFAULT mode = AUTO-PATCH):
-#   - If current package.json version <= latest existing build/*.exe version:
-#     run `npm version patch --no-git-tag-version` in BOTH:
-#       a) repo root
-#       b) penztar-client/
+#   - If current version <= latest existing build/*.exe: bump all 4 locations
 #   - If current version > latest existing: keep as-is (no bump)
 #
 # Optional flags:
@@ -24,7 +29,7 @@
 # Exit codes:
 #   0 = OK (PASS or successful auto-patch)
 #   1 = BLOCK (bump needed AND -NoAutoPatch set)
-#   2 = ERROR (npm command failed, files missing, etc.)
+#   2 = ERROR (npm command failed, files missing, version drift, etc.)
 # =============================================================================
 
 param(
@@ -48,7 +53,7 @@ $ErrorActionPreference = "Stop"
 . (Join-Path (Split-Path -Parent $PSScriptRoot) 'build-common.ps1')
 
 Write-Host ""
-Write-Host "=== Version Bump Gate (npm version patch) ===" -ForegroundColor Cyan
+Write-Host "=== Version Bump Gate (4-way: package.json x3 + pom.xml) ===" -ForegroundColor Cyan
 Write-Host "Current version: $CurrentVersion" -ForegroundColor Yellow
 Write-Host "Build dir: $BuildDir" -ForegroundColor DarkGray
 $modeLabel = if ($NoAutoPatch) { "STRICT (no auto-patch)" } else { "AUTO-PATCH (default)" }
@@ -61,21 +66,29 @@ if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
     exit 2
 }
 
-# Validate root + client package.json consistency BEFORE deciding on bump.
+# Validate ALL 4 version locations are in sync BEFORE deciding on bump.
 # Eszter F2 finding 3 (HIGH): no-bump early-exit must not skip this check.
-$rootPkgPath = Join-Path $RepoRoot "package.json"
-$clientPkgPath = Join-Path $RepoRoot "penztar-client\package.json"
-if (-not (Test-Path $rootPkgPath))   { Write-Error "Root package.json not found: $rootPkgPath"; exit 2 }
-if (-not (Test-Path $clientPkgPath)) { Write-Error "Client package.json not found: $clientPkgPath"; exit 2 }
+# CLAUDE.md release process: 4-way sync required.
+$projectVersions = Get-AllProjectVersions -RepoRoot $RepoRoot
 
-$rootCurrentVersion = (Get-Content $rootPkgPath -Raw | ConvertFrom-Json).version
-$clientCurrentVersion = (Get-Content $clientPkgPath -Raw | ConvertFrom-Json).version
-if ($rootCurrentVersion -ne $clientCurrentVersion) {
-    Write-Host ("ERROR: Pre-gate version mismatch: root package.json=$rootCurrentVersion, penztar-client/package.json=$clientCurrentVersion.") -ForegroundColor Red
-    Write-Host "Both must be in sync before the gate runs." -ForegroundColor Red
-    Write-Host "Fix: align both package.json files manually, or run 'npm version <X.Y.Z> --no-git-tag-version' in each directory." -ForegroundColor Red
+Write-Host "Version locations (4-way check):" -ForegroundColor DarkGray
+Write-Host "  package.json (root):       $($projectVersions.Root)" -ForegroundColor DarkGray
+Write-Host "  frontend-react/package.json: $($projectVersions.FrontendReact)" -ForegroundColor DarkGray
+Write-Host "  penztar-client/package.json: $($projectVersions.PenztarClient)" -ForegroundColor DarkGray
+Write-Host "  backend/pom.xml:           $($projectVersions.BackendPom)" -ForegroundColor DarkGray
+
+if (-not $projectVersions.IsConsistent) {
+    Write-Host ""
+    Write-Host ("ERROR: Version drift detected. " +
+                "All 4 locations must be in sync (CLAUDE.md release process, PR #177).") -ForegroundColor Red
+    Write-Host ("Found: " + ($projectVersions.UniqueVersions -join ', ')) -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Fix: align all 4 files manually to a single version, then re-run the gate." -ForegroundColor Red
     exit 2
 }
+
+# Use the consistent version as authoritative
+$rootCurrentVersion = $projectVersions.Root
 if ($CurrentVersion -ne $rootCurrentVersion) {
     Write-Host "WARN: -CurrentVersion ($CurrentVersion) differs from package.json ($rootCurrentVersion); using package.json value." -ForegroundColor Yellow
     $CurrentVersion = $rootCurrentVersion
@@ -113,54 +126,80 @@ if ($NoAutoPatch) {
     $msg = 'VERSION BUMP REQUIRED!' + [Environment]::NewLine + [Environment]::NewLine
     $msg += "Current version ($CurrentVersion) is not greater than latest build ($maxV)." + [Environment]::NewLine
     $msg += 'Manual bump required (NoAutoPatch mode active).' + [Environment]::NewLine + [Environment]::NewLine
-    $msg += 'Run:' + [Environment]::NewLine
+    $msg += 'Run (4-way sync needed):' + [Environment]::NewLine
     $msg += "  cd $RepoRoot && npm version patch --no-git-tag-version" + [Environment]::NewLine
-    $msg += "  cd $RepoRoot\penztar-client && npm version patch --no-git-tag-version"
+    $msg += "  cd $RepoRoot\frontend-react && npm version patch --no-git-tag-version" + [Environment]::NewLine
+    $msg += "  cd $RepoRoot\penztar-client && npm version patch --no-git-tag-version" + [Environment]::NewLine
+    $msg += "  # backend/pom.xml: update top-level <version> tag manually"
     Write-Error $msg
     exit 1
 }
 
 # AUTO-PATCH path
-# Paths already validated above (Eszter F2 finding 3).
-# If existing > current, sync up to existing first (so npm version patch produces existing+1)
+# If existing > current, sync up to existing first (so bump produces existing+1)
 $baseVersion = $CurrentVersion
 if ($maxExisting -and ([version]::Parse($CurrentVersion).CompareTo([version]::Parse($maxExisting.Version)) -lt 0)) {
     $baseVersion = $maxExisting.Version
     Write-Host "Sync: package.json $CurrentVersion -> $baseVersion (matching latest build before patch)" -ForegroundColor DarkGray
 }
 
+# Compute target version
+$b = [version]::Parse($baseVersion)
+$patchPart = if ($b.Build -ge 0) { $b.Build } else { 0 }
+$targetVersion = "{0}.{1}.{2}" -f $b.Major, $b.Minor, ($patchPart + 1)
+
 if ($DryRun) {
-    $b = [version]::Parse($baseVersion)
-    $patchPart = if ($b.Build -ge 0) { $b.Build } else { 0 }
-    $predicted = "{0}.{1}.{2}" -f $b.Major, $b.Minor, ($patchPart + 1)
-    Write-Host "DryRun: would bump $baseVersion -> $predicted via 'npm version patch --no-git-tag-version' in 2 dirs" -ForegroundColor Yellow
-    Write-Output "BUMPED_VERSION=$predicted"
+    Write-Host "DryRun: would update 4 locations $baseVersion -> $targetVersion" -ForegroundColor Yellow
+    Write-Output "BUMPED_VERSION=$targetVersion"
     exit 0
 }
 
-# Pre-bump sync if needed (uses build-common.ps1 helper)
+# Pre-bump sync if needed (uses build-common.ps1 helpers)
+$rootPkgPath   = Join-Path $RepoRoot 'package.json'
+$feReactPath   = Join-Path $RepoRoot 'frontend-react\package.json'
+$clientPkgPath = Join-Path $RepoRoot 'penztar-client\package.json'
+$pomXmlPath    = Join-Path $RepoRoot 'backend\pom.xml'
+
 if ($baseVersion -ne $CurrentVersion) {
     Set-PackageJsonVersion -Path $rootPkgPath   -NewVersion $baseVersion
+    Set-PackageJsonVersion -Path $feReactPath   -NewVersion $baseVersion
     Set-PackageJsonVersion -Path $clientPkgPath -NewVersion $baseVersion
-    Write-Host "Pre-bump sync: $CurrentVersion -> $baseVersion" -ForegroundColor DarkGray
+    Set-PomXmlVersion      -Path $pomXmlPath    -NewVersion $baseVersion
+    Write-Host "Pre-bump sync: $CurrentVersion -> $baseVersion (4-way)" -ForegroundColor DarkGray
 }
 
-# Run npm version patch in both directories (uses build-common.ps1 helper)
-Write-Host "Running: npm version patch --no-git-tag-version (in $RepoRoot)" -ForegroundColor DarkGray
+# Run npm version patch in 3 directories (uses build-common.ps1 helper)
+Write-Host "Running: npm version patch --no-git-tag-version (root)" -ForegroundColor DarkGray
 $newRootVersion = Invoke-NpmVersionPatch -Cwd $RepoRoot
 Write-Host "  Root: v$newRootVersion" -ForegroundColor Green
 
-$clientDir = Join-Path $RepoRoot "penztar-client"
-Write-Host "Running: npm version patch --no-git-tag-version (in $clientDir)" -ForegroundColor DarkGray
+$feReactDir = Join-Path $RepoRoot 'frontend-react'
+Write-Host "Running: npm version patch --no-git-tag-version (frontend-react)" -ForegroundColor DarkGray
+$newFeReactVersion = Invoke-NpmVersionPatch -Cwd $feReactDir
+Write-Host "  Frontend-react: v$newFeReactVersion" -ForegroundColor Green
+
+$clientDir = Join-Path $RepoRoot 'penztar-client'
+Write-Host "Running: npm version patch --no-git-tag-version (penztar-client)" -ForegroundColor DarkGray
 $newClientVersion = Invoke-NpmVersionPatch -Cwd $clientDir
 Write-Host "  Client: v$newClientVersion" -ForegroundColor Green
 
-# Sanity check: both files agree
-if ($newRootVersion -ne $newClientVersion) {
-    Write-Error "Version mismatch after bump: root=$newRootVersion, client=$newClientVersion"
+# Update backend/pom.xml manually (no Maven CLI needed; regex-based update)
+Write-Host "Updating: backend/pom.xml top-level <version>" -ForegroundColor DarkGray
+Set-PomXmlVersion -Path $pomXmlPath -NewVersion $newRootVersion
+$newPomVersion = Get-PomXmlVersion -Path $pomXmlPath
+Write-Host "  Backend pom.xml: $newPomVersion" -ForegroundColor Green
+
+# Sanity check: ALL 4 locations must agree
+$postVersions = Get-AllProjectVersions -RepoRoot $RepoRoot
+if (-not $postVersions.IsConsistent) {
+    Write-Host "ERROR: Version drift after bump:" -ForegroundColor Red
+    Write-Host "  Root:           $($postVersions.Root)" -ForegroundColor Red
+    Write-Host "  Frontend-react: $($postVersions.FrontendReact)" -ForegroundColor Red
+    Write-Host "  Penztar-client: $($postVersions.PenztarClient)" -ForegroundColor Red
+    Write-Host "  Backend pom:    $($postVersions.BackendPom)" -ForegroundColor Red
     exit 2
 }
 
-Write-Host "Auto-patch complete: $CurrentVersion -> $newRootVersion" -ForegroundColor Green
+Write-Host "Auto-patch complete: $CurrentVersion -> $newRootVersion (4-way sync OK)" -ForegroundColor Green
 Write-Output "BUMPED_VERSION=$newRootVersion"
 exit 0

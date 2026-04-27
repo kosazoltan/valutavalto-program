@@ -138,6 +138,9 @@ backend_deployment/
 
 # Installer build artifacts (nagy fájlok + secrets)
 installer/build/
+# Release artifact bundle (binary EXEs - csak GitHub Release-en publikalva)
+dist/release/*.exe
+dist/release/*.exe.sha256
 
 # Environment backup/local files (may contain secrets)
 *.env.backup
