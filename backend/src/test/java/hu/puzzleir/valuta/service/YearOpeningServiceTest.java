@@ -121,9 +121,10 @@ class YearOpeningServiceTest {
     // =========================================================================
 
     @Test
-    @DisplayName("Idempotencia: már futott az adott évre → IllegalStateException")
+    @DisplayName("Idempotencia: már futott az adott évre → IllegalStateException (companyId-scoped kulcs)")
     void executeYearOpening_alreadyExecuted_throws() {
-        when(auditLogService.existsByActionAndReference("YEAR_OPENING", String.valueOf(currentYear)))
+        // F1 fix: az idempotency-key uj formatuma <companyId>:<year>
+        when(auditLogService.existsByActionAndReference("YEAR_OPENING", COMPANY_ID + ":" + currentYear))
             .thenReturn(true);
 
         assertThatThrownBy(() -> yearOpeningService.executeYearOpening(currentYear))
@@ -136,16 +137,17 @@ class YearOpeningServiceTest {
     }
 
     @Test
-    @DisplayName("Idempotencia: első futásnál audit log mentődik")
+    @DisplayName("Idempotencia: első futásnál audit log mentődik (companyId-scoped reference)")
     void executeYearOpening_firstRun_auditLogSaved() {
         setupHappyPath(currentYear);
 
         yearOpeningService.executeYearOpening(currentYear);
 
+        // F1 fix: az audit log reference mezo most <companyId>:<year> formatumu
         verify(auditLogService).log(
             eq("YEAR_OPENING"),
             contains(String.valueOf(currentYear)),
-            eq(String.valueOf(currentYear))
+            eq(COMPANY_ID + ":" + currentYear)
         );
     }
 
@@ -302,11 +304,11 @@ class YearOpeningServiceTest {
     // =========================================================================
 
     @Test
-    @DisplayName("getLastExecution: egyik sem futott → canExecute mindkettőre true")
+    @DisplayName("getLastExecution: egyik sem futott → canExecute mindkettőre true (companyId-scoped kulcs)")
     void getLastExecution_nothingRan_canExecuteBoth() {
-        when(auditLogService.existsByActionAndReference("YEAR_OPENING", String.valueOf(currentYear)))
+        when(auditLogService.existsByActionAndReference("YEAR_OPENING", COMPANY_ID + ":" + currentYear))
             .thenReturn(false);
-        when(auditLogService.existsByActionAndReference("YEAR_OPENING", String.valueOf(currentYear + 1)))
+        when(auditLogService.existsByActionAndReference("YEAR_OPENING", COMPANY_ID + ":" + (currentYear + 1)))
             .thenReturn(false);
 
         Map<String, Object> status = yearOpeningService.getLastExecution();
@@ -318,11 +320,11 @@ class YearOpeningServiceTest {
     }
 
     @Test
-    @DisplayName("getLastExecution: aktuális évre futott → canExecuteForCurrentYear false")
+    @DisplayName("getLastExecution: aktuális évre futott → canExecuteForCurrentYear false (companyId-scoped kulcs)")
     void getLastExecution_currentYearRan_cannotRepeat() {
-        when(auditLogService.existsByActionAndReference("YEAR_OPENING", String.valueOf(currentYear)))
+        when(auditLogService.existsByActionAndReference("YEAR_OPENING", COMPANY_ID + ":" + currentYear))
             .thenReturn(true);
-        when(auditLogService.existsByActionAndReference("YEAR_OPENING", String.valueOf(currentYear + 1)))
+        when(auditLogService.existsByActionAndReference("YEAR_OPENING", COMPANY_ID + ":" + (currentYear + 1)))
             .thenReturn(false);
 
         Map<String, Object> status = yearOpeningService.getLastExecution();
@@ -337,7 +339,8 @@ class YearOpeningServiceTest {
     // =========================================================================
 
     private void setupHappyPath(int targetYear) {
-        when(auditLogService.existsByActionAndReference("YEAR_OPENING", String.valueOf(targetYear)))
+        // F1 fix: az idempotency-key uj formatuma <companyId>:<year>
+        when(auditLogService.existsByActionAndReference("YEAR_OPENING", COMPANY_ID + ":" + targetYear))
             .thenReturn(false);
         when(branchRepository.findByCompanyId(COMPANY_ID)).thenReturn(List.of());
         when(circularSequenceRepository.findByCompanyId(COMPANY_ID)).thenReturn(List.of());

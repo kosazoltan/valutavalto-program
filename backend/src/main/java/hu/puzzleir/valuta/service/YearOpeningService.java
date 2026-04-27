@@ -48,7 +48,9 @@ public class YearOpeningService {
     private final AuditLogService auditLogService;
 
     /**
-     * Teljes év-nyitó workflow végrehajtása.
+     * Teljes év-nyitó workflow végrehajtása — manuális, user-context alapú indítás.
+     * A {@link SecurityUtils#getCurrentCompanyId()} és {@link SecurityUtils#getCurrentWorkerCode()}
+     * adja a tenant kontextust.
      *
      * @param targetYear Az új év (pl. 2027)
      * @return Részletes eredmény-térkép
@@ -57,6 +59,28 @@ public class YearOpeningService {
     public Map<String, Object> executeYearOpening(int targetYear) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         String operator = SecurityUtils.getCurrentWorkerCode();
+        return executeYearOpeningInternal(targetYear, companyId, operator);
+    }
+
+    /**
+     * Teljes év-nyitó workflow végrehajtása — explicit companyId paraméterrel,
+     * automata scheduler/system kontextushoz, ahol nincs Spring Security user session.
+     *
+     * @param targetYear Az új év (pl. 2027)
+     * @param companyId  Annak a cégnek az ID-je, amelyikre az év-nyitó fut
+     * @param operatorLabel Naplóban megjelenő operator (pl. "SCHEDULER" vagy "system-cron")
+     * @return Részletes eredmény-térkép
+     */
+    @Transactional
+    public Map<String, Object> executeYearOpening(int targetYear, UUID companyId, String operatorLabel) {
+        if (companyId == null) {
+            throw new IllegalArgumentException("executeYearOpening(targetYear, companyId, ...) - companyId nem lehet null");
+        }
+        String operator = (operatorLabel == null || operatorLabel.isBlank()) ? "SYSTEM" : operatorLabel;
+        return executeYearOpeningInternal(targetYear, companyId, operator);
+    }
+
+    private Map<String, Object> executeYearOpeningInternal(int targetYear, UUID companyId, String operator) {
         LocalDateTime now = LocalDateTime.now();
 
         log.info("ÉV-NYITÓ INDÍTÁS: targetYear={}, company={}, operator={}", targetYear, companyId, operator);
@@ -69,10 +93,12 @@ public class YearOpeningService {
                     + (currentYear + 1) + ") évre futtatható. Kért: " + targetYear);
         }
 
-        // B2 FIX: Idempotencia — ellenőrzés, hogy az adott évre már futott-e
-        if (auditLogService.existsByActionAndReference(YEAR_OPENING_ACTION, String.valueOf(targetYear))) {
+        // B2 FIX: Idempotencia — ellenőrzés, hogy az adott company-ra/évre már futott-e
+        // (a referencia formátum: "<companyId>:<targetYear>", így ugyanaz a year külön company-ra független)
+        String idempotencyRef = companyId + ":" + targetYear;
+        if (auditLogService.existsByActionAndReference(YEAR_OPENING_ACTION, idempotencyRef)) {
             throw new IllegalStateException(
-                "Év-nyitó már végrehajtva a(z) " + targetYear + ". évre! Duplikált futtatás nem engedélyezett.");
+                "Év-nyitó már végrehajtva a(z) " + companyId + " cégre, " + targetYear + ". évre! Duplikált futtatás nem engedélyezett.");
         }
 
         // B1/B3 FIX: Tenant-izolált branch ID-k lekérése
@@ -105,11 +131,11 @@ public class YearOpeningService {
         result.put("dailyClosingsArchived", closingsArchived);
         log.info("ÉV-NYITÓ 4/4: {} napi zárás archiválva ({}. évig)", closingsArchived, targetYear - 2);
 
-        // Audit log (egyben idempotencia-jelölő)
+        // Audit log (egyben idempotencia-jelölő — referenciakulcs: "<companyId>:<targetYear>")
         auditLogService.log(YEAR_OPENING_ACTION,
-            String.format("Év-nyitó végrehajtva: %d. év, operator=%s, circularSeq=%d, receiptSeq=%d, circulars=%d, closings=%d",
-                targetYear, operator, circularSeqReset, receiptSeqReset, circularsArchived, closingsArchived),
-            String.valueOf(targetYear));
+            String.format("Év-nyitó végrehajtva: %d. év, company=%s, operator=%s, circularSeq=%d, receiptSeq=%d, circulars=%d, closings=%d",
+                targetYear, companyId, operator, circularSeqReset, receiptSeqReset, circularsArchived, closingsArchived),
+            idempotencyRef);
 
         result.put("completedAt", LocalDateTime.now().toString());
         result.put("status", "SUCCESS");
@@ -125,14 +151,15 @@ public class YearOpeningService {
      */
     @Transactional(readOnly = true)
     public Map<String, Object> getLastExecution() {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         int currentYear = LocalDate.now().getYear();
         Map<String, Object> status = new LinkedHashMap<>();
         status.put("currentYear", currentYear);
 
         boolean ranForCurrentYear = auditLogService.existsByActionAndReference(
-            YEAR_OPENING_ACTION, String.valueOf(currentYear));
+            YEAR_OPENING_ACTION, companyId + ":" + currentYear);
         boolean ranForNextYear = auditLogService.existsByActionAndReference(
-            YEAR_OPENING_ACTION, String.valueOf(currentYear + 1));
+            YEAR_OPENING_ACTION, companyId + ":" + (currentYear + 1));
 
         status.put("executedForCurrentYear", ranForCurrentYear);
         status.put("executedForNextYear", ranForNextYear);
