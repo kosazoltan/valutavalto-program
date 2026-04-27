@@ -19,6 +19,13 @@ concurrency:
   group: deploy-hetzner-production
   cancel-in-progress: false
 
+# Audit-iter3 P1 (2026-04-27, CodeQL actions/missing-workflow-permissions fix):
+# Default `contents: read` minden job-ra. Az SSH-alapu deploy a secrets-szel megy
+# (HETZNER_SSH_PRIVATE_KEY), nem igenyel `contents: write` token-t. Ha specifikus
+# job tobbet igenyel, ott jobszinten override-olando.
+permissions:
+  contents: read
+
 env:
   JAVA_VERSION: '21'
   VPS_DEPLOY_PATH: /opt/valutavalto/backend

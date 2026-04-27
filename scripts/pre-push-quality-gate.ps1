@@ -76,9 +76,21 @@ if ($SkipFrontend) {
         try {
             $hasTest = (Test-Path "package.json") -and ((Get-Content package.json -Raw) -match '"test"')
             if ($hasTest) {
-                & npm test -- --run --reporter=dot 2>&1 | Select-Object -Last 100
-                if ($LASTEXITCODE -eq 0) { Write-OK "vitest: 0 failure" }
-                else { Write-Warn "vitest FAIL (optional)"; $warnings += "frontend vitest" }
+                # AUDIT (audit-NO-GO-iter3 P1, 2026-04-27): a vitest stderr warningokat
+                # ($ErrorActionPreference='Stop' alatt) korabban terminating error-na alakitotta
+                # es a script megszakadt. Lokalis $ErrorActionPreference='Continue' a hivas
+                # idejere + $LASTEXITCODE alapjan ertekeljuk a sikert.
+                $prevEAP = $ErrorActionPreference
+                $ErrorActionPreference = 'Continue'
+                try {
+                    $vitestOutput = & npm test -- --run --reporter=dot 2>&1
+                    $vitestExitCode = $LASTEXITCODE
+                    $vitestOutput | Select-Object -Last 100 | ForEach-Object { Write-Host $_ }
+                } finally {
+                    $ErrorActionPreference = $prevEAP
+                }
+                if ($vitestExitCode -eq 0) { Write-OK "vitest: 0 failure (act/router warningok elnyomva, exit=0)" }
+                else { Write-Warn "vitest FAIL (exit=$vitestExitCode, optional)"; $warnings += "frontend vitest" }
             } else { Write-Host "  (nincs test config)" -ForegroundColor DarkGray }
         } finally { Pop-Location }
     }
