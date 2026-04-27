@@ -77,9 +77,13 @@ public class CameraEncryptionService {
             os.write(encrypted);
         }
 
+        // CodeQL java/uncontrolled-arithmetic fix: long-keppen szamoljuk az osszeget
+        // hogy az encrypted.length (potencialisan nagy file size) + nonce.length ne
+        // okozzon int overflow-ot a logoloasban.
+        long totalEncryptedSize = (long) nonce.length + encrypted.length;
         log.debug("Szegmens titkosítva: {} → {} ({} byte → {} byte)",
             plainFile.getFileName(), encryptedFile.getFileName(),
-            plainData.length, nonce.length + encrypted.length);
+            plainData.length, totalEncryptedSize);
 
         return Base64.getEncoder().encodeToString(nonce);
     }
