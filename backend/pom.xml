@@ -84,6 +84,18 @@
             <scope>runtime</scope>
         </dependency>
         
+        <!-- Spring Boot 4 -> Jackson 2 stop-gap kompatibilitas modul.
+             Spring Boot 4 Jackson 3-ra valtott (`tools.jackson.*`), de a meglevo
+             39 file-on `com.fasterxml.jackson.*` import-ok vannak. A migration
+             guide szerint a `spring-boot-jackson2` modul + `spring.jackson.use-
+             jackson2-defaults=true` lehetove teszi a Jackson 2 hasznalatat
+             Spring Boot 4-tel parhuzamosan. Egy kovetkezo nagy refaktor PR-ben
+             a teljes migracio mehet (Jackson 2 -> 3, ezt a stop-gap-et torolni). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-jackson2</artifactId>
+        </dependency>
+
         <!-- Flyway Migration -->
         <!-- Spring Boot 4.0+ koteleziti a starter-flyway-t (a flyway-core magaban
              nem auto-konfiguralja a Flyway-t). Lasd: SB4 migration guide. -->
