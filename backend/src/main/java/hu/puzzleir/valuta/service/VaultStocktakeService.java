@@ -93,18 +93,20 @@ public class VaultStocktakeService {
     }
 
     public VaultStocktakeItem setItemActual(UUID itemId, Integer actualQuantity, String note) {
+        // Tenant-first: eloszor a session-t hivjuk le tenant-szuressel az item-en keresztul,
+        // hogy IDOR-t megakadalyozzuk. Az item.getSession().getCompany() kontextusban
+        // mar tenant-validalt session jon vissza.
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         VaultStocktakeItem item = itemRepo.findById(itemId)
+                .filter(i -> i.getSession() != null
+                        && i.getSession().getCompany() != null
+                        && companyId.equals(i.getSession().getCompany().getId()))
                 .orElseThrow(() -> new ResourceNotFoundException("Leltar tetel nem talalhato: " + itemId));
 
         VaultStocktakeSession session = item.getSession();
         if (session.getStatus() != VaultStocktakeSession.Status.OPEN
                 && session.getStatus() != VaultStocktakeSession.Status.IN_PROGRESS) {
             throw new ValidationException("Felvetel csak OPEN vagy IN_PROGRESS statuszu sessionre. Aktualis: " + session.getStatus());
-        }
-
-        UUID companyId = SecurityUtils.getCurrentCompanyId();
-        if (!session.getCompany().getId().equals(companyId)) {
-            throw new ValidationException("Cross-tenant tiltott");
         }
 
         if (actualQuantity == null || actualQuantity < 0) {
@@ -128,9 +130,9 @@ public class VaultStocktakeService {
     }
 
     public VaultStocktakeSession moveToReview(UUID sessionId) {
-        VaultStocktakeSession session = sessionRepo.findByIdWithItems(sessionId)
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        VaultStocktakeSession session = sessionRepo.findByIdAndCompanyIdWithItems(sessionId, companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Session nem talalhato: " + sessionId));
-        checkTenantAccess(session);
 
         if (session.getStatus() != VaultStocktakeSession.Status.IN_PROGRESS
                 && session.getStatus() != VaultStocktakeSession.Status.OPEN) {
@@ -162,9 +164,9 @@ public class VaultStocktakeService {
             throw new ValidationException("Leltar lezarasahoz FOERTEKTAR/UGYVEZETO/ADMIN/MANAGER jog kell");
         }
 
-        VaultStocktakeSession session = sessionRepo.findByIdWithItems(sessionId)
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        VaultStocktakeSession session = sessionRepo.findByIdAndCompanyIdWithItems(sessionId, companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Session nem talalhato: " + sessionId));
-        checkTenantAccess(session);
 
         if (session.getStatus() != VaultStocktakeSession.Status.REVIEW) {
             throw new ValidationException("Lezaras csak REVIEW fazisbol. Aktualis: " + session.getStatus());
@@ -191,9 +193,9 @@ public class VaultStocktakeService {
     }
 
     public VaultStocktakeSession cancelSession(UUID sessionId, String reason) {
-        VaultStocktakeSession session = sessionRepo.findById(sessionId)
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        VaultStocktakeSession session = sessionRepo.findByIdAndCompanyId(sessionId, companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Session nem talalhato: " + sessionId));
-        checkTenantAccess(session);
 
         if (session.getStatus() == VaultStocktakeSession.Status.CLOSED) {
             throw new ValidationException("Lezart sessiont nem lehet megszakitani");
@@ -221,10 +223,9 @@ public class VaultStocktakeService {
 
     @Transactional(readOnly = true)
     public VaultStocktakeSession getSession(UUID sessionId) {
-        VaultStocktakeSession session = sessionRepo.findByIdWithItems(sessionId)
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return sessionRepo.findByIdAndCompanyIdWithItems(sessionId, companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Session nem talalhato: " + sessionId));
-        checkTenantAccess(session);
-        return session;
     }
 
     @Transactional(readOnly = true)
@@ -256,6 +257,12 @@ public class VaultStocktakeService {
                 .build();
     }
 
+    /**
+     * Defense-in-depth: ha valaki a deprecated findByIdWithItems-en hiv, vagy egyebkent
+     * tenant-fuggetlen route-on jon a session, ez utolagos validacio.
+     * Az uj public metodusok mar tenant-scoped query-t hasznalnak, igy ezt nem hivjak.
+     */
+    @SuppressWarnings("unused") // megtartva backward-compat es defense-in-depth celokra
     private void checkTenantAccess(VaultStocktakeSession session) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         if (!session.getCompany().getId().equals(companyId)) {

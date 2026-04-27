@@ -121,9 +121,11 @@ class YearOpeningServiceTest {
     // =========================================================================
 
     @Test
-    @DisplayName("Idempotencia: már futott az adott évre → IllegalStateException")
+    @DisplayName("Idempotencia: már futott az adott évre → IllegalStateException (companyId-scoped kulcs)")
     void executeYearOpening_alreadyExecuted_throws() {
-        when(auditLogService.existsByActionAndReference("YEAR_OPENING", String.valueOf(currentYear)))
+        // F1 fix: az idempotency-key uj formatuma <companyId>:<year>
+        // iter5 fix (Codex P1/1): existsByActionAndReferenceForCompany hasznalata
+        when(auditLogService.existsByActionAndReferenceForCompany("YEAR_OPENING", COMPANY_ID + ":" + currentYear, COMPANY_ID))
             .thenReturn(true);
 
         assertThatThrownBy(() -> yearOpeningService.executeYearOpening(currentYear))
@@ -136,16 +138,19 @@ class YearOpeningServiceTest {
     }
 
     @Test
-    @DisplayName("Idempotencia: első futásnál audit log mentődik")
+    @DisplayName("Idempotencia: első futásnál audit log mentődik (companyId-scoped reference)")
     void executeYearOpening_firstRun_auditLogSaved() {
         setupHappyPath(currentYear);
 
         yearOpeningService.executeYearOpening(currentYear);
 
-        verify(auditLogService).log(
+        // F1 fix: az audit log reference mezo most <companyId>:<year> formatumu
+        // iter5 fix (Codex P1/1): logForCompany hivas explicit companyId-vel (ne null kerejen)
+        verify(auditLogService).logForCompany(
             eq("YEAR_OPENING"),
             contains(String.valueOf(currentYear)),
-            eq(String.valueOf(currentYear))
+            eq(COMPANY_ID + ":" + currentYear),
+            eq(COMPANY_ID)
         );
     }
 
@@ -160,7 +165,7 @@ class YearOpeningServiceTest {
         Branch b1 = new Branch(); b1.setId(BRANCH_ID_1);
         Branch b2 = new Branch(); b2.setId(BRANCH_ID_2);
         when(branchRepository.findByCompanyId(COMPANY_ID)).thenReturn(List.of(b1, b2));
-        when(auditLogService.existsByActionAndReference(anyString(), anyString())).thenReturn(false);
+        when(auditLogService.existsByActionAndReferenceForCompany(anyString(), anyString(), any(UUID.class))).thenReturn(false);
         when(circularSequenceRepository.findByCompanyId(COMPANY_ID)).thenReturn(List.of());
         when(receiptSequenceRepository.findByBranchIdIn(List.of(BRANCH_ID_1, BRANCH_ID_2))).thenReturn(List.of());
         when(circularService.archiveByYear(eq(COMPANY_ID), anyInt())).thenReturn(0);
@@ -183,7 +188,7 @@ class YearOpeningServiceTest {
     @DisplayName("Tenant-izolálás: üres branch lista esetén receipt és closing reset kihagyva (0 visszaadva)")
     void executeYearOpening_noBranches_receiptAndClosingSkipped() {
         when(branchRepository.findByCompanyId(COMPANY_ID)).thenReturn(List.of());
-        when(auditLogService.existsByActionAndReference(anyString(), anyString())).thenReturn(false);
+        when(auditLogService.existsByActionAndReferenceForCompany(anyString(), anyString(), any(UUID.class))).thenReturn(false);
         when(circularSequenceRepository.findByCompanyId(COMPANY_ID)).thenReturn(List.of());
         when(circularService.archiveByYear(eq(COMPANY_ID), anyInt())).thenReturn(0);
 
@@ -225,7 +230,7 @@ class YearOpeningServiceTest {
     void executeYearOpening_receiptSequenceReset_to100000() {
         Branch b1 = new Branch(); b1.setId(BRANCH_ID_1);
         when(branchRepository.findByCompanyId(COMPANY_ID)).thenReturn(List.of(b1));
-        when(auditLogService.existsByActionAndReference(anyString(), anyString())).thenReturn(false);
+        when(auditLogService.existsByActionAndReferenceForCompany(anyString(), anyString(), any(UUID.class))).thenReturn(false);
         when(circularSequenceRepository.findByCompanyId(COMPANY_ID)).thenReturn(List.of());
         when(circularService.archiveByYear(eq(COMPANY_ID), anyInt())).thenReturn(0);
         when(dailyClosingArchiveService.archiveBeforeYear(anyList(), anyInt())).thenReturn(0);
@@ -270,7 +275,7 @@ class YearOpeningServiceTest {
     void executeYearOpening_dailyClosingArchive_twoYearsOld() {
         Branch b1 = new Branch(); b1.setId(BRANCH_ID_1);
         when(branchRepository.findByCompanyId(COMPANY_ID)).thenReturn(List.of(b1));
-        when(auditLogService.existsByActionAndReference(anyString(), anyString())).thenReturn(false);
+        when(auditLogService.existsByActionAndReferenceForCompany(anyString(), anyString(), any(UUID.class))).thenReturn(false);
         when(circularSequenceRepository.findByCompanyId(COMPANY_ID)).thenReturn(List.of());
         when(receiptSequenceRepository.findByBranchIdIn(anyList())).thenReturn(List.of());
         when(circularService.archiveByYear(eq(COMPANY_ID), anyInt())).thenReturn(0);
@@ -302,11 +307,15 @@ class YearOpeningServiceTest {
     // =========================================================================
 
     @Test
-    @DisplayName("getLastExecution: egyik sem futott → canExecute mindkettőre true")
+    @DisplayName("getLastExecution: egyik sem futott → canExecute mindkettőre true (companyId-scoped kulcs)")
     void getLastExecution_nothingRan_canExecuteBoth() {
-        when(auditLogService.existsByActionAndReference("YEAR_OPENING", String.valueOf(currentYear)))
+        when(auditLogService.existsByActionAndReferenceForCompany("YEAR_OPENING", COMPANY_ID + ":" + currentYear, COMPANY_ID))
             .thenReturn(false);
-        when(auditLogService.existsByActionAndReference("YEAR_OPENING", String.valueOf(currentYear + 1)))
+        when(auditLogService.existsByActionAndReferenceForCompany("YEAR_OPENING", COMPANY_ID + ":" + (currentYear + 1), COMPANY_ID))
+            .thenReturn(false);
+        when(auditLogService.existsByActionAndReferenceForCompany("YEAR_OPENING", String.valueOf(currentYear), COMPANY_ID))
+            .thenReturn(false);
+        when(auditLogService.existsByActionAndReferenceForCompany("YEAR_OPENING", String.valueOf(currentYear + 1), COMPANY_ID))
             .thenReturn(false);
 
         Map<String, Object> status = yearOpeningService.getLastExecution();
@@ -318,11 +327,11 @@ class YearOpeningServiceTest {
     }
 
     @Test
-    @DisplayName("getLastExecution: aktuális évre futott → canExecuteForCurrentYear false")
+    @DisplayName("getLastExecution: aktuális évre futott → canExecuteForCurrentYear false (companyId-scoped kulcs)")
     void getLastExecution_currentYearRan_cannotRepeat() {
-        when(auditLogService.existsByActionAndReference("YEAR_OPENING", String.valueOf(currentYear)))
+        when(auditLogService.existsByActionAndReferenceForCompany("YEAR_OPENING", COMPANY_ID + ":" + currentYear, COMPANY_ID))
             .thenReturn(true);
-        when(auditLogService.existsByActionAndReference("YEAR_OPENING", String.valueOf(currentYear + 1)))
+        when(auditLogService.existsByActionAndReferenceForCompany("YEAR_OPENING", COMPANY_ID + ":" + (currentYear + 1), COMPANY_ID))
             .thenReturn(false);
 
         Map<String, Object> status = yearOpeningService.getLastExecution();
@@ -337,7 +346,8 @@ class YearOpeningServiceTest {
     // =========================================================================
 
     private void setupHappyPath(int targetYear) {
-        when(auditLogService.existsByActionAndReference("YEAR_OPENING", String.valueOf(targetYear)))
+        // F1 fix: az idempotency-key uj formatuma <companyId>:<year>
+        when(auditLogService.existsByActionAndReferenceForCompany("YEAR_OPENING", COMPANY_ID + ":" + targetYear, COMPANY_ID))
             .thenReturn(false);
         when(branchRepository.findByCompanyId(COMPANY_ID)).thenReturn(List.of());
         when(circularSequenceRepository.findByCompanyId(COMPANY_ID)).thenReturn(List.of());

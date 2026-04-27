@@ -137,34 +137,39 @@ public class VaultStockFlowService {
     }
 
     /**
-     * Branch cash_balance csokkentese. Ha nincs rekord, nem romboljuk el a rendszert
-     * (log.warn), csak skip -- a penztar az adott valutabol mar nem rendelkezik hivatalosan.
+     * Branch cash_balance csokkentese.
+     * <p>
+     * Eszter audit-iter4 (2026-04-27): a korabbi `log.warn -> return` skip logika reszleges konyvelest
+     * okozott (a vault stock no, de a branch cash_balance nem csokken). Ez P1 penzugyi
+     * integritas-hiba volt. A vísszamenoleges javitas: minden hianyzo referencia (branch, valuta, balance)
+     * eseten ResourceNotFoundException-t dobunk, igy a Spring `@Transactional(rollbackFor = Exception.class)`
+     * a teljes vault flow muveletet visszagorgeti.
+     * <p>
+     * Megjegyzes: az 'elegtelen egyenleg' (currentBalance < amount) eset uzleti szabaly szerint
+     * NEM hiba (a penztaros mar fizikailag elkuldte a penzt a vault-ba), de log.warn-nel jelezzuk
+     * hogy a balance negativba megy. A subtractBalance vegrehajtasa idempotens es felelos
+     * ezert az allapotert.
      */
     private void decrementBranchCashBalance(UUID companyId, String branchCode,
                                               String currencyCode, BigDecimal amount) {
-        Optional<Branch> branchOpt = branchRepository.findByCompanyIdAndCode(companyId, branchCode);
-        if (branchOpt.isEmpty()) {
-            log.warn("decrementBranchCashBalance: branch nem talalhato ({}, {}), skip", branchCode, companyId);
-            return;
-        }
-        Optional<Currency> currencyOpt = currencyRepository.findByCode(currencyCode);
-        if (currencyOpt.isEmpty()) {
-            log.warn("decrementBranchCashBalance: valuta nem talalhato ({}), skip", currencyCode);
-            return;
-        }
-        UUID branchId = branchOpt.get().getId();
-        Long currencyId = currencyOpt.get().getId();
+        Branch branch = branchRepository.findByCompanyIdAndCode(companyId, branchCode)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Branch nem talalhato (" + branchCode + ", company=" + companyId + ") a vault flow-hoz"));
+        Currency currency = currencyRepository.findByCode(currencyCode)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Valuta nem talalhato (" + currencyCode + ") a vault flow-hoz"));
+        UUID branchId = branch.getId();
+        Long currencyId = currency.getId();
 
-        Optional<CashBalance> balanceOpt = cashBalanceRepository.findByBranchIdAndCurrencyId(branchId, currencyId);
-        if (balanceOpt.isEmpty()) {
-            log.warn("decrementBranchCashBalance: cash_balance nem talalhato ({}, {}), skip", branchCode, currencyCode);
-            return;
-        }
-        CashBalance balance = balanceOpt.get();
+        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyId(branchId, currencyId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "cash_balance nem talalhato (branch=" + branchCode + ", currency=" + currencyCode
+                                + ") - V112 ota minden branch-nek inicializalva kell lennie"));
         if (balance.getCurrentBalance().compareTo(amount) < 0) {
-            log.warn("decrementBranchCashBalance: elegtelen egyenleg ({} {} < {}), folytatva", 
+            log.warn("decrementBranchCashBalance: elegtelen egyenleg ({} {} < {}), folytatva (penztaros mar elkuldte fizikailag)",
                     currencyCode, balance.getCurrentBalance(), amount);
-            // NEM throw-olunk: a penztar mar fizikailag elkuldte a penzt, csak nyilvantartasi
+            // Uzleti szabaly: a penztaros mar fizikailag elkuldte a penzt, ezert a balance negativba mehet.
+            // A vault flow rollback-elhetetlen ezen a ponton (a fizikai penz mar atadva).
         }
         balance.subtractBalance(amount);
         balance.setLastTransactionAt(LocalDateTime.now());
@@ -173,26 +178,24 @@ public class VaultStockFlowService {
 
     private void incrementBranchCashBalance(UUID companyId, String branchCode,
                                               String currencyCode, BigDecimal amount) {
-        Optional<Branch> branchOpt = branchRepository.findByCompanyIdAndCode(companyId, branchCode);
-        if (branchOpt.isEmpty()) {
-            log.warn("incrementBranchCashBalance: branch nem talalhato ({}, {}), skip", branchCode, companyId);
-            return;
-        }
-        Optional<Currency> currencyOpt = currencyRepository.findByCode(currencyCode);
-        if (currencyOpt.isEmpty()) {
-            log.warn("incrementBranchCashBalance: valuta nem talalhato ({}), skip", currencyCode);
-            return;
-        }
-        UUID branchId = branchOpt.get().getId();
-        Long currencyId = currencyOpt.get().getId();
+        Branch branch = branchRepository.findByCompanyIdAndCode(companyId, branchCode)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Branch nem talalhato (" + branchCode + ", company=" + companyId + ") a vault flow-hoz"));
+        Currency currency = currencyRepository.findByCode(currencyCode)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Valuta nem talalhato (" + currencyCode + ") a vault flow-hoz"));
+        UUID branchId = branch.getId();
+        Long currencyId = currency.getId();
 
-        Company company = companyRepository.findById(companyId).orElseThrow();
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Company nem talalhato: " + companyId));
 
         CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyId(branchId, currencyId)
                 .orElseGet(() -> CashBalance.builder()
                         .company(company)
-                        .branch(branchOpt.get())
-                        .currency(currencyOpt.get())
+                        .branch(branch)
+                        .currency(currency)
                         .currentBalance(BigDecimal.ZERO)
                         .openingBalance(BigDecimal.ZERO)
                         .build());

@@ -1,18 +1,12 @@
 package hu.puzzleir.valuta.config;
 
 import hu.puzzleir.valuta.entity.Company;
-import hu.puzzleir.valuta.repository.AuditLogRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
-import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.YearOpeningService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.context.SecurityContext;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -39,7 +33,6 @@ public class YearOpeningScheduler {
 
     private final YearOpeningService yearOpeningService;
     private final CompanyRepository companyRepository;
-    private final AuditLogRepository auditLogRepository;
 
     @Value("${valuta.scheduler.year-opening.enabled:true}")
     private boolean enabled;
@@ -68,18 +61,13 @@ public class YearOpeningScheduler {
 
         for (Company company : companies) {
             try {
-                runWithSystemAuth(company, () -> {
-                    try {
-                        Map<String, Object> result = yearOpeningService.executeYearOpening(currentYear);
-                        log.info("Evnyito SIKERES - company={}, result={}", company.getName(), result);
-                    } catch (IllegalStateException e) {
-                        // Mar futott ebben az evben - idempotens skip
-                        log.info("Evnyito SKIP (mar futott) - company={}: {}", company.getName(), e.getMessage());
-                        throw new SkippedException();
-                    }
-                });
+                Map<String, Object> result = yearOpeningService.executeYearOpening(
+                        currentYear, company.getId(), "SYSTEM_SCHEDULER");
+                log.info("Evnyito SIKERES - company={}, result={}", company.getName(), result);
                 successCount++;
-            } catch (SkippedException ignored) {
+            } catch (IllegalStateException alreadyDone) {
+                // Mar futott ebben az evben - idempotens skip
+                log.info("Evnyito SKIP (mar futott) - company={}: {}", company.getName(), alreadyDone.getMessage());
                 skippedCount++;
             } catch (Exception e) {
                 log.error("Evnyito HIBA - company={}: {}", company.getName(), e.getMessage(), e);
@@ -89,34 +77,5 @@ public class YearOpeningScheduler {
 
         log.info("YearOpeningScheduler osszesen: {} ceg - SIKERES={}, SKIP={}, HIBA={}",
                 companies.size(), successCount, skippedCount, errorCount);
-    }
-
-    /**
-     * System-auth kontextusban futtatas - a scheduler-hez nincs user session,
-     * ezert SYSTEM user + ADMIN role kontextust allitunk be.
-     * Ez biztositja hogy a SecurityUtils.getCurrentCompanyId() / getCurrentWorkerCode()
-     * mukodik a YearOpeningService-ben.
-     */
-    private void runWithSystemAuth(Company company, Runnable task) {
-        SecurityContext previous = SecurityContextHolder.getContext();
-        try {
-            AnonymousAuthenticationToken sysAuth = new AnonymousAuthenticationToken(
-                    "scheduler-" + company.getId(),
-                    "SYSTEM_SCHEDULER",
-                    List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))
-            );
-            SecurityContextHolder.getContext().setAuthentication(sysAuth);
-            // Company ID-t ThreadLocal-ban kellene tartani vagy a YearOpeningService-t
-            // ki kell bovíteni companyId parameterrel. Itt egyelore az auditlog-bol
-            // visszaolvassuk az idempotenciahoz (auditlog alapu ellenorzes).
-            task.run();
-        } finally {
-            SecurityContextHolder.setContext(previous);
-        }
-    }
-
-    /** Jelzes arra, hogy a company-ra mar futott az evnyito (nem hiba). */
-    private static class SkippedException extends RuntimeException {
-        SkippedException() { super("Already executed"); }
     }
 }
