@@ -5,6 +5,20 @@ Valutaváltó Pénztár rendszert (PostgreSQL + backend JAR + bundled JRE + Elec
 kliens + NSSM service manager), valamint egy külön **Eltávolító** segédprogramot,
 amivel a régi, törött telepítések gyorsan megtisztíthatók a kollégák gépéről.
 
+## Kapcsolódó dokumentumok
+
+| Doksi | Mit tartalmaz | Célközönség |
+|-------|---------------|-------------|
+| [`docs/BUILD_WINDOWS.md`](../docs/BUILD_WINDOWS.md) | Build gép setup, build folyamat, troubleshooting, 4-way verzió-szinkron | Fejlesztő |
+| [`docs/INSTALL_WINDOWS.md`](../docs/INSTALL_WINDOWS.md) | Végfelhasználói telepítési útmutató | Iroda dolgozó / IT support |
+| [`docs/UPDATE_WINDOWS.md`](../docs/UPDATE_WINDOWS.md) | Frissítési protokoll, backup/restore, rollback | Iroda dolgozó / IT support |
+| [`docs/SECURITY_INSTALLER_CHECKLIST.md`](../docs/SECURITY_INSTALLER_CHECKLIST.md) | Biztonsági ellenőrzőlista build/install/post-install fázisokra | Bence (security) |
+| [`docs/knowledge/installer-wizard-implementation-guide.md`](../docs/knowledge/installer-wizard-implementation-guide.md) | First-Run Setup Wizard részletei | Fejlesztő |
+| [`dist/release/install-notes.md`](../dist/release/install-notes.md) | Verzió-konkrét release notes (SHA256-okkal) | Iroda dolgozó |
+| [`.claude/skills/installer-build/SKILL.md`](../.claude/skills/installer-build/SKILL.md) | Agent skill (auto-loaded gyors buildhez) | AI agent |
+
+> **Ez a `installer/README.md` az installer belső struktúrájának fejlesztői forrásigazsága.** A `docs/`-os doksik a folyamat-specifikus részleteket tartalmazzák.
+
 ---
 
 ## 1. Telepítő fájlok — amit a kollégák kapnak
@@ -12,10 +26,10 @@ amivel a régi, törött telepítések gyorsan megtisztíthatók a kollégák g�
 A build után két Windows telepítő EXE keletkezik, és **ezt a kettőt kell
 szétküldeni** a munkaállomásokra:
 
-| Fájl                                  | Méret    | Mit csinál |
-|---------------------------------------|----------|------------|
-| `Penztar-Eltavolito-2.1.0-*.exe`      | ~60 KB   | Leállítja és eltávolítja a régi BestChange szolgáltatásokat, törli a `C:\ProgramData\BestChange` mappát, a Program Files-t, a tűzfalszabályokat és a registry bejegyzéseket. Egy öntisztító eszköz a "rossz" telepítések nyomainak eltüntetésére. |
-| `Penztar-Setup-2.1.0-*.exe`           | ~350 MB  | A teljes egyfájlos telepítő: **automatikusan cleanup-olja a régi telepítést**, majd tiszta új telepítést hajt végre (PostgreSQL 17.5, backend, Electron kliens, Windows szolgáltatások, tűzfal, asztali ikon). |
+| Fájl                                              | Méret    | Mit csinál |
+|---------------------------------------------------|----------|------------|
+| `Penztar-Eltavolito-X.Y.Z-YYYYMMDD.exe`           | ~60 KB   | Leállítja és eltávolítja a régi BestChange szolgáltatásokat, törli a `C:\ProgramData\BestChange` mappát, a Program Files-t, a tűzfalszabályokat és a registry bejegyzéseket. Egy öntisztító eszköz a "rossz" telepítések nyomainak eltüntetésére. |
+| `Penztar-Setup-X.Y.Z-YYYYMMDD.exe`                | ~276 MB  | A teljes egyfájlos telepítő: **automatikusan cleanup-olja a régi telepítést**, majd tiszta új telepítést hajt végre (PostgreSQL 17.5, backend, Electron kliens, Windows szolgáltatások, tűzfal, asztali ikon). |
 
 > **Fontos:** A `Penztar-Setup` már tartalmazza ugyanazt a cleanup logikát amit az
 > Eltávolító önmagában végrehajt (`FAZIS 1: Regi telepites cleanup` az
@@ -23,30 +37,23 @@ szétküldeni** a munkaállomásokra:
 > régi telepítés annyira sérült, hogy a Setup cleanup fázisa akad fenn rajta,
 > vagy ha csak eltávolítani akarunk mindent telepítés nélkül.
 
+> **Frissítéskor az adatbázis MEGŐRZőDIK** (PR #222, v2.3.0+). Részletek: [`docs/UPDATE_WINDOWS.md`](../docs/UPDATE_WINDOWS.md).
+
 ---
 
 ## 2. Ajánlott workflow a kollégáknak
 
-Ezt küldd el nekik e-mailben a két EXE-vel együtt:
+> **Teljes végfelhasználói útmutató:** [`docs/INSTALL_WINDOWS.md`](../docs/INSTALL_WINDOWS.md). Ezt küldd el nekik e-mailben a két EXE-vel és a `dist/release/install-notes.md`-vel együtt.
 
-> **Telepítési útmutató**
->
+**Rövid összefoglaló:**
+
 > 1. Zárjátok be a Pénztár alkalmazást.
-> 2. **Jobb klikk** a `Penztar-Setup-2.1.0-*.exe` fájlra → **"Futtatás rendszergazdaként"**.
+> 2. **Jobb klikk** a `Penztar-Setup-X.Y.Z-YYYYMMDD.exe` fájlra → **"Futtatás rendszergazdaként"**.
 > 3. Kövessétek a varázsló lépéseit (Következő → Következő → Telepítés).
-> 4. Amikor először elindul a Pénztár kliens, egy **4 lépéses beállító varázsló**
->    jön be — ebben kiválasztjátok az irodát, **a Szerver URL mezőben már ott
->    lesz előre kitöltve a Hetzner VPS címe** (`https://api.excvaluta.com/api/v1`),
->    csak a központi teszt-felhasználóval kell bejelentkezni (vagy offline módot
->    választani), végül admin jelszót állítotok.
-> 5. Kész — az alkalmazás ezután használható.
+> 4. Az első indításkor: 4 lépéses Setup Wizard (iroda, szerver URL, kapcsolat-teszt, admin jelszó).
+> 5. Kész.
 >
-> **Ha a telepítés hibaüzenettel megáll** (pl. "BestChange-PostgreSQL service cannot be removed"):
->
-> 1. Futtasd **rendszergazdaként** az `Penztar-Eltavolito-2.1.0-*.exe`-t.
-> 2. Várd meg amíg "KESZ! A regi telepites teljesen eltavolitva" üzenet jön.
-> 3. Indítsd újra a gépet (biztos, ami biztos).
-> 4. Utána futtasd újra a `Penztar-Setup-*.exe`-t rendszergazdaként.
+> Ha a telepítés hibaüzenettel megáll: futtasd a `Penztar-Eltavolito-X.Y.Z-YYYYMMDD.exe`-t rendszergazdaként, majd újraindítás, majd újra Setup.
 
 ---
 
@@ -161,16 +168,25 @@ telepítő EXE-ben.
 
 ---
 
-## 7. Verziózás
+## 7. Verziózás (4-way sync)
 
-A build alapértelmezés szerint `2.1.0` verziót készít (a `CHANGELOG.md`-hoz igazítva —
-ez a hivatalos program-verzió, korábban az installer 1.9.2-n rekedt míg a szoftver már
-2.0.0 volt). Új verziót build-elni:
+> **Részletes leírás:** [`docs/BUILD_WINDOWS.md` § 4](../docs/BUILD_WINDOWS.md#4-4-way-verzió-szinkron).
 
-```powershell
-powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1 -Version 2.1.1
-powershell -ExecutionPolicy Bypass -File installer\build-cleanup.ps1   -Version 2.1.1
-```
+A repó **4 helyen** tartja a verziót, és **mind a 4-nek egyeznie kell**:
+
+1. `package.json` (monorepo root)
+2. `frontend-react/package.json`
+3. `penztar-client/package.json`
+4. `backend/pom.xml` (top-level `<version>`)
+
+A build **automatikusan** szinkronizálja és bumpolja mind a 4-et a `installer/scripts/check-version-bump.ps1` gate-tel — kézzel nem kell hívni.
 
 A verzió beég az EXE-be (Windows Properties → Details → File/Product Version),
-és a generated `.exe` neve is tartalmazza.
+és a generált `.exe` neve is tartalmazza (pl. `Penztar-Setup-2.3.5-20260427.exe`).
+
+Manuális verzió-felülírás (ritkán szükséges):
+
+```powershell
+pwsh -File installer\build-installer.ps1 -Version 2.4.0
+pwsh -File installer\build-cleanup.ps1   -Version 2.4.0
+```

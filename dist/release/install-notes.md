@@ -86,9 +86,14 @@ Get-FileHash Penztar-Eltavolito-2.3.5-20260427.exe -Algorithm SHA256
 
 ## Tovabbi referenciak
 
-- `docs/BUILD_WINDOWS.md` - hogyan gyartsuk a kovetkezo verziot
-- `docs/INSTALL_WINDOWS.md` - reszletes telepitesi instrukciok
-- `docs/UPDATE_WINDOWS.md` - frissitesi protokoll
-- `docs/SECURITY_INSTALLER_CHECKLIST.md` - biztonsagi ellenorzolista
-- `installer/README.md` - installer struktura es fejlesztoi dokumentacio
-- `CHANGELOG.md` - verzio-tortenet
+**Foglalkozas-specifikus utak:**
+
+| Cel | Doksi |
+|-----|-------|
+| Vegfelhasznaloi telepites | [`docs/INSTALL_WINDOWS.md`](../../docs/INSTALL_WINDOWS.md) |
+| Frissites regi verziorol | [`docs/UPDATE_WINDOWS.md`](../../docs/UPDATE_WINDOWS.md) |
+| Build folyamat (fejleszto) | [`docs/BUILD_WINDOWS.md`](../../docs/BUILD_WINDOWS.md) |
+| Biztonsagi ellenorzolista | [`docs/SECURITY_INSTALLER_CHECKLIST.md`](../../docs/SECURITY_INSTALLER_CHECKLIST.md) |
+| Installer doksi index | [`docs/INSTALLER_DOCS_INDEX.md`](../../docs/INSTALLER_DOCS_INDEX.md) |
+| Installer belso struktura | [`installer/README.md`](../../installer/README.md) |
+| Verzio-tortenet | [`CHANGELOG.md`](../../CHANGELOG.md) |
