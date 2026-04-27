@@ -38,6 +38,7 @@ public class DailySession {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Builder.Default
     @jakarta.persistence.Version
     @Column(name = "version", nullable = false)
     private Long version = 0L;

@@ -15,18 +15,43 @@
             CVE-2026-23907 az Apache PDFBox ExtractEmbeddedFiles example path traversal sebezhetosegere vonatkozik.
             A projekt ReceiptPdfService osztalya csak uj PDF dokumentumokat general PDDocument/PDPage API-val,
             nem dolgoz fel felhasznaloi PDF-et es nem hasznalja az erintett example extraction kodot.
+            v2.3.1: kibovitve CVE-2026-33929-re ugyanazzal a justification-nel (DoS via crafted PDF parsing,
+            de a projekt csak generalas - PDF input-ot nem fogad).
         ]]></notes>
         <packageUrl regex="true">^pkg:maven/org\.apache\.pdfbox/pdfbox@.*$</packageUrl>
         <cve>CVE-2026-23907</cve>
+        <cve>CVE-2026-33929</cve>
     </suppress>
 
     <suppress>
         <notes><![CDATA[
             Ugyanez a CVE a pdfbox-io transitiv artifacton is megjelenik ugyanazzal az apache:pdfbox CPE-vel.
             A projekt tovabbra sem hasznal embedded file extraction vagy erintett example kodot; csak szerveroldali PDF generalas tortenik.
+            v2.3.1: kibovitve CVE-2026-33929-re (PDF parsing DoS) - a projekt csak generalast vegez, parsing-ot nem.
         ]]></notes>
         <packageUrl regex="true">^pkg:maven/org\.apache\.pdfbox/pdfbox-io@.*$</packageUrl>
         <cve>CVE-2026-23907</cve>
+        <cve>CVE-2026-33929</cve>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+            CVE-2026-34478/34480/34481 a log4j-api JNDI/serialization-related sebezhetosegekre vonatkozik.
+            A projekt jelenlegi kotegehez a CVE-k:
+            - CVE-2026-34478 (CVSS 6.9): JNDI lookup string substitution
+            - CVE-2026-34480 (CVSS 6.9): Pattern Layout deserialization
+            - CVE-2026-34481 (CVSS 6.3): Configuration file URL handling
+            Compensating controls a projektben:
+            - log4j-core NINCS a dependency-faban (csak log4j-api + log4j-to-slf4j-bridge)
+            - SLF4J -> Logback pipeline aktiv (NEM log4j-core appender-ek)
+            - Spring Boot config: nincs JNDI lookup string-ben, nincs Pattern Layout custom converter
+            Tehat a CVE-k exploit-vektorai nem aktivak. Suppression idoleges: amikor a log4j 2.26+
+            javitas elerheto, ujraertekelni.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.apache\.logging\.log4j/log4j-api@.*$</packageUrl>
+        <cve>CVE-2026-34478</cve>
+        <cve>CVE-2026-34480</cve>
+        <cve>CVE-2026-34481</cve>
     </suppress>
 
     <suppress>
@@ -34,9 +59,30 @@
             A swagger-ui bundle-ben jelzett DOMPurify CVE-k production-ben nem exponaltak.
             Az application-production.properties explicit tiltja a springdoc.api-docs es springdoc.swagger-ui endpointokat.
             A dependency kizarolag fejlesztoi dokumentaciohoz marad bent.
+            v2.3.1: kibovitve CVE-2026-41238/41239/41240 (DOMPurify 3.3.2 -> 3.3.3 mXSS),
+            ugyanaz a justification: production-tiltott swagger-ui felulet.
         ]]></notes>
         <packageUrl regex="true">^pkg:javascript/DOMPurify@.*$</packageUrl>
         <cve>CVE-2025-15599</cve>
         <cve>CVE-2026-0540</cve>
+        <cve>CVE-2026-41238</cve>
+        <cve>CVE-2026-41239</cve>
+        <cve>CVE-2026-41240</cve>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+            CVE-2026-33929 az Apache PDFBox-ban a PDF *parsing* fazisara vonatkozo memory consumption issue
+            (DoS via crafted PDF). A pdfbox 3.0.x agon nincs javitas, csak 4.x major bumpban, ami
+            breaking changes-ekkel jar es kulon sprintet igenyelne.
+            Compensating controls a projektben:
+            - Csak SZERVER-OLDALI PDF GENERALAS (ReceiptPdfService.java) - PDDocument new, PDPage new
+            - SOHA NEM dolgozunk fel felhasznalo-feltoltott PDF-et (a vulnerable parsing path)
+            - Nincs PDF input endpoint a publikus API-ban
+            Tehat az exploit-vektor nem aktiv. Suppression idegelt: amikor pdfbox 4.x-re upgrade-elunk
+            (sprint roadmap P3), ezt a suppress-block-ot torolni kell.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.apache\.pdfbox/pdfbox@.*$</packageUrl>
+        <cve>CVE-2026-33929</cve>
     </suppress>
 </suppressions>
