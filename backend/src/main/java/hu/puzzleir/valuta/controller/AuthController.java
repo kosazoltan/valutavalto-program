@@ -2,13 +2,19 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.auth.BootstrapAdminRequestDto;
 import hu.puzzleir.valuta.dto.auth.BootstrapAdminResponseDto;
+import hu.puzzleir.valuta.dto.auth.ForgotPasswordRequestDto;
 import hu.puzzleir.valuta.dto.auth.LoginRequestDto;
+import hu.puzzleir.valuta.dto.auth.ResetPasswordRequestDto;
+import hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupRequestDto;
+import hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupResponseDto;
 import hu.puzzleir.valuta.dto.auth.LoginResponseDto;
 import hu.puzzleir.valuta.dto.auth.SelectRoleRequestDto;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.JwtTokenProvider;
 import hu.puzzleir.valuta.service.AdminBootstrapService;
+import hu.puzzleir.valuta.service.PasswordResetService;
+import hu.puzzleir.valuta.service.WorkerFirstTimeSetupService;
 import hu.puzzleir.valuta.service.TokenBlacklistService;
 import hu.puzzleir.valuta.service.WorkerRoleService;
 import hu.puzzleir.valuta.service.WorkerService;
@@ -46,6 +52,8 @@ public class AuthController {
     private final WorkerRoleService workerRoleService;
     private final TokenBlacklistService tokenBlacklistService;
     private final AdminBootstrapService adminBootstrapService;
+    private final WorkerFirstTimeSetupService workerFirstTimeSetupService;
+    private final PasswordResetService passwordResetService;
     private final RefreshTokenService refreshTokenService;
     private final hu.puzzleir.valuta.repository.RefreshTokenRepository refreshTokenRepository;
     private final org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder bcrypt10 = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder(10);
@@ -353,5 +361,69 @@ public class AuthController {
     public ResponseEntity<Map<String, Boolean>> bootstrapStatus() {
         boolean completed = adminBootstrapService.isBootstrapAlreadyCompleted();
         return ResponseEntity.ok(Map.of("completed", completed));
+    }
+
+    /**
+     * Worker first-time password setup — a telepito wizard-ban a kivalasztott
+     * dolgozo elso jelszavanak beallitasa.
+     *
+     * <p>POST /api/v1/auth/first-time-worker-setup</p>
+     *
+     * <p>Body: {@link WorkerFirstTimeSetupRequestDto}:
+     * {@code companyCode, workerCode, newPassword, currentPassword?}</p>
+     *
+     * <p>Kulonbseg a bootstrap-admin-tol:</p>
+     * <ul>
+     *   <li>NEM forcolja ADMIN role-t</li>
+     *   <li>NEM one-shot — minden worker-nek kulon</li>
+     *   <li>JWT token-t ad vissza auto-login-hoz</li>
+     * </ul>
+     */
+    @PostMapping("/first-time-worker-setup")
+    public ResponseEntity<WorkerFirstTimeSetupResponseDto> firstTimeWorkerSetup(
+            @Valid @RequestBody WorkerFirstTimeSetupRequestDto dto) {
+        WorkerFirstTimeSetupResponseDto response = workerFirstTimeSetupService.setupWorkerPassword(dto);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Elfelejtett jelszo — egy token-t general + (TODO: email-ben kikuldi).
+     *
+     * <p>POST /api/v1/auth/forgot-password</p>
+     * <p>Body: {"email": "user@example.com"}</p>
+     * <p>Anti-enumeration: mindig 200-at ad vissza fuggetlenul hogy az email
+     * regisztralt-e vagy sem.</p>
+     */
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Map<String, Object>> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequestDto dto) {
+        String token = passwordResetService.requestForgotPassword(dto.getEmail());
+        // Dev/test celu response — production-ban a token csak email-ben megy
+        Map<String, Object> response = new java.util.HashMap<>();
+        response.put("message", "Ha az email regisztralt, a reset tokent kikuldtuk.");
+        // A token csak dev/test celra jelenik meg a response-ban
+        if (token != null && isDevProfile()) {
+            response.put("token", token);
+        }
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Reset-password vegrehajtas a token + uj jelszo alapjan.
+     *
+     * <p>POST /api/v1/auth/reset-password</p>
+     * <p>Body: {"token": "...", "newPassword": "..."}</p>
+     */
+    @PostMapping("/reset-password")
+    public ResponseEntity<Map<String, String>> resetPassword(
+            @Valid @RequestBody ResetPasswordRequestDto dto) {
+        passwordResetService.resetPassword(dto.getToken(), dto.getNewPassword());
+        return ResponseEntity.ok(Map.of("message", "Jelszo sikeresen beallitva. Most mar bejelentkezhetsz."));
+    }
+
+    private boolean isDevProfile() {
+        String profile = System.getProperty("spring.profiles.active", "");
+        String envProfile = System.getenv().getOrDefault("SPRING_PROFILES_ACTIVE", "");
+        return profile.contains("dev") || envProfile.contains("dev");
     }
 }

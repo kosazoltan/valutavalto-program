@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/v1/customers")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()") // v2.3.1 audit: class-level baseline (defense-in-depth)
 public class CustomerController {
 
     private final CustomerService customerService;

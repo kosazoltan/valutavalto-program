@@ -86,7 +86,11 @@ public class BanknoteInventory {
 
     public void addQuantity(int amount) {
         if (amount <= 0) throw new IllegalArgumentException("amount must be positive");
-        this.quantity = (this.quantity != null ? this.quantity : 0) + amount;
+        // CodeQL java/tainted-arithmetic fix: Math.addExact() ArithmeticException-t dob
+        // overflow eseten, igy a tainted user-input (amount) nem koppintja az integer
+        // hatart silent wrap-aroundolva.
+        int current = this.quantity != null ? this.quantity : 0;
+        this.quantity = Math.addExact(current, amount);
         recalculate();
     }
 
