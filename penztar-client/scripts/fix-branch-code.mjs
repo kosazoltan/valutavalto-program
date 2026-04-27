@@ -30,11 +30,13 @@ if (!FALLBACK_BRANCH || !FALLBACK_COMPANY) {
 }
 
 async function main() {
-  if (!fs.existsSync(DB_PATH)) {
-    console.error('[fix-branch-code] SQLite fajl nem letezik: ' + DB_PATH);
-    console.error('  Indits el eloszor a penztar-klienst (npm run dev) hogy letrejojjon.');
-    process.exit(1);
-  }
+  // Audit-iter3 P0 (CodeQL js/file-system-race fix, 2026-04-27):
+  // korabbi `existsSync(DB_PATH)` check + `readFileSync(DB_PATH)` (line 61) +
+  // `writeFileSync(DB_PATH, ...)` (line 101) TOCTOU race volt.
+  // A `existsSync` check kihagyva — a readFileSync magaban detektalja a hianyt
+  // ENOENT-tel, race-mentesen. A writeFileSync az ENOENT helyett ENOTDIR-t kapna
+  // ha a kozbenso kvirszerel teszi.
+  // (A buffer-readFileSync ENOENT a kovetkezo block-ban kezelve.)
 
   // AI REVIEW FIX (PR #97 Sourcery P2): cwd-independent wasm resolve.
   // A process.cwd() brittle ha a script mashonnan hivjak, pl. global install.
@@ -58,7 +60,18 @@ async function main() {
 
   const wasmBinary = fs.readFileSync(wasmPath);
   const SQL = await initSqlJs({ wasmBinary });
-  const buffer = fs.readFileSync(DB_PATH);
+  // Race-mentes: ENOENT eseten egyenes hibauzenet, NEM exists-then-read minta.
+  let buffer;
+  try {
+    buffer = fs.readFileSync(DB_PATH);
+  } catch (e) {
+    if (e.code === 'ENOENT') {
+      console.error('[fix-branch-code] SQLite fajl nem letezik: ' + DB_PATH);
+      console.error('  Indits el eloszor a penztar-klienst (npm run dev) hogy letrejojjon.');
+      process.exit(1);
+    }
+    throw e;
+  }
   const db = new SQL.Database(buffer);
 
   const tableCheck = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='config'");

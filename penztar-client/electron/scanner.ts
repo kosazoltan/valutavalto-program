@@ -21,14 +21,23 @@ type EncryptionPayload = {
 };
 
 function getOrCreateKey(): Buffer {
-  if (fs.existsSync(ENCRYPTION_KEY_FILE)) {
-    const stored = fs.readFileSync(ENCRYPTION_KEY_FILE, 'utf8').trim();
-    return Buffer.from(stored, 'base64');
+  // Audit-iter3 P0 (CodeQL js/file-system-race fix, 2026-04-27):
+  // a korabbi `existsSync` -> `readFileSync` / `writeFileSync` minta TOCTOU race
+  // volt. Kritikus, mert ha kozben mas process letrehozta a kulcsot, akkor
+  // a writeFileSync felulirta volna - kriptografiai katasztrofa!
+  // Fix: `wx` flag (O_CREAT | O_EXCL) atomic create-if-not-exists. EEXIST
+  // eseten read-eljuk a meglevo kulcsot - race-mentes.
+  const newKey = crypto.randomBytes(32);
+  try {
+    fs.writeFileSync(ENCRYPTION_KEY_FILE, newKey.toString('base64'), { mode: 0o600, flag: 'wx' });
+    return newKey;
+  } catch (e: any) {
+    if (e.code === 'EEXIST') {
+      const stored = fs.readFileSync(ENCRYPTION_KEY_FILE, 'utf8').trim();
+      return Buffer.from(stored, 'base64');
+    }
+    throw e;
   }
-
-  const key = crypto.randomBytes(32);
-  fs.writeFileSync(ENCRYPTION_KEY_FILE, key.toString('base64'), { mode: 0o600 });
-  return key;
 }
 
 function encrypt(buffer: Buffer): EncryptionPayload {
