@@ -123,8 +123,13 @@ function generateSecretHex(bytes: number): string {
 function escapeEnvValue(value: string): string {
   // Sor-szeparáló karaktereket nem engedünk meg; double-quote-olva tárolunk
   // hogy a dotenv parser megbízhatóan visszaolvassa.
+  // Audit-iter3 P0 (CodeQL js/incomplete-sanitization fix, 2026-04-27):
+  // a backslash karakter NEM volt escape-elve, igy `\"` input-ot a parser
+  // `"`-kent ertelmezte (early termination). A teljes escape sorrend:
+  // 1) backslash duplazasa, 2) double-quote escape-eles.
   const cleaned = value.replace(/[\r\n]/g, ' ');
-  return `"${cleaned.replace(/"/g, '\\"')}"`;
+  const escaped = cleaned.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return `"${escaped}"`;
 }
 
 function buildEnvFileContent(params: {

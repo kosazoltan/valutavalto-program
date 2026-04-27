@@ -130,7 +130,11 @@ async function probePage(page: Page, item: { group: string; label: string; path:
     if (msg.type() === 'error') consoleErrors.push(msg.text().slice(0, 200))
   }
   const responseHandler = (resp: import('@playwright/test').Response) => {
-    if (resp.status() >= 400 && resp.url().includes(BASE)) {
+    // Audit-iter3 P0 (CodeQL js/incomplete-url-substring-sanitization fix, 2026-04-27):
+    // a korabbi `includes(BASE)` barhol matchelt a URL-ben, igy
+    // `https://attacker.com/?to=https://excvaluta.com/foo` is true-t adott volna.
+    // Fix: `startsWith(BASE)` - csak ha a URL a BASE-szel kezdodik.
+    if (resp.status() >= 400 && resp.url().startsWith(BASE)) {
       networkErrors.push(`${resp.status()} ${resp.url().replace(BASE, '')}`)
     }
   }
