@@ -190,7 +190,11 @@ public class BackupService {
             }
 
             log.info("Backup visszaállítás sikeres: id={}", backupId);
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException | InterruptedException | IllegalStateException e) {
+            // Codex P2 fix (PR #245 follow-up): IllegalStateException eredetileg
+            // resolveAbsoluteExecutablePath-bol jon (pg_restore PATH-on nincs vagy
+            // not executable). Korabban kibukott a runtime stackre - 500 helyett
+            // most BusinessException("RESTORE_FAILED") megegyezo error-flow-val.
             log.error("Backup visszaállítás sikertelen: id={}, error={}", backupId, e.getMessage(), e);
             if (e instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
@@ -269,7 +273,20 @@ public class BackupService {
             }
             throw new IllegalStateException(expectedBinaryName + " absolute path nem futtathato: " + configured);
         }
-        // Relativ — explicit PATH lookup
+        // Codex P2 fix (PR #238 follow-up, 2026-04-27): a relativ utvonal lehet
+        // (a) bare binary name pl. "pg_dump" -> PATH lookup
+        // (b) relativ file path pl. "./bin/pg_dump", "tools/pg_dump" -> direkt
+        //     resolve a current working directory-bol absolute-ra
+        // Korabban a (b) eset NEM mukodott (csak PATH-ot szkennelt), regression
+        // a deploy-okon ami `app.backup.pg-dump-path=./bin/pg_dump`-szal konfigural.
+        if (configured.contains("/") || configured.contains("\\")) {
+            Path absoluteCandidate = configuredPath.toAbsolutePath().normalize();
+            if (Files.isRegularFile(absoluteCandidate) && Files.isExecutable(absoluteCandidate)) {
+                return absoluteCandidate.toString();
+            }
+            throw new IllegalStateException(expectedBinaryName + " relativ path nem talalhato vagy nem executable: " + configured);
+        }
+        // (a) bare binary name -> explicit PATH lookup
         String pathEnv = System.getenv("PATH");
         if (pathEnv == null || pathEnv.isBlank()) {
             throw new IllegalStateException("PATH environment variable nincs beallitva, " + expectedBinaryName + " nem resolveable");
