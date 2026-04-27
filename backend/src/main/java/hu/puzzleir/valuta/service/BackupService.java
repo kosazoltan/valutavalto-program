@@ -84,8 +84,14 @@ public class BackupService {
             String host = extractHost(datasourceUrl);
             String port = extractPort(datasourceUrl);
 
+            // AUDIT (audit-NO-GO-iter3 P1, 2026-04-27 + CodeQL java/relative-path-command):
+            // a `pgDumpPath` default `"pg_dump"` (relativ utvonal). PATH-bol indulo
+            // process-bedobas potencialisan manipulalhato (PATH override). A binarist
+            // explicit absolute utvonalra resolveoljuk a hivas elott.
+            String resolvedPgDumpPath = resolveAbsoluteExecutablePath(pgDumpPath, "pg_dump");
+
             ProcessBuilder pb = new ProcessBuilder(
-                    pgDumpPath,
+                    resolvedPgDumpPath,
                     "-h", host,
                     "-p", port,
                     "-U", datasourceUsername,
@@ -117,7 +123,9 @@ public class BackupService {
 
             log.info("Backup sikeresen létrehozva: id={}, type={}, file={}, size={}",
                     record.getId(), type, filePath, file.length());
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException | InterruptedException | IllegalStateException e) {
+            // IllegalStateException: resolveAbsoluteExecutablePath dobja, ha pg_dump
+            // binary nem talalhato (audit-NO-GO-iter3 P1, CodeQL relative-path-command).
             record.setStatus(BackupStatus.FAILED);
             record.setCompletedAt(LocalDateTime.now());
             log.error("Backup mentés sikertelen: id={}, error={}", record.getId(), e.getMessage(), e);
@@ -230,6 +238,52 @@ public class BackupService {
         String withoutPrefix = jdbcUrl.replaceFirst("jdbc:postgresql://", "");
         String hostPort = withoutPrefix.contains("/") ? withoutPrefix.substring(0, withoutPrefix.indexOf('/')) : withoutPrefix;
         return hostPort.contains(":") ? hostPort.substring(hostPort.indexOf(':') + 1) : "5432";
+    }
+
+    /**
+     * Audit-fix (CodeQL java/relative-path-command, audit-NO-GO-iter3 P1, 2026-04-27):
+     * relativ utvonal eseten a binarist explicit System.getenv("PATH")-bol resolveolja
+     * absolute path-ra, igy a ProcessBuilder mar nem fugg a JVM `PATH` hasznalattol
+     * (ami theoretice manipulalhato lenne pl. egy malicious local dir-rel).
+     *
+     * @param configured a `@Value`-bol erkezo (potencialisan relativ) ut
+     * @param expectedBinaryName a binaris neve (pg_dump / psql) — ha a relativ eredetit
+     *                           csak a binaris neve adja meg, ezzel keressuk a PATH-on
+     * @return absolute, executable file path
+     * @throws IllegalStateException ha a binaris nem talalhato
+     */
+    private String resolveAbsoluteExecutablePath(String configured, String expectedBinaryName) {
+        if (configured == null || configured.isBlank()) {
+            throw new IllegalStateException(expectedBinaryName + " path nincs konfiguralva");
+        }
+        Path configuredPath = Paths.get(configured);
+        if (configuredPath.isAbsolute()) {
+            if (Files.isExecutable(configuredPath)) {
+                return configuredPath.toString();
+            }
+            throw new IllegalStateException(expectedBinaryName + " absolute path nem futtathato: " + configured);
+        }
+        // Relativ — explicit PATH lookup
+        String pathEnv = System.getenv("PATH");
+        if (pathEnv == null || pathEnv.isBlank()) {
+            throw new IllegalStateException("PATH environment variable nincs beallitva, " + expectedBinaryName + " nem resolveable");
+        }
+        String[] suffixes = isWindows() ? new String[]{"", ".exe", ".bat", ".cmd"} : new String[]{""};
+        for (String dir : pathEnv.split(java.io.File.pathSeparator)) {
+            if (dir == null || dir.isBlank()) continue;
+            for (String suffix : suffixes) {
+                Path candidate = Paths.get(dir, configured + suffix);
+                if (Files.isRegularFile(candidate) && Files.isExecutable(candidate)) {
+                    return candidate.toAbsolutePath().toString();
+                }
+            }
+        }
+        throw new IllegalStateException(expectedBinaryName + " nem talalhato a PATH-on: " + configured);
+    }
+
+    private boolean isWindows() {
+        String os = System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT);
+        return os.contains("win");
     }
 
     private BackupRecordResponse toResponse(BackupRecord record) {

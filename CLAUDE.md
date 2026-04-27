@@ -69,21 +69,36 @@ curl -s https://excvaluta.com/api/v1/public/branches?companyCode=EBC   # non-emp
 ```
 Ha **DOWN**: először helyreállítani (Hetzner + Scaleway HA failover), utána kezdeni a fejlesztést.
 
-## KÖTELEZŐ ÉRVÉNYŰ: Session memory workflow
-**Minden session elején** olvasd be:
-1. `.remember/remember.md` — rövid handoff az előző session-től
-2. `docs/knowledge/memory/*.yaml` — részletes session-enkénti memory (legfrissebbet)
-3. `docs/knowledge/memory/*.qmd` — ugyanaz Quarto formátumban
-4. `C:\Users\Kósa Zoltán\.claude\projects\D--repo-valutavalto-program\memory\MEMORY.md` — globális memory index (Claude runtime)
+## KÖTELEZŐ ÉRVÉNYŰ: Session memory workflow (Obsidian-alapú, 2026-04-27 óta)
+
+**EGYETLEN aktív memóriarendszer:** `D:\valutavalto-vault\` (Obsidian vault, dedikált a valutaváltó-projekt számára).
+
+A korábbi rendszerek **deprecated** (2026-04-27 user-direktíva — "memória mizéria megszüntetése"):
+- ❌ `.memory/` (SQLite + Node.js MCP) — **TÖRÖLVE** (Bence/Eszter/Tamás belső koncepció refek)
+- ❌ Cognee MCP (TODO maradt) — **VISSZAVONVA**
+- ❌ Több párhuzamos memóriarendszer
+
+**Minden session elején** olvasd be (ebben a sorrendben):
+1. `D:\valutavalto-vault\README.md` — vault használati protokoll
+2. `D:\valutavalto-vault\sessions\` — legfrissebb session-jegyzet (YYYY-MM-DD)
+3. `D:\valutavalto-vault\feedback\` — kötelező user-direktívák (skim mindent)
+4. `.remember/remember.md` — csak quick-state handoff (4-5 sor)
 5. `docs/LESSONS_LEARNED.md` — korábbi hibák, amiket NE ismételj
 
-**Minden session végén** (új session előtt) mentsd:
-1. YAML → `docs/knowledge/memory/YYYY-MM-DD-session-name.yaml`
-2. QMD → `docs/knowledge/memory/YYYY-MM-DD-session-name.qmd`
-3. Cognee (MCP) → amint elérhető (TODO)
-4. Obsidian vault → amint telepítve (TODO)
-5. `.remember/remember.md` — rövid handoff (remember skill)
-6. CLAUDE.md "Nyitott következő feladatok" → frissítés
+**Minden session végén** mentsd a vault-ba:
+1. `D:\valutavalto-vault\sessions\YYYY-MM-DD-rovid-leiras.md` — új session-jegyzet
+2. `D:\valutavalto-vault\feedback\<topic>.md` — ha új user-direktíva érkezett
+3. `D:\valutavalto-vault\references\<topic>.md` — ha új projekt-tudás érkezett külső forrásból
+4. `.remember/remember.md` — quick-state update (Main HEAD, open PR/issue, production health)
+5. CLAUDE.md "Nyitott következő feladatok" → frissítés ha változott
+
+**Tilos:**
+- ❌ Új fájl írása `~/.claude/projects/.../memory/`-ba — az csak redirect
+- ❌ Bence/Eszter/Tamás (régi belső AI csapat-koncepció) — deprecated
+- ❌ OpenClaw / openclaw refek — másik projekt, külön vault
+- ❌ Új `.memory/` SQLite vagy hasonló párhuzamos rendszer
+
+A `docs/knowledge/memory/*.yaml` történelmi formátum (2026-04-26 előtti session-ök) **maradnak** a git history-ban, de új YAML-okat NE hozz létre — az Obsidian vault `sessions/` lett a hely.
 
 Ezek **kötelező érvényűek**, nem választható.
 
@@ -196,11 +211,28 @@ Opus nem „programozó asszisztensként”, hanem **auditált GitHub-operátork
 
 ### AI review jelzések (KÖTELEZŐ módszer változás — user-direktíva)
 **EDDIG:** email-ben érkezik review → user bemásolgatja → agent javítja.  
-**EZENTÚL (MEGSZÜNTETVE a bemásolgatás):** minden PR push után az **agent MAGA** futtatja:
+**EZENTÚL (MEGSZÜNTETVE a bemásolgatás):** minden PR push után az **agent MAGA** futtatja a queries-ket.
+
+#### KRITIKUS megjegyzés a Codex dual-channel zavarról (2026-04-27 audit fix)
+- A Codex GitHub App **AUTOMATIKUS** review-t ad PR-eken — ez a valódi findinges csatorna, a `/pulls/{N}/reviews` API-n jelenik meg `state: COMMENTED, body: "💡 Codex Review..."` formában.
+- Az `@codex review` MENTION egy MÁSIK csatorna. Ha a kosazoltan ChatGPT fiók nincs összekötve a Codex Connector-ral (https://chatgpt.com/codex/cloud/settings/connectors), akkor minden mention-re `chatgpt-codex-connector[bot]` válasz: **"To use Codex here, create a Codex account and connect to github."** Ez **ZAJ**, nem hibás finding!
+- A `.github/workflows/auto-review.yml` Bence workflow 2026-04-27 óta **NEM küld `@codex review` mention-t** — csak Sourcery-t (a Codex auto-review úgyis lefut).
+- **Query helye:** kizárólag `/pulls/{N}/reviews` + `/pulls/{N}/comments`. NE `/issues/{N}/comments`-et — ott csak a mention-zaj van.
+
+#### Kötelező AI review query (defensive zaj-szűréssel):
 ```bash
-gh api "/repos/kosazoltan/valutavalto-program/pulls/$PR/reviews" --jq '.[] | select((.user.login | ascii_downcase | contains("codex")) or (.user.login | ascii_downcase | contains("sourcery"))) | {reviewer:.user.login,state,body}'
-gh api "/repos/kosazoltan/valutavalto-program/pulls/$PR/comments" --jq '.[] | select((.user.login | ascii_downcase | contains("codex")) or (.user.login | ascii_downcase | contains("sourcery"))) | {user:.user.login,path,line,body}'
+# Reviews (top-level review submissions) - Codex auto-review + Sourcery itt erkezik
+gh api "/repos/kosazoltan/valutavalto-program/pulls/$PR/reviews" \
+  --jq '.[] | select(((.user.login | ascii_downcase | contains("codex")) or (.user.login | ascii_downcase | contains("sourcery"))) and ((.body // "") | (contains("create a Codex account") | not)) and ((.body // "") | (contains("weekly rate limit") | not))) | {reviewer:.user.login,state,body}'
+
+# Inline comments (file:line specific findingek)
+gh api "/repos/kosazoltan/valutavalto-program/pulls/$PR/comments" \
+  --jq '.[] | select((.user.login | ascii_downcase | contains("codex")) or (.user.login | ascii_downcase | contains("sourcery"))) | {user:.user.login,path,line,body}'
 ```
+
+A `(contains("create a Codex account") | not)` es `(contains("weekly rate limit") | not)` szurok kizarjak:
+- Codex setup-prompt zaj (ha valaha megis a reviews API-ra is felkerulne)
+- Sourcery weekly rate-limit comment zaj
 
 ### Helper scriptek
 - `scripts/pre-push-quality-gate.ps1` — lint + typecheck + test + build futtatas, exit=0 kell a push-hoz
