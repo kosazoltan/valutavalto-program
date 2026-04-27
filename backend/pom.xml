@@ -85,9 +85,11 @@
         </dependency>
         
         <!-- Flyway Migration -->
+        <!-- Spring Boot 4.0+ koteleziti a starter-flyway-t (a flyway-core magaban
+             nem auto-konfiguralja a Flyway-t). Lasd: SB4 migration guide. -->
         <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
         </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
