@@ -18,6 +18,11 @@ concurrency:
   group: frontend-e2e-${{ github.ref }}
   cancel-in-progress: true
 
+# Audit-iter3 P1 (2026-04-27, CodeQL actions/missing-workflow-permissions fix):
+# Playwright E2E csak olvas + npm install + Playwright run. Default contents: read elegendo.
+permissions:
+  contents: read
+
 jobs:
   auth-reload-smoke:
     name: Auth Reload Smoke (Playwright)
