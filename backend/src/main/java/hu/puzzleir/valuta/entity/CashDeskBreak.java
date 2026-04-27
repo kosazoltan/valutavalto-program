@@ -15,7 +15,8 @@ import java.util.UUID;
 @Entity
 @Table(name = "cash_desk_break", indexes = {
     @Index(name = "idx_cash_desk_break_desk", columnList = "cash_desk_id"),
-    @Index(name = "idx_cash_desk_break_active", columnList = "is_active")
+    @Index(name = "idx_cash_desk_break_active", columnList = "is_active"),
+    @Index(name = "idx_cash_desk_break_company", columnList = "company_id, cash_desk_id, break_start")
 })
 @EntityListeners(AuditingEntityListener.class)
 @Getter
@@ -28,6 +29,14 @@ public class CashDeskBreak {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    /**
+     * Multi-tenant scope (audit-NO-GO-iter3 P0 fix, V164).
+     * NOT NULL on Java side; legacy rows with NULL pre-V164 are excluded by
+     * scoped repository queries (intentional stale-data hiding to prevent tenant leak).
+     */
+    @Column(name = "company_id", nullable = false)
+    private UUID companyId;
 
     /**
      * Pénztárgép ID
