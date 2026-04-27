@@ -69,21 +69,36 @@ curl -s https://excvaluta.com/api/v1/public/branches?companyCode=EBC   # non-emp
 ```
 Ha **DOWN**: először helyreállítani (Hetzner + Scaleway HA failover), utána kezdeni a fejlesztést.
 
-## KÖTELEZŐ ÉRVÉNYŰ: Session memory workflow
-**Minden session elején** olvasd be:
-1. `.remember/remember.md` — rövid handoff az előző session-től
-2. `docs/knowledge/memory/*.yaml` — részletes session-enkénti memory (legfrissebbet)
-3. `docs/knowledge/memory/*.qmd` — ugyanaz Quarto formátumban
-4. `C:\Users\Kósa Zoltán\.claude\projects\D--repo-valutavalto-program\memory\MEMORY.md` — globális memory index (Claude runtime)
+## KÖTELEZŐ ÉRVÉNYŰ: Session memory workflow (Obsidian-alapú, 2026-04-27 óta)
+
+**EGYETLEN aktív memóriarendszer:** `D:\valutavalto-vault\` (Obsidian vault, dedikált a valutaváltó-projekt számára).
+
+A korábbi rendszerek **deprecated** (2026-04-27 user-direktíva — "memória mizéria megszüntetése"):
+- ❌ `.memory/` (SQLite + Node.js MCP) — **TÖRÖLVE** (Bence/Eszter/Tamás belső koncepció refek)
+- ❌ Cognee MCP (TODO maradt) — **VISSZAVONVA**
+- ❌ Több párhuzamos memóriarendszer
+
+**Minden session elején** olvasd be (ebben a sorrendben):
+1. `D:\valutavalto-vault\README.md` — vault használati protokoll
+2. `D:\valutavalto-vault\sessions\` — legfrissebb session-jegyzet (YYYY-MM-DD)
+3. `D:\valutavalto-vault\feedback\` — kötelező user-direktívák (skim mindent)
+4. `.remember/remember.md` — csak quick-state handoff (4-5 sor)
 5. `docs/LESSONS_LEARNED.md` — korábbi hibák, amiket NE ismételj
 
-**Minden session végén** (új session előtt) mentsd:
-1. YAML → `docs/knowledge/memory/YYYY-MM-DD-session-name.yaml`
-2. QMD → `docs/knowledge/memory/YYYY-MM-DD-session-name.qmd`
-3. Cognee (MCP) → amint elérhető (TODO)
-4. Obsidian vault → amint telepítve (TODO)
-5. `.remember/remember.md` — rövid handoff (remember skill)
-6. CLAUDE.md "Nyitott következő feladatok" → frissítés
+**Minden session végén** mentsd a vault-ba:
+1. `D:\valutavalto-vault\sessions\YYYY-MM-DD-rovid-leiras.md` — új session-jegyzet
+2. `D:\valutavalto-vault\feedback\<topic>.md` — ha új user-direktíva érkezett
+3. `D:\valutavalto-vault\references\<topic>.md` — ha új projekt-tudás érkezett külső forrásból
+4. `.remember/remember.md` — quick-state update (Main HEAD, open PR/issue, production health)
+5. CLAUDE.md "Nyitott következő feladatok" → frissítés ha változott
+
+**Tilos:**
+- ❌ Új fájl írása `~/.claude/projects/.../memory/`-ba — az csak redirect
+- ❌ Bence/Eszter/Tamás (régi belső AI csapat-koncepció) — deprecated
+- ❌ OpenClaw / openclaw refek — másik projekt, külön vault
+- ❌ Új `.memory/` SQLite vagy hasonló párhuzamos rendszer
+
+A `docs/knowledge/memory/*.yaml` történelmi formátum (2026-04-26 előtti session-ök) **maradnak** a git history-ban, de új YAML-okat NE hozz létre — az Obsidian vault `sessions/` lett a hely.
 
 Ezek **kötelező érvényűek**, nem választható.
 
