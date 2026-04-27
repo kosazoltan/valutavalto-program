@@ -1,1 +1,1 @@
-﻿NVD API key test blocked: A távoli kiszolgáló a következő hibát küldte vissza: (503) A kiszolgáló nem érhető el..
+﻿NVD API key test status: HTTP 200

@@ -56,5 +56,21 @@ export const authApi = {
   selectRole: async (data: { token: string; roleCode: string }): Promise<LoginResponse> => {
     const response = await api.post<LoginResponse>('/auth/login/select-role', data)
     return response.data
+  },
+  /**
+   * v2.3.0: Elfelejtett jelszo — token igenyles.
+   * Dev modban a response tartalmazza a token-t (testing). Production-ban
+   * csak email-ben megy ki.
+   */
+  forgotPassword: async (email: string): Promise<{ message: string; token?: string }> => {
+    const response = await api.post<{ message: string; token?: string }>('/auth/forgot-password', { email })
+    return response.data
+  },
+  /**
+   * v2.3.0: Uj jelszo beallitas reset token + uj jelszo alapjan.
+   */
+  resetPassword: async (token: string, newPassword: string): Promise<{ message: string }> => {
+    const response = await api.post<{ message: string }>('/auth/reset-password', { token, newPassword })
+    return response.data
   }
 }

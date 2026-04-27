@@ -172,7 +172,7 @@ test.describe('T20 — Full menu traversal live e2e', () => {
   })
 
   // Sourcery PR #183 #3: RESULTS local to test instead of module-scoped mutable
-  let RESULTS: PageProbeResult[] = []
+  const RESULTS: PageProbeResult[] = []
 
   test.afterAll(async () => {
     // Report generalasa
