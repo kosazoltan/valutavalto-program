@@ -196,11 +196,28 @@ Opus nem „programozó asszisztensként”, hanem **auditált GitHub-operátork
 
 ### AI review jelzések (KÖTELEZŐ módszer változás — user-direktíva)
 **EDDIG:** email-ben érkezik review → user bemásolgatja → agent javítja.  
-**EZENTÚL (MEGSZÜNTETVE a bemásolgatás):** minden PR push után az **agent MAGA** futtatja:
+**EZENTÚL (MEGSZÜNTETVE a bemásolgatás):** minden PR push után az **agent MAGA** futtatja a queries-ket.
+
+#### KRITIKUS megjegyzés a Codex dual-channel zavarról (2026-04-27 audit fix)
+- A Codex GitHub App **AUTOMATIKUS** review-t ad PR-eken — ez a valódi findinges csatorna, a `/pulls/{N}/reviews` API-n jelenik meg `state: COMMENTED, body: "💡 Codex Review..."` formában.
+- Az `@codex review` MENTION egy MÁSIK csatorna. Ha a kosazoltan ChatGPT fiók nincs összekötve a Codex Connector-ral (https://chatgpt.com/codex/cloud/settings/connectors), akkor minden mention-re `chatgpt-codex-connector[bot]` válasz: **"To use Codex here, create a Codex account and connect to github."** Ez **ZAJ**, nem hibás finding!
+- A `.github/workflows/auto-review.yml` Bence workflow 2026-04-27 óta **NEM küld `@codex review` mention-t** — csak Sourcery-t (a Codex auto-review úgyis lefut).
+- **Query helye:** kizárólag `/pulls/{N}/reviews` + `/pulls/{N}/comments`. NE `/issues/{N}/comments`-et — ott csak a mention-zaj van.
+
+#### Kötelező AI review query (defensive zaj-szűréssel):
 ```bash
-gh api "/repos/kosazoltan/valutavalto-program/pulls/$PR/reviews" --jq '.[] | select((.user.login | ascii_downcase | contains("codex")) or (.user.login | ascii_downcase | contains("sourcery"))) | {reviewer:.user.login,state,body}'
-gh api "/repos/kosazoltan/valutavalto-program/pulls/$PR/comments" --jq '.[] | select((.user.login | ascii_downcase | contains("codex")) or (.user.login | ascii_downcase | contains("sourcery"))) | {user:.user.login,path,line,body}'
+# Reviews (top-level review submissions) - Codex auto-review + Sourcery itt erkezik
+gh api "/repos/kosazoltan/valutavalto-program/pulls/$PR/reviews" \
+  --jq '.[] | select(((.user.login | ascii_downcase | contains("codex")) or (.user.login | ascii_downcase | contains("sourcery"))) and ((.body // "") | (contains("create a Codex account") | not)) and ((.body // "") | (contains("weekly rate limit") | not))) | {reviewer:.user.login,state,body}'
+
+# Inline comments (file:line specific findingek)
+gh api "/repos/kosazoltan/valutavalto-program/pulls/$PR/comments" \
+  --jq '.[] | select((.user.login | ascii_downcase | contains("codex")) or (.user.login | ascii_downcase | contains("sourcery"))) | {user:.user.login,path,line,body}'
 ```
+
+A `(contains("create a Codex account") | not)` es `(contains("weekly rate limit") | not)` szurok kizarjak:
+- Codex setup-prompt zaj (ha valaha megis a reviews API-ra is felkerulne)
+- Sourcery weekly rate-limit comment zaj
 
 ### Helper scriptek
 - `scripts/pre-push-quality-gate.ps1` — lint + typecheck + test + build futtatas, exit=0 kell a push-hoz
