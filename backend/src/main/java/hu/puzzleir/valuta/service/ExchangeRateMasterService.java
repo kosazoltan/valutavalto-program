@@ -396,11 +396,14 @@ public class ExchangeRateMasterService {
             message.put("publishedAt", LocalDateTime.now().toString());
 
             // Globális értesítés
-            messagingTemplate.convertAndSend("/topic/rate-updates", message);
+            // Spring Boot 4 / Spring Messaging 7: convertAndSend overload ambiguity
+            // a Map payload + Map<String,Object> headers kozott. Explicit (Object) cast
+            // a String destination overload-ot valasztja.
+            messagingTemplate.convertAndSend("/topic/rate-updates", (Object) message);
 
             // Munkacsoport-specifikus értesítés
             if (workgroupId != null) {
-                messagingTemplate.convertAndSend("/topic/rate-updates/" + workgroupId, message);
+                messagingTemplate.convertAndSend("/topic/rate-updates/" + workgroupId, (Object) message);
             }
 
             log.debug("WebSocket árfolyam elosztás értesítés küldve: {} - {} pénztárnak",
