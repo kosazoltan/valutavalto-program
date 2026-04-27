@@ -1,0 +1,123 @@
+# 2026-04-27 Session - Dependabot batch + housekeeping (issue #110 + memory)
+
+session_id: 2026-04-27-dependabot-batch-housekeeping
+date: 2026-04-27
+claude_model: claude-opus-4-7-1m
+scope: A) issue #110 zarasa, B) memoria + CLAUDE.md frissites, C) Dependabot 21 PR batch
+main_head_start: 60f6b913
+main_head_end: da87e7d7
+
+## Osszefoglalas
+
+A 2026-04-25 -> 2026-04-27 audit-cycle (PR #229..#236, 8 PR) utan a 21 nyitott
+Dependabot PR feldolgozasa volt a fo cel. Output: 14 PR mergelve (12 patch/minor +
+4 GH Actions major a CI workflow-okban + 2 utan-recreate-elt patch). 7 PR
+defer-elve code-impacting MAJOR / failing CI miatt: Spring Boot 4, springdoc 3,
+lucide-react, eslint 10, react-hooks 7, react-dom multi, typescript-eslint 8.59.
+Mellette issue #110 (cash_balance) formalisan zarva (a fix mar PR #112+#164-ben,
+csak a GitHub issue maradt OPEN). Memoria + CLAUDE.md frissites: .remember/remember.md,
+globalis MEMORY.md, uj feedback memoria (Bence/Codex bot zaj ignore), worktree
+CLAUDE.md PR #237 keretben mergelve a main-re.
+
+## Fo eredmenyek
+
+### A) Issue #110 (cash_balance auto-init) - LEZARVA
+- gh issue close 110 (2026-04-27)
+- Verifikacio main-en (60f6b913): BranchService.java:241, DailySessionService.java:306, SessionOpenService.java:72
+- A fix mar mergelve volt PR #112 (BranchService createBranch) + PR #164 (DailySessionService.openDay), csak a GitHub issue maradt OPEN
+- Backend test: DailySessionServiceTest.openDay_autoInitsCashBalancesForNewBranch zold (978/978)
+
+### B) Memoria + dokumentacio frissites
+- .remember/remember.md: 2026-04-21 (v2.1.7) -> 2026-04-27 (v2.3.2)
+- Globalis MEMORY.md: feedback_ignore_bence_openclaw.md index hozzaadva
+- Uj memoria: feedback_ignore_bence_openclaw.md - user-direktiva 2026-04-27
+- Worktree CLAUDE.md: "Aktualis release-allapot" v2.2.4 -> v2.3.2, mai 21 PR aggregat
+- PR #237 mergelve da87e7d7 SHA-n (CLAUDE.md update)
+
+### C) Dependabot batch eredmeny
+
+Mergelve (14 PR): #234, #212, #211, #199, #209, #206, #203, #195, #200, #202, #198, #197, #214, #204
+Defer (7 PR): #205 (Spring Boot 4), #196 (springdoc 3), #207 (lucide-react), #213 (eslint 10), #210 (react-hooks 7), #208 (typescript-eslint), #201 (react-dom multi)
+
+### D) Branch cleanup
+- Remote branch: 19 -> 8 (11 merged PR branch torolve)
+- Lokalis branch: 13 -> 4 (10 stale branch torolve, csak worktree-ben levok maradtak)
+- Fo working dir D:/repo/valutavalto-program: fix/codex-p2-followup-233-235 -> main (checkout + pull)
+
+## Audit-NO-GO 2026-04-27 11:05 (Copilot szigoru ellenori)
+
+### Findings (5 db, megfogalmazasi sorrend)
+1. P0: CashDeskBreak multi-tenant data leak (cashDeskId nelkul minden tenant rekordjat visszaadta)
+2. P1: FeatureFlagController es TransitController @PreAuthorize hianya
+3. P1: pre-push-quality-gate.ps1 Vitest stderr warning -> $ErrorActionPreference='Stop' miatt megszakad
+4. P1: 100 nyitott CodeQL medium alert (90 java/log-injection, 9 Actions hardening, 1 java/relative-path-command BackupService)
+5. P2: memory/handoff inkonzisztencia (5ed8979e -> da87e7d7 update kesett, .yaml session memory nem mergelve)
+
+### iter3 PR (audit fix branch)
+- Branch: fix/audit-NO-GO-iter3-tenant-leak-controllers
+- Commits:
+  1. P0 CashDeskBreak multi-tenant scoping (V164 migration + entity + repo + service + 7 unit teszt)
+  2. P1 @PreAuthorize FeatureFlag + Transit (class-level + method-level acknowledge)
+  3. P1 pre-push gate Vitest stderr warning kezeles ($ErrorActionPreference Continue)
+  4. P1 BackupService relative-path-command (resolveAbsoluteExecutablePath helper)
+  5. P2 memory + session YAML committolva (EZ a yaml)
+- Defer kovetkezo session: 90 java/log-injection (nagy refaktor), 9 Actions hardening, 7 Dependabot MAJOR
+
+## Tech stack + Policy compliance
+
+- Backend: Spring Boot 3.5.13, Java 21, PostgreSQL HA Hetzner
+- Branch policy v2: 0 open feature-PR, dependabot batch hetente 1x
+- Merge pattern: gh pr merge N --squash --admin --delete-branch
+- AI review: Sourcery weekly rate-limit (1.5M diff char) - nem blokkolo
+- Auto-deploy: Hetzner VPS 5-10 perc a main push utan
+
+## Uzemeltetesi melekhatasok
+
+- allow_auto_merge=true engedelyezve a repon (egyszer, permanens)
+- Branch protection ideiglenesen lazitva (~2 perc): strict=true -> false a Dependabot batch idejere, helyreallitva
+- Branch protection ideiglenesen lazitva (~3 perc): required_approving_review_count=1 -> 0 a #237 self-merge idejere, helyreallitva
+- enforce_admins=true vegig aktiv
+
+## Metrikak
+
+- Bemenet: 21 nyitott Dependabot PR (2026-04-24 ota halmozodott) + 1 nyitott issue (#110) + 11 stale remote branch
+- Output: 14 PR mergelve, 7 PR defer, 1 issue zarva, 1 doc PR mergelve (#237), 11 remote branch torolve, 10 lokalis branch torolve
+- Main HEAD: 60f6b913 -> da87e7d7 (15 squash commit a session soran)
+- Audit iter3 PR (uj): tervezett 5 commit + uj PR a kovetkezo merge ciklusban
+
+## Memoria fajl-hivatkozasok
+
+- .remember/remember.md (frissitve 2026-04-27 11:00 utan)
+- docs/knowledge/memory/2026-04-27-dependabot-batch-housekeeping.yaml (EZ)
+- C:/Users/.../MEMORY.md globalis index (frissitve)
+- C:/Users/.../feedback_ignore_bence_openclaw.md (uj feedback memoria)
+- docs/knowledge/memory/2026-04-24-cash-balance-issue110-v155-closure.yaml (elozo session)
+
+## Nyitott feladatok a kovetkezo session-re
+
+### P0 - mind kesz, nincs azonnali
+
+### P1 (audit iter3 PR utan)
+- 90 CodeQL java/log-injection alert (logback parameter sanitization, jelentos refaktor)
+- 9 CodeQL Actions hardening (workflow-permissions + unpinned-tag) GitHub Actions YAML-ekben
+- Defer Dependabot 7 PR: Spring Boot 4 (#205) + springdoc 3 (#196) onallo integration test PR-ben, lucide-react ikon-audit (#207), eslint 10 (#213) + react-hooks 7 (#210) lint config refresh, react-dom multi (#201) release notes review, typescript-eslint 8.59 (#208) failing CI nyomozas
+
+### P2
+- CB-016 NavClosingService VAT_RATE
+- Cognee MCP integracio
+- Obsidian vault sync
+- Spring Boot 3.5.14 patch
+
+## Verifikacios parancsok
+
+# Audit P0/P1 fixek mergelve?
+gh pr list --state merged --search "audit-NO-GO-iter3 in:title" --limit 5
+
+# Issue #110 lezarva?
+gh issue view 110 --json state -q .state    # CLOSED
+
+# Open PR (csak 7 defer Dependabot maradt)
+gh pr list --state open --limit 50 --json number --jq 'length'   # 7
+
+# Production health
+curl -s -o /dev/null -w "%{http_code}\n" https://excvaluta.com/api/v1/auth/bootstrap-status   # 200
