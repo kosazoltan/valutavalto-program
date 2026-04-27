@@ -162,8 +162,14 @@ public class BackupService {
             String host = extractHost(datasourceUrl);
             String port = extractPort(datasourceUrl);
 
+            // Audit-iter3 P1 (CodeQL java/relative-path-command fix, 2026-04-27 reverify):
+            // a "pg_restore" relative path - ugyanaz a PATH-manipulation kockazat
+            // mint a pg_dump (ld. BackupService createBackup PR #238). Resolveolas
+            // absolute path-ra ugyanazzal a helper-rel.
+            String resolvedPgRestorePath = resolveAbsoluteExecutablePath("pg_restore", "pg_restore");
+
             ProcessBuilder pb = new ProcessBuilder(
-                    "pg_restore",
+                    resolvedPgRestorePath,
                     "-h", host,
                     "-p", port,
                     "-U", datasourceUsername,
