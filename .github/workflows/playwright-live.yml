@@ -76,6 +76,20 @@ jobs:
           TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
         run: npx playwright test --config=playwright.live.config.ts --grep "T09"
 
+      - name: Playwright full-menu traversal test (T20, only when authenticated)
+        # Audit-iter3-followup (Codex P2 #249, 2026-04-27): a `excvaluta-full-menu.spec.ts`
+        # korabban a default `playwright.config.ts` `testMatch`-ben volt, de a CI
+        # bot-detection blokkolt CI-IP-n. PR #249-ben testIgnore-ba kerult, ami
+        # azt eredmenyezte hogy SEHOL nem futott. Most a live workflow-ba kerul -
+        # csak schedule/dispatch + authenticated env esetén.
+        if: ${{ (github.event_name == 'schedule' || github.event.inputs.run_authenticated == 'true') && env.TEST_COMPANY_CODE != '' }}
+        working-directory: frontend-react
+        env:
+          TEST_COMPANY_CODE: ${{ secrets.TEST_COMPANY_CODE }}
+          TEST_WORKER_CODE: ${{ secrets.TEST_WORKER_CODE }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+        run: npx playwright test --config=playwright.full-menu.config.ts
+
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v5
