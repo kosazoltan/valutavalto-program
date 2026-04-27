@@ -46,7 +46,10 @@ public class TokenBlacklistService {
                 .build();
 
         tokenBlacklistRepository.save(entry);
-        log.info("Token blacklisted: tokenId={}, workerId={}, reason={}", tokenId, workerId, reason);
+        // CodeQL java/sensitive-log fix: NEM logoljuk a teljes JWT JTI-t - csak a hashet
+        // (auditra elegendo + nem-rekonstrualhato).
+        log.info("Token blacklisted: tokenIdHash={}, workerId={}, reason={}",
+                Integer.toHexString(tokenId.hashCode()), workerId, reason);
     }
 
     /**
