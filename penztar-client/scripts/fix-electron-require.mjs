@@ -16,19 +16,27 @@
  * Fix: Replace the namespace require with explicit destructuring that
  * creates a proper namespace object.
  */
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const mainJs = join(__dirname, '..', 'dist-electron', 'main.js');
 
-if (!existsSync(mainJs)) {
-  console.error('❌ dist-electron/main.js not found');
-  process.exit(1);
+// Audit-iter3 P0 (CodeQL js/file-system-race fix, 2026-04-27):
+// `existsSync` + `readFileSync` TOCTOU race volt - a check es use kozt a fajl
+// torolheto vagy modosithato. Egyenes try-readFileSync race-mentes: ha hianyzik,
+// ENOENT-tel megall, NEM "exists check + read" ket lepesben.
+let content;
+try {
+  content = readFileSync(mainJs, 'utf8');
+} catch (e) {
+  if (e.code === 'ENOENT') {
+    console.error('❌ dist-electron/main.js not found');
+    process.exit(1);
+  }
+  throw e;
 }
-
-let content = readFileSync(mainJs, 'utf8');
 
 const needle = 'let electron = require("electron");';
 const replacement = `let electron = (() => {

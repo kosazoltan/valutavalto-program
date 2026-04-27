@@ -10,6 +10,7 @@ import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
@@ -17,10 +18,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * AUDIT (audit-NO-GO-iter3 P1, 2026-04-27): policy szerint minden controlleren
+ * kotelezo @PreAuthorize. A GET listazo endpointokra class-level isAuthenticated(),
+ * az acknowledge mutator endpointokra metodus-szinten szigoritott
+ * SUPERVISOR/MANAGER/ADMIN szerepkor (vault-operation status valtoztatas).
+ */
 @RestController
 @RequestMapping("/api/v1/transit")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class TransitController {
 
     private final VaultDistributionRepository distributionRepository;
@@ -91,6 +99,7 @@ public class TransitController {
     }
 
     @PostMapping("/distribution/{id}/acknowledge")
+    @PreAuthorize("hasAnyRole('SUPERVISOR','MANAGER','ADMIN')")
     @Transactional
     public ResponseEntity<TransitItemDto> acknowledgeDistribution(@PathVariable Long id) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
@@ -116,6 +125,7 @@ public class TransitController {
     }
 
     @PostMapping("/collection/{id}/acknowledge")
+    @PreAuthorize("hasAnyRole('SUPERVISOR','MANAGER','ADMIN')")
     @Transactional
     public ResponseEntity<TransitItemDto> acknowledgeCollection(@PathVariable Long id) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();

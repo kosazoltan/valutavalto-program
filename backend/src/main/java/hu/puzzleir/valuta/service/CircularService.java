@@ -386,14 +386,25 @@ public class CircularService {
     public CircularDto uploadAttachment(Long circularId, MultipartFile file) throws IOException {
         Circular circular = findOrThrow(circularId);
 
-        // Tárhelykönyvtár létrehozása
-        Path basePath = Paths.get(attachmentBasePath);
+        // Tárhelykönyvtár létrehozása (audit-iter3 P0 CodeQL java/path-injection fix, 2026-04-27):
+        // basePath canonicalize - toAbsolutePath().normalize() symlink + relative path eliminálása
+        Path basePath = Paths.get(attachmentBasePath).toAbsolutePath().normalize();
         Files.createDirectories(basePath);
 
-        // Fájlnév: {circularId}_{eredeti_név}
-        String safeFilename = circularId + "_" + file.getOriginalFilename()
+        // Fájlnév sanitizálás 2 lépésben:
+        // 1) "../" path-traversal sequence cseréje (a regex "[^a-zA-Z0-9._-]" megengedte a "."-t,
+        //    igy "../" eredeti "_../"-ra masolt volna, de a ".." átmaradna szegmenskent)
+        // 2) maradék veszélyes karakterek cseréje
+        String original = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
+        String safeFilename = circularId + "_" + original
+                .replace("..", "_")
                 .replaceAll("[^a-zA-Z0-9._-]", "_");
-        Path targetPath = basePath.resolve(safeFilename);
+        // Defense in depth: normalize + startsWith check - garantáljuk hogy a final path
+        // a basePath-on belül marad. Ha nem, throw - path-injection NEM lehetséges.
+        Path targetPath = basePath.resolve(safeFilename).normalize();
+        if (!targetPath.startsWith(basePath)) {
+            throw new ValidationException("Tilos path-traversal kíserlet a fájlnévben: " + original);
+        }
 
         Files.copy(file.getInputStream(), targetPath);
 

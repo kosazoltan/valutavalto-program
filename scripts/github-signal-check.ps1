@@ -95,14 +95,16 @@ if ($runs.Count -gt 0) {
 } else { Write-Host "  (nincs check-run)" -ForegroundColor DarkGray }
 
 # 4. Codex review
+# 2026-04-27 audit fix: defensive filter - "create a Codex account" setup-prompt
+# es a "weekly rate limit" comment-ek NEM valodi findingek, csak zaj.
 Write-Section "4. Codex review"
-$codexReviews = Invoke-GhApi -Path "/repos/$OWNER/$REPO/pulls/$PR/reviews?per_page=100" -JqFilter '.[] | select(.user.login | ascii_downcase | contains("codex")) | {reviewer:.user.login,state,submitted_at}'
+$codexReviews = Invoke-GhApi -Path "/repos/$OWNER/$REPO/pulls/$PR/reviews?per_page=100" -JqFilter '.[] | select((.user.login | ascii_downcase | contains("codex")) and ((.body // "") | (contains("create a Codex account") | not)) and ((.body // "") | (contains("weekly rate limit") | not))) | {reviewer:.user.login,state,submitted_at,body:(.body[:200])}'
 if ($codexReviews.Count -gt 0) {
     foreach ($r in $codexReviews) {
         Write-Host "  [$($r.state)] $($r.reviewer) @ $($r.submitted_at)" -ForegroundColor Magenta
         if ($r.state -eq "CHANGES_REQUESTED") { $blockers += "Codex CHANGES_REQUESTED" }
     }
-} else { Write-Host "  (nincs Codex review)" -ForegroundColor DarkGray }
+} else { Write-Host "  (nincs valodi Codex review - setup-prompt/rate-limit szurve)" -ForegroundColor DarkGray }
 
 $codexComments = Invoke-GhApi -Path "/repos/$OWNER/$REPO/pulls/$PR/comments?per_page=100" -JqFilter '.[] | select(.user.login | ascii_downcase | contains("codex")) | {user:.user.login,path,line:(.line // 0),body:(.body[:200])}'
 if ($codexComments.Count -gt 0) {
@@ -116,13 +118,14 @@ if ($codexComments.Count -gt 0) {
 
 # 5. Sourcery review
 Write-Section "5. Sourcery review"
-$sourceryReviews = Invoke-GhApi -Path "/repos/$OWNER/$REPO/pulls/$PR/reviews?per_page=100" -JqFilter '.[] | select(.user.login | ascii_downcase | contains("sourcery")) | {reviewer:.user.login,state,submitted_at}'
+# 2026-04-27 audit fix: weekly rate-limit comment szurese (csak valodi findinget szamolunk)
+$sourceryReviews = Invoke-GhApi -Path "/repos/$OWNER/$REPO/pulls/$PR/reviews?per_page=100" -JqFilter '.[] | select((.user.login | ascii_downcase | contains("sourcery")) and ((.body // "") | (contains("weekly rate limit") | not))) | {reviewer:.user.login,state,submitted_at,body:(.body[:200])}'
 if ($sourceryReviews.Count -gt 0) {
     foreach ($r in $sourceryReviews) {
         Write-Host "  [$($r.state)] $($r.reviewer) @ $($r.submitted_at)" -ForegroundColor Cyan
         if ($r.state -eq "CHANGES_REQUESTED") { $blockers += "Sourcery CHANGES_REQUESTED" }
     }
-} else { Write-Host "  (nincs Sourcery review)" -ForegroundColor DarkGray }
+} else { Write-Host "  (nincs valodi Sourcery review - rate-limit szurve)" -ForegroundColor DarkGray }
 
 $sourceryComments = Invoke-GhApi -Path "/repos/$OWNER/$REPO/pulls/$PR/comments?per_page=100" -JqFilter '.[] | select(.user.login | ascii_downcase | contains("sourcery")) | {user:.user.login,path,line:(.line // 0),body:(.body[:200])}'
 if ($sourceryComments.Count -gt 0) {

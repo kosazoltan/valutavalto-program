@@ -34,9 +34,16 @@ const LINKS = [
 ];
 
 for (const { src, dst } of LINKS) {
-  if (!existsSync(src)) {
-    writeFileSync(src, '', { flag: 'w' });
+  // Audit-iter3 P0 (CodeQL js/file-system-race fix, 2026-04-27):
+  // a korabbi `existsSync(src) ? skip : writeFileSync` minta TOCTOU race volt -
+  // a check es a use kozt a fajl letrejohetett. Atomic `wx` flag (O_CREAT|O_EXCL)
+  // race-mentes: ha a fajl mar letezik, EEXIST hibaval nem tortenik ujrairas.
+  try {
+    writeFileSync(src, '', { flag: 'wx' });
     console.log(`[collect-logs] created empty: ${src}`);
+  } catch (e) {
+    if (e.code !== 'EEXIST') throw e;
+    // mar letezik - OK
   }
   try {
     // Codex P2 + Sourcery: existsSync(dangling_symlink) = false -> rm skipped ->
