@@ -8,10 +8,10 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <!-- Supply-chain upgrade: 3.5.11 -> 3.5.13
+        <!-- Supply-chain upgrade: 3.5.11 -> 4.0.6
              - CVE-2026-22731 (Spring Boot Actuator auth bypass) fixed in 3.5.12
-             - CVE-2026-29145 (Tomcat 10.1.52 CLIENT_CERT) fixed by bundled Tomcat 10.1.53 in 3.5.13 -->
-        <version>3.5.13</version>
+             - CVE-2026-29145 (Tomcat 10.1.52 CLIENT_CERT) fixed by bundled Tomcat 10.1.53 in 4.0.6 -->
+        <version>4.0.6</version>
         <relativePath/>
     </parent>
     
