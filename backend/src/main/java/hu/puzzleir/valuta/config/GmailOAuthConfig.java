@@ -49,6 +49,10 @@ public class GmailOAuthConfig {
     }
 
     @Bean
+    @SuppressWarnings("deprecation") // setApprovalPrompt(String): a Google API client 2.0+-ban
+    // deprecated, viszont a Builder.set("prompt", ...) NEM publikus a current API-ban.
+    // A Google ajanlott migracio: a frontend kuldjon prompt=consent param-ot az URL-ben.
+    // Most a backend force-olja minden auth-flow-nal (refresh_token issuance miatt).
     public GoogleAuthorizationCodeFlow googleAuthorizationCodeFlow(HttpTransport httpTransport)
             throws IOException {
         return new GoogleAuthorizationCodeFlow.Builder(

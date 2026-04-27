@@ -5,6 +5,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { authApi, publicApi, type PublicWorker } from '../../services/api/index'
 import { Eye, EyeOff, User, Lock, Building2, Shield, RefreshCw, ChevronDown } from 'lucide-react'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { logger } from '../../utils/logger'
 import { useAppMode } from '../../hooks/useAppMode'
 
 /** Szerver (full mód) whitelist: csak ezek a role-ok léphetnek be böngészőben */
@@ -16,9 +17,27 @@ const SERVER_ALLOWED_CANONICAL_ROLES = [
 // Legacy enum fallback
 const SERVER_ALLOWED_LEGACY_ROLES = ['SUPERVISOR', 'MANAGER', 'ADMIN']
 
+/**
+ * Setup wizard altal elmentett config (localStorage / Electron config).
+ * Amit a LoginPage pre-fill-hez hasznal.
+ */
+function readSetupConfig(): { companyCode?: string; workerCode?: string; workerName?: string } {
+  try {
+    const raw = localStorage.getItem('valuta-setup-config')
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as { companyCode?: string; workerCode?: string; workerName?: string }
+    return parsed
+  } catch {
+    return {}
+  }
+}
+
 export default function LoginPage() {
-  const [companyCode, setCompanyCode] = useState('EBC')
-  const [workerCode, setWorkerCode] = useState('')
+  // v2.3.0: pre-fill a setup wizard altal beallitott kivalasztott dolgozoval
+  const setupConfig = readSetupConfig()
+  const [companyCode, setCompanyCode] = useState(setupConfig.companyCode || 'EBC')
+  const [workerCode, setWorkerCode] = useState(setupConfig.workerCode || '')
+  const prefilledWorkerName = setupConfig.workerName
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
@@ -30,6 +49,15 @@ export default function LoginPage() {
   const [workers, setWorkers] = useState<PublicWorker[]>([])
   const [workersLoading, setWorkersLoading] = useState(false)
   const [workersError, setWorkersError] = useState<string | null>(null)
+
+  // v2.3.0: Elfelejtett jelszo modal state
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotLoading, setForgotLoading] = useState(false)
+  const [forgotMessage, setForgotMessage] = useState<string | null>(null)
+  const [resetToken, setResetToken] = useState('')
+  const [newPasswordInput, setNewPasswordInput] = useState('')
+  const [resetLoading, setResetLoading] = useState(false)
 
   // V57: Role-választó modal state
   const [showRoleSelector, setShowRoleSelector] = useState(false)
@@ -386,6 +414,11 @@ export default function LoginPage() {
               {workersError && (
                 <div className="text-xs text-amber-600 mt-1">{workersError}</div>
               )}
+              {prefilledWorkerName && workerCode === (setupConfig.workerCode || '') && (
+                <div className="text-xs text-green-600 mt-1">
+                  ✓ A telepitoben kivalasztott dolgozo: <strong>{prefilledWorkerName}</strong>
+                </div>
+              )}
             </div>
 
             {/* Password field */}
@@ -406,6 +439,16 @@ export default function LoginPage() {
                   className="p-1 hover:bg-gray-100 rounded"
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+              {/* v2.3.0: Elfelejtett jelszo link */}
+              <div className="flex justify-end mt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(true)}
+                  className="text-xs text-primary-600 hover:text-primary-700 hover:underline"
+                >
+                  Elfelejtett jelszó?
                 </button>
               </div>
             </div>
@@ -440,6 +483,112 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+
+      {/* v2.3.0: Elfelejtett jelszo modal */}
+      {showForgotPassword && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowForgotPassword(false)}>
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-xl font-bold text-secondary-900 mb-4">Elfelejtett jelszó</h2>
+            {!forgotMessage ? (
+              <>
+                <p className="text-sm text-secondary-600 mb-4">
+                  Add meg az email címed. Ha regisztrálva van, egy reset token-t kapsz vissza (dev módban itt jelenik meg, élesben email-ben érkezik).
+                </p>
+                <input
+                  type="email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  placeholder="user@example.com"
+                  className="form-input w-full mb-4"
+                  autoFocus
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    className="form-button"
+                    onClick={() => { setShowForgotPassword(false); setForgotEmail(''); setForgotMessage(null); }}
+                  >Mégse</button>
+                  <button
+                    type="button"
+                    className="form-button-primary"
+                    disabled={!forgotEmail || forgotLoading}
+                    onClick={async () => {
+                      setForgotLoading(true)
+                      try {
+                        const resp = await authApi.forgotPassword(forgotEmail)
+                        if (resp.token) {
+                          setResetToken(resp.token)
+                          setForgotMessage(`Dev-token: ${resp.token}. Add meg az új jelszót.`)
+                        } else {
+                          setForgotMessage('Ha az email regisztrált, a reset tokent elküldtük.')
+                        }
+                      } catch (err) {
+                        // Anti-enumeration: a user-nek megjelenő üzenet EGYSÉGES (sikeres + fail + network
+                        // error ugyanazt mutatja). A hiba-reszleteket CSAK dev mode-ban logoljuk
+                        // (logger.debug production-ban suppressed), hogy ne szivargjon info a networkon.
+                        // Sourcery PR #223 P3 fix: non-user-visible error capture dev-only log-gal.
+                        logger.debug('LoginPage', 'forgotPassword request failed (dev-only):',
+                          err instanceof Error ? err.message : String(err))
+                        setForgotMessage('Ha az email regisztrált, a reset tokent elküldtük.')
+                      } finally {
+                        setForgotLoading(false)
+                      }
+                    }}
+                  >{forgotLoading ? 'Küldés...' : 'Küldés'}</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="mb-4 p-3 rounded-lg bg-blue-50 text-sm text-blue-800 break-all">
+                  {forgotMessage}
+                </div>
+                {resetToken && (
+                  <>
+                    <label className="block text-sm font-semibold mb-1">Új jelszó (min 8 kar)</label>
+                    <input
+                      type="password"
+                      value={newPasswordInput}
+                      onChange={(e) => setNewPasswordInput(e.target.value)}
+                      className="form-input w-full mb-4"
+                      autoFocus
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        className="form-button"
+                        onClick={() => { setShowForgotPassword(false); setForgotEmail(''); setForgotMessage(null); setResetToken(''); setNewPasswordInput(''); }}
+                      >Mégse</button>
+                      <button
+                        type="button"
+                        className="form-button-primary"
+                        disabled={!newPasswordInput || newPasswordInput.length < 8 || resetLoading}
+                        onClick={async () => {
+                          setResetLoading(true)
+                          try {
+                            await authApi.resetPassword(resetToken, newPasswordInput)
+                            setForgotMessage('Jelszó sikeresen beállítva. Most már bejelentkezhetsz.')
+                            setResetToken('')
+                            setNewPasswordInput('')
+                            setTimeout(() => {
+                              setShowForgotPassword(false)
+                              setForgotEmail('')
+                              setForgotMessage(null)
+                            }, 2000)
+                          } catch (err) {
+                            setForgotMessage(err instanceof Error ? err.message : 'Hiba a jelszó beállításakor.')
+                          } finally {
+                            setResetLoading(false)
+                          }
+                        }}
+                      >{resetLoading ? 'Mentés...' : 'Új jelszó beállítása'}</button>
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
