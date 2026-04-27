@@ -33,12 +33,14 @@ public class RedisTokenBlacklistService {
         if (tokenId == null || tokenId.isBlank()) return;
         Duration ttl = Duration.between(Instant.now(), expiresAt);
         if (ttl.isNegative() || ttl.isZero()) {
-            log.debug("Token mar lejart, nem kerul blacklistre: {}", tokenId);
+            // CodeQL java/sensitive-log fix: NEM logoljuk a teljes JTI-t, csak a hashet.
+            log.debug("Token mar lejart, nem kerul blacklistre: hash={}", Integer.toHexString(tokenId.hashCode()));
             return;
         }
         String key = KEY_PREFIX + tokenId;
         redisTemplate.opsForValue().set(key, REVOKED_VALUE, ttl.getSeconds(), TimeUnit.SECONDS);
-        log.debug("Token blacklistre kerult: {} TTL={}s", tokenId, ttl.getSeconds());
+        // CodeQL java/sensitive-log fix: hashelt JTI a debug logban.
+        log.debug("Token blacklistre kerult: hash={} TTL={}s", Integer.toHexString(tokenId.hashCode()), ttl.getSeconds());
     }
 
     public boolean isBlacklisted(String tokenId) {

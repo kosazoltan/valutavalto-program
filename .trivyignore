@@ -1,0 +1,22 @@
+# Trivy ignore file - parallel az owasp-suppressions.xml-vel
+# Igazolt compensating controls miatt ignoraljuk:
+
+# log4j-api 2.25.x: nincs log4j-core, nincs Socket Appender, SLF4J -> Logback bridge.
+# A JNDI/serialization vektorok nem aktivak.
+CVE-2026-34478
+CVE-2026-34480
+CVE-2026-34481
+
+# pdfbox 3.0.7: csak szerveroldali PDF-generalas (PDDocument new, PDPage new),
+# soha nem dolgoz fel felhasznalo-feltoltott PDF-et. A parsing-vektor (CVE-2026-33929 DoS,
+# CVE-2026-23907 path traversal) nem aktiv. A 4.x major upgrade kulon sprintet igenyel.
+CVE-2026-33929
+CVE-2026-23907
+
+# DOMPurify 3.3.2 (swagger-ui transitiv): production konfiguracioban
+# springdoc.api-docs es springdoc.swagger-ui endpointok TILTVA - ezek csak dev felulet.
+CVE-2025-15599
+CVE-2026-0540
+CVE-2026-41238
+CVE-2026-41239
+CVE-2026-41240

@@ -983,7 +983,8 @@ async function fetchPaged<T>(
   }
   if (!lastPageReached) {
     // AI review (Sourcery PR #193): silent truncation risk elleni explicit figyelmeztetes.
-    // eslint-disable-next-line no-console -- ez diagnosztikus, scalability problema bizonyiteka
+    // A no-console rule a projektben most mar nem tiltja a console.warn-t, igy az
+    // eslint-disable directive feleslegesse valt (PR #222 post-merge CI fix).
     console.warn(
       `[fetchPaged] MAX_PAGES=${maxPages} (size=${pageSize}) elerve ${path}-on, `
       + `lehetseges silent truncation. Backend-oldali filter kell vagy maxPages emelese.`
