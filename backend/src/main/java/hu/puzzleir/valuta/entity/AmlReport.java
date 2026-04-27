@@ -36,6 +36,7 @@ public class AmlReport {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Builder.Default
     @jakarta.persistence.Version
     @Column(name = "version", nullable = false)
     private Long version = 0L;
