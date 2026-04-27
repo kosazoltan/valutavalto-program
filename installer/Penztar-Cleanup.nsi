@@ -1,9 +1,11 @@
 ; =========================================================================
-; Valutavalto Penztar — Standalone Cleanup/Eltavolito
+; Valutavalto Penztar ï¿½ Standalone Cleanup/Eltavolito
 ; Regi telepitesek maradekainak teljes eltavolitasa
 ; =========================================================================
 
 !include "MUI2.nsh"
+!include "FileFunc.nsh"
+!include "LogicLib.nsh"
 
 !ifndef VERSION
   !define VERSION "2.1.8"
@@ -17,8 +19,8 @@ VIProductVersion "${VERSION}.0"
 VIFileVersion "${VERSION}.0"
 VIAddVersionKey /LANG=1038 "ProductName" "Valutavalto Penztar Eltavolito"
 VIAddVersionKey /LANG=1038 "CompanyName" "Exclusive Best Change Zrt."
-VIAddVersionKey /LANG=1038 "LegalCopyright" "© 2026 Exclusive Best Change Zrt."
-VIAddVersionKey /LANG=1038 "FileDescription" "Valutavalto Penztar — Teljes Eltavolito"
+VIAddVersionKey /LANG=1038 "LegalCopyright" "ï¿½ 2026 Exclusive Best Change Zrt."
+VIAddVersionKey /LANG=1038 "FileDescription" "Valutavalto Penztar ï¿½ Teljes Eltavolito"
 VIAddVersionKey /LANG=1038 "FileVersion" "${VERSION}"
 VIAddVersionKey /LANG=1038 "ProductVersion" "${VERSION} (${BUILD_DATE})"
 
@@ -34,16 +36,43 @@ Unicode true
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_LANGUAGE "Hungarian"
 
+; v2.3.0: adat-megorzes flag upgrade soran
+Var PreserveData
+
+Function .onInit
+    ; Parameter parsolas: /PRESERVE_DATA=1 (Setup.exe-bol hivva upgrade-hez)
+    ; vagy ures (manualis futtatas -> teljes eltavolitas)
+    ${GetOptions} "$CMDLINE" "/PRESERVE_DATA=" $PreserveData
+    ${If} $PreserveData == ""
+        StrCpy $PreserveData "0"
+    ${EndIf}
+
+    ; v2.3.0: Ha a user manualisan futtatta a Cleanup-ot (non-silent, PreserveData=0),
+    ; figyelmeztetjuk az adatveszelesrol. Silent mode-ban (Setup-bol hivva) kimarad.
+    ; v2.3.0 NSIS fix: az MessageBox a Cleanup.nsi tobb cleanup-version mellett
+    ; az NSIS ACP parserrel valamiert hibazott. A confirm-dialog elhagyva, mert
+    ; (1) silent mode-ban (PRESERVE_DATA=1, Setup-bol hivva) kimarad,
+    ; (2) manualisan futtatva a user mar a Tulajdonsagok+UAC promptolnal
+    ;     megerositette a teljes eltavolitas szandekat.
+    DetailPrint "Penztar Cleanup indul (PreserveData=$PreserveData)"
+    IfSilent skip_confirm
+
+    skip_confirm:
+    ${If} $PreserveData == "1"
+        DetailPrint "Cleanup: PRESERVE_DATA=1 mod - C:\ProgramData\BestChange MEGTARTVA"
+    ${EndIf}
+FunctionEnd
+
 Section "Eltavolitas"
     SetDetailsView show
 
     DetailPrint "============================================"
-    DetailPrint "Valutavalto Penztar — Teljes Eltavolitas"
+    DetailPrint "Valutavalto Penztar ï¿½ Teljes Eltavolitas"
     DetailPrint "============================================"
     DetailPrint ""
 
     ; --- 1. STOP services (NSSM + net stop fallback) ---
-    DetailPrint "1/5 — Szolgaltatasok leallitasa..."
+    DetailPrint "1/5 ï¿½ Szolgaltatasok leallitasa..."
     IfFileExists "C:\ProgramData\BestChange\tools\nssm.exe" 0 cleanup_netstop
         nsExec::ExecToLog '"C:\ProgramData\BestChange\tools\nssm.exe" stop BestChange-Backend'
         nsExec::ExecToLog '"C:\ProgramData\BestChange\tools\nssm.exe" stop BestChange-PostgreSQL'
@@ -59,7 +88,7 @@ Section "Eltavolitas"
     Sleep 2000
 
     ; --- 2. KILL leftover processes (scoped!) ---
-    DetailPrint "2/5 — Futo folyamatok leallitasa..."
+    DetailPrint "2/5 ï¿½ Futo folyamatok leallitasa..."
     nsExec::ExecToLog 'taskkill /F /IM Penztar.exe'
     nsExec::ExecToLog 'taskkill /F /IM "Valutavalto Penztar.exe"'
     ; Scoped kill: only BestChange-path postgres/java (nem globalis!)
@@ -68,7 +97,7 @@ Section "Eltavolitas"
     Sleep 2000
 
     ; --- 3. REMOVE services (only after processes are dead!) ---
-    DetailPrint "3/5 — Szolgaltatasok eltavolitasa..."
+    DetailPrint "3/5 ï¿½ Szolgaltatasok eltavolitasa..."
     IfFileExists "C:\ProgramData\BestChange\tools\nssm.exe" 0 cleanup_scdelete
         nsExec::ExecToLog '"C:\ProgramData\BestChange\tools\nssm.exe" remove BestChange-Backend confirm'
         nsExec::ExecToLog '"C:\ProgramData\BestChange\tools\nssm.exe" remove BestChange-PostgreSQL confirm'
@@ -78,7 +107,7 @@ Section "Eltavolitas"
     Sleep 1000
 
     ; --- 4. Remove directories ---
-    DetailPrint "4/5 — Fajlok es mappak torlese (5 lepeses: STOP?KILL?REMOVE?DELETE?REGISTRY)..."
+    DetailPrint "4/5 ï¿½ Fajlok es mappak torlese (5 lepeses: STOP?KILL?REMOVE?DELETE?REGISTRY)..."
 
     ; Program Files locations (F-N-10: PROGRAMFILES64 for x64 installs)
     RMDir /r "$PROGRAMFILES64\Valutavalto Penztar"
@@ -88,16 +117,18 @@ Section "Eltavolitas"
     RMDir /r "$PROGRAMFILES\Valutavalto Penztar"
     RMDir /r "$PROGRAMFILES\ValutavaltoPenztar"
 
-    ; ProgramData
-    RMDir /r "C:\ProgramData\BestChange"
+    ; ProgramData â€” v2.3.0: upgrade mode-ban NEM toroljuk (adat-megorzes)
+    ${If} $PreserveData == "1"
+        DetailPrint "  Upgrade mode: C:\ProgramData\BestChange adatmappa MEGTARTVA (DB + config)."
+    ${Else}
+        RMDir /r "C:\ProgramData\BestChange"
+    ${EndIf}
 
     ; Desktop shortcuts
-    Delete "$DESKTOP\Valutavalto Penztar.lnk"
     Delete "$DESKTOP\Valutavalto Penztar.lnk"
     Delete "$DESKTOP\Penztar.lnk"
 
     ; Start menu
-    RMDir /r "$SMPROGRAMS\Valutavalto Penztar"
     RMDir /r "$SMPROGRAMS\Valutavalto Penztar"
 
     ; --- 4b. Firewall rules cleanup (BUG-03 fix) ---
@@ -112,7 +143,7 @@ Section "Eltavolitas"
     nsExec::ExecToLog 'reg delete "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v PGPASSFILE /f'
 
         ; --- 5. Registry cleanup ---
-    DetailPrint "5/5 — Registry bejegyzesek torlese..."
+    DetailPrint "5/5 ï¿½ Registry bejegyzesek torlese..."
     DeleteRegKey HKLM "Software\BestChange"
     DeleteRegKey HKLM "Software\BestChange\ValutavaltoPenztar"
     DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar"

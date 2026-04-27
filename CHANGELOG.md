@@ -5,6 +5,82 @@ A `valutavalto-program` monorepo verzió-történet.
 Formátum: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 verziószám: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] — 2026-04-25 (8 PR session audit + tisztaság-iteráció — installer P1 data-loss fix!)
+
+### CRITICAL — Installer P1 data-loss fix (MEGKÖTELEZŐ frissítés!)
+- **PR #222** — `installer/Penztar-Setup.nsi:230`: A SecInstall Fázis 1e2 unconditional `RMDir /r "C:\ProgramData\BestChange"`-t hajtott végre. **Az auto-upgrade flow ellenére az adatbázis + konfigurációs adatok TÖRLÖDTEK az új verzió telepítésekor!** Bevezetve `$UPGRADE_MODE` flag, conditional RMDir + `.onInit` upgrade ágában `StrCpy "1"`. Most az upgrade ténylegesen megőrzi a DB-t és a configot.
+- **PR #222** — `installer/Penztar-Setup.nsi:.onInit`: `ReadRegStr` `SetRegView 64` nélkül futott, a 64-bit Windows-on a `Wow6432Node` redirect miatt nem találta a meglévő telepítést. Hozzáadva `SetRegView 64` az `UninstallString` lookup elé.
+- **PR #222** — `penztar-client/electron/main.ts`: offline mode-ban (LAN-ban telepített pénztár, lokális backenddel) a SetupWizard `offline_mode=true`-t mentett, de a startup logika minden indításkor felülírta a `server_url`-t prod URL-re → offline telepítések törődtek indításkor. Új `offlineMode` ellenőrzés.
+- **PR #222** — `frontend-react/src/pages/setup/SetupWizard.tsx`: offline mode + `selectedWorkerCode` konfliktus — offline-ban is worker-first-time-setup-ot indított. Most `!offlineMode` feltétel.
+- **PR #222** — `penztar-client/electron/first-run.ts`: V100 device-registration `bootstrapPassword`-del loginolt a `workerFirstTimeSetup` után, ami már átállította a jelszót. Új `usedWorkerSetup` detection + `adminPassword` használat.
+
+### Fixed — CI / lint / warning teljes tisztogatás
+- **PR #223** — `LoginPage.tsx:524` `catch (err)` unused variable + `transactions.ts:986` obsolete `eslint-disable-next-line no-console` directive (Security Pipeline 5x failure unblock).
+- **PR #224** — Sourcery P3: `LoginPage.tsx` catch blokk dev-mode logger.debug (anti-enumeration mellett dev-debugging) + E2E T10 `bootstrap-status` 3x retry (Hetzner deploy-window flakiness elimináció).
+- **PR #225** — 4 db Lombok `@Builder` warning entitás-fájlokon (`DailyBalance`, `Customer`, `AmlReport`, `DailySession`): `@Builder.Default` annotáció hozzáadva. `GmailOAuthConfig.setApprovalPrompt("force")` deprecated API: `@SuppressWarnings("deprecation")` + indokló komment (Google API Builder nem expose-olja `setPrompt(String)`-et). Maven [WARNING] szám: 5 → **0**.
+- **PR #226** — 32 e2e lint hiba (`no-useless-escape × 28`, `no-empty × 2`, `prefer-const × 1`, `unused-vars × 1`) az `e2e/excvaluta-live.spec.ts` és `excvaluta-full-menu.spec.ts` fájlokban. `npx eslint .`: 32 → **0**.
+
+### Fixed — `.gitignore` Unicode byte-exact (Codex P2 + Sourcery P3)
+- **PR #227** — Cosmetic dedupe: 4 db duplikált `Felmérés/` egyetlen-re reduce-olva, NSIS Cleanup duplikátok eltávolítva.
+- **PR #228** — Codex P2 finding (#227 follow-up): a `.gitignore` pattern matching **byte-exact**, NEM Unicode-aware. A korábbi dedupe behavioral regression volt: macOS HFS+ NFD-encoded `Felmérés/` mappa nem lett volna kizárva. NFD pattern visszahozva a NFC mellé.
+- **PR #229** — Sourcery P3 (#228 follow-up): bővített figyelmeztető komment a NFD entry mellett (NFC + NFD bytes hex form, ATTENTION: editor / formatter NE auto-normalizálja).
+
+### Megjegyzések
+- **Sentry** (24h): 0 frontend + 0 backend issue.
+- **Production health** (`https://excvaluta.com/api/v1/auth/bootstrap-status`): HTTP 200 stabil.
+- **CI**: `Security Pipeline`, `Frontend E2E`, `Deploy to Hetzner VPS`, `UTF-8 Guardrail` mind 8/8 PASS.
+
+### Telepítő fájlok
+- `Penztar-Setup-2.3.0-2026MMDD.exe` — kb. 273 MB, NSIS Unicode v3.x bundle (PG 17.5, NSSM 2.24, Eclipse Temurin JRE 21)
+- `Penztar-Eltavolito-2.3.0-2026MMDD.exe` — kb. 60 KB, standalone uninstaller (`/PRESERVE_DATA=1` upgrade-mode-hoz, `/PRESERVE_DATA=0` factory reset)
+- **Upgrade flow**: a Setup `.onInit` automatikusan futtatja a régi `Penztar-Eltavolito.exe`-t silent + PRESERVE_DATA=1-gyel, megőrizve az adatbázist + configot.
+
+## [2.2.5] — 2026-04-24 (hotfix batch — 12 PR a v2.2.4 után)
+
+### Critical — PenztarClient launcher PS 5.1-kompat fix (merge-blokkoló)
+- **PR #193** — `scripts/_production-urls.ps1`: 4-arg `Join-Path` PS 5.1-ben parameter-binding error → **a launcher elsőként elesett** default Windows 10/11-en. Javítás: kaszkadolt `Join-Path` hívások. Nélküle a telepített pénztáros kliens indításkor azonnal crash-elt.
+
+### Fixed — Frontend UI menük HTTP 400/404 crash-ek
+- **PR #185** (Issue #184) — `RateHistoryController` + `RateCategoryPage`: `rate-history` és `rate-categories` menü 400 Bad Request. Backend default params (30 napos default ablak) + `RateHistoryRepository` optional query. Frontend `formatLocalDate()` UTC off-by-one javítás (este dátumváltás).
+- **PR #183** — `CentralVaultDashboard` + `MnbReportPage`: stock-snapshot és MNB jelentések URL path typo (`/mnb-reports` → `/mnb/reports`). Új full menu Playwright e2e spec (44 authenticated oldal traversal).
+- **PR #186** — `RateHistoryController` single `LocalDate.now()` (midnight race fix), swap logic csak akkor érvényesül, ha mindkét bound explicit megadva.
+- **PR #187, #188, #192** — `MnbReportPage` backend field names (`reportDate` a `periodStart/End` helyett), `asArray<T>()` helper generikus safe-cast minden API hívásnál.
+- **PR #192** — `CentralVaultDashboard` `hasStockData` gate + explicit "STOCK UNKNOWN" warning (üres snapshot esetén látszik, hogy adathiány).
+
+### Fixed — Shipment API + Electron stack trace
+- **PR #193** — `penztar-client/electron/main.ts`: `log.error()` 2nd arg full error object (nem csak `.message`), hogy a stack trace megmaradjon production config load failure esetén.
+- **PR #194** — `shipmentRequestApi.findByBranch`: pagination loop `fetchPaged<T>()` reusable helperbe kiemelve. MAX_PAGES cap esetén `console.warn` silent truncation elkerülésére.
+
+### Fixed — E2E test infrastructure
+- **PR #176** (Codex P2, PR #193-ban javítva) — T09 login flow test skip path helyreállítva.
+- **PR #183** — Playwright `full-menu.config.ts` authenticated storage state reuse.
+
+### Fixed — AI_CONSTITUTION maturity labeling
+- **PR #179** (Sourcery, PR #193-ban javítva) — "TDD kötelező állapotgép (L9 alapelv)" → "(alapelv, L2+ érettségi követelmény)".
+
+### Added — AI review process scripts
+- **PR #192** — `scripts/post-merge-signal-check.ps1` 15-perces iteratív polling (Sourcery/Codex bot-ok 15-30 perccel a merge után is küldhetnek új feedback-et).
+- **PR #194** — script `-MinMinutes` paraméter (default 15) - **stability-exit NEM lehetséges** ezelőtt. KRITIKUS fix: a korábbi 4-perces korai kilépés miatt a Sourcery multi-round review-kat elvesztettük.
+
+### Audit events
+- **#187** — 9 mai-merge kihagyott finding utólagos javítása (1. protokoll-violation)
+- **#193** — retroaktív scan 5 elmulasztott finding (PR #173, #174, #176, #179, #180) (4. audit event)
+- **#194** — script design-hiba: stability-exit túl agresszív, Sourcery high-level feedback időzítése 15-25 min (5. audit event)
+
+### Version bump
+- `package.json` × 3: 2.2.4 → 2.2.5
+- `backend/pom.xml`: nincs változtatás
+
+### Upgrade path
+- **Backend (Hetzner)**: ✅ automatikus deploy — a 12 PR backend-érintő része (`RateHistoryController`) már éles a https://excvaluta.com-on (main HEAD `16bb7e9a`)
+- **Frontend admin (Hetzner)**: ✅ automatikus deploy
+- **Pénztáros Electron kliens**: **v2.2.5 installer telepítése KÖTELEZŐ** a 12 PR fix-ért. A v2.2.4 client `app.asar`-jában még a régi bundle van (főleg: rate-history 400 crash, MNB reports 404, launcher PS 5.1 elesés).
+
+### Breaking changes
+- Nincs. Minden fix backward-compatible.
+
+---
+
 ## [2.2.4] — 2026-04-24 (hotfix)
 
 ### Fixed — Szállítmányigények oldal 404 (pre-existing bug)

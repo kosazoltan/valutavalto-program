@@ -43,19 +43,31 @@ if (!API_BASE_URL) {
   if (import.meta.env.DEV) {
     API_BASE_URL = '/api/v1'
   } else if (window.electronAPI) {
-    // Electron production — SQLite-ból olvassa a server_url-t, fallback a prod szerverre
+    // Electron production fallback a prod szerverre
     API_BASE_URL = 'https://excvaluta.com/api/v1'
-    // Aszinkron felülírás: ha SQLite-ban van beállítva server_url, használjuk azt
-    window.electronAPI.getConfig?.('server_url').then((url: string | null) => {
-      if (url) {
-        const normalized = url.endsWith('/api/v1') ? url : `${url.replace(/\/$/, '')}/api/v1`
-        api.defaults.baseURL = normalized
-      }
-    }).catch(() => { /* SQLite nem elérhető — marad a default */ })
   } else {
     // Webes production — relatív URL (proxy mögött) vagy env var kötelező
     API_BASE_URL = '/api/v1'
   }
+}
+
+// v2.3.0 kritikus bugfix: Electron production-ban MINDIG felulirjuk a build-time
+// VITE_API_URL-t az SQLite config store server_url-rol (a telepito wizard irja be).
+// Ez azert kell, mert a build idoben a VITE_API_URL neha rossz ertekkel fix-el be
+// (pl. localhost:8080 a dev build .env-bol), es a futasi kornyezet-specifikus
+// URL-t a felhasznalo altal konfiguralt server_url-nek kell biztositania.
+if (!import.meta.env.DEV && typeof window !== 'undefined' && window.electronAPI?.getConfig) {
+  window.electronAPI.getConfig('server_url').then((url: string | null) => {
+    if (url && url.trim().length > 0) {
+      const normalized = url.endsWith('/api/v1') ? url : `${url.replace(/\/$/, '')}/api/v1`
+      if (api.defaults.baseURL !== normalized) {
+        logger.info('[api.client]', 'SQLite server_url override applied:', normalized, '(volt:', api.defaults.baseURL, ')')
+        api.defaults.baseURL = normalized
+      }
+    }
+  }).catch((err) => {
+    logger.warn('[api.client]', 'SQLite server_url read failed, marad a default:', err instanceof Error ? err.message : err)
+  })
 }
 
 // Create axios instance

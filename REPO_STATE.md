@@ -92,31 +92,31 @@ cd penztar-client && npm run build
 - Gmail integráció Sprint 1+2 (külön repo: gmail-client)
 - Teljes audit: 3 batch + 2 kör reaudit (134 fájl, +5505 sor)
 
-## ?? BE�P�TETT AI RENDSZER (17. t�rv�ny) � TERVEZETT
-### Implement�land� (konz�lium sz�ks�ges)
-1. **F��rt�kt�ros AI Asszisztens**
-   - Term�szetes nyelv� lek�rdez�s: "Mai EUR forgalom irod�nk�nt" � SQL � t�bl�zat
-   - Kimutat�s/riport gener�l�s tetsz�leges adatkombin�ci�b�l
-   - �rfolyam javaslat: MNB + ECB + piaci trend � optim�lis elad�si/v�teli �r
-   - Banki besz�ll�t�s/kisz�ll�t�s optimaliz�l�s (k�szlet + �rfolyam elemz�s)
+## BEEPITETT AI RENDSZER (17. torveny) - TERVEZETT
+### Implementalando (konzilium szukseges)
+1. **Foertektaros AI Asszisztens**
+   - Termeszetes nyelvu lekerdezes: "Mai EUR forgalom irodankent" -> SQL -> tablazat
+   - Kimutatas/riport generalas tetszoleges adatkombinaciobol
+   - Arfolyam javaslat: MNB + ECB + piaci trend -> optimalis eladasi/veteli ar
+   - Banki beszallitas/kiszallitas optimalizalas (keszlet + arfolyam elemzes)
 
-2. **Adapt�v Import AI**
-   - PDF/Excel/CSV felt�lt�s � AI �rtelmezi � megfelel� DB t�bla
-   - Banki kivonatok automatikus feldolgoz�s
-   - Sz�ll�t�levelek, bizonylatok import
-   - Preview + j�v�hagy�s K�TELEZ�
+2. **Adaptiv Import AI**
+   - PDF/Excel/CSV feltoltes -> AI ertelmezi -> megfelelo DB tabla
+   - Banki kivonatok automatikus feldolgozas
+   - Szallitolevelek, bizonylatok import
+   - Preview + jovahagyas KOTELEZO
 
-3. **Napi Operat�v AI**
-   - Napi nyit�s asszisztens (ellen�rz�lista, hi�nyz� adatok)
-   - Elt�r�s detekt�l�s (p�nzt�r � m�rleg � riport)
-   - Audit t�mogat�s (MNB/NAV megfelel�s�g ellen�rz�s)
+3. **Napi Operativ AI**
+   - Napi nyitas asszisztens (ellenorzolista, hianyzo adatok)
+   - Elteres detektalas (penztar - merleg - riport)
+   - Audit tamogatas (MNB/NAV megfeleloseg ellenorzes)
 
-### Modell strat�gia
-- Haiku 4.5: Oszt�lyoz�s, egyszer� SQL, routing
-- Sonnet 4.6: Elemz�s, javaslat, komplex lek�rdez�s, import
+### Modell strategia
+- Haiku 4.5: Osztalyozas, egyszeru SQL, routing
+- Sonnet 4.6: Elemzes, javaslat, komplex lekerdezes, import
 
-### Biztons�gi korl�tok
-- Read-only SQL sandbox alap�rtelmezetten
-- Mut�ci� � supervisor j�v�hagy�s
-- Jogosults�g: munkak�r-alap� (p�nzt�ros/supervisor/manager/admin)
-- Audit trail: minden AI m�velet napl�zva
+### Biztonsagi korlatok
+- Read-only SQL sandbox alapertelmezetten
+- Mutacio -> supervisor jovahagyas
+- Jogosultsag: munkakor-alapu (penztaros/supervisor/manager/admin)
+- Audit trail: minden AI muvelet naplozva
