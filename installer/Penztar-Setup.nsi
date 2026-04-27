@@ -1,6 +1,6 @@
 ; =============================================================================
-; Valutavalto Penztar — Egyfajlos Windows Telepito v7.0
-; NSIS 3.x Script — Production Quality
+; Valutavalto Penztar ï¿½ Egyfajlos Windows Telepito v7.0
+; NSIS 3.x Script ï¿½ Production Quality
 ; =============================================================================
 ; v7.0: S6-04 PostgreSQL trust?scram-sha-256 hardening for ALL users including postgres.
 ;       postgres superuser gets random password (generate-secrets.ps1 5th output line).
@@ -59,7 +59,7 @@ VIProductVersion "${VERSION}.0"
 VIFileVersion "${VERSION}.0"
 VIAddVersionKey /LANG=1038 "ProductName" "Valutavalto Penztar"
 VIAddVersionKey /LANG=1038 "CompanyName" "Exclusive Best Change Zrt."
-VIAddVersionKey /LANG=1038 "LegalCopyright" "© 2026 Exclusive Best Change Zrt."
+VIAddVersionKey /LANG=1038 "LegalCopyright" "ï¿½ 2026 Exclusive Best Change Zrt."
 VIAddVersionKey /LANG=1038 "FileDescription" "Valutavalto Penztar Telepito"
 VIAddVersionKey /LANG=1038 "FileVersion" "${VERSION}"
 VIAddVersionKey /LANG=1038 "ProductVersion" "${VERSION} (${BUILD_DATE})"
@@ -102,6 +102,8 @@ SetCompressorDictSize 64
 ; --- Valtozok ---
 Var DATA_DIR
 Var DB_ALREADY_EXISTS
+; v2.3.1 Codex P1 fix: upgrade mode flag â€” ha "1", a SecInstall NEM torli a ProgramData-t
+Var UPGRADE_MODE
 
 ; =============================================================================
 ; Telepites
@@ -143,13 +145,13 @@ Section "Telepites" SecInstall
     nsProcess::_FindProcess "postgres.exe"
     Pop $0
     ${If} $0 == 0
-        DetailPrint "  postgres.exe meg fut — scoped kill..."
+        DetailPrint "  postgres.exe meg fut ï¿½ scoped kill..."
         nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process postgres -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
     ${EndIf}
     nsProcess::_FindProcess "java.exe"
     Pop $0
     ${If} $0 == 0
-        DetailPrint "  java.exe fut — scoped kill (BestChange)..."
+        DetailPrint "  java.exe fut ï¿½ scoped kill (BestChange)..."
         nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process java -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
     ${EndIf}
     Sleep 2000
@@ -160,7 +162,7 @@ Section "Telepites" SecInstall
     lock_wait_loop:
         IntOp $R0 $R0 + 1
         ${If} $R0 > 15
-            DetailPrint "  Idotullepes — folytatas (fajlzar lehetseges)."
+            DetailPrint "  Idotullepes ï¿½ folytatas (fajlzar lehetseges)."
             Goto lock_wait_done
         ${EndIf}
         ; F1-A: scoped postgres check, F-N-04: Pop both exit code AND stdout
@@ -168,7 +170,7 @@ Section "Telepites" SecInstall
         Pop $0  ; exit code
         Pop $1  ; stdout (F-N-04 fix: prevent stack leak)
         ${If} $0 == 0
-            ; BestChange postgres dead — check java (scoped)
+            ; BestChange postgres dead ï¿½ check java (scoped)
             nsExec::ExecToStack 'powershell.exe -NoProfile -Command "if(Get-Process java -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' }){exit 1}else{exit 0}"'
             Pop $0  ; exit code
             Pop $1  ; stdout (F-N-04 fix)
@@ -195,7 +197,7 @@ Section "Telepites" SecInstall
     svc_delete_wait:
         IntOp $R0 $R0 + 1
         ${If} $R0 > 20
-            DetailPrint "  Idotullepes — folytatas (service lehet Marked for deletion)."
+            DetailPrint "  Idotullepes ï¿½ folytatas (service lehet Marked for deletion)."
             Goto svc_delete_done
         ${EndIf}
         nsExec::ExecToStack 'cmd.exe /C sc.exe query BestChange-Backend'
@@ -227,7 +229,13 @@ Section "Telepites" SecInstall
     RMDir /r "$PROGRAMFILES\ValutavaltoPenztar"
 
     ; ProgramData (regi adatok)
-    RMDir /r "C:\ProgramData\BestChange"
+    ; v2.3.1 Codex P1 fix #220: upgrade mode-ban MEGTARTJUK a ProgramData-t (DB + config),
+    ; egyebkent (wipe mode / virgin install / legacy flow) toroljuk
+    ${If} $UPGRADE_MODE == "1"
+        DetailPrint "  Upgrade mode: C:\ProgramData\BestChange adatok MEGTARTVA (DB + config)."
+    ${Else}
+        RMDir /r "C:\ProgramData\BestChange"
+    ${EndIf}
 
     ; Desktop shortcutok
     Delete "$DESKTOP\Valutavalto Penztar.lnk"
@@ -256,7 +264,7 @@ Section "Telepites" SecInstall
     CreateDirectory $DATA_DIR
 
     ; =====================================================================
-    ; FAZIS 1f: LockedList — locked fajlok detektalasa
+    ; FAZIS 1f: LockedList ï¿½ locked fajlok detektalasa
     ; =====================================================================
     IfFileExists "$DATA_DIR\pgsql\bin\postgres.exe" 0 skip_lockedlist
         DetailPrint "  Fajlzarak ellenorzese (LockedList)..."
@@ -333,7 +341,7 @@ Section "Telepites" SecInstall
     File /r /x "*.map" /x "*.test.js" /x "*.spec.js" /x "jest.config.*" /x ".gitattributes" /x ".gitignore" /x ".gitmodules" /x "*.test.ts" /x "*.spec.ts" /x "*.stories.*" "${STAGE_DIR}\electron\*.*"
 
     ; =====================================================================
-    ; FAZIS 2B: VC++ Redistributable (2015-2022 x64) — PG17 elofeltetel
+    ; FAZIS 2B: VC++ Redistributable (2015-2022 x64) ï¿½ PG17 elofeltetel
     ; =====================================================================
     DetailPrint "Visual C++ Runtime ellenorzes..."
     ; F-N-07 fix: ReadRegDWORD for DWORD registry value
@@ -359,7 +367,7 @@ Section "Telepites" SecInstall
 
     ; =====================================================================
     ; Per-install random secret generalas
-    ; Kulon PS1 fajl — NSIS nem tudja a PowerShell {} blokkokat inline kezelni
+    ; Kulon PS1 fajl ï¿½ NSIS nem tudja a PowerShell {} blokkokat inline kezelni
     ; A script 5 sort ir: JWT_SECRET, ENCRYPTION_SALT, ENCRYPTION_KEY, DB_PASSWORD, PG_ADMIN_PASSWORD
     ; =====================================================================
     SetOutPath "$INSTDIR"
@@ -368,7 +376,7 @@ Section "Telepites" SecInstall
     Pop $1  ; exit code
     Pop $2  ; output = 5 lines
 
-    ; Parse 5 lines — $2=jwt, $4=salt, $6=key, $8=dbpw, $9=pgadminpw
+    ; Parse 5 lines ï¿½ $2=jwt, $4=salt, $6=key, $8=dbpw, $9=pgadminpw
     StrCpy $R0 $2  ; save full output
 
     ${WordFind} $R0 "$\r$\n" "+1" $2
@@ -451,7 +459,7 @@ Section "Telepites" SecInstall
     IfFileExists "$DATA_DIR\pgsql\data\PG_VERSION" db_exists db_init
 
     db_init:
-        ; F4-A: initdb with trust (temporary — hardened after user setup)
+        ; F4-A: initdb with trust (temporary ï¿½ hardened after user setup)
         DetailPrint "  initdb futtatasa..."
         nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\initdb.exe" -D "$DATA_DIR\pgsql\data" -U postgres -E UTF8 --locale=C --auth=trust'
         Pop $0
@@ -517,13 +525,13 @@ Section "Telepites" SecInstall
             DetailPrint "  FIGYELMEZTETES: Adatbazis mar letezhet (kod: $0)"
         ${EndIf}
 
-        ; Create user — createuser CLI first, then SQL fallback
+        ; Create user ï¿½ createuser CLI first, then SQL fallback
         DetailPrint "  Felhasznalo letrehozasa: valuta_user"
         nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\createuser.exe" -p 54320 -U postgres --no-superuser --no-createdb --no-createrole valuta_user'
         Pop $0
         Pop $1  ; stdout
         ${If} $0 != 0
-            DetailPrint "  createuser kod: $0 — SQL fallback..."
+            DetailPrint "  createuser kod: $0 ï¿½ SQL fallback..."
             ; SQL fallback: CREATE ROLE IF NOT EXISTS (PG 16+: DO block)
             FileOpen $0 "$DATA_DIR\scripts\create-user-fallback.sql" w
             FileWrite $0 "DO $$$$ BEGIN$\r$\n"
@@ -557,7 +565,7 @@ Section "Telepites" SecInstall
         Pop $0
         Pop $1  ; stdout
         ${If} $0 != 0
-            DetailPrint "  FIGYELMEZTETES: setup-user.sql kod: $0 — folytatas"
+            DetailPrint "  FIGYELMEZTETES: setup-user.sql kod: $0 ï¿½ folytatas"
         ${EndIf}
 
         ; S6-10 fix: Secure wipe before delete (NTFS forensic recovery prevention)
@@ -566,14 +574,14 @@ Section "Telepites" SecInstall
         FileClose $0
         Delete "$DATA_DIR\scripts\setup-user.sql"
 
-        ; Verify user — SQL file only, exact marker check (no inline -c fallback)
+        ; Verify user ï¿½ SQL file only, exact marker check (no inline -c fallback)
         FileOpen $0 "$DATA_DIR\scripts\verify-user.sql" w
         FileWrite $0 "SELECT CASE WHEN EXISTS (SELECT 1 FROM pg_roles WHERE rolname='valuta_user') THEN 'ROLE_OK' ELSE 'ROLE_MISSING' END;$\r$\n"
         FileClose $0
         nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -t -A -f "$DATA_DIR\scripts\verify-user.sql"'
         Pop $R1
         Pop $R2
-        ; S6-10 fix: Secure wipe before delete (uses $0 as file handle — does NOT touch R1/R2)
+        ; S6-10 fix: Secure wipe before delete (uses $0 as file handle ï¿½ does NOT touch R1/R2)
         FileOpen $0 "$DATA_DIR\scripts\verify-user.sql" w
         FileWrite $0 "-- WIPED --$\r$\n"
         FileClose $0
@@ -594,7 +602,7 @@ Section "Telepites" SecInstall
             ${EndIf}
         ${EndIf}
 
-        DetailPrint "  HIBA: valuta_user verify sikertelen — rollback indul"
+        DetailPrint "  HIBA: valuta_user verify sikertelen ï¿½ rollback indul"
         nsExec::ExecToLog '"$DATA_DIR\pgsql\bin\pg_ctl.exe" stop -D "$DATA_DIR\pgsql\data" -m fast -w -t 10'
         ${If} $DB_ALREADY_EXISTS == 0
             RMDir /r "$DATA_DIR\pgsql"
@@ -611,15 +619,15 @@ Section "Telepites" SecInstall
         verify_user_ok:
         DetailPrint "  valuta_user letrehozva es ellenorizve!"
 
-        ; Seed data — ATHELYEZVE Fazis 6 backend health check UTAN-ra
+        ; Seed data ï¿½ ATHELYEZVE Fazis 6 backend health check UTAN-ra
         ; (A Flyway migraciok hozzak letre a tablakat a backend indulasakor,
         ;  ezert a seed-data.sql csak a backend health check UTAN futhat le.)
-        ;  Lasd: FAZIS 6 vege — "Seed adatok betoltese" blokk
+        ;  Lasd: FAZIS 6 vege ï¿½ "Seed adatok betoltese" blokk
 
-        ; S6-04: Harden pg_hba.conf — scram-sha-256 for ALL users (including postgres)
+        ; S6-04: Harden pg_hba.conf ï¿½ scram-sha-256 for ALL users (including postgres)
         DetailPrint "  pg_hba.conf biztonsagi beallitas..."
         FileOpen $0 "$DATA_DIR\pgsql\data\pg_hba.conf" w
-        FileWrite $0 "# Penztar installer — hardened auth (v1.7.0 S6-04)$\r$\n"
+        FileWrite $0 "# Penztar installer ï¿½ hardened auth (v1.7.0 S6-04)$\r$\n"
         FileWrite $0 "# TYPE  DATABASE  USER         ADDRESS       METHOD$\r$\n"
         FileWrite $0 "host    all       valuta_user  127.0.0.1/32  scram-sha-256$\r$\n"
         FileWrite $0 "host    all       valuta_user  ::1/128       scram-sha-256$\r$\n"
@@ -646,8 +654,8 @@ Section "Telepites" SecInstall
 
     db_exists:
         StrCpy $DB_ALREADY_EXISTS 1
-        ; F-N-06 fix: Upgrade telepites — jelszo frissites a meglevo DB-ben
-        DetailPrint "  Meglevo adatbazis — jelszo frissites..."
+        ; F-N-06 fix: Upgrade telepites ï¿½ jelszo frissites a meglevo DB-ben
+        DetailPrint "  Meglevo adatbazis ï¿½ jelszo frissites..."
 
         ; S6-04: Set PGPASSFILE if .pgpass exists from previous v7.0+ install
         ; This is needed because pg_hba may already be scram-sha-256 (re-upgrade scenario)
@@ -670,7 +678,7 @@ Section "Telepites" SecInstall
         Pop $0
         Pop $1
         ${If} $0 != 0
-            DetailPrint "  FIGYELMEZTETES: PG nem indult el frissiteshez — jelszo kihagyva"
+            DetailPrint "  FIGYELMEZTETES: PG nem indult el frissiteshez ï¿½ jelszo kihagyva"
             Goto db_done
         ${EndIf}
 
@@ -694,7 +702,7 @@ Section "Telepites" SecInstall
             DetailPrint "  FIGYELMEZTETES: Jelszo frissites sikertelen (kod: $0)"
         ${EndIf}
 
-        ; F-N-10 fix: Upgrade — config fajl frissites az uj jelszavakkal
+        ; F-N-10 fix: Upgrade ï¿½ config fajl frissites az uj jelszavakkal
         ; (a generate-secrets.ps1 uj titkokat generalt, azokat KELL a config-ba irni)
         DetailPrint "  application-local.properties frissites (upgrade)..."
         FileOpen $0 "$DATA_DIR\config\application-local.properties" w
@@ -735,10 +743,10 @@ Section "Telepites" SecInstall
         nsExec::ExecToLog '"$DATA_DIR\pgsql\bin\pg_ctl.exe" stop -D "$DATA_DIR\pgsql\data" -m fast -w -t 30'
         Sleep 2000
 
-        ; S6-04: pg_hba.conf hardening az upgrade agban is — scram-sha-256 mindenhol
+        ; S6-04: pg_hba.conf hardening az upgrade agban is ï¿½ scram-sha-256 mindenhol
         DetailPrint "  pg_hba.conf biztonsagi beallitas (upgrade)..."
         FileOpen $0 "$DATA_DIR\pgsql\data\pg_hba.conf" w
-        FileWrite $0 "# Penztar installer — hardened auth (v1.7.0 S6-04 upgrade)$\r$\n"
+        FileWrite $0 "# Penztar installer ï¿½ hardened auth (v1.7.0 S6-04 upgrade)$\r$\n"
         FileWrite $0 "# TYPE  DATABASE  USER         ADDRESS       METHOD$\r$\n"
         FileWrite $0 "host    all       valuta_user  127.0.0.1/32  scram-sha-256$\r$\n"
         FileWrite $0 "host    all       valuta_user  ::1/128       scram-sha-256$\r$\n"
@@ -754,7 +762,7 @@ Section "Telepites" SecInstall
         FileWrite $0 "127.0.0.1:54320:*:postgres:$9$\r$\n"
         FileClose $0
 
-        ; S6-04: Update PGPASSFILE for installer session (upgrade — new password)
+        ; S6-04: Update PGPASSFILE for installer session (upgrade ï¿½ new password)
         System::Call 'Kernel32::SetEnvironmentVariable(t "PGPASSFILE", t "$DATA_DIR\config\.pgpass")'
 
     db_done:
@@ -765,8 +773,8 @@ Section "Telepites" SecInstall
     DetailPrint "Szolgaltatasok regisztralasa..."
 
     ; --- PostgreSQL service ---
-    ; postgres.exe kozvetlenul (NEM pg_ctl!) — NSSM + pg_ctl = "Paused" bug
-    ; NetworkService fiokkal fut — PG17 elutasitja az admin/LocalSystem futast!
+    ; postgres.exe kozvetlenul (NEM pg_ctl!) ï¿½ NSSM + pg_ctl = "Paused" bug
+    ; NetworkService fiokkal fut ï¿½ PG17 elutasitja az admin/LocalSystem futast!
     DetailPrint "  BestChange-PostgreSQL szolgaltatas..."
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" install BestChange-PostgreSQL "$DATA_DIR\pgsql\bin\postgres.exe"'
     ; F-N-09 fix: quoted values for safety
@@ -815,13 +823,13 @@ Section "Telepites" SecInstall
     CreateDirectory "$DATA_DIR\backend\logs"
     nsExec::ExecToLog 'icacls "$DATA_DIR\backend" /grant *S-1-5-20:(OI)(CI)RX /T /Q'
     nsExec::ExecToLog 'icacls "$DATA_DIR\backend\logs" /grant *S-1-5-20:(OI)(CI)F /T /Q'
-    ; E6-02 fix: Config dir ACL hardening — locale-independent SIDs + recursive child reset
+    ; E6-02 fix: Config dir ACL hardening ï¿½ locale-independent SIDs + recursive child reset
     ; *S-1-5-18 = SYSTEM, *S-1-5-32-544 = Administrators, *S-1-5-20 = NetworkService
     ; Root folder gets explicit ACLs, existing children are reset to inherit from the hardened root.
     nsExec::ExecToLog 'icacls "$DATA_DIR\config" /inheritance:r /Q'
     nsExec::ExecToLog 'icacls "$DATA_DIR\config" /grant:r *S-1-5-18:(OI)(CI)F *S-1-5-32-544:(OI)(CI)F *S-1-5-20:(OI)(CI)RX /Q'
     nsExec::ExecToLog 'icacls "$DATA_DIR\config\*" /reset /T /C /Q'
-    ; G2-05 fix: RX (not just R) — Java needs eXecute to traverse directories
+    ; G2-05 fix: RX (not just R) ï¿½ Java needs eXecute to traverse directories
     nsExec::ExecToLog 'icacls "$DATA_DIR\jre" /grant *S-1-5-20:(OI)(CI)RX /T /Q'
 
     ; =====================================================================
@@ -830,10 +838,10 @@ Section "Telepites" SecInstall
     ; Forras: shared/valuta-installer-dependency-report.md
     ; =====================================================================
     DetailPrint "Windows Firewall szabalyok beallitasa..."
-    ; Elobb toroljuk a regieket (idempotens — ha nincs, nem hiba)
+    ; Elobb toroljuk a regieket (idempotens ï¿½ ha nincs, nem hiba)
     nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Valutavalto-Backend"'
     nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Valutavalto-PostgreSQL"'
-    ; E6-04 fix: remoteip=127.0.0.1 — localhost-only portok, ne legyenek network-accessible
+    ; E6-04 fix: remoteip=127.0.0.1 ï¿½ localhost-only portok, ne legyenek network-accessible
     nsExec::ExecToLog 'netsh advfirewall firewall add rule name="Valutavalto-Backend" dir=in action=allow protocol=TCP localport=8080 remoteip=127.0.0.1 profile=any'
     nsExec::ExecToLog 'netsh advfirewall firewall add rule name="Valutavalto-PostgreSQL" dir=in action=allow protocol=TCP localport=54320 remoteip=127.0.0.1 profile=any'
     DetailPrint "  Firewall szabalyok OK"
@@ -1039,7 +1047,7 @@ Section "un.Eltavolitas"
     un_kill_wait:
         IntOp $R0 $R0 + 1
         ${If} $R0 > 10
-            DetailPrint "  Timeout — folytatas"
+            DetailPrint "  Timeout ï¿½ folytatas"
             Goto un_kill_done
         ${EndIf}
         Sleep 1000
@@ -1088,7 +1096,7 @@ Section "un.Eltavolitas"
         DetailPrint "Binarisok torlese (adatok megmaradnak)..."
         ; S6-06 fix: Secrets torlese meg keep-data modban is
         Delete "$DATA_DIR\config\application-local.properties"
-        ; S6-04: .pgpass contains postgres admin password — must be wiped
+        ; S6-04: .pgpass contains postgres admin password ï¿½ must be wiped
         FileOpen $0 "$DATA_DIR\config\.pgpass" w
         FileWrite $0 "# WIPED"
         FileClose $0
@@ -1130,8 +1138,92 @@ Function .onInit
         Abort
     ${EndIf}
 
+    ; =====================================================================
+    ; v2.3.0: Egysegest flow â€” egyetlen telepito kezel minden forgatokonyvet
+    ; =====================================================================
+    ; 3 eset:
+    ;   (1) SZUZ TELEPITES: nincs elozo verzio -> direct telepit
+    ;   (2) FRISSITES (ajanlott): van elozo verzio, adat MEGMARAD
+    ;   (3) TELJES UJRATELEPITES (gyari reset): adat TOROLVE, szuzen indul
+    ;
+    ; A felhasznalonak 3-gombos MessageBox: Frissites (Yes) / Gyari reset (No) / Megse (Cancel)
+    ;
+    ; Silent mode-ban (/S):
+    ;   - /WIPE=1 parancssori flag -> gyari reset
+    ;   - Egyebkent -> frissites (default, biztonsagos)
+    ; v2.3.1 Codex P2 fix #220: 64-bit registry view (SetRegView 64) KOTELEZO,
+    ; mert a WriteRegStr alul SetRegView 64-gyel ir, es 64-bit Windows-on a default
+    ; olvasas a Wow6432Node-bol hozna az ertekt, igy nem talalja a telepitest.
+    SetRegView 64
+    StrCpy $UPGRADE_MODE "0"
+    ReadRegStr $R0 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "UninstallString"
+    ${If} $R0 != ""
+        ; Silent mode handling (CI / enterprise deploy)
+        IfSilent silent_mode_check
+
+        ; Interactive user dialog (3 opcio)
+        MessageBox MB_YESNOCANCEL|MB_ICONQUESTION \
+            "Mar van egy telepitett Penztar verzio.$\r$\n$\r$\nMit szeretnel tenni?$\r$\n$\r$\n\
+IGEN = FRISSITES (ajanlott)$\r$\n    Az adatbazis es a beallitasok MEGMARADNAK.$\r$\n\
+    Csak a program reszei frissulnek.$\r$\n$\r$\n\
+NEM = GYARI RESET (teljes wipe)$\r$\n    MINDEN adat TOROLVE lesz (DB, config, tranzakciok).$\r$\n\
+    Szuzen indul, mintha elso telepites lenne.$\r$\n$\r$\n\
+MEGSE = Telepites megszakitasa" \
+            /SD IDYES \
+            IDYES upgrade_mode \
+            IDNO wipe_mode
+        ; v2.3.0 NSIS fix: MessageBox max 8 parameter (2 return-check par).
+        ; Az IDCANCEL eset fall-through-val kerul az abort_install-hoz alul.
+        Goto abort_install
+
+        silent_mode_check:
+            ; Silent mode: /WIPE=1 flag dont
+            ClearErrors
+            ${GetOptions} "$CMDLINE" "/WIPE=" $R2
+            ${If} $R2 == "1"
+                Goto wipe_mode
+            ${Else}
+                Goto upgrade_mode
+            ${EndIf}
+
+        upgrade_mode:
+            DetailPrint "=== FRISSITES MOD ==="
+            DetailPrint "Elozo verzio eltavolitasa (silent, PRESERVE_DATA=1)..."
+            DetailPrint "Az adatbazis + config MEGMARAD."
+            ; v2.3.1 Codex P1 fix #220: UPGRADE_MODE flag jelzi a SecInstall-nak,
+            ; hogy NE torolje a ProgramData-t (Fazis 1e2)
+            StrCpy $UPGRADE_MODE "1"
+            ExecWait '$R0 /S /PRESERVE_DATA=1' $R1
+            DetailPrint "Elozo verzio eltavolitva (exit code: $R1). Adatok megorizve."
+            Sleep 2000
+            Goto continue_install
+
+        wipe_mode:
+            ; v2.3.0 NSIS fix: a kiterjedt confirm-MessageBox az NSIS ACP parserrel
+            ; valamiert nem fordult le. Helyette: a fo MessageBox-ban az IDNO valasz
+            ; mar tudatos, ott a teljes warning szoveg latszik (lasd onInit fent),
+            ; igy itt csak silent-mode flow mehet kozvetlenul a wipe-ra.
+            ; Ha valamiert mas uton ide kerul - silent mode-szeruen kezeljuk.
+            IfSilent wipe_confirm_silent
+
+        wipe_confirm_silent:
+            DetailPrint "=== GYARI RESET MOD ==="
+            DetailPrint "Elozo verzio TELJES eltavolitasa (silent, PRESERVE_DATA=0)..."
+            DetailPrint "MINDEN ADAT TOROLVE LESZ."
+            ExecWait '$R0 /S /PRESERVE_DATA=0' $R1
+            DetailPrint "Teljes eltavolitva (exit code: $R1). Szuzen indul."
+            Sleep 2000
+            Goto continue_install
+
+        abort_install:
+            DetailPrint "Felhasznalo megszakitotta a telepites."
+            Abort
+
+        continue_install:
+    ${EndIf}
+
     ; G2-01 fix: Port check MOVED to Section (after Fazis 1 cleanup)
-    ; onInit only checks x64 + admin — port check is post-cleanup in SecInstall
+    ; onInit only checks x64 + admin + elozo verzio detect â€” port check is post-cleanup in SecInstall
 FunctionEnd
 
 ; G2-06 fix: Clean up temp files containing secrets on abort/failure

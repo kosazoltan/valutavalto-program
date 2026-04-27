@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/v1/cash-balances")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()") // v2.3.1 audit: class-level baseline (defense-in-depth)
 public class CashBalanceController {
 
     private final CashBalanceService cashBalanceService;

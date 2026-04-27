@@ -355,11 +355,19 @@ export interface ElectronAPI {
     bootstrapPassword?: string;
     offlineMode: boolean;
     appMode?: "penztar" | "ertektar" | "ertekszallito";
+    // v2.3.0: a telepito dolgozoi dropdown-bol kivalasztott worker identity.
+    // Ha ez kitoltve -> /auth/first-time-worker-setup. Egyebkent bootstrap-admin.
+    selectedWorkerCode?: string;
+    selectedWorkerName?: string;
+    selectedWorkerRole?: string;
   }): Promise<{
     success: boolean;
     envPath: string;
     errorMessage?: string;
   }>;
+
+  // v2.3.0: (megjegyzes) getConfig / setConfig a tetejen, line 3-4 mar
+  // kotelezo method-ok. A LoginPage hasznalja a worker_code pre-fill-hez.
 
   // --- App ---
   getAppVersion(): Promise<string>;

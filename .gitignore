@@ -2,6 +2,11 @@
 .env
 .env.local
 .env.production
+# v2.3.0 kivetel: a production API URL-t tartalmazo .env.production fajlok
+# commit-olhatoak (nem secret). Build-time kell hogy a bundle-be ne egyen
+# be localhost. A root .env / .env.local tovabbra is ignore-olt.
+!frontend-react/.env.production
+!penztar-client/.env.production
 
 # SSH Keys (KRITIKUS - ne commitold!)
 ssh-keys/
@@ -97,12 +102,16 @@ docs/legacy-drive/
 Anti/
 
 Felmérés/
+# ATTENTION: the next pattern is the macOS NFD-encoded variant of the same
+# directory name. .gitignore matching is byte-exact (NOT Unicode-normalized),
+# so BOTH NFC (precomposed) and NFD (decomposed) byte sequences must be present.
+# DO NOT remove this entry, NOR let your editor / formatter auto-normalize it!
+# NFC bytes:  46 65 6C 6D C3 A9 72 C3 A9 73 2F   (Linux/Windows default)
+# NFD bytes:  46 65 6C 6D 65 CC 81 72 65 CC 81 73 2F   (macOS HFS+ default)
 Felmérés/
 
 # Nagy fájlok kizárása
 *.m4a
-Felmérés/
-Felmérés/
 .tmp_*.txt
 
 # Runtime / test / local artifacts
