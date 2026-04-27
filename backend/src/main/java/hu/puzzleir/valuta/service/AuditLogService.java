@@ -46,6 +46,32 @@ public class AuditLogService {
     }
 
     /**
+     * Audit log explicit companyId-vel - system/scheduler kontextushoz, ahol nincs Spring Security session.
+     * P29 fix (Codex P1/1): scheduler nem hagyhatja, hogy SecurityUtils null-t adjon, mert akkor
+     * company_id=null kerul az audit log row-ba, es a kesobbi idempotency check (company-scoped) MISS-eli.
+     *
+     * @param action     Audit action nev (pl. YEAR_OPENING)
+     * @param message    Naplouzenet
+     * @param entityId   Idempotency / entity referencia (pl. "<companyId>:<year>")
+     * @param companyId  Annak a cegnek az ID-je, amelyikhez az audit log tartozik (NEM null)
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void logForCompany(String action, String message, String entityId, UUID companyId) {
+        if (companyId == null) {
+            throw new IllegalArgumentException("logForCompany: companyId nem lehet null (hasznalj log()-ot SecurityUtils-szal)");
+        }
+        AuditLog entry = AuditLog.builder()
+                .companyId(companyId)
+                .action(action)
+                .entityType("SYSTEM")
+                .entityId(entityId)
+                .changes(message)
+                .build();
+        applyHashChain(entry);
+        auditLogRepository.save(entry);
+    }
+
+    /**
      * Egyszerűsített audit log — action + message + entityId (Long).
      */
     @Transactional(rollbackFor = Exception.class)
@@ -146,6 +172,19 @@ public class AuditLogService {
         UUID companyId = resolveCompanyId();
         if (companyId == null) {
             return auditLogRepository.existsByActionAndEntityId(action, reference);
+        }
+        return auditLogRepository.existsByCompanyIdAndActionAndEntityId(companyId, action, reference);
+    }
+
+    /**
+     * Ev-nyito idempotencia-ellenorzes explicit companyId-vel - scheduler/system kontextushoz.
+     * P29 fix (Codex P1/1): scheduler hivasnal nincs Spring Security session, ezert az explicit
+     * companyId-t kell parameterezni, hogy a query a HELYES ceg rekordjait keresse.
+     */
+    @Transactional(readOnly = true)
+    public boolean existsByActionAndReferenceForCompany(String action, String reference, UUID companyId) {
+        if (companyId == null) {
+            throw new IllegalArgumentException("existsByActionAndReferenceForCompany: companyId nem lehet null");
         }
         return auditLogRepository.existsByCompanyIdAndActionAndEntityId(companyId, action, reference);
     }

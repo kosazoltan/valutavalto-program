@@ -22,6 +22,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -61,7 +64,7 @@ class YearOpeningServiceTenantTest {
         when(branchRepository.findByCompanyId(COMPANY_A)).thenReturn(Collections.emptyList());
         when(circularSequenceRepository.findByCompanyId(COMPANY_A)).thenReturn(Collections.emptyList());
         when(circularService.archiveByYear(COMPANY_A, targetYear - 1)).thenReturn(0);
-        when(auditLogService.existsByActionAndReference(anyString(), anyString())).thenReturn(false);
+        when(auditLogService.existsByActionAndReferenceForCompany(anyString(), anyString(), any(UUID.class))).thenReturn(false);
 
         // ELVARAS: SecurityContext nem letezik (scheduler kontextus), de a metodus mukodik.
         Map<String, Object> result = service.executeYearOpening(targetYear, COMPANY_A, "SYSTEM_SCHEDULER");
@@ -76,7 +79,7 @@ class YearOpeningServiceTenantTest {
     void executeYearOpening_idempotencyKey_isCompanyScoped() {
         int targetYear = LocalDate.now().getYear();
         String expectedKey = COMPANY_A + ":" + targetYear;
-        when(auditLogService.existsByActionAndReference("YEAR_OPENING", expectedKey)).thenReturn(true);
+        when(auditLogService.existsByActionAndReferenceForCompany("YEAR_OPENING", expectedKey, COMPANY_A)).thenReturn(true);
 
         // ELVARAS: ha a kulcs <companyId>:<year> formatumban mar van auditlog, IllegalStateException-t dobunk.
         assertThatThrownBy(() -> service.executeYearOpening(targetYear, COMPANY_A, "MANUAL"))
@@ -92,8 +95,11 @@ class YearOpeningServiceTenantTest {
         UUID companyB = UUID.fromString("22222222-2222-2222-2222-222222222222");
 
         // CompanyA mar futott, CompanyB meg nem
-        when(auditLogService.existsByActionAndReference("YEAR_OPENING", COMPANY_A + ":" + targetYear)).thenReturn(true);
-        when(auditLogService.existsByActionAndReference("YEAR_OPENING", companyB + ":" + targetYear)).thenReturn(false);
+        when(auditLogService.existsByActionAndReferenceForCompany("YEAR_OPENING", COMPANY_A + ":" + targetYear, COMPANY_A)).thenReturn(true);
+        when(auditLogService.existsByActionAndReferenceForCompany("YEAR_OPENING", companyB + ":" + targetYear, companyB)).thenReturn(false);
+        // iter5: legacy formatumu key fallback - mind a ket cegre false (nincs legacy rekord)
+        when(auditLogService.existsByActionAndReferenceForCompany("YEAR_OPENING", String.valueOf(targetYear), COMPANY_A)).thenReturn(false);
+        when(auditLogService.existsByActionAndReferenceForCompany("YEAR_OPENING", String.valueOf(targetYear), companyB)).thenReturn(false);
         when(branchRepository.findByCompanyId(companyB)).thenReturn(Collections.emptyList());
         when(circularSequenceRepository.findByCompanyId(companyB)).thenReturn(Collections.emptyList());
         when(circularService.archiveByYear(companyB, targetYear - 1)).thenReturn(0);
@@ -111,5 +117,42 @@ class YearOpeningServiceTenantTest {
         assertThatThrownBy(() -> service.executeYearOpening(LocalDate.now().getYear(), null, "X"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("companyId nem lehet null");
+    }
+
+    @Test
+    @DisplayName("P29 P1/2 fix: legacy idempotency-key formatum (\"<year>\" only) is blokkol")
+    void executeYearOpening_legacyIdempotencyKey_alsoBlocksReexecution() {
+        int targetYear = LocalDate.now().getYear();
+        // Legacy formatumu rekord van az adatbazisban (<year> only, NEM <companyId>:<year>).
+        when(auditLogService.existsByActionAndReferenceForCompany(
+                "YEAR_OPENING", COMPANY_A + ":" + targetYear, COMPANY_A)).thenReturn(false);
+        when(auditLogService.existsByActionAndReferenceForCompany(
+                "YEAR_OPENING", String.valueOf(targetYear), COMPANY_A)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.executeYearOpening(targetYear, COMPANY_A, "SCHEDULER"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("legacy formatumu rekord talalva");
+    }
+
+    @Test
+    @DisplayName("P29 P1/1 fix: scheduler context-ben logForCompany hivodik (NEM log), explicit companyId-vel")
+    void executeYearOpening_schedulerContext_callsLogForCompany() {
+        int targetYear = LocalDate.now().getYear();
+        when(branchRepository.findByCompanyId(COMPANY_A)).thenReturn(Collections.emptyList());
+        when(circularSequenceRepository.findByCompanyId(COMPANY_A)).thenReturn(Collections.emptyList());
+        when(circularService.archiveByYear(COMPANY_A, targetYear - 1)).thenReturn(0);
+        when(auditLogService.existsByActionAndReferenceForCompany(anyString(), anyString(), any(UUID.class))).thenReturn(false);
+
+        service.executeYearOpening(targetYear, COMPANY_A, "SCHEDULER");
+
+        // EZ A KRITIKUS: logForCompany() hivas explicit companyId-vel, NEM log() ami SecurityUtils-tol kerne
+        verify(auditLogService).logForCompany(
+                eq("YEAR_OPENING"),
+                anyString(),
+                eq(COMPANY_A + ":" + targetYear),
+                eq(COMPANY_A)
+        );
+        // log() metodust NEM hivjuk meg (SecurityUtils-mentes flow)
+        verify(auditLogService, never()).log(eq("YEAR_OPENING"), anyString(), anyString());
     }
 }
