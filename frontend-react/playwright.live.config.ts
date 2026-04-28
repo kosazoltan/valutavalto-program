@@ -6,7 +6,10 @@ import { defineConfig, devices } from '@playwright/test'
  */
 export default defineConfig({
   testDir: './e2e',
-  testMatch: '**/excvaluta-live.spec.ts',
+  // AI review fix (Codex P2 #249, 2026-04-28): a full-menu spec is itt fusson,
+  // mert a default playwright.config.ts testIgnore-ban van. Anelkul SEMMILYEN
+  // CI workflow nem futtatja a `excvaluta-full-menu.spec.ts`-t.
+  testMatch: ['**/excvaluta-live.spec.ts', '**/excvaluta-full-menu.spec.ts'],
   fullyParallel: false,
   retries: 1,
   reporter: [
