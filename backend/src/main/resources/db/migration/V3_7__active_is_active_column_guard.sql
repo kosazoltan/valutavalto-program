@@ -1,9 +1,10 @@
--- V2_5: Schema guard — active/is_active oszlop szinkronizálás (fresh install fix)
+-- V3_7: Schema guard — active/is_active oszlop szinkronizálás (fresh install fix)
 -- Probléma: V69, V70, V79 stb. seed migration-ök az `is_active` oszlopot használják
 --           olyan táblákban (worker, currency, dictionary, company, branch), ahol
 --           csak `active` oszlop létezik. V109 adja hozzá a valódi szinkronizálást.
--- Megoldás: V109 logikájának korai guard változata — idempotens, IF NOT EXISTS.
---           V109 biztonságosan újrafuthat, mert mindkét oszlop már meglesz.
+-- Megoldás: V109 logikájának korai guard változata — CSAK oszlop hozzáadás + backfill.
+--           Trigger wiring NEM itt van — azt V109 végzi el teljes körűen.
+--           V109 biztonságosan újrafuthat (CREATE OR REPLACE + IF NOT EXISTS).
 
 -- Funkcio: is_active szinkron trigger (V109-tel megegyező, OR REPLACE)
 CREATE OR REPLACE FUNCTION sync_active_columns()

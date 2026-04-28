@@ -8,7 +8,7 @@
 
 | Fajl | Meret | Cel |
 |------|-------|-----|
-| `Penztar-Setup-2.3.5-20260427.exe` | 276 MB | **Foegysegetlen telepito** - tartalmazza a teljes rendszert (PostgreSQL 17.5 + backend + frontend + Electron klienst + Windows szolgaltatasokat) |
+| `Penztar-Setup-2.3.5-20260427.exe` | 276 MB | **Onallo, offline telepito** - tartalmazza a teljes rendszert (PostgreSQL 17.5 + backend + frontend + Electron klienst + Windows szolgaltatasokat) |
 | `Penztar-Eltavolito-2.3.5-20260427.exe` | 60 KB | Standalone Eltavolito - **csak akkor szukseges**, ha a regi telepites annyira serult, hogy a Setup auto-cleanup fazisa fennakad rajta |
 
 ## SHA256 ellenorzes
