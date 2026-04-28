@@ -1,0 +1,39 @@
+{
+  "versionLocations": [
+    "package.json",
+    "frontend-react/package.json",
+    "penztar-client/package.json",
+    "backend/pom.xml"
+  ],
+  "version": "2.3.5",
+  "buildDate": "2026-04-27",
+  "pipeline": {
+    "cleanupNsi": "installer/Penztar-Cleanup.nsi",
+    "validation": "installer/tests/installer-validation-suite.ps1",
+    "setupNsi": "installer/Penztar-Setup.nsi",
+    "versionGate": "installer/scripts/check-version-bump.ps1",
+    "buildInstaller": "installer/build-installer.ps1",
+    "buildCleanup": "installer/build-cleanup.ps1",
+    "commonHelpers": "installer/build-common.ps1"
+  },
+  "gitBranch": "main",
+  "artifacts": [
+    {
+      "sizeMB": 276.23,
+      "name": "Penztar-Setup-2.3.5-20260427.exe",
+      "type": "installer",
+      "sha256": "9D79DEEDC030FC6FA4B2F438571F8D481E753EB5494C46F79D268A47329DD25D",
+      "description": "Egyfajlos teljes telepito (PostgreSQL 17.5 + backend + frontend + Electron + Windows services + auto-cleanup)",
+      "sizeBytes": 289645975
+    },
+    {
+      "sizeMB": 0.058,
+      "name": "Penztar-Eltavolito-2.3.5-20260427.exe",
+      "type": "uninstaller",
+      "sha256": "53683D9D48732CD4FBF9B7C2D590469A298460B24708D365193050B569D6B029",
+      "description": "Standalone Eltavolito - regi/serult telepitesek tisztitasahoz (NEM torli az adatbazist)",
+      "sizeBytes": 60468
+    }
+  ],
+  "gitCommit": "7075309311b83bb76c00ab3036e9b8fb934cd209"
+}

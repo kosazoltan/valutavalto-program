@@ -1,8 +1,8 @@
 # Valutaváltó ERP v1.0.0
 
-Modern valutaváltó / pénzváltó ERP rendszer — Spring Boot + React + Electron desktop klienssel.
+Modern valutaváltó / pénzváltó ERP rendszer - Spring Boot + React + Electron desktop klienssel.
 
-## Alaptörvény — KOMPLEX ÖKOSZISZTÉMA
+## Alaptörvény - KOMPLEX ÖKOSZISZTÉMA
 
 > **A Valutaváltó program egyetlen egységként működik.**
 > TILOS csak a frontend-et, csak a backend-et vagy csak az Electron klienst külön megnyitni a normál működéshez.
@@ -21,13 +21,15 @@ powershell -ExecutionPolicy Bypass -File scripts\stop-valuta-ecosystem.ps1
 ### Mit indít el
 1. **Helyi PostgreSQL** ellenőrzése (port 5432)
 2. **Spring Boot backend** (port 8080)
-3. **React webes admin** (port 3000) — főértéktár, audit, KPI, compliance
-4. **Electron pénztáros kliens** — offline-képes GUI
+3. **React webes admin** (port 3000) - főértéktár, audit, KPI, compliance
+4. **Electron pénztáros kliens** - offline-képes GUI
 
 A 3 komponens **együtt telepszik, együtt indul, együtt áll le**. Health check-ek biztosítják, hogy csak akkor tekinti készen a rendszert, amikor mindenki beszélget.
 
 ### Telepítő és Windows shortcut
-A pénztáros munkaállomásokon egy **egyetlen asztali ikon** (Telepítő: `installer/build/Penztar-Setup-*.exe`) indítja az egész rendszert. Nincs külön "Backend.exe", "Frontend.exe" — a Telepítő egy szolgáltatást regisztrál (`ValutaEcosystem`) + egy Start menü shortcut.
+A pénztáros munkaállomásokon egy **egyetlen asztali ikon** (Telepítő: `installer/build/Penztar-Setup-*.exe`) indítja az egész rendszert. Nincs külön "Backend.exe", "Frontend.exe" - a Telepítő egy szolgáltatást regisztrál (`ValutaEcosystem`) + egy Start menü shortcut.
+
+**Telepítő dokumentum-index:** [`docs/INSTALLER_DOCS_INDEX.md`](docs/INSTALLER_DOCS_INDEX.md) — build / install / update / security checklist.
 
 ### Debug célú részindítás (**CSAK FEJLESZTŐKNEK**)
 Ha csak egy komponenst akarsz indítani (pl. Spring Boot backend tesztelésre):
@@ -65,17 +67,17 @@ powershell -File scripts\start-valuta-ecosystem.ps1 -SkipElectron -SkipBackend
 ```
 
 **Főbb modulok:**
-- 👥 **Dolgozói HR törzsadat** — 199 EBC munkatárs, személyi adatok, bér/adó, FEOR kódok, 9 szervezeti egység
-- 👤 **Ügyfélkezelés bővítve** — személyi igazolvány + útlevél külön mezők, telefon, e-mail, 50 tesztügyfél
-- 📦 **Tranzakciók** — vétel, eladás, sztornó, kezelési díjak
-- 📊 **Árfolyam-kezelés** — MNB, egyedi, kategóriás, spread-számítás
-- ⚖ **AML** — pénzmosás elleni kontroll (NAV előírások, göngyölés)
-- 📆 **Napzárás** — 5 lépéses varázsló, címletezés, eltérés-kimutatás
-- 📈 **Irodaközi kereskedés** — deviza trade irodák között
-- 🙍 **Ügyfél-kezelés** — azonosítás, szankciós szűrés, PEP
-- 📄 **Riportok** — napi, dekádos, havi, NAV, MNB jelentések
-- 🖨️ **Nyomtatás** — bizonylatok, zárási riportok, sablonok
-- ⚡ **Offline mód** — SQLite + sync engine Electron kliensben
+- 👥 **Dolgozói HR törzsadat** - 199 EBC munkatárs, személyi adatok, bér/adó, FEOR kódok, 9 szervezeti egység
+- 👤 **Ügyfélkezelés bővítve** - személyi igazolvány + útlevél külön mezők, telefon, e-mail, 50 tesztügyfél
+- 📦 **Tranzakciók** - vétel, eladás, sztornó, kezelési díjak
+- 📊 **Árfolyam-kezelés** - MNB, egyedi, kategóriás, spread-számítás
+- ⚖ **AML** - pénzmosás elleni kontroll (NAV előírások, göngyölés)
+- 📆 **Napzárás** - 5 lépéses varázsló, címletezés, eltérés-kimutatás
+- 📈 **Irodaközi kereskedés** - deviza trade irodák között
+- 🙍 **Ügyfél-kezelés** - azonosítás, szankciós szűrés, PEP
+- 📄 **Riportok** - napi, dekádos, havi, NAV, MNB jelentések
+- 🖨️ **Nyomtatás** - bizonylatok, zárási riportok, sablonok
+- ⚡ **Offline mód** - SQLite + sync engine Electron kliensben
 
 ## Pontos, aktuális értékek (2026-03-07):
 - Flyway migrációk: **V1-V56 (56 db)**
@@ -220,7 +222,7 @@ A check fail-el, ha nem UTF-8 dekódolható fájl vagy mojibake mintázat kerül
 
 ## Fejlesztők
 
-Fejlesztette a PuzzleIR csapat — Junior AI (Claude Opus 4.6) koordinálásával.
+Fejlesztette a PuzzleIR csapat - Junior AI (Claude Opus 4.6) koordinálásával.
 
 ## Licensz
 

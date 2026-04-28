@@ -23,11 +23,71 @@ if (-not $Version) {
     $Version = Get-VersionFromPackageJson -ScriptRoot $PSScriptRoot
 }
 
+Write-Host "Initial version (pre-gate): v$Version ($BuildDate)" -ForegroundColor Cyan
+
+# v2.3.4 (Zoltan decision 2026-04-27): Version bump enforcement gate
+# DEFAULT: AUTO-PATCH every build (X.Y.Z -> X.Y.Z+1)
+# Use -NoAutoPatch flag on the guard script to require manual bump
+$RepoRoot = Split-Path -Parent $PSScriptRoot
+$InstallerDir = $PSScriptRoot
+$BuildDirEarly = Join-Path $InstallerDir "build"
+
+Write-Host "`n=== Version Bump Gate (AUTO-PATCH default) ===" -ForegroundColor Cyan
+# Run guard via pwsh (PowerShell 7+) to avoid WinPS 5.1 caching/precedence bugs.
+# The guard mutates package.json in-place when auto-patching.
+$gateScript = Join-Path $PSScriptRoot 'scripts\check-version-bump.ps1'
+$gateOutput = @()
+try {
+    if (Get-Command pwsh -ErrorAction SilentlyContinue) {
+        # Prefer pwsh (PS7) for better compatibility and no caching issues
+        $gateOutput = & pwsh -NoLogo -NoProfile -File $gateScript `
+            -RepoRoot $RepoRoot `
+            -BuildDir $BuildDirEarly `
+            -CurrentVersion $Version 2>&1
+    } else {
+        # Fallback to powershell.exe (WinPS 5.1) if pwsh unavailable
+        Write-Host "WARN: pwsh not found, using powershell.exe (may have caching issues)" -ForegroundColor Yellow
+        $gateOutput = & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $gateScript `
+            -RepoRoot $RepoRoot `
+            -BuildDir $BuildDirEarly `
+            -CurrentVersion $Version 2>&1
+    }
+} catch {
+    throw "VERSION BUMP GATE ERROR: $_"
+}
+
+$gateExit = $LASTEXITCODE
+$gateOutput | ForEach-Object { Write-Host $_ }
+if ($gateExit -ne 0) {
+    throw "VERSION BUMP GATE FAILED (exit $gateExit). See output above."
+}
+
+# Parse gate output for the resolved version
+$versionLine = $gateOutput | Where-Object { $_ -match '^(BUMPED_VERSION|KEPT_VERSION)=(\d+\.\d+\.\d+)$' } | Select-Object -Last 1
+if ($versionLine -match '^(BUMPED_VERSION|KEPT_VERSION)=(\d+\.\d+\.\d+)$') {
+    $resolvedVersion = $Matches[2]
+    $kind = $Matches[1]
+    if ($Version -ne $resolvedVersion) {
+        Write-Host "Version updated by gate: $Version -> $resolvedVersion ($kind)" -ForegroundColor Magenta
+        $Version = $resolvedVersion
+    } else {
+        Write-Host "Version confirmed: $Version ($kind)" -ForegroundColor Green
+    }
+} else {
+    # Eszter F2 finding 4 (MEDIUM): never fail-open. If we cannot trust the gate output,
+    # abort the build to avoid producing a stale-version installer.
+    throw "VERSION BUMP GATE: Could not parse a valid BUMPED_VERSION|KEPT_VERSION=X.Y.Z line from gate output. Aborting build."
+}
+
+# Defense-in-depth: re-read package.json and verify it matches the gate's resolved version.
+$packageJsonVersion = Get-VersionFromPackageJson -ScriptRoot $PSScriptRoot
+if ($packageJsonVersion -ne $Version) {
+    throw "VERSION BUMP GATE: package.json version ($packageJsonVersion) does not match gate-resolved version ($Version). Aborting build to avoid drift."
+}
 Write-Host "Build: v$Version ($BuildDate)" -ForegroundColor Cyan
 
 $ErrorActionPreference = "Stop"
-$RepoRoot = Split-Path -Parent $PSScriptRoot
-$InstallerDir = $PSScriptRoot
+# $RepoRoot, $InstallerDir already set during the version gate above
 $BuildDir = Join-Path $InstallerDir "build"
 $StageDir = Join-Path $BuildDir "stage"
 

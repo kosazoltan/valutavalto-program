@@ -1,0 +1,153 @@
+---
+schema: knowledge.session.v1
+type: lessons-learned
+date: 2026-04-27
+project: valutavalto-program
+topic: installer-build-pipeline
+version: 2.3.5
+status: confirmed-working
+related_pr: []
+related_issues: []
+related_commits:
+  - "e1121a30"  # release(v2.3.5): 4-way version sync + dist/release artifact bundle
+  - "70753093"  # feat(installer): version-bump enforcement gate (auto-patch default)
+
+build_pipeline:
+  steps:
+    - order: 1
+      script: "installer/build-installer.ps1"
+      output: "Penztar-Setup-X.Y.Z-YYYYMMDD.exe"
+      size_mb_approx: 276
+      duration_min:
+        cached: "5-10"
+        first_run: "30+"
+      flags:
+        - "-SkipBackendBuild"
+        - "-SkipFrontendBuild"
+        - "-SkipDownloads"
+    - order: 2
+      script: "installer/build-cleanup.ps1"
+      output: "Penztar-Eltavolito-X.Y.Z-YYYYMMDD.exe"
+      size_kb_approx: 60
+      duration_sec: 1
+
+  internal_phases:
+    - 1: "Version bump gate (4-way sync)"
+    - 2: "Backend Maven build (valuta-backend.jar)"
+    - 3: "Custom JRE jlink (~50 MB)"
+    - 4: "Frontend (React/Vite) + Electron (electron-builder) build"
+    - 5: "PostgreSQL 17.5 + NSSM + VC++ Redistributable download (cached, SHA-256 verified)"
+    - 6: "Config + scripts staging"
+    - 7: "NSIS compile -> single Penztar-Setup-*.exe"
+
+version_locations:
+  description: "All 4 must be in sync per CLAUDE.md release process + PR #177"
+  files:
+    - "package.json (monorepo root)"
+    - "frontend-react/package.json"
+    - "penztar-client/package.json"
+    - "backend/pom.xml (top-level <version> tag)"
+
+version_gate_script:
+  path: "installer/scripts/check-version-bump.ps1"
+  modes:
+    auto_patch_default:
+      condition: "current <= max(existing build/*.exe)"
+      action: "bump all 4 locations via npm version patch --no-git-tag-version + pom.xml regex"
+    no_bump:
+      condition: "current > max(existing build/*.exe)"
+      output: "KEPT_VERSION=X.Y.Z"
+    strict:
+      flag: "-NoAutoPatch"
+      behavior: "exit 1 instead of bumping"
+    drift_detection:
+      condition: "4 locations not in sync"
+      output: "exit 2 + diagnostic message"
+
+dependencies_build_machine:
+  os: "Windows 10/11 x64"
+  jdk: "21 (backend + jlink)"
+  nodejs: "20+"
+  npm: "any (bundled with Node)"
+  maven: "via backend/mvnw.cmd (no separate install needed)"
+  nsis: "3.x at C:\\Program Files (x86)\\NSIS\\makensis.exe"
+  powershell:
+    preferred: "pwsh (PS7+)"
+    supported: "powershell.exe (WinPS 5.1) with caveats"
+
+common_errors:
+  - id: "PG_CHECKSUM_MISMATCH"
+    symptom: "Expected SHA-256 mismatch on postgresql-binaries.zip"
+    fix: "Remove-Item installer\\build\\downloads\\postgresql-binaries.zip -Force; rebuild"
+  - id: "PG_DOWNLOAD_TRUNCATED"
+    symptom: "Invoke-WebRequest 'ResponseEnded prematurely'"
+    fix: "Use curl.exe -L -o postgresql-binaries.zip --retry 5 'https://get.enterprisedb.com/...'"
+  - id: "WINPS_VERSION_OPERATOR_BUG"
+    symptom: "check-version-bump.ps1 bumps when it shouldn't on WinPS 5.1"
+    fix: "Use [version]::Parse(...).CompareTo(...) instead of -le operator"
+  - id: "SCOPE_POLLUTION_WORKTREE"
+    symptom: "git commit contains 28000+ files (.claude/worktrees/...)"
+    fix: "Add to .gitignore: .claude/worktrees/ and .worktrees/"
+  - id: "NSIS_ENCODING_ERROR"
+    symptom: "Penztar-Setup.nsi fails to compile (mojibake)"
+    fix: "Convert .nsi to Windows-1252 ASCII; remove accents and em-dash"
+
+database_protection:
+  upgrade_mode_pr: "PR #222 (v2.3.0)"
+  flag: "$UPGRADE_MODE in Penztar-Setup.nsi .onInit"
+  registry_view: "SetRegView 64 (Wow6432Node redirect handling)"
+  behavior:
+    upgrade: "DB + config preserved (auto-detected from registry)"
+    fresh_install: "Full clean (no DB to preserve)"
+    standalone_eltavolito: "DELETES C:\\ProgramData\\BestChange (DB included!) - use pg_dump first if data needed"
+
+security_posture:
+  bundled_deps_sha256: "verified build-time (PG, NSSM, VC++)"
+  postgresql_auth: "scram-sha-256 (postgres superuser also gets random password)"
+  config_acl: "inheritance off, only SYSTEM + Administrators + service user"
+  env_file_perms: "0o600 + atomic rename"
+  firewall: "localhost-only (127.0.0.1), ports 8080 + 54320"
+  secrets_handling: "generated locally at install time (JWT, encryption, PG passwords) - NO baked-in credentials"
+
+release_bundle:
+  path: "dist/release/"
+  artifacts:
+    - "Penztar-Setup-X.Y.Z-YYYYMMDD.exe"
+    - "Penztar-Eltavolito-X.Y.Z-YYYYMMDD.exe"
+    - "*.sha256 (one per binary)"
+    - "build-info.json"
+    - "install-notes.md"
+  binary_files_gitignored: true
+  reasoning: "276 MB binaries should not be committed to git; published via GitHub Release"
+
+evidence_v2_3_5:
+  date: "2026-04-27"
+  setup_sha256: "9D79DEEDC030FC6FA4B2F438571F8D481E753EB5494C46F79D268A47329DD25D"
+  eltavolito_sha256: "53683D9D48732CD4FBF9B7C2D590469A298460B24708D365193050B569D6B029"
+  git_commit: "e1121a30"
+  reviewer_verdict: "Eszter F2 BLOCKER -> all findings resolved"
+
+lessons_learned:
+  - id: "L1"
+    text: "Read CLAUDE.md FIRST - 4-way version sync + 2-step build was already documented"
+  - id: "L2"
+    text: "Don't reinvent: 'npm version patch --no-git-tag-version' is industry standard"
+  - id: "L3"
+    text: "WinPS 5.1 [version] operator has cache bugs - use [version]::Parse().CompareTo()"
+  - id: "L4"
+    text: ".claude/worktrees/ scope pollution = always in .gitignore"
+  - id: "L5"
+    text: "PG cache corruption: delete + curl.exe re-download (resume-supported)"
+  - id: "L6"
+    text: "Soft reset + clean recommit: 'git reset --soft N^' + clean staging fixes ugly history"
+
+related_files:
+  workspace_memory: "D:/openclaw/.openclaw/workspace/memory/2026-04-27-installer-build-pipeline-v2.3.5.md"
+  obsidian: "docs/obsidian-vault/INSTALLER_BUILD_PIPELINE.md"
+  qmd: "docs/knowledge/memory/2026-04-27-installer-build-pipeline-v2.3.5.qmd"
+  yaml: "docs/knowledge/memory/2026-04-27-installer-build-pipeline-v2.3.5.yaml"
+  skill: ".claude/skills/installer-build/SKILL.md"
+  installer_readme: "installer/README.md"
+  install_notes: "dist/release/install-notes.md"
+  changelog: "CHANGELOG.md"
+  claude_md: "CLAUDE.md (line 370 build-common.ps1 dot-source pattern)"

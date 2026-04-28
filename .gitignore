@@ -138,6 +138,9 @@ backend_deployment/
 
 # Installer build artifacts (nagy fájlok + secrets)
 installer/build/
+# Release artifact bundle (binary EXEs - csak GitHub Release-en publikalva)
+dist/release/*.exe
+dist/release/*.exe.sha256
 
 # Environment backup/local files (may contain secrets)
 *.env.backup
@@ -175,7 +178,9 @@ packages/*/node_modules/
 
 # Claude Code helyi runtime fajlok
 .claude/scheduled_tasks.lock
-.claude/worktrees/*/tmp/
+# Cursor/Claude Code worktrees - SOHA ne kerüljenek main-re (Eszter review BLOCKER 2026-04-27)
+.claude/worktrees/
+.worktrees/
 
 # .remember/ — lokális AI handoff jegyzetek (nem kerulnek a repo-ba)
 .remember/
