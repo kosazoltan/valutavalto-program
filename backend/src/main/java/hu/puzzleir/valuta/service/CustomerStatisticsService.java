@@ -8,6 +8,7 @@ import hu.puzzleir.valuta.entity.TransactionStatus;
 import hu.puzzleir.valuta.repository.CustomerRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import org.springframework.data.domain.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -161,10 +162,19 @@ public class CustomerStatisticsService {
     public List<CustomerRankingDto> getTopCustomers(UUID branchId, LocalDate from, LocalDate to, int limit) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
 
-        // Multi-tenant: szűrt lekérdezés findAll() helyett
-        List<Transaction> transactions = transactionRepository.findWithFilters(
-                companyId, branchId, from, to, null, org.springframework.data.domain.Pageable.unpaged()
-        ).getContent().stream()
+        // 2026-04-29 v2.3.26 (Codex P1 PR #290 follow-up):
+        // Branch-scoped vs company-wide query split. A `branchId` null lehet, amikor
+        // a controller `@RequestParam(required = false)`-szal company-wide-ot kér
+        // (pl. /customers/top, /customers/frequent). A B17 hardening miatt a
+        // `findWithFilters` most KÖTELEZI a branchId-t, ezért külön company-wide
+        // metódust hívunk null esetén.
+        Page<Transaction> page = (branchId == null)
+                ? transactionRepository.findCompanyWideWithFilters(
+                        companyId, from, to, null, org.springframework.data.domain.Pageable.unpaged())
+                : transactionRepository.findWithFilters(
+                        companyId, branchId, from, to, null, org.springframework.data.domain.Pageable.unpaged());
+
+        List<Transaction> transactions = page.getContent().stream()
                 .filter(t -> t.getCustomerDocumentNumber() != null && !t.getCustomerDocumentNumber().isBlank())
                 .toList();
 

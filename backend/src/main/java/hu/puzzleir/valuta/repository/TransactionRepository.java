@@ -223,6 +223,41 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     );
 
     /**
+     * 2026-04-29 v2.3.26 (Codex P1 PR #290 follow-up):
+     * COMPANY-WIDE tranzakció-lekérdezés, branchId NÉLKÜL — csak a saját company-n belül.
+     *
+     * Use case: cég-szintű statisztikák (top customers, frequent customers, MNB
+     * aggregate report). NEM keverendő össze a `findWithFilters` branch-scoped
+     * query-vel, ami IDOR-érzékeny (B17 hardening).
+     *
+     * Security: a hívó controller-nek kell `@PreAuthorize`-szal védenie ezt a
+     * metódust (csak MANAGER+ vagy ADMIN role használhatja, NEM CASHIER).
+     */
+    @Query(value = "SELECT t FROM Transaction t " +
+           "JOIN FETCH t.branch " +
+           "JOIN FETCH t.company " +
+           "LEFT JOIN FETCH t.currency " +
+           "LEFT JOIN FETCH t.worker " +
+           "LEFT JOIN FETCH t.originalTransaction " +
+           "WHERE t.company.id = :companyId " +
+           "AND (:startDate IS NULL OR t.transactionDate >= :startDate) " +
+           "AND (:endDate IS NULL OR t.transactionDate <= :endDate) " +
+           "AND (:type IS NULL OR t.transactionType = :type) " +
+           "ORDER BY t.transactionDate DESC, t.transactionTime DESC",
+           countQuery = "SELECT COUNT(t) FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND (:startDate IS NULL OR t.transactionDate >= :startDate) " +
+           "AND (:endDate IS NULL OR t.transactionDate <= :endDate) " +
+           "AND (:type IS NULL OR t.transactionType = :type)")
+    Page<Transaction> findCompanyWideWithFilters(
+        @Param("companyId") UUID companyId,
+        @Param("startDate") LocalDate startDate,
+        @Param("endDate") LocalDate endDate,
+        @Param("type") TransactionType type,
+        Pageable pageable
+    );
+
+    /**
      * Ügyfél tranzakciói
      */
     @Query("SELECT t FROM Transaction t " +
