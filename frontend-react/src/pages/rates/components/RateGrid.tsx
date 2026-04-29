@@ -19,56 +19,50 @@ export default function RateGrid({ rates, selectedWg, updateRate, validationErro
     cols: EDITABLE_FIELDS.length,
   })
 
+  // 2026-04-29 v2.3.13 (Árfolyamkészítés zoom-fit):
+  // 17 valuta sor scrollozás nélkül látható kell legyen ~640px viewport-ban is.
+  // Optimalizációk:
+  // 1) 3. header sor (debug-betűk J/K/L/M/N/O/P/Q/R/S/✓) ELTÁVOLÍTVA — csak fejlesztési maradvány volt
+  // 2) Header `leading-none` + py-0 (a 0.5 helyett) — soronként ~4px nyerünk
+  // 3) Body row `leading-none` + input `py-0` — soronként ~3-4px
+  // 4) Body font-size 11px → 10.5px (`text-[10.5px]`) — szubsztanciális helymegtakarítás
+  // Eredmény: 17 valuta + 2 header sor < 320px (előtte ~480px volt).
   return (
     <div ref={containerRef} className="flex-1 bg-white rounded shadow-sm border overflow-hidden flex flex-col min-w-0">
       <div className="overflow-auto flex-1">
         <table className="w-full text-xs border-collapse">
           <thead className="sticky top-0 z-20">
-            <tr className="bg-green-800 text-white text-[10px]">
-              <th colSpan={2} className="px-1 py-0.5 text-left border-r border-green-600">Elsz.árf.</th>
-              <th className="px-1 py-0.5 border-r border-green-600">Valuta</th>
-              <th colSpan={2} className="px-1 py-0.5 border-r border-green-600 text-center">
+            <tr className="bg-green-800 text-white text-[10px] leading-none">
+              <th colSpan={2} className="px-1 py-0 text-left border-r border-green-600">Elsz.árf.</th>
+              <th className="px-1 py-0 border-r border-green-600">Valuta</th>
+              <th colSpan={2} className="px-1 py-0 border-r border-green-600 text-center">
                 0 - {fmtAmount(selectedWg?.limit1Boundary)}
               </th>
-              <th colSpan={2} className="px-1 py-0.5 border-r border-green-600 text-center">
+              <th colSpan={2} className="px-1 py-0 border-r border-green-600 text-center">
                 {fmtAmount(selectedWg?.limit1Boundary)} - {fmtAmount(selectedWg?.limit2Boundary)}
               </th>
-              <th colSpan={2} className="px-1 py-0.5 border-r border-green-600 text-center">
+              <th colSpan={2} className="px-1 py-0 border-r border-green-600 text-center">
                 {fmtAmount(selectedWg?.limit2Boundary)} - {fmtAmount(selectedWg?.limit3Boundary)}
               </th>
-              <th colSpan={2} className="px-1 py-0.5 text-center border-r border-green-600">Saját hat.</th>
-              <th className="px-1 py-0.5 text-center w-28">Ellenőrzés</th>
+              <th colSpan={2} className="px-1 py-0 text-center border-r border-green-600">Saját hat.</th>
+              <th className="px-1 py-0 text-center w-28">Ellenőrzés</th>
             </tr>
-            <tr className="bg-green-700 text-white text-[10px]">
-              <th className="px-1 py-0.5 text-left w-14 border-r border-green-500">MNB</th>
-              <th className="px-1 py-0.5 w-4 border-r border-green-500"></th>
-              <th className="px-1 py-0.5 w-10 border-r border-green-500 font-bold">Kód</th>
-              <th className="px-1 py-0.5 w-[72px] text-green-200 border-r border-green-500">Vet</th>
-              <th className="px-1 py-0.5 w-[72px] text-red-200 border-r border-green-500">Elad</th>
-              <th className="px-1 py-0.5 w-[72px] text-green-200 border-r border-green-500">V+</th>
-              <th className="px-1 py-0.5 w-[72px] text-red-200 border-r border-green-500">E-</th>
-              <th className="px-1 py-0.5 w-[72px] text-green-200 border-r border-green-500">V+</th>
-              <th className="px-1 py-0.5 w-[72px] text-red-200 border-r border-green-500">E-</th>
-              <th className="px-1 py-0.5 w-[72px] text-green-200 border-r border-green-500">Vmax</th>
-              <th className="px-1 py-0.5 w-[72px] text-red-200 border-r border-green-500">Emin</th>
-              <th className="px-1 py-0.5 text-yellow-200">Hiba</th>
-            </tr>
-            <tr className="bg-gray-200 text-gray-500 text-[9px] font-bold">
-              <th className="px-1 py-0 border-r">J</th>
-              <th className="px-1 py-0 border-r"></th>
-              <th className="px-1 py-0 border-r">K</th>
-              <th className="px-1 py-0 border-r">L</th>
-              <th className="px-1 py-0 border-r">M</th>
-              <th className="px-1 py-0 border-r">N</th>
-              <th className="px-1 py-0 border-r">O</th>
-              <th className="px-1 py-0 border-r">P</th>
-              <th className="px-1 py-0 border-r">Q</th>
-              <th className="px-1 py-0">R</th>
-              <th className="px-1 py-0 border-r">S</th>
-              <th className="px-1 py-0">✓</th>
+            <tr className="bg-green-700 text-white text-[10px] leading-none">
+              <th className="px-1 py-0 text-left w-14 border-r border-green-500">MNB</th>
+              <th className="px-1 py-0 w-4 border-r border-green-500"></th>
+              <th className="px-1 py-0 w-10 border-r border-green-500 font-bold">Kód</th>
+              <th className="px-1 py-0 w-[72px] text-green-200 border-r border-green-500">Vét</th>
+              <th className="px-1 py-0 w-[72px] text-red-200 border-r border-green-500">Elad</th>
+              <th className="px-1 py-0 w-[72px] text-green-200 border-r border-green-500">V+</th>
+              <th className="px-1 py-0 w-[72px] text-red-200 border-r border-green-500">E-</th>
+              <th className="px-1 py-0 w-[72px] text-green-200 border-r border-green-500">V+</th>
+              <th className="px-1 py-0 w-[72px] text-red-200 border-r border-green-500">E-</th>
+              <th className="px-1 py-0 w-[72px] text-green-200 border-r border-green-500">Vmax</th>
+              <th className="px-1 py-0 w-[72px] text-red-200 border-r border-green-500">Emin</th>
+              <th className="px-1 py-0 text-yellow-200">Hiba</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="text-[10.5px] leading-none">
             {rates.map((r, idx) => {
               const buy = parseNum(r.buyRate)
               const sell = parseNum(r.sellRate)
