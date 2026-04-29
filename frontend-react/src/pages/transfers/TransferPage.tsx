@@ -36,8 +36,20 @@ import { getLocalPendingTransfers } from '../../utils/localQueue'
  * Az electron-queue local fallback eseten a transferTypeDisplay nincs feltoltve
  * a backend-bol, ezert a UI raw 'CURRENCY' / 'CASH' enum-ot rendert volna —
  * ezt forditjuk magyarra a frontend-szinten.
+ *
+ * v2.3.42 (Sourcery #306): TransferType union explicit (NEM raw string),
+ * igy ha az enum bovul, a switch-statement compiler-szinten figyelmeztet.
  */
-function localizeTransferType(rawType: string | null | undefined): string {
+type TransferTypeEnum =
+  | 'CURRENCY'
+  | 'CASH'
+  | 'HANDLING_FEE'
+  | 'VAULT_DEPOSIT'
+  | 'VAULT_WITHDRAW'
+  | 'CORRECTION'
+  | 'OTHER'
+
+function localizeTransferType(rawType: TransferTypeEnum | string | null | undefined): string {
   switch (rawType) {
     case 'CURRENCY': return 'Deviza'
     case 'CASH': return 'Készpénz'
