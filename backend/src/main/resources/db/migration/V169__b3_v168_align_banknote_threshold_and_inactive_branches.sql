@@ -70,7 +70,7 @@ BEGIN
 
             INSERT INTO denomination (
                 company_id, branch_id, currency_id, face_value,
-                denomination_type, quantity, min_quantity, active,
+                denomination_type, quantity, min_quantity, is_active,
                 created_at, updated_at
             )
             SELECT
