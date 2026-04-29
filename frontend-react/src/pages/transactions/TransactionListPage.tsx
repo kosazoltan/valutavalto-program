@@ -287,12 +287,24 @@ export default function TransactionListPage() {
                         >
                           <Printer size={14} />
                         </button>
-                        {tx.status === 'COMPLETED' && (
+                        {/* v2.3.36 (B25 audit fix): "Függőben" tranzakciókra is mutatjuk a storno
+                         * ikont, DE disabled + magyarázó tooltip-pel. A korábbi UI-ban a button
+                         * egyszerűen NEM jelent meg, ezért a felhasználó nem tudta, miért hiányzik. */}
+                        {tx.status === 'COMPLETED' ? (
                           <button
                             className="toolbar-button text-red-600 hover:text-red-700"
                             title="Sztornó"
                             onClick={() => navigate(`/transactions/${tx.receiptNumber || tx.id}/storno`)}
                             data-testid={`storno-tx-${tx.id}`}
+                          >
+                            <XCircle size={14} />
+                          </button>
+                        ) : tx.status !== 'REVERSED' && (
+                          <button
+                            className="toolbar-button text-gray-400 cursor-not-allowed"
+                            title="Sztornó csak véglegesítés (szerver-szinkron) után érhető el. A tranzakció jelenleg helyileg rögzítve, várakozik a sync-engine-re (~30 sec)."
+                            disabled
+                            data-testid={`storno-tx-${tx.id}-disabled`}
                           >
                             <XCircle size={14} />
                           </button>
