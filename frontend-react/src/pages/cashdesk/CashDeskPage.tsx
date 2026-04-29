@@ -33,7 +33,9 @@ interface CashDeskStatus {
  * (hibatűrőség — nem omlik össze a UI).
  */
 function formatOpenedAtTimestamp(raw: string | null | undefined): string {
-  if (!raw) return '—'
+  // v2.3.42 (Sourcery #303): ures string-et is missing-kent kezeljuk
+  // (a `!raw` mar fed-i, de explicit `.trim()` kontaminacios szunkozt is)
+  if (!raw?.trim()) return '—'
   const d = new Date(raw)
   if (isNaN(d.getTime())) return raw  // fallback: raw if parse-fail
   const date = d.toLocaleDateString('hu-HU', { year: 'numeric', month: '2-digit', day: '2-digit' })
@@ -183,7 +185,9 @@ export default function CashDeskPage() {
             {/* v2.3.38 (B12 audit fix): ISO timestamp -> hu-HU formatum (NEM raw "2026-04-29T11:43:07.623294") */}
             Nyitva: {formatOpenedAtTimestamp(status.openedAt)}
           </span>
-          <span>Kezelő: {status.openedBy ?? '—'}</span>
+          {/* v2.3.42 (Sourcery #303): ures string-et is missing-kent kezeljuk
+              (a `??` csak null/undefined fallback, NEM ures string) */}
+          <span>Kezelő: {status.openedBy?.trim() ? status.openedBy : '—'}</span>
         </div>
       </div>
 

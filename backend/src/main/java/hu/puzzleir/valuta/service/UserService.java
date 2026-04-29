@@ -142,12 +142,20 @@ public class UserService {
     }
 
     private UserDetailDto toDto(Worker w) {
+        // v2.3.42 (B15 audit fix): a frontend a roles[] (List<String>) tomb-ot
+        // rendert badge-ekkent. Korabban ez UserDetailDto-ban NEM volt feltoltve,
+        // ezert a UserPage SZEREPKÖRÖK oszlopa "—" szignalt minden user-nel.
+        // Most: a Worker.role (single enum) -> List.of(role.name()) mapping.
+        String singleRole = w.getRole() != null ? w.getRole().name() : null;
+        List<String> rolesList = singleRole != null ? List.of(singleRole) : List.of();
+
         return UserDetailDto.builder()
                 .id(String.valueOf(w.getId()))
                 .username(w.getCode())
                 .name(w.getName())
                 .email(w.getEmail())
-                .role(w.getRole() != null ? w.getRole().name() : null)
+                .role(singleRole)
+                .roles(rolesList)
                 .isActive(w.getActive())
                 .lastLoginAt(w.getLastLoginAt() != null ? w.getLastLoginAt().toString() : null)
                 .createdAt(w.getCreatedAt() != null ? w.getCreatedAt().toString() : null)
