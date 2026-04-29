@@ -294,12 +294,9 @@ export async function clearPersistedToken(): Promise<void> {
 /** Token betöltése Electron-ból — titkosított (safeStorage) elsőbbséggel */
 export async function loadPersistedToken(): Promise<string | null> {
   if (window.electronAPI) {
-    let token: string | null = null
-    if (window.electronAPI.secureLoadToken) {
-      token = await window.electronAPI.secureLoadToken()
-    } else {
-      token = await window.electronAPI.getConfig('auth_token')
-    }
+    const token: string | null = window.electronAPI.secureLoadToken
+      ? await window.electronAPI.secureLoadToken()
+      : await window.electronAPI.getConfig('auth_token')
     _electronTokenPresent = Boolean(token)
     return token
   }
