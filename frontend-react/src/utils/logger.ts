@@ -56,9 +56,9 @@ export const logger = {
    * A `[HEARTBEAT]` prefix egyértelmű marker — a monitoring/alerting tooling
    * szűrheti, így NEM false-positive warning-ként kezelődik.
    *
-   * Rate-limiting: a hívó (App.tsx) 60s-onként hív; a heartbeat-throttle a hívó
-   * felelőssége (ne hívja másodpercenként). Ha sűrűbb monitoring kell, a
-   * `HEARTBEAT_INTERVAL_MS` env-config állítsa a hívási intervallumot.
+   * Rate-konfiguráció: a hívási intervallumot a `config/heartbeat.ts` központi
+   * modul határozza meg (`HEARTBEAT_INTERVAL_MS`). Env-flag override:
+   * `VITE_HEARTBEAT_INTERVAL_MS` (10s..600s tartományban validálva).
    */
   heartbeat(tag: string, message: string, ...args: unknown[]): void {
     // A `[HEARTBEAT]` prefix lehetővé teszi a monitoring-szűrőnek, hogy NEM
