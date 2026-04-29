@@ -4,10 +4,15 @@ import { CashierHeader } from './CashierHeader'
 
 const mocks = vi.hoisted(() => ({
   useCompanyTheme: vi.fn(),
+  useAuthStore: vi.fn(),
 }))
 
 vi.mock('../../contexts/CompanyThemeContext', () => ({
   useCompanyTheme: mocks.useCompanyTheme,
+}))
+
+vi.mock('../../stores/authStore', () => ({
+  useAuthStore: mocks.useAuthStore,
 }))
 
 const mockTheme = {
@@ -17,99 +22,92 @@ const mockTheme = {
   danger: '#ef4444',
   warning: '#f59e0b',
   info: '#3b82f6',
+  name: 'Test Company',
+}
+
+const mockWorker = {
+  id: 1,
+  workerCode: 'KJ001',
+  firstName: 'Kiss',
+  lastName: 'János',
+  fullName: 'Kiss János',
+  role: 'CASHIER',
+  branchId: 'b1',
+  branchCode: '202',
+  branchName: 'Eger Fiók',
+  companyId: 'c1',
+  companyCode: 'EBC',
+  companyName: 'Test Co',
 }
 
 describe('CashierHeader', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.useCompanyTheme.mockReturnValue({ theme: mockTheme })
+    // v2.3.33 (B4): a komponens elsodlegesen az useAuthStore-bol toltodik.
+    // Selector pattern: useAuthStore((s) => s.worker) — a mock argumentumkent kapja a selectort.
+    mocks.useAuthStore.mockImplementation((selector?: (s: { worker: typeof mockWorker | null }) => unknown) => {
+      const state = { worker: mockWorker }
+      return selector ? selector(state) : state
+    })
   })
 
-  it('componens renderelésének ellenőrzése', () => {
+  it('komponens renderelése (banner role)', () => {
     render(<CashierHeader />)
     expect(screen.getByRole('banner')).toBeInTheDocument()
   })
 
-  it('alapértelmezett pénztár kódot megjelenít', () => {
+  it('useAuthStore worker-bol toltodik a branchCode', () => {
     render(<CashierHeader />)
-    expect(screen.getByText(/101/)).toBeInTheDocument()
-  })
-
-  it('alapértelmezett pénztár nevét megjelenít', () => {
-    render(<CashierHeader />)
-    expect(screen.getByText(/Kozponti Iroda/)).toBeInTheDocument()
-  })
-
-  it('alapértelmezett pénztáros nevét megjelenít', () => {
-    render(<CashierHeader />)
-    expect(screen.getByText(/Admin/)).toBeInTheDocument()
-  })
-
-  it('alapértelmezett pénztáros ID-jét megjelenít', () => {
-    render(<CashierHeader />)
-    expect(screen.getByText(/ADMIN/)).toBeInTheDocument()
-  })
-
-  it('custom pénztár kódot megjelenít', () => {
-    render(
-      <CashierHeader
-        branchCode="202"
-        branchName="Eger Fiók"
-        workerName="Kiss János"
-        workerId="KJ001"
-      />,
-    )
-    // Pénztár kód megjelenik a header-ben
+    // "202" matches a header subtitle "Pénztár: 202 | Eger Fiók" — a date is YYYY.MM.DD formatumban,
+    // szoval ev=2026 NEM full match. A pontosabb ellenorzes a header.textContent.
     const header = screen.getByRole('banner')
-    expect(header).toBeInTheDocument()
-    expect(header.textContent).toContain('202')
+    expect(header.textContent).toMatch(/Pénztár:\s*202/)
   })
 
-  it('custom pénztár nevét megjelenít', () => {
-    render(
-      <CashierHeader
-        branchCode="202"
-        branchName="Eger Fiók"
-        workerName="Kiss János"
-        workerId="KJ001"
-      />,
-    )
+  it('useAuthStore worker-bol toltodik a branchName', () => {
+    render(<CashierHeader />)
     expect(screen.getByText(/Eger Fiók/)).toBeInTheDocument()
   })
 
-  it('custom pénztáros nevét megjelenít', () => {
-    render(
-      <CashierHeader
-        branchCode="202"
-        branchName="Eger Fiók"
-        workerName="Kiss János"
-        workerId="KJ001"
-      />,
-    )
+  it('useAuthStore worker-bol toltodik a fullName', () => {
+    render(<CashierHeader />)
     expect(screen.getByText(/Kiss János/)).toBeInTheDocument()
   })
 
-  it('custom pénztáros ID-jét megjelenít', () => {
-    render(
-      <CashierHeader
-        branchCode="202"
-        branchName="Eger Fiók"
-        workerName="Kiss János"
-        workerId="KJ001"
-      />,
-    )
+  it('useAuthStore worker-bol toltodik a workerCode (ID)', () => {
+    render(<CashierHeader />)
     expect(screen.getByText(/KJ001/)).toBeInTheDocument()
+  })
+
+  it('worker null eseten "—" placeholder jelenik meg (NEM hardcoded "Admin")', () => {
+    mocks.useAuthStore.mockImplementation((selector?: (s: { worker: null }) => unknown) => {
+      const state = { worker: null }
+      return selector ? selector(state) : state
+    })
+    render(<CashierHeader />)
+    const header = screen.getByRole('banner')
+    expect(header.textContent).not.toContain('Admin')
+    expect(header.textContent).not.toContain('Kozponti Iroda')
+    expect(header.textContent).toContain('—')
+  })
+
+  it('explicit prop felulirja az authStore-t (branchCode override)', () => {
+    render(<CashierHeader branchCode="999" branchName="Override Branch" workerName="Override Worker" workerId="OVR" />)
+    const header = screen.getByRole('banner')
+    expect(header.textContent).toMatch(/Pénztár:\s*999/)
+    expect(header.textContent).toContain('Override Branch')
+    expect(header.textContent).toContain('Override Worker')
+    expect(header.textContent).toContain('OVR')
   })
 
   it('aktuális dátumot megjelenít', async () => {
     render(<CashierHeader />)
-
     const today = new Date().toLocaleDateString('hu-HU', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
     })
-
     await waitFor(() => {
       expect(screen.getByText(new RegExp(today))).toBeInTheDocument()
     })
@@ -117,57 +115,27 @@ describe('CashierHeader', () => {
 
   it('aktuális időt másodperc pontossággal megjelenít', async () => {
     render(<CashierHeader />)
-
-    // Az idő frissül, tehát az aktuális óra, perc és másodperc megjelenik
     await waitFor(() => {
       expect(screen.getByText(/\d{2}:\d{2}:\d{2}/)).toBeInTheDocument()
     })
   })
 
-  it('verzió szám megjeleníthet', () => {
-    const { container } = render(<CashierHeader />)
-    // A verzió szám nincs a teszt kimenetben, de a header létezik
-    expect(container.querySelector('header')).toBeInTheDocument()
+  it('Pénztár / Pénztáros ekezetes feliratot mutat (NEM "Penztar" / "Penztaros")', () => {
+    render(<CashierHeader />)
+    const header = screen.getByRole('banner')
+    expect(header.textContent).toContain('Pénztár')
+    expect(header.textContent).toContain('Pénztáros')
   })
 
-  it('company theme logóját alkalmazza az első szín alapján', () => {
+  it('company theme primary szin border-color-kent megjelenik', () => {
     render(<CashierHeader />)
     const header = screen.getByRole('banner')
     expect(header).toHaveStyle(`border-color: ${mockTheme.primary}`)
-  })
-
-  it('időt folyamatosan frissíti', { timeout: 2000 }, async () => {
-    render(<CashierHeader />)
-
-    // Az idő megjelenik a headerben
-    const header = screen.getByRole('banner')
-    expect(header.textContent).toMatch(/\d{2}:\d{2}:\d{2}/)
   })
 
   it('Shield ikont megjelenít', () => {
     const { container } = render(<CashierHeader />)
     const svg = container.querySelector('svg')
     expect(svg).toBeInTheDocument()
-  })
-
-  it('minden prop megadásakor teljes információt mutat', () => {
-    render(
-      <CashierHeader
-        branchCode="303"
-        branchName="Pécs Fiók"
-        workerName="Szabó Péter"
-        workerId="SP002"
-      />,
-    )
-
-    expect(screen.getByText(/303/)).toBeInTheDocument()
-    expect(screen.getByText(/Pécs Fiók/)).toBeInTheDocument()
-    expect(screen.getByText(/Szabó Péter/)).toBeInTheDocument()
-    expect(screen.getByText(/SP002/)).toBeInTheDocument()
-  })
-
-  it('header elem megjelenik', () => {
-    render(<CashierHeader />)
-    expect(screen.getByRole('banner')).toBeInTheDocument()
   })
 })
