@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
+import { useFKeyHotkey } from '../../hooks/useFKeyHotkey'
 import { AlertTriangle } from 'lucide-react'
 import { CashierHeader } from '../../components/cashier/CashierHeader'
 import { HotkeyBar } from '../../components/cashier/HotkeyBar'
@@ -195,21 +196,17 @@ export default function CashierTransactionPage() {
   }, [])
 
   // ====== HOTKEYS ======
-  // v2.3.40 (B13 audit fix): F1/F2 align a Főmenü-höz (F1=Vétel, F2=Eladás).
-  // v2.3.43 (Codex P1 #305): minden F-key callback hivasonkent preventDefault(),
-  // kulonben a bongeszo F1=Help / F3=Find / F5=Reload / F7=Caret / F8=Devtools
-  // alapertelmezett akcioja kulpgato a tranzakcio-mode-toggle-vagy-navigaciot.
-  // (CashierMainMenu mar igy mukodik — itt a v2.3.40 alignment elkerulte.)
-  useHotkeys('f1', (e) => { e.preventDefault(); setMode('buy') }, { enableOnFormTags: true })
-  useHotkeys('f2', (e) => { e.preventDefault(); setMode('sell') }, { enableOnFormTags: true })
-  useHotkeys('f5', (e) => { e.preventDefault(); navigate('/transactions?action=storno') }, { enableOnFormTags: true })
-  useHotkeys('f8', (e) => { e.preventDefault(); navigate('/rates') }, { enableOnFormTags: true })
-  useHotkeys('f9', (e) => {
-    e.preventDefault()
+  // v2.3.40 B13: F1/F2 align Főmenü-höz. v2.3.43 P1: preventDefault().
+  // v2.3.45 Sourcery #308: useFKeyHotkey helper-rel kiemelve a duplikacio.
+  useFKeyHotkey('f1', () => setMode('buy'))
+  useFKeyHotkey('f2', () => setMode('sell'))
+  useFKeyHotkey('f5', () => navigate('/transactions?action=storno'))
+  useFKeyHotkey('f8', () => navigate('/rates'))
+  useFKeyHotkey('f9', () => {
     setFeeInput(String(handlingFee || ''))
     setDiscountInput(String(discount || ''))
     setShowFeeDialog(true)
-  }, { enableOnFormTags: true })
+  })
   useHotkeys('escape', () => handleCancel(), { enableOnFormTags: true })
 
   // ====== HANDLERS ======
