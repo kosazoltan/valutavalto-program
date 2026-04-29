@@ -53,6 +53,14 @@ public class ReceiptService {
     private static final int RECEIPT_LIST_LIMIT = 500;
 
     /**
+     * v2.3.54 (Sourcery #318 P3): enum a tenant-guard log-operation-jenek
+     * (typo-prevention + stable log values across versions).
+     */
+    enum ReceiptOperation {
+        GET_BY_ID, PRINT
+    }
+
+    /**
      * Receipt list endpoint — visszaad real Receipt rekordokat ES synthesized
      * Receipt-eket a Transaction-bol (multi-tenant companyId szurt).
      *
@@ -100,7 +108,7 @@ public class ReceiptService {
         // Real Receipt eloszor — multi-tenant safe lookup
         Receipt existing = repo.findById(id).orElse(null);
         if (existing != null) {
-            assertOwnedByCompany(existing, companyId, id, "getById");
+            assertOwnedByCompany(existing, companyId, id, ReceiptOperation.GET_BY_ID);
             return existing;
         }
         // Synthesized: decode tx.id-t es synthesize a Transaction-bol
@@ -135,7 +143,7 @@ public class ReceiptService {
         // Real Receipt eseten csak isPrinted update — DE multi-tenant verify
         Receipt existing = repo.findById(id).orElse(null);
         if (existing != null) {
-            assertOwnedByCompany(existing, companyId, id, "print");
+            assertOwnedByCompany(existing, companyId, id, ReceiptOperation.PRINT);
             existing.setIsPrinted(true);
             existing.setPrintedAt(LocalDateTime.now());
             return repo.save(existing);
@@ -179,20 +187,30 @@ public class ReceiptService {
      * Centralizalt validation, igy a getById/print divergencia kizart
      * (Sourcery #315 P3 finding).
      *
+     * v2.3.54 (Sourcery #318 P3): operation enum (typo prevention) + redacted log
+     * (NEM logoljuk a teljes companyId/receiptId-t shared infrastructure-on,
+     * cross-tenant identifier leakage minimization).
+     *
      * @param receipt the Receipt to check
      * @param currentCompanyId the current authenticated user's company
      * @param receiptId the receipt id (for log + exception message)
-     * @param operation human-readable operation name (e.g. "print", "getById") for audit log
+     * @param operation enum operation name for audit log
      * @throws ResourceNotFoundException if cross-tenant or null-tenant
      */
     private void assertOwnedByCompany(Receipt receipt, UUID currentCompanyId,
-                                      UUID receiptId, String operation) {
+                                      UUID receiptId, ReceiptOperation operation) {
         UUID receiptCompanyId = receipt.getCompanyId();
         if (receiptCompanyId == null || !currentCompanyId.equals(receiptCompanyId)) {
-            // Standardized log code [TENANT_GUARD] — stable across versions (Sourcery #315 P3)
-            log.warn("[TENANT_GUARD] cross-tenant Receipt access denied: op={}, receipt.id={}, "
-                    + "receipt.companyId={}, current.companyId={}",
-                    operation, receiptId, receiptCompanyId, currentCompanyId);
+            // [TENANT_GUARD] standardized log code — redacted: csak az operation
+            // es a "denied" outcome szerepel, NEM a tenant-identifier-eket. Ha
+            // bovebb diagnosis kell, DEBUG szinten lehet kapcsolni.
+            log.warn("[TENANT_GUARD] Receipt cross-tenant access denied: op={} (orphan-or-mismatch)",
+                    operation);
+            if (log.isDebugEnabled()) {
+                log.debug("[TENANT_GUARD] denied details: op={}, receipt.id={}, "
+                        + "receipt.companyId={}, current.companyId={}",
+                        operation, receiptId, receiptCompanyId, currentCompanyId);
+            }
             throw new ResourceNotFoundException("Bizonylat nem található: " + receiptId);
         }
     }
