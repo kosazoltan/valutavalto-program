@@ -10,8 +10,14 @@
  * 2026-04-29 v2.3.21 (Sourcery PR #284 P2 follow-up):
  * - MIN/MAX/DEFAULT konstansok EXPORTÁLVA (single source of truth a tesztekhez,
  *   a tooling-hez, a docs-hoz)
- * - Invalid env-flag esetén `console.warn` loggolás (NEM silent fallback) —
+ * - Invalid env-flag esetén `logger.warn` loggolás (NEM silent fallback) —
  *   misconfigured environment-ek detektálhatók
+ *
+ * 2026-04-29 v2.3.22 (Sourcery PR #285 P2 follow-up):
+ * - Strict numerikus parse: regex-alapú teljes-string validáció (`/^-?\d+$/`)
+ *   a `parseInt(raw, 10)` helyett, hogy NE fogadja el silently a `'123abc'`
+ *   vagy `' 123 '` értékeket
+ * - Header komment frissítve: `logger.warn` (NEM `console.warn`)
  */
 
 import { logger } from '../utils/logger'
@@ -25,6 +31,9 @@ export const MIN_HEARTBEAT_INTERVAL_MS = 10_000
 /** Maximum allowed heartbeat interval (600s) — fagyás-detection felbontás minimum. */
 export const MAX_HEARTBEAT_INTERVAL_MS = 600_000
 
+/** Strict numeric pattern: csak teljes-string ASCII pozitív/negatív integer (NEM fogad el szóközt vagy postfix-et) */
+const STRICT_INTEGER_PATTERN = /^-?\d+$/
+
 /**
  * Olvassa az `import.meta.env.VITE_HEARTBEAT_INTERVAL_MS` env-változót,
  * és validálja a [MIN, MAX] tartományba. Invalid vagy hiányzó érték esetén
@@ -33,7 +42,8 @@ export const MAX_HEARTBEAT_INTERVAL_MS = 600_000
  *
  * Hiányzó env (typeof !== string vagy üres) → silent fallback (várt eset,
  * NEM warning).
- * Invalid range / non-numeric → `logger.warn` (misconfigured indikátor).
+ * NEM strict-integer (pl. '123abc', ' 123 ', '12.5') → `logger.warn`.
+ * Tartományon-kívüli érték → `logger.warn`.
  */
 export function getHeartbeatIntervalMs(): number {
   const raw = import.meta.env.VITE_HEARTBEAT_INTERVAL_MS
@@ -41,11 +51,21 @@ export function getHeartbeatIntervalMs(): number {
   if (typeof raw !== 'string' || raw.trim().length === 0) {
     return DEFAULT_HEARTBEAT_INTERVAL_MS
   }
-  const parsed = parseInt(raw, 10)
+  // Strict numeric validation: csak teljes-string integer fogadható el
+  // (parseInt('123abc', 10) === 123 lenne, ami NEM kívánatos)
+  if (!STRICT_INTEGER_PATTERN.test(raw)) {
+    logger.warn(
+      'config/heartbeat',
+      `VITE_HEARTBEAT_INTERVAL_MS NEM strict-integer ('${raw}'), default ${DEFAULT_HEARTBEAT_INTERVAL_MS} ms használva.`,
+    )
+    return DEFAULT_HEARTBEAT_INTERVAL_MS
+  }
+  const parsed = Number(raw)
+  // Number.isFinite + integer-check biztosítja, hogy NaN/Infinity kizárva
   if (!Number.isFinite(parsed)) {
     logger.warn(
       'config/heartbeat',
-      `VITE_HEARTBEAT_INTERVAL_MS NEM-numerikus ('${raw}'), default ${DEFAULT_HEARTBEAT_INTERVAL_MS} ms használva.`,
+      `VITE_HEARTBEAT_INTERVAL_MS NEM-finite ('${raw}'), default ${DEFAULT_HEARTBEAT_INTERVAL_MS} ms használva.`,
     )
     return DEFAULT_HEARTBEAT_INTERVAL_MS
   }
