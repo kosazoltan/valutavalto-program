@@ -10,12 +10,12 @@ import { logger } from '../../utils/logger'
 
 /**
  * v2.3.36 (Sourcery #299 P3): Type-safe field whitelist a SettingsPage company
- * tab szerkesztheto mezoinek. A `keyof OwnCompany` magaba foglalna az `id`,
- * `isActive`, `companyId` mezoket is, amelyek NEM szerkeszthetoek a UI-bol.
- * Ez a union biztositja, hogy a compiler csak az engedelyezett string-mezokre
- * engedjen `handleCompanyChange` hivasokat.
+ * tab szerkesztheto mezoinek.
+ * v2.3.37 (Sourcery #301 P3): Pick<OwnCompany, ...> derivacio a hardcoded union
+ * helyett — igy ha az `OwnCompany` interface-be uj editable mezo kerul, a
+ * compiler hibat dob, ha NEM frissitjuk a whitelist-et (drift-prevention).
  */
-type EditableOwnCompanyKeys =
+type EditableOwnCompanyKeys = keyof Pick<OwnCompany,
   | 'name'
   | 'taxNumber'
   | 'registrationNumber'
@@ -26,6 +26,7 @@ type EditableOwnCompanyKeys =
   | 'bankAccountNumber'
   | 'iban'
   | 'swift'
+>;
 
 /**
  * v2.3.34 (B11): Cégadatok tab most az aktív OwnCompany rekordbol toltodik

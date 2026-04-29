@@ -785,7 +785,15 @@ export default function CashierTransactionPage() {
             return
           }
           if (!window.electronAPI?.printReceipt) {
-            toast.warning('Nyomtatás nem elérhető', 'Webes módban nincs nyomtatás. Telepítse az Electron klienst.')
+            // v2.3.37 (Sourcery #300 P2): a webes mod ES Electron preload-bug eseten
+            // is ide kerul. Differencialjunk az isElectron() segedfuggvennyel.
+            const inElectron = isElectron()
+            toast.warning(
+              'Nyomtatás nem elérhető',
+              inElectron
+                ? 'Electron preload/electronAPI wiring sikertelen — indítsa újra a klienst, ha tartós, frissítse a programot.'
+                : 'Webes módban nincs nyomtatás. Telepítse az Electron klienst.'
+            )
             return
           }
           try {
