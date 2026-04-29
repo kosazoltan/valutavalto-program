@@ -773,6 +773,11 @@ export default function CashierTransactionPage() {
           } else {
             setShowReceiptModal(false)
             setReceiptData(null)
+            // v2.3.38 (B19 audit fix): Tranzakcio-ciklus zaro toast — a save-toast
+            // mar lefutott a bizonylat keszitesekor, de a felhasznalo a modal-t
+            // latta, ami elnyomta. Most a modal-bezarasan utan kapunk egy
+            // megerositest, hogy a tranzakcio leteljes vege.
+            toast.success('Tranzakció lezárva', 'A bizonylat-folyamat befejeződött, új tranzakcióra kész.')
           }
         }}
         receiptData={receiptData}
