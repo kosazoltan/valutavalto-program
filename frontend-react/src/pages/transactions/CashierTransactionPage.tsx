@@ -779,8 +779,27 @@ export default function CashierTransactionPage() {
         qrCodeDataUrl={null}
         allowPrint={isElectron()}
         onPrint={async () => {
-          if (receiptData && window.electronAPI?.printReceipt) {
-            await window.electronAPI.printReceipt(JSON.stringify(receiptData))
+          // v2.3.35 (B18 audit fix): Print silently fails -> explicit toast feedback
+          if (!receiptData) {
+            toast.warning('Nyomtatás kihagyva', 'Nincs aktív bizonylat-adat.')
+            return
+          }
+          if (!window.electronAPI?.printReceipt) {
+            toast.warning('Nyomtatás nem elérhető', 'Webes módban nincs nyomtatás. Telepítse az Electron klienst.')
+            return
+          }
+          try {
+            const success = await window.electronAPI.printReceipt(JSON.stringify(receiptData))
+            if (success) {
+              toast.success('Nyomtatás elindítva', `Bizonylat: ${receiptData.receiptNumber ?? '—'}`)
+            } else {
+              toast.error('Nyomtatás sikertelen',
+                'A nyomtató offline / nincs konfigurálva / papír kifogyott. ' +
+                'Beállítások > Nyomtatás → ellenőrizze a soros port + nyomtató nevet.')
+            }
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Ismeretlen hiba'
+            toast.error('Nyomtatás váratlan hiba', msg)
           }
         }}
         printLabel={isElectron() ? undefined : 'Nyomtatás nem elérhető'}

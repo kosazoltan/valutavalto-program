@@ -269,6 +269,15 @@ ipcMain.handle('print-receipt', async (_event, dataJson: string): Promise<boolea
     const data = JSON.parse(dataJson) as PrintReceiptData;
     const printerName = getConfig(PRINTER_CONFIG_KEY) ?? undefined;
     const serialPort = getConfig(SERIAL_PORT_CONFIG_KEY) ?? undefined;
+    // v2.3.35 (B18 audit fix): Verbose config logging to diagnose silent print failures.
+    // Korabban a felhasznalo nem latta, hogy a print-config hianyos volt — most az
+    // electron-log fajl-ban explicit szerepel.
+    if (!printerName && !serialPort) {
+      console.warn('[IPC] print-receipt: NEM konfigurált sem PRINTER_CONFIG_KEY (printer.deviceName), '
+        + 'sem SERIAL_PORT_CONFIG_KEY (printer.serialPort) — Electron default printer fallback aktiv. '
+        + 'Beallitasok > Nyomtatas → konfiguraljon nyomtatot, ha az alapertelmezett rendszer nyomtato '
+        + 'nem elerheto.');
+    }
     return await printReceipt(data, printerName, serialPort);
   } catch (err) {
     console.error('[IPC] print-receipt hiba:', err);
