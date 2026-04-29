@@ -1,18 +1,29 @@
 /**
  * Heartbeat config — production-fagyás-detection rate-konfiguráció.
  *
- * 2026-04-29 v2.3.23 (Zod-refaktor — Hallucinációs Kör Megszüntetése mandate):
- * Iparági standard validáció Zod schema-val a 6 iterációs ad-hoc megoldás
- * helyett. Egyetlen schema-validátor lefedi:
- * - Strict numeric parse (`z.coerce.number()` — `'123abc'` reject)
- * - Integer-only (`.int()` — `'12.5'` reject)
- * - Range validation (`.min(MIN).max(MAX)` — out-of-range warn + default)
- * - Default fallback (`.default(DEFAULT)` — hiányzó env)
- * - Type-safe (TypeScript inference)
- * - Hibaüzenet-formázás (`ZodError`)
+ * 2026-04-29 v2.3.24 (Codex P1 + Sourcery 2 P2 PR #287 follow-up):
  *
- * Forrás: Zod 3.22.4 (már `package.json`-ben az `@hookform/resolvers` miatt).
- * Iparági pattern: `dotenv + Zod` env-validation (Vite + TypeScript projektek).
+ * KRITIKUS Codex P1 #287: a v2.3.23 `z.coerce.number()` JavaScript Number(...)
+ * coerciót használt, ami silently elfogadta a `' 120000 '` (whitespace),
+ * `'1e5'` (scientific), `'0x2710'` (hex) formátumokat. Ez VISELKEDÉSI
+ * REGRESSZIÓ a v2.3.22 STRICT_INTEGER_PATTERN-hez képest, ami ezeket explicit
+ * elutasította. Production-ban silently változtathatja a heartbeat cadence-et.
+ *
+ * Megoldás: **Zod idiomatic strict pattern** —
+ * `z.string().regex().transform().pipe()`. Ez iparági Zod-pattern (NEM ad-hoc),
+ * és:
+ * - Strict integer regex (csak `^\d+$`, NEM `' 100 '`, `'1e5'`, `'0x2710'`)
+ * - `transform(Number)` után Zod number constraints (`.int().min().max()`)
+ * - Type-safe pipeline
+ *
+ * Sourcery PR #287 P2 follow-up:
+ * 1. Raw value visszahozva a log üzenetbe (debug a misconfigured environment-hez)
+ * 2. NINCS duplicate default — schema NEM tartalmaz `.default()`, helyette a
+ *    function-szintű early-return kezeli a hiányzó env-et
+ *
+ * Iparági Zod-pattern referenciák:
+ * - https://zod.dev/?id=transformations
+ * - https://zod.dev/?id=pipe
  *
  * Vault: D:\valutavalto-vault\feedback\hallucinacio-megszuntetese.md
  */
@@ -30,44 +41,56 @@ export const MIN_HEARTBEAT_INTERVAL_MS = 10_000
 export const MAX_HEARTBEAT_INTERVAL_MS = 600_000
 
 /**
- * Zod schema a heartbeat-intervallum validációjához.
+ * Zod schema strict integer-string-validációhoz.
  *
- * `z.coerce.number()` automatikusan stringet → számra konvertál (Vite env-vars
- * mindig string-típusúak `import.meta.env`-ben).
- * `.int()` integer-only constraint (NEM fogad el `12.5`-ot vagy `'123abc'`-t).
- * `.min/.max` range validation.
- * `.default()` fallback hiányzó / undefined env esetén.
+ * `z.string().regex(/^\d+$/)` — CSAK pozitív, vezető-zero-mentes tiszta integer
+ * string fogadható el. Nem fogad el:
+ * - `' 100 '` (whitespace) — Codex P1 regression-szóró
+ * - `'1e5'` (scientific notation) — Codex P1 regression-szóró
+ * - `'0x2710'` (hex) — Codex P1 regression-szóró
+ * - `'12.5'` (decimal) — `\d+` reject
+ * - `'-100'` (negatív) — `\d+` reject
  *
- * Type-inferenct: `HeartbeatConfig.intervalMs: number`.
+ * `.transform((s) => parseInt(s, 10))` — string → number a regex után
+ * (parseInt safe, mert a regex már garantálja a strict-integer formátumot).
+ *
+ * `.pipe(z.number().int().min().max())` — Zod number constraints range validation
+ * + integer constraint (defensive, redundáns a regex-szel de explicit).
  */
-const HeartbeatConfigSchema = z.object({
-  intervalMs: z.coerce.number()
-    .int()
-    .min(MIN_HEARTBEAT_INTERVAL_MS)
-    .max(MAX_HEARTBEAT_INTERVAL_MS)
-    .default(DEFAULT_HEARTBEAT_INTERVAL_MS),
-})
+const HeartbeatIntervalSchema = z.string()
+  .regex(/^\d+$/, 'NEM strict-integer string')
+  .transform((s) => parseInt(s, 10))
+  .pipe(
+    z.number()
+      .int()
+      .min(MIN_HEARTBEAT_INTERVAL_MS, `< ${MIN_HEARTBEAT_INTERVAL_MS} (DOS-protekció)`)
+      .max(MAX_HEARTBEAT_INTERVAL_MS, `> ${MAX_HEARTBEAT_INTERVAL_MS} (fagyás-detection felbontás)`),
+  )
 
 /**
  * Olvassa az `import.meta.env.VITE_HEARTBEAT_INTERVAL_MS` env-változót,
  * Zod schema-val validálja, és valid esetben a parsed értéket adja vissza.
  *
- * Validation-failure esetén `logger.warn` jelzéssel dokumentálja a Zod
- * hibaüzenetet, és a default értékre esik vissza (misconfigured environment
- * detektálható az electron-log fájlban).
+ * Hiányzó env (typeof !== string vagy üres) → silent fallback (várt eset,
+ * NEM warning, NEM schema-validáció).
+ * Invalid format/range → `logger.warn` a raw value-val (debug-friendly) +
+ * default fallback.
  */
 export function getHeartbeatIntervalMs(): number {
-  const result = HeartbeatConfigSchema.safeParse({
-    intervalMs: import.meta.env.VITE_HEARTBEAT_INTERVAL_MS,
-  })
+  const raw = import.meta.env.VITE_HEARTBEAT_INTERVAL_MS
+  // Hiányzó env: silent default (NEM schema-default — schema csak invalid format-ot kezel)
+  if (typeof raw !== 'string' || raw.trim().length === 0) {
+    return DEFAULT_HEARTBEAT_INTERVAL_MS
+  }
+  const result = HeartbeatIntervalSchema.safeParse(raw)
   if (!result.success) {
     logger.warn(
       'config/heartbeat',
-      `VITE_HEARTBEAT_INTERVAL_MS validáció sikertelen, default ${DEFAULT_HEARTBEAT_INTERVAL_MS} ms használva. Hiba: ${result.error.message}`,
+      `VITE_HEARTBEAT_INTERVAL_MS='${raw}' invalid: ${result.error.message}, default ${DEFAULT_HEARTBEAT_INTERVAL_MS} ms használva.`,
     )
     return DEFAULT_HEARTBEAT_INTERVAL_MS
   }
-  return result.data.intervalMs
+  return result.data
 }
 
 /** Kiszámolt heartbeat-intervallum (modul-szintű, csak egyszer évalulódik). */
