@@ -33,7 +33,9 @@ import type { AmlCheckResultDto } from '../../services/api/transactions'
  * - Max 6 valutasor/bizonylat
  * - Arfolyam/100 * bankjegy = forint (JPY /1000)
  * - Tab/Enter navigacio sorok kozott
- * - F2=Vetel, F3=Eladas, F5=Storno, F8=Arfolyam, F9=Kedvezmeny, Esc=Megse
+ * - F1=Vetel, F2=Eladas, F5=Storno, F8=Arfolyam, F9=Kedvezmeny, Esc=Megse
+ *   (v2.3.40 B13 align: F1/F2 -- előtte F2/F3 volt, ami konfúziót okozott
+ *    a Főmenü F1=Vétel/F2=Eladás-hoz képest)
  */
 
 const MAX_LINES = 6
@@ -193,8 +195,11 @@ export default function CashierTransactionPage() {
   }, [])
 
   // ====== HOTKEYS ======
-  useHotkeys('f2', () => setMode('buy'), { enableOnFormTags: true })
-  useHotkeys('f3', () => setMode('sell'), { enableOnFormTags: true })
+  // v2.3.40 (B13 audit fix): F1/F2 align a Főmenü-höz (F1=Vétel, F2=Eladás).
+  // Korabban F2/F3 volt itt, ami konfuziot okozott — a felhasznalo F1-et nyomja
+  // a fomenubol jott "Vétel" csempe utan, de itt már F2 volt a vétel.
+  useHotkeys('f1', () => setMode('buy'), { enableOnFormTags: true })
+  useHotkeys('f2', () => setMode('sell'), { enableOnFormTags: true })
   useHotkeys('f5', () => navigate('/transactions?action=storno'), { enableOnFormTags: true })
   useHotkeys('f8', () => navigate('/rates'), { enableOnFormTags: true })
   useHotkeys('f9', () => {
@@ -821,8 +826,9 @@ export default function CashierTransactionPage() {
       {/* HOTKEY BAR */}
       <HotkeyBar
         left={[
-          { key: 'F2', label: 'Vetel', onClick: () => setMode('buy'), active: mode === 'buy' },
-          { key: 'F3', label: 'Eladas', onClick: () => setMode('sell'), active: mode === 'sell' },
+          // v2.3.40 (B13 align): F1/F2 a Főmenü-höz illeszkedik (F1=Vétel, F2=Eladás)
+          { key: 'F1', label: 'Vetel', onClick: () => setMode('buy'), active: mode === 'buy' },
+          { key: 'F2', label: 'Eladas', onClick: () => setMode('sell'), active: mode === 'sell' },
           { key: 'F5', label: 'Storno', onClick: () => navigate('/transactions?action=storno'), variant: 'danger' },
           { key: 'F8', label: 'Árfolyam', onClick: () => navigate('/rates') },
           { key: 'F9', label: 'Dij/Kedv.', onClick: () => { setFeeInput(String(handlingFee || '')); setDiscountInput(String(discount || '')); setShowFeeDialog(true) } },
