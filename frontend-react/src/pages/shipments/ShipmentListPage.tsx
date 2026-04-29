@@ -99,14 +99,14 @@ export default function ShipmentListPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Package />
-          Szállítmányigények
+          Átadás-átvétel (szállítmányigények)
         </h1>
         <Link
           to="/shipments/new"
           className="form-button-primary flex items-center gap-2"
         >
           <Plus size={16} />
-          Új szállítmány igény
+          Új szállítmányigény
         </Link>
       </div>
 

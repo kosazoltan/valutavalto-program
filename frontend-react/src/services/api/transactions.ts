@@ -139,6 +139,7 @@ export interface Transaction {
   branchName?: string
   workerId: number
   workerName?: string
+  workerCode?: string  // 2026-04-29 v2.3.12 (E-B2): backend mar adja, hozzaadtuk a tipust audit display-hez
   createdAt: string
   // G3-G4: PEP + Jogcím nyilatkozat (Legacy Gap Fix)
   customerIsPep?: boolean
