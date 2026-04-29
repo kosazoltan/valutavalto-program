@@ -102,10 +102,20 @@ export default function CashierTransactionPage() {
   const [showReceiptModal, setShowReceiptModal] = useState(false)
   const [receiptData, setReceiptData] = useState<PrintReceiptData | null>(null)
   const receiptQueueRef = useRef<PrintReceiptData[]>([])
-  // v2.3.47 (Sourcery #311): track whether user attempted to print at least one receipt
-  // in the current modal-cycle. Ha igen -> a print-toast adta a feedback-et, NEM kell
-  // close-toast. Ha nem -> a felhasznalo csak megnezte/Esc-zte -> toast.info close-toast.
+  // Track whether user attempted to print in current modal-cycle (Sourcery #311+#312):
+  // - true → print-toast already gave feedback, no close-toast needed
+  // - false → user just viewed/Esc-d → toast.info on close
+  // Reset ON OPEN to prevent state leaks from previous cycles (Sourcery #312).
   const printAttemptedRef = useRef<boolean>(false)
+
+  // Helper: open receipt modal with first receipt + reset cycle state.
+  // Centralizes the reset+open pattern (Sourcery #314 P3) so both BUY/SELL submit
+  // branches use a single source of truth.
+  const openReceiptModal = useCallback((first: PrintReceiptData) => {
+    printAttemptedRef.current = false
+    setReceiptData(first)
+    setShowReceiptModal(true)
+  }, [])
 
   // Auth store for receipt data
   const worker = useAuthStore(s => s.worker)
@@ -423,12 +433,7 @@ export default function CashierTransactionPage() {
           }))
           receiptQueueRef.current = receipts.slice(1)
           if (receipts[0]) {
-            // v2.3.49 (Sourcery #312 P3): reset printAttemptedRef ON OPEN, NEM csak close-on
-            // (state leak prevention: ha az elozo cycle close-jaban valami mas stop-olt, a true
-            // state at-leakolhatott egy uj cycle-be).
-            printAttemptedRef.current = false
-            setReceiptData(receipts[0])
-            setShowReceiptModal(true)
+            openReceiptModal(receipts[0])
           }
         }
       } else {
@@ -486,10 +491,7 @@ export default function CashierTransactionPage() {
           }))
           receiptQueueRef.current = receipts.slice(1)
           if (receipts[0]) {
-            // v2.3.49 (Sourcery #312 P3): reset printAttemptedRef ON OPEN (state leak prevention)
-            printAttemptedRef.current = false
-            setReceiptData(receipts[0])
-            setShowReceiptModal(true)
+            openReceiptModal(receipts[0])
           }
         }
       }
