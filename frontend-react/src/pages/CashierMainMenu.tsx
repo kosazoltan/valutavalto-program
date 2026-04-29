@@ -40,9 +40,15 @@ const MENU_ITEMS_ADMIN: MenuItem[] = [
   { key: '1', label: 'Napi zárás', description: 'Pénztár napi lezárása', icon: Lock, route: '/closing/wizard', shortcut: 'Shift+F1' },
   { key: '2', label: 'Bizonylatok', description: 'Bizonylatok kezelése', icon: FileText, route: '/receipts', shortcut: 'Shift+F2' },
   { key: '3', label: 'Társpénztárak', description: 'Kapcsolódó pénztárak', icon: Building2, route: '/branch-groups', shortcut: 'Shift+F3' },
-  { key: '4', label: 'Listák', description: 'Tranzakciós listák', icon: List, route: '/transactions', shortcut: 'Shift+F4' },
+  // v2.3.34 (B22): Shift+F4 a legacy LISTAK.dll-nek megfelelő multi-list aggregátorra
+  // (Riportok aggregátor 11 listával) megy — NEM a sima Tranzakciólistára. A pénztáros
+  // a /reports oldalon választhat: forgalom dekád, időszaki kimutatás, kezelési díj,
+  // pillanatnyi készlet, kiadott/eladott valuták, ATVETT/ATADOTT bankjegy listák stb.
+  { key: '4', label: 'Listák', description: 'Riportok és listák aggregátora', icon: List, route: '/reports', shortcut: 'Shift+F4' },
   { key: '5', label: 'Pénztárosok', description: 'Felhasználók kezelése', icon: Users, route: '/settings/users', shortcut: 'Shift+F5' },
-  { key: '6', label: 'Napi forgalom', description: 'Részletes forgalmi adatok', icon: Calendar, route: '/reports/extended', shortcut: 'Shift+F6' },
+  // v2.3.34 (B22): Shift+F6 a részletes Bővített Riportokra megy (NEM a sima
+  // /reports-ra). A "napi forgalom" cím pontosabb leírásként megmarad.
+  { key: '6', label: 'Napi forgalom', description: 'Részletes forgalmi kimutatás (bővített)', icon: Calendar, route: '/reports/extended', shortcut: 'Shift+F6' },
   { key: '7', label: 'Régi zárás', description: 'Archív napi zárások', icon: Archive, route: '/archiving', shortcut: 'Shift+F7' },
   { key: '8', label: 'Címletezés', description: 'Címlet összetétel kezelése', icon: RefreshCw, route: '/cashdesk/denominations', shortcut: 'Shift+F8' },
   { key: '9', label: 'Beállítások', description: 'Rendszer konfiguráció', icon: Settings, route: '/settings', shortcut: 'Shift+F9' },

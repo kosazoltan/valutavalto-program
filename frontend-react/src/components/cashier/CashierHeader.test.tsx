@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { vi, describe, beforeEach, it, expect } from 'vitest'
-import { CashierHeader } from './CashierHeader'
+import { CashierHeader, MISSING_VALUE_PLACEHOLDER } from './CashierHeader'
 
 const mocks = vi.hoisted(() => ({
   useCompanyTheme: vi.fn(),
@@ -80,7 +80,7 @@ describe('CashierHeader', () => {
     expect(screen.getByText(/KJ001/)).toBeInTheDocument()
   })
 
-  it('worker null eseten "—" placeholder jelenik meg (NEM hardcoded "Admin")', () => {
+  it('worker null eseten MISSING_VALUE_PLACEHOLDER jelenik meg (NEM hardcoded "Admin")', () => {
     mocks.useAuthStore.mockImplementation((selector?: (s: { worker: null }) => unknown) => {
       const state = { worker: null }
       return selector ? selector(state) : state
@@ -89,7 +89,7 @@ describe('CashierHeader', () => {
     const header = screen.getByRole('banner')
     expect(header.textContent).not.toContain('Admin')
     expect(header.textContent).not.toContain('Kozponti Iroda')
-    expect(header.textContent).toContain('—')
+    expect(header.textContent).toContain(MISSING_VALUE_PLACEHOLDER)
   })
 
   it('explicit prop felulirja az authStore-t (branchCode override)', () => {

@@ -18,6 +18,10 @@ import { useAuthStore } from '../../stores/authStore'
  * akkor egyertelmuen "—" jelennek meg (hiba forrast jelzo helyettesito).
  */
 
+/** v2.3.34 (Sourcery #298 P3): Hianyzo ertek placeholder — extract konstans
+ * (lokalizacio + jovobeli theme-config konnyu modositast tesz lehetove). */
+export const MISSING_VALUE_PLACEHOLDER = '—'
+
 interface CashierHeaderProps {
   /** Override-okra van lehetoseg, de default a `useAuthStore` worker. */
   branchCode?: string
@@ -28,10 +32,10 @@ interface CashierHeaderProps {
 
 export function CashierHeader(props: CashierHeaderProps = {}) {
   const worker = useAuthStore((s) => s.worker)
-  const branchCode = props.branchCode ?? worker?.branchCode ?? '—'
-  const branchName = props.branchName ?? worker?.branchName ?? '—'
-  const workerName = props.workerName ?? worker?.fullName ?? '—'
-  const workerId = props.workerId ?? worker?.workerCode ?? '—'
+  const branchCode = props.branchCode ?? worker?.branchCode ?? MISSING_VALUE_PLACEHOLDER
+  const branchName = props.branchName ?? worker?.branchName ?? MISSING_VALUE_PLACEHOLDER
+  const workerName = props.workerName ?? worker?.fullName ?? MISSING_VALUE_PLACEHOLDER
+  const workerId = props.workerId ?? worker?.workerCode ?? MISSING_VALUE_PLACEHOLDER
 
   const { theme } = useCompanyTheme()
   const [time, setTime] = useState(new Date())
