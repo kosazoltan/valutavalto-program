@@ -6,6 +6,7 @@ import { transactionApi, customerApi, type DailyTurnoverSummary } from '../servi
 import { useAuthStore } from '../stores/authStore'
 import { useAppMode } from '../hooks/useAppMode'
 import { formatMillions } from './treasury/treasuryUtils'
+import { logger } from '../utils/logger'
 
 // 2026-04-29 E-B3 fix: a "Árfolyam módosítás" Gyorsművelet-csempe csak a
 // foertektar/ugyvezeto szerepkörnek látható (mode='full'). Az értéktár (és
@@ -90,11 +91,15 @@ export default function DashboardPage() {
         // Korábban: `Math.ceil(totalTx * 0.7)` heurisztika → KPI 2, lista 0 inkonzisztens.
         // Most: `customerApi.getActive().length` — UGYANAZT az endpoint-ot használja
         // mint a CustomerListPage, így a számok egyeznek.
+        // 2026-04-29 v2.3.12 Sourcery #274 follow-up: silent catch helyett logger.warn,
+        // hogy a customer KPI silent failure-jét detektálni tudjuk az electron-log-ban.
         let activeCustomerCount = 0
         try {
           const activeList = await customerApi.getActive()
           activeCustomerCount = Array.isArray(activeList) ? activeList.length : 0
-        } catch { /* customer endpoint nem elérhető — 0 marad */ }
+        } catch (err) {
+          logger.warn('DashboardPage', 'customerApi.getActive() failed, KPI 0 marad:', err)
+        }
 
         // Tegnapi adatok az összehasonlításhoz
         const yesterday = new Date()
