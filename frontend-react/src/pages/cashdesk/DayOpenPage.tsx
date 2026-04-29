@@ -120,12 +120,12 @@ export default function DayOpenPage() {
         <CashierHeader />
         <div className="flex flex-1 flex-col items-center justify-center gap-4">
           <CheckCircle className="h-12 w-12 text-green-500" />
-          <h2 className="text-xl font-bold text-gray-800">A nap mar nyitva van</h2>
+          <h2 className="text-xl font-bold text-gray-800">A nap már nyitva van</h2>
           <button
             onClick={() => navigate('/cashier')}
             className="rounded-lg bg-blue-600 px-6 py-3 text-white hover:bg-blue-700"
           >
-            Tovabb a penztarhoz
+            Tovább a pénztárhoz
           </button>
         </div>
       </div>
@@ -140,11 +140,11 @@ export default function DayOpenPage() {
           {/* Header */}
           <div className="text-center">
             <Sun className="mx-auto h-12 w-12 text-amber-500" />
-            <h1 className="mt-3 text-lg font-bold text-gray-900">Napnyitas</h1>
+            <h1 className="mt-3 text-lg font-bold text-gray-900">Napnyitás</h1>
             <p className="mt-1 text-sm text-gray-500">
               {new Date().toLocaleDateString('hu-HU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               {' — '}
-              {worker?.fullName ?? 'Ismeretlen pentaros'}
+              {worker?.fullName ?? 'Ismeretlen pénztáros'}
             </p>
           </div>
 
@@ -195,14 +195,14 @@ export default function DayOpenPage() {
             className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             <Coins className="h-4 w-4" />
-            {showDenomination ? 'Cimletezés elrejtese' : 'Nyito cimletezés kitoltese'}
+            {showDenomination ? 'Címletezés elrejtése' : 'Nyitó címletezés kitöltése'}
           </button>
 
           {/* Denomination grid */}
           {showDenomination && (
             <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
               <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">
-                HUF cimletezés
+                HUF címletezés
               </h3>
               <div className="space-y-2">
                 {HUF_DENOMINATIONS.map((faceValue) => (
@@ -258,10 +258,10 @@ export default function DayOpenPage() {
             {opening ? (
               <span className="flex items-center justify-center gap-2">
                 <Loader2 className="h-5 w-5 animate-spin" />
-                Megnyitas...
+                Megnyitás...
               </span>
             ) : (
-              'Nap megnyitasa'
+              'Nap megnyitása'
             )}
           </button>
 
@@ -274,7 +274,7 @@ export default function DayOpenPage() {
             }}
             className="w-full text-center text-sm text-gray-500 hover:text-gray-700"
           >
-            Kijelentkezes
+            Kijelentkezés
           </button>
         </div>
       </div>

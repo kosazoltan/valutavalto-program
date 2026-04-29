@@ -304,7 +304,7 @@ export default function CustomerPanel({
     <div className="space-y-3">
       <h3 className="text-lg font-bold flex items-center gap-2 text-gray-900 dark:text-white">
         <User className="w-5 h-5" />
-        UGYFEL ADATOK
+        ÜGYFÉL ADATOK
       </h3>
 
       {/* Identification level indicator */}
@@ -410,7 +410,7 @@ export default function CustomerPanel({
         <div className="text-center text-gray-500 dark:text-gray-400 py-6">
           <User size={40} className="mx-auto mb-2 text-gray-300 dark:text-gray-600" />
           <div className="font-medium">100.000 Ft alatt</div>
-          <div className="text-sm">Ugyfel azonositas nem szukseges</div>
+          <div className="text-sm">Ügyfél azonosítás nem szükséges</div>
         </div>
       ) : (
         // SEARCH + MANUAL ENTRY

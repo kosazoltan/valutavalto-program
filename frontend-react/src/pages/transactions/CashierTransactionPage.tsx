@@ -352,7 +352,7 @@ export default function CashierTransactionPage() {
     const aml = amlResultRef.current
     if (identificationLevel !== 'SIMPLE') {
       if (!cd?.name?.trim() || !cd?.documentNumber?.trim()) {
-        toast.warning('Ugyfel azonositas kotelezo', `${IDENTIFICATION_LIMIT.toLocaleString('hu-HU')} Ft feletti tranzakciohoz ugyfel azonositas KOTELEZO!`)
+        toast.warning('Ügyfél azonosítás kötelező', `${IDENTIFICATION_LIMIT.toLocaleString('hu-HU')} Ft feletti tranzakcióhoz ügyfél azonosítás KÖTELEZŐ!`)
         return
       }
       if (identificationLevel === 'FULL' && (!cd?.birthPlace || !cd?.birthDate || !cd?.motherName || !cd?.address)) {
@@ -670,7 +670,7 @@ export default function CashierTransactionPage() {
                   <th className="px-4 py-3 text-left w-28">VALUTA</th>
                   <th className="px-4 py-3 text-right w-32">ÁRFOLYAM</th>
                   <th className="px-4 py-3 text-right w-36">BANKJEGY DB</th>
-                  <th className="px-4 py-3 text-right">FORINT ERTEK</th>
+                  <th className="px-4 py-3 text-right">FORINT ÉRTÉK</th>
                 </tr>
               </thead>
               <tbody>
