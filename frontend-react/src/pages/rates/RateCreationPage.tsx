@@ -373,7 +373,10 @@ export default function RateCreationPage() {
   const modifiedCount = rates.filter(r => r.modified).length
 
   return (
-    <div className="h-[calc(100vh-9.5rem)] flex flex-col">
+    /* 2026-04-29 v2.3.13 (Árfolyamkészítés zoom-fit): a top-toolbar magassága
+       9.5rem-ról 8rem-ra csökkentve, hogy 17 valuta scrollozás nélkül elférjen
+       632px viewport-ban is (audit-feedback alapján). */
+    <div className="h-[calc(100vh-8rem)] flex flex-col">
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-1 rounded flex items-center gap-2 text-xs mb-1">
           <AlertTriangle size={14} /> {error}

@@ -307,9 +307,14 @@ export default function App() {
   // látható lesz, mikor szakadt meg.
   // Ezenkívül listenert teszünk a window.error és window.unhandledrejection
   // eseményekre, hogy a néma JS hibák is bekerüljenek a logba.
+  // 2026-04-29 v2.3.13 (HEARTBEAT-1): a `logger.info` production build-ben
+  // CSEND (logger.ts: csak warn+error emit prod-ban). Ezért `logger.warn`-ra
+  // váltunk, hogy a fagyás-detection fájl-szinten is működjön production-ban.
+  // Ez a heartbeat NEM "warning"-szintű probléma, csak observability célú —
+  // a tag-prefix `[App] [heartbeat]` egyértelműen jelzi a forrást.
   useEffect(() => {
     const heartbeatId = setInterval(() => {
-      logger.info('App', `[heartbeat] alive @ ${new Date().toISOString()}`)
+      logger.warn('App', `[heartbeat] alive @ ${new Date().toISOString()}`)
     }, 60_000)
 
     const handleError = (event: ErrorEvent) => {
