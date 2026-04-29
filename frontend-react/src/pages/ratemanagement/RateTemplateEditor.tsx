@@ -338,7 +338,7 @@ export default function RateTemplateEditor() {
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="text-xs text-muted-foreground">Vetel</label>
+                          <label className="text-xs text-muted-foreground">Vétel</label>
                           <input
                             className="flex h-8 w-full rounded-md border px-2 py-1 text-xs font-mono"
                             value={editing[buyKey] as string}
@@ -346,7 +346,7 @@ export default function RateTemplateEditor() {
                           />
                         </div>
                         <div>
-                          <label className="text-xs text-muted-foreground">Eladas</label>
+                          <label className="text-xs text-muted-foreground">Eladás</label>
                           <input
                             className="flex h-8 w-full rounded-md border px-2 py-1 text-xs font-mono"
                             value={editing[sellKey] as string}
@@ -390,7 +390,7 @@ export default function RateTemplateEditor() {
               <div className="p-4 flex items-center justify-between">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono font-medium">Vetel: {t.baseBuyRate} | Eladas: {t.baseSellRate}</span>
+                    <span className="font-mono font-medium">Vétel: {t.baseBuyRate} | Eladás: {t.baseSellRate}</span>
                     {statusBadge(t.status)}
                   </div>
                   <p className="text-sm text-muted-foreground">

@@ -477,7 +477,7 @@ export default function SettlementRateEntry() {
                           } ${activeCell?.row === idx && activeCell?.col === 1 ? 'ring-2 ring-blue-500' : ''}`}
                           value={rate.baseBuyRate}
                           onChange={e => updateRate(idx, 'baseBuyRate', e.target.value)}
-                          placeholder="Vetel"
+                          placeholder="Vétel"
                         />
                       </td>
 
@@ -492,7 +492,7 @@ export default function SettlementRateEntry() {
                           } ${activeCell?.row === idx && activeCell?.col === 2 ? 'ring-2 ring-blue-500' : ''}`}
                           value={rate.baseSellRate}
                           onChange={e => updateRate(idx, 'baseSellRate', e.target.value)}
-                          placeholder="Eladas"
+                          placeholder="Eladás"
                         />
                       </td>
 
@@ -540,7 +540,7 @@ export default function SettlementRateEntry() {
                               </div>
                               <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                  <label className="text-xs text-muted-foreground">Vetel</label>
+                                  <label className="text-xs text-muted-foreground">Vétel</label>
                                   <input
                                     type="text"
                                     inputMode="decimal"
@@ -550,7 +550,7 @@ export default function SettlementRateEntry() {
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-xs text-muted-foreground">Eladas</label>
+                                  <label className="text-xs text-muted-foreground">Eladás</label>
                                   <input
                                     type="text"
                                     inputMode="decimal"
@@ -578,7 +578,7 @@ export default function SettlementRateEntry() {
                               </div>
                               <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                  <label className="text-xs text-muted-foreground">Vetel</label>
+                                  <label className="text-xs text-muted-foreground">Vétel</label>
                                   <input
                                     type="text"
                                     inputMode="decimal"
@@ -588,7 +588,7 @@ export default function SettlementRateEntry() {
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-xs text-muted-foreground">Eladas</label>
+                                  <label className="text-xs text-muted-foreground">Eladás</label>
                                   <input
                                     type="text"
                                     inputMode="decimal"
@@ -616,7 +616,7 @@ export default function SettlementRateEntry() {
                               </div>
                               <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                  <label className="text-xs text-muted-foreground">Vetel</label>
+                                  <label className="text-xs text-muted-foreground">Vétel</label>
                                   <input
                                     type="text"
                                     inputMode="decimal"
@@ -626,7 +626,7 @@ export default function SettlementRateEntry() {
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-xs text-muted-foreground">Eladas</label>
+                                  <label className="text-xs text-muted-foreground">Eladás</label>
                                   <input
                                     type="text"
                                     inputMode="decimal"

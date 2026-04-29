@@ -234,7 +234,7 @@ export default function CashierKpiPage() {
             {/* Worker table */}
             <div className="form-panel">
                 <div className="px-4 py-3 border-b border-secondary-200 flex items-center justify-between">
-                    <h2 className="font-semibold text-secondary-900">Penztarosok bontasa</h2>
+                    <h2 className="font-semibold text-secondary-900">Pénztárosok bontása</h2>
                     <div className="flex items-center gap-2">
                         <span className="text-xs text-secondary-500">Rendezes:</span>
                         <select
@@ -261,7 +261,7 @@ export default function CashierKpiPage() {
                             <th className="text-right">Forgalom</th>
                             <th className="text-right">Átlag tx</th>
                             <th className="text-right">Kezelesi dij</th>
-                            <th className="text-right">Ugyfel</th>
+                            <th className="text-right">Ügyfél</th>
                         </tr>
                     </thead>
                     <tbody>
