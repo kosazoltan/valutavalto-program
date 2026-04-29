@@ -117,7 +117,7 @@ export default function CashierKpiPage() {
                         Pénztáros KPI Dashboard
                     </h1>
                     <p className="text-sm text-secondary-500 mt-1">
-                        Forgalom, tranzakcioszam es sztorno arany penztarosonkent.
+                        Forgalom, tranzakciószám és sztornó arány pénztárosonként.
                     </p>
                 </div>
                 <button
