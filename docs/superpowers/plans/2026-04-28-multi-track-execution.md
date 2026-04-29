@@ -454,14 +454,33 @@ curl http://localhost:8080/api/v1/public/branches?companyCode=EBC   # non-empty 
 
 (Ha a local DB-n a production profile dolgozik, a `JWT_SECRET` env-et beállítani.)
 
-- [ ] **Step 14: Jackson serialization smoke test**
+- [ ] **Step 14: Jackson 3 binding smoke test (status-code alapú)**
 
 ```bash
-# AI review fix (Sourcery P2 #254): valós endpoint, ami LocalDateTime-ot serializál.
-# /auth/bootstrap-status válasza tartalmaz `serverTime: LocalDateTime` field-et,
-# ami a Jackson 3 enum bindingot teszteli. Ha 5xx vagy NULL serverTime → bind FAIL.
-curl -s http://localhost:8080/api/v1/auth/bootstrap-status | jq -r '.serverTime // "FAIL"'
-# Várt: ISO-8601 timestamp (pl. "2026-04-29T10:00:00.123"). FAIL → Jackson bind error.
+# AI review fix (Codex P2 #258, 2026-04-29):
+# Az előző iterációban /auth/bootstrap-status-ra .serverTime field-et hivatkoztunk,
+# de a tényleges DTO csak {"completed": <boolean>}. A "serverTime // FAIL" mindig
+# FAIL-t adna → false negative deterministic.
+#
+# Helyette: a Jackson 3 enum binding hiba (mint a 04-27-i outage,
+# `spring.jackson.serialization.write-dates-as-timestamps=false` enum-bindelhetetlen)
+# a Spring context BOOT-time-ban dob IllegalStateException-t, így a backend
+# **el sem indul** → connection refused / 5xx. Tehát az alábbi 3 endpoint
+# 200-as válasza már elégséges smoke-jel.
+
+curl -s -o /dev/null -w "bootstrap: HTTP %{http_code}\n" http://localhost:8080/api/v1/auth/bootstrap-status
+curl -s -o /dev/null -w "branches:  HTTP %{http_code}\n" "http://localhost:8080/api/v1/public/branches?companyCode=EBC"
+curl -s -o /dev/null -w "actuator:  HTTP %{http_code}\n" http://localhost:9090/actuator/health/liveness
+
+# Várt:
+#   bootstrap: HTTP 200
+#   branches:  HTTP 200
+#   actuator:  HTTP 200
+# Bármelyik 5xx vagy connection refused → Jackson bind FAIL vagy más boot-time bug.
+#
+# Authenticated mély-binding teszt (opcionális, ha van JWT_SECRET):
+# A `/api/v1/auth/login` 200 + valid token, vagy a /api/v1/branches (auth-olt list,
+# Branch entity LocalDateTime mezőkkel) megerősíti a Jackson 3 LocalDateTime bindingot.
 ```
 
 ### Subtask 4.6: Push + staging deploy + production merge
