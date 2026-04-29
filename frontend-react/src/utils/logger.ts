@@ -44,6 +44,20 @@ export const logger = {
       console.error(formatTag(tag), message, ...args);
     }
   },
+
+  /**
+   * 2026-04-29 v2.3.16 (Sourcery PR #276 P2 follow-up):
+   * Dedikált heartbeat marker — production-ban is mindig fut, de NEM warning-szintű
+   * (vagyis a monitoring/alerting NEM riasztja false-positive-ként).
+   * Direkt `console.log`-ot használ a logger.info bypass-szal — `[HEARTBEAT]` prefix
+   * egyértelmű marker a fagyás-detection-hez electron-log fájl-elemzésnél.
+   *
+   * Use case: App.tsx 60s-onként hívja a renderer életjelhez.
+   */
+  heartbeat(tag: string, message: string, ...args: unknown[]): void {
+    // Bypass shouldLog filter — a heartbeat MINDIG kell logoljon (production is)
+    console.log(`[HEARTBEAT] ${formatTag(tag)}`, message, ...args);
+  },
 };
 
 export default logger;

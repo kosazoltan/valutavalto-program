@@ -309,14 +309,13 @@ export default function App() {
   // látható lesz, mikor szakadt meg.
   // Ezenkívül listenert teszünk a window.error és window.unhandledrejection
   // eseményekre, hogy a néma JS hibák is bekerüljenek a logba.
-  // 2026-04-29 v2.3.13 (HEARTBEAT-1): a `logger.info` production build-ben
-  // CSEND (logger.ts: csak warn+error emit prod-ban). Ezért `logger.warn`-ra
-  // váltunk, hogy a fagyás-detection fájl-szinten is működjön production-ban.
-  // Ez a heartbeat NEM "warning"-szintű probléma, csak observability célú —
-  // a tag-prefix `[App] [heartbeat]` egyértelműen jelzi a forrást.
+  // 2026-04-29 v2.3.16 (Sourcery PR #276 P2 follow-up): dedikált `logger.heartbeat()`
+  // metódus, ami direkt `console.log`-ot használ — production-ban is fut, DE NEM
+  // warning-szintű (a monitoring/alerting NEM riasztja false-positive-ként).
+  // A `[HEARTBEAT]` prefix egyértelmű marker a fájl-elemzéshez (electron-log).
   useEffect(() => {
     const heartbeatId = setInterval(() => {
-      logger.warn('App', `[heartbeat] alive @ ${new Date().toISOString()}`)
+      logger.heartbeat('App', `alive @ ${new Date().toISOString()}`)
     }, 60_000)
 
     const handleError = (event: ErrorEvent) => {

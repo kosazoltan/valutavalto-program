@@ -145,7 +145,7 @@ export default function CashierKpiPage() {
                                     : 'bg-white text-secondary-700 border-secondary-200 hover:border-primary-400'
                             }`}
                         >
-                            {q === 'today' ? 'Ma' : q === 'week' ? 'Utolsó 7 nap' : q === 'month' ? 'Ez a hónap' : 'Egyeni'}
+                            {q === 'today' ? 'Ma' : q === 'week' ? 'Utolsó 7 nap' : q === 'month' ? 'Ez a hónap' : 'Egyéni'}
                         </button>
                     ))}
                 </div>
