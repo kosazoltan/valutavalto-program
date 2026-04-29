@@ -60,7 +60,7 @@ export default function AttendancePage() {
                     Munkaidő nyilvántartás
                 </h1>
                 <p className="text-sm text-secondary-500 mt-1">
-                    Bejelentkezesi es kijelentkezesi napló — sajat vagy csapattag.
+                    Bejelentkezési és kijelentkezési napló — saját vagy csapattag.
                 </p>
             </div>
 
@@ -247,7 +247,7 @@ function AttendanceList({
                 />
                 <SummaryCard
                     icon={<Clock className="text-purple-500" size={20} />}
-                    label="Ossz. munkaido"
+                    label="Össz. munkaidő"
                     value={formatDuration(totalMinutes)}
                 />
             </div>
@@ -291,7 +291,7 @@ function AttendanceList({
                         {!loading && entries.length === 0 && (
                             <tr>
                                 <td colSpan={showWorkerName ? 6 : 5} className="text-center py-8 text-secondary-400">
-                                    Nincs adat az idotartomanyban
+                                    Nincs adat az időtartományban
                                 </td>
                             </tr>
                         )}

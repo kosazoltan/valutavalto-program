@@ -70,7 +70,7 @@ export default function ComplianceDashboardPage() {
                         Compliance Dashboard
                     </h1>
                     <p className="text-gray-600 text-sm mt-1">
-                        Pmt. (2017. LIII. tv.) + AML + Szankciós + 8 napos gordulo limit audit
+                        Pmt. (2017. LIII. tv.) + AML + Szankciós + 8 napos gördülő limit audit
                     </p>
                 </div>
                 <button
@@ -96,14 +96,14 @@ export default function ComplianceDashboardPage() {
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                         <div className="bg-red-50 border border-red-200 rounded p-4">
                             <div className="text-sm text-red-700 flex items-center gap-1">
-                                <Clock className="w-4 h-4" /> OVERDUE bejelentesek
+                                <Clock className="w-4 h-4" /> OVERDUE bejelentések
                             </div>
                             <div className="text-3xl font-bold text-red-700 mt-1">{overdue.length}</div>
-                            <div className="text-xs text-red-600 mt-1">2 munkanap utan lejart</div>
+                            <div className="text-xs text-red-600 mt-1">2 munkanap után lejárt</div>
                         </div>
                         <div className="bg-yellow-50 border border-yellow-200 rounded p-4">
                             <div className="text-sm text-yellow-700 flex items-center gap-1">
-                                <FileText className="w-4 h-4" /> Pending bejelentesek
+                                <FileText className="w-4 h-4" /> Pending bejelentések
                             </div>
                             <div className="text-3xl font-bold mt-1">{pending.length}</div>
                             <div className="text-xs text-gray-600 mt-1">DRAFT / SUBMITTED</div>
@@ -117,7 +117,7 @@ export default function ComplianceDashboardPage() {
                         </div>
                         <div className="bg-blue-50 border border-blue-200 rounded p-4">
                             <div className="text-sm text-blue-700 flex items-center gap-1">
-                                <AlertTriangle className="w-4 h-4" /> Mai gyanus
+                                <AlertTriangle className="w-4 h-4" /> Mai gyanús
                             </div>
                             <div className="text-3xl font-bold mt-1">{summary?.suspiciousChecks ?? 0}</div>
                             <div className="text-xs text-gray-600 mt-1">{today}</div>
@@ -128,7 +128,7 @@ export default function ComplianceDashboardPage() {
                     {overdue.length > 0 && (
                         <div className="bg-white shadow rounded overflow-hidden mb-6">
                             <div className="bg-red-100 px-4 py-2 text-red-900 font-semibold">
-                                Lejart hataridejű bejelentesek ({overdue.length})
+                                Lejárt határidejű bejelentések ({overdue.length})
                             </div>
                             <table className="w-full text-sm">
                                 <thead className="bg-gray-50">
@@ -159,10 +159,10 @@ export default function ComplianceDashboardPage() {
                     <div className="bg-white shadow rounded overflow-hidden mb-6">
                         <div className="bg-orange-100 px-4 py-3 flex items-center justify-between">
                             <div className="text-orange-900 font-semibold">
-                                8 napos gordulo limit feletti ugyfelek ({rollingWindow.length})
+                                8 napos gördülő limit feletti ügyfelek ({rollingWindow.length})
                             </div>
                             <div className="flex items-center gap-2">
-                                <label className="text-sm">Kuszob (HUF):</label>
+                                <label className="text-sm">Küszöb (HUF):</label>
                                 <input
                                     type="number"
                                     value={threshold}
@@ -178,7 +178,7 @@ export default function ComplianceDashboardPage() {
                             </div>
                         </div>
                         {rollingWindow.length === 0 ? (
-                            <div className="p-6 text-center text-gray-500 text-sm">Nincs ugyfel a kuszob felett</div>
+                            <div className="p-6 text-center text-gray-500 text-sm">Nincs ügyfél a küszöb felett</div>
                         ) : (
                             <table className="w-full text-sm">
                                 <thead className="bg-gray-50">
@@ -222,11 +222,11 @@ export default function ComplianceDashboardPage() {
                     {summary && (
                         <div className="bg-white shadow rounded overflow-hidden">
                             <div className="bg-blue-100 px-4 py-2 text-blue-900 font-semibold">
-                                Mai nap osszesito ({summary.date})
+                                Mai nap összesítő ({summary.date})
                             </div>
                             <div className="grid grid-cols-4 gap-4 p-4">
                                 <div>
-                                    <div className="text-xs text-gray-600">Standard ellenorzes</div>
+                                    <div className="text-xs text-gray-600">Standard ellenőrzés</div>
                                     <div className="text-lg font-bold">{summary.standardChecks}</div>
                                 </div>
                                 <div>
@@ -234,11 +234,11 @@ export default function ComplianceDashboardPage() {
                                     <div className="text-lg font-bold">{summary.enhancedChecks}</div>
                                 </div>
                                 <div>
-                                    <div className="text-xs text-gray-600">Gyanus</div>
+                                    <div className="text-xs text-gray-600">Gyanús</div>
                                     <div className="text-lg font-bold text-orange-600">{summary.suspiciousChecks}</div>
                                 </div>
                                 <div>
-                                    <div className="text-xs text-gray-600">Osszeg (HUF)</div>
+                                    <div className="text-xs text-gray-600">Összeg (HUF)</div>
                                     <div className="text-lg font-bold font-mono">
                                         {summary.totalAmountHuf.toLocaleString('hu-HU')}
                                     </div>

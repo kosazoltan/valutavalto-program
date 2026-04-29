@@ -17,10 +17,10 @@ import { logger } from '../../utils/logger'
 
 const STATUS_LABELS: Record<StocktakeStatus, string> = {
     OPEN: 'Nyitva',
-    IN_PROGRESS: 'Felvetel alatt',
-    REVIEW: 'Ellenorzes',
-    CLOSED: 'Lezarva',
-    CANCELLED: 'Megszakitva',
+    IN_PROGRESS: 'Felvétel alatt',
+    REVIEW: 'Ellenőrzés',
+    CLOSED: 'Lezárva',
+    CANCELLED: 'Megszakítva',
 }
 
 const STATUS_COLORS: Record<StocktakeStatus, string> = {
@@ -100,7 +100,7 @@ export default function VaultStocktakeListPage() {
                         Értéktár leltár
                     </h1>
                     <p className="text-gray-600 text-sm mt-1">
-                        Cimletenkenti ertektar ellenorzes (legacy: LELTAR.DLL parity)
+                        Címletenkénti értéktár ellenőrzés (legacy: LELTAR.DLL parity)
                     </p>
                 </div>
                 <button
@@ -116,19 +116,19 @@ export default function VaultStocktakeListPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div className="bg-yellow-50 border border-yellow-200 rounded p-4">
                     <div className="text-sm text-yellow-700 flex items-center gap-1">
-                        <Play className="w-4 h-4" /> Aktiv leltarak
+                        <Play className="w-4 h-4" /> Aktív leltárak
                     </div>
                     <div className="text-2xl font-bold mt-1">{totalOpen}</div>
                 </div>
                 <div className="bg-purple-50 border border-purple-200 rounded p-4">
                     <div className="text-sm text-purple-700 flex items-center gap-1">
-                        <AlertTriangle className="w-4 h-4" /> Ellenorzesre var
+                        <AlertTriangle className="w-4 h-4" /> Ellenőrzésre vár
                     </div>
                     <div className="text-2xl font-bold mt-1">{totalReview}</div>
                 </div>
                 <div className="bg-green-50 border border-green-200 rounded p-4">
                     <div className="text-sm text-green-700 flex items-center gap-1">
-                        <CheckCircle2 className="w-4 h-4" /> Lezart
+                        <CheckCircle2 className="w-4 h-4" /> Lezárt
                     </div>
                     <div className="text-2xl font-bold mt-1">{totalClosed}</div>
                 </div>

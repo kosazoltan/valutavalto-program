@@ -72,11 +72,11 @@ export default function SanctionPage() {
                 <div className="form-panel p-4 flex items-center gap-6">
                     <Database className="text-blue-600" size={32} />
                     <div className="flex-1">
-                        <div className="text-xs text-secondary-500">Aktív bejegyzesek</div>
+                        <div className="text-xs text-secondary-500">Aktív bejegyzések</div>
                         <div className="text-xl font-bold">{status.activeEntryCount.toLocaleString('hu-HU')}</div>
                     </div>
                     <div className="flex-1">
-                        <div className="text-xs text-secondary-500">Utolso frissites</div>
+                        <div className="text-xs text-secondary-500">Utolsó frissítés</div>
                         <div className="text-xl font-bold">
                             {status.lastUpdateDate ?? <span className="text-amber-600">Nincs adat</span>}
                         </div>
@@ -87,10 +87,10 @@ export default function SanctionPage() {
             {/* Tabs */}
             <div className="flex border-b border-secondary-200">
                 <TabButton active={tab === 'screen'} onClick={() => setTab('screen')} icon={<Search size={14} />}>
-                    Szures
+                    Szűrés
                 </TabButton>
                 <TabButton active={tab === 'list'} onClick={() => setTab('list')} icon={<FileText size={14} />}>
-                    Listazas (SUPERVISOR+)
+                    Listázás (SUPERVISOR+)
                 </TabButton>
                 <TabButton active={tab === 'admin'} onClick={() => setTab('admin')} icon={<Upload size={14} />}>
                     Admin / Import (MANAGER+)
@@ -146,14 +146,14 @@ function ScreeningTab() {
                         className="form-input w-full"
                         value={name}
                         onChange={e => setName(e.target.value)}
-                        placeholder="pl. Kovacs Janos"
+                        placeholder="pl. Kovács János"
                         required
                         autoFocus
                     />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                     <div>
-                        <label className="form-label">Okmanyszam (opcionalis)</label>
+                        <label className="form-label">Okmányszám (opcionális)</label>
                         <input
                             type="text"
                             className="form-input w-full"
@@ -163,7 +163,7 @@ function ScreeningTab() {
                         />
                     </div>
                     <div>
-                        <label className="form-label">Szuletesi datum (opcionalis)</label>
+                        <label className="form-label">Születési dátum (opcionális)</label>
                         <input
                             type="date"
                             className="form-input w-full"
@@ -174,7 +174,7 @@ function ScreeningTab() {
                 </div>
                 <button type="submit" className="form-button-primary" disabled={loading || !name.trim()}>
                     <Search size={16} />
-                    <span>{loading ? 'Szures...' : 'Szűrés indítása'}</span>
+                    <span>{loading ? 'Szűrés...' : 'Szűrés indítása'}</span>
                 </button>
             </form>
 

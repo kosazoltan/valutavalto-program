@@ -106,19 +106,19 @@ export default function ProfitPage() {
       {/* Osszesitett sor */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white rounded shadow p-3">
-          <div className="text-xs text-gray-500">Bevetel</div>
+          <div className="text-xs text-gray-500">Bevétel</div>
           <div className="text-xl font-mono">{formatHuf(report?.revenue)}</div>
         </div>
         <div className="bg-white rounded shadow p-3">
-          <div className="text-xs text-gray-500">Koltsegek</div>
+          <div className="text-xs text-gray-500">Költségek</div>
           <div className="text-xl font-mono">{formatHuf(report?.expenses)}</div>
         </div>
         <div className="bg-white rounded shadow p-3">
-          <div className="text-xs text-gray-500">Brutto haszon</div>
+          <div className="text-xs text-gray-500">Bruttó haszon</div>
           <div className="text-xl font-mono">{formatHuf(report?.grossProfit)}</div>
         </div>
         <div className="bg-white rounded shadow p-3">
-          <div className="text-xs text-gray-500">Netto haszon</div>
+          <div className="text-xs text-gray-500">Nettó haszon</div>
           <div className="text-xl font-mono">{formatHuf(report?.netProfit)}</div>
         </div>
       </div>
@@ -156,7 +156,7 @@ export default function ProfitPage() {
       </div>
 
       <div className="text-sm text-gray-500">
-        Tranzakciok: {report?.totalTransactions ?? 0}
+        Tranzakciók: {report?.totalTransactions ?? 0}
       </div>
     </div>
   )
