@@ -64,11 +64,16 @@ public class JacksonConfig {
     @Bean
     @Primary
     public ObjectMapper objectMapper() {
+        // AI review fix Sourcery P2 #265 (2026-04-29): a `.modules(...)` felulirja
+        // a builder default modul-keszletet, NEM bovited. A `.modulesToInstall(...)`
+        // extend-modban dolgozik, igy a Spring Boot defaults (pl. JsonComponentModule,
+        // problem details support, autodetected modulok) megmaradnak, es a 3 explicit
+        // modulunkat hozzaaadjuk.
         return Jackson2ObjectMapperBuilder.json()
-            .modules(
-                new JavaTimeModule(),
-                new Jdk8Module(),
-                new ParameterNamesModule()
+            .modulesToInstall(
+                JavaTimeModule.class,
+                Jdk8Module.class,
+                ParameterNamesModule.class
             )
             .featuresToDisable(
                 SerializationFeature.WRITE_DATES_AS_TIMESTAMPS,
