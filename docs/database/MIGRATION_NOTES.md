@@ -1,6 +1,8 @@
 # Flyway migration notes — defensive guard pattern
 
 > **Cél:** dokumentálni a "fresh-install guard" migration-pattern-t (V3_x előfix-számok), amely a v2.3.6 (PR #252) release-ben került be, és a kapcsolódó "DDL duplikációnak látszó" finding-okat (Sourcery PR #252).
+>
+> **Doc-fájl history:** a konkrét PR-számokra és dátumokra való hivatkozást a git log + a bottom "Hivatkozott PR-ek" szekció tartja — a body-ban csak a tartalom, nem a metadata (Sourcery PR #260 P2/style ajánlás).
 
 ## Áttekintés
 
@@ -32,7 +34,14 @@ A V3_7 **kettős célja**:
 1. **Pre-V109 guard** — ha a V69, V70, V79 stb. seed migrationok az `is_active` oszlopra hivatkoznak (DML `INSERT ... is_active=true`), akkor az oszlopnak már létezni kell. V3_7 hozzáadja `IF NOT EXISTS` mintával.
 2. **`sync_active_columns()` function pre-definíció** — a V109-tel megegyező logikát definiálja `CREATE OR REPLACE`-szel, hogy a V109 a már-létező function-re tudjon hivatkozni `EXECUTE FUNCTION sync_active_columns()` formában.
 
-**FONTOS** (AI review fix Codex P2 #259, 2026-04-29): a V3_7 a `sync_active_columns()` function-t **csak DEFINIÁLJA** — a **trigger ATTACH** kizárólag a V109-ben történik (`CREATE TRIGGER ... BEFORE INSERT OR UPDATE`). Tehát a V3_7 → V109 közötti window-ban (fresh install) az `active` ↔ `is_active` **NEM szinkronizálódik automatikusan** — a V3_7 backfill-jét követő INSERT/UPDATE műveletek **drift-et** okozhatnak, amíg a V109 nem wire-eli a trigger-eket. A V109 lefutásakor a trigger érvényes minden új DML-re; a meglévő drift-et **a V166 + V167 defensive UPDATE** korrigálta.
+### V3_7 → V109 window: NEM automatikus szinkronizáció
+
+A V3_7 csak a function-t és az `is_active` oszlopokat előkészíti, de **trigger-t NEM wire-el**. Ennek 3 következménye van:
+
+- **V3_7 felelőssége:** csak `CREATE OR REPLACE FUNCTION sync_active_columns()` + `ADD COLUMN is_active` + initial backfill. Trigger ATTACH **NINCS**.
+- **V109 felelőssége:** a tényleges trigger-wiring (`CREATE TRIGGER ... BEFORE INSERT OR UPDATE EXECUTE FUNCTION sync_active_columns()`) minden érintett táblára.
+- **V3_7 → V109 ablak (fresh install only):** ebben a window-ban az `active` ↔ `is_active` **NEM szinkronizálódik automatikusan**. A V3_7 backfillt követő INSERT/UPDATE műveletek drift-et okozhatnak.
+- **Drift correction:** a meglévő drift-et **V166 + V167 defensive UPDATE** korrigálta.
 
 **A trigger wiring (ATTACH) szándékosan a V109-ben** marad, mert:
 - A V3_7 lefutásakor még nem létezik az **összes** olyan tábla, amely érintett (pl. `worker`, `currency`, `dictionary`, `company`, `branch`).
@@ -68,10 +77,54 @@ A Flyway `validate-on-migrate=true` (production-ben aktív, lásd `application-p
 - Ha egy korábbi migration hibás vagy hiányos: **új migration**-be a fix.
 - Komment-bővítés vagy header-magyarázat: ide, a `MIGRATION_NOTES.md`-be vagy ehhez hasonló külső doc-ba.
 
+## Best practices for future migrations
+
+A V166 + V167 defensive UPDATE-ek + a Sourcery (PR #258) feedback alapján a következő ajánlások jövőbeli `information_schema`-introspection alapú guard-migration-höz:
+
+### 1. Pontosabb table-szűrés `pg_catalog`-gal
+
+Az `information_schema.tables.table_type = 'BASE TABLE'` általánosan működik, de PostgreSQL-specifikus deploy-okon a `pg_catalog.pg_class` pontosabb (kihagyja a foreign table-eket, beleérti a partition-öket):
+
+```sql
+SELECT n.nspname AS table_schema, c.relname AS table_name
+FROM pg_catalog.pg_class c
+JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'public'
+  AND c.relkind IN ('r','p')   -- ordinary table OR partitioned table
+```
+
+### 2. Domain/typedef-aware boolean check
+
+Az `information_schema.columns.data_type = 'boolean'` **kihagyja** azokat az oszlopokat, amelyek `CREATE DOMAIN flag AS BOOLEAN` mintával lettek létrehozva (a `data_type` ekkor a domain neve). A `udt_name = 'bool'` rugalmasabb (minden boolean-mögötti UDT, beleérve domain-eket is):
+
+```sql
+WHERE c.udt_name = 'bool'
+```
+
+**A jelenlegi kódbázisban**: `grep -ri "CREATE DOMAIN" backend/src/main/resources/db/migration/` → 0 találat. Tehát a V166 + V167 `data_type = 'boolean'` szűrő **production-impactless** (nincs domain-wrapped boolean a sémában). Future-proof guard-hoz a `udt_name` formát ajánljuk.
+
+### 3. Explicit `LANGUAGE plpgsql` a `DO $$` blockon
+
+A `DO $$ ... $$` block PostgreSQL default `LANGUAGE`-e `plpgsql`, de defensive style ajánlja az explicit deklarációt:
+
+```sql
+DO $$
+DECLARE ...
+BEGIN ...
+END;
+$$ LANGUAGE plpgsql;
+```
+
+Ezzel a future-proof a default LANGUAGE változás esetén is védve van.
+
 ## Hivatkozott PR-ek + commit-ok
 
 - **PR #252** — release v2.3.6 + V3_5/V3_7 guard migrations (mergelve `85bb9e24`)
 - **PR #253** — V165 branch.denomination_rule_id guard (mergelve `0949a656`)
 - **PR #255** — V166 silent reactivation fix (mergelve `f71c1670`)
 - **PR #258** — V167 BASE TABLE defensive re-apply (mergelve `6ca3e86b`)
-- **Sourcery review** PR #252 (2026-04-28 20:24 UTC) — a 2 P2 finding ezen az MD-n keresztül resolved.
+- **PR #259** — MIGRATION_NOTES.md initial draft (mergelve `f4f30890`)
+- **PR #260** — V3_7 sync claim correction (mergelve `ebdfc619`)
+- **PR #261** — V109 multi-step responsibilities list (mergelve `ab9e3bcb`)
+- **Sourcery PR #258 feedback** — a "Best practices for future migrations" szekció a 2 style-finding (`pg_catalog` + explicit `LANGUAGE`) + 1 bug_risk (`udt_name` vs `data_type`) szintetizálása. A bug_risk impact-mentes a jelenlegi sémában, de future-proof guard.
+- **Sourcery PR #260 feedback** — a "FONTOS" bekezdés bullet-pointokra törve + AI-review-metadata kihúzva a body-ból.
