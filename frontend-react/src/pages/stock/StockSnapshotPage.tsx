@@ -18,7 +18,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
  * CurrencyStockDetailDto: { currencyCode, amount, stockHuf, ... }
  *
  * Fix #148 re-verify: a korabbi feltetelezes (totals.totalValueHuf) rossz volt.
- * A totals valojaban currencies LIST-et tartalmaz, az aggregalt HUF ertek
+ * A totals valojaban currencies LIST-et tartalmaz, az aggregalt HUF érték
  * a currencies[].stockHuf osszege.
  */
 interface CurrencyStockDetail {
@@ -98,7 +98,7 @@ export default function StockSnapshotPage() {
       document.body.appendChild(a); a.click(); a.remove()
       URL.revokeObjectURL(url)
     } catch (err) {
-      logger.error('StockSnapshotPage', 'Excel letoltes hiba:', err)
+      logger.error('StockSnapshotPage', 'Excel letöltés hiba:', err)
       setError(getErrorMessage(err))
     }
   }
@@ -113,14 +113,14 @@ export default function StockSnapshotPage() {
       <div className="flex items-center justify-between">
         <h1 className="form-title flex items-center gap-2">
           <Camera className="h-6 w-6" />
-          Keszlet pillanatkep
+          Készlet pillanatkép
         </h1>
         <div className="flex items-center gap-2">
           <button onClick={() => void loadData()} className="form-button p-2" title="Frissites">
             <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
           </button>
           <button onClick={() => void downloadExcel()} className="form-button-primary flex items-center gap-2">
-            <Download className="h-4 w-4" /> Excel letoltes
+            <Download className="h-4 w-4" /> Excel letöltés
           </button>
         </div>
       </div>
@@ -141,7 +141,7 @@ export default function StockSnapshotPage() {
           <div className="bg-white rounded shadow p-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
             <div><span className="text-gray-500">Ceg:</span> <b>{snapshot.companyName ?? '-'}</b></div>
             <div><span className="text-gray-500">Snapshot ido:</span> {snapshot.snapshotTime ? new Date(snapshot.snapshotTime).toLocaleString('hu-HU') : '-'}</div>
-            <div><span className="text-gray-500">Osszes HUF ertek:</span> <b className="font-mono">{formatHuf(companyTotal)}</b></div>
+            <div><span className="text-gray-500">Osszes HUF érték:</span> <b className="font-mono">{formatHuf(companyTotal)}</b></div>
           </div>
 
           {(snapshot.regions ?? []).map((region, ri) => {
@@ -159,7 +159,7 @@ export default function StockSnapshotPage() {
                     <tr>
                       <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Penztar</th>
                       <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Utolso frissites</th>
-                      <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">HUF ertek</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">HUF érték</th>
                       <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">Valutak</th>
                     </tr>
                   </thead>
@@ -192,8 +192,8 @@ export default function StockSnapshotPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Deviza</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">Keszlet</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">HUF ertek</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">Készlet</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">HUF érték</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">

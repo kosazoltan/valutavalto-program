@@ -4,7 +4,7 @@ import { vaultStocktakeApi, VaultStocktakeSession, StocktakeStatus } from '../..
 import { logger } from '../../utils/logger'
 
 // ============================================================================
-// Ertektar leltar (stocktake) oldal - Sprint 7.1
+// Értéktár leltár (stocktake) oldal - Sprint 7.1
 //
 // Workflow: OPEN -> IN_PROGRESS -> REVIEW -> CLOSED (vagy CANCELLED)
 //
@@ -97,7 +97,7 @@ export default function VaultStocktakeListPage() {
                 <div>
                     <h1 className="text-2xl font-bold flex items-center gap-2">
                         <Package className="w-7 h-7 text-blue-600" />
-                        Ertektar leltar
+                        Értéktár leltár
                     </h1>
                     <p className="text-gray-600 text-sm mt-1">
                         Cimletenkenti ertektar ellenorzes (legacy: LELTAR.DLL parity)
@@ -108,7 +108,7 @@ export default function VaultStocktakeListPage() {
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                 >
                     <Plus className="w-4 h-4" />
-                    Uj leltar
+                    Új leltár
                 </button>
             </div>
 
@@ -146,7 +146,7 @@ export default function VaultStocktakeListPage() {
                 <div className="text-center text-gray-500 py-8">Toltodik...</div>
             ) : sessions.length === 0 ? (
                 <div className="text-center text-gray-500 py-12 bg-gray-50 rounded">
-                    Meg nincs leltar session. Kattints az "Uj leltar" gombra.
+                    Meg nincs leltar session. Kattints az "Új leltár" gombra.
                 </div>
             ) : (
                 <div className="bg-white shadow rounded overflow-hidden">
@@ -155,10 +155,10 @@ export default function VaultStocktakeListPage() {
                             <tr>
                                 <th className="px-4 py-3 text-left">Session</th>
                                 <th className="px-4 py-3 text-left">Status</th>
-                                <th className="px-4 py-3 text-left">Inditotta</th>
-                                <th className="px-4 py-3 text-left">Inditva</th>
-                                <th className="px-4 py-3 text-right">Elteres (HUF)</th>
-                                <th className="px-4 py-3 text-right">Muvelet</th>
+                                <th className="px-4 py-3 text-left">Indította</th>
+                                <th className="px-4 py-3 text-left">Indítva</th>
+                                <th className="px-4 py-3 text-right">Eltérés (HUF)</th>
+                                <th className="px-4 py-3 text-right">Művelet</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -202,11 +202,11 @@ export default function VaultStocktakeListPage() {
                 </div>
             )}
 
-            {/* Uj leltar modal */}
+            {/* Új leltár modal */}
             {showCreate && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded p-6 w-full max-w-md mx-4">
-                        <h2 className="text-lg font-bold mb-4">Uj leltar session</h2>
+                        <h2 className="text-lg font-bold mb-4">Új leltár session</h2>
                         <div className="space-y-3">
                             <div>
                                 <label className="block text-sm font-medium mb-1">Session nev *</label>

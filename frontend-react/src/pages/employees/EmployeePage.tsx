@@ -100,12 +100,12 @@ export default function EmployeePage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Nev</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Beosztas</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Penztar</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Beleptetve</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Aktiv</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Muveletek</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Név</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Beosztás</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Pénztár</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Beléptetve</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Aktív</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Műveletek</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">

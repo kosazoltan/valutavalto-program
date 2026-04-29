@@ -61,7 +61,7 @@ export default function LicensePage() {
       <div className="flex items-center justify-between">
         <h1 className="form-title flex items-center gap-2">
           <Key className="h-6 w-6" />
-          Licenc (aktualis)
+          Licenc (aktuális)
         </h1>
         <div className="flex items-center gap-2">
           <button onClick={() => void loadData()} className="form-button p-2" title="Frissites">

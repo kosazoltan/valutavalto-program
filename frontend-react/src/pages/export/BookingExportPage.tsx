@@ -66,7 +66,7 @@ export default function BookingExportPage() {
       <div className="flex items-center justify-between">
         <h1 className="form-title flex items-center gap-2">
           <Download className="h-6 w-6" />
-          Konyveles export (CSV)
+          Könyvelés export (CSV)
         </h1>
       </div>
 
@@ -123,7 +123,7 @@ export default function BookingExportPage() {
           className="form-button-primary flex items-center justify-center gap-2 py-4"
         >
           <Download className="h-5 w-5" />
-          Keszlet export ({date})
+          Készlet export ({date})
         </button>
       </div>
 

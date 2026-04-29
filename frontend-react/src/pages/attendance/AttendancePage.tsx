@@ -57,7 +57,7 @@ export default function AttendancePage() {
             <div>
                 <h1 className="text-2xl font-bold text-secondary-900 flex items-center gap-2">
                     <Clock className="text-primary-600" size={28} />
-                    Munkaido nyilvantartas
+                    Munkaidő nyilvántartás
                 </h1>
                 <p className="text-sm text-secondary-500 mt-1">
                     Bejelentkezesi es kijelentkezesi napló — sajat vagy csapattag.
@@ -67,7 +67,7 @@ export default function AttendancePage() {
             {/* Tabs */}
             <div className="flex border-b border-secondary-200">
                 <TabButton active={tab === 'my'} onClick={() => setTab('my')} icon={<User size={14} />}>
-                    Sajat naplom
+                    Saját naplóm
                 </TabButton>
                 <TabButton active={tab === 'team'} onClick={() => setTab('team')} icon={<Users size={14} />}>
                     Csapattag (SUPERVISOR+)
@@ -263,7 +263,7 @@ function AttendanceList({
             <div className="flex justify-end">
                 <button onClick={onRefresh} className="form-button text-xs">
                     <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
-                    <span>Frissit</span>
+                    <span>Frissítés</span>
                 </button>
             </div>
 
@@ -273,9 +273,9 @@ function AttendanceList({
                     <thead>
                         <tr>
                             {showWorkerName && <th>Penztaros</th>}
-                            <th>Bejelentkezes</th>
-                            <th>Kijelentkezes</th>
-                            <th className="text-right">Idotartam</th>
+                            <th>Bejelentkezés</th>
+                            <th>Kijelentkezés</th>
+                            <th className="text-right">Időtartam</th>
                             <th>Iroda</th>
                             <th>IP</th>
                         </tr>

@@ -72,7 +72,7 @@ export default function RateCategoryPage() {
       <div className="flex items-center justify-between">
         <h1 className="form-title flex items-center gap-2">
           <Bookmark className="h-6 w-6" />
-          Arfolyam kategoriak
+          Árfolyam kategóriák
         </h1>
         <div className="flex items-center gap-2">
           <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
@@ -108,11 +108,11 @@ export default function RateCategoryPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Nev</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Leiras</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Prioritas</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Aktiv</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Muveletek</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Név</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Leírás</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Prioritás</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Aktív</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Műveletek</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
