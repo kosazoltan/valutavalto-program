@@ -383,6 +383,11 @@ level >= 2). A mandate NEM-követése = production-fagyás-detection elvész.
 > **Vault:** `D:\valutavalto-vault\feedback\hallucinacio-megszuntetese.md`
 > **Trigger:** 9 sorozatos Sourcery P2 follow-up PR (v2.3.13 → v2.3.22) ugyanazon a fájlon.
 
+**Context7 API kulcs (2026-04-29 user-import):**
+- **Tárolás:** `.env.context7` (repo gyökér, **gitignore-olt** — NEM commit-olható)
+- **Setup útmutató:** `.claude/CONTEXT7_SETUP.md`
+- **Használat:** `claude code` indításkor `$env:CONTEXT7_API_KEY` betöltve a `.env.context7`-ből
+
 **A szabály:**
 > Ezentúl minden programozási feladat előtt KÖTELEZŐ:
 > 1. **Context7 MCP** (`mcp__892e2348-f110-4f49-afe2-e16ee93cb2f4__resolve-library-id` + `query-docs`) használata a hivatalos library doc + best-practice patterns olvasásához
