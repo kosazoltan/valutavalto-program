@@ -778,11 +778,14 @@ export default function CashierTransactionPage() {
           } else {
             setShowReceiptModal(false)
             setReceiptData(null)
-            // v2.3.38 (B19 audit fix): Tranzakcio-ciklus zaro toast — a save-toast
-            // mar lefutott a bizonylat keszitesekor, de a felhasznalo a modal-t
-            // latta, ami elnyomta. Most a modal-bezarasan utan kapunk egy
-            // megerositest, hogy a tranzakcio leteljes vege.
-            toast.success('Tranzakció lezárva', 'A bizonylat-folyamat befejeződött, új tranzakcióra kész.')
+            // v2.3.46 (B19 toast dedup): Eredetileg v2.3.38-ban hozzaadtam egy
+            // toast.success("Tranzakció lezárva")-t, de igy 3 success toast jelent
+            // meg a flow soran (save + print + close), ami zajos. A save-toast (lent
+            // a buy/sell submit branch-en, "Bizonylat(ok) sikeresen rögzítve!")
+            // ES a print-toast (lent az onPrint-ben, "Nyomtatás elindítva") elegendo
+            // megerositest ad. A modal bezarasa onmagaban is elegendo vizualis
+            // indikator a flow lezarasara — toast.info egy diszkretebb fallback,
+            // CSAK ha a felhasznalo NEM nyomtatott (nincs print-toast).
           }
         }}
         receiptData={receiptData}
