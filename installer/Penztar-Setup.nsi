@@ -54,6 +54,26 @@
   !define OUTPUT_DIR "build"
 !endif
 
+; =============================================================================
+; v2.3.8 BUG FIX: PowerShell -EncodedCommand b64 strings
+; =============================================================================
+; A korabbi inline `Where-Object { $$_.Path -like ''*BestChange*'' }` minta
+; v2.3.7 Setup #1+#2 sessions soran "ParserError: ExpectedValueExpression"
+; hibat dobott NSIS+PowerShell quote-szetesese miatt. Az -EncodedCommand
+; UTF-16LE base64 kodolt formatot fogad el quote-mentesen.
+;
+; Generator: installer/scripts/compute-b64.ps1 (es scoped-kill.ps1 mint forras)
+; UTF-16LE bazis-szoveg:
+;   KILL_PG:    Get-Process postgres -ErrorAction SilentlyContinue | Where-Object { $_.Path -like '*BestChange*' } | Stop-Process -Force -ErrorAction SilentlyContinue
+;   KILL_JAVA:  Get-Process java     -ErrorAction SilentlyContinue | Where-Object { $_.Path -like '*BestChange*' } | Stop-Process -Force -ErrorAction SilentlyContinue
+;   CHECK_PG:   if (Get-Process postgres -EA 0 | Where-Object { $_.Path -like '*BestChange*' }) { exit 1 } else { exit 0 }
+;   CHECK_JAVA: if (Get-Process java     -EA 0 | Where-Object { $_.Path -like '*BestChange*' }) { exit 1 } else { exit 0 }
+; =============================================================================
+!define PS_KILL_PG_B64    "RwBlAHQALQBQAHIAbwBjAGUAcwBzACAAcABvAHMAdABnAHIAZQBzACAALQBFAHIAcgBvAHIAQQBjAHQAaQBvAG4AIABTAGkAbABlAG4AdABsAHkAQwBvAG4AdABpAG4AdQBlACAAfAAgAFcAaABlAHIAZQAtAE8AYgBqAGUAYwB0ACAAewAgACQAXwAuAFAAYQB0AGgAIAAtAGwAaQBrAGUAIAAnACoAQgBlAHMAdABDAGgAYQBuAGcAZQAqACcAIAB9ACAAfAAgAFMAdABvAHAALQBQAHIAbwBjAGUAcwBzACAALQBGAG8AcgBjAGUAIAAtAEUAcgByAG8AcgBBAGMAdABpAG8AbgAgAFMAaQBsAGUAbgB0AGwAeQBDAG8AbgB0AGkAbgB1AGUA"
+!define PS_KILL_JAVA_B64  "RwBlAHQALQBQAHIAbwBjAGUAcwBzACAAagBhAHYAYQAgAC0ARQByAHIAbwByAEEAYwB0AGkAbwBuACAAUwBpAGwAZQBuAHQAbAB5AEMAbwBuAHQAaQBuAHUAZQAgAHwAIABXAGgAZQByAGUALQBPAGIAagBlAGMAdAAgAHsAIAAkAF8ALgBQAGEAdABoACAALQBsAGkAawBlACAAJwAqAEIAZQBzAHQAQwBoAGEAbgBnAGUAKgAnACAAfQAgAHwAIABTAHQAbwBwAC0AUAByAG8AYwBlAHMAcwAgAC0ARgBvAHIAYwBlACAALQBFAHIAcgBvAHIAQQBjAHQAaQBvAG4AIABTAGkAbABlAG4AdABsAHkAQwBvAG4AdABpAG4AdQBlAA=="
+!define PS_CHECK_PG_B64   "aQBmACAAKABHAGUAdAAtAFAAcgBvAGMAZQBzAHMAIABwAG8AcwB0AGcAcgBlAHMAIAAtAEUAcgByAG8AcgBBAGMAdABpAG8AbgAgAFMAaQBsAGUAbgB0AGwAeQBDAG8AbgB0AGkAbgB1AGUAIAB8ACAAVwBoAGUAcgBlAC0ATwBiAGoAZQBjAHQAIAB7ACAAJABfAC4AUABhAHQAaAAgAC0AbABpAGsAZQAgACcAKgBCAGUAcwB0AEMAaABhAG4AZwBlACoAJwAgAH0AKQAgAHsAIABlAHgAaQB0ACAAMQAgAH0AIABlAGwAcwBlACAAewAgAGUAeABpAHQAIAAwACAAfQA="
+!define PS_CHECK_JAVA_B64 "aQBmACAAKABHAGUAdAAtAFAAcgBvAGMAZQBzAHMAIABqAGEAdgBhACAALQBFAHIAcgBvAHIAQQBjAHQAaQBvAG4AIABTAGkAbABlAG4AdABsAHkAQwBvAG4AdABpAG4AdQBlACAAfAAgAFcAaABlAHIAZQAtAE8AYgBqAGUAYwB0ACAAewAgACQAXwAuAFAAYQB0AGgAIAAtAGwAaQBrAGUAIAAnACoAQgBlAHMAdABDAGgAYQBuAGcAZQAqACcAIAB9ACkAIAB7ACAAZQB4AGkAdAAgADEAIAB9ACAAZQBsAHMAZQAgAHsAIABlAHgAaQB0ACAAMAAgAH0A"
+
 ; --- Windows EXE Version Info (Properties ? Reszletek) ---
 VIProductVersion "${VERSION}.0"
 VIFileVersion "${VERSION}.0"
@@ -146,13 +166,15 @@ Section "Telepites" SecInstall
     Pop $0
     ${If} $0 == 0
         DetailPrint "  postgres.exe meg fut � scoped kill..."
-        nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process postgres -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
+        ; v2.3.8: -EncodedCommand a -like quote-szetesese-bug elkerulesere
+        nsExec::ExecToLog 'powershell.exe -NoProfile -EncodedCommand ${PS_KILL_PG_B64}'
     ${EndIf}
     nsProcess::_FindProcess "java.exe"
     Pop $0
     ${If} $0 == 0
         DetailPrint "  java.exe fut � scoped kill (BestChange)..."
-        nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process java -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
+        ; v2.3.8: -EncodedCommand a -like quote-szetesese-bug elkerulesere
+        nsExec::ExecToLog 'powershell.exe -NoProfile -EncodedCommand ${PS_KILL_JAVA_B64}'
     ${EndIf}
     Sleep 2000
 
@@ -165,13 +187,14 @@ Section "Telepites" SecInstall
             DetailPrint "  Idotullepes � folytatas (fajlzar lehetseges)."
             Goto lock_wait_done
         ${EndIf}
-        ; F1-A: scoped postgres check, F-N-04: Pop both exit code AND stdout
-        nsExec::ExecToStack 'powershell.exe -NoProfile -Command "if(Get-Process postgres -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' }){exit 1}else{exit 0}"'
+        ; F1-A: scoped postgres check (v2.3.8: -EncodedCommand quote-bug fix)
+        ; F-N-04: Pop both exit code AND stdout (stack-leak prevent)
+        nsExec::ExecToStack 'powershell.exe -NoProfile -EncodedCommand ${PS_CHECK_PG_B64}'
         Pop $0  ; exit code
         Pop $1  ; stdout (F-N-04 fix: prevent stack leak)
         ${If} $0 == 0
-            ; BestChange postgres dead � check java (scoped)
-            nsExec::ExecToStack 'powershell.exe -NoProfile -Command "if(Get-Process java -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' }){exit 1}else{exit 0}"'
+            ; BestChange postgres dead � check java (scoped, v2.3.8: -EncodedCommand)
+            nsExec::ExecToStack 'powershell.exe -NoProfile -EncodedCommand ${PS_CHECK_JAVA_B64}'
             Pop $0  ; exit code
             Pop $1  ; stdout (F-N-04 fix)
             ${If} $0 == 0
@@ -894,13 +917,17 @@ Section "Telepites" SecInstall
     ${EndIf}
 
     ; Health check: Backend
-    DetailPrint "  Varakozas a Backend szerverre (ez 30-60 masodpercig tarthat)..."
+    ; v2.3.8: timeout 60 iter (120s) -> 90 iter (180s), uzenet "30-60 mp" -> "30-90 mp"
+    ; Indok: a 04-29 SetupWizard "Elakad" panaszra a backend valoban 14.5 sec alatt
+    ; feljon, de ESET realtime / lassu HDD eseten 60-90 mp-be is telhet. A tobblet
+    ; varakozas ingyenes (a be_svc_ready: a 200 OK-ra azonnal kilep).
+    DetailPrint "  Varakozas a Backend szerverre (ez 30-90 masodpercig tarthat, lassu rendszeren akar 180 mp-ig)..."
     StrCpy $R0 0
     be_svc_wait:
         IntOp $R0 $R0 + 1
-        ${If} $R0 > 60
+        ${If} $R0 > 90
             IfSilent be_svc_done
-            MessageBox MB_OK|MB_ICONEXCLAMATION "FIGYELMEZTETES: A Backend szerver nem indult el 120 masodpercen belul.$\r$\n$\r$\nEllenorizze a logot:$\r$\n$DATA_DIR\backend\logs\service-stderr.log$\r$\n$\r$\nA telepites befejezodik, de ujrainditas szukseges lehet."
+            MessageBox MB_OK|MB_ICONEXCLAMATION "FIGYELMEZTETES: A Backend szerver nem indult el 180 masodpercen belul.$\r$\n$\r$\nEllenorizze a logot:$\r$\n$DATA_DIR\backend\logs\service-stderr.log$\r$\n$\r$\nA telepites befejezodik, de ujrainditas szukseges lehet."
             Goto be_svc_done
         ${EndIf}
         Sleep 2000
@@ -1029,16 +1056,16 @@ Section "un.Eltavolitas"
     un_skip_pgctl:
     Sleep 2000
 
-    ; Scoped process kill
+    ; Scoped process kill (v2.3.8: -EncodedCommand quote-bug fix)
     nsProcess::_FindProcess "postgres.exe"
     Pop $0
     ${If} $0 == 0
-        nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process postgres -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
+        nsExec::ExecToLog 'powershell.exe -NoProfile -EncodedCommand ${PS_KILL_PG_B64}'
     ${EndIf}
     nsProcess::_FindProcess "java.exe"
     Pop $0
     ${If} $0 == 0
-        nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process java -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
+        nsExec::ExecToLog 'powershell.exe -NoProfile -EncodedCommand ${PS_KILL_JAVA_B64}'
     ${EndIf}
 
     ; E6-03 fix: Wait for process death before removing services (max 10s)

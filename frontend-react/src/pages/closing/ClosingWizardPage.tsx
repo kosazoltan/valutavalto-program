@@ -5,6 +5,7 @@ import { CashierHeader } from '../../components/cashier/CashierHeader'
 import { toast } from '../../components/ui/toaster'
 import { closingWizardApi } from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
+import { logger } from '../../utils/logger'
 
 /** HUF cimletek — csökkeno sorrendben */
 const HUF_DENOMINATIONS = [20000, 10000, 5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5] as const
@@ -125,12 +126,16 @@ export default function ClosingWizardPage() {
 
   /** Phase 1: start wizard + run step 1, then pause for denomination input */
   const runClosing = useCallback(async () => {
+    // 2026-04-29 v2.3.10 (Sourcery PR #271): structured logger használata console helyett
+    logger.info('ClosingWizardPage', 'runClosing started, worker=', worker?.workerCode, worker?.branchId)
+
     if (!worker) {
       toast.error('Hiba', 'Nincs bejelentkezett felhasználó!')
       return
     }
 
     setIsRunning(true)
+    toast.info('Napzárás indítása', 'Wizard indítása folyamatban...')
 
     try {
       const wizard = await closingWizardApi.start(
@@ -139,19 +144,24 @@ export default function ClosingWizardPage() {
         'DAILY',
         String(worker.id),
       )
+      logger.info('ClosingWizardPage', 'wizard started, id=', wizard.id)
       setWizardId(wizard.id)
 
       // Run step 1 (MTCN check)
       const step1Ok = await runSteps(wizard.id, 0, 0)
       if (!step1Ok) {
+        toast.warning('Step 1 sikertelen', 'A MTCN ellenőrzés nem ment át')
         setIsRunning(false)
         return
       }
+
+      toast.success('Step 1 OK', 'Most rögzítsd a HUF címletezést')
 
       // Pause: wait for denomination input before continuing
       setIsRunning(false)
       setWaitingForDenom(true)
     } catch (err) {
+      logger.error('ClosingWizardPage', 'start failed:', err)
       const errorMsg = err instanceof Error ? err.message : 'Nem sikerült a napzárás wizard indítása'
       toast.error('Napzárás hiba', errorMsg)
       setIsRunning(false)

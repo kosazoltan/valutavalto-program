@@ -13,39 +13,103 @@ import {
   Users,
   Landmark,
 } from 'lucide-react'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
+import { useAuthStore } from '../../stores/authStore'
 
-const treasuryTabs = [
+/**
+ * 2026-04-29 FIX: a /treasury layout korábban hardkódolt 10 tabbal jelent meg
+ * minden szerepkörnek, beleértve az "Árfolyamkészítés F5", "Banki Tx F4",
+ * "ÁFA visszatérítés F7", "TRB Export F8", "Bankforgalom F10" tabokat,
+ * amelyek a legacy ANTI rendszerben **kizárólag a központi főértéktár /
+ * ügyvezető szerepkör hatáskörébe** tartoznak (l. ARFOLYAM/Arfolyam.exe
+ * önálló app és docs/knowledge/legacy-reverse-engineering/legacy-dll-parity-matrix.md).
+ *
+ * A helyi értéktáros (mode='ertektar') NEM készít árfolyamot — csak megkapja a
+ * központtól. Ezért ezeket a tabokat csak `foertektar` vagy `ugyvezeto`
+ * canonical role esetén jelenítjük meg.
+ *
+ * Ld. D:\valutavalto-vault\references\legacy-anti-system.md §2-§4.
+ */
+// 2026-04-29 v2.3.10 (Sourcery PR #271 fix):
+// `TreasuryTab`, `CENTRAL_VAULT_ROLES`, `allTreasuryTabs` exportálva, hogy a
+// `TreasuryLayout.role-filter.test.ts` ezeket TÉNYLEGES forrásból importálhatja
+// (NEM duplikálni). Ld. Sourcery comment #271.
+export type TreasuryTab = {
+  path: string
+  label: string
+  icon: typeof LayoutDashboard
+  hotkey: string
+  end: boolean
+  /** Ha megadva, csak akkor látszik, ha a usernek van ezek közül egy canonical role-ja. */
+  canonicalRoles?: readonly string[]
+}
+
+export const CENTRAL_VAULT_ROLES = ['foertektar', 'ugyvezeto'] as const
+
+export const allTreasuryTabs: readonly TreasuryTab[] = [
   { path: '/treasury', label: 'Dashboard', icon: LayoutDashboard, hotkey: 'F1', end: true },
   { path: '/treasury/matrix', label: 'Készlet Mátrix', icon: Grid3X3, hotkey: 'F2', end: false },
   { path: '/treasury/movements', label: 'Mozgások', icon: ArrowLeftRight, hotkey: 'F3', end: false },
-  { path: '/treasury/bank', label: 'Banki Tx', icon: Building2, hotkey: 'F4', end: false },
-  { path: '/treasury/rates', label: 'Árfolyamkészítés', icon: TrendingUp, hotkey: 'F5', end: false },
+  { path: '/treasury/bank', label: 'Banki Tx', icon: Building2, hotkey: 'F4', end: false, canonicalRoles: CENTRAL_VAULT_ROLES },
+  { path: '/treasury/rates', label: 'Árfolyamkészítés', icon: TrendingUp, hotkey: 'F5', end: false, canonicalRoles: CENTRAL_VAULT_ROLES },
   { path: '/treasury/reports', label: 'Jelentések', icon: FileText, hotkey: 'F6', end: false },
-  { path: '/treasury/vat', label: 'ÁFA visszatérítés', icon: Receipt, hotkey: 'F7', end: false },
-  { path: '/treasury/trb-export', label: 'TRB Export', icon: Download, hotkey: 'F8', end: false },
+  { path: '/treasury/vat', label: 'ÁFA visszatérítés', icon: Receipt, hotkey: 'F7', end: false, canonicalRoles: CENTRAL_VAULT_ROLES },
+  { path: '/treasury/trb-export', label: 'TRB Export', icon: Download, hotkey: 'F8', end: false, canonicalRoles: CENTRAL_VAULT_ROLES },
   { path: '/treasury/customer-turnover', label: 'Ügyfélforgalom', icon: Users, hotkey: 'F9', end: false },
-  { path: '/treasury/bank-turnover', label: 'Bankforgalom', icon: Landmark, hotkey: 'F10', end: false },
-] as const
+  { path: '/treasury/bank-turnover', label: 'Bankforgalom', icon: Landmark, hotkey: 'F10', end: false, canonicalRoles: CENTRAL_VAULT_ROLES },
+]
 
 export default function TreasuryLayout() {
   const navigate = useNavigate()
   const [showHelp, setShowHelp] = useState(false)
+  // A `roles` és `activeRole` selector-okkal a useMemo helyesen invalidálódik,
+  // ha role-selection vagy login után változnak.
+  const roles = useAuthStore((state) => state.roles)
+  const activeRole = useAuthStore((state) => state.activeRole)
+  const workerRole = useAuthStore((state) => state.worker?.role)
+  const hasCanonicalRole = useAuthStore((state) => state.hasCanonicalRole)
+
+  // 2026-04-29 v2.3.10 (Sourcery PR #271): hasCanonicalRole-t hozzáadva a deps-be,
+  // valamint a `roles`/`activeRole`/`workerRole` selector-ok is — login/role-change
+  // után ezek ÚJ értéket kapnak, az useMemo helyesen invalidálódik. ESLint warning-ot
+  // szuppresszáljuk: a hasCanonicalRole selector stable closure, de a többi explicit
+  // role-trigger fontos a refresh helyességéhez (felesleges deps figyelmeztetést ad,
+  // de itt szándékos belt+suspenders pattern).
+  const treasuryTabs = useMemo(
+    () => allTreasuryTabs.filter((tab) => !tab.canonicalRoles || hasCanonicalRole([...tab.canonicalRoles])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- belt+suspenders: roles/activeRole/workerRole szándékos extra trigger
+    [roles, activeRole, workerRole, hasCanonicalRole],
+  )
+
+  const isVisiblePath = useCallback(
+    (path: string) => treasuryTabs.some((tab) => tab.path === path),
+    [treasuryTabs],
+  )
 
   const closeHelp = useCallback(() => setShowHelp(false), [])
   const toggleHelp = useCallback(() => setShowHelp(prev => !prev), [])
 
-  // F-key navigation
-  useHotkeys('f1', (e) => { e.preventDefault(); navigate('/treasury') }, { enableOnFormTags: false })
-  useHotkeys('f2', (e) => { e.preventDefault(); navigate('/treasury/matrix') }, { enableOnFormTags: false })
-  useHotkeys('f3', (e) => { e.preventDefault(); navigate('/treasury/movements') }, { enableOnFormTags: false })
-  useHotkeys('f4', (e) => { e.preventDefault(); navigate('/treasury/bank') }, { enableOnFormTags: false })
-  useHotkeys('f5', (e) => { e.preventDefault(); navigate('/treasury/rates') }, { enableOnFormTags: false })
-  useHotkeys('f6', (e) => { e.preventDefault(); navigate('/treasury/reports') }, { enableOnFormTags: false })
-  useHotkeys('f7', (e) => { e.preventDefault(); navigate('/treasury/vat') }, { enableOnFormTags: false })
-  useHotkeys('f8', (e) => { e.preventDefault(); navigate('/treasury/trb-export') }, { enableOnFormTags: false })
-  useHotkeys('f9', (e) => { e.preventDefault(); navigate('/treasury/customer-turnover') }, { enableOnFormTags: false })
-  useHotkeys('f10', (e) => { e.preventDefault(); navigate('/treasury/bank-turnover') }, { enableOnFormTags: false })
+  // F-key navigation — csak a látható tabokra navigálunk, DE a preventDefault
+  // mindig fut (Codex PR #271 P2): F5 default browser refresh-t kell elnyomni
+  // akkor is, ha a /treasury/rates tab nem látható (nem-foertektar usereknek).
+  const fkeyHandler = useCallback(
+    (path: string) => (e: KeyboardEvent) => {
+      e.preventDefault()
+      if (isVisiblePath(path)) navigate(path)
+    },
+    [isVisiblePath, navigate],
+  )
+
+  useHotkeys('f1', fkeyHandler('/treasury'), { enableOnFormTags: false })
+  useHotkeys('f2', fkeyHandler('/treasury/matrix'), { enableOnFormTags: false })
+  useHotkeys('f3', fkeyHandler('/treasury/movements'), { enableOnFormTags: false })
+  useHotkeys('f4', fkeyHandler('/treasury/bank'), { enableOnFormTags: false })
+  useHotkeys('f5', fkeyHandler('/treasury/rates'), { enableOnFormTags: false })
+  useHotkeys('f6', fkeyHandler('/treasury/reports'), { enableOnFormTags: false })
+  useHotkeys('f7', fkeyHandler('/treasury/vat'), { enableOnFormTags: false })
+  useHotkeys('f8', fkeyHandler('/treasury/trb-export'), { enableOnFormTags: false })
+  useHotkeys('f9', fkeyHandler('/treasury/customer-turnover'), { enableOnFormTags: false })
+  useHotkeys('f10', fkeyHandler('/treasury/bank-turnover'), { enableOnFormTags: false })
   useHotkeys('shift+/', () => toggleHelp(), { enableOnFormTags: false })
   useHotkeys('escape', () => closeHelp(), { enableOnFormTags: true })
 
@@ -98,16 +162,9 @@ export default function TreasuryLayout() {
             </h2>
             <div className="space-y-3">
               <div className="text-sm font-semibold text-secondary-600 uppercase tracking-wider">Navigáció</div>
-              <HotkeyRow keys="F1" desc="Dashboard" />
-              <HotkeyRow keys="F2" desc="Készlet Mátrix" />
-              <HotkeyRow keys="F3" desc="Mozgások" />
-              <HotkeyRow keys="F4" desc="Banki Tranzakciók" />
-              <HotkeyRow keys="F5" desc="Árfolyamkészítés" />
-              <HotkeyRow keys="F6" desc="Jelentések" />
-              <HotkeyRow keys="F7" desc="ÁFA visszatérítés" />
-              <HotkeyRow keys="F8" desc="TRB Export" />
-              <HotkeyRow keys="F9" desc="Ügyfélforgalom" />
-              <HotkeyRow keys="F10" desc="Bankforgalom" />
+              {treasuryTabs.map((tab) => (
+                <HotkeyRow key={tab.path} keys={tab.hotkey} desc={tab.label} />
+              ))}
               <div className="border-t border-secondary-200 pt-3 mt-3">
                 <div className="text-sm font-semibold text-secondary-600 uppercase tracking-wider mb-3">Általános</div>
                 <HotkeyRow keys="?" desc="Billentyűparancsok" />
