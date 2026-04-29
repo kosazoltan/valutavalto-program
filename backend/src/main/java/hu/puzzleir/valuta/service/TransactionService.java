@@ -492,6 +492,13 @@ public class TransactionService {
     /**
      * Tranzakciók szűrése és lapozás
      */
+    /**
+     * 2026-04-29 v2.3.25 (B17 multi-tenant hardening):
+     * KÖTELEZŐ branchId param (defenzív IDOR-megelőzés). A null-check exception-t
+     * dob, hogy egyetlen hívó se kerülhesse meg a multi-tenant szűrést.
+     * A `SecurityUtils.getCurrentBranchId()` mindig non-null vagy exception, de
+     * a defenzív validáció kötelező a repo-szinten is.
+     */
     @Transactional(readOnly = true)
     public Page<Transaction> searchTransactions(
             UUID branchId,
@@ -499,6 +506,11 @@ public class TransactionService {
             LocalDate endDate,
             TransactionType type,
             Pageable pageable) {
+        if (branchId == null) {
+            throw new IllegalArgumentException(
+                "branchId KÖTELEZŐ a searchTransactions hívásnál (B17 multi-tenant hardening). " +
+                "A SecurityUtils.getCurrentBranchId()-t kell használni a hívó kontextusban.");
+        }
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         return transactionRepository.findWithFilters(companyId, branchId, startDate, endDate, type, pageable);
     }

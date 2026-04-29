@@ -187,7 +187,13 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     );
 
     /**
-     * Tranzakciók lapozással (JOIN FETCH a lazy proxy hiba elkerüléséhez)
+     * Tranzakciók lapozással (JOIN FETCH a lazy proxy hiba elkerüléséhez).
+     *
+     * 2026-04-29 v2.3.25 (B17 multi-tenant hardening):
+     * KÖTELEZŐ `companyId` ÉS `branchId` szűrő — defenzív IDOR-megelőzés.
+     * Korábbi `(:branchId IS NULL OR t.branch.id = :branchId)` ág eltávolítva,
+     * mert ha bármely jövőbeli hívó `null`-t ad → cross-branch adatszivárgás.
+     * A null-check most a hívó felelőssége (Spring Security: `@NonNull`).
      */
     @Query(value = "SELECT t FROM Transaction t " +
            "JOIN FETCH t.branch " +
@@ -196,14 +202,14 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "LEFT JOIN FETCH t.worker " +
            "LEFT JOIN FETCH t.originalTransaction " +
            "WHERE t.company.id = :companyId " +
-           "AND (:branchId IS NULL OR t.branch.id = :branchId) " +
+           "AND t.branch.id = :branchId " +
            "AND (:startDate IS NULL OR t.transactionDate >= :startDate) " +
            "AND (:endDate IS NULL OR t.transactionDate <= :endDate) " +
            "AND (:type IS NULL OR t.transactionType = :type) " +
            "ORDER BY t.transactionDate DESC, t.transactionTime DESC",
            countQuery = "SELECT COUNT(t) FROM Transaction t " +
            "WHERE t.company.id = :companyId " +
-           "AND (:branchId IS NULL OR t.branch.id = :branchId) " +
+           "AND t.branch.id = :branchId " +
            "AND (:startDate IS NULL OR t.transactionDate >= :startDate) " +
            "AND (:endDate IS NULL OR t.transactionDate <= :endDate) " +
            "AND (:type IS NULL OR t.transactionType = :type)")
