@@ -50,6 +50,10 @@ public class TransactionReportService {
 
     /**
      * Tranzakciok szurese es lapozas.
+     *
+     * 2026-04-29 v2.3.26 (Codex P1 PR #290 follow-up):
+     * branchId nullable — ha null, company-wide query (cég-szintű riport).
+     * A controller `@PreAuthorize`-ja védi a company-wide hívást MANAGER+ szinten.
      */
     public Page<Transaction> searchTransactions(
             UUID branchId,
@@ -58,6 +62,10 @@ public class TransactionReportService {
             TransactionType type,
             Pageable pageable) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (branchId == null) {
+            return transactionRepository.findCompanyWideWithFilters(
+                    companyId, startDate, endDate, type, pageable);
+        }
         return transactionRepository.findWithFilters(companyId, branchId, startDate, endDate, type, pageable);
     }
 

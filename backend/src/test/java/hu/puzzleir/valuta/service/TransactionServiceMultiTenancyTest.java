@@ -17,7 +17,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDate;
@@ -71,13 +70,16 @@ class TransactionServiceMultiTenancyTest {
     private static final UUID COMPANY_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private static final UUID BRANCH_BR035 = UUID.fromString("22222222-2222-2222-2222-222222222222");
 
-    private SecurityContext savedContext;
-
+    /**
+     * 2026-04-29 v2.3.26 (Sourcery PR #290 P2 #2 follow-up):
+     * Tisztább SecurityContext kezelés: minden teszt SAJÁT context-tel indul,
+     * `clearContext()` a végén garantálja az izolációt. NEM próbálunk visszaállítani
+     * "elöző" context-et (ami félrevezető — `getContext()` mutable instance).
+     */
     @BeforeEach
     void setUp() {
-        // Mentsuk az eredetit, hogy NE szivárogjanak ki teszt-context-ek
-        savedContext = SecurityContextHolder.getContext();
-        // Mock SecurityContext: KOSA worker, BR035 branch, companyId
+        // Friss SecurityContext minden teszt-hez (NEM reuse mutable instance)
+        SecurityContextHolder.clearContext();
         Authentication auth = new TestingAuthenticationToken("kosa", null);
         auth.setAuthenticated(true);
         var details = mock(hu.puzzleir.valuta.security.WorkerAuthenticationDetails.class);
@@ -89,10 +91,8 @@ class TransactionServiceMultiTenancyTest {
 
     @AfterEach
     void tearDown() {
+        // Minden teszt után tisztítunk — NEM szivárogtatás más tesztekbe
         SecurityContextHolder.clearContext();
-        if (savedContext != null) {
-            SecurityContextHolder.setContext(savedContext);
-        }
     }
 
     @Test
@@ -119,7 +119,12 @@ class TransactionServiceMultiTenancyTest {
     @Test
     @DisplayName("B17: searchTransactions valid branchId → repository hívva companyId+branchId-vel")
     void searchTransactionsWithValidBranchIdPropagatesParams() {
-        // Given: valid branchId
+        // 2026-04-29 v2.3.26 (Sourcery PR #290 P2 #1 follow-up):
+        // LocalDate értékek extract változókba — NEM többszöri LocalDate.now()
+        // hívás (test-stabilitás clock-szempontból + olvashatóság).
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate = endDate.minusDays(7);
+
         Page<Transaction> emptyPage = new PageImpl<>(Collections.emptyList());
         when(transactionRepository.findWithFilters(eq(COMPANY_ID), eq(BRANCH_BR035), any(), any(), any(), any()))
             .thenReturn(emptyPage);
@@ -127,8 +132,8 @@ class TransactionServiceMultiTenancyTest {
         // When
         Page<Transaction> result = transactionService.searchTransactions(
             BRANCH_BR035,
-            LocalDate.now().minusDays(7),
-            LocalDate.now(),
+            startDate,
+            endDate,
             TransactionType.BUY,
             PageRequest.of(0, 10)
         );
@@ -138,10 +143,39 @@ class TransactionServiceMultiTenancyTest {
         verify(transactionRepository).findWithFilters(
             eq(COMPANY_ID),
             eq(BRANCH_BR035),
-            eq(LocalDate.now().minusDays(7)),
-            eq(LocalDate.now()),
+            eq(startDate),
+            eq(endDate),
             eq(TransactionType.BUY),
             any()
         );
+    }
+
+    @Test
+    @DisplayName("v2.3.26 Codex P1 follow-up: findCompanyWideWithFilters NEM tartalmaz branchId param-ot")
+    void findCompanyWideWithFiltersUsesCompanyIdOnly() {
+        // Given: company-wide statistics query (pl. /customers/top, /customers/frequent)
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate = endDate.minusDays(30);
+
+        Page<Transaction> emptyPage = new PageImpl<>(Collections.emptyList());
+        when(transactionRepository.findCompanyWideWithFilters(eq(COMPANY_ID), any(), any(), any(), any()))
+            .thenReturn(emptyPage);
+
+        // When: a repository közvetlen hívása (CustomerStatisticsService pattern)
+        Page<Transaction> result = transactionRepository.findCompanyWideWithFilters(
+            COMPANY_ID, startDate, endDate, null, PageRequest.of(0, 100)
+        );
+
+        // Then: a metódus aláírása NEM tartalmaz branchId paramot
+        assertThat(result).isNotNull();
+        verify(transactionRepository).findCompanyWideWithFilters(
+            eq(COMPANY_ID),
+            eq(startDate),
+            eq(endDate),
+            isNull(),
+            any()
+        );
+        // Defenzív: a branch-scoped findWithFilters NEM hívódik
+        verify(transactionRepository, never()).findWithFilters(any(), any(), any(), any(), any(), any());
     }
 }
