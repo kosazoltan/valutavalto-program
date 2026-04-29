@@ -62,7 +62,7 @@ export default function VaultStocktakeListPage() {
 
     const handleCreate = async () => {
         if (!newSessionName.trim()) {
-            setError('A session neve kotelezo!')
+            setError('A session neve kötelező!')
             return
         }
         setCreating(true)
