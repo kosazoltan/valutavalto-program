@@ -30,7 +30,7 @@ A Flyway v10+ + `spring.flyway.baseline-on-migrate=true` + `baseline-version=67`
 
 A V3_7 **kettős célja**:
 1. **Pre-V109 guard** — ha a V69, V70, V79 stb. seed migrationok az `is_active` oszlopra hivatkoznak (DML `INSERT ... is_active=true`), akkor az oszlopnak már létezni kell. V3_7 hozzáadja `IF NOT EXISTS` mintával.
-2. **`sync_active_columns()` function pre-definíció** — a V109-tel megegyező logikát definiálja `CREATE OR REPLACE`-szel, hogy a V109 csak a `CREATE TRIGGER ... EXECUTE FUNCTION sync_active_columns()` parancsokat futtassa (a function már létezik).
+2. **`sync_active_columns()` function pre-definíció** — a V109-tel megegyező logikát definiálja `CREATE OR REPLACE`-szel, hogy a V109 a már-létező function-re tudjon hivatkozni `EXECUTE FUNCTION sync_active_columns()` formában.
 
 **FONTOS** (AI review fix Codex P2 #259, 2026-04-29): a V3_7 a `sync_active_columns()` function-t **csak DEFINIÁLJA** — a **trigger ATTACH** kizárólag a V109-ben történik (`CREATE TRIGGER ... BEFORE INSERT OR UPDATE`). Tehát a V3_7 → V109 közötti window-ban (fresh install) az `active` ↔ `is_active` **NEM szinkronizálódik automatikusan** — a V3_7 backfill-jét követő INSERT/UPDATE műveletek **drift-et** okozhatnak, amíg a V109 nem wire-eli a trigger-eket. A V109 lefutásakor a trigger érvényes minden új DML-re; a meglévő drift-et **a V166 + V167 defensive UPDATE** korrigálta.
 
@@ -42,12 +42,19 @@ A V3_7 **kettős célja**:
 **Workflow:**
 
 ```
-V3_5 (fresh install only) → CREATE TABLE inventory_movement, ...
-V3_7 (fresh install only) → CREATE FUNCTION sync_active_columns + ADD COLUMN is_active (NULL) + backfill
-V67 (baseline production)
-V109 (production + fresh install) → CREATE TRIGGER on each table USING sync_active_columns()
-V166 (defensive, post V3_7 fix) → UPDATE is_active=active WHERE active=false AND is_active=true
-V167 (defensive re-apply, BASE TABLE filter) → idempotent
+V3_5  (fresh install only) → CREATE TABLE inventory_movement, ...
+V3_7  (fresh install only) → CREATE OR REPLACE FUNCTION sync_active_columns
+                              + ADD COLUMN is_active BOOLEAN DEFAULT TRUE + backfill (NULL→active)
+V67   (baseline production)
+V109  (production + fresh install) — TÖBB lépés EGY migrációban (AI review fix Codex P2 #260):
+        a. CREATE OR REPLACE FUNCTION sync_active_columns (újra-definiálás, idempotent)
+        b. ADD COLUMN is_active a maradék táblákra (ahol V3_7 még nem fedte le)
+        c. Backfill UPDATE (active → is_active)
+        d. ALTER COLUMN ... SET DEFAULT TRUE
+        e. DROP TRIGGER IF EXISTS + CREATE TRIGGER ... BEFORE INSERT OR UPDATE
+           ... EXECUTE FUNCTION sync_active_columns() — minden érintett táblára
+V166  (defensive, post V3_7 fix) → UPDATE is_active=active WHERE active=false AND is_active=true
+V167  (defensive re-apply, BASE TABLE filter) → idempotent
 ```
 
 **Konklúzió:** A V3_7 fájl **header magyarázza** ezt a célt (lásd V3_7 sor 1-7). Új migration NEM szükséges. **A jelen `MIGRATION_NOTES.md` cross-ref**-fel rögzítjük a V3_5+V33+V3_7+V109 közötti viszonyt, hogy jövőben ne keletkezzen confusion.
