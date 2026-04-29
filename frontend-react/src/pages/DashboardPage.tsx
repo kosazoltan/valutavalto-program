@@ -5,6 +5,7 @@ import { exchangeRateApi, type ExchangeRate } from '../services/api/exchange-rat
 import { transactionApi, type DailyTurnoverSummary } from '../services/api/transactions'
 import { useAuthStore } from '../stores/authStore'
 import { useAppMode } from '../hooks/useAppMode'
+import { formatMillions } from './treasury/treasuryUtils'
 
 // 2026-04-29 E-B3 fix: a "Árfolyam módosítás" Gyorsművelet-csempe csak a
 // foertektar/ugyvezeto szerepkörnek látható (mode='full'). Az értéktár (és
@@ -167,7 +168,7 @@ export default function DashboardPage() {
         <StatCard
           icon={Wallet}
           label="Mai forgalom"
-          value={formatTurnover(stats.todayVolume)}
+          value={formatMillions(stats.todayVolume)}
           change={stats.yesterdayComparison.volumePct}
           color="success"
         />
@@ -323,20 +324,6 @@ export default function DashboardPage() {
       </div>
     </div>
   )
-}
-
-// 2026-04-29 v2.3.11 (E-B5): a Mai forgalom formázása a treasuryUtils formatMillions-szel
-// történik: < 1k Ft → "X Ft" (pl. "650 Ft"), < 1M Ft → "X k Ft" (pl. "65k Ft"),
-// >= 1M Ft → "X.YM Ft" (pl. "1.2M Ft"). Korábban a hardcodolt
-// `(volume/1000000).toFixed(1)`-tal a 65 870 Ft "0.1M Ft" lett — elrejtve a tényleges értéket.
-function formatTurnover(value: number): string {
-  if (Math.abs(value) >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(1)}M Ft`
-  }
-  if (Math.abs(value) >= 1_000) {
-    return `${(value / 1_000).toFixed(0)}k Ft`
-  }
-  return `${value.toLocaleString('hu-HU')} Ft`
 }
 
 function StatCard({
