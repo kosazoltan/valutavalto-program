@@ -73,12 +73,13 @@ public class TransactionReportService {
      * Napi forgalom osszesites.
      */
     public TransactionService.DailyTurnoverSummary getDailyTurnover() {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         UUID branchId = SecurityUtils.getCurrentBranchId();
         LocalDate today = LocalDate.now();
 
         BigDecimal buyTotal = transactionRepository.sumDailyTurnover(branchId, today, TransactionType.BUY);
         BigDecimal sellTotal = transactionRepository.sumDailyTurnover(branchId, today, TransactionType.SELL);
-        long reversalCount = transactionRepository.countReversalsByBranchAndDate(branchId, today);
+        long reversalCount = transactionRepository.countReversalsByBranchAndDate(companyId, branchId, today);
 
         long buyCount = transactionRepository.countByBranchIdAndTransactionDateAndTransactionType(branchId, today, TransactionType.BUY);
         long sellCount = transactionRepository.countByBranchIdAndTransactionDateAndTransactionType(branchId, today, TransactionType.SELL);

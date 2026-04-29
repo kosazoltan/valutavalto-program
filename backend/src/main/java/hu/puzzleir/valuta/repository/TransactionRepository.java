@@ -78,13 +78,21 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     );
 
     /**
-     * Tranzakciók pénztároshoz
+     * Tranzakciók pénztároshoz.
+     *
+     * 2026-04-29 v2.3.28 (B17 multi-tenancy extend — defenzív hardening):
+     * Bevezetjük a `companyId` szűrőt is, hogy a worker.id elméleti collision
+     * (cross-company workerId) NE okozzon adatszivárgást. A worker.id BIGINT
+     * sequence egyedi a system-en, de defenzív Spring Security best-practice
+     * szerint a multi-tenant szűrőt minden lekérdezés-réteg-en alkalmazni kell.
      */
     @Query("SELECT t FROM Transaction t " +
-           "WHERE t.worker.id = :workerId " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.worker.id = :workerId " +
            "AND t.transactionDate = :date " +
            "ORDER BY t.transactionTime DESC")
     List<Transaction> findByWorkerAndDate(
+        @Param("companyId") UUID companyId,
         @Param("workerId") Long workerId,
         @Param("date") LocalDate date
     );
@@ -118,12 +126,18 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     /**
      * Napi sztornók száma — iroda szinten.
+     *
+     * 2026-04-29 v2.3.28 (B17 multi-tenancy extend — defenzív hardening):
+     * `companyId` szűrő hozzáadva, hogy a branch.id elméleti collision (cross-company
+     * branchId — bár UUID egyedi, defenzív szempontból is) NE okozzon szivárgást.
      */
     @Query("SELECT COUNT(t) FROM Transaction t " +
-           "WHERE t.branch.id = :branchId " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.branch.id = :branchId " +
            "AND t.transactionDate = :date " +
            "AND t.transactionType = 'REVERSAL'")
     long countReversalsByBranchAndDate(
+        @Param("companyId") UUID companyId,
         @Param("branchId") UUID branchId,
         @Param("date") LocalDate date
     );

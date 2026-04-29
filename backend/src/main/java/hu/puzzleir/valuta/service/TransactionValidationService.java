@@ -253,7 +253,7 @@ public class TransactionValidationService {
             branchId, today, TransactionType.BUY);
         long sellCount = transactionRepository.countByBranchIdAndTransactionDateAndTransactionType(
             branchId, today, TransactionType.SELL);
-        long stornoCount = transactionRepository.countReversalsByBranchAndDate(branchId, today);
+        long stornoCount = transactionRepository.countReversalsByBranchAndDate(SecurityUtils.getCurrentCompanyId(), branchId, today);
         long discountCount = transactionRepository.countDailyDiscountsByWorker(workerId, today);
 
         BigDecimal buyTotal = transactionRepository.sumDailyTurnover(branchId, today, TransactionType.BUY);
