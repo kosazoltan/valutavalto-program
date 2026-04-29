@@ -139,9 +139,9 @@ export default function StockSnapshotPage() {
       ) : (
         <div className="space-y-4">
           <div className="bg-white rounded shadow p-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-            <div><span className="text-gray-500">Ceg:</span> <b>{snapshot.companyName ?? '-'}</b></div>
-            <div><span className="text-gray-500">Snapshot ido:</span> {snapshot.snapshotTime ? new Date(snapshot.snapshotTime).toLocaleString('hu-HU') : '-'}</div>
-            <div><span className="text-gray-500">Osszes HUF érték:</span> <b className="font-mono">{formatHuf(companyTotal)}</b></div>
+            <div><span className="text-gray-500">Cég:</span> <b>{snapshot.companyName ?? '-'}</b></div>
+            <div><span className="text-gray-500">Snapshot idő:</span> {snapshot.snapshotTime ? new Date(snapshot.snapshotTime).toLocaleString('hu-HU') : '-'}</div>
+            <div><span className="text-gray-500">Összes HUF érték:</span> <b className="font-mono">{formatHuf(companyTotal)}</b></div>
           </div>
 
           {(snapshot.regions ?? []).map((region, ri) => {
@@ -185,7 +185,7 @@ export default function StockSnapshotPage() {
           {hasCompanyTotalsFallback && (
             <div className="bg-white rounded shadow">
               <div className="bg-gray-50 px-4 py-2 border-b">
-                <h2 className="font-semibold">Ceg szintu keszlet osszesito (devizanemenkent)</h2>
+                <h2 className="font-semibold">Cég szintű készlet összesítő (devizanemenként)</h2>
                 <div className="text-xs text-gray-500">{snapshot.companyTotals?.currencies?.length ?? 0} devizanem</div>
               </div>
               <table className="min-w-full divide-y divide-gray-200">

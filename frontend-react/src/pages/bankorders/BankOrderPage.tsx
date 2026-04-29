@@ -3,7 +3,7 @@
  *
  * Ez egy placeholder UI a teljes E-B8 banki workflow-hoz. A backend implementáció
  * (BankOrderController + bank_order entitás + V168 migráció) GitHub issue-ban
- * követhető — ld. https://github.com/kosazoltan/valutavalto-program/issues/?
+ * követhető — ld. https://github.com/kosazoltan/valutavalto-program/issues/279
  *
  * Tervezett funkcionalitás (v2.4.0):
  * 1. Banki rendelés workflow (request → approval → execution)
@@ -52,11 +52,11 @@ export default function BankOrderPage() {
         </ul>
         <p className="text-xs italic">
           Backend implementáció: BankOrderController + `bank_order` entity + V168 Flyway migration.
-          Issue: <a href="https://github.com/kosazoltan/valutavalto-program/issues" target="_blank" rel="noopener noreferrer" className="underline">kosazoltan/valutavalto-program#issues</a>
+          Issue: <a href="https://github.com/kosazoltan/valutavalto-program/issues/279" target="_blank" rel="noopener noreferrer" className="underline">kosazoltan/valutavalto-program#279</a>
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <SkeletonCard
           title="Banki rendelések"
           description="Aktív + függő rendelések listázása, új rendelés indítása"
