@@ -356,7 +356,7 @@ export default function CashierTransactionPage() {
         return
       }
       if (identificationLevel === 'FULL' && (!cd?.birthPlace || !cd?.birthDate || !cd?.motherName || !cd?.address)) {
-        toast.warning('Teljes azonositas kotelezo', '300.000 Ft felett teljes ugyfeladatsor szukseges (szuletesi hely/ido, anyja neve, lakcim)!')
+        toast.warning('Teljes azonosítás kötelező', '300.000 Ft felett teljes ügyféladatsor szükséges (születési hely/idő, anyja neve, lakcím)!')
         return
       }
     }
@@ -844,12 +844,12 @@ export default function CashierTransactionPage() {
       {/* HOTKEY BAR */}
       <HotkeyBar
         left={[
-          // v2.3.40 (B13 align): F1/F2 a Főmenü-höz illeszkedik (F1=Vétel, F2=Eladás)
-          { key: 'F1', label: 'Vetel', onClick: () => setMode('buy'), active: mode === 'buy' },
-          { key: 'F2', label: 'Eladas', onClick: () => setMode('sell'), active: mode === 'sell' },
-          { key: 'F5', label: 'Storno', onClick: () => navigate('/transactions?action=storno'), variant: 'danger' },
+          // v2.3.40 B13: F1/F2 align Főmenü-höz (F1=Vétel, F2=Eladás)
+          { key: 'F1', label: 'Vétel', onClick: () => setMode('buy'), active: mode === 'buy' },
+          { key: 'F2', label: 'Eladás', onClick: () => setMode('sell'), active: mode === 'sell' },
+          { key: 'F5', label: 'Sztornó', onClick: () => navigate('/transactions?action=storno'), variant: 'danger' },
           { key: 'F8', label: 'Árfolyam', onClick: () => navigate('/rates') },
-          { key: 'F9', label: 'Dij/Kedv.', onClick: () => { setFeeInput(String(handlingFee || '')); setDiscountInput(String(discount || '')); setShowFeeDialog(true) } },
+          { key: 'F9', label: 'Díj/Kedv.', onClick: () => { setFeeInput(String(handlingFee || '')); setDiscountInput(String(discount || '')); setShowFeeDialog(true) } },
         ]}
         right={[
           { key: 'Esc', label: 'Mégse', onClick: handleCancel, variant: 'secondary' },

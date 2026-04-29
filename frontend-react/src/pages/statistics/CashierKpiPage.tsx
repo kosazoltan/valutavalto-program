@@ -197,13 +197,13 @@ export default function CashierKpiPage() {
                     />
                     <KpiCard
                         icon={<TrendingUp className="text-green-500" size={20} />}
-                        label="Vetel / Eladas"
+                        label="Vétel / Eladás"
                         value={`${formatInt(data.totalBuyCount)} / ${formatInt(data.totalSellCount)}`}
                         sub="aktiv tranzakciok"
                     />
                     <KpiCard
                         icon={<TrendingDown className="text-orange-500" size={20} />}
-                        label="Sztorno arany"
+                        label="Sztornó arány"
                         value={formatPct(data.reversalRatio)}
                         sub={`${formatInt(data.totalReversalCount)} db`}
                         danger={data.reversalRatio > 5}
