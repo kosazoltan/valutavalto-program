@@ -445,7 +445,8 @@ Expected: BUILD SUCCESS, 978/978 test PASS.
 - [ ] **Step 13: Production-profile smoke test**
 
 ```bash
-java -jar -Dspring.profiles.active=production target/valuta-backend-*.jar
+# AI review fix (Codex P1 #254): -D... a -jar ELŐTT kell, JVM options csak ott parsing-olódnak.
+java -Dspring.profiles.active=production -jar target/valuta-backend-*.jar
 # Külön terminálban:
 curl http://localhost:8080/api/v1/auth/bootstrap-status   # 200
 curl http://localhost:8080/api/v1/public/branches?companyCode=EBC   # non-empty array
@@ -456,8 +457,11 @@ curl http://localhost:8080/api/v1/public/branches?companyCode=EBC   # non-empty 
 - [ ] **Step 14: Jackson serialization smoke test**
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/test-endpoint -H "Content-Type: application/json"   -d '{"date":"2026-04-28T10:00:00Z"}'
-# Várt: a backend NEM dob "JsonMappingException" enum bind error-t
+# AI review fix (Sourcery P2 #254): valós endpoint, ami LocalDateTime-ot serializál.
+# /auth/bootstrap-status válasza tartalmaz `serverTime: LocalDateTime` field-et,
+# ami a Jackson 3 enum bindingot teszteli. Ha 5xx vagy NULL serverTime → bind FAIL.
+curl -s http://localhost:8080/api/v1/auth/bootstrap-status | jq -r '.serverTime // "FAIL"'
+# Várt: ISO-8601 timestamp (pl. "2026-04-29T10:00:00.123"). FAIL → Jackson bind error.
 ```
 
 ### Subtask 4.6: Push + staging deploy + production merge
@@ -548,7 +552,7 @@ Coverage check:
 
 Placeholder check:
 - Track 4 Step 9 OpenRewrite recipe TBD (community recipe függ) — fallback: manuális 39 fájl Edit
-- Track 4 Step 10/14 Jackson serialization smoke test — generikus, de a backend `/api/v1/test-endpoint` nem létezik konkrétan; **majd a tényleges** controller endpoint smoke-test hellyel (pl. `/auth/bootstrap-status` Date binding-ot tartalmaz?).
+- Track 4 Step 14: a smoke test endpoint **konkretizálva** (`/auth/bootstrap-status` `.serverTime` LocalDateTime field) — AI review fix Codex P1 (Step 13 `-D... -jar` order) + Sourcery P2 (Step 14 valós endpoint).
 
 Type consistency:
 - Branch nevek konzisztensek (`chore/eslint-10-upgrade`, `feat/react-19-migration`, `feat/spring-boot-4-sprint`).
