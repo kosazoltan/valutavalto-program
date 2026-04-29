@@ -23,6 +23,24 @@ interface CashDeskStatus {
   todayStats: { transactions: number; buyTotal: number; sellTotal: number; profit: number }
 }
 
+/**
+ * v2.3.38 (B12 audit fix): ISO timestamp -> hu-HU formatum.
+ * Korabban a "Nyitva: {status.openedAt}" raw ISO-t mutatott:
+ * "2026-04-29T11:43:07.623294" — a felhasznalo NEM tudta gyorsan ertelmezni.
+ * Most "2026.04.29 11:43" formatumot mutatunk (datum + ora-perc).
+ *
+ * Hibrid kezeles: ha a string parsolhatatlan, az eredetit visszaadjuk
+ * (hibatűrőség — nem omlik össze a UI).
+ */
+function formatOpenedAtTimestamp(raw: string | null | undefined): string {
+  if (!raw) return '—'
+  const d = new Date(raw)
+  if (isNaN(d.getTime())) return raw  // fallback: raw if parse-fail
+  const date = d.toLocaleDateString('hu-HU', { year: 'numeric', month: '2-digit', day: '2-digit' })
+  const time = d.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })
+  return `${date} ${time}`
+}
+
 export default function CashDeskPage() {
   const navigate = useNavigate()
   const [status, setStatus] = useState<CashDeskStatus>({
@@ -162,9 +180,10 @@ export default function CashDeskPage() {
         <div className="text-sm text-gray-600 flex items-center gap-4">
           <span className="flex items-center gap-1">
             <Clock size={14} />
-            Nyitva: {status.openedAt}
+            {/* v2.3.38 (B12 audit fix): ISO timestamp -> hu-HU formatum (NEM raw "2026-04-29T11:43:07.623294") */}
+            Nyitva: {formatOpenedAtTimestamp(status.openedAt)}
           </span>
-          <span>Kezelő: {status.openedBy}</span>
+          <span>Kezelő: {status.openedBy ?? '—'}</span>
         </div>
       </div>
 
