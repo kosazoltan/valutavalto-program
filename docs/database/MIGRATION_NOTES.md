@@ -93,15 +93,15 @@ WHERE n.nspname = 'public'
   AND c.relkind IN ('r','p')   -- ordinary table OR partitioned table
 ```
 
-### 2. Domain/typedef-aware boolean check
+### 2. Domain-aware boolean check (helyesbítve, AI review fix Codex P2 #262)
 
-Az `information_schema.columns.data_type = 'boolean'` **kihagyja** azokat az oszlopokat, amelyek `CREATE DOMAIN flag AS BOOLEAN` mintával lettek létrehozva (a `data_type` ekkor a domain neve). A `udt_name = 'bool'` rugalmasabb (minden boolean-mögötti UDT, beleérve domain-eket is):
+> **Korábbi (HIBÁS) állítás**: az `information_schema.columns.data_type = 'boolean'` "kihagyja" a `CREATE DOMAIN flag AS BOOLEAN` oszlopokat, mert a `data_type` "ekkor a domain neve". **Ez NEM igaz a PostgreSQL-ben.**
+>
+> **Pontosabban (PostgreSQL spec szerint)**: domain-based oszlopoknál az `information_schema.columns.data_type` az **alaptípus** (`boolean`), míg a `udt_name` a **domain neve** (pl. `flag`). Az `domain_name`/`domain_schema` adja a domain-specifikus referenciát.
 
-```sql
-WHERE c.udt_name = 'bool'
-```
+Tehát a V166 + V167 `data_type = 'boolean'` szűrő **a domain-based oszlopokat is megtalálná**, ha lennének. A különbség akkor lényeges, ha a logika a domain-megkülönböztetéstől függ (pl. `nullable`, `check constraint` öröklés). A V166/V167 esetében ez **nem releváns** — a sima boolean-érték frissítése domain-en keresztül is működik.
 
-**A jelenlegi kódbázisban**: `grep -ri "CREATE DOMAIN" backend/src/main/resources/db/migration/` → 0 találat. Tehát a V166 + V167 `data_type = 'boolean'` szűrő **production-impactless** (nincs domain-wrapped boolean a sémában). Future-proof guard-hoz a `udt_name` formát ajánljuk.
+**Ajánlás future migration-höz**: ha pontosan a UDT-szintű azonosítás kell (pl. csak built-in `bool`, NEM domain), akkor `udt_name = 'bool' AND domain_name IS NULL` vagy `c.udt_schema = 'pg_catalog' AND c.udt_name = 'bool'`. A jelenlegi `data_type = 'boolean'` szűrő **production-impactless**: domainek és sima boolean-ek egyaránt match-elnek.
 
 ### 3. Explicit `LANGUAGE plpgsql` a `DO $$` blockon
 

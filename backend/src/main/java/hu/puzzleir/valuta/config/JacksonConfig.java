@@ -4,10 +4,13 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 
 import java.util.TimeZone;
 
@@ -22,9 +25,10 @@ import java.util.TimeZone;
  *
  * <p><b>Megoldas:</b> a 3 problematic property-t kivettuk az
  * application.properties-bol es itt programmatic-an allitjuk be a Jackson 2
- * `ObjectMapper`-en. Ezzel a Spring Boot 4 NEM probal property-bol bind-elni
- * Jackson 3 enum-okra, es a meglevo 39 fajl Jackson 2 import-ja tovabbra is
- * mukodik.</p>
+ * `ObjectMapper`-en a `Jackson2ObjectMapperBuilder`-en keresztul (Sourcery
+ * PR #263 P2 ajanlas). Igy orokoljuk a Spring Boot/Web common Jackson modul-
+ * regisztraciot (parameter names, JDK 8 Optional, Java time) plusz a 3
+ * critical override-ot.</p>
  *
  * <p><b>Future work:</b> egy nagyobb refaktor PR-ben a teljes Jackson 3
  * migracio (`tools.jackson.*` import-ok + ObjectMapper API breaking changes)
@@ -37,17 +41,22 @@ public class JacksonConfig {
 
     /**
      * Primary ObjectMapper bean — Jackson 2 API a `spring-boot-jackson2`
-     * stop-gap modulon keresztul.
+     * stop-gap modulon keresztul, `Jackson2ObjectMapperBuilder`-rel epitve.
      *
-     * <p>A 3 setting (volt application.properties-ben):</p>
+     * <p><b>Modulok</b> (Spring Boot defaults + projekt-specifikus):</p>
+     * <ul>
+     *   <li>{@link JavaTimeModule} — LocalDateTime, Instant, ZonedDateTime ISO-8601</li>
+     *   <li>{@link Jdk8Module} — Optional, Stream support</li>
+     *   <li>{@link ParameterNamesModule} — constructor parameter names (Java 8+)</li>
+     * </ul>
+     *
+     * <p><b>Override-ok</b> (volt application.properties-ben):</p>
      * <ul>
      *   <li><code>WRITE_DATES_AS_TIMESTAMPS=false</code> — ISO-8601 formatum</li>
      *   <li><code>setTimeZone(UTC)</code> — minden datum UTC-ben serializalva</li>
      *   <li><code>setSerializationInclusion(NON_NULL)</code> — null mezok elhagyasa</li>
+     *   <li><code>FAIL_ON_UNKNOWN_PROPERTIES=false</code> — kompatibilitas</li>
      * </ul>
-     *
-     * <p>Plusz: <code>JavaTimeModule</code> regisztracio (LocalDateTime, Instant
-     * stb.) + <code>FAIL_ON_UNKNOWN_PROPERTIES=false</code> a kompatibilitashoz.</p>
      *
      * <p><code>@Primary</code> annotacio garantalja, hogy a Spring Boot 4 stop-gap
      * modul auto-konfiguracioja helyett ezt a bean-t hasznaljak az injection-ok.</p>
@@ -55,12 +64,18 @@ public class JacksonConfig {
     @Bean
     @Primary
     public ObjectMapper objectMapper() {
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-        mapper.setTimeZone(TimeZone.getTimeZone("UTC"));
-        mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
-        mapper.registerModule(new JavaTimeModule());
-        return mapper;
+        return Jackson2ObjectMapperBuilder.json()
+            .modules(
+                new JavaTimeModule(),
+                new Jdk8Module(),
+                new ParameterNamesModule()
+            )
+            .featuresToDisable(
+                SerializationFeature.WRITE_DATES_AS_TIMESTAMPS,
+                DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES
+            )
+            .timeZone(TimeZone.getTimeZone("UTC"))
+            .serializationInclusion(JsonInclude.Include.NON_NULL)
+            .build();
     }
 }
