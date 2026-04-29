@@ -49,7 +49,13 @@ type TransferTypeEnum =
   | 'CORRECTION'
   | 'OTHER'
 
-function localizeTransferType(rawType: TransferTypeEnum | string | null | undefined): string {
+/**
+ * v2.3.45 (Sourcery #307): TransferTypeEnum union (NEM string), igy a
+ * compiler-szinten figyelmeztet az ismeretlen enum-ra. A null/undefined
+ * eseteket az exhaustive switch + assertNever pattern fedi le.
+ */
+function localizeTransferType(rawType: TransferTypeEnum | null | undefined): string {
+  if (rawType == null) return '—'
   switch (rawType) {
     case 'CURRENCY': return 'Deviza'
     case 'CASH': return 'Készpénz'
@@ -58,7 +64,12 @@ function localizeTransferType(rawType: TransferTypeEnum | string | null | undefi
     case 'VAULT_WITHDRAW': return 'Széf kivét'
     case 'CORRECTION': return 'Korrekció'
     case 'OTHER': return 'Egyéb'
-    default: return rawType ?? '—'
+    default: {
+      // Exhaustive check: ha uj enum bekerul a TransferTypeEnum-ba,
+      // a TS compiler itt error-t dob (`Type 'X' is not assignable to type 'never'`).
+      const _exhaustive: never = rawType
+      return _exhaustive
+    }
   }
 }
 

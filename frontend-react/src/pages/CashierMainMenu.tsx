@@ -39,10 +39,7 @@ const MENU_ITEMS_PRIMARY: MenuItem[] = [
 const MENU_ITEMS_ADMIN: MenuItem[] = [
   { key: '1', label: 'Napi zárás', description: 'Pénztár napi lezárása', icon: Lock, route: '/closing/wizard', shortcut: 'Shift+F1' },
   { key: '2', label: 'Bizonylatok', description: 'Bizonylatok kezelése', icon: FileText, route: '/receipts', shortcut: 'Shift+F2' },
-  // v2.3.44 (B14 audit fix): a /branch-groups oldal fiók-CSOPORTOKAT listáz
-  // (NEM konkret penztarakat, ahogy a legacy PTARTMK.dll mukodott). A label
-  // most a tényleges absztrakcióra ramutat — ha a felhasználó konkret
-  // penztarakat keres, a /branches oldalt használja.
+  // v2.3.44 B14: label align /branch-groups tényleges funkciójához (Fiókcsoportok).
   { key: '3', label: 'Fiókcsoportok', description: 'Branch-csoportok kezelése', icon: Building2, route: '/branch-groups', shortcut: 'Shift+F3' },
   // v2.3.34 (B22): Shift+F4 a legacy LISTAK.dll-nek megfelelő multi-list aggregátorra
   // (Riportok aggregátor 11 listával) megy — NEM a sima Tranzakciólistára. A pénztáros
