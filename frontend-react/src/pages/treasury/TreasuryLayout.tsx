@@ -30,7 +30,11 @@ import { useAuthStore } from '../../stores/authStore'
  *
  * Ld. D:\valutavalto-vault\references\legacy-anti-system.md §2-§4.
  */
-type TreasuryTab = {
+// 2026-04-29 v2.3.10 (Sourcery PR #271 fix):
+// `TreasuryTab`, `CENTRAL_VAULT_ROLES`, `allTreasuryTabs` exportálva, hogy a
+// `TreasuryLayout.role-filter.test.ts` ezeket TÉNYLEGES forrásból importálhatja
+// (NEM duplikálni). Ld. Sourcery comment #271.
+export type TreasuryTab = {
   path: string
   label: string
   icon: typeof LayoutDashboard
@@ -40,9 +44,9 @@ type TreasuryTab = {
   canonicalRoles?: readonly string[]
 }
 
-const CENTRAL_VAULT_ROLES = ['foertektar', 'ugyvezeto'] as const
+export const CENTRAL_VAULT_ROLES = ['foertektar', 'ugyvezeto'] as const
 
-const allTreasuryTabs: readonly TreasuryTab[] = [
+export const allTreasuryTabs: readonly TreasuryTab[] = [
   { path: '/treasury', label: 'Dashboard', icon: LayoutDashboard, hotkey: 'F1', end: true },
   { path: '/treasury/matrix', label: 'Készlet Mátrix', icon: Grid3X3, hotkey: 'F2', end: false },
   { path: '/treasury/movements', label: 'Mozgások', icon: ArrowLeftRight, hotkey: 'F3', end: false },
@@ -65,10 +69,14 @@ export default function TreasuryLayout() {
   const workerRole = useAuthStore((state) => state.worker?.role)
   const hasCanonicalRole = useAuthStore((state) => state.hasCanonicalRole)
 
+  // 2026-04-29 v2.3.10 (Sourcery PR #271): hasCanonicalRole-t hozzáadva a deps-be.
+  // A `roles`/`activeRole`/`workerRole` selector-ok ÚJ array referenciát adnak
+  // login/role-change után — a useMemo helyesen invalidálódik.
+  // hasCanonicalRole stable closure (zustand getState() captured), de helyességhez
+  // szerepel a deps között is — eslint-disable eltávolítva.
   const treasuryTabs = useMemo(
     () => allTreasuryTabs.filter((tab) => !tab.canonicalRoles || hasCanonicalRole([...tab.canonicalRoles])),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [roles, activeRole, workerRole],
+    [roles, activeRole, workerRole, hasCanonicalRole],
   )
 
   const isVisiblePath = useCallback(
@@ -79,17 +87,27 @@ export default function TreasuryLayout() {
   const closeHelp = useCallback(() => setShowHelp(false), [])
   const toggleHelp = useCallback(() => setShowHelp(prev => !prev), [])
 
-  // F-key navigation — csak a látható tabokra reagálunk
-  useHotkeys('f1', (e) => { if (isVisiblePath('/treasury')) { e.preventDefault(); navigate('/treasury') } }, { enableOnFormTags: false })
-  useHotkeys('f2', (e) => { if (isVisiblePath('/treasury/matrix')) { e.preventDefault(); navigate('/treasury/matrix') } }, { enableOnFormTags: false })
-  useHotkeys('f3', (e) => { if (isVisiblePath('/treasury/movements')) { e.preventDefault(); navigate('/treasury/movements') } }, { enableOnFormTags: false })
-  useHotkeys('f4', (e) => { if (isVisiblePath('/treasury/bank')) { e.preventDefault(); navigate('/treasury/bank') } }, { enableOnFormTags: false })
-  useHotkeys('f5', (e) => { if (isVisiblePath('/treasury/rates')) { e.preventDefault(); navigate('/treasury/rates') } }, { enableOnFormTags: false })
-  useHotkeys('f6', (e) => { if (isVisiblePath('/treasury/reports')) { e.preventDefault(); navigate('/treasury/reports') } }, { enableOnFormTags: false })
-  useHotkeys('f7', (e) => { if (isVisiblePath('/treasury/vat')) { e.preventDefault(); navigate('/treasury/vat') } }, { enableOnFormTags: false })
-  useHotkeys('f8', (e) => { if (isVisiblePath('/treasury/trb-export')) { e.preventDefault(); navigate('/treasury/trb-export') } }, { enableOnFormTags: false })
-  useHotkeys('f9', (e) => { if (isVisiblePath('/treasury/customer-turnover')) { e.preventDefault(); navigate('/treasury/customer-turnover') } }, { enableOnFormTags: false })
-  useHotkeys('f10', (e) => { if (isVisiblePath('/treasury/bank-turnover')) { e.preventDefault(); navigate('/treasury/bank-turnover') } }, { enableOnFormTags: false })
+  // F-key navigation — csak a látható tabokra navigálunk, DE a preventDefault
+  // mindig fut (Codex PR #271 P2): F5 default browser refresh-t kell elnyomni
+  // akkor is, ha a /treasury/rates tab nem látható (nem-foertektar usereknek).
+  const fkeyHandler = useCallback(
+    (path: string) => (e: KeyboardEvent) => {
+      e.preventDefault()
+      if (isVisiblePath(path)) navigate(path)
+    },
+    [isVisiblePath, navigate],
+  )
+
+  useHotkeys('f1', fkeyHandler('/treasury'), { enableOnFormTags: false })
+  useHotkeys('f2', fkeyHandler('/treasury/matrix'), { enableOnFormTags: false })
+  useHotkeys('f3', fkeyHandler('/treasury/movements'), { enableOnFormTags: false })
+  useHotkeys('f4', fkeyHandler('/treasury/bank'), { enableOnFormTags: false })
+  useHotkeys('f5', fkeyHandler('/treasury/rates'), { enableOnFormTags: false })
+  useHotkeys('f6', fkeyHandler('/treasury/reports'), { enableOnFormTags: false })
+  useHotkeys('f7', fkeyHandler('/treasury/vat'), { enableOnFormTags: false })
+  useHotkeys('f8', fkeyHandler('/treasury/trb-export'), { enableOnFormTags: false })
+  useHotkeys('f9', fkeyHandler('/treasury/customer-turnover'), { enableOnFormTags: false })
+  useHotkeys('f10', fkeyHandler('/treasury/bank-turnover'), { enableOnFormTags: false })
   useHotkeys('shift+/', () => toggleHelp(), { enableOnFormTags: false })
   useHotkeys('escape', () => closeHelp(), { enableOnFormTags: true })
 

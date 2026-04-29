@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.controller;
 
+import hu.puzzleir.valuta.dto.cashbalance.CashBalanceDto;
 import hu.puzzleir.valuta.dto.inventory.*;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.exception.ValidationException;
@@ -37,17 +38,46 @@ public class InventoryController {
 
     // ============ STOCK QUERIES ============
 
+    /**
+     * 2026-04-29 v2.3.10 (E-B11 fix): a CashBalance entity helyett CashBalanceDto-t
+     * adunk vissza, ami a frontend `currencyCode` + `branchName` field-jeit kitölti.
+     * Az entity közvetlen serializációja LAZY-load miatt üresen hagyta ezeket
+     * a mezőket → a /inventory oldalon "VALUTA: -" + "PENZTAR: -" jelent meg.
+     */
     @GetMapping("/stock")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
-    public ResponseEntity<List<CashBalance>> getAllStock() {
-        return ResponseEntity.ok(inventoryService.getAllStock());
+    public ResponseEntity<List<CashBalanceDto>> getAllStock() {
+        return ResponseEntity.ok(
+                inventoryService.getAllStock().stream()
+                        .map(InventoryController::toCashBalanceDto)
+                        .toList());
     }
 
     @GetMapping("/stock/{branchId}")
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
-    public ResponseEntity<List<CashBalance>> getStockByBranch(@PathVariable UUID branchId) {
+    public ResponseEntity<List<CashBalanceDto>> getStockByBranch(@PathVariable UUID branchId) {
         validateBranchAccess(branchId);
-        return ResponseEntity.ok(inventoryService.getCurrentStock(branchId));
+        return ResponseEntity.ok(
+                inventoryService.getCurrentStock(branchId).stream()
+                        .map(InventoryController::toCashBalanceDto)
+                        .toList());
+    }
+
+    /** Entity → DTO mapping (currency.code + branch.name + minBalance/maxBalance) */
+    private static CashBalanceDto toCashBalanceDto(CashBalance cb) {
+        return CashBalanceDto.builder()
+                .id(cb.getId())
+                .branchId(cb.getBranch() != null ? cb.getBranch().getId().toString() : null)
+                .branchName(cb.getBranch() != null ? cb.getBranch().getName() : null)
+                .currencyId(cb.getCurrency() != null ? cb.getCurrency().getId() : null)
+                .currencyCode(cb.getCurrency() != null ? cb.getCurrency().getCode() : null)
+                .currencyName(cb.getCurrency() != null ? cb.getCurrency().getName() : null)
+                .currentBalance(cb.getCurrentBalance())
+                .openingBalance(cb.getOpeningBalance())
+                .minBalance(cb.getMinBalance())
+                .maxBalance(cb.getMaxBalance())
+                .updatedAt(cb.getUpdatedAt())
+                .build();
     }
 
     @GetMapping("/matrix")

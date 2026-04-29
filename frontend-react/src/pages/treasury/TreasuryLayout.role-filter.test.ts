@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest'
+import { allTreasuryTabs, CENTRAL_VAULT_ROLES, type TreasuryTab } from './TreasuryLayout'
 
 /**
  * Role-filter logika tesztek — TreasuryLayout treasuryTabs szűrése canonicalRoles alapján.
+ *
+ * 2026-04-29 v2.3.10 (Sourcery PR #271): a duplikált tab-definíciók helyett
+ * importáljuk a `TreasuryLayout.tsx`-ből a `allTreasuryTabs`, `CENTRAL_VAULT_ROLES`
+ * és a `TreasuryTab` típust — így a teszt nem drift-elhet el a production UI-tól.
  *
  * A 2026-04-29-i fix után a `/treasury/rates` (Árfolyamkészítés F5),
  * `/treasury/bank` (Banki Tx F4), `/treasury/vat` (ÁFA visszatérítés F7),
@@ -10,28 +15,6 @@ import { describe, it, expect } from 'vitest'
  *
  * Ld. D:\valutavalto-vault\references\legacy-anti-system.md §2.3 (főértéktár separation).
  */
-
-interface TreasuryTab {
-  path: string
-  label: string
-  hotkey: string
-  canonicalRoles?: readonly string[]
-}
-
-const CENTRAL_VAULT_ROLES = ['foertektar', 'ugyvezeto'] as const
-
-const allTreasuryTabs: readonly TreasuryTab[] = [
-  { path: '/treasury', label: 'Dashboard', hotkey: 'F1' },
-  { path: '/treasury/matrix', label: 'Készlet Mátrix', hotkey: 'F2' },
-  { path: '/treasury/movements', label: 'Mozgások', hotkey: 'F3' },
-  { path: '/treasury/bank', label: 'Banki Tx', hotkey: 'F4', canonicalRoles: CENTRAL_VAULT_ROLES },
-  { path: '/treasury/rates', label: 'Árfolyamkészítés', hotkey: 'F5', canonicalRoles: CENTRAL_VAULT_ROLES },
-  { path: '/treasury/reports', label: 'Jelentések', hotkey: 'F6' },
-  { path: '/treasury/vat', label: 'ÁFA visszatérítés', hotkey: 'F7', canonicalRoles: CENTRAL_VAULT_ROLES },
-  { path: '/treasury/trb-export', label: 'TRB Export', hotkey: 'F8', canonicalRoles: CENTRAL_VAULT_ROLES },
-  { path: '/treasury/customer-turnover', label: 'Ügyfélforgalom', hotkey: 'F9' },
-  { path: '/treasury/bank-turnover', label: 'Bankforgalom', hotkey: 'F10', canonicalRoles: CENTRAL_VAULT_ROLES },
-]
 
 function filterByRole(userRoles: string[]): TreasuryTab[] {
   return allTreasuryTabs.filter(
@@ -92,8 +75,12 @@ describe('TreasuryLayout role-filter', () => {
   it('Árfolyamkészítés tab specifikusan: csak foertektar/ugyvezeto', () => {
     const ratesTab = allTreasuryTabs.find((t) => t.path === '/treasury/rates')
     expect(ratesTab).toBeDefined()
-    expect(ratesTab?.canonicalRoles).toEqual(['foertektar', 'ugyvezeto'])
+    expect(ratesTab?.canonicalRoles).toEqual(CENTRAL_VAULT_ROLES)
     expect(ratesTab?.label).toBe('Árfolyamkészítés')
     expect(ratesTab?.hotkey).toBe('F5')
+  })
+
+  it('CENTRAL_VAULT_ROLES tartalmazza foertektar és ugyvezeto-t', () => {
+    expect(CENTRAL_VAULT_ROLES).toEqual(['foertektar', 'ugyvezeto'])
   })
 })

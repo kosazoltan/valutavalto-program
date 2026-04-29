@@ -1,8 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { ArrowLeftRight, Users, TrendingUp, Wallet, FileText, AlertTriangle, ArrowUp, ArrowDown, Clock } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { exchangeRateApi, type ExchangeRate } from '../services/api/exchange-rates'
 import { transactionApi, type DailyTurnoverSummary } from '../services/api/transactions'
+import { useAuthStore } from '../stores/authStore'
+import { useAppMode } from '../hooks/useAppMode'
+
+// 2026-04-29 E-B3 fix: a "Árfolyam módosítás" Gyorsművelet-csempe csak a
+// foertektar/ugyvezeto szerepkörnek látható (mode='full'). Az értéktár (és
+// pénztáros) csak nézheti az árfolyamokat — ld. legacy ARFOLYAM/Arfolyam.exe
+// külön EXE szerepkör-szegregáció + B2 fix RatesPage.tsx-ben.
+const RATE_EDITOR_ROLES = ['foertektar', 'ugyvezeto'] as const
 
 interface DashboardStats {
   todayTransactions: number
@@ -40,6 +48,16 @@ export default function DashboardPage() {
     yesterdayComparison: { transactions: 0, volume: 0 }
   })
   const [recentTransactions, setRecentTransactions] = useState<RecentTransaction[]>([])
+
+  // E-B3: árfolyam módosítás csak foertektar/ugyvezeto-nek (mode='full')
+  // A `roles` selector dependency triggereli a re-render-t login/role-change után.
+  const { mode: appMode } = useAppMode()
+  const roles = useAuthStore((state) => state.roles)
+  const hasCanonicalRole = useAuthStore((state) => state.hasCanonicalRole)
+  const canEditRates = useMemo(
+    () => appMode === 'full' && hasCanonicalRole([...RATE_EDITOR_ROLES]),
+    [appMode, roles, hasCanonicalRole],
+  )
 
   useEffect(() => {
     const fetchRates = async () => {
@@ -217,10 +235,19 @@ export default function DashboardPage() {
               <Users size={18} />
               <span>Új ügyfél</span>
             </Link>
-            <Link to="/rates" className="form-button justify-start">
-              <TrendingUp size={18} />
-              <span>Árfolyam módosítás</span>
-            </Link>
+            {/* E-B3 fix: Árfolyam módosítás csak foertektar/ugyvezeto-nek (mode='full').
+                Értéktár/pénztár módban csak a /rates "(nézet)" elérhető read-only. */}
+            {canEditRates ? (
+              <Link to="/rates/creation" className="form-button justify-start">
+                <TrendingUp size={18} />
+                <span>Árfolyam módosítás</span>
+              </Link>
+            ) : (
+              <Link to="/rates" className="form-button justify-start">
+                <TrendingUp size={18} />
+                <span>Árfolyamok megtekintése</span>
+              </Link>
+            )}
             <Link to="/cashdesk" className="form-button justify-start">
               <Wallet size={18} />
               <span>Napi zárás</span>

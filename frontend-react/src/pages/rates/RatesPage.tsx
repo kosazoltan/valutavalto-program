@@ -49,9 +49,22 @@ export default function RatesPage() {
   const [editValues, setEditValues] = useState({ buyRate: 0, sellRate: 0 })
 
   // B2: szerkesztes csak a foertektar/ugyvezeto-nek (legacy ARFOLYAM/Arfolyam.exe)
+  // 2026-04-29 v2.3.10 (Sourcery PR #271): a NumberInput field-ek `editingCode` flag-szel
+  // védettek — read-only módban (canEdit=false) az Edit gomb (Művelet oszlop) sem
+  // látszik, tehát `setEditingCode()` sosem hívódhat meg, a NumberInput sosem renderel.
+  // Defensive: a useEffect ki-resetli az editingCode-ot, ha canEdit kivilágosodik (pl.
+  // role-change után login).
   const { mode: appMode } = useAppMode()
   const hasCanonicalRole = useAuthStore((state) => state.hasCanonicalRole)
   const canEdit = appMode === 'full' && hasCanonicalRole([...RATE_EDITOR_ROLES])
+
+  useEffect(() => {
+    if (!canEdit && editingCode !== null) {
+      setEditingCode(null)
+      setEditValues({ buyRate: 0, sellRate: 0 })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canEdit])
 
   const loadRates = useCallback(async () => {
     setLoading(true)
