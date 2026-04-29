@@ -1,25 +1,10 @@
--- 2026-04-29 v2.3.31 V170 EMERGENCY REPAIR (production-side incident):
+-- V170 EMERGENCY REPAIR — V168/V169 'active' → 'is_active' column fix utáni
+-- biztonsági HUF címlet backfill + 500 HUF threshold align (COIN, NEM BANKNOTE).
 --
--- Incident: a v2.3.27 (V168) és v2.3.29 (V169) Flyway migration-ok `INSERT INTO
--- denomination (..., active, ...)` syntax-ot használtak, DE a Hetzner production
--- DB schema-ban a denomination tábla CSAK `is_active` columnával rendelkezik
--- (V3_7 dynamic-add migration-ban). Eredmény: production HTTP 502 4 deploy-on
--- keresztül (v2.3.27, v2.3.28, v2.3.29, v2.3.30 mind-en V168 fail-elt a Flyway
--- migrate során).
+-- Scope: CSAK aktív branch-ek (mirror V168 scope). Az inaktív branch-eket V169
+-- part 2 kezeli külön (Sourcery #296 P2, v2.3.32 align).
 --
--- Fix:
--- 1) V168 + V169 fájlok már javítva (`active` → `is_active`)
--- 2) Ez a V170 migration biztonsági backfill — ha a V168/V169 valami okból még
---    nem futott le újra (pl. checksum mismatch), itt explicit végrehajtjuk a
---    HUF címlet seed-et + threshold align-t.
--- 3) Idempotens — `WHERE NOT EXISTS` minden INSERT-en.
---
--- Production flyway_schema_history cleanup szükséges manuálisan, ha a v168/v169
--- "FAILED" státusszal van benn (admin-side: DELETE FROM flyway_schema_history
--- WHERE version IN ('168', '169') AND success = false; majd `mvn flyway:repair`
--- vagy a Spring Boot config `spring.flyway.out-of-order=true` + redeploy).
---
--- Forrás: Hetzner deploy log 25131348997 (PR #292 v2.3.27 first failed deploy)
+-- Idempotens: WHERE NOT EXISTS minden INSERT-en, threshold align UPDATE WHERE
 
 DO $$
 DECLARE
@@ -37,9 +22,10 @@ BEGIN
         RETURN;
     END IF;
 
-    -- 1) HUF denomination seed minden branch-en (active VAGY inactive)
+    -- 1) HUF denomination seed CSAK aktív branch-en (mirror V168 scope).
+    -- Inaktív branch-ek backfill-jét V169 part 2 kezeli (Sourcery #296 P2).
     FOR v_branch IN
-        SELECT b.id, b.company_id, b.name FROM branch b
+        SELECT b.id, b.company_id, b.name FROM branch b WHERE b.is_active = true
     LOOP
         FOREACH v_face_value IN ARRAY v_face_values
         LOOP
