@@ -9,7 +9,12 @@ const mocks = vi.hoisted(() => ({
   recordLocalAuditEvent: vi.fn(),
   logger: {
     error: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
   },
+  useAuthStore: vi.fn(),
+  useAppMode: vi.fn(),
 }))
 
 vi.mock('../../services/api/index', () => ({
@@ -25,6 +30,17 @@ vi.mock('../../utils/electronTransactions', () => ({
 
 vi.mock('../../utils/logger', () => ({
   logger: mocks.logger,
+}))
+
+// 2026-04-29 v2.3.10 (B2 fix): a /rates oldal mode='full' + foertektar/ugyvezeto role
+// esetén szerkeszthető. A tesztek default mockja: full mode + foertektar role, így a
+// "Szerkesztés" gomb és "MNB letöltés" gomb látszik.
+vi.mock('../../stores/authStore', () => ({
+  useAuthStore: mocks.useAuthStore,
+}))
+
+vi.mock('../../hooks/useAppMode', () => ({
+  useAppMode: mocks.useAppMode,
 }))
 
 const mockRates = [
@@ -56,6 +72,14 @@ describe('RatesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.exchangeRateApiList.mockResolvedValue(mockRates)
+    // Default: full mode + foertektar role (canEdit=true, MNB + Edit gombok látszanak)
+    mocks.useAppMode.mockReturnValue({ mode: 'full' })
+    mocks.useAuthStore.mockImplementation((selector: any) =>
+      selector({
+        hasCanonicalRole: (roles: readonly string[]) =>
+          roles.includes('foertektar') || roles.includes('ugyvezeto'),
+      }),
+    )
   })
 
   it('oldal renderelésének ellenőrzése', async () => {

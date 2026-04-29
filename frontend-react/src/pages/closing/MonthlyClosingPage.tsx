@@ -62,7 +62,7 @@ export default function MonthlyClosingPage() {
       <div className="flex items-center justify-between">
         <h1 className="form-title flex items-center gap-2">
           <Calendar className="h-6 w-6" />
-          Havi zaras
+          Havi zárás
         </h1>
         <div className="flex items-center gap-2">
           <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
@@ -95,11 +95,11 @@ export default function MonthlyClosingPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Honap</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Penztar</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Allapot</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Zaras ideje</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Zarta</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Hónap</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Pénztár</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Állapot</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Zárás ideje</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Zárta</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">

@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
     success: vi.fn(),
     error: vi.fn(),
     warning: vi.fn(),
+    info: vi.fn(),
   },
   useAuthStore: vi.fn(),
 }))

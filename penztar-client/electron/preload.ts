@@ -226,6 +226,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSyncStatus: (): Promise<string> =>
     ipcRenderer.invoke('get-sync-status'),
 
+  // 2026-04-29 v2.3.11 (E-B6.2 Page Visibility API):
+  // A renderer hív, amikor az Electron ablak inaktívvá / aktívvá válik —
+  // a sync-engine leáll / újraindul, hogy ne pollozzon háttérben 30s-onként.
+  syncEnginePause: (): Promise<void> =>
+    ipcRenderer.invoke('sync-engine-pause'),
+
+  syncEngineResume: (): Promise<void> =>
+    ipcRenderer.invoke('sync-engine-resume'),
+
   getAppVersion: (): Promise<string> =>
     ipcRenderer.invoke('get-app-version'),
 

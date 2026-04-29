@@ -492,6 +492,19 @@ ipcMain.handle('get-sync-status', async (): Promise<string> => {
   return JSON.stringify(syncEngine.getStatus());
 });
 
+// 2026-04-29 v2.3.11 (E-B6.2 Page Visibility API):
+// A renderer hív ki, amikor az ablak láthatatlanná válik (visibilitychange event).
+// A sync-engine leáll, hogy ne pollozzon 30 másodpercenként inaktív állapotban.
+// A 'sync-engine-resume' visszaaktiválja, ha az ablak újra látszik.
+ipcMain.handle('sync-engine-pause', async (): Promise<void> => {
+  syncEngine.stop();
+});
+
+ipcMain.handle('sync-engine-resume', async (): Promise<void> => {
+  // 30 másodperces alapértelmezett intervallum (sync-engine.ts default)
+  syncEngine.start();
+});
+
 ipcMain.handle('get-app-version', async (): Promise<string> => {
   return app.getVersion();
 });
