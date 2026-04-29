@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import {
   ArrowRightLeft,
   Send,
@@ -429,7 +429,7 @@ export default function TransferPage() {
         <Building2 size={16} className="flex-shrink-0 mt-0.5" />
         <div>
           <strong>Banki ki/beszállítás és értéktár-értéktár közötti mozgás.</strong> A pénztárak felé
-          szervezett átadás-átvételhez használja az <a href="/shipments" className="underline font-semibold">Átadás-átvétel (pénztáraknak)</a> menüpontot.
+          szervezett átadás-átvételhez használja az <Link to="/shipments" className="underline font-semibold">Átadás-átvétel (pénztáraknak)</Link> menüpontot.
           A teljes banki workflow (banki rendelés / Western Union napi kerete / sürgősségi kivét) v2.3.13-ban érkezik.
         </div>
       </div>
