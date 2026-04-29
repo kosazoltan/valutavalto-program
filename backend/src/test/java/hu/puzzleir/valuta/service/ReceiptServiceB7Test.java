@@ -262,6 +262,50 @@ class ReceiptServiceB7Test {
     }
 
     @Test
+    @DisplayName("v2.3.53 Codex P1 SECURITY: print() null-companyId real Receipt-et ELUTASIT (NEM bypass)")
+    void print_nullCompanyIdRealReceiptRejected() {
+        UUID realUuid = UUID.randomUUID();
+        // Orphan Receipt — company_id == null (data corruption / legacy seed)
+        Receipt orphanReceipt = Receipt.builder()
+                .id(realUuid)
+                .companyId(null)
+                .receiptNumber("V???000003")
+                .receiptType("BUY")
+                .issueDate(LocalDate.of(2026, 4, 29))
+                .isPrinted(false)
+                .build();
+
+        when(receiptRepository.findById(realUuid)).thenReturn(Optional.of(orphanReceipt));
+
+        assertThatThrownBy(() -> receiptService.print(realUuid))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("nem található");
+
+        // CRITICAL: orphan receipt NOT modified (NEM hivtuk save())
+        Mockito.verify(receiptRepository, Mockito.never()).save(any(Receipt.class));
+    }
+
+    @Test
+    @DisplayName("v2.3.53 Codex P2 SECURITY: getById() null-companyId real Receipt-et ELUTASIT")
+    void getById_nullCompanyIdRealReceiptRejected() {
+        UUID realUuid = UUID.randomUUID();
+        Receipt orphanReceipt = Receipt.builder()
+                .id(realUuid)
+                .companyId(null)
+                .receiptNumber("V???000004")
+                .receiptType("BUY")
+                .issueDate(LocalDate.of(2026, 4, 29))
+                .isPrinted(false)
+                .build();
+
+        when(receiptRepository.findById(realUuid)).thenReturn(Optional.of(orphanReceipt));
+
+        assertThatThrownBy(() -> receiptService.getById(realUuid))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("nem található");
+    }
+
+    @Test
     @DisplayName("Synthesized UUID encoding: tx.id -> UUID(0, txId), decode visszahozza")
     void synthesizedUuidEncodingRoundTrip() {
         long txId = 12345L;
