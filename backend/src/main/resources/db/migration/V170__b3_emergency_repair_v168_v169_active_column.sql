@@ -1,8 +1,14 @@
 -- V170 EMERGENCY REPAIR — V168/V169 'active' → 'is_active' column fix utáni
 -- biztonsági HUF címlet backfill + 500 HUF threshold align (COIN, NEM BANKNOTE).
 --
+-- Migration sorrend felteveny (Sourcery #297 P3):
+--   V168 = active branch HUF backfill (eredeti, 'active' col bug)
+--   V169 = (1) 500 HUF threshold align + (2) INACTIVE branch backfill (out-of-order V168 utan)
+--   V170 = V168 ujra-kovetes ESKUVEL aktív branch-eken + threshold safety net
+--
 -- Scope: CSAK aktív branch-ek (mirror V168 scope). Az inaktív branch-eket V169
--- part 2 kezeli külön (Sourcery #296 P2, v2.3.32 align).
+-- part 2 kezeli külön (Sourcery #296+#297 P2/P3, v2.3.32+v2.3.34 align).
+-- Felteveny: V169 part 2 mar lefutott a V170 elott (hibrid out-of-order ok).
 --
 -- Idempotens: WHERE NOT EXISTS minden INSERT-en, threshold align UPDATE WHERE
 

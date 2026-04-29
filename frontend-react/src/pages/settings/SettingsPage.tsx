@@ -1,12 +1,63 @@
-import { useState } from 'react'
-import { Settings, Building, Users, Printer, Database, Bell, Shield, Palette, Sliders } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Settings, Building, Users, Printer, Database, Bell, Shield, Palette, Sliders, Loader2 } from 'lucide-react'
 import SystemParameterPage from './SystemParameterPage'
 import PermissionPage from './PermissionPage'
 import RolePage from './RolePage'
 import UserPage from './UserPage'
+import { ownCompanyApi, type OwnCompany } from '../../services/api/index'
+import { toast } from '../../components/ui/toaster'
+import { logger } from '../../utils/logger'
 
+/**
+ * v2.3.34 (B11): Cégadatok tab most az aktív OwnCompany rekordbol toltodik
+ * (NEM hardkodolt "Pénzváltó Kft." placeholder-ek). Ha az own_company tabla
+ * ures, akkor a v2.3.34 V172 Flyway migration az EBC Zrt. seed-et szurja be
+ * (Exclusive Best Change Zrt. — kosa.zoltan.ebc@gmail.com beruhazo cege).
+ */
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('company')
+  const [companyData, setCompanyData] = useState<OwnCompany | null>(null)
+  const [companyLoading, setCompanyLoading] = useState(false)
+  const [companySaving, setCompanySaving] = useState(false)
+
+  const loadCompany = useCallback(async () => {
+    setCompanyLoading(true)
+    try {
+      const list = await ownCompanyApi.getActive()
+      setCompanyData(list[0] ?? null)
+    } catch (err) {
+      logger.warn('SettingsPage', 'OwnCompany lekérdezés sikertelen:', err)
+      setCompanyData(null)
+    } finally {
+      setCompanyLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (activeTab === 'company') {
+      void loadCompany()
+    }
+  }, [activeTab, loadCompany])
+
+  const handleCompanyChange = (field: keyof OwnCompany, value: string) => {
+    setCompanyData((prev) => prev ? { ...prev, [field]: value } : prev)
+  }
+
+  const handleCompanySave = async () => {
+    if (!companyData) return
+    setCompanySaving(true)
+    try {
+      const updated = await ownCompanyApi.update(companyData.id, companyData)
+      setCompanyData(updated)
+      toast.success('Cégadatok mentve', updated.name ?? '')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Ismeretlen hiba'
+      toast.error('Mentés sikertelen', msg)
+      logger.error('SettingsPage', 'OwnCompany mentés sikertelen:', err)
+    } finally {
+      setCompanySaving(false)
+    }
+  }
 
   const tabs = [
     { id: 'company', name: 'Cégadatok', icon: Building },
@@ -60,39 +111,95 @@ export default function SettingsPage() {
           {activeTab === 'company' && (
             <div className="space-y-4">
               <h2 className="section-title">Cégadatok</h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="form-label">Cégnév</label>
-                  <input type="text" className="form-input" defaultValue="Pénzváltó Kft." />
+              {companyLoading && (
+                <div className="flex items-center gap-2 text-gray-500">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Betöltés...</span>
                 </div>
-                <div>
-                  <label className="form-label">Adószám</label>
-                  <input type="text" className="form-input font-mono" defaultValue="12345678-2-41" />
+              )}
+              {!companyLoading && !companyData && (
+                <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                  Nincs aktív cégadat-rekord — a Flyway V172 migráció EBC Zrt. seed után automatikusan betöltődik.
                 </div>
-                <div>
-                  <label className="form-label">Cégjegyzékszám</label>
-                  <input type="text" className="form-input font-mono" defaultValue="01-09-123456" />
-                </div>
-                <div>
-                  <label className="form-label">MNB engedély száma</label>
-                  <input type="text" className="form-input font-mono" defaultValue="MNB-123/2020" />
-                </div>
-                <div className="col-span-2">
-                  <label className="form-label">Székhely</label>
-                  <input type="text" className="form-input" defaultValue="1011 Budapest, Fő utca 1." />
-                </div>
-                <div>
-                  <label className="form-label">Telefon</label>
-                  <input type="text" className="form-input" defaultValue="+36 1 234 5678" />
-                </div>
-                <div>
-                  <label className="form-label">E-mail</label>
-                  <input type="email" className="form-input" defaultValue="info@penzvalto.hu" />
-                </div>
-              </div>
-              <div className="flex justify-end">
-                <button className="form-button-primary">Mentés</button>
-              </div>
+              )}
+              {!companyLoading && companyData && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="form-label">Cégnév</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={companyData.name ?? ''}
+                        onChange={(e) => handleCompanyChange('name', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label">Adószám</label>
+                      <input
+                        type="text"
+                        className="form-input font-mono"
+                        value={companyData.taxNumber ?? ''}
+                        onChange={(e) => handleCompanyChange('taxNumber', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label">Cégjegyzékszám</label>
+                      <input
+                        type="text"
+                        className="form-input font-mono"
+                        value={companyData.registrationNumber ?? ''}
+                        onChange={(e) => handleCompanyChange('registrationNumber', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label">MNB engedély száma</label>
+                      <input
+                        type="text"
+                        className="form-input font-mono"
+                        value={companyData.licenseNumber ?? ''}
+                        onChange={(e) => handleCompanyChange('licenseNumber', e.target.value)}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="form-label">Székhely</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={companyData.address ?? ''}
+                        onChange={(e) => handleCompanyChange('address', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label">Telefon</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={companyData.phone ?? ''}
+                        onChange={(e) => handleCompanyChange('phone', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label">E-mail</label>
+                      <input
+                        type="email"
+                        className="form-input"
+                        value={companyData.email ?? ''}
+                        onChange={(e) => handleCompanyChange('email', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <button
+                      className="form-button-primary"
+                      onClick={handleCompanySave}
+                      disabled={companySaving}
+                    >
+                      {companySaving ? 'Mentés folyamatban...' : 'Mentés'}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
