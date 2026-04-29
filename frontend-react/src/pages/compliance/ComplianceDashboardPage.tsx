@@ -113,7 +113,7 @@ export default function ComplianceDashboardPage() {
                                 <Users className="w-4 h-4" /> 8 napos limit
                             </div>
                             <div className="text-3xl font-bold mt-1">{rollingWindow.length}</div>
-                            <div className="text-xs text-gray-600 mt-1">Ugyfel a kuszob folott</div>
+                            <div className="text-xs text-gray-600 mt-1">Ügyfél a küszöb fölött</div>
                         </div>
                         <div className="bg-blue-50 border border-blue-200 rounded p-4">
                             <div className="text-sm text-blue-700 flex items-center gap-1">
@@ -133,7 +133,7 @@ export default function ComplianceDashboardPage() {
                             <table className="w-full text-sm">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-4 py-2 text-left">Ugyfel</th>
+                                        <th className="px-4 py-2 text-left">Ügyfél</th>
                                         <th className="px-4 py-2 text-left">Tipus</th>
                                         <th className="px-4 py-2 text-right">Osszeg HUF</th>
                                         <th className="px-4 py-2 text-left">Hatarido</th>
@@ -183,7 +183,7 @@ export default function ComplianceDashboardPage() {
                             <table className="w-full text-sm">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-4 py-2 text-left">Ugyfel</th>
+                                        <th className="px-4 py-2 text-left">Ügyfél</th>
                                         <th className="px-4 py-2 text-right">8 napos osszeg</th>
                                         <th className="px-4 py-2 text-right">Kuszob%</th>
                                         <th className="px-4 py-2 text-center">High-risk flag</th>

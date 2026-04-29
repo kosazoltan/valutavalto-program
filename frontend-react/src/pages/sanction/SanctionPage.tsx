@@ -140,7 +140,7 @@ function ScreeningTab() {
         <div className="space-y-4">
             <form onSubmit={(e) => void handleScreen(e)} className="form-panel p-4 space-y-3">
                 <div>
-                    <label className="form-label">Ugyfel neve (kotelezo)</label>
+                    <label className="form-label">Ügyfél neve (kötelező)</label>
                     <input
                         type="text"
                         className="form-input w-full"

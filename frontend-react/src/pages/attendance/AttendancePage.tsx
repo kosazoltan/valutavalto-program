@@ -272,7 +272,7 @@ function AttendanceList({
                 <table className="data-grid w-full">
                     <thead>
                         <tr>
-                            {showWorkerName && <th>Penztaros</th>}
+                            {showWorkerName && <th>Pénztáros</th>}
                             <th>Bejelentkezés</th>
                             <th>Kijelentkezés</th>
                             <th className="text-right">Időtartam</th>
