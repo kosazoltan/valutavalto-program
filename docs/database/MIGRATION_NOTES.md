@@ -30,7 +30,9 @@ A Flyway v10+ + `spring.flyway.baseline-on-migrate=true` + `baseline-version=67`
 
 A V3_7 **kettős célja**:
 1. **Pre-V109 guard** — ha a V69, V70, V79 stb. seed migrationok az `is_active` oszlopra hivatkoznak (DML `INSERT ... is_active=true`), akkor az oszlopnak már létezni kell. V3_7 hozzáadja `IF NOT EXISTS` mintával.
-2. **V109 trigger újrahasználata** — a `sync_active_columns()` function a V109-tel megegyező logikát definiálja `CREATE OR REPLACE`-szel, hogy egy fresh DB-n már a V3_7 után működjön a kétirányú szinkron, MIELŐTT a V109 wire-elné a trigger-eket az összes érintett táblára.
+2. **`sync_active_columns()` function pre-definíció** — a V109-tel megegyező logikát definiálja `CREATE OR REPLACE`-szel, hogy a V109 csak a `CREATE TRIGGER ... EXECUTE FUNCTION sync_active_columns()` parancsokat futtassa (a function már létezik).
+
+**FONTOS** (AI review fix Codex P2 #259, 2026-04-29): a V3_7 a `sync_active_columns()` function-t **csak DEFINIÁLJA** — a **trigger ATTACH** kizárólag a V109-ben történik (`CREATE TRIGGER ... BEFORE INSERT OR UPDATE`). Tehát a V3_7 → V109 közötti window-ban (fresh install) az `active` ↔ `is_active` **NEM szinkronizálódik automatikusan** — a V3_7 backfill-jét követő INSERT/UPDATE műveletek **drift-et** okozhatnak, amíg a V109 nem wire-eli a trigger-eket. A V109 lefutásakor a trigger érvényes minden új DML-re; a meglévő drift-et **a V166 + V167 defensive UPDATE** korrigálta.
 
 **A trigger wiring (ATTACH) szándékosan a V109-ben** marad, mert:
 - A V3_7 lefutásakor még nem létezik az **összes** olyan tábla, amely érintett (pl. `worker`, `currency`, `dictionary`, `company`, `branch`).
