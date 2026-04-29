@@ -191,15 +191,15 @@ export default function CashierKpiPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <KpiCard
                         icon={<DollarSign className="text-blue-500" size={20} />}
-                        label="Osszforgalom"
+                        label="Összforgalom"
                         value={formatHuf(data.totalHuf)}
-                        sub={`${formatInt(data.totalTxCount)} tranzakcio`}
+                        sub={`${formatInt(data.totalTxCount)} tranzakció`}
                     />
                     <KpiCard
                         icon={<TrendingUp className="text-green-500" size={20} />}
                         label="Vétel / Eladás"
                         value={`${formatInt(data.totalBuyCount)} / ${formatInt(data.totalSellCount)}`}
-                        sub="aktiv tranzakciok"
+                        sub="aktív tranzakciók"
                     />
                     <KpiCard
                         icon={<TrendingDown className="text-orange-500" size={20} />}
@@ -210,9 +210,9 @@ export default function CashierKpiPage() {
                     />
                     <KpiCard
                         icon={<Users className="text-purple-500" size={20} />}
-                        label="Aktiv penztarosok"
+                        label="Aktív pénztárosok"
                         value={formatInt(data.activeWorkerCount)}
-                        sub={`${formatInt(data.totalCustomerCount)} egyedi ugyfel`}
+                        sub={`${formatInt(data.totalCustomerCount)} egyedi ügyfél`}
                     />
                 </div>
             )}
@@ -225,7 +225,7 @@ export default function CashierKpiPage() {
                         <div className="text-xs text-secondary-500 uppercase tracking-wide">Legnagyobb forgalom</div>
                         <div className="text-xl font-bold text-secondary-900">{topWorkerByTurnover.workerName}</div>
                         <div className="text-sm text-secondary-600">
-                            {formatHuf(topWorkerByTurnover.totalHuf)} - {formatInt(topWorkerByTurnover.txCount)} tranzakcio - atlag {formatHuf(topWorkerByTurnover.avgTxHuf)}
+                            {formatHuf(topWorkerByTurnover.totalHuf)} - {formatInt(topWorkerByTurnover.txCount)} tranzakció - átlag {formatHuf(topWorkerByTurnover.avgTxHuf)}
                         </div>
                     </div>
                 </div>
@@ -236,16 +236,16 @@ export default function CashierKpiPage() {
                 <div className="px-4 py-3 border-b border-secondary-200 flex items-center justify-between">
                     <h2 className="font-semibold text-secondary-900">Pénztárosok bontása</h2>
                     <div className="flex items-center gap-2">
-                        <span className="text-xs text-secondary-500">Rendezes:</span>
+                        <span className="text-xs text-secondary-500">Rendezés:</span>
                         <select
                             className="form-input h-8 text-xs w-40"
                             value={sortBy}
                             onChange={e => setSortBy(e.target.value as typeof sortBy)}
                         >
-                            <option value="totalHuf">Forgalom (csokkeno)</option>
-                            <option value="txCount">Tranzakcio szam</option>
+                            <option value="totalHuf">Forgalom (csökkenő)</option>
+                            <option value="txCount">Tranzakció szám</option>
                             <option value="reversalRatio">Sztornó %</option>
-                            <option value="name">Nev</option>
+                            <option value="name">Név</option>
                         </select>
                     </div>
                 </div>
@@ -268,14 +268,14 @@ export default function CashierKpiPage() {
                         {loading && (
                             <tr>
                                 <td colSpan={10} className="text-center text-sm text-secondary-400 py-8">
-                                    Betoltes...
+                                    Betöltés...
                                 </td>
                             </tr>
                         )}
                         {!loading && sortedRows.length === 0 && (
                             <tr>
                                 <td colSpan={10} className="text-center text-sm text-secondary-400 py-8">
-                                    Nincs tranzakcio ebben az idoszakban.
+                                    Nincs tranzakció ebben az időszakban.
                                 </td>
                             </tr>
                         )}
