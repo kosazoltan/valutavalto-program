@@ -185,3 +185,6 @@ packages/*/node_modules/
 # .remember/ — lokális AI handoff jegyzetek (nem kerulnek a repo-ba)
 .remember/
 penztar-client/.env.bak-localhost
+
+# Context7 MCP API kulcs (NEM commit) — 2026-04-29 user-direktíva
+.env.context7
