@@ -13,7 +13,7 @@
 ;       S6-06 silent uninstall secrets cleanup, S6-07 CORS localhost:3000 removed,
 ;       S6-10 secure wipe before SQL/PS1 temp file deletion (forensic prevention)
 ; v6: Nora dependency research alapjan:
-;     - PostgreSQL 16 ? 17 upgrade
+;     - PostgreSQL 16 -> 17 upgrade
 ;     - Windows Firewall szabalyok (8080, 54320)
 ;     - Firewall cleanup uninstall-nal
 ;     - Dependency report: shared/valuta-installer-dependency-report.md
@@ -74,7 +74,7 @@
 !define PS_CHECK_PG_B64   "aQBmACAAKABHAGUAdAAtAFAAcgBvAGMAZQBzAHMAIABwAG8AcwB0AGcAcgBlAHMAIAAtAEUAcgByAG8AcgBBAGMAdABpAG8AbgAgAFMAaQBsAGUAbgB0AGwAeQBDAG8AbgB0AGkAbgB1AGUAIAB8ACAAVwBoAGUAcgBlAC0ATwBiAGoAZQBjAHQAIAB7ACAAJABfAC4AUABhAHQAaAAgAC0AbABpAGsAZQAgACcAKgBCAGUAcwB0AEMAaABhAG4AZwBlACoAJwAgAH0AKQAgAHsAIABlAHgAaQB0ACAAMQAgAH0AIABlAGwAcwBlACAAewAgAGUAeABpAHQAIAAwACAAfQA="
 !define PS_CHECK_JAVA_B64 "aQBmACAAKABHAGUAdAAtAFAAcgBvAGMAZQBzAHMAIABqAGEAdgBhACAALQBFAHIAcgBvAHIAQQBjAHQAaQBvAG4AIABTAGkAbABlAG4AdABsAHkAQwBvAG4AdABpAG4AdQBlACAAfAAgAFcAaABlAHIAZQAtAE8AYgBqAGUAYwB0ACAAewAgACQAXwAuAFAAYQB0AGgAIAAtAGwAaQBrAGUAIAAnACoAQgBlAHMAdABDAGgAYQBuAGcAZQAqACcAIAB9ACkAIAB7ACAAZQB4AGkAdAAgADEAIAB9ACAAZQBsAHMAZQAgAHsAIABlAHgAaQB0ACAAMAAgAH0A"
 
-; --- Windows EXE Version Info (Properties ? Reszletek) ---
+; --- Windows EXE Version Info (Properties -> Reszletek) ---
 VIProductVersion "${VERSION}.0"
 VIFileVersion "${VERSION}.0"
 VIAddVersionKey /LANG=1038 "ProductName" "Valutavalto Penztar"
@@ -122,7 +122,7 @@ SetCompressorDictSize 64
 ; --- Valtozok ---
 Var DATA_DIR
 Var DB_ALREADY_EXISTS
-; v2.3.1 Codex P1 fix: upgrade mode flag ? ha "1", a SecInstall NEM torli a ProgramData-t
+; v2.3.1 Codex P1 fix: upgrade mode flag - ha "1", a SecInstall NEM torli a ProgramData-t
 Var UPGRADE_MODE
 
 ; =============================================================================
@@ -137,13 +137,13 @@ Section "Telepites" SecInstall
 
     ; =====================================================================
     ; FAZIS 1: Regi telepites cleanup (ha van)
-    ; Helyes sorrend: STOP ? pg_ctl ? KILL ? WAIT ? REMOVE
+    ; Helyes sorrend: STOP -> pg_ctl -> KILL -> WAIT -> REMOVE
     ; =====================================================================
     DetailPrint "Korabbi telepites ellenorzese..."
 
     ; --- 1a. STOP services via NSSM (graceful, keeps service registration) ---
     DetailPrint "  Szolgaltatasok leallitasa..."
-    ; F-N-08: nsExec nem shell ? 2>nul eltavolitva
+    ; F-N-08: nsExec nem shell - 2>nul eltavolitva
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" stop BestChange-Backend'
     Sleep 3000
     nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" stop BestChange-PostgreSQL'
@@ -1110,7 +1110,7 @@ Section "un.Eltavolitas"
     DetailPrint "Alkalmazas fajlok eltavolitasa..."
     RMDir /r "$INSTDIR"
 
-    ; F-N-02 fix: Silent uninstall ? safe default (keep data)
+    ; F-N-02 fix: Silent uninstall - safe default (keep data)
     IfSilent un_keepData
     MessageBox MB_YESNO "Toroljem az adatbazist es a konfiguraciot is?$\r$\n$\r$\nHa NEM-et valaszt, az adatok megmaradnak egy kesobbi ujratelepiteshez.$\r$\n$\r$\n($DATA_DIR)" IDYES un_deleteData IDNO un_keepData
 
@@ -1166,7 +1166,7 @@ Function .onInit
     ${EndIf}
 
     ; =====================================================================
-    ; v2.3.0: Egysegest flow ? egyetlen telepito kezel minden forgatokonyvet
+    ; v2.3.0: Egysegest flow - egyetlen telepito kezel minden forgatokonyvet
     ; =====================================================================
     ; 3 eset:
     ;   (1) SZUZ TELEPITES: nincs elozo verzio -> direct telepit
@@ -1250,7 +1250,7 @@ MEGSE = Telepites megszakitasa" \
     ${EndIf}
 
     ; G2-01 fix: Port check MOVED to Section (after Fazis 1 cleanup)
-    ; onInit only checks x64 + admin + elozo verzio detect ? port check is post-cleanup in SecInstall
+    ; onInit only checks x64 + admin + elozo verzio detect - port check is post-cleanup in SecInstall
 FunctionEnd
 
 ; G2-06 fix: Clean up temp files containing secrets on abort/failure

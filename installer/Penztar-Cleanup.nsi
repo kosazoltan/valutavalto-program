@@ -118,7 +118,7 @@ Section "Eltavolitas"
     Sleep 1000
 
     ; --- 4. Remove directories ---
-    DetailPrint "4/5 - Fajlok es mappak torlese (5 lepeses: STOP?KILL?REMOVE?DELETE?REGISTRY)..."
+    DetailPrint "4/5 - Fajlok es mappak torlese (5 lepeses: STOP->KILL->REMOVE->DELETE->REGISTRY)..."
 
     ; Program Files locations (F-N-10: PROGRAMFILES64 for x64 installs)
     RMDir /r "$PROGRAMFILES64\Valutavalto Penztar"
@@ -128,7 +128,7 @@ Section "Eltavolitas"
     RMDir /r "$PROGRAMFILES\Valutavalto Penztar"
     RMDir /r "$PROGRAMFILES\ValutavaltoPenztar"
 
-    ; ProgramData ? v2.3.0: upgrade mode-ban NEM toroljuk (adat-megorzes)
+    ; ProgramData - v2.3.0: upgrade mode-ban NEM toroljuk (adat-megorzes)
     ${If} $PreserveData == "1"
         DetailPrint "  Upgrade mode: C:\ProgramData\BestChange adatmappa MEGTARTVA (DB + config)."
     ${Else}

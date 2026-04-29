@@ -345,6 +345,38 @@ Lasd: `docs/AI_REVIEW_AUTOMATION.md`
 - **Helyes-pozitiv kizarasa:** Ha egy AI flag hamis riasztas (pl. balanced brackets), dokumentalni a PR-ben miert nem javitasra vonatkozo. Ne ignoralni, csak megjelolni.
 - **Kovetkezo session handoff:** minden AI javitas a session handoff memory YAML-ban dokumentalando.
 
+## KÖTELEZŐ ÉRVÉNYŰ: AI Review Zero-Tolerance Mandate (v2.3.18+, 2026-04-29 user-direktíva)
+
+> **Hatálybalépés:** 2026-04-29 20:55 CEST (Kósa Zoltán direkt utasítása)
+> **Vault:** `D:\valutavalto-vault\feedback\ai-review-mandate-zero-tolerance.md`
+
+**A szabály:**
+> Addig nem léphetsz tovább, amíg a GitHub Codex + Sourcery AI Botok jelentéseit
+> le nem kérted a GitHub-ról, és nem javítottad azokat a jelzett hibákat.
+> Minden PR / Merge után KÖTELEZŐ:
+> 1. **Várni** a Sourcery + Codex review-kra (~1-2 perc admin-merge után)
+> 2. **Lekérdezni** a finding-eket (`gh api .../pulls/{N}/reviews + comments`)
+> 3. **Javítani MINDEN** P0/P1/P2 jelzett hibát (NEM csak P0/P1!)
+> 4. **Új follow-up PR** nyitása + cikluson újra végigmenni
+> 5. **CSAK akkor léphet a következő feladatra**, ha:
+>    - Sourcery: "looks great!" (vagy minden finding kezelve / dismissed indoklással)
+>    - Codex: csak boilerplate (vagy minden P0/P1 fixed)
+
+**Tilos:**
+- ❌ "P2 minor → defer" megjelölés indoklás nélkül
+- ❌ Új feladat indítása amíg Sourcery/Codex finding nyitva
+- ❌ Saját döntéssel "kihagyni" review-k figyelmen kívül hagyását
+
+**Engedélyezett (dismiss + dokumentált):**
+- ✅ P2 finding **dismiss** indoklással a vault-jegyzetben (>1000 LOC refaktor → külön sprint, GitHub issue-ban követni)
+- ✅ Sourcery finding amit a Codex felülír (P1 elsőbbség P2 felett)
+
+**Indok:** A 2026-04-29-i Codex P1 #280 megmutatta: a `console.log` heartbeat
+silently elsüllyedne production-ban (Electron renderer→main forward filter
+level >= 2). A mandate NEM-követése = production-fagyás-detection elvész.
+
+**Konklúzió:** A code review tooling másodlagos szem-pár, NEM választható.
+
 ## Kötelező security gate minden agentnek
 - **Always-on szabály:** Kötelező alkalmazni `.cursor/rules/mandatory-security-gate.mdc`.
 - **Kötelező skill:** Minden programozási feladatnál kötelező a `.cursor/skills/security-deploy-gate/SKILL.md`.

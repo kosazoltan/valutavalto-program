@@ -46,25 +46,24 @@ export const logger = {
   },
 
   /**
-   * 2026-04-29 v2.3.17 (Codex P1 PR #280 follow-up):
-   * Dedikált heartbeat marker — production-ban is mindig fut.
+   * Dedikált heartbeat marker production-fagyás-detection-hez.
    *
-   * KRITIKUS: a penztar-client Electron `mainWindow.webContents.on('console-message')`
-   * handler `level >= 2` (warning/error) szűréssel forward-ol az electron-log fájlba.
-   * Ezért `console.log` (level 0=info) NEM kerül a production log-ba, így a
-   * fagyás-detection elveszne. A v2.3.16-ben elsőre `console.log`-ra váltottam, de
-   * a Codex észrevette → most `console.warn` + `[HEARTBEAT]` prefix.
+   * Az Electron renderer→main console-message forward csak warning/error-szintet
+   * továbbít az electron-log fájlba (info-szintű üzenetek silently elsüllyednek
+   * production-ban). Ezért `console.warn` szükséges, hogy a heartbeat eljusson
+   * a fájl-szintű loghoz, ahol a fagyás-detection elemzi.
    *
-   * A `[HEARTBEAT]` prefix egyértelmű marker — a monitoring/alerting eszköz
-   * (pl. Sentry alert filter) szűrheti, így NEM false-positive-ként kezelődik.
+   * A `[HEARTBEAT]` prefix egyértelmű marker — a monitoring/alerting tooling
+   * szűrheti, így NEM false-positive warning-ként kezelődik.
    *
-   * Use case: App.tsx 60s-onként hívja a renderer életjelhez.
-   * Forrás: penztar-client/electron/main.ts:219-222 (level >= 2 forward)
+   * Rate-limiting: a hívó (App.tsx) 60s-onként hív; a heartbeat-throttle a hívó
+   * felelőssége (ne hívja másodpercenként). Ha sűrűbb monitoring kell, a
+   * `HEARTBEAT_INTERVAL_MS` env-config állítsa a hívási intervallumot.
    */
   heartbeat(tag: string, message: string, ...args: unknown[]): void {
-    // console.warn — szükséges, hogy az Electron renderer-console-message
-    // forward (level >= 2) felvegye és az electron-log fájlba mentse.
-    // A [HEARTBEAT] prefix a monitoring-szűrő számára egyértelmű marker.
+    // A `[HEARTBEAT]` prefix lehetővé teszi a monitoring-szűrőnek, hogy NEM
+    // tényleges warning-ként kezelje. Az Electron renderer-console-message
+    // forward warning/error szűrőjén átmegy.
     console.warn(`[HEARTBEAT] ${formatTag(tag)}`, message, ...args);
   },
 };
