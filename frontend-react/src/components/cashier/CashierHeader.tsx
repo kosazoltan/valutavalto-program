@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Shield } from 'lucide-react'
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext'
+import { useAuthStore } from '../../stores/authStore'
 
 /**
  * Penztar fejlec — minden cashier kepernyoen megjelenik.
@@ -10,21 +11,28 @@ import { useCompanyTheme } from '../../contexts/CompanyThemeContext'
  *   - Penztaros neve + ID
  *   - Aktualis datum + ido (masodpercre)
  *   - Verzio szam
+ *
+ * v2.3.33 (B4): A komponens elsodlegesen a `useAuthStore`-bol toltodik,
+ * a hardkodolt props-fallback (`Admin / Kozponti Iroda`) ELTAVOLITVA.
+ * A komponens a logged-in worker mezoit hasznalja, ha auth nem aktiv,
+ * akkor egyertelmuen "—" jelennek meg (hiba forrast jelzo helyettesito).
  */
 
 interface CashierHeaderProps {
+  /** Override-okra van lehetoseg, de default a `useAuthStore` worker. */
   branchCode?: string
   branchName?: string
   workerName?: string
   workerId?: string
 }
 
-export function CashierHeader({
-  branchCode = '101',
-  branchName = 'Kozponti Iroda',
-  workerName = 'Admin',
-  workerId = 'ADMIN',
-}: CashierHeaderProps) {
+export function CashierHeader(props: CashierHeaderProps = {}) {
+  const worker = useAuthStore((s) => s.worker)
+  const branchCode = props.branchCode ?? worker?.branchCode ?? '—'
+  const branchName = props.branchName ?? worker?.branchName ?? '—'
+  const workerName = props.workerName ?? worker?.fullName ?? '—'
+  const workerId = props.workerId ?? worker?.workerCode ?? '—'
+
   const { theme } = useCompanyTheme()
   const [time, setTime] = useState(new Date())
 
@@ -61,14 +69,14 @@ export function CashierHeader({
             {theme.name}
           </h1>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Penztar: {branchCode} | {branchName}
+            Pénztár: {branchCode} | {branchName}
           </p>
         </div>
       </div>
 
       <div className="text-right">
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Penztaros: {workerName} (ID: {workerId})
+          Pénztáros: {workerName} (ID: {workerId})
         </p>
         <p className="text-lg font-mono font-semibold text-gray-900 dark:text-white">
           {dateStr} | {timeStr}
