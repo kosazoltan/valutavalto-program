@@ -300,6 +300,64 @@ export default function App() {
     void restoreToken()
   }, [])
 
+  // 2026-04-29 v2.3.11 (E-B6.4 renderer heartbeat + window error catcher):
+  // 60 másodpercenként rögzítünk egy életjelet a logger-be — fagyás-detection
+  // céljából. Ha a renderer event-loop blokkolódik, a heartbeat megáll, és a
+  // `electron-log` rotáló fájlban (~/AppData/Roaming/valuta-penztar/logs/main.log)
+  // látható lesz, mikor szakadt meg.
+  // Ezenkívül listenert teszünk a window.error és window.unhandledrejection
+  // eseményekre, hogy a néma JS hibák is bekerüljenek a logba.
+  useEffect(() => {
+    const heartbeatId = setInterval(() => {
+      logger.info('App', `[heartbeat] alive @ ${new Date().toISOString()}`)
+    }, 60_000)
+
+    const handleError = (event: ErrorEvent) => {
+      logger.error('App', '[window.onerror]', {
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+        error: event.error?.stack || String(event.error),
+      })
+    }
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      logger.error('App', '[unhandledrejection]', {
+        reason: event.reason instanceof Error ? event.reason.stack : String(event.reason),
+      })
+    }
+    window.addEventListener('error', handleError)
+    window.addEventListener('unhandledrejection', handleRejection)
+
+    return () => {
+      clearInterval(heartbeatId)
+      window.removeEventListener('error', handleError)
+      window.removeEventListener('unhandledrejection', handleRejection)
+    }
+  }, [])
+
+  // 2026-04-29 v2.3.11 (E-B6.2 Page Visibility API):
+  // Amikor az Electron ablak inaktívvá válik (`document.visibilityState === 'hidden'`),
+  // jelezzük az Electron main process-nek, hogy állítsa le a sync-engine-t.
+  // Visszaaktiváláskor (visible) újraindítjuk. Ezzel a renderer NEM pollozik
+  // 30 másodpercenként, ha a felhasználó más alkalmazással dolgozik 5+ percig.
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const electronAPI = window.electronAPI
+      if (!electronAPI?.syncEnginePause || !electronAPI.syncEngineResume) return // web fallback
+
+      if (document.visibilityState === 'hidden') {
+        logger.info('App', '[visibility] hidden — sync-engine pause')
+        void electronAPI.syncEnginePause()
+      } else if (document.visibilityState === 'visible') {
+        logger.info('App', '[visibility] visible — sync-engine resume')
+        void electronAPI.syncEngineResume()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [])
+
   if (isRestoring) {
     return (
       <div className="flex h-screen items-center justify-center">

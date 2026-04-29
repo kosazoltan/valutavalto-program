@@ -70,10 +70,22 @@ if (!import.meta.env.DEV && typeof window !== 'undefined' && window.electronAPI?
   })
 }
 
+// 2026-04-29 v2.3.11 (E-B6 renderer fagyás fix):
+// `timeout: 15000` — minden axios kérés MAX 15 másodperc, utána ECONNABORTED
+// hibát kap a hívó. Az Electron sync-engine már használ AbortSignal.timeout(10s)-et,
+// de a frontend-react axios kliensnek korábban NEM volt timeout-ja, így egy lassan
+// válaszoló endpoint (pl. excvaluta.com 404 + Caddy 504-be időtúllépés) blokkolhatta
+// a renderer event-loop-ot. 15s = kompromisszum a CSV-export (lehet >10s) és a
+// fagyás-prevenció között. A user-action (vétel/eladás) tipikusan <2s.
+//
+// Hivatkozás: D:\valutavalto-vault\sessions\2026-04-29-ertektar-mode-audit.md §E-B6
+const AXIOS_GLOBAL_TIMEOUT_MS = 15_000
+
 // Create axios instance
 export const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,  // HttpOnly refresh cookie (vezerlokonyv par.12.3)
+  timeout: AXIOS_GLOBAL_TIMEOUT_MS,
   headers: {
     'Content-Type': 'application/json',
   },

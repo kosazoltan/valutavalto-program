@@ -17,9 +17,12 @@ interface DashboardStats {
   todayVolume: number
   activeCustomers: number
   pendingDeposits: number
+  // 2026-04-29 v2.3.11 (E-B1): a comparison-mezők NULL-ok ha nincs tegnapi adat,
+  // 0 ha pontosan ugyanannyi, és valódi % különbség egyébként. Korábban a delta
+  // Ft került ide, amit a UI "%-ban" jelenített meg → 46870% bizarr érték.
   yesterdayComparison: {
-    transactions: number
-    volume: number
+    transactionsPct: number | null
+    volumePct: number | null
   }
 }
 
@@ -45,7 +48,7 @@ export default function DashboardPage() {
     todayVolume: 0,
     activeCustomers: 0,
     pendingDeposits: 0,
-    yesterdayComparison: { transactions: 0, volume: 0 }
+    yesterdayComparison: { transactionsPct: null, volumePct: null }
   })
   const [recentTransactions, setRecentTransactions] = useState<RecentTransaction[]>([])
 
@@ -93,14 +96,23 @@ export default function DashboardPage() {
           yVol = (yTurnover.totalBuyHuf || 0) + (yTurnover.totalSellHuf || 0)
         } catch { /* tegnapi adat nem elérhető — 0 marad */ }
 
+        // 2026-04-29 v2.3.11 (E-B1): valódi %-különbség számítás NaN/Infinity guard-dal.
+        // - yesterdayValue = 0 + todayValue = 0  → 0% (nincs változás)
+        // - yesterdayValue = 0 + todayValue > 0 → null (nincs alap, "—" megjelenítés)
+        // - yesterdayValue > 0                  → ((today - yesterday) / yesterday) * 100
+        const computePct = (today: number, yesterday: number): number | null => {
+          if (yesterday === 0) return today === 0 ? 0 : null
+          return Math.round(((today - yesterday) / yesterday) * 100)
+        }
+
         setStats({
           todayTransactions: totalTx,
           todayVolume: totalVol,
           activeCustomers: totalTx > 0 ? Math.ceil(totalTx * 0.7) : 0, // Becsült egyedi ügyfelek (tranzakciók 70%-a)
           pendingDeposits: turnover.totalReversalCount || 0,
           yesterdayComparison: {
-            transactions: totalTx - yTx,
-            volume: totalVol - yVol
+            transactionsPct: computePct(totalTx, yTx),
+            volumePct: computePct(totalVol, yVol)
           }
         })
       } catch {
@@ -149,14 +161,14 @@ export default function DashboardPage() {
           icon={ArrowLeftRight}
           label="Mai tranzakciók"
           value={stats.todayTransactions}
-          change={stats.yesterdayComparison.transactions}
+          change={stats.yesterdayComparison.transactionsPct}
           color="primary"
         />
         <StatCard
           icon={Wallet}
           label="Mai forgalom"
-          value={`${(stats.todayVolume / 1000000).toFixed(1)}M Ft`}
-          change={stats.yesterdayComparison.volume}
+          value={formatTurnover(stats.todayVolume)}
+          change={stats.yesterdayComparison.volumePct}
           color="success"
         />
         <StatCard
@@ -313,18 +325,34 @@ export default function DashboardPage() {
   )
 }
 
-function StatCard({ 
-  icon: Icon, 
-  label, 
-  value, 
+// 2026-04-29 v2.3.11 (E-B5): a Mai forgalom formázása a treasuryUtils formatMillions-szel
+// történik: < 1k Ft → "X Ft" (pl. "650 Ft"), < 1M Ft → "X k Ft" (pl. "65k Ft"),
+// >= 1M Ft → "X.YM Ft" (pl. "1.2M Ft"). Korábban a hardcodolt
+// `(volume/1000000).toFixed(1)`-tal a 65 870 Ft "0.1M Ft" lett — elrejtve a tényleges értéket.
+function formatTurnover(value: number): string {
+  if (Math.abs(value) >= 1_000_000) {
+    return `${(value / 1_000_000).toFixed(1)}M Ft`
+  }
+  if (Math.abs(value) >= 1_000) {
+    return `${(value / 1_000).toFixed(0)}k Ft`
+  }
+  return `${value.toLocaleString('hu-HU')} Ft`
+}
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
   change,
   color,
-  urgent 
-}: { 
+  urgent
+}: {
   icon: React.ElementType
   label: string
   value: string | number
-  change?: number
+  // 2026-04-29 v2.3.11 (E-B1): `change` most a százalékos változás (NEM delta Ft).
+  // null = nincs alap (tegnap=0, ma>0). undefined = nincs comparison szükséges.
+  change?: number | null
   color: 'primary' | 'success' | 'warning' | 'info'
   urgent?: boolean
 }) {
@@ -342,7 +370,12 @@ function StatCard({
         <span className="text-xs">{label}</span>
       </div>
       <div className="text-lg font-bold leading-tight">{value}</div>
-      {change !== undefined && (
+      {change === null && (
+        <div className="text-[10px] mt-0.5 text-gray-500">
+          — nincs tegnapi adat
+        </div>
+      )}
+      {change !== undefined && change !== null && (
         <div className={`text-[10px] mt-0.5 flex items-center gap-0.5 ${change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
           {change >= 0 ? <ArrowUp size={10} /> : <ArrowDown size={10} />}
           <span>{Math.abs(change)}% tegnap</span>

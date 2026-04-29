@@ -54,9 +54,20 @@ export default function DaybookPage() {
       const data = await dailyReportApi.get(branchId, date)
       setReport(data as DailyReportData)
     } catch (err) {
-      logger.error('DaybookPage', 'Napi könyv betöltési hiba:', err)
-      setReport(null)
-      setError('Napi könyv nem található erre a napra')
+      // 2026-04-29 v2.3.11 (E-B12): a Naplókönyv 404 hiba esetén auto-generálás-t
+      // próbálunk, mert a tranzakciók már lehetnek a DB-ben, de a daily_report
+      // entity még nem készült el. Egyetlen GET → POST → GET próba.
+      logger.warn('DaybookPage', 'Napi könyv 404, auto-generate próba:', err)
+      try {
+        await dailyReportApi.generate(branchId, date)
+        const data = await dailyReportApi.get(branchId, date)
+        setReport(data as DailyReportData)
+        toast.info('Napi könyv', 'Auto-generálás sikeres')
+      } catch (genErr) {
+        logger.error('DaybookPage', 'Auto-generate sikertelen:', genErr)
+        setReport(null)
+        setError('Napi könyv nem található erre a napra. Ha vannak tranzakciók, próbálja az "Újragenerálás" gombot.')
+      }
     } finally {
       setLoading(false)
     }

@@ -231,6 +231,14 @@ export class SyncEngine {
     isRunning: false,
   };
 
+  // 2026-04-29 v2.3.11 (E-B6.3 error throttling):
+  // 3+ egymást követő hibás runSync után exponenciális backoff (30s → 60s → 120s
+  // → max 300s = 5 perc). Sikeres run resetel. Ezzel megakadályozzuk a végtelen
+  // 404/500 spam-et, ami az event-loop-ot blokkolhatja.
+  private consecutiveFailures = 0;
+  private backoffUntilMs = 0;
+  private readonly maxBackoffMs = 300_000; // 5 perc
+
   /**
    * Szerver URL lekérése a SQLite config-ból.
    * NULL-t ad vissza, ha:
@@ -455,6 +463,15 @@ export class SyncEngine {
       return;
     }
 
+    // 2026-04-29 v2.3.11 (E-B6.3 error throttling):
+    // Ha exponenciális backoff aktív, kihagyjuk a futást
+    const now = Date.now();
+    if (this.backoffUntilMs > now) {
+      const remainingS = Math.ceil((this.backoffUntilMs - now) / 1000);
+      log.info(`[SyncEngine] Backoff aktív, ${remainingS}s múlva próbáljuk újra (consecutive failures: ${this.consecutiveFailures})`);
+      return;
+    }
+
     this.status.isRunning = true;
 
     try {
@@ -518,6 +535,12 @@ export class SyncEngine {
       }
 
       this.status.lastSyncAt = new Date().toISOString();
+      // E-B6.3 v2.3.11: sikeres sync resetel a backoff-ot
+      if (this.consecutiveFailures > 0) {
+        log.info(`[SyncEngine] Sikeres sync — backoff reset (volt: ${this.consecutiveFailures} failure)`);
+        this.consecutiveFailures = 0;
+        this.backoffUntilMs = 0;
+      }
     } catch (err) {
       // 3-regios HA: failover lepked egy szintet tovabb.
       // primary -> fallback_primary (Contabo) -> fallback_secondary (Scaleway) -> (ujra) primary
@@ -531,10 +554,33 @@ export class SyncEngine {
         log.warn('[SyncEngine] Mindharom HA szint hibazott, kovetkezo ciklus: primary ujraprobalas');
         this.activeServerKind = 'primary';
       }
-            log.error('[SyncEngine] Sync hiba:', err);
+
+      // E-B6.3 v2.3.11: 3+ egymást követő hiba → exponenciális backoff
+      this.consecutiveFailures += 1;
+      if (this.consecutiveFailures >= 3) {
+        // 30s base, 30s * 2^(n-3) — capped at maxBackoffMs (5 perc)
+        const backoffMs = Math.min(30_000 * Math.pow(2, this.consecutiveFailures - 3), this.maxBackoffMs);
+        this.backoffUntilMs = Date.now() + backoffMs;
+        log.warn(`[SyncEngine] ${this.consecutiveFailures} egymást követő failure — backoff: ${Math.round(backoffMs / 1000)}s`);
+      }
+
+      log.error('[SyncEngine] Sync hiba:', err);
     } finally {
       this.status.isRunning = false;
     }
+  }
+
+  /**
+   * 2026-04-29 v2.3.11 (E-B6.3): aktuális backoff állapot olvasása.
+   * Diagnosztikai célokra (renderer status panel, log).
+   */
+  getBackoffStatus(): { active: boolean; remainingMs: number; consecutiveFailures: number } {
+    const remainingMs = Math.max(0, this.backoffUntilMs - Date.now());
+    return {
+      active: remainingMs > 0,
+      remainingMs,
+      consecutiveFailures: this.consecutiveFailures,
+    };
   }
 
   /**

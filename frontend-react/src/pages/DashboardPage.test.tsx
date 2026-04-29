@@ -129,7 +129,10 @@ describe('DashboardPage', () => {
     renderDashboardPage()
     expect(screen.getByText('Új tranzakció')).toBeInTheDocument()
     expect(screen.getByText('Új ügyfél')).toBeInTheDocument()
-    expect(screen.getByText('Árfolyam módosítás')).toBeInTheDocument()
+    // 2026-04-29 v2.3.10 (E-B3 fix): a Dashboard "Árfolyam módosítás" gomb
+    // mode='full' + foertektar/ugyvezeto nélkül "Árfolyamok megtekintése" lesz.
+    // A test default mock (nincs role) → fallback link.
+    expect(screen.getByText('Árfolyamok megtekintése')).toBeInTheDocument()
     expect(screen.getByText('Napi zárás')).toBeInTheDocument()
   })
 

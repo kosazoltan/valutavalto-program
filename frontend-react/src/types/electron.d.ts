@@ -152,6 +152,11 @@ export interface ElectronAPI {
   syncOffline(): Promise<number>;
   getSyncStatus(): Promise<string>;
 
+  /** 2026-04-29 v2.3.11 (E-B6.2): renderer hívja, amikor az ablak inaktívvá válik */
+  syncEnginePause(): Promise<void>;
+  /** 2026-04-29 v2.3.11 (E-B6.2): renderer hívja, amikor az ablak újra aktív */
+  syncEngineResume(): Promise<void>;
+
   // --- Értéktár offline ---
   savePendingDistribution(
     targetBranchCode: string,
