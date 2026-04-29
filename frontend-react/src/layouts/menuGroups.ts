@@ -1,4 +1,4 @@
-import { Send, Home, ArrowLeftRight, Users, TrendingUp, Wallet, FileText, Settings, Sun, Shield, ShieldAlert, LayoutDashboard, PlusCircle, Download, Camera, Package, ClipboardCheck } from "lucide-react"
+import { Send, Home, ArrowLeftRight, Users, TrendingUp, Wallet, FileText, Settings, Sun, Shield, ShieldAlert, LayoutDashboard, PlusCircle, Download, Camera, Package, ClipboardCheck, Building2 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
 export const PENZTAR_ROLES = ["penztar"] as const
@@ -45,6 +45,8 @@ export const menuGroups: MenuGroup[] = [
       { path: "/inventory", label: "Országos készlet", icon: Wallet },
       { path: "/stock-snapshot", label: "Készlet-snapshot", icon: FileText },
       { path: "/vault-stocktake", label: "Értéktár leltár", icon: Package },
+      // 2026-04-29 v2.3.15 (E-B8 banki workflow skeleton — teljes impl v2.4.0)
+      { path: "/bank-orders", label: "Banki rendelések", icon: Building2 },
     ],
   },
   {

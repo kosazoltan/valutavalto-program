@@ -35,6 +35,8 @@ const CashierTransactionPage = lazy(() => import('./pages/transactions/CashierTr
 const CashierMainMenu = lazy(() => import('./pages/CashierMainMenu'))
 const ClosingWizardPage = lazy(() => import('./pages/closing/ClosingWizardPage'))
 const TransferPage = lazy(() => import('./pages/transfers/TransferPage'))
+// 2026-04-29 v2.3.15 (E-B8 banki workflow skeleton — teljes impl v2.4.0)
+const BankOrderPage = lazy(() => import('./pages/bankorders/BankOrderPage'))
 const CustomerListPage = lazy(() => import('./pages/customers/CustomerListPage'))
 const CustomerDetailPage = lazy(() => import('./pages/customers/CustomerDetailPage'))
 const CustomerCreatePage = lazy(() => import('./pages/customers/CustomerCreatePage'))
@@ -448,6 +450,8 @@ export default function App() {
           {/* Transfers */}
           <Route path="/transfers" element={<TransferPage />} />
           <Route path="/transfers/:id" element={<TransferPage />} />
+          {/* 2026-04-29 v2.3.15 E-B8 banki workflow skeleton */}
+          <Route path="/bank-orders" element={<BankOrderPage />} />
           
           {/* Reports */}
           <Route path="/reports" element={<ReportsPage />} />
