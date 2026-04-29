@@ -377,6 +377,50 @@ level >= 2). A mandate NEM-követése = production-fagyás-detection elvész.
 
 **Konklúzió:** A code review tooling másodlagos szem-pár, NEM választható.
 
+## KÖTELEZŐ ÉRVÉNYŰ: Hallucinációs Kör Megszüntetése — Iparági Standard (2026-04-29 user-direktíva)
+
+> **Hatálybalépés:** 2026-04-29 21:25 CEST (Kósa Zoltán direkt utasítása)
+> **Vault:** `D:\valutavalto-vault\feedback\hallucinacio-megszuntetese.md`
+> **Trigger:** 9 sorozatos Sourcery P2 follow-up PR (v2.3.13 → v2.3.22) ugyanazon a fájlon.
+
+**A szabály:**
+> Ezentúl minden programozási feladat előtt KÖTELEZŐ:
+> 1. **Context7 MCP** (`mcp__892e2348-f110-4f49-afe2-e16ee93cb2f4__resolve-library-id` + `query-docs`) használata a hivatalos library doc + best-practice patterns olvasásához
+> 2. **Iparági standardokra hivatkozni** (NEM saját ad-hoc megoldás): Zod, Valibot, Joi (validation); electron-log, Pino, Winston (logger); Zustand, TanStack Query (state)
+> 3. **Brainstorming ELŐTT a kódolás** (komplex feature esetén `superpowers:brainstorming` skill)
+> 4. **TDD ELŐTT az implementáció** (`superpowers:test-driven-development`)
+
+**TILOS:**
+- ❌ Próbálkozás-alapú kódolás ("majd kiderül a Sourcery review-n")
+- ❌ Saját ad-hoc validáció iparági lib helyett (pl. `STRICT_INTEGER_PATTERN` regex Zod helyett)
+- ❌ Apró iterációs PR-ek folyamatos generálása ugyanazon a fájlon
+- ❌ Találgatás (próba-hiba módszer kódolás közben)
+
+**Példa — heartbeat config (rossz vs jó):**
+
+❌ Rossz (9 PR iteráció): manual `parseInt` + range check + `STRICT_INTEGER_PATTERN` + `logger.warn` + komment-align...
+
+✅ Jó (1 PR, Zod-dal):
+```typescript
+import { z } from 'zod'
+
+export const heartbeatConfig = z.object({
+  intervalMs: z.coerce.number().int().min(10_000).max(600_000).default(60_000)
+}).parse({ intervalMs: import.meta.env.VITE_HEARTBEAT_INTERVAL_MS })
+```
+
+Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `package.json`-ben).
+
+**Új workflow:**
+```
+Új feladat → 1. Context7 query (iparági standard library)
+            → 2. Brainstorming (ha komplex)
+            → 3. TDD (test-first)
+            → 4. Implementáció iparági lib-bel
+            → 5. Egyszeri Sourcery/Codex review (várhatóan tiszta)
+            → 6. Merge
+```
+
 ## Kötelező security gate minden agentnek
 - **Always-on szabály:** Kötelező alkalmazni `.cursor/rules/mandatory-security-gate.mdc`.
 - **Kötelező skill:** Minden programozási feladatnál kötelező a `.cursor/skills/security-deploy-gate/SKILL.md`.
