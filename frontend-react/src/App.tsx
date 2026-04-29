@@ -309,14 +309,16 @@ export default function App() {
   // látható lesz, mikor szakadt meg.
   // Ezenkívül listenert teszünk a window.error és window.unhandledrejection
   // eseményekre, hogy a néma JS hibák is bekerüljenek a logba.
-  // 2026-04-29 v2.3.16 (Sourcery PR #276 P2 follow-up): dedikált `logger.heartbeat()`
-  // metódus, ami direkt `console.log`-ot használ — production-ban is fut, DE NEM
-  // warning-szintű (a monitoring/alerting NEM riasztja false-positive-ként).
-  // A `[HEARTBEAT]` prefix egyértelmű marker a fájl-elemzéshez (electron-log).
+  // 2026-04-29 v2.3.19 (Sourcery PR #281 P2 follow-up): heartbeat rate-config.
+  // A heartbeat MINDIG kell, hogy fusson production-ban (fagyás-detection),
+  // de a hívási intervallum konfigurálható env-flag-szerűen, hogy a noisy
+  // logging-tól lehessen szabályozni. Default: 60s. Tervezett v2.4.0:
+  // `import.meta.env.VITE_HEARTBEAT_INTERVAL_MS` override.
+  const HEARTBEAT_INTERVAL_MS = 60_000
   useEffect(() => {
     const heartbeatId = setInterval(() => {
       logger.heartbeat('App', `alive @ ${new Date().toISOString()}`)
-    }, 60_000)
+    }, HEARTBEAT_INTERVAL_MS)
 
     const handleError = (event: ErrorEvent) => {
       logger.error('App', '[window.onerror]', {
