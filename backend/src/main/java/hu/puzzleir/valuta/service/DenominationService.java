@@ -18,6 +18,7 @@ import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -242,8 +243,18 @@ public class DenominationService {
     }
 
     /**
-     * Címletek inicializálása új irodához
+     * Címletek inicializálása új irodához.
+     *
+     * 2026-04-29 v2.3.29 (Codex P1 PR #292 follow-up):
+     * `Propagation.REQUIRES_NEW` — ÚJ független transzakcióban fut, NEM a parent
+     * `BranchService.create()` tx-ében. Ha ez a metódus dobás, csak a saját tx-et
+     * rollback-olja, a parent commit NEM kerül `UnexpectedRollbackException`-ba.
+     *
+     * Spring iparági pattern: auxiliary/optional init logika REQUIRES_NEW-vel
+     * izolált, hogy a parent operation (branch létrehozás) sikeres maradjon
+     * akkor is, ha a kiegészítő init dob.
      */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
     public void initializeBranchDenominations(UUID branchId) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
 

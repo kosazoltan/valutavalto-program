@@ -245,25 +245,30 @@ public class BranchService {
         // Issue #110: automatikus kassza egyenleg inicializálás.
         // Idempotens — ha bármi okból már létezne, skip. Nem dob hibát.
         // Sourcery PR #112: narrow catch + full stack trace.
+        // 2026-04-29 v2.3.29 (Sourcery P2 #292 follow-up):
+        // A catch továbbra is RuntimeException-t fog (Spring DataAccessException +
+        // egyéb tx-runtime-bug-okat is el akarjuk fogni), DE a log message
+        // EXPLICIT TARTALMAZZA a root-cause exception-osztályt (`e.getClass()`),
+        // hogy az unexpected programming error-ok detektálhatók legyenek a log-ban.
+        // A Codex P1 #292 fix: a `cashBalanceService.initializeBranchBalances` és
+        // `denominationService.initializeBranchDenominations` `Propagation.REQUIRES_NEW`-t
+        // használ — független tx, NEM rolls back parent.
         try {
             int created = cashBalanceService.initializeBranchBalances(saved.getId());
             log.info("Branch {} cash_balance auto-init: {} új rekord", saved.getId(), created);
         } catch (RuntimeException e) {
-            log.error("Branch {} cash_balance auto-init FAILED (admin kézi init szükséges)",
-                    saved.getId(), e);
-            // NE dobj tovább — a branch létrehozás már sikeres, az init admin-kézi javítható.
+            log.error("Branch {} cash_balance auto-init FAILED [{}: {}] (admin kézi init szükséges)",
+                    saved.getId(), e.getClass().getSimpleName(), e.getMessage(), e);
         }
 
         // 2026-04-29 v2.3.27 (B3 P0 fix): denomination auto-init új branch-nél.
-        // Idempotens — `findByBranchIdAndCurrencyIdAndFaceValue(...).isEmpty()` check.
-        // Hiba esetén NEM blokkolja a branch létrehozást (admin kézi `initializeBranchDenominations`).
         try {
             denominationService.initializeBranchDenominations(saved.getId());
             log.info("Branch {} denomination auto-init: 14 HUF + külföldi címlet beállítva",
                     saved.getId());
         } catch (RuntimeException e) {
-            log.error("Branch {} denomination auto-init FAILED (admin kézi init szükséges)",
-                    saved.getId(), e);
+            log.error("Branch {} denomination auto-init FAILED [{}: {}] (admin kézi init szükséges)",
+                    saved.getId(), e.getClass().getSimpleName(), e.getMessage(), e);
         }
 
         return branchMapper.toDto(saved);
