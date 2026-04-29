@@ -359,52 +359,28 @@ Lasd: `docs/AI_REVIEW_AUTOMATION.md`
 - Kapcsolat: `application.properties` → `spring.datasource.*`
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.3.2** (2026-04-25 release + 2026-04-27 hotfix). Minden modul egységesen 2.3.2-n. GitHub Release: https://github.com/kosazoltan/valutavalto-program/releases/tag/v2.3.2 (2 assets uploaded).
-- **Main HEAD:** `1b92eccc` (chore(deps-dev): Bump dotenv from 17.4.1 to 17.4.2 in /penztar-client, PR #214, 2026-04-27).
-- **Production:** Hetzner deploy SUCCESS minden mergelt PR után, bootstrap-status 200, branches 200, V155..V160 applied.
-- **Mai 21 PR aggregát (2026-04-25 → 2026-04-27):** Audit-cycle PR-ek (#229–#236, 8 db: release v2.3.0/v2.3.2 + audit-NO-GO + iter2 + 8 HIGH CodeQL + Codex P2 + .gitignore P3) + 2026-04-27 Dependabot batch (#234, #212, #211, #199, #209, #206, #203, #195, #200, #202, #198, #197, #214 = 13 db: postcss×2, vite, google-auth, jsoup, typescript-eslint/parser, dependency-check-maven, trivy-action, GitHub Actions checkout/github-script/setup-node/download-artifact, dotenv).
+- **Verzió:** **v2.3.6** (2026-04-28 release: PR #252 Flyway fresh install fix + PR #253 V165 branch.denomination_rule_id guard). Minden modul egységesen 2.3.6-n. v2.3.2 telepítő még az utolsó kibocsátott build (lásd "Telepítő fájlok" lent) — v2.3.6 build még nem készült el.
+- **Main HEAD:** `0949a656` (PR #253: V165 branch.denomination_rule_id guard migration, 2026-04-28).
+- **Production:** Hetzner deploy SUCCESS minden mergelt PR után, bootstrap-status 200, branches 200, V155..V165 applied.
+- **2026-04-27 marathon (15 PR + 2 hotfix):** PR #237 (docs), #238 (audit-NO-GO-iter3 P0+P1×3+P2), #242 (CodeQL 9 medium Actions hardening), #243 (CodeQL 11 HIGH frontend file-system-race), #244 (CodeQL 5 HIGH backend path-injection), #245 (149 java/log-injection logback `%replace` defense-in-depth), #240 (electron 41.3 + types/sql + ts-eslint MINOR), #239→#246 (flyway-postgres 12.4 → revert 10.10.0, **production outage #1**), #207 (lucide-react 1.x), #241 (react-hooks penztar), #210 (react-hooks 7 frontend), #213 részben (eslint config, de eslint 10 még nem mergelve), #208 (typescript-eslint 8.59), #205→#247 (Spring Boot 4.0.6 → revert 3.5.13, **production outage #2** Jackson 3 namespace bind FAIL).
+- **2026-04-28 (audit-iter5 + release):** PR #251 (audit-iter5 Codex P1/1+P1/2 — AuditLogService.logForCompany + legacy idempotency fallback), PR #252 (release v2.3.6 Flyway fresh install fix), PR #253 (V165 branch.denomination_rule_id guard - orphan column fix).
 - **Telepítő fájlok v2.3.2** (gitignore-osak, `installer/build/`-ban + másolva `%USERPROFILE%\Downloads\`-ba):
   - `Penztar-Setup-2.3.2-20260425.exe` — **441.27 MB** (462,711,828 byte), SHA-256 `d4110a61485c33076862b88e4d4f6b5cd6594ab61e0dadef3d27fd70826b7703`
   - `Penztar-Eltavolito-2.3.2-20260425.exe` — **59.05 KB** (60,468 byte), SHA-256 `cde7556b9e089edcfd4d9a1ac1b35344e67f10acefb7e955ca39f253ad29439a`
   - GitHub Release artifact-ok feltöltve 2026-04-25 06:56 UTC.
 - **Újra-buildelés:** `powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1 [-SkipDownloads]`. A `$Version` PARAMETER auto-load a monorepo root `package.json`-ból (PR #103 + #104 `build-common.ps1` helperrel).
 - **NSIS encoding szabály:** `.nsi` csak Windows-1252 ASCII. Ékezetek → sima ASCII. Em-dash → `-`.
-- **Memory fájlok a v2.3.2 release-hez:** legfrissebb yaml: `docs/knowledge/memory/2026-04-24-cash-balance-issue110-v155-closure.yaml`. **Frissítendő:** új session-yaml a v2.3.0/v2.3.2 audit-cycle-ról.
+- **Aktuális memória helye:** `D:\valutavalto-vault\sessions\2026-04-27-*.md` (Obsidian vault). A `docs/knowledge/memory/*.yaml` történelmi formátum, új session-jegyzetek a vault-ba kerülnek.
 - **Asztali shortcutok** (`C:\Users\Kósa Zoltán\OneDrive\Desktop\`): `Valuta Pénztár — Fejlesztői mód (INDÍTÁS).lnk`, `Valuta Pénztár — Fejlesztői mód (LEÁLLÍTÁS).lnk`, `Valuta Pénztár — Éles kliens (telepített).lnk`.
-- **AI review automation:** `.github/workflows/ai-review-auto-fix.yml` minden PR merge után triggerel. PR #236-on Sourcery weekly rate-limit (1.5M diff char) — nem blokkoló.
-- **Production URL SSOT (v2.2.3 óta BEFEJEZVE):** `config/production-urls.json` + `backend/.../config/ProductionUrls.java`. PR #173: teljes 3-réteg propagáció (backend `List.of(...)`, `scripts/_production-urls.ps1`, Electron `main.ts` `loadProductionUrls()` + `electron-builder.json` extraResources).
-- **Nyitott következő feladatok (2026-04-27 állapot):**
-  - ~~**P0 (issue #110 cash_balance deployment gap)**~~ **LEZÁRVA** 2026-04-27 — fix mergelve PR #112 (BranchService) + PR #164 (DailySessionService.openDay) + SessionOpenService.java:72. Issue formálisan zárva 2026-04-27.
-  - ~~**P0 (V155 migration Hetzner production-on)**~~ **LEZÁRVA** 2026-04-24 — V155..V160 mind applied a Hetzner production-on, health 200, PR #164 deploy SUCCESS igazolta.
-  - **P0 (éles pénztár frissítés):** user v2.3.2 reinstall az éles gépen — 1) `Penztar-Eltavolito-2.3.2-20260425.exe` admin joggal, 2) `Penztar-Setup-2.3.2-20260425.exe` admin joggal, 3) SetupWizard 5 lépés (Iroda → Program típus → Szerver (**Kapcsolat tesztelése** gomb kötelező!) → Admin jelszó → Telepítés), 4) belépés a bootstrap admin credentials-szel (ld. SetupWizard 4. lépés + 1Password/secure vault), 5) új VÉTEL teszt → bizonylat formátum: `V<3-jegyű-numerikus-kód>000001` (BR017-en `V017000001`, BR035-en `V035000001`). A prefix a `branch.code` numerikus része `% 1000`-rel paddelt — ld. `ReceiptSequenceService.extractBranchCode()`.
+- **AI review automation:** `.github/workflows/ai-review-auto-fix.yml` minden PR merge után triggerel. Sourcery weekly rate-limit (1.5M diff char) — nem blokkoló. **Megjegyzés:** a Bence-féle `.github/workflows/auto-review.yml` workflow 2026-04-27 óta törölve (deprecated belső koncepció).
+- **Production URL SSOT (BEFEJEZVE):** `config/production-urls.json` + `backend/.../config/ProductionUrls.java` + `scripts/_production-urls.ps1` + Electron `penztar-client/electron/main.ts` `loadProductionUrls()` + `electron-builder.json` extraResources. **Nincs további refaktor szükséges** — minden komponens lazy-load-olja a JSON config-ot, a PS1 launcher dot-source-ol, az Electron asar-ban van a JSON.
+- **Nyitott következő feladatok (2026-04-28 állapot):**
+  - **P0 (éles pénztár frissítés):** user reinstall az éles gépen — 1) `Penztar-Eltavolito-2.3.2-20260425.exe` admin joggal, 2) `Penztar-Setup-2.3.2-20260425.exe` admin joggal, 3) SetupWizard 5 lépés (Iroda → Program típus → Szerver (**Kapcsolat tesztelése** gomb kötelező!) → Admin jelszó → Telepítés), 4) belépés a bootstrap admin credentials-szel (ld. SetupWizard 4. lépés + 1Password/secure vault), 5) új VÉTEL teszt → bizonylat formátum: `V<3-jegyű-numerikus-kód>000001` (BR017-en `V017000001`, BR035-en `V035000001`). A prefix a `branch.code` numerikus része `% 1000`-rel paddelt — ld. `ReceiptSequenceService.extractBranchCode()`. **Megjegyzés:** v2.3.6 build még nincs, a v2.3.2 maradt az utolsó kiadott installer.
   - **P1:** happy path teszt dev módban (Fejlesztői mód INDÍTÁS shortcut) — SetupWizard 4. lépésnél **Kapcsolat tesztelése gombot** kell nyomni (connectionTest.state=ok kötelező a Továbbhoz).
-  - **P1:** **Dependabot defer-batch (7 PR)** — 13 PR sikeresen mergelve 2026-04-27, 7 maradt code-impacting MAJOR / failing CI miatt: Spring Boot 3.5.13→4.0.6 (#205, MAJOR FW upgrade — önálló integration test PR-ben), springdoc 2→3 (#196, OpenAPI docs API change), lucide-react 0.x→1.x (#207, ikon-használat audit), eslint 9→10 (#213) + eslint-plugin-react-hooks 5→7 (#210, lint config refresh), react-dom multi major (#201, release notes review), typescript-eslint 8.59 (#208, gyanús failing CI nyomozás). **Branch protection:** `allow_auto_merge=true` engedélyezve a repón a 2026-04-27 batch során; `strict=true` + `enforce_admins=true` aktív (a batch idejére `strict=false` ideiglenesen lazítva, helyreállítva).
-  - **P2:** CB-016 (NavClosingService hardcoded VAT_RATE=0.27 → tax_code mapping).
-  - **P2:** Production URL SSOT teljes refaktor — backend Java konstans aktív, **deferred**: minden `@Value` default, PS1 launcher hardcoded és Electron `main.ts` fallback a config-ból lazy-load-olni.
-  - **P2:** Cognee MCP integráció (amint elérhető) — auto-save session memóriába.
-  - **P2:** Obsidian vault sync (amint telepítve) — auto-save session memóriába.
-  - **P2:** Spring Boot 3.5.14 upgrade (amint release-eli Tomcat 10.1.54+ bundle-lel, törlendő az explicit `<tomcat.version>` override a `backend/pom.xml`-ből). **Megjegyzés:** Dependabot Spring Boot 4.0.6 PR #205 nyitva — előtte alapos integrációs teszt kell.
+  - **P1:** **Defer Dependabot MAJOR (4 PR maradt):** Spring Boot 3.5.13→4.0.6 (#205, **kritikus**: 2026-04-27 production outage Jackson 3 namespace bind FAIL miatt, önálló sprint kell — `spring.jackson.*` → `spring.jackson2.*` namespace + 39 fájl `com.fasterxml.jackson.*` → `tools.jackson.*` import migráció OpenRewrite recipe-pal), springdoc 2→3 (#196, csak SB4 után), eslint 9→10 (#213, lint config refresh), react-dom multi major (#201, release notes review). **A többi 04-27-én mergelve:** lucide-react 1.x ✅, eslint-plugin-react-hooks 7 ✅, typescript-eslint 8.59 ✅, electron 41.3 ✅, vite 8 ✅.
+  - **P2:** CodeQL Actions hardening (9 medium: workflow-permissions + unpinned-tag) — GitHub Actions YAML-ek átfogó frissítése.
+  - **P2:** Spring Boot 3.5.14 upgrade (amint release-eli Tomcat 10.1.54+ bundle-lel, törlendő az explicit `<tomcat.version>` override a `backend/pom.xml`-ből). **Megjegyzés:** Spring Boot 4.0.6 PR #205 elsőbbség (a 3.5.14 mehet skip).
   - **P2:** Installer acceptance test friss Windows VM-en az `installer/tests/installer-validation-suite.ps1` szkripttel.
+  - **P2:** v2.3.6 installer build (`installer\build-installer.ps1`) — a P0 reinstall ezt használhatja a v2.3.2 helyett.
 
-
-## Session zarasa (2026-04-22 07:20)
-
-Main HEAD: `38594cb94b97` (PR #108 merge utan). Mai session: 20+ PR merge-elve.
-Fobb terkepek:
-- B2 Cashier KPI dashboard (#73) + B1 Audit trail (#74)
-- Multi-tenant security 13/15 fix (#75, #76, #83)
-- AI review automation: GitHub Actions + Claude Code Action (#88, #90, #108)
-- 6 hullam AI reviewer feedback javitasa (#81-87, #107)
-- Credentials redact P1 (#107) - plaintext jelszo torolve a session memory-bol
-
-Tesztek: Backend 972/972, Frontend 505/505, Penztar 97/97, Security 14/14.
-
-**Folytatas egy uj session-ben:**
-```bash
-cd D:/repo/valutavalto-program
-git pull origin main
-cat .remember/remember.md
-cat docs/knowledge/memory/2026-04-22-session-b-wave-ai-automation.yaml
-```
-
-Kovetkezo feladatok: lasd "Nyitott következő feladatok" fent.
+**LEZÁRVA (történelmi):** ✅ Issue #110 cash_balance (2026-04-27, PR #112 + #164), ✅ V155 migration (2026-04-24), ✅ CB-016 NavClosingService VAT_RATE → tax_code mapping (V143 + `nav.vat-rate.<TAX_CODE>` SystemParameter + `DEFAULT_VAT_RATES` enum + `resolveVatRate()` method), ✅ Production URL SSOT teljes 3-réteg refaktor (PR #173 + #174), ✅ Cognee MCP / Obsidian vault sync (Obsidian `D:\valutavalto-vault\` aktív 2026-04-27 óta).
