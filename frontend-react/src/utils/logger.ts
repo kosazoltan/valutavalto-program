@@ -46,17 +46,26 @@ export const logger = {
   },
 
   /**
-   * 2026-04-29 v2.3.16 (Sourcery PR #276 P2 follow-up):
-   * Dedikált heartbeat marker — production-ban is mindig fut, de NEM warning-szintű
-   * (vagyis a monitoring/alerting NEM riasztja false-positive-ként).
-   * Direkt `console.log`-ot használ a logger.info bypass-szal — `[HEARTBEAT]` prefix
-   * egyértelmű marker a fagyás-detection-hez electron-log fájl-elemzésnél.
+   * 2026-04-29 v2.3.17 (Codex P1 PR #280 follow-up):
+   * Dedikált heartbeat marker — production-ban is mindig fut.
+   *
+   * KRITIKUS: a penztar-client Electron `mainWindow.webContents.on('console-message')`
+   * handler `level >= 2` (warning/error) szűréssel forward-ol az electron-log fájlba.
+   * Ezért `console.log` (level 0=info) NEM kerül a production log-ba, így a
+   * fagyás-detection elveszne. A v2.3.16-ben elsőre `console.log`-ra váltottam, de
+   * a Codex észrevette → most `console.warn` + `[HEARTBEAT]` prefix.
+   *
+   * A `[HEARTBEAT]` prefix egyértelmű marker — a monitoring/alerting eszköz
+   * (pl. Sentry alert filter) szűrheti, így NEM false-positive-ként kezelődik.
    *
    * Use case: App.tsx 60s-onként hívja a renderer életjelhez.
+   * Forrás: penztar-client/electron/main.ts:219-222 (level >= 2 forward)
    */
   heartbeat(tag: string, message: string, ...args: unknown[]): void {
-    // Bypass shouldLog filter — a heartbeat MINDIG kell logoljon (production is)
-    console.log(`[HEARTBEAT] ${formatTag(tag)}`, message, ...args);
+    // console.warn — szükséges, hogy az Electron renderer-console-message
+    // forward (level >= 2) felvegye és az electron-log fájlba mentse.
+    // A [HEARTBEAT] prefix a monitoring-szűrő számára egyértelmű marker.
+    console.warn(`[HEARTBEAT] ${formatTag(tag)}`, message, ...args);
   },
 };
 
