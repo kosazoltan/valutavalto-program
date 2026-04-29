@@ -36,18 +36,26 @@ public class BranchService {
     // Issue #110: kassza egyenleg auto-init új branch-nél. @Lazy a potenciális circular
     // dependency elkerülésére (CashBalanceService branchRepository-t is használ).
     private final CashBalanceService cashBalanceService;
+    // 2026-04-29 v2.3.27 (B3 P0 fix): denomination auto-init új branch-nél.
+    // A `DenominationService.HUF_DENOMINATIONS` 14 hivatalos magyar címlet-et tartalmaz
+    // (1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000), de
+    // az `initializeBranchDenominations(branchId)` metódust EDDIG SOHA NEM hívta senki —
+    // ezért új branch létrehozásakor üres marad a denomination tábla.
+    private final DenominationService denominationService;
 
     @Autowired
     public BranchService(BranchRepository branchRepository,
                          CompanyRepository companyRepository,
                          DictionaryRepository dictionaryRepository,
                          BranchMapper branchMapper,
-                         @Lazy CashBalanceService cashBalanceService) {
+                         @Lazy CashBalanceService cashBalanceService,
+                         @Lazy DenominationService denominationService) {
         this.branchRepository = branchRepository;
         this.companyRepository = companyRepository;
         this.dictionaryRepository = dictionaryRepository;
         this.branchMapper = branchMapper;
         this.cashBalanceService = cashBalanceService;
+        this.denominationService = denominationService;
     }
 
     /**
@@ -244,6 +252,18 @@ public class BranchService {
             log.error("Branch {} cash_balance auto-init FAILED (admin kézi init szükséges)",
                     saved.getId(), e);
             // NE dobj tovább — a branch létrehozás már sikeres, az init admin-kézi javítható.
+        }
+
+        // 2026-04-29 v2.3.27 (B3 P0 fix): denomination auto-init új branch-nél.
+        // Idempotens — `findByBranchIdAndCurrencyIdAndFaceValue(...).isEmpty()` check.
+        // Hiba esetén NEM blokkolja a branch létrehozást (admin kézi `initializeBranchDenominations`).
+        try {
+            denominationService.initializeBranchDenominations(saved.getId());
+            log.info("Branch {} denomination auto-init: 14 HUF + külföldi címlet beállítva",
+                    saved.getId());
+        } catch (RuntimeException e) {
+            log.error("Branch {} denomination auto-init FAILED (admin kézi init szükséges)",
+                    saved.getId(), e);
         }
 
         return branchMapper.toDto(saved);
