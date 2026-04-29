@@ -218,6 +218,50 @@ class ReceiptServiceB7Test {
     }
 
     @Test
+    @DisplayName("v2.3.50 P1 SECURITY: print() cross-company real Receipt-et ELUTASIT")
+    void print_crossCompanyRealReceiptRejected() {
+        UUID realUuid = UUID.randomUUID();
+        // A receipt belongs to OTHER_COMPANY_ID, but current user is COMPANY_ID
+        Receipt otherCompanyReceipt = Receipt.builder()
+                .id(realUuid)
+                .companyId(OTHER_COMPANY_ID)
+                .receiptNumber("V999000001")
+                .receiptType("BUY")
+                .issueDate(LocalDate.of(2026, 4, 29))
+                .isPrinted(false)
+                .build();
+
+        when(receiptRepository.findById(realUuid)).thenReturn(Optional.of(otherCompanyReceipt));
+
+        assertThatThrownBy(() -> receiptService.print(realUuid))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("nem található");
+
+        // CRITICAL: verify the cross-company receipt was NEM modositva (NEM hivtuk save())
+        Mockito.verify(receiptRepository, Mockito.never()).save(any(Receipt.class));
+    }
+
+    @Test
+    @DisplayName("v2.3.50 P1 SECURITY: getById() cross-company real Receipt-et ELUTASIT")
+    void getById_crossCompanyRealReceiptRejected() {
+        UUID realUuid = UUID.randomUUID();
+        Receipt otherCompanyReceipt = Receipt.builder()
+                .id(realUuid)
+                .companyId(OTHER_COMPANY_ID)
+                .receiptNumber("V999000002")
+                .receiptType("BUY")
+                .issueDate(LocalDate.of(2026, 4, 29))
+                .isPrinted(false)
+                .build();
+
+        when(receiptRepository.findById(realUuid)).thenReturn(Optional.of(otherCompanyReceipt));
+
+        assertThatThrownBy(() -> receiptService.getById(realUuid))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("nem található");
+    }
+
+    @Test
     @DisplayName("Synthesized UUID encoding: tx.id -> UUID(0, txId), decode visszahozza")
     void synthesizedUuidEncodingRoundTrip() {
         long txId = 12345L;

@@ -96,35 +96,54 @@ public class ReceiptService {
     }
 
     public Receipt getById(UUID id) {
-        // Real Receipt eloszor
-        return repo.findById(id)
-                .orElseGet(() -> {
-                    // Synthesized: decode tx.id-t es synthesize a Transaction-bol
-                    if (isSynthesizedUuid(id)) {
-                        Long txId = decodeTransactionId(id);
-                        Transaction tx = transactionRepository.findById(txId)
-                                .orElseThrow(() -> new ResourceNotFoundException(
-                                        "Bizonylat nem található (synthesized): " + id));
-                        // Multi-tenant verify
-                        UUID companyId = SecurityUtils.getCurrentCompanyId();
-                        if (tx.getCompany() == null || !companyId.equals(tx.getCompany().getId())) {
-                            throw new ResourceNotFoundException("Bizonylat nem található: " + id);
-                        }
-                        return synthesizeReceipt(tx);
-                    }
-                    throw new ResourceNotFoundException("Bizonylat nem található: " + id);
-                });
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        // Real Receipt eloszor — multi-tenant safe lookup
+        Receipt existing = repo.findById(id).orElse(null);
+        if (existing != null) {
+            // v2.3.50 (Sourcery #313 P1 SECURITY): companyId verify also for real receipts
+            if (existing.getCompanyId() != null && !companyId.equals(existing.getCompanyId())) {
+                throw new ResourceNotFoundException("Bizonylat nem található: " + id);
+            }
+            return existing;
+        }
+        // Synthesized: decode tx.id-t es synthesize a Transaction-bol
+        if (isSynthesizedUuid(id)) {
+            Long txId = decodeTransactionId(id);
+            Transaction tx = transactionRepository.findById(txId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Bizonylat nem található (synthesized): " + id));
+            // Multi-tenant verify
+            if (tx.getCompany() == null || !companyId.equals(tx.getCompany().getId())) {
+                throw new ResourceNotFoundException("Bizonylat nem található: " + id);
+            }
+            return synthesizeReceipt(tx);
+        }
+        throw new ResourceNotFoundException("Bizonylat nem található: " + id);
     }
 
     /**
      * Print mark — materializaalja a Receipt rekordot, ha synthesized UUID,
      * majd isPrinted=true-ra allitja.
+     *
+     * v2.3.50 (Sourcery #313 P1 SECURITY fix): companyId verify a REAL Receipt
+     * eseten is — korabban csak a synthesized UUID-ra volt multi-tenant check,
+     * REAL Receipt eseten egy mas tenant UUID-javal meg lehetett "fliplelni"
+     * az isPrinted flag-et (cross-company tenant data corruption).
      */
     @Transactional(rollbackFor = Exception.class)
     public Receipt print(UUID id) {
-        // Real Receipt eseten csak isPrinted update
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+
+        // Real Receipt eseten csak isPrinted update — DE multi-tenant verify
         Receipt existing = repo.findById(id).orElse(null);
         if (existing != null) {
+            // v2.3.50 P1 SECURITY: cross-company print attempt rejected
+            if (existing.getCompanyId() != null && !companyId.equals(existing.getCompanyId())) {
+                log.warn("v2.3.50 P1 SECURITY: cross-company print attempt rejected — "
+                        + "receipt.id={}, receipt.companyId={}, current.companyId={}",
+                        id, existing.getCompanyId(), companyId);
+                throw new ResourceNotFoundException("Bizonylat nem található: " + id);
+            }
             existing.setIsPrinted(true);
             existing.setPrintedAt(LocalDateTime.now());
             return repo.save(existing);
@@ -137,7 +156,6 @@ public class ReceiptService {
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Bizonylat nem található (synthesized print): " + id));
             // Multi-tenant verify
-            UUID companyId = SecurityUtils.getCurrentCompanyId();
             if (tx.getCompany() == null || !companyId.equals(tx.getCompany().getId())) {
                 throw new ResourceNotFoundException("Bizonylat nem található: " + id);
             }
