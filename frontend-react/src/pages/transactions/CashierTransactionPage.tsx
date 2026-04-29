@@ -102,6 +102,10 @@ export default function CashierTransactionPage() {
   const [showReceiptModal, setShowReceiptModal] = useState(false)
   const [receiptData, setReceiptData] = useState<PrintReceiptData | null>(null)
   const receiptQueueRef = useRef<PrintReceiptData[]>([])
+  // v2.3.47 (Sourcery #311): track whether user attempted to print at least one receipt
+  // in the current modal-cycle. Ha igen -> a print-toast adta a feedback-et, NEM kell
+  // close-toast. Ha nem -> a felhasznalo csak megnezte/Esc-zte -> toast.info close-toast.
+  const printAttemptedRef = useRef<boolean>(false)
 
   // Auth store for receipt data
   const worker = useAuthStore(s => s.worker)
@@ -778,14 +782,14 @@ export default function CashierTransactionPage() {
           } else {
             setShowReceiptModal(false)
             setReceiptData(null)
-            // v2.3.46 (B19 toast dedup): Eredetileg v2.3.38-ban hozzaadtam egy
-            // toast.success("Tranzakció lezárva")-t, de igy 3 success toast jelent
-            // meg a flow soran (save + print + close), ami zajos. A save-toast (lent
-            // a buy/sell submit branch-en, "Bizonylat(ok) sikeresen rögzítve!")
-            // ES a print-toast (lent az onPrint-ben, "Nyomtatás elindítva") elegendo
-            // megerositest ad. A modal bezarasa onmagaban is elegendo vizualis
-            // indikator a flow lezarasara — toast.info egy diszkretebb fallback,
-            // CSAK ha a felhasznalo NEM nyomtatott (nincs print-toast).
+            // v2.3.47 (Sourcery #311 fallback wire-up): Ha NEM nyomtatott a flow soran,
+            // toast.info diszkret close-toast (B19 audit elegseges feedback). Ha
+            // nyomtatott, a v2.3.35 print-toast adta a feedback-et — NINCS extra toast.
+            if (!printAttemptedRef.current) {
+              toast.info('Tranzakció befejezve', 'A bizonylatot megtekintette nyomtatás nélkül.')
+            }
+            // Reset for next cycle
+            printAttemptedRef.current = false
           }
         }}
         receiptData={receiptData}
@@ -793,6 +797,8 @@ export default function CashierTransactionPage() {
         allowPrint={isElectron()}
         onPrint={async () => {
           // v2.3.35 (B18 audit fix): Print silently fails -> explicit toast feedback
+          // v2.3.47 (Sourcery #311): mark printAttempted -> close-toast NEM jon
+          printAttemptedRef.current = true
           if (!receiptData) {
             toast.warning('Nyomtatás kihagyva', 'Nincs aktív bizonylat-adat.')
             return
