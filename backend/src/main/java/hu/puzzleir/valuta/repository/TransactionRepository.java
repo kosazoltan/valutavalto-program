@@ -1127,4 +1127,24 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
      */
     @Query("SELECT MAX(t.transactionDate) FROM Transaction t WHERE t.branch.id = :branchId")
     LocalDate findLatestDateByBranchId(@Param("branchId") UUID branchId);
+
+    /**
+     * v2.3.48 (B7 audit fix): Bizonylatok lista companyId-szintu listazasa.
+     * Hasznalata: a /api/v1/receipts endpoint synthesize Receipt-shape DTO-kat
+     * a Transaction tablabol, mert a Receipt tabla uresen marad (nincs explicit
+     * Receipt insert a TransactionService.processBuy/Sell flow-ban).
+     *
+     * Limit (top 500 most recent) — a frontend ReceiptPage NEM paginal,
+     * igy a teljes listaval terhelnenk a UI-t.
+     */
+    @Query("SELECT t FROM Transaction t " +
+           "JOIN FETCH t.branch " +
+           "JOIN FETCH t.company " +
+           "LEFT JOIN FETCH t.currency " +
+           "LEFT JOIN FETCH t.worker " +
+           "WHERE t.company.id = :companyId " +
+           "ORDER BY t.transactionDate DESC, t.transactionTime DESC")
+    List<Transaction> findReceiptListByCompanyId(
+        @Param("companyId") UUID companyId,
+        Pageable pageable);
 }
