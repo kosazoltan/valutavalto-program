@@ -8,6 +8,22 @@ import { isElectron, getElectronAPI } from '../../utils/electron'
 
 const PAGE_SIZE = 25
 
+/**
+ * v2.3.37 (Sourcery #301 P3): Storno tooltip-szovegek + status-derivacio kiemelt
+ * konstansok / helper. Ha a UX copy valtozik, csak itt kell modositani.
+ */
+const STORNO_PENDING_TOOLTIP =
+  'Sztornó csak véglegesítés (szerver-szinkron) után érhető el. ' +
+  'A tranzakció jelenleg helyileg rögzítve, várakozik a sync-engine-re (~30 sec).'
+
+type StornoUiState = 'available' | 'pending' | 'reversed'
+
+function getStornoUiState(status: string | null | undefined): StornoUiState {
+  if (status === 'COMPLETED') return 'available'
+  if (status === 'REVERSED') return 'reversed'
+  return 'pending'
+}
+
 function formatDate(dateStr: string, timeStr?: string): string {
   if (!dateStr) return ''
   const date = dateStr.substring(0, 10)
@@ -289,26 +305,37 @@ export default function TransactionListPage() {
                         </button>
                         {/* v2.3.36 (B25 audit fix): "Függőben" tranzakciókra is mutatjuk a storno
                          * ikont, DE disabled + magyarázó tooltip-pel. A korábbi UI-ban a button
-                         * egyszerűen NEM jelent meg, ezért a felhasználó nem tudta, miért hiányzik. */}
-                        {tx.status === 'COMPLETED' ? (
-                          <button
-                            className="toolbar-button text-red-600 hover:text-red-700"
-                            title="Sztornó"
-                            onClick={() => navigate(`/transactions/${tx.receiptNumber || tx.id}/storno`)}
-                            data-testid={`storno-tx-${tx.id}`}
-                          >
-                            <XCircle size={14} />
-                          </button>
-                        ) : tx.status !== 'REVERSED' && (
-                          <button
-                            className="toolbar-button text-gray-400 cursor-not-allowed"
-                            title="Sztornó csak véglegesítés (szerver-szinkron) után érhető el. A tranzakció jelenleg helyileg rögzítve, várakozik a sync-engine-re (~30 sec)."
-                            disabled
-                            data-testid={`storno-tx-${tx.id}-disabled`}
-                          >
-                            <XCircle size={14} />
-                          </button>
-                        )}
+                         * egyszerűen NEM jelent meg, ezért a felhasználó nem tudta, miért hiányzik.
+                         * v2.3.37 (Sourcery #301 P3): getStornoUiState helper + extract konstans. */}
+                        {(() => {
+                          const stornoState = getStornoUiState(tx.status)
+                          if (stornoState === 'available') {
+                            return (
+                              <button
+                                className="toolbar-button text-red-600 hover:text-red-700"
+                                title="Sztornó"
+                                onClick={() => navigate(`/transactions/${tx.receiptNumber || tx.id}/storno`)}
+                                data-testid={`storno-tx-${tx.id}`}
+                              >
+                                <XCircle size={14} />
+                              </button>
+                            )
+                          }
+                          if (stornoState === 'pending') {
+                            return (
+                              <button
+                                className="toolbar-button text-gray-400 cursor-not-allowed"
+                                title={STORNO_PENDING_TOOLTIP}
+                                disabled
+                                data-testid={`storno-tx-${tx.id}-disabled`}
+                              >
+                                <XCircle size={14} />
+                              </button>
+                            )
+                          }
+                          // 'reversed' — semmi ne jelenjen meg
+                          return null
+                        })()}
                       </div>
                     </td>
                   </tr>

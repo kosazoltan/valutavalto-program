@@ -85,12 +85,18 @@ public class TransitController {
                 }
             }
         }
-        for (VaultOperationStatus st : PENDING_STATUSES) {
-            List<VaultDistribution> dists = distributionRepository
-                    .findByCompanyIdAndStatusOrderByCreatedAtDesc(companyId, st);
-            for (VaultDistribution d : dists) {
-                for (VaultDistributionLine line : d.getLines()) {
-                    result.add(buildDto(d, line));
+        // v2.3.37 (B29 audit fix): Distribution-okat CSAK admin/vault viewben (branchCode=null)
+        // mutatjuk a Kimenő tabon. Cashier mode-ban (branchCode!=null) a distribution mindig
+        // a vault-bol indul ki, NEM a cashier-tol -> ezert NEM tartozik a cashier "kimenő"
+        // listájába. (Korabban minden distribution latszott minden cashiernek a Kimenő tabon.)
+        if (branchCode == null) {
+            for (VaultOperationStatus st : PENDING_STATUSES) {
+                List<VaultDistribution> dists = distributionRepository
+                        .findByCompanyIdAndStatusOrderByCreatedAtDesc(companyId, st);
+                for (VaultDistribution d : dists) {
+                    for (VaultDistributionLine line : d.getLines()) {
+                        result.add(buildDto(d, line));
+                    }
                 }
             }
         }

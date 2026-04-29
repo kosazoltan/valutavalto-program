@@ -3,6 +3,7 @@ import { transitApi, type TransitItem } from "../../services/api/index"
 import { Package, ArrowRight, ArrowLeft, RefreshCw, CheckCircle2, Loader2 } from "lucide-react"
 import { getErrorMessage } from "../../utils/errorHandling"
 import { toast } from "../../components/ui/toaster"
+import { useAuthStore } from "../../stores/authStore"
 
 type Tab = "incoming" | "outgoing"
 
@@ -12,10 +13,21 @@ export default function TransitPage() {
   const [loading, setLoading] = useState(false)
   const [ackingId, setAckingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const worker = useAuthStore((s) => s.worker)
 
+  // v2.3.37 (B29 audit fix): branchCode-ot a logged-in worker-bol toltjuk,
+  // NEM a VITE_BRANCH_CODE env var-bol (amit a Vercel build NEM mindig set-ol).
+  // Ha hianyzik, az incoming tab MINDEN COLLECTION-t mutatott (cashier mode-ban
+  // is "Bejövő"-n maradt a sajat csomagja), a Kimenő tab pedig ures volt.
+  // Fallback sorrend: explicit worker.branchCode -> env var -> undefined (no filter).
   const branchCode = useMemo(
-    () => String(import.meta.env.VITE_BRANCH_CODE ?? "").trim().toUpperCase() || undefined,
-    [],
+    () => {
+      const fromWorker = worker?.branchCode?.trim().toUpperCase()
+      if (fromWorker) return fromWorker
+      const fromEnv = String(import.meta.env.VITE_BRANCH_CODE ?? "").trim().toUpperCase()
+      return fromEnv || undefined
+    },
+    [worker?.branchCode],
   )
 
   const load = useCallback(async () => {
