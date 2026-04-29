@@ -15,72 +15,71 @@ import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import java.util.TimeZone;
 
 /**
- * Jackson 2 ObjectMapper konfiguracio (Spring Boot 4 sprint, 2026-04-29).
+ * Jackson 2 ObjectMapper configuration (Spring Boot 4 sprint, 2026-04-29).
  *
- * <p><b>Hatter:</b> a 04-27 production outage-t (#247 hotfix-revert) a
- * `spring.jackson.serialization.*` properties Spring Boot 4-ben Jackson 3
- * (`tools.jackson.*`) enum-okra bind-elese okozta. A
- * `spring.jackson.use-jackson2-defaults=true` stop-gap modul aktivalja a
- * Jackson 2 ObjectMapper-t, de a property-bind-et NEM oldja meg.</p>
- *
- * <p><b>Megoldas:</b> a 3 problematic property-t kivettuk az
- * application.properties-bol es itt programmatic-an allitjuk be a Jackson 2
- * `ObjectMapper`-en a `Jackson2ObjectMapperBuilder`-en keresztul (Sourcery
- * PR #263 P2 ajanlas). Igy orokoljuk a Spring Boot/Web common Jackson modul-
- * regisztraciot (parameter names, JDK 8 Optional, Java time) plusz a 3
- * critical override-ot.</p>
- *
- * <p><b>Future work:</b> egy nagyobb refaktor PR-ben a teljes Jackson 3
- * migracio (`tools.jackson.*` import-ok + ObjectMapper API breaking changes)
- * — utana ez a config + a `spring.jackson.use-jackson2-defaults` torolheto.</p>
+ * <p>Background: the 04-27 production outage was caused by Spring Boot 4
+ * binding {@code spring.jackson.serialization.*} properties to Jackson 3
+ * ({@code tools.jackson.*}) enums. The {@code spring-boot-jackson2}
+ * stop-gap module activates the Jackson 2 ObjectMapper but does not solve
+ * the property binding. Solution: removed the 3 problematic properties
+ * from application.properties and configure them programmatically here
+ * via {@link Jackson2ObjectMapperBuilder} (extends Spring Boot defaults).
+ * Future work: full Jackson 3 migration ({@code tools.jackson.*} imports)
+ * will allow removing this config and {@code spring.jackson.use-jackson2-defaults}.</p>
  *
  * @since 2.4.0 (Spring Boot 4)
  */
 @Configuration
 public class JacksonConfig {
 
+    /** Default time zone for serialized timestamps (legacy {@code spring.jackson.time-zone=UTC}). */
+    private static final TimeZone DEFAULT_TIME_ZONE = TimeZone.getTimeZone("UTC");
+
+    /** Omit {@code null} fields (legacy {@code spring.jackson.default-property-inclusion=non_null}). */
+    private static final JsonInclude.Include DEFAULT_INCLUSION = JsonInclude.Include.NON_NULL;
+
     /**
-     * Primary ObjectMapper bean — Jackson 2 API a `spring-boot-jackson2`
-     * stop-gap modulon keresztul, `Jackson2ObjectMapperBuilder`-rel epitve.
+     * Disabled serialization features:
+     * ISO-8601 timestamps instead of epoch millis
+     * (legacy {@code spring.jackson.serialization.write-dates-as-timestamps=false}).
+     */
+    private static final SerializationFeature[] DISABLED_SER_FEATURES = {
+        SerializationFeature.WRITE_DATES_AS_TIMESTAMPS,
+    };
+
+    /**
+     * Disabled deserialization features:
+     * tolerate unknown properties for forward compatibility
+     * (e.g., a v2.x client receiving a v3.x payload with extra fields).
+     */
+    private static final DeserializationFeature[] DISABLED_DESER_FEATURES = {
+        DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
+    };
+
+    /**
+     * Primary {@link ObjectMapper} bean.
      *
-     * <p><b>Modulok</b> (Spring Boot defaults + projekt-specifikus):</p>
-     * <ul>
-     *   <li>{@link JavaTimeModule} — LocalDateTime, Instant, ZonedDateTime ISO-8601</li>
-     *   <li>{@link Jdk8Module} — Optional, Stream support</li>
-     *   <li>{@link ParameterNamesModule} — constructor parameter names (Java 8+)</li>
-     * </ul>
+     * <p>{@code modulesToInstall} extends Spring Boot's default module set
+     * (so any Boot-provided modules like JsonComponentModule or future Kotlin
+     * support are preserved) and adds: {@link JavaTimeModule},
+     * {@link Jdk8Module}, {@link ParameterNamesModule}.</p>
      *
-     * <p><b>Override-ok</b> (volt application.properties-ben):</p>
-     * <ul>
-     *   <li><code>WRITE_DATES_AS_TIMESTAMPS=false</code> — ISO-8601 formatum</li>
-     *   <li><code>setTimeZone(UTC)</code> — minden datum UTC-ben serializalva</li>
-     *   <li><code>setSerializationInclusion(NON_NULL)</code> — null mezok elhagyasa</li>
-     *   <li><code>FAIL_ON_UNKNOWN_PROPERTIES=false</code> — kompatibilitas</li>
-     * </ul>
-     *
-     * <p><code>@Primary</code> annotacio garantalja, hogy a Spring Boot 4 stop-gap
-     * modul auto-konfiguracioja helyett ezt a bean-t hasznaljak az injection-ok.</p>
+     * <p>{@code @Primary} ensures injection points use this bean instead of
+     * the {@code spring-boot-jackson2} stop-gap auto-configuration.</p>
      */
     @Bean
     @Primary
     public ObjectMapper objectMapper() {
-        // AI review fix Sourcery P2 #265 (2026-04-29): a `.modules(...)` felulirja
-        // a builder default modul-keszletet, NEM bovited. A `.modulesToInstall(...)`
-        // extend-modban dolgozik, igy a Spring Boot defaults (pl. JsonComponentModule,
-        // problem details support, autodetected modulok) megmaradnak, es a 3 explicit
-        // modulunkat hozzaaadjuk.
         return Jackson2ObjectMapperBuilder.json()
             .modulesToInstall(
                 JavaTimeModule.class,
                 Jdk8Module.class,
                 ParameterNamesModule.class
             )
-            .featuresToDisable(
-                SerializationFeature.WRITE_DATES_AS_TIMESTAMPS,
-                DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES
-            )
-            .timeZone(TimeZone.getTimeZone("UTC"))
-            .serializationInclusion(JsonInclude.Include.NON_NULL)
+            .featuresToDisable(DISABLED_SER_FEATURES)
+            .featuresToDisable(DISABLED_DESER_FEATURES)
+            .timeZone(DEFAULT_TIME_ZONE)
+            .serializationInclusion(DEFAULT_INCLUSION)
             .build();
     }
 }
