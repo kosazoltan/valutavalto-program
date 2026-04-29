@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { ArrowLeftRight, Users, TrendingUp, Wallet, FileText, AlertTriangle, ArrowUp, ArrowDown, Clock } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { exchangeRateApi, type ExchangeRate } from '../services/api/exchange-rates'
-import { transactionApi, type DailyTurnoverSummary } from '../services/api/transactions'
+import { transactionApi, customerApi, type DailyTurnoverSummary } from '../services/api/transactions'
 import { useAuthStore } from '../stores/authStore'
 import { useAppMode } from '../hooks/useAppMode'
 import { formatMillions } from './treasury/treasuryUtils'
@@ -86,6 +86,16 @@ export default function DashboardPage() {
         const totalTx = (turnover.totalBuyCount || 0) + (turnover.totalSellCount || 0)
         const totalVol = (turnover.totalBuyHuf || 0) + (turnover.totalSellHuf || 0)
 
+        // 2026-04-29 v2.3.12 (E-B15): a valódi aktív customer-szám lekérése.
+        // Korábban: `Math.ceil(totalTx * 0.7)` heurisztika → KPI 2, lista 0 inkonzisztens.
+        // Most: `customerApi.getActive().length` — UGYANAZT az endpoint-ot használja
+        // mint a CustomerListPage, így a számok egyeznek.
+        let activeCustomerCount = 0
+        try {
+          const activeList = await customerApi.getActive()
+          activeCustomerCount = Array.isArray(activeList) ? activeList.length : 0
+        } catch { /* customer endpoint nem elérhető — 0 marad */ }
+
         // Tegnapi adatok az összehasonlításhoz
         const yesterday = new Date()
         yesterday.setDate(yesterday.getDate() - 1)
@@ -109,7 +119,7 @@ export default function DashboardPage() {
         setStats({
           todayTransactions: totalTx,
           todayVolume: totalVol,
-          activeCustomers: totalTx > 0 ? Math.ceil(totalTx * 0.7) : 0, // Becsült egyedi ügyfelek (tranzakciók 70%-a)
+          activeCustomers: activeCustomerCount, // 2026-04-29 v2.3.12 (E-B15): valódi customer-szám, NEM heurisztika
           pendingDeposits: turnover.totalReversalCount || 0,
           yesterdayComparison: {
             transactionsPct: computePct(totalTx, yTx),
@@ -130,7 +140,10 @@ export default function DashboardPage() {
           currency: tx.currencyCode || '',
           amount: tx.currencyAmount || 0,
           huf: tx.hufAmount || 0,
-          customer: tx.workerName || '',
+          // 2026-04-29 v2.3.12 (E-B2): a "Ügyfél" oszlop a customerName-et használja,
+          // NEM a workerName-et (pénztáros). Ha nincs customerName (anonim walk-in),
+          // akkor a workerCode jelenik meg (audit-nyomvonal: ki végezte).
+          customer: tx.customerName || (tx.workerCode ? `[${tx.workerCode}]` : ''),
           status: (tx.status || 'COMPLETED').toLowerCase()
         }))
         setRecentTransactions(txList)

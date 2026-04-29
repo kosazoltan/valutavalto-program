@@ -415,32 +415,44 @@ export default function TransferPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <ArrowRightLeft />
-          Átadás-átvétel
+          Átadás bank / másik értéktár
           {pendingCount > 0 && (
             <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
               {pendingCount} új
             </span>
           )}
         </h1>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={loadData}
-            className="form-button flex items-center gap-1"
-            disabled={loading}
-          >
-            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-            Frissítés
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowNewTransfer(true)}
-            className="form-button-primary flex items-center gap-1"
-          >
-            <Send size={16} />
-            Új átadás
-          </button>
+      </div>
+
+      {/* 2026-04-29 v2.3.12 (E-B8): info-banner — banki workflow vs pénztári átadás-átvétel */}
+      <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-800 flex items-start gap-2">
+        <Building2 size={16} className="flex-shrink-0 mt-0.5" />
+        <div>
+          <strong>Banki ki/beszállítás és értéktár-értéktár közötti mozgás.</strong> A pénztárak felé
+          szervezett átadás-átvételhez használja az <a href="/shipments" className="underline font-semibold">Átadás-átvétel (pénztáraknak)</a> menüpontot.
+          A teljes banki workflow (banki rendelés / Western Union napi kerete / sürgősségi kivét) v2.3.13-ban érkezik.
         </div>
+      </div>
+
+      {/* Header tools (frissítés + új átadás) */}
+      <div className="flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={loadData}
+          className="form-button flex items-center gap-1"
+          disabled={loading}
+        >
+          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+          Frissítés
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowNewTransfer(true)}
+          className="form-button-primary flex items-center gap-1"
+        >
+          <Send size={16} />
+          Új átadás
+        </button>
       </div>
 
       {/* Error/Success messages */}

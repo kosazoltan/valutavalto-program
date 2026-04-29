@@ -26,16 +26,24 @@ vi.mock('../services/api/transactions', () => ({
       totalReversalCount: 3,
     }),
     list: vi.fn().mockResolvedValue({
+      // 2026-04-29 v2.3.12 (E-B2 fix): a Dashboard "Ügyfél" oszlop most a `customerName`-et
+      // mutatja (NEM a workerName-et). A mock-ban customerName-t használunk a teszt-asszerzió-hoz.
       content: [
-        { transactionType: 'BUY', currencyCode: 'EUR', currencyAmount: 500, hufAmount: 195750, workerName: 'Kiss János', transactionTime: '10:45:00', status: 'COMPLETED' },
-        { transactionType: 'SELL', currencyCode: 'USD', currencyAmount: 1000, hufAmount: 358200, workerName: 'Nagy Péter', transactionTime: '10:32:00', status: 'COMPLETED' },
-        { transactionType: 'BUY', currencyCode: 'GBP', currencyAmount: 200, hufAmount: 91000, workerName: 'Szabó Anna', transactionTime: '10:15:00', status: 'COMPLETED' },
+        { transactionType: 'BUY', currencyCode: 'EUR', currencyAmount: 500, hufAmount: 195750, customerName: 'Kiss János', workerName: 'KOSA', workerCode: 'KOSA', transactionTime: '10:45:00', status: 'COMPLETED' },
+        { transactionType: 'SELL', currencyCode: 'USD', currencyAmount: 1000, hufAmount: 358200, customerName: 'Nagy Péter', workerName: 'KOSA', workerCode: 'KOSA', transactionTime: '10:32:00', status: 'COMPLETED' },
+        { transactionType: 'BUY', currencyCode: 'GBP', currencyAmount: 200, hufAmount: 91000, customerName: 'Szabó Anna', workerName: 'KOSA', workerCode: 'KOSA', transactionTime: '10:15:00', status: 'COMPLETED' },
       ],
       totalElements: 3,
       totalPages: 1,
       number: 0,
       size: 5,
     }),
+  },
+  customerApi: {
+    getActive: vi.fn().mockResolvedValue([
+      { id: 1, name: 'Kiss János', active: true },
+      { id: 2, name: 'Nagy Péter', active: true },
+    ]),
   },
 }))
 
