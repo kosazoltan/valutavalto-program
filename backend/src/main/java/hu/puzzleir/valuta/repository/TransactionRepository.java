@@ -145,13 +145,19 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     /**
      * Napi sztornók száma — pénztáros (cashier/worker) szinten.
      * Legacy: a sztornó limit irodánként ÉS pénztárosonként is érvényes.
+     *
+     * 2026-04-29 v2.3.30 (Sourcery PR #293 consistency align):
+     * `companyId` param hozzáadva — consistent multi-tenant query API
+     * (countReversalsByBranchAndDate-vel azonos pattern).
      */
     @Query("SELECT COUNT(t) FROM Transaction t " +
-           "WHERE t.branch.id = :branchId " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.branch.id = :branchId " +
            "AND t.transactionDate = :date " +
            "AND t.worker.id = :workerId " +
            "AND t.transactionType = 'REVERSAL'")
     long countReversalsByBranchAndWorkerAndDate(
+        @Param("companyId") UUID companyId,
         @Param("branchId") UUID branchId,
         @Param("workerId") Long workerId,
         @Param("date") LocalDate date

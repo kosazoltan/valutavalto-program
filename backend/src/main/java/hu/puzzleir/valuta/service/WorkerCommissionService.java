@@ -38,6 +38,10 @@ public class WorkerCommissionService {
 
     @Transactional(rollbackFor = Exception.class)
     public List<WorkerCommission> calculate(UUID branchId, LocalDate periodStart, LocalDate periodEnd) {
+        // 2026-04-29 v2.3.30 (Sourcery PR #293 P2): companyId egyszer extract,
+        // NEM SecurityUtils.getCurrentCompanyId() inline minden ciklus-iterációban.
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+
         // Find all workers in branch (simplified — get distinct worker IDs from transactions)
         List<WorkerCommission> commissions = new ArrayList<>();
 
@@ -53,7 +57,7 @@ public class WorkerCommissionService {
             List<Transaction> workerTransactions = new ArrayList<>();
             current = periodStart;
             while (!current.isAfter(periodEnd)) {
-                workerTransactions.addAll(transactionRepository.findByWorkerAndDate(SecurityUtils.getCurrentCompanyId(), workerId, current));
+                workerTransactions.addAll(transactionRepository.findByWorkerAndDate(companyId, workerId, current));
                 current = current.plusDays(1);
             }
 

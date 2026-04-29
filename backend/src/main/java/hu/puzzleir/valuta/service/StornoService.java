@@ -110,10 +110,14 @@ public class StornoService {
             throw new ValidationException("Nincs jogosultság más iroda tranzakciójához!");
         }
 
+        // 2026-04-29 v2.3.30 (Sourcery PR #293 P2): companyId egyszer extract,
+        // NEM ismétlődő SecurityUtils.getCurrentCompanyId() inline minden hívásnál.
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        LocalDate today = LocalDate.now();
         // Napi sztornó számok — iroda szinten ÉS pénztáros szinten
-        int dailyCountBranch = (int) transactionRepository.countReversalsByBranchAndDate(SecurityUtils.getCurrentCompanyId(), branchId, LocalDate.now());
+        int dailyCountBranch = (int) transactionRepository.countReversalsByBranchAndDate(companyId, branchId, today);
         int dailyCountCashier = (int) transactionRepository.countReversalsByBranchAndWorkerAndDate(
-                branchId, workerId, LocalDate.now());
+                companyId, branchId, workerId, today);
 
         // HIGH FIX #8: Ha a tranzakció ALREADY_REVERSED → dobjon hibát, ne engedje tovább
         if (transaction.isReversed()) {
@@ -157,8 +161,9 @@ public class StornoService {
 
         if (transaction.getCurrency() != null && originalRate != null) {
             // Aktuális árfolyam lekérése az ExchangeRateRepository-ból
+            // 2026-04-29 v2.3.30: a `companyId` már a metódus elején extract,
+            // NEM duplikál (Sourcery PR #293 P2 — companyId extract egyszer).
             try {
-                UUID companyId = SecurityUtils.getCurrentCompanyId();
                 var latestRateOpt = exchangeRateRepository.findLatestRate(
                         companyId, transaction.getCurrency().getId(), branchId);
                 if (latestRateOpt.isPresent()) {
