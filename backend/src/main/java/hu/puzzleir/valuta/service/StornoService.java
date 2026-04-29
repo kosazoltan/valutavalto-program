@@ -111,7 +111,7 @@ public class StornoService {
         }
 
         // Napi sztornó számok — iroda szinten ÉS pénztáros szinten
-        int dailyCountBranch = (int) transactionRepository.countReversalsByBranchAndDate(branchId, LocalDate.now());
+        int dailyCountBranch = (int) transactionRepository.countReversalsByBranchAndDate(SecurityUtils.getCurrentCompanyId(), branchId, LocalDate.now());
         int dailyCountCashier = (int) transactionRepository.countReversalsByBranchAndWorkerAndDate(
                 branchId, workerId, LocalDate.now());
 
@@ -210,7 +210,7 @@ public class StornoService {
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
 
-        int dailyCount = (int) transactionRepository.countReversalsByBranchAndDate(branchId, LocalDate.now());
+        int dailyCount = (int) transactionRepository.countReversalsByBranchAndDate(SecurityUtils.getCurrentCompanyId(), branchId, LocalDate.now());
 
         StornoApproval approval = StornoApproval.builder()
                 .transaction(transaction)
@@ -356,7 +356,7 @@ public class StornoService {
         }
 
         // Napi sztornó számláló ellenőrzés (Legacy: NAPISTORNO > 2 → supervisor)
-        int dailyCount = (int) transactionRepository.countReversalsByBranchAndDate(branchId, LocalDate.now());
+        int dailyCount = (int) transactionRepository.countReversalsByBranchAndDate(SecurityUtils.getCurrentCompanyId(), branchId, LocalDate.now());
         if (dailyCount >= DAILY_STORNO_LIMIT_BRANCH) {
             log.warn("OTP terminál sztornó: napi limit ({}) elérve, supervisor jóváhagyás szükséges!",
                     DAILY_STORNO_LIMIT_BRANCH);
@@ -479,7 +479,7 @@ public class StornoService {
      */
     @Transactional(readOnly = true)
     public boolean requiresOtpSupervisor(UUID branchId) {
-        int dailyCount = (int) transactionRepository.countReversalsByBranchAndDate(branchId, LocalDate.now());
+        int dailyCount = (int) transactionRepository.countReversalsByBranchAndDate(SecurityUtils.getCurrentCompanyId(), branchId, LocalDate.now());
         return dailyCount >= DAILY_STORNO_LIMIT_BRANCH;
     }
 

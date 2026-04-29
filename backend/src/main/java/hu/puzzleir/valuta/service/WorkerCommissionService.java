@@ -53,7 +53,7 @@ public class WorkerCommissionService {
             List<Transaction> workerTransactions = new ArrayList<>();
             current = periodStart;
             while (!current.isAfter(periodEnd)) {
-                workerTransactions.addAll(transactionRepository.findByWorkerAndDate(workerId, current));
+                workerTransactions.addAll(transactionRepository.findByWorkerAndDate(SecurityUtils.getCurrentCompanyId(), workerId, current));
                 current = current.plusDays(1);
             }
 
