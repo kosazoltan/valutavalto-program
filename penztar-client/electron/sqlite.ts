@@ -1319,13 +1319,11 @@ export function savePendingTransfer(
   note: string | null,
 ): number {
   if (!db) throw new Error('Database not initialized');
-  // v2.3.52 (B30 audit fix): Átadólap-szám formátum LT-YYYYMMDDHHMMSS-XXXX -> AT<branch>NNNNNN
-  // (legacy ATADOLAP-szám forma, mint a tranzakcióknál V<branch>NNNNNN). A felhasználónak
-  // a hosszú LT-hash nehezen olvasható volt — most az AT<srcBranch>NNNNNN konzisztens
-  // a többi sorszámmal (V/E/K/F/U) és per-source-branch folyamatos szekvencia.
-  // Ha a config NEM tartalmaz branch_code-ot (pl. SetupWizard nem futott), fallback
-  // a régi LT-prefix-re — az unique constraint NEM serul.
-  const sourceBranchCode = getConfig('branch_code');
+  // v2.3.52 B30: Átadólap-szám AT<branch>NNNNNN (legacy parity), LT-fallback ha config hiányzik.
+  // v2.3.54 (Sourcery #317 P3): trim + non-empty validate — empty/whitespace branch_code-ra
+  // NEM generálunk "AT  000001" malformed számot, hanem LT-fallback-re esik vissza.
+  const rawBranchCode = getConfig('branch_code');
+  const sourceBranchCode = rawBranchCode != null ? rawBranchCode.trim() : '';
   const localReferenceNumber = sourceBranchCode
     ? generateStrictReceiptNumber('AT', sourceBranchCode)
     : generateLocalReference('LT');
