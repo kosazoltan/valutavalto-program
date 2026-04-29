@@ -100,10 +100,7 @@ public class ReceiptService {
         // Real Receipt eloszor — multi-tenant safe lookup
         Receipt existing = repo.findById(id).orElse(null);
         if (existing != null) {
-            // v2.3.50 (Sourcery #313 P1 SECURITY): companyId verify also for real receipts
-            if (existing.getCompanyId() != null && !companyId.equals(existing.getCompanyId())) {
-                throw new ResourceNotFoundException("Bizonylat nem található: " + id);
-            }
+            assertOwnedByCompany(existing, companyId, id, "getById");
             return existing;
         }
         // Synthesized: decode tx.id-t es synthesize a Transaction-bol
@@ -125,10 +122,11 @@ public class ReceiptService {
      * Print mark — materializaalja a Receipt rekordot, ha synthesized UUID,
      * majd isPrinted=true-ra allitja.
      *
-     * v2.3.50 (Sourcery #313 P1 SECURITY fix): companyId verify a REAL Receipt
-     * eseten is — korabban csak a synthesized UUID-ra volt multi-tenant check,
-     * REAL Receipt eseten egy mas tenant UUID-javal meg lehetett "fliplelni"
-     * az isPrinted flag-et (cross-company tenant data corruption).
+     * Multi-tenant safety (v2.3.50 P1 + v2.3.53 Codex P1):
+     * - REAL Receipt path: assertOwnedByCompany() verify — DENY if company_id null OR mismatch
+     * - SYNTHESIZED path: tx.company.id verify
+     *
+     * Fail-loud: orphan Receipt (company_id=null) is also DENIED, NOT bypass-ed.
      */
     @Transactional(rollbackFor = Exception.class)
     public Receipt print(UUID id) {
@@ -137,13 +135,7 @@ public class ReceiptService {
         // Real Receipt eseten csak isPrinted update — DE multi-tenant verify
         Receipt existing = repo.findById(id).orElse(null);
         if (existing != null) {
-            // v2.3.50 P1 SECURITY: cross-company print attempt rejected
-            if (existing.getCompanyId() != null && !companyId.equals(existing.getCompanyId())) {
-                log.warn("v2.3.50 P1 SECURITY: cross-company print attempt rejected — "
-                        + "receipt.id={}, receipt.companyId={}, current.companyId={}",
-                        id, existing.getCompanyId(), companyId);
-                throw new ResourceNotFoundException("Bizonylat nem található: " + id);
-            }
+            assertOwnedByCompany(existing, companyId, id, "print");
             existing.setIsPrinted(true);
             existing.setPrintedAt(LocalDateTime.now());
             return repo.save(existing);
@@ -177,6 +169,33 @@ public class ReceiptService {
     }
 
     // === Helpers ===
+
+    /**
+     * Multi-tenant Receipt ownership guard.
+     *
+     * Fail-loud: orphan Receipt (companyId == null) is REJECTED, NEM bypass-eljuk
+     * (Codex P1 #315 finding — null-companyId tenant escape).
+     *
+     * Centralizalt validation, igy a getById/print divergencia kizart
+     * (Sourcery #315 P3 finding).
+     *
+     * @param receipt the Receipt to check
+     * @param currentCompanyId the current authenticated user's company
+     * @param receiptId the receipt id (for log + exception message)
+     * @param operation human-readable operation name (e.g. "print", "getById") for audit log
+     * @throws ResourceNotFoundException if cross-tenant or null-tenant
+     */
+    private void assertOwnedByCompany(Receipt receipt, UUID currentCompanyId,
+                                      UUID receiptId, String operation) {
+        UUID receiptCompanyId = receipt.getCompanyId();
+        if (receiptCompanyId == null || !currentCompanyId.equals(receiptCompanyId)) {
+            // Standardized log code [TENANT_GUARD] — stable across versions (Sourcery #315 P3)
+            log.warn("[TENANT_GUARD] cross-tenant Receipt access denied: op={}, receipt.id={}, "
+                    + "receipt.companyId={}, current.companyId={}",
+                    operation, receiptId, receiptCompanyId, currentCompanyId);
+            throw new ResourceNotFoundException("Bizonylat nem található: " + receiptId);
+        }
+    }
 
     /**
      * v2.3.48 B7: synthesized Receipt UUID encoding.
