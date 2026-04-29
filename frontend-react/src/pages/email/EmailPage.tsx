@@ -64,7 +64,7 @@ export default function EmailPage() {
       <div className="flex items-center justify-between">
         <h1 className="form-title flex items-center gap-2">
           <Mail className="h-6 w-6" />
-          Email beallitasok
+          Email beállítások
         </h1>
         <div className="flex items-center gap-2">
           <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
@@ -100,11 +100,11 @@ export default function EmailPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Email cim</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Szolgaltato</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Alapertelmezett</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Aktiv</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Muveletek</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Email cím</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Szolgáltató</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Alapértelmezett</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Aktív</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Műveletek</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">

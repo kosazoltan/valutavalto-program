@@ -64,7 +64,7 @@ export default function SchedulerPage() {
       <div className="flex items-center justify-between">
         <h1 className="form-title flex items-center gap-2">
           <Clock className="h-6 w-6" />
-          Utemezesek
+          Ütemezések
         </h1>
         <div className="flex items-center gap-2">
           <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
@@ -101,11 +101,11 @@ export default function SchedulerPage() {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Feladat</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Utemezes</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Utolso futatas</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Kovetkezo futatas</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Aktiv</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Muveletek</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Ütemezés</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Utolsó futás</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Következő futás</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Aktív</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Műveletek</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">

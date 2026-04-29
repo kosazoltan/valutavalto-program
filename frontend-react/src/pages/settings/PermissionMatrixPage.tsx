@@ -141,7 +141,7 @@ export default function PermissionMatrixPage() {
                 <div>
                     <h1 className="text-2xl font-bold text-secondary-900 flex items-center gap-2">
                         <Grid3x3 className="text-primary-600" size={28} />
-                        Jogosultsag matrix
+                        Jogosultság mátrix
                     </h1>
                     <p className="text-sm text-secondary-500 mt-1">
                         Szerepkor × jogosultsag matrix. Egyszerre szerkesztheto az osszes kombinacio.
@@ -150,7 +150,7 @@ export default function PermissionMatrixPage() {
                 <div className="flex items-center gap-2">
                     <button onClick={load} disabled={loading || saving} className="form-button">
                         <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-                        <span>Frissit</span>
+                        <span>Frissítés</span>
                     </button>
                     {hasChanges && (
                         <button type="button" onClick={handleDiscard} disabled={saving} className="form-button text-orange-600">
@@ -164,7 +164,7 @@ export default function PermissionMatrixPage() {
                         className="form-button-primary"
                     >
                         <Save size={14} />
-                        <span>{saving ? 'Mentes...' : hasChanges ? `Mentes (${dirtyRoles.size})` : 'Nincs valtozas'}</span>
+                        <span>{saving ? 'Mentes...' : hasChanges ? `Mentes (${dirtyRoles.size})` : 'Nincs változás'}</span>
                     </button>
                 </div>
             </div>

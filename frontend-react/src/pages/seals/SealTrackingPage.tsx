@@ -64,7 +64,7 @@ export default function SealTrackingPage() {
       <div className="flex items-center justify-between">
         <h1 className="form-title flex items-center gap-2">
           <Lock className="h-6 w-6" />
-          Plomba nyilvantartas
+          Plomba nyilvántartás
         </h1>
         <div className="flex items-center gap-2">
           <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
@@ -100,12 +100,12 @@ export default function SealTrackingPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Plomba szam</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Penztar</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Allapot</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Plomba szám</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Pénztár</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Állapot</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Felhelyezve</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Eltavolitva</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Muveletek</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Eltávolítva</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Műveletek</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">

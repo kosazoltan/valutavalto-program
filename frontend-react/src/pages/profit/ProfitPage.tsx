@@ -87,7 +87,7 @@ export default function ProfitPage() {
       <div className="flex items-center justify-between">
         <h1 className="form-title flex items-center gap-2">
           <TrendingUp className="h-6 w-6" />
-          Haszon kimutatas
+          Haszon kimutatás
         </h1>
         <div className="flex items-center gap-2">
           <button onClick={() => void loadData()} className="form-button p-2" title="Frissites">
@@ -129,10 +129,10 @@ export default function ProfitPage() {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Deviza</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Vetel db</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Eladas db</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Vetel HUF</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Eladas HUF</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Vétel db</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Eladás db</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Vétel HUF</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Eladás HUF</th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Haszon</th>
             </tr>
           </thead>

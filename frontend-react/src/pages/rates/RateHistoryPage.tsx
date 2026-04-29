@@ -72,7 +72,7 @@ export default function RateHistoryPage() {
       <div className="flex items-center justify-between">
         <h1 className="form-title flex items-center gap-2">
           <Clock className="h-6 w-6" />
-          Arfolyam tortenelem
+          Árfolyam történelem
         </h1>
         <div className="flex items-center gap-2">
           <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
@@ -112,10 +112,10 @@ export default function RateHistoryPage() {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Valuta</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Veteli arf.</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Eladasi arf.</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Ervenyes</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Modositotta</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Vételi árf.</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Eladási árf.</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Érvényes</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Módosította</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">

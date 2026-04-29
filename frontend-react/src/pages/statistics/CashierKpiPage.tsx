@@ -114,7 +114,7 @@ export default function CashierKpiPage() {
                 <div>
                     <h1 className="text-2xl font-bold text-secondary-900 flex items-center gap-2">
                         <Users className="text-primary-600" size={28} />
-                        Penztaros KPI Dashboard
+                        Pénztáros KPI Dashboard
                     </h1>
                     <p className="text-sm text-secondary-500 mt-1">
                         Forgalom, tranzakcioszam es sztorno arany penztarosonkent.
@@ -127,7 +127,7 @@ export default function CashierKpiPage() {
                     className="form-button"
                 >
                     <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-                    <span>Frissit</span>
+                    <span>Frissítés</span>
                 </button>
             </div>
 
@@ -145,7 +145,7 @@ export default function CashierKpiPage() {
                                     : 'bg-white text-secondary-700 border-secondary-200 hover:border-primary-400'
                             }`}
                         >
-                            {q === 'today' ? 'Ma' : q === 'week' ? 'Utolso 7 nap' : q === 'month' ? 'Ez a honap' : 'Egyeni'}
+                            {q === 'today' ? 'Ma' : q === 'week' ? 'Utolsó 7 nap' : q === 'month' ? 'Ez a hónap' : 'Egyeni'}
                         </button>
                     ))}
                 </div>
@@ -244,7 +244,7 @@ export default function CashierKpiPage() {
                         >
                             <option value="totalHuf">Forgalom (csokkeno)</option>
                             <option value="txCount">Tranzakcio szam</option>
-                            <option value="reversalRatio">Sztorno %</option>
+                            <option value="reversalRatio">Sztornó %</option>
                             <option value="name">Nev</option>
                         </select>
                     </div>
@@ -252,14 +252,14 @@ export default function CashierKpiPage() {
                 <table className="data-grid w-full">
                     <thead>
                         <tr>
-                            <th>Penztaros</th>
-                            <th className="text-right">Tranzakcio</th>
-                            <th className="text-right">Vetel</th>
-                            <th className="text-right">Eladas</th>
-                            <th className="text-right">Sztorno</th>
-                            <th className="text-right">Sztorno %</th>
+                            <th>Pénztáros</th>
+                            <th className="text-right">Tranzakció</th>
+                            <th className="text-right">Vétel</th>
+                            <th className="text-right">Eladás</th>
+                            <th className="text-right">Sztornó</th>
+                            <th className="text-right">Sztornó %</th>
                             <th className="text-right">Forgalom</th>
-                            <th className="text-right">Atlag tx</th>
+                            <th className="text-right">Átlag tx</th>
                             <th className="text-right">Kezelesi dij</th>
                             <th className="text-right">Ugyfel</th>
                         </tr>

@@ -55,7 +55,7 @@ export default function SanctionPage() {
                 <div>
                     <h1 className="text-2xl font-bold text-secondary-900 flex items-center gap-2">
                         <ShieldAlert className="text-red-600" size={28} />
-                        Szankcios Lista (AML / KYC)
+                        Szankciós Lista (AML / KYC)
                     </h1>
                     <p className="text-sm text-secondary-500 mt-1">
                         ENSZ, EU es OFAC listak — kotelezo szures minden 300.000 Ft feletti tranzakcional.
@@ -63,7 +63,7 @@ export default function SanctionPage() {
                 </div>
                 <button onClick={refreshStatus} className="form-button">
                     <RefreshCw size={16} />
-                    <span>Allapot frissit</span>
+                    <span>Állapot frissítés</span>
                 </button>
             </div>
 
@@ -174,7 +174,7 @@ function ScreeningTab() {
                 </div>
                 <button type="submit" className="form-button-primary" disabled={loading || !name.trim()}>
                     <Search size={16} />
-                    <span>{loading ? 'Szures...' : 'Szures inditasa'}</span>
+                    <span>{loading ? 'Szures...' : 'Szűrés indítása'}</span>
                 </button>
             </form>
 

@@ -78,7 +78,7 @@ export default function ComplianceDashboardPage() {
                     className="flex items-center gap-1 px-3 py-2 border rounded hover:bg-gray-50"
                 >
                     <RefreshCw className="w-4 h-4" />
-                    Frissites
+                    Frissítés
                 </button>
             </div>
 
@@ -173,7 +173,7 @@ export default function ComplianceDashboardPage() {
                                     onClick={handleRollingRefresh}
                                     className="px-2 py-1 bg-orange-600 text-white rounded text-xs"
                                 >
-                                    Frissit
+                                    Frissítés
                                 </button>
                             </div>
                         </div>
