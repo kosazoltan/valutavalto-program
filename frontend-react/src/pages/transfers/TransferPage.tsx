@@ -31,6 +31,25 @@ import {
 } from '../../utils/electronTransactions'
 import { getLocalPendingTransfers } from '../../utils/localQueue'
 
+/**
+ * v2.3.41 (B31 audit fix): Raw enum -> magyar label mapping.
+ * Az electron-queue local fallback eseten a transferTypeDisplay nincs feltoltve
+ * a backend-bol, ezert a UI raw 'CURRENCY' / 'CASH' enum-ot rendert volna —
+ * ezt forditjuk magyarra a frontend-szinten.
+ */
+function localizeTransferType(rawType: string | null | undefined): string {
+  switch (rawType) {
+    case 'CURRENCY': return 'Deviza'
+    case 'CASH': return 'Készpénz'
+    case 'HANDLING_FEE': return 'Kezelési díj'
+    case 'VAULT_DEPOSIT': return 'Széf befizetés'
+    case 'VAULT_WITHDRAW': return 'Széf kivét'
+    case 'CORRECTION': return 'Korrekció'
+    case 'OTHER': return 'Egyéb'
+    default: return rawType ?? '—'
+  }
+}
+
 type TabType = 'outgoing' | 'incoming' | 'pending'
 
 /**
@@ -345,7 +364,9 @@ export default function TransferPage() {
                     </span>
                   </div>
                 </td>
-                <td>{transfer.transferTypeDisplay}</td>
+                {/* v2.3.41 (B31 audit fix): fallback raw enum -> magyar label
+                  ha transferTypeDisplay missing (electron-queue lokal fallback). */}
+                <td>{transfer.transferTypeDisplay ?? localizeTransferType(transfer.transferType)}</td>
                 <td className="font-semibold">{transfer.currencyCode}</td>
                 <td className="text-right font-mono">
                   {transfer.currencyCode === 'HUF'
