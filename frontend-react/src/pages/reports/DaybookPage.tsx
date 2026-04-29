@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import axios from 'axios'
 import { BookOpen, Printer, Calendar, RefreshCw } from 'lucide-react'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
@@ -54,9 +55,16 @@ export default function DaybookPage() {
       const data = await dailyReportApi.get(branchId, date)
       setReport(data as DailyReportData)
     } catch (err) {
-      // 2026-04-29 v2.3.11 (E-B12): a Naplókönyv 404 hiba esetén auto-generálás-t
-      // próbálunk, mert a tranzakciók már lehetnek a DB-ben, de a daily_report
-      // entity még nem készült el. Egyetlen GET → POST → GET próba.
+      // 2026-04-29 v2.3.11 (E-B12 + Sourcery #272 follow-up):
+      // CSAK valódi HTTP 404 esetén próbálunk auto-generate-t. Bármi más hiba
+      // (401/403/500/network/timeout) azonnal hibaüzenet — ne nyeljük el.
+      const is404 = axios.isAxiosError(err) && err.response?.status === 404
+      if (!is404) {
+        logger.error('DaybookPage', 'Napi könyv betöltési hiba (NEM 404):', err)
+        setReport(null)
+        setError(`Hiba: ${getErrorMessage(err)}`)
+        return
+      }
       logger.warn('DaybookPage', 'Napi könyv 404, auto-generate próba:', err)
       try {
         await dailyReportApi.generate(branchId, date)
