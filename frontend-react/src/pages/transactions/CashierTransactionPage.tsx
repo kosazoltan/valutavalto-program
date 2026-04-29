@@ -423,6 +423,10 @@ export default function CashierTransactionPage() {
           }))
           receiptQueueRef.current = receipts.slice(1)
           if (receipts[0]) {
+            // v2.3.49 (Sourcery #312 P3): reset printAttemptedRef ON OPEN, NEM csak close-on
+            // (state leak prevention: ha az elozo cycle close-jaban valami mas stop-olt, a true
+            // state at-leakolhatott egy uj cycle-be).
+            printAttemptedRef.current = false
             setReceiptData(receipts[0])
             setShowReceiptModal(true)
           }
@@ -482,6 +486,8 @@ export default function CashierTransactionPage() {
           }))
           receiptQueueRef.current = receipts.slice(1)
           if (receipts[0]) {
+            // v2.3.49 (Sourcery #312 P3): reset printAttemptedRef ON OPEN (state leak prevention)
+            printAttemptedRef.current = false
             setReceiptData(receipts[0])
             setShowReceiptModal(true)
           }
@@ -788,7 +794,8 @@ export default function CashierTransactionPage() {
             if (!printAttemptedRef.current) {
               toast.info('Tranzakció befejezve', 'A bizonylatot megtekintette nyomtatás nélkül.')
             }
-            // Reset for next cycle
+            // v2.3.49 (Sourcery #312 P3): defensive reset — a primary reset
+            // a modal-OPEN-ben tortenik (linevel 429+490, set ON OPEN)
             printAttemptedRef.current = false
           }
         }}
