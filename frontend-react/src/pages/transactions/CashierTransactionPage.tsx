@@ -584,9 +584,9 @@ export default function CashierTransactionPage() {
       {showFeeDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-4 w-96 space-y-4">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Kezelesi dij / Kedvezmeny</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Kezelési díj / Kedvezmény</h3>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kezelesi dij (HUF)</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kezelési díj (HUF)</label>
               <input
                 type="number"
                 value={feeInput}

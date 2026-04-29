@@ -34,7 +34,7 @@ export default function TransitBadge() {
   return (
     <button
       onClick={() => navigate("/transit")}
-      title={"Uton levo csomagok: " + count + " db - kattints az atvetelhez"}
+      title={"Úton lévő csomagok: " + count + " db - kattints az átvételhez"}
       className="relative p-2 hover:bg-secondary-100 rounded-lg transition-colors"
     >
       <Package size={18} className="text-amber-600" />

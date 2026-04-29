@@ -260,7 +260,7 @@ export default function CashierKpiPage() {
                             <th className="text-right">Sztornó %</th>
                             <th className="text-right">Forgalom</th>
                             <th className="text-right">Átlag tx</th>
-                            <th className="text-right">Kezelesi dij</th>
+                            <th className="text-right">Kezelési díj</th>
                             <th className="text-right">Ügyfél</th>
                         </tr>
                     </thead>

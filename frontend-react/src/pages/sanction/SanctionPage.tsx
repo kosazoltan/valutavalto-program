@@ -58,7 +58,7 @@ export default function SanctionPage() {
                         Szankciós Lista (AML / KYC)
                     </h1>
                     <p className="text-sm text-secondary-500 mt-1">
-                        ENSZ, EU es OFAC listak — kotelezo szures minden 300.000 Ft feletti tranzakcional.
+                        ENSZ, EU és OFAC listák — kötelező szűrés minden 300.000 Ft feletti tranzakciónál.
                     </p>
                 </div>
                 <button onClick={refreshStatus} className="form-button">
@@ -230,8 +230,8 @@ function ScreeningTab() {
                     )}
                     {result.riskLevel !== 'CLEAR' && (
                         <div className="mt-3 p-3 bg-white border border-red-300 rounded text-sm text-red-800">
-                            <strong>FONTOS:</strong> POSSIBLE es CONFIRMED eredmenynel supervisor jovahagyas szukseges
-                            a tranzakcio folytatasahoz (AML workflow). Rogzitve van a screening log-ban.
+                            <strong>FONTOS:</strong> POSSIBLE és CONFIRMED eredménynél supervisor jóváhagyás szükséges
+                            a tranzakció folytatásához (AML workflow). Rögzítve van a screening log-ban.
                         </div>
                     )}
                 </div>
