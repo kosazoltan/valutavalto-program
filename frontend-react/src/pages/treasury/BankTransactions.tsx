@@ -162,10 +162,10 @@ export default function BankTransactions() {
         <div className="flex items-center gap-4">
           <h1 className="text-xl font-bold text-secondary-900">Banki Tranzakciok</h1>
           <span className="badge badge-blue">
-            <TrendingUp size={12} /> Vetel: {transactions.filter(t => t.transactionType === 'BUY').length}
+            <TrendingUp size={12} /> Vétel: {transactions.filter(t => t.transactionType === 'BUY').length}
           </span>
           <span className="badge badge-orange">
-            <TrendingDown size={12} /> Eladas: {transactions.filter(t => t.transactionType === 'SELL').length}
+            <TrendingDown size={12} /> Eladás: {transactions.filter(t => t.transactionType === 'SELL').length}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -175,8 +175,8 @@ export default function BankTransactions() {
             onChange={(e) => setTypeFilter(e.target.value)}
           >
             <option value="all">Minden tipus</option>
-            <option value="BUY">Vetel</option>
-            <option value="SELL">Eladas</option>
+            <option value="BUY">Vétel</option>
+            <option value="SELL">Eladás</option>
           </select>
           <button onClick={() => void fetchData()} className="form-button h-8 text-xs">
             <RefreshCw size={14} />
@@ -218,7 +218,7 @@ export default function BankTransactions() {
                 <td className="font-mono text-xs">#{tx.id}</td>
                 <td>
                   <span className={`badge ${tx.transactionType === 'BUY' ? 'badge-blue' : 'badge-orange'}`}>
-                    {tx.transactionType === 'BUY' ? 'Vetel' : 'Eladas'}
+                    {tx.transactionType === 'BUY' ? 'Vétel' : 'Eladás'}
                   </span>
                 </td>
                 <td className={`font-bold ${currencyColorClass(tx.currencyCode)}`}>
@@ -278,7 +278,7 @@ export default function BankTransactions() {
                 >
                   <TrendingUp size={20} className={txType === 'BUY' ? 'text-blue-600' : 'text-secondary-400'} />
                   <div className="text-left">
-                    <div className="font-semibold">Vetel</div>
+                    <div className="font-semibold">Vétel</div>
                     <div className="text-xs text-secondary-500">Bankbol valuta</div>
                   </div>
                 </button>
@@ -293,7 +293,7 @@ export default function BankTransactions() {
                 >
                   <TrendingDown size={20} className={txType === 'SELL' ? 'text-orange-600' : 'text-secondary-400'} />
                   <div className="text-left">
-                    <div className="font-semibold">Eladas</div>
+                    <div className="font-semibold">Eladás</div>
                     <div className="text-xs text-secondary-500">Banknak valuta</div>
                   </div>
                 </button>
