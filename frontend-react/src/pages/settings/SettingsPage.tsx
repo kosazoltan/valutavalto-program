@@ -9,6 +9,25 @@ import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 
 /**
+ * v2.3.36 (Sourcery #299 P3): Type-safe field whitelist a SettingsPage company
+ * tab szerkesztheto mezoinek. A `keyof OwnCompany` magaba foglalna az `id`,
+ * `isActive`, `companyId` mezoket is, amelyek NEM szerkeszthetoek a UI-bol.
+ * Ez a union biztositja, hogy a compiler csak az engedelyezett string-mezokre
+ * engedjen `handleCompanyChange` hivasokat.
+ */
+type EditableOwnCompanyKeys =
+  | 'name'
+  | 'taxNumber'
+  | 'registrationNumber'
+  | 'licenseNumber'
+  | 'address'
+  | 'phone'
+  | 'email'
+  | 'bankAccountNumber'
+  | 'iban'
+  | 'swift'
+
+/**
  * v2.3.34 (B11): Cégadatok tab most az aktív OwnCompany rekordbol toltodik
  * (NEM hardkodolt "Pénzváltó Kft." placeholder-ek). Ha az own_company tabla
  * ures, akkor a v2.3.34 V172 Flyway migration az EBC Zrt. seed-et szurja be
@@ -39,7 +58,7 @@ export default function SettingsPage() {
     }
   }, [activeTab, loadCompany])
 
-  const handleCompanyChange = (field: keyof OwnCompany, value: string) => {
+  const handleCompanyChange = (field: EditableOwnCompanyKeys, value: string) => {
     setCompanyData((prev) => prev ? { ...prev, [field]: value } : prev)
   }
 
