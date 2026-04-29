@@ -14,6 +14,7 @@ import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import hu.puzzleir.valuta.entity.ExchangeRate;
@@ -119,9 +120,15 @@ public class CashBalanceService {
      * Multi-tenant-safe: ha van autentikált user, a saját cégére kell, hogy érvényes legyen.
      * Ha nincs (pl. startup hook), akkor a branch.company a forrás.
      *
+     * 2026-04-29 v2.3.29 (Codex P1 PR #292 follow-up):
+     * `Propagation.REQUIRES_NEW` — a `BranchService.create()` parent tx-étől
+     * függetlenül fut. Spring iparági pattern: ha az aux init dob, csak a saját
+     * tx-et rollback-olja, a parent commit NEM kerül `UnexpectedRollbackException`-ba.
+     *
      * @param branchId iroda ID
      * @return inicializált cash_balance-ok száma (0 = minden már létezett, idempotens)
      */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
     public int initializeBranchBalances(UUID branchId) {
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
