@@ -359,7 +359,7 @@ Lasd: `docs/AI_REVIEW_AUTOMATION.md`
 - Kapcsolat: `application.properties` → `spring.datasource.*`
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.3.6** (2026-04-28 release).
+- **Verzió:** **v2.3.7** (2026-04-29 SB4 sprint óta — minor bump, mert Spring Boot 4 + Tomcat 11 major framework upgrade).
 - **Backend stack (2026-04-29 SB4 sprint óta):** **Spring Boot 4.0.6** + **Tomcat 11.0.21** (Servlet 6.1) + **Jackson 2 stop-gap** (`spring-boot-jackson2` modul + `JacksonConfig.java` programmatic `@Primary @Bean ObjectMapper` `Jackson2ObjectMapperBuilder.json().modulesToInstall(...)` mintával) + **springdoc 3.0.3** + **flyway-database-postgresql 12.4.0** (flyway-core 12.x SB4 BOM-ból). 1009/1009 mvn test PASS, Hetzner production deploy SUCCESS (3× verifikálva).
 - **Main HEAD:** `1217cf08` (PR #266: modulesToInstall extend mode, 2026-04-29).
 - **Production:** Hetzner deploy SUCCESS minden mergelt PR után, bootstrap-status 200, V155..V167 applied.
@@ -368,11 +368,15 @@ Lasd: `docs/AI_REVIEW_AUTOMATION.md`
   - **SB4 sprint (#263-266, 4 PR):** Spring Boot 3.5.13→4.0.6 (#263), Tomcat 10.1.54 override eltávolítva → BOM default 11.0.21 (#264), JacksonConfig builder + MIGRATION_NOTES.md domain-claim fix (#265), modulesToInstall extend mode (#266). 04-27-i Jackson 3 enum bind outage gyökér-oka **megszüntetve** (3 problematic property kivéve + programmatic ObjectMapper).
 - **2026-04-27 marathon (15 PR + 2 hotfix):** PR #237 (docs), #238 (audit-NO-GO-iter3), #242 (CodeQL 9 medium Actions hardening), #243 (CodeQL 11 HIGH frontend file-system-race), #244 (CodeQL 5 HIGH backend path-injection), #245 (149 java/log-injection logback `%replace`), #240 (electron 41.3 + types/sql + ts-eslint MINOR), #239→#246 (flyway-postgres 12.4 → revert 10.10.0, production outage #1), #207 (lucide-react 1.x), #241 (react-hooks penztar), #210 (react-hooks 7 frontend), #208 (typescript-eslint 8.59), #205→#247 (Spring Boot 4.0.6 → revert, production outage #2).
 - **2026-04-28 (audit-iter5 + release):** PR #251 (audit-iter5 Codex P1×2), PR #252 (release v2.3.6), PR #253 (V165 guard).
-- **Telepítő fájlok v2.3.2** (gitignore-osak, `installer/build/`-ban + másolva `%USERPROFILE%\Downloads\`-ba):
-  - `Penztar-Setup-2.3.2-20260425.exe` — **441.27 MB** (462,711,828 byte), SHA-256 `d4110a61485c33076862b88e4d4f6b5cd6594ab61e0dadef3d27fd70826b7703`
-  - `Penztar-Eltavolito-2.3.2-20260425.exe` — **59.05 KB** (60,468 byte), SHA-256 `cde7556b9e089edcfd4d9a1ac1b35344e67f10acefb7e955ca39f253ad29439a`
+- **Telepítő fájlok v2.3.7 (LEGFRISSEBB, 2026-04-29 SB4 + Tomcat 11 stack)** — `installer/build/` + másolva `%USERPROFILE%\Downloads\`-ba:
+  - `Penztar-Setup-2.3.7-20260429.exe` — **280.1 MB** (293,705,333 byte), SHA-256 `230a4c540b2b78b8a9d201face5aa701a2691e02a9263ad9028c237f74dcecbf`
+  - `Penztar-Eltavolito-2.3.7-20260429.exe` — **59.05 KB** (60,468 byte) — verzió-független NSIS uninstaller (megegyezik a 2.3.6-tal)
+  - **Backend stack a installerben:** Spring Boot 4.0.6 + Tomcat 11.0.21 + Jackson 2 stop-gap + springdoc 3 + flyway 12.4 + JacksonConfig.java
+  - **Build parancs:** `powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1 -SkipDownloads` (logok: `C:\Temp\installer-build-2026-04-29.log`)
+- **Korábbi telepítők** (régi stack, ne használd v2.3.7 helyett):
+  - v2.3.6: `Penztar-Setup-2.3.6-20260428.exe` 276 MB (SB 3.5.13 + Tomcat 10.1)
+  - v2.3.2: `Penztar-Setup-2.3.2-20260425.exe` 441 MB (SB 3.5 + bundled JBR)
   - GitHub Release: https://github.com/kosazoltan/valutavalto-program/releases/tag/v2.3.2
-  - **v2.3.6 installer**: build folyamatban a 04-29-i sessionben, lásd `installer/build/`.
 - **Újra-buildelés:** `powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1 [-SkipDownloads]`. A `$Version` PARAMETER auto-load a monorepo root `package.json`-ból (PR #103 + #104 `build-common.ps1` helperrel).
 - **NSIS encoding szabály:** `.nsi` csak Windows-1252 ASCII. Ékezetek → sima ASCII. Em-dash → `-`.
 - **Aktuális memória helye:** `D:\valutavalto-vault\sessions\2026-04-29-*.md` (Obsidian vault: multi-track-execution + track-4-spring-boot-4-sprint). A `docs/knowledge/memory/*.yaml` történelmi formátum, új session-jegyzetek a vault-ba kerülnek.
@@ -381,7 +385,7 @@ Lasd: `docs/AI_REVIEW_AUTOMATION.md`
 - **Production URL SSOT (BEFEJEZVE):** `config/production-urls.json` + `backend/.../config/ProductionUrls.java` + `scripts/_production-urls.ps1` + Electron `penztar-client/electron/main.ts` `loadProductionUrls()` + `electron-builder.json` extraResources. Lazy-load minden komponensben.
 - **Jackson 3 future migration**: a `spring-boot-jackson2` stop-gap modul + `JacksonConfig.java` programmatic ObjectMapper csak átmeneti megoldás. Egy nagyobb refaktor PR-ben (külön sprint) a 39 fájl `com.fasterxml.jackson.*` → `tools.jackson.*` import-migráció OpenRewrite recipe-pal, ObjectMapper API breaking changes javítás. Akkor: a `spring.jackson.use-jackson2-defaults=true` + a `JacksonConfig.java` törölhető.
 - **Nyitott következő feladatok (2026-04-29 állapot):**
-  - **P0 (éles pénztár frissítés):** user reinstall az éles gépen v2.3.6-tal. A 04-29-i sessionben a build-folyamat aktív.
+  - **P0 (éles pénztár frissítés):** user reinstall az éles gépen **v2.3.7**-tel. Telepítő kész: `~/Downloads/Penztar-Setup-2.3.7-20260429.exe` (280 MB) + `Penztar-Eltavolito-2.3.7-20260429.exe`. Lépések: 1) Eltávolító admin joggal, 2) Setup admin joggal, 3) SetupWizard 5 lépés (Iroda → Program típus → Szerver **Kapcsolat tesztelése** kötelező → Admin jelszó → Telepítés), 4) bootstrap admin login, 5) új VÉTEL teszt → bizonylat formátum: `V<3-jegyű-numerikus-kód>000001`.
   - **P1:** happy path teszt dev módban (Fejlesztői mód INDÍTÁS shortcut) — SetupWizard 4. lépésnél **Kapcsolat tesztelése gombot** kell nyomni (connectionTest.state=ok kötelező a Továbbhoz).
   - **P2:** CodeQL Actions hardening (9 medium: workflow-permissions + unpinned-tag).
   - **P2:** Installer acceptance test friss Windows VM-en az `installer/tests/installer-validation-suite.ps1` szkripttel.
