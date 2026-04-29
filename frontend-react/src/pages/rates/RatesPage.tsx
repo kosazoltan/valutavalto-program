@@ -1,11 +1,18 @@
 import { useState, useEffect, useCallback } from 'react'
-import { TrendingUp, RefreshCw, Edit, Save, X, Clock, Download } from 'lucide-react'
+import { TrendingUp, RefreshCw, Edit, Save, X, Clock, Download, Eye } from 'lucide-react'
 import { exchangeRateApi, ExchangeRate } from '../../services/api/index'
 import { NumberInput } from '../../components/NumberInput'
 import { formatDecimal } from '../../utils/numberFormat'
 import { recordLocalAuditEvent } from '../../utils/electronTransactions'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
+import { useAuthStore } from '../../stores/authStore'
+import { useAppMode } from '../../hooks/useAppMode'
+
+// 2026-04-29 B2 fix: a /rates oldalt a penztaros (mode='penztar') NEM
+// szerkesztheti — csak a foertektar/ugyvezeto az ARFOLYAM/Arfolyam.exe legacy
+// szerepkor szerint. Ld. D:\valutavalto-vault\references\legacy-anti-system.md §2.3
+const RATE_EDITOR_ROLES = ['foertektar', 'ugyvezeto'] as const
 
 interface RateRow {
   id: number
@@ -40,6 +47,11 @@ export default function RatesPage() {
   const [lastRefresh, setLastRefresh] = useState<string>('')
   const [editingCode, setEditingCode] = useState<string | null>(null)
   const [editValues, setEditValues] = useState({ buyRate: 0, sellRate: 0 })
+
+  // B2: szerkesztes csak a foertektar/ugyvezeto-nek (legacy ARFOLYAM/Arfolyam.exe)
+  const { mode: appMode } = useAppMode()
+  const hasCanonicalRole = useAuthStore((state) => state.hasCanonicalRole)
+  const canEdit = appMode === 'full' && hasCanonicalRole([...RATE_EDITOR_ROLES])
 
   const loadRates = useCallback(async () => {
     setLoading(true)
@@ -125,13 +137,16 @@ export default function RatesPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <TrendingUp />
-          Árfolyamok
+          Árfolyamok {!canEdit && <span className="text-sm text-gray-500 font-normal">(nézet)</span>}
         </h1>
         <div className="flex gap-2">
-          <button className="form-button flex items-center gap-1">
-            <Download size={16} />
-            MNB letöltés
-          </button>
+          {/* B2 fix: MNB letoltes csak foertektar+ugyvezeto-nek (mode='full') */}
+          {canEdit && (
+            <button className="form-button flex items-center gap-1">
+              <Download size={16} />
+              MNB letöltés
+            </button>
+          )}
           <button
             className="form-button-primary flex items-center gap-1"
             onClick={() => void loadRates()}
@@ -142,6 +157,16 @@ export default function RatesPage() {
           </button>
         </div>
       </div>
+
+      {/* B2 fix: read-only banner penztar/ertektar mode-on */}
+      {!canEdit && (
+        <div className="form-panel bg-blue-50 border-blue-200 flex items-center gap-2">
+          <Eye size={16} className="text-blue-600" />
+          <span className="text-sm text-blue-800">
+            Az árfolyamokat csak a főértéktár (vagy ügyvezető) szerkesztheti — itt csak nézet.
+          </span>
+        </div>
+      )}
 
       {/* Error Display */}
       {error && (
@@ -181,7 +206,7 @@ export default function RatesPage() {
                 <th className="text-right w-28">MNB közép</th>
                 <th className="text-right w-24">Spread %</th>
                 <th className="w-20">Frissítve</th>
-                <th className="w-24">Művelet</th>
+                {canEdit && <th className="w-24">Művelet</th>}
               </tr>
             </thead>
             <tbody>
@@ -228,34 +253,37 @@ export default function RatesPage() {
                     </span>
                   </td>
                   <td className="text-center text-sm text-gray-500">{rate.lastUpdate}</td>
-                  <td>
-                    {editingCode === rate.code ? (
-                      <div className="flex gap-1">
+                  {/* B2 fix: Muvelet oszlop csak foertektar/ugyvezeto-nek */}
+                  {canEdit && (
+                    <td>
+                      {editingCode === rate.code ? (
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => void saveEdit(rate.code)}
+                            className="toolbar-button text-green-600"
+                            title="Mentés"
+                          >
+                            <Save size={14} />
+                          </button>
+                          <button
+                            onClick={cancelEdit}
+                            className="toolbar-button text-red-600"
+                            title="Mégse"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ) : (
                         <button
-                          onClick={() => void saveEdit(rate.code)}
-                          className="toolbar-button text-green-600"
-                          title="Mentés"
+                          onClick={() => startEdit(rate)}
+                          className="toolbar-button"
+                          title="Szerkesztés"
                         >
-                          <Save size={14} />
+                          <Edit size={14} />
                         </button>
-                        <button
-                          onClick={cancelEdit}
-                          className="toolbar-button text-red-600"
-                          title="Mégse"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => startEdit(rate)}
-                        className="toolbar-button"
-                        title="Szerkesztés"
-                      >
-                        <Edit size={14} />
-                      </button>
-                    )}
-                  </td>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

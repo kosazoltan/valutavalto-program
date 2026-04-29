@@ -4,6 +4,7 @@ import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
+import { useAuthStore } from '../../stores/authStore'
 
 interface MonthlyClosingSummaryItem {
   id: string | number
@@ -15,16 +16,25 @@ interface MonthlyClosingSummaryItem {
 }
 
 export default function MonthlyClosingPage() {
+  // 2026-04-29 B35 fix: a backend /closing/monthly endpoint csak {branchId}-os
+  // GET-eket implemental, root-level lista nincs. A current worker branch-et
+  // hasznaljuk a multi-tenant biztonsag tiszteletben tartasaval.
+  const branchId = useAuthStore((state) => state.worker?.branchId)
   const [items, setItems] = useState<MonthlyClosingSummaryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
 
   const loadData = useCallback(async () => {
+    if (!branchId) {
+      setError('Branch nincs beallitva. Login szukseges.')
+      setLoading(false)
+      return
+    }
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get<MonthlyClosingSummaryItem[]>('/closing/monthly')
+      const response = await api.get<MonthlyClosingSummaryItem[]>(`/closing/monthly/${branchId}`)
       setItems(safeArray<typeof items[0]>(response.data))
     } catch (err) {
       const msg = getErrorMessage(err)
@@ -33,7 +43,7 @@ export default function MonthlyClosingPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [branchId])
 
   useEffect(() => {
     void loadData()

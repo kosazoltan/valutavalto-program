@@ -20,7 +20,7 @@ import java.util.UUID;
  */
 @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
 @RestController
-@RequestMapping("/api/evening-closing")
+@RequestMapping("/api/v1/evening-closing")
 @RequiredArgsConstructor
 @Slf4j
 public class EveningClosingController {

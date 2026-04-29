@@ -125,12 +125,17 @@ export default function ClosingWizardPage() {
 
   /** Phase 1: start wizard + run step 1, then pause for denomination input */
   const runClosing = useCallback(async () => {
+    // 2026-04-29 B28 defensive logging: a click utan a teszt idejen
+    // semmi nem tortenhetett — most kotelezo toast minden esetre + console
+    console.log('[Napzaras] runClosing started, worker=', worker?.workerCode, worker?.branchId)
+
     if (!worker) {
-      toast.error('Hiba', 'Nincs bejelentkezett felhasználó!')
+      toast.error('Hiba', 'Nincs bejelentkezett felhasznalo!')
       return
     }
 
     setIsRunning(true)
+    toast.info('Napzaras inditasa', 'Wizard inditasa folyamatban...')
 
     try {
       const wizard = await closingWizardApi.start(
@@ -139,21 +144,26 @@ export default function ClosingWizardPage() {
         'DAILY',
         String(worker.id),
       )
+      console.log('[Napzaras] wizard started, id=', wizard.id)
       setWizardId(wizard.id)
 
       // Run step 1 (MTCN check)
       const step1Ok = await runSteps(wizard.id, 0, 0)
       if (!step1Ok) {
+        toast.warning('Step 1 sikertelen', 'A MTCN ellenorzes nem ment at')
         setIsRunning(false)
         return
       }
+
+      toast.success('Step 1 OK', 'Most rogzitsd a HUF cimletezest')
 
       // Pause: wait for denomination input before continuing
       setIsRunning(false)
       setWaitingForDenom(true)
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Nem sikerült a napzárás wizard indítása'
-      toast.error('Napzárás hiba', errorMsg)
+      console.error('[Napzaras] start failed:', err)
+      const errorMsg = err instanceof Error ? err.message : 'Nem sikerult a napzaras wizard inditasa'
+      toast.error('Napzaras hiba', errorMsg)
       setIsRunning(false)
     }
   }, [worker, runSteps])

@@ -14,6 +14,16 @@
   !define BUILD_DATE "dev"
 !endif
 
+; =============================================================================
+; v2.3.8 BUG FIX: PowerShell -EncodedCommand b64 strings (l. Penztar-Setup.nsi)
+; =============================================================================
+; A korabbi inline `Where-Object { $$_.Path -like ''*BestChange*'' }` minta
+; "ParserError: ExpectedValueExpression" hibat dobott NSIS+PowerShell quote-
+; szetesese miatt. Az -EncodedCommand UTF-16LE base64 quote-mentesen mukodik.
+; =============================================================================
+!define PS_KILL_PG_B64    "RwBlAHQALQBQAHIAbwBjAGUAcwBzACAAcABvAHMAdABnAHIAZQBzACAALQBFAHIAcgBvAHIAQQBjAHQAaQBvAG4AIABTAGkAbABlAG4AdABsAHkAQwBvAG4AdABpAG4AdQBlACAAfAAgAFcAaABlAHIAZQAtAE8AYgBqAGUAYwB0ACAAewAgACQAXwAuAFAAYQB0AGgAIAAtAGwAaQBrAGUAIAAnACoAQgBlAHMAdABDAGgAYQBuAGcAZQAqACcAIAB9ACAAfAAgAFMAdABvAHAALQBQAHIAbwBjAGUAcwBzACAALQBGAG8AcgBjAGUAIAAtAEUAcgByAG8AcgBBAGMAdABpAG8AbgAgAFMAaQBsAGUAbgB0AGwAeQBDAG8AbgB0AGkAbgB1AGUA"
+!define PS_KILL_JAVA_B64  "RwBlAHQALQBQAHIAbwBjAGUAcwBzACAAagBhAHYAYQAgAC0ARQByAHIAbwByAEEAYwB0AGkAbwBuACAAUwBpAGwAZQBuAHQAbAB5AEMAbwBuAHQAaQBuAHUAZQAgAHwAIABXAGgAZQByAGUALQBPAGIAagBlAGMAdAAgAHsAIAAkAF8ALgBQAGEAdABoACAALQBsAGkAawBlACAAJwAqAEIAZQBzAHQAQwBoAGEAbgBnAGUAKgAnACAAfQAgAHwAIABTAHQAbwBwAC0AUAByAG8AYwBlAHMAcwAgAC0ARgBvAHIAYwBlACAALQBFAHIAcgBvAHIAQQBjAHQAaQBvAG4AIABTAGkAbABlAG4AdABsAHkAQwBvAG4AdABpAG4AdQBlAA=="
+
 ; --- Windows EXE Version Info ---
 VIProductVersion "${VERSION}.0"
 VIFileVersion "${VERSION}.0"
@@ -92,8 +102,9 @@ Section "Eltavolitas"
     nsExec::ExecToLog 'taskkill /F /IM Penztar.exe'
     nsExec::ExecToLog 'taskkill /F /IM "Valutavalto Penztar.exe"'
     ; Scoped kill: only BestChange-path postgres/java (nem globalis!)
-    nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process postgres -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
-    nsExec::ExecToLog 'powershell.exe -NoProfile -Command "Get-Process java -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like ''*BestChange*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"'
+    ; v2.3.8: -EncodedCommand a -like quote-szetesese-bug elkerulesere
+    nsExec::ExecToLog 'powershell.exe -NoProfile -EncodedCommand ${PS_KILL_PG_B64}'
+    nsExec::ExecToLog 'powershell.exe -NoProfile -EncodedCommand ${PS_KILL_JAVA_B64}'
     Sleep 2000
 
     ; --- 3. REMOVE services (only after processes are dead!) ---
