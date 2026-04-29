@@ -31,11 +31,14 @@
         <log4j2.version>2.25.4</log4j2.version>
         <!-- CVE-2026-33186 fix: force patched grpc-api over Google client transitive -->
         <grpc.version>1.80.0</grpc.version>
-        <!-- Supply-chain override: Spring Boot 3.5.13 bundles Tomcat 10.1.53, de a
-             2026 április CVE-k (CVE-2026-34483/34486/34487, CVSS 7.5) csak 10.1.54-ben
-             javítottak. Sprint roadmap P2: amint Spring Boot 3.5.14 ki lesz adva
-             (bundled Tomcat 10.1.54+), ezt az override-ot el lehet tavolitani. -->
-        <tomcat.version>10.1.54</tomcat.version>
+        <!-- AI review fix Codex P1 #263 (2026-04-29): a `<tomcat.version>10.1.54</tomcat.version>`
+             override SB 3.5-re volt szükséges (CVE-2026-34483/34486/34487 fix), de SB 4.0.6
+             Servlet 6.1 stack-et céloz, ami Tomcat 11.x. A 10.1.x override Servlet 6.0
+             line-t kényszerítene, ami startup/linkage hibákat okozhat (rejtett risk, már
+             gyakorlatban nem manifesztálódott a 04-29-i deploy-on, de eltávolítjuk a BOM
+             default-ra ATM-cleanup és future-proof). A SB 4.0.6 BOM default Tomcat verzió
+             a Servlet 6.1-kompat (11.0.x), és tartalmazza a 04-29-ig publikált CVE-fix-eket. -->
+        <!-- <tomcat.version>10.1.54</tomcat.version> -->
         <!-- Surefire argLine — ures alapertelmezett, JDK 25 profil felulirja -->
     </properties>
     
