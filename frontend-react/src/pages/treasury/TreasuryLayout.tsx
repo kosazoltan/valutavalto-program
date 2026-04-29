@@ -69,13 +69,15 @@ export default function TreasuryLayout() {
   const workerRole = useAuthStore((state) => state.worker?.role)
   const hasCanonicalRole = useAuthStore((state) => state.hasCanonicalRole)
 
-  // 2026-04-29 v2.3.10 (Sourcery PR #271): hasCanonicalRole-t hozzáadva a deps-be.
-  // A `roles`/`activeRole`/`workerRole` selector-ok ÚJ array referenciát adnak
-  // login/role-change után — a useMemo helyesen invalidálódik.
-  // hasCanonicalRole stable closure (zustand getState() captured), de helyességhez
-  // szerepel a deps között is — eslint-disable eltávolítva.
+  // 2026-04-29 v2.3.10 (Sourcery PR #271): hasCanonicalRole-t hozzáadva a deps-be,
+  // valamint a `roles`/`activeRole`/`workerRole` selector-ok is — login/role-change
+  // után ezek ÚJ értéket kapnak, az useMemo helyesen invalidálódik. ESLint warning-ot
+  // szuppresszáljuk: a hasCanonicalRole selector stable closure, de a többi explicit
+  // role-trigger fontos a refresh helyességéhez (felesleges deps figyelmeztetést ad,
+  // de itt szándékos belt+suspenders pattern).
   const treasuryTabs = useMemo(
     () => allTreasuryTabs.filter((tab) => !tab.canonicalRoles || hasCanonicalRole([...tab.canonicalRoles])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- belt+suspenders: roles/activeRole/workerRole szándékos extra trigger
     [roles, activeRole, workerRole, hasCanonicalRole],
   )
 

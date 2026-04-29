@@ -56,6 +56,7 @@ export default function DashboardPage() {
   const hasCanonicalRole = useAuthStore((state) => state.hasCanonicalRole)
   const canEditRates = useMemo(
     () => appMode === 'full' && hasCanonicalRole([...RATE_EDITOR_ROLES]),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- belt+suspenders: roles szándékos extra trigger login/role-change-kor
     [appMode, roles, hasCanonicalRole],
   )
 

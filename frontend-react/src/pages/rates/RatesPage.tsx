@@ -230,7 +230,7 @@ export default function RatesPage() {
                   </td>
                   <td>{rate.name}</td>
                   <td className="text-right">
-                    {editingCode === rate.code ? (
+                    {editingCode === rate.code && canEdit ? (
                       <NumberInput
                         value={editValues.buyRate.toString().replace('.', ',')}
                         onChange={(val) => setEditValues({ ...editValues, buyRate: parseFloat(val.replace(',', '.')) || 0 })}
@@ -238,13 +238,14 @@ export default function RatesPage() {
                         allowDecimals={true}
                         allowNegative={false}
                         step="0.01"
+                        disabled={!canEdit}
                       />
                     ) : (
                       <span className="font-mono text-green-600">{formatDecimal(rate.buyRate, 2, 2)}</span>
                     )}
                   </td>
                   <td className="text-right">
-                    {editingCode === rate.code ? (
+                    {editingCode === rate.code && canEdit ? (
                       <NumberInput
                         value={editValues.sellRate.toString().replace('.', ',')}
                         onChange={(val) => setEditValues({ ...editValues, sellRate: parseFloat(val.replace(',', '.')) || 0 })}
@@ -252,6 +253,7 @@ export default function RatesPage() {
                         allowDecimals={true}
                         allowNegative={false}
                         step="0.01"
+                        disabled={!canEdit}
                       />
                     ) : (
                       <span className="font-mono text-red-600">{formatDecimal(rate.sellRate, 2, 2)}</span>
