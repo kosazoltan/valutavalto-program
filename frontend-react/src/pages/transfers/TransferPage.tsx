@@ -430,7 +430,7 @@ export default function TransferPage() {
         <div>
           <strong>Banki ki/beszállítás és értéktár-értéktár közötti mozgás.</strong> A pénztárak felé
           szervezett átadás-átvételhez használja az <Link to="/shipments" className="underline font-semibold">Átadás-átvétel (pénztáraknak)</Link> menüpontot.
-          A teljes banki workflow (banki rendelés / Western Union napi kerete / sürgősségi kivét) v2.3.13-ban érkezik.
+          A teljes banki workflow (banki rendelés / Western Union napi kerete / sürgősségi kivét) skeleton-je megnézhető a <Link to="/bank-orders" className="underline font-semibold">Banki rendelések</Link> menüpontban (teljes implementáció: v2.4.0).
         </div>
       </div>
 
