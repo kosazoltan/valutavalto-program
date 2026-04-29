@@ -49,7 +49,11 @@ const MENU_ITEMS_ADMIN: MenuItem[] = [
   // v2.3.34 (B22): Shift+F6 a részletes Bővített Riportokra megy (NEM a sima
   // /reports-ra). A "napi forgalom" cím pontosabb leírásként megmarad.
   { key: '6', label: 'Napi forgalom', description: 'Részletes forgalmi kimutatás (bővített)', icon: Calendar, route: '/reports/extended', shortcut: 'Shift+F6' },
-  { key: '7', label: 'Régi zárás', description: 'Archív napi zárások', icon: Archive, route: '/archiving', shortcut: 'Shift+F7' },
+  // v2.3.39 (B8 audit fix): a /archiving valojaban a Havi archivalas feladatkezelo
+  // (NEM az archív napi zárások listája). A felhasználó a régi napzárásokat /reports
+  // -on talalja (Shift+F4 'Listák'-on keresztul). A label/description most a tényleges
+  // funkcióra ramutat, NEM a felrevezetto "Régi zárás" / "Archív napi zárások"-ra.
+  { key: '7', label: 'Archiválás', description: 'Havi archiválás feladatkezelő', icon: Archive, route: '/archiving', shortcut: 'Shift+F7' },
   { key: '8', label: 'Címletezés', description: 'Címlet összetétel kezelése', icon: RefreshCw, route: '/cashdesk/denominations', shortcut: 'Shift+F8' },
   { key: '9', label: 'Beállítások', description: 'Rendszer konfiguráció', icon: Settings, route: '/settings', shortcut: 'Shift+F9' },
 ]
