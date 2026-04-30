@@ -24,6 +24,13 @@ on:
   pull_request_review_comment:
     types: [created]
 
+# v2.4.4 (CodeQL actions/missing-workflow-permissions hardening):
+# Top-level default `contents: read`. A `auto-fix` job a saját szintjén bővíti
+# (write contents/pull-requests/issues/id-token), ami felülírja ezt a default-ot.
+# Ez a least-privilege minta — minden új job alapból csak `contents: read`-et kap.
+permissions:
+  contents: read
+
 jobs:
   auto-fix:
     # Csak AI reviewer event-ekre triggereljen (Sourcery + Codex)
