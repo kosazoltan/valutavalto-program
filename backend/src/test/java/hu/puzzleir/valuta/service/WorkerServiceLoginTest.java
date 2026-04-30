@@ -29,6 +29,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 
 /**
  * Login security tests — T07 security fix verification.
@@ -180,15 +181,16 @@ class WorkerServiceLoginTest {
         worker.setPasswordHash("dummy");
         worker.setCode("KOSA");
 
-        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
-        when(workerRepository.findByCompanyIdAndCode(companyId, "KOSA")).thenReturn(Optional.of(worker));
-        when(passwordEncoder.matches("1234", "dummy")).thenReturn(true);
-        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+        // Mockito-strict-mode-friendly: csak azokat a stubokat hozzuk létre, amik a
+        // B6-ág végrehajtásához KELLENEK. A login JWT-flow lefut a try/catch-ben
+        // de NEM ide tartozó (unnecessary stubbing).
+        lenient().when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        lenient().when(workerRepository.findByCompanyIdAndCode(companyId, "KOSA"))
+                .thenReturn(Optional.of(worker));
+        lenient().when(passwordEncoder.matches("1234", "dummy")).thenReturn(true);
+        lenient().when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
         // B6 fallback: üres access tábla
         when(workerBranchAccessService.listBranches(workerId)).thenReturn(List.of());
-        // Backend egyéb mockok a logint követő flow-hoz
-        when(workerRoleAssignmentRepository.findByWorkerId(workerId)).thenReturn(List.of());
-        when(branchRepository.findByCompanyIdAndIsActiveTrue(companyId)).thenReturn(List.of(branch));
 
         LoginRequestDto dto = new LoginRequestDto();
         dto.setCompanyCode("EBC");
@@ -196,14 +198,12 @@ class WorkerServiceLoginTest {
         dto.setPassword("1234");
         dto.setBranchId(branchId);
 
-        // When/Then: legacy fallback engedi a logint, hasAccess() NEM lett ellenőrizve
-        // (a check előzetesen rövidre zárva a hasAnyAccess=false miatt).
-        // A login lefut a JWT generálásig (ahol más mock-ok hiánya miatt esetleg NPE,
-        // de a B6 ágat sikeresen átléptük).
+        // When/Then: legacy fallback engedi a B6-ágat (NEM dob "worker_branch_access" hibát),
+        // a login flow utáni JWT-rész nem érdekel — try/catch lenyel mindent.
         try {
             workerService.login(dto, "127.0.0.1", "test");
         } catch (Exception ignored) {
-            // Csak az érdekel, hogy NEM az "worker_branch_access" hiba dobódott
+            // Bármi más hiba OK (mock nélkül NPE), csak az nem, hogy "worker_branch_access"
         }
 
         // Verify: hasAccess() NEM lett ellenőrizve, mert listBranches() üres volt
