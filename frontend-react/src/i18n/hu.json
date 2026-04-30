@@ -1,0 +1,72 @@
+{
+  "common": {
+    "save": "Mentés",
+    "cancel": "Mégse",
+    "edit": "Szerkesztés",
+    "delete": "Törlés",
+    "create": "Létrehozás",
+    "refresh": "Frissítés",
+    "search": "Keresés",
+    "filter": "Szűrés",
+    "details": "Részletek",
+    "close": "Bezárás",
+    "loading": "Betöltés...",
+    "noData": "Nincs adat",
+    "yes": "Igen",
+    "no": "Nem",
+    "back": "Vissza",
+    "next": "Tovább",
+    "actions": "Műveletek"
+  },
+  "cashier": {
+    "buy": "Vétel",
+    "sell": "Eladás",
+    "conversion": "Konverzió",
+    "storno": "Sztornó",
+    "transfer": "Átadás-átvétel",
+    "rates": "Árfolyamok",
+    "stock": "Készlet",
+    "turnover": "Forgalom",
+    "denomination": "Címletezés",
+    "receiptNumber": "Bizonylatszám",
+    "receiptType": "Típus",
+    "issueDate": "Kiadás dátuma",
+    "printed": "Nyomtatva",
+    "amount": "Összeg",
+    "currency": "Valuta",
+    "exchangeRate": "Árfolyam",
+    "handlingFee": "Kezelési díj",
+    "discount": "Kedvezmény"
+  },
+  "auth": {
+    "login": "Bejelentkezés",
+    "logout": "Kijelentkezés",
+    "companyCode": "Cég kód",
+    "workerCode": "Pénztáros kód",
+    "password": "Jelszó",
+    "forgotPassword": "Elfelejtett jelszó?"
+  },
+  "branch": {
+    "branch": "Pénztár",
+    "branchName": "Iroda",
+    "branchCode": "Iroda kód",
+    "branchGroup": "Fiókcsoport",
+    "centralOffice": "Központi"
+  },
+  "settings": {
+    "settings": "Beállítások",
+    "users": "Felhasználók",
+    "permissions": "Jogosultságok",
+    "roles": "Szerepkörök",
+    "company": "Cégadatok",
+    "system": "Rendszer"
+  },
+  "validation": {
+    "required": "Kötelező mező",
+    "invalid": "Érvénytelen érték",
+    "tooShort": "Túl rövid",
+    "tooLong": "Túl hosszú",
+    "minValue": "Minimum: {{min}}",
+    "maxValue": "Maximum: {{max}}"
+  }
+}
