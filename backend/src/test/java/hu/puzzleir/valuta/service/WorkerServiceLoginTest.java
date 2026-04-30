@@ -211,7 +211,7 @@ class WorkerServiceLoginTest {
         }
 
         if (caught != null) {
-            assertThatThrownBy(() -> { throw caught; })
+            org.assertj.core.api.Assertions.assertThat(caught)
                     .isNotInstanceOf(AuthenticationException.class);
         }
     }
@@ -269,7 +269,7 @@ class WorkerServiceLoginTest {
         }
 
         if (caught != null) {
-            assertThatThrownBy(() -> { throw caught; })
+            org.assertj.core.api.Assertions.assertThat(caught)
                     .isNotInstanceOf(AuthenticationException.class);
         }
         verify(workerBranchAccessService).hasAccess(workerId, requestedBranchId);
