@@ -7,6 +7,7 @@ import './index.css'
 import ErrorBoundary from './components/ErrorBoundary'
 import { CompanyThemeProvider } from './contexts/CompanyThemeContext'
 import './components/ErrorReporter' // auto-registers global error listeners
+import './i18n' // v2.4.0 (F): i18next setup — initReactI18next + hu.json resource
 // Polyfill: crypto.randomUUID a NEM secure context-ekre (HTTP non-localhost).
 // RFC4122 v4 uuid implementacio fallback-kent, ha a Web Crypto API nem elerheto.
 if (!globalThis.crypto || typeof globalThis.crypto.randomUUID !== 'function') {
