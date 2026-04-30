@@ -129,7 +129,7 @@ class WorkerServiceLoginTest {
         worker.setCompany(company);
         worker.setActive(true);
         worker.setPasswordHash("dummy");
-        worker.setWorkerCode("KOSA");
+        worker.setCode("KOSA");
 
         when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
         when(workerRepository.findByCompanyIdAndCode(companyId, "KOSA")).thenReturn(Optional.of(worker));
@@ -178,7 +178,7 @@ class WorkerServiceLoginTest {
         worker.setCompany(company);
         worker.setActive(true);
         worker.setPasswordHash("dummy");
-        worker.setWorkerCode("KOSA");
+        worker.setCode("KOSA");
 
         when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
         when(workerRepository.findByCompanyIdAndCode(companyId, "KOSA")).thenReturn(Optional.of(worker));
