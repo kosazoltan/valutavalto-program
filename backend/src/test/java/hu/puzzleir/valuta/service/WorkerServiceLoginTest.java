@@ -4,7 +4,6 @@ import hu.puzzleir.valuta.dto.auth.LoginRequestDto;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Worker;
-import hu.puzzleir.valuta.entity.WorkerBranchAccess;
 import hu.puzzleir.valuta.exception.AuthenticationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
@@ -107,13 +106,17 @@ class WorkerServiceLoginTest {
         verify(companyRepository).findByCode("EBC");
     }
 
+    /**
+     * v2.4.6 (B6 — Codex P1 #331 privilege-escalation fix): a kért branchId akkor és csak
+     * akkor engedélyezett, ha (a) explicit `worker_branch_access` rekord létezik VAGY
+     * (b) a kért branch == worker.branchId (default, legacy 1:1).
+     */
     @Test
-    @DisplayName("v2.4.5 B6: branchOverride + nem létező access → AuthenticationException")
-    void login_branchOverride_noAccess_throwsAuthError() {
-        // Given: érvényes worker, érvényes branch ugyanabban a company-ban,
-        // de a worker_branch_access tábla NEM tartalmaz hozzáférést
+    @DisplayName("v2.4.6 B6: branchOverride NEM-default branch + nincs explicit access → AuthenticationException")
+    void login_branchOverride_nonDefault_noAccess_throwsAuthError() {
         UUID companyId = UUID.randomUUID();
-        UUID branchId = UUID.randomUUID();
+        UUID requestedBranchId = UUID.randomUUID();
+        UUID defaultBranchId = UUID.randomUUID(); // különböző!
         Long workerId = 42L;
 
         Company company = new Company();
@@ -121,13 +124,18 @@ class WorkerServiceLoginTest {
         company.setCode("EBC");
         company.setName("Test");
 
-        Branch branch = new Branch();
-        branch.setId(branchId);
-        branch.setCompany(company);
+        Branch requestedBranch = new Branch();
+        requestedBranch.setId(requestedBranchId);
+        requestedBranch.setCompany(company);
+
+        Branch defaultBranch = new Branch();
+        defaultBranch.setId(defaultBranchId);
+        defaultBranch.setCompany(company);
 
         Worker worker = new Worker();
         worker.setId(workerId);
         worker.setCompany(company);
+        worker.setBranch(defaultBranch); // worker default branch != requested
         worker.setActive(true);
         worker.setPasswordHash("dummy");
         worker.setCode("KOSA");
@@ -135,32 +143,25 @@ class WorkerServiceLoginTest {
         when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
         when(workerRepository.findByCompanyIdAndCode(companyId, "KOSA")).thenReturn(Optional.of(worker));
         when(passwordEncoder.matches("1234", "dummy")).thenReturn(true);
-        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
-        // B6: a worker MAR rendelkezik 1+ access-rekorddal (NEM legacy fallback),
-        // de NEM tartalmazza a kért branch-et
-        WorkerBranchAccess otherAccess = new WorkerBranchAccess();
-        when(workerBranchAccessService.listBranches(workerId)).thenReturn(List.of(otherAccess));
-        when(workerBranchAccessService.hasAccess(workerId, branchId)).thenReturn(false);
+        when(branchRepository.findById(requestedBranchId)).thenReturn(Optional.of(requestedBranch));
+        when(workerBranchAccessService.hasAccess(workerId, requestedBranchId)).thenReturn(false);
 
         LoginRequestDto dto = new LoginRequestDto();
         dto.setCompanyCode("EBC");
         dto.setWorkerCode("KOSA");
         dto.setPassword("1234");
-        dto.setBranchId(branchId);
+        dto.setBranchId(requestedBranchId);
 
-        // When/Then: B6 access check rejects login
         assertThatThrownBy(() -> workerService.login(dto, "127.0.0.1", "test"))
                 .isInstanceOf(AuthenticationException.class)
                 .hasMessageContaining("worker_branch_access");
 
-        verify(workerBranchAccessService).hasAccess(workerId, branchId);
+        verify(workerBranchAccessService).hasAccess(workerId, requestedBranchId);
     }
 
     @Test
-    @DisplayName("v2.4.5 B6: branchOverride + üres access tábla → legacy fallback (NEM blokkol)")
-    void login_branchOverride_emptyAccessTable_legacyFallback() {
-        // Given: érvényes worker, érvényes branch, de a worker_branch_access tábla
-        // ÜRES (V173 seed nem futott / fresh DB) → ne blokkoljuk a logint
+    @DisplayName("v2.4.6 B6: branchOverride == worker.branchId (default) → engedélyezett (legacy 1:1)")
+    void login_branchOverride_defaultBranch_succeeds() {
         UUID companyId = UUID.randomUUID();
         UUID branchId = UUID.randomUUID();
         Long workerId = 42L;
@@ -177,20 +178,20 @@ class WorkerServiceLoginTest {
         Worker worker = new Worker();
         worker.setId(workerId);
         worker.setCompany(company);
+        worker.setBranch(branch); // default == requested
         worker.setActive(true);
         worker.setPasswordHash("dummy");
         worker.setCode("KOSA");
 
-        // Mockito-strict-mode-friendly: csak azokat a stubokat hozzuk létre, amik a
-        // B6-ág végrehajtásához KELLENEK. A login JWT-flow lefut a try/catch-ben
-        // de NEM ide tartozó (unnecessary stubbing).
+        // Mockito strict-mode: csak a B6-ág + early-return stubok
         lenient().when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
         lenient().when(workerRepository.findByCompanyIdAndCode(companyId, "KOSA"))
                 .thenReturn(Optional.of(worker));
         lenient().when(passwordEncoder.matches("1234", "dummy")).thenReturn(true);
         lenient().when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
-        // B6 fallback: üres access tábla
-        when(workerBranchAccessService.listBranches(workerId)).thenReturn(List.of());
+        // hasAccess() lefut (returns false = no explicit access), de isDefaultBranch=true
+        // engedi a logint
+        lenient().when(workerBranchAccessService.hasAccess(workerId, branchId)).thenReturn(false);
 
         LoginRequestDto dto = new LoginRequestDto();
         dto.setCompanyCode("EBC");
@@ -198,15 +199,79 @@ class WorkerServiceLoginTest {
         dto.setPassword("1234");
         dto.setBranchId(branchId);
 
-        // When/Then: legacy fallback engedi a B6-ágat (NEM dob "worker_branch_access" hibát),
-        // a login flow utáni JWT-rész nem érdekel — try/catch lenyel mindent.
+        // When/Then: default branch login NEM dob "worker_branch_access" hibát.
+        // A JWT-flow lefut try/catch-ben — más NPE-k mock nélkül.
+        Exception caught = null;
         try {
             workerService.login(dto, "127.0.0.1", "test");
+        } catch (AuthenticationException ae) {
+            caught = ae;
         } catch (Exception ignored) {
-            // Bármi más hiba OK (mock nélkül NPE), csak az nem, hogy "worker_branch_access"
+            // NPE mock nélküli flow-ban OK — nem ide tartozik
         }
 
-        // Verify: hasAccess() NEM lett ellenőrizve, mert listBranches() üres volt
-        verify(workerBranchAccessService, never()).hasAccess(workerId, branchId);
+        if (caught != null) {
+            org.assertj.core.api.Assertions.assertThat(caught)
+                    .isNotInstanceOf(AuthenticationException.class);
+        }
+    }
+
+    @Test
+    @DisplayName("v2.4.6 B6: branchOverride NEM-default + explicit access → engedélyezett (multi-branch worker)")
+    void login_branchOverride_explicitAccess_succeeds() {
+        UUID companyId = UUID.randomUUID();
+        UUID requestedBranchId = UUID.randomUUID();
+        UUID defaultBranchId = UUID.randomUUID();
+        Long workerId = 42L;
+
+        Company company = new Company();
+        company.setId(companyId);
+        company.setCode("EBC");
+        company.setName("Test");
+
+        Branch requestedBranch = new Branch();
+        requestedBranch.setId(requestedBranchId);
+        requestedBranch.setCompany(company);
+
+        Branch defaultBranch = new Branch();
+        defaultBranch.setId(defaultBranchId);
+        defaultBranch.setCompany(company);
+
+        Worker worker = new Worker();
+        worker.setId(workerId);
+        worker.setCompany(company);
+        worker.setBranch(defaultBranch);
+        worker.setActive(true);
+        worker.setPasswordHash("dummy");
+        worker.setCode("KOSA");
+
+        lenient().when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        lenient().when(workerRepository.findByCompanyIdAndCode(companyId, "KOSA"))
+                .thenReturn(Optional.of(worker));
+        lenient().when(passwordEncoder.matches("1234", "dummy")).thenReturn(true);
+        lenient().when(branchRepository.findById(requestedBranchId)).thenReturn(Optional.of(requestedBranch));
+        // explicit access engedi
+        when(workerBranchAccessService.hasAccess(workerId, requestedBranchId)).thenReturn(true);
+
+        LoginRequestDto dto = new LoginRequestDto();
+        dto.setCompanyCode("EBC");
+        dto.setWorkerCode("KOSA");
+        dto.setPassword("1234");
+        dto.setBranchId(requestedBranchId);
+
+        Exception caught = null;
+        try {
+            workerService.login(dto, "127.0.0.1", "test");
+        } catch (AuthenticationException ae) {
+            caught = ae;
+        } catch (Exception ignored) {
+            // NPE mock nélküli flow-ban OK
+        }
+
+        if (caught != null) {
+            org.assertj.core.api.Assertions.assertThat(caught)
+                    .isNotInstanceOf(AuthenticationException.class);
+        }
+        verify(workerBranchAccessService).hasAccess(workerId, requestedBranchId);
     }
 }
