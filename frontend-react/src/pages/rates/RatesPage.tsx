@@ -145,96 +145,82 @@ export default function RatesPage() {
   }
 
   return (
-    <div className="space-y-3">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <TrendingUp />
-          Árfolyamok {!canEdit && <span className="text-sm text-gray-500 font-normal">(nézet)</span>}
+    <div className="space-y-2">
+      {/* Compact header — minden info egy sorban */}
+      <div className="flex justify-between items-center gap-3 flex-wrap">
+        <h1 className="text-base font-bold text-gray-800 flex items-center gap-2">
+          <TrendingUp size={18} />
+          Árfolyamok {!canEdit && <span className="text-xs text-gray-500 font-normal">(nézet)</span>}
+          {!canEdit && (
+            <span className="text-xs text-blue-700 font-normal flex items-center gap-1 ml-2">
+              <Eye size={12} /> csak főértéktár szerkesztheti
+            </span>
+          )}
+          {lastRefresh && (
+            <span className="text-xs text-gray-500 font-normal flex items-center gap-1 ml-2">
+              <Clock size={12} /> Utolsó frissítés: {lastRefresh}{rates.length > 0 && ` · ${rates.length} valuta`}
+            </span>
+          )}
         </h1>
         <div className="flex gap-2">
-          {/* B2 fix: MNB letoltes csak foertektar+ugyvezeto-nek (mode='full') */}
           {canEdit && (
-            <button className="form-button flex items-center gap-1">
-              <Download size={16} />
+            <button className="form-button flex items-center gap-1 h-7 text-xs">
+              <Download size={14} />
               MNB letöltés
             </button>
           )}
           <button
-            className="form-button-primary flex items-center gap-1"
+            className="form-button-primary flex items-center gap-1 h-7 text-xs"
             onClick={() => void loadRates()}
             disabled={loading}
           >
-            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             Frissítés
           </button>
         </div>
       </div>
 
-      {/* B2 fix: read-only banner penztar/ertektar mode-on */}
-      {!canEdit && (
-        <div className="form-panel bg-blue-50 border-blue-200 flex items-center gap-2">
-          <Eye size={16} className="text-blue-600" />
-          <span className="text-sm text-blue-800">
-            Az árfolyamokat csak a főértéktár (vagy ügyvezető) szerkesztheti — itt csak nézet.
-          </span>
-        </div>
-      )}
-
-      {/* Error Display */}
       {error && (
-        <div className="form-panel bg-red-50 border-red-200 text-red-700 px-4 py-3 rounded">
+        <div className="form-panel bg-red-50 border-red-200 text-red-700 px-3 py-2 text-sm rounded">
           {error}
         </div>
       )}
 
-      {/* Info Banner */}
-      <div className="form-panel bg-blue-50 border-blue-200 flex items-center gap-2">
-        <Clock size={16} className="text-blue-600" />
-        <span className="text-sm text-blue-800">
-          {lastRefresh
-            ? `Utolsó frissítés: ${lastRefresh}`
-            : 'Betöltés...'}
-          {rates.length > 0 && ` | ${rates.length} valuta`}
-        </span>
-      </div>
-
-      {/* Loading State */}
       {loading && rates.length === 0 && (
         <div className="flex items-center justify-center h-32">
           <RefreshCw className="animate-spin text-blue-600" size={32} />
         </div>
       )}
 
-      {/* Rates Table */}
+      {/* Compact dense table — minden valuta egy nézetben */}
       {rates.length > 0 && (
-        <div className="form-panel p-0">
-          <table className="data-grid w-full">
-            <thead>
-              <tr>
-                <th className="w-20">Kód</th>
-                <th>Megnevezés</th>
-                <th className="text-right w-28">Vételi ár</th>
-                <th className="text-right w-28">Eladási ár</th>
-                <th className="text-right w-28">MNB közép</th>
-                <th className="text-right w-24">Spread %</th>
-                <th className="w-20">Frissítve</th>
-                {canEdit && <th className="w-24">Művelet</th>}
+        <div className="form-panel p-0 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr className="text-xs uppercase text-gray-500">
+                <th className="px-2 py-1.5 text-left w-14">Kód</th>
+                <th className="px-2 py-1.5 text-left">Megnevezés</th>
+                <th className="px-2 py-1.5 text-right w-24">Vételi</th>
+                <th className="px-2 py-1.5 text-right w-24">Eladási</th>
+                <th className="px-2 py-1.5 text-right w-24">MNB</th>
+                <th className="px-2 py-1.5 text-right w-20">Spread</th>
+                <th className="px-2 py-1.5 text-center w-16">Frissítve</th>
+                {canEdit && <th className="px-2 py-1.5 text-center w-20">Művelet</th>}
               </tr>
             </thead>
             <tbody>
-              {rates.map((rate) => (
-                <tr key={rate.id}>
-                  <td>
+              {rates.map((rate, idx) => (
+                <tr key={rate.id} className={`${idx % 2 === 1 ? 'bg-gray-50' : ''} hover:bg-blue-50 border-b border-gray-100 last:border-0`}>
+                  <td className="px-2 py-1">
                     <span className="font-mono font-bold text-blue-600">{rate.code}</span>
                   </td>
-                  <td>{rate.name}</td>
-                  <td className="text-right">
+                  <td className="px-2 py-1">{rate.name}</td>
+                  <td className="px-2 py-1 text-right">
                     {editingCode === rate.code && canEdit ? (
                       <NumberInput
                         value={editValues.buyRate.toString().replace('.', ',')}
                         onChange={(val) => setEditValues({ ...editValues, buyRate: parseFloat(val.replace(',', '.')) || 0 })}
-                        className="form-input w-24 text-right"
+                        className="form-input w-20 text-right text-sm py-0.5"
                         allowDecimals={true}
                         allowNegative={false}
                         step="0.01"
@@ -244,12 +230,12 @@ export default function RatesPage() {
                       <span className="font-mono text-green-600">{formatDecimal(rate.buyRate, 2, 2)}</span>
                     )}
                   </td>
-                  <td className="text-right">
+                  <td className="px-2 py-1 text-right">
                     {editingCode === rate.code && canEdit ? (
                       <NumberInput
                         value={editValues.sellRate.toString().replace('.', ',')}
                         onChange={(val) => setEditValues({ ...editValues, sellRate: parseFloat(val.replace(',', '.')) || 0 })}
-                        className="form-input w-24 text-right"
+                        className="form-input w-20 text-right text-sm py-0.5"
                         allowDecimals={true}
                         allowNegative={false}
                         step="0.01"
@@ -259,42 +245,41 @@ export default function RatesPage() {
                       <span className="font-mono text-red-600">{formatDecimal(rate.sellRate, 2, 2)}</span>
                     )}
                   </td>
-                  <td className="text-right font-mono text-gray-600">
+                  <td className="px-2 py-1 text-right font-mono text-gray-600">
                     {rate.mnbRate > 0 ? formatDecimal(rate.mnbRate, 2, 2) : '-'}
                   </td>
-                  <td className="text-right">
-                    <span className="text-xs font-mono bg-gray-100 px-2 py-0.5 rounded">
+                  <td className="px-2 py-1 text-right">
+                    <span className="text-xs font-mono text-gray-700">
                       {formatDecimal(parseFloat(getSpread(rate.buyRate, rate.sellRate)), 2, 2)}%
                     </span>
                   </td>
-                  <td className="text-center text-sm text-gray-500">{rate.lastUpdate}</td>
-                  {/* B2 fix: Muvelet oszlop csak foertektar/ugyvezeto-nek */}
+                  <td className="px-2 py-1 text-center text-xs text-gray-500">{rate.lastUpdate}</td>
                   {canEdit && (
-                    <td>
+                    <td className="px-2 py-1">
                       {editingCode === rate.code ? (
-                        <div className="flex gap-1">
+                        <div className="flex gap-0.5 justify-center">
                           <button
                             onClick={() => void saveEdit(rate.code)}
-                            className="toolbar-button text-green-600"
+                            className="toolbar-button text-green-600 p-1"
                             title="Mentés"
                           >
-                            <Save size={14} />
+                            <Save size={12} />
                           </button>
                           <button
                             onClick={cancelEdit}
-                            className="toolbar-button text-red-600"
+                            className="toolbar-button text-red-600 p-1"
                             title="Mégse"
                           >
-                            <X size={14} />
+                            <X size={12} />
                           </button>
                         </div>
                       ) : (
                         <button
                           onClick={() => startEdit(rate)}
-                          className="toolbar-button"
+                          className="toolbar-button p-1 mx-auto block"
                           title="Szerkesztés"
                         >
-                          <Edit size={14} />
+                          <Edit size={12} />
                         </button>
                       )}
                     </td>
@@ -306,7 +291,6 @@ export default function RatesPage() {
         </div>
       )}
 
-      {/* Empty State */}
       {!loading && rates.length === 0 && !error && (
         <div className="form-panel text-center text-gray-500 py-8">
           Nincsenek elérhető árfolyamok. Kérjük, hozzon létre árfolyamot az Árfolyamkészítés oldalon.
