@@ -44,6 +44,7 @@ public class InventoryService {
     private final CashBalanceRepository cashBalanceRepository;
     private final AuditLogRepository auditLogRepository;
     private final ExchangeRateRepository exchangeRateRepository;
+    private final hu.puzzleir.valuta.repository.CurrencyStockRepository currencyStockRepository;
 
     private static final DateTimeFormatter REF_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
 
@@ -366,6 +367,37 @@ public class InventoryService {
     @Transactional(readOnly = true)
     public List<CashBalance> getCurrentStock(UUID branchId) {
         return cashBalanceRepository.findByBranchId(branchId);
+    }
+
+    /**
+     * Értéktár (VAULT entity_type) készlete soronként valutára bontva.
+     *
+     * v2.4.9: az "Értéktári készlet" oldal adatforrása. A jelenlegi `quantity` értéket
+     * `closing` mezőként adjuk vissza; az opening / received / issued mezők placeholder-ként
+     * null-ok, amíg a daily-snapshot tracking implementálva nincs (v2.5.0 follow-up).
+     */
+    @Transactional(readOnly = true)
+    public List<hu.puzzleir.valuta.dto.inventory.VaultStockRowDto> getVaultStockFlow() {
+        UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
+        var stocks = currencyStockRepository.findByCompanyIdAndEntityType(companyId, "VAULT");
+
+        return stocks.stream()
+                .map(cs -> {
+                    var currency = currencyRepository.findByCode(cs.getCurrencyCode()).orElse(null);
+                    String name = (currency != null) ? currency.getName() : cs.getCurrencyCode();
+                    return hu.puzzleir.valuta.dto.inventory.VaultStockRowDto.builder()
+                            .currencyCode(cs.getCurrencyCode())
+                            .currencyName(name)
+                            .opening(null)
+                            .received(null)
+                            .issued(null)
+                            .closing(cs.getQuantity())
+                            .difference(java.math.BigDecimal.ZERO)
+                            .lastUpdated(cs.getLastUpdated())
+                            .build();
+                })
+                .sorted((a, b) -> a.getCurrencyCode().compareTo(b.getCurrencyCode()))
+                .toList();
     }
 
     /**

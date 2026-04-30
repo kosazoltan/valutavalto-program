@@ -86,6 +86,18 @@ public class InventoryController {
         return ResponseEntity.ok(inventoryService.getStockMatrix());
     }
 
+    /**
+     * v2.4.9: Értéktár (VAULT entity_type) készlete valutára bontva.
+     *
+     * Az "Értéktári készlet" oldal adatforrása, NEM a pénztáraké.
+     * A pénztári készletek a /api/v1/inventory/stock endpointon érhetők el.
+     */
+    @GetMapping("/vault-stock")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO', 'IRODAVEZETO')")
+    public ResponseEntity<List<VaultStockRowDto>> getVaultStock() {
+        return ResponseEntity.ok(inventoryService.getVaultStockFlow());
+    }
+
     // ============ BANK OPERATIONS ============
 
     @PostMapping("/bank-withdraw")
