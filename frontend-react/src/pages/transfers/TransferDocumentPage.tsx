@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { FileCheck2, Search, RefreshCw, AlertTriangle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -16,6 +17,7 @@ interface TransferDocumentItem {
 }
 
 export default function TransferDocumentPage() {
+  const { t } = useTranslation()
   const [items, setItems] = useState<TransferDocumentItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -53,10 +55,10 @@ export default function TransferDocumentPage() {
       <div className="flex items-center justify-between">
         <h1 className="form-title flex items-center gap-2">
           <FileCheck2 className="h-6 w-6" />
-          Szállítólevelek
+          {t('transferReceipts.title')}
         </h1>
         <div className="flex items-center gap-2">
-          <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
+          <button onClick={() => void loadData()} className="form-button p-2" title={t('common.refresh')}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
@@ -67,7 +69,7 @@ export default function TransferDocumentPage() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Keresés..."
+            placeholder={t('common.searchPlaceholder')}
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             className="form-input w-full pl-10"
@@ -86,19 +88,19 @@ export default function TransferDocumentPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Bizonylat szám</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Forráspénztár</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Célpénztár</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Összeg</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Állapot</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Dátum</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('transferReceipts.documentNumber')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('transferReceipts.fromBranch')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('transferReceipts.toBranch')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('transferReceipts.amount')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('transferReceipts.status')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('transferReceipts.date')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.loading')}</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">Nincs adat</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
             ) : filtered.map(item => (
               <tr key={item.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm">{item.documentNumber ?? '-'}</td>
@@ -114,7 +116,7 @@ export default function TransferDocumentPage() {
       </div>
 
       <div className="text-sm text-gray-500">
-        Összesen: {filtered.length} / {items.length}
+        {t('common.total')}: {filtered.length} / {items.length}
       </div>
     </div>
   )

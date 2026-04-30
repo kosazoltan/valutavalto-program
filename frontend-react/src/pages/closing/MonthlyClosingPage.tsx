@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Calendar, Search, RefreshCw, AlertTriangle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -16,6 +17,7 @@ interface MonthlyClosingSummaryItem {
 }
 
 export default function MonthlyClosingPage() {
+  const { t } = useTranslation()
   // 2026-04-29 B35 fix: a backend /closing/monthly endpoint csak {branchId}-os
   // GET-eket implemental, root-level lista nincs. A current worker branch-et
   // hasznaljuk a multi-tenant biztonsag tiszteletben tartasaval.
@@ -27,7 +29,7 @@ export default function MonthlyClosingPage() {
 
   const loadData = useCallback(async () => {
     if (!branchId) {
-      setError('Branch nincs beallitva. Login szukseges.')
+      setError(t('monthlyClose.branchRequired'))
       setLoading(false)
       return
     }
@@ -43,7 +45,7 @@ export default function MonthlyClosingPage() {
     } finally {
       setLoading(false)
     }
-  }, [branchId])
+  }, [branchId, t])
 
   useEffect(() => {
     void loadData()
@@ -62,10 +64,10 @@ export default function MonthlyClosingPage() {
       <div className="flex items-center justify-between">
         <h1 className="form-title flex items-center gap-2">
           <Calendar className="h-6 w-6" />
-          Havi zárás
+          {t('monthlyClose.title')}
         </h1>
         <div className="flex items-center gap-2">
-          <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
+          <button onClick={() => void loadData()} className="form-button p-2" title={t('common.refresh')}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
@@ -76,7 +78,7 @@ export default function MonthlyClosingPage() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Keresés..."
+            placeholder={t('common.searchPlaceholder')}
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             className="form-input w-full pl-10"
@@ -95,18 +97,18 @@ export default function MonthlyClosingPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Hónap</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Pénztár</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Állapot</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Zárás ideje</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Zárta</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('monthlyClose.month')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('monthlyClose.branch')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('monthlyClose.status')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('monthlyClose.closedAt')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('monthlyClose.closedBy')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
+              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.loading')}</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">Nincs adat</td></tr>
+              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
             ) : filtered.map(item => (
               <tr key={item.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm">{item.yearMonth ?? '-'}</td>
@@ -121,7 +123,7 @@ export default function MonthlyClosingPage() {
       </div>
 
       <div className="text-sm text-gray-500">
-        Összesen: {filtered.length} / {items.length}
+        {t('common.total')}: {filtered.length} / {items.length}
       </div>
     </div>
   )
