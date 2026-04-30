@@ -151,7 +151,7 @@ export default function StockSnapshotPage() {
             return (
               <div key={(region.regionCode ?? 'r') + ri} className="bg-white rounded shadow">
                 <div className="bg-gray-50 px-4 py-2 border-b">
-                  <h2 className="font-semibold">{region.regionName ?? region.regionCode ?? 'Régió'}</h2>
+                  <h2 className="font-semibold">{region.regionName ?? region.regionCode ?? t('stockSnapshot.regionFallback')}</h2>
                   <div className="text-xs text-gray-500">
                     {t('stockSnapshot.regionTotal')}: {formatHuf(regionTotal)} / {t('stockSnapshot.regionBranchCount', { count: region.branches?.length ?? 0 })}
                   </div>

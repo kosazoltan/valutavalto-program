@@ -107,6 +107,7 @@
     "fallbackCount": "{{count}} devizanem",
     "currencyHeader": "Deviza",
     "stockHeader": "Készlet",
+    "regionFallback": "Régió",
     "excelError": "Excel letöltés hiba",
     "loadError": "Betöltési hiba"
   }
