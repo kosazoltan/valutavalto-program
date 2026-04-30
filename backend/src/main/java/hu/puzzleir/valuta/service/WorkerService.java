@@ -374,13 +374,14 @@ public class WorkerService {
         loginAttempts.remove(loginKey);
         
         // Branch check (ha megadva)
-        // v2.4.5 (B6): a SetupWizard branch-választás esetén defenzíven ellenőrizzük,
-        // hogy a worker explicit hozzáféréssel rendelkezik a kért branch-hez. A V173
-        // backward-compat seed minden meglévő workernek 1:1 default branch hozzáférést
-        // adott, így új workernek hiányzó hozzáférés esetén AuthenticationException.
-        // Ha a worker_branch_access tábla teljesen üres (pl. még nem futott a V173
-        // seed → migration error vagy fresh DB), a hasAccess() fail-loud helyett a
-        // legacy 1:1 worker.branchId fallback érvényes (NEM blokkoljuk a logint).
+        // v2.4.6 (B6 — Codex P1 #331 privilege-escalation fix):
+        // A SetupWizard branch-választás esetén SZIGORÚAN ellenőrizzük a hozzáférést.
+        // Két érvényes út a kért branch-hez:
+        //  (1) worker_branch_access tartalmaz egy explicit (workerId, branchId) párt → OK
+        //  (2) a kért branchId == worker.branchId (default branch, legacy 1:1) → OK
+        // Egyéb esetben AuthenticationException (privilege escalation prevention).
+        // A v2.4.5 backward-compat fallback HIBÁS volt: ha listBranches() üres, akkor
+        // ANY branchId-t engedte a workernek a saját cégen belül — Codex P1 #331.
         if (dto.getBranchId() != null) {
             Branch branch = branchRepository.findById(dto.getBranchId())
                     .orElseThrow(() -> new ValidationException("Hibás iroda ID!"));
@@ -389,11 +390,12 @@ public class WorkerService {
                 throw new ValidationException("Az iroda nem tartozik ehhez a céghez!");
             }
 
-            // B6 access check: csak akkor érvényesítjük ha legalább 1 access-rekord
-            // létezik a workernek (különben legacy/seed-pre fallback).
-            boolean hasAnyAccess = !workerBranchAccessService
-                    .listBranches(worker.getId()).isEmpty();
-            if (hasAnyAccess && !workerBranchAccessService.hasAccess(worker.getId(), branch.getId())) {
+            UUID requestedBranchId = branch.getId();
+            UUID defaultBranchId = worker.getBranch() != null ? worker.getBranch().getId() : null;
+            boolean isDefaultBranch = defaultBranchId != null && defaultBranchId.equals(requestedBranchId);
+            boolean hasExplicitAccess = workerBranchAccessService.hasAccess(worker.getId(), requestedBranchId);
+
+            if (!isDefaultBranch && !hasExplicitAccess) {
                 throw new AuthenticationException(
                         "Nincs jogosultsága ehhez az irodához (worker_branch_access).");
             }
