@@ -64,6 +64,8 @@ public class WorkerService {
     private final WorkerRoleAssignmentRepository roleAssignmentRepository;
     private final WorkerRolePermissionRepository rolePermissionRepository;
     private final TokenBlacklistService tokenBlacklistService;
+    // v2.4.5 (B6): branchId override engedélyezésének ellenőrzéséhez.
+    private final WorkerBranchAccessService workerBranchAccessService;
 
     // HIGH FIX #16: Brute force védelem — max 5 sikertelen próba, utána 15 perc lock
     private static final int MAX_FAILED_ATTEMPTS = 5;
@@ -372,14 +374,30 @@ public class WorkerService {
         loginAttempts.remove(loginKey);
         
         // Branch check (ha megadva)
+        // v2.4.5 (B6): a SetupWizard branch-választás esetén defenzíven ellenőrizzük,
+        // hogy a worker explicit hozzáféréssel rendelkezik a kért branch-hez. A V173
+        // backward-compat seed minden meglévő workernek 1:1 default branch hozzáférést
+        // adott, így új workernek hiányzó hozzáférés esetén AuthenticationException.
+        // Ha a worker_branch_access tábla teljesen üres (pl. még nem futott a V173
+        // seed → migration error vagy fresh DB), a hasAccess() fail-loud helyett a
+        // legacy 1:1 worker.branchId fallback érvényes (NEM blokkoljuk a logint).
         if (dto.getBranchId() != null) {
             Branch branch = branchRepository.findById(dto.getBranchId())
                     .orElseThrow(() -> new ValidationException("Hibás iroda ID!"));
-            
+
             if (!branch.getCompany().getId().equals(company.getId())) {
                 throw new ValidationException("Az iroda nem tartozik ehhez a céghez!");
             }
-            
+
+            // B6 access check: csak akkor érvényesítjük ha legalább 1 access-rekord
+            // létezik a workernek (különben legacy/seed-pre fallback).
+            boolean hasAnyAccess = !workerBranchAccessService
+                    .listBranches(worker.getId()).isEmpty();
+            if (hasAnyAccess && !workerBranchAccessService.hasAccess(worker.getId(), branch.getId())) {
+                throw new AuthenticationException(
+                        "Nincs jogosultsága ehhez az irodához (worker_branch_access).");
+            }
+
             worker.setBranch(branch);
         }
         
