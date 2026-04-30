@@ -48,11 +48,16 @@ public interface InventoryMovementRepository extends JpaRepository<InventoryMove
            "FROM InventoryMovement m WHERE m.referenceNumber LIKE CONCAT(:prefix, '%')")
     long findMaxReferenceNumber(@Param("prefix") String prefix);
 
+    // v2.4.1 (TRB Export production fix): PostgreSQL JDBC NEM tudja megallapitani
+    // a ':param IS NULL' pattern type-jat, ezert PSQLException: "could not determine
+    // data type of parameter $N". Megoldas (AuditLogRepository precedens):
+    // CAST(:param AS LocalDate) IS NULL — ez explicit type-hint a JDBC driver-nek.
+    // Hetzner production log: 2026-04-30 05:02:16 + 05:02:37 — ket reprodukalt hiba.
     @Query("SELECT m FROM InventoryMovement m WHERE " +
            "m.movementType IN ('BANK_WITHDRAW', 'BANK_DEPOSIT') " +
            "AND m.status = 'RECEIVED' " +
-           "AND (:startDate IS NULL OR m.movementDate >= :startDate) " +
-           "AND (:endDate IS NULL OR m.movementDate <= :endDate) " +
+           "AND (CAST(:startDate AS LocalDate) IS NULL OR m.movementDate >= :startDate) " +
+           "AND (CAST(:endDate AS LocalDate) IS NULL OR m.movementDate <= :endDate) " +
            "ORDER BY m.movementDate DESC")
     List<InventoryMovement> findBankFlows(
             @Param("startDate") LocalDate startDate,
@@ -62,8 +67,8 @@ public interface InventoryMovementRepository extends JpaRepository<InventoryMove
            "m.movementType IN ('BANK_WITHDRAW', 'BANK_DEPOSIT') " +
            "AND m.status = 'RECEIVED' " +
            "AND (m.fromBranch.company.id = :companyId OR m.toBranch.company.id = :companyId) " +
-           "AND (:startDate IS NULL OR m.movementDate >= :startDate) " +
-           "AND (:endDate IS NULL OR m.movementDate <= :endDate) " +
+           "AND (CAST(:startDate AS LocalDate) IS NULL OR m.movementDate >= :startDate) " +
+           "AND (CAST(:endDate AS LocalDate) IS NULL OR m.movementDate <= :endDate) " +
            "ORDER BY m.movementDate DESC")
     List<InventoryMovement> findBankFlowsByCompanyId(
             @Param("companyId") UUID companyId,
