@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { Package, ArrowLeft, Info } from 'lucide-react'
 
 /**
@@ -51,7 +51,11 @@ export default function ShipmentNewPage() {
             </p>
             <p className="text-sm text-blue-800">
               <strong>Jelenleg elérhető:</strong> a meglévő szállítmányigények listázása,
-              jóváhagyása vagy elutasítása a <button onClick={() => navigate('/shipments')} className="underline text-blue-900 hover:text-blue-700">szállítmányigények listáján</button>.
+              jóváhagyása vagy elutasítása a{' '}
+              <Link to="/shipments" className="underline text-blue-900 hover:text-blue-700">
+                szállítmányigények listáján
+              </Link>
+              .
             </p>
             <p className="text-xs text-blue-700 mt-3">
               Ha sürgős átadás-átvétel szükséges, a Pénztár (Valutaváltó) menüben a
