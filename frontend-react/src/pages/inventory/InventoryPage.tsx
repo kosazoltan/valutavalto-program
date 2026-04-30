@@ -1,46 +1,52 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Package, Search, RefreshCw, AlertTriangle, Wallet } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Vault, RefreshCw, AlertTriangle, Info } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 
-interface InventoryItem {
-  id: string | number
-  currencyCode?: string
-  branchName?: string
-  currentBalance?: number
-  lastUpdated?: string
+/**
+ * v2.4.9: Az "Értéktári készlet" oldal — KIZÁRÓLAG az értéktár saját készletét
+ * mutatja, valutánként a napi flow-val (nyitó / átvett / átadott / záró / diff).
+ *
+ * NEM a pénztárak készleteit — azok külön menüpontban: /cashier-stocks
+ * (Pénztári készletek).
+ */
+interface VaultStockRow {
+  currencyCode: string
+  currencyName: string
+  opening: number | null
+  received: number | null
+  issued: number | null
+  closing: number | null
+  difference: number | null
+  lastUpdated: string | null
 }
 
-interface BranchGroup {
-  branchName: string
-  items: InventoryItem[]
-  hufTotal: number
-  nonZeroCount: number
-}
-
-function formatBalance(value: number | undefined, currencyCode: string | undefined): string {
-  if (typeof value !== 'number') return value ?? '-'
-  if (currencyCode === 'HUF') return value.toLocaleString('hu-HU', { maximumFractionDigits: 0 })
-  return value.toLocaleString('hu-HU', { maximumFractionDigits: 2 })
+function formatCurrency(value: number | null | undefined, code?: string): string {
+  if (value == null) return '—'
+  const opts: Intl.NumberFormatOptions = code === 'HUF'
+    ? { maximumFractionDigits: 0 }
+    : { maximumFractionDigits: 2 }
+  return value.toLocaleString('hu-HU', opts)
 }
 
 export default function InventoryPage() {
-  const [items, setItems] = useState<InventoryItem[]>([])
+  const [rows, setRows] = useState<VaultStockRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [searchTerm, setSearchTerm] = useState('')
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get<InventoryItem[]>('/inventory/stock')
-      setItems(safeArray<InventoryItem>(response.data))
+      const response = await api.get<VaultStockRow[]>('/inventory/vault-stock')
+      setRows(safeArray<VaultStockRow>(response.data))
+      setLastRefresh(new Date())
     } catch (err) {
       const msg = getErrorMessage(err)
-      logger.error('InventoryPage', 'Betöltési hiba:', err)
+      logger.error('InventoryPage', 'Értéktári készlet betöltési hiba:', err)
       setError(msg)
     } finally {
       setLoading(false)
@@ -51,62 +57,27 @@ export default function InventoryPage() {
     void loadData()
   }, [loadData])
 
-  const filtered = useMemo(() => {
-    if (!searchTerm) return items
-    const term = searchTerm.toLowerCase()
-    return items.filter(item =>
-      Object.values(item).some(v => v != null && String(v).toLowerCase().includes(term))
-    )
-  }, [items, searchTerm])
-
-  const branchGroups: BranchGroup[] = useMemo(() => {
-    const map = new Map<string, BranchGroup>()
-    for (const item of filtered) {
-      const name = item.branchName ?? '(ismeretlen)'
-      let group = map.get(name)
-      if (!group) {
-        group = { branchName: name, items: [], hufTotal: 0, nonZeroCount: 0 }
-        map.set(name, group)
-      }
-      group.items.push(item)
-      if (item.currencyCode === 'HUF' && typeof item.currentBalance === 'number') {
-        group.hufTotal += item.currentBalance
-      }
-      if (typeof item.currentBalance === 'number' && item.currentBalance !== 0) {
-        group.nonZeroCount += 1
-      }
-    }
-    for (const group of map.values()) {
-      group.items.sort((a, b) => (a.currencyCode ?? '').localeCompare(b.currencyCode ?? ''))
-    }
-    return Array.from(map.values()).sort((a, b) => b.hufTotal - a.hufTotal)
-  }, [filtered])
-
-  const grandTotalHuf = branchGroups.reduce((sum, g) => sum + g.hufTotal, 0)
-  const totalBranches = branchGroups.length
-  const totalNonZero = branchGroups.reduce((sum, g) => sum + g.nonZeroCount, 0)
+  const totalHufClosing = rows
+    .filter(r => r.currencyCode === 'HUF')
+    .reduce((sum, r) => sum + (r.closing ?? 0), 0)
 
   return (
     <div className="space-y-3">
-      {/* Header + kereső */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="form-title flex items-center gap-2 text-lg">
-          <Package className="h-5 w-5" />
-          Készletkezelés
+        <h1 className="text-lg font-bold text-secondary-900 flex items-center gap-2">
+          <Vault className="h-5 w-5 text-primary-700" />
+          Értéktári készlet
+          <span className="text-xs text-gray-500 font-normal">(saját, valutánként)</span>
         </h1>
-        <div className="flex items-center gap-2 flex-1 max-w-md">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Keresés (valuta, pénztár)..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="form-input w-full pl-10 h-8 text-sm"
-            />
-          </div>
-          <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+        <div className="flex items-center gap-2">
+          {lastRefresh && (
+            <span className="text-xs text-gray-500">
+              {lastRefresh.toLocaleTimeString('hu-HU')}
+            </span>
+          )}
+          <button onClick={() => void loadData()} className="form-button h-8 text-xs flex items-center gap-1" title="Frissítés">
+            <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+            Frissítés
           </button>
         </div>
       </div>
@@ -118,73 +89,96 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {/* Összesen — kiemelt nagy kártya legfelül */}
-      <div className="rounded-lg bg-gradient-to-br from-primary-50 to-primary-100 border-2 border-primary-200 p-5 shadow-sm">
+      {/* HUF összesen kiemelt kártya */}
+      <div className="rounded-lg bg-gradient-to-br from-primary-50 to-primary-100 border-2 border-primary-200 p-4 shadow-sm">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-lg bg-primary-100 text-primary-700">
-              <Wallet className="h-6 w-6" />
-            </div>
+            <Vault className="h-6 w-6 text-primary-700" />
             <div>
-              <div className="text-sm text-primary-700 font-medium">Összesen (HUF készlet)</div>
-              <div className="text-3xl font-bold font-mono text-primary-900">
-                {grandTotalHuf.toLocaleString('hu-HU', { maximumFractionDigits: 0 })} Ft
+              <div className="text-sm text-primary-700 font-medium">Értéktári záró HUF készlet</div>
+              <div className="text-2xl font-bold font-mono text-primary-900">
+                {totalHufClosing.toLocaleString('hu-HU', { maximumFractionDigits: 0 })} Ft
               </div>
             </div>
           </div>
           <div className="text-right">
-            <div className="text-sm text-primary-700">
-              <strong>{totalBranches}</strong> pénztár
-            </div>
-            <div className="text-xs text-primary-600">
-              {totalNonZero} aktív tétel · {filtered.length} sor
-            </div>
+            <div className="text-sm text-primary-700">{rows.length} valuta</div>
           </div>
         </div>
       </div>
 
-      {/* Pénztáranként kártyák */}
-      {loading && branchGroups.length === 0 ? (
-        <div className="form-panel text-center text-sm text-gray-500 py-8">Betöltés...</div>
-      ) : branchGroups.length === 0 ? (
-        <div className="form-panel text-center text-sm text-gray-500 py-8">Nincs adat</div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-          {branchGroups.map(group => (
-            <BranchCard key={group.branchName} group={group} />
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function BranchCard({ group }: { group: BranchGroup }) {
-  return (
-    <div className="form-panel p-3 hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-200">
-        <h3 className="font-bold text-secondary-900 truncate flex-1" title={group.branchName}>
-          {group.branchName}
-        </h3>
-        <span className="text-xs text-gray-500 ml-2">
-          {group.items.length} valuta
-        </span>
-      </div>
-      <table className="w-full text-sm">
-        <tbody>
-          {group.items.map(item => {
-            const isZero = !item.currentBalance || item.currentBalance === 0
-            return (
-              <tr key={`${item.id}`} className={isZero ? 'text-gray-400' : ''}>
-                <td className="py-0.5 font-mono font-semibold w-12">{item.currencyCode ?? '-'}</td>
-                <td className={`py-0.5 text-right font-mono ${isZero ? '' : 'text-secondary-900 font-semibold'}`}>
-                  {formatBalance(item.currentBalance, item.currencyCode)}
+      {/* Vault flow tábla */}
+      <div className="form-panel p-0">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr className="text-xs uppercase text-gray-600">
+              <th className="px-3 py-2 text-left w-20">Kód</th>
+              <th className="px-3 py-2 text-left">Megnevezés</th>
+              <th className="px-3 py-2 text-right w-28">Nyitókészlet</th>
+              <th className="px-3 py-2 text-right w-28">Átvett (in)</th>
+              <th className="px-3 py-2 text-right w-28">Átadott (out)</th>
+              <th className="px-3 py-2 text-right w-28">Zárókészlet</th>
+              <th className="px-3 py-2 text-right w-24">Különbség</th>
+              <th className="px-3 py-2 text-center w-24">Frissítve</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading && rows.length === 0 ? (
+              <tr><td colSpan={8} className="px-3 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
+            ) : rows.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-3 py-8 text-center text-sm text-gray-500">
+                  <div className="flex flex-col items-center gap-2">
+                    <Info className="h-5 w-5 text-gray-400" />
+                    <div>Nincs értéktári készlet bejegyzés.</div>
+                    <div className="text-xs text-gray-400">
+                      Az értéktári készlet a Collection / Distribution / Bank tranzakciók során töltődik fel.
+                    </div>
+                  </div>
                 </td>
               </tr>
-            )
-          })}
-        </tbody>
-      </table>
+            ) : rows.map((row, idx) => {
+              const diff = row.difference ?? 0
+              const diffClass = diff === 0 ? 'text-gray-500' : diff > 0 ? 'text-green-700' : 'text-red-700'
+              return (
+                <tr key={row.currencyCode} className={`${idx % 2 === 1 ? 'bg-gray-50' : ''} hover:bg-blue-50 border-b border-gray-100 last:border-0`}>
+                  <td className="px-3 py-1.5 font-mono font-bold text-blue-700">{row.currencyCode}</td>
+                  <td className="px-3 py-1.5">{row.currencyName}</td>
+                  <td className="px-3 py-1.5 text-right font-mono text-gray-700">
+                    {formatCurrency(row.opening, row.currencyCode)}
+                  </td>
+                  <td className="px-3 py-1.5 text-right font-mono text-green-700">
+                    {formatCurrency(row.received, row.currencyCode)}
+                  </td>
+                  <td className="px-3 py-1.5 text-right font-mono text-red-700">
+                    {formatCurrency(row.issued, row.currencyCode)}
+                  </td>
+                  <td className="px-3 py-1.5 text-right font-mono font-bold text-secondary-900">
+                    {formatCurrency(row.closing, row.currencyCode)}
+                  </td>
+                  <td className={`px-3 py-1.5 text-right font-mono ${diffClass}`}>
+                    {row.difference == null ? '—' : (diff > 0 ? '+' : '') + formatCurrency(diff, row.currencyCode)}
+                  </td>
+                  <td className="px-3 py-1.5 text-center text-xs text-gray-500">
+                    {row.lastUpdated ? new Date(row.lastUpdated).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {rows.length > 0 && rows[0]?.opening == null && (
+        <div className="form-panel bg-amber-50 border-amber-200 flex items-start gap-2 text-xs text-amber-900">
+          <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+          <span>
+            <strong>Megjegyzés:</strong> A nyitó / átvett / átadott napi értékek
+            követéséhez a v2.5.0 sprintben kerül implementálásra a daily-snapshot mechanizmus.
+            Jelenleg csak a záró (jelenlegi) készlet érhető el.
+          </span>
+        </div>
+      )}
     </div>
   )
 }

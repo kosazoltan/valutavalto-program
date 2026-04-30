@@ -110,6 +110,7 @@ const BackupPage = lazy(() => import('./pages/backup/BackupPage'))
 const ProfitPage = lazy(() => import('./pages/profit/ProfitPage'))
 const MnbReportPage = lazy(() => import('./pages/reports/MnbReportPage'))
 const InventoryPage = lazy(() => import('./pages/inventory/InventoryPage'))
+const CashierStocksPage = lazy(() => import('./pages/inventory/CashierStocksPage'))
 const WesternUnionPage = lazy(() => import('./pages/westernunion/WesternUnionPage'))
 const CompetitorPage = lazy(() => import('./pages/competitors/CompetitorPage'))
 const PoliceRequestPage = lazy(() => import('./pages/police/PoliceRequestPage'))
@@ -589,6 +590,7 @@ export default function App() {
           <Route path="/profit" element={<ProfitPage />} />
           <Route path="/reports/mnb" element={<MnbReportPage />} />
           <Route path="/inventory" element={<InventoryPage />} />
+          <Route path="/cashier-stocks" element={<CashierStocksPage />} />
           <Route path="/western-union" element={<WesternUnionPage />} />
           <Route path="/competitors" element={<CompetitorPage />} />
           <Route path="/police-requests" element={<PoliceRequestPage />} />

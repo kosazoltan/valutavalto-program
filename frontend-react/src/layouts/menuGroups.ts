@@ -78,6 +78,7 @@ export const menuGroups: MenuGroup[] = [
       { path: "/transfer-documents", label: "Szállítólevelek", icon: FileText },
       { path: "/transit", label: "Úton lévő csomagok", icon: ArrowLeftRight },
       { path: "/inventory", label: "Értéktári készlet", icon: Wallet },
+      { path: "/cashier-stocks", label: "Pénztári készletek", icon: Wallet },
       { path: "/daybook", label: "Naplókönyv", icon: FileText },
       { path: "/evening-closing", label: "Napi zárás", icon: FileText },
       { path: "/closing/monthly", label: "Havi zárás", icon: FileText },
