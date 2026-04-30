@@ -68,4 +68,49 @@ describe('i18n setup', () => {
   it('interpolation works (validation.minValue)', () => {
     expect(i18n.t('validation.minValue', { min: 5 })).toBe('Minimum: 5')
   })
+
+  // v2.4.X i18n batch1 — TransferDocument + MonthlyClose + StockSnapshot pages
+  it('loads transferReceipts.title (with accents)', () => {
+    expect(i18n.t('transferReceipts.title')).toBe('Átutalási bizonylatok')
+  })
+
+  it('loads transferReceipts.fromBranch (Forráspénztár)', () => {
+    expect(i18n.t('transferReceipts.fromBranch')).toBe('Forráspénztár')
+  })
+
+  it('loads transferReceipts.toBranch (Célpénztár)', () => {
+    expect(i18n.t('transferReceipts.toBranch')).toBe('Célpénztár')
+  })
+
+  it('loads monthlyClose.title (Havi zárás)', () => {
+    expect(i18n.t('monthlyClose.title')).toBe('Havi zárás')
+  })
+
+  it('loads monthlyClose.month (Hónap)', () => {
+    expect(i18n.t('monthlyClose.month')).toBe('Hónap')
+  })
+
+  it('loads monthlyClose.closedAt (Zárás ideje)', () => {
+    expect(i18n.t('monthlyClose.closedAt')).toBe('Zárás ideje')
+  })
+
+  it('loads stockSnapshot.title (Készlet pillanatkép)', () => {
+    expect(i18n.t('stockSnapshot.title')).toBe('Készlet pillanatkép')
+  })
+
+  it('loads stockSnapshot.lastUpdated (Frissítve)', () => {
+    expect(i18n.t('stockSnapshot.lastUpdated')).toBe('Frissítve')
+  })
+
+  it('loads common.searchPlaceholder', () => {
+    expect(i18n.t('common.searchPlaceholder')).toBe('Keresés...')
+  })
+
+  it('loads common.exportExcel', () => {
+    expect(i18n.t('common.exportExcel')).toBe('Excel letöltés')
+  })
+
+  it('interpolation works (stockSnapshot.regionBranchCount)', () => {
+    expect(i18n.t('stockSnapshot.regionBranchCount', { count: 5 })).toBe('5 pénztár')
+  })
 })

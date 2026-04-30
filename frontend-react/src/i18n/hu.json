@@ -7,6 +7,7 @@
     "create": "Létrehozás",
     "refresh": "Frissítés",
     "search": "Keresés",
+    "searchPlaceholder": "Keresés...",
     "filter": "Szűrés",
     "details": "Részletek",
     "close": "Bezárás",
@@ -16,7 +17,9 @@
     "no": "Nem",
     "back": "Vissza",
     "next": "Tovább",
-    "actions": "Műveletek"
+    "actions": "Műveletek",
+    "total": "Összesen",
+    "exportExcel": "Excel letöltés"
   },
   "cashier": {
     "buy": "Vétel",
@@ -68,5 +71,43 @@
     "tooLong": "Túl hosszú",
     "minValue": "Minimum: {{min}}",
     "maxValue": "Maximum: {{max}}"
+  },
+  "transferReceipts": {
+    "title": "Átutalási bizonylatok",
+    "documentNumber": "Bizonylat szám",
+    "fromBranch": "Forráspénztár",
+    "toBranch": "Célpénztár",
+    "amount": "Összeg",
+    "status": "Állapot",
+    "date": "Dátum",
+    "loadError": "Betöltési hiba"
+  },
+  "monthlyClose": {
+    "title": "Havi zárás",
+    "month": "Hónap",
+    "branch": "Pénztár",
+    "status": "Állapot",
+    "closedAt": "Zárás ideje",
+    "closedBy": "Zárta",
+    "branchRequired": "Pénztár nincs beállítva. Bejelentkezés szükséges.",
+    "loadError": "Betöltési hiba"
+  },
+  "stockSnapshot": {
+    "title": "Készlet pillanatkép",
+    "company": "Cég",
+    "snapshotTime": "Snapshot idő",
+    "totalHuf": "Összes HUF érték",
+    "regionTotal": "Régió összesen",
+    "regionBranchCount": "{{count}} pénztár",
+    "branchHeader": "Pénztár",
+    "lastUpdated": "Frissítve",
+    "hufValue": "HUF érték",
+    "currencies": "Valuták",
+    "fallbackTitle": "Cég szintű készlet összesítő (devizanemenként)",
+    "fallbackCount": "{{count}} devizanem",
+    "currencyHeader": "Deviza",
+    "stockHeader": "Készlet",
+    "excelError": "Excel letöltés hiba",
+    "loadError": "Betöltési hiba"
   }
 }

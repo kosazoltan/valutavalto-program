@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Camera, RefreshCw, AlertTriangle, Download } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -67,6 +68,7 @@ function formatHuf(v: number | string | undefined): string {
 }
 
 export default function StockSnapshotPage() {
+  const { t } = useTranslation()
   const [snapshot, setSnapshot] = useState<StockSnapshot | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -78,7 +80,7 @@ export default function StockSnapshotPage() {
       setSnapshot(response.data ?? null)
     } catch (err) {
       const msg = getErrorMessage(err)
-      logger.error('StockSnapshotPage', 'Betoltesi hiba:', err)
+      logger.error('StockSnapshotPage', 'Betöltési hiba:', err)
       setError(msg); setSnapshot(null)
     } finally { setLoading(false) }
   }, [])
@@ -113,14 +115,14 @@ export default function StockSnapshotPage() {
       <div className="flex items-center justify-between">
         <h1 className="form-title flex items-center gap-2">
           <Camera className="h-6 w-6" />
-          Készlet pillanatkép
+          {t('stockSnapshot.title')}
         </h1>
         <div className="flex items-center gap-2">
-          <button onClick={() => void loadData()} className="form-button p-2" title="Frissites">
+          <button onClick={() => void loadData()} className="form-button p-2" title={t('common.refresh')}>
             <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
           </button>
           <button onClick={() => void downloadExcel()} className="form-button-primary flex items-center gap-2">
-            <Download className="h-4 w-4" /> Excel letöltés
+            <Download className="h-4 w-4" /> {t('common.exportExcel')}
           </button>
         </div>
       </div>
@@ -133,15 +135,15 @@ export default function StockSnapshotPage() {
       )}
 
       {loading ? (
-        <div className="text-center text-sm text-gray-500 py-8">Betoltes...</div>
+        <div className="text-center text-sm text-gray-500 py-8">{t('common.loading')}</div>
       ) : !snapshot ? (
-        <div className="text-center text-sm text-gray-500 py-8">Nincs adat</div>
+        <div className="text-center text-sm text-gray-500 py-8">{t('common.noData')}</div>
       ) : (
         <div className="space-y-4">
           <div className="bg-white rounded shadow p-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-            <div><span className="text-gray-500">Cég:</span> <b>{snapshot.companyName ?? '-'}</b></div>
-            <div><span className="text-gray-500">Snapshot idő:</span> {snapshot.snapshotTime ? new Date(snapshot.snapshotTime).toLocaleString('hu-HU') : '-'}</div>
-            <div><span className="text-gray-500">Összes HUF érték:</span> <b className="font-mono">{formatHuf(companyTotal)}</b></div>
+            <div><span className="text-gray-500">{t('stockSnapshot.company')}:</span> <b>{snapshot.companyName ?? '-'}</b></div>
+            <div><span className="text-gray-500">{t('stockSnapshot.snapshotTime')}:</span> {snapshot.snapshotTime ? new Date(snapshot.snapshotTime).toLocaleString('hu-HU') : '-'}</div>
+            <div><span className="text-gray-500">{t('stockSnapshot.totalHuf')}:</span> <b className="font-mono">{formatHuf(companyTotal)}</b></div>
           </div>
 
           {(snapshot.regions ?? []).map((region, ri) => {
@@ -149,18 +151,18 @@ export default function StockSnapshotPage() {
             return (
               <div key={(region.regionCode ?? 'r') + ri} className="bg-white rounded shadow">
                 <div className="bg-gray-50 px-4 py-2 border-b">
-                  <h2 className="font-semibold">{region.regionName ?? region.regionCode ?? 'Regio'}</h2>
+                  <h2 className="font-semibold">{region.regionName ?? region.regionCode ?? 'Régió'}</h2>
                   <div className="text-xs text-gray-500">
-                    Regio osszesen: {formatHuf(regionTotal)} / {region.branches?.length ?? 0} penztar
+                    {t('stockSnapshot.regionTotal')}: {formatHuf(regionTotal)} / {t('stockSnapshot.regionBranchCount', { count: region.branches?.length ?? 0 })}
                   </div>
                 </div>
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Penztar</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Utolso frissites</th>
-                      <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">HUF érték</th>
-                      <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">Valutak</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('stockSnapshot.branchHeader')}</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('stockSnapshot.lastUpdated')}</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('stockSnapshot.hufValue')}</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('stockSnapshot.currencies')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -185,15 +187,15 @@ export default function StockSnapshotPage() {
           {hasCompanyTotalsFallback && (
             <div className="bg-white rounded shadow">
               <div className="bg-gray-50 px-4 py-2 border-b">
-                <h2 className="font-semibold">Cég szintű készlet összesítő (devizanemenként)</h2>
-                <div className="text-xs text-gray-500">{snapshot.companyTotals?.currencies?.length ?? 0} devizanem</div>
+                <h2 className="font-semibold">{t('stockSnapshot.fallbackTitle')}</h2>
+                <div className="text-xs text-gray-500">{t('stockSnapshot.fallbackCount', { count: snapshot.companyTotals?.currencies?.length ?? 0 })}</div>
               </div>
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Deviza</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">Készlet</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">HUF érték</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('stockSnapshot.currencyHeader')}</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('stockSnapshot.stockHeader')}</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('stockSnapshot.hufValue')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
