@@ -1,16 +1,21 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.entity.Company;
+import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.entity.WorkerBranchAccess;
 import hu.puzzleir.valuta.entity.WorkerBranchAccess.WorkerBranchAccessId;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.WorkerBranchAccessRepository;
+import hu.puzzleir.valuta.repository.WorkerRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
@@ -21,7 +26,6 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -36,9 +40,10 @@ import static org.mockito.Mockito.when;
  * 3. requireAccess() fail-loud ha denied
  * 4. grantAccess() idempotent (NEM duplicate ha mar exists)
  * 5. grantAccess() audit-fields populálva (grantedAt, grantedByWorkerId)
- * 6. revokeAccess() fail-loud ha NEM exists
- * 7. revokeAccess() success ha exists
- * 8. listBranches() / listWorkers() forwards to repo
+ * 6. grantAccess() Codex P1 #326: tenant boundary check (cross-company tilt)
+ * 7. revokeAccess() fail-loud ha NEM exists
+ * 8. revokeAccess() success ha exists
+ * 9. listBranches() / listWorkers() forwards to repo
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("WorkerBranchAccessService — B6 multi-branch worker access")
@@ -47,6 +52,12 @@ class WorkerBranchAccessServiceTest {
     @Mock
     private WorkerBranchAccessRepository repo;
 
+    @Mock
+    private WorkerRepository workerRepo;
+
+    @Mock
+    private BranchRepository branchRepo;
+
     @InjectMocks
     private WorkerBranchAccessService service;
 
@@ -54,6 +65,34 @@ class WorkerBranchAccessServiceTest {
     private static final UUID BRANCH_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private static final UUID OTHER_BRANCH_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
     private static final Long ADMIN_ID = 99L;
+    private static final UUID COMPANY_A = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+    private static final UUID COMPANY_B = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+
+    private Worker workerCompanyA;
+    private Branch branchCompanyA;
+    private Branch branchCompanyB;
+
+    @BeforeEach
+    void setUp() {
+        Company companyA = Company.builder().id(COMPANY_A).code("EBC").name("EBC Zrt.").build();
+        Company companyB = Company.builder().id(COMPANY_B).code("OTHER").name("Other Co.").build();
+
+        workerCompanyA = Worker.builder()
+                .id(WORKER_ID)
+                .code("P001")
+                .company(companyA)
+                .build();
+        branchCompanyA = Branch.builder()
+                .id(BRANCH_ID)
+                .code("BR017")
+                .company(companyA)
+                .build();
+        branchCompanyB = Branch.builder()
+                .id(OTHER_BRANCH_ID)
+                .code("BR099")
+                .company(companyB)
+                .build();
+    }
 
     @Test
     @DisplayName("hasAccess() true ha rekord exists")
@@ -104,8 +143,10 @@ class WorkerBranchAccessServiceTest {
     }
 
     @Test
-    @DisplayName("grantAccess() create new record audit-fields-szel")
+    @DisplayName("grantAccess() create new record audit-fields-szel (same-company)")
     void grantAccess_createsNewRecordWithAuditFields() {
+        when(workerRepo.findById(WORKER_ID)).thenReturn(Optional.of(workerCompanyA));
+        when(branchRepo.findById(BRANCH_ID)).thenReturn(Optional.of(branchCompanyA));
         when(repo.findById(any(WorkerBranchAccessId.class))).thenReturn(Optional.empty());
         ArgumentCaptor<WorkerBranchAccess> captor = ArgumentCaptor.forClass(WorkerBranchAccess.class);
         when(repo.save(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
@@ -117,11 +158,14 @@ class WorkerBranchAccessServiceTest {
         assertThat(saved.getBranchId()).isEqualTo(BRANCH_ID);
         assertThat(saved.getGrantedByWorkerId()).isEqualTo(ADMIN_ID);
         assertThat(saved.getGrantedAt()).isNotNull();
+        assertThat(result).isEqualTo(saved);
     }
 
     @Test
     @DisplayName("grantAccess() idempotent: létező grant nem duplicate-re save")
     void grantAccess_idempotentNoDuplicate() {
+        when(workerRepo.findById(WORKER_ID)).thenReturn(Optional.of(workerCompanyA));
+        when(branchRepo.findById(BRANCH_ID)).thenReturn(Optional.of(branchCompanyA));
         WorkerBranchAccess existing = WorkerBranchAccess.builder()
                 .workerId(WORKER_ID)
                 .branchId(BRANCH_ID)
@@ -143,6 +187,48 @@ class WorkerBranchAccessServiceTest {
                 .isInstanceOf(ValidationException.class);
         assertThatThrownBy(() -> service.grantAccess(WORKER_ID, null, ADMIN_ID))
                 .isInstanceOf(ValidationException.class);
+    }
+
+    /**
+     * Codex P1 (#326): cross-tenant grant TILOS.
+     */
+    @Test
+    @DisplayName("grantAccess() Codex P1: cross-tenant grant denied (worker companyA, branch companyB)")
+    void grantAccess_rejectsCrossTenantGrant() {
+        when(workerRepo.findById(WORKER_ID)).thenReturn(Optional.of(workerCompanyA));
+        when(branchRepo.findById(OTHER_BRANCH_ID)).thenReturn(Optional.of(branchCompanyB));
+
+        assertThatThrownBy(() -> service.grantAccess(WORKER_ID, OTHER_BRANCH_ID, ADMIN_ID))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("Cross-tenant grant denied");
+
+        verify(repo, never()).save(any());
+        verify(repo, never()).findById(any(WorkerBranchAccessId.class));
+    }
+
+    @Test
+    @DisplayName("grantAccess() worker not found -> ValidationException")
+    void grantAccess_rejectsMissingWorker() {
+        when(workerRepo.findById(WORKER_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.grantAccess(WORKER_ID, BRANCH_ID, ADMIN_ID))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("Worker not found");
+
+        verify(repo, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("grantAccess() branch not found -> ValidationException")
+    void grantAccess_rejectsMissingBranch() {
+        when(workerRepo.findById(WORKER_ID)).thenReturn(Optional.of(workerCompanyA));
+        when(branchRepo.findById(BRANCH_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.grantAccess(WORKER_ID, BRANCH_ID, ADMIN_ID))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("Branch not found");
+
+        verify(repo, never()).save(any());
     }
 
     @Test

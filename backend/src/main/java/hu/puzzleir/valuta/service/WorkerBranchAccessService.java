@@ -1,8 +1,12 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.entity.WorkerBranchAccess;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.WorkerBranchAccessRepository;
+import hu.puzzleir.valuta.repository.WorkerRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -10,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -29,6 +34,8 @@ import java.util.UUID;
  *   <li><b>OWASP A01</b>: Broken Access Control — explicit grant required, default deny</li>
  *   <li><b>OWASP A09</b>: Logging — every grant/revoke audit-logged with [BRANCH_ACCESS] code</li>
  *   <li><b>Fail-loud</b>: revoke of non-existent access raises ValidationException, NEM silently no-op</li>
+ *   <li><b>Tenant boundary</b> (Codex P1 PR #326): grantAccess() validates worker.company == branch.company,
+ *       cross-tenant grant is rejected with SecurityException-equivalent ValidationException.</li>
  * </ul>
  */
 @Service
@@ -37,6 +44,8 @@ import java.util.UUID;
 public class WorkerBranchAccessService {
 
     private final WorkerBranchAccessRepository repo;
+    private final WorkerRepository workerRepo;
+    private final BranchRepository branchRepo;
 
     /**
      * Hot-path access check.
@@ -73,11 +82,20 @@ public class WorkerBranchAccessService {
 
     /**
      * Admin grants access to a worker for a branch.
-     * Idempotent: re-granting an existing access is a no-op (NEM creates duplicate).
+     *
+     * <p>Pre-conditions (Codex P1 #326 tenant boundary):
+     * <ul>
+     *   <li>Worker MUST exist</li>
+     *   <li>Branch MUST exist</li>
+     *   <li>Worker.company.id MUST equal Branch.company.id (no cross-tenant grant)</li>
+     * </ul>
+     *
+     * <p>Idempotent: re-granting an existing access is a no-op (NEM creates duplicate).
      *
      * @param workerId           the target worker
      * @param branchId           the target branch
      * @param grantedByWorkerId  the admin who issued the grant (null = system)
+     * @throws ValidationException if input invalid, worker/branch missing, or cross-tenant grant
      */
     @Transactional
     public WorkerBranchAccess grantAccess(Long workerId, UUID branchId,
@@ -85,6 +103,35 @@ public class WorkerBranchAccessService {
         if (workerId == null || branchId == null) {
             throw new ValidationException("workerId and branchId are required");
         }
+
+        // Tenant boundary check (Codex P1 #326): worker és branch ugyanahhoz a
+        // company-hoz kell tartozzon. Cross-tenant grant TILOS, mert
+        // hasAccess() ellenőrizetlenül engedne cross-company tranzakciót.
+        Worker worker = workerRepo.findById(workerId)
+                .orElseThrow(() -> {
+                    log.warn("[BRANCH_ACCESS] grant rejected: worker NEM exists: workerId={}",
+                            workerId);
+                    return new ValidationException("Worker not found: " + workerId);
+                });
+        Branch branch = branchRepo.findById(branchId)
+                .orElseThrow(() -> {
+                    log.warn("[BRANCH_ACCESS] grant rejected: branch NEM exists: branchId={}",
+                            branchId);
+                    return new ValidationException("Branch not found: " + branchId);
+                });
+        UUID workerCompanyId = worker.getCompany() != null ? worker.getCompany().getId() : null;
+        UUID branchCompanyId = branch.getCompany() != null ? branch.getCompany().getId() : null;
+        if (workerCompanyId == null || branchCompanyId == null
+                || !Objects.equals(workerCompanyId, branchCompanyId)) {
+            log.warn("[BRANCH_ACCESS] tenant boundary violation: workerId={} workerCompany={} "
+                            + "branchId={} branchCompany={}",
+                    workerId, workerCompanyId, branchId, branchCompanyId);
+            throw new ValidationException(
+                    "Cross-tenant grant denied: worker " + workerId
+                            + " (company " + workerCompanyId + ") cannot access branch "
+                            + branchId + " (company " + branchCompanyId + ")");
+        }
+
         WorkerBranchAccess existing = repo.findById(
                 new WorkerBranchAccess.WorkerBranchAccessId(workerId, branchId))
                 .orElse(null);
@@ -100,8 +147,8 @@ public class WorkerBranchAccessService {
                 .grantedByWorkerId(grantedByWorkerId)
                 .build();
         WorkerBranchAccess saved = repo.save(access);
-        log.info("[BRANCH_ACCESS] granted: worker={} branch={} grantedBy={}",
-                workerId, branchId, grantedByWorkerId);
+        log.info("[BRANCH_ACCESS] granted: worker={} branch={} grantedBy={} company={}",
+                workerId, branchId, grantedByWorkerId, workerCompanyId);
         return saved;
     }
 

@@ -34,6 +34,13 @@ CREATE TABLE IF NOT EXISTS worker_branch_access (
 CREATE INDEX IF NOT EXISTS idx_worker_branch_access_worker_id
     ON worker_branch_access(worker_id);
 
+-- Index per-branch lookup (admin UI: branch -> workers matrix, listWorkers())
+-- Codex P2 (#326) review fix: branch-centric query NEM volt indexelve, sequential
+-- scan kockazat ahogy a tabla nő. (branch_id, granted_at) composite index a
+-- findAllByBranchIdOrderByGrantedAtAsc query-hez optimalis.
+CREATE INDEX IF NOT EXISTS idx_worker_branch_access_branch_granted
+    ON worker_branch_access(branch_id, granted_at);
+
 -- Backward compat seed: minden meglévő worker default branchId → 1 record
 -- granted_by_worker_id = self (system-seed, NEM ember által)
 INSERT INTO worker_branch_access (worker_id, branch_id, granted_at, granted_by_worker_id)
