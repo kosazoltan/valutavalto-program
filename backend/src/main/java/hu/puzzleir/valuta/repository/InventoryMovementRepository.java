@@ -48,11 +48,14 @@ public interface InventoryMovementRepository extends JpaRepository<InventoryMove
            "FROM InventoryMovement m WHERE m.referenceNumber LIKE CONCAT(:prefix, '%')")
     long findMaxReferenceNumber(@Param("prefix") String prefix);
 
+    // CAST(:param AS DATE) az SQL-szabványos type-hint a PostgreSQL JDBC driver-nek
+    // (ld. issue #327 + AuditLogRepository precedens). Enélkül ':param IS NULL'
+    // pattern-en PSQLException: "could not determine data type of parameter".
     @Query("SELECT m FROM InventoryMovement m WHERE " +
            "m.movementType IN ('BANK_WITHDRAW', 'BANK_DEPOSIT') " +
            "AND m.status = 'RECEIVED' " +
-           "AND (:startDate IS NULL OR m.movementDate >= :startDate) " +
-           "AND (:endDate IS NULL OR m.movementDate <= :endDate) " +
+           "AND (CAST(:startDate AS DATE) IS NULL OR m.movementDate >= :startDate) " +
+           "AND (CAST(:endDate AS DATE) IS NULL OR m.movementDate <= :endDate) " +
            "ORDER BY m.movementDate DESC")
     List<InventoryMovement> findBankFlows(
             @Param("startDate") LocalDate startDate,
@@ -62,8 +65,8 @@ public interface InventoryMovementRepository extends JpaRepository<InventoryMove
            "m.movementType IN ('BANK_WITHDRAW', 'BANK_DEPOSIT') " +
            "AND m.status = 'RECEIVED' " +
            "AND (m.fromBranch.company.id = :companyId OR m.toBranch.company.id = :companyId) " +
-           "AND (:startDate IS NULL OR m.movementDate >= :startDate) " +
-           "AND (:endDate IS NULL OR m.movementDate <= :endDate) " +
+           "AND (CAST(:startDate AS DATE) IS NULL OR m.movementDate >= :startDate) " +
+           "AND (CAST(:endDate AS DATE) IS NULL OR m.movementDate <= :endDate) " +
            "ORDER BY m.movementDate DESC")
     List<InventoryMovement> findBankFlowsByCompanyId(
             @Param("companyId") UUID companyId,
