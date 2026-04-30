@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { useState, useCallback, useMemo } from 'react'
 import { useAuthStore } from '../../stores/authStore'
+import { useAppMode } from '../../hooks/useAppMode'
 
 /**
  * 2026-04-29 FIX: a /treasury layout korábban hardkódolt 10 tabbal jelent meg
@@ -68,6 +69,10 @@ export default function TreasuryLayout() {
   const activeRole = useAuthStore((state) => state.activeRole)
   const workerRole = useAuthStore((state) => state.worker?.role)
   const hasCanonicalRole = useAuthStore((state) => state.hasCanonicalRole)
+  // v2.4.9: értéktár (lokál) módban a foértéktári funkciók (F4/F5/F7/F8/F10) NEM
+  // jelenhetnek meg, akkor sem ha a user role-ja megengedné. Ott az értéktár csak
+  // megnézi az árfolyamokat, nem készíti — az a foértéktár kompetencia.
+  const { mode: appMode } = useAppMode()
 
   // 2026-04-29 v2.3.10 (Sourcery PR #271): hasCanonicalRole-t hozzáadva a deps-be,
   // valamint a `roles`/`activeRole`/`workerRole` selector-ok is — login/role-change
@@ -76,9 +81,15 @@ export default function TreasuryLayout() {
   // role-trigger fontos a refresh helyességéhez (felesleges deps figyelmeztetést ad,
   // de itt szándékos belt+suspenders pattern).
   const treasuryTabs = useMemo(
-    () => allTreasuryTabs.filter((tab) => !tab.canonicalRoles || hasCanonicalRole([...tab.canonicalRoles])),
+    () => allTreasuryTabs.filter((tab) => {
+      // Role check
+      if (tab.canonicalRoles && !hasCanonicalRole([...tab.canonicalRoles])) return false
+      // v2.4.9: foértéktári funkciók (CENTRAL_VAULT_ROLES) ertektar módban rejtve
+      if (tab.canonicalRoles === CENTRAL_VAULT_ROLES && appMode === 'ertektar') return false
+      return true
+    }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- belt+suspenders: roles/activeRole/workerRole szándékos extra trigger
-    [roles, activeRole, workerRole, hasCanonicalRole],
+    [roles, activeRole, workerRole, hasCanonicalRole, appMode],
   )
 
   const isVisiblePath = useCallback(
