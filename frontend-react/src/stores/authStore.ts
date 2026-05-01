@@ -43,6 +43,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()((set, get) => ({
   worker: null,
+  user: null, // 2026-05-01 fix: legacy compat field, login()-ban tükrözzük worker-t
   token: null,
   tokenType: null,
   expiresAt: null,
@@ -57,6 +58,11 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
           roleSelectionRequired?: boolean) => {
     set({
       worker,
+      // 2026-05-01 fix: a `user` field legacy compat — eddig SOSE volt set,
+      // ezért a UI (MainLayout `Telephely: {user?.branchName || 'Központi'}`)
+      // mindig "Központi" fallback-et mutatott a tényleges branch-név helyett.
+      // Most tükrözzük a worker-t user-be.
+      user: worker,
       token,
       tokenType,
       expiresAt,
@@ -84,6 +90,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   logout: () => {
     set({
       worker: null,
+      user: null,
       token: null,
       tokenType: null,
       expiresAt: null,
@@ -144,8 +151,8 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     return ['SUPERVISOR', 'MANAGER', 'ADMIN'].includes(effectiveRole)
   },
 
-  // Legacy compatibility getter
-  get user() {
-    return get().worker
-  },
+  // Legacy compat: a `user` field-et a `login`/`logout` set()-ekben tükrözzük worker-re.
+  // Korábbi `get user() { return get().worker }` getter NEM reaktív Zustand snapshot-ban
+  // (lasd ProfitPage komment 2026-04-29) — emiatt mindig null volt, és a Telephely
+  // fejléc 'Központi' fallback-et mutatott a valós branch-név helyett.
 }))
