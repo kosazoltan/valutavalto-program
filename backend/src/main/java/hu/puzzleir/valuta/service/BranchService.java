@@ -82,6 +82,40 @@ public class BranchService {
     }
 
     /**
+     * v2.5.1-C B6: Csak ÉRTÉKTÁRI (is_vault=TRUE) fiókok — a SetupWizard értéktár
+     * módú telepítéskor használja. Multi-tenant-safe.
+     */
+    @Transactional(readOnly = true)
+    public List<BranchDto> findVaultBranches(boolean activeOnly) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        log.debug("Finding vault branches (activeOnly={}) for company: {}", activeOnly, companyId);
+        List<Branch> branches = activeOnly
+                ? branchRepository.findByCompanyIdAndIsVaultTrueAndIsActiveTrue(companyId)
+                : branchRepository.findByCompanyIdAndIsVaultTrue(companyId);
+        return branchMapper.toDtoList(branches);
+    }
+
+    /**
+     * v2.5.1-C B6: is_vault flag módosítása — admin/foertektar/ugyvezeto használja.
+     * Multi-tenant-safe (cross-tenant access denied).
+     */
+    @Transactional
+    public BranchDto updateIsVault(UUID branchId, boolean isVault) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Branch branch = branchRepository.findById(branchId)
+                .orElseThrow(() -> new hu.puzzleir.valuta.exception.ResourceNotFoundException(
+                        "Branch nem található: " + branchId));
+        if (branch.getCompany() == null || !companyId.equals(branch.getCompany().getId())) {
+            throw new hu.puzzleir.valuta.exception.ValidationException(
+                    "Branch más céghez tartozik (cross-tenant access denied).");
+        }
+        branch.setIsVault(isVault);
+        Branch saved = branchRepository.save(branch);
+        log.info("Branch is_vault updated: branchId={} code={} isVault={}", branchId, saved.getCode(), isVault);
+        return branchMapper.toDto(saved);
+    }
+
+    /**
      * Fiók keresése ID alapján
      */
     @Transactional(readOnly = true)
