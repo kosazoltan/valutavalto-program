@@ -56,6 +56,35 @@ public class BranchController {
     }
 
     /**
+     * GET /api/v1/branches/vault-only
+     * v2.5.1-C B6: Csak ÉRTÉKTÁRI (is_vault=TRUE) fiókok.
+     */
+    @GetMapping("/vault-only")
+    public ResponseEntity<List<BranchDto>> getVaultBranches(
+            @RequestParam(required = false, defaultValue = "true") boolean activeOnly
+    ) {
+        log.info("GET /api/v1/branches/vault-only - activeOnly: {}", activeOnly);
+        return ResponseEntity.ok(branchService.findVaultBranches(activeOnly));
+    }
+
+    /**
+     * PATCH /api/v1/branches/{id}/is-vault
+     * v2.5.1-C B6: is_vault flag toggle (admin/foertektar/ugyvezeto).
+     */
+    @PatchMapping("/{id}/is-vault")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
+    public ResponseEntity<BranchDto> updateIsVault(
+            @PathVariable UUID id,
+            @RequestBody UpdateIsVaultRequest body
+    ) {
+        log.info("PATCH /api/v1/branches/{}/is-vault - isVault: {}", id, body.isVault());
+        return ResponseEntity.ok(branchService.updateIsVault(id, body.isVault()));
+    }
+
+    /** v2.5.1-C: PATCH /is-vault request body. */
+    public record UpdateIsVaultRequest(boolean isVault) {}
+
+    /**
      * GET /api/v1/branches/roots
      * Gyökér fiókok (nincs szülő)
      */
