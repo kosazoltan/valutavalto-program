@@ -57,11 +57,7 @@ public class BranchMapper {
                 .openingDate(entity.getOpeningDate())
                 .denominationRuleId(entity.getDenominationRuleId())
                 .isActive(entity.getIsActive())
-
-                // v2.5.0: értéktári terület + értéktár-e
-                .vaultTerritoryId(entity.getVaultTerritoryId())
-                .isVault(entity.getIsVault())
-
+                
                 // Timestamps
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())

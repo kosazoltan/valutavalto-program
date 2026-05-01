@@ -81,16 +81,6 @@ public class Branch {
     private Integer vaultTerritoryId;
 
     /**
-     * v2.5.0 B6 (V174 migráció): a fiók ÉRTÉKTÁR-e?
-     *  - TRUE  = értéktári fiók (lokál vagy központi)
-     *  - FALSE = pénztár (default, biztonságos)
-     * A SetupWizard csak is_vault=TRUE fiókokat enged kiválasztani értéktár módú telepítésnél.
-     */
-    @Column(name = "is_vault", nullable = false)
-    @Builder.Default
-    private Boolean isVault = Boolean.FALSE;
-
-    /**
      * Legacy körzet kód (KESZLEX készlet export).
      * Értékek: 10 (Szekszárd), 20 (Szeged), 40 (Kecskemét), 50 (Debrecen),
      * 63 (Nyíregyháza), 75 (Békéscsaba), 120 (Pécs), 145 (Kaposvár)
