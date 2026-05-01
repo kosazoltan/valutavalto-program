@@ -17,6 +17,9 @@ interface Branch {
   companyId?: string
   companyName?: string
   isActive: boolean
+  /** v2.5.0 B6: ÉRTÉKTÁRI fiók-e (admin/foertektar állítja be). */
+  isVault?: boolean
+  vaultTerritoryId?: number | null
 }
 
 interface BranchForm {
@@ -119,6 +122,21 @@ export default function BranchPage() {
       await load()
     } catch (err) {
       toast.error('Hiba', getErrorMessage(err))
+    }
+  }
+
+  /**
+   * v2.5.0 B6: is_vault flag toggle.
+   * Csak admin/foertektar/ugyvezeto használhatja (backend PreAuthorize).
+   */
+  const handleToggleVault = async (b: Branch) => {
+    const next = !(b.isVault ?? false)
+    try {
+      await api.patch(`/branches/${b.id}/is-vault`, { isVault: next })
+      toast.success(next ? `${b.code}: értéktárként megjelölve` : `${b.code}: pénztárként megjelölve`)
+      await load()
+    } catch (err) {
+      toast.error('Hiba az is_vault frissítésekor', getErrorMessage(err))
     }
   }
 
@@ -255,13 +273,14 @@ export default function BranchPage() {
               <th>Email</th>
               <th>Telefon</th>
               <th>Státusz</th>
+              <th>Értéktár</th>
               <th>Műveletek</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center text-gray-500 py-4">Nincs találat</td>
+                <td colSpan={8} className="text-center text-gray-500 py-4">Nincs találat</td>
               </tr>
             ) : (
               filtered.map((b) => (
@@ -275,6 +294,19 @@ export default function BranchPage() {
                     <span className={`badge ${b.isActive ? 'badge-green' : 'badge-red'}`}>
                       {b.isActive ? 'Aktív' : 'Inaktív'}
                     </span>
+                  </td>
+                  <td>
+                    <label className="inline-flex items-center gap-2 cursor-pointer" title="Értéktári fiók">
+                      <input
+                        type="checkbox"
+                        checked={b.isVault ?? false}
+                        onChange={() => void handleToggleVault(b)}
+                        className="form-checkbox h-4 w-4"
+                      />
+                      <span className={`text-xs font-semibold ${b.isVault ? 'text-blue-700' : 'text-gray-400'}`}>
+                        {b.isVault ? 'IGEN' : 'nem'}
+                      </span>
+                    </label>
                   </td>
                   <td>
                     <div className="flex gap-1 flex-wrap">
