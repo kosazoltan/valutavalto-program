@@ -191,18 +191,6 @@ public interface BranchRepository extends JpaRepository<Branch, UUID> {
     List<Branch> findByCompanyIdAndVaultTerritoryId(UUID companyId, Integer vaultTerritoryId);
 
     /**
-     * v2.5.0 B6 (V174 migráció): Csak ÉRTÉKTÁRI fiókok adott cégen belül.
-     * A SetupWizard branch-választáshoz használt, hogy értéktár módú telepítésnél
-     * csak az is_vault=TRUE fiókok látsszanak.
-     */
-    List<Branch> findByCompanyIdAndIsVaultTrue(UUID companyId);
-
-    /**
-     * v2.5.0 B6: Aktív értéktári fiókok adott cégen belül.
-     */
-    List<Branch> findByCompanyIdAndIsVaultTrueAndIsActiveTrue(UUID companyId);
-
-    /**
      * Rekurzív lekérdezés: teljes útvonal a gyökérig
      */
     @Query(value = """

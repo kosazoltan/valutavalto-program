@@ -53,10 +53,6 @@ public class BranchDto {
     private LocalDate openingDate;
     private UUID denominationRuleId;
     private Boolean isActive;
-
-    // v2.5.0: értéktári terület + értéktár-e
-    private Integer vaultTerritoryId;
-    private Boolean isVault;
     
     // Timestamps
     private LocalDateTime createdAt;

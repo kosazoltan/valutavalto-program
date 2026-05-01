@@ -82,45 +82,6 @@ public class BranchService {
     }
 
     /**
-     * v2.5.0 B6: Csak ÉRTÉKTÁRI (is_vault=TRUE) fiókok — a SetupWizard értéktár módú
-     * telepítéskor használja, hogy a felhasználó NE válasszon pénztárat tévedésből.
-     *
-     * <p>Multi-tenant-safe: company-scoped query.</p>
-     */
-    @Transactional(readOnly = true)
-    public List<BranchDto> findVaultBranches(boolean activeOnly) {
-        UUID companyId = SecurityUtils.getCurrentCompanyId();
-        log.debug("Finding vault branches (activeOnly={}) for company: {}", activeOnly, companyId);
-        List<Branch> branches = activeOnly
-                ? branchRepository.findByCompanyIdAndIsVaultTrueAndIsActiveTrue(companyId)
-                : branchRepository.findByCompanyIdAndIsVaultTrue(companyId);
-        return branchMapper.toDtoList(branches);
-    }
-
-    /**
-     * v2.5.0 B6: is_vault flag módosítása — admin/foertektar használja a Beállítások
-     * &gt; Pénztárak (admin UI) oldalon a fiókok ÉRTÉKTÁRkénti megjelölésére.
-     *
-     * <p>Multi-tenant-safe: a company match-et a controller PreAuthorize + a
-     * branchRepository.findById ellenőrzi (a savedEntity.company.id == currentCompany).</p>
-     */
-    @Transactional
-    public BranchDto updateIsVault(UUID branchId, boolean isVault) {
-        UUID companyId = SecurityUtils.getCurrentCompanyId();
-        Branch branch = branchRepository.findById(branchId)
-                .orElseThrow(() -> new hu.puzzleir.valuta.exception.ResourceNotFoundException(
-                        "Branch nem található: " + branchId));
-        if (branch.getCompany() == null || !companyId.equals(branch.getCompany().getId())) {
-            throw new hu.puzzleir.valuta.exception.ValidationException(
-                    "Branch más céghez tartozik (cross-tenant access denied).");
-        }
-        branch.setIsVault(isVault);
-        Branch saved = branchRepository.save(branch);
-        log.info("Branch is_vault updated: branchId={} code={} isVault={}", branchId, saved.getCode(), isVault);
-        return branchMapper.toDto(saved);
-    }
-
-    /**
      * Fiók keresése ID alapján
      */
     @Transactional(readOnly = true)

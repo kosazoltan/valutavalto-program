@@ -61,8 +61,7 @@ public class PublicBranchController {
      */
     @GetMapping("/branches")
     public ResponseEntity<List<PublicBranchDto>> getPublicBranches(
-            @RequestParam(required = false) String companyCode,
-            @RequestParam(required = false, defaultValue = "false") boolean vaultOnly) {
+            @RequestParam(required = false) String companyCode) {
 
         if (companyCode == null || companyCode.isBlank()) {
             log.debug("Public branches kérés üres companyCode-dal");
@@ -79,10 +78,7 @@ public class PublicBranchController {
         }
 
         Company company = companyOpt.get();
-        // v2.5.0 B6: vaultOnly param a SetupWizard értéktár módú telepítéséhez
-        List<Branch> branches = vaultOnly
-                ? branchRepository.findByCompanyIdAndIsVaultTrueAndIsActiveTrue(company.getId())
-                : branchRepository.findByCompanyIdAndIsActiveTrue(company.getId());
+        List<Branch> branches = branchRepository.findByCompanyIdAndIsActiveTrue(company.getId());
 
         List<PublicBranchDto> dtos = branches.stream()
                 .sorted(Comparator.comparing(Branch::getCode, Comparator.nullsLast(String::compareToIgnoreCase)))
@@ -91,11 +87,10 @@ public class PublicBranchController {
                         .name(b.getName())
                         .city(b.getCity())
                         .address(b.getAddress())
-                        .isVault(b.getIsVault())
                         .build())
                 .collect(Collectors.toList());
 
-        log.info("Public branches válasz: companyCode={}, vaultOnly={}, count={}", normalized, vaultOnly, dtos.size());
+        log.info("Public branches válasz: companyCode={}, count={}", normalized, dtos.size());
         return ResponseEntity.ok(dtos);
     }
 
