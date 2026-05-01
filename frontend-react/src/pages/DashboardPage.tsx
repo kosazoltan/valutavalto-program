@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { ArrowLeftRight, Users, TrendingUp, Wallet, FileText, AlertTriangle, ArrowUp, ArrowDown, Clock } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { exchangeRateApi, type ExchangeRate } from '../services/api/exchange-rates'
 import { transactionApi, customerApi, type DailyTurnoverSummary } from '../services/api/transactions'
 import { useAuthStore } from '../stores/authStore'
@@ -64,6 +64,17 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- belt+suspenders: roles szándékos extra trigger login/role-change-kor
     [appMode, roles, hasCanonicalRole],
   )
+
+  // v2.5.0 B6: az általános /dashboard (Irányítópult) cashier-szemléletű KPI-kat
+  // mutat (Mai tranzakciók, Aktív ügyfelek, Függő foglalók) — ez NEM értéktár-szemléletű.
+  // Az értéktár (mode='ertektar') saját dashboard-ja a /treasury, ami valutamozgásokat és
+  // készletet mutat. Pénztáros mód → /cashier főmenü.
+  if (appMode === 'ertektar') {
+    return <Navigate to="/treasury" replace />
+  }
+  if (appMode === 'penztar') {
+    return <Navigate to="/cashier" replace />
+  }
 
   useEffect(() => {
     const fetchRates = async () => {
