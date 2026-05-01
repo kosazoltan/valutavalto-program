@@ -26,6 +26,8 @@ interface Branch {
   name: string
   city: string
   address?: string
+  /** v2.5.0 B6: ÉRTÉKTÁRI fiók-e? Az ertektar módú telepítéskor kell. */
+  isVault?: boolean
 }
 
 type StepId = 'welcome' | 'branch' | 'program' | 'server' | 'admin'
@@ -37,10 +39,13 @@ interface StepDef {
   icon: typeof Rocket
 }
 
+// v2.5.0 B6: program (penztar/ertektar) lépés a fiók-választás ELOTT, hogy a
+// SetupWizard csak az adott módnak megfelelő fiókokat ajánlja. Értéktár módban
+// CSAK az is_vault=TRUE fiókok látsszanak.
 const STEPS: readonly StepDef[] = [
   { id: 'welcome', title: 'Üdvözöljük',    subtitle: 'A telepítés véghezvitele',     icon: Rocket },
-  { id: 'branch',  title: 'Fiók kiválasztása', subtitle: 'Ezen a gépen dolgozó iroda', icon: Building2 },
   { id: 'program', title: 'Program típus',       subtitle: 'Milyen szerepben indul ez a gép', icon: Server },
+  { id: 'branch',  title: 'Fiók kiválasztása', subtitle: 'Ezen a gépen dolgozó iroda', icon: Building2 },
   { id: 'server',  title: 'Szerver kapcsolat', subtitle: 'Központi backend elérése',   icon: Server },
   { id: 'admin',   title: 'Admin jelszó',      subtitle: 'Első belépéshez',            icon: KeyRound },
 ]
@@ -106,7 +111,7 @@ export default function SetupWizard() {
         // v2.1.4: Web mode (no Electron) — direct HTTP fetch via publicApi
         try {
           const list = await publicApi.getBranchesByCompany(companyCode)
-          setBranches(list.map((b) => ({ code: b.code, name: b.name, city: b.city ?? '', address: b.address })))
+          setBranches(list.map((b) => ({ code: b.code, name: b.name, city: b.city ?? '', address: b.address, isVault: b.isVault })))
         } catch {
           setBranches([])
         }
@@ -116,15 +121,22 @@ export default function SetupWizard() {
   }, [apiUrl, companyCode])
 
   // --- Iroda lista szűrés ---
+  // v2.5.0 B6: értéktár módú telepítéskor csak az is_vault=TRUE fiókokat
+  // engedjük kiválasztani — különben a felhasználó tévedésből pénztárt
+  // választhatna értéktárhoz, és a területi szűrés is rosszul mutatna.
   const filteredBranches = useMemo(() => {
+    let list = branches
+    if (appModeChoice === 'ertektar') {
+      list = list.filter((b) => b.isVault === true)
+    }
     const q = branchSearch.trim().toLowerCase()
-    if (!q) return branches
-    return branches.filter((b) =>
+    if (!q) return list
+    return list.filter((b) =>
       b.code.toLowerCase().includes(q) ||
       b.name.toLowerCase().includes(q) ||
       b.city.toLowerCase().includes(q),
     )
-  }, [branches, branchSearch])
+  }, [branches, branchSearch, appModeChoice])
 
   const pageSize = 16 // 2×8 rács
   const totalPages = Math.max(1, Math.ceil(filteredBranches.length / pageSize))

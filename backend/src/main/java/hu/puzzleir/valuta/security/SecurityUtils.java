@@ -108,13 +108,29 @@ public class SecurityUtils {
 
     /**
      * Aktuális operatív szerepkör (V57 — pl. CASHIER, VAULT_KEEPER, DIRECTOR)
-     * 
+     *
      * @return operatív role kód, vagy null ha nincs beállítva
      */
     public static String getActiveOperationalRole() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getDetails() instanceof WorkerAuthenticationDetails) {
             return ((WorkerAuthenticationDetails) auth.getDetails()).getActiveRole();
+        }
+        return null;
+    }
+
+    /**
+     * v2.5.0 B6: vault_territory_id getter — null ha a worker branch-ének nincs ilyen mező vagy
+     * nincs bejelentkezett felhasználó. A territoriális szűréshez használt.
+     *
+     * <p><b>FIGYELEM:</b> a {@link WorkerAuthenticationDetails}-ben jelenleg nincs cache-elve,
+     * ezért a hívó service-nek vagy a {@code BranchRepository.findById(branchId)}-vel,
+     * vagy egy custom query-vel kell felgyűjtenie. Itt placeholder accessor van.</p>
+     */
+    public static UUID getCurrentBranchIdOrNull() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getDetails() instanceof WorkerAuthenticationDetails) {
+            return ((WorkerAuthenticationDetails) auth.getDetails()).getBranchId();
         }
         return null;
     }

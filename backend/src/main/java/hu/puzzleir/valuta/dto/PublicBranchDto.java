@@ -31,4 +31,10 @@ public class PublicBranchDto {
 
     /** Opcionális — pl. "Tisza Sarok, Szeged" */
     private String address;
+
+    /**
+     * v2.5.0 B6: ÉRTÉKTÁRI fiók-e? Üres / TRUE = értéktár, FALSE = pénztár.
+     * A SetupWizard értéktár módú telepítéskor csak isVault=TRUE fiókokat enged.
+     */
+    private Boolean isVault;
 }

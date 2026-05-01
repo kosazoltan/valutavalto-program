@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { ArrowLeftRight, Users, TrendingUp, Wallet, FileText, AlertTriangle, ArrowUp, ArrowDown, Clock } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { exchangeRateApi, type ExchangeRate } from '../services/api/exchange-rates'
 import { transactionApi, customerApi, type DailyTurnoverSummary } from '../services/api/transactions'
 import { useAuthStore } from '../stores/authStore'
@@ -160,6 +160,19 @@ export default function DashboardPage() {
     fetchRates()
     fetchDashboardData()
   }, [])
+
+  // v2.5.0 B6: az általános /dashboard (Irányítópult) cashier-szemléletű KPI-kat
+  // mutat (Mai tranzakciók, Aktív ügyfelek, Függő foglalók) — ez NEM értéktár-szemléletű.
+  // Az értéktár (mode='ertektar') saját dashboard-ja a /treasury, ami valutamozgásokat és
+  // készletet mutat. Pénztáros mód → /cashier főmenü. A redirect MINDEN hook UTÁN, hogy
+  // ne sértse a react-hooks/rules-of-hooks szabályt.
+  if (appMode === 'ertektar') {
+    return <Navigate to="/treasury" replace />
+  }
+  if (appMode === 'penztar') {
+    return <Navigate to="/cashier" replace />
+  }
+
   return (
     <div className="space-y-3">
       {/* Page header */}
