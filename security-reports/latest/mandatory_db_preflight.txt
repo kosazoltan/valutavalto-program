@@ -1,17 +1,16 @@
 ﻿Command: powershell -NoProfile -ExecutionPolicy Bypass -File "D:\repo\valutavalto-program\scripts\security\mandatory-db-preflight.ps1" -RepoRoot "D:\repo\valutavalto-program"
-Status: PASSED
-Note: 
+Status: FAILED
+Note: Exit code 1
 
 --- STDOUT ---
 [DB-PREFLIGHT] Mandatory DB preflight started
 [DB-PREFLIGHT] Checking DB reachability and migration history
 [DB-PREFLIGHT] Local DB connection OK
-[DB-PREFLIGHT] Remote/Neon DB connection failed: psql: error: connection to server at "ep-polished-morning-altxohe7.c-3.eu-central-1.aws.neon.tech" (52.29.229.153), port 5432 failed: SSL SYSCALL error: EOF detected optional mode: remote parity skipped for local/dev run.
+[DB-PREFLIGHT] Remote/Neon DB connection failed: psql: error: connection to server at "ep-polished-morning-altxohe7.c-3.eu-central-1.aws.neon.tech" (3.127.101.230), port 5432 failed: SSL SYSCALL error: EOF detected optional mode: remote parity skipped for local/dev run.
 [DB-PREFLIGHT] Local DB migration table check OK
-[DB-PREFLIGHT] Versioned migrations in repo: 159
-[DB-PREFLIGHT] Applied migrations (local): 159
-[DB-PREFLIGHT] Applied migrations (remote/Neon): (skipped - optional mode)
-[DB-PREFLIGHT] Mandatory DB preflight PASSED
+[DB-PREFLIGHT] DB migration parity mismatch detected. Mandatory reconciliation required.
+[DB-PREFLIGHT] Missing in local DB: 164, 165, 166, 167, 168, 169, 170, 172, 173, 174, 3.5, 3.7
+[DB-PREFLIGHT] Run mandatory migration reconciliation before build/deploy. Example: backend/mvnw flyway:migrate against both DB targets.
 
 
 --- STDERR ---
