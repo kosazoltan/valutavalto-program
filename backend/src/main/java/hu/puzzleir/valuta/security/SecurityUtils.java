@@ -118,4 +118,17 @@ public class SecurityUtils {
         }
         return null;
     }
+
+    /**
+     * v2.5.1-D B6: branch ID null-fallback (NEM dob ValidationException).
+     * Territoriális szűrés helper-ekhez használt, ahol pre-auth context-ben
+     * (pl. scheduler, async task) is lefuthat a kód.
+     */
+    public static UUID getCurrentBranchIdOrNull() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getDetails() instanceof WorkerAuthenticationDetails) {
+            return ((WorkerAuthenticationDetails) auth.getDetails()).getBranchId();
+        }
+        return null;
+    }
 }

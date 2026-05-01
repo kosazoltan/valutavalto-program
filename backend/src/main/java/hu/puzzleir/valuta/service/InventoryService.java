@@ -353,12 +353,67 @@ public class InventoryService {
     // ============ QUERIES ============
 
     /**
-     * Összes iroda teljes készlete (CashBalance lista) - multi-tenant szűréssel.
+     * v2.5.1-D B6: a lokál értéktáros (mode='ertektar') worker területi szűrésére használt
+     * roles set — ezek a NEM-központi role-ok, akiknek csak a saját területük látszódhat.
+     *
+     * <p>A foertektar / ugyvezeto / admin "központi" szerepkörök NINCSENEK ebben a halmazban,
+     * ők MINDENT látnak (multi-tenant scope-on belül).</p>
+     */
+    private static final java.util.Set<String> TERRITORY_SCOPED_ROLES = java.util.Set.of(
+            "ertektar", "ERTEKTAR", "ertektaros", "VAULT_KEEPER", "vault_keeper",
+            "irodavezeto", "IRODAVEZETO"
+    );
+
+    /**
+     * v2.5.1-D B6: a bejelentkezett worker vault_territory_id-je, ha a role-ja territory-scoped.
+     *
+     * <p>Visszaad null-t (= nincs területi szűrés) ha:
+     *  - a worker role-ja "központi" (foertektar/ugyvezeto/admin) — ők mindent látnak,
+     *  - a worker branch-ének nincs vault_territory_id-je,
+     *  - nincs bejelentkezett user (pl. test context, scheduler).</p>
+     *
+     * <p>Defensive: minden exception-t elnyel és null-t ad vissza, hogy ne dobja meg
+     * a meglévő endpoint flow-t. Smoke teszt v2.5.0-nál ezt elmulasztotta — most
+     * try/catch + log.warn helyettesít.</p>
+     */
+    private Integer getCurrentTerritoryFilterOrNull() {
+        try {
+            String role = hu.puzzleir.valuta.security.SecurityUtils.getActiveOperationalRole();
+            if (role == null) {
+                role = hu.puzzleir.valuta.security.SecurityUtils.getCurrentRole();
+            }
+            if (role == null || !TERRITORY_SCOPED_ROLES.contains(role)) {
+                return null; // központi role — nincs területi szűrés
+            }
+            UUID branchId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentBranchIdOrNull();
+            if (branchId == null) return null;
+            return branchRepository.findById(branchId)
+                    .map(Branch::getVaultTerritoryId)
+                    .orElse(null);
+        } catch (Exception e) {
+            log.warn("Territoriális szűrés-meghatározás hiba (defensive null fallback): {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Összes iroda teljes készlete (CashBalance lista) - multi-tenant + területi szűréssel.
+     *
+     * <p>v2.5.1-D B6: territory-scoped role esetén csak a worker vault_territory_id-jával
+     * egyező fiókok cash_balance rekordjait adja vissza. Központi role-nál minden látszik.</p>
      */
     @Transactional(readOnly = true)
     public List<CashBalance> getAllStock() {
         UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
-        return cashBalanceRepository.findByCompanyId(companyId);
+        Integer territoryFilter = getCurrentTerritoryFilterOrNull();
+        if (territoryFilter == null) {
+            return cashBalanceRepository.findByCompanyId(companyId);
+        }
+        var territoryBranchIds = branchRepository.findByCompanyIdAndVaultTerritoryId(companyId, territoryFilter)
+                .stream().map(Branch::getId).collect(java.util.stream.Collectors.toSet());
+        return cashBalanceRepository.findByCompanyId(companyId).stream()
+                .filter(cb -> cb.getBranch() != null && territoryBranchIds.contains(cb.getBranch().getId()))
+                .toList();
     }
 
     /**
@@ -401,18 +456,31 @@ public class InventoryService {
     }
 
     /**
-     * Összes iroda × összes valuta mátrix - multi-tenant szűréssel.
+     * Összes iroda × összes valuta mátrix - multi-tenant + területi szűréssel.
+     *
+     * <p>v2.5.1-D B6: territory-scoped role esetén csak az adott vault_territory-hoz
+     * tartozó fiókok jelennek meg a mátrixban (központi role-nál minden).</p>
      */
     @Transactional(readOnly = true)
     public StockMatrixDto getStockMatrix() {
         UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
+        Integer territoryFilter = getCurrentTerritoryFilterOrNull();
         List<CashBalance> allBalances = cashBalanceRepository.findByCompanyId(companyId);
-        Map<String, Map<String, BigDecimal>> matrix = new LinkedHashMap<>();
 
+        java.util.Set<UUID> allowedBranchIds = null;
+        if (territoryFilter != null) {
+            allowedBranchIds = branchRepository.findByCompanyIdAndVaultTerritoryId(companyId, territoryFilter)
+                    .stream().map(Branch::getId).collect(java.util.stream.Collectors.toSet());
+        }
+
+        Map<String, Map<String, BigDecimal>> matrix = new LinkedHashMap<>();
         for (CashBalance cb : allBalances) {
-            String branchId = cb.getBranch().getId().toString();
+            if (cb.getBranch() == null) continue;
+            UUID bId = cb.getBranch().getId();
+            if (allowedBranchIds != null && !allowedBranchIds.contains(bId)) continue;
+            String branchIdStr = bId.toString();
             String currencyCode = cb.getCurrency().getCode();
-            matrix.computeIfAbsent(branchId, k -> new LinkedHashMap<>())
+            matrix.computeIfAbsent(branchIdStr, k -> new LinkedHashMap<>())
                     .put(currencyCode, cb.getCurrentBalance()
                             .setScale(4, RoundingMode.HALF_UP));
         }
