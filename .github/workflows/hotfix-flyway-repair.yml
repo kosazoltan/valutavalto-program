@@ -2,11 +2,13 @@ name: Hotfix - Flyway Repair (manual)
 
 # v2.5.0 rollback miatt: a V174 migracio a Hetzner-en FAILED statuszba ment
 # (rossz tablanev: 'branches' a 'branch' helyett). A revert utan a Flyway
-# blokkolva van, amig a flyway_schema_history-bol nem toroljuk a failed
-# bejegyzest. Ez egyszeri manualis trigger, NEM rendszeres deploy lepes.
+# blokkolva van, amig:
+#   1. a flyway_schema_history-bol nem toroljuk a failed bejegyzest
+#   2. a Hetzner /opt/valutavalto/backend/target dir-ből nem toroljuk a hibás
+#      v2.5.0 JAR-t (a deploy script `sort -V | tail -1` magasabb verziot valaszt)
+# Ez egyszeri manualis trigger, NEM rendszeres deploy lepes.
 #
-# Hasznalat: GitHub Actions UI -> Run workflow -> futtatas
-# Utana automatikus deploy ujraindit a HEAD-rol.
+# Hasznalat: GitHub Actions UI -> Run workflow -> "REPAIR-V174" beirasa -> futtatas
 
 on:
   workflow_dispatch:
@@ -20,7 +22,7 @@ permissions:
 
 jobs:
   repair:
-    name: Repair flyway_schema_history
+    name: Repair flyway_schema_history + clean v2.5.0 JAR
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -37,29 +39,52 @@ jobs:
           echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
 
-      - name: Repair Flyway history + restart service
+      - name: Repair Flyway history + clean v2.5.0 JAR + restart service
         run: |
           ssh -i ~/.ssh/deploy_key \
               -o StrictHostKeyChecking=accept-new \
               "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
               bash -s << 'ENDSSH'
             set -euo pipefail
+            DEPLOY=/opt/valutavalto/backend
+            TARGET_DIR=$DEPLOY/target
+
+            echo "=== Pre-repair: existing JARs in $TARGET_DIR ==="
+            ls -la $TARGET_DIR/valuta-backend-*.jar 2>/dev/null || true
+
             echo "=== Pre-repair: flyway_schema_history (V174 entries) ==="
             sudo -u postgres psql -d valuta -c \
               "SELECT installed_rank, version, description, success, installed_on FROM flyway_schema_history WHERE version = '174';"
 
-            echo "=== Deleting failed V174 entry ==="
+            echo "=== Step 1: Deleting failed V174 entry from flyway_schema_history ==="
             sudo -u postgres psql -d valuta -c \
               "DELETE FROM flyway_schema_history WHERE version = '174' AND success = false;"
 
-            echo "=== Post-repair: flyway_schema_history (V174 entries) ==="
-            sudo -u postgres psql -d valuta -c \
-              "SELECT installed_rank, version, description, success, installed_on FROM flyway_schema_history WHERE version = '174';"
+            echo "=== Step 2: Removing v2.5.x JARs from $TARGET_DIR (post-V174 stale) ==="
+            for JAR in $TARGET_DIR/valuta-backend-2.5.*.jar; do
+              if [ -f "$JAR" ]; then
+                echo "Deleting stale: $JAR"
+                rm -f "$JAR"
+              fi
+            done
 
-            echo "=== Restarting valuta-backend.service ==="
+            echo "=== Step 3: Re-pointing symlink to latest v2.4.x JAR ==="
+            LATEST=$(ls $TARGET_DIR/valuta-backend-*.jar 2>/dev/null | grep -v SNAPSHOT | grep -v current | sort -V | tail -1)
+            if [ -z "$LATEST" ]; then
+              echo "FATAL: no v2.4.x JAR available in $TARGET_DIR"
+              exit 1
+            fi
+            echo "Symlink target: $LATEST"
+            ln -sf "$LATEST" "$TARGET_DIR/valuta-backend-current.jar"
+            chown -h valuta:valuta "$TARGET_DIR/valuta-backend-current.jar" || true
+
+            echo "=== Step 4: Post-repair JARs ==="
+            ls -la $TARGET_DIR/valuta-backend-*.jar
+
+            echo "=== Step 5: Restarting valuta-backend.service ==="
             systemctl restart valuta-backend.service
-            sleep 15
-            systemctl is-active valuta-backend.service || { journalctl -u valuta-backend.service -n 30 --no-pager; exit 1; }
+            sleep 20
+            systemctl is-active valuta-backend.service || { journalctl -u valuta-backend.service -n 50 --no-pager; exit 1; }
             echo "=== Service is active ==="
           ENDSSH
 
