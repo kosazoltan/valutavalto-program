@@ -65,17 +65,6 @@ export default function DashboardPage() {
     [appMode, roles, hasCanonicalRole],
   )
 
-  // v2.5.0 B6: az általános /dashboard (Irányítópult) cashier-szemléletű KPI-kat
-  // mutat (Mai tranzakciók, Aktív ügyfelek, Függő foglalók) — ez NEM értéktár-szemléletű.
-  // Az értéktár (mode='ertektar') saját dashboard-ja a /treasury, ami valutamozgásokat és
-  // készletet mutat. Pénztáros mód → /cashier főmenü.
-  if (appMode === 'ertektar') {
-    return <Navigate to="/treasury" replace />
-  }
-  if (appMode === 'penztar') {
-    return <Navigate to="/cashier" replace />
-  }
-
   useEffect(() => {
     const fetchRates = async () => {
       try {
@@ -171,6 +160,19 @@ export default function DashboardPage() {
     fetchRates()
     fetchDashboardData()
   }, [])
+
+  // v2.5.0 B6: az általános /dashboard (Irányítópult) cashier-szemléletű KPI-kat
+  // mutat (Mai tranzakciók, Aktív ügyfelek, Függő foglalók) — ez NEM értéktár-szemléletű.
+  // Az értéktár (mode='ertektar') saját dashboard-ja a /treasury, ami valutamozgásokat és
+  // készletet mutat. Pénztáros mód → /cashier főmenü. A redirect MINDEN hook UTÁN, hogy
+  // ne sértse a react-hooks/rules-of-hooks szabályt.
+  if (appMode === 'ertektar') {
+    return <Navigate to="/treasury" replace />
+  }
+  if (appMode === 'penztar') {
+    return <Navigate to="/cashier" replace />
+  }
+
   return (
     <div className="space-y-3">
       {/* Page header */}
