@@ -1,0 +1,77 @@
+name: Hotfix - Flyway Repair (manual)
+
+# v2.5.0 rollback miatt: a V174 migracio a Hetzner-en FAILED statuszba ment
+# (rossz tablanev: 'branches' a 'branch' helyett). A revert utan a Flyway
+# blokkolva van, amig a flyway_schema_history-bol nem toroljuk a failed
+# bejegyzest. Ez egyszeri manualis trigger, NEM rendszeres deploy lepes.
+#
+# Hasznalat: GitHub Actions UI -> Run workflow -> futtatas
+# Utana automatikus deploy ujraindit a HEAD-rol.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "REPAIR-V174" to confirm execution'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  repair:
+    name: Repair flyway_schema_history
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Validate confirmation
+        run: |
+          if [ "${{ inputs.confirm }}" != "REPAIR-V174" ]; then
+            echo "Confirmation string mismatch. Aborting."
+            exit 1
+          fi
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+      - name: Repair Flyway history + restart service
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -euo pipefail
+            echo "=== Pre-repair: flyway_schema_history (V174 entries) ==="
+            sudo -u postgres psql -d valuta -c \
+              "SELECT installed_rank, version, description, success, installed_on FROM flyway_schema_history WHERE version = '174';"
+
+            echo "=== Deleting failed V174 entry ==="
+            sudo -u postgres psql -d valuta -c \
+              "DELETE FROM flyway_schema_history WHERE version = '174' AND success = false;"
+
+            echo "=== Post-repair: flyway_schema_history (V174 entries) ==="
+            sudo -u postgres psql -d valuta -c \
+              "SELECT installed_rank, version, description, success, installed_on FROM flyway_schema_history WHERE version = '174';"
+
+            echo "=== Restarting valuta-backend.service ==="
+            systemctl restart valuta-backend.service
+            sleep 15
+            systemctl is-active valuta-backend.service || { journalctl -u valuta-backend.service -n 30 --no-pager; exit 1; }
+            echo "=== Service is active ==="
+          ENDSSH
+
+      - name: Health check
+        run: |
+          echo "Waiting for service startup..."
+          sleep 10
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "https://excvaluta.com/api/v1/auth/bootstrap-status" || echo 000)
+          echo "Health check HTTP status: $STATUS"
+          if [[ "$STATUS" == "200" ]]; then
+            echo "Health check PASSED — production restored"
+          else
+            echo "Health check FAILED — manual intervention needed"
+            exit 1
+          fi
