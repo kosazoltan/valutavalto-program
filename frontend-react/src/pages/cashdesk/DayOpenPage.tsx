@@ -195,11 +195,14 @@ export default function DayOpenPage() {
               <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
                 HUF címletezés
               </h3>
+              {/* Codex P2 #345 fix: a 2-oszlopos cella (max-w-lg/2 ≈ 250px) NEM fér el
+                  w-20 label + w-20 input + computed text esetén. Kompaktabb: w-14 + w-14
+                  és a computed text egy sorba a szumma alá. */}
               <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
                 {HUF_DENOMINATIONS.map((faceValue) => (
-                  <div key={faceValue} className="flex items-center gap-3">
-                    <span className="w-20 text-right text-sm font-medium text-gray-700">
-                      {faceValue.toLocaleString('hu-HU')} Ft
+                  <div key={faceValue} className="flex items-center gap-2">
+                    <span className="w-14 text-right text-xs font-medium text-gray-700">
+                      {faceValue.toLocaleString('hu-HU')}
                     </span>
                     <input
                       type="number"
@@ -209,10 +212,10 @@ export default function DayOpenPage() {
                         const val = Math.max(0, parseInt(e.target.value) || 0)
                         setDenomQuantities((prev) => ({ ...prev, [faceValue]: val }))
                       }}
-                      className="w-20 rounded border border-gray-300 px-2 py-1.5 text-center text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-14 rounded border border-gray-300 px-1 py-0.5 text-center text-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                       placeholder="0"
                     />
-                    <span className="text-sm text-gray-500">
+                    <span className="flex-1 text-xs text-gray-500 truncate">
                       = {(faceValue * (denomQuantities[faceValue] ?? 0)).toLocaleString('hu-HU')} Ft
                     </span>
                   </div>
