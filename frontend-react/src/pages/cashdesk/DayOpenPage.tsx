@@ -215,7 +215,9 @@ export default function DayOpenPage() {
                       className="w-14 rounded border border-gray-300 px-1 py-0.5 text-center text-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                       placeholder="0"
                     />
-                    <span className="flex-1 text-xs text-gray-500 truncate">
+                    {/* Codex P2 #347: min-w-0 kell a truncate-hez, mert flex item default
+                        min-width: auto megakadalyozza a shrink-et a tartalom alá. */}
+                    <span className="min-w-0 flex-1 text-xs text-gray-500 truncate">
                       = {(faceValue * (denomQuantities[faceValue] ?? 0)).toLocaleString('hu-HU')} Ft
                     </span>
                   </div>
