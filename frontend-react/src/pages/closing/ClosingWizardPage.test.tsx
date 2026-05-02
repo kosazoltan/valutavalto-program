@@ -119,9 +119,9 @@ describe('ClosingWizardPage', () => {
     expect(screen.getByText('NAPZÁRÁS WIZARD')).toBeInTheDocument()
   })
 
-  it('cashier header megjelenítése', () => {
+  it('NEM rendereli a saját CashierHeader-t (v2.5.3 PR #345 — MainLayout headere helyettesíti)', () => {
     renderClosingWizardPage()
-    expect(screen.getByTestId('cashier-header')).toBeInTheDocument()
+    expect(screen.queryByTestId('cashier-header')).not.toBeInTheDocument()
   })
 
   it('zárási lépéseket listázza', () => {
@@ -210,9 +210,10 @@ describe('ClosingWizardPage', () => {
 
     // Verify the total is computed correctly — 2 x 10,000 = 20,000
     // Use a function matcher since toLocaleString may produce non-breaking spaces
+    // v2.5.3 (PR #345): a text-xl text-base-re csökkent a kompakt layout során
     const totalEl = screen.getByText((_content, element) => {
       return element?.tagName === 'SPAN' &&
-        element.classList.contains('text-xl') &&
+        element.classList.contains('text-base') &&
         (element.textContent?.replace(/\s/g, '') === '20000Ft')
     })
     expect(totalEl).toBeInTheDocument()

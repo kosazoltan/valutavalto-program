@@ -341,7 +341,13 @@ export const cashBalanceApi = {
     return response.data
   },
   getCompanyBalances: async (): Promise<CashBalance[]> => {
-    const response = await api.get<CashBalance[]>('/cash-balances/company')
+    // v2.5.3: 403 esetén NEM dobunk globális toast-ot — a TreasuryDashboard
+    // SUPERVISOR és alacsonyabb role-okat is kiszolgál, de ehhez az endpointhoz
+    // csak MANAGER+ ADMIN férhet hozzá. A hívó (.catch) csendben üres listát kap,
+    // és a UI "Korlátozott jogosultság" panelt mutat helyette.
+    const response = await api.get<CashBalance[]>('/cash-balances/company', {
+      _skipGlobal403Toast: true,
+    })
     return response.data
   },
   getLowAlerts: async (): Promise<CashBalance[]> => {

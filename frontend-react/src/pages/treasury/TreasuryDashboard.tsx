@@ -5,8 +5,10 @@ import {
   Clock,
   XCircle,
   RefreshCw,
+  Lock,
 } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
+import { AxiosError } from 'axios'
 import { transactionApi, cashBalanceApi, dailySessionApi } from '../../services/api/index'
 import type { DailyTurnoverSummary, CashBalance, DailySession } from '../../services/api/index'
 import { formatInteger, formatMillions } from './treasuryUtils'
@@ -37,12 +39,22 @@ export default function TreasuryDashboard() {
   const [topBranches, setTopBranches] = useState<BranchRanking[]>([])
   const [closingStatuses, setClosingStatuses] = useState<BranchClosing[]>([])
   const [lastRefresh, setLastRefresh] = useState(new Date())
+  // v2.5.3: ha a /cash-balances/company endpoint 403-at ad (csak MANAGER+ ADMIN
+  // hozzáfér), a UI "Korlátozott jogosultság" panellel jelzi a SUPERVISOR
+  // szerepkörű értéktárosnak — toast helyett (Codex-style: NEM eltüntetjük az
+  // információt, csak a riasztó modal-szerű hibajelzést kapcsoljuk ki).
+  const [companyBalanceRestricted, setCompanyBalanceRestricted] = useState(false)
 
   const fetchData = useCallback(async () => {
     try {
       const [turnoverData, balanceDataRaw] = await Promise.all([
         transactionApi.getDailyTurnover().catch(() => null),
-        cashBalanceApi.getCompanyBalances().catch(() => []),
+        cashBalanceApi.getCompanyBalances().catch((err: unknown) => {
+          if (err instanceof AxiosError && err.response?.status === 403) {
+            setCompanyBalanceRestricted(true)
+          }
+          return []
+        }),
       ])
 
       if (turnoverData) setTurnover(turnoverData)
@@ -148,13 +160,34 @@ export default function TreasuryDashboard() {
         </div>
       </div>
 
+      {/* v2.5.3: Korlátozott jogosultság jelzés — ha a /cash-balances/company 403-at ad
+          (SUPERVISOR és alacsonyabb role-oknak), nem dobunk modal toast-ot, hanem
+          informatív panellel jelezzük, hogy a "Készlet érték (összes)" + TOP Irodák
+          szekciók korlátozottak. */}
+      {companyBalanceRestricted && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 flex items-start gap-2">
+          <Lock size={18} className="text-amber-600 shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="font-semibold text-amber-900">Korlátozott jogosultság</p>
+            <p className="text-xs text-amber-800">
+              Az összesített készlet és TOP-irodák lekérdezéséhez MANAGER vagy ADMIN
+              szerepkör szükséges. A napi forgalom és tranzakció-adatok elérhetők.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Compact data row — egyszerű számok, nincs grafikon */}
       <div className="form-panel">
         <div className="grid grid-cols-4 gap-x-6 gap-y-2 text-sm">
           <DataRow label="Mai tranzakciók" value={`${formatInteger(totalTx)} db`} />
           <DataRow label="Napi forgalom" value={formatMillions(totalVolume)} accent />
           <DataRow label="Kiszolgált ügyfelek" value={`${formatInteger(totalCustomers)} fő`} />
-          <DataRow label="Készlet érték (összes)" value={formatMillions(totalStockValue)} accent />
+          <DataRow
+            label="Készlet érték (összes)"
+            value={companyBalanceRestricted ? '— (jogosultság)' : formatMillions(totalStockValue)}
+            accent={!companyBalanceRestricted}
+          />
           <DataRow label="Vétel (db)" value={formatInteger(turnover?.totalBuyCount ?? 0)} />
           <DataRow label="Eladás (db)" value={formatInteger(turnover?.totalSellCount ?? 0)} />
           <DataRow label="Vétel (HUF)" value={formatMillions(turnover?.totalBuyHuf ?? 0)} />
