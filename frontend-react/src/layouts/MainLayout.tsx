@@ -260,8 +260,11 @@ export default function MainLayout() {
               <div className="w-6 h-6 bg-primary-600 rounded-full flex items-center justify-center text-white font-semibold text-xs">
                 {user?.fullName?.charAt(0) || 'U'}
               </div>
-              <div className="text-xs hidden sm:block">
+              <div className="text-xs hidden sm:block leading-tight">
                 <div className="font-semibold text-secondary-900">{user?.fullName}</div>
+                {user?.workerCode && (
+                  <div className="text-[10px] text-secondary-500 font-mono">ID: {user.workerCode}</div>
+                )}
               </div>
               <ChevronDown size={14} className="text-secondary-400" />
             </div>
