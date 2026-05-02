@@ -565,7 +565,9 @@ export default function CashierTransactionPage() {
 
   // ====== RENDER ======
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 pb-20">
+      {/* pb-20: a HotkeyBar position:fixed footer (~64px) miatt a tartalom utolsó eleme
+          (Bizonylat készítése gomb) ne kerüljön a sticky footer alá. Codex P2 #345. */}
       {/* SESSION GUARD WARNING */}
       {sessionOpen === false && (
         <div className="bg-red-50 dark:bg-red-950/30 border-2 border-red-500 rounded-lg p-2 flex items-center gap-2">
