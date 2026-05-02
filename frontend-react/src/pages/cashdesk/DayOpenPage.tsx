@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Sun, AlertTriangle, Loader2, CheckCircle, Coins } from 'lucide-react'
-import { CashierHeader } from '../../components/cashier/CashierHeader'
 import { toast } from '../../components/ui/toaster'
 import { dailySessionApi, cashBalanceApi } from '../../services/api/index'
 import type { CashBalance } from '../../services/api/index'
@@ -104,44 +103,36 @@ export default function DayOpenPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen flex-col">
-        <CashierHeader />
-        <div className="flex flex-1 items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-          <span className="ml-3 text-lg text-gray-600">Betöltés...</span>
-        </div>
+      <div className="flex flex-1 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+        <span className="ml-3 text-lg text-gray-600">Betöltés...</span>
       </div>
     )
   }
 
   if (alreadyOpen) {
     return (
-      <div className="flex h-screen flex-col">
-        <CashierHeader />
-        <div className="flex flex-1 flex-col items-center justify-center gap-4">
-          <CheckCircle className="h-12 w-12 text-green-500" />
-          <h2 className="text-xl font-bold text-gray-800">A nap már nyitva van</h2>
-          <button
-            onClick={() => navigate('/cashier')}
-            className="rounded-lg bg-blue-600 px-6 py-3 text-white hover:bg-blue-700"
-          >
-            Tovább a pénztárhoz
-          </button>
-        </div>
+      <div className="flex flex-1 flex-col items-center justify-center gap-3">
+        <CheckCircle className="h-10 w-10 text-green-500" />
+        <h2 className="text-lg font-bold text-gray-800">A nap már nyitva van</h2>
+        <button
+          onClick={() => navigate('/cashier')}
+          className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+        >
+          Tovább a pénztárhoz
+        </button>
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen flex-col">
-      <CashierHeader />
-      <div className="flex flex-1 flex-col items-center justify-center p-4">
-        <div className="w-full max-w-lg space-y-3">
+    <div className="flex flex-col items-center justify-center">
+      <div className="w-full max-w-lg space-y-2">
           {/* Header */}
           <div className="text-center">
-            <Sun className="mx-auto h-12 w-12 text-amber-500" />
-            <h1 className="mt-3 text-lg font-bold text-gray-900">Napnyitás</h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <Sun className="mx-auto h-8 w-8 text-amber-500" />
+            <h1 className="mt-1 text-base font-bold text-gray-900">Napnyitás</h1>
+            <p className="text-xs text-gray-500">
               {new Date().toLocaleDateString('hu-HU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               {' — '}
               {worker?.fullName ?? 'Ismeretlen pénztáros'}
@@ -150,24 +141,24 @@ export default function DayOpenPage() {
 
           {/* Balance error */}
           {balanceError && (
-            <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
-              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-              <p className="text-sm text-amber-800">{balanceError}</p>
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+              <p className="text-xs text-amber-800">{balanceError}</p>
             </div>
           )}
 
           {/* Opening balance display */}
           {balances.length > 0 && (
-            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">
+            <div className="rounded-lg border border-gray-200 bg-white p-2 shadow-sm">
+              <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
                 Nyito egyenleg
               </h3>
 
               {/* HUF balance — highlighted */}
               {hufBalance && (
-                <div className="mb-3 flex items-center justify-between rounded-md bg-blue-50 p-3">
-                  <span className="text-lg font-bold text-blue-900">HUF</span>
-                  <span className="text-lg font-bold text-blue-900">
+                <div className="mb-1 flex items-center justify-between rounded bg-blue-50 px-2 py-1">
+                  <span className="text-sm font-bold text-blue-900">HUF</span>
+                  <span className="text-sm font-bold text-blue-900">
                     {hufBalance.currentBalance.toLocaleString('hu-HU')} Ft
                   </span>
                 </div>
@@ -175,9 +166,9 @@ export default function DayOpenPage() {
 
               {/* Foreign currency balances */}
               {foreignBalances.length > 0 && (
-                <div className="space-y-1">
+                <div className="grid grid-cols-2 gap-x-3">
                   {foreignBalances.map((b) => (
-                    <div key={b.id} className="flex items-center justify-between px-3 py-1.5 text-sm">
+                    <div key={b.id} className="flex items-center justify-between px-1 py-0.5 text-xs">
                       <span className="font-medium text-gray-700">{b.currencyCode}</span>
                       <span className="text-gray-900">
                         {b.currentBalance.toLocaleString('hu-HU', { minimumFractionDigits: 2 })}
@@ -192,19 +183,19 @@ export default function DayOpenPage() {
           {/* Denomination input toggle */}
           <button
             onClick={() => setShowDenomination((v) => !v)}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="flex w-full items-center justify-center gap-2 rounded border border-gray-300 bg-white py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
           >
-            <Coins className="h-4 w-4" />
+            <Coins className="h-3.5 w-3.5" />
             {showDenomination ? 'Címletezés elrejtése' : 'Nyitó címletezés kitöltése'}
           </button>
 
           {/* Denomination grid */}
           {showDenomination && (
-            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">
+            <div className="rounded-lg border border-gray-200 bg-white p-2 shadow-sm">
+              <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
                 HUF címletezés
               </h3>
-              <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
                 {HUF_DENOMINATIONS.map((faceValue) => (
                   <div key={faceValue} className="flex items-center gap-3">
                     <span className="w-20 text-right text-sm font-medium text-gray-700">
@@ -253,11 +244,11 @@ export default function DayOpenPage() {
           <button
             onClick={handleOpenDay}
             disabled={opening || !!balanceError}
-            className="w-full rounded-lg bg-green-600 py-4 text-lg font-bold text-white transition-colors hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="w-full rounded-lg bg-green-600 py-2 text-base font-bold text-white transition-colors hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             {opening ? (
               <span className="flex items-center justify-center gap-2">
-                <Loader2 className="h-5 w-5 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
                 Megnyitás...
               </span>
             ) : (
@@ -272,11 +263,10 @@ export default function DayOpenPage() {
               await clearPersistedToken()
               navigate('/login', { replace: true })
             }}
-            className="w-full text-center text-sm text-gray-500 hover:text-gray-700"
+            className="w-full text-center text-xs text-gray-500 hover:text-gray-700"
           >
             Kijelentkezés
           </button>
-        </div>
       </div>
     </div>
   )

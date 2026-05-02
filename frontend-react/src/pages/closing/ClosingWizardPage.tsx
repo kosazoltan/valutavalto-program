@@ -1,7 +1,6 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Lock, Check, X, Loader2, Minus, ChevronLeft, Coins } from 'lucide-react'
-import { CashierHeader } from '../../components/cashier/CashierHeader'
 import { toast } from '../../components/ui/toaster'
 import { closingWizardApi } from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
@@ -258,34 +257,31 @@ export default function ClosingWizardPage() {
   const denomEditable = waitingForDenom && !denomSubmitted && !isRunning
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <CashierHeader />
-
-      <div className="max-w-4xl mx-auto p-8">
+    <div className="max-w-4xl mx-auto space-y-2">
         {/* FEJLEC */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => navigate('/')}
-              className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
             >
-              <ChevronLeft className="w-6 h-6" />
+              <ChevronLeft className="w-4 h-4" />
             </button>
-            <Lock className="w-8 h-8 text-[var(--primary)]" />
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">NAPZÁRÁS WIZARD</h1>
+            <Lock className="w-5 h-5 text-[var(--primary)]" />
+            <h1 className="text-lg font-bold text-gray-900 dark:text-white">NAPZÁRÁS WIZARD</h1>
           </div>
-          <span className="text-lg font-semibold bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded-lg">
+          <span className="text-xs font-semibold bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">
             {completedCount} / {steps.length} kész
           </span>
         </div>
 
         {/* PROGRESS BAR */}
-        <div className="mb-8">
-          <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
+        <div>
+          <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400 mb-0.5">
             <span>Előrehaladás</span>
             <span>{Math.round(progress)}%</span>
           </div>
-          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+          <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-green-500 to-emerald-600 transition-all duration-500"
               style={{ width: `${progress}%` }}
@@ -294,22 +290,22 @@ export default function ClosingWizardPage() {
         </div>
 
         {/* ELLENORZESI LISTA */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden mb-8">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
           {steps.map((step) => (
             <div
               key={step.id}
-              className={`flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700 last:border-b-0 transition-colors ${
+              className={`flex items-center justify-between px-3 py-1.5 border-b border-gray-100 dark:border-gray-700 last:border-b-0 transition-colors ${
                 step.status === 'running' ? 'bg-blue-50 dark:bg-blue-950/20' : ''
               } ${step.status === 'failed' ? 'bg-red-50 dark:bg-red-950/20' : ''}`}
             >
-              <div className="flex items-center gap-4">
-                <span className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-sm font-bold text-gray-600 dark:text-gray-300">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-600 dark:text-gray-300">
                   {step.id}
                 </span>
                 {statusIcon(step.status)}
-                <span className="font-medium text-gray-900 dark:text-white">{step.label}</span>
+                <span className="text-sm font-medium text-gray-900 dark:text-white">{step.label}</span>
               </div>
-              <div>{statusText(step)}</div>
+              <div className="text-sm">{statusText(step)}</div>
             </div>
           ))}
         </div>
@@ -317,28 +313,28 @@ export default function ClosingWizardPage() {
         {/* ZARO CIMLETEZÉS — visible after step 1 completes */}
         {(waitingForDenom || denomSubmitted) && (
           <div
-            className={`bg-white dark:bg-gray-800 rounded-xl border-2 p-6 mb-8 transition-colors ${
+            className={`bg-white dark:bg-gray-800 rounded-lg border-2 p-2 transition-colors ${
               waitingForDenom && !denomSubmitted
                 ? 'border-amber-400 dark:border-amber-500 ring-2 ring-amber-200 dark:ring-amber-800'
                 : 'border-gray-200 dark:border-gray-700'
             }`}
           >
-            <div className="flex items-center gap-3 mb-4">
-              <Coins className="w-6 h-6 text-amber-500" />
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white">Esti penztár cimletezése</h2>
+            <div className="flex items-center gap-2 mb-1">
+              <Coins className="w-4 h-4 text-amber-500" />
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white">Esti penztár cimletezése</h2>
               {waitingForDenom && !denomSubmitted && (
-                <span className="ml-2 text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded">
+                <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded">
                   KITOLTÉS SZUKSÉGES
                 </span>
               )}
             </div>
             {!denomSubmitted ? (
               <>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-x-2 gap-y-0.5">
                   {HUF_DENOMINATIONS.map((faceValue) => (
-                    <div key={faceValue} className="flex items-center gap-2">
-                      <span className="w-20 text-right text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {faceValue.toLocaleString('hu-HU')} Ft
+                    <div key={faceValue} className="flex items-center gap-1">
+                      <span className="w-16 text-right text-xs font-medium text-gray-700 dark:text-gray-300">
+                        {faceValue.toLocaleString('hu-HU')}
                       </span>
                       <input
                         type="number"
@@ -348,34 +344,31 @@ export default function ClosingWizardPage() {
                           const val = Math.max(0, parseInt(e.target.value) || 0)
                           setDenomQuantities((prev) => ({ ...prev, [faceValue]: val }))
                         }}
-                        className="w-20 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1.5 text-center text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="w-14 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-1 py-0.5 text-center text-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                         placeholder="0"
                         disabled={!denomEditable}
                       />
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {(faceValue * (denomQuantities[faceValue] ?? 0)).toLocaleString('hu-HU')}
-                      </span>
                     </div>
                   ))}
                 </div>
-                <div className="mt-4 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-3">
-                  <span className="font-bold text-gray-800 dark:text-gray-200">Osszesen:</span>
-                  <span className="text-xl font-bold text-blue-900 dark:text-blue-300">
+                <div className="mt-1 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-1">
+                  <span className="text-sm font-bold text-gray-800 dark:text-gray-200">Osszesen:</span>
+                  <span className="text-base font-bold text-blue-900 dark:text-blue-300">
                     {denomTotal.toLocaleString('hu-HU')} Ft
                   </span>
                 </div>
                 <button
                   onClick={continueAfterDenom}
                   disabled={denomTotal === 0 || !denomEditable}
-                  className="mt-3 w-full rounded-lg bg-amber-600 py-2 text-sm font-bold text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  className="mt-1 w-full rounded bg-amber-600 py-1.5 text-sm font-bold text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   Cimletezés rogzitese és továbblépés
                 </button>
               </>
             ) : (
-              <div className="flex items-center gap-3 rounded-lg bg-green-50 dark:bg-green-900/20 p-4">
-                <Check className="h-5 w-5 text-green-600" />
-                <span className="text-sm font-medium text-green-800 dark:text-green-300">
+              <div className="flex items-center gap-2 rounded bg-green-50 dark:bg-green-900/20 p-2">
+                <Check className="h-4 w-4 text-green-600" />
+                <span className="text-xs font-medium text-green-800 dark:text-green-300">
                   Cimletezés rogzitve: {denomTotal.toLocaleString('hu-HU')} Ft
                 </span>
               </div>
@@ -384,11 +377,11 @@ export default function ClosingWizardPage() {
         )}
 
         {/* GOMBOK */}
-        <div className="flex justify-center gap-4">
+        <div className="flex justify-center gap-2">
           {!isRunning && completedCount === 0 && !waitingForDenom && (
             <button
               onClick={runClosing}
-              className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white text-xl font-bold rounded-xl shadow-lg transition-colors"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-base font-bold rounded-lg shadow transition-colors"
             >
               ELLENŐRZÉS INDÍTÁSA
             </button>
@@ -397,7 +390,7 @@ export default function ClosingWizardPage() {
           {failedCount > 0 && !isRunning && (
             <button
               onClick={handleCancel}
-              className="px-8 py-4 bg-gray-600 hover:bg-gray-700 text-white text-xl font-bold rounded-xl shadow-lg transition-colors"
+              className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-base font-bold rounded-lg shadow transition-colors"
             >
               ÚJRA
             </button>
@@ -406,15 +399,15 @@ export default function ClosingWizardPage() {
           <button
             onClick={handleFinalize}
             disabled={!canFinalize}
-            className={`px-10 py-4 text-xl font-bold rounded-xl shadow-lg transition-all ${
+            className={`px-5 py-2 text-base font-bold rounded-lg shadow transition-all ${
               canFinalize
                 ? 'bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white'
                 : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
             }`}
           >
             {canFinalize ? (
-              <span className="flex items-center gap-3">
-                <Check className="w-6 h-6" />
+              <span className="flex items-center gap-2">
+                <Check className="w-4 h-4" />
                 RENDBEN — Napzárás végrehajtása
               </span>
             ) : (
@@ -422,7 +415,6 @@ export default function ClosingWizardPage() {
             )}
           </button>
         </div>
-      </div>
     </div>
   )
 }

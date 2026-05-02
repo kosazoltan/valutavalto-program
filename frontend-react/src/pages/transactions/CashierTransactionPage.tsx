@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useFKeyHotkey } from '../../hooks/useFKeyHotkey'
 import { AlertTriangle } from 'lucide-react'
-import { CashierHeader } from '../../components/cashier/CashierHeader'
 import { HotkeyBar } from '../../components/cashier/HotkeyBar'
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext'
 import { transactionApi, exchangeRateApi, dailySessionApi, cashBalanceApi } from '../../services/api/index'
@@ -566,16 +565,14 @@ export default function CashierTransactionPage() {
 
   // ====== RENDER ======
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20">
-      <CashierHeader />
-
+    <div className="space-y-2">
       {/* SESSION GUARD WARNING */}
       {sessionOpen === false && (
-        <div className="mx-6 mt-4 bg-red-50 dark:bg-red-950/30 border-2 border-red-500 rounded-lg p-4 flex items-center gap-3">
-          <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400 shrink-0" />
+        <div className="bg-red-50 dark:bg-red-950/30 border-2 border-red-500 rounded-lg p-2 flex items-center gap-2">
+          <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0" />
           <div>
-            <p className="font-bold text-red-800 dark:text-red-200">Nincs nyitott napi session!</p>
-            <p className="text-sm text-red-700 dark:text-red-300">A tranzakciok rogzitesehez eloszor meg kell nyitni a napot.</p>
+            <p className="font-bold text-sm text-red-800 dark:text-red-200">Nincs nyitott napi session!</p>
+            <p className="text-xs text-red-700 dark:text-red-300">A tranzakciok rogzitesehez eloszor meg kell nyitni a napot.</p>
           </div>
         </div>
       )}
@@ -648,29 +645,29 @@ export default function CashierTransactionPage() {
       )}
 
       {/* MODE BADGE */}
-      <div className="px-6 pt-4 pb-2 flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <span
-          className="text-lg font-bold text-white px-5 py-2 rounded-lg shadow"
+          className="text-sm font-bold text-white px-3 py-1 rounded shadow"
           style={{ backgroundColor: mode === 'buy' ? '#2E7D32' : '#1565C0' }}
         >
           {mode === 'buy' ? 'VÉTEL' : 'ELADÁS'}
         </span>
-        <span className="text-sm text-gray-500 dark:text-gray-400">
+        <span className="text-xs text-gray-500 dark:text-gray-400">
           Max {MAX_LINES} valutasor | Tab/Enter = következő | Esc = sor törlés
         </span>
       </div>
 
-      <main className="px-6">
-        <div className="grid grid-cols-[1fr,340px] gap-3">
+      <main>
+        <div className="grid grid-cols-[1fr,300px] gap-2">
           {/* BAL: 6-SOROS TABLA */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="bg-gray-100 dark:bg-gray-700 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  <th className="px-4 py-3 text-left w-28">VALUTA</th>
-                  <th className="px-4 py-3 text-right w-32">ÁRFOLYAM</th>
-                  <th className="px-4 py-3 text-right w-36">BANKJEGY DB</th>
-                  <th className="px-4 py-3 text-right">FORINT ÉRTÉK</th>
+                <tr className="bg-gray-100 dark:bg-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-300">
+                  <th className="px-2 py-1.5 text-left w-28">VALUTA</th>
+                  <th className="px-2 py-1.5 text-right w-28">ÁRFOLYAM</th>
+                  <th className="px-2 py-1.5 text-right w-32">BANKJEGY DB</th>
+                  <th className="px-2 py-1.5 text-right">FORINT ÉRTÉK</th>
                 </tr>
               </thead>
               <tbody>
@@ -683,7 +680,7 @@ export default function CashierTransactionPage() {
                         : ''
                     }`}
                   >
-                    <td className="px-4 py-2">
+                    <td className="px-2 py-1">
                       <CurrencyAutocomplete
                         rates={exchangeRates}
                         value={row.currencyCode}
@@ -696,12 +693,12 @@ export default function CashierTransactionPage() {
                         data-testid={`currency-input-${idx}`}
                       />
                     </td>
-                    <td className="px-4 py-2 text-right">
-                      <span className="text-lg font-mono font-semibold text-gray-900 dark:text-white">
+                    <td className="px-2 py-1 text-right">
+                      <span className="text-base font-mono font-semibold text-gray-900 dark:text-white">
                         {row.exchangeRate ? row.exchangeRate.toFixed(2) : '-'}
                       </span>
                     </td>
-                    <td className="px-4 py-2 text-right">
+                    <td className="px-2 py-1 text-right">
                       <input
                         ref={(el) => { quantityRefs.current[idx] = el }}
                         value={row.quantity}
@@ -710,14 +707,14 @@ export default function CashierTransactionPage() {
                         onFocus={() => { setActiveRow(idx); setActiveField('quantity') }}
                         type="text"
                         inputMode="numeric"
-                        className="w-28 h-12 text-right font-mono text-lg font-semibold bg-transparent border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:border-transparent"
+                        className="w-24 h-8 text-right font-mono text-base font-semibold bg-transparent border-2 border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:border-transparent"
                         style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
                         placeholder="0"
                         disabled={!row.currencyCode}
                       />
                     </td>
-                    <td className="px-4 py-2 text-right">
-                      <span className="text-xl font-mono font-bold text-gray-900 dark:text-white">
+                    <td className="px-2 py-1 text-right">
+                      <span className="text-lg font-mono font-bold text-gray-900 dark:text-white">
                         {row.hufValue ? formatNum(row.hufValue) : '-'}
                       </span>
                     </td>
@@ -727,26 +724,26 @@ export default function CashierTransactionPage() {
             </table>
 
             {/* OSSZEGZO */}
-            <div className="bg-gray-50 dark:bg-gray-800/80 p-4 space-y-3 border-t border-gray-200 dark:border-gray-700">
-              <div className="flex justify-between text-base">
+            <div className="bg-gray-50 dark:bg-gray-800/80 p-2 space-y-1 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex justify-between text-sm">
                 <span className="text-gray-600 dark:text-gray-400">OSSZESEN:</span>
                 <span className="font-mono font-semibold">{formatNum(subtotal)} HUF</span>
               </div>
-              <div className="flex justify-between text-base">
+              <div className="flex justify-between text-sm">
                 <span className="text-gray-600 dark:text-gray-400">KEZELESI DIJ:</span>
                 <span className="font-mono font-semibold">{formatNum(handlingFee)} HUF</span>
               </div>
               {discount > 0 && (
-                <div className="flex justify-between text-base">
+                <div className="flex justify-between text-sm">
                   <span className="text-gray-600 dark:text-gray-400">KEDVEZMENY ({discount}%):</span>
                   <span className="font-mono font-semibold text-green-600">-{formatNum(discountAmount)} HUF</span>
                 </div>
               )}
-              <hr className="border-gray-300 dark:border-gray-600" />
-              <div className="flex justify-between items-center pt-1">
-                <span className="text-lg font-bold">FIZETENDO:</span>
+              <hr className="border-gray-300 dark:border-gray-600 my-1" />
+              <div className="flex justify-between items-center">
+                <span className="text-base font-bold">FIZETENDO:</span>
                 <span
-                  className="text-4xl font-mono font-black text-white px-6 py-3 rounded-lg shadow-lg"
+                  className="text-2xl font-mono font-black text-white px-3 py-1 rounded shadow"
                   style={{ backgroundColor: 'var(--primary)' }}
                 >
                   {formatNum(total)} HUF
@@ -756,7 +753,7 @@ export default function CashierTransactionPage() {
           </div>
 
           {/* JOBB: UGYFEL PANEL */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2">
             <CustomerPanel
               identificationLevel={identificationLevel}
               requiresSourceVerification={requiresSourceVerification}
@@ -769,7 +766,7 @@ export default function CashierTransactionPage() {
             <button
               onClick={handleSubmit}
               disabled={isSubmitting || !rows.some((r) => r.currencyCode.length > 0) || (amlResultRef.current?.blocked ?? false)}
-              className="w-full py-3 rounded-lg text-white font-bold text-lg shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+              className="w-full py-2 rounded-lg text-white font-bold text-base shadow transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
               data-action="save"
               style={{ backgroundColor: 'var(--primary)' }}
             >
