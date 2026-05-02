@@ -53,13 +53,13 @@ export default function AttendancePage() {
     const [dateTo, setDateTo] = useState<string>(defaultTo)
 
     return (
-        <div className="p-6 space-y-4">
+        <div className="space-y-2">
             <div>
-                <h1 className="text-2xl font-bold text-secondary-900 flex items-center gap-2">
-                    <Clock className="text-primary-600" size={28} />
+                <h1 className="text-base font-bold text-secondary-900 flex items-center gap-2">
+                    <Clock className="text-primary-600" size={18} />
                     Munkaidő nyilvántartás
                 </h1>
-                <p className="text-sm text-secondary-500 mt-1">
+                <p className="text-xs text-secondary-500">
                     Bejelentkezési és kijelentkezési napló — saját vagy csapattag.
                 </p>
             </div>

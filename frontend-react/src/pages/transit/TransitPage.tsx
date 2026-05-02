@@ -70,11 +70,11 @@ export default function TransitPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-4">
+    <div>
+      <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <Package size={24} className="text-primary-600" />
-          <h1 className="text-2xl font-bold text-secondary-900">Úton lévő csomagok</h1>
+          <Package size={18} className="text-primary-600" />
+          <h1 className="text-base font-bold text-secondary-900">Úton lévő csomagok</h1>
           {branchCode && (
             <span className="ml-3 px-2 py-1 bg-secondary-100 rounded text-sm text-secondary-600">
               {branchCode}

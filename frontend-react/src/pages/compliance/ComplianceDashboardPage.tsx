@@ -62,14 +62,14 @@ export default function ComplianceDashboardPage() {
     }
 
     return (
-        <div className="p-6 max-w-7xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
+        <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-between mb-2">
                 <div>
-                    <h1 className="text-2xl font-bold flex items-center gap-2">
-                        <Shield className="w-7 h-7 text-blue-600" />
+                    <h1 className="text-base font-bold flex items-center gap-2">
+                        <Shield className="w-5 h-5 text-blue-600" />
                         Compliance Dashboard
                     </h1>
-                    <p className="text-gray-600 text-sm mt-1">
+                    <p className="text-gray-600 text-xs">
                         Pmt. (2017. LIII. tv.) + AML + Szankciós + 8 napos gördülő limit audit
                     </p>
                 </div>

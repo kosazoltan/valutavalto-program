@@ -136,14 +136,14 @@ export default function PermissionMatrixPage() {
     }
 
     return (
-        <div className="p-6 space-y-4">
+        <div className="space-y-2">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-secondary-900 flex items-center gap-2">
-                        <Grid3x3 className="text-primary-600" size={28} />
+                    <h1 className="text-base font-bold text-secondary-900 flex items-center gap-2">
+                        <Grid3x3 className="text-primary-600" size={18} />
                         Jogosultság mátrix
                     </h1>
-                    <p className="text-sm text-secondary-500 mt-1">
+                    <p className="text-xs text-secondary-500">
                         Szerepkor × jogosultsag matrix. Egyszerre szerkesztheto az osszes kombinacio.
                     </p>
                 </div>

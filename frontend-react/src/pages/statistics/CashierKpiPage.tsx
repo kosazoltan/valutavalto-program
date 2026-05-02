@@ -109,14 +109,14 @@ export default function CashierKpiPage() {
     }, [data])
 
     return (
-        <div className="p-6 space-y-6">
+        <div className="space-y-2">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-secondary-900 flex items-center gap-2">
-                        <Users className="text-primary-600" size={28} />
+                    <h1 className="text-base font-bold text-secondary-900 flex items-center gap-2">
+                        <Users className="text-primary-600" size={18} />
                         Pénztáros KPI Dashboard
                     </h1>
-                    <p className="text-sm text-secondary-500 mt-1">
+                    <p className="text-xs text-secondary-500">
                         Forgalom, tranzakciószám és sztornó arány pénztárosonként.
                     </p>
                 </div>

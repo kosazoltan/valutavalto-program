@@ -106,10 +106,10 @@ export default function MnbReportsPage() {
     const months = Array.from({ length: 12 }, (_, i) => i + 1)
 
     return (
-        <div className="p-6 max-w-7xl mx-auto space-y-6">
+        <div className="max-w-7xl mx-auto space-y-2">
             <div>
-                <h1 className="text-3xl font-bold text-slate-800">MNB jelentések</h1>
-                <p className="text-sm text-slate-600 mt-1">
+                <h1 className="text-lg font-bold text-slate-800">MNB jelentések</h1>
+                <p className="text-xs text-slate-600">
                     Havi pénzváltó forgalmi jelentés az MNB-nek. Generálás után ellenőrizd, majd kattints "Beküld"-re.
                 </p>
             </div>

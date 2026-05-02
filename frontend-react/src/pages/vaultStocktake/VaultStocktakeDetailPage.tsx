@@ -99,7 +99,7 @@ export default function VaultStocktakeDetailPage() {
 
     if (loading || !session) {
         return (
-            <div className="p-6 max-w-5xl mx-auto">
+            <div className="max-w-5xl mx-auto">
                 <div className="text-gray-500">Toltodik...</div>
             </div>
         )
@@ -113,20 +113,20 @@ export default function VaultStocktakeDetailPage() {
     const canClose = session.status === 'REVIEW'
 
     return (
-        <div className="p-6 max-w-6xl mx-auto">
+        <div className="max-w-6xl mx-auto">
             <button
                 onClick={() => navigate('/vault-stocktake')}
-                className="flex items-center gap-1 text-gray-600 hover:text-gray-800 mb-4"
+                className="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-800 mb-2"
             >
-                <ArrowLeft className="w-4 h-4" />
+                <ArrowLeft className="w-3.5 h-3.5" />
                 Vissza a listahoz
             </button>
 
-            <div className="bg-white shadow rounded p-6 mb-4">
-                <div className="flex justify-between items-start mb-3">
+            <div className="bg-white shadow rounded p-2 mb-2">
+                <div className="flex justify-between items-start mb-2">
                     <div>
-                        <h1 className="text-xl font-bold">{session.sessionName}</h1>
-                        <div className="text-sm text-gray-600 mt-1">
+                        <h1 className="text-base font-bold">{session.sessionName}</h1>
+                        <div className="text-xs text-gray-600">
                             Status: <span className="font-medium">{STATUS_LABELS[session.status]}</span>
                             {' - '}Inditotta: {session.startedBy}
                             {' - '}{new Date(session.startedAt).toLocaleString('hu-HU')}

@@ -184,11 +184,11 @@ export default function CentralVaultDashboard() {
     }, {})
 
     return (
-        <div className="p-6 max-w-7xl mx-auto space-y-6">
+        <div className="max-w-7xl mx-auto space-y-2">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-800">Főértéktári dashboard</h1>
-                    <p className="text-sm text-slate-600 mt-1">
+                    <h1 className="text-lg font-bold text-slate-800">Főértéktári dashboard</h1>
+                    <p className="text-xs text-slate-600">
                         Országos pénztár-állapot és készlet — auto-refresh 1 percenként
                         {lastRefresh && <span className="ml-2 text-slate-400">Utolsó: {lastRefresh.toLocaleTimeString('hu-HU')}</span>}
                     </p>
