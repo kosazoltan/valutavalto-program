@@ -17,6 +17,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -123,9 +124,9 @@ public class WorkerController {
     
     /**
      * Dolgozó aktiválás
-     * 
+     *
      * POST /api/v1/workers/{id}/activate
-     * 
+     *
      * Csak SUPERVISOR, MANAGER, ADMIN
      */
     @PostMapping("/{id}/activate")
@@ -133,6 +134,25 @@ public class WorkerController {
     public ResponseEntity<Void> activateWorker(@PathVariable Long id) {
         workerService.activateWorker(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * v2.5.4 (D opció): Login-lockout manuális unlock.
+     *
+     * POST /api/v1/workers/{id}/unlock-login
+     *
+     * A WorkerService.loginAttempts in-memory map-ban a worker bejegyzését
+     * törli, így a következő login-próbálkozás 0 számolóval indul.
+     *
+     * Csak ADMIN — a kollégák zárolt account-ját az adminisztrátor oldhatja fel.
+     *
+     * @return remainingSeconds (másodperc): mennyi volt még hátra a lockoutból (0 ha nem volt lock)
+     */
+    @PostMapping("/{id}/unlock-login")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Long>> unlockLogin(@PathVariable Long id) {
+        long remainingSeconds = workerService.unlockLogin(id);
+        return ResponseEntity.ok(Map.of("remainingSeconds", remainingSeconds));
     }
     
     /**

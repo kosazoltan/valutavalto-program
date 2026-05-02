@@ -569,6 +569,33 @@ public class WorkerService {
         });
     }
 
+    /**
+     * v2.5.4 (D opció): admin manuális unlock egy worker login-lockoutjára.
+     * Eltávolítja a worker-t a {@code loginAttempts} ConcurrentHashMap-ból,
+     * így a következő bejelentkezési próbálkozás 0 számolóval indul.
+     *
+     * @param workerId a unlock-olandó worker ID-je (Long)
+     * @return ha volt aktív lockout: az eltelt másodpercek a lock vége előtt; egyébként 0
+     * @throws ResourceNotFoundException ha a worker nem létezik
+     */
+    @Transactional(readOnly = true)
+    public long unlockLogin(Long workerId) {
+        Worker worker = workerRepository.findById(workerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Worker not found: " + workerId));
+
+        String companyCode = worker.getCompany() != null ? worker.getCompany().getCode() : "";
+        String workerCode = worker.getCode();
+        String loginKey = normalizeCode(companyCode) + ":" + normalizeLoginCode(workerCode);
+
+        long[] state = loginAttempts.remove(loginKey);
+        if (state == null) {
+            return 0L;
+        }
+        long lockUntil = state[1];
+        long remainingMs = lockUntil > 0 ? Math.max(0L, lockUntil - System.currentTimeMillis()) : 0L;
+        return remainingMs / 1000L;
+    }
+
     private String normalizeCode(String value) {
         return value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
     }
