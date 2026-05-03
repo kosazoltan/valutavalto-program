@@ -17,12 +17,17 @@
 -- Tobbszoros email-lel rendelkezo worker (pl. Juhasz Norbi 2 emaillel) eseten csak az
 -- elsodleges Google email kerul a worker.email-be; a masodikat NEM tarjuk per-worker.
 
+-- Copilot PR #361 follow-up #3: a korabbi `crypt(encode(gen_random_bytes(16), 'hex'), gen_salt('bf'))` egy KOZOS BCrypt
+-- hash volt a "1234" jelszora — guess-elheto, shared credential, kockazat ha valaki
+-- a Google login route mellett a jelszavas login route-ot probaja az UJ G_* worker-ekkel.
+--
+-- Megoldas: minden G_* workerre KULON random BCrypt hash inline (pgcrypto crypt() + gen_salt('bf')).
+-- A jelszavas belepes ezekkel SOHA nem fog mukodni — sem a keletkezett random ertek,
+-- sem masik szovegek nem matchelnek hozza. A workerek csak Google login utvonalon lephetnek be.
 DO $$
 DECLARE
     ebc_company_id UUID;
     default_branch_id UUID;
-    default_password_hash CONSTANT TEXT := '$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie';
-    -- (BCrypt hash a "1234" jelszora — V162 mintajaval, force first-time-setup elso login utan)
 BEGIN
     SELECT id INTO ebc_company_id FROM company WHERE code = 'EBC' LIMIT 1;
     IF ebc_company_id IS NULL THEN
@@ -47,17 +52,17 @@ BEGIN
 
     -- Vegyes / iroda / teruleti vezeto / ugyvezeto / belso ellenor (13 ember)
     INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, is_active, email, google_login_enabled, created_at) VALUES
-        (ebc_company_id, default_branch_id, 'G_DEKANY_TIMEA',     'Dekany Timea',          default_password_hash, 'ADMIN',    true, 'dekany.timea.ebc@gmail.com',         true, NOW()),
-        (ebc_company_id, default_branch_id, 'G_SCHNELL_EDIT',     'Schnell Edit (Pecs)',   default_password_hash, 'ADMIN',    true, 'schnell.edit.ebc@gmail.com',         true, NOW()),
-        (ebc_company_id, default_branch_id, 'G_KARDOS_ILDIKO',    'Kardos Ildiko',         default_password_hash, 'ADMIN',    true, 'kardos.ildiko.ebc@gmail.com',        true, NOW()),
-        (ebc_company_id, default_branch_id, 'G_HRABINA_KRISZTIAN','Hrabina Krisztian',     default_password_hash, 'MANAGER',  true, 'hrabina.krisztian.eec@gmail.com',    true, NOW()),
-        (ebc_company_id, default_branch_id, 'G_KENEZ_EVA',        'Kenez Eva',             default_password_hash, 'MANAGER',  true, 'veress.eva.eec@gmail.com',           true, NOW()),
-        (ebc_company_id, default_branch_id, 'G_MADAR_ZOLTAN',     'Madar Zoltan',          default_password_hash, 'CASHIER',  true, 'madarzoltan.ebc@gmail.com',          true, NOW()),
-        (ebc_company_id, default_branch_id, 'G_JUHASZ_NORBERT',   'Juhasz Norbert',        default_password_hash, 'ADMIN',    true, 'teruleti.vezeto.exz@gmail.com',      true, NOW()),
-        (ebc_company_id, default_branch_id, 'G_GALLUSZ_ILDIKO',   'Kosa-Gallusz Ildiko',   default_password_hash, 'CASHIER',  true, 'gallusz.ildiko.ebc@gmail.com',       true, NOW()),
-        (ebc_company_id, default_branch_id, 'G_MARCSIK_BRIGI',    'Marcsik Brigi',         default_password_hash, 'MANAGER',  true, 'szekszard.teruletivezeto@gmail.com', true, NOW()),
-        (ebc_company_id, default_branch_id, 'G_TV_KAPOSVAR',      'Teruleti vezeto Kaposvar', default_password_hash, 'MANAGER', true, 'kaposvar.teruletivezeto@gmail.com', true, NOW()),
-        (ebc_company_id, default_branch_id, 'G_TV_PECS',          'Teruleti vezeto Pecs',  default_password_hash, 'MANAGER',  true, 'teruletivezeto.pecs@gmail.com',      true, NOW())
+        (ebc_company_id, default_branch_id, 'G_DEKANY_TIMEA',     'Dekany Timea',          crypt(encode(gen_random_bytes(16), 'hex'), gen_salt('bf')), 'ADMIN',    true, 'dekany.timea.ebc@gmail.com',         true, NOW()),
+        (ebc_company_id, default_branch_id, 'G_SCHNELL_EDIT',     'Schnell Edit (Pecs)',   crypt(encode(gen_random_bytes(16), 'hex'), gen_salt('bf')), 'ADMIN',    true, 'schnell.edit.ebc@gmail.com',         true, NOW()),
+        (ebc_company_id, default_branch_id, 'G_KARDOS_ILDIKO',    'Kardos Ildiko',         crypt(encode(gen_random_bytes(16), 'hex'), gen_salt('bf')), 'ADMIN',    true, 'kardos.ildiko.ebc@gmail.com',        true, NOW()),
+        (ebc_company_id, default_branch_id, 'G_HRABINA_KRISZTIAN','Hrabina Krisztian',     crypt(encode(gen_random_bytes(16), 'hex'), gen_salt('bf')), 'MANAGER',  true, 'hrabina.krisztian.eec@gmail.com',    true, NOW()),
+        (ebc_company_id, default_branch_id, 'G_KENEZ_EVA',        'Kenez Eva',             crypt(encode(gen_random_bytes(16), 'hex'), gen_salt('bf')), 'MANAGER',  true, 'veress.eva.eec@gmail.com',           true, NOW()),
+        (ebc_company_id, default_branch_id, 'G_MADAR_ZOLTAN',     'Madar Zoltan',          crypt(encode(gen_random_bytes(16), 'hex'), gen_salt('bf')), 'CASHIER',  true, 'madarzoltan.ebc@gmail.com',          true, NOW()),
+        (ebc_company_id, default_branch_id, 'G_JUHASZ_NORBERT',   'Juhasz Norbert',        crypt(encode(gen_random_bytes(16), 'hex'), gen_salt('bf')), 'ADMIN',    true, 'teruleti.vezeto.exz@gmail.com',      true, NOW()),
+        (ebc_company_id, default_branch_id, 'G_GALLUSZ_ILDIKO',   'Kosa-Gallusz Ildiko',   crypt(encode(gen_random_bytes(16), 'hex'), gen_salt('bf')), 'CASHIER',  true, 'gallusz.ildiko.ebc@gmail.com',       true, NOW()),
+        (ebc_company_id, default_branch_id, 'G_MARCSIK_BRIGI',    'Marcsik Brigi',         crypt(encode(gen_random_bytes(16), 'hex'), gen_salt('bf')), 'MANAGER',  true, 'szekszard.teruletivezeto@gmail.com', true, NOW()),
+        (ebc_company_id, default_branch_id, 'G_TV_KAPOSVAR',      'Teruleti vezeto Kaposvar', crypt(encode(gen_random_bytes(16), 'hex'), gen_salt('bf')), 'MANAGER', true, 'kaposvar.teruletivezeto@gmail.com', true, NOW()),
+        (ebc_company_id, default_branch_id, 'G_TV_PECS',          'Teruleti vezeto Pecs',  crypt(encode(gen_random_bytes(16), 'hex'), gen_salt('bf')), 'MANAGER',  true, 'teruletivezeto.pecs@gmail.com',      true, NOW())
     ON CONFLICT (company_id, code) DO UPDATE SET
         email = EXCLUDED.email,
         is_active = true,
@@ -81,18 +86,18 @@ BEGIN
     -- =================================================================
 
     INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, is_active, email, google_login_enabled, created_at) VALUES
-        (ebc_company_id, default_branch_id, 'G_HELGA_FOERTEKTAR', 'Helga Foertektar',           default_password_hash, 'ADMIN',   true, 'kasza.helga.ebc@gmail.com',          true, NOW()),
-        (ebc_company_id, default_branch_id, 'G_ET_BEKESCSABA',    'Ertektar Bekescsaba',        default_password_hash, 'CASHIER', true, 'bekescsaba.ebc@gmail.com',           true, NOW()),
-        (ebc_company_id, default_branch_id, 'G_KOSZTYU_CSABA',    'Kosztyu Csaba (Nyiregyhaza)', default_password_hash, 'CASHIER', true, 'kosztyu.csaba.ebc@gmail.com',        true, NOW()),
-        (ebc_company_id, default_branch_id, 'G_ET_DEBRECEN',      'Ertektar Debrecen',          default_password_hash, 'CASHIER', true, 'debrecen.ebc@gmail.com',             true, NOW()),
-        (ebc_company_id, default_branch_id, 'G_ET_NYIREGYHAZA',   'Holes Andi (Nyiregyhaza 1)', default_password_hash, 'CASHIER', true, 'nyiregyhaza.ebc@gmail.com',          true, NOW()),
-        (ebc_company_id, default_branch_id, 'G_ET_KECSKEMET',     'Ertektar Kecskemet',         default_password_hash, 'CASHIER', true, 'kecskemet.ebc@gmail.com',            true, NOW()),
-        (ebc_company_id, default_branch_id, 'G_LACIKA_PECS',      'Lacika (Pecs Ertektar)',     default_password_hash, 'CASHIER', true, 'pecs.ebc@gmail.com',                 true, NOW()),
-        (ebc_company_id, default_branch_id, 'G_BALI_HENRIETT',    'Bali Henriett (Szeged)',     default_password_hash, 'CASHIER', true, 'bali.henriett.ebc@gmail.com',        true, NOW()),
-        (ebc_company_id, default_branch_id, 'G_ET_SZEKSZARD',     'Ertektar Szekszard',         default_password_hash, 'CASHIER', true, 'szekszard.ebc@gmail.com',            true, NOW()),
-        (ebc_company_id, default_branch_id, 'G_PECS_RAKOCZI',     'Pecs Rakoczi Valuta',        default_password_hash, 'CASHIER', true, 'expressz.minibank.ertektar@gmail.com', true, NOW()),
-        (ebc_company_id, default_branch_id, 'G_SZEGED_ET',        'Szeged Ertektar',            default_password_hash, 'CASHIER', true, 'szeged.ebc@gmail.com',               true, NOW()),
-        (ebc_company_id, default_branch_id, 'G_KAPOSVAR_ET',      'Kaposvar Ertektar',          default_password_hash, 'CASHIER', true, 'kaposvar.ebc@gmail.com',             true, NOW())
+        (ebc_company_id, default_branch_id, 'G_HELGA_FOERTEKTAR', 'Helga Foertektar',           crypt(encode(gen_random_bytes(16), 'hex'), gen_salt('bf')), 'ADMIN',   true, 'kasza.helga.ebc@gmail.com',          true, NOW()),
+        (ebc_company_id, default_branch_id, 'G_ET_BEKESCSABA',    'Ertektar Bekescsaba',        crypt(encode(gen_random_bytes(16), 'hex'), gen_salt('bf')), 'CASHIER', true, 'bekescsaba.ebc@gmail.com',           true, NOW()),
+        (ebc_company_id, default_branch_id, 'G_KOSZTYU_CSABA',    'Kosztyu Csaba (Nyiregyhaza)', crypt(encode(gen_random_bytes(16), 'hex'), gen_salt('bf')), 'CASHIER', true, 'kosztyu.csaba.ebc@gmail.com',        true, NOW()),
+        (ebc_company_id, default_branch_id, 'G_ET_DEBRECEN',      'Ertektar Debrecen',          crypt(encode(gen_random_bytes(16), 'hex'), gen_salt('bf')), 'CASHIER', true, 'debrecen.ebc@gmail.com',             true, NOW()),
+        (ebc_company_id, default_branch_id, 'G_ET_NYIREGYHAZA',   'Holes Andi (Nyiregyhaza 1)', crypt(encode(gen_random_bytes(16), 'hex'), gen_salt('bf')), 'CASHIER', true, 'nyiregyhaza.ebc@gmail.com',          true, NOW()),
+        (ebc_company_id, default_branch_id, 'G_ET_KECSKEMET',     'Ertektar Kecskemet',         crypt(encode(gen_random_bytes(16), 'hex'), gen_salt('bf')), 'CASHIER', true, 'kecskemet.ebc@gmail.com',            true, NOW()),
+        (ebc_company_id, default_branch_id, 'G_LACIKA_PECS',      'Lacika (Pecs Ertektar)',     crypt(encode(gen_random_bytes(16), 'hex'), gen_salt('bf')), 'CASHIER', true, 'pecs.ebc@gmail.com',                 true, NOW()),
+        (ebc_company_id, default_branch_id, 'G_BALI_HENRIETT',    'Bali Henriett (Szeged)',     crypt(encode(gen_random_bytes(16), 'hex'), gen_salt('bf')), 'CASHIER', true, 'bali.henriett.ebc@gmail.com',        true, NOW()),
+        (ebc_company_id, default_branch_id, 'G_ET_SZEKSZARD',     'Ertektar Szekszard',         crypt(encode(gen_random_bytes(16), 'hex'), gen_salt('bf')), 'CASHIER', true, 'szekszard.ebc@gmail.com',            true, NOW()),
+        (ebc_company_id, default_branch_id, 'G_PECS_RAKOCZI',     'Pecs Rakoczi Valuta',        crypt(encode(gen_random_bytes(16), 'hex'), gen_salt('bf')), 'CASHIER', true, 'expressz.minibank.ertektar@gmail.com', true, NOW()),
+        (ebc_company_id, default_branch_id, 'G_SZEGED_ET',        'Szeged Ertektar',            crypt(encode(gen_random_bytes(16), 'hex'), gen_salt('bf')), 'CASHIER', true, 'szeged.ebc@gmail.com',               true, NOW()),
+        (ebc_company_id, default_branch_id, 'G_KAPOSVAR_ET',      'Kaposvar Ertektar',          crypt(encode(gen_random_bytes(16), 'hex'), gen_salt('bf')), 'CASHIER', true, 'kaposvar.ebc@gmail.com',             true, NOW())
     ON CONFLICT (company_id, code) DO UPDATE SET
         email = EXCLUDED.email,
         is_active = true,

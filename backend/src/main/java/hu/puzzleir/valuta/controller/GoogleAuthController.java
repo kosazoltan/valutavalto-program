@@ -70,9 +70,12 @@ public class GoogleAuthController {
         // 2. HttpOnly refresh cookie — ugyanaz a 7-napos `refreshToken` mint AuthController.login.
         //    Audit P0.2 kovetelmeny: production-ben `Secure` flag aktiv (a `forward-headers-strategy=framework`
         //    miatt a `request.isSecure()` HTTPS proxy mogul jovo kerelemre true-t ad vissza).
+        // Sourcery PR #361 follow-up #3: NEM nyelhetjuk el az AuthenticationException-t a workerRepository
+        // hibaja eseten — ez data integrity problema, NEM cookie-issue problema. A worker not-found
+        // konkretat propagaljuk, a tobbi (RefreshTokenService failure) marad warn+continue.
+        Worker worker = workerRepository.findById(response.getWorker().getId())
+                .orElseThrow(() -> new AuthenticationException("Worker nem talalhato login utan."));
         try {
-            Worker worker = workerRepository.findById(response.getWorker().getId())
-                    .orElseThrow(() -> new AuthenticationException("Worker nem talalhato login utan."));
             RefreshTokenService.IssuedToken issued = refreshTokenService.issue(worker, httpRequest);
             ResponseCookie cookie = ResponseCookie.from("refreshToken", issued.rawUuid())
                     .httpOnly(true)

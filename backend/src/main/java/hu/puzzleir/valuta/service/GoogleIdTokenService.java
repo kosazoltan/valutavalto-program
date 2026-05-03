@@ -78,6 +78,18 @@ public class GoogleIdTokenService {
             throw new GoogleTokenInvalidException("BLANK_TOKEN", "Google ID token hianyzik vagy ures.");
         }
 
+        // Codex P1 PR #363 follow-up: a `GoogleIdTokenVerifier` ures audience-szel boot-olhat
+        // dev/test profilban (lasd GoogleLoginConfig). Ekkor a `verify()` audience-validacio
+        // NELKUL fogadna el a tokent — ami security-szempontbol invalid kornyezetben futhato
+        // login flow. Itt explicit fail-fast: ha a verifier audiences ures, MINDEN tokent
+        // utasitsunk el "MISCONFIGURED" code-dal.
+        var verifierAudiences = verifier.getAudience();
+        if (verifierAudiences == null || verifierAudiences.isEmpty()) {
+            throw new GoogleTokenInvalidException("MISCONFIGURED",
+                    "Google login NINCS konfiguralva (google.client.id hianyzik). "
+                            + "Tokenvalidacio audience nelkul nem fogadhato el.");
+        }
+
         GoogleIdToken googleIdToken;
         try {
             googleIdToken = verifier.verify(idToken);
@@ -124,7 +136,7 @@ public class GoogleIdTokenService {
         }
 
         log.debug("Google ID token verify OK — subjectHash={}, hd={}, kid={}",
-                Integer.toHexString(subject.hashCode()),
+                GoogleLoginService.safeLogHash(subject),
                 hostedDomain == null ? "(none)" : hostedDomain,
                 header == null ? "(none)" : header.getKeyId());
 

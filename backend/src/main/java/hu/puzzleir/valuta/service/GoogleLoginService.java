@@ -4,7 +4,6 @@ import hu.puzzleir.valuta.dto.auth.LoginResponseDto;
 import hu.puzzleir.valuta.dto.worker.WorkerDto;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Worker;
-import hu.puzzleir.valuta.entity.WorkerRole;
 import hu.puzzleir.valuta.entity.WorkerSession;
 import hu.puzzleir.valuta.exception.AuthenticationException;
 import hu.puzzleir.valuta.exception.ConflictException;
@@ -12,6 +11,7 @@ import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.repository.WorkerSessionRepository;
 import hu.puzzleir.valuta.security.JwtTokenProvider;
+import hu.puzzleir.valuta.util.AppModeRoleConstants;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,8 +19,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -55,13 +58,6 @@ import java.util.Optional;
 @Transactional(rollbackFor = Exception.class)
 @Slf4j
 public class GoogleLoginService {
-
-    /** v2.1.4: Szerver-role-ok listaja (browser-modhoz jogosult) — WorkerService minta. */
-    private static final List<String> SERVER_CANONICAL_ROLES = List.of(
-        "ugyvezeto", "foertektar", "irodavezeto", "belso_ellenor",
-        "teruleti_vezeto", "biztonsagi_vezeto", "berszamfejto",
-        "penzugyi_vezeto", "irodai_dolgozo", "csoportvezeto", "arfolyam_nezo"
-    );
 
     private final GoogleIdTokenService googleIdTokenService;
     private final WorkerRepository workerRepository;
@@ -99,7 +95,7 @@ public class GoogleLoginService {
 
         if (candidates.isEmpty()) {
             log.warn("GOOGLE_LOGIN_DENIED_NOT_WHITELISTED emailHash={}",
-                    Integer.toHexString(canonicalEmail.hashCode()));
+                    safeLogHash(canonicalEmail));
             throw new AuthenticationException("Google fiók nincs engedélyezve ehhez a rendszerhez.");
         }
         if (candidates.size() > 1) {
@@ -107,7 +103,7 @@ public class GoogleLoginService {
             // (uq_worker_google_email_lower, NEM company-scoped). Igy 2+ candidate csak akkor
             // jonne ide, ha race-condition vagy admin manualis DB SQL kerulte meg az index-et.
             log.error("GOOGLE_LOGIN_CONFIG_ERROR multiple_candidates count={} emailHash={}",
-                    candidates.size(), Integer.toHexString(canonicalEmail.hashCode()));
+                    candidates.size(), safeLogHash(canonicalEmail));
             throw new ConflictException(
                     "Tobb dolgozo van regisztralva ezzel a Google email-lel — admin konfiguracios hiba.");
         }
@@ -138,19 +134,19 @@ public class GoogleLoginService {
             if (alreadyBound.isPresent() && !alreadyBound.get().getId().equals(worker.getId())) {
                 log.warn("GOOGLE_LOGIN_DENIED_SUB_ALREADY_BOUND_TO_OTHER currentWorker={} otherWorker={} subjectHash={}",
                         worker.getCode(), alreadyBound.get().getCode(),
-                        Integer.toHexString(googleSubject.hashCode()));
+                        safeLogHash(googleSubject));
                 throw new AuthenticationException(
                         "Ez a Google fiok mar masik dolgozohoz van kotve. Kerd az admin segitseget.");
             }
             log.info("GOOGLE_LOGIN_FIRST_BIND workerCode={} subjectHash={}",
-                    worker.getCode(), Integer.toHexString(googleSubject.hashCode()));
+                    worker.getCode(), safeLogHash(googleSubject));
             worker.setGoogleSubject(googleSubject);
             worker.setGoogleLinkedAt(LocalDateTime.now());
         } else if (!worker.getGoogleSubject().equals(googleSubject)) {
             log.warn("GOOGLE_LOGIN_DENIED_SUB_MISMATCH workerCode={} expectedHash={} gotHash={}",
                     worker.getCode(),
-                    Integer.toHexString(worker.getGoogleSubject().hashCode()),
-                    Integer.toHexString(googleSubject.hashCode()));
+                    safeLogHash(worker.getGoogleSubject()),
+                    safeLogHash(googleSubject));
             throw new AuthenticationException(
                     "A Google fiok azonositoja nem egyezik. Lepj be a regi fiokkal vagy kerd az admin segitseget.");
         }
@@ -206,22 +202,15 @@ public class GoogleLoginService {
 
         log.info("GOOGLE_LOGIN_SUCCESS workerCode={} subjectHash={} ip={}",
                 worker.getCode(),
-                Integer.toHexString(googleSubject.hashCode()),
+                safeLogHash(googleSubject),
                 httpRequest.getRemoteAddr());
 
         // 7. validAppModes szamitas — egyezo logika a WorkerService.login-nal
         long expiresInMs = 86400000L;
         LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(expiresInMs / 1000);
 
-        List<String> validAppModes = new ArrayList<>();
-        if (roleCodes.contains("penztar")) validAppModes.add("penztar");
-        if (roleCodes.contains("ertektar")) validAppModes.add("ertektar");
-        if (roleCodes.stream().anyMatch(SERVER_CANONICAL_ROLES::contains)) {
-            validAppModes.add("full");
-        }
-        if (worker.getRole() == WorkerRole.ADMIN && !validAppModes.contains("full")) {
-            validAppModes.add("full");
-        }
+        // Sourcery+Copilot PR #361 follow-up: kozos AppModeRoleConstants util — NEM duplikalva
+        List<String> validAppModes = AppModeRoleConstants.computeValidAppModes(roleCodes, worker.getRole());
 
         return LoginResponseDto.builder()
                 .token(token)
@@ -249,5 +238,24 @@ public class GoogleLoginService {
         return candidates.stream()
                 .filter(w -> Boolean.TRUE.equals(w.getActive()))
                 .findFirst();
+    }
+
+    /**
+     * Copilot PR #361 follow-up #3: PII visszafejt-hetoseg ellen SHA-256 csonkolt hex hash.
+     * A {@link String#hashCode()} csak 32-bit, brute-force-olhato tipikus emailekre logokbol.
+     * Itt 80-bit (10 byte) SHA-256 prefix elegendo audit-azonosito-szempontbol, NEM rekonstrual-hato.
+     */
+    static String safeLogHash(String value) {
+        if (value == null) return "(null)";
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(StandardCharsets.UTF_8));
+            byte[] prefix = new byte[10];
+            System.arraycopy(digest, 0, prefix, 0, 10);
+            return HexFormat.of().formatHex(prefix);
+        } catch (NoSuchAlgorithmException ex) {
+            // SHA-256 minden JDK-ban elerheto — ez nem fog elofordulni
+            return "(sha256-unavailable)";
+        }
     }
 }

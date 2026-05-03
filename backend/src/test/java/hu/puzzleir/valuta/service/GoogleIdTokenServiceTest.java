@@ -10,6 +10,7 @@ import org.mockito.Mockito;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.security.GeneralSecurityException;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -38,8 +39,20 @@ class GoogleIdTokenServiceTest {
     @BeforeEach
     void setUp() {
         verifier = Mockito.mock(GoogleIdTokenVerifier.class);
+        // Codex P1 PR #363 follow-up: a service most ellenorzi hogy a verifier audience-listaja
+        // NEM ures (lasd MISCONFIGURED check). A test default-ban konfiguralt audience-szel mock-ol.
+        when(verifier.getAudience()).thenReturn(List.of("test-client-id.apps.googleusercontent.com"));
         service = new GoogleIdTokenService(verifier);
         ReflectionTestUtils.setField(service, "allowedHostedDomainsProperty", "");
+    }
+
+    @Test
+    @DisplayName("MISCONFIGURED — ures verifier audience -> reject (Codex P1 PR #363)")
+    void misconfiguredVerifier_throwsBeforeVerify() {
+        when(verifier.getAudience()).thenReturn(List.of());
+        assertThatThrownBy(() -> service.verify("any-token"))
+                .isInstanceOf(GoogleIdTokenService.GoogleTokenInvalidException.class)
+                .hasMessageContaining("NINCS konfiguralva");
     }
 
     /**
