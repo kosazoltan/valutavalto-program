@@ -51,14 +51,17 @@ async function setupAuth(page: Page) {
           activeRole: 'ADMIN', permissions: [], roles: ['ADMIN'], roleSelectionRequired: false }) })
     if (p.endsWith('/workers/me'))
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(WORKER) })
-    if (p.endsWith('/auth/refresh'))
+    // Audit P1.3 (2026-05-03): a `/auth/refresh-cookie` adja vissza az in-memory tokent
+    // page-load utan (a sima `/auth/refresh` is fallback, ha valamelyik subset hivja).
+    if (p.endsWith('/auth/refresh-cookie') || p.endsWith('/auth/refresh'))
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token: TOKEN }) })
     return route.fulfill({ status: 200, contentType: 'application/json', body: EMPTY })
   })
 
-  // 2) inject token into localStorage via base page
+  // 2) Audit P1.3: a token NEM kerul localStorage-ba (XSS hardening). Helyette
+  // a `/auth/refresh-cookie` mock visszaadja az in-memory restore-hoz a tokent.
+  // A page.goto('/') a refresh-cookie endpointot triggereli a loadPersistedToken-bol.
   await page.goto('/', { waitUntil: 'commit', timeout: 10000 })
-  await page.evaluate((tok) => window.localStorage.setItem('auth_token', tok), TOKEN)
 }
 
 // ─── probe a single route ─────────────────────────────────────────────────────
@@ -70,9 +73,8 @@ type RouteResult = {
 }
 
 async function probeRoute(page: Page, route: string): Promise<RouteResult> {
-  // ensure token alive
-  await page.evaluate((tok) => window.localStorage.setItem('auth_token', tok), TOKEN)
-
+  // Audit P1.3: token nem perzisztal localStorage-ban — a refresh-cookie mock
+  // adja vissza minden uj page-load-kor a setupAuth-ban regisztralt route-bol.
   try {
     await page.goto(route, { timeout: 12000 })
   } catch (e) {
@@ -81,8 +83,7 @@ async function probeRoute(page: Page, route: string): Promise<RouteResult> {
   }
 
   if (page.url().includes('/login')) {
-    // re-inject and retry once
-    await page.evaluate((tok) => window.localStorage.setItem('auth_token', tok), TOKEN)
+    // retry once — refresh-cookie mock igy is ervenyes, csak a SPA bootstrap idoz
     try { await page.goto(route, { timeout: 10000 }) } catch { /* ignore */ }
     if (page.url().includes('/login'))
       return { route, loaded: false, error: 'AUTH_REDIRECT',
@@ -121,9 +122,8 @@ async function probeRoute(page: Page, route: string): Promise<RouteResult> {
       await page.keyboard.press('Escape').catch(() => {})
       await page.waitForTimeout(150)
 
-      // if navigated away, come back
+      // if navigated away, come back (Audit P1.3: refresh-cookie mock kezeli a tokent)
       if (!page.url().replace('http://127.0.0.1:3001','').startsWith(route.split('?')[0])) {
-        await page.evaluate((tok) => window.localStorage.setItem('auth_token', tok), TOKEN)
         await page.goto(route, { timeout: 8000 }).catch(() => {})
         await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {})
       }
@@ -302,7 +302,7 @@ test('RELAY REPORT: aggregate all results', async () => {
   console.log('══════════════════════════════════════════════')
 })
 
-// ─── auth persist (existing) ──────────────────────────────────────────────────
+// ─── auth persist (existing, Audit P1.3 in-memory + refresh-cookie) ──────────
 test('auth persist: login → reload stays on dashboard', async ({ page }) => {
   page.setDefaultTimeout(20000)
   await page.route('**/api/v1/**', async route => {
@@ -316,6 +316,10 @@ test('auth persist: login → reload stays on dashboard', async ({ page }) => {
           roleSelectionRequired:false }) })
     if (p.endsWith('/workers/me'))
       return route.fulfill({ status:200, contentType:'application/json', body: JSON.stringify(WORKER) })
+    // Audit P1.3: reload utan a refresh-cookie endpoint adja vissza az uj tokent.
+    if (p.endsWith('/auth/refresh-cookie') && m === 'POST')
+      return route.fulfill({ status:200, contentType:'application/json',
+        body: JSON.stringify({ token: TOKEN }) })
     return route.fulfill({ status:200, contentType:'application/json', body: EMPTY })
   })
   await page.goto('/login')

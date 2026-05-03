@@ -231,13 +231,24 @@ api.interceptors.response.use(
       }
     }
 
-    // Log error for debugging
-    logger.error('client', 'API Error:', {
-      url: error.config?.url,
-      method: error.config?.method,
-      status: error.response?.status,
-      message: error.message,
-    })
+    // Log error for debugging.
+    // Audit P1.3 (2026-05-03): a refresh-cookie endpoint sikertelen probalkozasai
+    // normalis allapot (user nincs bejelentkezve / lejart cookie). Ezeket DEBUG
+    // szinten logoljuk, hogy NE szennyezzek a console.error-t (smoke testek!).
+    const isRefreshCookieAttempt = error.config?.url?.includes(REFRESH_ENDPOINT)
+    if (isRefreshCookieAttempt) {
+      logger.debug('client', 'refresh-cookie attempt failed (normal if not logged in):', {
+        status: error.response?.status,
+        message: error.message,
+      })
+    } else {
+      logger.error('client', 'API Error:', {
+        url: error.config?.url,
+        method: error.config?.method,
+        status: error.response?.status,
+        message: error.message,
+      })
+    }
 
     return Promise.reject(error)
   }

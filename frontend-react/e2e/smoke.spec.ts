@@ -4,6 +4,13 @@ import { expect, test } from '@playwright/test'
  * SMOKE TEST — App betöltés, nincs JS error
  */
 test('app betöltődik a login oldalon', async ({ page }) => {
+  // Audit P1.3 (2026-05-03): az App.tsx mountkor megkiserli a `/auth/refresh-cookie`
+  // endpointot — ezt mockoljuk 401-gyel (nincs HttpOnly cookie), hogy ne menjen
+  // ECONNREFUSED-be a Vite proxy-n keresztul (CI-ben nincs backend).
+  await page.route('**/api/v1/auth/refresh-cookie', route =>
+    route.fulfill({ status: 401, contentType: 'application/json', body: '{}' })
+  )
+
   // Gyűjtsük össze a console errorokat
   const errors: string[] = []
   page.on('console', msg => {

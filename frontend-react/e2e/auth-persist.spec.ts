@@ -30,6 +30,7 @@ test('a webes login reload utan is bent tartja a sessiont', async ({ page }) => 
   })
 
   let workersMeRequests = 0
+  let refreshCookieRequests = 0
 
   await page.route('**/api/v1/**', async route => {
     const url = new URL(route.request().url())
@@ -50,6 +51,19 @@ test('a webes login reload utan is bent tartja a sessiont', async ({ page }) => 
           roles: ['ADMIN'],
           roleSelectionRequired: false,
         }),
+      })
+      return
+    }
+
+    // Audit P1.3 (2026-05-03): a webes access token in-memory tarolva van —
+    // reload utan a `loadPersistedToken` a `/auth/refresh-cookie`-bol szerez
+    // uj tokent (HttpOnly refreshToken cookie alapjan, permitAll endpoint).
+    if (path === '/api/v1/auth/refresh-cookie' && method === 'POST') {
+      refreshCookieRequests += 1
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
       })
       return
     }
@@ -83,12 +97,18 @@ test('a webes login reload utan is bent tartja a sessiont', async ({ page }) => 
 
   await expect(page).toHaveURL(/\/dashboard$/)
   await expect(page.locator('main, h1, h2, [role="heading"]').first()).toBeVisible()
-  await expect.poll(async () => page.evaluate(() => localStorage.getItem('auth_token'))).toBe(token)
+
+  // Audit P1.3: a token NEM kerul localStorage-ba (XSS hardening) — verifikaljuk.
+  await expect
+    .poll(async () => page.evaluate(() => localStorage.getItem('auth_token')))
+    .toBeNull()
 
   await page.reload()
 
   await expect(page).toHaveURL(/\/dashboard$/)
   await expect(page.locator('main, h1, h2, [role="heading"]').first()).toBeVisible()
-  await expect.poll(async () => page.evaluate(() => localStorage.getItem('auth_token'))).toBe(token)
+  // Audit P1.3: a reload a refresh-cookie endpointot triggereli, ami uj tokent ad,
+  // amivel a `/workers/me` lekerdezes sikeres (Authorization: Bearer <token>).
+  expect(refreshCookieRequests).toBeGreaterThanOrEqual(1)
   expect(workersMeRequests).toBeGreaterThanOrEqual(1)
 })
