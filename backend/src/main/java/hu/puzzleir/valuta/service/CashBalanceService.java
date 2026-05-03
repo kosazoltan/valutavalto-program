@@ -139,15 +139,33 @@ public class CashBalanceService {
 
         // Multi-tenant security: ha van SecurityContext, cross-tenant init tiltott.
         // Sourcery PR #112: AccessDeniedException (401/403 HTTP) security-specific exception.
-        try {
+        // Audit P0.7 (2026-05-03): a korabbi `try { getCurrentCompanyId() } catch (IllegalStateException)`
+        // minta TOROTT volt, mert a SecurityUtils `ValidationException`-t dob (nem `IllegalStateException`-t),
+        // igy a catch SOHA nem fogott — startup/async eseten a method `ValidationException`-nel bukott el.
+        //
+        // Codex P1 PR #354 follow-up: `getCurrentCompanyIdOrNull()` ket eltero esetben ad null-t:
+        //   1. legitim startup/async (NINCS Authentication a SecurityContext-ben)
+        //   2. authentikalt request, de a JWT-bol hianyzik a companyId (rare bug/attacker)
+        // A #2-es eset NEM szabad bypass-elja a tenant guard-ot. Ezert explicit auth-check:
+        //   - ha NINCS authentikacio -> startup/async, skip (legitim)
+        //   - ha VAN authentikacio -> `getCurrentCompanyId()` (dob ValidationException ha hianyzik)
+        //     es ezutan a cross-tenant ellenorzes
+        org.springframework.security.core.Authentication auth =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        boolean hasAuthenticatedUser = auth != null
+                && auth.isAuthenticated()
+                && !"anonymousUser".equals(auth.getPrincipal());
+        if (!hasAuthenticatedUser) {
+            // Nincs autentikált user (pl. startup/async hook) — branch.company megfelelő forrás
+            log.debug("initializeBranchBalances SecurityContext nélkül fut (startup/async): {}", branchId);
+        } else {
+            // Authentikalt: a companyId kotelezoen jelen kell legyen — `getCurrentCompanyId()` dob,
+            // ha hianyzik (Codex P1 #354: malformed JWT NEM bypass-elheti a tenant guard-ot).
             UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
-            if (currentCompanyId != null && !currentCompanyId.equals(branch.getCompany().getId())) {
+            if (!currentCompanyId.equals(branch.getCompany().getId())) {
                 throw new org.springframework.security.access.AccessDeniedException(
                         "Csak saját cég branch-eire inicializálhat kassza egyenleget (cross-tenant tiltott)");
             }
-        } catch (IllegalStateException e) {
-            // Nincs autentikált user (pl. startup/async hook) — branch.company megfelelő forrás
-            log.debug("initializeBranchBalances SecurityContext nélkül fut (startup/async): {}", branchId);
         }
 
         Company company = branch.getCompany();
