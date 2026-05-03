@@ -8,6 +8,7 @@ import hu.puzzleir.valuta.entity.WorkerRole;
 import hu.puzzleir.valuta.entity.WorkerSession;
 import hu.puzzleir.valuta.exception.AuthenticationException;
 import hu.puzzleir.valuta.exception.ConflictException;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.repository.WorkerSessionRepository;
 import hu.puzzleir.valuta.security.JwtTokenProvider;
@@ -51,6 +52,7 @@ class GoogleLoginServiceTest {
     private WorkerSessionRepository sessionRepository;
     private WorkerRoleService workerRoleService;
     private JwtTokenProvider jwtTokenProvider;
+    private BranchRepository branchRepository;
     private GoogleLoginService service;
 
     @BeforeEach
@@ -60,10 +62,11 @@ class GoogleLoginServiceTest {
         sessionRepository = Mockito.mock(WorkerSessionRepository.class);
         workerRoleService = Mockito.mock(WorkerRoleService.class);
         jwtTokenProvider = Mockito.mock(JwtTokenProvider.class);
+        branchRepository = Mockito.mock(BranchRepository.class);
 
         service = new GoogleLoginService(
                 googleIdTokenService, workerRepository, sessionRepository,
-                workerRoleService, jwtTokenProvider);
+                workerRoleService, jwtTokenProvider, branchRepository);
         ReflectionTestUtils.setField(service, "bindSubOnFirstLogin", true);
     }
 
@@ -148,6 +151,9 @@ class GoogleLoginServiceTest {
                 .thenReturn(identity("g-sub-1", "user@gmail.com"));
         Worker w = worker("W1", "user@gmail.com", true, null);
         when(workerRepository.findGoogleLoginCandidatesByEmail("user@gmail.com")).thenReturn(List.of(w));
+        // Codex P1 PR #361 follow-up: a sub-binding most ellenorzi, hogy az identity.subject()
+        // mar nincs masik worker-hez kotve. Empty Optional == elerheto.
+        when(workerRepository.findByGoogleSubject("g-sub-1")).thenReturn(java.util.Optional.empty());
         when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar"));
         when(workerRoleService.getPermissionCodesForRole("penztar")).thenReturn(List.of("TRANSACTION_BUY"));
         when(jwtTokenProvider.generateToken(any(), any(), any())).thenReturn("jwt-token");
@@ -162,6 +168,26 @@ class GoogleLoginServiceTest {
         assertThat(w.getGoogleSubject()).isEqualTo("g-sub-1");
         assertThat(w.getGoogleLinkedAt()).isNotNull();
         assertThat(w.getGoogleLastLoginAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Codex P1 PR #361: first-time bind + masik worker mar lefoglalta a subject-et -> AuthenticationException")
+    void firstLoginBind_subjectAlreadyBoundToOtherWorker_throws() throws Exception {
+        when(googleIdTokenService.verify("ok"))
+                .thenReturn(identity("g-sub-collision", "user@gmail.com"));
+        Worker currentWorker = worker("W1", "user@gmail.com", true, null);
+        Worker otherWorker = worker("W2", "other@gmail.com", true, "g-sub-collision");
+        otherWorker.setId(99L);  // KRITIKUS: kulonbozo id, hogy a service otherWorker.getId() != currentWorker.getId() check elindiljon
+        when(workerRepository.findGoogleLoginCandidatesByEmail("user@gmail.com"))
+                .thenReturn(List.of(currentWorker));
+        when(workerRepository.findByGoogleSubject("g-sub-collision"))
+                .thenReturn(java.util.Optional.of(otherWorker));
+
+        assertThatThrownBy(() -> service.loginWithGoogle("ok", new MockHttpServletRequest()))
+                .as("subject already bound to other worker -> kontrollalt 401, NEM 500 DataIntegrityViolation")
+                .isInstanceOf(AuthenticationException.class)
+                .hasMessageContaining("masik dolgozohoz");
+        verify(workerRepository, never()).save(any());
     }
 
     @Test

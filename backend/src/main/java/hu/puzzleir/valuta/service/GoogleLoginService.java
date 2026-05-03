@@ -2,11 +2,13 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.dto.auth.LoginResponseDto;
 import hu.puzzleir.valuta.dto.worker.WorkerDto;
+import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.entity.WorkerRole;
 import hu.puzzleir.valuta.entity.WorkerSession;
 import hu.puzzleir.valuta.exception.AuthenticationException;
 import hu.puzzleir.valuta.exception.ConflictException;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.repository.WorkerSessionRepository;
 import hu.puzzleir.valuta.security.JwtTokenProvider;
@@ -66,6 +68,7 @@ public class GoogleLoginService {
     private final WorkerSessionRepository sessionRepository;
     private final WorkerRoleService workerRoleService;
     private final JwtTokenProvider jwtTokenProvider;
+    private final BranchRepository branchRepository;
 
     @Value("${google.login.bind-sub-on-first-login:true}")
     private boolean bindSubOnFirstLogin;
@@ -124,6 +127,21 @@ public class GoogleLoginService {
                 throw new AuthenticationException(
                         "A Google fiok meg nincs hozzakotve a dolgozohoz. Adminnak elobb engedelyezni kell.");
             }
+            // Codex P1 PR #361 follow-up: ellenorizzuk hogy a subject MEG NINCS lefoglalva
+            // masik worker-hez (uq_worker_google_subject partial unique index megvedi DB-szinten,
+            // de a kontrollalt 401/409 valasz jobb mint egy DataIntegrityViolation 500).
+            // Ez akkor fordulhat elo, ha a kovetkezo szekvencia tortenik:
+            //   1. Admin kotott egy subject-et az X workerhez,
+            //   2. Admin ujra-allitotta az emailt egy Y workerre,
+            //   3. Y worker most elsokor lep be -> a subject mar foglal X-re.
+            java.util.Optional<Worker> alreadyBound = workerRepository.findByGoogleSubject(googleSubject);
+            if (alreadyBound.isPresent() && !alreadyBound.get().getId().equals(worker.getId())) {
+                log.warn("GOOGLE_LOGIN_DENIED_SUB_ALREADY_BOUND_TO_OTHER currentWorker={} otherWorker={} subjectHash={}",
+                        worker.getCode(), alreadyBound.get().getCode(),
+                        Integer.toHexString(googleSubject.hashCode()));
+                throw new AuthenticationException(
+                        "Ez a Google fiok mar masik dolgozohoz van kotve. Kerd az admin segitseget.");
+            }
             log.info("GOOGLE_LOGIN_FIRST_BIND workerCode={} subjectHash={}",
                     worker.getCode(), Integer.toHexString(googleSubject.hashCode()));
             worker.setGoogleSubject(googleSubject);
@@ -154,10 +172,27 @@ public class GoogleLoginService {
         String token = jwtTokenProvider.generateToken(worker, activeRole, permissions);
         String tokenId = jwtTokenProvider.getTokenIdFromToken(token);
 
+        // Codex P1 PR #361 follow-up: legacy worker eseten `worker.getBranch()` lehet null,
+        // de a `worker_session.branch_id` non-nullable. Ugyanaz a fallback minta mint
+        // a `WorkerService.login` 435-444. soraban — ceg-szintu elso aktiv branch.
+        Branch sessionBranch = worker.getBranch();
+        if (sessionBranch == null) {
+            sessionBranch = branchRepository.findByCompanyIdAndIsActiveTrue(worker.getCompany().getId())
+                    .stream()
+                    .findFirst()
+                    .orElseGet(() -> branchRepository.findByCompanyId(worker.getCompany().getId())
+                            .stream().findFirst().orElse(null));
+            if (sessionBranch == null) {
+                log.error("GOOGLE_LOGIN_NO_AVAILABLE_BRANCH workerCode={} companyId={}",
+                        worker.getCode(), worker.getCompany().getId());
+                throw new AuthenticationException("Nincs elerheto iroda a bejelentkezeshez!");
+            }
+        }
+
         WorkerSession session = WorkerSession.builder()
                 .company(worker.getCompany())
                 .worker(worker)
-                .branch(worker.getBranch())
+                .branch(sessionBranch)
                 .loginAt(LocalDateTime.now())
                 .ipAddress(httpRequest.getRemoteAddr())
                 .userAgent(httpRequest.getHeader("User-Agent"))

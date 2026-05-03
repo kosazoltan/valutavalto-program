@@ -99,7 +99,14 @@ BEGIN
         google_login_enabled = true,
         password_hash = COALESCE(worker.password_hash, EXCLUDED.password_hash);
 
-    -- Reset password_changed_at NULL (force first-time-setup kovetkezo login-nal — V162 minta)
+    -- Codex P2 PR #361 follow-up: az `AND password_changed_at IS NULL` SZANDEKOSAN szukit —
+    -- csak az UJ G_* workerek (akiknek a default placeholder password_hash-jük van, NEM
+    -- allitottak be sajatot) maradnak NULL-on. A meglevo (ON CONFLICT DO UPDATE-tel mar
+    -- frissitett) workerek password_changed_at-jat NEM null-azzuk, mert ok mar
+    -- beallitottak sajat jelszavat — nem kell visszadobni first-time-setup-ra.
+    --
+    -- Az UPDATE itt no-op a frissen INSERTalt sorokra (mar NULL volt), de explicit-en
+    -- dokumentalja az invariant-ot a kovetkezo migration ironak.
     UPDATE worker SET password_changed_at = NULL
     WHERE company_id = ebc_company_id
       AND code LIKE 'G_%'
