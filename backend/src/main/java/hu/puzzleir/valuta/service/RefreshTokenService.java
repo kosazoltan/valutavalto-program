@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.service;
 import hu.puzzleir.valuta.entity.RefreshToken;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.repository.RefreshTokenRepository;
+import hu.puzzleir.valuta.util.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +43,8 @@ public class RefreshTokenService {
     private int expirationDays;
 
     private final RefreshTokenRepository repository;
+    /** Audit P1.4 SSOT: trusted-proxy-aware kliens IP feloldas. */
+    private final ClientIpResolver clientIpResolver;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder(BCRYPT_ROUNDS);
 
     /**
@@ -68,7 +71,7 @@ public class RefreshTokenService {
             .issuedAt(now)
             .expiresAt(expires)
             .userAgent(truncate(request.getHeader("User-Agent"), 512))
-            .ipAddress(truncate(clientIp(request), 45))
+            .ipAddress(truncate(clientIpResolver.resolveClientIp(request), 45))
             .build();
         repository.save(rt);
         log.debug("Refresh token issued worker={} selector={} expires={}",
@@ -150,11 +153,11 @@ public class RefreshTokenService {
         if (deleted > 0) log.info("Cleaned up {} expired refresh tokens", deleted);
     }
 
-    private static String clientIp(HttpServletRequest request) {
-        String xff = request.getHeader("X-Forwarded-For");
-        if (xff != null && !xff.isBlank()) return xff.split(",")[0].trim();
-        return request.getRemoteAddr();
-    }
+    /**
+     * Audit P1.4: a `clientIp` private metodus eltavolitva, helyette a kozos
+     * {@link ClientIpResolver} util-ot hasznaljuk. Korabban itt naivan vakon biztunk
+     * a kliens X-Forwarded-For header-eben — security gap (audit log spoofing).
+     */
 
     private static String truncate(String s, int max) {
         if (s == null) return null;

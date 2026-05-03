@@ -43,13 +43,20 @@ import static org.mockito.Mockito.when;
 class RefreshTokenServiceSelectorTest {
 
     private RefreshTokenRepository repository;
+    private hu.puzzleir.valuta.util.ClientIpResolver clientIpResolver;
     private RefreshTokenService service;
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(10);
 
     @BeforeEach
     void setUp() {
         repository = Mockito.mock(RefreshTokenRepository.class);
-        service = new RefreshTokenService(repository);
+        clientIpResolver = Mockito.mock(hu.puzzleir.valuta.util.ClientIpResolver.class);
+        // Audit P1.4 default: a `resolveClientIp` visszaad a request remoteAddr-jet
+        Mockito.when(clientIpResolver.resolveClientIp(Mockito.any())).thenAnswer(inv -> {
+            jakarta.servlet.http.HttpServletRequest req = inv.getArgument(0);
+            return req == null ? "0.0.0.0" : req.getRemoteAddr();
+        });
+        service = new RefreshTokenService(repository, clientIpResolver);
         ReflectionTestUtils.setField(service, "expirationDays", 7);
     }
 

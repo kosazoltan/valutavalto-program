@@ -1,8 +1,10 @@
 package hu.puzzleir.valuta.config;
 
+import hu.puzzleir.valuta.util.ClientIpResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -15,10 +17,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class RateLimitFilterTest {
 
     private RateLimitFilter filter;
+    private ClientIpResolver clientIpResolver;
 
     @BeforeEach
     void setUp() {
-        filter = new RateLimitFilter();
+        clientIpResolver = Mockito.mock(ClientIpResolver.class);
+        // Audit P1.4 default: a `resolveClientIp` visszaad a request remoteAddr-jet
+        Mockito.when(clientIpResolver.resolveClientIp(Mockito.any())).thenAnswer(inv -> {
+            jakarta.servlet.http.HttpServletRequest req = inv.getArgument(0);
+            return req == null ? "0.0.0.0" : req.getRemoteAddr();
+        });
+        filter = new RateLimitFilter(clientIpResolver);
         ReflectionTestUtils.setField(filter, "loginMaxRequests", 10);
         ReflectionTestUtils.setField(filter, "loginWindowMs", 60_000L);
         ReflectionTestUtils.setField(filter, "transactionMaxRequests", 1);

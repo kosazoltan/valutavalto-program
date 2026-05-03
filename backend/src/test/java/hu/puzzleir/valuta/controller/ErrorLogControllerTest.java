@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.errorlog.ErrorLogController;
+import hu.puzzleir.valuta.util.ClientIpResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,11 +30,20 @@ class ErrorLogControllerTest {
     @Mock
     private ObjectMapper objectMapper;
 
+    @Mock
+    private ClientIpResolver clientIpResolver;
+
     @InjectMocks
     private ErrorLogController controller;
 
     @BeforeEach
     void setUp() {
+        // Audit P1.4: a `resolveClientIp` mock visszaad a request remoteAddr-jet
+        org.mockito.Mockito.lenient().when(clientIpResolver.resolveClientIp(org.mockito.Mockito.any()))
+                .thenAnswer(inv -> {
+                    jakarta.servlet.http.HttpServletRequest req = inv.getArgument(0);
+                    return req == null ? "0.0.0.0" : req.getRemoteAddr();
+                });
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
     }
 
