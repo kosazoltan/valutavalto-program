@@ -85,10 +85,9 @@ export function registerScannerHandlers(): void {
     _event,
     filepath: string,
   ): Promise<string> => {
-    const resolved = path.resolve(filepath);
-    // Audit P0.9: kozpontos `assertInsideBase` — sibling-prefix tamadas
-    // (`C:\valuta\scan_evil\file`) mar NEM csuszik at a `+ path.sep` lezaras miatt.
-    assertInsideBase(resolved, SCAN_DIR, 'scan filepath');
+    // Audit P0.9 + Sourcery PR #355 follow-up: az `assertInsideBase` resolveol es
+    // visszaadja a normalizalt path-et — DRY, NEM duplikalunk path.resolve-ot.
+    const resolved = assertInsideBase(filepath, SCAN_DIR, 'scan filepath');
     const encrypted = fs.readFileSync(resolved);
     const metaRaw = fs.readFileSync(`${resolved}.meta`, 'utf8');
     const meta = JSON.parse(metaRaw) as { iv: string; tag: string };

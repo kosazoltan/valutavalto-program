@@ -13,21 +13,28 @@
 import path from 'node:path';
 
 /**
- * Biztositja, hogy `resolved` a `base` konyvtar alatt (vagy egyenlo vele) van.
+ * Biztositja, hogy `value` a `base` konyvtar alatt (vagy egyenlo vele) van.
  * Sibling-prefix tamadasok ellen vedett: `C:\valuta\scan_evil` NEM mehet at,
  * mert `C:\valuta\scan_evil` !== `C:\valuta\scan` ÉS nem startsWith `C:\valuta\scan` + sep.
  *
+ * <p>Sourcery PR #355 follow-up: a fuggveny IS resolveolja a value-t, igy a
+ * hivok NEM csinaljak duplan (`path.resolve(x)` -> assertInsideBase(resolved, ...)`
+ * helyett `assertInsideBase(x, ...)`). A normalizalt path-et VISSZAADJA, igy
+ * a hivok ezt hasznaljak `fs.readFileSync`-be vagy szuksege szerint.</p>
+ *
+ * @returns a normalizalt (resolved) path
  * @throws Error ha a path a base-en kivul esik
  */
-export function assertInsideBase(resolved: string, base: string, label = 'path'): void {
+export function assertInsideBase(value: string, base: string, label = 'path'): string {
   const baseResolved = path.resolve(base);
-  const resolvedNormalized = path.resolve(resolved);
+  const resolvedNormalized = path.resolve(value);
   if (
     resolvedNormalized !== baseResolved &&
     !resolvedNormalized.startsWith(baseResolved + path.sep)
   ) {
     throw new Error(`Invalid ${label}: outside allowed directory`);
   }
+  return resolvedNormalized;
 }
 
 /** Scanner dokumentum-tipus runtime allowlist. */

@@ -19,13 +19,15 @@ import {
 describe('path-guard — assertInsideBase', () => {
   const SCAN_BASE = process.platform === 'win32' ? 'C:\\valuta\\scan' : '/var/valuta/scan';
 
-  it('atengedi a base-en BELULI fajlt', () => {
+  it('atengedi a base-en BELULI fajlt es visszaadja a normalizalt path-et', () => {
     const inside = path.join(SCAN_BASE, '2026-05-03', 'tx-123', 'doc.enc');
-    expect(() => assertInsideBase(inside, SCAN_BASE)).not.toThrow();
+    const result = assertInsideBase(inside, SCAN_BASE);
+    expect(result).toBe(path.resolve(inside));
   });
 
-  it('atengedi exact base-eseten', () => {
-    expect(() => assertInsideBase(SCAN_BASE, SCAN_BASE)).not.toThrow();
+  it('atengedi exact base-eseten es visszaadja a base-t', () => {
+    const result = assertInsideBase(SCAN_BASE, SCAN_BASE);
+    expect(result).toBe(path.resolve(SCAN_BASE));
   });
 
   it('elutasitja a sibling-prefix tamadast (scan_evil prefix-ben matchelne scan-re)', () => {

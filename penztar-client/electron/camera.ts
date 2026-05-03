@@ -237,11 +237,11 @@ export function registerCameraHandlers(): void {
     _event,
     filePath: string,
   ): Promise<string | null> => {
-    const resolved = path.resolve(filePath);
-    // Audit P0.9: kozpontos `assertInsideBase` — sibling-prefix tamadas-vedelmet
-    // egysegesiti az osszes IPC handler-ben.
+    // Audit P0.9 + Sourcery PR #355 follow-up: az `assertInsideBase` resolveol es
+    // visszaadja a normalizalt path-et — DRY.
+    let resolved: string;
     try {
-      assertInsideBase(resolved, CAMERA_DIR, 'camera filePath');
+      resolved = assertInsideBase(filePath, CAMERA_DIR, 'camera filePath');
     } catch {
       return null;
     }
@@ -367,10 +367,8 @@ export function registerCameraHandlers(): void {
     encryptedPath: string,
     config: EncryptionConfig,
   ): Promise<{ nonce: string }> => {
-    const resolvedPlain = path.resolve(plainPath);
-    const resolvedEnc = path.resolve(encryptedPath);
-    assertInsideBase(resolvedPlain, CAMERA_DIR, 'camera plainPath');
-    assertInsideBase(resolvedEnc, CAMERA_DIR, 'camera encryptedPath');
+    const resolvedPlain = assertInsideBase(plainPath, CAMERA_DIR, 'camera plainPath');
+    const resolvedEnc = assertInsideBase(encryptedPath, CAMERA_DIR, 'camera encryptedPath');
     const nonce = await encryptFile(resolvedPlain, resolvedEnc, config);
     return { nonce };
   });
@@ -384,10 +382,8 @@ export function registerCameraHandlers(): void {
     plainPath: string,
     config: EncryptionConfig,
   ): Promise<{ success: boolean }> => {
-    const resolvedEnc = path.resolve(encryptedPath);
-    const resolvedPlain = path.resolve(plainPath);
-    assertInsideBase(resolvedEnc, CAMERA_DIR, 'camera encryptedPath');
-    assertInsideBase(resolvedPlain, CAMERA_DIR, 'camera plainPath');
+    const resolvedEnc = assertInsideBase(encryptedPath, CAMERA_DIR, 'camera encryptedPath');
+    const resolvedPlain = assertInsideBase(plainPath, CAMERA_DIR, 'camera plainPath');
     await decryptFile(resolvedEnc, resolvedPlain, config);
     return { success: true };
   });
@@ -400,8 +396,7 @@ export function registerCameraHandlers(): void {
     filePath: string,
     expectedHash: string,
   ): Promise<{ valid: boolean; actualHash: string }> => {
-    const resolved = path.resolve(filePath);
-    assertInsideBase(resolved, CAMERA_DIR, 'camera filePath');
+    const resolved = assertInsideBase(filePath, CAMERA_DIR, 'camera filePath');
     const actualHash = computeFileHash(resolved);
     return { valid: actualHash === expectedHash, actualHash };
   });
