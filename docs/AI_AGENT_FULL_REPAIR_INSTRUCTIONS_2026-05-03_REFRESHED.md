@@ -1,7 +1,14 @@
 # Valutavalto ERP - frissitett teljes koru AI javitasi utasitaskeszlet
 
+> **STATUS** (2026-05-03 utan): Ez az audit doksi a 2026-05-03-i sprint
+> KIINDULASI bazisa volt. A P0/P1 reszek tobbsege azota MEGOLDODOTT
+> a PR #351-#368 sorozatban. Az ide leirt P0.3 (refresh token findAll/stream),
+> Google OAuth implementacio, audit-P0.* tipusu szakaszok mar lefedve.
+> A kovetkezo agent: ezt historic baseline-kent olvasd, validald a
+> `git log origin/main`-bol mi van mar elvegezve.
+
 **Datum:** 2026-05-03  
-**Repo:** `D:\repo\valutavalto-program`  
+**Repo:** `<repo-root>` (a doksi a `docs/` mappaban van — minden hivatkozas a repo-rootbol indul)  
 **Kimenet celja:** letoltheto, onalloan vegrehajthato javitasi utasitas mesterséges intelligencia ugynoknek.  
 **Forras:** mai session ujraolvasas + repo index + memoriak + statikus ellenorzes + korabbi 2026-05-03 reportok.  
 **Nem allitas:** ez nem merge-ready/deploy-ready bizonyitek; ez javitasi terv es audit baseline.
@@ -93,15 +100,15 @@ Nem futott:
 
 ## 3. Kotelezo ugynoki alapelvek
 
-1. Eloszor olvasd:
+1. Eloszor olvasd (a `*` opcionalis ha nem letezik a fajlrendszereden):
 
    ```text
    AI_CONSTITUTION.md
    AGENTS.md
    CLAUDE.md
    CODEX.md
-   .remember/remember.md
-   D:\valutavalto-vault\README.md
+   .remember/remember.md             (* opcionalis - gitignored, lokalis handoff)
+   D:\valutavalto-vault\README.md    (* opcionalis - lokalis Obsidian vault)
    D:\valutavalto-vault\sessions\legfrissebb-*.md
    D:\valutavalto-vault\feedback\*.md
    docs/LESSONS_LEARNED.md

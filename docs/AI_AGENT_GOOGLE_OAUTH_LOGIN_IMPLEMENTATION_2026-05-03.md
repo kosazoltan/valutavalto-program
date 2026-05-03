@@ -1,7 +1,19 @@
 # Valutavalto ERP - Google OAuth/OIDC dolgozoi belepes megvalositasi utasitaskeszlet AI ugynoknek
 
+> **STATUS** (2026-05-03 utan): A doksiban leirt funkcio MEGVALOSULT a PR #361
+> (`feat(google-oauth)`) commit-ban + PR #364-#368 hotfix sorozat. A backend most
+> mar tartalmazza:
+> - `GoogleLoginConfig` + `GoogleIdTokenService` + `GoogleLoginService`
+> - Worker entitas: `google_subject`, `google_login_enabled`, `google_linked_at`, `google_last_login_at` mezok
+> - V178/V179 Flyway migraciok (whitelist + 25+ EBC dolgozo seed)
+> - V181 territorial vezetok kamera-only role
+>
+> Ez a doksi historikus referencia. A "Jelenlegi hianyossagok" reszek mar nem aktualisak.
+> A kovetkezo agent: ezt a doksi olvasd akkor, ha **bovited** vagy **modositod** a Google
+> login flow-t (pl. uj scope, multi-tenant disambiguation, stb.).
+
 **Datum:** 2026-05-03  
-**Repo:** `D:\repo\valutavalto-program`  
+**Repo:** `<repo-root>` (a doksi a `docs/` mappaban van — minden hivatkozas a repo-rootbol indul)  
 **Cel:** whitelistes, dolgozoi Google bejelentkezes pontos, biztonsagos implementalasa a meglevo Spring Boot + React + Electron kompatibilis Valutavalto programba.  
 **Fontos:** titkokat, client secretet, tokeneket, valos production ertekeket nem szabad ebbe vagy mas repo-fajlba irni.
 
