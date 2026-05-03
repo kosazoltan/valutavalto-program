@@ -32,16 +32,55 @@ permissions:
   contents: read
 
 jobs:
-  auto-fix:
-    # Csak AI reviewer event-ekre triggereljen (Sourcery + Codex)
-    # github.event.review.user.login (pull_request_review event)
-    # github.event.comment.user.login (pull_request_review_comment event)
+  # Preflight guard (PR #371 follow-up): a Sourcery/Codex review event-je es a workflow
+  # tenyleges futas-kezdete kozott a PR mar bezarodhatott (admin merge --delete-branch).
+  # Ekkor az auto-fix Checkout step "branch could not be found" hibaval bukna — false-positive
+  # CI failure, mert a kod mar a main-en van. Ez a job lekeri a PR aktualis state-jet es
+  # a branch letezeset; ha a PR nem `open` vagy a branch torolve van, gracefully skip-elunk.
+  preflight:
     if: |
       (github.event_name == 'pull_request_review' &&
         contains(fromJSON('["sourcery-ai[bot]", "chatgpt-codex-connector[bot]"]'), github.event.review.user.login)) ||
       (github.event_name == 'pull_request_review_comment' &&
         contains(fromJSON('["sourcery-ai[bot]", "chatgpt-codex-connector[bot]"]'), github.event.comment.user.login))
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+      skip_reason: ${{ steps.check.outputs.skip_reason }}
+    steps:
+      - name: Check PR is still open + branch exists
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUM: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -uo pipefail
+          pr_state=$(gh api "repos/${REPO}/pulls/${PR_NUM}" --jq .state 2>/dev/null || echo "unknown")
+          if [ "$pr_state" != "open" ]; then
+            reason="PR #${PR_NUM} state=${pr_state} (no longer open — likely admin-merged + branch deleted)"
+            echo "$reason"
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "skip_reason=$reason" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! gh api "repos/${HEAD_REPO}/branches/${HEAD_REF}" >/dev/null 2>&1; then
+            reason="Branch ${HEAD_REF} no longer exists on ${HEAD_REPO} (deleted between event + job start)"
+            echo "$reason"
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "skip_reason=$reason" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "PR #${PR_NUM} open + branch ${HEAD_REF} exists — auto-fix proceeding."
+          echo "should_run=true" >> "$GITHUB_OUTPUT"
+          echo "skip_reason=" >> "$GITHUB_OUTPUT"
 
+  auto-fix:
+    needs: preflight
+    if: needs.preflight.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write       # feature branch-re uj commit push
@@ -151,9 +190,11 @@ jobs:
           echo "=== CI will re-trigger on push ==="
 
   # Auxiliary job: notify on failure
+  # PR #371 follow-up: csak akkor notify, ha a preflight `should_run=true`-t adott
+  # (vagyis valos auto-fix futott es bukott el — NEM a graceful skip).
   notify-failure:
-    if: failure()
-    needs: auto-fix
+    if: failure() && needs.preflight.outputs.should_run == 'true'
+    needs: [preflight, auto-fix]
     runs-on: ubuntu-latest
     # notify-failure nem orokoli az auto-fix job permissions-jet - explicit kell
     permissions:
