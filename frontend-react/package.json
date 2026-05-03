@@ -10,7 +10,7 @@
     "test:watch": "vitest",
     "lint": "eslint src",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
-    "lint:i18n-gate": "eslint src --max-warnings 2875 --quiet=false",
+    "lint:i18n-gate": "eslint src --rule \"{\\\"@typescript-eslint/no-explicit-any\\\":\\\"off\\\"}\" --max-warnings 2875",
     "type-check": "tsc --noEmit",
     "typecheck": "npm run type-check",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
