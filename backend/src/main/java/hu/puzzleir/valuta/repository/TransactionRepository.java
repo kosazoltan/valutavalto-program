@@ -292,11 +292,15 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     /**
      * Batch: aktiv tranzakciok lekerese TOBB irodahoz egy napon.
      * N+1 query kivaltasa korzet szintu MNB aggregacional.
+     *
+     * <p>Audit P0.8 follow-up (Copilot PR #360, 2026-05-03): `financial_effective = true`
+     * szuro a parent CONVERSION sorok dupla-szamolas megelozeseert MNB riport-ban.</p>
      */
     @Query("SELECT t FROM Transaction t " +
            "WHERE t.branch.id IN :branchIds " +
            "AND t.transactionDate = :date " +
            "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true " +
            "ORDER BY t.branch.id ASC, t.transactionTime DESC")
     List<Transaction> findActiveByBranchIdsAndDate(
         @Param("branchIds") List<UUID> branchIds,
@@ -304,12 +308,16 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     );
 
     /**
-     * Aktív (nem sztornózott) tranzakciók
+     * Aktív (nem sztornózott) tranzakciók.
+     *
+     * <p>Audit P0.8 follow-up (Copilot PR #360, 2026-05-03): `financial_effective = true`
+     * szuro a parent CONVERSION sorok dupla-szamolas megelozeseert daily-MNB riport-ban.</p>
      */
     @Query("SELECT t FROM Transaction t " +
            "WHERE t.branch.id = :branchId " +
            "AND t.transactionDate = :date " +
            "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true " +
            "ORDER BY t.transactionTime DESC")
     List<Transaction> findActiveByBranchAndDate(
         @Param("branchId") UUID branchId,
@@ -319,11 +327,15 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     /**
      * Aktív tranzakciók lekérése irodához, dátumtartományra.
      * NAV PTGSZLAH havi jelentéshez szükséges.
+     *
+     * <p>Audit P0.8 follow-up (Copilot PR #360, 2026-05-03): `financial_effective = true`
+     * szuro a parent CONVERSION sorok dupla-szamolas megelozeseert NAV riport-ban.</p>
      */
     @Query("SELECT t FROM Transaction t " +
            "WHERE t.branch.id = :branchId " +
            "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
            "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true " +
            "ORDER BY t.transactionDate ASC, t.transactionTime ASC")
     List<Transaction> findActiveByBranchAndDateRange(
         @Param("branchId") UUID branchId,
@@ -743,12 +755,16 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     /**
      * Ügyfél elmúlt 30 nap tranzakcióinak összege.
+     *
+     * <p>Audit P0.8 follow-up (Copilot PR #360, 2026-05-03): `financial_effective = true`
+     * szuro — `AmlService.getCustomerRiskProfile()` AML risk-szamitas-banhoz.</p>
      */
     @Query("SELECT COALESCE(SUM(t.hufAmount), 0) FROM Transaction t " +
            "WHERE t.company.id = :companyId " +
            "AND t.customerId = :customerId " +
            "AND t.transactionDate >= :sinceDate " +
-           "AND t.status = 'COMPLETED'")
+           "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true")
     BigDecimal sumCustomerTotalSince(
         @Param("companyId") UUID companyId,
         @Param("customerId") String customerId,
@@ -757,12 +773,16 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     /**
      * Ügyfél elmúlt 30 nap tranzakciószáma.
+     *
+     * <p>Audit P0.8 follow-up (Copilot PR #360, 2026-05-03): `financial_effective = true`
+     * szuro — AML risk-profile + structuring detektalas.</p>
      */
     @Query("SELECT COUNT(t) FROM Transaction t " +
            "WHERE t.company.id = :companyId " +
            "AND t.customerId = :customerId " +
            "AND t.transactionDate >= :sinceDate " +
-           "AND t.status = 'COMPLETED'")
+           "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true")
     long countCustomerTransactionsSince(
         @Param("companyId") UUID companyId,
         @Param("customerId") String customerId,
@@ -771,12 +791,16 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     /**
      * Ügyfél napi tranzakciószáma (structuring detektálás).
+     *
+     * <p>Audit P0.8 follow-up (Copilot PR #360, 2026-05-03): `financial_effective = true`
+     * szuro — structuring (smurfing) detection-hoz.</p>
      */
     @Query("SELECT COUNT(t) FROM Transaction t " +
            "WHERE t.company.id = :companyId " +
            "AND t.customerId = :customerId " +
            "AND t.transactionDate = :date " +
-           "AND t.status = 'COMPLETED'")
+           "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true")
     long countCustomerDailyTransactions(
         @Param("companyId") UUID companyId,
         @Param("customerId") String customerId,
@@ -785,12 +809,16 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     /**
      * Ügyfél napi tranzakcióinak listája (structuring detektálás).
+     *
+     * <p>Audit P0.8 follow-up (Copilot PR #360, 2026-05-03): `financial_effective = true`
+     * szuro — structuring lookup, lista a parent CONVERSION nelkul.</p>
      */
     @Query("SELECT t FROM Transaction t " +
            "WHERE t.company.id = :companyId " +
            "AND t.customerId = :customerId " +
            "AND t.transactionDate = :date " +
            "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true " +
            "ORDER BY t.transactionTime")
     List<Transaction> findCustomerDailyTransactions(
         @Param("companyId") UUID companyId,
@@ -800,12 +828,16 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     /**
      * NAV adatszolgáltatás: 2M+ Ft tranzakciók adott napon, company szinten.
+     *
+     * <p>Audit P0.8 follow-up (Copilot PR #360, 2026-05-03): `financial_effective = true`
+     * szuro — NAV reportable list NEM tartalmazza a parent CONVERSION soreket.</p>
      */
     @Query("SELECT t FROM Transaction t " +
            "WHERE t.company.id = :companyId " +
            "AND t.transactionDate = :date " +
            "AND t.hufAmount >= :threshold " +
            "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true " +
            "ORDER BY t.hufAmount DESC")
     List<Transaction> findReportableTransactions(
         @Param("companyId") UUID companyId,
@@ -815,11 +847,15 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     /**
      * MNB riport: aktív tranzakciók company + dátum alapján (branch-független).
+     *
+     * <p>Audit P0.8 follow-up (Copilot PR #360, 2026-05-03): `financial_effective = true`
+     * szuro — daily-MNB report nem inflalt.</p>
      */
     @Query("SELECT t FROM Transaction t " +
            "WHERE t.company.id = :companyId " +
            "AND t.transactionDate = :date " +
            "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true " +
            "ORDER BY t.transactionTime")
     List<Transaction> findActiveByCompanyAndDate(
         @Param("companyId") UUID companyId,
@@ -828,11 +864,15 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     /**
      * MNB riport: aktív tranzakciók company + hónap alapján.
+     *
+     * <p>Audit P0.8 follow-up (Copilot PR #360, 2026-05-03): `financial_effective = true`
+     * szuro — monthly-MNB report nem inflalt.</p>
      */
     @Query("SELECT t FROM Transaction t " +
            "WHERE t.company.id = :companyId " +
            "AND t.transactionDate BETWEEN :monthStart AND :monthEnd " +
            "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true " +
            "ORDER BY t.transactionDate, t.transactionTime")
     List<Transaction> findActiveByCompanyAndMonth(
         @Param("companyId") UUID companyId,
@@ -914,6 +954,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
      * Valuta + típus szerinti bontás — forgalom riporthoz.
      * Sztornózott (REVERSED, CANCELLED) tranzakciókat kizárja.
      * Visszaad: [currencyCode, transactionType, SUM(currencyAmount), SUM(hufAmount), SUM(handlingFee), COUNT(id)]
+     *
+     * <p>Audit P0.8 follow-up (Copilot PR #360, 2026-05-03): `financial_effective = true`
+     * szuro — turnover breakdown a parent CONVERSION sort kihagyja, kovetkezetes
+     * a top-level BUY/SELL totallal.</p>
      */
     @Query("SELECT t.currency.code, CAST(t.transactionType AS string), " +
            "SUM(t.currencyAmount), SUM(t.hufAmount), SUM(t.handlingFee), COUNT(t.id) " +
@@ -921,6 +965,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "WHERE t.branch.id = :branchId " +
            "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
            "AND t.status NOT IN ('REVERSED', 'CANCELLED') " +
+           "AND t.financialEffective = true " +
            "GROUP BY t.currency.code, t.transactionType " +
            "ORDER BY t.currency.code, t.transactionType")
     List<Object[]> groupByCurrencyAndTypeForBranch(
@@ -933,6 +978,11 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
      * Pénztáros szerinti bontás — forgalom riporthoz.
      * Sztornózott (REVERSED, CANCELLED) tranzakciókat kizárja.
      * Visszaad: [workerId, workerName, SUM(hufAmount), SUM(handlingFee), COUNT(id)]
+     *
+     * <p>Audit P0.8 follow-up (Copilot PR #360, 2026-05-03): `financial_effective = true`
+     * szuro — TurnoverService.buildByWorker() cashier breakdown NEM tartalmazza
+     * a parent CONVERSION sort, igy a tranzakcio-szam es HUF osszeg kovetkezetes
+     * a top-level BUY/SELL totallal.</p>
      */
     @Query("SELECT t.worker.id, t.worker.name, " +
            "SUM(t.hufAmount), SUM(t.handlingFee), COUNT(t.id) " +
@@ -940,6 +990,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "WHERE t.branch.id = :branchId " +
            "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
            "AND t.status NOT IN ('REVERSED', 'CANCELLED') " +
+           "AND t.financialEffective = true " +
            "GROUP BY t.worker.id, t.worker.name " +
            "ORDER BY t.worker.name")
     List<Object[]> groupByWorkerForBranch(

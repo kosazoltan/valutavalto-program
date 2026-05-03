@@ -355,7 +355,7 @@ class TransactionConversionServiceTest {
             Transaction parentConversion = saved.stream()
                     .filter(t -> t.getTransactionType() == TransactionType.CONVERSION)
                     .findFirst().orElseThrow();
-            assertThat(parentConversion.getFinancialEffective())
+            assertThat(parentConversion.isFinancialEffective())
                     .as("parent CONVERSION sora financial_effective=false")
                     .isFalse();
 
@@ -366,9 +366,9 @@ class TransactionConversionServiceTest {
             Transaction convSell = saved.stream()
                     .filter(t -> t.getTransactionType() == TransactionType.SELL)
                     .findFirst().orElseThrow();
-            assertThat(convBuy.getFinancialEffective())
+            assertThat(convBuy.isFinancialEffective())
                     .as("child convBuy financial_effective=true (default)").isTrue();
-            assertThat(convSell.getFinancialEffective())
+            assertThat(convSell.isFinancialEffective())
                     .as("child convSell financial_effective=true (default)").isTrue();
         }
     }
