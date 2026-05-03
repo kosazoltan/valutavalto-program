@@ -88,19 +88,38 @@ BEGIN
            email = 'fabulyazsuzsa.eec@gmail.com'
      WHERE company_id = ebc_company_id AND code = 'FABULYA';
 
+    -- HOTFIX 3 (production outage 2026-05-03 17:41): KASZA es BALI mar letezik V162-bol
+    -- ugyanazokkal az emailekkel mint a tervezett G_HELGA_FOERTEKTAR / G_BALI_HENRIETT INSERT-ek.
+    -- A `uk_worker_email` UNIQUE INDEX globalisan szuri ezt -> SQL State 23505 duplicate key.
+    -- Megoldas: KASZA / BALI / BORSI workerek frissitese (NEM uj G_* sorok), ugyanugy mint KOSA/FABULYA.
+
+    UPDATE worker
+       SET google_login_enabled = true,
+           email = 'kasza.helga.ebc@gmail.com'
+     WHERE company_id = ebc_company_id AND code = 'KASZA';
+
+    UPDATE worker
+       SET google_login_enabled = true,
+           email = 'bali.henriett.ebc@gmail.com'
+     WHERE company_id = ebc_company_id AND code = 'BALI';
+
+    UPDATE worker
+       SET google_login_enabled = true,
+           email = 'borsi.tamas.ebc@gmail.com'
+     WHERE company_id = ebc_company_id AND code = 'BORSI';
+
     -- =================================================================
-    -- 2. ERTEKTAROSOK (12 ember a "2 / Ét" prefix-bol + Helga Foertektar)
+    -- 2. ERTEKTAROSOK (10 uj ember — G_HELGA_FOERTEKTAR es G_BALI_HENRIETT TOROLVE
+    -- a HOTFIX 3 miatt, mert az emailjuk uk_worker_email konfliktust okozott)
     -- =================================================================
 
     INSERT INTO worker (company_id, branch_id, code, name, password_hash, role, is_active, email, google_login_enabled, created_at) VALUES
-        (ebc_company_id, default_branch_id, 'G_HELGA_FOERTEKTAR', 'Helga Foertektar',           default_password_hash, 'ADMIN',   true, 'kasza.helga.ebc@gmail.com',          true, NOW()),
         (ebc_company_id, default_branch_id, 'G_ET_BEKESCSABA',    'Ertektar Bekescsaba',        default_password_hash, 'CASHIER', true, 'bekescsaba.ebc@gmail.com',           true, NOW()),
         (ebc_company_id, default_branch_id, 'G_KOSZTYU_CSABA',    'Kosztyu Csaba (Nyiregyhaza)', default_password_hash, 'CASHIER', true, 'kosztyu.csaba.ebc@gmail.com',        true, NOW()),
         (ebc_company_id, default_branch_id, 'G_ET_DEBRECEN',      'Ertektar Debrecen',          default_password_hash, 'CASHIER', true, 'debrecen.ebc@gmail.com',             true, NOW()),
         (ebc_company_id, default_branch_id, 'G_ET_NYIREGYHAZA',   'Holes Andi (Nyiregyhaza 1)', default_password_hash, 'CASHIER', true, 'nyiregyhaza.ebc@gmail.com',          true, NOW()),
         (ebc_company_id, default_branch_id, 'G_ET_KECSKEMET',     'Ertektar Kecskemet',         default_password_hash, 'CASHIER', true, 'kecskemet.ebc@gmail.com',            true, NOW()),
         (ebc_company_id, default_branch_id, 'G_LACIKA_PECS',      'Lacika (Pecs Ertektar)',     default_password_hash, 'CASHIER', true, 'pecs.ebc@gmail.com',                 true, NOW()),
-        (ebc_company_id, default_branch_id, 'G_BALI_HENRIETT',    'Bali Henriett (Szeged)',     default_password_hash, 'CASHIER', true, 'bali.henriett.ebc@gmail.com',        true, NOW()),
         (ebc_company_id, default_branch_id, 'G_ET_SZEKSZARD',     'Ertektar Szekszard',         default_password_hash, 'CASHIER', true, 'szekszard.ebc@gmail.com',            true, NOW()),
         (ebc_company_id, default_branch_id, 'G_PECS_RAKOCZI',     'Pecs Rakoczi Valuta',        default_password_hash, 'CASHIER', true, 'expressz.minibank.ertektar@gmail.com', true, NOW()),
         (ebc_company_id, default_branch_id, 'G_SZEGED_ET',        'Szeged Ertektar',            default_password_hash, 'CASHIER', true, 'szeged.ebc@gmail.com',               true, NOW()),
@@ -171,23 +190,24 @@ BEGIN
       AND w.company_id = ebc_company_id
     ON CONFLICT DO NOTHING;
 
-    -- ERTEKTAROSOK (12 ember "2/ÉT" prefix-bol)
+    -- ERTEKTAROSOK (10 uj G_* + KASZA + BALI - mindketto V162-bol mar letezo)
+    -- HOTFIX 3: KASZA/BALI workerek (V162) most kapnak ertektar role-t (NEM uj G_* sorok)
     INSERT INTO worker_role_assignment (worker_id, role_def_id, is_primary)
     SELECT w.id, r.id, true FROM worker w, worker_role_def r
     WHERE w.code IN (
-            'G_HELGA_FOERTEKTAR',
+            'KASZA', 'BALI',
             'G_ET_BEKESCSABA', 'G_KOSZTYU_CSABA', 'G_ET_DEBRECEN', 'G_ET_NYIREGYHAZA',
-            'G_ET_KECSKEMET', 'G_LACIKA_PECS', 'G_BALI_HENRIETT', 'G_ET_SZEKSZARD',
+            'G_ET_KECSKEMET', 'G_LACIKA_PECS', 'G_ET_SZEKSZARD',
             'G_PECS_RAKOCZI', 'G_SZEGED_ET', 'G_KAPOSVAR_ET'
           )
       AND r.code = 'ertektar'
       AND w.company_id = ebc_company_id
     ON CONFLICT DO NOTHING;
 
-    -- HELGA = Foertektar is (a Foertektar listaban kifejezetten szerepel)
+    -- HELGA (KASZA, V162) = Foertektar is (a Foertektar listaban kifejezetten szerepel)
     INSERT INTO worker_role_assignment (worker_id, role_def_id, is_primary)
     SELECT w.id, r.id, false FROM worker w, worker_role_def r
-    WHERE w.code = 'G_HELGA_FOERTEKTAR'
+    WHERE w.code = 'KASZA'
       AND r.code = 'foertektar'
       AND w.company_id = ebc_company_id
     ON CONFLICT DO NOTHING;
