@@ -34,17 +34,32 @@ export default tseslint.config(
       // i18next no-literal-string: JSX szovegek + JSX attributumok t() fuggvenyen
       // keresztul lokalizalando ahelyett, hogy hardcoded magyar szoveg lenne.
       // Bevezetes: 'warn' szint, hogy a CI ne torjon meg a meglevo violations-okre.
-      // Egy kovetkezo sprintben fokozatosan lecsereljuk a szovegeket -> szigoritas 'error'-ra.
+      //
+      // Codex P1 PR #374 fix: a v6 plugin a `mode` + `'jsx-attributes'` opciokat hasznalja,
+      // NEM `markupOnly` + `ignoreAttribute`. A korabbi config csendben ignoralva volt
+      // (a default `jsx-text-only` mode + default exclude list ervenyesult).
+      //
+      // Copilot P3 PR #374 fix: az `alt`, `placeholder`, `aria-label` user-facing
+      // accessibility text-ek -> a kovetkezo i18n migration sprint-ben lokalizalandok,
+      // ezert NEM exclude-oljuk most (flag-eljuk warningkent, baseline-be szamolva).
       'i18next/no-literal-string': ['warn', {
-        markupOnly: true,                          // csak JSX szoveget flag-eli, NEM minden string-et
-        ignoreAttribute: [
-          'data-testid', 'data-cy', 'data-test', // teszt selectorok
-          'aria-controls', 'aria-describedby', 'aria-labelledby',
-          'className', 'class', 'id', 'name', 'type', 'role',
-          'href', 'src', 'alt', 'rel', 'target', 'method',
-          'key', 'ref', 'style', 'placeholder',  // placeholder-eket kulon szabalyozzuk
-          'lang', 'xmlns', 'viewBox', 'fill', 'stroke',
-        ],
+        // mode 'jsx-text-only': csak JSX text content (NEM minden string literal,
+        // NEM JSX attribute strings) — pontosan ami kell az UI lokalizaciohoz.
+        mode: 'jsx-text-only',
+        // jsx-attributes.exclude: ezeket az attributumokat NEM flag-eljuk
+        // (technikai ertekek vagy nem-szoveg payload). Az `alt`, `placeholder`,
+        // `aria-label` SZANDEKOSAN nincs benne — azok lokalizalando user-facing text.
+        'jsx-attributes': {
+          exclude: [
+            // default plugin excludes (stay)
+            'className', 'styleName', 'style', 'type', 'key', 'id', 'width', 'height',
+            // additionalisak - test selectorok, technikai ARIA, URL-ek, SVG attr
+            'data-testid', 'data-cy', 'data-test',
+            'aria-controls', 'aria-describedby', 'aria-labelledby',
+            'class', 'name', 'role', 'href', 'src', 'rel', 'target', 'method',
+            'ref', 'lang', 'xmlns', 'viewBox', 'fill', 'stroke',
+          ],
+        },
       }],
       // Audit-iter3 P1 (eslint-plugin-react-hooks v7 upgrade, 2026-04-27):
       // a v7 7 uj szabalyt vezetett be a `recommended`-be. Ezeket OPT-IN modon
