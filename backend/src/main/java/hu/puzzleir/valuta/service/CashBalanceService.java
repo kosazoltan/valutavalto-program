@@ -139,15 +139,17 @@ public class CashBalanceService {
 
         // Multi-tenant security: ha van SecurityContext, cross-tenant init tiltott.
         // Sourcery PR #112: AccessDeniedException (401/403 HTTP) security-specific exception.
-        try {
-            UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
-            if (currentCompanyId != null && !currentCompanyId.equals(branch.getCompany().getId())) {
-                throw new org.springframework.security.access.AccessDeniedException(
-                        "Csak saját cég branch-eire inicializálhat kassza egyenleget (cross-tenant tiltott)");
-            }
-        } catch (IllegalStateException e) {
+        // Audit P0.7 (2026-05-03): a korabbi `try { getCurrentCompanyId() } catch (IllegalStateException)`
+        // minta TOROTT volt, mert a SecurityUtils `ValidationException`-t dob (nem `IllegalStateException`-t),
+        // igy a catch SOHA nem fogott — startup/async eseten a method `ValidationException`-nel bukott el.
+        // Helyette: `getCurrentCompanyIdOrNull()` null-jelzeses helper, control-flow exceptionok nelkul.
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyIdOrNull();
+        if (currentCompanyId == null) {
             // Nincs autentikált user (pl. startup/async hook) — branch.company megfelelő forrás
             log.debug("initializeBranchBalances SecurityContext nélkül fut (startup/async): {}", branchId);
+        } else if (!currentCompanyId.equals(branch.getCompany().getId())) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Csak saját cég branch-eire inicializálhat kassza egyenleget (cross-tenant tiltott)");
         }
 
         Company company = branch.getCompany();

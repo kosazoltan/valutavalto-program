@@ -131,4 +131,24 @@ public class SecurityUtils {
         }
         return null;
     }
+
+    /**
+     * Audit P0.7 (2026-05-03): company ID null-fallback (NEM dob ValidationException).
+     *
+     * <p>Olyan szolgaltatashoz hasznald, ahol a SecurityContext nelkuli (startup,
+     * async, scheduler) hivasok is legitimak. Pl. `CashBalanceService.initializeBranchBalances`
+     * Spring `ApplicationReadyEvent` alatt SecurityContext nelkul fut, viszont user-
+     * context-ben futtatva multi-tenant cross-company tiltas kell.</p>
+     *
+     * <p>Anti-pattern-t valt fel: korabban a hivok `try { getCurrentCompanyId() }
+     * catch (IllegalStateException) {...}` mintat hasznaltak, de a `getCurrentCompanyId()`
+     * `ValidationException`-t dob, igy a catch SOHA nem fogott.</p>
+     */
+    public static UUID getCurrentCompanyIdOrNull() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getDetails() instanceof WorkerAuthenticationDetails) {
+            return ((WorkerAuthenticationDetails) auth.getDetails()).getCompanyId();
+        }
+        return null;
+    }
 }
