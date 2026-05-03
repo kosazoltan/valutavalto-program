@@ -166,6 +166,23 @@ class RefreshTokenServiceSelectorTest {
     }
 
     @Test
+    @DisplayName("Sourcery PR #359 follow-up: null/leading-sep/trailing-sep cookie -> empty + NEM hivja a repo-t")
+    void findActiveBySelectorAndVerifier_malformedCookies_returnsEmpty() {
+        // null
+        assertThat(service.findActiveBySelectorAndVerifier(null)).isEmpty();
+        // leading separator: `.verifier` -> selector ures (dot index == 0)
+        assertThat(service.findActiveBySelectorAndVerifier(".verifier")).isEmpty();
+        // trailing separator: `selector.` -> verifier ures (dot index == length - 1)
+        assertThat(service.findActiveBySelectorAndVerifier("selector.")).isEmpty();
+        // csak separator
+        assertThat(service.findActiveBySelectorAndVerifier(".")).isEmpty();
+        // ures string
+        assertThat(service.findActiveBySelectorAndVerifier("")).isEmpty();
+        verify(repository, never()).findBySelector(any());
+        verify(repository, never()).findAll();
+    }
+
+    @Test
     @DisplayName("(6) findActiveForWorker — uj selector cookie esete: workerId scope-olas")
     void findActiveForWorker_newCookie_scopedByWorkerId() {
         String selector = "test-selector-12345678";
