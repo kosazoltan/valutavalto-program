@@ -19,11 +19,18 @@ on:
 permissions:
   contents: read
 
+# Copilot P2 #369: deploy/maintenance workflow-val NEM futhat parhuzamosan
+concurrency:
+  group: deploy-hetzner-production
+  cancel-in-progress: false
+
 jobs:
   audit:
     name: Read-only server info dump
     runs-on: ubuntu-latest
     environment: production
+    # Copilot P2 #369: explicit timeout SSH hang ellen
+    timeout-minutes: 10
     steps:
       - name: Validate confirmation
         run: |
@@ -37,11 +44,15 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
+          # Copilot P2 #369: deploy-hetzner.yml minta — ssh-keyscan + known_hosts pinning
+          ssh-keyscan -H ${{ secrets.VPS_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
 
       - name: Capture server info (READ-ONLY)
         run: |
           ssh -i ~/.ssh/deploy_key \
-              -o StrictHostKeyChecking=accept-new \
+              -o StrictHostKeyChecking=yes \
+              -o BatchMode=yes \
+              -o ConnectTimeout=15 \
               "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
               bash -s << 'ENDSSH'
             set -e
