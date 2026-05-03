@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Building2,
   CheckCircle2,
@@ -739,6 +740,7 @@ interface ServerStepProps {
 }
 
 function ServerStep(props: ServerStepProps) {
+  const { t } = useTranslation()
   const {
     apiUrl,
     companyCode, onCompanyCodeChange,
@@ -859,21 +861,41 @@ function ServerStep(props: ServerStepProps) {
         )}
       </div>
 
-      <div className="mt-6 p-4 rounded-lg border border-slate-200 bg-slate-50 flex items-start gap-3">
+      {/* Audit P1.7: a "Offline mod" checkbox CSAK akkor enabled, ha a connection test FAIL-elt
+          (vagy mar offline-on van a wizard). Korabban barmikor pipalhato volt — de a vault
+          feedback szerint a penztar telepites ELSO lepese online regisztracio kell legyen,
+          offline csak degraded fallback. Ez kikenyszeriti, hogy a user megprobalja az
+          online kapcsolatot, mielott offline-ot valaszt.
+          NEMNETO: ha mar offline van pipalva (offlineMode=true), engedjuk uncheck-elni — egyebkent
+          a user beragadhatna offline modban. */}
+      <div
+        className={`mt-6 p-4 rounded-lg border flex items-start gap-3 ${
+          connectionTest.state === 'fail' || offlineMode
+            ? 'border-amber-300 bg-amber-50'
+            : 'border-slate-200 bg-slate-50 opacity-50'
+        }`}
+      >
         <input
           id="offline-mode"
           type="checkbox"
           checked={offlineMode}
           onChange={(e) => onOfflineModeChange(e.target.checked)}
+          // P1.7: csak akkor checkable, ha connection test mar fail-elt VAGY mar offline a state
+          disabled={connectionTest.state !== 'fail' && !offlineMode}
           className="mt-1"
         />
         <label htmlFor="offline-mode" className="flex-1 text-sm text-slate-700 cursor-pointer select-none">
           <span className="font-semibold text-slate-900 inline-flex items-center gap-1.5">
-            <WifiOff className="w-4 h-4" /> Offline mód — kihagyás
+            <WifiOff className="w-4 h-4" /> {t('setupWizard.offlineModeTitle')}
           </span>
           <br />
-          Ezt csak akkor válassza, ha a pénztáros gép most még nem tudja elérni a központi szervert.
-          Később a beállításokban konfigurálhatja.
+          {connectionTest.state === 'fail' ? (
+            <span className="text-amber-800">{t('setupWizard.offlineModeFail')}</span>
+          ) : offlineMode ? (
+            <span className="text-amber-800">{t('setupWizard.offlineModeActive')}</span>
+          ) : (
+            <span>{t('setupWizard.offlineModeDisabled')}</span>
+          )}
         </label>
       </div>
     </div>
