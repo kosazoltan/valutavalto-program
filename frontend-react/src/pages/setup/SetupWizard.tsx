@@ -866,8 +866,11 @@ function ServerStep(props: ServerStepProps) {
           feedback szerint a penztar telepites ELSO lepese online regisztracio kell legyen,
           offline csak degraded fallback. Ez kikenyszeriti, hogy a user megprobalja az
           online kapcsolatot, mielott offline-ot valaszt.
-          NEMNETO: ha mar offline van pipalva (offlineMode=true), engedjuk uncheck-elni — egyebkent
-          a user beragadhatna offline modban. */}
+          MEGJEGYZES: ha mar offline van pipalva (offlineMode=true), engedjuk uncheck-elni —
+          egyebkent a user beragadhatna offline modban. */}
+      {(() => {
+        const offlineCheckboxDisabled = connectionTest.state !== 'fail' && !offlineMode
+        return (
       <div
         className={`mt-6 p-4 rounded-lg border flex items-start gap-3 ${
           connectionTest.state === 'fail' || offlineMode
@@ -881,10 +884,16 @@ function ServerStep(props: ServerStepProps) {
           checked={offlineMode}
           onChange={(e) => onOfflineModeChange(e.target.checked)}
           // P1.7: csak akkor checkable, ha connection test mar fail-elt VAGY mar offline a state
-          disabled={connectionTest.state !== 'fail' && !offlineMode}
+          disabled={offlineCheckboxDisabled}
           className="mt-1"
         />
-        <label htmlFor="offline-mode" className="flex-1 text-sm text-slate-700 cursor-pointer select-none">
+        <label
+          htmlFor="offline-mode"
+          // Copilot review #383 P2: a label cursor-ja kovesse a checkbox tenyleges
+          // interaktivitasat (cursor-not-allowed disabled-eseten — UX/a11y konzisztencia).
+          aria-disabled={offlineCheckboxDisabled}
+          className={`flex-1 text-sm text-slate-700 select-none ${offlineCheckboxDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+        >
           <span className="font-semibold text-slate-900 inline-flex items-center gap-1.5">
             <WifiOff className="w-4 h-4" /> {t('setupWizard.offlineModeTitle')}
           </span>
@@ -898,6 +907,8 @@ function ServerStep(props: ServerStepProps) {
           )}
         </label>
       </div>
+        )
+      })()}
     </div>
   )
 }

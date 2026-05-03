@@ -1096,7 +1096,13 @@ describe('SyncEngine — handover/collection/distribution sorrendi függőségek
  * Bizonyitja:
  * 1. `offline_mode=true` config -> syncAll NEM hivja a fetch-et, gyorsan return-ol
  * 2. `server_url` ures vagy hianyzik -> syncAll NEM hivja a fetch-et
- * 3. Mindkettore: synced=0, failed=0, errors.length=0 (nem hiba, csak no-op)
+ * 3. Synced=0, failed=0. A 'offline_mode=true' eseten egy "Offline mod" soft-warning
+ *    bekerul az `errors` tombbe (degraded operacio jelzes, NEM kivetel).
+ *    A `server_url` ures/null eseten csak no-op, errors NEM tartalmaz uzenetet.
+ *
+ * Copilot review #383 P2 follow-up: a `global.fetch = ...` beallitas korabban szivargott
+ * mas test file-okba ugyanabban a Vitest workerben (flakey risk). Most `vi.stubGlobal`
+ * + `vi.unstubAllGlobals()` mintat hasznalunk, ami a meglevo file pattern-jet koveti.
  */
 describe('SyncEngine — P1.7 offline mode regression', () => {
   let engine: SyncEngine;
@@ -1106,11 +1112,14 @@ describe('SyncEngine — P1.7 offline mode regression', () => {
     vi.clearAllMocks();
     engine = new SyncEngine();
     mockFetch = vi.fn();
-    global.fetch = mockFetch as unknown as typeof fetch;
+    // Copilot #383 P2: vi.stubGlobal + vi.unstubAllGlobals (afterEach) — NEM
+    // direkt `global.fetch = mockFetch`, mert az nem kerul vissza es szivarog.
+    vi.stubGlobal('fetch', mockFetch);
   });
 
   afterEach(() => {
     engine.stop();
+    vi.unstubAllGlobals();
   });
 
   it('offline_mode=true config esetén NEM spamel fetch-et (kritikus: zero HTTP)', async () => {
