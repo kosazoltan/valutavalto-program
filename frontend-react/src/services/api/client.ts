@@ -15,6 +15,17 @@ declare module 'axios' {
 
 const WEB_AUTH_TOKEN_KEY = 'auth_token'
 
+// Silent refresh endpoint — HttpOnly refreshToken cookie alapjan.
+// Kotelezo `permitAll`-on legyen a backend-en, mert a hivashoz nincs valid access token.
+// (A korabbi `/auth/refresh` az `@PreAuthorize("isAuthenticated()")` miatt lejart accessel
+// 401-et ad, igy silent refresh cel-szerunek alkalmatlan.)
+export const REFRESH_ENDPOINT = '/auth/refresh-cookie'
+
+// Endpointok, amelyekre 401 utan TILOS silent refresh-t triggerelni — kulonben vegtelen loop.
+// Sourcery PR #351 follow-up: REFRESH_ENDPOINT konstans reuse, hogy a skip-list autoSync-be
+// keruljon a tenyleges endpoint atallitasanal (DRY).
+const REFRESH_SKIP_PATHS = ['/auth/login', '/auth/refresh', REFRESH_ENDPOINT]
+
 // API base URL meghatározása — priorizálás:
 // 1. VITE_API_URL env var (build-time)
 // 2. Electron: SQLite config 'server_url' (runtime, felhasználó által állítható)
@@ -156,8 +167,8 @@ api.interceptors.response.use(
 
     // 401 — token lejárt: próbáljuk refreshelni
     if (error.response?.status === 401 && !originalRequest._retry) {
-      // Login endpoint-ra ne próbáljunk refresh-t
-      if (originalRequest.url?.includes('/auth/login')) {
+      // Login + refresh endpointokra ne triggereljunk silent refresh-t (vegtelen loop).
+      if (originalRequest.url && REFRESH_SKIP_PATHS.some((p) => originalRequest.url!.includes(p))) {
         return Promise.reject(error)
       }
 
@@ -180,7 +191,11 @@ api.interceptors.response.use(
       isRefreshing = true
 
       try {
-        const response = await api.post<{ token: string }>('/auth/refresh')
+        // Silent refresh a HttpOnly refreshToken cookie alapjan (vezerlokonyv par.12.3).
+        // A `withCredentials: true` (lasd `api.create({ withCredentials: true })`) miatt
+        // a browser automatikusan kuldi a `refreshToken` cookie-t a /auth/refresh-cookie
+        // endpoint-ra, amely permitAll-on van, igy lejart access tokennel is mukodik.
+        const response = await api.post<{ token: string }>(REFRESH_ENDPOINT)
         const newToken = response.data.token
         const authStore = useAuthStore.getState()
         if (authStore.worker) {
