@@ -142,14 +142,30 @@ public class CashBalanceService {
         // Audit P0.7 (2026-05-03): a korabbi `try { getCurrentCompanyId() } catch (IllegalStateException)`
         // minta TOROTT volt, mert a SecurityUtils `ValidationException`-t dob (nem `IllegalStateException`-t),
         // igy a catch SOHA nem fogott — startup/async eseten a method `ValidationException`-nel bukott el.
-        // Helyette: `getCurrentCompanyIdOrNull()` null-jelzeses helper, control-flow exceptionok nelkul.
-        UUID currentCompanyId = SecurityUtils.getCurrentCompanyIdOrNull();
-        if (currentCompanyId == null) {
+        //
+        // Codex P1 PR #354 follow-up: `getCurrentCompanyIdOrNull()` ket eltero esetben ad null-t:
+        //   1. legitim startup/async (NINCS Authentication a SecurityContext-ben)
+        //   2. authentikalt request, de a JWT-bol hianyzik a companyId (rare bug/attacker)
+        // A #2-es eset NEM szabad bypass-elja a tenant guard-ot. Ezert explicit auth-check:
+        //   - ha NINCS authentikacio -> startup/async, skip (legitim)
+        //   - ha VAN authentikacio -> `getCurrentCompanyId()` (dob ValidationException ha hianyzik)
+        //     es ezutan a cross-tenant ellenorzes
+        org.springframework.security.core.Authentication auth =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        boolean hasAuthenticatedUser = auth != null
+                && auth.isAuthenticated()
+                && !"anonymousUser".equals(auth.getPrincipal());
+        if (!hasAuthenticatedUser) {
             // Nincs autentikált user (pl. startup/async hook) — branch.company megfelelő forrás
             log.debug("initializeBranchBalances SecurityContext nélkül fut (startup/async): {}", branchId);
-        } else if (!currentCompanyId.equals(branch.getCompany().getId())) {
-            throw new org.springframework.security.access.AccessDeniedException(
-                    "Csak saját cég branch-eire inicializálhat kassza egyenleget (cross-tenant tiltott)");
+        } else {
+            // Authentikalt: a companyId kotelezoen jelen kell legyen — `getCurrentCompanyId()` dob,
+            // ha hianyzik (Codex P1 #354: malformed JWT NEM bypass-elheti a tenant guard-ot).
+            UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+            if (!currentCompanyId.equals(branch.getCompany().getId())) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Csak saját cég branch-eire inicializálhat kassza egyenleget (cross-tenant tiltott)");
+            }
         }
 
         Company company = branch.getCompany();

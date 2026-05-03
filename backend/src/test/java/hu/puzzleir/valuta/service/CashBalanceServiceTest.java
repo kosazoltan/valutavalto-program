@@ -111,6 +111,11 @@ class CashBalanceServiceTest {
     // Audit P0.7 (2026-05-03) regressziovedelem
     // -----------------------------------------------------------------
 
+    @org.junit.jupiter.api.AfterEach
+    void clearSecurityContext() {
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+    }
+
     @Test
     @DisplayName("initializeBranchBalances — SecurityContext nelkul (startup/async) sikeres")
     void initializeBranchBalances_noSecurityContext_succeeds() {
@@ -118,16 +123,14 @@ class CashBalanceServiceTest {
         Company company = Company.builder().id(UUID.randomUUID()).build();
         Branch branch = Branch.builder().id(branchId).company(company).build();
 
-        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
-            // Pre-auth context: getCurrentCompanyIdOrNull == null (startup/async hook)
-            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(null);
-            when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
-            when(currencyRepository.findAllActiveOrdered()).thenReturn(List.of());
+        // Pre-auth context: SecurityContextHolder ures
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+        when(currencyRepository.findAllActiveOrdered()).thenReturn(List.of());
 
-            assertThatCode(() -> service.initializeBranchBalances(branchId))
-                    .as("startup/async hivasban sem dobhat ValidationException-t")
-                    .doesNotThrowAnyException();
-        }
+        assertThatCode(() -> service.initializeBranchBalances(branchId))
+                .as("startup/async hivasban sem dobhat ValidationException-t")
+                .doesNotThrowAnyException();
     }
 
     @Test
@@ -140,7 +143,8 @@ class CashBalanceServiceTest {
         Branch branch = Branch.builder().id(branchId).company(branchCompany).build();
 
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
-            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(currentCompanyId);
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(currentCompanyId);
+            setAuthenticatedContext("worker-1");
             when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
 
             assertThatThrownBy(() -> service.initializeBranchBalances(branchId))
@@ -158,12 +162,44 @@ class CashBalanceServiceTest {
         Branch branch = Branch.builder().id(branchId).company(company).build();
 
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
-            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(companyId);
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            setAuthenticatedContext("worker-1");
             when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
             when(currencyRepository.findAllActiveOrdered()).thenReturn(List.of());
 
             assertThatCode(() -> service.initializeBranchBalances(branchId))
                     .doesNotThrowAnyException();
         }
+    }
+
+    @Test
+    @DisplayName("Codex P1 PR #354: authentikalt context + hianyzo companyId (malformed JWT) -> ValidationException, NEM bypass")
+    void initializeBranchBalances_authenticatedButCompanyIdMissing_throwsValidation() {
+        UUID branchId = UUID.randomUUID();
+        Company company = Company.builder().id(UUID.randomUUID()).build();
+        Branch branch = Branch.builder().id(branchId).company(company).build();
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            // Authentikalt request, de a JWT-bol hianyzik a companyId -> SecurityUtils dob.
+            su.when(SecurityUtils::getCurrentCompanyId)
+                    .thenThrow(new ValidationException("Nincs bejelentkezett felhasználó!"));
+            setAuthenticatedContext("worker-1");
+            when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+
+            assertThatThrownBy(() -> service.initializeBranchBalances(branchId))
+                    .as("Codex P1: malformed JWT (companyId hianyzik) NEM bypass-elheti a tenant guard-ot")
+                    .isInstanceOf(ValidationException.class);
+        }
+    }
+
+    /** Helper: beallit egy authentikalt SecurityContext-et a teszt erejeig. */
+    private static void setAuthenticatedContext(String principal) {
+        org.springframework.security.authentication.UsernamePasswordAuthenticationToken auth =
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                        principal, null, java.util.List.of());
+        org.springframework.security.core.context.SecurityContext ctx =
+                org.springframework.security.core.context.SecurityContextHolder.createEmptyContext();
+        ctx.setAuthentication(auth);
+        org.springframework.security.core.context.SecurityContextHolder.setContext(ctx);
     }
 }
