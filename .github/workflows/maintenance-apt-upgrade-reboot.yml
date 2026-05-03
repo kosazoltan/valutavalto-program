@@ -1,0 +1,126 @@
+name: Maintenance - APT Upgrade + Reboot (manual)
+
+# 2026-05-03 Glasswing CVE audit follow-up: a kmod 7.2 mitigacio mar elfedi a
+# Copy Fail (CVE-2026-31431) tamadasi felulet-et, de a teljes kernel-patch-hez
+# `apt-get upgrade` + reboot kell.
+#
+# Ez a workflow:
+#   1. apt-get update
+#   2. apt-get upgrade -y (security patch + ma elerheto frissitesek)
+#   3. systemctl reboot
+#   4. Var min. 90s, max. 6 retry x 30s amig a /api/v1/auth/bootstrap-status 200 nem ad
+#
+# Varhato outage: ~60-120s (kernel reboot + Spring Boot startup).
+# Hasznalat: GH Actions UI -> Run workflow -> "UPGRADE-AND-REBOOT" beirasa -> futtatas
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "UPGRADE-AND-REBOOT" to confirm execution'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  upgrade:
+    name: APT upgrade + reboot + health check
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Validate confirmation
+        run: |
+          if [ "${{ inputs.confirm }}" != "UPGRADE-AND-REBOOT" ]; then
+            echo "Confirmation string mismatch. Aborting."
+            exit 1
+          fi
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+      - name: Pre-upgrade snapshot
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -e
+            echo "=== Pre-upgrade kernel ==="
+            uname -r
+            echo ""
+            echo "=== Pre-upgrade upgradable count ==="
+            apt list --upgradable 2>/dev/null | wc -l
+            echo ""
+            echo "=== Pre-upgrade upgradable packages (kernel + critical) ==="
+            apt list --upgradable 2>/dev/null | grep -E "linux-image|linux-headers|linux-generic|kmod|openssl|openssh|nginx|postgresql" || true
+          ENDSSH
+
+      - name: APT update + upgrade
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -e
+            export DEBIAN_FRONTEND=noninteractive
+            echo "=== apt-get update ==="
+            apt-get update
+            echo ""
+            echo "=== apt-get upgrade -y (with -o Dpkg::Options to keep configs) ==="
+            apt-get upgrade -y \
+              -o Dpkg::Options::="--force-confdef" \
+              -o Dpkg::Options::="--force-confold"
+            echo ""
+            echo "=== Post-upgrade kernel package check ==="
+            apt list --installed 2>/dev/null | grep -E "^linux-image|^linux-generic" | head -5 || true
+            echo ""
+            echo "=== Reboot required marker ==="
+            ls -la /var/run/reboot-required 2>/dev/null || echo "(no reboot marker — running kernel may still be old until reboot)"
+          ENDSSH
+
+      - name: Reboot server
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              "systemctl reboot" || true
+          # `systemctl reboot` zarja az SSH-t — exit 255 normalis, ezert `|| true`.
+          echo "Reboot triggered. Waiting 60s for kernel + boot..."
+          sleep 60
+
+      - name: Health check (with retries)
+        run: |
+          echo "Checking https://excvaluta.com/api/v1/auth/bootstrap-status (6 attempt x 30s)..."
+          for i in 1 2 3 4 5 6; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "https://excvaluta.com/api/v1/auth/bootstrap-status" || echo 000)
+            echo "Attempt $i: HTTP $STATUS"
+            if [[ "$STATUS" == "200" ]]; then
+              echo "PASSED — production restored after upgrade + reboot"
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "FAILED after 6 attempts (3 min total) — manual intervention needed"
+          exit 1
+
+      - name: Post-upgrade verification
+        if: success()
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -e
+            echo "=== Post-upgrade kernel ==="
+            uname -r
+            echo ""
+            echo "=== Uptime ==="
+            uptime
+            echo ""
+            echo "=== valuta-backend.service status ==="
+            systemctl is-active valuta-backend.service
+          ENDSSH
