@@ -21,13 +21,36 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ProductionPropertiesAuditTest {
 
     @Test
-    @DisplayName("server.forward-headers-strategy=framework production-ben")
-    void forwardHeadersStrategyIsFrameworkInProduction() throws Exception {
+    @DisplayName("server.forward-headers-strategy=native production-ben (Codex P1 #352 follow-up)")
+    void forwardHeadersStrategyIsNativeInProduction() throws Exception {
         Properties props = loadProductionProperties();
         assertThat(props.getProperty("server.forward-headers-strategy"))
-            .as("server.forward-headers-strategy production-ben kotelezoen 'framework' "
-                + "(audit P0.2 #2026-05-03)")
-            .isEqualTo("framework");
+            .as("server.forward-headers-strategy production-ben 'native' (Codex P1 PR #352): "
+                + "Tomcat RemoteIpValve `internalProxies` regex-szel csak loopback-bol fogad el "
+                + "X-Forwarded-* header-eket, megakadalyozza a spoofingot.")
+            .isEqualTo("native");
+    }
+
+    @Test
+    @DisplayName("server.tomcat.remoteip.internal-proxies csak loopback CIDR-t enged")
+    void internalProxiesRegexIsLoopbackOnly() throws Exception {
+        Properties props = loadProductionProperties();
+        String regex = props.getProperty("server.tomcat.remoteip.internal-proxies");
+        assertThat(regex)
+            .as("Tomcat internal-proxies kotelezoen csak 127.x.x.x + IPv6 loopback")
+            .isNotNull()
+            .contains("127");
+        assertThat(regex)
+            .as("NEM enged 0.0.0.0/0 vagy publikus CIDR-t (Codex P1 #352 spoofing-vedelem)")
+            .doesNotContain("0\\.0\\.0\\.0/0");
+    }
+
+    @Test
+    @DisplayName("server.tomcat.remoteip.protocol-header X-Forwarded-Proto")
+    void protocolHeaderIsXForwardedProto() throws Exception {
+        Properties props = loadProductionProperties();
+        assertThat(props.getProperty("server.tomcat.remoteip.protocol-header"))
+            .isEqualTo("X-Forwarded-Proto");
     }
 
     private Properties loadProductionProperties() throws Exception {
