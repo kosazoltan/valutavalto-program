@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.config;
 
 import hu.puzzleir.valuta.security.IdempotencyFilter;
 import hu.puzzleir.valuta.security.JwtAuthenticationFilter;
+import jakarta.servlet.Filter;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,31 +24,39 @@ import org.springframework.context.annotation.Configuration;
  * <p>Megoldas: a Servlet container auto-regisztraciot DIS-able-eljuk, igy a
  * filterek CSAK a Security chain-en keresztul futnak (mar SecurityConfig
  * addFilterBefore-jevel definialt ordering-gel).</p>
+ *
+ * <p>NOTE — Sourcery PR #357 false positive: a `ProductionCorsFilter` ugyanezen
+ * `hu.puzzleir.valuta.config` package-ben van, igy explicit import NEM kell
+ * (a 3 unit teszt PASS-elt is). A Sourcery static analysis tevedett.</p>
  */
 @Configuration
 public class FilterRegistrationConfig {
 
+    /**
+     * Sourcery PR #357 follow-up: generikus helper a 3 azonos pattern (filter ->
+     * disabled FilterRegistrationBean) kivaltasara, hogy a config DRY legyen.
+     */
+    private <T extends Filter> FilterRegistrationBean<T> disabledRegistration(T filter) {
+        FilterRegistrationBean<T> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
     @Bean
     public FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterRegistration(
             JwtAuthenticationFilter filter) {
-        FilterRegistrationBean<JwtAuthenticationFilter> registration = new FilterRegistrationBean<>(filter);
-        registration.setEnabled(false);
-        return registration;
+        return disabledRegistration(filter);
     }
 
     @Bean
     public FilterRegistrationBean<IdempotencyFilter> idempotencyFilterRegistration(
             IdempotencyFilter filter) {
-        FilterRegistrationBean<IdempotencyFilter> registration = new FilterRegistrationBean<>(filter);
-        registration.setEnabled(false);
-        return registration;
+        return disabledRegistration(filter);
     }
 
     @Bean
     public FilterRegistrationBean<ProductionCorsFilter> productionCorsFilterRegistration(
             ProductionCorsFilter filter) {
-        FilterRegistrationBean<ProductionCorsFilter> registration = new FilterRegistrationBean<>(filter);
-        registration.setEnabled(false);
-        return registration;
+        return disabledRegistration(filter);
     }
 }
