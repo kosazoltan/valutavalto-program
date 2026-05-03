@@ -148,7 +148,7 @@ class DecadeReportServiceTest {
                 .thenReturn(List.of(makeHufBalance(periodEnd, closingHuf, closingHuf)));
 
         // Forint kontroll tranzakciók
-        when(transactionRepository.findActiveByBranchAndDateRange(eq(BRANCH_ID), eq(periodStart), eq(periodEnd)))
+        when(transactionRepository.findFinanciallyEffectiveByBranchAndDateRange(eq(BRANCH_ID), eq(periodStart), eq(periodEnd)))
                 .thenReturn(txList);
 
         // Mentés → visszaad egyet
@@ -255,7 +255,7 @@ class DecadeReportServiceTest {
                 .thenReturn(0L);
 
         // Forint kontroll: egyszerű setup
-        when(transactionRepository.findActiveByBranchAndDateRange(any(), any(), any()))
+        when(transactionRepository.findFinanciallyEffectiveByBranchAndDateRange(any(), any(), any()))
                 .thenReturn(Collections.emptyList());
 
         // Napi mérlegek: EUR pozíció létezik

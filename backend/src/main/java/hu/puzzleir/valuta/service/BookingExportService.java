@@ -40,7 +40,10 @@ public class BookingExportService {
      * Napi könyvelési export CSV.
      */
     public byte[] exportDailyBooking(UUID branchId, LocalDate date) {
-        List<Transaction> transactions = transactionRepository.findActiveByBranchAndDate(branchId, date);
+        // User-direktiva 2026-05-03: a konyvelo CSV-ben CSAK a tenyleges penzmozgas
+        // bizonylatok (V/E) — a parent CONVERSION (K-szam, csak metadata) NEM duplazza
+        // a CSV-sorokat. `findFinanciallyEffectiveByBranchAndDate` szuri.
+        List<Transaction> transactions = transactionRepository.findFinanciallyEffectiveByBranchAndDate(branchId, date);
 
         StringBuilder sb = new StringBuilder();
         sb.append("Bizonylat szám").append(SEP)

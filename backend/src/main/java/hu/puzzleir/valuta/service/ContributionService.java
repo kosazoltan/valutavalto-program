@@ -49,11 +49,14 @@ public class ContributionService {
     public List<Contribution> calculate(UUID branchId, LocalDate periodStart, LocalDate periodEnd) {
         List<Contribution> contributions = new ArrayList<>();
 
-        // Calculate total turnover for the period
+        // Calculate total turnover for the period.
+        // User-direktiva 2026-05-03: hozzajarulas-szamitas riport-celu — a parent CONVERSION
+        // sorok (csak metadata) NEM duplazhatjak a forgalmat. `findFinanciallyEffectiveByBranchAndDate`
+        // szuri.
         List<Transaction> transactions = new ArrayList<>();
         LocalDate current = periodStart;
         while (!current.isAfter(periodEnd)) {
-            transactions.addAll(transactionRepository.findActiveByBranchAndDate(branchId, current));
+            transactions.addAll(transactionRepository.findFinanciallyEffectiveByBranchAndDate(branchId, current));
             current = current.plusDays(1);
         }
 

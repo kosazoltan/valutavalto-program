@@ -276,7 +276,9 @@ public class Transaction {
      */
     @Builder.Default
     @Column(name = "financial_effective", nullable = false)
-    private Boolean financialEffective = true;
+    private boolean financialEffective = true;
+    // Sourcery PR #360 follow-up: primitive `boolean` (a schema BOOLEAN NOT NULL),
+    // NPE-vedelem es kovetkezetes a DB DEFAULT TRUE-vel.
 
     // ============ POS TERMINÁL / BANKKÁRTYA ============
 

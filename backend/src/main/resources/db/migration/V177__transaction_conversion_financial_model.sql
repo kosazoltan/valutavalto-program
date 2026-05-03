@@ -26,9 +26,11 @@ UPDATE transaction
  WHERE transaction_type = 'CONVERSION'
    AND financial_effective IS DISTINCT FROM FALSE;
 
--- Index a riport queries-hez (financial_effective + date kombinaciora).
+-- Index a riport queries-hez (branch_id + transaction_date).
+-- Sourcery PR #362: a `financial_effective` a partial WHERE-ben van, NEM key column —
+-- index size csokken, scan efficiency valtozatlan (constant column nem ad selectivity-t).
 CREATE INDEX IF NOT EXISTS transaction_financial_effective_date_idx
-    ON transaction (branch_id, transaction_date, financial_effective)
+    ON transaction (branch_id, transaction_date)
     WHERE financial_effective = TRUE;
 
 -- Index a conversion_group_id-re (a child sorok parenttel-link-elesehez).

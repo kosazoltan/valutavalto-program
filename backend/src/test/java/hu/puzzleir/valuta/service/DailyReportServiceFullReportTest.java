@@ -73,7 +73,7 @@ class DailyReportServiceFullReportTest {
         eurBal.setSales(new BigDecimal("50"));
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(BRANCH_ID, DATE)).thenReturn(List.of(eurBal));
         when(exchangeRateRepository.findActiveByDateAndBranch(any(), eq(DATE), eq(BRANCH_ID))).thenReturn(List.of());
-        when(transactionRepository.findActiveByBranchAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
+        when(transactionRepository.findFinanciallyEffectiveByBranchAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
         when(denominationBalanceRepository.findByBranchIdAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
         stubSubledger();
 
@@ -105,7 +105,7 @@ class DailyReportServiceFullReportTest {
         er.setBaseBuyRate(new BigDecimal("395.50"));
         er.setBaseSellRate(new BigDecimal("401.20"));
         when(exchangeRateRepository.findActiveByDateAndBranch(any(), eq(DATE), eq(BRANCH_ID))).thenReturn(List.of(er));
-        when(transactionRepository.findActiveByBranchAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
+        when(transactionRepository.findFinanciallyEffectiveByBranchAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
         when(denominationBalanceRepository.findByBranchIdAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
         stubSubledger();
 
@@ -125,7 +125,7 @@ class DailyReportServiceFullReportTest {
         when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of());
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(BRANCH_ID, DATE)).thenReturn(List.of());
         when(exchangeRateRepository.findActiveByDateAndBranch(any(), eq(DATE), eq(BRANCH_ID))).thenReturn(List.of());
-        when(transactionRepository.findActiveByBranchAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
+        when(transactionRepository.findFinanciallyEffectiveByBranchAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
 
         // Denomination setup
         Currency huf = new Currency();
@@ -170,7 +170,7 @@ class DailyReportServiceFullReportTest {
         Transaction afternoonSellTx = createTransaction(TransactionType.SELL, new BigDecimal("30000"), LocalTime.of(14, 15));
         Transaction reversalTx = createTransaction(TransactionType.REVERSAL, new BigDecimal("10000"), LocalTime.of(16, 0));
 
-        when(transactionRepository.findActiveByBranchAndDate(BRANCH_ID, DATE))
+        when(transactionRepository.findFinanciallyEffectiveByBranchAndDate(BRANCH_ID, DATE))
                 .thenReturn(List.of(morningBuyTx, afternoonSellTx, reversalTx));
 
         DailyReportFullDto result = service.generateFullReport(BRANCH_ID, DATE);
@@ -190,7 +190,7 @@ class DailyReportServiceFullReportTest {
         when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of());
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(BRANCH_ID, DATE)).thenReturn(List.of());
         when(exchangeRateRepository.findActiveByDateAndBranch(any(), eq(DATE), eq(BRANCH_ID))).thenReturn(List.of());
-        when(transactionRepository.findActiveByBranchAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
+        when(transactionRepository.findFinanciallyEffectiveByBranchAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
         when(denominationBalanceRepository.findByBranchIdAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
 
         DailySubledgerSnapshot wuUsdSnap = new DailySubledgerSnapshot();
@@ -239,7 +239,7 @@ class DailyReportServiceFullReportTest {
         Transaction afternoonTx = createTransaction(TransactionType.SELL, new BigDecimal("20000"), LocalTime.of(14, 0));
         afternoonTx.setWorker(afternoonWorker);
 
-        when(transactionRepository.findActiveByBranchAndDate(BRANCH_ID, DATE))
+        when(transactionRepository.findFinanciallyEffectiveByBranchAndDate(BRANCH_ID, DATE))
                 .thenReturn(List.of(morningTx, afternoonTx));
 
         DailyReportFullDto result = service.generateFullReport(BRANCH_ID, DATE);
@@ -282,7 +282,7 @@ class DailyReportServiceFullReportTest {
         discountTx.setExchangeRate(new BigDecimal("396.00")); // != 395.50
         discountTx.setReceiptNumber("B-2026-001");
 
-        when(transactionRepository.findActiveByBranchAndDate(BRANCH_ID, DATE)).thenReturn(List.of(discountTx));
+        when(transactionRepository.findFinanciallyEffectiveByBranchAndDate(BRANCH_ID, DATE)).thenReturn(List.of(discountTx));
 
         DailyReportFullDto result = service.generateFullReport(BRANCH_ID, DATE);
 
@@ -313,7 +313,7 @@ class DailyReportServiceFullReportTest {
         er.setBaseBuyRate(new BigDecimal("394.00"));
         er.setBaseSellRate(new BigDecimal("402.00"));
         when(exchangeRateRepository.findActiveByDateAndBranch(any(), eq(DATE), eq(BRANCH_ID))).thenReturn(List.of(er));
-        when(transactionRepository.findActiveByBranchAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
+        when(transactionRepository.findFinanciallyEffectiveByBranchAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
         when(denominationBalanceRepository.findByBranchIdAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
         stubSubledger();
 

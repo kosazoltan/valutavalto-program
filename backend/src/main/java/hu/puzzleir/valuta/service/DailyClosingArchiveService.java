@@ -150,6 +150,9 @@ public class DailyClosingArchiveService {
         BigDecimal income = BigDecimal.ZERO;
         BigDecimal expense = BigDecimal.ZERO;
 
+        // User-direktiva 2026-05-03: napi-zarasi archiv-snapshot szandekosan TELJES KEPET
+        // archival (parent CONVERSION sor IS), audit/forensikai celokra. NEM hasznaljuk a
+        // `findFinanciallyEffectiveBy*` scope-olt variant-ot — az audit teljesseg az elsodleges.
         List<Transaction> dayTx = transactionRepository.findActiveByBranchAndDate(
                 branchId, closingDate);
 

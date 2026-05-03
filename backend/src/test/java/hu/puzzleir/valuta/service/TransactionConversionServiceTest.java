@@ -343,7 +343,14 @@ class TransactionConversionServiceTest {
 
             // Kotelesseg: parent CONVERSION + convBuy + convSell — mindharman ugyanazon
             // conversion_group_id-vel.
-            UUID groupId = saved.get(0).getConversionGroupId();
+            //
+            // Copilot PR #362 follow-up: a `groupId`-t a tenyleges parent CONVERSION-bol vesszuk
+            // (NEM `saved.get(0)` order-fuggo), igy a teszt kovetkezetes refaktor utan is.
+            UUID groupId = saved.stream()
+                    .filter(t -> t.getTransactionType() == TransactionType.CONVERSION)
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("parent CONVERSION sor hianyzik a save-ek kozul"))
+                    .getConversionGroupId();
             assertThat(groupId).as("parent CONVERSION conversion_group_id NEM null").isNotNull();
             assertThat(saved).allSatisfy(tx ->
                     assertThat(tx.getConversionGroupId())
@@ -355,7 +362,7 @@ class TransactionConversionServiceTest {
             Transaction parentConversion = saved.stream()
                     .filter(t -> t.getTransactionType() == TransactionType.CONVERSION)
                     .findFirst().orElseThrow();
-            assertThat(parentConversion.getFinancialEffective())
+            assertThat(parentConversion.isFinancialEffective())
                     .as("parent CONVERSION sora financial_effective=false")
                     .isFalse();
 
@@ -366,9 +373,9 @@ class TransactionConversionServiceTest {
             Transaction convSell = saved.stream()
                     .filter(t -> t.getTransactionType() == TransactionType.SELL)
                     .findFirst().orElseThrow();
-            assertThat(convBuy.getFinancialEffective())
+            assertThat(convBuy.isFinancialEffective())
                     .as("child convBuy financial_effective=true (default)").isTrue();
-            assertThat(convSell.getFinancialEffective())
+            assertThat(convSell.isFinancialEffective())
                     .as("child convSell financial_effective=true (default)").isTrue();
         }
     }
