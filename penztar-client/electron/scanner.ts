@@ -31,8 +31,12 @@ function getOrCreateKey(): Buffer {
   try {
     fs.writeFileSync(ENCRYPTION_KEY_FILE, newKey.toString('base64'), { mode: 0o600, flag: 'wx' });
     return newKey;
-  } catch (e: any) {
-    if (e.code === 'EEXIST') {
+  } catch (e: unknown) {
+    // Audit P2.1 (2026-05-03): catch (e: any) -> catch (e: unknown) + type guard.
+    // EEXIST -> mas process mar letrehozta a kulcsot ugyanabban a tick-ben (race-mentes
+    // O_CREAT|O_EXCL `wx` flag-gel detektalva). Olvassuk vissza a meglevot.
+    if (e !== null && typeof e === 'object' && 'code' in e
+        && (e as { code?: unknown }).code === 'EEXIST') {
       const stored = fs.readFileSync(ENCRYPTION_KEY_FILE, 'utf8').trim();
       return Buffer.from(stored, 'base64');
     }
