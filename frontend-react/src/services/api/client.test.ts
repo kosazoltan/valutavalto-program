@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { persistToken, clearPersistedToken, loadPersistedToken, hasPersistedToken } from './client'
+import { persistToken, clearPersistedToken, loadPersistedToken, hasPersistedToken, REFRESH_ENDPOINT } from './client'
 
 // Mock useAuthStore to avoid zustand setup complexity in unit tests
 vi.mock('../../stores/authStore', () => ({
@@ -121,5 +121,20 @@ describe('persistToken / clearPersistedToken / loadPersistedToken / hasPersisted
       await loadPersistedToken()
       expect(hasPersistedToken()).toBe(false)
     })
+  })
+})
+
+describe('REFRESH_ENDPOINT (P0.1 audit fix, 2026-05-03)', () => {
+  it('points to /auth/refresh-cookie (NOT /auth/refresh)', () => {
+    // Bizonyitek-alapu teszt: a backend `/auth/refresh` endpoint
+    // `@PreAuthorize("isAuthenticated()")`, ezert lejart access tokennel 401-et ad
+    // es nem alkalmas silent refresh-re. A helyes endpoint a `permitAll` /refresh-cookie,
+    // amely a HttpOnly refreshToken cookie alapjan ad uj access tokent.
+    expect(REFRESH_ENDPOINT).toBe('/auth/refresh-cookie')
+  })
+
+  it('does NOT point to the legacy /auth/refresh endpoint', () => {
+    // Regressziovedelem: ne csusszunk vissza a regi (auth-required) endpointra.
+    expect(REFRESH_ENDPOINT).not.toBe('/auth/refresh')
   })
 })
