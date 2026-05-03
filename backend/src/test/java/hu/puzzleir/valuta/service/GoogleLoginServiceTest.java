@@ -269,4 +269,51 @@ class GoogleLoginServiceTest {
         assertThat(response.getActiveRole()).isEqualTo("foertektar");
         assertThat(response.getPermissions()).containsExactly("VAULT_RECEIVE", "RATE_CREATE");
     }
+
+    @Test
+    @DisplayName("V181: teruleti_vezeto canonical role -> 'kamera' appMode (NEM 'full')")
+    void happyPath_teruletiVezetoRole_setsKameraAppMode() throws Exception {
+        when(googleIdTokenService.verify("ok"))
+                .thenReturn(identity("g-sub-tv", "tv@gmail.com"));
+        Worker w = worker("TV1", "tv@gmail.com", true, "g-sub-tv");
+        when(workerRepository.findGoogleLoginCandidatesByEmail("tv@gmail.com")).thenReturn(List.of(w));
+        when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("teruleti_vezeto"));
+        when(workerRoleService.getPermissionCodesForRole("teruleti_vezeto"))
+                .thenReturn(List.of("CAMERA_VIEW", "CAMERA_DOWNLOAD"));
+        when(jwtTokenProvider.generateToken(any(), any(), any())).thenReturn("jwt-tv");
+        when(jwtTokenProvider.getTokenIdFromToken("jwt-tv")).thenReturn("token-id-tv");
+        when(workerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        LoginResponseDto response = service.loginWithGoogle("ok", new MockHttpServletRequest());
+
+        // V181: teruleti_vezeto a KAMERA_CANONICAL_ROLES-ban van -> "kamera" appMode
+        // EZUTAN NEM "full" — NEM ferhetnek hozza a szerver-admin felulethez.
+        assertThat(response.getValidAppModes())
+                .as("teruleti_vezeto -> 'kamera' appMode V181 ota (NEM 'full')")
+                .containsExactly("kamera");
+        assertThat(response.getValidAppModes()).doesNotContain("full");
+        assertThat(response.getActiveRole()).isEqualTo("teruleti_vezeto");
+    }
+
+    @Test
+    @DisplayName("V181: biztonsagi_vezeto canonical role -> 'kamera' appMode")
+    void happyPath_biztonsagiVezetoRole_setsKameraAppMode() throws Exception {
+        when(googleIdTokenService.verify("ok"))
+                .thenReturn(identity("g-sub-sec", "sec@gmail.com"));
+        Worker w = worker("SEC1", "sec@gmail.com", true, "g-sub-sec");
+        when(workerRepository.findGoogleLoginCandidatesByEmail("sec@gmail.com")).thenReturn(List.of(w));
+        when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("biztonsagi_vezeto"));
+        when(workerRoleService.getPermissionCodesForRole("biztonsagi_vezeto"))
+                .thenReturn(List.of("CAMERA_VIEW", "CAMERA_SETUP"));
+        when(jwtTokenProvider.generateToken(any(), any(), any())).thenReturn("jwt-sec");
+        when(jwtTokenProvider.getTokenIdFromToken("jwt-sec")).thenReturn("token-id-sec");
+        when(workerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        LoginResponseDto response = service.loginWithGoogle("ok", new MockHttpServletRequest());
+
+        assertThat(response.getValidAppModes())
+                .as("biztonsagi_vezeto -> 'kamera' appMode V181 ota (NEM 'full')")
+                .containsExactly("kamera");
+        assertThat(response.getValidAppModes()).doesNotContain("full");
+    }
 }
