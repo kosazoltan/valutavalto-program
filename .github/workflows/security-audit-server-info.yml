@@ -1,0 +1,106 @@
+name: Security Audit - Server Info (manual)
+
+# 2026-05-03 Glasswing CVE audit: a Hetzner production szerver Linux kernel + distro
+# verzio + critical csomag-frissessegek lekerdezese a CVE-2026-31431 (Copy Fail),
+# CVE-2026-4747 (FreeBSD NFS RCE — itt nem alkalmazhato, Linux ev) es egyebek
+# szempontjabol.
+#
+# Kizarolag READ-ONLY queries — semmit nem modositanak a szerveren.
+#
+# Hasznalat: GH Actions UI -> Run workflow -> "AUDIT" beirasa -> futtatas
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "AUDIT" to confirm execution'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Read-only server info dump
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Validate confirmation
+        run: |
+          if [ "${{ inputs.confirm }}" != "AUDIT" ]; then
+            echo "Confirmation string mismatch. Aborting."
+            exit 1
+          fi
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+      - name: Capture server info (READ-ONLY)
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -e
+
+            echo "============================================================"
+            echo "=== 1. Kernel + distro version (CVE-2026-31431 audit) ==="
+            echo "============================================================"
+            uname -a
+            echo ""
+            cat /etc/os-release || true
+            echo ""
+            lsb_release -a 2>/dev/null || true
+            echo ""
+
+            echo "============================================================"
+            echo "=== 2. Available kernel updates ==="
+            echo "============================================================"
+            apt list --installed 2>/dev/null | grep -E "^linux-image|^linux-headers|^linux-generic|^kmod" | head -20 || true
+            echo ""
+            apt list --upgradable 2>/dev/null | grep -E "linux-image|linux-headers|linux-generic|kmod" | head -20 || true
+            echo ""
+
+            echo "============================================================"
+            echo "=== 3. CVE-2026-31431 (Copy Fail) algif_aead module status ==="
+            echo "============================================================"
+            lsmod 2>/dev/null | grep -E "algif|af_alg" || echo "(no algif/af_alg modules currently loaded)"
+            echo ""
+            ls -la /etc/modprobe.d/ 2>/dev/null | head -10 || true
+            echo ""
+            cat /etc/modprobe.d/algif_aead-blacklist.conf 2>/dev/null || echo "(no algif_aead blacklist file present)"
+            echo ""
+
+            echo "============================================================"
+            echo "=== 4. Critical security packages versions ==="
+            echo "============================================================"
+            for pkg in openssl openssh-server libssl3 ca-certificates ffmpeg postgresql-16 nginx; do
+              dpkg -l "$pkg" 2>/dev/null | grep -E "^ii" | awk '{printf "%-30s %s\n", $2, $3}' || echo "$pkg: not installed"
+            done
+            echo ""
+
+            echo "============================================================"
+            echo "=== 5. Last apt-get update + upgrade timestamp ==="
+            echo "============================================================"
+            stat -c '%y' /var/cache/apt/pkgcache.bin 2>/dev/null || true
+            grep -i "upgrade" /var/log/apt/history.log 2>/dev/null | tail -5 || true
+            echo ""
+
+            echo "============================================================"
+            echo "=== 6. Unattended-upgrades status ==="
+            echo "============================================================"
+            systemctl is-active unattended-upgrades.service 2>/dev/null || echo "(unattended-upgrades not active)"
+            cat /etc/apt/apt.conf.d/20auto-upgrades 2>/dev/null || true
+            echo ""
+
+            echo "============================================================"
+            echo "=== 7. Java + Spring Boot runtime ==="
+            echo "============================================================"
+            java -version 2>&1 || true
+            echo ""
+
+            echo "=== AUDIT COMPLETE ==="
+          ENDSSH
