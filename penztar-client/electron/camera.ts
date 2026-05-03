@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { RtspRecorder, type RtspCameraConfig, type RecordingSegment } from './rtsp-recorder';
 import { type EncryptionConfig, encryptFile, decryptFile, computeFileHash, generateNewKey } from './camera-encryption';
+import { assertInsideBase, validateRecordingExtension } from './path-guard';
 
 const CAMERA_DIR = 'C:/valuta/camera';
 
@@ -81,11 +82,14 @@ export function registerCameraHandlers(): void {
     videoBuffer: ArrayBuffer,
     extension: string,
   ): Promise<string> => {
+    // Audit P0.9: extension runtime allowlist (mp4|webm) — NEM csak TS-tipus,
+    // mert az IPC bemenet untrusted; defenzív path-traversal karakterek kizarva.
+    const safeExt = validateRecordingExtension(extension);
     const date = new Date().toISOString().slice(0, 10);
     const safeId = sanitizeId(transactionId);
     const dir = path.join(CAMERA_DIR, date, safeId);
     fs.mkdirSync(dir, { recursive: true });
-    const filename = `recording_${Date.now()}.${extension}`;
+    const filename = `recording_${Date.now()}.${safeExt}`;
     const filepath = path.join(dir, filename);
     fs.writeFileSync(filepath, Buffer.from(videoBuffer));
     return filepath;
@@ -234,8 +238,13 @@ export function registerCameraHandlers(): void {
     filePath: string,
   ): Promise<string | null> => {
     const resolved = path.resolve(filePath);
-    const cameraDirResolved = path.resolve(CAMERA_DIR);
-    if (!resolved.startsWith(cameraDirResolved + path.sep) && resolved !== cameraDirResolved) return null;
+    // Audit P0.9: kozpontos `assertInsideBase` — sibling-prefix tamadas-vedelmet
+    // egysegesiti az osszes IPC handler-ben.
+    try {
+      assertInsideBase(resolved, CAMERA_DIR, 'camera filePath');
+    } catch {
+      return null;
+    }
     if (!fs.existsSync(resolved)) return null;
     return fs.readFileSync(resolved).toString('base64');
   });
@@ -360,13 +369,8 @@ export function registerCameraHandlers(): void {
   ): Promise<{ nonce: string }> => {
     const resolvedPlain = path.resolve(plainPath);
     const resolvedEnc = path.resolve(encryptedPath);
-    const cameraDirResolved = path.resolve(CAMERA_DIR);
-    if (!resolvedPlain.startsWith(cameraDirResolved + path.sep) && resolvedPlain !== cameraDirResolved) {
-      throw new Error('Fájl a kamera könyvtáron kívül esik');
-    }
-    if (!resolvedEnc.startsWith(cameraDirResolved + path.sep) && resolvedEnc !== cameraDirResolved) {
-      throw new Error('Cél fájl a kamera könyvtáron kívül esik');
-    }
+    assertInsideBase(resolvedPlain, CAMERA_DIR, 'camera plainPath');
+    assertInsideBase(resolvedEnc, CAMERA_DIR, 'camera encryptedPath');
     const nonce = await encryptFile(resolvedPlain, resolvedEnc, config);
     return { nonce };
   });
@@ -382,13 +386,8 @@ export function registerCameraHandlers(): void {
   ): Promise<{ success: boolean }> => {
     const resolvedEnc = path.resolve(encryptedPath);
     const resolvedPlain = path.resolve(plainPath);
-    const cameraDirResolved = path.resolve(CAMERA_DIR);
-    if (!resolvedEnc.startsWith(cameraDirResolved + path.sep) && resolvedEnc !== cameraDirResolved) {
-      throw new Error('Fájl a kamera könyvtáron kívül esik');
-    }
-    if (!resolvedPlain.startsWith(cameraDirResolved + path.sep) && resolvedPlain !== cameraDirResolved) {
-      throw new Error('Cél fájl a kamera könyvtáron kívül esik');
-    }
+    assertInsideBase(resolvedEnc, CAMERA_DIR, 'camera encryptedPath');
+    assertInsideBase(resolvedPlain, CAMERA_DIR, 'camera plainPath');
     await decryptFile(resolvedEnc, resolvedPlain, config);
     return { success: true };
   });
@@ -402,10 +401,7 @@ export function registerCameraHandlers(): void {
     expectedHash: string,
   ): Promise<{ valid: boolean; actualHash: string }> => {
     const resolved = path.resolve(filePath);
-    const cameraDirResolved = path.resolve(CAMERA_DIR);
-    if (!resolved.startsWith(cameraDirResolved + path.sep) && resolved !== cameraDirResolved) {
-      throw new Error('Fájl a kamera könyvtáron kívül esik');
-    }
+    assertInsideBase(resolved, CAMERA_DIR, 'camera filePath');
     const actualHash = computeFileHash(resolved);
     return { valid: actualHash === expectedHash, actualHash };
   });
