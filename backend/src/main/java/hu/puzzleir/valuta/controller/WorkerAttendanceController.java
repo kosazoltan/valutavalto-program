@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.worker.WorkerAttendanceDto;
 import hu.puzzleir.valuta.service.WorkerAttendanceService;
+import hu.puzzleir.valuta.util.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -26,13 +27,16 @@ import java.util.UUID;
 public class WorkerAttendanceController {
 
     private final WorkerAttendanceService attendanceService;
+    /** Audit P1.4 SSOT: trusted-proxy-aware kliens IP feloldas. */
+    private final ClientIpResolver clientIpResolver;
 
     /**
      * Bejelentkezes rogzitese (automatikus — login utan hivhato).
      */
     @PostMapping("/login")
     public ResponseEntity<WorkerAttendanceDto> recordLogin(HttpServletRequest request) {
-        String ip = request.getRemoteAddr();
+        // Audit P1.4: trusted-proxy-aware IP feloldas (ClientIpResolver SSOT).
+        String ip = clientIpResolver.resolveClientIp(request);
         String userAgent = request.getHeader("User-Agent");
         return ResponseEntity.ok(attendanceService.recordLogin(ip, userAgent));
     }

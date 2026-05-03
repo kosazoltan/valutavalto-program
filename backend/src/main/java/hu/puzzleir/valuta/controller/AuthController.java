@@ -19,6 +19,7 @@ import hu.puzzleir.valuta.service.TokenBlacklistService;
 import hu.puzzleir.valuta.service.WorkerRoleService;
 import hu.puzzleir.valuta.service.WorkerService;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.util.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import hu.puzzleir.valuta.service.RefreshTokenService;
@@ -55,6 +56,8 @@ public class AuthController {
     private final WorkerFirstTimeSetupService workerFirstTimeSetupService;
     private final PasswordResetService passwordResetService;
     private final RefreshTokenService refreshTokenService;
+    /** Audit P1.4 SSOT: trusted-proxy-aware kliens IP feloldas. */
+    private final ClientIpResolver clientIpResolver;
     // Audit P0.3 (2026-05-03): a `refreshTokenRepository` + `bcrypt10` direct hivatkozas
     // megszuntetve — a refresh-cookie endpoint mar a `refreshTokenService.findActiveBySelectorAndVerifier`
     // O(1) selector lookup-jat hasznalja.
@@ -75,9 +78,10 @@ public class AuthController {
             throw new ValidationException("Hiányzó request body — companyCode, workerCode és jelszó kötelező");
         }
         
-        String ipAddress = request.getRemoteAddr();
+        // Audit P1.4: trusted-proxy-aware IP feloldas (ClientIpResolver SSOT).
+        String ipAddress = clientIpResolver.resolveClientIp(request);
         String userAgent = request.getHeader("User-Agent");
-        
+
         LoginResponseDto response = workerService.login(dto, ipAddress, userAgent);
 
         // HttpOnly refresh cookie (vezerlokonyv par.12.3)

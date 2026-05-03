@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.errorlog;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import hu.puzzleir.valuta.util.ClientIpResolver;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -35,6 +36,8 @@ public class ErrorLogController {
 
     private final JavaMailSender mailSender;
     private final ObjectMapper objectMapper;
+    /** Audit P1.4 SSOT: trusted-proxy-aware IP feloldas. */
+    private final ClientIpResolver clientIpResolver;
     private final ConcurrentHashMap<String, RateLimitEntry> rateLimits = new ConcurrentHashMap<>();
 
     @Value("${spring.application.name:valuta-backend}")
@@ -49,7 +52,7 @@ public class ErrorLogController {
         @RequestHeader(value = "X-Error-Signature", required = false) String signature,
         HttpServletRequest request
     ) {
-        String clientIp = resolveClientIp(request);
+        String clientIp = clientIpResolver.resolveClientIp(request);
         if (isRateLimited(clientIp)) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", "Rate limit exceeded"));
         }
@@ -86,14 +89,11 @@ public class ErrorLogController {
         return entry.counter.incrementAndGet() > RATE_LIMIT_MAX_REQUESTS;
     }
 
-    private String resolveClientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            int commaIndex = forwarded.indexOf(',');
-            return commaIndex >= 0 ? forwarded.substring(0, commaIndex).trim() : forwarded.trim();
-        }
-        return request.getRemoteAddr();
-    }
+    /**
+     * Audit P1.4: a `resolveClientIp` private metodus eltavolitva, helyette
+     * a kozos {@link ClientIpResolver} util-ot hasznaljuk. Korabban itt naivan
+     * vakon biztunk a kliens X-Forwarded-For header-eben — security gap.
+     */
 
     private void sendEmail(String body) throws Exception {
         MimeMessage message = mailSender.createMimeMessage();
