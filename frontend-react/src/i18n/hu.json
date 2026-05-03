@@ -125,5 +125,23 @@
     "online": "Online",
     "lastSync": "Utolsó szinkron: {{time}}",
     "userIdPrefix": "ID: {{code}}"
+  },
+  "resetPassword": {
+    "missingToken": "Hiányzó vagy érvénytelen reset token. Igényelj új jelszó-visszaállítást a bejelentkező oldalon.",
+    "successTitle": "Jelszó beállítva",
+    "successMessage": "A jelszavadat sikeresen frissítettük. Most már bejelentkezhetsz az új jelszóval.",
+    "successRedirect": "3 másodperc múlva átirányítlak a bejelentkezésre…",
+    "title": "Új jelszó beállítása",
+    "subtitle": "Add meg az új jelszavadat (min 8 karakter).",
+    "newPasswordLabel": "Új jelszó",
+    "confirmPasswordLabel": "Új jelszó megerősítés",
+    "showPassword": "Jelszó megjelenítése",
+    "hidePassword": "Jelszó elrejtése",
+    "mismatchError": "A két jelszó nem egyezik.",
+    "tooShortError": "A jelszó legalább 8 karakter legyen.",
+    "saving": "Mentés…",
+    "submit": "Új jelszó beállítása",
+    "cancel": "Mégse",
+    "unknownError": "Ismeretlen hiba"
   }
 }
