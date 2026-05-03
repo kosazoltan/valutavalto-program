@@ -175,6 +175,9 @@ public class TransactionConversionService {
                     request.getFromAmount(), fromCurrency.getCode(),
                     roundedHufAmount, sellReceiptNumber))
                 .conversionGroupId(conversionGroupId)
+                // Sourcery PR #360 follow-up: explicit financialEffective(true) — kritikus AML/NGM/
+                // cash-balance flag, NEM bizhatunk a builder default-jaban a regression vedelem ervenyere.
+                .financialEffective(true)
                 .build();
         convBuy = transactionRepository.save(convBuy);
         helper.linkCameraEvidence(convBuy);
@@ -203,6 +206,9 @@ public class TransactionConversionService {
                     roundedHufAmount, toAmount, toCurrency.getCode(),
                     buyReceiptNumber))
                 .conversionGroupId(conversionGroupId)
+                // Sourcery PR #360 follow-up: explicit financialEffective(true) — kritikus AML/NGM/
+                // cash-balance flag, NEM bizhatunk a builder default-jaban a regression vedelem ervenyere.
+                .financialEffective(true)
                 .build();
         convSell = transactionRepository.save(convSell);
         helper.linkCameraEvidence(convSell);
