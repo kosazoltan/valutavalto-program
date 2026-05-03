@@ -1,6 +1,7 @@
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
+import i18next from 'eslint-plugin-i18next';
 import globals from 'globals';
 
 export default tseslint.config(
@@ -27,9 +28,24 @@ export default tseslint.config(
         ...globals.browser,
       },
     },
-    plugins: { 'react-hooks': reactHooks },
+    plugins: { 'react-hooks': reactHooks, i18next },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      // i18next no-literal-string: JSX szovegek + JSX attributumok t() fuggvenyen
+      // keresztul lokalizalando ahelyett, hogy hardcoded magyar szoveg lenne.
+      // Bevezetes: 'warn' szint, hogy a CI ne torjon meg a meglevo violations-okre.
+      // Egy kovetkezo sprintben fokozatosan lecsereljuk a szovegeket -> szigoritas 'error'-ra.
+      'i18next/no-literal-string': ['warn', {
+        markupOnly: true,                          // csak JSX szoveget flag-eli, NEM minden string-et
+        ignoreAttribute: [
+          'data-testid', 'data-cy', 'data-test', // teszt selectorok
+          'aria-controls', 'aria-describedby', 'aria-labelledby',
+          'className', 'class', 'id', 'name', 'type', 'role',
+          'href', 'src', 'alt', 'rel', 'target', 'method',
+          'key', 'ref', 'style', 'placeholder',  // placeholder-eket kulon szabalyozzuk
+          'lang', 'xmlns', 'viewBox', 'fill', 'stroke',
+        ],
+      }],
       // Audit-iter3 P1 (eslint-plugin-react-hooks v7 upgrade, 2026-04-27):
       // a v7 7 uj szabalyt vezetett be a `recommended`-be. Ezeket OPT-IN modon
       // kezeljuk - a `recommended` csak v5-tel ekvivalens magot tartja
