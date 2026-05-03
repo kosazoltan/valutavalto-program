@@ -103,9 +103,9 @@ public class GoogleLoginService {
             throw new AuthenticationException("Google fiók nincs engedélyezve ehhez a rendszerhez.");
         }
         if (candidates.size() > 1) {
-            // Konfiguracios hiba: ket worker ugyanazzal a canonical email-lel + google_login_enabled
-            // (cross-company OK, de partial unique index megvedi). Itt csak akkor jonne ide, ha az
-            // index nem aktiv vagy futas-koz race-condition van.
+            // Copilot PR #361 follow-up #3: V178-ban a partial unique index MAR globalisan egyedi
+            // (uq_worker_google_email_lower, NEM company-scoped). Igy 2+ candidate csak akkor
+            // jonne ide, ha race-condition vagy admin manualis DB SQL kerulte meg az index-et.
             log.error("GOOGLE_LOGIN_CONFIG_ERROR multiple_candidates count={} emailHash={}",
                     candidates.size(), Integer.toHexString(canonicalEmail.hashCode()));
             throw new ConflictException(

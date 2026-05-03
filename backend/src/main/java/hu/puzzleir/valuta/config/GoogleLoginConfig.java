@@ -26,8 +26,10 @@ import java.util.List;
  * <p>A kepers verifier signature-validacio a Google JWK kulcsait letolti es lokalisan cache-eli
  * (alapertelmezett TTL 1 ora).</p>
  *
- * <p>Ha `google.client.id` ures vagy hianyzik production profilban, a Google login
- * NEM lesz aktiv: a controller a `googleClientId` blank check-jen 401-et ad.</p>
+ * <p>Production profilban a `google.client.id` KOTELEZO — ha hianyzik, a Spring context boot
+ * fail-fast `IllegalStateException`-nel. Dev/test profilban ures audience-szel epitjuk a
+ * verifier-t (context boot ne torjon meg), de a `GoogleIdTokenService.verify` 401-et fog
+ * adni mert nincs a token-en megfelelo aud claim.</p>
  */
 @Configuration
 @Slf4j
@@ -63,7 +65,7 @@ public class GoogleLoginConfig {
             }
             log.warn("Google login config: google.client.id NEM beallitva (dev/test) — Google login NEM aktiv.");
             // Dev/test profile: ures audience-szel epitjuk a verifier-t, hogy a context boot-oljon.
-            // A controller blank-check megelozi a tenyleges hivasokat.
+            // A `GoogleIdTokenService.verify` audience-mismatch-csel 401-et ad ha valaki megpro-balja.
             return new GoogleIdTokenVerifier.Builder(googleHttpTransport, GsonFactory.getDefaultInstance())
                     .build();
         }
