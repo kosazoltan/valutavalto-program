@@ -39,6 +39,13 @@ public class TransactionController {
     private final TransactionMapper transactionMapper;
     private final IdempotencyGuard idempotencyGuard;
 
+    // Sourcery PR #358 follow-up: endpoint string konstansok — DRY, no string drift
+    // ha az URL-t valaha modositjuk.
+    private static final String ENDPOINT_BUY = "POST /api/v1/transactions/buy";
+    private static final String ENDPOINT_SELL = "POST /api/v1/transactions/sell";
+    private static final String ENDPOINT_REVERSAL = "POST /api/v1/transactions/reversal";
+    private static final String ENDPOINT_CONVERSION = "POST /api/v1/transactions/conversion";
+
     /**
      * Vétel (ügyfél valutát ad el, cég HUF-ot fizet)
      *
@@ -51,7 +58,7 @@ public class TransactionController {
             HttpServletRequest request) {
         String idempotencyKey = resolveIdempotencyKey(request);
         IdempotencyGuard.Acquired<TransactionDto> acquired =
-                idempotencyGuard.tryAcquire(idempotencyKey, "POST /api/v1/transactions/buy", dto, TransactionDto.class);
+                idempotencyGuard.tryAcquire(idempotencyKey, ENDPOINT_BUY, dto, TransactionDto.class);
         if (acquired.cachedResult() != null) {
             return ResponseEntity.status(HttpStatus.CREATED).body(acquired.cachedResult());
         }
@@ -80,7 +87,7 @@ public class TransactionController {
             HttpServletRequest request) {
         String idempotencyKey = resolveIdempotencyKey(request);
         IdempotencyGuard.Acquired<TransactionDto> acquired =
-                idempotencyGuard.tryAcquire(idempotencyKey, "POST /api/v1/transactions/sell", dto, TransactionDto.class);
+                idempotencyGuard.tryAcquire(idempotencyKey, ENDPOINT_SELL, dto, TransactionDto.class);
         if (acquired.cachedResult() != null) {
             return ResponseEntity.status(HttpStatus.CREATED).body(acquired.cachedResult());
         }
@@ -109,7 +116,7 @@ public class TransactionController {
             HttpServletRequest request) {
         String idempotencyKey = resolveIdempotencyKey(request);
         IdempotencyGuard.Acquired<TransactionDto> acquired =
-                idempotencyGuard.tryAcquire(idempotencyKey, "POST /api/v1/transactions/reversal", dto, TransactionDto.class);
+                idempotencyGuard.tryAcquire(idempotencyKey, ENDPOINT_REVERSAL, dto, TransactionDto.class);
         if (acquired.cachedResult() != null) {
             return ResponseEntity.status(HttpStatus.CREATED).body(acquired.cachedResult());
         }
@@ -138,7 +145,7 @@ public class TransactionController {
             HttpServletRequest request) {
         String idempotencyKey = resolveIdempotencyKey(request);
         IdempotencyGuard.Acquired<TransactionDto> acquired =
-                idempotencyGuard.tryAcquire(idempotencyKey, "POST /api/v1/transactions/conversion", dto, TransactionDto.class);
+                idempotencyGuard.tryAcquire(idempotencyKey, ENDPOINT_CONVERSION, dto, TransactionDto.class);
         if (acquired.cachedResult() != null) {
             return ResponseEntity.status(HttpStatus.CREATED).body(acquired.cachedResult());
         }
