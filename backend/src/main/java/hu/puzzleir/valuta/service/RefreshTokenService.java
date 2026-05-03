@@ -12,8 +12,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -29,22 +31,38 @@ public class RefreshTokenService {
 
     private static final int BCRYPT_ROUNDS = 10;
 
+    /** Audit P0.3 (2026-05-03): selector hossza byte-okban (URL-safe Base64 -> 24 char). */
+    private static final int SELECTOR_BYTES = 18;
+    /** Verifier hossza byte-okban (URL-safe Base64 -> ~43 char). */
+    private static final int VERIFIER_BYTES = 32;
+    private static final SecureRandom RNG = new SecureRandom();
+    private static final String COOKIE_SEPARATOR = ".";
+
     @Value("${refresh-token.expiration-days:7}")
     private int expirationDays;
 
     private final RefreshTokenRepository repository;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder(BCRYPT_ROUNDS);
 
-    /** Uj refresh token kibocsatas. A rawUuid csak a HttpOnly cookie-ba kerul. */
+    /**
+     * Uj refresh token kibocsatas (Audit P0.3 selector pattern).
+     *
+     * <p>A `IssuedToken.rawCookie()` formatuma `selector.verifier`, BCrypt CSAK
+     * a verifier-en (NEM a teljes string-en). DB-ben: `selector` indexed UNIQUE +
+     * `token_hash` BCrypt(verifier).</p>
+     */
     @Transactional
     public IssuedToken issue(Worker worker, HttpServletRequest request) {
-        String rawUuid = UUID.randomUUID().toString();
-        String hash = passwordEncoder.encode(rawUuid);
+        String selector = randomUrlSafe(SELECTOR_BYTES);
+        String verifier = randomUrlSafe(VERIFIER_BYTES);
+        String rawCookie = selector + COOKIE_SEPARATOR + verifier;
+        String verifierHash = passwordEncoder.encode(verifier);
         Instant now = Instant.now();
         Instant expires = now.plus(Duration.ofDays(expirationDays));
 
         RefreshToken rt = RefreshToken.builder()
-            .tokenHash(hash)
+            .selector(selector)
+            .tokenHash(verifierHash)
             .workerId(worker.getId())
             .companyId(worker.getCompany().getId())
             .issuedAt(now)
@@ -53,16 +71,51 @@ public class RefreshTokenService {
             .ipAddress(truncate(clientIp(request), 45))
             .build();
         repository.save(rt);
-        log.debug("Refresh token issued worker={} expires={}", worker.getId(), expires);
-        return new IssuedToken(rawUuid, hash, expires);
+        log.debug("Refresh token issued worker={} selector={} expires={}",
+                worker.getId(), maskSelector(selector), expires);
+        return new IssuedToken(rawCookie, verifierHash, expires);
     }
 
-    /** rawUuid alapjan keres az adott worker aktiv refresh tokenei kozott. */
+    /**
+     * Audit P0.3 (2026-05-03): O(1) lookup selector alapjan, EGYETLEN BCrypt verify
+     * a verifier-en. Ezzel a `findAll().stream().filter(BCrypt.matches)` O(N) hibat valtja le.
+     *
+     * @param rawCookie cookie-bol kapott `selector.verifier` string
+     * @return aktiv (nem revoked, nem expired) token, ha a verifier matchel; egyebkent empty
+     */
     @Transactional(readOnly = true)
-    public Optional<RefreshToken> findActiveForWorker(Long workerId, String rawUuid) {
+    public Optional<RefreshToken> findActiveBySelectorAndVerifier(String rawCookie) {
+        if (rawCookie == null) return Optional.empty();
+        int dot = rawCookie.indexOf(COOKIE_SEPARATOR);
+        if (dot <= 0 || dot == rawCookie.length() - 1) return Optional.empty();
+        String selector = rawCookie.substring(0, dot);
+        String verifier = rawCookie.substring(dot + 1);
+
+        return repository.findBySelector(selector)
+            .filter(RefreshToken::isActive)
+            .filter(rt -> passwordEncoder.matches(verifier, rt.getTokenHash()));
+    }
+
+    /**
+     * Legacy lookup workerId + raw cookie alapjan. Backward compat a logout-flow-hoz,
+     * ahol a JWT-bol mar tudjuk a workerId-t.
+     *
+     * <p>Audit P0.3 (2026-05-03): a refresh-cookie endpoint helyett `findActiveBySelectorAndVerifier`
+     * hasznalando, mert ott a workerId nem ismert es a `findAll()` osszes BCrypt-elese
+     * O(N) DoS-kockazat volt.</p>
+     */
+    @Transactional(readOnly = true)
+    public Optional<RefreshToken> findActiveForWorker(Long workerId, String rawCookie) {
+        // Uj cookie format `selector.verifier` -> workerId scope-ban is selector lookup
+        if (rawCookie != null && rawCookie.contains(COOKIE_SEPARATOR)) {
+            return findActiveBySelectorAndVerifier(rawCookie)
+                .filter(rt -> workerId.equals(rt.getWorkerId()));
+        }
+        // Legacy fallback: regi (V176 elotti) tokenek — workerId scope-on belul N×BCrypt.
+        // Ez a workerId-vel scope-olt halmaz tipikusan kicsi (1-3 token), nem skala-issue.
         return repository.findByWorkerIdAndRevokedAtIsNull(workerId).stream()
             .filter(RefreshToken::isActive)
-            .filter(rt -> passwordEncoder.matches(rawUuid, rt.getTokenHash()))
+            .filter(rt -> passwordEncoder.matches(rawCookie, rt.getTokenHash()))
             .findFirst();
     }
 
@@ -108,5 +161,25 @@ public class RefreshTokenService {
         return s.length() > max ? s.substring(0, max) : s;
     }
 
+    /** Audit P0.3: URL-safe Base64 random a SecureRandom-bol (no padding). */
+    private static String randomUrlSafe(int byteLen) {
+        byte[] buf = new byte[byteLen];
+        RNG.nextBytes(buf);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(buf);
+    }
+
+    /** Defenziv: log-ban ne menjen ki teljes selector. */
+    private static String maskSelector(String selector) {
+        if (selector == null || selector.length() < 8) return "***";
+        return selector.substring(0, 4) + "..." + selector.substring(selector.length() - 4);
+    }
+
+    /**
+     * Refresh token kibocsatasanak eredmenye.
+     *
+     * @param rawUuid a HttpOnly cookie-ba kerulo string (Audit P0.3 ota: `selector.verifier`,
+     *                korabban: nyers UUID — a record nev nem valtozott a backward compat-hoz).
+     * @param hash    a verifier BCrypt-hashe (DB-ben tarolt `token_hash`).
+     */
     public record IssuedToken(String rawUuid, String hash, Instant expiresAt) {}
 }

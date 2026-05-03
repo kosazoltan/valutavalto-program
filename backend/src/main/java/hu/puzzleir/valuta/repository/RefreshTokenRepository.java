@@ -16,6 +16,9 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
 
     Optional<RefreshToken> findByTokenHash(String tokenHash);
 
+    /** Audit P0.3 (2026-05-03): selector lookup — O(1) DB index, NEM N×BCrypt. */
+    Optional<RefreshToken> findBySelector(String selector);
+
     List<RefreshToken> findByWorkerIdAndRevokedAtIsNull(Long workerId);
 
     @Modifying

@@ -55,8 +55,9 @@ public class AuthController {
     private final WorkerFirstTimeSetupService workerFirstTimeSetupService;
     private final PasswordResetService passwordResetService;
     private final RefreshTokenService refreshTokenService;
-    private final hu.puzzleir.valuta.repository.RefreshTokenRepository refreshTokenRepository;
-    private final org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder bcrypt10 = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder(10);
+    // Audit P0.3 (2026-05-03): a `refreshTokenRepository` + `bcrypt10` direct hivatkozas
+    // megszuntetve — a refresh-cookie endpoint mar a `refreshTokenService.findActiveBySelectorAndVerifier`
+    // O(1) selector lookup-jat hasznalja.
     
     /**
      * Login endpoint
@@ -163,12 +164,11 @@ public class AuthController {
         String rawRefresh = extractRefreshCookie(request);
         if (rawRefresh == null) return ResponseEntity.status(401).build();
 
-        // Aktiv refresh tokenek kozul BCrypt.matches() alapjan valasztjuk a megfelelot.
-        // O(aktiv-tokenek), gyakorlatban < 100, BCrypt-hash bruteforceolhatatlan.
-        java.util.Optional<hu.puzzleir.valuta.entity.RefreshToken> matched = refreshTokenRepository.findAll().stream()
-            .filter(rt -> rt.getRevokedAt() == null && rt.getExpiresAt().isAfter(java.time.Instant.now()))
-            .filter(rt -> bcrypt10.matches(rawRefresh, rt.getTokenHash()))
-            .findFirst();
+        // Audit P0.3 (2026-05-03): O(1) selector lookup + EGYETLEN BCrypt verify.
+        // Korabban `findAll().stream().filter(BCrypt.matches)` minden refresh-kor
+        // futtatott BCrypt-et MINDEN aktiv tokenre — DoS-kockazat (~150ms/token).
+        java.util.Optional<hu.puzzleir.valuta.entity.RefreshToken> matched =
+            refreshTokenService.findActiveBySelectorAndVerifier(rawRefresh);
         if (matched.isEmpty()) return ResponseEntity.status(401).build();
 
         hu.puzzleir.valuta.entity.RefreshToken oldRefresh = matched.get();
