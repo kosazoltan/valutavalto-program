@@ -22,7 +22,9 @@ const WEB_AUTH_TOKEN_KEY = 'auth_token'
 export const REFRESH_ENDPOINT = '/auth/refresh-cookie'
 
 // Endpointok, amelyekre 401 utan TILOS silent refresh-t triggerelni — kulonben vegtelen loop.
-const REFRESH_SKIP_PATHS = ['/auth/login', '/auth/refresh', '/auth/refresh-cookie']
+// Sourcery PR #351 follow-up: REFRESH_ENDPOINT konstans reuse, hogy a skip-list autoSync-be
+// keruljon a tenyleges endpoint atallitasanal (DRY).
+const REFRESH_SKIP_PATHS = ['/auth/login', '/auth/refresh', REFRESH_ENDPOINT]
 
 // API base URL meghatározása — priorizálás:
 // 1. VITE_API_URL env var (build-time)
