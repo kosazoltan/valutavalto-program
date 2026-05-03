@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.UUID;
 
 /**
  * Tranzakció (Bizonylat) entity.
@@ -252,6 +253,30 @@ public class Transaction {
      */
     @Column(name = "linked_receipt_number", length = 20)
     private String linkedReceiptNumber;
+
+    // ============ KONVERZIO METADATA (Audit P0.8, V177, 2026-05-03) ============
+
+    /**
+     * Konverzio-grouping: a parent CONVERSION + child convBuy + child convSell sorok
+     * ugyanazon `conversion_group_id`-vel rendelkeznek, igy egyszeru `JOIN` vagy
+     * `WHERE conversion_group_id = ?` lekerdezesekkel a teljes konverzios csoport
+     * lekerheto. NULL = NEM konverzios sor.
+     */
+    @Column(name = "conversion_group_id")
+    private UUID conversionGroupId;
+
+    /**
+     * Penzugyi-effective flag: a riportok / AML / NGM / cash-balance reconciliation
+     * default `WHERE financial_effective = TRUE`-ra szur.
+     *
+     * <p>A parent CONVERSION soron `false` — csak metadata/grouping/receipt-summary,
+     * NEM duplikalja a tenyleges penzmozgast a child sorokkal.</p>
+     *
+     * <p>BUY / SELL / REVERSAL / WESTERN_UNION_* / MONEYGRAM_* / convBuy / convSell soron `true`.</p>
+     */
+    @Builder.Default
+    @Column(name = "financial_effective", nullable = false)
+    private Boolean financialEffective = true;
 
     // ============ POS TERMINÁL / BANKKÁRTYA ============
 

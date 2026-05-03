@@ -110,6 +110,13 @@ public class TransactionConversionService {
 
         String conversionReceiptNumber = receiptSequenceService.generateReceiptNumber(branchId, TransactionType.CONVERSION);
 
+        // Audit P0.8 (V177, 2026-05-03): a parent CONVERSION sor `financial_effective = false` —
+        // csak metadata + receipt-summary, NEM duplikalja a tenyleges penzmozgast a child convBuy
+        // + convSell sorokkal. Az osszes szum-jellegu riport (AML, NGM, cash-balance, daily turnover)
+        // alapertelmezetten szur `financial_effective = true`-ra.
+        // A `conversion_group_id` hozzakot a parent + ket child sort -> teljes konverzio lekerdezheto.
+        UUID conversionGroupId = UUID.randomUUID();
+
         Transaction transaction = Transaction.builder()
                 .company(company)
                 .branch(branch)
@@ -137,12 +144,15 @@ public class TransactionConversionService {
                 .notes(String.format("Konverzio: %s %s -> %s %s",
                     request.getFromAmount(), fromCurrency.getCode(),
                     toAmount, toCurrency.getCode()))
+                .conversionGroupId(conversionGroupId)
+                .financialEffective(false)
                 .build();
 
         Transaction saved = transactionRepository.save(transaction);
         helper.linkCameraEvidence(saved);
 
-        // Konverzios vetel bizonylat
+        // Konverzios vetel bizonylat — financial_effective = TRUE (default), conversionGroupId =
+        // parent.conversion_group_id (a sum riportokban a parent NEM, a convBuy IGEN szamol).
         Transaction convBuy = Transaction.builder()
                 .company(company)
                 .branch(branch)
@@ -164,11 +174,13 @@ public class TransactionConversionService {
                 .notes(String.format("Konverzios vetel: %s %s -> %s HUF (par: %s)",
                     request.getFromAmount(), fromCurrency.getCode(),
                     roundedHufAmount, sellReceiptNumber))
+                .conversionGroupId(conversionGroupId)
                 .build();
         convBuy = transactionRepository.save(convBuy);
         helper.linkCameraEvidence(convBuy);
 
-        // Konverzios eladas bizonylat
+        // Konverzios eladas bizonylat — financial_effective = TRUE (default), conversionGroupId
+        // azonos.
         Transaction convSell = Transaction.builder()
                 .company(company)
                 .branch(branch)
@@ -190,6 +202,7 @@ public class TransactionConversionService {
                 .notes(String.format("Konverzios eladas: %s HUF -> %s %s (par: %s)",
                     roundedHufAmount, toAmount, toCurrency.getCode(),
                     buyReceiptNumber))
+                .conversionGroupId(conversionGroupId)
                 .build();
         convSell = transactionRepository.save(convSell);
         helper.linkCameraEvidence(convSell);

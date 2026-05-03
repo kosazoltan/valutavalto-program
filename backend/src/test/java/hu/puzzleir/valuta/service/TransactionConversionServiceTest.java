@@ -292,4 +292,84 @@ class TransactionConversionServiceTest {
                     eq("USD"));
         }
     }
+
+    @Test
+    @DisplayName("Audit P0.8 — parent CONVERSION financial_effective=false, child sorok=true, kozos conversion_group_id")
+    void executeConversion_setsFinancialEffectiveAndConversionGroupId() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            su.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
+
+            Company company = mock(Company.class);
+            Branch branch = mock(Branch.class);
+            Worker worker = mock(Worker.class);
+            when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+            when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+
+            Currency eur = mock(Currency.class);
+            when(eur.getCode()).thenReturn("EUR");
+            when(eur.getId()).thenReturn(EUR_ID);
+            Currency usd = mock(Currency.class);
+            when(usd.getCode()).thenReturn("USD");
+            when(usd.getId()).thenReturn(USD_ID);
+            when(currencyRepository.findById(EUR_ID)).thenReturn(Optional.of(eur));
+            when(currencyRepository.findById(USD_ID)).thenReturn(Optional.of(usd));
+
+            ExchangeRate eurRate = mock(ExchangeRate.class);
+            when(eurRate.getBaseBuyRate()).thenReturn(new BigDecimal("390.50"));
+            ExchangeRate usdRate = mock(ExchangeRate.class);
+            when(usdRate.getBaseSellRate()).thenReturn(new BigDecimal("360.20"));
+            when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
+            when(exchangeRateService.getCurrentRate(USD_ID)).thenReturn(usdRate);
+
+            when(receiptSequenceService.generateReceiptNumber(eq(BRANCH_ID), any()))
+                    .thenReturn("R301", "R302", "R303");
+            when(handlingFeeCalculator.calculate(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+            when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            ConversionRequest req = new ConversionRequest();
+            req.setFromCurrencyId(EUR_ID);
+            req.setToCurrencyId(USD_ID);
+            req.setFromAmount(new BigDecimal("100"));
+
+            conversionService.executeConversion(req);
+
+            org.mockito.ArgumentCaptor<Transaction> captor =
+                    org.mockito.ArgumentCaptor.forClass(Transaction.class);
+            verify(transactionRepository, times(3)).save(captor.capture());
+            java.util.List<Transaction> saved = captor.getAllValues();
+
+            // Kotelesseg: parent CONVERSION + convBuy + convSell — mindharman ugyanazon
+            // conversion_group_id-vel.
+            UUID groupId = saved.get(0).getConversionGroupId();
+            assertThat(groupId).as("parent CONVERSION conversion_group_id NEM null").isNotNull();
+            assertThat(saved).allSatisfy(tx ->
+                    assertThat(tx.getConversionGroupId())
+                        .as("mind a 3 sor azonos conversion_group_id-vel")
+                        .isEqualTo(groupId));
+
+            // Parent CONVERSION sora financial_effective = false (NEM duplikalja a child sorokat
+            // a sum riportokban).
+            Transaction parentConversion = saved.stream()
+                    .filter(t -> t.getTransactionType() == TransactionType.CONVERSION)
+                    .findFirst().orElseThrow();
+            assertThat(parentConversion.getFinancialEffective())
+                    .as("parent CONVERSION sora financial_effective=false")
+                    .isFalse();
+
+            // Child convBuy + convSell financial_effective = true.
+            Transaction convBuy = saved.stream()
+                    .filter(t -> t.getTransactionType() == TransactionType.BUY)
+                    .findFirst().orElseThrow();
+            Transaction convSell = saved.stream()
+                    .filter(t -> t.getTransactionType() == TransactionType.SELL)
+                    .findFirst().orElseThrow();
+            assertThat(convBuy.getFinancialEffective())
+                    .as("child convBuy financial_effective=true (default)").isTrue();
+            assertThat(convSell.getFinancialEffective())
+                    .as("child convSell financial_effective=true (default)").isTrue();
+        }
+    }
 }

@@ -350,12 +350,16 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     /**
      * Ugyfel eves gongyolesi osszeg (AML).
      * Legacy: BIGCTRL.DLL — eves kumulativ osszeg
+     *
+     * <p>Audit P0.8 (V177, 2026-05-03): `financial_effective = TRUE` szuro hozzaadva,
+     * hogy a parent CONVERSION sor NE duplazza a child convBuy + convSell osszeget.</p>
      */
     @Query("SELECT COALESCE(SUM(t.hufAmount), 0) FROM Transaction t " +
            "WHERE t.company.id = :companyId " +
            "AND t.customerId = :customerId " +
            "AND t.transactionDate BETWEEN :startDate AND :endDate " +
-           "AND t.status = 'COMPLETED'")
+           "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true")
     BigDecimal sumCustomerAnnualTotal(
         @Param("companyId") UUID companyId,
         @Param("customerId") String customerId,
@@ -365,12 +369,16 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     /**
      * Ugyfel napi osszeg (AML gyanusagi ellenorzes).
+     *
+     * <p>Audit P0.8 (V177, 2026-05-03): `financial_effective = TRUE` szuro a CONVERSION
+     * dupla-szamolas megelozeseert.</p>
      */
     @Query("SELECT COALESCE(SUM(t.hufAmount), 0) FROM Transaction t " +
            "WHERE t.company.id = :companyId " +
            "AND t.customerId = :customerId " +
            "AND t.transactionDate = :date " +
-           "AND t.status = 'COMPLETED'")
+           "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true")
     BigDecimal sumCustomerDailyTotal(
         @Param("companyId") UUID companyId,
         @Param("customerId") String customerId,
@@ -387,7 +395,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "WHERE t.company.id = :companyId " +
            "AND t.customerId = :customerId " +
            "AND t.transactionDate >= :sinceDate " +
-           "AND t.status = 'COMPLETED'")
+           "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true")
     BigDecimal sumCustomerWeeklyTotal(
         @Param("companyId") UUID companyId,
         @Param("customerId") String customerId,
@@ -408,6 +417,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "AND t.customerId <> '' " +
            "AND t.transactionDate >= :sinceDate " +
            "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true " +
            "GROUP BY t.customerId " +
            "HAVING COALESCE(SUM(t.hufAmount), 0) >= :thresholdHuf " +
            "ORDER BY total DESC")
@@ -425,7 +435,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "WHERE t.company.id = :companyId " +
            "AND t.customerId = :customerId " +
            "AND t.transactionDate BETWEEN :yearStart AND :yearEnd " +
-           "AND t.status = 'COMPLETED'")
+           "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true")
     BigDecimal findCustomerYearlyMax(
         @Param("companyId") UUID companyId,
         @Param("customerId") String customerId,
@@ -441,7 +452,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "WHERE t.company.id = :companyId " +
            "AND t.customerId = :customerId " +
            "AND t.transactionDate BETWEEN :quarterStart AND :quarterEnd " +
-           "AND t.status = 'COMPLETED'")
+           "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true")
     long countCustomerQuarterlyTransactions(
         @Param("companyId") UUID companyId,
         @Param("customerId") String customerId,
@@ -457,7 +469,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "WHERE t.company.id = :companyId " +
            "AND t.customerId = :customerId " +
            "AND t.transactionDate BETWEEN :quarterStart AND :quarterEnd " +
-           "AND t.status = 'COMPLETED'")
+           "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true")
     BigDecimal sumCustomerQuarterlyTotal(
         @Param("companyId") UUID companyId,
         @Param("customerId") String customerId,
