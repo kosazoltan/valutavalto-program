@@ -68,7 +68,15 @@ export default function LoginPage() {
   const login = useAuthStore((state) => state.login)
   const selectRole = useAuthStore((state) => state.selectRole)
   const navigate = useNavigate()
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+  // V178/V179 Google OAuth audit (2026-05-03):
+  // - Google login csak akkor jelenik meg, ha VITE_GOOGLE_CLIENT_ID nem-ures es nem "none".
+  // - Electron offline modban (no `electronAPI` -> web ok; van electronAPI + offlinexp/no-server -> hide)
+  //   itt minimal-invasive: csak a client ID-t ellenorizzuk; az online-only kovetelmenyt a Google
+  //   library maga jelzi onError-rel ha offline.
+  const rawGoogleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+  const googleClientId = rawGoogleClientId && rawGoogleClientId !== 'none' && rawGoogleClientId.trim().length > 0
+    ? rawGoogleClientId.trim()
+    : null
 
   /**
    * v2.1.4: Penztarosok lekerese a penztar regioja alapjan (no cache, mindig friss).

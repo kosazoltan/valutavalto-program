@@ -88,6 +88,29 @@ public interface WorkerRepository extends JpaRepository<Worker, Long> {
      * Worker keresés email alapján
      */
     Optional<Worker> findByEmail(String email);
+
+    // ============ GOOGLE OAUTH WHITELIST (V178, 2026-05-03) ============
+
+    /**
+     * Google `sub` claim alapjan keres workert. A `google_subject` partial unique
+     * index garantalja az egyediseget — egy Google fiok max EGY worker-hez kotheto.
+     */
+    Optional<Worker> findByGoogleSubject(String googleSubject);
+
+    /**
+     * Google login candidate-ek lekerese case-insensitive email + whitelist flag-szuressel.
+     * Tobb worker is lehet azonos email-lel kulonbozo company-ban (multi-tenant); a hivo
+     * ellenorzi a konfiguracios hibat.
+     *
+     * <p>A `WHERE google_login_enabled = true` szuro a partial index-et (`idx_worker_google_email_lower`)
+     * hasznalja, igy O(log n) lookup.</p>
+     */
+    @Query("""
+        SELECT w FROM Worker w
+        WHERE w.googleLoginEnabled = true
+          AND LOWER(w.email) = LOWER(:email)
+    """)
+    List<Worker> findGoogleLoginCandidatesByEmail(@Param("email") String email);
     
     /**
      * Supervisor és felsőbb jogosultságú dolgozók
