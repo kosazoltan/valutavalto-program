@@ -47,18 +47,28 @@ BEGIN
           AND code IN ('G_MADAR_ZOLTAN', 'G_GALLUSZ_ILDIKO')
       );
 
-    -- Hozzaadjuk a `teruleti_vezeto` assignmentet (ha meg nincs)
+    -- Copilot P2 PR #363: Hozzaadjuk a `teruleti_vezeto` assignmentet,
+    -- vagy ha mar letezik (admin korabban felvette), promotaljuk primary-ve.
+    -- Igy garantalt hogy az irodai_dolgozo torles utan NEM marad primary nelkuli allapot.
     INSERT INTO worker_role_assignment (worker_id, role_def_id, is_primary)
     SELECT w.id, role_teruleti_id, true FROM worker w
     WHERE w.company_id = ebc_company_id
       AND w.code IN ('G_MADAR_ZOLTAN', 'G_GALLUSZ_ILDIKO')
-    ON CONFLICT DO NOTHING;
+    ON CONFLICT (worker_id, role_def_id) DO UPDATE SET is_primary = true;
 
     RAISE NOTICE 'V181: Madar + Gallusz teruleti_vezeto role-ra atrendezve.';
 
     -- =================================================================
-    -- 2. PECS RAKOCZI delete (tevesen vettuk fel)
+    -- 2. PECS RAKOCZI deactivate (tevesen vettuk fel)
     -- =================================================================
+    --
+    -- Codex P1 PR #363 follow-up: a HARD DELETE bukna ha a workerhez downstream FK
+    -- referenciak vannak (transaction.created_by_worker_id, worker_session.worker_id, stb.
+    -- — sok tabla `ON DELETE RESTRICT` viselkedessel hivatkozik a worker(id)-ra).
+    -- Megoldas: soft delete — `is_active = false` + `google_login_enabled = false`.
+    -- A worker NEM jelenik meg login candidate-kent (V178 partial unique index
+    -- WHERE google_login_enabled = TRUE), de a mar letrejott downstream rekordok
+    -- intaktak maradnak. A role assignmentet tovabbra is toroljuk (idempotens).
 
     SELECT id INTO pecs_rakoczi_worker_id FROM worker
     WHERE company_id = ebc_company_id AND code = 'G_PECS_RAKOCZI'
@@ -66,10 +76,13 @@ BEGIN
 
     IF pecs_rakoczi_worker_id IS NOT NULL THEN
         DELETE FROM worker_role_assignment WHERE worker_id = pecs_rakoczi_worker_id;
-        DELETE FROM worker WHERE id = pecs_rakoczi_worker_id;
-        RAISE NOTICE 'V181: G_PECS_RAKOCZI worker + role assignmentek torolve.';
+        UPDATE worker
+           SET is_active = false,
+               google_login_enabled = false
+         WHERE id = pecs_rakoczi_worker_id;
+        RAISE NOTICE 'V181: G_PECS_RAKOCZI worker deactivated (is_active=false, google_login_enabled=false) + role assignmentek torolve.';
     ELSE
-        RAISE NOTICE 'V181: G_PECS_RAKOCZI nem talalhato (mar torolve, vagy V179 nem futott meg).';
+        RAISE NOTICE 'V181: G_PECS_RAKOCZI nem talalhato (mar torolve/deactivated, vagy V179 nem futott meg).';
     END IF;
 END
 $$;
