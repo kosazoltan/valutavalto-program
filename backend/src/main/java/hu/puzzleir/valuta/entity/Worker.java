@@ -124,12 +124,39 @@ public class Worker {
      */
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
-    
+
     /**
      * Jelszó utolsó módosítás időpontja
      */
     @Column(name = "password_changed_at")
     private LocalDateTime passwordChangedAt;
+
+    // ============ GOOGLE OAUTH WHITELIST (V178, 2026-05-03) ============
+
+    /**
+     * Google OAuth `sub` claim — stabil, eletre szolo Google account azonosito.
+     * Egy worker max EGY Google fiokhoz koheto (uq_worker_google_subject).
+     * NULL = meg nem kotott (elso sikeres login utan toltodik fel, ha
+     * `google.login.bind-sub-on-first-login=true`).
+     */
+    @Column(name = "google_subject", length = 255)
+    private String googleSubject;
+
+    /**
+     * Whitelist flag: csak akkor enged be Google login, ha ez true.
+     * Admin allitja explicit modon.
+     */
+    @Column(name = "google_login_enabled", nullable = false)
+    @Builder.Default
+    private Boolean googleLoginEnabled = false;
+
+    /** Mikor kotottuk a Google fiok sub azonositot ehhez a workerhez. */
+    @Column(name = "google_linked_at")
+    private LocalDateTime googleLinkedAt;
+
+    /** Utolso sikeres Google login idopontja. */
+    @Column(name = "google_last_login_at")
+    private LocalDateTime googleLastLoginAt;
     
     /**
      * Létrehozás időpontja

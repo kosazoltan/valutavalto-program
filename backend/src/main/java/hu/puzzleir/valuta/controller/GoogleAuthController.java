@@ -1,166 +1,93 @@
 package hu.puzzleir.valuta.controller;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.dto.auth.GoogleLoginRequestDto;
 import hu.puzzleir.valuta.dto.auth.LoginResponseDto;
-import hu.puzzleir.valuta.dto.worker.WorkerDto;
 import hu.puzzleir.valuta.entity.Worker;
-import hu.puzzleir.valuta.entity.WorkerSession;
+import hu.puzzleir.valuta.exception.AuthenticationException;
 import hu.puzzleir.valuta.repository.WorkerRepository;
-import hu.puzzleir.valuta.repository.WorkerSessionRepository;
-import hu.puzzleir.valuta.security.JwtTokenProvider;
-import hu.puzzleir.valuta.service.WorkerRoleService;
+import hu.puzzleir.valuta.service.GoogleLoginService;
+import hu.puzzleir.valuta.service.RefreshTokenService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestTemplate;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
+import java.time.Duration;
 
 /**
- * Google OAuth login controller.
+ * Google OAuth dolgozoi belepes controller (refaktor V178/V179, 2026-05-03).
+ *
+ * <p>Vekony controller — a teljes login flow {@link GoogleLoginService}-ben van. A controller
+ * felelossege csak az HTTP kontrakt:
+ * <ul>
+ *   <li>Endpoint kithelyezes</li>
+ *   <li>Request DTO validation</li>
+ *   <li>HttpOnly refresh cookie kibocsatasa (ugyanaz a minta mint AuthController.login)</li>
+ *   <li>LoginResponseDto kimenet</li>
+ * </ul>
+ *
+ * <p>Audit changes:
+ * <ul>
+ *   <li>Korabbi `fetchTokenInfo` (https://oauth2.googleapis.com/tokeninfo) HTTP hivas
+ *       eltavolitva — most {@link com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier}
+ *       vegezi a signature/audience/issuer/expiry validaciot lokalisan, JWK-cache-elt modon.</li>
+ *   <li>HttpOnly refresh cookie kibocsatas a sikeres login utan — ugyanaz a 7-napos
+ *       `refreshToken` cookie, mint a jelszavas login. Igy a frontend silent refresh ugyanugy
+ *       mukodik mindket login flow utan.</li>
+ *   <li>Sub-binding kezelve a {@link GoogleLoginService}-ben (whitelist-only, NEM auto-create).</li>
+ * </ul>
  */
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 @PreAuthorize("permitAll()")
+@Slf4j
 public class GoogleAuthController {
 
+    private final GoogleLoginService googleLoginService;
+    private final RefreshTokenService refreshTokenService;
     private final WorkerRepository workerRepository;
-    private final WorkerSessionRepository sessionRepository;
-    private final JwtTokenProvider jwtTokenProvider;
-    private final WorkerRoleService workerRoleService;
-
-    @Value("${google.client.id:}")
-    private String googleClientId;
 
     @PostMapping("/google-login")
-    public ResponseEntity<?> googleLogin(
-            @Valid @RequestBody GoogleLoginRequestDto request,
-            HttpServletRequest httpRequest) {
+    public ResponseEntity<LoginResponseDto> googleLogin(
+            @Valid @RequestBody GoogleLoginRequestDto requestDto,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
 
-        if (googleClientId == null || googleClientId.isBlank()) {
-            throw new ValidationException("Google Client ID nincs konfigurálva!");
-        }
+        // 1. Login flow — a service dob AuthenticationException-t / ConflictException-t,
+        //    a GlobalExceptionHandler 401/409-re mappolja.
+        LoginResponseDto response = googleLoginService.loginWithGoogle(requestDto.getIdToken(), httpRequest);
 
-        GoogleTokenInfo tokenInfo = fetchTokenInfo(request.getIdToken());
-        if (tokenInfo == null
-                || tokenInfo.getAud() == null
-                || !googleClientId.equals(tokenInfo.getAud())
-                || !Boolean.TRUE.equals(tokenInfo.getEmailVerified())
-                || tokenInfo.getEmail() == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("message", "Érvénytelen Google token!"));
-        }
-
-        Worker worker = workerRepository.findByEmail(tokenInfo.getEmail())
-                .orElse(null);
-        if (worker == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("message", "Google fiók nincs regisztrálva"));
-        }
-        if (!Boolean.TRUE.equals(worker.getActive())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("message", "Ez a pénztáros inaktív!"));
-        }
-
-        // Operatív szerepkör logika (V57)
-        List<String> roleCodes = workerRoleService.getRoleCodesForWorker(worker.getId());
-        String activeRole = null;
-        List<String> permissions = List.of();
-        boolean roleSelectionRequired = false;
-
-        if (roleCodes.size() == 1) {
-            activeRole = roleCodes.get(0);
-            permissions = workerRoleService.getPermissionCodesForRole(activeRole);
-        } else if (roleCodes.size() > 1) {
-            roleSelectionRequired = true;
-        }
-
-        String token = jwtTokenProvider.generateToken(worker, activeRole, permissions);
-        String tokenId = jwtTokenProvider.getTokenIdFromToken(token);
-
-        WorkerSession session = WorkerSession.builder()
-                .company(worker.getCompany())
-                .worker(worker)
-                .branch(worker.getBranch())
-                .loginAt(LocalDateTime.now())
-                .ipAddress(httpRequest.getRemoteAddr())
-                .userAgent(httpRequest.getHeader("User-Agent"))
-                .tokenId(tokenId)
-                .build();
-
-        sessionRepository.save(session);
-        worker.setLastLoginAt(LocalDateTime.now());
-        workerRepository.save(worker);
-
-        long expiresInMs = 86400000L;
-        LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(expiresInMs / 1000);
-
-        return ResponseEntity.ok(LoginResponseDto.builder()
-                .token(token)
-                .worker(WorkerDto.from(worker))
-                .expiresIn(expiresInMs)
-                .expiresAt(expiresAt.toString())
-                .roles(roleCodes)
-                .activeRole(activeRole)
-                .permissions(permissions)
-                .roleSelectionRequired(roleSelectionRequired)
-                .build());
-    }
-
-    private GoogleTokenInfo fetchTokenInfo(String idToken) {
-        RestTemplate restTemplate = new RestTemplate();
-        String url = "https://oauth2.googleapis.com/tokeninfo?id_token=" + idToken;
+        // 2. HttpOnly refresh cookie — ugyanaz a 7-napos `refreshToken` mint AuthController.login.
+        //    Audit P0.2 kovetelmeny: production-ben `Secure` flag aktiv (a `forward-headers-strategy=framework`
+        //    miatt a `request.isSecure()` HTTPS proxy mogul jovo kerelemre true-t ad vissza).
         try {
-            return restTemplate.getForObject(url, GoogleTokenInfo.class);
-        } catch (HttpClientErrorException ex) {
-            return null;
-        }
-    }
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    private static class GoogleTokenInfo {
-        private String aud;
-        private String email;
-        @JsonProperty("email_verified")
-        private Boolean emailVerified;
-
-        public String getAud() {
-            return aud;
-        }
-
-        public void setAud(String aud) {
-            this.aud = aud;
+            Worker worker = workerRepository.findById(response.getWorker().getId())
+                    .orElseThrow(() -> new AuthenticationException("Worker nem talalhato login utan."));
+            RefreshTokenService.IssuedToken issued = refreshTokenService.issue(worker, httpRequest);
+            ResponseCookie cookie = ResponseCookie.from("refreshToken", issued.rawUuid())
+                    .httpOnly(true)
+                    .secure(httpRequest.isSecure())
+                    .sameSite("Strict")
+                    .path("/api/v1/auth")
+                    .maxAge(Duration.ofDays(7))
+                    .build();
+            httpResponse.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        } catch (Exception ex) {
+            // A login mar sikeres — a refresh cookie hibaja NE buktassa el a teljes loginot.
+            // A user JWT access tokent kap, a silent refresh majd 401-en logout-ol.
+            log.warn("HttpOnly refresh cookie kiadas Google login utan bukott: {}", ex.getMessage());
         }
 
-        public String getEmail() {
-            return email;
-        }
-
-        public void setEmail(String email) {
-            this.email = email;
-        }
-
-        public Boolean getEmailVerified() {
-            return emailVerified;
-        }
-
-        public void setEmailVerified(Boolean emailVerified) {
-            this.emailVerified = emailVerified;
-        }
+        return ResponseEntity.ok(response);
     }
 }
