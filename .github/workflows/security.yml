@@ -210,7 +210,7 @@ jobs:
       - run: cd frontend-react && npm ci --legacy-peer-deps
       - run: cd frontend-react && npm run typecheck --if-present
       - run: cd frontend-react && npm run lint --if-present
-      # i18next regression gate (PR #374): a baseline = 2875 warning a `i18next/no-literal-string`
-      # szabaly bevezetesekor. UJ violations (>2875) -> CI fail. Cel: a baseline fokozatosan
-      # csokken, mig egy kovetkezo sprint-ben az osszes szoveg lokalizalva lesz t()-vel.
+      # i18next regression gate (PR #374): a baseline most 2864 warning (PR #381 11 csokkentes
+      # MainLayout teljes lokalizaciojaval). UJ violations (>2864) -> CI fail. Cel: a baseline
+      # fokozatosan csokken, mig egy kovetkezo sprint-ben az osszes szoveg lokalizalva lesz t()-vel.
       - run: cd frontend-react && npm run lint:i18n-gate --if-present

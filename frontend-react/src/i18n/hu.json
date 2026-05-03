@@ -110,5 +110,20 @@
     "regionFallback": "Régió",
     "excelError": "Excel letöltés hiba",
     "loadError": "Betöltési hiba"
+  },
+  "layout": {
+    "appName": "EBC Valutaváltó",
+    "logoutButton": "Kijelentkezés",
+    "dayOpenFailedTitle": "Napnyitás sikertelen",
+    "dayOpenFailedMessage": "Az automatikus napnyitás nem sikerült. Kérjük, ellenőrizze a hibaüzenetet és próbálja újra.",
+    "serverUnreachable": "A szerver nem elérhető. Ellenőrizze a kapcsolatot!",
+    "retryOpen": "Újrapróbálás",
+    "checkingSession": "Munkamenet ellenőrzése...",
+    "branchLabel": "Telephely:",
+    "centralFallback": "Központi",
+    "dayOpenStatus": "Nap nyitva",
+    "online": "Online",
+    "lastSync": "Utolsó szinkron: {{time}}",
+    "userIdPrefix": "ID: {{code}}"
   }
 }
