@@ -427,26 +427,76 @@ public class InventoryService {
     /**
      * Értéktár (VAULT entity_type) készlete soronként valutára bontva.
      *
-     * v2.4.9: az "Értéktári készlet" oldal adatforrása. A jelenlegi `quantity` értéket
-     * `closing` mezőként adjuk vissza; az opening / received / issued mezők placeholder-ként
-     * null-ok, amíg a daily-snapshot tracking implementálva nincs (v2.5.0 follow-up).
+     * <p>v2.4.9: az "Értéktári készlet" oldal adatforrása. A jelenlegi `quantity` értéket
+     * `closing` mezőként adjuk vissza.</p>
+     *
+     * <p>v2.5.x P2 follow-up (2026-05-03): az opening / received / issued mezok mostantol
+     * kiszamoltak a mai `inventory_movement` rekordokbol. Algoritmus:</p>
+     * <ol>
+     *   <li>Lekeri a vault branch-eket (`is_vault=TRUE`).</li>
+     *   <li>Lekeri a mai `RECEIVED` statuszu mozgasokat a celcegen belul.</li>
+     *   <li>Valutankent osszesiti:
+     *     <ul>
+     *       <li>received = sum(amount) ahol toBranch vault-branch (BANK_WITHDRAW vagy BRANCH_TRANSFER vault-be)</li>
+     *       <li>issued   = sum(amount) ahol fromBranch vault-branch (BANK_DEPOSIT vagy BRANCH_TRANSFER vault-bol)</li>
+     *     </ul>
+     *   </li>
+     *   <li>opening = closing - received + issued (derived, nem szukseges kulon snapshot-tabla)</li>
+     *   <li>difference = 0 (a derived opening pontos, nincs eltere)</li>
+     * </ol>
      */
     @Transactional(readOnly = true)
     public List<hu.puzzleir.valuta.dto.inventory.VaultStockRowDto> getVaultStockFlow() {
         UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
+        java.time.LocalDate today = java.time.LocalDate.now();
+
         var stocks = currencyStockRepository.findByCompanyIdAndEntityType(companyId, "VAULT");
+
+        // Vault branch-ek (csak `is_vault = TRUE` aktiv fiokok)
+        java.util.Set<UUID> vaultBranchIds = branchRepository
+                .findByCompanyIdAndIsVaultTrueAndIsActiveTrue(companyId)
+                .stream().map(Branch::getId)
+                .collect(java.util.stream.Collectors.toSet());
+
+        // Mai RECEIVED mozgasok a cegen belul, vault-branch-et erinto reszek
+        var todayMovements = movementRepository
+                .findCompletedByCompanyIdAndDate(companyId, today);
+
+        // Aggregalt received + issued valutankent (currency code -> sum)
+        java.util.Map<String, BigDecimal> receivedByCurrency = new java.util.HashMap<>();
+        java.util.Map<String, BigDecimal> issuedByCurrency = new java.util.HashMap<>();
+        for (var m : todayMovements) {
+            if (m.getCurrency() == null || m.getAmount() == null) continue;
+            String code = m.getCurrency().getCode();
+            UUID fromId = (m.getFromBranch() != null) ? m.getFromBranch().getId() : null;
+            UUID toId = (m.getToBranch() != null) ? m.getToBranch().getId() : null;
+            boolean toVault = toId != null && vaultBranchIds.contains(toId);
+            boolean fromVault = fromId != null && vaultBranchIds.contains(fromId);
+
+            if (toVault) {
+                receivedByCurrency.merge(code, m.getAmount(), BigDecimal::add);
+            }
+            if (fromVault) {
+                issuedByCurrency.merge(code, m.getAmount(), BigDecimal::add);
+            }
+        }
 
         return stocks.stream()
                 .map(cs -> {
                     var currency = currencyRepository.findByCode(cs.getCurrencyCode()).orElse(null);
                     String name = (currency != null) ? currency.getName() : cs.getCurrencyCode();
+                    BigDecimal closing = cs.getQuantity();
+                    BigDecimal received = receivedByCurrency.getOrDefault(cs.getCurrencyCode(), BigDecimal.ZERO);
+                    BigDecimal issued = issuedByCurrency.getOrDefault(cs.getCurrencyCode(), BigDecimal.ZERO);
+                    // opening = closing - received + issued (derived, snapshot-tabla nelkul)
+                    BigDecimal opening = closing.subtract(received).add(issued);
                     return hu.puzzleir.valuta.dto.inventory.VaultStockRowDto.builder()
                             .currencyCode(cs.getCurrencyCode())
                             .currencyName(name)
-                            .opening(null)
-                            .received(null)
-                            .issued(null)
-                            .closing(cs.getQuantity())
+                            .opening(opening)
+                            .received(received)
+                            .issued(issued)
+                            .closing(closing)
                             .difference(java.math.BigDecimal.ZERO)
                             .lastUpdated(cs.getLastUpdated())
                             .build();
