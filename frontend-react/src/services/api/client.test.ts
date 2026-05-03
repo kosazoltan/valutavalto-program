@@ -129,10 +129,41 @@ describe('persistToken / clearPersistedToken / loadPersistedToken / hasPersisted
       expect(result).toBeNull()
     })
 
-    it('hasPersistedToken always returns true in web mode (triggers App restore flow)', () => {
-      // Audit P1.3: web mode optimistic — App.tsx always calls loadPersistedToken,
-      // which decides via the refresh-cookie bootstrap if a session can be restored.
+    it('hasPersistedToken returns FALSE on first visit (no in-memory, no session hint) — Codex P2 #384', () => {
+      // Codex P2 follow-up: a regi viselkedes (mindig true) blokkolta a logged-out
+      // user-eket a 15s refresh-cookie probe splash-en. Most: false, App AZONNAL renderel.
+      expect(hasPersistedToken()).toBe(false)
+    })
+
+    it('hasPersistedToken returns TRUE after persistToken (session hint set)', async () => {
+      await persistToken('after-login-token')
       expect(hasPersistedToken()).toBe(true)
+    })
+
+    it('hasPersistedToken returns TRUE if session hint exists from prior session', () => {
+      // Page reload utan az in-memory empty, de a hint a localStorage-ban marad.
+      window.localStorage.setItem('has_login_session', '1')
+      expect(hasPersistedToken()).toBe(true)
+    })
+
+    it('hasPersistedToken returns FALSE after clearPersistedToken (logout)', async () => {
+      await persistToken('logged-in')
+      expect(hasPersistedToken()).toBe(true)
+      await clearPersistedToken()
+      expect(hasPersistedToken()).toBe(false)
+    })
+
+    it('successful refresh-cookie bootstrap restores session hint', async () => {
+      mockPost.mockResolvedValueOnce({ data: { token: 'restored' } })
+      await loadPersistedToken()
+      expect(window.localStorage.getItem('has_login_session')).toBe('1')
+    })
+
+    it('failed refresh-cookie bootstrap clears session hint', async () => {
+      window.localStorage.setItem('has_login_session', '1')
+      mockPost.mockRejectedValueOnce(new Error('401'))
+      await loadPersistedToken()
+      expect(window.localStorage.getItem('has_login_session')).toBeNull()
     })
   })
 

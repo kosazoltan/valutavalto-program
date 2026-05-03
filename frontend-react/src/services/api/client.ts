@@ -15,6 +15,13 @@ declare module 'axios' {
 
 const WEB_AUTH_TOKEN_KEY = 'auth_token'
 
+// Audit P1.3 follow-up (Codex P2 #384, 2026-05-04): "session hint" flag a localStorage-ban.
+// NEM token (XSS-immunis), csak egy boolean: "valamikor volt loginom -> a HttpOnly
+// refresh cookie valoszinu jelen van -> erdemes a refresh-cookie bootstrap-ot probalni".
+// A `hasPersistedToken` web modban EZT olvassa, hogy az App.tsx restore flow CSAK akkor
+// blokkolodjon a 15s axios timeout splash-en, ha tenyleg volt korabban session.
+const WEB_SESSION_HINT_KEY = 'has_login_session'
+
 // Silent refresh endpoint — HttpOnly refreshToken cookie alapjan.
 // Kotelezo `permitAll`-on legyen a backend-en, mert a hivashoz nincs valid access token.
 // (A korabbi `/auth/refresh` az `@PreAuthorize("isAuthenticated()")` miatt lejart accessel
@@ -273,9 +280,14 @@ export interface PagedResponse<T> {
 // --- Token persist ---
 //
 // ACCESS TOKEN tarolas (Audit P1.3 — 2026-05-03 refaktor):
-//   - Web: IN-MEMORY MODUL VALTOZO (`_webAccessToken`). XSS NEM tudja kiolvasni
-//     a localStorage/sessionStorage-bol. Page-reload eseten a `loadPersistedToken`
-//     a HttpOnly refresh cookie-bol kapcsol uj access tokent (`/auth/refresh-cookie`).
+//   - Web: IN-MEMORY MODUL VALTOZO (`_webAccessToken`). NEM kerul localStorage/
+//     sessionStorage-ba, igy egy XSS payload NEM tudja a perzisztens storage-bol
+//     kiolvasni a tokent es kesobbi sessionre exfiltralni. Megjegyzes: aktiv XSS
+//     ugyanabban a JS runtime-ban tovabbra is hozzafer az authenticated axios
+//     instance-hoz / a window.fetch-hez — a cel a *perzisztens kiolvasas* es a
+//     storage-bol valo replay megakadalyozasa, NEM a teljes XSS-immunitas.
+//     Page-reload eseten a `loadPersistedToken` a HttpOnly refresh cookie-bol
+//     kapcsol uj access tokent (`/auth/refresh-cookie`).
 //   - Electron: OS-level titkositas (safeStorage / DPAPI / Keychain) — valtozatlan.
 //
 // REFRESH TOKEN (vezerlokonyv par.12.3, 2026-04-20 implementacio):
@@ -312,8 +324,12 @@ export async function persistToken(token: string): Promise<void> {
       return
     }
 
-    // Audit P1.3: web in-memory tarolas, NEM localStorage (XSS-immunis)
+    // Audit P1.3: web in-memory tarolas, NEM localStorage (XSS perzisztencia ellen).
     _webAccessToken = token
+    // Codex P2 #384 (2026-05-04): session hint flag, hogy a kovetkezo page-load-on
+    // a `hasPersistedToken` true-t adjon -> az App restore flow lefusson a refresh-cookie
+    // bootstrap-ra. Logout-ot kovetoen a `clearPersistedToken` torli (lasd alabb).
+    try { window.localStorage.setItem(WEB_SESSION_HINT_KEY, '1') } catch { /* ignore (private mode) */ }
   } catch (err) {
     logger.error('client', 'persistToken failed:', err)
     throw err
@@ -336,6 +352,10 @@ export async function clearPersistedToken(): Promise<void> {
     // Audit P1.3: in-memory clear; legacy localStorage cleanup (P1.3 migracio)
     _webAccessToken = null
     try { window.localStorage.removeItem(WEB_AUTH_TOKEN_KEY) } catch { /* ignore */ }
+    // Codex P2 #384: session hint flag clear, hogy a kovetkezo page-load-on
+    // a `hasPersistedToken` false-t adjon -> az App restore flow NE blokkolodjon a
+    // 15s refresh-cookie probe splash-en, ha a user kijelentkezett.
+    try { window.localStorage.removeItem(WEB_SESSION_HINT_KEY) } catch { /* ignore */ }
   } catch (err) {
     logger.error('client', 'clearPersistedToken failed:', err)
     throw err
@@ -382,10 +402,16 @@ export async function loadPersistedToken(): Promise<string | null> {
     const newToken = res?.data?.token
     if (typeof newToken === 'string' && newToken) {
       _webAccessToken = newToken
+      // Codex P2 #384: a sikeres refresh-cookie bizonyitja, hogy van session.
+      // Frissitjuk a hint-et arra az esetre ha a localStorage uritodott (pl. private mode).
+      try { window.localStorage.setItem(WEB_SESSION_HINT_KEY, '1') } catch { /* ignore */ }
       return newToken
     }
   } catch (err) {
-    // Refresh cookie hianyzik VAGY lejart — normalis ha a user nincs bejelentkezve
+    // Refresh cookie hianyzik VAGY lejart — normalis ha a user nincs bejelentkezve.
+    // Codex P2 #384: a hint-et toroljuk, hogy a kovetkezo page-load-on a hasPersistedToken
+    // false-t adjon es az App splash-mentes login-ra menjen.
+    try { window.localStorage.removeItem(WEB_SESSION_HINT_KEY) } catch { /* ignore */ }
     logger.debug('client', 'loadPersistedToken: refresh-cookie unavailable (user not logged in)', err)
   }
   return null
@@ -395,18 +421,31 @@ export async function loadPersistedToken(): Promise<string | null> {
  * Synchronous check for persisted token presence.
  *
  * <p>Electron mode: cached flag (set by persist/clear/load).</p>
- * <p>Web mode (Audit P1.3): csak az in-memory tokent latja. NEM optimisztikus —
- * ha nincs in-memory token, false-t ad. Az App.tsx restore flow ettol fuggetlenul
- * meghivja a `loadPersistedToken`-t, ami az async refresh-cookie-bol bootstrap-ol.</p>
+ *
+ * <p>Web mode (Audit P1.3 + Codex P2 follow-up #384, 2026-05-04):</p>
+ * <ul>
+ *   <li>true ha van in-memory `_webAccessToken` (mar lefutott egy login VAGY refresh-cookie bootstrap)</li>
+ *   <li>true ha a `WEB_SESSION_HINT_KEY` localStorage hint jelzi, hogy korabban volt
+ *       sikeres login (azaz valoszinu jelen van HttpOnly refresh cookie). Ekkor az
+ *       App.tsx restore flow elinditja a `loadPersistedToken`-t, ami az async
+ *       refresh-cookie-bol bootstrap-ol.</li>
+ *   <li>false egyebkent (kijelentkezett vagy soha-nem-loggalt user). Ekkor az App
+ *       AZONNAL renderel anelkul, hogy a 15s axios timeout splash-re varakozna —
+ *       ez a Codex P2 #384 regression-fix.</li>
+ * </ul>
+ *
+ * <p>A hint NEM token, csak egy boolean — XSS sem nyer vele semmit.</p>
  */
 export function hasPersistedToken(): boolean {
   if (window.electronAPI) {
     return _electronTokenPresent ?? (window.electronAPI.secureLoadToken != null || window.electronAPI.getConfig != null)
   }
 
-  // Web (P1.3): mindig true-t ad, hogy az App restore flow lefusson es
-  // megkiserelje a refresh-cookie bootstrap-ot. A `loadPersistedToken` ott
-  // null-t ad, ha a refresh-cookie hianyzik vagy lejart.
-  // Korabban: `Boolean(localStorage.getItem(...))` — most localStorage NEM hasznalt.
-  return true
+  if (_webAccessToken) return true
+  try {
+    return window.localStorage.getItem(WEB_SESSION_HINT_KEY) === '1'
+  } catch {
+    // Private mode browser — jobban jarunk false-szal (nincs splash regression)
+    return false
+  }
 }
