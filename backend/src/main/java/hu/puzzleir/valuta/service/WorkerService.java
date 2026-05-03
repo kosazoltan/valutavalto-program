@@ -457,7 +457,8 @@ public class WorkerService {
         long expiresInMs = 86400000L; // 24 óra millisec
         LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(expiresInMs / 1000);
 
-        // v2.1.4 / Sourcery+Copilot PR #361 follow-up: kozos AppModeRoleConstants util
+        // v2.1.4 + V181: kozos AppModeRoleConstants util — "kamera" appMode is benne
+        // (teruleti_vezeto + biztonsagi_vezeto -> kamera, NEM full)
         List<String> validAppModes = AppModeRoleConstants.computeValidAppModes(roleCodes, worker.getRole());
 
         return LoginResponseDto.builder()

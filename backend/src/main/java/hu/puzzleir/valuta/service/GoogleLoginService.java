@@ -210,7 +210,9 @@ public class GoogleLoginService {
         long expiresInMs = 86400000L;
         LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(expiresInMs / 1000);
 
-        // Sourcery+Copilot PR #361 follow-up: kozos AppModeRoleConstants util — NEM duplikalva
+        // V181 + Sourcery+Copilot PR #361 follow-up: kozos AppModeRoleConstants util.
+        // A "kamera" appMode logika is itt — a teruleti_vezeto + biztonsagi_vezeto canonical
+        // role-ok "kamera" appMode-ot kapnak (NEM "full") — NEM ferhetnek a szerver-adminhoz.
         List<String> validAppModes = AppModeRoleConstants.computeValidAppModes(roleCodes, worker.getRole());
 
         return LoginResponseDto.builder()

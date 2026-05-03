@@ -8,10 +8,16 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import { useAppMode } from '../../hooks/useAppMode'
 
-/** Szerver (full mód) whitelist: csak ezek a role-ok léphetnek be böngészőben */
+/**
+ * Szerver (full mód) whitelist: csak ezek a role-ok léphetnek be böngészőben.
+ *
+ * V181 (2026-05-03): teruleti_vezeto + biztonsagi_vezeto KIVEVE — ezek a kamera
+ * canonical role-ok (lokal penztar modul kameraszoftver), NEM a szerver-admin felulet.
+ * A backend `validAppModes` "kamera"-t ad vissza nekik (NEM "full"-t).
+ */
 const SERVER_ALLOWED_CANONICAL_ROLES = [
-  'ugyvezeto', 'foertektar', 'irodavezeto', 'belso_ellenor', 'teruleti_vezeto',
-  'biztonsagi_vezeto', 'berszamfejto', 'penzugyi_vezeto', 'irodai_dolgozo',
+  'ugyvezeto', 'foertektar', 'irodavezeto', 'belso_ellenor',
+  'berszamfejto', 'penzugyi_vezeto', 'irodai_dolgozo',
   'csoportvezeto', 'arfolyam_nezo',
 ]
 // Legacy enum fallback
