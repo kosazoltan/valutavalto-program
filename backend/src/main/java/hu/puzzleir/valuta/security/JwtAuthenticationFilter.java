@@ -84,7 +84,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 if (permissions != null) {
                     for (String perm : permissions) {
                         if (perm != null && !perm.isBlank()) {
-                            authorities.add(new SimpleGrantedAuthority(perm));
+                            // Sourcery PR #353 follow-up: trim a permission string-en, hogy a
+                            // " VIDEO_EXPORT " (extra whitespace) NE adjon eltero authority-t,
+                            // mint amit a `@PreAuthorize("hasAnyAuthority('VIDEO_EXPORT')")` var.
+                            authorities.add(new SimpleGrantedAuthority(perm.trim()));
                         }
                     }
                 }
