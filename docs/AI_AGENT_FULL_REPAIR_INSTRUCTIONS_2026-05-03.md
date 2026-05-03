@@ -1,7 +1,14 @@
 # Valutavalto ERP - teljes koru AI javitasi utasitaskeszlet
 
+> **STATUS** (2026-05-03 utan): Ez az audit doksi a 2026-05-03-i sprint
+> KIINDULASI bazisa volt. A P0/P1 reszek tobbsege azota MEGOLDODOTT
+> a PR #351-#368 sorozatban (audit-P0.1 ... P0.9, Google OAuth, V181).
+> A kovetkezo agent: ezt a doksit "historic baseline"-kent olvasd, es
+> NE futtasd vakon — a szakaszok mar nem mind aktualisak.
+> Ellenpontositas: `git log --oneline origin/main` legutobbi 30 commit.
+
 **Datum:** 2026-05-03  
-**Repo:** `D:\repo\valutavalto-program`  
+**Repo:** `<repo-root>` (a doksi a `docs/` mappaban van — minden hivatkozas a repo-rootbol indul)  
 **Cel:** teljes repo-szintu feltaras alapjan vegrehajthato javitasi terv masik mesterséges intelligencia ugynoknek.  
 **Allapot:** audit/javitasi utmutato, nem merge-ready allitas.
 
@@ -14,7 +21,7 @@ Az elemzes repo-szintu indexelessel, konfiguracio-olvasassal, memoriak skimeles�
 - Electron penztar: `penztar-client/electron`, IPC, SQLite, sync-engine, kamera, scanner, video, printer
 - shared contractok: `packages/shared-api`, `packages/shared-ipc`
 - adatbazis: `backend/src/main/resources/db/migration`
-- memoriak es projekt-alkotmany: `AI_CONSTITUTION.md`, `AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `.remember/remember.md`, `D:\valutavalto-vault`
+- memoriak es projekt-alkotmany: `AI_CONSTITUTION.md`, `AGENTS.md`, `CLAUDE.md`, `CODEX.md`, opcionalisan `.remember/remember.md` (gitignored, lokalis handoff jegyzet) es az Obsidian vault (`D:\valutavalto-vault\` — projekt-spec lokalis tarhely)
 
 Figyelmen kivul hagyando zaj: generalt build outputok, `node_modules`, `target`, regi worktree/cache mappak. A repo-ban a `.memory` jellegu regi rendszerek deprecated-ek; az aktiv memoriaforras a `D:\valutavalto-vault`.
 
@@ -32,17 +39,17 @@ Figyelmen kivul hagyando zaj: generalt build outputok, `node_modules`, `target`,
    M penztar-client/test-results/.last-run.json
    ```
 
-2. Olvasd be ebben a sorrendben:
+2. Olvasd be ebben a sorrendben (a `*` opcionalis ha nem letezik a fajlrendszereden):
 
    ```text
    AI_CONSTITUTION.md
    AGENTS.md
    CLAUDE.md
    CODEX.md
-   .remember/remember.md
-   D:\valutavalto-vault\README.md
-   D:\valutavalto-vault\sessions\legfrissebb-*.md
-   D:\valutavalto-vault\feedback\*.md
+   .remember/remember.md             (* opcionalis - gitignored, lokalis handoff)
+   D:\valutavalto-vault\README.md    (* opcionalis - lokalis Obsidian vault)
+   D:\valutavalto-vault\sessions\legfrissebb-*.md  (* opcionalis)
+   D:\valutavalto-vault\feedback\*.md              (* opcionalis)
    docs\LESSONS_LEARNED.md
    ```
 
