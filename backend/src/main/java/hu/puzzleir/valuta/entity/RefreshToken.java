@@ -28,6 +28,14 @@ public class RefreshToken {
     @Column(name = "token_hash", nullable = false, unique = true, length = 255)
     private String tokenHash;
 
+    /**
+     * Audit P0.3 (2026-05-03): selector pattern.
+     * Indexed unique, NULL = legacy token (regi pre-V176 cookie-k).
+     * Cookie format: `selector.verifier`, ahol a verifier BCrypt-hashelt a tokenHash-ben.
+     */
+    @Column(name = "selector", length = 64)
+    private String selector;
+
     @Column(name = "worker_id", nullable = false)
     private Long workerId;
 
