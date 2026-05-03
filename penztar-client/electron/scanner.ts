@@ -30,13 +30,22 @@ function getOrCreateKey(): Buffer {
   try {
     fs.writeFileSync(ENCRYPTION_KEY_FILE, newKey.toString('base64'), { mode: 0o600, flag: 'wx' });
     return newKey;
-  } catch (e: any) {
-    if (e.code === 'EEXIST') {
+  } catch (e: unknown) {
+    // Audit P2.1 (2026-05-03) + Sourcery PR #356 follow-up: catch (e: any) -> catch (e: unknown)
+    // + Node.js-spec type guard (`Error` + `code` property), nem manual `'code' in e` cast.
+    // EEXIST -> mas process mar letrehozta a kulcsot ugyanabban a tick-ben (race-mentes
+    // O_CREAT|O_EXCL `wx` flag-gel detektalva). Olvassuk vissza a meglevot.
+    if (isErrnoException(e) && e.code === 'EEXIST') {
       const stored = fs.readFileSync(ENCRYPTION_KEY_FILE, 'utf8').trim();
       return Buffer.from(stored, 'base64');
     }
     throw e;
   }
+}
+
+/** User-defined type guard a Node.js `NodeJS.ErrnoException` szuro szerepere. */
+function isErrnoException(e: unknown): e is NodeJS.ErrnoException {
+  return e instanceof Error && typeof (e as NodeJS.ErrnoException).code === 'string';
 }
 
 function encrypt(buffer: Buffer): EncryptionPayload {
