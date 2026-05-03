@@ -2,12 +2,12 @@ name: Maintenance - APT Upgrade + Reboot (manual)
 
 # 2026-05-03 Glasswing CVE audit follow-up: a kmod 7.2 mitigacio mar elfedi a
 # Copy Fail (CVE-2026-31431) tamadasi felulet-et, de a teljes kernel-patch-hez
-# `apt-get upgrade` + reboot kell.
+# `apt-get full-upgrade` + reboot kell.
 #
 # Ez a workflow:
 #   1. apt-get update
-#   2. apt-get upgrade -y (security patch + ma elerheto frissitesek)
-#   3. systemctl reboot
+#   2. apt-get full-upgrade -y (nem hagy "kept back" csomagokat — Codex P1 #370)
+#   3. systemctl reboot (csak exit 255 a tolerált — Codex P1 #370)
 #   4. Var min. 90s, max. 6 retry x 30s amig a /api/v1/auth/bootstrap-status 200 nem ad
 #
 # Varhato outage: ~60-120s (kernel reboot + Spring Boot startup).
@@ -23,11 +23,18 @@ on:
 permissions:
   contents: read
 
+# Copilot P2 #370: nem futhat parhuzamosan deploy/maintenance workflow-val
+concurrency:
+  group: deploy-hetzner-production
+  cancel-in-progress: false
+
 jobs:
   upgrade:
     name: APT upgrade + reboot + health check
     runs-on: ubuntu-latest
     environment: production
+    # Copilot P2 #369/#370: explicit timeout SSH hang ellen
+    timeout-minutes: 15
     steps:
       - name: Validate confirmation
         run: |
@@ -41,11 +48,15 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
+          # Copilot P2 #369/#370: deploy-hetzner.yml minta — ssh-keyscan + known_hosts pinning
+          ssh-keyscan -H ${{ secrets.VPS_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
 
       - name: Pre-upgrade snapshot
         run: |
           ssh -i ~/.ssh/deploy_key \
-              -o StrictHostKeyChecking=accept-new \
+              -o StrictHostKeyChecking=yes \
+              -o BatchMode=yes \
+              -o ConnectTimeout=15 \
               "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
               bash -s << 'ENDSSH'
             set -e
@@ -53,16 +64,19 @@ jobs:
             uname -r
             echo ""
             echo "=== Pre-upgrade upgradable count ==="
-            apt list --upgradable 2>/dev/null | wc -l
+            # Copilot P2 #370: header sor szures (Listing... line)
+            apt list --upgradable 2>/dev/null | tail -n +2 | wc -l
             echo ""
             echo "=== Pre-upgrade upgradable packages (kernel + critical) ==="
             apt list --upgradable 2>/dev/null | grep -E "linux-image|linux-headers|linux-generic|kmod|openssl|openssh|nginx|postgresql" || true
           ENDSSH
 
-      - name: APT update + upgrade
+      - name: APT update + full-upgrade
         run: |
           ssh -i ~/.ssh/deploy_key \
-              -o StrictHostKeyChecking=accept-new \
+              -o StrictHostKeyChecking=yes \
+              -o BatchMode=yes \
+              -o ConnectTimeout=15 \
               "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
               bash -s << 'ENDSSH'
             set -e
@@ -70,8 +84,10 @@ jobs:
             echo "=== apt-get update ==="
             apt-get update
             echo ""
-            echo "=== apt-get upgrade -y (with -o Dpkg::Options to keep configs) ==="
-            apt-get upgrade -y \
+            # Codex P1 #370: full-upgrade — NEM hagy "kept back" csomagokat (kernel meta-package
+            # frissitesi dependency change-eknel az `upgrade` skip-elne).
+            echo "=== apt-get full-upgrade -y (kept-back csomagokat is feldolgozza) ==="
+            apt-get full-upgrade -y \
               -o Dpkg::Options::="--force-confdef" \
               -o Dpkg::Options::="--force-confold"
             echo ""
@@ -84,11 +100,23 @@ jobs:
 
       - name: Reboot server
         run: |
+          # Codex P1 #370: csak az exit 255 (varhato SSH disconnect) ignoralva,
+          # minden mas hiba (auth fail, DNS, network) HARD FAIL.
+          set +e
           ssh -i ~/.ssh/deploy_key \
-              -o StrictHostKeyChecking=accept-new \
+              -o StrictHostKeyChecking=yes \
+              -o BatchMode=yes \
+              -o ConnectTimeout=15 \
               "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
-              "systemctl reboot" || true
-          # `systemctl reboot` zarja az SSH-t — exit 255 normalis, ezert `|| true`.
+              "systemctl reboot"
+          ssh_exit=$?
+          set -e
+          if [ "$ssh_exit" -eq 0 ] || [ "$ssh_exit" -eq 255 ]; then
+            echo "Reboot SSH command sent (exit=$ssh_exit, 0=clean exit, 255=SSH disconnect)."
+          else
+            echo "FATAL: ssh reboot failed with unexpected exit code $ssh_exit (NOT 0 vagy 255). Aborting workflow."
+            exit "$ssh_exit"
+          fi
           echo "Reboot triggered. Waiting 60s for kernel + boot..."
           sleep 60
 
@@ -111,7 +139,9 @@ jobs:
         if: success()
         run: |
           ssh -i ~/.ssh/deploy_key \
-              -o StrictHostKeyChecking=accept-new \
+              -o StrictHostKeyChecking=yes \
+              -o BatchMode=yes \
+              -o ConnectTimeout=15 \
               "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
               bash -s << 'ENDSSH'
             set -e
