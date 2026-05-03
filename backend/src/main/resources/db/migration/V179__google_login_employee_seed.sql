@@ -22,6 +22,13 @@
 -- a kozos `default_password_hash` CONSTANT TEXT mintaval — V162 minta, mukodott korabban.
 -- A Copilot P2 "shared credential" finding-et kovetkezo PR-ben rendezzuk, masik megoldassal
 -- (pl. CALL gen_salt('bf') a SPRING BACKEND-ben elso login utan, NEM SQL migrationban).
+-- HOTFIX 2 (production outage 2026-05-03 17:33): a `worker.code` oszlop V2-ben
+-- VARCHAR(10)-rel volt definialva, ami TUL ROVID a G_* prefixu kodoknak
+-- ('G_HRABINA_KRISZTIAN' = 19 char, 'G_GALLUSZ_ILDIKO' = 16 char, stb).
+-- Ez okozta a "value too long for type character varying(10)" SQL State 22001 hibat.
+-- Megoldas: szelesitsuk a code oszlopot VARCHAR(50)-re (egyezo a meglevo dictionary.code-dal).
+ALTER TABLE worker ALTER COLUMN code TYPE VARCHAR(50);
+
 DO $$
 DECLARE
     ebc_company_id UUID;
