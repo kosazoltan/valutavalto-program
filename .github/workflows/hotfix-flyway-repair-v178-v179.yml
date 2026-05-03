@@ -1,0 +1,91 @@
+name: Hotfix - Flyway Repair V178+V179 (manual)
+
+# 2026-05-03 production outage 2: V178 checksum mismatch
+# A 17:03 deploy V178-at applikalta (`uq_worker_google_email_lower` global). A PR #365
+# hotfix visszaallitotta V178-at per-company-scoped index-re — Flyway validation
+# failure miatt Spring Boot NEM tud boot-olni.
+#
+# Hasznalat: GitHub Actions UI -> Run workflow -> "REPAIR-V178-V179" beirasa -> futtatas
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "REPAIR-V178-V179" to confirm execution'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  repair:
+    name: Repair flyway_schema_history V178+V179 + drop orphan index + restart
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Validate confirmation
+        run: |
+          if [ "${{ inputs.confirm }}" != "REPAIR-V178-V179" ]; then
+            echo "Confirmation string mismatch. Aborting."
+            exit 1
+          fi
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+      - name: Repair Flyway history + restart service
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -euo pipefail
+
+            echo "=== Pre-repair: flyway_schema_history (V178/V179/V180 entries) ==="
+            sudo -u postgres psql -d valuta -c \
+              "SELECT installed_rank, version, description, success, installed_on FROM flyway_schema_history WHERE version IN ('178', '179', '180');"
+
+            echo "=== Step 1: Drop orphan index uq_worker_google_email_lower (PR #361 first deploy created) ==="
+            sudo -u postgres psql -d valuta -c \
+              "DROP INDEX IF EXISTS uq_worker_google_email_lower;"
+
+            echo "=== Step 2: Delete V178 entry from flyway_schema_history (force re-run with per-company index) ==="
+            sudo -u postgres psql -d valuta -c \
+              "DELETE FROM flyway_schema_history WHERE version = '178';"
+
+            echo "=== Step 3: Delete failed V179 entry from flyway_schema_history (if exists) ==="
+            sudo -u postgres psql -d valuta -c \
+              "DELETE FROM flyway_schema_history WHERE version = '179' AND success = false;"
+
+            echo "=== Step 4: Restarting valuta-backend.service (Flyway will re-attempt V178+V179) ==="
+            systemctl restart valuta-backend.service
+            sleep 30
+            systemctl is-active valuta-backend.service || { journalctl -u valuta-backend.service -n 100 --no-pager; exit 1; }
+            echo "=== Service is active ==="
+
+            echo "=== Post-repair: flyway_schema_history ==="
+            sudo -u postgres psql -d valuta -c \
+              "SELECT installed_rank, version, description, success, installed_on FROM flyway_schema_history WHERE version IN ('178', '179', '180');"
+
+            echo "=== Post-repair: existing worker indexes ==="
+            sudo -u postgres psql -d valuta -c \
+              "SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'worker' AND indexname LIKE '%google%';"
+          ENDSSH
+
+      - name: Health check (with retries)
+        run: |
+          echo "Waiting for full Spring Boot startup (Flyway re-running V178+V179)..."
+          for i in 1 2 3 4 5 6; do
+            sleep 15
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "https://excvaluta.com/api/v1/auth/bootstrap-status" || echo 000)
+            echo "Health check attempt $i: HTTP status $STATUS"
+            if [[ "$STATUS" == "200" ]]; then
+              echo "Health check PASSED — production restored"
+              exit 0
+            fi
+          done
+          echo "Health check FAILED after 6 attempts — manual intervention needed"
+          exit 1
