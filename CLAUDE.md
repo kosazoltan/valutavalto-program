@@ -45,6 +45,32 @@ database/                 # Extra migrációk, seed-ek
 scripts/                  # Utility szkriptek
 ```
 
+## KÖTELEZŐ ÉRVÉNYŰ: Lint CI + Codex + Sourcery + Copilot — minden PR-en automatikusan (2026-05-03 user-direktíva)
+
+> **User direktíva 2026-05-03 21:50 + 21:53 CEST:**
+> "lint CI codex sourcery kötelező minden pr esetén!!!! Automatikusan minden esetben
+> lustaság, hazugság, mellébeszélés nélkül kötelező, megcsinálnod."
+> "a copilot jelzéseit is kötelező"
+
+**Minden PR létrehozás/push/merge után KÖTELEZŐ a teljes ciklus AUTOMATIKUSAN, ember-megerősítés nélkül:**
+
+1. **CI ellenőrzés** — `gh pr checks <PR>` — minden required check ZÖLD vagy fix-elés
+2. **Codex review lekérés** — `gh api .../pulls/<PR>/reviews` + `/comments` (filter chatgpt-codex-connector)
+3. **Sourcery review lekérés** — ugyanaz, sourcery-ai user
+4. **Copilot review lekérés** — ugyanaz, copilot-pull-request-reviewer (2026-05-03 user-direktíva: NEM "best-effort", **EGYENÉRTÉKŰ** Codex/Sourcery-vel)
+5. **MINDEN P0/P1/P2 jelzett hibát KÖTELEZŐ azonnal javítani** — új follow-up commit + push + új CI ciklus
+6. **Csak akkor admin-merge** ha (a) CI zöld + (b) MINDEN P0/P1/P2 fixelve VAGY dokumentált defer indoklással a vault-ban
+
+**TILOS:**
+- ❌ "P3 minor → defer" indoklás nélkül
+- ❌ "Majd a következő sprintben" P0/P1/P2-re
+- ❌ "Csak az enyém PR" — mind nyitott PR ráma vonatkozik
+- ❌ "Sourcery weekly limit miatt nem tudom" — a P0/P1/P2 a Codex/Copilot review-ból is jön
+- ❌ Hazudni "minden zöld"-et `gh pr checks` validáció nélkül
+- ❌ Csak az ALL_DONE monitor után átfutni a PR-t — proaktívan kell ellenőrizni az AI-bot review-ját
+
+**Részletes workflow:** [vault/feedback/lint-ci-codex-sourcery-every-pr-mandatory.md](D:\valutavalto-vault\feedback\lint-ci-codex-sourcery-every-pr-mandatory.md)
+
 ## KÖTELEZŐ ÉRVÉNYŰ: Production-first fejlesztés
 > **A fejlesztés közvetlenül a produktumhoz (Hetzner HA: https://excvaluta.com) illeszkedik.**
 > TILOS divergens lokális stack-et használni seed-adattal, amit a produktum nem tartalmaz.
