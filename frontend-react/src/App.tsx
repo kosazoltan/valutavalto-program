@@ -13,6 +13,7 @@ import AuthLayout from './layouts/AuthLayout'
 // Pages
 import LoginPage from './pages/auth/LoginPage'
 import { logger } from './utils/logger';
+const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'))
 
 const SetupWizard = lazy(() => import('./pages/setup/SetupWizard'))
 const WorkerPage = lazy(() => import('./pages/workers/WorkerPage'))
@@ -387,6 +388,9 @@ export default function App() {
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<LoginPage />} />
           </Route>
+
+          {/* Audit P1.8 (2026-05-04): reset-password page (full-screen, sajat layout) */}
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           {/* Day open — full-screen, no MainLayout */}
           <Route path="/cashdesk/day-open" element={<ProtectedRoute><DayOpenPage /></ProtectedRoute>} />
