@@ -50,19 +50,20 @@ public class TransactionController {
             @Valid @RequestBody BuyRequestDto dto,
             HttpServletRequest request) {
         String idempotencyKey = resolveIdempotencyKey(request);
-        TransactionDto cached = idempotencyGuard.tryAcquire(idempotencyKey);
-        if (cached != null) {
-            return ResponseEntity.status(HttpStatus.CREATED).body(cached);
+        IdempotencyGuard.Acquired<TransactionDto> acquired =
+                idempotencyGuard.tryAcquire(idempotencyKey, "POST /api/v1/transactions/buy", dto, TransactionDto.class);
+        if (acquired.cachedResult() != null) {
+            return ResponseEntity.status(HttpStatus.CREATED).body(acquired.cachedResult());
         }
         try {
             Transaction transaction = OptimisticLockRetry.execute(
                     () -> transactionService.executeBuy(transactionMapper.toBuyRequest(dto)),
                     "executeBuy");
             TransactionDto result = transactionMapper.toDto(transaction);
-            idempotencyGuard.complete(idempotencyKey, result);
+            idempotencyGuard.complete(acquired, result);
             return ResponseEntity.status(HttpStatus.CREATED).body(result);
         } catch (Exception e) {
-            idempotencyGuard.release(idempotencyKey);
+            idempotencyGuard.fail(acquired);
             throw e;
         }
     }
@@ -78,19 +79,20 @@ public class TransactionController {
             @Valid @RequestBody SellRequestDto dto,
             HttpServletRequest request) {
         String idempotencyKey = resolveIdempotencyKey(request);
-        TransactionDto cached = idempotencyGuard.tryAcquire(idempotencyKey);
-        if (cached != null) {
-            return ResponseEntity.status(HttpStatus.CREATED).body(cached);
+        IdempotencyGuard.Acquired<TransactionDto> acquired =
+                idempotencyGuard.tryAcquire(idempotencyKey, "POST /api/v1/transactions/sell", dto, TransactionDto.class);
+        if (acquired.cachedResult() != null) {
+            return ResponseEntity.status(HttpStatus.CREATED).body(acquired.cachedResult());
         }
         try {
             Transaction transaction = OptimisticLockRetry.execute(
                     () -> transactionService.executeSell(transactionMapper.toSellRequest(dto)),
                     "executeSell");
             TransactionDto result = transactionMapper.toDto(transaction);
-            idempotencyGuard.complete(idempotencyKey, result);
+            idempotencyGuard.complete(acquired, result);
             return ResponseEntity.status(HttpStatus.CREATED).body(result);
         } catch (Exception e) {
-            idempotencyGuard.release(idempotencyKey);
+            idempotencyGuard.fail(acquired);
             throw e;
         }
     }
@@ -106,19 +108,20 @@ public class TransactionController {
             @Valid @RequestBody ReversalRequestDto dto,
             HttpServletRequest request) {
         String idempotencyKey = resolveIdempotencyKey(request);
-        TransactionDto cached = idempotencyGuard.tryAcquire(idempotencyKey);
-        if (cached != null) {
-            return ResponseEntity.status(HttpStatus.CREATED).body(cached);
+        IdempotencyGuard.Acquired<TransactionDto> acquired =
+                idempotencyGuard.tryAcquire(idempotencyKey, "POST /api/v1/transactions/reversal", dto, TransactionDto.class);
+        if (acquired.cachedResult() != null) {
+            return ResponseEntity.status(HttpStatus.CREATED).body(acquired.cachedResult());
         }
         try {
             Transaction transaction = OptimisticLockRetry.execute(
                     () -> transactionService.executeReversal(transactionMapper.toReversalRequest(dto)),
                     "executeReversal");
             TransactionDto result = transactionMapper.toDto(transaction);
-            idempotencyGuard.complete(idempotencyKey, result);
+            idempotencyGuard.complete(acquired, result);
             return ResponseEntity.status(HttpStatus.CREATED).body(result);
         } catch (Exception e) {
-            idempotencyGuard.release(idempotencyKey);
+            idempotencyGuard.fail(acquired);
             throw e;
         }
     }
@@ -134,19 +137,20 @@ public class TransactionController {
             @Valid @RequestBody ConversionRequestDto dto,
             HttpServletRequest request) {
         String idempotencyKey = resolveIdempotencyKey(request);
-        TransactionDto cached = idempotencyGuard.tryAcquire(idempotencyKey);
-        if (cached != null) {
-            return ResponseEntity.status(HttpStatus.CREATED).body(cached);
+        IdempotencyGuard.Acquired<TransactionDto> acquired =
+                idempotencyGuard.tryAcquire(idempotencyKey, "POST /api/v1/transactions/conversion", dto, TransactionDto.class);
+        if (acquired.cachedResult() != null) {
+            return ResponseEntity.status(HttpStatus.CREATED).body(acquired.cachedResult());
         }
         try {
             Transaction transaction = OptimisticLockRetry.execute(
                     () -> transactionService.executeConversion(transactionMapper.toConversionRequest(dto)),
                     "executeConversion");
             TransactionDto result = transactionMapper.toDto(transaction);
-            idempotencyGuard.complete(idempotencyKey, result);
+            idempotencyGuard.complete(acquired, result);
             return ResponseEntity.status(HttpStatus.CREATED).body(result);
         } catch (Exception e) {
-            idempotencyGuard.release(idempotencyKey);
+            idempotencyGuard.fail(acquired);
             throw e;
         }
     }
