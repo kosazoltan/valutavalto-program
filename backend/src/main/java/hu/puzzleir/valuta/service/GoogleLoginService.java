@@ -99,9 +99,10 @@ public class GoogleLoginService {
             throw new AuthenticationException("Google fiók nincs engedélyezve ehhez a rendszerhez.");
         }
         if (candidates.size() > 1) {
-            // Copilot PR #361 follow-up #3: V178-ban a partial unique index MAR globalisan egyedi
-            // (uq_worker_google_email_lower, NEM company-scoped). Igy 2+ candidate csak akkor
-            // jonne ide, ha race-condition vagy admin manualis DB SQL kerulte meg az index-et.
+            // V178-ban a partial unique index per-company-scope (uq_worker_company_google_email_lower).
+            // 2+ candidate cross-company eseten lehetne — ezt a controller config error-kent kezeli
+            // (a request NEM tartalmaz companyCode-ot, igy nem tudna disambiguate-elni).
+            // TODO: ha multi-company login flow keszul, companyCode + scoped lookup lesz.
             log.error("GOOGLE_LOGIN_CONFIG_ERROR multiple_candidates count={} emailHash={}",
                     candidates.size(), safeLogHash(canonicalEmail));
             throw new ConflictException(

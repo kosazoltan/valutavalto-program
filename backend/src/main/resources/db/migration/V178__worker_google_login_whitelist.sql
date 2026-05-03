@@ -32,17 +32,10 @@ CREATE INDEX IF NOT EXISTS idx_worker_google_email_lower
     ON worker (LOWER(email))
     WHERE google_login_enabled = TRUE;
 
--- Copilot PR #361 follow-up #3: Multi-tenant inkonzisztencia eliminalasa —
--- a `GoogleLoginService.processIdToken` 2+ candidate eseten config-error-t dob
--- (mert a request NEM tartalmaz companyCode-ot, igy nem tudna disambiguate-elni).
--- Korabbi (per-company) unique index megengedte volna 2 ceg dolgozoinak ugyanazt
--- az email-t, de runtime mindenkep-pen elutasitja -> inkonzisztencia.
---
--- Megoldas: globalisan egyedi (NEM company-scoped) — egy Google email max EGY
--- worker-hez kotheto whitelisten, fuggetlenul ceg-tol. Ez igazitja a DB-t a kod
--- valos viselkedesehez. Ha kesobb multi-company login flow keszul (companyCode
--- a requestben), akkor egy uj migration visszahozhatja a per-company indexet.
-CREATE UNIQUE INDEX IF NOT EXISTS uq_worker_google_email_lower
-    ON worker (LOWER(email))
+-- Multi-tenant + email egyediseg whitelisten: ket worker NE tudjon ugyanazzal a Google
+-- emaillel be lenni engedelyezve ugyanazon ceg-en belul (config error megelozese).
+-- Cross-company NEM utkozik (pl. EBC + EXZ ket dolgozoja ugyanazt az emailt hasznalja).
+CREATE UNIQUE INDEX IF NOT EXISTS uq_worker_company_google_email_lower
+    ON worker (company_id, LOWER(email))
     WHERE google_login_enabled = TRUE
       AND email IS NOT NULL;
