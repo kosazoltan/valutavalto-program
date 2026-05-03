@@ -54,6 +54,17 @@ async function loginForTransaction(page: Page) {
       })
     }
 
+    // Audit P1.3 (2026-05-03): in-memory access token miatt minden uj page-load
+    // (page.goto utan SPA newin restart) refresh-cookie POST-ot triggerel, hogy
+    // a sessiont a HttpOnly cookie alapjan helyreallitsa.
+    if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
+    }
+
     if (path.endsWith('/workers/me') && method === 'GET') {
       return route.fulfill({
         status: 200,
