@@ -1,0 +1,78 @@
+name: Hotfix - Flyway Repair V179 (manual)
+
+# 2026-05-03 production outage: V179 migration (Google OAuth worker seed) bukott
+# a per-row `crypt(encode(gen_random_bytes(16), 'hex'), gen_salt('bf'))` expression-on.
+# A hotfix PR #364 visszaallitja a `default_password_hash` constant mintat, de ha a
+# Flyway schema_history bizonytalan allapotba kerult (success=false bejegyzes),
+# manualisan torolni kell hogy a kovetkezo deploy ujraprobalja a migracion.
+#
+# Hasznalat: GitHub Actions UI -> Run workflow -> "REPAIR-V179" beirasa -> futtatas
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "REPAIR-V179" to confirm execution'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  repair:
+    name: Repair flyway_schema_history V179 + restart service
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Validate confirmation
+        run: |
+          if [ "${{ inputs.confirm }}" != "REPAIR-V179" ]; then
+            echo "Confirmation string mismatch. Aborting."
+            exit 1
+          fi
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+      - name: Repair Flyway history + restart service
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -euo pipefail
+
+            echo "=== Pre-repair: flyway_schema_history (V178/V179/V180 entries) ==="
+            sudo -u postgres psql -d valuta -c \
+              "SELECT installed_rank, version, description, success, installed_on FROM flyway_schema_history WHERE version IN ('178', '179', '180');"
+
+            echo "=== Step 1: Deleting failed V179 entry from flyway_schema_history (if exists) ==="
+            sudo -u postgres psql -d valuta -c \
+              "DELETE FROM flyway_schema_history WHERE version = '179' AND success = false;"
+
+            echo "=== Step 2: Restarting valuta-backend.service (Flyway will re-attempt V179) ==="
+            systemctl restart valuta-backend.service
+            sleep 20
+            systemctl is-active valuta-backend.service || { journalctl -u valuta-backend.service -n 50 --no-pager; exit 1; }
+            echo "=== Service is active ==="
+
+            echo "=== Post-repair: flyway_schema_history ==="
+            sudo -u postgres psql -d valuta -c \
+              "SELECT installed_rank, version, description, success, installed_on FROM flyway_schema_history WHERE version IN ('178', '179', '180');"
+          ENDSSH
+
+      - name: Health check
+        run: |
+          echo "Waiting for service startup..."
+          sleep 10
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "https://excvaluta.com/api/v1/auth/bootstrap-status" || echo 000)
+          echo "Health check HTTP status: $STATUS"
+          if [[ "$STATUS" == "200" ]]; then
+            echo "Health check PASSED — production restored"
+          else
+            echo "Health check FAILED — manual intervention needed"
+            exit 1
+          fi
