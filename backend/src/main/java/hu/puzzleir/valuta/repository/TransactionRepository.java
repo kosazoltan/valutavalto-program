@@ -293,14 +293,13 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
      * Batch: aktiv tranzakciok lekerese TOBB irodahoz egy napon.
      * N+1 query kivaltasa korzet szintu MNB aggregacional.
      *
-     * <p>Audit P0.8 follow-up (Copilot PR #360, 2026-05-03): `financial_effective = true`
-     * szuro a parent CONVERSION sorok dupla-szamolas megelozeseert MNB riport-ban.</p>
+     * <p>Codex P1 PR #362 follow-up: NEM szuri `financial_effective`-re — multi-callsite
+     * query (continuity check + reporting). Reporting-celre lasd a scope-olt variansot.</p>
      */
     @Query("SELECT t FROM Transaction t " +
            "WHERE t.branch.id IN :branchIds " +
            "AND t.transactionDate = :date " +
            "AND t.status = 'COMPLETED' " +
-           "AND t.financialEffective = true " +
            "ORDER BY t.branch.id ASC, t.transactionTime DESC")
     List<Transaction> findActiveByBranchIdsAndDate(
         @Param("branchIds") List<UUID> branchIds,
@@ -310,14 +309,15 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     /**
      * Aktív (nem sztornózott) tranzakciók.
      *
-     * <p>Audit P0.8 follow-up (Copilot PR #360, 2026-05-03): `financial_effective = true`
-     * szuro a parent CONVERSION sorok dupla-szamolas megelozeseert daily-MNB riport-ban.</p>
+     * <p>Codex P1 PR #362 follow-up (2026-05-03): NEM szuri `financial_effective`-re —
+     * a query-t a `ReceiptSequenceService.checkReceiptContinuity()` is hasznalja a napi-zarasi
+     * gap detection-hoz, amelynek a CONVERSION receipt-eket (K prefix) IS latnia kell.
+     * Reporting-celre uj scope-olt query: {@link #findFinanciallyEffectiveByBranchAndDate}.</p>
      */
     @Query("SELECT t FROM Transaction t " +
            "WHERE t.branch.id = :branchId " +
            "AND t.transactionDate = :date " +
            "AND t.status = 'COMPLETED' " +
-           "AND t.financialEffective = true " +
            "ORDER BY t.transactionTime DESC")
     List<Transaction> findActiveByBranchAndDate(
         @Param("branchId") UUID branchId,
@@ -328,16 +328,56 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
      * Aktív tranzakciók lekérése irodához, dátumtartományra.
      * NAV PTGSZLAH havi jelentéshez szükséges.
      *
-     * <p>Audit P0.8 follow-up (Copilot PR #360, 2026-05-03): `financial_effective = true`
-     * szuro a parent CONVERSION sorok dupla-szamolas megelozeseert NAV riport-ban.</p>
+     * <p>Codex P1 PR #362 follow-up: NEM szuri `financial_effective`-re — multi-callsite.</p>
      */
+    @Query("SELECT t FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
+           "AND t.status = 'COMPLETED' " +
+           "ORDER BY t.transactionDate ASC, t.transactionTime ASC")
+    List<Transaction> findActiveByBranchAndDateRange(
+        @Param("branchId") UUID branchId,
+        @Param("dateFrom") LocalDate dateFrom,
+        @Param("dateTo") LocalDate dateTo
+    );
+
+    // ============ AUDIT P0.8 + CODEX P1 PR #362 — SCOPE-OLT RIPORT VARIANSOK ============
+    // Ezek a query-k EXPLICIT scope-oltak: `financial_effective = true` szuressel,
+    // a parent CONVERSION sorok dupla-szamolas megelozesere riport-szervizekben.
+    // Continuity-check / sync / dashboard query-k a fenti unfilttert hasznaljak.
+
+    /** Riport scope: branch + date + financial_effective. */
+    @Query("SELECT t FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionDate = :date " +
+           "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true " +
+           "ORDER BY t.transactionTime DESC")
+    List<Transaction> findFinanciallyEffectiveByBranchAndDate(
+        @Param("branchId") UUID branchId,
+        @Param("date") LocalDate date
+    );
+
+    /** Riport scope: branch-IDs batch + financial_effective. */
+    @Query("SELECT t FROM Transaction t " +
+           "WHERE t.branch.id IN :branchIds " +
+           "AND t.transactionDate = :date " +
+           "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true " +
+           "ORDER BY t.branch.id ASC, t.transactionTime DESC")
+    List<Transaction> findFinanciallyEffectiveByBranchIdsAndDate(
+        @Param("branchIds") List<UUID> branchIds,
+        @Param("date") LocalDate date
+    );
+
+    /** Riport scope: branch + date range + financial_effective. */
     @Query("SELECT t FROM Transaction t " +
            "WHERE t.branch.id = :branchId " +
            "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
            "AND t.status = 'COMPLETED' " +
            "AND t.financialEffective = true " +
            "ORDER BY t.transactionDate ASC, t.transactionTime ASC")
-    List<Transaction> findActiveByBranchAndDateRange(
+    List<Transaction> findFinanciallyEffectiveByBranchAndDateRange(
         @Param("branchId") UUID branchId,
         @Param("dateFrom") LocalDate dateFrom,
         @Param("dateTo") LocalDate dateTo
@@ -757,7 +797,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
      * Ügyfél elmúlt 30 nap tranzakcióinak összege.
      *
      * <p>Audit P0.8 follow-up (Copilot PR #360, 2026-05-03): `financial_effective = true`
-     * szuro — `AmlService.getCustomerRiskProfile()` AML risk-szamitas-banhoz.</p>
+     * szuro — `AmlService.getCustomerRiskProfile()` AML risk-szamitasahoz.</p>
      */
     @Query("SELECT COALESCE(SUM(t.hufAmount), 0) FROM Transaction t " +
            "WHERE t.company.id = :companyId " +
