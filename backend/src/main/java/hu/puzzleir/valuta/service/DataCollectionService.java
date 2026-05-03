@@ -84,9 +84,11 @@ public class DataCollectionService {
         collection.setErrorMessage(null);
 
         try {
-            // 1. Tranzakciók összegyűjtése
+            // 1. Tranzakciók összegyűjtése riport-celre.
+            // User-direktiva 2026-05-03: aggregalt totalBuyHuf/totalSellHuf — a parent CONVERSION
+            // sorok (csak metadata) NEM duplazhatjak. `findFinanciallyEffectiveByBranchAndDate` szuri.
             List<Transaction> transactions = transactionRepository
-                .findActiveByBranchAndDate(branchId, date);
+                .findFinanciallyEffectiveByBranchAndDate(branchId, date);
 
             BigDecimal totalBuyHuf = BigDecimal.ZERO;
             BigDecimal totalSellHuf = BigDecimal.ZERO;

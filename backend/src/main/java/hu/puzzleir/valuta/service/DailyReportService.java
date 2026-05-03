@@ -207,8 +207,10 @@ public class DailyReportService {
                     .build());
         }
 
-        // 2. DE/DU forgalom — Transaction idő alapján bontva
-        List<Transaction> dayTx = transactionRepository.findActiveByBranchAndDate(branchId, date);
+        // 2. DE/DU forgalom — Transaction idő alapján bontva.
+        // User-direktiva 2026-05-03: tisztan riport-celu — `findFinanciallyEffectiveByBranchAndDate`
+        // szuri a parent CONVERSION sorokat a forgalmi szamlalasbol.
+        List<Transaction> dayTx = transactionRepository.findFinanciallyEffectiveByBranchAndDate(branchId, date);
 
         LocalTime noon = LocalTime.of(12, 0);
         BigDecimal morningBuy = BigDecimal.ZERO;

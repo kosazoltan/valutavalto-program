@@ -316,9 +316,11 @@ public class DecadeReportService {
     private void calculateForintControl(DecadeReport report, UUID branchId,
                                          LocalDate periodStart, LocalDate periodEnd) {
 
-        // Aktív tranzakciók a dekádban
+        // Aktív tranzakciók a dekádban — riport-celu, financialEffective szurve.
+        // User-direktiva 2026-05-03: 10 napos dekad-riport NEM duplazhatja a parent
+        // CONVERSION sorokat. `findFinanciallyEffectiveByBranchAndDateRange` szuri.
         List<Transaction> transactions = transactionRepository
-            .findActiveByBranchAndDateRange(branchId, periodStart, periodEnd);
+            .findFinanciallyEffectiveByBranchAndDateRange(branchId, periodStart, periodEnd);
 
         // HUF napi mérleg a nyitó napra (forint nyitó)
         List<DailyBalance> openingHufBalances = dailyBalanceRepository
