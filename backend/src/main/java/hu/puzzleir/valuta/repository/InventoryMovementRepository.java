@@ -72,4 +72,21 @@ public interface InventoryMovementRepository extends JpaRepository<InventoryMove
             @Param("companyId") UUID companyId,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
+
+    /**
+     * v2.5.x P2 — Daily vault flow snapshot tamogatas.
+     * Visszaadja a megadott napon RECEIVED statusszal levo osszes mozgast a celcegen
+     * belul. A `getVaultStockFlow` ebbol szamol a vault branch-ekre vonatkozo received
+     * + issued total-okat valutankent.
+     *
+     * Index hint: a `inventory_movement(movement_date)` indexet hasznalja (idx_inv_mov_date).
+     */
+    @Query("SELECT m FROM InventoryMovement m WHERE " +
+           "(m.fromBranch.company.id = :companyId OR m.toBranch.company.id = :companyId) " +
+           "AND m.status = 'RECEIVED' " +
+           "AND m.movementDate = :date " +
+           "ORDER BY m.movementTime")
+    List<InventoryMovement> findCompletedByCompanyIdAndDate(
+            @Param("companyId") UUID companyId,
+            @Param("date") LocalDate date);
 }
