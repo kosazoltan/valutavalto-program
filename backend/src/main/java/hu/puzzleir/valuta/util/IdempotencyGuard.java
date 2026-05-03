@@ -131,14 +131,40 @@ public class IdempotencyGuard {
                             "A keres feldolgozas alatt all. Kerjuk ne kuldje el ujra!");
                 }
                 case FAILED -> {
-                    // Korabban hiba — engedjuk az ujraprobalkozast: legyen ez egy "fresh" PROCESSING.
-                    rec.setStatus(IdempotencyRecord.Status.PROCESSING);
-                    rec.setRequestHash(requestHash);
-                    rec.setResponseJson(null);
-                    rec.setCompletedAt(null);
-                    rec.setExpiresAt(Instant.now().plus(DEFAULT_TTL));
-                    repository.save(rec);
-                    yield new Acquired<>(rec, null, resultType);
+                    // Codex P1 PR #358 follow-up: ket konkurens retry FAILED branch race condition.
+                    // Atomic FAILED -> PROCESSING atmenet pesszimista lock-kal:
+                    // 1. SELECT ... FOR UPDATE — a masik retry blokkolva varakozik a lock-ra.
+                    // 2. Double-check: meg mindig FAILED? Ha igen -> mi update-eljuk PROCESSING-re.
+                    //    Ha NEM (mar PROCESSING/COMPLETED a masik altal): re-evaluate.
+                    IdempotencyRecord locked = repository
+                            .findByCompanyIdAndEndpointAndIdempotencyKeyForUpdate(
+                                    companyId, endpoint, idempotencyKey)
+                            .orElseThrow(() ->
+                                new IllegalStateException("Idempotency record disappeared during lock"));
+                    if (locked.getStatus() == IdempotencyRecord.Status.PROCESSING) {
+                        // Masik retry mar PROCESSING-re allitotta — mi blokkoljuk magunkat.
+                        log.warn("Idempotency PROCESSING in-flight (FAILED-retry race) endpoint={} keyHash={}",
+                                endpoint, hashKeyForLog(idempotencyKey));
+                        throw new ValidationException(
+                                "A keres feldolgozas alatt all. Kerjuk ne kuldje el ujra!");
+                    }
+                    if (locked.getStatus() == IdempotencyRecord.Status.COMPLETED) {
+                        // Masik retry mar COMPLETED — payload check + cache hit.
+                        if (!requestHash.equals(locked.getRequestHash())) {
+                            throw new ConflictException(
+                                    "Idempotency-Key reuse with different request payload");
+                        }
+                        T cached = deserializeResponse(locked.getResponseJson(), resultType);
+                        yield new Acquired<>(locked, cached, resultType);
+                    }
+                    // Status == FAILED, mi nyertuk a lock-ot. Atallitjuk PROCESSING-re.
+                    locked.setStatus(IdempotencyRecord.Status.PROCESSING);
+                    locked.setRequestHash(requestHash);
+                    locked.setResponseJson(null);
+                    locked.setCompletedAt(null);
+                    locked.setExpiresAt(Instant.now().plus(DEFAULT_TTL));
+                    repository.save(locked);
+                    yield new Acquired<>(locked, null, resultType);
                 }
             };
         }

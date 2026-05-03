@@ -148,7 +148,7 @@ class IdempotencyGuardTest {
     }
 
     @Test
-    @DisplayName("(5) FAILED key -> uj PROCESSING start engedelyezett")
+    @DisplayName("(5) FAILED key -> uj PROCESSING start engedelyezett (lock + double-check)")
     void failedKey_allowsRetry() {
         IdempotencyRecord failed = IdempotencyRecord.builder()
                 .companyId(COMPANY_ID).endpoint(ENDPOINT).idempotencyKey(KEY)
@@ -160,6 +160,9 @@ class IdempotencyGuardTest {
             su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
             when(repository.findByCompanyIdAndEndpointAndIdempotencyKey(COMPANY_ID, ENDPOINT, KEY))
                     .thenReturn(Optional.of(failed));
+            // Codex P1 PR #358 follow-up: a FAILED branch most pesszimista lock-ot kerdez.
+            when(repository.findByCompanyIdAndEndpointAndIdempotencyKeyForUpdate(COMPANY_ID, ENDPOINT, KEY))
+                    .thenReturn(Optional.of(failed));
             when(repository.save(any(IdempotencyRecord.class)))
                     .thenAnswer(inv -> inv.getArgument(0));
 
@@ -169,6 +172,41 @@ class IdempotencyGuardTest {
             assertThat(acquired.cachedResult()).isNull();
             assertThat(acquired.record().getStatus()).isEqualTo(IdempotencyRecord.Status.PROCESSING);
             verify(repository, times(1)).save(any());
+            verify(repository, times(1))
+                    .findByCompanyIdAndEndpointAndIdempotencyKeyForUpdate(COMPANY_ID, ENDPOINT, KEY);
+        }
+    }
+
+    @Test
+    @DisplayName("Codex P1 PR #358: FAILED retry race — second caller meglatja a PROCESSING-et a lock utan")
+    void failedKeyRetryRace_secondCallerSeesProcessing_throwsValidation() {
+        IdempotencyRecord failedBeforeLock = IdempotencyRecord.builder()
+                .companyId(COMPANY_ID).endpoint(ENDPOINT).idempotencyKey(KEY)
+                .requestHash(computeHash(new FakeDto("buy", 100)))
+                .status(IdempotencyRecord.Status.FAILED)
+                .createdAt(Instant.now()).expiresAt(Instant.now().plusSeconds(3600))
+                .build();
+        // Egy masik retry mar PROCESSING-re allitotta a lock megszerzese elott.
+        IdempotencyRecord nowProcessing = IdempotencyRecord.builder()
+                .companyId(COMPANY_ID).endpoint(ENDPOINT).idempotencyKey(KEY)
+                .requestHash(computeHash(new FakeDto("buy", 100)))
+                .status(IdempotencyRecord.Status.PROCESSING)
+                .createdAt(Instant.now()).expiresAt(Instant.now().plusSeconds(3600))
+                .build();
+        try (MockedStatic<SecurityUtils> su = Mockito.mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(repository.findByCompanyIdAndEndpointAndIdempotencyKey(COMPANY_ID, ENDPOINT, KEY))
+                    .thenReturn(Optional.of(failedBeforeLock));
+            // A FOR UPDATE az atomi double-check-et szimulalja: a masik retry mar update-elte.
+            when(repository.findByCompanyIdAndEndpointAndIdempotencyKeyForUpdate(COMPANY_ID, ENDPOINT, KEY))
+                    .thenReturn(Optional.of(nowProcessing));
+
+            assertThatThrownBy(() ->
+                    guard.tryAcquire(KEY, ENDPOINT, new FakeDto("buy", 100), FakeDto.class))
+                    .as("FAILED retry race: a masik retry mar PROCESSING-en — mi varjuk a 4xx-et")
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("feldolgozas alatt");
+            verify(repository, Mockito.never()).save(any());
         }
     }
 
