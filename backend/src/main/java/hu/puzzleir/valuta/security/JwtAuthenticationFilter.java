@@ -17,7 +17,8 @@ import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.UnsupportedJwtException;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -70,14 +71,32 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String role = jwtTokenProvider.getRoleFromToken(jwt);
                 UUID companyId = jwtTokenProvider.getCompanyIdFromToken(jwt);
                 UUID branchId = jwtTokenProvider.getBranchIdFromToken(jwt);
-                
-                SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role);
-                
-                UsernamePasswordAuthenticationToken authentication = 
+
+                // Audit P0.4 (2026-05-03): a JWT `permissions` claim-et SimpleGrantedAuthority-va
+                // konvertaljuk, hogy a `@PreAuthorize("hasAnyAuthority('VIDEO_EXPORT', ...)")`
+                // mintat hasznalo endpointok (CameraExportController, DariusReportController, stb.)
+                // ne adjanak 403-at jogosult felhasznaloknak. Korabban CSAK a `ROLE_<role>`
+                // authority kerult be, igy a permission-alapu vedelem teljesen torott volt.
+                List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+                authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
+
+                List<String> permissions = jwtTokenProvider.getPermissionsFromToken(jwt);
+                if (permissions != null) {
+                    for (String perm : permissions) {
+                        if (perm != null && !perm.isBlank()) {
+                            // Sourcery PR #353 follow-up: trim a permission string-en, hogy a
+                            // " VIDEO_EXPORT " (extra whitespace) NE adjon eltero authority-t,
+                            // mint amit a `@PreAuthorize("hasAnyAuthority('VIDEO_EXPORT')")` var.
+                            authorities.add(new SimpleGrantedAuthority(perm.trim()));
+                        }
+                    }
+                }
+
+                UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
-                        workerCode, 
-                        null, 
-                        Collections.singletonList(authority)
+                        workerCode,
+                        null,
+                        authorities
                     );
                 
                 String activeRole = jwtTokenProvider.getActiveRoleFromToken(jwt);
