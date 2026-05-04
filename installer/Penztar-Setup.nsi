@@ -105,9 +105,14 @@ SetCompressorDictSize 64
 !define MUI_FINISHPAGE_RUN "$INSTDIR\Penztar.exe"
 !define MUI_FINISHPAGE_RUN_TEXT "Penztar alkalmazas inditasa"
 
+; --- nsDialogs (custom InstallMode page-hez) ---
+!include "nsDialogs.nsh"
+
 ; --- Oldalak ---
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_LICENSE "..\penztar-client\LICENSE.txt"
+; v2.5.9 Egyseges telepito: a user valassza ki a telepites tipusat
+Page custom InstallModePage InstallModePageLeave
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
@@ -124,6 +129,63 @@ Var DATA_DIR
 Var DB_ALREADY_EXISTS
 ; v2.3.1 Codex P1 fix: upgrade mode flag - ha "1", a SecInstall NEM torli a ProgramData-t
 Var UPGRADE_MODE
+; v2.5.9 Egyseges telepito: "THIN" (csak Electron) vagy "FULL" (lokalis backend is)
+Var INSTALL_MODE
+Var DLG_RB_THIN
+Var DLG_RB_FULL
+
+; =============================================================================
+; v2.5.9 Egyseges telepito - InstallMode valaszto custom page (nsDialogs)
+; =============================================================================
+Function InstallModePage
+    !insertmacro MUI_HEADER_TEXT "Telepites tipusa" "Valassza ki, milyen modon szeretne hasznalni a Penztar alkalmazast."
+
+    nsDialogs::Create 1018
+    Pop $0
+    ${If} $0 == error
+        Abort
+    ${EndIf}
+
+    ${NSD_CreateLabel} 0 0 100% 24u "A Penztar alkalmazas ket modban hasznalhato. A legtobb felhasznalonak az 'Online penztar' (alapertelmezett) elegendo - a backend szerver a Hetzner felhoben fut (excvaluta.com), igy nem kell helyi PostgreSQL/Java telepitese."
+    Pop $0
+
+    ${NSD_CreateRadioButton} 0 30u 100% 12u "Online penztar (ajanlott) - csak Penztar alkalmazas, ~90 MB"
+    Pop $DLG_RB_THIN
+    ${NSD_OnClick} $DLG_RB_THIN OnSelectThin
+
+    ${NSD_CreateLabel} 16u 42u 90% 16u "A Penztar alkalmazas a Hetzner backend-re (excvaluta.com) csatlakozik. Internet kapcsolat szukseges."
+    Pop $0
+
+    ${NSD_CreateRadioButton} 0 62u 100% 12u "Offline-kepes penztar - lokalis PostgreSQL + Java backend telepitese (~280 MB)"
+    Pop $DLG_RB_FULL
+    ${NSD_OnClick} $DLG_RB_FULL OnSelectFull
+
+    ${NSD_CreateLabel} 16u 74u 90% 16u "A Penztar alkalmazas mellett egy lokalis PostgreSQL adatbazis es Java backend is telepitesre kerul. Akkor valassza, ha az iroda interneten akar offline-modban is mukodjon."
+    Pop $0
+
+    ; Default: Thin (online mode)
+    ${NSD_SetState} $DLG_RB_THIN ${BST_CHECKED}
+    StrCpy $INSTALL_MODE "THIN"
+
+    nsDialogs::Show
+FunctionEnd
+
+Function OnSelectThin
+    StrCpy $INSTALL_MODE "THIN"
+FunctionEnd
+
+Function OnSelectFull
+    StrCpy $INSTALL_MODE "FULL"
+FunctionEnd
+
+Function InstallModePageLeave
+    ; A radio button OnClick handler beallitotta $INSTALL_MODE-ot.
+    ; Itt csak fail-safe default-ot biztositunk.
+    ${If} $INSTALL_MODE == ""
+        StrCpy $INSTALL_MODE "THIN"
+    ${EndIf}
+    DetailPrint "Telepites tipusa: $INSTALL_MODE"
+FunctionEnd
 
 ; =============================================================================
 ; Telepites
@@ -328,59 +390,74 @@ Section "Telepites" SecInstall
     ; FAZIS 2: Fajlok masolasa
     ; =====================================================================
 
-    ; --- PostgreSQL ---
-    DetailPrint "PostgreSQL 17 telepitese..."
-    SetOutPath "$DATA_DIR\pgsql"
-    ; RE-hardening: strip source maps, test files, git metadata from pgAdmin bundle
-    File /r /x "*.map" /x "*.test.js" /x "*.spec.js" /x "jest.config.*" /x ".gitattributes" /x ".gitignore" /x ".gitmodules" "${STAGE_DIR}\pgsql\*.*"
-    CreateDirectory "$DATA_DIR\pgsql\data"
-    CreateDirectory "$DATA_DIR\pgsql\log"
-
-    ; --- Java Runtime ---
-    DetailPrint "Java Runtime telepitese..."
-    SetOutPath "$DATA_DIR\jre"
-    File /r "${STAGE_DIR}\jre\*.*"
-
-    ; --- Backend ---
-    DetailPrint "Backend szerver telepitese..."
-    SetOutPath "$DATA_DIR\backend"
-    File "${STAGE_DIR}\backend\valuta-backend.jar"
-    CreateDirectory "$DATA_DIR\backend\logs"
-
-    ; --- NSSM + VC++ Redistributable (F-N-03 fix: vc_redist is bundled) ---
-    DetailPrint "Service Manager + VC++ Runtime telepitese..."
-    SetOutPath "$DATA_DIR\tools"
-    File "${STAGE_DIR}\tools\nssm.exe"
-    File "${STAGE_DIR}\tools\vc_redist.x64.exe"
-
-    ; --- Scripts ---
-    SetOutPath "$DATA_DIR\scripts"
-    File "${STAGE_DIR}\scripts\*.*"
-
-    ; --- Electron App ---
+    ; v2.5.9 EGYSEGES TELEPITO: az Electron alkalmazas MINDIG telepul (THIN + FULL modban is)
+    ; --- Electron App (mindenkinek) ---
     DetailPrint "Penztar alkalmazas telepitese..."
     SetOutPath $INSTDIR
     ; RE-hardening: strip source maps, test/dev files, git metadata from Electron bundle
     File /r /x "*.map" /x "*.test.js" /x "*.spec.js" /x "jest.config.*" /x ".gitattributes" /x ".gitignore" /x ".gitmodules" /x "*.test.ts" /x "*.spec.ts" /x "*.stories.*" "${STAGE_DIR}\electron\*.*"
 
-    ; =====================================================================
-    ; FAZIS 2B: VC++ Redistributable (2015-2022 x64) - PG17 elofeltetel
-    ; =====================================================================
-    DetailPrint "Visual C++ Runtime ellenorzes..."
-    ; F-N-07 fix: ReadRegDWORD for DWORD registry value
-    ReadRegDWORD $0 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" "Installed"
-    ${If} $0 != 1
-        DetailPrint "  VC++ 2015-2022 Redistributable telepitese..."
-        nsExec::ExecToStack '"$DATA_DIR\tools\vc_redist.x64.exe" /install /quiet /norestart'
-        Pop $0
-        Pop $1  ; stdout (stack balance)
-        ${If} $0 != 0
-        ${AndIf} $0 != 3010
-            DetailPrint "  VC++ Redistributable kod: $0 (folytatas)"
+    ; v2.5.9: Diagnosztikai szkript bemasolasa az INSTDIR-be (mindenkinek)
+    DetailPrint "Diagnosztikai eszkoz telepitese..."
+    SetOutPath $INSTDIR
+    File /nonfatal "${STAGE_DIR}\scripts\diagnose-penztar-network.ps1"
+
+    ; v2.5.9: A backend-fugges file-ok CSAK FULL modban telepulnek
+    ${If} $INSTALL_MODE == "FULL"
+        ; --- PostgreSQL ---
+        DetailPrint "PostgreSQL 17 telepitese..."
+        SetOutPath "$DATA_DIR\pgsql"
+        ; RE-hardening: strip source maps, test files, git metadata from pgAdmin bundle
+        File /r /x "*.map" /x "*.test.js" /x "*.spec.js" /x "jest.config.*" /x ".gitattributes" /x ".gitignore" /x ".gitmodules" "${STAGE_DIR}\pgsql\*.*"
+        CreateDirectory "$DATA_DIR\pgsql\data"
+        CreateDirectory "$DATA_DIR\pgsql\log"
+
+        ; --- Java Runtime ---
+        DetailPrint "Java Runtime telepitese..."
+        SetOutPath "$DATA_DIR\jre"
+        File /r "${STAGE_DIR}\jre\*.*"
+
+        ; --- Backend ---
+        DetailPrint "Backend szerver telepitese..."
+        SetOutPath "$DATA_DIR\backend"
+        File "${STAGE_DIR}\backend\valuta-backend.jar"
+        CreateDirectory "$DATA_DIR\backend\logs"
+
+        ; --- NSSM + VC++ Redistributable (F-N-03 fix: vc_redist is bundled) ---
+        DetailPrint "Service Manager + VC++ Runtime telepitese..."
+        SetOutPath "$DATA_DIR\tools"
+        File "${STAGE_DIR}\tools\nssm.exe"
+        File "${STAGE_DIR}\tools\vc_redist.x64.exe"
+
+        ; --- Scripts (lokalis backend-hez) ---
+        SetOutPath "$DATA_DIR\scripts"
+        File "${STAGE_DIR}\scripts\*.*"
+
+        ; =====================================================================
+        ; FAZIS 2B: VC++ Redistributable (2015-2022 x64) - PG17 elofeltetel
+        ; =====================================================================
+        DetailPrint "Visual C++ Runtime ellenorzes..."
+        ; F-N-07 fix: ReadRegDWORD for DWORD registry value
+        ReadRegDWORD $0 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" "Installed"
+        ${If} $0 != 1
+            DetailPrint "  VC++ 2015-2022 Redistributable telepitese..."
+            nsExec::ExecToStack '"$DATA_DIR\tools\vc_redist.x64.exe" /install /quiet /norestart'
+            Pop $0
+            Pop $1  ; stdout (stack balance)
+            ${If} $0 != 0
+            ${AndIf} $0 != 3010
+                DetailPrint "  VC++ Redistributable kod: $0 (folytatas)"
+            ${EndIf}
+        ${Else}
+            DetailPrint "  VC++ Runtime OK (registry verified)"
         ${EndIf}
     ${Else}
-        DetailPrint "  VC++ Runtime OK (registry verified)"
+        DetailPrint "Online (THIN) mod: lokalis backend NEM telepul - a Penztar a Hetzner backend-re csatlakozik (excvaluta.com)."
     ${EndIf}
+
+    ; v2.5.9: A backend-orientalt fazisok (config-gen, DB-init, service-register, firewall,
+    ; service-start, seed) CSAK FULL modban futnak. THIN modban a Penztar a Hetzner-re megy.
+    ${If} $INSTALL_MODE == "FULL"
 
     ; =====================================================================
     ; FAZIS 3: Konfiguracio generalasa
@@ -984,8 +1061,10 @@ Section "Telepites" SecInstall
     IfSilent +1
     MessageBox MB_OK|MB_ICONEXCLAMATION "FONTOS: A dolgozok alapertelmezett jelszava '1234'.$\r$\n$\r$\nAz elso bejelentkezes utan AZONNAL valtoztassa meg a jelszavakat!$\r$\n$\r$\nErintett felhasznalok: BORSI, BALI, KASZA"
 
+    ${EndIf} ; <-- v2.5.9: VEGE a FULL-only blokknak (FAZIS 3-6: config + DB init + service + firewall + seed)
+
     ; =====================================================================
-    ; FAZIS 7: Parancsikonok
+    ; FAZIS 7: Parancsikonok (mindenkinek - THIN + FULL is)
     ; =====================================================================
     ; T-02 fix: Regi shortcutok torlese upgrade elott (flat .lnk maradvanyok)
     Delete "$SMPROGRAMS\Valutavalto Penztar.lnk"
@@ -995,8 +1074,13 @@ Section "Telepites" SecInstall
     DetailPrint "Parancsikonok letrehozasa..."
     CreateDirectory "$SMPROGRAMS\Valutavalto Penztar"
     CreateShortcut "$SMPROGRAMS\Valutavalto Penztar\Valutavalto Penztar.lnk" "$INSTDIR\Penztar.exe" "" "$INSTDIR\Penztar.exe" 0
-    CreateShortcut "$SMPROGRAMS\Valutavalto Penztar\Szolgaltatasok inditasa.lnk" "$DATA_DIR\scripts\start-services.bat" "" "" 0
-    CreateShortcut "$SMPROGRAMS\Valutavalto Penztar\Szolgaltatasok leallitasa.lnk" "$DATA_DIR\scripts\stop-services.bat" "" "" 0
+    ${If} $INSTALL_MODE == "FULL"
+        ; Service-vezerlo bat-ok csak FULL modban (lokalis backend)
+        CreateShortcut "$SMPROGRAMS\Valutavalto Penztar\Szolgaltatasok inditasa.lnk" "$DATA_DIR\scripts\start-services.bat" "" "" 0
+        CreateShortcut "$SMPROGRAMS\Valutavalto Penztar\Szolgaltatasok leallitasa.lnk" "$DATA_DIR\scripts\stop-services.bat" "" "" 0
+    ${EndIf}
+    ; v2.5.9: Diagnosztikai parancsikon (mindenkinek)
+    CreateShortcut "$SMPROGRAMS\Valutavalto Penztar\Halozati diagnosztika.lnk" "powershell.exe" "-NoProfile -ExecutionPolicy Bypass -File $\"$INSTDIR\diagnose-penztar-network.ps1$\"" "$INSTDIR\Penztar.exe" 0
     CreateShortcut "$SMPROGRAMS\Valutavalto Penztar\Eltavolitas.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
     CreateShortcut "$DESKTOP\Valutavalto Penztar.lnk" "$INSTDIR\Penztar.exe" "" "$INSTDIR\Penztar.exe" 0
 
@@ -1009,6 +1093,8 @@ Section "Telepites" SecInstall
     WriteRegStr HKLM "Software\BestChange\ValutavaltoPenztar" "InstallDir" $INSTDIR
     WriteRegStr HKLM "Software\BestChange\ValutavaltoPenztar" "DataDir" $DATA_DIR
     WriteRegStr HKLM "Software\BestChange\ValutavaltoPenztar" "Version" "${VERSION}"
+    ; v2.5.9: az uninstaller olvassa hogy melyik service-eket kell stoppolni/eltavolitani
+    WriteRegStr HKLM "Software\BestChange\ValutavaltoPenztar" "InstallMode" $INSTALL_MODE
 
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "DisplayName" "Valutavalto Penztar ${VERSION}"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
@@ -1041,71 +1127,84 @@ Section "un.Eltavolitas"
     ${If} $DATA_DIR == ""
         ExpandEnvStrings $DATA_DIR "%PROGRAMDATA%\BestChange"
     ${EndIf}
-
-    DetailPrint "Szolgaltatasok leallitasa..."
-    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" stop BestChange-Backend'
-    Sleep 3000
-    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" stop BestChange-PostgreSQL'
-    Sleep 3000
-    nsExec::ExecToLog 'net stop BestChange-Backend'
-    nsExec::ExecToLog 'net stop BestChange-PostgreSQL'
-    Sleep 2000
-
-    IfFileExists "$DATA_DIR\pgsql\bin\pg_ctl.exe" 0 un_skip_pgctl
-        nsExec::ExecToLog '"$DATA_DIR\pgsql\bin\pg_ctl.exe" stop -D "$DATA_DIR\pgsql\data" -m fast -w -t 30'
-    un_skip_pgctl:
-    Sleep 2000
-
-    ; Scoped process kill (v2.3.8: -EncodedCommand quote-bug fix)
-    nsProcess::_FindProcess "postgres.exe"
-    Pop $0
-    ${If} $0 == 0
-        nsExec::ExecToLog 'powershell.exe -NoProfile -EncodedCommand ${PS_KILL_PG_B64}'
+    ; v2.5.9: olvassuk hogy melyik mode-ban telepult, hogy csak a relevans cleanup-okat csinaljuk
+    ReadRegStr $INSTALL_MODE HKLM "Software\BestChange\ValutavaltoPenztar" "InstallMode"
+    ${If} $INSTALL_MODE == ""
+        ; Backward-compat: regi (v2.5.8 elotti) telepitesek mind FULL modban voltak
+        StrCpy $INSTALL_MODE "FULL"
     ${EndIf}
-    nsProcess::_FindProcess "java.exe"
-    Pop $0
-    ${If} $0 == 0
-        nsExec::ExecToLog 'powershell.exe -NoProfile -EncodedCommand ${PS_KILL_JAVA_B64}'
-    ${EndIf}
+    DetailPrint "Eltavolitasi mode: $INSTALL_MODE"
 
-    ; E6-03 fix: Wait for process death before removing services (max 10s)
-    DetailPrint "  Varakozas a folyamatok leallasara..."
-    StrCpy $R0 0
-    un_kill_wait:
-        IntOp $R0 $R0 + 1
-        ${If} $R0 > 10
-            DetailPrint "  Timeout - folytatas"
-            Goto un_kill_done
-        ${EndIf}
-        Sleep 1000
+    ${If} $INSTALL_MODE == "FULL"
+        DetailPrint "Szolgaltatasok leallitasa..."
+        nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" stop BestChange-Backend'
+        Sleep 3000
+        nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" stop BestChange-PostgreSQL'
+        Sleep 3000
+        nsExec::ExecToLog 'net stop BestChange-Backend'
+        nsExec::ExecToLog 'net stop BestChange-PostgreSQL'
+        Sleep 2000
+
+        IfFileExists "$DATA_DIR\pgsql\bin\pg_ctl.exe" 0 un_skip_pgctl
+            nsExec::ExecToLog '"$DATA_DIR\pgsql\bin\pg_ctl.exe" stop -D "$DATA_DIR\pgsql\data" -m fast -w -t 30'
+        un_skip_pgctl:
+        Sleep 2000
+
+        ; Scoped process kill (v2.3.8: -EncodedCommand quote-bug fix)
         nsProcess::_FindProcess "postgres.exe"
         Pop $0
         ${If} $0 == 0
-            Goto un_kill_wait
+            nsExec::ExecToLog 'powershell.exe -NoProfile -EncodedCommand ${PS_KILL_PG_B64}'
         ${EndIf}
         nsProcess::_FindProcess "java.exe"
         Pop $0
         ${If} $0 == 0
-            Goto un_kill_wait
+            nsExec::ExecToLog 'powershell.exe -NoProfile -EncodedCommand ${PS_KILL_JAVA_B64}'
         ${EndIf}
-    un_kill_done:
+    ${Else}
+        DetailPrint "THIN mode: nincs lokalis backend service eltavolitando."
+    ${EndIf}
 
-    DetailPrint "Szolgaltatasok eltavolitasa..."
-    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" remove BestChange-Backend confirm'
-    nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" remove BestChange-PostgreSQL confirm'
-    nsExec::ExecToLog 'cmd.exe /C sc.exe delete BestChange-Backend'
-    nsExec::ExecToLog 'cmd.exe /C sc.exe delete BestChange-PostgreSQL'
-    Sleep 1000
+    ${If} $INSTALL_MODE == "FULL"
+        ; E6-03 fix: Wait for process death before removing services (max 10s)
+        DetailPrint "  Varakozas a folyamatok leallasara..."
+        StrCpy $R0 0
+        un_kill_wait:
+            IntOp $R0 $R0 + 1
+            ${If} $R0 > 10
+                DetailPrint "  Timeout - folytatas"
+                Goto un_kill_done
+            ${EndIf}
+            Sleep 1000
+            nsProcess::_FindProcess "postgres.exe"
+            Pop $0
+            ${If} $0 == 0
+                Goto un_kill_wait
+            ${EndIf}
+            nsProcess::_FindProcess "java.exe"
+            Pop $0
+            ${If} $0 == 0
+                Goto un_kill_wait
+            ${EndIf}
+        un_kill_done:
 
-    ; Firewall szabalyok eltavolitasa (F-02 fix: mind a 4 rule torlese)
-    DetailPrint "Firewall szabalyok eltavolitasa..."
-    nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Valutavalto-Backend"'
-    nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Valutavalto-PostgreSQL"'
-    nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="BestChange-Backend (8080)"'
+        DetailPrint "Szolgaltatasok eltavolitasa..."
+        nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" remove BestChange-Backend confirm'
+        nsExec::ExecToLog '"$DATA_DIR\tools\nssm.exe" remove BestChange-PostgreSQL confirm'
+        nsExec::ExecToLog 'cmd.exe /C sc.exe delete BestChange-Backend'
+        nsExec::ExecToLog 'cmd.exe /C sc.exe delete BestChange-PostgreSQL'
+        Sleep 1000
+
+        ; Firewall szabalyok eltavolitasa (F-02 fix: mind a 4 rule torlese)
+        DetailPrint "Firewall szabalyok eltavolitasa..."
+        nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Valutavalto-Backend"'
+        nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Valutavalto-PostgreSQL"'
+        nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="BestChange-Backend (8080)"'
     nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="BestChange-PostgreSQL (54320)"'
 
-    ; F-01 fix: PGPASSFILE environment variable cleanup az uninstallerben
-    nsExec::ExecToLog 'reg delete "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v PGPASSFILE /f'
+        ; F-01 fix: PGPASSFILE environment variable cleanup az uninstallerben
+        nsExec::ExecToLog 'reg delete "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v PGPASSFILE /f'
+    ${EndIf} ; <-- v2.5.9: VEGE az un. FULL-only blokknak
 
     DetailPrint "Alkalmazas fajlok eltavolitasa..."
     RMDir /r "$INSTDIR"
