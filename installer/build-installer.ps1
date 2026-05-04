@@ -113,61 +113,49 @@ function Assert-FileHash($Path, $Expected, $Label) {
 
 function Write-Step($msg) { Write-Host "`n=== $msg ===" -ForegroundColor Cyan }
 
-# ─── Env injection: .env.production-t generaljuk a `.env.production.example`-bol ──────
-# A `frontend-react/.env.production` es `penztar-client/.env.production` GIT-IGNORE-OLTAK
-# (Google OAuth Web client ID + Desktop client_secret miatt). A repo-gyokeri `.env`-bol
+# Env injection: .env.production-t generaljuk a .env.production.example-bol.
+# A frontend-react/.env.production es penztar-client/.env.production GIT-IGNORE-OLTAK
+# (Google OAuth Web client ID + Desktop client_secret miatt). A repo-gyokeri .env-bol
 # (gitignore-olt, csak a fejleszto gepen) olvassuk a tenyleges ertekeket es helyettesitjuk
-# a `<<__VARNAME__>>` placeholder-eket.
-function Get-EnvValue($EnvFilePath, $VarName) {
-    if (-not (Test-Path $EnvFilePath)) { return "" }
-    $line = Select-String -Path $EnvFilePath -Pattern "^$VarName=" -SimpleMatch:$false | Select-Object -First 1
-    if (-not $line) { return "" }
-    $value = ($line.Line -split '=', 2)[1]
-    if ($null -eq $value) { return "" }
-    # Eltavolitjuk a kornyezo idezojeleket ha vannak
-    $value = $value.Trim()
-    if (($value.StartsWith('"') -and $value.EndsWith('"')) -or ($value.StartsWith("'") -and $value.EndsWith("'"))) {
-        $value = $value.Substring(1, $value.Length - 2)
-    }
-    return $value
-}
+# a placeholder-eket.
 
-function Generate-EnvProduction($SourceExample, $TargetEnv, $RepoEnv) {
-    if (-not (Test-Path $SourceExample)) {
-        throw "ENV TEMPLATE NOT FOUND: $SourceExample"
-    }
-    $googleWebClientId = Get-EnvValue $RepoEnv 'GOOGLE_CLIENT_ID'
-    $googleDesktopClientId = Get-EnvValue $RepoEnv 'GOOGLE_DESKTOP_CLIENT_ID'
-    $googleDesktopClientSecret = Get-EnvValue $RepoEnv 'GOOGLE_DESKTOP_CLIENT_SECRET'
-
-    if (-not $googleWebClientId) {
-        Write-Host "  WARN: GOOGLE_CLIENT_ID nincs a $RepoEnv-ben — Google login nem fog mukodni" -ForegroundColor Yellow
-    }
-    if (-not $googleDesktopClientId -or -not $googleDesktopClientSecret) {
-        Write-Host "  WARN: GOOGLE_DESKTOP_CLIENT_ID/SECRET nincs a $RepoEnv-ben — Electron Google login nem fog mukodni" -ForegroundColor Yellow
-    }
-
-    $content = Get-Content -Raw $SourceExample
-    $content = $content.Replace('<<__GOOGLE_WEB_CLIENT_ID__>>', $googleWebClientId)
-    $content = $content.Replace('<<__GOOGLE_DESKTOP_CLIENT_ID__>>', $googleDesktopClientId)
-    $content = $content.Replace('<<__GOOGLE_DESKTOP_CLIENT_SECRET__>>', $googleDesktopClientSecret)
-    [System.IO.File]::WriteAllText($TargetEnv, $content)
-    Write-Host "  Generated: $TargetEnv (Web ID: $($googleWebClientId.Substring(0, [Math]::Min(8, $googleWebClientId.Length)))***, Desktop ID: $($googleDesktopClientId.Substring(0, [Math]::Min(8, $googleDesktopClientId.Length)))***)" -ForegroundColor Green
-}
-
-Write-Step "0/6 - Env injection (.env.production a `.env`-bol)"
+Write-Step "0/6 - Env injection (.env.production a .env-bol)"
 $rootEnv = Join-Path $RepoRoot ".env"
 if (-not (Test-Path $rootEnv)) {
-    Write-Host "WARNING: $rootEnv nem letezik — Google OAuth env nelkul a build folytatodik, de a Google login NEM fog mukodni a telepitett alkalmazasban." -ForegroundColor Yellow
+    Write-Host "WARNING: $rootEnv nem letezik - Google OAuth env nelkul a build folytatodik, de a Google login NEM fog mukodni a telepitett alkalmazasban." -ForegroundColor Yellow
 } else {
-    Generate-EnvProduction `
-        -SourceExample (Join-Path $RepoRoot "frontend-react\.env.production.example") `
-        -TargetEnv (Join-Path $RepoRoot "frontend-react\.env.production") `
-        -RepoEnv $rootEnv
-    Generate-EnvProduction `
-        -SourceExample (Join-Path $RepoRoot "penztar-client\.env.production.example") `
-        -TargetEnv (Join-Path $RepoRoot "penztar-client\.env.production") `
-        -RepoEnv $rootEnv
+    $envLines = Get-Content $rootEnv
+    $googleWebClientId = ''
+    $googleDesktopClientId = ''
+    $googleDesktopClientSecret = ''
+    foreach ($line in $envLines) {
+        if ($line -match '^GOOGLE_CLIENT_ID=(.*)$') { $googleWebClientId = $Matches[1].Trim() }
+        elseif ($line -match '^GOOGLE_DESKTOP_CLIENT_ID=(.*)$') { $googleDesktopClientId = $Matches[1].Trim() }
+        elseif ($line -match '^GOOGLE_DESKTOP_CLIENT_SECRET=(.*)$') { $googleDesktopClientSecret = $Matches[1].Trim() }
+    }
+    if (-not $googleWebClientId) {
+        Write-Host "  WARN: GOOGLE_CLIENT_ID nincs a .env-ben - Google login nem fog mukodni" -ForegroundColor Yellow
+    }
+    if (-not $googleDesktopClientId -or -not $googleDesktopClientSecret) {
+        Write-Host "  WARN: GOOGLE_DESKTOP_CLIENT_ID/SECRET nincs a .env-ben - Electron Google login nem fog mukodni" -ForegroundColor Yellow
+    }
+    $envFiles = @(
+        @{ Example = (Join-Path $RepoRoot 'frontend-react\.env.production.example'); Target = (Join-Path $RepoRoot 'frontend-react\.env.production') },
+        @{ Example = (Join-Path $RepoRoot 'penztar-client\.env.production.example'); Target = (Join-Path $RepoRoot 'penztar-client\.env.production') }
+    )
+    foreach ($pair in $envFiles) {
+        $exPath = $pair.Example
+        $targetPath = $pair.Target
+        if (-not (Test-Path $exPath)) {
+            throw "ENV TEMPLATE NOT FOUND: $exPath"
+        }
+        $content = Get-Content -Raw $exPath
+        $content = $content.Replace('<<__GOOGLE_WEB_CLIENT_ID__>>', $googleWebClientId)
+        $content = $content.Replace('<<__GOOGLE_DESKTOP_CLIENT_ID__>>', $googleDesktopClientId)
+        $content = $content.Replace('<<__GOOGLE_DESKTOP_CLIENT_SECRET__>>', $googleDesktopClientSecret)
+        [System.IO.File]::WriteAllText($targetPath, $content)
+        Write-Host ("  Generated: " + $targetPath) -ForegroundColor Green
+    }
 }
 
 # ─── Előkészítés ────────────────────────────────────────────────────────────
@@ -249,18 +237,27 @@ if (-not $SkipFrontendBuild) {
     $clientDir = Join-Path $RepoRoot "penztar-client"
     Push-Location $clientDir
     try {
-        # Set local API URL for build
+        # v2.5.7 KRITIKUS FIX (gyokerok analysis 2026-05-04 utan):
+        # KORABBI BUG: itt felulirtuk a `.env`-et `VITE_API_URL=http://localhost:8080/api/v1`-re,
+        # amit a Vite a build-time inline-olt a bundle-ba (.env precedence felulbirja a .env.production-t).
+        # A renderer `client.ts:41` az `import.meta.env.VITE_API_URL`-t hasznalja default-nak, es az
+        # SQLite `server_url`-rel csak ASYNC override-olta — race condition: friss gepen az elso
+        # API hivas (`fetchWorkers` a LoginPage-en) azonnal indul, axios meg `localhost:8080`-ra megy
+        # mire a Promise resolve-ol -> Network Error.
+        #
+        # FIX: a `.env`-be CSAK a `VITE_BRANCH_CODE` + `VITE_COMPANY_ID` kerul (LoginPage default-jaihoz),
+        # de a `VITE_API_URL`-t NEM bantjuk — igy a `.env.production`-bol jovo `https://excvaluta.com/api/v1`
+        # ervenyes. A Vite a build-time ezt inline-olja a renderer-bundle-ba, igy az axios induloban
+        # mar a HELYES URL-en mukodik, nem kell az async SQLite override-ra varni.
         $envContent = @'
-VITE_API_URL=http://localhost:8080/api/v1
 VITE_BRANCH_CODE=EBC
 VITE_COMPANY_ID=1
 '@
         # BS-A fix: No BOM (Set-Content -Encoding UTF8 writes BOM on PS 5.1)
         [System.IO.File]::WriteAllText((Join-Path (Get-Location) ".env.local-installer"), $envContent)
-
-        # Backup original .env, replace with local installer config
         if (Test-Path ".env") { Copy-Item ".env" ".env.backup" -Force }
         Copy-Item ".env.local-installer" ".env" -Force
+        Write-Host "  v2.5.7 fix: .env CSAK VITE_BRANCH_CODE+COMPANY_ID-t tartalmaz (NEM VITE_API_URL!)" -ForegroundColor Cyan
 
         # Install deps if needed
         if (-not (Test-Path "node_modules")) {
@@ -316,7 +313,7 @@ VITE_COMPANY_ID=1
             throw "Electron unpacked directory not found in release/"
         }
 
-        # Restore original .env
+        # Restore original .env (a 3/6 elejen .env.backup-ba mentett verzio)
         if (Test-Path ".env.backup") {
             Copy-Item ".env.backup" ".env" -Force
             Remove-Item ".env.backup"
