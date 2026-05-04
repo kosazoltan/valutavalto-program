@@ -364,26 +364,27 @@ Section "Telepites" SecInstall
 
     ; =====================================================================
     ; FAZIS 1g: Port ellenorzes (G2-01 fix: cleanup UTAN, nem .onInit-ben)
-    ; Silent upgrade-nel a regi service-ek mar lealltak a Fazis 1-ben,
-    ; tehat a port check itt mar nem ad hamis pozitivot.
+    ; v2.5.9: CSAK FULL modban relevans (THIN modnak nem kell a 8080/54320 port szabad)
     ; =====================================================================
-    DetailPrint "Port ellenorzes..."
-    nsExec::ExecToStack 'cmd.exe /C netstat -an | findstr ":54320 " | findstr "LISTENING"'
-    Pop $0
-    Pop $1  ; stdout
-    ${If} $0 == 0
-        IfSilent +2
-        MessageBox MB_YESNO|MB_ICONQUESTION "A 54320-as port meg foglalt a cleanup utan.$\r$\n$\r$\nLehetseges, hogy egy masik PostgreSQL peldany fut.$\r$\n$\r$\nFolytatja?" IDYES +2
-        Abort
-    ${EndIf}
+    ${If} $INSTALL_MODE == "FULL"
+        DetailPrint "Port ellenorzes (FULL mod, lokalis backend)..."
+        nsExec::ExecToStack 'cmd.exe /C netstat -an | findstr ":54320 " | findstr "LISTENING"'
+        Pop $0
+        Pop $1  ; stdout
+        ${If} $0 == 0
+            IfSilent +2
+            MessageBox MB_YESNO|MB_ICONQUESTION "A 54320-as port meg foglalt a cleanup utan.$\r$\n$\r$\nLehetseges, hogy egy masik PostgreSQL peldany fut.$\r$\n$\r$\nFolytatja?" IDYES +2
+            Abort
+        ${EndIf}
 
-    nsExec::ExecToStack 'cmd.exe /C netstat -an | findstr ":8080 " | findstr "LISTENING"'
-    Pop $0
-    Pop $1  ; stdout
-    ${If} $0 == 0
-        IfSilent +2
-        MessageBox MB_YESNO|MB_ICONQUESTION "A 8080-as port meg foglalt a cleanup utan.$\r$\n$\r$\nLehetseges, hogy egy masik alkalmazas hasznalja.$\r$\n$\r$\nFolytatja?" IDYES +2
-        Abort
+        nsExec::ExecToStack 'cmd.exe /C netstat -an | findstr ":8080 " | findstr "LISTENING"'
+        Pop $0
+        Pop $1  ; stdout
+        ${If} $0 == 0
+            IfSilent +2
+            MessageBox MB_YESNO|MB_ICONQUESTION "A 8080-as port meg foglalt a cleanup utan.$\r$\n$\r$\nLehetseges, hogy egy masik alkalmazas hasznalja.$\r$\n$\r$\nFolytatja?" IDYES +2
+            Abort
+        ${EndIf}
     ${EndIf}
 
     ; =====================================================================
@@ -1263,6 +1264,11 @@ Function .onInit
         MessageBox MB_OK|MB_ICONSTOP "A telepiteshez rendszergazdai jogosultsag szukseges.$\r$\n$\r$\nKattintson jobb gombbal a telepitore, majd valassza a$\r$\n'Futtatas rendszergazdakent' lehetoseget."
         Abort
     ${EndIf}
+
+    ; v2.5.9: Silent install esetén a Custom Page nem fut, így a $INSTALL_MODE üres marad
+    ; -> default = "THIN" (online mode, a Penztar a Hetzner-re csatlakozik).
+    ; GUI mode: a InstallModePage felülírja a user választása szerint.
+    StrCpy $INSTALL_MODE "THIN"
 
     ; =====================================================================
     ; v2.3.0: Egysegest flow - egyetlen telepito kezel minden forgatokonyvet
