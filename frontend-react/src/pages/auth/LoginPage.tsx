@@ -74,15 +74,21 @@ export default function LoginPage() {
   const login = useAuthStore((state) => state.login)
   const selectRole = useAuthStore((state) => state.selectRole)
   const navigate = useNavigate()
-  // V178/V179 Google OAuth audit (2026-05-03):
-  // - Google login csak akkor jelenik meg, ha VITE_GOOGLE_CLIENT_ID nem-ures es nem "none".
-  // - Electron offline modban (no `electronAPI` -> web ok; van electronAPI + offlinexp/no-server -> hide)
-  //   itt minimal-invasive: csak a client ID-t ellenorizzuk; az online-only kovetelmenyt a Google
-  //   library maga jelzi onError-rel ha offline.
+  // V178/V179 Google OAuth audit (2026-05-03 + Electron Desktop OAuth refactor 2026-05-04):
+  // - Web (browser): `<GoogleLogin>` Web SDK popup ID token flow. Mukodik `https://excvaluta.com` origin-en.
+  // - Electron (penztar/ertektar): a Web SDK NEM mukodik (`app://localhost` origin reject — `idpiframe_initialization_failed`).
+  //   Ezert az Electron a hivatalos Google Desktop OAuth mintat hasznalja: `window.electronAPI.googleOAuthFlow()`
+  //   meghivasara a main process indit egy Authorization Code Flow + loopback redirect (RFC 8252) flow-t,
+  //   PKCE-vel + Desktop client secret-tel. A vegeredmeny ugyanaz az ID token, amit a backend
+  //   `/api/v1/auth/google-login` endpointja validal (a backend audience-listanak mind a Web mind a Desktop
+  //   client ID-t fogadnia kell — `GoogleLoginConfig.googleIdTokenVerifier`).
   const rawGoogleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
   const googleClientId = rawGoogleClientId && rawGoogleClientId !== 'none' && rawGoogleClientId.trim().length > 0
     ? rawGoogleClientId.trim()
     : null
+
+  const isElectron = typeof window !== 'undefined' && Boolean(window.electronAPI?.googleOAuthFlow)
+  const [googleLoadingElectron, setGoogleLoadingElectron] = useState(false)
 
   /**
    * v2.1.4: Penztarosok lekerese a penztar regioja alapjan (no cache, mindig friss).
@@ -248,6 +254,40 @@ export default function LoginPage() {
     }
   }
 
+  /**
+   * Electron Desktop OAuth flow — `window.electronAPI.googleOAuthFlow()` indit egy
+   * Authorization Code Flow + loopback redirect (RFC 8252) flow-t a main process-ben.
+   * A flow vegen az ID tokent ugyanugy elkuldjuk a backend `/api/v1/auth/google-login`
+   * endpointnak, mint a webes `<GoogleLogin>` flow.
+   */
+  const handleElectronGoogleLogin = async () => {
+    if (!window.electronAPI?.googleOAuthFlow) {
+      setError('Electron Google OAuth API nem elerheto.')
+      return
+    }
+    setError('')
+    setGoogleLoadingElectron(true)
+    setLoading(true)
+    try {
+      const result = await window.electronAPI.googleOAuthFlow()
+      if (!result.ok) {
+        if (result.code === 'USER_CANCELLED') {
+          // User maga megszakitotta — silent (no error message).
+        } else {
+          setError(`Google bejelentkezés sikertelen: ${result.message}`)
+        }
+        return
+      }
+      const response = await authApi.googleLogin({ idToken: result.idToken })
+      handleLoginResponse(response)
+    } catch (err: unknown) {
+      setError(getErrorMessage(err))
+    } finally {
+      setGoogleLoadingElectron(false)
+      setLoading(false)
+    }
+  }
+
   // V57: Role-választó modal
   if (showRoleSelector && pendingLoginResponse) {
     return (
@@ -331,20 +371,45 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Google OAuth — elsődleges belépés */}
-          {googleClientId && (
+          {/* Google OAuth — elsődleges belépés.
+              - Electron: custom "Belépés Google-lel" gomb -> window.electronAPI.googleOAuthFlow()
+                (RFC 8252 Desktop Authorization Code Flow + loopback redirect, PKCE-vel)
+              - Browser (excvaluta.com): @react-oauth/google `<GoogleLogin>` Web SDK popup ID token flow */}
+          {isElectron ? (
             <div className="mb-3">
-              <GoogleOAuthProvider clientId={googleClientId}>
-                <div className="flex justify-center">
-                  <GoogleLogin
-                    onSuccess={handleGoogleSuccess}
-                    onError={() => setError('Google bejelentkezés sikertelen')}
-                    useOneTap={false}
-                    width="300"
-                  />
-                </div>
-              </GoogleOAuthProvider>
+              <button
+                type="button"
+                onClick={handleElectronGoogleLogin}
+                disabled={googleLoadingElectron || loading}
+                className="w-full h-10 flex items-center justify-center gap-2 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50 transition"
+                data-testid="login-google-electron"
+              >
+                <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+                  <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
+                  <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
+                  <path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/>
+                  <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
+                </svg>
+                <span className="text-sm text-gray-700 font-medium">
+                  {googleLoadingElectron ? 'Bejelentkezés folyamatban...' : 'Belépés Google fiókkal'}
+                </span>
+              </button>
             </div>
+          ) : (
+            googleClientId && (
+              <div className="mb-3">
+                <GoogleOAuthProvider clientId={googleClientId}>
+                  <div className="flex justify-center">
+                    <GoogleLogin
+                      onSuccess={handleGoogleSuccess}
+                      onError={() => setError('Google bejelentkezés sikertelen')}
+                      useOneTap={false}
+                      width="300"
+                    />
+                  </div>
+                </GoogleOAuthProvider>
+              </div>
+            )
           )}
 
           {/* Elválasztó */}

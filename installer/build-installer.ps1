@@ -113,6 +113,63 @@ function Assert-FileHash($Path, $Expected, $Label) {
 
 function Write-Step($msg) { Write-Host "`n=== $msg ===" -ForegroundColor Cyan }
 
+# ─── Env injection: .env.production-t generaljuk a `.env.production.example`-bol ──────
+# A `frontend-react/.env.production` es `penztar-client/.env.production` GIT-IGNORE-OLTAK
+# (Google OAuth Web client ID + Desktop client_secret miatt). A repo-gyokeri `.env`-bol
+# (gitignore-olt, csak a fejleszto gepen) olvassuk a tenyleges ertekeket es helyettesitjuk
+# a `<<__VARNAME__>>` placeholder-eket.
+function Get-EnvValue($EnvFilePath, $VarName) {
+    if (-not (Test-Path $EnvFilePath)) { return "" }
+    $line = Select-String -Path $EnvFilePath -Pattern "^$VarName=" -SimpleMatch:$false | Select-Object -First 1
+    if (-not $line) { return "" }
+    $value = ($line.Line -split '=', 2)[1]
+    if ($null -eq $value) { return "" }
+    # Eltavolitjuk a kornyezo idezojeleket ha vannak
+    $value = $value.Trim()
+    if (($value.StartsWith('"') -and $value.EndsWith('"')) -or ($value.StartsWith("'") -and $value.EndsWith("'"))) {
+        $value = $value.Substring(1, $value.Length - 2)
+    }
+    return $value
+}
+
+function Generate-EnvProduction($SourceExample, $TargetEnv, $RepoEnv) {
+    if (-not (Test-Path $SourceExample)) {
+        throw "ENV TEMPLATE NOT FOUND: $SourceExample"
+    }
+    $googleWebClientId = Get-EnvValue $RepoEnv 'GOOGLE_CLIENT_ID'
+    $googleDesktopClientId = Get-EnvValue $RepoEnv 'GOOGLE_DESKTOP_CLIENT_ID'
+    $googleDesktopClientSecret = Get-EnvValue $RepoEnv 'GOOGLE_DESKTOP_CLIENT_SECRET'
+
+    if (-not $googleWebClientId) {
+        Write-Host "  WARN: GOOGLE_CLIENT_ID nincs a $RepoEnv-ben — Google login nem fog mukodni" -ForegroundColor Yellow
+    }
+    if (-not $googleDesktopClientId -or -not $googleDesktopClientSecret) {
+        Write-Host "  WARN: GOOGLE_DESKTOP_CLIENT_ID/SECRET nincs a $RepoEnv-ben — Electron Google login nem fog mukodni" -ForegroundColor Yellow
+    }
+
+    $content = Get-Content -Raw $SourceExample
+    $content = $content.Replace('<<__GOOGLE_WEB_CLIENT_ID__>>', $googleWebClientId)
+    $content = $content.Replace('<<__GOOGLE_DESKTOP_CLIENT_ID__>>', $googleDesktopClientId)
+    $content = $content.Replace('<<__GOOGLE_DESKTOP_CLIENT_SECRET__>>', $googleDesktopClientSecret)
+    [System.IO.File]::WriteAllText($TargetEnv, $content)
+    Write-Host "  Generated: $TargetEnv (Web ID: $($googleWebClientId.Substring(0, [Math]::Min(8, $googleWebClientId.Length)))***, Desktop ID: $($googleDesktopClientId.Substring(0, [Math]::Min(8, $googleDesktopClientId.Length)))***)" -ForegroundColor Green
+}
+
+Write-Step "0/6 - Env injection (.env.production a `.env`-bol)"
+$rootEnv = Join-Path $RepoRoot ".env"
+if (-not (Test-Path $rootEnv)) {
+    Write-Host "WARNING: $rootEnv nem letezik — Google OAuth env nelkul a build folytatodik, de a Google login NEM fog mukodni a telepitett alkalmazasban." -ForegroundColor Yellow
+} else {
+    Generate-EnvProduction `
+        -SourceExample (Join-Path $RepoRoot "frontend-react\.env.production.example") `
+        -TargetEnv (Join-Path $RepoRoot "frontend-react\.env.production") `
+        -RepoEnv $rootEnv
+    Generate-EnvProduction `
+        -SourceExample (Join-Path $RepoRoot "penztar-client\.env.production.example") `
+        -TargetEnv (Join-Path $RepoRoot "penztar-client\.env.production") `
+        -RepoEnv $rootEnv
+}
+
 # ─── Előkészítés ────────────────────────────────────────────────────────────
 Write-Step "Előkészítés"
 New-Item -ItemType Directory -Force $BuildDir | Out-Null

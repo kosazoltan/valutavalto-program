@@ -59,6 +59,7 @@ import { registerCameraHandlers } from './camera';
 import { registerVideoManagerHandlers } from './video-manager';
 import { registerScannerHandlers } from './scanner';
 import { registerUpdaterHandlers } from './updater';
+import { performGoogleOAuthFlow, GoogleOAuthFailedException } from './google-oauth';
 import {
 
   isFirstRun,
@@ -733,6 +734,36 @@ app.whenReady().then(async () => {
   registerVideoManagerHandlers();
   registerScannerHandlers();
   registerUpdaterHandlers();
+
+  // Google OAuth Authorization Code Flow + loopback redirect (RFC 8252).
+  // A Web SDK (`<GoogleLogin>`) NEM mukodik Electron-ban (`app://localhost` origin reject),
+  // ezert a renderer ezt az IPC handler-t hivja meg ha a user a "Belepes Google-lel"
+  // gombra kattint az Electron Login oldalon. A handler vegigviszi a Google Desktop
+  // OAuth flow-t es a vegen vissza-adja a Google ID tokent — a renderer ezt elkuldi a
+  // backend `/api/v1/auth/google-login` endpointnak (ugyanaz mint a webes felulet).
+  ipcMain.handle('auth:google-oauth-flow', async () => {
+    const clientId = process.env.VITE_GOOGLE_DESKTOP_CLIENT_ID
+        ?? process.env.GOOGLE_DESKTOP_CLIENT_ID
+        ?? '';
+    const clientSecret = process.env.VITE_GOOGLE_DESKTOP_CLIENT_SECRET
+        ?? process.env.GOOGLE_DESKTOP_CLIENT_SECRET
+        ?? '';
+    if (!clientId || !clientSecret) {
+      log.error('[main] auth:google-oauth-flow MISCONFIGURED — VITE_GOOGLE_DESKTOP_CLIENT_ID/SECRET hianyzik');
+      throw new Error('Google Desktop OAuth client nincs konfiguralva. Kerd az adminisztratort.');
+    }
+    try {
+      const result = await performGoogleOAuthFlow({ clientId, clientSecret });
+      return { ok: true, idToken: result.idToken, email: result.email };
+    } catch (err) {
+      if (err instanceof GoogleOAuthFailedException) {
+        log.warn('[main] Google OAuth flow failed:', err.code, err.message);
+        return { ok: false, code: err.code, message: err.message };
+      }
+      log.error('[main] Google OAuth flow unexpected error:', err);
+      return { ok: false, code: 'UNEXPECTED', message: (err as Error).message };
+    }
+  });
 
   // Custom 'app' protocol handler regisztráció
   // Ez a dist/ mappából szolgálja ki a fájlokat, mint egy webszerver

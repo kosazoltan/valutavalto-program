@@ -38,6 +38,19 @@ public class GoogleLoginConfig {
     @Value("${google.client.id:}")
     private String googleClientId;
 
+    /**
+     * Electron Desktop OAuth client ID — Authorization Code Flow + loopback redirect-hez (RFC 8252).
+     * A Web SDK (`<GoogleLogin>`) `app://localhost`-os Electron renderer-en NEM mukodik
+     * (a Google `gsi/client` SDK csak `http://`/`https://` origint fogad el — `idpiframe_initialization_failed`).
+     * Ezert az Electron a hivatalos Google Desktop apps mintat hasznalja:
+     * ephemeral HTTP server `http://127.0.0.1:RANDOM_PORT/callback` + PKCE token exchange.
+     * Ez egy MASIK Google Cloud OAuth client ID (Application type: Desktop), igy a backend
+     * audience-listanak mind a Web (browser/excvaluta.com) mind a Desktop (Electron) ID-t
+     * el kell fogadnia ugyanazon `/api/v1/auth/google-login` endpointon.
+     */
+    @Value("${google.desktop.client.id:}")
+    private String googleDesktopClientId;
+
     private final Environment environment;
 
     public GoogleLoginConfig(Environment environment) {
@@ -45,10 +58,11 @@ public class GoogleLoginConfig {
     }
 
     /**
-     * Google ID token verifier — audience-szel scope-olva a sajat web client ID-re.
+     * Google ID token verifier — audience-listaval (Web + Electron Desktop client ID-k).
      *
-     * <p>Production profile: ha a `google.client.id` ures, fail-fast a startup-on
-     * (nem hagyhatjuk hogy a Google login csendesen torott legyen).</p>
+     * <p>Production profile: ha a `google.client.id` (Web) ures, fail-fast a startup-on.
+     * A `google.desktop.client.id` (Electron Desktop) opcionalis — ha ures, csak a webes
+     * felulet Google login fog mukodni, az Electron-bol jovo token visszautasitva.</p>
      *
      * <p>Reuse-eli a `GmailOAuthConfig.googleHttpTransport()` `HttpTransport` bean-et,
      * NEM hoz letre uj HTTP klienst.</p>
@@ -72,11 +86,21 @@ public class GoogleLoginConfig {
                     .build();
         }
 
-        log.info("Google login config: GoogleIdTokenVerifier aktiv (audience prefix: {}***).",
-                googleClientId.substring(0, Math.min(8, googleClientId.length())));
+        // Audience-lista: Web client ID kotelezo, Desktop client ID opcionalis.
+        java.util.List<String> audiences = new java.util.ArrayList<>();
+        audiences.add(googleClientId);
+        if (googleDesktopClientId != null && !googleDesktopClientId.isBlank()) {
+            audiences.add(googleDesktopClientId);
+            log.info("Google login config: GoogleIdTokenVerifier aktiv ket audience-szel — Web prefix: {}***, Desktop prefix: {}***.",
+                    googleClientId.substring(0, Math.min(8, googleClientId.length())),
+                    googleDesktopClientId.substring(0, Math.min(8, googleDesktopClientId.length())));
+        } else {
+            log.info("Google login config: GoogleIdTokenVerifier aktiv csak Web audience-szel (prefix: {}***). Desktop client ID nincs konfiguralva — Electron-bol Google login NEM mukodik.",
+                    googleClientId.substring(0, Math.min(8, googleClientId.length())));
+        }
 
         return new GoogleIdTokenVerifier.Builder(googleHttpTransport, GsonFactory.getDefaultInstance())
-                .setAudience(List.of(googleClientId))
+                .setAudience(audiences)
                 .build();
     }
 }

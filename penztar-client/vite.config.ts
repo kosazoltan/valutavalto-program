@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import electron from 'vite-plugin-electron';
 import { builtinModules } from 'node:module';
 import path from 'node:path';
@@ -123,52 +123,69 @@ function launchElectronIfReady() {
 }
 
 
-export default defineConfig({
-  plugins: [
-    electron([
-      {
-        entry: 'electron/main.ts',
-        onstart(_args) {
-          // main.ts valtozasnal full Electron-restart kell (a preloadJs maradhat).
-          // Eloszor leallitjuk a regi process-t, hogy az idempotency-guard ne skip-eljen.
-          if (electronDevProcess && !electronDevProcess.killed) {
-            electronDevProcess.kill();
-            electronDevProcess = null;
-          }
-          launchElectronIfReady();
-        },
-        vite: {
-          build: {
-            outDir: 'dist-electron',
-            minify: false,
-            rollupOptions: {
-              external: nodeExternals,
-            },
-          },
-        },
-      },
-      {
-        entry: 'electron/preload.ts',
-        onstart(args) {
-          // Elso inditasnal (main onstart elott futhat) elinditjuk az Electron-t, ha
-          // mindket fajl mar letezik. Kesobbi HMR preload-valtozasoknal args.reload()
-          // frissiti a renderer-t ujrainditas nelkul.
-          if (!electronDevProcess || electronDevProcess.killed) {
+export default defineConfig(({ mode }) => {
+  // Load .env.<mode> -> Object<string,string> with all VITE_* keys (and others without prefix filter).
+  // Build-time inline: a `define` opcion keresztul a `process.env.VITE_*` referenciakat a main + preload
+  // bundle-jebe inline-oljuk (a vite-plugin-electron nem futtat dotenv-et a child config-ben automatikusan).
+  // Ez kell pl. a Google Desktop OAuth client ID + secret build-time inlinejehez.
+  const env = loadEnv(mode, process.cwd(), '');
+  const electronDefine: Record<string, string> = {};
+  // Csak a `VITE_*` prefix-szel rendelkezo env-eket terjesszuk a main process-re (kovetjuk a Vite konvenciot).
+  for (const [key, value] of Object.entries(env)) {
+    if (key.startsWith('VITE_') || key === 'NODE_ENV') {
+      electronDefine[`process.env.${key}`] = JSON.stringify(value);
+    }
+  }
+
+  return {
+    plugins: [
+      electron([
+        {
+          entry: 'electron/main.ts',
+          onstart(_args) {
+            // main.ts valtozasnal full Electron-restart kell (a preloadJs maradhat).
+            // Eloszor leallitjuk a regi process-t, hogy az idempotency-guard ne skip-eljen.
+            if (electronDevProcess && !electronDevProcess.killed) {
+              electronDevProcess.kill();
+              electronDevProcess = null;
+            }
             launchElectronIfReady();
-          } else {
-            args.reload();
-          }
-        },
-        vite: {
-          build: {
-            outDir: 'dist-electron',
-            minify: false,
-            rollupOptions: {
-              external: nodeExternals,
+          },
+          vite: {
+            define: electronDefine,
+            build: {
+              outDir: 'dist-electron',
+              minify: false,
+              rollupOptions: {
+                external: nodeExternals,
+              },
             },
           },
         },
-      },
-    ]),
-  ],
+        {
+          entry: 'electron/preload.ts',
+          onstart(args) {
+            // Elso inditasnal (main onstart elott futhat) elinditjuk az Electron-t, ha
+            // mindket fajl mar letezik. Kesobbi HMR preload-valtozasoknal args.reload()
+            // frissiti a renderer-t ujrainditas nelkul.
+            if (!electronDevProcess || electronDevProcess.killed) {
+              launchElectronIfReady();
+            } else {
+              args.reload();
+            }
+          },
+          vite: {
+            define: electronDefine,
+            build: {
+              outDir: 'dist-electron',
+              minify: false,
+              rollupOptions: {
+                external: nodeExternals,
+              },
+            },
+          },
+        },
+      ]),
+    ],
+  };
 });
