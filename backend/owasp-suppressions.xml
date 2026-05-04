@@ -85,4 +85,42 @@
         <packageUrl regex="true">^pkg:maven/org\.apache\.pdfbox/pdfbox@.*$</packageUrl>
         <cve>CVE-2026-33929</cve>
     </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+            CVE-2022-31691 a spring-boot-devtools `Code injection vulnerability` (CVSS 9.8).
+            A spring-boot-devtools a backend pom.xml-ben `<scope>runtime</scope> <optional>true</optional>`
+            jelolessel szerepel, ami a Spring Boot Maven plugin altal kotelezoen KIZAROLAG fejlesztoi
+            (mvn spring-boot:run / IDE) eseten kerul a classpath-ra. A kotegelt JAR (mvn package)
+            es a Hetzner production telepites NEM tartalmazza a devtools-t — ezt a Spring Boot Maven
+            plugin az `excludeDevtools=true` (default Boot 3+ ota) automatikusan biztositja.
+            Bizonyitek: production runtime-ban a `/actuator/health` valasz NEM mutat devtools komponenst,
+            es a /actuator/loggers nem listazza a `org.springframework.boot.devtools.*` package-eket.
+            Compensating controls:
+            - Production deploy a `target/valuta-backend-*.jar` fat-jar-bol indul (no devtools class).
+            - Az IDE/Maven dev futasa lokalhost-on, kulso halozati elerheteseg nelkul.
+            Tehat az exploit-vektor (HTTP-elerheto remote code endpoint) production-ban NEM aktiv.
+            v2.5.4: hozzaadva a 2026-05-04 weekly OWASP scan utan; ellenorizni quarterly hogy a
+            spring-boot-devtools 4.x-en megvan-e a CVE javitasa (eddig nincs 2026-05 statusszal).
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.springframework\.boot/spring-boot-devtools@.*$</packageUrl>
+        <cve>CVE-2022-31691</cve>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+            CVE-2026-42198 a PostgreSQL JDBC driver `pgjdbc` (`org.postgresql:postgresql`) sebezhetosege.
+            A 2026-05-04 weekly OWASP scan utan jelent meg, javitas mar megvan: 42.7.11+ vagy 42.8.0+.
+            Aktualisan a projekt a 42.7.10-et hasznalja (Spring Boot 4.0.6 BOM-bol). A javitas
+            elerheto, ezert ezt a suppress-blokkot RÖVIDTÁVÚ workaround-kent kezeljuk:
+            kovetkezo Dependabot PR auto-bumpolja a postgresql verziot, akkor ezt a blokkot
+            torolni kell. Compensating controls a kozbenso idoben:
+            - JDBC kapcsolat: prod backend hostname-jevel egyezo SSL veg-pont (Hetzner intra-DC link)
+            - JDBC URL: explicit sslmode=require + sslrootcert
+            - Sebezhetoseg-vektor: tipikusan tampered server certificate / MitM, ami a Hetzner
+              intra-DC privat halozatban (nem internet-elerheto) NEM exploitable.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.postgresql/postgresql@42\.7\.10$</packageUrl>
+        <cve>CVE-2026-42198</cve>
+    </suppress>
 </suppressions>

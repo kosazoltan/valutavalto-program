@@ -1089,3 +1089,97 @@ describe('SyncEngine — handover/collection/distribution sorrendi függőségek
     expect(mockedMarkHandoverOperationSynced).toHaveBeenCalledWith(4);
   });
 });
+
+/**
+ * Audit P1.7 regression tesztek: a SyncEngine offline modon NEM spamel HTTP hivasokat.
+ *
+ * Bizonyitja:
+ * 1. `offline_mode=true` config -> syncAll NEM hivja a fetch-et, gyorsan return-ol
+ * 2. `server_url` ures vagy hianyzik -> syncAll NEM hivja a fetch-et
+ * 3. Synced=0, failed=0. A 'offline_mode=true' eseten egy "Offline mod" soft-warning
+ *    bekerul az `errors` tombbe (degraded operacio jelzes, NEM kivetel).
+ *    A `server_url` ures/null eseten csak no-op, errors NEM tartalmaz uzenetet.
+ *
+ * Copilot review #383 P2 follow-up: a `global.fetch = ...` beallitas korabban szivargott
+ * mas test file-okba ugyanabban a Vitest workerben (flakey risk). Most `vi.stubGlobal`
+ * + `vi.unstubAllGlobals()` mintat hasznalunk, ami a meglevo file pattern-jet koveti.
+ */
+describe('SyncEngine — P1.7 offline mode regression', () => {
+  let engine: SyncEngine;
+  let mockFetch: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    engine = new SyncEngine();
+    mockFetch = vi.fn();
+    // Copilot #383 P2: vi.stubGlobal + vi.unstubAllGlobals (afterEach) — NEM
+    // direkt `global.fetch = mockFetch`, mert az nem kerul vissza es szivarog.
+    vi.stubGlobal('fetch', mockFetch);
+  });
+
+  afterEach(() => {
+    engine.stop();
+    vi.unstubAllGlobals();
+  });
+
+  it('offline_mode=true config esetén NEM spamel fetch-et (kritikus: zero HTTP)', async () => {
+    mockedGetConfig.mockImplementation((key: string) => {
+      if (key === 'offline_mode') return 'true';
+      if (key === 'server_url') return 'http://localhost:8080/api/v1';
+      if (key === 'auth_token') return 'test-token-123';
+      return null;
+    });
+    // Tegyunk be 1 pending tx-et — meg igy se kelljen hivni a fetch-et
+    mockedGetPendingTransactions.mockReturnValue([
+      {
+        id: 1, type: 'SELL', currency_code: 'EUR', foreign_amount: 100,
+        huf_amount: 40000, rounded_huf_amount: 40000, rate: 400, handling_fee: null,
+        discount_percent: null, customer_id: null, customer_identifier: null,
+        customer_name: null, customer_document_number: null, customer_address: null,
+        denominations: null, source_of_funds: null, customer_is_pep: null,
+        local_reference_number: 'LS-X', idempotency_key: 'k1',
+        created_at: '2026-03-24 10:00:00', synced: 0,
+      },
+    ] as unknown as ReturnType<typeof mockedGetPendingTransactions>);
+
+    const result = await engine.syncAll('test-token');
+
+    expect(result.synced).toBe(0);
+    expect(result.failed).toBe(0);
+    // P1.7 KRITIKUS biztositas: zero fetch hivas (NEM spamel HTTP-t a halozatra)
+    expect(mockFetch).not.toHaveBeenCalled();
+    // syncAll soft-warning egy uzenetet ad ("Offline mod — szerver URL nincs beallitva"),
+    // de NEM excepciot — ez tervezett viselkedes (degraded operacio).
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]).toMatch(/Offline/i);
+  });
+
+  it('server_url config ures string esetén NEM spamel fetch-et', async () => {
+    mockedGetConfig.mockImplementation((key: string) => {
+      if (key === 'server_url') return '   ';  // whitespace-only
+      if (key === 'auth_token') return 'test-token-123';
+      return null;
+    });
+    mockedGetPendingTransactions.mockReturnValue([] as ReturnType<typeof mockedGetPendingTransactions>);
+
+    const result = await engine.syncAll('test-token');
+
+    expect(result.synced).toBe(0);
+    expect(result.failed).toBe(0);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('server_url config null esetén (frissen telepitett, regisztracio nelkul) NEM spamel fetch-et', async () => {
+    mockedGetConfig.mockImplementation((key: string) => {
+      if (key === 'server_url') return null;
+      return null;
+    });
+    mockedGetPendingTransactions.mockReturnValue([] as ReturnType<typeof mockedGetPendingTransactions>);
+
+    const result = await engine.syncAll('test-token');
+
+    expect(result.synced).toBe(0);
+    expect(result.failed).toBe(0);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+});
