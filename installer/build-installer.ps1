@@ -471,6 +471,15 @@ if (Test-Path $seedSql) {
 Copy-Item "$InstallerDir\scripts\start-services.bat" (Join-Path $StageDir "scripts") -ErrorAction SilentlyContinue
 Copy-Item "$InstallerDir\scripts\stop-services.bat" (Join-Path $StageDir "scripts") -ErrorAction SilentlyContinue
 
+# v2.5.9: Diagnosztikai szkript (THIN + FULL modban is telepul az INSTDIR-be, parancsikon a Start menun)
+$diagSrc = Join-Path $RepoRoot "scripts\diagnose-penztar-network.ps1"
+if (Test-Path $diagSrc) {
+    Copy-Item $diagSrc (Join-Path $StageDir "scripts") -Force
+    Write-Host "diagnose-penztar-network.ps1 staged" -ForegroundColor Green
+} else {
+    Write-Host "WARN: diagnose-penztar-network.ps1 nem talalhato ($diagSrc) - a 'Halozati diagnosztika' parancsikon nem fog mukodni" -ForegroundColor Yellow
+}
+
 Write-Host "Config + scripts staged" -ForegroundColor Green
 
 # ─── 6. NSIS Compile ──────────────────────────────────────────────────────
