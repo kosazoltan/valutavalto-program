@@ -55,8 +55,10 @@ public class GoogleLoginConfig {
      */
     @Bean
     public GoogleIdTokenVerifier googleIdTokenVerifier(HttpTransport googleHttpTransport) {
-        boolean isProduction = java.util.Arrays.asList(environment.getActiveProfiles())
-                .contains("production");
+        // Hetzner systemd `SPRING_PROFILES_ACTIVE=prod` — historic profile name a deploy
+        // pipeline-ban. A `production` is elfogadott legacy / docker-compose deploy-okhoz.
+        java.util.List<String> activeProfiles = java.util.Arrays.asList(environment.getActiveProfiles());
+        boolean isProduction = activeProfiles.contains("production") || activeProfiles.contains("prod");
         if (googleClientId == null || googleClientId.isBlank()) {
             if (isProduction) {
                 throw new IllegalStateException(
