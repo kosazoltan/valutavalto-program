@@ -309,6 +309,22 @@ VITE_COMPANY_ID=1
             }
 
             Write-Host "Electron app staged" -ForegroundColor Green
+
+            # v2.5.8 FIX: app-update.yml - electron-updater hibanaploja "ENOENT app-update.yml"
+            # Az electron-builder a `nsis` target-tel automatikusan generalja a publish config-bol,
+            # de mi custom Penztar-Setup.nsi-t hasznalunk, igy a fajl HIANYZIK az unpacked dir-bol.
+            # Ennek hianya csak az auto-update funkciot bukja, a fo program tovabb fut, de a Sentry-ben
+            # error log generalodik, ami zavaro. Itt manualisan letrehozzuk az electron-builder.json
+            # `publish` config alapjan.
+            $appUpdateYml = @"
+provider: github
+owner: kosazoltan
+repo: valutavalto-program
+updaterCacheDirName: valuta-penztar-updater
+"@
+            $appUpdateTarget = Join-Path $electronStage "resources\app-update.yml"
+            [System.IO.File]::WriteAllText($appUpdateTarget, $appUpdateYml, [System.Text.UTF8Encoding]::new($false))
+            Write-Host "  app-update.yml generated -> $appUpdateTarget" -ForegroundColor Green
         } else {
             throw "Electron unpacked directory not found in release/"
         }
