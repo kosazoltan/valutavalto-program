@@ -5,10 +5,13 @@ import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
@@ -37,6 +40,15 @@ public class PasswordResetService {
 
     private final WorkerRepository workerRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailNotificationService emailNotificationService;
+
+    /**
+     * Frontend base URL a reset link generálásához. Defaultban a production
+     * domain ({@link hu.puzzleir.valuta.config.ProductionUrls#BASE_URL}); az
+     * application.properties-ben (vagy ENV-bol) felulirhato.
+     */
+    @Value("${app.frontend.base-url:https://excvaluta.com}")
+    private String frontendBaseUrl;
 
     // In-memory token cache: token -> { workerId, expiresAt }
     private static final Map<String, TokenEntry> TOKEN_CACHE = new ConcurrentHashMap<>();
@@ -86,12 +98,50 @@ public class PasswordResetService {
         log.info("Forgot password token generalva: worker id={}, tokenHash={}",
                 worker.getId(), Integer.toHexString(token.hashCode()));
 
-        // TODO v2.3.1: Gmail API-n kikuldeni email-ben. Production-ban ez
-        // kotelezo; most a token vissza van adva a response-ban tesztelheto
-        // flow-hoz (a frontend kizarolag dev modban hasznalja).
+        // Audit P1.8 (2026-05-03): production email kikuldes a Spring JavaMailSender-en
+        // keresztul. Az EmailNotificationService aszinkron (`@Async`), igy NEM blokkolja
+        // a forgot-password endpoint valaszat. Ha az SMTP_PASSWORD nincs configolva,
+        // az EmailNotificationService.sendEmail logol egy hibat, de az endpoint sikeres
+        // marad (anti-enumeration: a kliens semmilyen visszajelzest nem kap arrol hogy
+        // a kuldes sikerult-e vagy sem).
+        sendResetEmail(worker, token);
+
         cleanupExpiredTokens();
 
         return token;
+    }
+
+    /**
+     * Reset link emailben kikuldese a workernek. Aszinkron — nem blokkolja a hivot.
+     *
+     * <p>A link formatuma: {@code <frontendBaseUrl>/reset-password?token=<URL-encoded-token>}.</p>
+     */
+    private void sendResetEmail(Worker worker, String token) {
+        String email = worker.getEmail();
+        if (email == null || email.isBlank()) {
+            log.warn("Forgot password: workernek nincs email cime, email kikuldes kihagyva: id={}",
+                    worker.getId());
+            return;
+        }
+
+        String encodedToken = URLEncoder.encode(token, StandardCharsets.UTF_8);
+        String resetUrl = String.format("%s/reset-password?token=%s",
+                frontendBaseUrl.replaceAll("/+$", ""),
+                encodedToken);
+
+        String subject = "Jelszo visszaallitas";
+        String body = String.format(
+                "Kedves %s!%n%n"
+                        + "Valaki (remenyem szerint Te) jelszo-visszaallitast kert a "
+                        + "Valutavalto fiokjahoz.%n%n"
+                        + "Az alabbi linkre kattintva 15 percen belul beallithatsz uj jelszot:%n"
+                        + "%s%n%n"
+                        + "Ha nem Te kerted, hagyd figyelmen kivul ezt az emailt — a fiokod biztonsagban van.%n%n"
+                        + "(Ez egy automatikus email, kerunk NE valaszolj ra.)",
+                worker.getName() != null ? worker.getName() : "Felhasznalo",
+                resetUrl);
+
+        emailNotificationService.sendEmail(email, subject, body);
     }
 
     /**

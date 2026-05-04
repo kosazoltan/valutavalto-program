@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { persistToken, clearPersistedToken, loadPersistedToken, hasPersistedToken, REFRESH_ENDPOINT } from './client'
 
 // Mock useAuthStore to avoid zustand setup complexity in unit tests
 vi.mock('../../stores/authStore', () => ({
@@ -23,13 +22,41 @@ vi.mock('../../components/ui/toaster', () => ({
   toast: { error: vi.fn(), success: vi.fn() },
 }))
 
-describe('persistToken / clearPersistedToken / loadPersistedToken / hasPersistedToken', () => {
-  beforeEach(() => {
-    // Ensure no electronAPI
+// Mock the axios instance used by client.ts (api.post for refresh-cookie bootstrap).
+// vi.mock is hoisted to the top of the file BEFORE imports, so the mockPost reference
+// must also be hoisted via vi.hoisted to avoid TDZ errors at module-load-time.
+const { mockPost } = vi.hoisted(() => ({ mockPost: vi.fn() }))
+vi.mock('axios', async () => {
+  const actual = await vi.importActual<typeof import('axios')>('axios')
+  return {
+    ...actual,
+    default: {
+      ...actual.default,
+      create: vi.fn(() => ({
+        defaults: { baseURL: '/api/v1' },
+        interceptors: {
+          request: { use: vi.fn() },
+          response: { use: vi.fn() },
+        },
+        post: mockPost,
+      })),
+    },
+  }
+})
+
+// Now import the module under test (after the axios mock)
+import { persistToken, clearPersistedToken, loadPersistedToken, hasPersistedToken, REFRESH_ENDPOINT } from './client'
+
+describe('persistToken / clearPersistedToken / loadPersistedToken / hasPersistedToken (Audit P1.3)', () => {
+  beforeEach(async () => {
     if ('electronAPI' in window) {
       delete (window as any).electronAPI
     }
     localStorage.clear()
+    mockPost.mockReset()
+    // Clear in-memory web token between tests by simulating clearPersistedToken
+    // (test isolation: each test starts with no in-memory token)
+    await clearPersistedToken()
   })
 
   afterEach(() => {
@@ -37,42 +64,106 @@ describe('persistToken / clearPersistedToken / loadPersistedToken / hasPersisted
     vi.restoreAllMocks()
   })
 
-  describe('persistToken', () => {
-    it('writes token to localStorage in web mode', async () => {
+  describe('Audit P1.3 — web in-memory access token (XSS hardening)', () => {
+    it('persistToken does NOT write to localStorage in web mode', async () => {
       await persistToken('my-token-123')
-      expect(localStorage.getItem('auth_token')).toBe('my-token-123')
-    })
-  })
-
-  describe('clearPersistedToken', () => {
-    it('removes token from localStorage', async () => {
-      localStorage.setItem('auth_token', 'some-token')
-      await clearPersistedToken()
       expect(localStorage.getItem('auth_token')).toBeNull()
     })
-  })
 
-  describe('loadPersistedToken', () => {
-    it('returns null when no token stored', async () => {
+    it('loadPersistedToken returns the in-memory token after persistToken', async () => {
+      await persistToken('memory-token')
+      const result = await loadPersistedToken()
+      expect(result).toBe('memory-token')
+      // Refresh-cookie endpoint must NOT be called when in-memory token exists
+      expect(mockPost).not.toHaveBeenCalled()
+    })
+
+    it('clearPersistedToken removes the in-memory token (loadPersistedToken returns null)', async () => {
+      await persistToken('to-be-cleared')
+      await clearPersistedToken()
+      // After clear, refresh-cookie call will be attempted; mock it as 401-like failure
+      mockPost.mockRejectedValueOnce(new Error('Unauthorized'))
       const result = await loadPersistedToken()
       expect(result).toBeNull()
     })
 
-    it('returns token from localStorage', async () => {
-      localStorage.setItem('auth_token', 'stored-token')
-      const result = await loadPersistedToken()
-      expect(result).toBe('stored-token')
+    it('clearPersistedToken also removes legacy localStorage auth_token (P1.3 migration)', async () => {
+      localStorage.setItem('auth_token', 'legacy-token')
+      await clearPersistedToken()
+      expect(localStorage.getItem('auth_token')).toBeNull()
     })
-  })
 
-  describe('hasPersistedToken', () => {
-    it('returns false when no token', () => {
+    it('loadPersistedToken triggers legacy localStorage cleanup on every web call', async () => {
+      localStorage.setItem('auth_token', 'legacy-from-pre-p1.3')
+      mockPost.mockRejectedValueOnce(new Error('No refresh cookie'))
+      await loadPersistedToken()
+      // Legacy localStorage entry MUST be wiped
+      expect(localStorage.getItem('auth_token')).toBeNull()
+    })
+
+    it('loadPersistedToken bootstraps from refresh-cookie when in-memory empty', async () => {
+      mockPost.mockResolvedValueOnce({ data: { token: 'cookie-bootstrapped-token' } })
+      const result = await loadPersistedToken()
+      expect(mockPost).toHaveBeenCalledWith(REFRESH_ENDPOINT, undefined, { withCredentials: true })
+      expect(result).toBe('cookie-bootstrapped-token')
+    })
+
+    it('loadPersistedToken caches refresh-cookie result in-memory (no second network call)', async () => {
+      mockPost.mockResolvedValueOnce({ data: { token: 'first-bootstrap' } })
+      await loadPersistedToken()
+      // Second call: should return cached in-memory token, NOT trigger another POST
+      const second = await loadPersistedToken()
+      expect(second).toBe('first-bootstrap')
+      expect(mockPost).toHaveBeenCalledTimes(1)
+    })
+
+    it('loadPersistedToken returns null when refresh-cookie endpoint fails (no cookie / expired)', async () => {
+      mockPost.mockRejectedValueOnce(new Error('401 Unauthorized'))
+      const result = await loadPersistedToken()
+      expect(result).toBeNull()
+    })
+
+    it('loadPersistedToken returns null when refresh-cookie response lacks token field', async () => {
+      mockPost.mockResolvedValueOnce({ data: {} })
+      const result = await loadPersistedToken()
+      expect(result).toBeNull()
+    })
+
+    it('hasPersistedToken returns FALSE on first visit (no in-memory, no session hint) — Codex P2 #384', () => {
+      // Codex P2 follow-up: a regi viselkedes (mindig true) blokkolta a logged-out
+      // user-eket a 15s refresh-cookie probe splash-en. Most: false, App AZONNAL renderel.
       expect(hasPersistedToken()).toBe(false)
     })
 
-    it('returns true when token exists in localStorage', () => {
-      localStorage.setItem('auth_token', 'tok')
+    it('hasPersistedToken returns TRUE after persistToken (session hint set)', async () => {
+      await persistToken('after-login-token')
       expect(hasPersistedToken()).toBe(true)
+    })
+
+    it('hasPersistedToken returns TRUE if session hint exists from prior session', () => {
+      // Page reload utan az in-memory empty, de a hint a localStorage-ban marad.
+      window.localStorage.setItem('has_login_session', '1')
+      expect(hasPersistedToken()).toBe(true)
+    })
+
+    it('hasPersistedToken returns FALSE after clearPersistedToken (logout)', async () => {
+      await persistToken('logged-in')
+      expect(hasPersistedToken()).toBe(true)
+      await clearPersistedToken()
+      expect(hasPersistedToken()).toBe(false)
+    })
+
+    it('successful refresh-cookie bootstrap restores session hint', async () => {
+      mockPost.mockResolvedValueOnce({ data: { token: 'restored' } })
+      await loadPersistedToken()
+      expect(window.localStorage.getItem('has_login_session')).toBe('1')
+    })
+
+    it('failed refresh-cookie bootstrap clears session hint', async () => {
+      window.localStorage.setItem('has_login_session', '1')
+      mockPost.mockRejectedValueOnce(new Error('401'))
+      await loadPersistedToken()
+      expect(window.localStorage.getItem('has_login_session')).toBeNull()
     })
   })
 

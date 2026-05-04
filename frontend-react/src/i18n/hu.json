@@ -131,5 +131,23 @@
     "offlineModeFail": "A szerver kapcsolat sikertelen volt. Ha most NEM tudja megoldani, offline módban telepítheti — de a tranzakciók NEM szinkronizálódnak a központi szerverre, amíg az offline mód aktív. Később a Beállításokban kapcsolja ki.",
     "offlineModeActive": "Offline mód aktív. A telepítés szerver-szinkron nélkül halad — a tranzakciók csak helyileg tárolódnak. A Beállításokban később bekapcsolhatja a szinkront.",
     "offlineModeDisabled": "Először próbálja a szerver-kapcsolatot a fenti gombbal. Ha sikertelen, ez a checkbox elérhetővé válik, és degraded módban is folytathatja a telepítést."
+  },
+  "resetPassword": {
+    "missingToken": "Hiányzó vagy érvénytelen reset token. Igényelj új jelszó-visszaállítást a bejelentkező oldalon.",
+    "successTitle": "Jelszó beállítva",
+    "successMessage": "A jelszavadat sikeresen frissítettük. Most már bejelentkezhetsz az új jelszóval.",
+    "successRedirect": "3 másodperc múlva átirányítlak a bejelentkezésre…",
+    "title": "Új jelszó beállítása",
+    "subtitle": "Add meg az új jelszavadat (min 8 karakter).",
+    "newPasswordLabel": "Új jelszó",
+    "confirmPasswordLabel": "Új jelszó megerősítés",
+    "showPassword": "Jelszó megjelenítése",
+    "hidePassword": "Jelszó elrejtése",
+    "mismatchError": "A két jelszó nem egyezik.",
+    "tooShortError": "A jelszó legalább 8 karakter legyen.",
+    "saving": "Mentés…",
+    "submit": "Új jelszó beállítása",
+    "cancel": "Mégse",
+    "unknownError": "Ismeretlen hiba"
   }
 }

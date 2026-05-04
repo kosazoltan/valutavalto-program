@@ -15,6 +15,13 @@ declare module 'axios' {
 
 const WEB_AUTH_TOKEN_KEY = 'auth_token'
 
+// Audit P1.3 follow-up (Codex P2 #384, 2026-05-04): "session hint" flag a localStorage-ban.
+// NEM token (XSS-immunis), csak egy boolean: "valamikor volt loginom -> a HttpOnly
+// refresh cookie valoszinu jelen van -> erdemes a refresh-cookie bootstrap-ot probalni".
+// A `hasPersistedToken` web modban EZT olvassa, hogy az App.tsx restore flow CSAK akkor
+// blokkolodjon a 15s axios timeout splash-en, ha tenyleg volt korabban session.
+const WEB_SESSION_HINT_KEY = 'has_login_session'
+
 // Silent refresh endpoint — HttpOnly refreshToken cookie alapjan.
 // Kotelezo `permitAll`-on legyen a backend-en, mert a hivashoz nincs valid access token.
 // (A korabbi `/auth/refresh` az `@PreAuthorize("isAuthenticated()")` miatt lejart accessel
@@ -231,13 +238,24 @@ api.interceptors.response.use(
       }
     }
 
-    // Log error for debugging
-    logger.error('client', 'API Error:', {
-      url: error.config?.url,
-      method: error.config?.method,
-      status: error.response?.status,
-      message: error.message,
-    })
+    // Log error for debugging.
+    // Audit P1.3 (2026-05-03): a refresh-cookie endpoint sikertelen probalkozasai
+    // normalis allapot (user nincs bejelentkezve / lejart cookie). Ezeket DEBUG
+    // szinten logoljuk, hogy NE szennyezzek a console.error-t (smoke testek!).
+    const isRefreshCookieAttempt = error.config?.url?.includes(REFRESH_ENDPOINT)
+    if (isRefreshCookieAttempt) {
+      logger.debug('client', 'refresh-cookie attempt failed (normal if not logged in):', {
+        status: error.response?.status,
+        message: error.message,
+      })
+    } else {
+      logger.error('client', 'API Error:', {
+        url: error.config?.url,
+        method: error.config?.method,
+        status: error.response?.status,
+        message: error.message,
+      })
+    }
 
     return Promise.reject(error)
   }
@@ -259,24 +277,39 @@ export interface PagedResponse<T> {
   number: number
 }
 
-// --- Electron token persist (ha Electron-ban fut) ---
+// --- Token persist ---
 //
-// ACCESS TOKEN:
-//   - Web: localStorage (XSS-expozicio, kompromisszum - a silent refresh
-//     minden 24h-nal ujat ad, a backend token blacklist logout-kor torli)
-//   - Electron: OS-level titkositas (safeStorage / DPAPI / Keychain)
+// ACCESS TOKEN tarolas (Audit P1.3 — 2026-05-03 refaktor):
+//   - Web: IN-MEMORY MODUL VALTOZO (`_webAccessToken`). NEM kerul localStorage/
+//     sessionStorage-ba, igy egy XSS payload NEM tudja a perzisztens storage-bol
+//     kiolvasni a tokent es kesobbi sessionre exfiltralni. Megjegyzes: aktiv XSS
+//     ugyanabban a JS runtime-ban tovabbra is hozzafer az authenticated axios
+//     instance-hoz / a window.fetch-hez — a cel a *perzisztens kiolvasas* es a
+//     storage-bol valo replay megakadalyozasa, NEM a teljes XSS-immunitas.
+//     Page-reload eseten a `loadPersistedToken` a HttpOnly refresh cookie-bol
+//     kapcsol uj access tokent (`/auth/refresh-cookie`).
+//   - Electron: OS-level titkositas (safeStorage / DPAPI / Keychain) — valtozatlan.
 //
 // REFRESH TOKEN (vezerlokonyv par.12.3, 2026-04-20 implementacio):
 //   - Web: HttpOnly Secure SameSite=Strict cookie, Path=/api/v1/auth,
-//     MaxAge=7d. JS-bol NEM elerheto, silent refresh interceptor
-//     automatikusan hasznalja (axios withCredentials: true).
+//     MaxAge=7d. JS-bol NEM elerheto, silent refresh interceptor automatikusan
+//     hasznalja (axios withCredentials: true).
 //   - Electron: safeStorage tokentárolás mellett a cookie is rendelkezesre
 //     all (ugyanaz a backend /auth/login endpoint adja ki).
 //   - DB: refresh_token tabla, BCrypt-hashelt token_value, token rotation
 //     minden refresh-kor (regi revoke, uj issue).
+//
+// Migracio LegacyTokenCleanup: a meglevo localStorage `auth_token` felhasznalok
+// elso load-kor torlik a localStorage-bol (lasd a `loadPersistedToken` web ag).
 
 /** Cached Electron token presence — kept in sync by persist/clear/load. */
 let _electronTokenPresent: boolean | null = null
+
+/**
+ * Audit P1.3: web in-memory access token (NEM localStorage).
+ * Page reload utan null — a `loadPersistedToken` `/auth/refresh-cookie`-bol szerez ujat.
+ */
+let _webAccessToken: string | null = null
 
 /** Token mentése Electron-ban — DPAPI/Keychain titkosítással (ha elérhető) */
 export async function persistToken(token: string): Promise<void> {
@@ -291,14 +324,19 @@ export async function persistToken(token: string): Promise<void> {
       return
     }
 
-    window.localStorage.setItem(WEB_AUTH_TOKEN_KEY, token)
+    // Audit P1.3: web in-memory tarolas, NEM localStorage (XSS perzisztencia ellen).
+    _webAccessToken = token
+    // Codex P2 #384 (2026-05-04): session hint flag, hogy a kovetkezo page-load-on
+    // a `hasPersistedToken` true-t adjon -> az App restore flow lefusson a refresh-cookie
+    // bootstrap-ra. Logout-ot kovetoen a `clearPersistedToken` torli (lasd alabb).
+    try { window.localStorage.setItem(WEB_SESSION_HINT_KEY, '1') } catch { /* ignore (private mode) */ }
   } catch (err) {
     logger.error('client', 'persistToken failed:', err)
     throw err
   }
 }
 
-/** Token törlése Electron-ból (titkosított + plaintext is) */
+/** Token törlése (Electron: titkosított store; Web: in-memory + legacy localStorage) */
 export async function clearPersistedToken(): Promise<void> {
   try {
     if (window.electronAPI) {
@@ -311,14 +349,31 @@ export async function clearPersistedToken(): Promise<void> {
       return
     }
 
-    window.localStorage.removeItem(WEB_AUTH_TOKEN_KEY)
+    // Audit P1.3: in-memory clear; legacy localStorage cleanup (P1.3 migracio)
+    _webAccessToken = null
+    try { window.localStorage.removeItem(WEB_AUTH_TOKEN_KEY) } catch { /* ignore */ }
+    // Codex P2 #384: session hint flag clear, hogy a kovetkezo page-load-on
+    // a `hasPersistedToken` false-t adjon -> az App restore flow NE blokkolodjon a
+    // 15s refresh-cookie probe splash-en, ha a user kijelentkezett.
+    try { window.localStorage.removeItem(WEB_SESSION_HINT_KEY) } catch { /* ignore */ }
   } catch (err) {
     logger.error('client', 'clearPersistedToken failed:', err)
     throw err
   }
 }
 
-/** Token betöltése Electron-ból — titkosított (safeStorage) elsőbbséggel */
+/**
+ * Token betöltése.
+ *
+ * <p>Electron: titkosított safeStorage-ből (változatlan).</p>
+ * <p>Web (Audit P1.3): először az in-memory `_webAccessToken`-t adja vissza ha
+ * letezik. Ha nincs (page reload eseten), megkiserli a `/auth/refresh-cookie`
+ * endpointot — a HttpOnly refresh cookie alapjan szerez uj access tokent.
+ * Sikertelen refresh eseten null-t ad vissza (user-nek be kell jelentkeznie).
+ *
+ * <p>Legacy migracio: ha localStorage-ban talalhato `auth_token`, azt **toroljuk**
+ * (P1.3 fix: a localStorage-os tokenek mar nem hasznalhatok).</p>
+ */
 export async function loadPersistedToken(): Promise<string | null> {
   if (window.electronAPI) {
     const token: string | null = window.electronAPI.secureLoadToken
@@ -328,21 +383,69 @@ export async function loadPersistedToken(): Promise<string | null> {
     return token
   }
 
-  return window.localStorage.getItem(WEB_AUTH_TOKEN_KEY)
+  // Audit P1.3: legacy localStorage cleanup — minden web user elso load-jakor
+  try {
+    if (window.localStorage.getItem(WEB_AUTH_TOKEN_KEY)) {
+      window.localStorage.removeItem(WEB_AUTH_TOKEN_KEY)
+      logger.info('client', 'Audit P1.3: legacy localStorage auth_token torolve (XSS-hardening)')
+    }
+  } catch { /* ignore (private mode browsers) */ }
+
+  // Ha mar van in-memory token (login utan VAGY refresh-cookie sikeres volt), add vissza
+  if (_webAccessToken) return _webAccessToken
+
+  // Egyebkent megkiseroljuk a refresh-cookie-bol (HttpOnly cookie, JS NEM eri el)
+  // Ha sikeres -> uj access tokent kapunk, in-memory mentjuk
+  // Ha sikertelen -> null (user be kell jelentkezzen)
+  try {
+    const res = await api.post(REFRESH_ENDPOINT, undefined, { withCredentials: true })
+    const newToken = res?.data?.token
+    if (typeof newToken === 'string' && newToken) {
+      _webAccessToken = newToken
+      // Codex P2 #384: a sikeres refresh-cookie bizonyitja, hogy van session.
+      // Frissitjuk a hint-et arra az esetre ha a localStorage uritodott (pl. private mode).
+      try { window.localStorage.setItem(WEB_SESSION_HINT_KEY, '1') } catch { /* ignore */ }
+      return newToken
+    }
+  } catch (err) {
+    // Refresh cookie hianyzik VAGY lejart — normalis ha a user nincs bejelentkezve.
+    // Codex P2 #384: a hint-et toroljuk, hogy a kovetkezo page-load-on a hasPersistedToken
+    // false-t adjon es az App splash-mentes login-ra menjen.
+    try { window.localStorage.removeItem(WEB_SESSION_HINT_KEY) } catch { /* ignore */ }
+    logger.debug('client', 'loadPersistedToken: refresh-cookie unavailable (user not logged in)', err)
+  }
+  return null
 }
 
 /**
  * Synchronous check for persisted token presence.
  *
- * In Electron mode the actual storage is async, so this relies on a cached
- * flag updated by persistToken / clearPersistedToken / loadPersistedToken.
- * Before any of those have been called, the cache is unknown (`null`) and
- * we optimistically return `true` so the App-level restore flow runs.
+ * <p>Electron mode: cached flag (set by persist/clear/load).</p>
+ *
+ * <p>Web mode (Audit P1.3 + Codex P2 follow-up #384, 2026-05-04):</p>
+ * <ul>
+ *   <li>true ha van in-memory `_webAccessToken` (mar lefutott egy login VAGY refresh-cookie bootstrap)</li>
+ *   <li>true ha a `WEB_SESSION_HINT_KEY` localStorage hint jelzi, hogy korabban volt
+ *       sikeres login (azaz valoszinu jelen van HttpOnly refresh cookie). Ekkor az
+ *       App.tsx restore flow elinditja a `loadPersistedToken`-t, ami az async
+ *       refresh-cookie-bol bootstrap-ol.</li>
+ *   <li>false egyebkent (kijelentkezett vagy soha-nem-loggalt user). Ekkor az App
+ *       AZONNAL renderel anelkul, hogy a 15s axios timeout splash-re varakozna —
+ *       ez a Codex P2 #384 regression-fix.</li>
+ * </ul>
+ *
+ * <p>A hint NEM token, csak egy boolean — XSS sem nyer vele semmit.</p>
  */
 export function hasPersistedToken(): boolean {
   if (window.electronAPI) {
     return _electronTokenPresent ?? (window.electronAPI.secureLoadToken != null || window.electronAPI.getConfig != null)
   }
 
-  return Boolean(window.localStorage.getItem(WEB_AUTH_TOKEN_KEY))
+  if (_webAccessToken) return true
+  try {
+    return window.localStorage.getItem(WEB_SESSION_HINT_KEY) === '1'
+  } catch {
+    // Private mode browser — jobban jarunk false-szal (nincs splash regression)
+    return false
+  }
 }
