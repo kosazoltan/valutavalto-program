@@ -28,6 +28,32 @@
 > - `.cursor/rules/mandatory-session-closing-protocol.mdc` (always-on, multi-AI)
 > - `D:\valutavalto-vault\feedback\session-closing-protocol-mandatory.md` (vault feedback)
 
+> ## FOLYAMATOS TESZTELÉSI PROTOKOLL (KÖTELEZŐ — 2026-05-04 user-direktíva)
+>
+> **MINDEN fejlesztés, kódmódosítás, hibajavítás, refaktor, új funkció, tesztírás, build, runtime ellenőrzés és programfunkcionalitás-validálás során** kötelezően alkalmazni kell a 4-lépéses folyamatos tesztelési protokollt:
+>
+> 1. **Tesztkörnyezet azonosítása** a módosítás előtt — meglévő framework + konvenció keresése
+> 2. **Célzott tesztek írása + futtatása** kódmódosítás közben:
+>    - Új funkció → pozitív + negatív esetek
+>    - Hibajavítás → regressziós teszt amely a hibát javítás előtt elkapná
+>    - Refaktor → külső viselkedés változatlan
+>    - UI / workflow → kritikus user-path Playwright/runtime
+> 3. **Tesztcsomag folyamatos bővítése** — új modul/endpoint/parancs/állapot/adatformátum/hibakezelés → új teszt; **több réteg** (unit + integration + e2e + runtime smoke) ahol releváns
+> 4. **Tesztek újrafuttatása** minden lényeges módosítás után — szűk → közepes → teljes suite
+>
+> **Tiltott:**
+> - ❌ Teszt skip / kikommentelés / törlés azért, hogy zöld legyen
+> - ❌ Assertion gyengítés úgy, hogy ne védje a lényegi viselkedést
+> - ❌ "Működik" állítás teszt vagy runtime ellenőrzés nélkül
+> - ❌ Új funkció teszt nélkül (ha objektíven tesztelhető)
+> - ❌ Hibás teszt javítása helyett a kód maradhat hibás (a teszt jogos hibát jelez → kódot kell javítani)
+>
+> **Záró követelmény:** tényszerű jelentés a futtatott tesztparancsokról + eredményekről + lefedett funkcionalitásról.
+>
+> **Teljes szöveg:**
+> - `.cursor/rules/mandatory-continuous-testing-protocol.mdc` (always-on, multi-AI)
+> - `D:\valutavalto-vault\feedback\continuous-testing-protocol-mandatory.md` (vault feedback)
+
 ## Projekt áttekintés
 Magyar valutaváltó / pénzváltó ERP rendszer. Multi-tenant (több iroda), offline-képes.
 
