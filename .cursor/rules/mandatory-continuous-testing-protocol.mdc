@@ -1,0 +1,189 @@
+---
+description: "Use when: minden fejlesztes, kodmodositas, hibajavitas, refaktor, uj funkcio, tesztiras, build, runtime ellenorzes es programfunkcionalitas-validalas soran."
+applyTo: "**"
+alwaysApply: true
+---
+
+> "Ez az utasitas kotelezo ervenyu utasitas minden mesterseges intelligencia ugynok szamara. A repoban vegzett fejlesztesek soran a fejlesztett programhoz kotelezo folyamatosan teszteket kesziteni, a teszteket futtatni, a tesztkeszletet a program fejlodesevel parhuzamosan boviteni, es minden teszthibat haladektalanul, root cause alapon javitani. Nincs becsles, nincs tippeles, nincs elhallgatott vagy figyelmen kivul hagyott teszthiba."
+
+# Kotelezo folyamatos tesztelesi protokoll
+
+Ez az utasitas kotelezo ervenyu minden olyan fejlesztesre, amely programkodot, automatizmust, scriptet, alkalmazast, API-t, UI-t, backend folyamatot, adatfeldolgozast, integraciot vagy futtathato logikat erint. A fejlesztes nem tekintheto kesznek addig, amig a relevans tesztek el nem keszultek, le nem futottak, es minden ismert teszthiba javitva vagy objektiv blokkolokent dokumentalva nincs.
+
+## Hatály
+
+Minden mesterséges intelligencia ügynök (Claude, OpenAI Codex, Cursor, Gemini, Antigravity, GitHub Copilot CLI), amely ebben a repositoryban dolgozik. **MINDEN fejlesztes, kodmodositas, hibajavitas, refaktor, uj funkcio, tesztiras, build, runtime ellenorzes es programfunkcionalitas-validalas soran** kotelezoen alkalmazni kell.
+
+## Alapelv
+
+- **Minden uj vagy modositott funkcionalitashoz kotelezo relevans tesztet kesziteni** vagy a meglevo tesztet boviteni.
+- A teszt **nem utolagos disz**: a fejlesztes resze, es a kodmodositassal egyutt kell karbantartani.
+- A tesztkeszletnek a **program valos mukodeset** kell ellenoriznie, nem csak azt, hogy a kod technikailag lefut.
+- A tesztelest **NEM szabad kikerulni** azzal, hogy a tesztet toroljuk, kikommenteljuk, skip-re allitjuk, vagy gyengitjuk az elvart eredmenyt.
+- Ha egy teszt hibazik, azt **azonnal root cause alapon kell diagnosztizalni es javitani**.
+- **Tilos ismert teszthibaval kesznek jelolni a munkat.**
+
+## Kotelezo fejlesztes kozbeni teszteles
+
+### 1. Tesztkornyezet azonositasa a modositas elott
+
+A modositas megkezdese elott az ugynok koteles azonositani a relevans tesztkornyezetet:
+
+- **Keresd meg** a projektben hasznalt teszt frameworkot, parancsokat es mintakat.
+- **Ne talalj ki** uj tesztstrukturat, ha van mar letezo konvencio.
+- Ha nincs tesztinfrastruktura, **hozz letre minimalis, a projekthez illo tesztelheto szerkezetet**, vagy dokumentald az objektiv blokkolot.
+
+### 2. Celzott tesztek irasa es futtatasa kodmodositas kozben
+
+- **Uj funkciohoz** pozitiv es relevans negativ eseteket is tesztelni kell.
+- **Hibajavitasnal** kotelezo regresszios tesztet kesziteni, amely a hibat javitas elott bizonyithatoan elkapna.
+- **Refaktor utan** kotelezo igazolni, hogy a kulso viselkedes valtozatlan maradt.
+- **UI vagy workflow modositasnal** legalabb a kritikus felhasznaloi utat ellenorizni kell a repo altal tamogatott modon (Playwright e2e, runtime smoke).
+
+### 3. Tesztcsomag folyamatos boviteseUI
+
+A tesztfuttatasokat a fejlesztes soran **folyamatosan boviteni kell**:
+
+- Amikor a program **uj modult, endpointot, parancsot, allapotot, adatformatumot vagy hibakezelesi agat** kap, a tesztkeszletet ennek megfeleloen boviteni kell.
+- A korabbi tesztek **nem valthatjak ki** az uj viselkedes celzott ellenorzeset.
+- Ha a modositas **tobb reteget** erint, a tesztelesnek is **tobb szinten** kell tortennie:
+  - **unit teszt** (egyetlen fuggveny / komponens / class izolaltan)
+  - **integration teszt** (modul–modul interakcio, DB, queue, API)
+  - **end-to-end teszt** (Playwright, runtime smoke, full flow)
+  - **runtime smoke** (production health URL, deployolt service)
+
+### 4. Tesztek ujrafuttatasa minden lenyeges modositas utan
+
+- **Eloszor** futtasd a legszukebb relevans tesztet (pl. csak az erintett `*.test.ts` fajlt).
+- **Utana** futtasd a nagyobb kapcsolodo tesztcsomagot (pl. teljes `npm test`).
+- **Vegul, ha a projekt tamogatja**, futtasd a teljes relevans teszt- vagy build-validaciot (`mvn test`, full build).
+- A parancs kimenetet **tenyadatkent** kell kezelni; sikertelen vagy warningos eredmenyt **NEM szabad** sikereskent osszefoglalni.
+
+## Teszthibak kotelezo kezelese
+
+- **Minden failing test azonnali hibajavitasi kotelezettseget jelent.**
+- A hibas tesztet **NEM szabad** torolni, atirni vagy gyengiteni csak azert, hogy zold legyen.
+- **Eloszor diagnosztizalni kell**, hogy a hiba a tesztben, a kodban, a kornyezetben vagy kulso szolgaltatasban van-e.
+- Ha a teszt **jogos hibat jelez**, a **programkodot** kell javitani.
+- Ha a teszt **hibas vagy elavult**, a **tesztet** kell javitani ugy, hogy tovabbra is **valos, ellenorizheto viselkedest** vedjen.
+- Ha **kulso rendszerhiba**, hianyzo jogosultsag, hianyzo env vagy nem elerheto szolgaltatas blokkolja a futtatast, a **pontos hibaokot es a kovetkezo szukseges lepest** dokumentalni kell.
+
+## Tiltott tesztelesi mintak
+
+- ❌ Tilos tesztet **skip-elni, kikommentelni vagy torolni** pusztan azert, mert hibazik.
+- ❌ Tilos az **assertiont gyengiteni** ugy, hogy mar ne vedje a lenyegi viselkedest.
+- ❌ Tilos csak **manualis ranezesre vagy becslesre** kesznek jelolni futtathato logikat.
+- ❌ Tilos azt allitani, hogy a funkcionalitas **mukodik**, ha **nem futott** relevans teszt vagy runtime ellenorzes.
+- ❌ Tilos **uj funkciot teszt nelkul** hagyni, ha objektiven tesztelheto.
+- ❌ Tilos a **teszteredmenyeket osszemosni**: kulon kell kezelni a sikeres, sikertelen, kihagyott es blokkolt ellenorzeseket.
+
+## Zarasi kovetelmeny fejlesztes utan
+
+Fejlesztes vagy hibajavitas vegen az ugynok koteles **tenyszeruen jelenteni**:
+
+- milyen **uj vagy modositott tesztek** keszultek
+- milyen **tesztparancsok futottak le**
+- mely tesztek **sikeresek**
+- volt-e **sikertelen, kihagyott vagy blokkolt** teszt
+- milyen hibakat **javitott** a teszteredmenyek alapjan
+- milyen funkcionalitast **fednek le** az uj vagy bovult tesztek
+
+## Elvart vegallapot
+
+A fejlesztes csak akkor tekintheto **elfogadhatoan lezartnak**, ha:
+
+- ✅ a modositott funkcionalitashoz van **relevans teszt** vagy dokumentalt objektiv ok, ami miatt nem keszitheto
+- ✅ a kapcsolodo tesztek **lefutottak**
+- ✅ minden ismert teszthiba **javitva van**
+- ✅ a tesztkeszlet a program **uj viselkedesevel bovult**
+- ✅ a zarojelentes **pontosan felsorolja** a futtatott ellenorzeseket es azok eredmenyet
+
+## Konkret tesztelesi konvenciok ebben a repositoryban
+
+### Backend (Java 21 + Spring Boot 4 + JUnit 5 + Mockito)
+
+```bash
+# Egy konkret teszt
+cd backend && ./mvnw -B test -Dtest=PasswordResetServiceTest --no-transfer-progress
+
+# Egy package osszes tesztje
+cd backend && ./mvnw -B test -Dtest='hu.puzzleir.valuta.service.*Test' --no-transfer-progress
+
+# Teljes backend test suite (1115+ teszt)
+cd backend && ./mvnw -B test --no-transfer-progress
+```
+
+**Konvenciok:**
+- `@ExtendWith(MockitoExtension.class)` + `@Mock` + `@InjectMocks` minta
+- Teszt fajl: `*Test.java` a `src/test/java/hu/puzzleir/valuta/...` ala
+- AssertJ assertion (`assertThat(...).isEqualTo(...)`)
+- Spring `ReflectionTestUtils.setField()` `@Value` injection mockolasahoz
+
+### Frontend-react (React 19 + TypeScript + Vitest + Playwright)
+
+```bash
+# Egy konkret vitest teszt
+cd frontend-react && npx vitest run src/services/api/client.test.ts
+
+# Vitest watch mode
+cd frontend-react && npm run test:watch
+
+# Teljes vitest suite
+cd frontend-react && npm test
+
+# Playwright e2e
+cd frontend-react && npm run test:e2e
+
+# Playwright UI mode (debug)
+cd frontend-react && npm run test:e2e:ui
+```
+
+**Konvenciok:**
+- Vitest: `*.test.ts(x)` a `src/` ala (kozvetlen a tesztelt fajl mellett vagy `__tests__/` mappaban)
+- `vi.mock()` + `vi.hoisted()` (TDZ-bizonyos hoisting), `vi.stubGlobal()` + `vi.unstubAllGlobals()` cleanup-pal
+- Playwright: `e2e/*.spec.ts`, `**/api/v1/**` route mock, `page.route()` patternnel
+- AI review fix #383: `vi.stubGlobal('fetch', mockFetch)` + `afterEach: vi.unstubAllGlobals()` (NEM `global.fetch = ...`)
+
+### Penztar-client (Electron + Vitest)
+
+```bash
+# Egy konkret teszt (pl. sync-engine P1.7)
+cd penztar-client && npx vitest run electron/__tests__/sync-engine.test.ts -t "P1.7"
+
+# Teljes suite
+cd penztar-client && npm test
+
+# IPC contract validation (kotelezo Electron-Renderer kommunikacio veduzeneteinek)
+cd penztar-client && npm run check:ipc
+```
+
+### Production runtime smoke (Hetzner)
+
+```bash
+# Bootstrap status (auth + DB elerhetoseg)
+curl -s https://excvaluta.com/api/v1/auth/bootstrap-status   # >= 200, body: {"completed":true}
+
+# Public branches (DB query elerhetoseg)
+curl -s "https://excvaluta.com/api/v1/public/branches?companyCode=EBC"   # >= 200, non-empty
+
+# SPA new route smoke (pl. P1.8 reset-password)
+curl -s -o /dev/null -w "%{http_code}" "https://excvaluta.com/reset-password?token=test"
+```
+
+## Hatály es precedencia
+
+- **Always-on**: ez a rule alwaysApply=true — minden coding session minden lépésénél figyelembe kell venni.
+- **Multi-agent**: Claude (CLAUDE.md), Codex (CODEX.md/AGENTS.md), Cursor (.cursor/rules/), Gemini (GEMINI.md), Antigravity, Copilot CLI mind kotelezoen alkalmazza.
+- **Precedencia**: ha konfliktusban van más rule-lal vagy AI ügynök default behavior-jával, EZ győz. A user explicit utasítása felülbírálhatja, de azt explicit, írásban kell rögzíteni a session-ben.
+- **Hatály bevezetés**: 2026-05-04 (Kosa Zoltan user-direktiva).
+- **Tárolás**:
+  - [.cursor/rules/mandatory-continuous-testing-protocol.mdc](mandatory-continuous-testing-protocol.mdc) (ez a fájl)
+  - [vault: feedback/continuous-testing-protocol-mandatory.md](D:\valutavalto-vault\feedback\continuous-testing-protocol-mandatory.md)
+  - [CLAUDE.md "FOLYAMATOS TESZTELÉSI PROTOKOLL" szekció](../../CLAUDE.md)
+
+## Kapcsolódó protokollok (egymást kiegészítik)
+
+- **Session-zárási protokoll** ([`.cursor/rules/mandatory-session-closing-protocol.mdc`](mandatory-session-closing-protocol.mdc)) — session zárásakor a tesztcsomag teljes újrafuttatása + külső review visszaolvasás kötelező.
+- **Security gate** ([`.cursor/rules/mandatory-security-gate.mdc`](mandatory-security-gate.mdc)) — security-deploy-gate skill kötelező alkalmazása minden coding task-on.
+- **AI review zero-tolerance** (vault: `ai-review-mandate-zero-tolerance.md`) — minden P0/P1/P2 review finding kötelező javítás.
+- **Hallucination tilalom** (vault: `hallucinacio-megszuntetese.md`) — research-first, Context7, iparági standardok használata.

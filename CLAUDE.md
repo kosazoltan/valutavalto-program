@@ -8,6 +8,81 @@
 >
 > **Hatalyba lepes**: 2026-04-24 — a *Uj AI mukodesi alapelvek: implementacios kezikonyv* (Kosa Zoltan user-direktiva) alapjan.
 
+> ## SESSION-ZÁRÁSI PROTOKOLL (KÖTELEZŐ — 2026-05-04 user-direktíva)
+>
+> **MINDEN session, kódmódosítás, deploy, merge, push, CI, Copilot, Codex, Sourcery/Sorcery ellenőrzés és hibajavítás lezárása ELŐTT** kötelezően végre kell hajtani a 9-lépéses session-zárási protokollt:
+>
+> 1. Workspace állapot (git status + diff)
+> 2. Helyi minőségkapuk (lint + typecheck + test + build)
+> 3. Hibák+warningok javítása zöldig (root cause alapú, NEM próba-szerencse)
+> 4. Merge előtti szinkron + konfliktus-feloldás + újra teszt
+> 5. Push előtti végső helyi check (force push tilos user-direktíva nélkül)
+> 6. Push/deploy után **KÜLSŐ** ellenőrzések visszaolvasása: GitHub Actions CI, Copilot, Codex, Sourcery, Hetzner deploy log
+> 7. Külső hibák alapján javítási ciklus (root cause → minimális fix → újra push → újra visszaolvas)
+> 8. Deploy utáni runtime ellenőrzések (health URL, runtime log, 4xx/5xx, migration, env var)
+> 9. Záró jelentés tényekkel — milyen parancsok futottak, milyen eredménnyel, ha blokkoló: pontos név + hibaüzenet + következő lépés
+>
+> **Tiltott:** "valószínűleg jó", CI-visszaolvasás nélküli "kész", warning figyelmen kívül hagyása, review komment feldolgozatlanul hagyása, eredmény-visszaolvasás nélküli lezárás.
+>
+> **Teljes szöveg:**
+> - `.cursor/rules/mandatory-session-closing-protocol.mdc` (always-on, multi-AI)
+> - `D:\valutavalto-vault\feedback\session-closing-protocol-mandatory.md` (vault feedback)
+
+> ## FOLYAMATOS TESZTELÉSI PROTOKOLL (KÖTELEZŐ — 2026-05-04 user-direktíva)
+>
+> **MINDEN fejlesztés, kódmódosítás, hibajavítás, refaktor, új funkció, tesztírás, build, runtime ellenőrzés és programfunkcionalitás-validálás során** kötelezően alkalmazni kell a 4-lépéses folyamatos tesztelési protokollt:
+>
+> 1. **Tesztkörnyezet azonosítása** a módosítás előtt — meglévő framework + konvenció keresése
+> 2. **Célzott tesztek írása + futtatása** kódmódosítás közben:
+>    - Új funkció → pozitív + negatív esetek
+>    - Hibajavítás → regressziós teszt amely a hibát javítás előtt elkapná
+>    - Refaktor → külső viselkedés változatlan
+>    - UI / workflow → kritikus user-path Playwright/runtime
+> 3. **Tesztcsomag folyamatos bővítése** — új modul/endpoint/parancs/állapot/adatformátum/hibakezelés → új teszt; **több réteg** (unit + integration + e2e + runtime smoke) ahol releváns
+> 4. **Tesztek újrafuttatása** minden lényeges módosítás után — szűk → közepes → teljes suite
+>
+> **Tiltott:**
+> - ❌ Teszt skip / kikommentelés / törlés azért, hogy zöld legyen
+> - ❌ Assertion gyengítés úgy, hogy ne védje a lényegi viselkedést
+> - ❌ "Működik" állítás teszt vagy runtime ellenőrzés nélkül
+> - ❌ Új funkció teszt nélkül (ha objektíven tesztelhető)
+> - ❌ Hibás teszt javítása helyett a kód maradhat hibás (a teszt jogos hibát jelez → kódot kell javítani)
+>
+> **Záró követelmény:** tényszerű jelentés a futtatott tesztparancsokról + eredményekről + lefedett funkcionalitásról.
+>
+> **Teljes szöveg:**
+> - `.cursor/rules/mandatory-continuous-testing-protocol.mdc` (always-on, multi-AI)
+> - `D:\valutavalto-vault\feedback\continuous-testing-protocol-mandatory.md` (vault feedback)
+
+> ## MEMÓRIAHASZNÁLATI ÉS TUDÁSKARBANTARTÁSI PROTOKOLL (KÖTELEZŐ — 2026-05-04 user-direktíva)
+>
+> **MINDEN session, munkamenet-indítás, munkamenet-zárás, fejlesztés, hibajavítás, memóriaolvasás, memóriamentés, QMD, YAML, Cognee, vectoros memória vagy Obsidian memória használata során** kötelezően alkalmazni kell.
+>
+> **A memória NEM találgatások tárolója** — csak ellenőrzött tapasztalat, reprodukálható megoldás, valós hibák oka, tényleges projektkonvenció és használható összefüggés.
+>
+> **3 fő ciklus:**
+>
+> 1. **Session-eleji memóriaolvasás** — releváns memóriaforrások (CLAUDE.md, vault, `.remember/`, `.cursor/rules/`, AI_CONSTITUTION.md, AGENTS.md, CODEX.md) beolvasása + aktív alkalmazása
+> 2. **Munka közbeni memóriafrissítés** — bizonyított root cause / hibajavítás / parancs / projektkonvenció / felhasználói preferencia / elkerülendő minta / külső szolgáltatás viselkedése / biztonsági tanulság / deploy tapasztalat azonnal jegyzetelendő
+> 3. **Session-zárási memóriamentés** — vault `sessions/YYYY-MM-DD-*.md` (új jegyzet) + `feedback/<topic>.md` (új user-direktíva) + `references/<topic>.md` (új projekt-tudás) + `.remember/remember.md` (quick-state)
+>
+> **Memóriaforrás-típusok:** QMD (strukturált tudástár, Quarto Markdown), YAML (gépileg olvasható, `verified`/`assumption`/`deprecated`/`blocked`/`needs-review` mezőkkel), Cognee (gráf, deprecated ebben a repoban), Vectoros (embedding/szemantikus), **Obsidian vault `D:\valutavalto-vault\` (aktív)**.
+>
+> **Dream funkció (kötelező, tényalapú):** csendes memória-elemzés a memóriaforrások között — kapcsolatok keresése, ismétlődő hibák felismerése, javasolt gyakorlatok. NEM fantáziálás, NEM helyettesít tesztet/buildet/lintet/runtime ellenőrzést.
+>
+> **Tiltott:**
+> - ❌ Hallucináció / találgatás / bizonytalan következtetés rögzítése
+> - ❌ Titok / token / jelszó / credential / felesleges személyes adat mentése
+> - ❌ Forrás nélküli állítás aktív tudásként
+> - ❌ Elavult / hibás memória aktív hagyása (vagy 2 ellentmondó memória párhuzamosan)
+> - ❌ Repo aktuális tényének felülírása régi memóriával (a repo tény az erősebb)
+>
+> **Záró követelmény:** tényszerű jelentés a beolvasott + frissített memóriaforrásokról + új tanulságokról + javított elavult bejegyzésekről + Dream eredményekről.
+>
+> **Teljes szöveg:**
+> - `.cursor/rules/mandatory-memory-protocol.mdc` (always-on, multi-AI)
+> - `D:\valutavalto-vault\feedback\memory-protocol-mandatory.md` (vault feedback)
+
 ## Projekt áttekintés
 Magyar valutaváltó / pénzváltó ERP rendszer. Multi-tenant (több iroda), offline-képes.
 

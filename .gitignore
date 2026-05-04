@@ -2,11 +2,12 @@
 .env
 .env.local
 .env.production
-# v2.3.0 kivetel: a production API URL-t tartalmazo .env.production fajlok
-# commit-olhatoak (nem secret). Build-time kell hogy a bundle-be ne egyen
-# be localhost. A root .env / .env.local tovabbra is ignore-olt.
-!frontend-react/.env.production
-!penztar-client/.env.production
+# v2.5.5 (2026-05-04): a `.env.production` fajlokba Google OAuth Web client ID + Desktop client
+# secret is kerul, ezert a v2.3.0-as commit-olhato kivetel VISSZAVONVA. A GitHub push protection
+# blokkolja a Google OAuth Client ID push-t, es a CLAUDE.md "NEM titkok kodba" szabaly is tiltja.
+# Helyette: a `.env.production.example` placeholder-szel commit-olt (lasd `.env.production.example`),
+# a `build-installer.ps1` runtime-ban generalja a `.env.production`-t a repo-gyokeri `.env`-bol
+# (gitignore-olt — minden valodi titkot tartalmazza).
 
 # SSH Keys (KRITIKUS - ne commitold!)
 ssh-keys/

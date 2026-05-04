@@ -1,4 +1,10 @@
 export interface ElectronAPI {
+  // --- Google OAuth Desktop Flow (Authorization Code + loopback, RFC 8252) ---
+  googleOAuthFlow(): Promise<
+    | { ok: true; idToken: string; email?: string }
+    | { ok: false; code: string; message: string }
+  >;
+
   // --- Config (token persist) ---
   getConfig(key: string): Promise<string | null>;
   setConfig(key: string, value: string): Promise<void>;

@@ -6,6 +6,16 @@ import {
 } from '@valuta/shared-ipc';
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  /**
+   * Google OAuth Authorization Code Flow + loopback redirect (RFC 8252).
+   * A renderer (LoginPage.tsx) ezt hivja meg ha a user a "Belepes Google-lel" gombra kattint.
+   * A main process kinyit egy Google bejelentkezes BrowserWindow-t, lefuttatja a Desktop OAuth
+   * flow-t, es vissza-adja az ID tokent — a renderer ezt elkuldi a backend
+   * `/api/v1/auth/google-login` endpointnak (ugyanaz mint a webes felulet).
+   */
+  googleOAuthFlow: (): Promise<{ ok: true; idToken: string; email?: string } | { ok: false; code: string; message: string }> =>
+    ipcRenderer.invoke('auth:google-oauth-flow'),
+
   printReceipt: (data: string): Promise<boolean> =>
     ipcRenderer.invoke('print-receipt', data),
 
