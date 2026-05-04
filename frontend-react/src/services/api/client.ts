@@ -40,6 +40,23 @@ const REFRESH_SKIP_PATHS = ['/auth/login', '/auth/refresh', REFRESH_ENDPOINT]
 // 4. Web production: relatív URL
 let API_BASE_URL = import.meta.env.VITE_API_URL
 
+// v2.5.7 KRITIKUS FIX (race condition gyokerok analysis 2026-05-04 utan):
+// Ha az Electron production buildbe `localhost:*`-os VITE_API_URL kerult be (regi build-installer.ps1
+// bug a 3/6 fazisban), AZONNAL — a SQLite `server_url` async override ELOTT — felulirjuk a hardcoded
+// production URL-re. Ez eliminalja a race condition-t: az elso API hivas (pl. `fetchWorkers`
+// LoginPage-en) mar a HELYES URL-re megy, nem `localhost`-ra.
+// A `production-urls.json` extraResources mar tartalmazza ezt az URL-t — itt build-time string-kent
+// inline-oljuk a kovetkezetesseg miatt.
+const PRODUCTION_API_URL = 'https://excvaluta.com/api/v1'
+if (typeof window !== 'undefined' && window.electronAPI && !import.meta.env.DEV) {
+  if (typeof API_BASE_URL === 'string' && /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.)/i.test(API_BASE_URL)) {
+    // eslint-disable-next-line no-console
+    console.warn('[api.client] Electron prod build, de VITE_API_URL localhost-ra mutat:', API_BASE_URL,
+        '-> azonnali felulirasa', PRODUCTION_API_URL, '(race condition prevention)')
+    API_BASE_URL = PRODUCTION_API_URL
+  }
+}
+
 // Electron DEV mode: a Vite dev szerver proxyzza a /api kereseket a backend-re,
 // igy NINCS CORS (az origin: http://127.0.0.1:3000 ugyanaz mint ahova a kerest
 // kuldjuk). Ezert override-oljuk a VITE_API_URL-t relativra.
