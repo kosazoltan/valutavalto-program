@@ -1,0 +1,245 @@
+---
+description: "Use when: minden session, munkamenet-inditas, munkamenet-zaras, fejlesztes, hibajavitas, memoriaolvasas, memoriamentes, QMD, YAML, Cognee, vectoros memoria vagy Obsidian memoria hasznalata soran."
+applyTo: "**"
+alwaysApply: true
+---
+
+> "Ez az utasitas kotelezo ervenyu minden mesterseges intelligencia ugynok szamara. A repoban vegzett minden munkamenetben kotelezo a rendelkezesre allo memoriaforrasok beolvasasa, tenyalapu hasznalata, folyamatos frissitese, a session vegen pedig kotelezo memoria mentese. A memoria nem talalgatasok taroloja: csak ellenorzott tapasztalatot, reprodukalhato megoldast, valos hibak okat, tenyleges projektkonvenciot es hasznalhato osszefuggest rogzithet relevans tudaskent."
+
+# Kotelezo memoriahasznalati es tudaskarbantartasi protokoll
+
+Ez az utasitas minden olyan ugynokre ervenyes (Claude, OpenAI Codex, Cursor, Gemini, Antigravity, GitHub Copilot CLI), amely ebben a repositoryban dolgozik, fuggetlenul attol, hogy kodot modosit, hibat javit, dokumentaciot keszit, adatot dolgoz fel, lokalis automatizmust futtat, tesztet ir, CI/deploy folyamatot vizsgal, vagy csak elemzest vegez. A munkamenet nem tekintheto szabalyosan lezartnak addig, amig az ugynok a relevans memoriaforrasokat be nem olvasta, a munka soran szerzett valos tudast nem rendezte, es a session vegen a megfelelo memoriahelyre el nem mentette vagy objektiv blokkolokent nem dokumentalta.
+
+## Alapelv
+
+- A memoria a **bizonyitott, visszakeresheto, gyakorlatban hasznalhato tudas** taroloja.
+- A memoria **NEM lehet** halucinacio, feltetelezes, bizonytalan kovetkeztetes vagy egyszeri veletlen siker gyujtohelye.
+- Minden memoria bejegyzesnek **tenyalapu forrasbol** kell szarmaznia: parancskimenetbol, fajltartalombol, teszteredmenybol, CI/deploy riportbol, dokumentalt felhasznaloi utasitasbol, reprodukalhato hibajavitasbol vagy validalt runtime tapasztalatbol.
+- A memoriat **minden session elejen olvasni**, **munka kozben hasznalni**, **munka vegen frissiteni** kell.
+- A regi, hibas vagy feltetelezesre epulo memoria **nem maradhat aktiv tudaskent**: javitani, elavultta jelolni vagy torolni kell.
+- Az ugynok **koteles a memoria alapjan dolgozni**, de **koteles a memoria tartalmat felulbiralni**, ha friss tenyek ellentmondanak neki.
+
+## Kotelezo memoriaforrasok
+
+### QMD memoria
+
+- A `.qmd` vagy Quarto Markdown alapu memoriafajlokat **strukturalt tudastar-kent** kell kezelni.
+- QMD fajlokban elhelyezett YAML frontmattert, fejleceket, kodblokkokat, tablakazatokat es hivatkozasokat kulon kell ertelmezni.
+- QMD memoria hasznalatakor kotelezo megkulonboztetni a **narrativ leirast, a futtathato kodot, az eredmenyt es a kovetkeztetest**.
+- QMD fajlba **csak olyan tanulsag kerulhet**, amelynek van ellenorzott alapja vagy egyertelmuen meg van jelolve blokkolt/nyitott megfigyeleskent.
+- Uj bejegyzes szerkezete: **datum, kontextus, forras, megfigyeles, kovetkeztetes, kovetkezo hasznos lepes**.
+
+### YAML memoria
+
+- YAML fajlokat **gepileg olvashato memoria- es konfiguracios forraskent** kell kezelni.
+- YAML modositasakor **kotelezo ervenyes szintaxist tartani**: behuzas, idezojelek, listaelemek, kulcsok es tobb soros ertekek pontos kezelese.
+- Az ugynok csak **minimalis, celzott mezot modosithat**; nem rendezheti at vagy nem normalizalhatja feleslegesen az egesz fajlt.
+- YAML-ban **kulon mezoben** kell tartani, ha egy allitas `verified`, `assumption`, `deprecated`, `blocked` vagy `needs-review` allapotu.
+- Feltetelezest **nem szabad vegleges tenynek atminositeni** addig, amig parancskimenet, teszt, fajlolvasas vagy felhasznaloi megerosites nem igazolja.
+
+### Cognee memoria
+
+- Ha Cognee vagy mas grafalapu/agentikus memoria-rendszer elerheto, az ugynok koteles azt **tudaskapcsolatok es entitasok forrasakent** hasznalni.
+- Cognee-be **csak ellenorzott** entitas, kapcsolat, megfigyeles es tanulsag kerulhet.
+- Entitas letrehozasa elott **ellenorizni kell**, hogy nincs-e mar azonos vagy nagyon kozeli jelentessel letezo entitas.
+- Kapcsolatot csak akkor szabad rogziteni, ha a kapcsolat forrasa **ismert es tenyszeruen alatamaszthato**.
+- Hibas Cognee megfigyelest **javitani vagy elavultkent jelolni** kell; nem szabad parhuzamosan meghagyni aktiv ellentmondo tudaskent.
+
+### Vectoros memoria
+
+- Embedding, szemantikus index, vector database, lokalis vektortar vagy hasonlosagi keresesre epulo tudastar.
+- Hasznalatakor **kotelezo relevans kontextust keresni** a munka megkezdese elott, ha a feladat korabbi dontesekre, mintakra, hibakra vagy projektkonvenciokra epulhet.
+- A vectoros talalatokat **nem szabad onmagukban igazsagkent kezelni**: minden fontos allitast vissza kell ellenorizni forrasfajlbol, parancskimenetbol vagy mas konkret bizonyitekbol.
+- Uj bejegyzeshez **rovid, keresheto, zajmentes szoveget** kell menteni, amely tartalmazza a lenyegi kulcsszavakat es a validalt kovetkeztetest.
+- Elavult vagy hibas embedding-forras eseten **uj, javitott bejegyzest** kell kesziteni, es a regi bejegyzest deprecated allapotba kell tenni.
+
+### Obsidian memoria
+
+- **Aktiv vault ebben a repoban**: `D:\valutavalto-vault\` (sessions/, feedback/, references/)
+- Az ugynok **koteles a relevans jegyzeteket beolvasni** a munka megkezdese elott (`vault\README.md`, legfrissebb session-jegyzet, feedback skim).
+- Hasznalatkor figyelni: **wikilinkek, tagek, YAML frontmatter, backlink logika, jegyzetek kozotti osszefugges**.
+- Uj bejegyzes: **atomikus, visszakereshetonek, forrasoltan tenyalapu**.
+- Tipusok kulonvalasztasa: `Teny`, `Tanulsag`, `Dontes`, `Parancs`, `Hiba`, `Megoldas`, `Nyitott kerdes`, `Elavult`.
+- Korabbi feltetelezes vs uj bizonyitek: **a jegyzetet pontosabbra javitani VAGY a regi allitast elavultkent megjelolni**.
+
+## Kotelezo session-eleji memoriaolvasas
+
+Minden munkamenet elejen az ugynok koteles:
+
+### 1. Azonositani az elerheto memoriaforrasokat
+
+Ebben a repoban jelenleg aktiv:
+
+- **CLAUDE.md** (auto-load, projekt-szintu utasitasok, mandate-ek)
+- **AI_CONSTITUTION.md** (10 nem-alkukepes szabaly + 7 tiltas + 7 reteg architektura)
+- **AGENTS.md / CODEX.md / VSCODE.md / ANTIGRAVITY.md** (multi-AI extends)
+- **`.cursor/rules/*.mdc`** (always-on Cursor rule-ok)
+- **Obsidian vault** `D:\valutavalto-vault\` (sessions/, feedback/, references/)
+- **`.remember/remember.md`** (quick-state handoff)
+- **`docs/LESSONS_LEARNED.md`** (korabbi hibak)
+- **`docs/knowledge/memory/*.yaml`** (historikus session memoria, csak olvasni, uj jegyzet a vault-ba megy)
+
+**DEPRECATED** (NE hasznald, NE menj rajuk):
+- ~~`~/.claude/projects/.../memory/`~~ (csak redirect a vault-ra)
+- ~~`.memory/` SQLite~~ (2026-04-27 megszuntetve)
+- ~~Cognee MCP~~ (TODO maradt, visszavonva)
+- ~~OpenClaw refek~~ (masik projekt)
+
+### 2. Beolvasni a feladathoz relevans tartalmat
+
+- **Ne olvass be zajosan mindent**, ha a feladat szuk kontextusu.
+- Olvasd be a **feladat szempontjabol relevans** szabalyokat, korabbi hibakat, parancsokat, donteseket es tiltott mintakat.
+- Ha a memoria **ellentmond a repo aktualis allapotanak**, a repo aktualis tenye az erosebb bizonyitek.
+
+### 3. A beolvasott memoriat aktivan alkalmazni
+
+- **Ne csak hivatkozz** arra, hogy van memoria; **hasznald a donteseknel**.
+- A memoria alapjan valaszd ki a **relevans teszteket, build parancsokat, ismert hibakerulesi modokat es projektkonvenciokat**.
+- Ha a memoria alapjan **kockazat latszik**, azt **kezeld a munka soran**.
+
+## Kotelezo munka kozbeni memoriafrissites
+
+### Rogzitendo tudastipusok
+
+- **Bizonyitott root cause** (pl. "P1.8 forgot-password email kuldes hianyzott; oka: TODO komment maradt")
+- **Reprodukalhato hibajavitasi lepes** (pl. "Vitest TDZ hiba: `vi.hoisted()`-tel kell deklaralni a mock-ot")
+- **Sikeres teszt-, lint-, build- vagy runtime parancs** (pl. "frontend-react: `npm run lint:i18n-gate` baseline 2864")
+- **Kornyezeti sajatossag** (pl. "Hetzner deploy auto-trigger main push-ra")
+- **Projektkonvencio** (pl. "minden CI check-en `--admin merge` szukseges, mert Sourcery weekly-rate-limit miatt SKIPPED")
+- **Felhasznaloi preferencia** (pl. "magyar valasz, fact-based, NEM hallucinacio")
+- **Elkerulendo hibas megoldas** (pl. "NEM kell `--no-verify` flag-et hasznalni")
+- **Kulso szolgaltatas viselkedese** (pl. "Codex GitHub App auto-review a /pulls/N/reviews API-n; mention-zaj a /issues/N/comments-en, NEM finding")
+- **Biztonsagi tanulsag** (pl. "P1.3: web access token in-memory, NEM localStorage; HttpOnly refresh cookie bootstrap")
+- **Deploy, CI vagy integracios tapasztalat**
+- **Olyan osszefugges**, amely tobb korabbi tenybol kovetkezik es ellenorizheto
+
+### Nem rogzitendo aktiv memoriakent
+
+- ❌ Egyszeri tipp
+- ❌ Bizonyitatlan feltetelezes
+- ❌ Meg nem ellenorzott megoldas
+- ❌ Ideiglenes debug zaj
+- ❌ Titok, token, jelszo vagy teljes credential
+- ❌ Szemelyes adat (ha nincs egyertelmu munkacel + jogos ok)
+- ❌ Olyan allitas, amelynek forrasa nem azonosithato
+
+## Kotelezo session-zarasi memoriamentes
+
+Minden lezart munkamenet utan **kotelezo memoriamentest vegezni**, ha a session barmilyen uj, jovoben hasznos tenyt vagy tanulsagot eredmenyezett.
+
+### Mentesi celhely (ebben a repoban)
+
+- **Vault session-jegyzet**: `D:\valutavalto-vault\sessions\YYYY-MM-DD-rovid-leiras.md`
+- **Vault feedback** (uj user-direktiva): `D:\valutavalto-vault\feedback\<topic>.md`
+- **Vault references** (uj projekt-tudas kulso forrasbol): `D:\valutavalto-vault\references\<topic>.md`
+- **`.remember/remember.md`**: quick-state update (Main HEAD, open PR/issue, production health)
+- **CLAUDE.md** "Aktualis release-allapot" szekcio: ha valtozott
+
+### A zarasi memoriamentes kotelezo tartalma
+
+- mit csinalt az ugynok
+- milyen konkret fajlok, modulok, szolgaltatasok vagy rendszerek erintettek voltak
+- milyen parancsok, tesztek vagy ellenorzesek adtak bizonyitekot
+- mi volt a root cause, ha hiba javult
+- mi a validalt jo megoldas
+- milyen korabbi memoria bizonyult pontatlannak vagy elavultnak
+- milyen kovetkeztetes hasznalhato jovoben
+- mi maradt blokkolt vagy nyitott, es miert
+
+Ha **nincs uj hasznos tudas**, ezt **nem kell zajos memoriakent rogziteni**, de a zarojelentesben **jelezni kell**, hogy nem keletkezett tartos memoriaerteku tanulsag.
+
+## Feltetelezesek es elavult memoriak kezelese
+
+- Feltetelezest csak **atmeneti, egyertelmuen jelolt allapotban** szabad rogziteni.
+- Igazolt feltetelezes -> **tenyne minositese** + bizonyitek rovid leirasa.
+- Megcafolt feltetelezes -> **elavultkent jeloles vagy torles**.
+- Pontatlan/felrevezeto memoria -> **konkretabbra javitani**.
+- Ellentmondo memoria -> **az ujabb, jobban bizonyitott, reprodukalhato teny elvez elonyt**.
+- `assumption`, `deprecated`, `blocked`, `needs-review` allapotu memoria **NEM** dontesi alap (csak kockazatkent).
+
+## Dream funkcio (kotelezo, tenyalapu)
+
+Minden ugynoknek a sajat sessionjeben **kotelezo fenntartani egy Dream funkciot**. A Dream funkcio **NEM fantazialas**, hanem **tenyalapu, csendes memoriaelemzesi es osszefuggeskereso folyamat**.
+
+### Dream cel
+
+- Memoriaforrasokban rogzitett valos tapasztalatok kozotti **kapcsolatok keresese**
+- **Ismetlodo hibak, sikeres mintak es projektkonvenciok** felismerese
+- **Gyorsabb, pontosabb, biztonsagosabb munkat lehetove tevo tanulsagok** letrehozasa
+- **Regi vagy pontatlan memoria felismerese** es javitasra jelolese
+
+### Dream szabalyok
+
+- ❌ Csak **tenyekbol** indulhat ki
+- ❌ NEM talalhat ki uj projektallapotot, parancseredmenyt, felhasznaloi szandekot vagy kulso rendszer viselkedest
+- ❌ NEM helyettesiti a tesztet, buildet, lintet, runtime ellenorzest vagy dokumentacio olvasast
+- ✅ Kovetkeztetest CSAK akkor szabad rogziteni, ha **vilagosan latszik, mely memoriakbol vagy validalt tapasztalatokbol kovetkezik**
+- Eredmeny kategoriak: `Tanulsag`, `Osszefugges`, `Kockazat`, `Javasolt gyakorlat`, `Elavult memoria jeloles`
+
+### Dream kimenet kotelezo formaja
+
+```markdown
+- **Datum**: 2026-MM-DD
+- **Kiindulo memoriaforrasok**: vault/sessions/..., vault/feedback/..., CLAUDE.md
+- **Tenyek rovid listaja**:
+  1. Teny A
+  2. Teny B
+- **Felismert osszefugges**: ...
+- **Gyakorlati kovetkezmeny**: ...
+- **Bizonytalansag/blokkolt resz**: ...
+- **Kovetkezo ellenorizheto lepes**: ...
+```
+
+### Dream hasznalata fejlesztes kozben
+
+- Ha a feladat **hasonlit egy korabbi hibara vagy megoldasra**, Dream tanulsagot **aktivan figyelembe venni**
+- Dream **ismert kockazat** -> a munka soran **ellenorizni**
+- Dream kovetkeztetes **hibasnak bizonyul** -> Dream bejegyzest **elavultkent jeloles**, NEM tovabbi dontesi alap
+
+## Biztonsagi es adatvedelmi szabalyok
+
+- ❌ TILOS memoriaba menteni: **titok, token, jelszo, API kulcs, OAuth credential, teljes env ertek**
+- Erzekeny adatbol legfeljebb a **fajl utvonala, valtozonev vagy a kezelesi szabaly** rogzitheto, **ertek nelkul**
+- Szemelyes adat csak akkor menthetö memoriaerteku tudaskent, ha **a feladat celja ezt indokolja, es a rogzites minimalis**
+- Memoriamentes elott **ellenorizni kell**, hogy a bejegyzes nem tartalmaz-e felesleges szemelyes vagy titkos adatot
+
+## Zaro jelentestetel
+
+Minden session vegen az ugynok koteles **tenyszeruen jelenteni**:
+
+- milyen **memoriaforrasokat olvasott be**
+- milyen **memoriaforrasokat frissitett**
+- milyen **uj teny vagy tanulsag** kerult mentésre
+- volt-e **elavult, hibas vagy feltetelezes-alapu memoria**, amelyet javitott vagy jelolt
+- **futott-e Dream elemzes**, es ha igen, milyen tenyalapu tanulsagot eredmenyezett
+- ha memoriaolvasas vagy memoriamentes nem tortent, **mi volt az objektiv blokkolo ok**
+
+## Elvart vegallapot
+
+Egy munkamenet memoria szempontbol csak akkor zarhato le szabalyosan, ha:
+
+- ✅ a relevans memoriaforrasok be lettek olvasva
+- ✅ a munka soran szerzett valos tudas fel lett dolgozva
+- ✅ a hasznos, bizonyitott tanulsag memoriaerteku formaban mentve vagy dokumentaltan elokeszitve van
+- ✅ a hibas vagy feltetelezes-alapu memoria nem maradt aktiv, relevans tudaskent kezelt allapotban
+- ✅ a Dream funkcio tenyalapu osszefuggest keresett, ha volt eleg relevans memoriaanyag
+- ✅ az ugynok **a kovetkezo sessionben is hasznalhato, zajmentes, friss es tenyalapu tudast hagy maga utan**
+
+## Hatály es precedencia
+
+- **Always-on**: ez a rule alwaysApply=true — minden coding session minden lépésénél figyelembe kell venni.
+- **Multi-agent**: Claude (CLAUDE.md), Codex (CODEX.md/AGENTS.md), Cursor (.cursor/rules/), Gemini (GEMINI.md), Antigravity, Copilot CLI mind kotelezoen alkalmazza.
+- **Precedencia**: ha konfliktusban van más rule-lal vagy AI ügynök default behavior-jával, EZ győz. A user explicit utasítása felülbírálhatja, de azt explicit, írásban kell rögzíteni a session-ben.
+- **Hatály bevezetés**: 2026-05-04 (Kosa Zoltan user-direktiva).
+- **Tárolás**:
+  - [.cursor/rules/mandatory-memory-protocol.mdc](mandatory-memory-protocol.mdc) (ez a fájl)
+  - [vault: feedback/memory-protocol-mandatory.md](D:\valutavalto-vault\feedback\memory-protocol-mandatory.md)
+  - [CLAUDE.md "MEMÓRIAHASZNÁLATI PROTOKOLL" szekció](../../CLAUDE.md)
+
+## Kapcsolódó protokollok (egymást kiegészítik)
+
+- **Session-zárási protokoll** ([`.cursor/rules/mandatory-session-closing-protocol.mdc`](mandatory-session-closing-protocol.mdc)) — a 9-lépés tartalmaz "záró jelentés tényekkel" lépést, ami EZEN protokoll memoriamentési követelményével együtt alkalmazandó.
+- **Folyamatos tesztelési protokoll** ([`.cursor/rules/mandatory-continuous-testing-protocol.mdc`](mandatory-continuous-testing-protocol.mdc)) — a tesztkonvenciók (Vitest, JUnit 5, Playwright, etc.) memóriába mentendő tudástípusok.
+- **Security gate** ([`.cursor/rules/mandatory-security-gate.mdc`](mandatory-security-gate.mdc)) — biztonsági tanulságok kötelező memóriamentése.
+- **AI review zero-tolerance** (vault: `ai-review-mandate-zero-tolerance.md`) — minden P0/P1/P2 finding root cause + fix memóriába kerül.
+- **Hallucination tilalom** (vault: `hallucinacio-megszuntetese.md`) — research-first + Context7, a memória tényalapú forrás.

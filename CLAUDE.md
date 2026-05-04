@@ -54,6 +54,35 @@
 > - `.cursor/rules/mandatory-continuous-testing-protocol.mdc` (always-on, multi-AI)
 > - `D:\valutavalto-vault\feedback\continuous-testing-protocol-mandatory.md` (vault feedback)
 
+> ## MEMÓRIAHASZNÁLATI ÉS TUDÁSKARBANTARTÁSI PROTOKOLL (KÖTELEZŐ — 2026-05-04 user-direktíva)
+>
+> **MINDEN session, munkamenet-indítás, munkamenet-zárás, fejlesztés, hibajavítás, memóriaolvasás, memóriamentés, QMD, YAML, Cognee, vectoros memória vagy Obsidian memória használata során** kötelezően alkalmazni kell.
+>
+> **A memória NEM találgatások tárolója** — csak ellenőrzött tapasztalat, reprodukálható megoldás, valós hibák oka, tényleges projektkonvenció és használható összefüggés.
+>
+> **3 fő ciklus:**
+>
+> 1. **Session-eleji memóriaolvasás** — releváns memóriaforrások (CLAUDE.md, vault, `.remember/`, `.cursor/rules/`, AI_CONSTITUTION.md, AGENTS.md, CODEX.md) beolvasása + aktív alkalmazása
+> 2. **Munka közbeni memóriafrissítés** — bizonyított root cause / hibajavítás / parancs / projektkonvenció / felhasználói preferencia / elkerülendő minta / külső szolgáltatás viselkedése / biztonsági tanulság / deploy tapasztalat azonnal jegyzetelendő
+> 3. **Session-zárási memóriamentés** — vault `sessions/YYYY-MM-DD-*.md` (új jegyzet) + `feedback/<topic>.md` (új user-direktíva) + `references/<topic>.md` (új projekt-tudás) + `.remember/remember.md` (quick-state)
+>
+> **Memóriaforrás-típusok:** QMD (strukturált tudástár, Quarto Markdown), YAML (gépileg olvasható, `verified`/`assumption`/`deprecated`/`blocked`/`needs-review` mezőkkel), Cognee (gráf, deprecated ebben a repoban), Vectoros (embedding/szemantikus), **Obsidian vault `D:\valutavalto-vault\` (aktív)**.
+>
+> **Dream funkció (kötelező, tényalapú):** csendes memória-elemzés a memóriaforrások között — kapcsolatok keresése, ismétlődő hibák felismerése, javasolt gyakorlatok. NEM fantáziálás, NEM helyettesít tesztet/buildet/lintet/runtime ellenőrzést.
+>
+> **Tiltott:**
+> - ❌ Hallucináció / találgatás / bizonytalan következtetés rögzítése
+> - ❌ Titok / token / jelszó / credential / felesleges személyes adat mentése
+> - ❌ Forrás nélküli állítás aktív tudásként
+> - ❌ Elavult / hibás memória aktív hagyása (vagy 2 ellentmondó memória párhuzamosan)
+> - ❌ Repo aktuális tényének felülírása régi memóriával (a repo tény az erősebb)
+>
+> **Záró követelmény:** tényszerű jelentés a beolvasott + frissített memóriaforrásokról + új tanulságokról + javított elavult bejegyzésekről + Dream eredményekről.
+>
+> **Teljes szöveg:**
+> - `.cursor/rules/mandatory-memory-protocol.mdc` (always-on, multi-AI)
+> - `D:\valutavalto-vault\feedback\memory-protocol-mandatory.md` (vault feedback)
+
 ## Projekt áttekintés
 Magyar valutaváltó / pénzváltó ERP rendszer. Multi-tenant (több iroda), offline-képes.
 
