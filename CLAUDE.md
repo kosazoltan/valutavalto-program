@@ -8,6 +8,26 @@
 >
 > **Hatalyba lepes**: 2026-04-24 — a *Uj AI mukodesi alapelvek: implementacios kezikonyv* (Kosa Zoltan user-direktiva) alapjan.
 
+> ## SESSION-ZÁRÁSI PROTOKOLL (KÖTELEZŐ — 2026-05-04 user-direktíva)
+>
+> **MINDEN session, kódmódosítás, deploy, merge, push, CI, Copilot, Codex, Sourcery/Sorcery ellenőrzés és hibajavítás lezárása ELŐTT** kötelezően végre kell hajtani a 9-lépéses session-zárási protokollt:
+>
+> 1. Workspace állapot (git status + diff)
+> 2. Helyi minőségkapuk (lint + typecheck + test + build)
+> 3. Hibák+warningok javítása zöldig (root cause alapú, NEM próba-szerencse)
+> 4. Merge előtti szinkron + konfliktus-feloldás + újra teszt
+> 5. Push előtti végső helyi check (force push tilos user-direktíva nélkül)
+> 6. Push/deploy után **KÜLSŐ** ellenőrzések visszaolvasása: GitHub Actions CI, Copilot, Codex, Sourcery, Hetzner deploy log
+> 7. Külső hibák alapján javítási ciklus (root cause → minimális fix → újra push → újra visszaolvas)
+> 8. Deploy utáni runtime ellenőrzések (health URL, runtime log, 4xx/5xx, migration, env var)
+> 9. Záró jelentés tényekkel — milyen parancsok futottak, milyen eredménnyel, ha blokkoló: pontos név + hibaüzenet + következő lépés
+>
+> **Tiltott:** "valószínűleg jó", CI-visszaolvasás nélküli "kész", warning figyelmen kívül hagyása, review komment feldolgozatlanul hagyása, eredmény-visszaolvasás nélküli lezárás.
+>
+> **Teljes szöveg:**
+> - `.cursor/rules/mandatory-session-closing-protocol.mdc` (always-on, multi-AI)
+> - `D:\valutavalto-vault\feedback\session-closing-protocol-mandatory.md` (vault feedback)
+
 ## Projekt áttekintés
 Magyar valutaváltó / pénzváltó ERP rendszer. Multi-tenant (több iroda), offline-képes.
 
