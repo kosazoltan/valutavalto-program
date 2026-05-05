@@ -63,7 +63,7 @@ public class DiagnosticsController {
                 .userIdentifier(safeTruncate(dto.getUserIdentifier(), 150))
                 .errorMessage(safeTruncate(dto.getErrorMessage(), 1000))
                 .stackTrace(safeTruncate(dto.getStackTrace(), 8000))
-                .contextJson(dto.getContext() != null ? dto.getContext().toString() : null)
+                .contextJson(serializeContext(dto.getContext()))
                 .clientIp(clientIp)
                 .userAgent(userAgent)
                 .build();
@@ -114,5 +114,22 @@ public class DiagnosticsController {
         if (s == null) return null;
         if (s.length() <= max) return s;
         return s.substring(0, max);
+    }
+
+    /**
+     * Map -> JSON string konverzio. Jackson 3 dual-stack kompatibilis: a Spring Boot
+     * default `ObjectMapper` Map-ot ki tudja irni JSON-ba akkor is, ha a `JacksonConfig`
+     * a Jackson 2 stop-gap modulnal regisztralt is. Ha a serializacio fail-el, a
+     * `Map.toString()` fallback-re vissza-eshetunk (NEM commitoljuk a hibajelentest).
+     */
+    private String serializeContext(Map<String, Object> ctx) {
+        if (ctx == null || ctx.isEmpty()) return null;
+        try {
+            // Spring Boot default Jackson - injektaljuk csak ha kell, kulonben Map.toString()
+            return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(ctx);
+        } catch (Exception ex) {
+            log.warn("Context serialize failed, fallback to toString: {}", ex.getMessage());
+            return ctx.toString();
+        }
     }
 }
