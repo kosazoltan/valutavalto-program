@@ -1,5 +1,25 @@
 # Valutaváltó ERP — Claude Code kontextus
 
+> ## ⚠️ NULLADIK PRIORITAS — NEM-INFORMATIKUS VÉGFELHASZNÁLÓ ALAPELV (2026-05-05)
+>
+> **A KOLLÉGÁK NEM informatikusok ÉS NEM programozók.** Ez a teljes deliverable-pipeline alapelv, **MINDEN** más szabály felett.
+>
+> **TILOS** a kollégának küldeni: parancssort (`ipconfig`, `netsh`, `Stop-Process`), manuális mappa-törlést (`Win+R %APPDATA%`), `.env`/`hosts` fájl-szerkesztést, antivírus-konfigurálást, registry-módosítást.
+>
+> **A TELEPÍTŐ AUTOMATIKUSAN elvégzi**: DNS cache flush, userData migration, régi-mappa-törlés, registry-cleanup, tűzfal-szabályok, parancsikon-létrehozás, Setup Wizard auto-indítás, diagnosztika beépítve.
+>
+> **A felhasználó csak**: dupla-klikk telepítőre + UAC "Igen" + esetleg admin-jelszó (8+ karakter).
+>
+> **Server-oldali fix** (pl. Cloudflare DNS) is **én végzem el** (API token-nel), nem a felhasználó.
+>
+> **NEM programoztatjuk a tesztelőket.** Diagnosztikai `.txt` automatikusan generálódik (`Penztar-Diagnosztika.zip` dupla-klikk → asztalra ment), a felhasználó csak elküldi.
+>
+> **Csak 100%-ban működő, tökéletes terméket adunk ki.** Hallucináció / lustaság / butaság / halogatás / "feltételezem" / "valószínűleg jó" **TILOS**.
+>
+> **Forrás**: Kósa Zoltán user-direktíva 2026-05-05 (Borsi-Helga-Tomi-Heni debug-ciklus után, ELFOGADHATATLAN volt a parancssoros instrukciózás).
+>
+> **Vault**: `D:\valutavalto-vault\feedback\auto-installer-everything-mandatory.md`
+
 > ## AI_CONSTITUTION.md (ELSO PRIORITAS)
 >
 > **Minden AI-ugynok** (Claude, OpenAI Codex, Sourcery, Gemini) **KOTELEZOEN olvassa be az `AI_CONSTITUTION.md`-t** a repo gyokerben, mielott barmit csinal. Az ott leirt **10 nem-alkukepes szabaly + 7 tiltas + 7 reteg architekturara + erettsegi modell (L2)** feluliria a jelen `CLAUDE.md` minden reszet, ha konfliktus van.

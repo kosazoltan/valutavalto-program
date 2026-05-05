@@ -14,6 +14,31 @@ if (osBuild >= 26200) {
   app.commandLine.appendSwitch('no-sandbox');
   app.commandLine.appendSwitch('disable-gpu-sandbox');
 }
+
+// v2.5.13 NEM-INFORMATIKUS-FELHASZNALO ALAPELV: a Penztar-on belul AUTOMATIKUSAN
+// minden hibatuneti kornyezetet kompenzalunk, hogy a felhasznalonak SOHA ne kelljen
+// parancssort, ESET-config-ot vagy DNS-flush-t kezzel csinalnia.
+//
+// Borsi-tunet (2026-05-04 diagnosztika v2): IPv4 OK, IPv6 timeout -> a DNS HappyEyeballs
+// algoritmus IPv6-ot probal eloszor, 8 sec-os timeoutok jonnek.
+// FIX: a Chromium host-resolver-rules-szel az `excvaluta.com`-ra IPv4-only-t kenyszeritjuk.
+// Server-oldali Cloudflare AAAA-rekord automatikus kikapcsolasa is MAR megtortent
+// (CF API-n keresztul, 2026-05-05), de defensive client-szintu vedelem is kell.
+//
+// Plus: defensive TLS-hardening (ECH disable + HTTP/1.1 force) - barmilyen
+// AV/firewall-szintu rontas ellen.
+//
+// Hivatkozas:
+//   - https://www.electronjs.org/docs/latest/api/command-line-switches
+//   - https://chromium.googlesource.com/chromium/src/+/master/net/dns/README.md
+//   - electron/electron#28991 - ESET TLS 1.3 + Cloudflare incompatibility
+app.commandLine.appendSwitch('disable-features', 'EncryptedClientHello');
+app.commandLine.appendSwitch('disable-http2');
+// Megj.: az IPv4-only force-ot a SERVER-oldali Cloudflare IPv6 OFF (2026-05-05 user-direktiva
+// alapjan API-n keresztul beallitva) biztositja - innentol az `excvaluta.com` DNS valasza
+// CSAK A rekordokat tartalmaz, AAAA NINCS. Igy a HappyEyeballs kotelezo IPv4-en megy.
+// Client-szintu `host-resolver-rules EXCLUDE`-ot NEM hasznaljuk, mert a Chromium ott
+// system-resolver-re fall-back-el, ami a Windows-szintu IPv6 preferenciat orokli.
 import log from 'electron-log/main';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -60,6 +85,7 @@ import { registerVideoManagerHandlers } from './video-manager';
 import { registerScannerHandlers } from './scanner';
 import { registerUpdaterHandlers } from './updater';
 import { performGoogleOAuthFlow, GoogleOAuthFailedException } from './google-oauth';
+import { initErrorReporter, reportError, setUserIdentifier } from './error-reporter';
 import {
 
   isFirstRun,
@@ -735,6 +761,31 @@ app.whenReady().then(async () => {
   registerScannerHandlers();
   registerUpdaterHandlers();
 
+  // v2.5.13 NEM-INFORMATIKUS-FELHASZNALO ALAPELV: automatikus hibajelentes indul
+  initErrorReporter();
+  log.info('[App] Error reporter initialized -> POST excvaluta.com/api/v1/diagnostics/error-report');
+
+  // IPC: a renderer (axios interceptor + window.onerror) ide kuldi a JS hibakat
+  ipcMain.handle('diagnostics:report-error', async (_event, payload: {
+    component?: string;
+    message: string;
+    stack?: string;
+    context?: Record<string, unknown>;
+  }) => {
+    const component = (payload.component ?? 'electron-renderer') as
+        'electron-main' | 'electron-renderer' | 'nsis-installer' | 'axios-http' | 'setup-wizard' | 'sync-engine' | 'other';
+    const err = new Error(payload.message);
+    if (payload.stack) err.stack = payload.stack;
+    reportError(component, err, payload.context);
+    return { ok: true };
+  });
+
+  // IPC: a Login flow utan a renderer atadhatja a felhasznalo email-jet (audit)
+  ipcMain.handle('diagnostics:set-user-identifier', async (_event, id: string | null) => {
+    setUserIdentifier(id);
+    return { ok: true };
+  });
+
   // Google OAuth Authorization Code Flow + loopback redirect (RFC 8252).
   // A Web SDK (`<GoogleLogin>`) NEM mukodik Electron-ban (`app://localhost` origin reject),
   // ezert a renderer ezt az IPC handler-t hivja meg ha a user a "Belepes Google-lel"
@@ -796,6 +847,42 @@ app.whenReady().then(async () => {
     return net.fetch(pathToFileURL(filePath).toString());
   });
   log.info('[App] Custom "app" protocol regisztrálva, distPath:', distPath);
+
+  // v2.5.11 KRITIKUS: regi mojibake / hibas userData .env javitasa MIGRATION-nel
+  // Helga + Borsi-tunet (2026-05-04): a userData `.env` 2 hete tarolt, mojibake-os
+  // (`PĂ©nztĂˇr`) + `VITE_API_URL="https://"` (URES URL!) + `SETUP_COMPLETED=1`.
+  // A regi eltavolitok NEM toroltek a `%APPDATA%\valuta-penztar`-t, igy a Penztar.exe
+  // a regi config-ot olvasta es Network Error-t adott.
+  // Migration logika: ha az `.env` `VITE_API_URL`-je ures-https vagy hianyzik a prod URL,
+  // ATIRJUK a helyes prod URL-re (nem deletjuk az egesz fajlt - megtartjuk a JWT_SECRET-eket
+  // a v2.5.11 utani tovabbi instabil-modot ne triggereljen).
+  try {
+    const userDataEnvPath = path.join(app.getPath('userData'), '.env');
+    if (fs.existsSync(userDataEnvPath)) {
+      const rawEnv = fs.readFileSync(userDataEnvPath, 'utf8');
+      const apiUrlMatch = rawEnv.match(/^VITE_API_URL\s*=\s*"?([^"\r\n]*)"?\s*$/m);
+      const currentApiUrl = apiUrlMatch ? apiUrlMatch[1].trim() : '';
+      const needsMigration = !currentApiUrl
+          || currentApiUrl === 'https://'
+          || currentApiUrl === 'http://'
+          || currentApiUrl === 'https'
+          || /^https?:\/\/?$/.test(currentApiUrl);
+      if (needsMigration) {
+        log.warn(`[App] userData .env migration: VITE_API_URL="${currentApiUrl}" -> https://excvaluta.com/api/v1`);
+        const fixedEnv = rawEnv.replace(
+            /^VITE_API_URL\s*=.*$/m,
+            'VITE_API_URL="https://excvaluta.com/api/v1"'
+        );
+        const tmpPath = `${userDataEnvPath}.tmp`;
+        fs.writeFileSync(tmpPath, fixedEnv, { encoding: 'utf8', mode: 0o600 });
+        fs.renameSync(tmpPath, userDataEnvPath);
+        log.info('[App] userData .env migration KESZ.');
+      }
+    }
+  } catch (migrationErr) {
+    log.warn('[App] userData .env migration kihagyva (nem kritikus):',
+        migrationErr instanceof Error ? migrationErr.message : migrationErr);
+  }
 
   try {
     await initDatabase();

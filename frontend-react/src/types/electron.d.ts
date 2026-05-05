@@ -5,6 +5,15 @@ export interface ElectronAPI {
     | { ok: false; code: string; message: string }
   >;
 
+  // --- v2.5.13 Kliens hibajelentes (send-and-forget) ---
+  reportError(payload: {
+    component?: string;
+    message: string;
+    stack?: string;
+    context?: Record<string, unknown>;
+  }): Promise<{ ok: boolean }>;
+  setDiagnosticUserIdentifier(id: string | null): Promise<{ ok: boolean }>;
+
   // --- Config (token persist) ---
   getConfig(key: string): Promise<string | null>;
   setConfig(key: string, value: string): Promise<void>;
