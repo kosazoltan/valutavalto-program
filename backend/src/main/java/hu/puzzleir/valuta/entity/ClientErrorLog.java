@@ -62,7 +62,11 @@ public class ClientErrorLog {
     @Column(name = "context", columnDefinition = "JSONB")
     private String contextJson;
 
-    @Column(name = "client_ip", columnDefinition = "INET")
+    /**
+     * IPv4 vagy IPv6 cím (max 45 char: IPv6 39 char + esetleg ::ffff:1.2.3.4 IPv4-mapped).
+     * V183 (2026-05-05): INET → VARCHAR(45) Hibernate kompat miatt.
+     */
+    @Column(name = "client_ip", length = 45)
     private String clientIp;
 
     @Column(name = "user_agent", length = 300)
