@@ -114,7 +114,15 @@ if (!import.meta.env.DEV && typeof window !== 'undefined' && window.electronAPI?
 // fagyás-prevenció között. A user-action (vétel/eladás) tipikusan <2s.
 //
 // Hivatkozás: D:\valutavalto-vault\sessions\2026-04-29-ertektar-mode-audit.md §E-B6
-const AXIOS_GLOBAL_TIMEOUT_MS = 15_000
+//
+// 2026-05-05 v2.5.19 (Borsi #417 fix):
+// 15s -> 30s. A Borsi gépen v2.5.18 indítása után a "Belépés Google fiókkal"
+// POST /auth/google-login a 15s-en túl válaszolt (ESET MITM TLS handshake +
+// HTTP/1.1 (HTTP/2 disabled defensively) + Google API roundtrip + Caddy + JWT).
+// 30s továbbra is védi a renderert a 60s+ Caddy 504-től, de elfogadja a
+// natural slow path-okat ESET-tel rendelkező gépeken. CSV-export +
+// 100k-record listák már >15s lehetnek, szóval a 30s univerzálisabb.
+const AXIOS_GLOBAL_TIMEOUT_MS = 30_000
 
 // Create axios instance
 export const api = axios.create({

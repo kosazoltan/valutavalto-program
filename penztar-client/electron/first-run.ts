@@ -804,11 +804,14 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
 
     if (payload.selectedWorkerCode && payload.selectedWorkerCode.trim().length > 0) {
       log.info('[Setup] Worker first-time-setup uton (kivalasztott dolgozo):', payload.selectedWorkerCode);
+      // v2.5.19: a bootstrapPassword a SYSTEM admin auth (bootstrap-status), NEM
+      // a kivalasztott worker seed-jelszava. Ezert NEM passzoljuk currentPassword-kent
+      // — a backend WorkerFirstTimeSetupService line 102-104 explicit engedi az
+      // ures currentPassword-ot seed workerekre (passwordChangedAt == null).
       const workerSetup = await workerFirstTimeSetup(resolvedApiUrl, {
         companyCode: normalizedCompanyCode,
         workerCode: payload.selectedWorkerCode.trim().toUpperCase(),
         newPassword: payload.adminPassword,
-        currentPassword: payload.bootstrapPassword || undefined,
       });
       if (!workerSetup.success) {
         return {
