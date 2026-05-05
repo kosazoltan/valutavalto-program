@@ -30,7 +30,7 @@
         <!-- CVE-2026-34478/34480/34481 fix: log4j explicit override 2.24.3 -> 2.25.4 -->
         <log4j2.version>2.25.4</log4j2.version>
         <!-- CVE-2026-33186 fix: force patched grpc-api over Google client transitive -->
-        <grpc.version>1.80.0</grpc.version>
+        <grpc.version>1.81.0</grpc.version>
         <!-- AI review fix Codex P1 #263 (2026-04-29): a `<tomcat.version>10.1.54</tomcat.version>`
              override SB 3.5-re volt szükséges (CVE-2026-34483/34486/34487 fix), de SB 4.0.6
              Servlet 6.1 stack-et céloz, ami Tomcat 11.x. A 10.1.x override Servlet 6.0
@@ -109,7 +109,7 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-database-postgresql</artifactId>
-            <version>12.4.0</version>
+            <version>12.5.0</version>
         </dependency>
         
         <!-- Jsoup HTML Parser (Raiffeisen scraping) -->
@@ -324,7 +324,7 @@
             <plugin>
                 <groupId>org.owasp</groupId>
                 <artifactId>dependency-check-maven</artifactId>
-                <version>12.2.1</version>
+                <version>12.2.2</version>
                 <configuration>
                     <suppressionFiles>
                         <suppressionFile>${project.basedir}/owasp-suppressions.xml</suppressionFile>
