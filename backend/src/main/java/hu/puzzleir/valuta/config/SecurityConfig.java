@@ -56,6 +56,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/public/**").permitAll()
                 .requestMatchers("/api/v1/email/accounts/callback").permitAll()
                 .requestMatchers("/api/v1/error-report", "/api/v1/error-log").permitAll()
+                // v2.5.15: kliens-oldali hibajelentes (Penztar.exe -> backend), no auth
+                .requestMatchers("/api/v1/diagnostics/error-report", "/api/v1/diagnostics/health").permitAll()
                 .requestMatchers("/api/v1/version").permitAll()
 
                 // Health check — csak health és info, nem az összes actuator endpoint
