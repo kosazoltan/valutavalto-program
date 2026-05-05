@@ -1,10 +1,11 @@
 package hu.puzzleir.valuta.dto.diagnostics;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+
+import java.util.Map;
 
 /**
  * Kliens-oldali hibajelentés payload.
@@ -55,6 +56,10 @@ public class ErrorReportDto {
     @Size(max = 8000)
     private String stackTrace;
 
-    /** Strukturált kontextus tetszőleges JSON. */
-    private JsonNode context;
+    /**
+     * Strukturált kontextus tetszőleges JSON-formában.
+     * Map-ot használunk a Jackson 2/3 dual-stack kompatibilitás miatt
+     * (a v2.5.x backend Jackson 3-at használ a `tools.jackson` import-okkal).
+     */
+    private Map<String, Object> context;
 }
