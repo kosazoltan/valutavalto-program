@@ -861,7 +861,9 @@ app.whenReady().then(async () => {
     if (fs.existsSync(userDataEnvPath)) {
       const rawEnv = fs.readFileSync(userDataEnvPath, 'utf8');
       const apiUrlMatch = rawEnv.match(/^VITE_API_URL\s*=\s*"?([^"\r\n]*)"?\s*$/m);
-      const currentApiUrl = apiUrlMatch ? apiUrlMatch[1].trim() : '';
+      // TS2532 fix: a regex .match capture group `apiUrlMatch[1]` lehet undefined,
+      // ha a group nem fogott meg semmit. Optional chaining + nullish coalescing.
+      const currentApiUrl = (apiUrlMatch?.[1] ?? '').trim();
       const needsMigration = !currentApiUrl
           || currentApiUrl === 'https://'
           || currentApiUrl === 'http://'

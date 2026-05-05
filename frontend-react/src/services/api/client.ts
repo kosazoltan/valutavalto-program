@@ -50,8 +50,7 @@ let API_BASE_URL = import.meta.env.VITE_API_URL
 const PRODUCTION_API_URL = 'https://excvaluta.com/api/v1'
 if (typeof window !== 'undefined' && window.electronAPI && !import.meta.env.DEV) {
   if (typeof API_BASE_URL === 'string' && /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.)/i.test(API_BASE_URL)) {
-    // eslint-disable-next-line no-console
-    console.warn('[api.client] Electron prod build, de VITE_API_URL localhost-ra mutat:', API_BASE_URL,
+    logger.warn('[api.client] Electron prod build, de VITE_API_URL localhost-ra mutat:', API_BASE_URL,
         '-> azonnali felulirasa', PRODUCTION_API_URL, '(race condition prevention)')
     API_BASE_URL = PRODUCTION_API_URL
   }
@@ -114,7 +113,15 @@ if (!import.meta.env.DEV && typeof window !== 'undefined' && window.electronAPI?
 // fagyás-prevenció között. A user-action (vétel/eladás) tipikusan <2s.
 //
 // Hivatkozás: D:\valutavalto-vault\sessions\2026-04-29-ertektar-mode-audit.md §E-B6
-const AXIOS_GLOBAL_TIMEOUT_MS = 15_000
+//
+// 2026-05-05 v2.5.19 (Borsi #417 fix):
+// 15s -> 30s. A Borsi gépen v2.5.18 indítása után a "Belépés Google fiókkal"
+// POST /auth/google-login a 15s-en túl válaszolt (ESET MITM TLS handshake +
+// HTTP/1.1 (HTTP/2 disabled defensively) + Google API roundtrip + Caddy + JWT).
+// 30s továbbra is védi a renderert a 60s+ Caddy 504-től, de elfogadja a
+// natural slow path-okat ESET-tel rendelkező gépeken. CSV-export +
+// 100k-record listák már >15s lehetnek, szóval a 30s univerzálisabb.
+const AXIOS_GLOBAL_TIMEOUT_MS = 30_000
 
 // Create axios instance
 export const api = axios.create({

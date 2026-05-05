@@ -95,7 +95,12 @@ function decodeIdTokenPayload(idToken: string): { email?: string; sub?: string }
   try {
     const parts = idToken.split('.');
     if (parts.length !== 3) return {};
-    const payloadJson = Buffer.from(parts[1], 'base64url').toString('utf8');
+    const part1 = parts[1];
+    if (!part1) return {};
+    // 'base64url' encoding is supported by Node's Buffer at runtime, but the TS
+    // BufferEncoding lib type is missing it on some @types/node versions, so we
+    // cast to BufferEncoding to avoid the TS2769 overload mismatch.
+    const payloadJson = Buffer.from(part1, 'base64url' as BufferEncoding).toString('utf8');
     const payload = JSON.parse(payloadJson) as { email?: string; sub?: string };
     return { email: payload.email, sub: payload.sub };
   } catch {
