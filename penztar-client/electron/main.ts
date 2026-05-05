@@ -84,7 +84,7 @@ import { registerCameraHandlers } from './camera';
 import { registerVideoManagerHandlers } from './video-manager';
 import { registerScannerHandlers } from './scanner';
 import { registerUpdaterHandlers } from './updater';
-import { performGoogleOAuthFlow, GoogleOAuthFailedException } from './google-oauth';
+import { performGoogleOAuthFlow, performGoogleOAuthFlowWithBackendLogin, performPasswordLoginMainProcess, GoogleOAuthFailedException } from './google-oauth';
 import { initErrorReporter, reportError, setUserIdentifier } from './error-reporter';
 import {
 
@@ -812,6 +812,80 @@ app.whenReady().then(async () => {
         return { ok: false, code: err.code, message: err.message };
       }
       log.error('[main] Google OAuth flow unexpected error:', err);
+      return { ok: false, code: 'UNEXPECTED', message: (err as Error).message };
+    }
+  });
+
+  // v2.5.20 Borsi-fix: Google OAuth flow + backend POST EGY MAIN-PROCESS hivasban.
+  // A renderer axios.post az ESET MITM-mel terhelt gepeken nehany POST connection-t
+  // a TLS handshake utan leejti. A main-process electron.net.request megbizhatobb
+  // (Windows certificate store + Chromium switches mind alkalmazva, NEM renderer fetch).
+  // Plus: 3-szor probalja a backend POST-ot (1s, 3s, 5s wait) ha network-level error.
+  ipcMain.handle('auth:google-oauth-flow-with-backend', async () => {
+    const clientId = process.env.VITE_GOOGLE_DESKTOP_CLIENT_ID
+        ?? process.env.GOOGLE_DESKTOP_CLIENT_ID
+        ?? '';
+    const clientSecret = process.env.VITE_GOOGLE_DESKTOP_CLIENT_SECRET
+        ?? process.env.GOOGLE_DESKTOP_CLIENT_SECRET
+        ?? '';
+    if (!clientId || !clientSecret) {
+      log.error('[main] auth:google-oauth-flow-with-backend MISCONFIGURED');
+      return { ok: false, code: 'MISCONFIGURED',
+          message: 'Google Desktop OAuth client nincs konfiguralva. Kerd az adminisztratort.' };
+    }
+    const apiBaseUrl = loadProductionUrls().api_url;
+    try {
+      const result = await performGoogleOAuthFlowWithBackendLogin({
+        clientId,
+        clientSecret,
+        apiBaseUrl,
+      });
+      log.info('[main] Google OAuth + backend login OK for:', result.email ?? '(unknown)');
+      return { ok: true, ...result };
+    } catch (err) {
+      if (err instanceof GoogleOAuthFailedException) {
+        log.warn('[main] Google OAuth + backend login failed:', err.code, err.message);
+        return { ok: false, code: err.code, message: err.message };
+      }
+      log.error('[main] Google OAuth + backend login unexpected error:', err);
+      return { ok: false, code: 'UNEXPECTED', message: (err as Error).message };
+    }
+  });
+
+  // v2.5.21 ALTALANOS BEJELENTKEZESI FIX: a sima jelszavas /auth/login is main process-en,
+  // ESET MITM kompatibilis Windows cert store + Schannel-en, 3x retry network errorra.
+  // A renderer axios.post (Chromium fetch) nehany kliensen leejti a POST connection-t
+  // (Borsi laptop, Fabuja Zsuzsa) — a main-process net.request megbizhatobb stack.
+  ipcMain.handle('auth:password-login', async (_evt, payload: {
+    companyCode: string;
+    workerCode: string;
+    password: string;
+    appMode?: string;
+  }) => {
+    if (!payload || !payload.companyCode || !payload.workerCode || !payload.password) {
+      return { ok: false, code: 'BAD_REQUEST', message: 'companyCode, workerCode, password kotelezo' };
+    }
+    const apiBaseUrl = loadProductionUrls().api_url;
+    try {
+      const response = await performPasswordLoginMainProcess({
+        apiBaseUrl,
+        companyCode: payload.companyCode,
+        workerCode: payload.workerCode,
+        password: payload.password,
+        appMode: payload.appMode,
+      });
+      log.info('[main] Password login OK for worker:', payload.workerCode);
+      return { ok: true, response };
+    } catch (err) {
+      if (err instanceof GoogleOAuthFailedException) {
+        const code = err.code ?? 'UNKNOWN';
+        const isHttp4xx = code.startsWith('HTTP_4');
+        if (!isHttp4xx) {
+          log.warn('[main] Password login network/timeout failed:', code, err.message);
+        }
+        return { ok: false, code, message: err.message };
+      }
+      log.error('[main] Password login unexpected error:', err);
       return { ok: false, code: 'UNEXPECTED', message: (err as Error).message };
     }
   });

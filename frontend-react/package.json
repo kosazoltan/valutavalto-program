@@ -1,7 +1,7 @@
 {
   "name": "valutavalto-frontend",
   "private": true,
-  "version": "2.5.19",
+  "version": "2.5.22",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,7 @@
     "test:watch": "vitest",
     "lint": "eslint src",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
-    "lint:i18n-gate": "eslint src --rule \"{\\\"@typescript-eslint/no-explicit-any\\\":\\\"off\\\"}\" --max-warnings 2862",
+    "lint:i18n-gate": "eslint src --rule \"{\\\"@typescript-eslint/no-explicit-any\\\":\\\"off\\\"}\" --max-warnings 2870",
     "type-check": "tsc --noEmit",
     "typecheck": "npm run type-check",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",

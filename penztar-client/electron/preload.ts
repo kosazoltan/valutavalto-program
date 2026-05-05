@@ -13,6 +13,26 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('auth:google-oauth-flow'),
 
   /**
+   * v2.5.20 Borsi-fix: Google OAuth flow + backend `/auth/google-login` POST EGY main-process hivasban.
+   * Megbizhatobb mint a renderer axios.post (electron.net.request, Windows cert store, Chromium switches).
+   * Plusz: 3-szor probalja a backend POST-ot (1s, 3s, 5s wait) ha network-level error.
+   */
+  googleOAuthFlowWithBackend: (): Promise<
+    { ok: true; accessToken: string; refreshToken?: string; user?: { email?: string; companyId?: number; role?: string } & Record<string, unknown>; email?: string }
+    | { ok: false; code: string; message: string }
+  > => ipcRenderer.invoke('auth:google-oauth-flow-with-backend'),
+
+  /**
+   * v2.5.21 ALTALANOS BEJELENTKEZESI FIX: a sima jelszavas /auth/login POST is main process-en
+   * (electron.net.request) megy, NEM renderer axios.post. ESET MITM TLS-handshake nehany
+   * kliensen leejti a POST connection-t (Borsi laptop, Fabuja Zsuzsa) — a main-process
+   * Windows cert store + Chromium switches stack megbizhatobb. 3x retry (1s, 3s, 5s).
+   */
+  passwordLogin: (data: { companyCode: string; workerCode: string; password: string; appMode?: string }): Promise<
+    { ok: true; response: unknown } | { ok: false; code: string; message: string }
+  > => ipcRenderer.invoke('auth:password-login', data),
+
+  /**
    * v2.5.13 KLIENS-OLDALI HIBAJELENTES (window.onerror + axios interceptor a renderer-ben).
    * Send-and-forget — soha nem dob, a Penztar futasat nem akadályozza.
    */

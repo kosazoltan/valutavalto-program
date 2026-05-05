@@ -5,6 +5,29 @@ export interface ElectronAPI {
     | { ok: false; code: string; message: string }
   >;
 
+  // --- v2.5.20: Google OAuth + backend `/auth/google-login` POST EGY main-process hivasban ---
+  googleOAuthFlowWithBackend(): Promise<
+    | {
+        ok: true;
+        accessToken: string;
+        refreshToken?: string;
+        user?: { email?: string; companyId?: number; role?: string } & Record<string, unknown>;
+        email?: string;
+      }
+    | { ok: false; code: string; message: string }
+  >;
+
+  // --- v2.5.21: jelszavas /auth/login is main-process net.request-tel (ESET-tolerans) ---
+  passwordLogin(data: {
+    companyCode: string;
+    workerCode: string;
+    password: string;
+    appMode?: string;
+  }): Promise<
+    | { ok: true; response: unknown }
+    | { ok: false; code: string; message: string }
+  >;
+
   // --- v2.5.13 Kliens hibajelentes (send-and-forget) ---
   reportError(payload: {
     component?: string;

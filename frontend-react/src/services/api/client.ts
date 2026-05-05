@@ -146,15 +146,57 @@ function reportClientError(payload: { component: string; message: string; stack?
   }
 }
 
-// Axios response interceptor: minden 4xx/5xx HTTP-hibat (kiveve a 401 silent-refresh-eseteket)
-// elkuldjuk a hibajelentora.
+// v2.5.20 Borsi-fix: ESET MITM TLS handshake nehany kliens gepen leejti a POST connection-t
+// a TLS handshake utan (nem 4xx/5xx, hanem network-level abort vagy timeout). A `/auth/login`
+// es `/auth/google-login` POST-ok ertek leesnek, de egy retry tipikusan sikerul (a 08:56 nginx-log
+// igazolja, hogy a backend el, csak az ESET-tel terhelt TLS conn drop-pelodik).
+// Ezert a kritikus auth endpointokra es a sync polling-ra automatikus retry-t alkalmazunk.
+const RETRYABLE_ENDPOINTS = ['/auth/login', '/auth/google-login', '/auth/refresh-cookie',
+                             '/auth/bootstrap-status', '/transit/incoming']
+const MAX_RETRY_COUNT = 2
+
+interface RetryableConfig extends InternalAxiosRequestConfig {
+  _retryCount?: number
+}
+
+function isNetworkOrTimeoutError(error: AxiosError): boolean {
+  const status = error.response?.status
+  if (status) return false   // 4xx/5xx — backend valaszolt, nem retry-zunk
+  const code = error.code
+  const msg = error.message ?? ''
+  return code === 'ECONNABORTED'
+      || code === 'ERR_NETWORK'
+      || msg === 'Network Error'
+      || /timeout of \d+ms exceeded/.test(msg)
+}
+
+// Axios response interceptor: retry network-level hibakra + 4xx/5xx hibakat hibajelentora kuldjuk.
 api.interceptors.response.use(
   (resp) => resp,
-  (error) => {
+  async (error: AxiosError) => {
+    const config = error.config as RetryableConfig | undefined
+    const url = config?.url ?? ''
+    const status = error.response?.status
+
+    // v2.5.20 Borsi-retry: kritikus auth endpointokra automatikus retry hatszer (1s, 3s wait).
+    // A `/auth/login` `401`-et `isNetworkOrTimeoutError` kizar (status truthy → false),
+    // szoval a rossz jelszo nem indit retry-t.
+    const retryable = config
+        && isNetworkOrTimeoutError(error)
+        && typeof url === 'string'
+        && RETRYABLE_ENDPOINTS.some(p => url.includes(p))
+    if (retryable && config) {
+      const retryCount = config._retryCount ?? 0
+      if (retryCount < MAX_RETRY_COUNT) {
+        config._retryCount = retryCount + 1
+        const delayMs = retryCount === 0 ? 1000 : 3000
+        logger.warn('[api.client]', `Retry ${config._retryCount}/${MAX_RETRY_COUNT} after ${delayMs}ms for ${url} — reason: ${error.message}`)
+        await new Promise((r) => setTimeout(r, delayMs))
+        return api.request(config)
+      }
+    }
+
     try {
-      const url = error.config?.url ?? ''
-      const status = error.response?.status
-      // 401 a /auth-on a silent-refresh kozel-rendszeres -> NE jelentjuk
       const isLoginAttempt = typeof url === 'string' && (url.includes('/auth/login') || url.includes('/auth/refresh') || url.includes('/auth/google-login'))
       if (status !== 401 || !isLoginAttempt) {
         reportClientError({
@@ -163,8 +205,9 @@ api.interceptors.response.use(
           stack: error.stack,
           context: {
             url,
-            method: error.config?.method,
+            method: config?.method,
             status,
+            retryAttempts: config?._retryCount ?? 0,
             responseData: typeof error.response?.data === 'object' ? JSON.stringify(error.response.data).slice(0, 500) : String(error.response?.data ?? '').slice(0, 500),
           },
         })
