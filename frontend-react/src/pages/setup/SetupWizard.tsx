@@ -750,11 +750,14 @@ interface ServerStepProps {
 
 function ServerStep(props: ServerStepProps) {
   const { t } = useTranslation()
+  // v2.5.24: a `bootstrapPassword` + `onBootstrapPasswordChange` mar nem hasznalt
+  // a UI-n (eltavolitottuk a "Teszt jelszo" mezot), de a parent komponens meg
+  // atadja a propsban — ezert a destructuring-bol kihagyjuk, de a parent meg
+  // mukodik, mert a `setupSave`-be `bootstrapPassword` ures string mar.
   const {
     apiUrl,
     companyCode, onCompanyCodeChange,
     bootstrapUsername, onBootstrapUsernameChange,
-    bootstrapPassword, onBootstrapPasswordChange,
     offlineMode, onOfflineModeChange,
     connectionTest, onTestConnection,
     selectedBranchCode,
@@ -810,7 +813,7 @@ function ServerStep(props: ServerStepProps) {
           />
         </FieldLabel>
 
-        <FieldLabel label="Teszt pénztáros">
+        <FieldLabel label="Pénztáros kiválasztása">
           {workerList.length > 0 ? (
             <select
               value={bootstrapUsername}
@@ -833,31 +836,16 @@ function ServerStep(props: ServerStepProps) {
               className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none disabled:bg-slate-100"
             />
           )}
-        </FieldLabel>
-
-        <FieldLabel label="Teszt jelszó (opcionális)">
-          <input
-            type="password"
-            value={bootstrapPassword}
-            onChange={(e) => onBootstrapPasswordChange(e.target.value)}
-            disabled={offlineMode}
-            placeholder="Friss telepítésnél hagyd üresen"
-            className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none disabled:bg-slate-100"
-          />
           <span className="text-xs text-slate-500 mt-1 block">
-            Csak akkor add meg, ha a szerveren már be van állítva a pénztáros jelszava
-            (pl. újratelepítés). Az új jelszót az 5. lépésen állítjuk be.
+            Az itt kiválasztott pénztáros kódjához az 5. lépésen állítja be az új jelszót.
           </span>
         </FieldLabel>
       </div>
 
-      {/* v2.5.23 UX-tip: a 4. és 5. lépés jelszavai különböznek — a userek értésére. */}
-      <div className="mt-3 p-3 rounded-lg bg-blue-50 border border-blue-200 text-xs text-blue-900">
-        <strong className="block mb-1">Tipp:</strong>
-        Ezen a lépésen a kapcsolatot ellenőrizzük és a pénztárost választjuk ki.
-        A bejelentkezési jelszót az utolsó (5.) lépésen állítjuk be — az lesz az,
-        amivel a programba bejelentkezel.
-      </div>
+      {/* v2.5.24 UX: a "Teszt jelszó" mezőt eltávolítottuk — felesleges volt és zavaró.
+          A connection test most kizarolag a `bootstrap-status` endpoint-tal megy
+          (auth nélkül), így a wizard 4. lépésén a felhasználónak SEMMI jelszót
+          nem kell beírnia. A LOGIN-jelszót az 5. lépésen állítja be — egyszer. */}
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <button
