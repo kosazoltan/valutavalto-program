@@ -33,6 +33,8 @@ public class IdempotencyFilter extends OncePerRequestFilter {
             "/api/v1/health",
             "/api/v1/error-report",
             "/api/v1/error-log",
+            // v2.5.16: kliens-oldali hibajelentes (Penztar.exe -> backend) idempotency-mentes
+            "/api/v1/diagnostics/",
             "/swagger-ui/",
             "/v3/api-docs",
             "/api-docs/",
