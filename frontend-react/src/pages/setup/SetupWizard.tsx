@@ -81,9 +81,18 @@ export default function SetupWizard() {
     { state: 'idle' | 'testing' | 'ok' | 'fail'; message?: string }
   >({ state: 'idle' })
 
-  const [adminUsername, setAdminUsername] = useState('admin')
+  const [adminUsername, setAdminUsername] = useState('')
   const [adminPassword, setAdminPassword] = useState('')
   const [adminPasswordConfirm, setAdminPasswordConfirm] = useState('')
+
+  // v2.5.21 REGI ADOSSAG FIX: az `adminUsername` AUTOMATIKUSAN tukrozze a step 4-en
+  // valasztott `bootstrapUsername`-et (azaz a tenyleges workerCode-ot). Igy NINCS
+  // confusion a wizardban: a user a 4. lepesen valasztott pénztáros koddal +
+  // az 5. lepesen beirt új jelszoval lép be a Penztar-ba. Korábban az `adminUsername`
+  // alapertelmezett "admin" volt, és a user nem értette, hogy ez NEM az ő login-credential-je.
+  useEffect(() => {
+    setAdminUsername(bootstrapUsername.trim().toUpperCase())
+  }, [bootstrapUsername])
 
   // --- Telepítés állapot ---
   const [isSaving, setIsSaving] = useState(false)
@@ -944,8 +953,10 @@ interface AdminStepProps {
 }
 
 function AdminStep(props: AdminStepProps) {
+  // v2.5.21: az `onAdminUsernameChange` mar nem hasznalt — a felhasznalonev
+  // automatikusan a step 4-en valasztott pénztáros kodot tukrozi (read-only field).
   const {
-    adminUsername, onAdminUsernameChange,
+    adminUsername,
     adminPassword, onAdminPasswordChange,
     adminPasswordConfirm, onAdminPasswordConfirmChange,
     selectedBranch, apiUrl, companyCode, offlineMode,
@@ -956,19 +967,25 @@ function AdminStep(props: AdminStepProps) {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-slate-900 mb-2">Admin jelszó beállítása</h2>
+      <h2 className="text-2xl font-bold text-slate-900 mb-2">Új jelszó beállítása</h2>
       <p className="text-slate-600 mb-5">
-        Adjon meg egy biztonságos jelszót (legalább 8 karakter) az első belépéshez.
+        Adjon meg egy biztonságos jelszót (legalább 8 karakter). Ezzel a jelszóval és a
+        lent látható pénztáros kóddal lép majd be a programba.
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-3xl mb-8">
-        <FieldLabel label="Felhasználónév">
+        <FieldLabel label="Pénztáros kód (a 4. lépésben választott)">
           <input
             type="text"
             value={adminUsername}
-            onChange={(e) => onAdminUsernameChange(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
+            readOnly
+            className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-100 text-slate-700 cursor-not-allowed outline-none"
+            // v2.5.21: a felhasznalonev NEM editalhato — automatikusan a step 4-en
+            // valasztott pénztáros kod, hogy a wizard veg utan tényleg ezzel lépjen be.
           />
+          <span className="text-xs text-slate-500 mt-1 block">
+            Ezt a kódot kell beírnia a bejelentkezésnél is.
+          </span>
         </FieldLabel>
         <div /> {/* spacer */}
         <FieldLabel label="Új jelszó">
@@ -1008,12 +1025,19 @@ function AdminStep(props: AdminStepProps) {
           <SummaryRow label="Város" value={selectedBranch?.city || '—'} />
           <SummaryRow label="Szerver" value={offlineMode ? 'Offline mód' : apiUrl || '—'} />
           <SummaryRow label="Cégkód" value={offlineMode ? '—' : companyCode || '—'} />
-          <SummaryRow label="Admin felhasználó" value={adminUsername} />
-          <SummaryRow label="Jelszó" value={adminPassword ? '•'.repeat(Math.min(adminPassword.length, 12)) : '—'} />
+          <SummaryRow label="Pénztáros kód (login)" value={adminUsername || '— (nincs kiválasztva)'} />
+          <SummaryRow label="Jelszó (login)" value={adminPassword ? '•'.repeat(Math.min(adminPassword.length, 12)) : '—'} />
         </dl>
       </div>
 
-      <p className="mt-5 text-xs text-slate-500">
+      <div className="mt-5 p-4 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-900">
+        <strong className="block mb-1">Bejelentkezéskor így használja:</strong>
+        Cégkód: <code className="px-1 bg-white rounded">{companyCode}</code>{' · '}
+        Pénztáros kód: <code className="px-1 bg-white rounded">{adminUsername || '...'}</code>{' · '}
+        Jelszó: az itt megadott új jelszó.
+      </div>
+
+      <p className="mt-3 text-xs text-slate-500">
         A „Telepítés befejezése” gomb megnyomásakor a program kriptográfiai kulcsokat generál,
         elmenti a konfigurációt a helyi .env fájlba, majd automatikusan újraindul.
       </p>
