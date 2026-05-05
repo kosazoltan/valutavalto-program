@@ -114,6 +114,98 @@ Try-Section "4. HTTP HEALTH CHECK (https://excvaluta.com/api/v1/auth/bootstrap-s
     }
 }
 
+# v2.5.12 BOVITES: melyebb diagnosztika a Borsi-tunet azonositasahoz
+Try-Section "4a. TLS HANDSHAKE DEBUG (.NET HttpClient TLS 1.2 + 1.3)" {
+    foreach ($tls in @('Tls12', 'Tls13')) {
+        try {
+            [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::$tls
+            $sw = [System.Diagnostics.Stopwatch]::StartNew()
+            $req = [System.Net.HttpWebRequest]::Create('https://excvaluta.com/api/v1/auth/bootstrap-status')
+            $req.Timeout = 8000
+            $resp = $req.GetResponse()
+            $sw.Stop()
+            $cert = $req.ServicePoint.Certificate
+            Add-Line "$tls OK: HTTP $([int]$resp.StatusCode), $($sw.ElapsedMilliseconds) ms"
+            Add-Line "  Cert Subject: $($cert.Subject)"
+            Add-Line "  Cert Issuer:  $($cert.Issuer)"
+            $resp.Close()
+        } catch {
+            Add-Line "$tls HIBA: $($_.Exception.Message)"
+        }
+    }
+}
+
+Try-Section "4b. Cert Subject MEGEROSITES (ESET MITM detektalas)" {
+    # Ha ESET 'SSL/TLS protokollszuro' aktiv, az ESET sajat cert-et ad vissza,
+    # NEM a Cloudflare 'GTS CA 1P5' / 'WE1' issuer-t.
+    try {
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+        $req = [System.Net.HttpWebRequest]::Create('https://excvaluta.com/')
+        $req.Timeout = 8000
+        try { $resp = $req.GetResponse(); $resp.Close() } catch {}
+        $cert = $req.ServicePoint.Certificate
+        if ($cert) {
+            Add-Line "Server cert Issuer: $($cert.Issuer)"
+            if ($cert.Issuer -match 'ESET|NOD32') {
+                Add-Line "!!! ESET MITM proxy DETEKTALVA - az ESET kicsereli a Cloudflare cert-et a sajatjara"
+                Add-Line "    Megoldas: ESET -> Beallitasok -> SSL/TLS protokollszures -> Kizart alkalmazasok / domainek"
+            } elseif ($cert.Issuer -match 'Cloudflare|Google Trust|GTS|Sectigo|Lets Encrypt|DigiCert') {
+                Add-Line "OK: valodi Cloudflare/internet CA cert (NEM ESET MITM)"
+            } else {
+                Add-Line "ISMERETLEN cert issuer - kuldd el az adminisztratornak"
+            }
+        }
+    } catch { Add-Line "Cert ellenorzes hiba: $($_.Exception.Message)" }
+}
+
+Try-Section "4c. HTTP/1.1 vs HTTP/2 PROTOKOLL TESZT (curl ha letezik)" {
+    $curl = (Get-Command curl.exe -ErrorAction SilentlyContinue).Source
+    if (-not $curl) {
+        Add-Line "curl.exe nem talalhato - Windows 10+ default-tal lennie kene"
+        return
+    }
+    foreach ($flag in @('--http1.1', '--http2')) {
+        try {
+            $output = & $curl -s -o NUL -w "%{http_code}|%{time_total}|%{time_connect}|%{time_appconnect}" --max-time 12 $flag https://excvaluta.com/api/v1/auth/bootstrap-status 2>&1
+            Add-Line "$flag : $output (http_code|total|connect|appconnect)"
+        } catch { Add-Line "$flag HIBA: $($_.Exception.Message)" }
+    }
+}
+
+Try-Section "4d. IPv4 vs IPv6 PROTOKOLL FORCE (curl ha letezik)" {
+    $curl = (Get-Command curl.exe -ErrorAction SilentlyContinue).Source
+    if (-not $curl) { return }
+    foreach ($flag in @('-4', '-6')) {
+        try {
+            $output = & $curl -s -o NUL -w "%{http_code}|%{time_total}|%{remote_ip}" --max-time 8 $flag https://excvaluta.com/api/v1/auth/bootstrap-status 2>&1
+            Add-Line "$flag (force) : $output"
+        } catch { Add-Line "$flag HIBA: $($_.Exception.Message)" }
+    }
+}
+
+Try-Section "4e. ESET KOMPONENS DETEKTALAS" {
+    $esetProcs = Get-Process | Where-Object { $_.ProcessName -match 'ekrn|ecmd|egui|EShareLog|ESET' } | Select-Object ProcessName, Id, MainWindowTitle
+    if ($esetProcs) {
+        Add-Line "ESET futo folyamatok:"
+        foreach ($p in $esetProcs) { Add-Line "  $($p.ProcessName) (PID $($p.Id))" }
+    } else { Add-Line "ESET folyamatok NEM futnak vagy mas neven" }
+
+    # SSL/TLS protokollszuro registry
+    $esetReg = 'HKLM:\SOFTWARE\ESET\ESET Security\CurrentVersion\Plugins\01000300\Settings\Webclient'
+    if (Test-Path $esetReg) {
+        Add-Line "ESET Webclient registry letezik: $esetReg"
+        $vals = Get-ItemProperty $esetReg -ErrorAction SilentlyContinue
+        if ($vals) { $vals.PSObject.Properties | Where-Object { $_.Name -match 'SSL|TLS|HTTPS|Filter' } | ForEach-Object { Add-Line "  $($_.Name) = $($_.Value)" } }
+    } else { Add-Line "ESET Webclient registry kulcs nincs - vagy regebbi ESET, vagy nincs telepitve" }
+}
+
+Try-Section "4f. ROUTE (tracert hop-ok max 8)" {
+    try {
+        $tr = & cmd /c "tracert -h 8 -w 800 -d excvaluta.com 2>&1"
+        Add-Line ($tr | Out-String)
+    } catch { Add-Line "tracert HIBA: $($_.Exception.Message)" }
+}
+
 Try-Section "5. TELEPITES ELLENORZES (C:\Program Files\Valutavalto Penztar)" {
     $instDir = 'C:\Program Files\Valutavalto Penztar'
     if (Test-Path $instDir) {

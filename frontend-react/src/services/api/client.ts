@@ -126,6 +126,72 @@ export const api = axios.create({
   },
 })
 
+// v2.5.13: kliens-oldali hibajelentes a backend `/diagnostics/error-report` endpointra.
+// Send-and-forget IPC-n keresztul a main process-be (Electron) -> backend.
+// A diagnostics endpoint ONMAGABA NEM riportolunk (vegtelen-loop elkerulese).
+function reportClientError(payload: { component: string; message: string; stack?: string; context?: Record<string, unknown> }): void {
+  if (typeof window === 'undefined' || !window.electronAPI?.reportError) return
+  if (payload.context && typeof payload.context.url === 'string' && payload.context.url.includes('/diagnostics/')) return
+  try {
+    void window.electronAPI.reportError(payload)
+  } catch {
+    // never throw on error-reporting
+  }
+}
+
+// Axios response interceptor: minden 4xx/5xx HTTP-hibat (kiveve a 401 silent-refresh-eseteket)
+// elkuldjuk a hibajelentora.
+api.interceptors.response.use(
+  (resp) => resp,
+  (error) => {
+    try {
+      const url = error.config?.url ?? ''
+      const status = error.response?.status
+      // 401 a /auth-on a silent-refresh kozel-rendszeres -> NE jelentjuk
+      const isLoginAttempt = typeof url === 'string' && (url.includes('/auth/login') || url.includes('/auth/refresh') || url.includes('/auth/google-login'))
+      if (status !== 401 || !isLoginAttempt) {
+        reportClientError({
+          component: 'axios-http',
+          message: `${error.message} [${status ?? 'NO_STATUS'}]`,
+          stack: error.stack,
+          context: {
+            url,
+            method: error.config?.method,
+            status,
+            responseData: typeof error.response?.data === 'object' ? JSON.stringify(error.response.data).slice(0, 500) : String(error.response?.data ?? '').slice(0, 500),
+          },
+        })
+      }
+    } catch {
+      // never throw on error-reporting
+    }
+    return Promise.reject(error)
+  }
+)
+
+// window.onerror + window.onunhandledrejection: minden uncaught JS hiba a renderer-ben
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (event) => {
+    reportClientError({
+      component: 'electron-renderer',
+      message: event.message,
+      stack: event.error?.stack,
+      context: { source: 'window.onerror', filename: event.filename, lineno: event.lineno, colno: event.colno },
+    })
+  })
+  window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason
+    const message = reason?.message ?? String(reason)
+    const stack = reason?.stack
+    reportClientError({
+      component: 'electron-renderer',
+      message,
+      stack,
+      context: { source: 'unhandledrejection' },
+    })
+  })
+}
+
 // Request interceptor - add auth token + Idempotency-Key for write requests
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {

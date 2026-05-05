@@ -1114,6 +1114,27 @@ Section "Telepites" SecInstall
 
     WriteUninstaller "$INSTDIR\uninstall.exe"
 
+    ; v2.5.13 NEM-INFORMATIKUS-FELHASZNALO: DNS cache flush AUTOMATIKUSAN.
+    ; Ha valamelyik felhasznalo gepen IPv6 cache stale, a flush utan a friss DNS valasz
+    ; megerkezik (csak A rekordok, mert a Cloudflare IPv6 OFF szerver-oldalrol).
+    ; Korabban a felhasznaloknak kezzel kellett `ipconfig /flushdns`-t futtatniuk - ez TILOS.
+    DetailPrint "DNS cache frissites (automatikus)..."
+    nsExec::ExecToLog 'ipconfig /flushdns'
+
+    ; v2.5.13: regi userData mappak (mojibake .env, stale config) torlese.
+    ; SetShellVarContext current: a $APPDATA a current-user `Roaming\` mappajara mutat.
+    ; A SetupWizard bekorul ujra futni az elso indulasnal -> tiszta start.
+    ; FONTOS: ezt CSAK akkor csinaljuk, ha a userData `.env` regi/serult formatumban van.
+    SetShellVarContext current
+    ${If} ${FileExists} "$APPDATA\valuta-penztar\.env"
+        ; A v2.5.13 Electron `main.ts` migration-je IS automatikusan javitja a hibas
+        ; `VITE_API_URL="https://"` (ures URL) erteket. Itt NEM toroljuk el az egeszet,
+        ; hogy a JWT_SECRET/SQLCIPHER_KEY-ek megmaradjanak a `Setup-Wizard befejezve`
+        ; markeret megorzo formatum melle.
+        DetailPrint "userData kompatibilitas-ellenorzes (Electron app inditasakor migracio)..."
+    ${EndIf}
+    SetShellVarContext all
+
     DetailPrint ""
     DetailPrint "========================================="
     DetailPrint "  Telepites sikeresen befejezodott!"
@@ -1235,6 +1256,20 @@ Section "un.Eltavolitas"
         Delete "$DATA_DIR\backend\valuta-backend.jar"
 
     un_doneData:
+
+    ; v2.5.11 KRITIKUS: a Helga-tunet (2026-05-04) megelozese - torolju a userData
+    ; (`%APPDATA%\valuta-penztar`) Setup-Wizard config-jat, hogy a kovetkezo telepitesnel
+    ; FRISS SetupWizard induljon. A regi mojibake-os ".env" + "https://" ures URL bug-os
+    ; userData NEM tornyosulhat ki a kovetkezo verzionak.
+    ;
+    ; SetShellVarContext current: a $APPDATA a current-user `Roaming\` mappajara mutat,
+    ; nem az admin-user-ere (a uninstaller admin-context-ben fut).
+    SetShellVarContext current
+    ${If} ${FileExists} "$APPDATA\valuta-penztar\*.*"
+        DetailPrint "Felhasznaloi adatok (Setup config + logok) torlese: $APPDATA\valuta-penztar"
+        RMDir /r "$APPDATA\valuta-penztar"
+    ${EndIf}
+    SetShellVarContext all  ; reset all-users context-re
 
     Delete "$DESKTOP\Valutavalto Penztar.lnk"
     RMDir /r "$SMPROGRAMS\Valutavalto Penztar"
