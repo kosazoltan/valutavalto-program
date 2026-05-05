@@ -13,6 +13,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('auth:google-oauth-flow'),
 
   /**
+   * v2.5.20 Borsi-fix: Google OAuth flow + backend `/auth/google-login` POST EGY main-process hivasban.
+   * Megbizhatobb mint a renderer axios.post (electron.net.request, Windows cert store, Chromium switches).
+   * Plusz: 3-szor probalja a backend POST-ot (1s, 3s, 5s wait) ha network-level error.
+   */
+  googleOAuthFlowWithBackend: (): Promise<
+    { ok: true; accessToken: string; refreshToken?: string; user?: { email?: string; companyId?: number; role?: string } & Record<string, unknown>; email?: string }
+    | { ok: false; code: string; message: string }
+  > => ipcRenderer.invoke('auth:google-oauth-flow-with-backend'),
+
+  /**
    * v2.5.13 KLIENS-OLDALI HIBAJELENTES (window.onerror + axios interceptor a renderer-ben).
    * Send-and-forget — soha nem dob, a Penztar futasat nem akadályozza.
    */

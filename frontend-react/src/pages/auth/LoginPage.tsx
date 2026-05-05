@@ -261,18 +261,37 @@ export default function LoginPage() {
    * endpointnak, mint a webes `<GoogleLogin>` flow.
    */
   const handleElectronGoogleLogin = async () => {
-    if (!window.electronAPI?.googleOAuthFlow) {
-      setError('Electron Google OAuth API nem elerheto.')
-      return
-    }
     setError('')
     setGoogleLoadingElectron(true)
     setLoading(true)
     try {
+      // v2.5.20 Borsi-fix: ha a main-process backend-login flow elerheto, AZT hasznaljuk
+      // (megbizhatobb mint a renderer axios.post az ESET MITM-mel terhelt gepeken).
+      // Fallback: regi 2-step flow (idToken IPC -> renderer axios.post backend).
+      if (window.electronAPI?.googleOAuthFlowWithBackend) {
+        const result = await window.electronAPI.googleOAuthFlowWithBackend()
+        if (!result.ok) {
+          if (result.code === 'USER_CANCELLED') {
+            // silent
+          } else {
+            setError(`Google bejelentkezés sikertelen: ${result.message}`)
+          }
+          return
+        }
+        // A backend `/auth/google-login` JSON-t passthrough-zuk a main process IPC-n keresztul,
+        // a strukturaja LoginResponse-szal kompatibilis (token, tokenType, expiresAt, worker, ...).
+        // Cast `unknown`-on keresztul, mert az IPC payload tipus-strukturaja loose.
+        handleLoginResponse(result as unknown as Awaited<ReturnType<typeof authApi.googleLogin>>)
+        return
+      }
+      if (!window.electronAPI?.googleOAuthFlow) {
+        setError('Electron Google OAuth API nem elerheto.')
+        return
+      }
       const result = await window.electronAPI.googleOAuthFlow()
       if (!result.ok) {
         if (result.code === 'USER_CANCELLED') {
-          // User maga megszakitotta — silent (no error message).
+          // silent
         } else {
           setError(`Google bejelentkezés sikertelen: ${result.message}`)
         }

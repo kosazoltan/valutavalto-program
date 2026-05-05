@@ -346,6 +346,125 @@ export async function performGoogleOAuthFlow(config: {
 }
 
 /**
+ * v2.5.20 Borsi-fix: Google ID token + backend `/auth/google-login` POST EGY MAIN-PROCESS hivasban.
+ *
+ * <p>A renderer axios.post az ESET MITM TLS-handshake utan nehany kliens gepen leejti a connection-t
+ * (NEM 4xx/5xx, hanem network-level abort vagy timeout). A `electron.net.request` a main process-ben
+ * megbizhatobb net stack-et hasznal (Windows certificate store, Chromium switches mind alkalmazva,
+ * NEM a renderer fetch).
+ *
+ * <p>Plusz: 3-szor probalja a backend POST-ot (1s, 3s, 5s wait) ha network-level error tortenik.
+ *
+ * @param config Desktop OAuth client + backend URL
+ * @returns Backend `/auth/google-login` response (accessToken + refreshToken + user)
+ */
+export async function performGoogleOAuthFlowWithBackendLogin(config: {
+  clientId: string;
+  clientSecret: string;
+  apiBaseUrl: string;          // pl. https://excvaluta.com/api/v1
+  timeoutMs?: number;
+}): Promise<{
+  accessToken: string;
+  refreshToken?: string;
+  user?: { email?: string; companyId?: number; role?: string; [k: string]: unknown };
+  email?: string;
+}> {
+  // 1. RFC 8252 OAuth Flow -> idToken
+  const oauthResult = await performGoogleOAuthFlow({
+    clientId: config.clientId,
+    clientSecret: config.clientSecret,
+    timeoutMs: config.timeoutMs,
+  });
+
+  // 2. Backend POST /auth/google-login main-process net.request-tel + retry
+  const apiBase = config.apiBaseUrl.replace(/\/+$/, '');
+  const url = `${apiBase}/auth/google-login`;
+  const reqBody = JSON.stringify({ idToken: oauthResult.idToken });
+
+  const MAX_RETRIES = 3;
+  const RETRY_DELAYS = [1000, 3000, 5000];
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt += 1) {
+    try {
+      const responseJson = await postJsonViaElectronNet(url, reqBody, 30_000);
+      log.info('[google-oauth] Backend google-login sikeres (attempt ' + (attempt + 1) + '/' + MAX_RETRIES + ')');
+      return {
+        ...(responseJson as { accessToken: string; refreshToken?: string; user?: any }),
+        email: oauthResult.email,
+      };
+    } catch (err) {
+      const isLastAttempt = attempt === MAX_RETRIES - 1;
+      const errCode = (err as GoogleOAuthFailedException).code ?? 'UNKNOWN';
+      const errMsg = (err as Error).message ?? String(err);
+      log.warn('[google-oauth] Backend google-login hiba (' + errCode + ', attempt ' + (attempt + 1) + '/' +
+          MAX_RETRIES + '): ' + errMsg);
+      if (isLastAttempt) {
+        throw new GoogleOAuthFailedException('BACKEND_LOGIN_FAILED',
+            'A bejelentkezes szervere ' + MAX_RETRIES + ' probalkozas utan sem fogadta el a Google azonositot. ' +
+            'Kerlek probald meg ujra par masodperc mulva. (' + errMsg + ')');
+      }
+      // network/timeout-ra retry-zunk; 4xx/5xx valaszra azonnal dobjuk
+      const isNetworkErr = errCode === 'NETWORK' || errCode === 'TIMEOUT' || /timeout|abort|ECONNRESET/i.test(errMsg);
+      if (!isNetworkErr) {
+        throw err;
+      }
+      await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt] ?? 5000));
+    }
+  }
+
+  throw new GoogleOAuthFailedException('UNREACHABLE', 'Should not reach here');
+}
+
+/**
+ * Main-process net.request POST JSON helper. Robust net stack (NEM renderer fetch),
+ * Windows certificate store + Chromium switches alkalmazva (--disable-http2, etc.).
+ */
+function postJsonViaElectronNet(url: string, jsonBody: string, timeoutMs: number): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const request = electronNet.request({ method: 'POST', url });
+    request.setHeader('Content-Type', 'application/json');
+    request.setHeader('Accept', 'application/json');
+
+    let responseBody = '';
+    let timedOut = false;
+    const timeoutHandle = setTimeout(() => {
+      timedOut = true;
+      try { request.abort(); } catch { /* ignore */ }
+      reject(new GoogleOAuthFailedException('TIMEOUT',
+          `A backend nem valaszolt ${timeoutMs}ms-en belul.`));
+    }, timeoutMs);
+
+    request.on('response', (response) => {
+      response.on('data', (chunk) => { responseBody += chunk.toString('utf8'); });
+      response.on('end', () => {
+        if (timedOut) return;
+        clearTimeout(timeoutHandle);
+        const status = response.statusCode ?? 0;
+        if (status >= 200 && status < 300) {
+          try {
+            resolve(JSON.parse(responseBody));
+          } catch (parseErr) {
+            reject(new GoogleOAuthFailedException('PARSE_ERROR',
+                'Backend JSON parse hiba: ' + (parseErr as Error).message));
+          }
+        } else {
+          reject(new GoogleOAuthFailedException('HTTP_' + status,
+              `Backend HTTP ${status}: ${responseBody.slice(0, 200)}`));
+        }
+      });
+    });
+    request.on('error', (err) => {
+      if (timedOut) return;
+      clearTimeout(timeoutHandle);
+      reject(new GoogleOAuthFailedException('NETWORK',
+          'Backend network hiba: ' + err.message));
+    });
+    request.write(jsonBody);
+    request.end();
+  });
+}
+
+/**
  * HTML response a loopback callback-re (a user lat egy "sikerult" / "nem sikerult" lapot).
  * Magyar nyelvu, minimal, no-tracking.
  */
