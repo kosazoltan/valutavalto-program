@@ -23,6 +23,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   > => ipcRenderer.invoke('auth:google-oauth-flow-with-backend'),
 
   /**
+   * v2.5.21 ALTALANOS BEJELENTKEZESI FIX: a sima jelszavas /auth/login POST is main process-en
+   * (electron.net.request) megy, NEM renderer axios.post. ESET MITM TLS-handshake nehany
+   * kliensen leejti a POST connection-t (Borsi laptop, Fabuja Zsuzsa) — a main-process
+   * Windows cert store + Chromium switches stack megbizhatobb. 3x retry (1s, 3s, 5s).
+   */
+  passwordLogin: (data: { companyCode: string; workerCode: string; password: string; appMode?: string }): Promise<
+    { ok: true; response: unknown } | { ok: false; code: string; message: string }
+  > => ipcRenderer.invoke('auth:password-login', data),
+
+  /**
    * v2.5.13 KLIENS-OLDALI HIBAJELENTES (window.onerror + axios interceptor a renderer-ben).
    * Send-and-forget — soha nem dob, a Penztar futasat nem akadályozza.
    */

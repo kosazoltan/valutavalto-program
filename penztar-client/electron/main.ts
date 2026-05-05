@@ -84,7 +84,7 @@ import { registerCameraHandlers } from './camera';
 import { registerVideoManagerHandlers } from './video-manager';
 import { registerScannerHandlers } from './scanner';
 import { registerUpdaterHandlers } from './updater';
-import { performGoogleOAuthFlow, performGoogleOAuthFlowWithBackendLogin, GoogleOAuthFailedException } from './google-oauth';
+import { performGoogleOAuthFlow, performGoogleOAuthFlowWithBackendLogin, performPasswordLoginMainProcess, GoogleOAuthFailedException } from './google-oauth';
 import { initErrorReporter, reportError, setUserIdentifier } from './error-reporter';
 import {
 
@@ -848,6 +848,44 @@ app.whenReady().then(async () => {
         return { ok: false, code: err.code, message: err.message };
       }
       log.error('[main] Google OAuth + backend login unexpected error:', err);
+      return { ok: false, code: 'UNEXPECTED', message: (err as Error).message };
+    }
+  });
+
+  // v2.5.21 ALTALANOS BEJELENTKEZESI FIX: a sima jelszavas /auth/login is main process-en,
+  // ESET MITM kompatibilis Windows cert store + Schannel-en, 3x retry network errorra.
+  // A renderer axios.post (Chromium fetch) nehany kliensen leejti a POST connection-t
+  // (Borsi laptop, Fabuja Zsuzsa) — a main-process net.request megbizhatobb stack.
+  ipcMain.handle('auth:password-login', async (_evt, payload: {
+    companyCode: string;
+    workerCode: string;
+    password: string;
+    appMode?: string;
+  }) => {
+    if (!payload || !payload.companyCode || !payload.workerCode || !payload.password) {
+      return { ok: false, code: 'BAD_REQUEST', message: 'companyCode, workerCode, password kotelezo' };
+    }
+    const apiBaseUrl = loadProductionUrls().api_url;
+    try {
+      const response = await performPasswordLoginMainProcess({
+        apiBaseUrl,
+        companyCode: payload.companyCode,
+        workerCode: payload.workerCode,
+        password: payload.password,
+        appMode: payload.appMode,
+      });
+      log.info('[main] Password login OK for worker:', payload.workerCode);
+      return { ok: true, response };
+    } catch (err) {
+      if (err instanceof GoogleOAuthFailedException) {
+        const code = err.code ?? 'UNKNOWN';
+        const isHttp4xx = code.startsWith('HTTP_4');
+        if (!isHttp4xx) {
+          log.warn('[main] Password login network/timeout failed:', code, err.message);
+        }
+        return { ok: false, code, message: err.message };
+      }
+      log.error('[main] Password login unexpected error:', err);
       return { ok: false, code: 'UNEXPECTED', message: (err as Error).message };
     }
   });

@@ -465,6 +465,73 @@ function postJsonViaElectronNet(url: string, jsonBody: string, timeoutMs: number
 }
 
 /**
+ * v2.5.21 ALTALANOS BEJELENTKEZESI FIX: a sima jelszavas /auth/login is main-process
+ * net.request-tel megy (NEM renderer axios). A renderer Chromium fetch az ESET MITM TLS
+ * proxy-val nehany kliensen leejti a POST connection-t a TLS handshake utan
+ * (Borsi laptop Win 10 22H2, Fabuja Zsuzsa, Helga). A main-process electron.net.request
+ * a Windows certificate store + Chromium switches mind alkalmazva, megbizhatobb stack.
+ *
+ * <p>Plus: 3-szor probalja a backend POST-ot (1s, 3s, 5s wait) ha network-level error.
+ *
+ * @param params companyCode + workerCode + password + apiBaseUrl
+ * @returns Backend `/auth/login` JSON response (token, tokenType, expiresAt, worker, ...)
+ */
+export async function performPasswordLoginMainProcess(params: {
+  apiBaseUrl: string;
+  companyCode: string;
+  workerCode: string;
+  password: string;
+  appMode?: string;
+  timeoutMs?: number;
+}): Promise<unknown> {
+  const apiBase = params.apiBaseUrl.replace(/\/+$/, '');
+  const url = `${apiBase}/auth/login`;
+  const reqBody = JSON.stringify({
+    companyCode: params.companyCode,
+    workerCode: params.workerCode,
+    password: params.password,
+    appMode: params.appMode,
+  });
+  const timeoutMs = params.timeoutMs ?? 30_000;
+
+  const MAX_RETRIES = 3;
+  const RETRY_DELAYS = [1000, 3000, 5000];
+  let lastErr: unknown = null;
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt += 1) {
+    try {
+      const responseJson = await postJsonViaElectronNet(url, reqBody, timeoutMs);
+      log.info('[main-process-login] /auth/login sikeres (attempt ' + (attempt + 1) + '/' + MAX_RETRIES + ')');
+      return responseJson;
+    } catch (err) {
+      lastErr = err;
+      const isLastAttempt = attempt === MAX_RETRIES - 1;
+      const errCode = (err as GoogleOAuthFailedException).code ?? 'UNKNOWN';
+      const errMsg = (err as Error).message ?? String(err);
+      log.warn('[main-process-login] /auth/login hiba (' + errCode + ', attempt ' + (attempt + 1) + '/' +
+          MAX_RETRIES + '): ' + errMsg);
+
+      // 4xx (rossz jelszo, blokk, etc.): NE retry-zunk — a backend valaszolt
+      if (errCode.startsWith('HTTP_4')) {
+        throw err;
+      }
+      if (isLastAttempt) {
+        break;
+      }
+      // network/timeout-ra retry-zunk
+      const isNetworkErr = errCode === 'NETWORK' || errCode === 'TIMEOUT'
+          || /timeout|abort|ECONNRESET|EAI_AGAIN/i.test(errMsg);
+      if (!isNetworkErr) {
+        throw err;
+      }
+      await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt] ?? 5000));
+    }
+  }
+
+  throw lastErr ?? new GoogleOAuthFailedException('UNKNOWN', 'Password login failed');
+}
+
+/**
  * HTML response a loopback callback-re (a user lat egy "sikerult" / "nem sikerult" lapot).
  * Magyar nyelvu, minimal, no-tracking.
  */

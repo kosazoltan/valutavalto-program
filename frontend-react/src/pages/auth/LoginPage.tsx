@@ -220,6 +220,27 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
+      // v2.5.21 ALTALANOS BEJELENTKEZESI FIX: ha az electron passwordLogin IPC elerheto,
+      // azt hasznaljuk (main-process net.request, ESET MITM-tolerans, 3x retry).
+      // Fallback: renderer axios (web modra es regi Penztar.exe-re).
+      if (window.electronAPI?.passwordLogin) {
+        const result = await window.electronAPI.passwordLogin({
+          companyCode,
+          workerCode,
+          password,
+        })
+        if (!result.ok) {
+          // 4xx (rossz jelszo, blokk) -> a backend hibauzenete
+          // network/timeout -> baratsagos uzenet
+          const msg = result.code.startsWith('HTTP_4')
+            ? result.message
+            : `A bejelentkezes nem sikerult (${result.code}). Probald meg ujra par masodperc mulva. (${result.message})`
+          setError(msg)
+          return
+        }
+        handleLoginResponse(result.response as Awaited<ReturnType<typeof authApi.login>>)
+        return
+      }
       const response = await authApi.login({
         companyCode,
         workerCode,

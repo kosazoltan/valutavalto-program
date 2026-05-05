@@ -17,6 +17,17 @@ export interface ElectronAPI {
     | { ok: false; code: string; message: string }
   >;
 
+  // --- v2.5.21: jelszavas /auth/login is main-process net.request-tel (ESET-tolerans) ---
+  passwordLogin(data: {
+    companyCode: string;
+    workerCode: string;
+    password: string;
+    appMode?: string;
+  }): Promise<
+    | { ok: true; response: unknown }
+    | { ok: false; code: string; message: string }
+  >;
+
   // --- v2.5.13 Kliens hibajelentes (send-and-forget) ---
   reportError(payload: {
     component?: string;
