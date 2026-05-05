@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.dto.diagnostics.ErrorReportDto;
 import hu.puzzleir.valuta.entity.ClientErrorLog;
 import hu.puzzleir.valuta.repository.ClientErrorLogRepository;
+import hu.puzzleir.valuta.service.GitHubIssueAutoCreator;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,7 @@ import java.util.Map;
 public class DiagnosticsController {
 
     private final ClientErrorLogRepository errorLogRepository;
+    private final GitHubIssueAutoCreator gitHubIssueAutoCreator;
 
     /**
      * Hibajelentés fogadása. Permitall, no auth.
@@ -75,6 +77,9 @@ public class DiagnosticsController {
                 dto.getUserIdentifier(),
                 clientIp,
                 safeTruncate(dto.getErrorMessage(), 200));
+
+        // Aszinkron eskala: kritikus mintazatra GitHub Issue auto-create
+        gitHubIssueAutoCreator.evaluateAndEscalate(entry);
 
         return ResponseEntity.ok(Map.of(
                 "ok", true,
