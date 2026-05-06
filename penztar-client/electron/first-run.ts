@@ -303,6 +303,43 @@ async function httpJson<T = unknown>(
   });
 }
 
+/**
+ * httpJson hivasok retry wrapper-je ESET TLS proxy gepekhez.
+ *
+ * Ugyanaz a 3x retry minta mint az `api:fetch` IPC handler-ben (1s, 3s, 5s backoff).
+ * Csak network error / timeout / 5xx eseten retry-zunk — 4xx (business hiba) NEM
+ * megy ujra.
+ */
+async function httpJsonWithRetry<T = unknown>(
+  fullUrl: string,
+  options: {
+    method: 'GET' | 'POST';
+    body?: Record<string, unknown>;
+    timeoutMs?: number;
+    headers?: Record<string, string>;
+  },
+): Promise<HttpResponse<T>> {
+  const MAX_RETRIES = 3;
+  const RETRY_DELAYS = [1000, 3000, 5000];
+  let last: HttpResponse<T> | null = null;
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt += 1) {
+    last = await httpJson<T>(fullUrl, options);
+    if (last.ok) return last;
+    const status = last.status;
+    const isNetworkErr = status === 0;
+    const isServerErr = status >= 500 && status < 600;
+    if (!isNetworkErr && !isServerErr) {
+      return last; // 4xx business error — NE retry
+    }
+    if (attempt === MAX_RETRIES - 1) break;
+    log.warn('[first-run httpJsonWithRetry] retry', attempt + 1, '/', MAX_RETRIES,
+        'status=', status, 'error=', last.errorMessage, 'url=', fullUrl);
+    await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt] ?? 5000));
+  }
+  return last as HttpResponse<T>;
+}
+
 // ---------------------------------------------------------------------------
 // Publikus API
 // ---------------------------------------------------------------------------
@@ -372,7 +409,7 @@ export async function fetchBranchesFromBackend(
 ): Promise<Branch[] | null> {
   const base = normalizeApiBase(apiUrl);
   const url = `${base}/public/branches?companyCode=${encodeURIComponent(companyCode)}`;
-  const response = await httpJson<Array<{ code: string; name: string; city?: string; address?: string }>>(
+  const response = await httpJsonWithRetry<Array<{ code: string; name: string; city?: string; address?: string }>>(
     url,
     { method: 'GET', timeoutMs },
   );
@@ -444,7 +481,7 @@ export async function bootstrapAdmin(
   const base = normalizeApiBase(apiUrl);
   const url = `${base}/auth/bootstrap-admin`;
 
-  const response = await httpJson<{ success?: boolean; message?: string }>(url, {
+  const response = await httpJsonWithRetry<{ success?: boolean; message?: string }>(url, {
     method: 'POST',
     body: payload,
     timeoutMs,
@@ -502,7 +539,7 @@ export async function workerFirstTimeSetup(
   const base = normalizeApiBase(apiUrl);
   const url = `${base}/auth/first-time-worker-setup`;
 
-  const response = await httpJson<{
+  const response = await httpJsonWithRetry<{
     success?: boolean;
     message?: string;
     workerCode?: string;
@@ -562,7 +599,7 @@ export async function registerCashRegisterDevice(
   // (vagy masik endpoint). De a bootstrap-token-t birtokoljuk -> a /branches keresunk.
   try {
     // Step 1: branch UUID lookup by code
-    const branchResp = await httpJson<Array<{ id: string; code: string }>>(
+    const branchResp = await httpJsonWithRetry<Array<{ id: string; code: string }>>(
       `${base}/branches?code=${encodeURIComponent(payload.branchCode)}`,
       { method: 'GET', headers: { Authorization: `Bearer ${token}` }, timeoutMs },
     );
@@ -576,7 +613,7 @@ export async function registerCashRegisterDevice(
     const branchId = matchedBranch.id;
 
     // Step 2: POST /cash-register/register
-    const regResp = await httpJson<{ id: string }>(
+    const regResp = await httpJsonWithRetry<{ id: string }>(
       `${base}/cash-register/register`,
       {
         method: 'POST',
@@ -616,7 +653,7 @@ export async function bootstrapLogin(
 ): Promise<{ success: boolean; token?: string; errorMessage?: string }> {
   const base = normalizeApiBase(apiUrl);
   try {
-    const resp = await httpJson<{ token?: string; roleSelectionRequired?: boolean; availableRoles?: Array<{ roleCode: string }> }>(
+    const resp = await httpJsonWithRetry<{ token?: string; roleSelectionRequired?: boolean; availableRoles?: Array<{ roleCode: string }> }>(
       `${base}/auth/login`,
       {
         method: 'POST',
@@ -636,7 +673,7 @@ export async function bootstrapLogin(
     let token = resp.body.token;
     const firstRole = resp.body.availableRoles?.[0];
     if (resp.body.roleSelectionRequired && firstRole) {
-      const selectedResp = await httpJson<{ token?: string }>(
+      const selectedResp = await httpJsonWithRetry<{ token?: string }>(
         `${base}/auth/login/select-role`,
         {
           method: 'POST',
