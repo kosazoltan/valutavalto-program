@@ -105,7 +105,7 @@ describe('fetchViaElectronNet', () => {
 
   describe('sikeres kérések', () => {
     it('GET kérés JSON válasszal', async () => {
-      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://api.test/data' });
+      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://excvaluta.com/api/v1/test/data' });
       triggerResponse({
         statusCode: 200,
         headers: { 'content-type': 'application/json' },
@@ -115,7 +115,7 @@ describe('fetchViaElectronNet', () => {
       vi.advanceTimersByTime(0);
       const result = await promise;
 
-      expect(electronNet.request).toHaveBeenCalledWith({ method: 'GET', url: 'https://api.test/data' });
+      expect(electronNet.request).toHaveBeenCalledWith({ method: 'GET', url: 'https://excvaluta.com/api/v1/test/data' });
       expect(result.ok).toBe(true);
       expect(result.status).toBe(200);
       expect(result.body).toBe('{"hello":"world"}');
@@ -125,7 +125,7 @@ describe('fetchViaElectronNet', () => {
     it('POST kérés body-val automatikusan Content-Type: application/json', async () => {
       const promise = fetchViaElectronNet({
         method: 'POST',
-        url: 'https://api.test/data',
+        url: 'https://excvaluta.com/api/v1/test/data',
         body: '{"key":"value"}',
       });
       triggerResponse();
@@ -139,7 +139,7 @@ describe('fetchViaElectronNet', () => {
     it('GET kérés NEM kap Content-Type headert', async () => {
       const promise = fetchViaElectronNet({
         method: 'GET',
-        url: 'https://api.test/data',
+        url: 'https://excvaluta.com/api/v1/test/data',
       });
       triggerResponse();
       vi.advanceTimersByTime(0);
@@ -152,7 +152,7 @@ describe('fetchViaElectronNet', () => {
     it('Accept: application/json alapértelmezetten beállítódik', async () => {
       const promise = fetchViaElectronNet({
         method: 'GET',
-        url: 'https://api.test/data',
+        url: 'https://excvaluta.com/api/v1/test/data',
       });
       triggerResponse();
       vi.advanceTimersByTime(0);
@@ -164,7 +164,7 @@ describe('fetchViaElectronNet', () => {
     it('explicit headerek nem felülírtak', async () => {
       const promise = fetchViaElectronNet({
         method: 'POST',
-        url: 'https://api.test/data',
+        url: 'https://excvaluta.com/api/v1/test/data',
         body: 'data',
         headers: { 'Content-Type': 'text/plain', 'Accept': 'text/html' },
       });
@@ -181,7 +181,7 @@ describe('fetchViaElectronNet', () => {
 
   describe('HTTP státusz kezelés', () => {
     it('2xx → ok: true', async () => {
-      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://api.test/ok' });
+      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://excvaluta.com/api/v1/test/ok' });
       triggerResponse({ statusCode: 201 });
       vi.advanceTimersByTime(0);
       const result = await promise;
@@ -189,7 +189,7 @@ describe('fetchViaElectronNet', () => {
     });
 
     it('4xx → ok: false', async () => {
-      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://api.test/bad' });
+      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://excvaluta.com/api/v1/test/bad' });
       triggerResponse({ statusCode: 401, statusMessage: 'Unauthorized' });
       vi.advanceTimersByTime(0);
       const result = await promise;
@@ -199,7 +199,7 @@ describe('fetchViaElectronNet', () => {
     });
 
     it('5xx → ok: false', async () => {
-      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://api.test/err' });
+      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://excvaluta.com/api/v1/test/err' });
       triggerResponse({ statusCode: 500 });
       vi.advanceTimersByTime(0);
       const result = await promise;
@@ -211,7 +211,7 @@ describe('fetchViaElectronNet', () => {
   describe('bináris válasz (base64)', () => {
     it('application/octet-stream → base64 kódolt', async () => {
       const binaryData = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
-      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://api.test/file' });
+      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://excvaluta.com/api/v1/test/file' });
       triggerResponse({
         headers: { 'content-type': 'application/octet-stream' },
         chunks: [binaryData],
@@ -224,7 +224,7 @@ describe('fetchViaElectronNet', () => {
     });
 
     it('application/json → NEM base64', async () => {
-      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://api.test/json' });
+      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://excvaluta.com/api/v1/test/json' });
       triggerResponse({
         headers: { 'content-type': 'application/json; charset=utf-8' },
         chunks: [Buffer.from('{"x":1}')],
@@ -237,7 +237,7 @@ describe('fetchViaElectronNet', () => {
     });
 
     it('text/html → NEM base64', async () => {
-      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://api.test/page' });
+      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://excvaluta.com/api/v1/test/page' });
       triggerResponse({
         headers: { 'content-type': 'text/html' },
         chunks: [Buffer.from('<html></html>')],
@@ -248,7 +248,7 @@ describe('fetchViaElectronNet', () => {
     });
 
     it('üres content-type → NEM base64 (ct === "")', async () => {
-      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://api.test/noct' });
+      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://excvaluta.com/api/v1/test/noct' });
       triggerResponse({
         headers: {},
         chunks: [Buffer.from('plain')],
@@ -261,7 +261,7 @@ describe('fetchViaElectronNet', () => {
 
   describe('több chunk', () => {
     it('több data chunk → összefűzve', async () => {
-      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://api.test/multi' });
+      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://excvaluta.com/api/v1/test/multi' });
       triggerResponse({
         headers: { 'content-type': 'application/json' },
         chunks: [Buffer.from('{"he'), Buffer.from('llo"'), Buffer.from(':"ok"}')],
@@ -276,7 +276,7 @@ describe('fetchViaElectronNet', () => {
     it('timeout lejártakor reject', async () => {
       const promise = fetchViaElectronNet({
         method: 'GET',
-        url: 'https://api.test/slow',
+        url: 'https://excvaluta.com/api/v1/test/slow',
         timeoutMs: 5000,
       });
 
@@ -289,7 +289,7 @@ describe('fetchViaElectronNet', () => {
     it('alapértelmezett timeout 30s', async () => {
       const promise = fetchViaElectronNet({
         method: 'GET',
-        url: 'https://api.test/slow',
+        url: 'https://excvaluta.com/api/v1/test/slow',
       });
 
       vi.advanceTimersByTime(30_001);
@@ -299,7 +299,7 @@ describe('fetchViaElectronNet', () => {
 
   describe('hálózati hiba', () => {
     it('request error → reject', async () => {
-      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://api.test/err' });
+      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://excvaluta.com/api/v1/test/err' });
       process.nextTick(() => {
         mockRequestEmitter.emit('error', new Error('ECONNREFUSED'));
       });
@@ -310,18 +310,18 @@ describe('fetchViaElectronNet', () => {
 
   describe('method normalizálás', () => {
     it('kisbetűs method → nagybetűre konvertál', async () => {
-      const promise = fetchViaElectronNet({ method: 'post', url: 'https://api.test/data', body: '{}' });
+      const promise = fetchViaElectronNet({ method: 'post', url: 'https://excvaluta.com/api/v1/test/data', body: '{}' });
       triggerResponse();
       vi.advanceTimersByTime(0);
       await promise;
 
-      expect(electronNet.request).toHaveBeenCalledWith({ method: 'POST', url: 'https://api.test/data' });
+      expect(electronNet.request).toHaveBeenCalledWith({ method: 'POST', url: 'https://excvaluta.com/api/v1/test/data' });
     });
   });
 
   describe('response header kezelés', () => {
     it('tömb headerek → comma-separated', async () => {
-      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://api.test/headers' });
+      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://excvaluta.com/api/v1/test/headers' });
       const response = createMockResponse({
         headers: { 'content-type': 'application/json' },
       });
