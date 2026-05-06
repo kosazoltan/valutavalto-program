@@ -107,7 +107,7 @@ export default function NotificationPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold flex items-center gap-2">
           <Bell />{t('notifications.ertesitesek')}
-          {unreadCount > 0 && <span className="badge badge-red text-xs">{unreadCount} olvasatlan</span>}
+          {unreadCount > 0 && <span className="badge badge-red text-xs">{unreadCount} {t('notifications.olvasatlan')}</span>}
         </h1>
         <div className="flex gap-2">
           <button onClick={() => void handleMarkAllAsRead()} className="form-button"><CheckCircle size={16} />{t('notifications.mindOlvasott')}</button>
@@ -188,7 +188,7 @@ export default function NotificationPage() {
                   <td className="text-sm max-w-xs truncate">{n.message}</td>
                   <td className="text-sm">{new Date(n.createdAt).toLocaleString('hu-HU')}</td>
                   <td><span className={`badge ${n.isRead ? 'badge-green' : 'badge-yellow'}`}>{n.isRead ? 'Olvasva' : 'Új'}</span></td>
-                  <td>{!n.isRead && <button onClick={() => void handleMarkAsRead(n.id)} className="form-button text-xs"><CheckCircle size={12} /> Olvasott</button>}</td>
+                  <td>{!n.isRead && <button onClick={() => void handleMarkAsRead(n.id)} className="form-button text-xs"><CheckCircle size={12} /> {t('notifications.olvasott')}</button>}</td>
                 </tr>
               ))}
             </tbody>

@@ -152,7 +152,7 @@ export default function RatesPage() {
       <div className="flex justify-between items-center gap-3 flex-wrap">
         <h1 className="text-base font-bold text-gray-800 flex items-center gap-2">
           <TrendingUp size={18} />
-          {t('cashier.rates')}{!canEdit && <span className="text-xs text-gray-500 font-normal">(nézet)</span>}
+          {t('cashier.rates')}{!canEdit && <span className="text-xs text-gray-500 font-normal">{t('rates.nezet')}</span>}
           {!canEdit && (
             <span className="text-xs text-blue-700 font-normal flex items-center gap-1 ml-2">
               <Eye size={12} />{t('rates.csakFoertektarSzerkesztheti')}
@@ -207,7 +207,7 @@ export default function RatesPage() {
                 <th className="px-2 py-1.5 text-right w-24">MNB</th>
                 <th className="px-2 py-1.5 text-right w-20">{t('ratemanagement.spread2')}</th>
                 <th className="px-2 py-1.5 text-center w-16">{t('stockSnapshot.lastUpdated')}</th>
-                {canEdit && <th className="px-2 py-1.5 text-center w-20">Művelet</th>}
+                {canEdit && <th className="px-2 py-1.5 text-center w-20">{t('common.operation')}</th>}
               </tr>
             </thead>
             <tbody>

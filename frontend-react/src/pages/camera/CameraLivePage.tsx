@@ -114,7 +114,7 @@ export default function CameraLivePage() {
         <h1 className="text-lg font-bold flex items-center gap-2">
           <Camera className="h-6 w-6" />
           {t('camera.eloKamerakep')}
-          {isElectron() && <span className="text-sm font-normal text-muted-foreground">(lokális)</span>}
+          {isElectron() && <span className="text-sm font-normal text-muted-foreground">{t('camera.lokalis')}</span>}
         </h1>
         <button
           className="inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"

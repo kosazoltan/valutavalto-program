@@ -180,7 +180,7 @@ export default function PepPage() {
                         <span className="px-2 py-1 text-xs text-white rounded bg-red-500">{t('common.yes')}</span>
                         {pep.maxAmountWithoutApproval && (
                           <div className="text-xs text-gray-500 mt-1">
-                            {t('pep.lt')}{pep.maxAmountWithoutApproval?.toLocaleString()} Ft
+                            {t('pep.lt')}{pep.maxAmountWithoutApproval?.toLocaleString()} {t('common.ft')}
                           </div>
                         )}
                       </div>

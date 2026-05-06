@@ -192,7 +192,7 @@ export default function CentralVaultDashboard() {
                     <h1 className="text-lg font-bold text-slate-800">{t('foertektar.foertektariDashboard')}</h1>
                     <p className="text-xs text-slate-600">
                         {t('foertektar.orszagosPenztarAllapotEsKeszletAutoRefresh1Percenkent')}
-                        {lastRefresh && <span className="ml-2 text-slate-400">Utolsó: {lastRefresh.toLocaleTimeString('hu-HU')}</span>}
+                        {lastRefresh && <span className="ml-2 text-slate-400">{t('foertektar.utolso')} {lastRefresh.toLocaleTimeString('hu-HU')}</span>}
                     </p>
                 </div>
                 <button

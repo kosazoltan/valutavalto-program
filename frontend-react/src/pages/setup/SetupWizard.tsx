@@ -653,7 +653,7 @@ function BranchStep(props: BranchStepProps) {
     <div>
       <h2 className="text-2xl font-bold text-slate-900 mb-2">{t('setup.valasszaKiAzIrodat')}</h2>
       <p className="text-slate-600 mb-5">
-        {t('setup.ezAFiokIrodaAmelyikbenASzamitogepFizikailagTalalhatoOsszesen')}{totalFiltered} iroda közül.
+        {t('setup.ezAFiokIrodaAmelyikbenASzamitogepFizikailagTalalhatoOsszesen')}{totalFiltered} {t('setup.irodaKozul')}
       </p>
 
       <div className="relative mb-5">
@@ -706,7 +706,7 @@ function BranchStep(props: BranchStepProps) {
             <ChevronLeft className="w-4 h-4" />
           </button>
           <span className="text-sm text-slate-600 px-2">
-            {page + 1} / {totalPages} oldal
+            {page + 1} / {totalPages} {t('common.oldal')}
           </span>
           <button
             type="button"
@@ -1005,7 +1005,7 @@ function AdminStep(props: AdminStepProps) {
                 : 'border-slate-300 focus:border-blue-500 focus:ring-blue-200',
             ].join(' ')}
           />
-          {pwTooShort && <span className="text-xs text-red-600 mt-1 block">Minimum 8 karakter.</span>}
+          {pwTooShort && <span className="text-xs text-red-600 mt-1 block">{t('setup.minimum8Karakter')}</span>}
         </FieldLabel>
         <FieldLabel label="Jelszó megerősítése">
           <input
@@ -1018,7 +1018,7 @@ function AdminStep(props: AdminStepProps) {
                 : 'border-slate-300 focus:border-blue-500 focus:ring-blue-200',
             ].join(' ')}
           />
-          {pwMismatch && <span className="text-xs text-red-600 mt-1 block">A két jelszó nem egyezik.</span>}
+          {pwMismatch && <span className="text-xs text-red-600 mt-1 block">{t('resetPassword.mismatchError')}</span>}
         </FieldLabel>
       </div>
 

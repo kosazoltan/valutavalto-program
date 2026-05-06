@@ -191,7 +191,7 @@ export default function DailyChecklistPage() {
                           {t('cashdesk.kesz')}{new Date(item.completedAt).toLocaleString('hu-HU')} {item.completedBy ? `(${item.completedBy})` : ''}
                         </div>
                       )}
-                      {item.note && <div className="text-xs text-blue-600 mt-1">Megjegyzés: {item.note}</div>}
+                      {item.note && <div className="text-xs text-blue-600 mt-1">{t('cashdesk.megjegyzes')} {item.note}</div>}
                       {/* Note edit */}
                       {editingNote === item.itemNumber ? (
                         <div className="flex gap-1 mt-1">

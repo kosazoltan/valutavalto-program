@@ -97,9 +97,9 @@ export default function LicensePage() {
             <div><span className="text-gray-500">{t('licenses.kulcs')}</span> <span className="font-mono">{license.licenseKey ?? '-'}</span></div>
             <div><span className="text-gray-500">{t('licenses.ervenyes')}</span> {license.validFrom ? new Date(license.validFrom).toLocaleDateString('hu-HU') : '-'}</div>
             <div><span className="text-gray-500">{t('licenses.lejar')}</span> {license.validTo ? new Date(license.validTo).toLocaleDateString('hu-HU') : '-'}</div>
-            {license.remainingDays != null && <div><span className="text-gray-500">Hatralevo napok:</span> <b>{license.remainingDays}</b></div>}
-            {license.maxBranches != null && <div><span className="text-gray-500">Max penztari egyseg:</span> {license.maxBranches}</div>}
-            {license.maxWorkers != null && <div><span className="text-gray-500">Max dolgozo:</span> {license.maxWorkers}</div>}
+            {license.remainingDays != null && <div><span className="text-gray-500">{t('licenses.hatralevoNapok')}</span> <b>{license.remainingDays}</b></div>}
+            {license.maxBranches != null && <div><span className="text-gray-500">{t('licenses.maxPenztariEgyseg')}</span> {license.maxBranches}</div>}
+            {license.maxWorkers != null && <div><span className="text-gray-500">{t('licenses.maxDolgozo')}</span> {license.maxWorkers}</div>}
           </div>
           {features.length > 0 && (
             <div>

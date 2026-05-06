@@ -145,7 +145,7 @@ export default function SynchronizationPage() {
         <h1 className="text-xl font-bold flex items-center gap-2"><RefreshCw />{t('sync.szinkronizacio')}</h1>
         <div className="flex items-center gap-2">
           <span className={`badge ${status.isOnline ? 'badge-green' : 'badge-red'}`}>
-            {status.isOnline ? <><Server size={10} className="inline" /> Online</> : <><XCircle size={10} className="inline" /> Offline</>}
+            {status.isOnline ? <><Server size={10} className="inline" /> {t('common.online')}</> : <><XCircle size={10} className="inline" /> {t('foertektar.offline')}</>}
           </span>
         </div>
       </div>
@@ -236,7 +236,7 @@ export default function SynchronizationPage() {
                 <tr key={log.id}>
                   <td className="text-sm">{new Date(log.startedAt).toLocaleString('hu-HU')}</td>
                   <td>
-                    {log.direction === 'UPLOAD' ? <><Upload size={12} className="inline" /> Feltöltés</> : <><Download size={12} className="inline" /> Letöltés</>}
+                    {log.direction === 'UPLOAD' ? <><Upload size={12} className="inline" /> {t('sync.feltoltes')}</> : <><Download size={12} className="inline" /> {t('common.download')}</>}
                   </td>
                   <td className="text-sm">{(log.entityTypes || []).join(', ')}</td>
                   <td className="font-mono">{log.recordsSynced}</td>

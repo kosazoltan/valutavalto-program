@@ -211,7 +211,7 @@ export default function DecadeReportPage() {
                       r.decadeProfitHuf >= 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'
                     }
                   >
-                    {t('decade.haszon')}{formatNum(r.decadeProfitHuf)} Ft
+                    {t('decade.haszon')}{formatNum(r.decadeProfitHuf)} {t('common.ft')}
                   </span>
                 </div>
               </div>
@@ -237,7 +237,7 @@ export default function DecadeReportPage() {
                     ) : (
                       <TrendingDown size={12} className="text-red-500" />
                     )}
-                    {t('decade.haszon')}{formatNum(selected.decadeProfitHuf)} Ft
+                    {t('decade.haszon')}{formatNum(selected.decadeProfitHuf)} {t('common.ft')}
                   </div>
                   <div className="border-t pt-1 mt-1">
                     <div>{t('decade.nyitoKeszletertek')}{formatNum(selected.openingInventoryValueHuf)} {t('components.ft')}</div>
@@ -259,7 +259,7 @@ export default function DecadeReportPage() {
                         </span>
                       ) : (
                         <span className="flex items-center gap-1">
-                          <XCircle size={12} />{t('decade.elteres')}{formatNum(selected.forintControlDiff)} Ft
+                          <XCircle size={12} />{t('decade.elteres')}{formatNum(selected.forintControlDiff)} {t('common.ft')}
                         </span>
                       )}
                     </div>

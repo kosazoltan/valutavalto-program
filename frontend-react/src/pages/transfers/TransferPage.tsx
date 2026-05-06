@@ -365,7 +365,7 @@ export default function TransferPage() {
             <th className="text-right">{t('common.amount')}</th>
             <th>{t('common.date')}</th>
             <th>{t('common.status')}</th>
-            {showActions && <th className="w-32">Műveletek</th>}
+            {showActions && <th className="w-32">{t('common.actions')}</th>}
           </tr>
         </thead>
         <tbody>
@@ -464,7 +464,7 @@ export default function TransferPage() {
           {t('transfers.atadasBankMasikErtektar')}
           {pendingCount > 0 && (
             <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-              {pendingCount} új
+              {pendingCount} {t('common.uj')}
             </span>
           )}
         </h1>

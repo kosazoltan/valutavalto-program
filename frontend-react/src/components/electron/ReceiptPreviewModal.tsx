@@ -148,7 +148,7 @@ export default function ReceiptPreviewModal({
               <p className="text-xs">{company.fullName}</p>
               <p className="text-xs">{company.address}</p>
               <p className="text-xs">{t('components.adoszam')}{company.taxNumber}</p>
-              {company.regNumber && <p className="text-xs">Cégjegyzékszám: {company.regNumber}</p>}
+              {company.regNumber && <p className="text-xs">{t('common.companyRegNumber')} {company.regNumber}</p>}
             </div>
 
             <div className="my-3 border-t-2 border-gray-400" />
@@ -198,12 +198,12 @@ export default function ReceiptPreviewModal({
                 <div className="my-2 border-t border-gray-400" />
 
                 <p className="text-sm font-bold">
-                  {t('components.hufOsszeg')}{formatAmount(receiptData.hufAmount)} Ft
+                  {t('components.hufOsszeg')}{formatAmount(receiptData.hufAmount)} {t('common.ft')}
                 </p>
 
                 {receiptData.roundingDiff !== undefined && receiptData.roundingDiff !== 0 && (
                   <p className="text-sm">
-                    {t('components.kerekites')}{formatAmount(receiptData.roundingDiff)} Ft
+                    {t('components.kerekites')}{formatAmount(receiptData.roundingDiff)} {t('common.ft')}
                   </p>
                 )}
 
@@ -224,7 +224,7 @@ export default function ReceiptPreviewModal({
                   <span>{t('components.cel')}</span> {formatAmount(receiptData.targetAmount)} {receiptData.targetCurrencyCode ?? ''}
                 </p>
                 <p>
-                  <span>{t('components.koztesHuf')}</span> {formatAmount(receiptData.hufAmount)} Ft
+                  <span>{t('components.koztesHuf')}</span> {formatAmount(receiptData.hufAmount)} {t('common.ft')}
                 </p>
                 <p>
                   <span>{t('components.arfolyam')}</span> {formatRate(receiptData.rate)}
@@ -261,7 +261,7 @@ export default function ReceiptPreviewModal({
                 </p>
                 <p>
                   <span className="font-semibold">{t('components.hufOsszeg')}</span>{' '}
-                  {formatAmount(receiptData.roundedHufAmount ?? receiptData.hufAmount)} Ft
+                  {formatAmount(receiptData.roundedHufAmount ?? receiptData.hufAmount)} {t('common.ft')}
                 </p>
 
                 {receiptData.stornoReason && (

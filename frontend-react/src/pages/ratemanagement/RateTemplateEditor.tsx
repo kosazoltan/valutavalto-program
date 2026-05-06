@@ -392,7 +392,7 @@ export default function RateTemplateEditor() {
               <div className="p-4 flex items-center justify-between">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono font-medium">Vétel:{t.baseBuyRate} | Eladás: {t.baseSellRate}</span>
+                    <span className="font-mono font-medium">Vétel: {t.baseBuyRate} | Eladás: {t.baseSellRate}</span>
                     {statusBadge(t.status)}
                   </div>
                   <p className="text-sm text-muted-foreground">

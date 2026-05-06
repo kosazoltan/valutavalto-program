@@ -155,7 +155,7 @@ export default function ReceiptPage() {
                   <td>
                     <div className="flex gap-2">
                       <button onClick={() => setSelectedReceipt(r)} className="form-button text-xs"><Eye size={12} />{t('common.details')}</button>
-                      {!r.isPrinted && <button onClick={() => handlePrint(r.id)} className="form-button text-xs"><Printer size={12} />Nyomtatás</button>}
+                      {!r.isPrinted && <button onClick={() => handlePrint(r.id)} className="form-button text-xs"><Printer size={12} />{t('common.print')}</button>}
                     </div>
                   </td>
                 </tr>

@@ -246,6 +246,7 @@ function CreateReservationForm({
   onSuccess: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation()
   const [formData, setFormData] = useState({
     customerName: '',
     transactionType: 'BUY',
@@ -277,7 +278,7 @@ function CreateReservationForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-1">Ügyfél neve</label>
+          <label className="block text-sm font-medium mb-1">{t('pep.ugyfelNeve')}</label>
           <input
             type="text"
             value={formData.customerName}
@@ -289,7 +290,7 @@ function CreateReservationForm({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Tranzakció típusa</label>
+          <label className="block text-sm font-medium mb-1">{t('reservations.tranzakcioTipusa')}</label>
           <select
             value={formData.transactionType}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
@@ -297,12 +298,12 @@ function CreateReservationForm({
             }
             className="w-full p-2 border rounded"
           >
-            <option value="BUY">Vétel</option>
-            <option value="SELL">Eladás</option>
+            <option value="BUY">{t('cashier.buy')}</option>
+            <option value="SELL">{t('cashier.sell')}</option>
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Összeg</label>
+          <label className="block text-sm font-medium mb-1">{t('cashier.amount')}</label>
           <input
             type="number"
             step="0.01"
@@ -315,7 +316,7 @@ function CreateReservationForm({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Garantált árfolyam</label>
+          <label className="block text-sm font-medium mb-1">{t('reservations.garantaltArfolyam')}</label>
           <input
             type="number"
             step="0.0001"
@@ -328,7 +329,7 @@ function CreateReservationForm({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Letét összege (Ft)</label>
+          <label className="block text-sm font-medium mb-1">{t('reservations.letetOsszegeFt')}</label>
           <input
             type="number"
             value={formData.depositAmount}
@@ -340,7 +341,7 @@ function CreateReservationForm({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Érvényesség (óra)</label>
+          <label className="block text-sm font-medium mb-1">{t('reservations.ervenyessegOra')}</label>
           <select
             value={formData.validityHours}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
@@ -348,10 +349,10 @@ function CreateReservationForm({
             }
             className="w-full p-2 border rounded"
           >
-            <option value="4">4 óra</option>
-            <option value="8">8 óra</option>
-            <option value="24">24 óra</option>
-            <option value="48">48 óra</option>
+            <option value="4">{t('reservations.4Ora')}</option>
+            <option value="8">{t('reservations.8Ora')}</option>
+            <option value="24">{t('reservations.24Ora')}</option>
+            <option value="48">{t('reservations.48Ora')}</option>
           </select>
         </div>
       </div>
@@ -361,13 +362,13 @@ function CreateReservationForm({
           onClick={onCancel}
           className="px-4 py-2 border rounded hover:bg-gray-50"
         >
-          Mégse
+          {t('common.cancel')}
         </button>
         <button
           type="submit"
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
-          Létrehozás
+          {t('common.create')}
         </button>
       </div>
     </form>

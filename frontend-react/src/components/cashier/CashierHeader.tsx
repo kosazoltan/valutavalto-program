@@ -82,7 +82,7 @@ export function CashierHeader(props: CashierHeaderProps = {}) {
 
       <div className="text-right">
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          {t('components.penztaros')}{workerName} (ID: {workerId})
+          {t('components.penztaros')}{workerName} {t('components.id')} {workerId})
         </p>
         <p className="text-lg font-mono font-semibold text-gray-900 dark:text-white">
           {dateStr} | {timeStr}

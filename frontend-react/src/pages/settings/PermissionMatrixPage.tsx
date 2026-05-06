@@ -196,7 +196,7 @@ export default function PermissionMatrixPage() {
                     onChange={e => setFilter(e.target.value)}
                 />
                 <span className="text-xs text-secondary-500">
-                    {permissions.length} permission, {roles.length} role
+                    {permissions.length} {t('settings.permission')} {roles.length} {t('settings.role')}
                 </span>
             </div>
 
@@ -241,7 +241,7 @@ export default function PermissionMatrixPage() {
                                                     <div className="font-semibold text-sm">{r.name}</div>
                                                     <div className="text-xs text-secondary-500 font-mono">{r.code}</div>
                                                 </div>
-                                                {isDirty && <span className="badge badge-orange text-[10px] ml-auto">modified</span>}
+                                                {isDirty && <span className="badge badge-orange text-[10px] ml-auto">{t('settings.modified')}</span>}
                                             </div>
                                         </td>
                                         {permissionsByModule.map(([_module, perms]) =>

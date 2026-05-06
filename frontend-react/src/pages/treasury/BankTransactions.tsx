@@ -233,7 +233,7 @@ export default function BankTransactions() {
                   {tx.exchangeRate?.toFixed(2)}
                 </td>
                 <td className="text-right font-mono font-semibold">
-                  {formatInteger(tx.hufAmount)} Ft
+                  {formatInteger(tx.hufAmount)} {t('common.ft')}
                 </td>
                 <td className="text-xs text-secondary-600">
                   {tx.bankName || '-'}
@@ -352,7 +352,7 @@ export default function BankTransactions() {
                 <div className="p-3 rounded-lg bg-secondary-50 border border-secondary-200">
                   <div className="text-sm text-secondary-600">{t('treasury.hufEllenerteke')}</div>
                   <div className="text-lg font-bold font-mono text-secondary-900">
-                    {parseInt(hufAmount).toLocaleString('hu-HU')} Ft
+                    {parseInt(hufAmount).toLocaleString('hu-HU')} {t('common.ft')}
                   </div>
                 </div>
               )}

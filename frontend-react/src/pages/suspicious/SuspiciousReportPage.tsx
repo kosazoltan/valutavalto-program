@@ -313,6 +313,7 @@ function CreateReportForm({
   onSuccess: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation()
   const [formData, setFormData] = useState({
     customerId: '',
     customerName: '',
@@ -343,7 +344,7 @@ function CreateReportForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-1">Ügyfél neve *</label>
+          <label className="block text-sm font-medium mb-1">{t('pep.ugyfelNeve2')}</label>
           <input
             type="text"
             value={formData.customerName}
@@ -355,7 +356,7 @@ function CreateReportForm({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Okmány száma *</label>
+          <label className="block text-sm font-medium mb-1">{t('suspicious.okmanySzama')}</label>
           <input
             type="text"
             value={formData.customerDocumentNumber}
@@ -367,7 +368,7 @@ function CreateReportForm({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Bejelentés típusa *</label>
+          <label className="block text-sm font-medium mb-1">{t('suspicious.bejelentesTipusa')}</label>
           <select
             value={formData.reportType}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
@@ -375,17 +376,17 @@ function CreateReportForm({
             }
             className="w-full p-2 border rounded"
           >
-            <option value="SUSPICIOUS_TRANSACTION">Gyanús tranzakció</option>
-            <option value="STRUCTURING">Strukturálás</option>
-            <option value="UNUSUAL_PATTERN">Szokatlan minta</option>
-            <option value="BLACKLIST_MATCH">Tiltólista egyezés</option>
-            <option value="PEP_TRANSACTION">PEP tranzakció</option>
-            <option value="THRESHOLD_EXCEEDED">Határérték túllépés</option>
-            <option value="OTHER">Egyéb</option>
+            <option value="SUSPICIOUS_TRANSACTION">{t('reports.gyanusTranzakcio')}</option>
+            <option value="STRUCTURING">{t('suspicious.strukturalas')}</option>
+            <option value="UNUSUAL_PATTERN">{t('suspicious.szokatlanMinta')}</option>
+            <option value="BLACKLIST_MATCH">{t('suspicious.tiltolistaEgyezes')}</option>
+            <option value="PEP_TRANSACTION">{t('suspicious.pepTranzakcio')}</option>
+            <option value="THRESHOLD_EXCEEDED">{t('suspicious.hatarertekTullepes')}</option>
+            <option value="OTHER">{t('common.other')}</option>
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Kockázati szint</label>
+          <label className="block text-sm font-medium mb-1">{t('suspicious.kockazatiSzint')}</label>
           <select
             value={formData.riskLevel}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
@@ -393,14 +394,14 @@ function CreateReportForm({
             }
             className="w-full p-2 border rounded"
           >
-            <option value="LOW">Alacsony</option>
-            <option value="MEDIUM">Közepes</option>
-            <option value="HIGH">Magas</option>
-            <option value="CRITICAL">Kritikus</option>
+            <option value="LOW">{t('suspicious.alacsony')}</option>
+            <option value="MEDIUM">{t('suspicious.kozepes')}</option>
+            <option value="HIGH">{t('suspicious.magas')}</option>
+            <option value="CRITICAL">{t('suspicious.kritikus')}</option>
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Tranzakció ID (opcionális)</label>
+          <label className="block text-sm font-medium mb-1">{t('suspicious.tranzakcioIdOpcionalis')}</label>
           <input
             type="number"
             value={formData.transactionId}
@@ -411,7 +412,7 @@ function CreateReportForm({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Észlelt összeg (Ft)</label>
+          <label className="block text-sm font-medium mb-1">{t('suspicious.eszleltOsszegFt')}</label>
           <input
             type="number"
             value={formData.detectedAmount}
@@ -422,7 +423,7 @@ function CreateReportForm({
           />
         </div>
         <div className="col-span-2">
-          <label className="block text-sm font-medium mb-1">Gyanú oka *</label>
+          <label className="block text-sm font-medium mb-1">{t('suspicious.gyanuOka')}</label>
           <input
             type="text"
             value={formData.suspicionReason}
@@ -435,7 +436,7 @@ function CreateReportForm({
           />
         </div>
         <div className="col-span-2">
-          <label className="block text-sm font-medium mb-1">Részletes leírás *</label>
+          <label className="block text-sm font-medium mb-1">{t('suspicious.reszletesLeiras')}</label>
           <textarea
             value={formData.description}
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
@@ -454,13 +455,13 @@ function CreateReportForm({
           onClick={onCancel}
           className="px-4 py-2 border rounded hover:bg-gray-50"
         >
-          Mégse
+          {t('common.cancel')}
         </button>
         <button
           type="submit"
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
-          Létrehozás
+          {t('common.create')}
         </button>
       </div>
     </form>
@@ -474,15 +475,16 @@ function ReportDetail({
   report: SuspiciousReport;
   onClose: () => void;
 }) {
+  const { t } = useTranslation()
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-gray-500 text-sm">Bejelentés száma</label>
+          <label className="text-gray-500 text-sm">{t('suspicious.bejelentesSzama')}</label>
           <p className="font-mono">{report.reportNumber}</p>
         </div>
         <div>
-          <label className="text-gray-500 text-sm">Státusz</label>
+          <label className="text-gray-500 text-sm">{t('common.status')}</label>
           <p>
             <span className={`px-2 py-1 text-xs text-white rounded ${statusColors[report.status]}`}>
               {statusLabels[report.status] || report.status}
@@ -490,45 +492,45 @@ function ReportDetail({
           </p>
         </div>
         <div>
-          <label className="text-gray-500 text-sm">Ügyfél neve</label>
+          <label className="text-gray-500 text-sm">{t('pep.ugyfelNeve')}</label>
           <p>{report.customerName}</p>
         </div>
         <div>
-          <label className="text-gray-500 text-sm">Okmány száma</label>
+          <label className="text-gray-500 text-sm">{t('suspicious.okmanySzama2')}</label>
           <p>{report.customerDocumentNumber}</p>
         </div>
         <div>
-          <label className="text-gray-500 text-sm">Bejelentés típusa</label>
+          <label className="text-gray-500 text-sm">{t('suspicious.bejelentesTipusa2')}</label>
           <p>{reportTypeLabels[report.reportType] || report.reportType}</p>
         </div>
         <div>
-          <label className="text-gray-500 text-sm">Észlelt összeg</label>
-          <p>{report.detectedAmount?.toLocaleString()} Ft</p>
+          <label className="text-gray-500 text-sm">{t('suspicious.eszleltOsszeg')}</label>
+          <p>{report.detectedAmount?.toLocaleString()} {t('components.ft')}</p>
         </div>
         <div>
-          <label className="text-gray-500 text-sm">Beküldési határidő</label>
+          <label className="text-gray-500 text-sm">{t('suspicious.bekuldesiHatarido')}</label>
           <p>{new Date(report.submissionDeadline).toLocaleDateString('hu-HU')}</p>
         </div>
         <div>
-          <label className="text-gray-500 text-sm">Létrehozva</label>
+          <label className="text-gray-500 text-sm">{t('common.createdAt')}</label>
           <p>{new Date(report.createdAt).toLocaleString('hu-HU')}</p>
         </div>
       </div>
       <div>
-        <label className="text-gray-500 text-sm">Gyanú oka</label>
+        <label className="text-gray-500 text-sm">{t('suspicious.gyanuOka2')}</label>
         <p>{report.suspicionReason}</p>
       </div>
       <div>
-        <label className="text-gray-500 text-sm">Részletes leírás</label>
+        <label className="text-gray-500 text-sm">{t('suspicious.reszletesLeiras2')}</label>
         <p className="whitespace-pre-wrap">{report.description}</p>
       </div>
       <div>
-        <label className="text-gray-500 text-sm">Bejelentő</label>
+        <label className="text-gray-500 text-sm">{t('suspicious.bejelento')}</label>
         <p>{report.reporterName}</p>
       </div>
       {report.submittedAt && (
         <div>
-          <label className="text-gray-500 text-sm">Beküldve</label>
+          <label className="text-gray-500 text-sm">{t('mnb.bekuldve')}</label>
           <p>{new Date(report.submittedAt).toLocaleString('hu-HU')}</p>
         </div>
       )}
@@ -537,7 +539,7 @@ function ReportDetail({
           onClick={onClose}
           className="px-4 py-2 border rounded hover:bg-gray-50"
         >
-          Bezárás
+          {t('common.close')}
         </button>
       </div>
     </div>

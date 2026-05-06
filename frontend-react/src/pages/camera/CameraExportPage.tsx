@@ -193,7 +193,7 @@ export default function CameraExportPage() {
         {/* Request list */}
         <div className="col-span-2 space-y-1">
           {loading && <div className="text-center py-4 text-gray-400">Betöltés...</div>}
-          {!loading && requests.length === 0 && <div className="text-gray-400 text-sm text-center py-4">Válasszon irodát az export kérelmek megtekintéséhez</div>}
+          {!loading && requests.length === 0 && <div className="text-gray-400 text-sm text-center py-4">{t('camera.valasszonIrodatAzExportKerelmek')}</div>}
           {requests.map(r => (
             <div key={r.id} role="button" tabIndex={0} onClick={() => handleSelectRequest(r)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSelectRequest(r) } }}
@@ -206,8 +206,8 @@ export default function CameraExportPage() {
                 <span className="text-xs text-gray-500">{fmtDt(r.createdAt)}</span>
               </div>
               <div className="text-xs text-gray-500 mt-1">
-                {t('camera.kerte')}{r.requestedBy} · Indok: {r.reason}
-                {r.referenceNumber && <> · Ref: {r.referenceNumber}</>}
+                {t('camera.kerte')}{r.requestedBy} {t('camera.indok')} {r.reason}
+                {r.referenceNumber && <> {t('camera.ref')} {r.referenceNumber}</>}
               </div>
             </div>
           ))}
@@ -224,12 +224,12 @@ export default function CameraExportPage() {
                   <div>{t('camera.idoszak')}{fmtDt(selected.periodFrom)} — {fmtDt(selected.periodTo)}</div>
                   <div>{t('camera.kerte')}{selected.requestedBy}</div>
                   <div>{t('camera.indok')}{selected.reason}</div>
-                  {selected.approvedBy && <div>Jóváhagyta: {selected.approvedBy} ({fmtDt(selected.approvedAt)})</div>}
-                  {selected.rejectionReason && <div className="text-red-600">Elutasítás: {selected.rejectionReason}</div>}
-                  {selected.exportPath && <div>Export: {selected.exportPath}</div>}
-                  {selected.exportSizeBytes && <div>Méret: {fmtSize(selected.exportSizeBytes)}</div>}
-                  {selected.manifestHash && <div>Manifest hash: <code className="text-[10px] bg-gray-100 px-1">{selected.manifestHash.slice(0, 16)}...</code></div>}
-                  {selected.errorMessage && <div className="text-red-600">Hiba: {selected.errorMessage}</div>}
+                  {selected.approvedBy && <div>{t('camera.jovahagyta')} {selected.approvedBy} ({fmtDt(selected.approvedAt)})</div>}
+                  {selected.rejectionReason && <div className="text-red-600">{t('common.reject')} {selected.rejectionReason}</div>}
+                  {selected.exportPath && <div>{t('commissions.export')} {selected.exportPath}</div>}
+                  {selected.exportSizeBytes && <div>{t('documents.meret')} {fmtSize(selected.exportSizeBytes)}</div>}
+                  {selected.manifestHash && <div>{t('camera.manifestHash')} <code className="text-[10px] bg-gray-100 px-1">{selected.manifestHash.slice(0, 16)}...</code></div>}
+                  {selected.errorMessage && <div className="text-red-600">{t('foertektar.hiba')} {selected.errorMessage}</div>}
                 </div>
 
                 <div className="flex gap-2 pt-2 border-t">

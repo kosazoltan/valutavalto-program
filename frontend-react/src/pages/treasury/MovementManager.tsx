@@ -231,7 +231,7 @@ export default function MovementManager() {
                         {t.currencyCode}
                       </span>{' '}
                       <span className="font-mono font-semibold">{formatInteger(t.amount)}</span>{' '}
-                      <span className="text-secondary-500">| Kérte:{t.fromWorkerName}</span>
+                      <span className="text-secondary-500">| Kérte: {t.fromWorkerName}</span>
                     </div>
                     <div className="text-xs text-secondary-500">{formatDateTime(t.createdAt)}</div>
                   </div>

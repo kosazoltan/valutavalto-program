@@ -163,7 +163,7 @@ export default function DaybookPage() {
             <span className={`badge ${report.status === 'SUBMITTED' ? 'badge-green' : report.status === 'GENERATED' ? 'badge-blue' : 'badge-gray'}`}>
               {report.status === 'SUBMITTED' ? 'Benyújtva' : report.status === 'GENERATED' ? 'Generálva' : report.status}
             </span>
-            {report.submittedAt && <span className="text-sm text-gray-500">Benyújtva: {new Date(report.submittedAt).toLocaleString('hu-HU')}</span>}
+            {report.submittedAt && <span className="text-sm text-gray-500">{t('reports.benyujtva')} {new Date(report.submittedAt).toLocaleString('hu-HU')}</span>}
             <span className="text-sm text-gray-500">{report.branchName} — {report.date}</span>
           </div>
 

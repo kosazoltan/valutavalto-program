@@ -138,7 +138,7 @@ export default function TrbExportPage() {
       {data && (
         <div className="rounded border bg-white p-4 shadow-sm">
           <p className="mb-2 text-sm text-gray-500">
-            {data.companyName} — {data.reportDate} (tárgynapra: {data.valueDate})
+            {data.companyName} — {data.reportDate} {t('treasury.targynapra')} {data.valueDate})
           </p>
 
           {/* Bankforgalom */}

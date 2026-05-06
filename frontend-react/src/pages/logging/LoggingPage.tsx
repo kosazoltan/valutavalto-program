@@ -103,7 +103,7 @@ export default function LoggingPage() {
 
       <div className="form-panel">
         <div className="mb-2 text-sm text-gray-600">
-          {t('audit.osszesen')}{totalElements} log
+          {t('audit.osszesen')}{totalElements} {t('common.log')}
         </div>
         <table className="data-grid w-full">
           <thead>

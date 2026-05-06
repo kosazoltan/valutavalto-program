@@ -117,7 +117,7 @@ export default function CashDeskBreakPage() {
                 <h3 className="font-bold text-yellow-800">{t('cashdesk.aktivSzunet')}</h3>
                 <p className="text-sm text-yellow-600">{t('cashdesk.kezdes')}{new Date(activeBreak.breakStart).toLocaleString('hu-HU')}</p>
                 <p className="text-sm text-yellow-600">{t('cashdesk.tipus')}{activeBreak.breakType}</p>
-                {activeBreak.reason && <p className="text-sm text-yellow-600">Ok: {activeBreak.reason}</p>}
+                {activeBreak.reason && <p className="text-sm text-yellow-600">{t('cashdesk.ok')} {activeBreak.reason}</p>}
               </div>
               <button
                 onClick={() => handleEndBreak(activeBreak.id)}

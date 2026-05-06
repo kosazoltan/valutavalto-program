@@ -258,7 +258,7 @@ export default function HandoverSheetPage() {
       <div className="form-panel">
         {localPendingOperations.length > 0 && (
           <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            {localPendingOperations.length} helyi handover művelet vár még szerveres visszaigazolásra.
+            {localPendingOperations.length} {t('handover.helyiHandoverMuveletVar')}
           </div>
         )}
         <table className="data-grid w-full">
@@ -279,7 +279,7 @@ export default function HandoverSheetPage() {
                   <td>
                     <div className="flex gap-2">
                       <button type="button" onClick={() => handlePrint(s.id)} disabled={s.status === 'PENDING_SYNC'} className="form-button text-xs disabled:opacity-50"><Printer size={12} />{t('common.print')}</button>
-                      {s.status !== 'COMPLETED' && <button type="button" onClick={() => handleComplete(s.id)} disabled={s.status === 'PENDING_SYNC'} className="form-button text-xs disabled:opacity-50"><CheckCircle size={12} />Befejezés</button>}
+                      {s.status !== 'COMPLETED' && <button type="button" onClick={() => handleComplete(s.id)} disabled={s.status === 'PENDING_SYNC'} className="form-button text-xs disabled:opacity-50"><CheckCircle size={12} />{t('archiving.befejezes')}</button>}
                     </div>
                   </td>
                 </tr>

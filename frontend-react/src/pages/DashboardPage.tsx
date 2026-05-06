@@ -363,6 +363,7 @@ function StatCard({
   color: 'primary' | 'success' | 'warning' | 'info'
   urgent?: boolean
 }) {
+  const { t } = useTranslation()
   const colorClasses = {
     primary: 'bg-primary-50 border-primary-200 text-primary-700',
     success: 'bg-green-50 border-green-200 text-green-700',
@@ -385,7 +386,7 @@ function StatCard({
       {change !== undefined && change !== null && (
         <div className={`text-[10px] mt-0.5 flex items-center gap-0.5 ${change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
           {change >= 0 ? <ArrowUp size={10} /> : <ArrowDown size={10} />}
-          <span>{Math.abs(change)}% tegnap</span>
+          <span>{Math.abs(change)}{t('misc.szazalekTegnap')}</span>
         </div>
       )}
     </div>

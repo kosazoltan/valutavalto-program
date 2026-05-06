@@ -97,7 +97,7 @@ export default function CameraPlaybackPage() {
       <h1 className="text-lg font-bold flex items-center gap-2">
         <PlayCircle className="h-6 w-6" />
         {t('camera.felvetelVisszajatszas')}
-        {isElectron() && <span className="text-sm font-normal text-muted-foreground">(lokális)</span>}
+        {isElectron() && <span className="text-sm font-normal text-muted-foreground">{t('camera.lokalis')}</span>}
       </h1>
 
       {/* Search controls */}

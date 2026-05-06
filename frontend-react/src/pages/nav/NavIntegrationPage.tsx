@@ -92,7 +92,7 @@ export default function NavIntegrationPage() {
           <div className="grid grid-cols-4 gap-3 text-sm">
             <div>
               <span className="text-gray-500">{t('nav.kapcsolat')}</span>{' '}
-              {status.deviceConnected ? <span className="badge badge-green"><CheckCircle size={10} className="inline" /> Online</span> : <span className="badge badge-red"><XCircle size={10} className="inline" /> Offline</span>}
+              {status.deviceConnected ? <span className="badge badge-green"><CheckCircle size={10} className="inline" /> {t('common.online')}</span> : <span className="badge badge-red"><XCircle size={10} className="inline" /> {t('foertektar.offline')}</span>}
             </div>
             <div><span className="text-gray-500">{t('nav.sorozatszam')}</span> {status.serialNumber || '-'}</div>
             <div><span className="text-gray-500">{t('nav.firmware')}</span> {status.firmwareVersion || '-'}</div>
@@ -140,7 +140,7 @@ export default function NavIntegrationPage() {
             {result.success ? <CheckCircle size={18} className="text-green-600" /> : <XCircle size={18} className="text-red-600" />}
             <div>
               <span className="font-medium">{result.success ? 'Sikeres' : 'Sikertelen'}</span>
-              {result.receiptNumber && <span className="ml-2 font-mono text-sm">Bizonylat: {result.receiptNumber}</span>}
+              {result.receiptNumber && <span className="ml-2 font-mono text-sm">{t('components.bizonylat')} {result.receiptNumber}</span>}
               {result.error && <span className="ml-2 text-red-600 text-sm">{result.error}</span>}
             </div>
           </div>

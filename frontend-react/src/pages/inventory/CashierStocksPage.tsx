@@ -130,7 +130,7 @@ export default function CashierStocksPage() {
             <div>
               <div className="text-sm text-primary-700 font-medium">{t('inventory.osszesenHufKeszlet')}</div>
               <div className="text-3xl font-bold font-mono text-primary-900">
-                {grandTotalHuf.toLocaleString('hu-HU', { maximumFractionDigits: 0 })} Ft
+                {grandTotalHuf.toLocaleString('hu-HU', { maximumFractionDigits: 0 })} {t('common.ft')}
               </div>
             </div>
           </div>
@@ -139,7 +139,7 @@ export default function CashierStocksPage() {
               <strong>{totalBranches}</strong>{t('inventory.penztar')}
             </div>
             <div className="text-xs text-primary-600">
-              {totalNonZero} aktív tétel · {filtered.length} sor
+              {totalNonZero} {t('inventory.aktivTetel')} {filtered.length} {t('common.sor')}
             </div>
           </div>
         </div>
@@ -162,6 +162,7 @@ export default function CashierStocksPage() {
 }
 
 function BranchCard({ group }: { group: BranchGroup }) {
+  const { t } = useTranslation()
   return (
     <div className="form-panel p-3 hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-200">
@@ -169,7 +170,7 @@ function BranchCard({ group }: { group: BranchGroup }) {
           {group.branchName}
         </h3>
         <span className="text-xs text-gray-500 ml-2">
-          {group.items.length} valuta
+          {group.items.length} {t('inventory.valuta')}
         </span>
       </div>
       <table className="w-full text-sm">

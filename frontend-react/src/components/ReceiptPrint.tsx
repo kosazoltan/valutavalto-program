@@ -176,7 +176,7 @@ export default function ReceiptPrint({
                 <div className="text-xs text-gray-600">{t('components.tel')}{branchPhone || companyPhone}</div>
               )}
               <div className="text-xs text-gray-600">{t('components.adoszam')}{companyTaxNumber}</div>
-              {branchCode && <div className="text-xs">Pénztár: {branchCode}</div>}
+              {branchCode && <div className="text-xs">{t('components.penztar')} {branchCode}</div>}
             </div>
 
             <div className="double-separator" />

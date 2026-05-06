@@ -163,7 +163,7 @@ export default function ReportsCirculars() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-secondary-900 flex items-center gap-2">
                 <FileText size={20} className="text-primary-600" />
-                {t('treasury.bekuldesiStatusz')}{submittedCount}/{totalCount} iroda)
+                {t('treasury.bekuldesiStatusz')}{submittedCount}/{totalCount} {t('treasury.irodaZarojelben')}
               </h2>
               {submittedCount === totalCount && totalCount > 0 && (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-success-50 border border-success-200 rounded-lg text-sm font-semibold text-success-700">
@@ -190,7 +190,7 @@ export default function ReportsCirculars() {
                   ) : (
                     <>
                       <XCircle size={16} />
-                      {branch.branchName} — nincs
+                      {branch.branchName} {t('common.nincs')}
                     </>
                   )}
                 </div>

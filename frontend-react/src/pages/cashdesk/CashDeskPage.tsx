@@ -248,7 +248,7 @@ export default function CashDeskPage() {
                       {item.balance.toLocaleString('hu-HU')}
                     </div>
                     <div className="text-xs text-gray-500">
-                      {t('cashdesk.min')}{item.minBalance.toLocaleString('hu-HU')} | Max: {item.maxBalance.toLocaleString('hu-HU')}
+                      {t('cashdesk.min')}{item.minBalance.toLocaleString('hu-HU')} {t('cashdesk.max')} {item.maxBalance.toLocaleString('hu-HU')}
                     </div>
                   </div>
                 </div>
@@ -268,19 +268,19 @@ export default function CashDeskPage() {
             <div className="bg-green-50 p-3 rounded">
               <div className="text-sm text-green-600">{t('cashdesk.vetelOsszesen')}</div>
               <div className="text-xl font-bold text-green-800">
-                {status.todayStats.buyTotal.toLocaleString('hu-HU')} Ft
+                {status.todayStats.buyTotal.toLocaleString('hu-HU')} {t('common.ft')}
               </div>
             </div>
             <div className="bg-red-50 p-3 rounded">
               <div className="text-sm text-red-600">{t('cashdesk.eladasOsszesen')}</div>
               <div className="text-xl font-bold text-red-800">
-                {status.todayStats.sellTotal.toLocaleString('hu-HU')} Ft
+                {status.todayStats.sellTotal.toLocaleString('hu-HU')} {t('common.ft')}
               </div>
             </div>
             <div className="bg-purple-50 p-3 rounded">
               <div className="text-sm text-purple-600">{t('cashdesk.napiEredmeny')}</div>
               <div className="text-xl font-bold text-purple-800">
-                {status.todayStats.profit.toLocaleString('hu-HU')} Ft
+                {status.todayStats.profit.toLocaleString('hu-HU')} {t('common.ft')}
               </div>
             </div>
           </div>

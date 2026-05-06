@@ -184,7 +184,7 @@ export default function DiscountLevelEditor() {
                   <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border bg-transparent">{t('ratemanagement.szint')}{d.level}</span>
                   <span className="font-medium">{d.name}</span>
                   <span className="text-sm text-muted-foreground">
-                    {t('ratemanagement.vetel')}{d.buyDiscountPercent}% | Eladás: -{d.sellDiscountPercent}%
+                    {t('ratemanagement.vetel')}{d.buyDiscountPercent}{t('ratemanagement.eladas')}{d.sellDiscountPercent}%
                   </span>
                 </div>
                 <div className="flex items-center gap-2">

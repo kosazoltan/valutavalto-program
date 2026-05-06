@@ -278,7 +278,7 @@ export default function ExchangeRateDisplayPage() {
                       <td>{d.refreshInterval}s</td>
                       <td>
                         <span className={`badge ${d.isActive ? 'badge-green' : 'badge-gray'}`}>
-                          {d.isActive ? <><Wifi size={10} className="inline" /> Online</> : <><WifiOff size={10} className="inline" /> Offline</>}
+                          {d.isActive ? <><Wifi size={10} className="inline" /> {t('display.online')}</> : <><WifiOff size={10} className="inline" /> {t('display.offline')}</>}
                         </span>
                       </td>
                       <td>

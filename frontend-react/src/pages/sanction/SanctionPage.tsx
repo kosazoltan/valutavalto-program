@@ -80,7 +80,7 @@ export default function SanctionPage() {
                     <div className="flex-1">
                         <div className="text-xs text-secondary-500">{t('sanction.utolsoFrissites')}</div>
                         <div className="text-xl font-bold">
-                            {status.lastUpdateDate ?? <span className="text-amber-600">Nincs adat</span>}
+                            {status.lastUpdateDate ?? <span className="text-amber-600">{t('common.noData')}</span>}
                         </div>
                     </div>
                 </div>
@@ -203,7 +203,7 @@ function ScreeningTab() {
                             <div className="text-xl font-bold">{RISK_LABEL[result.riskLevel]}</div>
                         </div>
                         <div className="ml-auto text-sm">
-                            {result.matches.length} talalat
+                            {result.matches.length} {t('common.talalat')}
                         </div>
                     </div>
                     {result.matches.length > 0 && (
@@ -220,10 +220,10 @@ function ScreeningTab() {
                                             </span>
                                         </div>
                                     </div>
-                                    {m.aliases && <div className="text-xs text-secondary-600">Alias: {m.aliases}</div>}
+                                    {m.aliases && <div className="text-xs text-secondary-600">{t('sanction.alias')} {m.aliases}</div>}
                                     {m.dateOfBirth && <div className="text-xs text-secondary-600">Szul.: {m.dateOfBirth}</div>}
-                                    {m.nationality && <div className="text-xs text-secondary-600">Nemzetiseg: {m.nationality}</div>}
-                                    {m.documentNumber && <div className="text-xs text-secondary-600">Okmany: {m.documentNumber}</div>}
+                                    {m.nationality && <div className="text-xs text-secondary-600">{t('sanction.nemzetiseg')} {m.nationality}</div>}
+                                    {m.documentNumber && <div className="text-xs text-secondary-600">{t('sanction.okmany')} {m.documentNumber}</div>}
                                     {m.listReference && (
                                         <div className="text-xs text-secondary-500 mt-1">{t('sanction.ref')}{m.listReference}</div>
                                     )}

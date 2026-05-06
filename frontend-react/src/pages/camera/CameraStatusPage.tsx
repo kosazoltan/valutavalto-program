@@ -78,7 +78,7 @@ export default function CameraStatusPage() {
         <h1 className="text-lg font-bold flex items-center gap-2">
           <HardDrive className="h-6 w-6" />
           {t('camera.kameraRendszerAllapot')}
-          {isElectron() && <span className="text-sm font-normal text-muted-foreground">(lokális)</span>}
+          {isElectron() && <span className="text-sm font-normal text-muted-foreground">{t('camera.lokalis')}</span>}
         </h1>
         <div className="flex gap-2">
           <button
@@ -114,7 +114,7 @@ export default function CameraStatusPage() {
                 <p className="text-sm text-muted-foreground">{t('camera.tarhelyhasznalat')}</p>
                 <p className="text-3xl font-bold">{stats ? formatSize(stats.totalUsageBytes) : '-'}</p>
                 <p className="text-xs text-muted-foreground">
-                  {stats ? formatSize(stats.availableSpaceBytes) : '-'} szabad
+                  {stats ? formatSize(stats.availableSpaceBytes) : '-'} {t('common.szabad')}
                 </p>
               </div>
             </div>

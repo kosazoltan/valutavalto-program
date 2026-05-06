@@ -272,7 +272,7 @@ export default function TransactionListPage() {
                     <td className="text-right font-mono">{formatNumber(tx.currencyAmount)}</td>
                     <td className="text-right font-mono text-gray-600">{formatNumber(tx.exchangeRate, 4)}</td>
                     <td className="text-right font-mono font-semibold">
-                      {formatNumber(tx.roundedHufAmount ?? tx.hufAmount, 0)} Ft
+                      {formatNumber(tx.roundedHufAmount ?? tx.hufAmount, 0)} {t('common.ft')}
                     </td>
                     <td>{tx.customerName || <span className="text-gray-400 italic">—</span>}</td>
                     <td>
@@ -353,7 +353,7 @@ export default function TransactionListPage() {
         <div className="form-panel">
           <div className="flex justify-between items-center text-sm">
             <span>
-              {totalElements} tranzakció{totalPages > 1 && ` (${page + 1}/${totalPages} oldal)`}
+              {totalElements} {t('transactions.tranzakcio')}{totalPages > 1 && ` (${page + 1}/${totalPages} oldal)`}
             </span>
             <div className="flex items-center gap-2">
               <button
@@ -374,7 +374,7 @@ export default function TransactionListPage() {
             </div>
             <span>
               {t('audit.osszesen')}<strong className="font-mono">
-                {formatNumber(filteredTransactions.reduce((sum, tx) => sum + (tx.roundedHufAmount ?? tx.hufAmount), 0), 0)} Ft
+                {formatNumber(filteredTransactions.reduce((sum, tx) => sum + (tx.roundedHufAmount ?? tx.hufAmount), 0), 0)} {t('common.ft')}
               </strong>
             </span>
           </div>

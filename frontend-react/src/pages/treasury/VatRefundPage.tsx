@@ -438,7 +438,7 @@ export default function VatRefundPage() {
             </h2>
             <p className="text-sm text-secondary-600 mb-2">{stornoTarget.serialNumber} {t('treasury.sztornozasa')}</p>
             <p className="text-sm font-semibold text-secondary-800 mb-3">
-              {VOUCHER_TYPE_LABELS[stornoTarget.voucherType]} — {formatCurrency(stornoTarget.grossAmount)} Ft
+              {VOUCHER_TYPE_LABELS[stornoTarget.voucherType]} — {formatCurrency(stornoTarget.grossAmount)} {t('common.ft')}
             </p>
             <div className="flex gap-3">
               <button className="form-button flex-1" onClick={() => setStornoTarget(null)}>{t('common.cancel')}</button>

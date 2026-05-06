@@ -345,6 +345,7 @@ function RateGroupForm({
   }) => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation()
   const [formData, setFormData] = useState({
     code: group?.code || '',
     name: group?.name || '',
@@ -365,7 +366,7 @@ function RateGroupForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label htmlFor="code" className="block text-sm font-medium mb-1">Kód *</label>
+          <label htmlFor="code" className="block text-sm font-medium mb-1">{t('common.codeRequired')}</label>
           <input
             id="code"
             type="text"
@@ -377,7 +378,7 @@ function RateGroupForm({
           />
         </div>
         <div>
-          <label htmlFor="name" className="block text-sm font-medium mb-1">Név *</label>
+          <label htmlFor="name" className="block text-sm font-medium mb-1">{t('common.nameRequired')}</label>
           <input
             id="name"
             type="text"
@@ -389,7 +390,7 @@ function RateGroupForm({
           />
         </div>
         <div className="col-span-2">
-          <label htmlFor="description" className="block text-sm font-medium mb-1">Leírás</label>
+          <label htmlFor="description" className="block text-sm font-medium mb-1">{t('common.description')}</label>
           <input
             id="description"
             type="text"
@@ -400,20 +401,20 @@ function RateGroupForm({
           />
         </div>
         <div>
-          <label htmlFor="discountType" className="block text-sm font-medium mb-1">Kedvezmény típusa *</label>
+          <label htmlFor="discountType" className="block text-sm font-medium mb-1">{t('rates.kedvezmenyTipusa')}</label>
           <select
             id="discountType"
             value={formData.discountType}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, discountType: e.target.value })}
             className="w-full p-2 border rounded"
           >
-            <option value="POINT">Pont (árfolyampont)</option>
-            <option value="PERCENT">Százalék</option>
-            <option value="FIXED">Fix összeg (Ft)</option>
+            <option value="POINT">{t('rates.pontArfolyampont')}</option>
+            <option value="PERCENT">{t('fees.szazalek')}</option>
+            <option value="FIXED">{t('rates.fixOsszegFt')}</option>
           </select>
         </div>
         <div>
-          <label htmlFor="priority" className="block text-sm font-medium mb-1">Prioritás</label>
+          <label htmlFor="priority" className="block text-sm font-medium mb-1">{t('rates.prioritas')}</label>
           <input
             id="priority"
             type="number"
@@ -424,7 +425,7 @@ function RateGroupForm({
           />
         </div>
         <div>
-          <label htmlFor="buyDiscount" className="block text-sm font-medium mb-1">Vétel kedvezmény *</label>
+          <label htmlFor="buyDiscount" className="block text-sm font-medium mb-1">{t('rates.vetelKedvezmeny')}</label>
           <input
             id="buyDiscount"
             type="number"
@@ -437,7 +438,7 @@ function RateGroupForm({
           />
         </div>
         <div>
-          <label htmlFor="sellDiscount" className="block text-sm font-medium mb-1">Eladás kedvezmény *</label>
+          <label htmlFor="sellDiscount" className="block text-sm font-medium mb-1">{t('rates.eladasKedvezmeny')}</label>
           <input
             id="sellDiscount"
             type="number"
@@ -457,7 +458,7 @@ function RateGroupForm({
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, isActive: e.target.checked })}
             className="h-4 w-4"
           />
-          <label htmlFor="isActive" className="text-sm font-medium">Aktív</label>
+          <label htmlFor="isActive" className="text-sm font-medium">{t('common.active')}</label>
         </div>
       </div>
       <div className="flex justify-end gap-2">
@@ -466,7 +467,7 @@ function RateGroupForm({
           onClick={onCancel}
           className="px-4 py-2 border rounded hover:bg-gray-50"
         >
-          Mégse
+          {t('common.cancel')}
         </button>
         <button
           type="submit"

@@ -130,7 +130,7 @@ export default function VaultStocktakeDetailPage() {
                         <h1 className="text-base font-bold">{session.sessionName}</h1>
                         <div className="text-xs text-gray-600">
                             {t('vaultStocktake.status')}<span className="font-medium">{STATUS_LABELS[session.status]}</span>
-                            {' - '}Inditotta: {session.startedBy}
+                            {' - '}{t('vaultStocktake.inditotta')} {session.startedBy}
                             {' - '}{new Date(session.startedAt).toLocaleString('hu-HU')}
                         </div>
                     </div>

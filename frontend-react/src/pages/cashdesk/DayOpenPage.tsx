@@ -161,7 +161,7 @@ export default function DayOpenPage() {
                 <div className="mb-1 flex items-center justify-between rounded bg-blue-50 px-2 py-1">
                   <span className="text-sm font-bold text-blue-900">HUF</span>
                   <span className="text-sm font-bold text-blue-900">
-                    {hufBalance.currentBalance.toLocaleString('hu-HU')} Ft
+                    {hufBalance.currentBalance.toLocaleString('hu-HU')} {t('common.ft')}
                   </span>
                 </div>
               )}
@@ -220,7 +220,7 @@ export default function DayOpenPage() {
                     {/* Codex P2 #347: min-w-0 kell a truncate-hez, mert flex item default
                         min-width: auto megakadalyozza a shrink-et a tartalom alá. */}
                     <span className="min-w-0 flex-1 text-xs text-gray-500 truncate">
-                      = {(faceValue * (denomQuantities[faceValue] ?? 0)).toLocaleString('hu-HU')} Ft
+                      = {(faceValue * (denomQuantities[faceValue] ?? 0)).toLocaleString('hu-HU')} {t('common.ft')}
                     </span>
                   </div>
                 ))}
@@ -229,7 +229,7 @@ export default function DayOpenPage() {
               <div className="mt-3 flex items-center justify-between border-t border-gray-200 pt-3">
                 <span className="text-sm font-bold text-gray-800">{t('cashdesk.osszesen')}</span>
                 <span className="text-lg font-bold text-blue-900">
-                  {denomTotal.toLocaleString('hu-HU')} Ft
+                  {denomTotal.toLocaleString('hu-HU')} {t('common.ft')}
                 </span>
               </div>
               {/* Comparison with system balance */}

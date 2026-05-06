@@ -157,7 +157,7 @@ export default function DariusReportPage() {
         <div className="grid grid-cols-3 gap-3">
           {/* Report list */}
           <div className="col-span-2 space-y-1">
-            {reports.length === 0 && <div className="text-gray-400 text-sm py-4 text-center">Nincs jelentés az időszakban</div>}
+            {reports.length === 0 && <div className="text-gray-400 text-sm py-4 text-center">{t('darius.nincsJelentesAzIdoszakban')}</div>}
             {reports.map(r => (
               <div key={r.id} role="button" tabIndex={0} onClick={() => setSelected(r)}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected(r) } }}
@@ -169,7 +169,7 @@ export default function DariusReportPage() {
                     <StatusBadge status={r.status} />
                   </div>
                   <div className="text-xs text-gray-500">
-                    {r.transactionCount} tx · {r.branchCount} iroda
+                    {r.transactionCount} {t('darius.tx')} {r.branchCount} {t('common.iroda')}
                   </div>
                 </div>
                 <div className="flex gap-4 mt-1 text-xs text-gray-500">
@@ -189,11 +189,11 @@ export default function DariusReportPage() {
                 <div className="text-xs space-y-1">
                   <div>{t('darius.statusz')}<StatusBadge status={selected.status} /></div>
                   <div>{t('darius.payloadHash')}<code className="text-[10px] bg-gray-100 px-1 rounded">{selected.payloadHash?.slice(0, 16)}...</code></div>
-                  {selected.approvedBy && <div>Jóváhagyta: {selected.approvedBy} ({formatDate(selected.approvedAt || '')})</div>}
-                  {selected.submittedBy && <div>Beküldte: {selected.submittedBy}</div>}
-                  {selected.ackReference && <div>ACK ref: {selected.ackReference}</div>}
-                  {selected.errorMessage && <div className="text-red-600">Hiba: {selected.errorMessage}</div>}
-                  {selected.retryCount > 0 && <div>Retry: {selected.retryCount}/{selected.maxRetries}</div>}
+                  {selected.approvedBy && <div>{t('camera.jovahagyta')} {selected.approvedBy} ({formatDate(selected.approvedAt || '')})</div>}
+                  {selected.submittedBy && <div>{t('darius.bekuldte')} {selected.submittedBy}</div>}
+                  {selected.ackReference && <div>{t('darius.ackRef')} {selected.ackReference}</div>}
+                  {selected.errorMessage && <div className="text-red-600">{t('foertektar.hiba')} {selected.errorMessage}</div>}
+                  {selected.retryCount > 0 && <div>{t('darius.retry')} {selected.retryCount}/{selected.maxRetries}</div>}
                 </div>
 
                 {/* Actions */}

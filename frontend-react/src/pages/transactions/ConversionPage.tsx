@@ -443,7 +443,7 @@ export default function ConversionPage() {
             <div className="text-center p-3 bg-white rounded border">
               <div className="text-sm text-gray-500 mb-1">{t('transactions.hufErtekKoztes')}</div>
               <div className="text-lg font-bold font-mono text-blue-600">
-                {formatInteger(hufAmount)} Ft
+                {formatInteger(hufAmount)} {t('common.ft')}
               </div>
             </div>
 

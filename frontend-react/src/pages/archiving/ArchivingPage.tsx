@@ -132,7 +132,7 @@ export default function ArchivingPage() {
           <div className="flex items-center gap-4 text-sm">
             {getStatusBadge(monthlyStatus.status)}
             <span>{t('archiving.archivalt')}{monthlyStatus.archivedCount}/{monthlyStatus.totalCount}</span>
-            {monthlyStatus.completedAt && <span className="text-gray-500">Befejezve: {new Date(monthlyStatus.completedAt).toLocaleString('hu-HU')}</span>}
+            {monthlyStatus.completedAt && <span className="text-gray-500">{t('archiving.befejezve')} {new Date(monthlyStatus.completedAt).toLocaleString('hu-HU')}</span>}
           </div>
         )}
       </div>

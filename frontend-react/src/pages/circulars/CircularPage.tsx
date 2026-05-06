@@ -375,6 +375,7 @@ function CreateCircularForm({
   }) => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation()
   const [formData, setFormData] = useState({
     title: '',
     circularType: 'CIRCULAR',
@@ -393,7 +394,7 @@ function CreateCircularForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div className="col-span-2">
-          <label className="block text-sm font-medium mb-1">Cím *</label>
+          <label className="block text-sm font-medium mb-1">{t('circulars.cim')}</label>
           <input
             type="text"
             value={formData.title}
@@ -403,35 +404,35 @@ function CreateCircularForm({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Típus *</label>
+          <label className="block text-sm font-medium mb-1">{t('circulars.tipus')}</label>
           <select
             value={formData.circularType}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, circularType: e.target.value })}
             className="w-full p-2 border rounded"
           >
-            <option value="CIRCULAR">Körlevél</option>
-            <option value="REGULATION">Szabályzat</option>
-            <option value="GUIDELINE">Irányelv</option>
-            <option value="NOTIFICATION">Értesítés</option>
+            <option value="CIRCULAR">{t('circulars.korlevel')}</option>
+            <option value="REGULATION">{t('circulars.szabalyzat')}</option>
+            <option value="GUIDELINE">{t('circulars.iranyelv')}</option>
+            <option value="NOTIFICATION">{t('circulars.ertesites')}</option>
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Kategória *</label>
+          <label className="block text-sm font-medium mb-1">{t('circulars.kategoria')}</label>
           <select
             value={formData.category}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, category: e.target.value })}
             className="w-full p-2 border rounded"
           >
-            <option value="COMPLIANCE">Megfelelőség</option>
-            <option value="OPERATIONAL">Működési</option>
+            <option value="COMPLIANCE">{t('circulars.megfeleloseg')}</option>
+            <option value="OPERATIONAL">{t('circulars.mukodesi')}</option>
             <option value="HR">HR</option>
-            <option value="SECURITY">Biztonság</option>
-            <option value="TECHNICAL">Technikai</option>
-            <option value="OTHER">Egyéb</option>
+            <option value="SECURITY">{t('circulars.biztonsag')}</option>
+            <option value="TECHNICAL">{t('circulars.technikai')}</option>
+            <option value="OTHER">{t('common.other')}</option>
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Hatályba lépés *</label>
+          <label className="block text-sm font-medium mb-1">{t('circulars.hatalybaLepes')}</label>
           <input
             type="date"
             value={formData.effectiveDate}
@@ -441,7 +442,7 @@ function CreateCircularForm({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Lejárat (opcionális)</label>
+          <label className="block text-sm font-medium mb-1">{t('circulars.lejaratOpcionalis')}</label>
           <input
             type="date"
             value={formData.expiryDate}
@@ -450,7 +451,7 @@ function CreateCircularForm({
           />
         </div>
         <div className="col-span-2">
-          <label className="block text-sm font-medium mb-1">Tartalom *</label>
+          <label className="block text-sm font-medium mb-1">{t('circulars.tartalom')}</label>
           <textarea
             value={formData.content}
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({ ...formData, content: e.target.value })}
@@ -467,13 +468,13 @@ function CreateCircularForm({
           onClick={onCancel}
           className="px-4 py-2 border rounded hover:bg-gray-50"
         >
-          Mégse
+          {t('common.cancel')}
         </button>
         <button
           type="submit"
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
-          Létrehozás
+          {t('common.create')}
         </button>
       </div>
     </form>
@@ -489,31 +490,32 @@ function CircularView({
   onAcknowledge: () => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation()
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-3 gap-4 text-sm">
         <div>
-          <label className="text-gray-500">Dokumentum szám</label>
+          <label className="text-gray-500">{t('circulars.dokumentumSzam')}</label>
           <p className="font-mono">{circular.circularNumber}</p>
         </div>
         <div>
-          <label className="text-gray-500">Típus</label>
+          <label className="text-gray-500">{t('cashier.receiptType')}</label>
           <p>{typeLabels[circular.circularType]}</p>
         </div>
         <div>
-          <label className="text-gray-500">Verzió</label>
+          <label className="text-gray-500">{t('circulars.verzio')}</label>
           <p>v{circular.version}</p>
         </div>
         <div>
-          <label className="text-gray-500">Kategória</label>
+          <label className="text-gray-500">{t('common.category')}</label>
           <p>{categoryLabels[circular.category]}</p>
         </div>
         <div>
-          <label className="text-gray-500">Hatályos</label>
+          <label className="text-gray-500">{t('circulars.hatalyos')}</label>
           <p>{new Date(circular.effectiveDate).toLocaleDateString('hu-HU')}</p>
         </div>
         <div>
-          <label className="text-gray-500">Státusz</label>
+          <label className="text-gray-500">{t('common.status')}</label>
           <span className={`px-2 py-1 text-xs text-white rounded ${statusColors[circular.status]}`}>
             {statusLabels[circular.status]}
           </span>
@@ -529,7 +531,7 @@ function CircularView({
           onClick={onClose}
           className="px-4 py-2 border rounded hover:bg-gray-50"
         >
-          Bezárás
+          {t('common.close')}
         </button>
         {circular.status === 'PUBLISHED' && (
           <button

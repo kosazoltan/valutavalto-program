@@ -220,7 +220,7 @@ export default function StornoPage() {
           <div>
             <label className="form-label">{t('stornos.hufOsszeg')}</label>
             <div className="form-input bg-gray-50 font-mono font-semibold">
-              {transaction.hufAmount?.toLocaleString('hu-HU')} Ft
+              {transaction.hufAmount?.toLocaleString('hu-HU')} {t('common.ft')}
             </div>
           </div>
           <div>

@@ -136,7 +136,7 @@ export default function AuditLogPage() {
           {t('audit.auditLogErzekenyMuveletek')}
         </h1>
         <span className="text-sm text-gray-500">
-          {t('audit.osszesen')}{totalElements} bejegyzés
+          {t('audit.osszesen')}{totalElements} {t('common.bejegyzes')}
         </span>
       </div>
 

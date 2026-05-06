@@ -99,7 +99,7 @@ export default function InventoryPage() {
             <div>
               <div className="text-sm text-primary-700 font-medium">{t('inventory.ertektariZaroHufKeszlet')}</div>
               <div className="text-2xl font-bold font-mono text-primary-900">
-                {totalHufClosing.toLocaleString('hu-HU', { maximumFractionDigits: 0 })} Ft
+                {totalHufClosing.toLocaleString('hu-HU', { maximumFractionDigits: 0 })} {t('common.ft')}
               </div>
             </div>
           </div>

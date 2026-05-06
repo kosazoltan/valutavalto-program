@@ -258,8 +258,8 @@ export default function TreasuryDashboard() {
           {closingStatuses.length > 0 && (
             <div className="text-xs text-secondary-600">
               <strong>{closedCount}/{closingStatuses.length}</strong>{t('treasury.zarva')}
-              {inProgressCount > 0 && <>, <strong>{inProgressCount}</strong> folyamatban</>}
-              {notClosedCount > 0 && <>, <strong>{notClosedCount}</strong> hiányzik</>}
+              {inProgressCount > 0 && <>, <strong>{inProgressCount}</strong> {t('treasury.folyamatban')}</>}
+              {notClosedCount > 0 && <>, <strong>{notClosedCount}</strong> {t('treasury.hianyzik')}</>}
             </div>
           )}
         </div>

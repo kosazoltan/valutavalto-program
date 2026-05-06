@@ -661,7 +661,7 @@ export default function CashierTransactionPage() {
           {mode === 'buy' ? 'VÉTEL' : 'ELADÁS'}
         </span>
         <span className="text-xs text-gray-500 dark:text-gray-400">
-          {t('transactions.max')}{MAX_LINES} valutasor | Tab/Enter = következő | Esc = sor törlés
+          {t('transactions.max')}{MAX_LINES} {t('transactions.valutasorTabEnter')}
         </span>
       </div>
 

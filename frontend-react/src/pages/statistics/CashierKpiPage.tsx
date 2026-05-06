@@ -227,7 +227,7 @@ export default function CashierKpiPage() {
                         <div className="text-xs text-secondary-500 uppercase tracking-wide">{t('statistics.legnagyobbForgalom')}</div>
                         <div className="text-xl font-bold text-secondary-900">{topWorkerByTurnover.workerName}</div>
                         <div className="text-sm text-secondary-600">
-                            {formatHuf(topWorkerByTurnover.totalHuf)} - {formatInt(topWorkerByTurnover.txCount)} tranzakció - átlag {formatHuf(topWorkerByTurnover.avgTxHuf)}
+                            {formatHuf(topWorkerByTurnover.totalHuf)} - {formatInt(topWorkerByTurnover.txCount)} {t('statistics.tranzakcioAtlag')} {formatHuf(topWorkerByTurnover.avgTxHuf)}
                         </div>
                     </div>
                 </div>

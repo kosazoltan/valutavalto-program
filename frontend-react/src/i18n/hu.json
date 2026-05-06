@@ -19,7 +19,8 @@
     "tranzakciok": "Tranzakciók",
     "ugyfelek": "Ügyfelek",
     "ujArchivalasiFeladat": "Új archiválási feladat",
-    "ujFeladat": "Új feladat"
+    "ujFeladat": "Új feladat",
+    "befejezve": "Befejezve:"
   },
   "attendance": {
     "bejelentkezesiEsKijelentkezesiNaploSajatVagyCsapattag": "Bejelentkezési és kijelentkezési napló — saját vagy csapattag.",
@@ -187,7 +188,12 @@
     "valasszonEgyKameratAListabol": "Válasszon egy kamerát a listából",
     "valasszonEgyKerelmet": "Válasszon egy kérelmet",
     "zaroDatum": "Záró dátum",
-    "hasznalat": "% használat"
+    "hasznalat": "% használat",
+    "lokalis": "(lokális)",
+    "manifestHash": "Manifest hash:",
+    "jovahagyta": "Jóváhagyta:",
+    "ref": "· Ref:",
+    "valasszonIrodatAzExportKerelmek": "Válasszon irodát az export kérelmek megtekintéséhez"
   },
   "cashdesk": {
     "aNapMarNyitvaVan": "A nap már nyitva van",
@@ -241,7 +247,9 @@
     "valutaKivalasztasa": "Valuta kiválasztása",
     "veg": "Vég",
     "vetelOsszesen": "Vétel összesen",
-    "kotelezoPontMegNincs": "kötelező pont még nincs kész"
+    "kotelezoPontMegNincs": "kötelező pont még nincs kész",
+    "max": "| Max:",
+    "megjegyzes": "Megjegyzés:"
   },
   "cashier": {
     "amount": "Összeg",
@@ -434,7 +442,26 @@
     "total": "Összesen",
     "type": "Típus",
     "warning": "Figyelem",
-    "yes": "Igen"
+    "yes": "Igen",
+    "ft": "Ft",
+    "sor": "sor",
+    "iroda": "iroda",
+    "bejegyzes": "bejegyzés",
+    "kesz": "kész",
+    "uj": "új",
+    "log": "log",
+    "oldal": "oldal",
+    "valuta": "valuta",
+    "talalat": "találat",
+    "szabad": "szabad",
+    "jogosultsag": "jogosultság",
+    "role": "role",
+    "permission": "permission",
+    "modified": "modified",
+    "kihagyva": "kihagyva.",
+    "valutaKitoltve": "valuta kitoltve",
+    "irodaKozul": "iroda közül.",
+    "nincs": "— nincs"
   },
   "company": {
     "engedelySzam": "Engedély szám",
@@ -587,7 +614,12 @@
     "visszaAzIranyitopultra": "Vissza az iranyitopultra",
     "workercodeEmail": "workerCode;email",
     "infoexcvalutacom": "info@excvaluta.com",
-    "db": "db"
+    "db": "db",
+    "sor": "sor",
+    "tovabbi": "...tovabbi",
+    "dolgozoEmailjeFrissitve": "dolgozo emailje frissitve,",
+    "id": "(ID:",
+    "kihagyva": "kihagyva."
   },
   "contributions": {
     "alapOsszeg": "Alap összeg",
@@ -659,7 +691,11 @@
     "vetelDb": "Vétel db",
     "vetelFt": "Vétel Ft",
     "visszaigazolt": "Visszaigazolt",
-    "hianyzoNap": "hiányzó nap:"
+    "hianyzoNap": "hiányzó nap:",
+    "ackRef": "ACK ref:",
+    "bekuldte": "Beküldte:",
+    "tx": "tx ·",
+    "nincsJelentesAzIdoszakban": "Nincs jelentés az időszakban"
   },
   "decade": {
     "3Dekad21hoVege": "3. dekád (21–hó vége)",
@@ -703,7 +739,9 @@
     "sorosPort": "Soros port",
     "tcpIp": "TCP/IP",
     "ujKijelzo": "Új kijelző",
-    "zaszloIkon": "Zászló ikon"
+    "zaszloIkon": "Zászló ikon",
+    "online": "Online",
+    "offline": "Offline"
   },
   "documents": {
     "dokumentumtar": "Dokumentumtár",
@@ -774,7 +812,8 @@
     "riasztas": "Riasztás",
     "sosem": "Sosem",
     "utolsoHeartbeat": "Utolsó heartbeat",
-    "penztar": "pénztár)"
+    "penztar": "pénztár)",
+    "utolso": "Utolsó:"
   },
   "handover": {
     "atadasDatuma": "Átadás dátuma",
@@ -784,7 +823,8 @@
     "kuldo": "Küldő",
     "kuldoPenztar": "Küldő pénztár",
     "lapszam": "Lapszám",
-    "ujAtadoLap": "Új átadó lap"
+    "ujAtadoLap": "Új átadó lap",
+    "helyiHandoverMuveletVar": "helyi handover művelet vár még szerveres visszaigazolásra."
   },
   "import": {
     "adatimport": "Adatimport",
@@ -809,7 +849,8 @@
     "penztariKeszletek": "Pénztári készletek",
     "sajatValutankent": "(saját, valutánként)",
     "zarokeszlet": "Zárókészlet",
-    "valuta": "valuta"
+    "valuta": "valuta",
+    "aktivTetel": "aktív tétel ·"
   },
   "layout": {
     "appName": "EBC Valutaváltó",
@@ -840,7 +881,10 @@
     "kulcs": "Kulcs:",
     "lejar": "Lejar:",
     "licencAktualis": "Licenc (aktuális)",
-    "nincsAktivLicenc": "Nincs aktiv licenc"
+    "nincsAktivLicenc": "Nincs aktiv licenc",
+    "maxDolgozo": "Max dolgozo:",
+    "maxPenztariEgyseg": "Max penztari egyseg:",
+    "hatralevoNapok": "Hatralevo napok:"
   },
   "logging": {
     "entitasId": "Entitás ID",
@@ -854,6 +898,7 @@
   },
   "misc": {
     "NincsTegnapiAdat": "— nincs tegnapi adat",
+    "szazalekTegnap": "% tegnap",
     "adminisztracio": "Adminisztráció",
     "aktualisArfolyamok": "Aktuális árfolyamok",
     "arfolyamModositas": "Árfolyam módosítás",
@@ -1029,7 +1074,8 @@
     "limit2VE": "Limit2 (V/E)",
     "nincs": "Nincs",
     "visszavon": "Visszavon",
-    "arfolyam": "árfolyam"
+    "arfolyam": "árfolyam",
+    "ujArfolyamotAzArfolyamKeszites": "Új árfolyamot az Árfolyam készítés menüpontban készíthetsz"
   },
   "ratemanagement": {
     "arfolyamKezeles": "Árfolyam kezelés",
@@ -1073,7 +1119,13 @@
     "visszavonas": "Visszavonas",
     "visszavonva": "Visszavonva",
     "iroda": "iroda",
-    "eladas": "| Eladás:"
+    "eladas": "| Eladás:",
+    "nincsElosztasRekord": "Nincs elosztás rekord",
+    "szerkesztes": "Szerkesztés",
+    "jovahagyas": "Jóváhagyás",
+    "aktivalas": "Aktiválás",
+    "elutasitas": "Elutasítás",
+    "valutaKitoltve": "valuta kitoltve"
   },
   "rates": {
     "arfolyamKategoriak": "Árfolyam kategóriák",
@@ -1123,7 +1175,8 @@
     "vmax": "Vmax",
     "mod": "mod.",
     "pt": "pt",
-    "irodaKivalasztva": "iroda kiválasztva"
+    "irodaKivalasztva": "iroda kiválasztva",
+    "nezet": "(nézet)"
   },
   "receipts": {
     "bizonylatReszletek": "Bizonylat részletek",
@@ -1194,7 +1247,8 @@
     "vetelOsszeg": "Vétel összeg",
     "vetelek": "Vételek",
     "bejelentes": "bejelentés",
-    "db": "db)"
+    "db": "db)",
+    "benyujtva": "Benyújtva:"
   },
   "representatives": {
     "barat": "Barát",
@@ -1280,7 +1334,8 @@
     "ujFrissitettBejegyzesek": "Uj/frissitett bejegyzesek:",
     "ujSzankciosListaImportXml": "Uj szankcios lista import (XML)",
     "utolsoFrissites": "Utolsó frissítés",
-    "scsanctionsunorg": "scsanctions.un.org"
+    "scsanctionsunorg": "scsanctions.un.org",
+    "alias": "Alias:"
   },
   "scheduler": {
     "feladat": "Feladat",
@@ -1376,7 +1431,10 @@
     "utolsoBelepes": "Utolsó belépés",
     "vilagos": "Világos",
     "visszaallitas": "Visszaállítás",
-    "zarolt": "Zárolt"
+    "zarolt": "Zárolt",
+    "permission": "permission,",
+    "role": "role",
+    "modified": "modified"
   },
   "setup": {
     "aBejelentkezettDolgozoMunkakoreAlapjanASzerverEllenorziHogyJogosultEErreAProgramTipusra": "A bejelentkezett dolgozó munkaköre alapján a szerver ellenőrzi, hogy jogosult-e erre a program-típusra.",
@@ -1410,7 +1468,9 @@
     "telepitesBefejezese": "Telepítés befejezése",
     "udvozoljukAValutaPenztarban": "Üdvözöljük a Valuta Pénztárban!",
     "valasszaKiAzIrodat": "Válassza ki az irodát",
-    "valutaPenztarElsoInditas": "Valuta Pénztár — Első indítás"
+    "valutaPenztarElsoInditas": "Valuta Pénztár — Első indítás",
+    "minimum8Karakter": "Minimum 8 karakter.",
+    "irodaKozul": "iroda közül."
   },
   "setupWizard": {
     "offlineModeActive": "Offline mód aktív. A telepítés szerver-szinkron nélkül halad — a tranzakciók csak helyileg tárolódnak. A Beállításokban később bekapcsolhatja a szinkront.",
@@ -1459,7 +1519,8 @@
     "penztarosokBontasa": "Pénztárosok bontása",
     "rendezes": "Rendezés:",
     "sztorno": "Sztornó %",
-    "tranzakcioSzam": "Tranzakció szám"
+    "tranzakcioSzam": "Tranzakció szám",
+    "tranzakcioAtlag": "tranzakció - átlag"
   },
   "stockSnapshot": {
     "branchHeader": "Pénztár",
@@ -1574,7 +1635,8 @@
     "szinkronizalva": "Szinkronizálva",
     "transfer": "Transfer",
     "transferQueue": "Transfer queue",
-    "utolsoSzinkron": "Utolsó szinkron"
+    "utolsoSzinkron": "Utolsó szinkron",
+    "feltoltes": "Feltöltés"
   },
   "transactions": {
     "100000FtAlatt": "100.000 Ft alatt",
@@ -1685,7 +1747,9 @@
     "valutaKonverzio": "Valuta konverzió",
     "vetel": "VÉTEL",
     "veteliArfolyam": "Vételi árfolyam:",
-    "vezetoiEngedely": "Vezetoi engedely"
+    "vezetoiEngedely": "Vezetoi engedely",
+    "tranzakcio": "tranzakció",
+    "valutasorTabEnter": "valutasor | Tab/Enter = következő | Esc = sor törlés"
   },
   "transferReceipts": {
     "amount": "Összeg",
@@ -1749,7 +1813,6 @@
     "Elerheto": "✅ Elérhető",
     "Fuggo": "📥 Függő:",
     "JovahagyvaMa": "✅ Jóváhagyva (ma):",
-    "Kerte": "| Kérte:",
     "KritikusKritikus": "🔴 Kritikus (≤ kritikus)",
     "NormalgtKuszob": "🟢 Normál (&gt; küszöb)",
     "aSpreadArfolyamMarginEladasiArfolyamVeteliArfolyamATablazatCsakOlvashato": "A spread (árfolyam margin) = eladási árfolyam − vételi árfolyam. A táblázat csak olvasható",
@@ -1888,7 +1951,11 @@
     "workflowLepesek": "Workflow lepesek",
     "zarasiAllapotMa": "Zárási állapot (ma)",
     "zarva": "zárva",
-    "sztornozasa": "sztornózása?"
+    "sztornozasa": "sztornózása?",
+    "targynapra": "(tárgynapra:",
+    "hianyzik": "hiányzik",
+    "folyamatban": "folyamatban",
+    "irodaZarojelben": "iroda)"
   },
   "validation": {
     "invalid": "Érvénytelen érték",
@@ -1956,8 +2023,5 @@
     "macCim": "MAC cím",
     "munkaallomasok": "Munkaállomások",
     "ujMunkaallomas": "Új munkaállomás"
-  },
-  "DashboardPage.tsx": {
-    "tegnap": "% tegnap"
   }
 }

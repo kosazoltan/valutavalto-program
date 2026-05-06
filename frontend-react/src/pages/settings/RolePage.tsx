@@ -534,7 +534,7 @@ export default function RolePage() {
                       className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
                     >
                       <Shield size={14} />
-                      {role.permissions?.length || 0} jogosultság
+                      {role.permissions?.length || 0} {t('common.jogosultsag')}
                     </button>
                   </td>
                   <td>

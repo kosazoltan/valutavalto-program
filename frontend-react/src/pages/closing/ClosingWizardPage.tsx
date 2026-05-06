@@ -273,7 +273,7 @@ export default function ClosingWizardPage() {
             <h1 className="text-lg font-bold text-gray-900 dark:text-white">{t('closing.napzarasWizard')}</h1>
           </div>
           <span className="text-xs font-semibold bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">
-            {completedCount} / {steps.length} kész
+            {completedCount} / {steps.length} {t('common.kesz')}
           </span>
         </div>
 
@@ -356,7 +356,7 @@ export default function ClosingWizardPage() {
                 <div className="mt-1 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-1">
                   <span className="text-sm font-bold text-gray-800 dark:text-gray-200">{t('cashdesk.osszesen')}</span>
                   <span className="text-base font-bold text-blue-900 dark:text-blue-300">
-                    {denomTotal.toLocaleString('hu-HU')} Ft
+                    {denomTotal.toLocaleString('hu-HU')} {t('common.ft')}
                   </span>
                 </div>
                 <button
@@ -371,7 +371,7 @@ export default function ClosingWizardPage() {
               <div className="flex items-center gap-2 rounded bg-green-50 dark:bg-green-900/20 p-2">
                 <Check className="h-4 w-4 text-green-600" />
                 <span className="text-xs font-medium text-green-800 dark:text-green-300">
-                  {t('closing.cimletezesRogzitve')}{denomTotal.toLocaleString('hu-HU')} Ft
+                  {t('closing.cimletezesRogzitve')}{denomTotal.toLocaleString('hu-HU')} {t('common.ft')}
                 </span>
               </div>
             )}

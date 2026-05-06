@@ -227,6 +227,7 @@ function AttendanceList({
     onRefresh: () => void
     showWorkerName: boolean
 }) {
+    const { t } = useTranslation()
     const totalMinutes = useMemo(() => {
         return entries.reduce((sum, e) => sum + calculateDuration(e), 0)
     }, [entries])
@@ -266,7 +267,7 @@ function AttendanceList({
             <div className="flex justify-end">
                 <button onClick={onRefresh} className="form-button text-xs">
                     <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
-                    <span>Frissítés</span>
+                    <span>{t('common.refresh')}</span>
                 </button>
             </div>
 
@@ -275,11 +276,11 @@ function AttendanceList({
                 <table className="data-grid w-full">
                     <thead>
                         <tr>
-                            {showWorkerName && <th>Pénztáros</th>}
-                            <th>Bejelentkezés</th>
-                            <th>Kijelentkezés</th>
-                            <th className="text-right">Időtartam</th>
-                            <th>Iroda</th>
+                            {showWorkerName && <th>{t('components.penztaros')}</th>}
+                            <th>{t('auth.login')}</th>
+                            <th>{t('auth.logout')}</th>
+                            <th className="text-right">{t('attendance.idotartam')}</th>
+                            <th>{t('branch.branchName')}</th>
                             <th>IP</th>
                         </tr>
                     </thead>

@@ -167,7 +167,7 @@ export default function RateMasterWorkflowPage() {
                 <div className="text-center text-slate-400 py-16">
                     <FileText className="w-12 h-12 mx-auto mb-3 opacity-40" />
                     <p className="text-lg">{t('rate-management.nincs')}{STATUS_LABELS[activeTab].toLowerCase()} {t('rate-management.arfolyam')}</p>
-                    {activeTab === 'DRAFT' && <p className="text-sm mt-1">Új árfolyamot az Árfolyam készítés menüpontban készíthetsz</p>}
+                    {activeTab === 'DRAFT' && <p className="text-sm mt-1">{t('rate-management.ujArfolyamotAzArfolyamKeszites')}</p>}
                 </div>
             )}
 
@@ -257,7 +257,7 @@ export default function RateMasterWorkflowPage() {
                                             <td colSpan={9} className="bg-slate-50 px-4 py-3">
                                                 <div className="text-xs font-medium text-slate-700 mb-2">{t('rate-management.elosztasStatusz')}{dists?.length ?? 0} {t('foertektar.penztar')}</div>
                                                 {!dists && <div className="text-slate-500">Betöltés...</div>}
-                                                {dists && dists.length === 0 && <div className="text-slate-500">Nincs elosztás rekord</div>}
+                                                {dists && dists.length === 0 && <div className="text-slate-500">{t('ratemanagement.nincsElosztasRekord')}</div>}
                                                 {dists && dists.length > 0 && (
                                                     <div className="grid grid-cols-4 gap-2">
                                                         {dists.map((d) => (

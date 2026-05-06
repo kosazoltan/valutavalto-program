@@ -105,14 +105,14 @@ W014517;barabas.marietta@ebc.hu`}
             <div className="p-3 bg-green-50 border border-green-200 rounded text-sm">
               <div className="flex items-center gap-2 font-semibold text-green-700 mb-1">
                 <Check size={16} />
-                {t('components.siker')}{result.updated} dolgozo emailje frissitve, {result.skipped} kihagyva.
+                {t('components.siker')}{result.updated} {t('components.dolgozoEmailjeFrissitve')} {result.skipped} {t('components.kihagyva')}
               </div>
               {result.errors.length > 0 && (
                 <div className="mt-2 max-h-40 overflow-y-auto text-xs text-red-600">
                   <b>{t('components.hibak')}{result.errors.length}):</b>
                   <ul className="list-disc list-inside">
                     {result.errors.slice(0, 20).map((e, i) => <li key={i}>{e}</li>)}
-                    {result.errors.length > 20 && <li>...tovabbi {result.errors.length - 20} sor</li>}
+                    {result.errors.length > 20 && <li>{t('components.tovabbi')} {result.errors.length - 20} {t('components.sor')}</li>}
                   </ul>
                 </div>
               )}
