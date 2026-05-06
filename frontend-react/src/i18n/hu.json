@@ -1250,7 +1250,120 @@
     "vetelek": "Vételek",
     "bejelentes": "bejelentés",
     "db": "db)",
-    "benyujtva": "Benyújtva:"
+    "benyujtva": "Benyújtva:",
+    "handlingFeeDecade": {
+      "title": "Kezelési díj — dekád riport",
+      "warning": "A készpénz / bankkártya bontás jelenleg NEM elérhető (paymentMethod mező nem szerepel a HandlingFeeTransactionDto-ban). TODO: backend bővítés szükséges. A táblázat dekádonkénti összesítést mutat.",
+      "from": "Tól",
+      "to": "Ig",
+      "branch": "Iroda",
+      "branchPlaceholder": "— Válasszon irodát —",
+      "loading": "Betöltés...",
+      "submit": "Lekérdezés",
+      "summary": {
+        "period": "Időszak",
+        "transactions": "Tranzakciók",
+        "grossFee": "Bruttó díj",
+        "discount": "Kedvezmény",
+        "netFee": "Nettó díj"
+      },
+      "decadeBreakdown": "Dekádonkénti bontás",
+      "table": {
+        "decade": "Dekád",
+        "transactions": "Tranzakciók",
+        "grossFee": "Bruttó díj",
+        "discount": "Kedvezmény",
+        "netFee": "Nettó díj",
+        "noData": "Nincs adat a kiválasztott időszakra."
+      },
+      "emptyState": "Adja meg a szűrőfeltételeket és nyomja meg a Lekérdezés gombot.",
+      "errors": {
+        "noBranch": "Válasszon irodát!",
+        "noDateRange": "Add meg a dátum-tartományt!"
+      }
+    },
+    "bankTransactions": {
+      "title": "Banki tranzakciók riport",
+      "from": "Tól",
+      "to": "Ig",
+      "direction": "Irány",
+      "directionAll": "Mind",
+      "directionIn": "ATVETT (bank → értéktár)",
+      "directionOut": "ATADOTT (értéktár → bank)",
+      "branch": "Iroda (értéktár)",
+      "branchAll": "— Mind —",
+      "submit": "Lekérdezés",
+      "loading": "Betöltés...",
+      "activeFilter": "Aktív szűrő: {{label}} · {{count}} találat",
+      "currencySummary": "Valutánkénti összegzés",
+      "currencyTable": {
+        "currency": "Valuta",
+        "transactions": "Tranzakciók",
+        "amount": "Összeg (deviza)",
+        "hufValue": "HUF érték"
+      },
+      "transactions": "Tranzakciók",
+      "table": {
+        "date": "Dátum",
+        "direction": "Irány",
+        "currency": "Valuta",
+        "amount": "Mennyiség",
+        "rate": "Árfolyam",
+        "huf": "HUF",
+        "bank": "Bank",
+        "ref": "Ref.",
+        "vault": "Értéktár",
+        "note": "Megjegyzés",
+        "noResults": "Nincs találat a szűrőfeltételekre.",
+        "loading": "Betöltés...",
+        "atvett": "ATVETT",
+        "atadott": "ATADOTT"
+      }
+    },
+    "cashierTurnover": {
+      "title": "Pénztáros forgalmi riport",
+      "warning": "A valuta-bontás (vétel / eladás per valuta per pénztáros) jelenleg nem szerepel a backend WorkerPerformanceReport DTO-ban. Az aggregát adatok láthatók (összes vétel / eladás HUF). TODO(backend): worker x currency aggregátor endpoint.",
+      "from": "Tól",
+      "to": "Ig",
+      "workerLabel": "Pénztáros (üres = mind)",
+      "workerAll": "— Mind ({{count}}) —",
+      "submit": "Lekérdezés",
+      "loading": "Betöltés...",
+      "summary": {
+        "cashiers": "Pénztárosok",
+        "totalTransactions": "Összes tranzakció",
+        "buyCount": "Vétel db",
+        "sellCount": "Eladás db",
+        "handlingFee": "Kezelési díj",
+        "totalTurnover": "Összforgalom"
+      },
+      "perWorkerBreakdown": "Pénztárosonkénti bontás",
+      "table": {
+        "cashier": "Pénztáros",
+        "transactions": "Tranzakciók",
+        "buyHuf": "Vétel HUF",
+        "sellHuf": "Eladás HUF",
+        "turnoverHuf": "Forgalom HUF",
+        "handlingFee": "Kezelési díj",
+        "total": "ÖSSZESEN",
+        "expand": "Kibontás",
+        "collapse": "Összecsukás"
+      },
+      "details": {
+        "buyCount": "Vétel db",
+        "sellCount": "Eladás db",
+        "averageDailyTransactions": "Átlag napi tranz.",
+        "period": "Időszak",
+        "noData": "Nincs adat.",
+        "errorPrefix": "Hiba a lekérdezésnél: {{error}}"
+      },
+      "emptyState": "Adja meg a szűrőfeltételeket és nyomja meg a Lekérdezés gombot.",
+      "errors": {
+        "noDateRange": "Add meg a dátum-tartományt!",
+        "noActiveCashier": "Nincs aktív pénztáros a kiválasztott szűrőre.",
+        "csvSelectOne": "Egy pénztáros CSV exporthoz válasszon ki egyet a szűrőben."
+      }
+    }
   },
   "representatives": {
     "barat": "Barát",

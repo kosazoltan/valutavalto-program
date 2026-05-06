@@ -78,7 +78,7 @@ export default function CashierTurnoverReportPage() {
 
   const handleQuery = useCallback(async () => {
     if (!from || !to) {
-      setError('Add meg a dátum-tartományt!')
+      setError(t('reports.cashierTurnover.errors.noDateRange'))
       return
     }
     setLoading(true)
@@ -89,7 +89,7 @@ export default function CashierTurnoverReportPage() {
         : workers.filter((w) => w.id === workerFilter)
       if (targets.length === 0) {
         setRows([])
-        setError('Nincs aktív pénztáros a kiválasztott szűrőre.')
+        setError(t('reports.cashierTurnover.errors.noActiveCashier'))
         return
       }
       const results = await Promise.all(
@@ -113,7 +113,7 @@ export default function CashierTurnoverReportPage() {
     } finally {
       setLoading(false)
     }
-  }, [from, to, workerFilter, workers])
+  }, [from, to, workerFilter, workers, t])
 
   const totals = useMemo(() => {
     let totalTransactions = 0
@@ -153,7 +153,7 @@ export default function CashierTurnoverReportPage() {
 
   const handleDownloadCsv = useCallback(async () => {
     if (workerFilter === '') {
-      setError('Egy pénztáros CSV exporthoz válasszon ki egyet a szűrőben.')
+      setError(t('reports.cashierTurnover.errors.csvSelectOne'))
       return
     }
     setError(null)
@@ -175,24 +175,20 @@ export default function CashierTurnoverReportPage() {
       logger.error('CashierTurnoverReportPage', 'CSV export hiba:', err)
       setError(getErrorMessage(err))
     }
-  }, [workerFilter, from, to])
+  }, [workerFilter, from, to, t])
 
   return (
     <div className="form-panel space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="form-title flex items-center gap-2">
           <Users className="h-6 w-6" />
-          {t('reports.cashierTurnoverTitle', { defaultValue: 'Pénztáros forgalmi riport' })}
+          {t('reports.cashierTurnover.title')}
         </h1>
       </div>
 
       <div className="bg-yellow-50 border border-yellow-200 rounded p-2 text-yellow-800 text-xs flex items-start gap-2">
         <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-        <span>
-          A valuta-bontás (vétel / eladás per valuta per pénztáros) jelenleg nem szerepel a
-          backend WorkerPerformanceReport DTO-ban. Az aggregát adatok láthatók (összes vétel /
-          eladás HUF). TODO(backend): worker x currency aggregátor endpoint.
-        </span>
+        <span>{t('reports.cashierTurnover.warning')}</span>
       </div>
 
       {error && (
@@ -204,7 +200,7 @@ export default function CashierTurnoverReportPage() {
 
       <div className="bg-white rounded shadow p-4 grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
         <div>
-          <label className="block text-xs text-gray-500 mb-1" htmlFor="ct-from">Tól</label>
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="ct-from">{t('reports.cashierTurnover.from')}</label>
           <input
             id="ct-from"
             type="date"
@@ -214,7 +210,7 @@ export default function CashierTurnoverReportPage() {
           />
         </div>
         <div>
-          <label className="block text-xs text-gray-500 mb-1" htmlFor="ct-to">Ig</label>
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="ct-to">{t('reports.cashierTurnover.to')}</label>
           <input
             id="ct-to"
             type="date"
@@ -224,14 +220,14 @@ export default function CashierTurnoverReportPage() {
           />
         </div>
         <div className="md:col-span-2">
-          <label className="block text-xs text-gray-500 mb-1" htmlFor="ct-worker">Pénztáros (üres = mind)</label>
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="ct-worker">{t('reports.cashierTurnover.workerLabel')}</label>
           <select
             id="ct-worker"
             value={workerFilter === '' ? '' : String(workerFilter)}
             onChange={(e) => setWorkerFilter(e.target.value === '' ? '' : Number(e.target.value))}
             className="form-input w-full text-sm"
           >
-            <option value="">— Mind ({workers.length}) —</option>
+            <option value="">{t('reports.cashierTurnover.workerAll', { count: workers.length })}</option>
             {workers.map((w) => (
               <option key={w.id} value={w.id}>
                 {w.workerCode ?? w.id} - {w.fullName}
@@ -248,7 +244,7 @@ export default function CashierTurnoverReportPage() {
             className="form-button-primary flex items-center gap-2"
           >
             <Search className="h-4 w-4" />
-            {loading ? 'Betöltés...' : 'Lekérdezés'}
+            {loading ? t('reports.cashierTurnover.loading') : t('reports.cashierTurnover.submit')}
           </button>
           <button
             type="button"
@@ -264,34 +260,34 @@ export default function CashierTurnoverReportPage() {
       </div>
 
       {loading && (
-        <div className="text-center text-sm text-gray-500 py-8">Betöltés...</div>
+        <div className="text-center text-sm text-gray-500 py-8">{t('reports.cashierTurnover.loading')}</div>
       )}
 
       {!loading && rows.length > 0 && (
         <>
           <div className="bg-white rounded shadow p-4 grid grid-cols-2 md:grid-cols-6 gap-3 text-sm">
             <div>
-              <div className="text-gray-500 text-xs">Pénztárosok</div>
+              <div className="text-gray-500 text-xs">{t('reports.cashierTurnover.summary.cashiers')}</div>
               <div className="font-semibold">{rows.length}</div>
             </div>
             <div>
-              <div className="text-gray-500 text-xs">Összes tranzakció</div>
+              <div className="text-gray-500 text-xs">{t('reports.cashierTurnover.summary.totalTransactions')}</div>
               <div className="font-semibold">{totals.totalTransactions}</div>
             </div>
             <div>
-              <div className="text-gray-500 text-xs">Vétel db</div>
+              <div className="text-gray-500 text-xs">{t('reports.cashierTurnover.summary.buyCount')}</div>
               <div className="font-semibold">{totals.buyCount}</div>
             </div>
             <div>
-              <div className="text-gray-500 text-xs">Eladás db</div>
+              <div className="text-gray-500 text-xs">{t('reports.cashierTurnover.summary.sellCount')}</div>
               <div className="font-semibold">{totals.sellCount}</div>
             </div>
             <div>
-              <div className="text-gray-500 text-xs">Kezelési díj</div>
+              <div className="text-gray-500 text-xs">{t('reports.cashierTurnover.summary.handlingFee')}</div>
               <div className="font-mono font-semibold">{formatHuf(totals.totalHandlingFees)}</div>
             </div>
             <div>
-              <div className="text-gray-500 text-xs">Összforgalom</div>
+              <div className="text-gray-500 text-xs">{t('reports.cashierTurnover.summary.totalTurnover')}</div>
               <div className="font-mono font-semibold text-green-700">
                 {formatHuf(totals.totalTurnoverHuf)}
               </div>
@@ -300,18 +296,18 @@ export default function CashierTurnoverReportPage() {
 
           <div className="bg-white rounded shadow">
             <div className="bg-gray-50 px-4 py-2 border-b">
-              <h2 className="font-semibold">Pénztárosonkénti bontás</h2>
+              <h2 className="font-semibold">{t('reports.cashierTurnover.perWorkerBreakdown')}</h2>
             </div>
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-3 py-2 w-8"></th>
-                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Pénztáros</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Tranzakciók</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Vétel HUF</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Eladás HUF</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Forgalom HUF</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Kezelési díj</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('reports.cashierTurnover.table.cashier')}</th>
+                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.cashierTurnover.table.transactions')}</th>
+                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.cashierTurnover.table.buyHuf')}</th>
+                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.cashierTurnover.table.sellHuf')}</th>
+                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.cashierTurnover.table.turnoverHuf')}</th>
+                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.cashierTurnover.table.handlingFee')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -326,7 +322,7 @@ export default function CashierTurnoverReportPage() {
                             onClick={() => toggleExpand(row.worker.id)}
                             className="text-gray-500 hover:text-gray-700"
                             aria-expanded={isOpen}
-                            aria-label={isOpen ? 'Összecsukás' : 'Kibontás'}
+                            aria-label={isOpen ? t('reports.cashierTurnover.table.collapse') : t('reports.cashierTurnover.table.expand')}
                           >
                             {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                           </button>
@@ -360,32 +356,32 @@ export default function CashierTurnoverReportPage() {
                         <tr key={`detail-${row.worker.id}`}>
                           <td colSpan={7} className="px-6 py-3 bg-gray-50 text-xs">
                             {row.error ? (
-                              <div className="text-red-700">Hiba a lekérdezésnél: {row.error}</div>
+                              <div className="text-red-700">{t('reports.cashierTurnover.details.errorPrefix', { error: row.error })}</div>
                             ) : row.report ? (
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                                 <div>
-                                  <div className="text-gray-500">Vétel db</div>
+                                  <div className="text-gray-500">{t('reports.cashierTurnover.details.buyCount')}</div>
                                   <div className="font-mono">{row.report.totalBuyCount}</div>
                                 </div>
                                 <div>
-                                  <div className="text-gray-500">Eladás db</div>
+                                  <div className="text-gray-500">{t('reports.cashierTurnover.details.sellCount')}</div>
                                   <div className="font-mono">{row.report.totalSellCount}</div>
                                 </div>
                                 <div>
-                                  <div className="text-gray-500">Átlag napi tranz.</div>
+                                  <div className="text-gray-500">{t('reports.cashierTurnover.details.averageDailyTransactions')}</div>
                                   <div className="font-mono">
                                     {row.report.averageDailyTransactions?.toFixed(2) ?? '-'}
                                   </div>
                                 </div>
                                 <div>
-                                  <div className="text-gray-500">Időszak</div>
+                                  <div className="text-gray-500">{t('reports.cashierTurnover.details.period')}</div>
                                   <div className="font-mono">
                                     {row.report.startDate} - {row.report.endDate}
                                   </div>
                                 </div>
                               </div>
                             ) : (
-                              <div className="text-gray-500">Nincs adat.</div>
+                              <div className="text-gray-500">{t('reports.cashierTurnover.details.noData')}</div>
                             )}
                           </td>
                         </tr>
@@ -395,7 +391,7 @@ export default function CashierTurnoverReportPage() {
                 })}
                 <tr className="bg-gray-100 font-semibold">
                   <td className="px-3 py-2"></td>
-                  <td className="px-3 py-2 text-sm">ÖSSZESEN</td>
+                  <td className="px-3 py-2 text-sm">{t('reports.cashierTurnover.table.total')}</td>
                   <td className="px-3 py-2 text-right text-sm font-mono">{totals.totalTransactions}</td>
                   <td className="px-3 py-2 text-right text-sm font-mono">{formatHuf(totals.totalBuyHuf)}</td>
                   <td className="px-3 py-2 text-right text-sm font-mono">{formatHuf(totals.totalSellHuf)}</td>
@@ -412,7 +408,7 @@ export default function CashierTurnoverReportPage() {
 
       {!loading && rows.length === 0 && (
         <div className="text-center text-sm text-gray-500 py-8">
-          Adja meg a szűrőfeltételeket és nyomja meg a Lekérdezés gombot.
+          {t('reports.cashierTurnover.emptyState')}
         </div>
       )}
     </div>

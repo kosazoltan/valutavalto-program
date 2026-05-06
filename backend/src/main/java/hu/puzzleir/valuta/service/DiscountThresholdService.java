@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 import java.util.Optional;
 
 /**
@@ -114,11 +115,14 @@ public class DiscountThresholdService {
     }
 
     /**
-     * Összes aktív kedvezmény listázása.
+     * Összes aktív kedvezmény listázása. F2 (V189): csak az aktuális cég.
      */
     public List<FeeDiscount> listActiveDiscounts() {
-        return feeDiscountRepository.findAll().stream()
-                .filter(d -> d.getIsActive() != null && d.getIsActive())
+        UUID companyId = SecurityUtils.getCurrentCompanyIdOrNull();
+        if (companyId == null) {
+            return List.of();
+        }
+        return feeDiscountRepository.findByCompanyIdAndIsActiveTrue(companyId).stream()
                 .filter(d -> d.getValidTo() == null || !d.getValidTo().isBefore(LocalDate.now()))
                 .toList();
     }
@@ -133,7 +137,17 @@ public class DiscountThresholdService {
         }
     }
 
+    /**
+     * F2 cross-tenant fix (V189, 2026-05-06): a discount lookup most cég-szinten
+     * szűri a `fee_discount` táblát. A SecurityUtils.getCurrentCompanyId()
+     * visszaadja a JWT-ből a worker cégét.
+     */
     private Optional<FeeDiscount> findActiveDiscount(String paramKey, String defaultCode) {
+        UUID companyId = SecurityUtils.getCurrentCompanyIdOrNull();
+        if (companyId == null) {
+            return Optional.empty();
+        }
+
         String resolvedCode;
         try {
             resolvedCode = systemParameterService.getValue(paramKey);
@@ -142,10 +156,8 @@ public class DiscountThresholdService {
         }
         final String code = resolvedCode;
 
-        return feeDiscountRepository.findAll().stream()
-                .filter(d -> code.equals(d.getCode()))
+        return feeDiscountRepository.findByCompanyIdAndCode(companyId, code)
                 .filter(d -> d.getIsActive() != null && d.getIsActive())
-                .filter(d -> d.getValidTo() == null || !d.getValidTo().isBefore(LocalDate.now()))
-                .findFirst();
+                .filter(d -> d.getValidTo() == null || !d.getValidTo().isBefore(LocalDate.now()));
     }
 }

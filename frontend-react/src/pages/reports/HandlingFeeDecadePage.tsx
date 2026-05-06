@@ -117,11 +117,11 @@ export default function HandlingFeeDecadePage() {
 
   const handleQuery = useCallback(async () => {
     if (!branchId) {
-      setError('Válasszon irodát!')
+      setError(t('reports.handlingFeeDecade.errors.noBranch'))
       return
     }
     if (!from || !to) {
-      setError('Add meg a dátum-tartományt!')
+      setError(t('reports.handlingFeeDecade.errors.noDateRange'))
       return
     }
     setLoading(true)
@@ -139,7 +139,7 @@ export default function HandlingFeeDecadePage() {
     } finally {
       setLoading(false)
     }
-  }, [branchId, from, to])
+  }, [branchId, from, to, t])
 
   const decadeRows: DecadeRow[] = useMemo(() => {
     if (!report?.items) return []
@@ -199,17 +199,13 @@ export default function HandlingFeeDecadePage() {
       <div className="flex items-center justify-between">
         <h1 className="form-title flex items-center gap-2">
           <FileText className="h-6 w-6" />
-          {t('reports.handlingFeeDecadeTitle', { defaultValue: 'Kezelési díj — dekád riport' })}
+          {t('reports.handlingFeeDecade.title')}
         </h1>
       </div>
 
       <div className="bg-yellow-50 border border-yellow-200 rounded p-2 text-yellow-800 text-xs flex items-start gap-2">
         <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-        <span>
-          A készpénz / bankkártya bontás jelenleg NEM elérhető (paymentMethod mező nem szerepel a
-          HandlingFeeTransactionDto-ban). TODO: backend bővítés szükséges. A táblázat
-          dekádonkénti összesítést mutat.
-        </span>
+        <span>{t('reports.handlingFeeDecade.warning')}</span>
       </div>
 
       {error && (
@@ -221,7 +217,7 @@ export default function HandlingFeeDecadePage() {
 
       <div className="bg-white rounded shadow p-4 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
         <div>
-          <label className="block text-xs text-gray-500 mb-1" htmlFor="hf-from">Tól</label>
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="hf-from">{t('reports.handlingFeeDecade.from')}</label>
           <input
             id="hf-from"
             type="date"
@@ -231,7 +227,7 @@ export default function HandlingFeeDecadePage() {
           />
         </div>
         <div>
-          <label className="block text-xs text-gray-500 mb-1" htmlFor="hf-to">Ig</label>
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="hf-to">{t('reports.handlingFeeDecade.to')}</label>
           <input
             id="hf-to"
             type="date"
@@ -241,14 +237,14 @@ export default function HandlingFeeDecadePage() {
           />
         </div>
         <div>
-          <label className="block text-xs text-gray-500 mb-1" htmlFor="hf-branch">Iroda</label>
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="hf-branch">{t('reports.handlingFeeDecade.branch')}</label>
           <select
             id="hf-branch"
             value={branchId}
             onChange={(e) => setBranchId(e.target.value)}
             className="form-input w-full text-sm"
           >
-            <option value="">— Válasszon irodát —</option>
+            <option value="">{t('reports.handlingFeeDecade.branchPlaceholder')}</option>
             {branches.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.code} - {b.name}
@@ -264,7 +260,7 @@ export default function HandlingFeeDecadePage() {
             className="form-button-primary flex items-center gap-2"
           >
             <Search className="h-4 w-4" />
-            {loading ? 'Betöltés...' : 'Lekérdezés'}
+            {loading ? t('reports.handlingFeeDecade.loading') : t('reports.handlingFeeDecade.submit')}
           </button>
           <button
             type="button"
@@ -280,32 +276,32 @@ export default function HandlingFeeDecadePage() {
       </div>
 
       {loading && (
-        <div className="text-center text-sm text-gray-500 py-8">Betöltés...</div>
+        <div className="text-center text-sm text-gray-500 py-8">{t('reports.handlingFeeDecade.loading')}</div>
       )}
 
       {!loading && report && (
         <div className="space-y-4">
           <div className="bg-white rounded shadow p-4 grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
             <div>
-              <div className="text-gray-500 text-xs">Időszak</div>
+              <div className="text-gray-500 text-xs">{t('reports.handlingFeeDecade.summary.period')}</div>
               <div className="font-semibold">
                 {report.dateFrom} - {report.dateTo}
               </div>
             </div>
             <div>
-              <div className="text-gray-500 text-xs">Tranzakciók</div>
+              <div className="text-gray-500 text-xs">{t('reports.handlingFeeDecade.summary.transactions')}</div>
               <div className="font-semibold">{report.transactionCount ?? 0}</div>
             </div>
             <div>
-              <div className="text-gray-500 text-xs">Bruttó díj</div>
+              <div className="text-gray-500 text-xs">{t('reports.handlingFeeDecade.summary.grossFee')}</div>
               <div className="font-mono font-semibold">{formatHuf(toNum(report.totalGrossFee))}</div>
             </div>
             <div>
-              <div className="text-gray-500 text-xs">Kedvezmény</div>
+              <div className="text-gray-500 text-xs">{t('reports.handlingFeeDecade.summary.discount')}</div>
               <div className="font-mono font-semibold">{formatHuf(toNum(report.totalDiscount))}</div>
             </div>
             <div>
-              <div className="text-gray-500 text-xs">Nettó díj</div>
+              <div className="text-gray-500 text-xs">{t('reports.handlingFeeDecade.summary.netFee')}</div>
               <div className="font-mono font-semibold text-green-700">
                 {formatHuf(toNum(report.totalNetFee))}
               </div>
@@ -314,23 +310,23 @@ export default function HandlingFeeDecadePage() {
 
           <div className="bg-white rounded shadow">
             <div className="bg-gray-50 px-4 py-2 border-b">
-              <h2 className="font-semibold">Dekádonkénti bontás</h2>
+              <h2 className="font-semibold">{t('reports.handlingFeeDecade.decadeBreakdown')}</h2>
             </div>
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Dekád</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">Tranzakciók</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">Bruttó díj</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">Kedvezmény</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">Nettó díj</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.decade')}</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.transactions')}</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.grossFee')}</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.discount')}</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.netFee')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {decadeRows.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-4 py-4 text-center text-sm text-gray-500">
-                      Nincs adat a kiválasztott időszakra.
+                      {t('reports.handlingFeeDecade.table.noData')}
                     </td>
                   </tr>
                 )}
@@ -353,7 +349,7 @@ export default function HandlingFeeDecadePage() {
 
       {!loading && !report && (
         <div className="text-center text-sm text-gray-500 py-8">
-          Adja meg a szűrőfeltételeket és nyomja meg a Lekérdezés gombot.
+          {t('reports.handlingFeeDecade.emptyState')}
         </div>
       )}
     </div>

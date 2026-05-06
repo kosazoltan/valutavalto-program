@@ -1,11 +1,14 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.FeeDiscount;
 import hu.puzzleir.valuta.entity.FeeRate;
 import hu.puzzleir.valuta.entity.FeeType;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.repository.BranchRepository;
+import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.repository.FeeDiscountRepository;
 import hu.puzzleir.valuta.repository.FeeRateRepository;
 import hu.puzzleir.valuta.repository.FeeTypeRepository;
@@ -25,6 +28,7 @@ public class FeeService {
     private final FeeRateRepository feeRateRepo;
     private final FeeDiscountRepository feeDiscountRepo;
     private final BranchRepository branchRepository;
+    private final CompanyRepository companyRepository;
 
     // --- FeeType ---
 
@@ -98,23 +102,33 @@ public class FeeService {
         feeRateRepo.deleteById(id);
     }
 
-    // --- FeeDiscount ---
+    // --- FeeDiscount (F2 V189: company-scoped) ---
 
     public List<FeeDiscount> listDiscounts() {
-        return feeDiscountRepo.findAll();
+        UUID companyId = SecurityUtils.getCurrentCompanyIdOrNull();
+        return companyId == null ? List.of() : feeDiscountRepo.findByCompanyId(companyId);
     }
 
     @Transactional(rollbackFor = Exception.class)
     public FeeDiscount createDiscount(FeeDiscount entity) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Company nem található: " + companyId));
         entity.setId(null);
+        entity.setCompany(company);
         if (entity.getIsActive() == null) entity.setIsActive(true);
         return feeDiscountRepo.save(entity);
     }
 
     @Transactional(rollbackFor = Exception.class)
     public FeeDiscount updateDiscount(UUID id, FeeDiscount entity) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         FeeDiscount existing = feeDiscountRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Díjkedvezmény nem található: " + id));
+        // F2: cross-tenant védelem — csak a saját cég kedvezményét lehet módosítani
+        if (existing.getCompany() == null || !companyId.equals(existing.getCompany().getId())) {
+            throw new ValidationException("Más cég kedvezménye nem módosítható");
+        }
         existing.setCode(entity.getCode());
         existing.setName(entity.getName());
         existing.setDiscountType(entity.getDiscountType());
@@ -128,6 +142,12 @@ public class FeeService {
 
     @Transactional(rollbackFor = Exception.class)
     public void deleteDiscount(UUID id) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        FeeDiscount existing = feeDiscountRepo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Díjkedvezmény nem található: " + id));
+        if (existing.getCompany() == null || !companyId.equals(existing.getCompany().getId())) {
+            throw new ValidationException("Más cég kedvezménye nem törölhető");
+        }
         feeDiscountRepo.deleteById(id);
     }
 }

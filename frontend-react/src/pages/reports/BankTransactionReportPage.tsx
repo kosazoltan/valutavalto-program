@@ -58,14 +58,17 @@ function isoDate(d: Date): string {
   return d.toISOString().slice(0, 10)
 }
 
-function directionLabel(direction: string): string {
-  if (direction === 'in') return 'ATVETT (bank → értéktár)'
-  if (direction === 'out') return 'ATADOTT (értéktár → bank)'
-  return 'Mind'
-}
-
 export default function BankTransactionReportPage() {
   const { t } = useTranslation()
+
+  const directionLabel = useCallback(
+    (direction: string): string => {
+      if (direction === 'in') return t('reports.bankTransactions.directionIn')
+      if (direction === 'out') return t('reports.bankTransactions.directionOut')
+      return t('reports.bankTransactions.directionAll')
+    },
+    [t]
+  )
   const [searchParams, setSearchParams] = useSearchParams()
 
   const today = useMemo(() => new Date(), [])
@@ -184,7 +187,7 @@ export default function BankTransactionReportPage() {
       <div className="flex items-center justify-between">
         <h1 className="form-title flex items-center gap-2">
           <Building2 className="h-6 w-6" />
-          {t('reports.bankTransactionReportTitle', { defaultValue: 'Banki tranzakciók riport' })}
+          {t('reports.bankTransactions.title')}
         </h1>
         <button
           type="button"
@@ -206,7 +209,7 @@ export default function BankTransactionReportPage() {
 
       <div className="bg-white rounded shadow p-4 grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
         <div>
-          <label className="block text-xs text-gray-500 mb-1" htmlFor="bt-from">Tól</label>
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="bt-from">{t('reports.bankTransactions.from')}</label>
           <input
             id="bt-from"
             type="date"
@@ -216,7 +219,7 @@ export default function BankTransactionReportPage() {
           />
         </div>
         <div>
-          <label className="block text-xs text-gray-500 mb-1" htmlFor="bt-to">Ig</label>
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="bt-to">{t('reports.bankTransactions.to')}</label>
           <input
             id="bt-to"
             type="date"
@@ -226,27 +229,27 @@ export default function BankTransactionReportPage() {
           />
         </div>
         <div>
-          <label className="block text-xs text-gray-500 mb-1" htmlFor="bt-direction">Irány</label>
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="bt-direction">{t('reports.bankTransactions.direction')}</label>
           <select
             id="bt-direction"
             value={direction}
             onChange={(e) => setDirection(e.target.value as 'all' | 'in' | 'out')}
             className="form-input w-full text-sm"
           >
-            <option value="all">Mind</option>
-            <option value="in">ATVETT (bank → értéktár)</option>
-            <option value="out">ATADOTT (értéktár → bank)</option>
+            <option value="all">{t('reports.bankTransactions.directionAll')}</option>
+            <option value="in">{t('reports.bankTransactions.directionIn')}</option>
+            <option value="out">{t('reports.bankTransactions.directionOut')}</option>
           </select>
         </div>
         <div>
-          <label className="block text-xs text-gray-500 mb-1" htmlFor="bt-branch">Iroda (értéktár)</label>
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="bt-branch">{t('reports.bankTransactions.branch')}</label>
           <select
             id="bt-branch"
             value={branchId}
             onChange={(e) => setBranchId(e.target.value)}
             className="form-input w-full text-sm"
           >
-            <option value="">— Mind —</option>
+            <option value="">{t('reports.bankTransactions.branchAll')}</option>
             {branches.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.code} - {b.name}
@@ -262,27 +265,27 @@ export default function BankTransactionReportPage() {
             className="form-button-primary flex items-center gap-2 w-full justify-center"
           >
             <Search className="h-4 w-4" />
-            {loading ? 'Betöltés...' : 'Lekérdezés'}
+            {loading ? t('reports.bankTransactions.loading') : t('reports.bankTransactions.submit')}
           </button>
         </div>
       </div>
 
       <div className="text-xs text-gray-500">
-        Aktív szűrő: {directionLabel(direction)} · {filtered.length} találat
+        {t('reports.bankTransactions.activeFilter', { label: directionLabel(direction), count: filtered.length })}
       </div>
 
       {totalsByCurrency.length > 0 && (
         <div className="bg-white rounded shadow">
           <div className="bg-gray-50 px-4 py-2 border-b">
-            <h2 className="font-semibold">Valutánkénti összegzés</h2>
+            <h2 className="font-semibold">{t('reports.bankTransactions.currencySummary')}</h2>
           </div>
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Valuta</th>
-                <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">Tranzakciók</th>
-                <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">Összeg (deviza)</th>
-                <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">HUF érték</th>
+                <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.currencyTable.currency')}</th>
+                <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.currencyTable.transactions')}</th>
+                <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.currencyTable.amount')}</th>
+                <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.currencyTable.hufValue')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -301,29 +304,29 @@ export default function BankTransactionReportPage() {
 
       <div className="bg-white rounded shadow">
         <div className="bg-gray-50 px-4 py-2 border-b">
-          <h2 className="font-semibold">Tranzakciók</h2>
+          <h2 className="font-semibold">{t('reports.bankTransactions.transactions')}</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Dátum</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Irány</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Valuta</th>
-                <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Mennyiség</th>
-                <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Árfolyam</th>
-                <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">HUF</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Bank</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Ref.</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Értéktár</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Megjegyzés</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.table.date')}</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.table.direction')}</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.table.currency')}</th>
+                <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.table.amount')}</th>
+                <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.table.rate')}</th>
+                <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.table.huf')}</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.table.bank')}</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.table.ref')}</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.table.vault')}</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.table.note')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={10} className="px-4 py-4 text-center text-sm text-gray-500">
-                    {loading ? 'Betöltés...' : 'Nincs találat a szűrőfeltételekre.'}
+                    {loading ? t('reports.bankTransactions.table.loading') : t('reports.bankTransactions.table.noResults')}
                   </td>
                 </tr>
               )}
@@ -338,7 +341,7 @@ export default function BankTransactionReportPage() {
                           : 'inline-block px-2 py-0.5 rounded bg-orange-100 text-orange-700 font-medium'
                       }
                     >
-                      {tx.transactionType === 'BUY' ? 'ATVETT' : 'ATADOTT'}
+                      {tx.transactionType === 'BUY' ? t('reports.bankTransactions.table.atvett') : t('reports.bankTransactions.table.atadott')}
                     </span>
                   </td>
                   <td className="px-3 py-2 text-sm font-mono font-semibold">{tx.currencyCode}</td>

@@ -12,7 +12,10 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "fee_discount")
+@Table(name = "fee_discount",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_fee_discount_company_code",
+                columnNames = {"company_id", "code"}))
 @EntityListeners(AuditingEntityListener.class)
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class FeeDiscount {
@@ -21,7 +24,15 @@ public class FeeDiscount {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(nullable = false, unique = true, length = 50)
+    /**
+     * F2 cross-tenant fix (V189, 2026-05-06): cég-szintű scope.
+     * A `code` mező csak (company_id, code) páros uniqueness-szel.
+     */
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "company_id", nullable = false)
+    private Company company;
+
+    @Column(nullable = false, length = 50)
     private String code;
 
     @Column(nullable = false, length = 200)
