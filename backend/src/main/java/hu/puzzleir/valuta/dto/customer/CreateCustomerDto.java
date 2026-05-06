@@ -37,6 +37,8 @@ public class CreateCustomerDto {
     private String passportNumber;
     private LocalDate passportExpiry;
 
+    private String residence;
+    private String addressCardNumber;
     private String address;
     private String postalCode;
     private String city;

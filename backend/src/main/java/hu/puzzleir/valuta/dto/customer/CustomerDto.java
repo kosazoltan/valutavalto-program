@@ -40,6 +40,8 @@ public class CustomerDto {
     private LocalDate passportExpiry;
 
     // Cím
+    private String residence;
+    private String addressCardNumber;
     private String address;
     private String postalCode;
     private String city;
