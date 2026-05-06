@@ -1,3 +1,6 @@
+/* Design tokens — globális CSS custom properties (P2-3, 2026-05-06) */
+@import './styles/design-tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

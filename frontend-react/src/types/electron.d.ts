@@ -432,8 +432,36 @@ export interface ElectronAPI {
   getAppVersion(): Promise<string>;
   restartApp(): Promise<void>;
 
+  // --- VFD ügyfélkijelző (P2-1) ---
+  customerDisplay?: {
+    /** Megnyitja az ügyfélkijelző-ablakot (második monitor vagy alwaysOnTop overlay). */
+    show(preferSecondMonitor: boolean): Promise<boolean>;
+    /** Tranzakció részleteinek átadása az ügyfélkijelzőnek. */
+    update(payload: CustomerDisplayPayload): Promise<void>;
+    /** Bezárja az ügyfélkijelző ablakát. */
+    hide(): Promise<void>;
+    /** Visszaadja, hogy nyitva van-e az ügyfélkijelző. */
+    status(): Promise<boolean>;
+    /**
+     * IPC listener — CSAK a customer-display renderer oldalán használandó!
+     * Visszatér egy unsubscribe függvénnyel.
+     */
+    onUpdate(cb: (payload: CustomerDisplayPayload) => void): () => void;
+  };
+
   // --- Platform ---
   platform: string;
+}
+
+export interface CustomerDisplayPayload {
+  transactionType?: 'BUY' | 'SELL' | 'CONVERSION' | 'STORNO';
+  currencyCode?: string;
+  amount?: number;
+  hufAmount?: number;
+  rate?: number;
+  handlingFee?: number;
+  totalHuf?: number;
+  message?: string;
 }
 
 declare global {

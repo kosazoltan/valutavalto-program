@@ -131,6 +131,21 @@ public class Worker {
     @Column(name = "password_changed_at")
     private LocalDateTime passwordChangedAt;
 
+    // ============ SUPERVISOR PIN (V188, 2026-05-06 P2-2) ============
+
+    /**
+     * 4-6 számjegyű supervisor PIN BCrypt hash-e. NULL = nincs PIN beállítva.
+     * NEM helyettesíti a jelszót — gyors-engedélyhez (sztornó, supervisor jóváhagyás).
+     */
+    @Column(name = "supervisor_pin", length = 60)
+    private String supervisorPin;
+
+    @Column(name = "supervisor_pin_changed_at")
+    private LocalDateTime supervisorPinChangedAt;
+
+    @Column(name = "supervisor_pin_last_used_at")
+    private LocalDateTime supervisorPinLastUsedAt;
+
     // ============ GOOGLE OAUTH WHITELIST (V178, 2026-05-03) ============
 
     /**

@@ -125,6 +125,33 @@ export default {
           panelDark: "#0F172A",
         },
         
+        // Brand colors — CSS variable hivatkozasok a design-tokens.css-bol
+        // (P2-3 design token rendszer, 2026-05-06). Additiv: a meglevo `primary`,
+        // `success`, `danger`, `warning` palettak valtozatlanul mukodnek.
+        brand: {
+          'primary': 'var(--color-primary-500)',
+          'primary-50': 'var(--color-primary-50)',
+          'primary-500': 'var(--color-primary-500)',
+          'primary-600': 'var(--color-primary-600)',
+          'primary-700': 'var(--color-primary-700)',
+          'primary-900': 'var(--color-primary-900)',
+          'success': 'var(--color-success-500)',
+          'success-500': 'var(--color-success-500)',
+          'success-700': 'var(--color-success-700)',
+          'warning': 'var(--color-warning-500)',
+          'warning-500': 'var(--color-warning-500)',
+          'warning-700': 'var(--color-warning-700)',
+          'danger': 'var(--color-danger-500)',
+          'danger-500': 'var(--color-danger-500)',
+          'danger-700': 'var(--color-danger-700)',
+          'neutral-50': 'var(--color-neutral-50)',
+          'neutral-100': 'var(--color-neutral-100)',
+          'neutral-200': 'var(--color-neutral-200)',
+          'neutral-500': 'var(--color-neutral-500)',
+          'neutral-700': 'var(--color-neutral-700)',
+          'neutral-900': 'var(--color-neutral-900)',
+        },
+
         // Currency Specific Colors
         currency: {
           huf: "#1E40AF", // HUF blue
@@ -138,8 +165,10 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Segoe UI', 'Tahoma', 'Geneva', 'Verdana', 'sans-serif'],
-        mono: ['Consolas', 'Monaco', 'Courier New', 'monospace'],
+        // Inter elsodleges (P2-3, 2026-05-06), fontsource async tolti
+        // Segoe UI/Tahoma/Verdana fallback Windows + Linux + iOS rendszereken
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Tahoma', 'Geneva', 'Verdana', 'Roboto', 'sans-serif'],
+        mono: ['JetBrains Mono', 'Consolas', 'Monaco', 'Courier New', 'monospace'],
       },
       fontSize: {
         'xs': '11px',

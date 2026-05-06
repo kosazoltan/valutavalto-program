@@ -88,6 +88,13 @@ import { performGoogleOAuthFlow, performGoogleOAuthFlowWithBackendLogin, perform
 import { initErrorReporter, reportError, setUserIdentifier } from './error-reporter';
 import { fetchViaElectronNet, type ApiProxyRequest } from './api-proxy';
 import {
+  createCustomerDisplay,
+  updateCustomerDisplay,
+  hideCustomerDisplay,
+  isCustomerDisplayActive,
+  type CustomerDisplayPayload,
+} from './customer-display';
+import {
 
   isFirstRun,
   getBranches,
@@ -929,6 +936,34 @@ app.whenReady().then(async () => {
 
     const msg = lastErr?.message ?? 'Unknown error';
     return { ok: false, status: 0, statusText: 'NETWORK_ERROR', headers: {}, body: JSON.stringify({ error: msg }) };
+  });
+
+  // --- VFD ügyfélkijelző IPC handlerek (P2-1) ---
+  // Az ügyfélkijelző egy második BrowserWindow ablakot nyit a nem-elsődleges
+  // monitoron (vagy keret-nélküli alwaysOnTop overlay-t, ha csak egy monitor van)
+  // és a tranzakció részleteit (típus, valuta, összeg, árfolyam, díj, HUF végösszeg)
+  // jeleníti meg az ügyfél számára.
+  ipcMain.handle('customer-display:show', async (_evt, preferSecondMonitor?: boolean): Promise<boolean> => {
+    try {
+      const rendererUrl = isDev ? devServerUrl : 'app://localhost/';
+      createCustomerDisplay(rendererUrl, preferSecondMonitor !== false);
+      return true;
+    } catch (err) {
+      log.error('[IPC] customer-display:show error:', err);
+      return false;
+    }
+  });
+
+  ipcMain.handle('customer-display:update', async (_evt, payload: CustomerDisplayPayload): Promise<void> => {
+    updateCustomerDisplay(payload ?? {});
+  });
+
+  ipcMain.handle('customer-display:hide', async (): Promise<void> => {
+    hideCustomerDisplay();
+  });
+
+  ipcMain.handle('customer-display:status', async (): Promise<boolean> => {
+    return isCustomerDisplayActive();
   });
 
   // Custom 'app' protocol handler regisztráció

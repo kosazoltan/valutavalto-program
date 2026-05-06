@@ -719,5 +719,34 @@ contextBridge.exposeInMainWorld('electronAPI', {
   ): Promise<IpcResponse<'setup:save'>> =>
     ipcRenderer.invoke(IPC_CHANNELS.SETUP_SAVE, payload),
 
+  // --- VFD ügyfélkijelző (P2-1) ---
+  // A penztaros oldal (Buy/Sell/Conversion) hivja meg, hogy az ugyfel
+  // a masodik kijelzon lassa a tranzakcio reszleteit. Az `onUpdate` listener
+  // a customer-display renderer oldalon (nem a fo-renderer-ben) hasznalando.
+  customerDisplay: {
+    show: (preferSecondMonitor: boolean): Promise<boolean> =>
+      ipcRenderer.invoke('customer-display:show', preferSecondMonitor),
+    update: (payload: {
+      transactionType?: 'BUY' | 'SELL' | 'CONVERSION' | 'STORNO';
+      currencyCode?: string;
+      amount?: number;
+      hufAmount?: number;
+      rate?: number;
+      handlingFee?: number;
+      totalHuf?: number;
+      message?: string;
+    }): Promise<void> =>
+      ipcRenderer.invoke('customer-display:update', payload),
+    hide: (): Promise<void> =>
+      ipcRenderer.invoke('customer-display:hide'),
+    status: (): Promise<boolean> =>
+      ipcRenderer.invoke('customer-display:status'),
+    onUpdate: (cb: (payload: unknown) => void): (() => void) => {
+      const handler = (_e: unknown, p: unknown): void => cb(p);
+      ipcRenderer.on('customer-display:update', handler);
+      return () => ipcRenderer.removeListener('customer-display:update', handler);
+    },
+  },
+
   platform: process.platform,
 });

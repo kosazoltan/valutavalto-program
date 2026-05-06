@@ -1,0 +1,77 @@
+/**
+ * Design Tokens — Valutaváltó admin frontend
+ *
+ * Egységes design token rendszer (P2-3, 2026-05-06).
+ * CSS custom properties amelyek a teljes alkalmazás design alapját adják.
+ * Additív megoldás: a meglévő Tailwind színek és komponensek változatlanul működnek.
+ *
+ * Használat:
+ *   - Tailwind classes: standard `bg-primary-600`, `text-primary-700` stb.
+ *   - Új komponensek: `var(--color-primary-500)`, `var(--space-md)` stb.
+ *   - Inter font automatikusan a `body` szinten.
+ */
+
+:root {
+  /* Színek — primary (kék brand szín valutaváltóhoz, professzionális) */
+  --color-primary-50: #eff6ff;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-900: #1e3a8a;
+
+  /* Szemantikus színek (success / warning / danger) */
+  --color-success-500: #10b981;
+  --color-success-700: #047857;
+  --color-warning-500: #f59e0b;
+  --color-warning-700: #b45309;
+  --color-danger-500: #ef4444;
+  --color-danger-700: #b91c1c;
+
+  /* Neutrális (szürke) skála */
+  --color-neutral-50: #f9fafb;
+  --color-neutral-100: #f3f4f6;
+  --color-neutral-200: #e5e7eb;
+  --color-neutral-500: #6b7280;
+  --color-neutral-700: #374151;
+  --color-neutral-900: #111827;
+
+  /* Térköz skála (spacing) */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+
+  /* Árnyékok */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+
+  /* Tipográfiai skála (font-size) */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+
+  /* Border radius (lekerekítés) */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+
+  /* Font családok — Inter a primary, fontsource async tölti */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', Consolas, 'Courier New', monospace;
+}
+
+/**
+ * Body alap font: Inter a fontsource-ből.
+ * font-feature-settings: Inter karaktersáv-variánsok (cv02-cv11) — Inter tervezett
+ * stílus-finomítások (pl. egynyitós 'a', alt 'g' stb.) bekapcsolása.
+ */
+body {
+  font-family: var(--font-sans);
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+}

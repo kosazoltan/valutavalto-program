@@ -16,6 +16,7 @@ import { logger } from './utils/logger';
 const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'))
 
 const SetupWizard = lazy(() => import('./pages/setup/SetupWizard'))
+const CustomerDisplayPage = lazy(() => import('./pages/customer-display/CustomerDisplayPage'))
 const WorkerPage = lazy(() => import('./pages/workers/WorkerPage'))
 const TransitPage = lazy(() => import('./pages/transit/TransitPage'))
 const NotFoundPage = lazy(() => import('./pages/common/NotFoundPage'))
@@ -395,6 +396,10 @@ export default function App() {
 
           {/* Audit P1.8 (2026-05-04): reset-password page (full-screen, sajat layout) */}
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+          {/* P2-1: VFD ügyfélkijelző — full-screen, NINCS auth, NINCS layout.
+              Egy második Electron BrowserWindow tölti be a /customer-display útvonalon. */}
+          <Route path="/customer-display" element={<CustomerDisplayPage />} />
 
           {/* Day open — full-screen, no MainLayout */}
           <Route path="/cashdesk/day-open" element={<ProtectedRoute><DayOpenPage /></ProtectedRoute>} />

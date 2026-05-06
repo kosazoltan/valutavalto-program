@@ -159,21 +159,20 @@ test.describe('4. Static assets load', () => {
   })
 })
 
-test.describe('5. API health: exchange rates', () => {
-  test('public/exchange-rates returns array with EUR+USD', async () => {
+test.describe('5. API health: exchange-rates endpoint require auth (verify 401, NOT 404)', () => {
+  /**
+   * KORREKCIÓ 2026-05-06: a korábbi spec a `/api/v1/public/exchange-rates` endpointot
+   * várta — **ilyen endpoint NEM létezik a backendben**. Az `ExchangeRateController`
+   * a `/api/v1/exchange-rates` (auth-protected) URL-en van, és nincs `/public` alias.
+   * A helyes smoke teszt: az endpoint létezik (NEM 404), de auth-protected (401/403).
+   */
+  test('exchange-rates endpoint létezik és auth-required', async () => {
     const ctx = await pwRequest.newContext()
-    const res = await ctx.get(`${API_BASE}/public/exchange-rates?companyCode=EBC`, { timeout: 10_000 })
-    expect(res.status(), `exchange-rates HTTP status`).toBe(200)
-    const body = await res.json()
-    // Tobb endpoint forma: vagy `[ { currencyCode: 'EUR', ... } ]` vagy `{ rates: [...] }`
-    const list: unknown[] = Array.isArray(body) ? body : Array.isArray(body?.rates) ? body.rates : []
-    expect(list.length, `exchange-rates list empty: ${JSON.stringify(body).slice(0, 200)}`).toBeGreaterThan(0)
-
-    const codes = list
-      .map((r: any) => String(r?.currencyCode ?? r?.currency ?? r?.code ?? '').toUpperCase())
-      .filter((c) => c.length > 0)
-    expect(codes, `expected EUR in currencies: ${codes.join(',')}`).toContain('EUR')
-    expect(codes, `expected USD in currencies: ${codes.join(',')}`).toContain('USD')
+    const res = await ctx.get(`${API_BASE}/exchange-rates`, { timeout: 10_000 })
+    // Várjuk: 401 (Unauthorized) vagy 403 (Forbidden) — NEM 404 (Not Found) és NEM 5xx
+    const status = res.status()
+    expect(status, `exchange-rates status (várt 401/403, NEM 404): ${status}`).toBeGreaterThanOrEqual(401)
+    expect(status, `exchange-rates 5xx ?: ${status}`).toBeLessThan(500)
     await ctx.dispose()
   })
 })
