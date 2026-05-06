@@ -30,6 +30,7 @@ export interface ApiProxyResponse {
   statusText: string;
   headers: Record<string, string>;
   body: string;
+  isBase64?: boolean;
 }
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -39,22 +40,26 @@ export function fetchViaElectronNet(params: ApiProxyRequest): Promise<ApiProxyRe
   const { method, url, body, headers, timeoutMs } = params;
   const timeout = timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
+  const upperMethod = method.toUpperCase();
+  const hasBody = body !== undefined && body !== null && body !== '';
+
   return new Promise((resolve, reject) => {
-    const request = electronNet.request({ method: method.toUpperCase(), url });
+    const request = electronNet.request({ method: upperMethod, url });
 
     if (headers) {
       for (const [key, value] of Object.entries(headers)) {
         request.setHeader(key, value);
       }
     }
-    if (!headers?.['Content-Type'] && !headers?.['content-type']) {
+    if (hasBody && upperMethod !== 'GET' && upperMethod !== 'HEAD'
+        && !headers?.['Content-Type'] && !headers?.['content-type']) {
       request.setHeader('Content-Type', 'application/json');
     }
     if (!headers?.['Accept'] && !headers?.['accept']) {
       request.setHeader('Accept', 'application/json');
     }
 
-    let responseBody = '';
+    const chunks: Buffer[] = [];
     let responseBytes = 0;
     let settled = false;
     const timeoutHandle = setTimeout(() => {
@@ -80,7 +85,7 @@ export function fetchViaElectronNet(params: ApiProxyRequest): Promise<ApiProxyRe
           reject(new Error(`[api-proxy] Response too large (>${MAX_RESPONSE_BYTES} bytes) for ${method} ${url}`));
           return;
         }
-        responseBody += chunk.toString();
+        chunks.push(chunk);
       });
 
       response.on('end', () => {
@@ -88,12 +93,16 @@ export function fetchViaElectronNet(params: ApiProxyRequest): Promise<ApiProxyRe
         settled = true;
         clearTimeout(timeoutHandle);
         const status = response.statusCode ?? 0;
+        const fullBuffer = Buffer.concat(chunks);
+        const ct = (respHeaders['content-type'] ?? '').toLowerCase();
+        const isBinary = !ct.includes('json') && !ct.includes('text') && !ct.includes('xml') && !ct.includes('html') && ct !== '';
         resolve({
           ok: status >= 200 && status < 300,
           status,
           statusText: response.statusMessage ?? '',
           headers: respHeaders,
-          body: responseBody,
+          body: isBinary ? fullBuffer.toString('base64') : fullBuffer.toString('utf-8'),
+          isBase64: isBinary,
         });
       });
     });

@@ -41,6 +41,7 @@ export interface ElectronAPI {
     statusText: string;
     headers: Record<string, string>;
     body: string;
+    isBase64?: boolean;
   }>;
 
   // --- v2.5.13 Kliens hibajelentes (send-and-forget) ---

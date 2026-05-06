@@ -143,9 +143,31 @@ export const api = axios.create({
 if (typeof window !== 'undefined' && window.electronAPI?.apiRequest && !import.meta.env.DEV) {
   api.defaults.adapter = async (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => {
     const baseUrl = config.baseURL ?? api.defaults.baseURL ?? ''
-    const url = config.url?.startsWith('http')
+    let url = config.url?.startsWith('http')
       ? config.url
       : `${baseUrl}${config.url ?? ''}`
+
+    // Codex P1: config.params must be serialized into the URL query string
+    if (config.params && typeof config.params === 'object') {
+      const serializer = config.paramsSerializer
+      let queryString: string
+      if (typeof serializer === 'function') {
+        queryString = serializer(config.params)
+      } else if (serializer && typeof serializer === 'object' && 'serialize' in serializer && typeof serializer.serialize === 'function') {
+        queryString = serializer.serialize(config.params, serializer)
+      } else {
+        const searchParams = new URLSearchParams()
+        for (const [key, value] of Object.entries(config.params as Record<string, unknown>)) {
+          if (value !== undefined && value !== null) {
+            searchParams.append(key, String(value))
+          }
+        }
+        queryString = searchParams.toString()
+      }
+      if (queryString) {
+        url += (url.includes('?') ? '&' : '?') + queryString
+      }
+    }
 
     const method = (config.method ?? 'GET').toUpperCase()
 
@@ -179,7 +201,14 @@ if (typeof window !== 'undefined' && window.electronAPI?.apiRequest && !import.m
 
       let parsedData: unknown = proxyResponse.body
       const contentType = proxyResponse.headers['content-type'] ?? ''
-      if (contentType.includes('json') && typeof proxyResponse.body === 'string') {
+
+      // Codex P1: responseType blob/arraybuffer — reconstruct binary from base64
+      if ((config.responseType === 'blob' || config.responseType === 'arraybuffer') && proxyResponse.isBase64) {
+        const binary = Uint8Array.from(atob(proxyResponse.body), c => c.charCodeAt(0))
+        parsedData = config.responseType === 'blob'
+          ? new Blob([binary], { type: contentType.split(';')[0] || 'application/octet-stream' })
+          : binary.buffer
+      } else if (contentType.includes('json') && typeof proxyResponse.body === 'string') {
         try { parsedData = JSON.parse(proxyResponse.body) } catch { /* keep raw string */ }
       }
 
