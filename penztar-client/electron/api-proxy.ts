@@ -13,7 +13,7 @@
  * ami ESET/Kaspersky/Bitdefender MITM proxy-val is működik.
  */
 
-import { net as electronNet } from 'electron';
+import { net as electronNet, IncomingMessage } from 'electron';
 import log from 'electron-log/main';
 
 export interface ApiProxyRequest {
@@ -61,15 +61,14 @@ export function fetchViaElectronNet(params: ApiProxyRequest): Promise<ApiProxyRe
       reject(new Error(`[api-proxy] Timeout: ${timeout}ms exceeded for ${method} ${url}`));
     }, timeout);
 
-    request.on('response', (response: { statusCode?: number; statusMessage?: string; headers: Record<string, string | string[]>; on: (event: string, cb: (...args: unknown[]) => void) => void }) => {
+    request.on('response', (response: IncomingMessage) => {
       const respHeaders: Record<string, string> = {};
-      const rawHeaders = response.headers;
-      for (const [key, value] of Object.entries(rawHeaders)) {
+      for (const [key, value] of Object.entries(response.headers)) {
         respHeaders[key] = Array.isArray(value) ? value.join(', ') : String(value ?? '');
       }
 
-      response.on('data', (chunk: unknown) => {
-        responseBody += String(chunk);
+      response.on('data', (chunk: Buffer) => {
+        responseBody += chunk.toString();
       });
 
       response.on('end', () => {

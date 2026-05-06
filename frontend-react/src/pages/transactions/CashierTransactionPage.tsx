@@ -129,7 +129,7 @@ export default function CashierTransactionPage() {
   const total = subtotal + handlingFee - discountAmount
 
   // Identification level based on HUF total
-  const { identificationLevel, requiresSourceVerification } = useIdentificationLevel(String(total))
+  const { identificationLevel, minimumLevel, setIdentificationLevel, requiresSourceVerification } = useIdentificationLevel(String(total))
 
   // Focus management
   useEffect(() => {
@@ -758,6 +758,8 @@ export default function CashierTransactionPage() {
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2">
             <CustomerPanel
               identificationLevel={identificationLevel}
+              minimumLevel={minimumLevel}
+              onLevelChange={setIdentificationLevel}
               requiresSourceVerification={requiresSourceVerification}
               hufTotal={total}
               onCustomerReady={(data) => { customerDataRef.current = data }}

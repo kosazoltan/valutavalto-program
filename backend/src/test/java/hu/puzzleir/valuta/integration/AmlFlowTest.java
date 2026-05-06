@@ -57,10 +57,10 @@ class AmlFlowTest {
     class BasicCheckTests {
 
         @Test
-        @DisplayName("testAmlCheck_underThreshold — 300K alatt, azonosítás nem szükséges")
+        @DisplayName("testAmlCheck_underThreshold — 100K alatt, azonosítás nem szükséges")
         void testAmlCheck_underThreshold() {
             AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
-                    new BigDecimal("200000"), // 200K Ft < 300K
+                    new BigDecimal("50000"), // 50K Ft < 100K
                     null,
                     null,
                     null

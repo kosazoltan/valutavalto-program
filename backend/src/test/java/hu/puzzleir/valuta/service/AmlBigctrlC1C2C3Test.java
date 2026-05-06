@@ -572,9 +572,9 @@ class AmlBigctrlC1C2C3Test {
         @Test
         @DisplayName("C3-5: névtelen ügyfél → transactionType = 0 (null customerId)")
         void testCheckTransaction_anonymous_typeZero() {
-            // Névtelen ügyfél, kis összeg — sem annual/daily sem weekly nem hívódik
+            // Névtelen ügyfél, kis összeg (100K küszöb alatt) — sem annual/daily sem weekly nem hívódik
             AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
-                new BigDecimal("100000"), null, null, null);
+                new BigDecimal("99000"), null, null, null);
 
             assertThat(result.isApproved()).isTrue();
             assertThat(result.getTransactionType()).isEqualTo(0);

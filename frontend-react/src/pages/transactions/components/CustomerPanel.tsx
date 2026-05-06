@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { User, Search, CheckCircle, Loader2, AlertTriangle, X } from 'lucide-react'
+import { User, Search, CheckCircle, Loader2, AlertTriangle, X, Shield, ShieldCheck, ShieldAlert } from 'lucide-react'
 import type { IdentificationLevel } from '../hooks/useIdentificationLevel'
 import { customerApi, amlApi } from '../../../services/api/index'
 import type { Customer as ApiCustomer, CustomerCreateRequest, AmlCheckResultDto } from '../../../services/api/transactions'
@@ -13,52 +13,69 @@ export interface CustomerPanelData {
   nationality: string
   birthPlace?: string
   birthDate?: string
+  birthName?: string
   motherName?: string
   address?: string
-  /** true only if AML check completed successfully */
+  residence?: string
+  addressCardNumber?: string
   amlVerified?: boolean
 }
 
 interface CustomerPanelProps {
   identificationLevel: IdentificationLevel
+  minimumLevel: IdentificationLevel
+  onLevelChange: (level: IdentificationLevel) => void
   requiresSourceVerification: boolean
   hufTotal: number
   onCustomerReady: (data: CustomerPanelData | null) => void
   onAmlResult?: (result: AmlCheckResultDto | null) => void
 }
 
+const LEVEL_ORDER: IdentificationLevel[] = ['SIMPLE', 'SIMPLIFIED', 'FULL']
+
+const LEVEL_LABELS: Record<IdentificationLevel, string> = {
+  SIMPLE: 'Nem azonosit',
+  SIMPLIFIED: 'Egyszerusitett',
+  FULL: 'Teljes azonositas',
+}
+
+const LEVEL_DESCRIPTIONS: Record<IdentificationLevel, string> = {
+  SIMPLE: 'Csak allampolgarsag',
+  SIMPLIFIED: 'Nev, szuletesi adatok, okmany',
+  FULL: 'Teljes szemelyes adatok',
+}
+
 export default function CustomerPanel({
   identificationLevel,
+  minimumLevel,
+  onLevelChange,
   requiresSourceVerification,
   hufTotal,
   onCustomerReady,
   onAmlResult,
 }: CustomerPanelProps) {
-  // Search state
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<ApiCustomer[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [showResults, setShowResults] = useState(false)
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  // Selected customer from API
   const [selectedCustomer, setSelectedCustomer] = useState<ApiCustomer | null>(null)
 
-  // Manual entry fields (used when no API match found)
+  // Form fields
   const [customerName, setCustomerName] = useState('')
-  const [customerDocType, setCustomerDocType] = useState('Személyi igazolvány')
+  const [customerDocType, setCustomerDocType] = useState('Szemelyi igazolvany')
   const [customerDocNumber, setCustomerDocNumber] = useState('')
   const [customerNationality, setCustomerNationality] = useState('Magyar')
   const [customerBirthPlace, setCustomerBirthPlace] = useState('')
   const [customerBirthDate, setCustomerBirthDate] = useState('')
+  const [customerBirthName, setCustomerBirthName] = useState('')
   const [customerMotherName, setCustomerMotherName] = useState('')
   const [customerAddress, setCustomerAddress] = useState('')
+  const [customerResidence, setCustomerResidence] = useState('')
+  const [customerAddressCardNumber, setCustomerAddressCardNumber] = useState('')
 
-  // AML state
   const [amlResult, setAmlResult] = useState<AmlCheckResultDto | null>(null)
   const [amlChecking, setAmlChecking] = useState(false)
-
-  // Save/create state
   const [isSaving, setIsSaving] = useState(false)
 
   // Debounced search
@@ -73,7 +90,6 @@ export default function CustomerPanel({
     searchTimeoutRef.current = setTimeout(async () => {
       setIsSearching(true)
       try {
-        // Try document number first, then name search
         const results = await customerApi.search(value.trim())
         setSearchResults(results.slice(0, 10))
         setShowResults(true)
@@ -86,85 +102,93 @@ export default function CustomerPanel({
     }, 400)
   }, [])
 
-  // Select customer from search results
+  const runAmlCheck = useCallback(async (customerId: number, data: CustomerPanelData) => {
+    if (!customerId || hufTotal <= 0) return data
+    setAmlChecking(true)
+    try {
+      const result = await amlApi.checkAllThresholds(String(customerId), hufTotal)
+      setAmlResult(result)
+      onAmlResult?.(result)
+      return { ...data, amlVerified: true }
+    } catch (err) {
+      logger.warn('CustomerPanel', 'AML check failed — fail-closed', err)
+      const blockedResult: AmlCheckResultDto = {
+        transactionType: 0, weeklyTotal: 0, yearlyMax: 0, quarterlyCount: 0, quarterlyTotal: 0,
+        requiresId: true, requiresEnhanced: false, blocked: true,
+        warnings: ['AML ellenorzes nem sikerult — tranzakcio blokkolt biztonsagi okbol'],
+      }
+      setAmlResult(blockedResult)
+      onAmlResult?.(blockedResult)
+      return data
+    } finally {
+      setAmlChecking(false)
+    }
+  }, [hufTotal, onAmlResult])
+
   const handleSelectCustomer = useCallback(async (customer: ApiCustomer) => {
     setSelectedCustomer(customer)
     setShowResults(false)
     setSearchQuery('')
 
-    const data: CustomerPanelData = {
+    let data: CustomerPanelData = {
       id: customer.id,
       name: customer.name,
-      documentType: customer.documentType ?? 'Személyi igazolvány',
+      documentType: customer.documentType ?? 'Szemelyi igazolvany',
       documentNumber: customer.documentNumber ?? '',
       nationality: customer.nationality ?? 'Magyar',
       birthPlace: customer.birthPlace,
       birthDate: customer.birthDate,
+      birthName: customer.birthName,
       motherName: customer.motherName,
       address: customer.address,
+      residence: customer.residence,
+      addressCardNumber: customer.addressCardNumber,
       amlVerified: false,
     }
 
-    // Run AML check — fail-closed
     if (customer.id && hufTotal > 0) {
-      setAmlChecking(true)
-      try {
-        const result = await amlApi.checkAllThresholds(String(customer.id), hufTotal)
-        setAmlResult(result)
-        onAmlResult?.(result)
-        data.amlVerified = true
-      } catch (err) {
-        logger.warn('CustomerPanel', 'AML check failed — fail-closed', err)
-        const blockedResult: AmlCheckResultDto = {
-          transactionType: 0, weeklyTotal: 0, yearlyMax: 0, quarterlyCount: 0, quarterlyTotal: 0,
-          requiresId: true, requiresEnhanced: false, blocked: true,
-          warnings: ['AML ellenorzes nem sikerult — tranzakcio blokkolt biztonsagi okbol'],
-        }
-        setAmlResult(blockedResult)
-        onAmlResult?.(blockedResult)
-      } finally {
-        setAmlChecking(false)
-      }
+      data = await runAmlCheck(customer.id, data)
     }
-
     onCustomerReady(data)
-  }, [hufTotal, onCustomerReady, onAmlResult])
+  }, [hufTotal, onCustomerReady, runAmlCheck])
 
-  // Save manually entered customer
   const handleSaveManualCustomer = useCallback(async () => {
-    if (!customerName.trim() || !customerDocNumber.trim()) return
-    // FULL level: require complete data set at panel level (fail-fast)
-    if (identificationLevel === 'FULL' && (!customerBirthPlace.trim() || !customerBirthDate || !customerMotherName.trim() || !customerAddress.trim())) {
-          return // button is already disabled, but double-guard
-    }
+    if (identificationLevel === 'SIMPLIFIED' && (!customerName.trim() || !customerDocNumber.trim())) return
+    if (identificationLevel === 'FULL' && (
+      !customerName.trim() || !customerDocNumber.trim() ||
+      !customerBirthPlace.trim() || !customerBirthDate ||
+      !customerMotherName.trim() || !customerAddress.trim()
+    )) return
 
     setIsSaving(true)
     try {
       const createData: CustomerCreateRequest = {
         name: customerName.trim(),
         documentType: customerDocType,
-        documentNumber: customerDocNumber.trim(),
+        documentNumber: customerDocNumber.trim() || undefined,
         nationality: customerNationality,
         birthPlace: customerBirthPlace.trim() || undefined,
         birthDate: customerBirthDate || undefined,
+        birthName: customerBirthName.trim() || undefined,
         motherName: customerMotherName.trim() || undefined,
         address: customerAddress.trim() || undefined,
+        residence: customerResidence.trim() || undefined,
+        addressCardNumber: customerAddressCardNumber.trim() || undefined,
       }
 
       let savedCustomer: ApiCustomer | null = null
       try {
         savedCustomer = await customerApi.create(createData)
       } catch (err) {
-        // If create fails (e.g. already exists), try search by doc number
         logger.warn('CustomerPanel', 'Customer create failed, trying doc number lookup', err)
         try {
-          savedCustomer = await customerApi.getByDocumentNumber(customerDocNumber.trim())
-        } catch {
-          // If both fail, proceed without backend ID
-        }
+          if (customerDocNumber.trim()) {
+            savedCustomer = await customerApi.getByDocumentNumber(customerDocNumber.trim())
+          }
+        } catch { /* proceed without ID */ }
       }
 
-      const data: CustomerPanelData = {
+      let data: CustomerPanelData = {
         id: savedCustomer?.id,
         name: customerName.trim(),
         documentType: customerDocType,
@@ -172,50 +196,21 @@ export default function CustomerPanel({
         nationality: customerNationality,
         birthPlace: customerBirthPlace.trim() || undefined,
         birthDate: customerBirthDate || undefined,
+        birthName: customerBirthName.trim() || undefined,
         motherName: customerMotherName.trim() || undefined,
         address: customerAddress.trim() || undefined,
+        residence: customerResidence.trim() || undefined,
+        addressCardNumber: customerAddressCardNumber.trim() || undefined,
         amlVerified: false,
       }
       setSelectedCustomer(savedCustomer)
 
-      // AML check — fail-closed: if no backend ID, AML stays unverified
       if (savedCustomer?.id && hufTotal > 0) {
-        setAmlChecking(true)
-        try {
-          const result = await amlApi.checkAllThresholds(String(savedCustomer.id), hufTotal)
-          setAmlResult(result)
-          onAmlResult?.(result)
-          data.amlVerified = true
-        } catch (err) {
-          logger.warn('CustomerPanel', 'AML check failed — transaction will be blocked (fail-closed)', err)
-          // Fail-closed: create a synthetic blocked result
-          const blockedResult: AmlCheckResultDto = {
-            transactionType: 0,
-            weeklyTotal: 0,
-            yearlyMax: 0,
-            quarterlyCount: 0,
-            quarterlyTotal: 0,
-            requiresId: true,
-            requiresEnhanced: false,
-            blocked: true,
-            warnings: ['AML ellenorzes nem sikerult — tranzakcio blokkolt biztonsagi okbol'],
-          }
-          setAmlResult(blockedResult)
-          onAmlResult?.(blockedResult)
-        } finally {
-          setAmlChecking(false)
-        }
+        data = await runAmlCheck(savedCustomer.id, data)
       } else if (hufTotal >= 100_000) {
-        // No backend ID + above threshold → fail-closed
         const blockedResult: AmlCheckResultDto = {
-          transactionType: 0,
-          weeklyTotal: 0,
-          yearlyMax: 0,
-          quarterlyCount: 0,
-          quarterlyTotal: 0,
-          requiresId: true,
-          requiresEnhanced: false,
-          blocked: true,
+          transactionType: 0, weeklyTotal: 0, yearlyMax: 0, quarterlyCount: 0, quarterlyTotal: 0,
+          requiresId: true, requiresEnhanced: false, blocked: true,
           warnings: ['Ugyfel mentese nem sikerult — AML ellenorzes nem lehetseges, tranzakcio blokkolt'],
         }
         setAmlResult(blockedResult)
@@ -228,19 +223,21 @@ export default function CustomerPanel({
     } finally {
       setIsSaving(false)
     }
-  }, [customerName, customerDocType, customerDocNumber, customerNationality, customerBirthPlace, customerBirthDate, customerMotherName, customerAddress, hufTotal, identificationLevel, onCustomerReady, onAmlResult])
+  }, [customerName, customerDocType, customerDocNumber, customerNationality, customerBirthPlace, customerBirthDate, customerBirthName, customerMotherName, customerAddress, customerResidence, customerAddressCardNumber, hufTotal, identificationLevel, onCustomerReady, onAmlResult, runAmlCheck])
 
-  // Clear customer
   const handleClearCustomer = useCallback(() => {
     setSelectedCustomer(null)
     setCustomerName('')
-    setCustomerDocType('Személyi igazolvány')
+    setCustomerDocType('Szemelyi igazolvany')
     setCustomerDocNumber('')
     setCustomerNationality('Magyar')
     setCustomerBirthPlace('')
     setCustomerBirthDate('')
+    setCustomerBirthName('')
     setCustomerMotherName('')
     setCustomerAddress('')
+    setCustomerResidence('')
+    setCustomerAddressCardNumber('')
     setAmlResult(null)
     setSearchQuery('')
     setSearchResults([])
@@ -248,7 +245,7 @@ export default function CustomerPanel({
     onAmlResult?.(null)
   }, [onCustomerReady, onAmlResult])
 
-  // Re-run AML check when hufTotal changes significantly
+  // Re-run AML when hufTotal changes
   useEffect(() => {
     if (selectedCustomer?.id && hufTotal > 0) {
       const timer = setTimeout(async () => {
@@ -257,7 +254,6 @@ export default function CustomerPanel({
           setAmlResult(result)
           onAmlResult?.(result)
         } catch {
-          // Fail-closed: if AML re-check fails, block transaction
           const blockedResult: AmlCheckResultDto = {
             transactionType: 0, weeklyTotal: 0, yearlyMax: 0, quarterlyCount: 0, quarterlyTotal: 0,
             requiresId: true, requiresEnhanced: false, blocked: true,
@@ -271,50 +267,65 @@ export default function CustomerPanel({
     }
   }, [hufTotal, selectedCustomer?.id, onAmlResult])
 
-  const focusNextField = (currentField: string) => {
-    const fieldOrder: Record<string, string> = {
-      'customer-name': 'customer-doc-type',
-      'customer-doc-type': 'customer-doc-number',
-      'customer-doc-number': 'customer-nationality',
-      'customer-nationality': identificationLevel === 'FULL' ? 'customer-birth-place' : '',
-      'customer-birth-place': 'customer-birth-date',
-      'customer-birth-date': 'customer-mother-name',
-      'customer-mother-name': 'customer-address',
-      'customer-address': '',
-    }
-    const next = fieldOrder[currentField]
-    if (next) {
-      const el = document.querySelector<HTMLElement>(`[data-field="${next}"]`)
-      el?.focus()
-    } else {
-      document.querySelector<HTMLButtonElement>('[data-action="save-customer"]')?.focus()
-    }
+  const showFull = identificationLevel === 'FULL'
+
+  const isFormValid = () => {
+    if (identificationLevel === 'SIMPLE') return true
+    if (identificationLevel === 'SIMPLIFIED') return !!(customerName.trim() && customerDocNumber.trim())
+    // FULL
+    return !!(customerName.trim() && customerDocNumber.trim() &&
+      customerBirthPlace.trim() && customerBirthDate && customerMotherName.trim() && customerAddress.trim())
   }
 
-  const handleFieldKeyDown = (e: React.KeyboardEvent, field: string) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      focusNextField(field)
-    }
-  }
-
-  // --- RENDER ---
+  const fieldClass = "w-full h-9 px-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white focus:ring-2 focus:border-transparent"
+  const fieldStyle = { '--tw-ring-color': 'var(--primary)' } as React.CSSProperties
 
   return (
     <div className="space-y-3">
       <h3 className="text-lg font-bold flex items-center gap-2 text-gray-900 dark:text-white">
         <User className="w-5 h-5" />
-        ÜGYFÉL ADATOK
+        UGYFEL ADATOK
       </h3>
 
-      {/* Identification level indicator */}
+      {/* Identification level selector */}
+      <div className="flex gap-1">
+        {LEVEL_ORDER.map((level) => {
+          const minIdx = LEVEL_ORDER.indexOf(minimumLevel)
+          const levelIdx = LEVEL_ORDER.indexOf(level)
+          const disabled = levelIdx < minIdx
+          const active = level === identificationLevel
+
+          const IconComponent = level === 'SIMPLE' ? Shield : level === 'SIMPLIFIED' ? ShieldCheck : ShieldAlert
+
+          return (
+            <button
+              key={level}
+              onClick={() => !disabled && onLevelChange(level)}
+              disabled={disabled}
+              className={`flex-1 py-2 px-1 rounded-lg text-xs font-semibold border-2 transition-all flex flex-col items-center gap-1 ${
+                active
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300'
+                  : disabled
+                    ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                    : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:border-blue-300 cursor-pointer'
+              }`}
+            >
+              <IconComponent className="w-4 h-4" />
+              <span>{LEVEL_LABELS[level]}</span>
+              <span className="font-normal text-[10px] opacity-70">{LEVEL_DESCRIPTIONS[level]}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Level indicator */}
       {identificationLevel !== 'SIMPLE' && (
         <div className="bg-amber-50 dark:bg-amber-950/30 border-2 border-amber-400 dark:border-amber-600 rounded-lg p-3 flex items-start gap-2">
           <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
           <div className="text-sm">
             <p className="font-semibold text-amber-900 dark:text-amber-200">
               {identificationLevel === 'SIMPLIFIED'
-                ? 'Egyszerusitett azonositas KOTELEZO (100.000 — 300.000 Ft)'
+                ? 'Egyszerusitett azonositas (100.000 — 300.000 Ft)'
                 : 'Teljes azonositas KOTELEZO (300.000 Ft felett)'}
             </p>
             {requiresSourceVerification && (
@@ -343,7 +354,6 @@ export default function CustomerPanel({
         </div>
       )}
 
-      {/* AML checking indicator */}
       {amlChecking && !amlResult && (
         <div className="flex items-center gap-2 text-sm text-gray-500">
           <Loader2 className="w-4 h-4 animate-spin" /> AML ellenorzes...
@@ -351,7 +361,7 @@ export default function CustomerPanel({
       )}
 
       {selectedCustomer ? (
-        // SELECTED CUSTOMER VIEW
+        /* SELECTED CUSTOMER VIEW */
         <div className="space-y-2">
           <div className="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-700 rounded-lg flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -371,18 +381,16 @@ export default function CustomerPanel({
               <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Allampolgarsag</label>
               <div className="text-gray-900 dark:text-white">{selectedCustomer.nationality ?? 'Magyar'}</div>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Okmany</label>
-              <div className="text-gray-900 dark:text-white">{selectedCustomer.documentType ?? '—'}</div>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Okmany szam</label>
-              <div className="font-mono text-gray-900 dark:text-white">{selectedCustomer.documentNumber ?? '—'}</div>
-            </div>
-            {selectedCustomer.address && (
-              <div className="col-span-2">
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Cim</label>
-                <div className="text-gray-900 dark:text-white">{selectedCustomer.address}</div>
+            {selectedCustomer.documentType && (
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Okmany</label>
+                <div className="text-gray-900 dark:text-white">{selectedCustomer.documentType}</div>
+              </div>
+            )}
+            {selectedCustomer.documentNumber && (
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Okmany szam</label>
+                <div className="font-mono text-gray-900 dark:text-white">{selectedCustomer.documentNumber}</div>
               </div>
             )}
             {selectedCustomer.birthPlace && (
@@ -397,43 +405,78 @@ export default function CustomerPanel({
                 <div className="text-gray-900 dark:text-white">{selectedCustomer.birthDate}</div>
               </div>
             )}
+            {selectedCustomer.birthName && (
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Elozo nev</label>
+                <div className="text-gray-900 dark:text-white">{selectedCustomer.birthName}</div>
+              </div>
+            )}
             {selectedCustomer.motherName && (
               <div className="col-span-2">
                 <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Anyja neve</label>
                 <div className="text-gray-900 dark:text-white">{selectedCustomer.motherName}</div>
               </div>
             )}
+            {selectedCustomer.address && (
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Lakcim</label>
+                <div className="text-gray-900 dark:text-white">{selectedCustomer.address}</div>
+              </div>
+            )}
+            {selectedCustomer.residence && (
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Tartozkodasi hely</label>
+                <div className="text-gray-900 dark:text-white">{selectedCustomer.residence}</div>
+              </div>
+            )}
+            {selectedCustomer.addressCardNumber && (
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Lakcimkartya szam</label>
+                <div className="font-mono text-gray-900 dark:text-white">{selectedCustomer.addressCardNumber}</div>
+              </div>
+            )}
           </div>
         </div>
       ) : identificationLevel === 'SIMPLE' ? (
-        // NO IDENTIFICATION NEEDED
-        <div className="text-center text-gray-500 dark:text-gray-400 py-6">
-          <User size={40} className="mx-auto mb-2 text-gray-300 dark:text-gray-600" />
-          <div className="font-medium">100.000 Ft alatt</div>
-          <div className="text-sm">Ügyfél azonosítás nem szükséges</div>
+        /* SIMPLE — only nationality */
+        <div className="p-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg space-y-2">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Allampolgarsag</label>
+            <select
+              className={fieldClass}
+              style={fieldStyle}
+              value={customerNationality}
+              onChange={(e) => setCustomerNationality(e.target.value)}
+            >
+              <option>Magyar</option>
+              <option>EU allampolgarsag</option>
+              <option>Egyeb</option>
+            </select>
+          </div>
+          <div className="text-center text-gray-500 dark:text-gray-400 py-2">
+            <User size={32} className="mx-auto mb-1 text-gray-300 dark:text-gray-600" />
+            <div className="text-sm">100.000 Ft alatt — tovabbi azonositas nem szukseges</div>
+          </div>
         </div>
       ) : (
-        // SEARCH + MANUAL ENTRY
+        /* SIMPLIFIED or FULL — search + manual entry */
         <div className="space-y-3">
-          {/* Search bar */}
+          {/* Search */}
           <div className="relative">
-            <div className="flex gap-1">
-              <div className="relative flex-1">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => handleSearchInput(e.target.value)}
-                  onFocus={() => searchResults.length > 0 && setShowResults(true)}
-                  className="w-full h-10 pl-9 pr-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white focus:ring-2 focus:border-transparent text-sm"
-                  style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
-                  placeholder="Nev vagy okmanyszam kereses..."
-                />
-                <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                {isSearching && <Loader2 className="absolute right-3 top-2.5 w-4 h-4 animate-spin text-gray-400" />}
-              </div>
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => handleSearchInput(e.target.value)}
+                onFocus={() => searchResults.length > 0 && setShowResults(true)}
+                className={`${fieldClass} h-10 pl-9 pr-3`}
+                style={fieldStyle}
+                placeholder="Nev vagy okmanyszam kereses..."
+              />
+              <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+              {isSearching && <Loader2 className="absolute right-3 top-2.5 w-4 h-4 animate-spin text-gray-400" />}
             </div>
 
-            {/* Dropdown results */}
             {showResults && searchResults.length > 0 && (
               <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto">
                 {searchResults.map((c) => (
@@ -457,135 +500,94 @@ export default function CustomerPanel({
             )}
           </div>
 
-          {/* Manual entry form */}
+          {/* Manual entry */}
           <div className="p-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg space-y-2">
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Kezzel megadas</p>
             <div className="grid grid-cols-2 gap-2">
+              {/* --- Always shown for SIMPLIFIED+ --- */}
               <div className="col-span-2">
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Nev *</label>
-                <input
-                  type="text"
-                  className="w-full h-9 px-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white focus:ring-2 focus:border-transparent"
-                  style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  data-field="customer-name"
-                  onKeyDown={(e) => handleFieldKeyDown(e, 'customer-name')}
-                />
+                <input type="text" className={fieldClass} style={fieldStyle}
+                  value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Szuletesi ido *</label>
+                <input type="date" className={fieldClass} style={fieldStyle}
+                  value={customerBirthDate} onChange={(e) => setCustomerBirthDate(e.target.value)} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Okmany tipus *</label>
-                <select
-                  className="w-full h-9 px-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white focus:ring-2 focus:border-transparent"
-                  style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
-                  value={customerDocType}
-                  onChange={(e) => setCustomerDocType(e.target.value)}
-                  data-field="customer-doc-type"
-                  onKeyDown={(e) => handleFieldKeyDown(e, 'customer-doc-type')}
-                >
-                  <option>Személyi igazolvány</option>
-                  <option>Útlevél</option>
-                  <option>Vezetői engedély</option>
-                  <option>Tartózkodási engedély</option>
-                </select>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Szuletesi hely *</label>
+                <input type="text" className={fieldClass} style={fieldStyle}
+                  value={customerBirthPlace} onChange={(e) => setCustomerBirthPlace(e.target.value)} />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Okmanyszam *</label>
-                <input
-                  type="text"
-                  className="w-full h-9 px-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent font-mono text-gray-900 dark:text-white focus:ring-2 focus:border-transparent"
-                  style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
-                  value={customerDocNumber}
-                  onChange={(e) => setCustomerDocNumber(e.target.value)}
-                  data-field="customer-doc-number"
-                  onKeyDown={(e) => handleFieldKeyDown(e, 'customer-doc-number')}
-                />
-              </div>
+
               <div>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Allampolgarsag *</label>
-                <select
-                  className="w-full h-9 px-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white focus:ring-2 focus:border-transparent"
-                  style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
-                  value={customerNationality}
-                  onChange={(e) => setCustomerNationality(e.target.value)}
-                  data-field="customer-nationality"
-                  onKeyDown={(e) => handleFieldKeyDown(e, 'customer-nationality')}
-                >
+                <select className={fieldClass} style={fieldStyle}
+                  value={customerNationality} onChange={(e) => setCustomerNationality(e.target.value)}>
                   <option>Magyar</option>
-                  <option>EU állampolgár</option>
-                  <option>Egyéb</option>
+                  <option>EU allampolgarsag</option>
+                  <option>Egyeb</option>
                 </select>
               </div>
-              {identificationLevel === 'FULL' && (
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Okmany tipus *</label>
+                <select className={fieldClass} style={fieldStyle}
+                  value={customerDocType} onChange={(e) => setCustomerDocType(e.target.value)}>
+                  <option>Szemelyi igazolvany</option>
+                  <option>Utlevel</option>
+                  <option>Vezetoi engedely</option>
+                  <option>Tartozkodasi engedely</option>
+                </select>
+              </div>
+
+              <div className={showFull ? '' : 'col-span-2'}>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Okmanyszam *</label>
+                <input type="text" className={`${fieldClass} font-mono`} style={fieldStyle}
+                  value={customerDocNumber} onChange={(e) => setCustomerDocNumber(e.target.value)} />
+              </div>
+
+              {/* --- FULL only fields --- */}
+              {showFull && (
                 <>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Szuletesi hely *</label>
-                    <input
-                      type="text"
-                      className="w-full h-9 px-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white focus:ring-2 focus:border-transparent"
-                      style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
-                      value={customerBirthPlace}
-                      onChange={(e) => setCustomerBirthPlace(e.target.value)}
-                      data-field="customer-birth-place"
-                      onKeyDown={(e) => handleFieldKeyDown(e, 'customer-birth-place')}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Szuletesi ido *</label>
-                    <input
-                      type="date"
-                      className="w-full h-9 px-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white focus:ring-2 focus:border-transparent"
-                      style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
-                      value={customerBirthDate}
-                      onChange={(e) => setCustomerBirthDate(e.target.value)}
-                      data-field="customer-birth-date"
-                      onKeyDown={(e) => handleFieldKeyDown(e, 'customer-birth-date')}
-                    />
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Elozo nev (szul. nev)</label>
+                    <input type="text" className={fieldClass} style={fieldStyle}
+                      value={customerBirthName} onChange={(e) => setCustomerBirthName(e.target.value)} />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Anyja neve *</label>
-                    <input
-                      type="text"
-                      className="w-full h-9 px-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white focus:ring-2 focus:border-transparent"
-                      style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
-                      value={customerMotherName}
-                      onChange={(e) => setCustomerMotherName(e.target.value)}
-                      data-field="customer-mother-name"
-                      onKeyDown={(e) => handleFieldKeyDown(e, 'customer-mother-name')}
-                    />
+                    <input type="text" className={fieldClass} style={fieldStyle}
+                      value={customerMotherName} onChange={(e) => setCustomerMotherName(e.target.value)} />
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Lakcim *</label>
-                    <input
-                      type="text"
-                      className="w-full h-9 px-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white focus:ring-2 focus:border-transparent"
-                      style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
-                      value={customerAddress}
-                      onChange={(e) => setCustomerAddress(e.target.value)}
-                      data-field="customer-address"
-                      onKeyDown={(e) => handleFieldKeyDown(e, 'customer-address')}
-                    />
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Lakcim es iranyitoszam *</label>
+                    <input type="text" className={fieldClass} style={fieldStyle}
+                      value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)}
+                      placeholder="pl. 1234 Budapest, Fo utca 1." />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Tartozkodasi hely</label>
+                    <input type="text" className={fieldClass} style={fieldStyle}
+                      value={customerResidence} onChange={(e) => setCustomerResidence(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Lakcimkartya szama</label>
+                    <input type="text" className={`${fieldClass} font-mono`} style={fieldStyle}
+                      value={customerAddressCardNumber} onChange={(e) => setCustomerAddressCardNumber(e.target.value)} />
                   </div>
                 </>
               )}
             </div>
+
             <button
               onClick={() => void handleSaveManualCustomer()}
-              disabled={
-                isSaving
-                || !customerName.trim()
-                || !customerDocNumber.trim()
-                || (identificationLevel === 'FULL' && (!customerBirthPlace.trim() || !customerBirthDate || !customerMotherName.trim() || !customerAddress.trim()))
-              }
+              disabled={isSaving || !isFormValid()}
               className="w-full py-2 rounded-lg text-white font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: 'var(--primary)' }}
               data-action="save-customer"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  document.querySelector<HTMLButtonElement>('[data-action="save"]')?.focus()
-                }
-              }}
             >
               {isSaving ? 'Mentes...' : 'Ugyfel rogzitese'}
             </button>
