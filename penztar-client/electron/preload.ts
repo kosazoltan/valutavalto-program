@@ -33,6 +33,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
   > => ipcRenderer.invoke('auth:password-login', data),
 
   /**
+   * v2.5.25 ALTALANOS API PROXY: minden renderer HTTP hivas a main process electron.net.request-en
+   * megy at. ESET/Kaspersky/Bitdefender MITM TLS proxy-k altal okozott "Network Error" vegleges fix.
+   */
+  apiRequest: (params: {
+    method: string;
+    url: string;
+    body?: string | null;
+    headers?: Record<string, string>;
+    timeoutMs?: number;
+  }): Promise<{
+    ok: boolean;
+    status: number;
+    statusText: string;
+    headers: Record<string, string>;
+    body: string;
+  }> => ipcRenderer.invoke('api:fetch', params),
+
+  /**
    * v2.5.13 KLIENS-OLDALI HIBAJELENTES (window.onerror + axios interceptor a renderer-ben).
    * Send-and-forget — soha nem dob, a Penztar futasat nem akadályozza.
    */

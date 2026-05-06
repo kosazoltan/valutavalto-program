@@ -142,6 +142,16 @@ Section "Eltavolitas"
     ; Start menu
     RMDir /r "$SMPROGRAMS\Valutavalto Penztar"
 
+    ; --- 4a. Electron userData cleanup (Setup Wizard fix) ---
+    ; Az %APPDATA%\valuta-penztar\ mappaban van a .env (SETUP_COMPLETED flag).
+    ; Ha nem toroljuk, ujratelepites utan a Setup Wizard NEM indul automatikusan.
+    ; SetShellVarContext current: az admin-context-ben futo uninstaller-ben
+    ; a $APPDATA a *current user* Roaming mappajara mutat (nem az admin-ere).
+    DetailPrint "4a/5 - Electron userData (.env, config) torlese..."
+    SetShellVarContext current
+    RMDir /r "$APPDATA\valuta-penztar"
+    SetShellVarContext all
+
     ; --- 4b. Firewall rules cleanup (BUG-03 fix) ---
     DetailPrint "4b/5 - Tuzfalszabalyok torlese..."
     nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Valutavalto-Backend"'

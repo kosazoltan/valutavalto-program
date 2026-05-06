@@ -77,7 +77,7 @@ class AmlServiceTest {
     @Test
     @DisplayName("checkTransaction: küszöb alatti összeg → NO_REPORT (approved, no identification)")
     void testCheckTransaction_underThreshold() {
-        BigDecimal amount = new BigDecimal("150000"); // 150K < 300K limit
+        BigDecimal amount = new BigDecimal("50000"); // 50K < 100K limit
 
         AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
             amount, "C001", "Teszt Ügyfél", "AB123456");
@@ -89,9 +89,9 @@ class AmlServiceTest {
     }
 
     @Test
-    @DisplayName("checkTransaction: 300K+ → IDENTIFICATION szükséges (de approved ha van adat)")
+    @DisplayName("checkTransaction: 100K+ → IDENTIFICATION szükséges (de approved ha van adat)")
     void testCheckTransaction_identification() {
-        BigDecimal amount = new BigDecimal("500000"); // 500K > 300K limit
+        BigDecimal amount = new BigDecimal("500000"); // 500K > 100K limit, > 300K → detailed
 
         // Mock: éves és napi összegek
         when(transactionRepository.sumCustomerAnnualTotal(any(), eq("C001"), any(), any()))
@@ -104,7 +104,7 @@ class AmlServiceTest {
 
         assertThat(result.isApproved()).isTrue();
         assertThat(result.isRequiresIdentification()).isTrue();
-        assertThat(result.isRequiresDetailedId()).isFalse();
+        assertThat(result.isRequiresDetailedId()).isTrue(); // 500K > 300K → teljes azonosítás
     }
 
     @Test

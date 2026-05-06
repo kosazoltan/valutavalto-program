@@ -86,6 +86,7 @@ import { registerScannerHandlers } from './scanner';
 import { registerUpdaterHandlers } from './updater';
 import { performGoogleOAuthFlow, performGoogleOAuthFlowWithBackendLogin, performPasswordLoginMainProcess, GoogleOAuthFailedException } from './google-oauth';
 import { initErrorReporter, reportError, setUserIdentifier } from './error-reporter';
+import { fetchViaElectronNet, type ApiProxyRequest } from './api-proxy';
 import {
 
   isFirstRun,
@@ -887,6 +888,30 @@ app.whenReady().then(async () => {
       }
       log.error('[main] Password login unexpected error:', err);
       return { ok: false, code: 'UNEXPECTED', message: (err as Error).message };
+    }
+  });
+
+  // v2.5.25 ALTALANOS API PROXY: MINDEN renderer HTTP hivas a main process electron.net.request-en
+  // megy at, NEM renderer Chromium fetch/axios. Ez a vegleges megoldas az ESET/Kaspersky/Bitdefender
+  // MITM TLS proxy-k altal okozott "Network Error" hibakra (Borsi, Helga, Zsuzsa, Tomi gepek).
+  // A v2.5.21-ben CSAK a login ment main process-en — most MINDEN: selectRole, napnyitas,
+  // arfolyam-lekerdezes, tranzakcio-rogzites, stb.
+  ipcMain.handle('api:fetch', async (_evt, params: ApiProxyRequest) => {
+    if (!params || !params.url || !params.method) {
+      return { ok: false, status: 0, statusText: 'BAD_REQUEST', headers: {}, body: '{"error":"url and method required"}' };
+    }
+    const apiBaseUrl = loadProductionUrls().api_url;
+    const fullUrl = params.url.startsWith('http') ? params.url : `${apiBaseUrl}${params.url}`;
+    try {
+      const response = await fetchViaElectronNet({
+        ...params,
+        url: fullUrl,
+      });
+      return response;
+    } catch (err) {
+      const msg = (err as Error).message ?? String(err);
+      log.warn('[main] api:fetch error for', params.method, params.url, ':', msg);
+      return { ok: false, status: 0, statusText: 'NETWORK_ERROR', headers: {}, body: JSON.stringify({ error: msg }) };
     }
   });
 

@@ -58,7 +58,10 @@ public class AmlService {
     private final SanctionScreeningService sanctionScreeningService;
     private final BlacklistService blacklistService;
 
-    /** Azonositas nelkuli limit (NAV) */
+    /** Egyszerusitett azonositasi limit (2017. LIII. tv. 7.§) */
+    private static final BigDecimal SIMPLIFIED_IDENTIFICATION_LIMIT = new BigDecimal("100000");
+
+    /** Teljes azonositasi limit (2017. LIII. tv. 7.§) */
     private static final BigDecimal IDENTIFICATION_LIMIT = new BigDecimal("300000");
 
     /** Eves gongyolesi limit termeszetes szemelyeknel */
@@ -133,17 +136,23 @@ public class AmlService {
             .annualLimitReached(false)
             .suspiciousFlag(false);
 
-        // 1. Azonositasi kotelezettseg ellenorzes (300K+ Ft)
-        if (hufAmount.compareTo(IDENTIFICATION_LIMIT) >= 0) {
+        // 1a. Egyszerusitett azonositasi kotelezettseg (100K-300K Ft)
+        if (hufAmount.compareTo(SIMPLIFIED_IDENTIFICATION_LIMIT) >= 0) {
             result.requiresIdentification(true);
 
             if (customerName == null || customerName.isBlank()
                 || documentNumber == null || documentNumber.isBlank()) {
                 result.approved(false);
                 result.rejectionReason(
-                    IDENTIFICATION_LIMIT.toPlainString() + " Ft feletti tranzakciohoz ugyfel azonositas (nev + igazolvany) KOTELEZO!");
+                    SIMPLIFIED_IDENTIFICATION_LIMIT.toPlainString()
+                    + " Ft feletti tranzakciohoz ugyfel azonositas (nev + igazolvany) KOTELEZO!");
                 return result.build();
             }
+        }
+
+        // 1b. Teljes azonositasi kotelezettseg (300K+ Ft)
+        if (hufAmount.compareTo(IDENTIFICATION_LIMIT) >= 0) {
+            result.requiresDetailedId(true);
         }
 
         // 2. Reszletes azonositas (1.5M+ Ft) - bejelentesi kotelezettseg
@@ -259,7 +268,7 @@ public class AmlService {
             .annualUsagePercent(annualTotal.multiply(new BigDecimal("100"))
                 .divide(ANNUAL_ROLLING_LIMIT, 1, RoundingMode.HALF_UP))
             .dailyTotal(dailyTotal)
-            .identificationRequired(annualTotal.compareTo(IDENTIFICATION_LIMIT) >= 0)
+            .identificationRequired(annualTotal.compareTo(SIMPLIFIED_IDENTIFICATION_LIMIT) >= 0)
             .limitReached(annualTotal.compareTo(ANNUAL_ROLLING_LIMIT) >= 0)
             .build();
     }
@@ -551,10 +560,15 @@ public class AmlService {
                 warnings.add("BLOKKOLVA: Külföldi ügyfél nem kaphat USD-t");
                 break;
             default:
-                // Normál — 300K feletti azonosítási kötelezettség
-                if (hufAmount.compareTo(IDENTIFICATION_LIMIT) >= 0) {
+                // 100K+ egyszerusitett azonositasi kotelezettseg
+                if (hufAmount.compareTo(SIMPLIFIED_IDENTIFICATION_LIMIT) >= 0) {
                     requiresId = true;
-                    warnings.add("Azonosítás szükséges: " + hufAmount.toPlainString() + " Ft >= " + IDENTIFICATION_LIMIT.toPlainString() + " Ft");
+                    if (hufAmount.compareTo(IDENTIFICATION_LIMIT) >= 0) {
+                        requiresEnhanced = true;
+                        warnings.add("Teljes azonosítás szükséges: " + hufAmount.toPlainString() + " Ft >= " + IDENTIFICATION_LIMIT.toPlainString() + " Ft");
+                    } else {
+                        warnings.add("Egyszerűsített azonosítás szükséges: " + hufAmount.toPlainString() + " Ft >= " + SIMPLIFIED_IDENTIFICATION_LIMIT.toPlainString() + " Ft");
+                    }
                 }
                 break;
         }

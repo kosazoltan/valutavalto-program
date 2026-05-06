@@ -39,7 +39,7 @@ import type { AmlCheckResultDto } from '../../services/api/transactions'
  */
 
 const MAX_LINES = 6
-const IDENTIFICATION_LIMIT = 300_000
+const SIMPLIFIED_IDENTIFICATION_LIMIT = 100_000
 const RATE_STALE_MS = 5 * 60 * 1000 // 5 perc
 
 let _rowIdSeq = 0
@@ -129,7 +129,7 @@ export default function CashierTransactionPage() {
   const total = subtotal + handlingFee - discountAmount
 
   // Identification level based on HUF total
-  const { identificationLevel, requiresSourceVerification } = useIdentificationLevel(String(total))
+  const { identificationLevel, minimumLevel, setIdentificationLevel, requiresSourceVerification } = useIdentificationLevel(String(total))
 
   // Focus management
   useEffect(() => {
@@ -351,7 +351,11 @@ export default function CashierTransactionPage() {
     const aml = amlResultRef.current
     if (identificationLevel !== 'SIMPLE') {
       if (!cd?.name?.trim() || !cd?.documentNumber?.trim()) {
-        toast.warning('Ügyfél azonosítás kötelező', `${IDENTIFICATION_LIMIT.toLocaleString('hu-HU')} Ft feletti tranzakcióhoz ügyfél azonosítás KÖTELEZŐ!`)
+        toast.warning('Ügyfél azonosítás kötelező', `${SIMPLIFIED_IDENTIFICATION_LIMIT.toLocaleString('hu-HU')} Ft feletti tranzakcióhoz ügyfél azonosítás KÖTELEZŐ!`)
+        return
+      }
+      if (identificationLevel === 'SIMPLIFIED' && (!cd?.birthPlace || !cd?.birthDate)) {
+        toast.warning('Egyszerűsített azonosítás hiányos', '100.000 Ft felett születési hely és születési idő is KÖTELEZŐ!')
         return
       }
       if (identificationLevel === 'FULL' && (!cd?.birthPlace || !cd?.birthDate || !cd?.motherName || !cd?.address)) {
@@ -758,6 +762,8 @@ export default function CashierTransactionPage() {
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2">
             <CustomerPanel
               identificationLevel={identificationLevel}
+              minimumLevel={minimumLevel}
+              onLevelChange={setIdentificationLevel}
               requiresSourceVerification={requiresSourceVerification}
               hufTotal={total}
               onCustomerReady={(data) => { customerDataRef.current = data }}

@@ -18,6 +18,8 @@ export interface Customer {
   documentNumber?: string
   documentType?: string
   documentExpiry?: string
+  residence?: string
+  addressCardNumber?: string
   address?: string
   postalCode?: string
   city?: string
@@ -47,6 +49,8 @@ export interface CustomerCreateRequest {
   documentNumber?: string
   documentType?: string
   documentExpiry?: string
+  residence?: string
+  addressCardNumber?: string
   address?: string
   postalCode?: string
   city?: string
