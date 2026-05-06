@@ -25,11 +25,7 @@
         ]
       }
     ],
-    "artifactName": "Penztar-Setup-${version}.exe",
-    "signingHashAlgorithms": ["sha256"],
-    "publisherName": "Exclusive Best Change Zrt.",
-    "rfc3161TimeStampServer": "http://timestamp.digicert.com",
-    "sign": "./scripts/sign-with-keylocker.js"
+    "artifactName": "Penztar-Setup-${version}.exe"
   },
   "nsis": {
     "oneClick": false,
