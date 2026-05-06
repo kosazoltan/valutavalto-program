@@ -277,6 +277,7 @@ export default function CircularPage() {
                   <td className="p-3">{circular.title}</td>
                   <td className="p-3">{typeLabels[circular.circularType] || circular.circularType}</td>
                   <td className="p-3">{categoryLabels[circular.category] || circular.category}</td>
+                  {/* eslint-disable-next-line i18next/no-literal-string */}
                   <td className="p-3">v{circular.version}</td>
                   <td className="p-3">
                     {new Date(circular.effectiveDate).toLocaleDateString('hu-HU')}
@@ -504,6 +505,7 @@ function CircularView({
         </div>
         <div>
           <label className="text-gray-500">{t('circulars.verzio')}</label>
+          {/* eslint-disable-next-line i18next/no-literal-string */}
           <p>v{circular.version}</p>
         </div>
         <div>
@@ -538,7 +540,7 @@ function CircularView({
             onClick={onAcknowledge}
             className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
           >
-            Elolvastam és megértettem
+            {t('circulars.elolvastamEsMegertettem')}
           </button>
         )}
       </div>

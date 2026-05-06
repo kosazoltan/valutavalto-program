@@ -177,16 +177,16 @@ export default function ArchivingPage() {
           <table className="data-grid w-full">
             <thead><tr><th>{t('common.type')}</th><th>{t('archiving.entitas')}</th><th>{t('common.status')}</th><th>{t('archiving.kezdes')}</th><th>{t('archiving.befejezes')}</th><th>{t('common.actions')}</th></tr></thead>
             <tbody>
-              {safeArray<ArchiveTask>(tasks).map(t => (
-                <tr key={t.id}>
-                  <td>{t.taskType}</td>
-                  <td>{t.entityType}</td>
-                  <td>{getStatusBadge(t.status)}</td>
-                  <td className="text-sm">{t.startedAt ? new Date(t.startedAt).toLocaleString('hu-HU') : '-'}</td>
-                  <td className="text-sm">{t.completedAt ? new Date(t.completedAt).toLocaleString('hu-HU') : '-'}</td>
+              {safeArray<ArchiveTask>(tasks).map(task => (
+                <tr key={task.id}>
+                  <td>{task.taskType}</td>
+                  <td>{task.entityType}</td>
+                  <td>{getStatusBadge(task.status)}</td>
+                  <td className="text-sm">{task.startedAt ? new Date(task.startedAt).toLocaleString('hu-HU') : '-'}</td>
+                  <td className="text-sm">{task.completedAt ? new Date(task.completedAt).toLocaleString('hu-HU') : '-'}</td>
                   <td>
-                    {t.status !== 'COMPLETED' && t.status !== 'IN_PROGRESS' && (
-                      <button onClick={() => void handleExecute(t.id)} className="form-button text-xs"><Play size={12} />Futtatás</button>
+                    {task.status !== 'COMPLETED' && task.status !== 'IN_PROGRESS' && (
+                      <button onClick={() => void handleExecute(task.id)} className="form-button text-xs"><Play size={12} />{t('archiving.futtatas')}</button>
                     )}
                   </td>
                 </tr>

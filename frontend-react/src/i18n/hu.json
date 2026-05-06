@@ -787,6 +787,8 @@
     "eladasiDij": "Eladási díj",
     "eladasiDijak": "Eladási díjak",
     "ertek": "Érték",
+    "ertekFt": "Érték (Ft)",
+    "ertekSzazalek": "Érték (%)",
     "expressz": "Expressz",
     "expresszDijFt": "Expressz díj (Ft)",
     "fixOsszeg": "Fix összeg",
@@ -1809,6 +1811,7 @@
   },
   "treasury": {
     "0Hiba": "0 hiba",
+    "kerte": "| Kérte:",
     "AlacsonyKuszobgtKritikus": "🟡 Alacsony (≤ küszöb, &gt; kritikus)",
     "Elerheto": "✅ Elérhető",
     "Fuggo": "📥 Függő:",

@@ -37,6 +37,7 @@ export default function RateGrid({ rates, selectedWg, updateRate, validationErro
             <tr className="bg-green-800 text-white text-[10px] leading-none">
               <th colSpan={2} className="px-1 py-0 text-left border-r border-green-600">{t('rates.elszArf')}</th>
               <th className="px-1 py-0 border-r border-green-600">{t('common.currency')}</th>
+              {/* eslint-disable-next-line i18next/no-literal-string */}
               <th colSpan={2} className="px-1 py-0 border-r border-green-600 text-center">
                 0 - {fmtAmount(selectedWg?.limit1Boundary)}
               </th>
@@ -111,6 +112,7 @@ export default function RateGrid({ rates, selectedWg, updateRate, validationErro
                       </div>
                     ))}
                     {!validationErrors[r.currencyId] && r.hasRate && (
+                      // eslint-disable-next-line i18next/no-literal-string
                       <span className="text-green-600">✓</span>
                     )}
                   </td>

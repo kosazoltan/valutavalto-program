@@ -295,7 +295,7 @@ function AttendanceList({
                         {!loading && entries.length === 0 && (
                             <tr>
                                 <td colSpan={showWorkerName ? 6 : 5} className="text-center py-8 text-secondary-400">
-                                    Nincs adat az időtartományban
+                                    {t('attendance.nincsAdatAzIdotartomanyban')}
                                 </td>
                             </tr>
                         )}

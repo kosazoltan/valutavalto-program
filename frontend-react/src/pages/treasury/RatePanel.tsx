@@ -182,6 +182,7 @@ export default function RatePanel() {
               <th className="text-right w-28">{t('cashier.buy')}</th>
               <th className="text-right w-28">{t('cashier.sell')}</th>
               <th className="text-right w-32">{t('ratemanagement.spread2')}</th>
+              {/* eslint-disable-next-line i18next/no-literal-string */}
               <th className="text-right w-24">Δ%</th>
               <th className="w-16"></th>
             </tr>

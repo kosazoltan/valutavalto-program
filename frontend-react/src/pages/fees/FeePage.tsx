@@ -84,10 +84,10 @@ export default function FeePage() {
             <table className="data-grid w-full">
               <thead><tr><th>{t('common.code')}</th><th>{t('common.name')}</th><th>{t('fees.szamitas')}</th><th>{t('common.actions')}</th></tr></thead>
               <tbody>
-                {types.map(t => (
-                  <tr key={t.id}>
-                    <td>{t.code}</td><td>{t.name}</td><td>{t.calculationMethod}</td>
-                    <td><button type="button" onClick={() => { setFormData(t); setShowForm(true) }} className="form-button text-xs">Szerkesztés</button></td>
+                {types.map(ft => (
+                  <tr key={ft.id}>
+                    <td>{ft.code}</td><td>{ft.name}</td><td>{ft.calculationMethod}</td>
+                    <td><button type="button" onClick={() => { setFormData(ft); setShowForm(true) }} className="form-button text-xs">{t('common.edit')}</button></td>
                   </tr>
                 ))}
               </tbody>

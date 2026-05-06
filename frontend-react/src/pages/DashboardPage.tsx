@@ -380,7 +380,7 @@ function StatCard({
       <div className="text-lg font-bold leading-tight">{value}</div>
       {change === null && (
         <div className="text-[10px] mt-0.5 text-gray-500">
-          — nincs tegnapi adat
+          {t('misc.NincsTegnapiAdat')}
         </div>
       )}
       {change !== undefined && change !== null && (

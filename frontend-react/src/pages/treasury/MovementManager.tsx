@@ -209,50 +209,50 @@ export default function MovementManager() {
             {t('treasury.fuggoMozgasok')}{pendingTransfers.length})
           </h2>
           <div className="space-y-3">
-            {pendingTransfers.map((t) => (
+            {pendingTransfers.map((mov) => (
               <div
-                key={t.id}
+                key={mov.id}
                 className="p-4 rounded-lg border border-warning-200 bg-warning-50 hover:bg-warning-100 transition-colors"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="font-bold text-secondary-900">#{t.transferNumber}</span>
+                      <span className="font-bold text-secondary-900">#{mov.transferNumber}</span>
                       <span className="badge badge-yellow">
-                        {MOVEMENT_TYPE_LABELS[t.transferType] ?? t.transferTypeDisplay}
+                        {MOVEMENT_TYPE_LABELS[mov.transferType] ?? mov.transferTypeDisplay}
                       </span>
                       <span className="text-sm text-secondary-600">
-                        {t.fromBranchName}
-                        {t.toBranchName && ` → ${t.toBranchName}`}
+                        {mov.fromBranchName}
+                        {mov.toBranchName && ` → ${mov.toBranchName}`}
                       </span>
                     </div>
                     <div className="text-sm text-secondary-700 mb-2">
-                      <span className={`font-bold ${currencyColorClass(t.currencyCode)}`}>
-                        {t.currencyCode}
+                      <span className={`font-bold ${currencyColorClass(mov.currencyCode)}`}>
+                        {mov.currencyCode}
                       </span>{' '}
-                      <span className="font-mono font-semibold">{formatInteger(t.amount)}</span>{' '}
-                      <span className="text-secondary-500">| Kérte: {t.fromWorkerName}</span>
+                      <span className="font-mono font-semibold">{formatInteger(mov.amount)}</span>{' '}
+                      <span className="text-secondary-500">{t('treasury.kerte')} {mov.fromWorkerName}</span>
                     </div>
-                    <div className="text-xs text-secondary-500">{formatDateTime(t.createdAt)}</div>
+                    <div className="text-xs text-secondary-500">{formatDateTime(mov.createdAt)}</div>
                   </div>
                   <div className="flex items-center gap-2 ml-4">
                     <button
                       className="form-button-success h-8 text-xs"
-                      onClick={() => void handleApprove(t.id)}
+                      onClick={() => void handleApprove(mov.id)}
                     >
                       <CheckCircle size={16} />
-                      Jóváhagy
+                      {t('common.approve')}
                     </button>
                     <button
                       className="form-button-danger h-8 text-xs"
-                      onClick={() => void handleReject(t.id)}
+                      onClick={() => void handleReject(mov.id)}
                     >
                       <XCircle size={16} />
-                      Elutasít
+                      {t('common.reject')}
                     </button>
                     <button
                       className="form-button h-8 text-xs"
-                      onClick={() => setShowDetailModal(t)}
+                      onClick={() => setShowDetailModal(mov)}
                     >
                       <Eye size={16} />
                     </button>
@@ -313,44 +313,44 @@ export default function MovementManager() {
                 </td>
               </tr>
             )}
-            {filteredTransfers.map((t) => (
-              <tr key={t.id}>
-                <td className="font-mono text-xs">#{t.transferNumber}</td>
-                <td className="text-xs">{formatTime(t.createdAt)}</td>
+            {filteredTransfers.map((mov) => (
+              <tr key={mov.id}>
+                <td className="font-mono text-xs">#{mov.transferNumber}</td>
+                <td className="text-xs">{formatTime(mov.createdAt)}</td>
                 <td className="text-xs">
-                  {MOVEMENT_TYPE_LABELS[t.transferType] ?? t.transferTypeDisplay}
+                  {MOVEMENT_TYPE_LABELS[mov.transferType] ?? mov.transferTypeDisplay}
                 </td>
                 <td className="text-xs">
-                  {t.fromBranchName}
-                  {t.toBranchName && (
-                    <span className="text-secondary-400"> → {t.toBranchName}</span>
+                  {mov.fromBranchName}
+                  {mov.toBranchName && (
+                    <span className="text-secondary-400"> → {mov.toBranchName}</span>
                   )}
                 </td>
-                <td className={`font-bold ${currencyColorClass(t.currencyCode)}`}>
-                  {t.currencyCode}
+                <td className={`font-bold ${currencyColorClass(mov.currencyCode)}`}>
+                  {mov.currencyCode}
                 </td>
                 <td className="text-right font-mono font-semibold">
-                  {formatInteger(t.amount)}
+                  {formatInteger(mov.amount)}
                 </td>
                 <td>
                   <span
                     className={`badge ${
-                      t.status === 'PENDING'
+                      mov.status === 'PENDING'
                         ? 'badge-yellow'
-                        : t.status === 'COMPLETED' || t.status === 'RECEIVED'
+                        : mov.status === 'COMPLETED' || mov.status === 'RECEIVED'
                           ? 'badge-green'
-                          : t.status === 'REJECTED'
+                          : mov.status === 'REJECTED'
                             ? 'badge-red'
                             : 'badge-gray'
                     }`}
                   >
-                    {MOVEMENT_STATUS_LABELS[t.status] ?? t.statusDisplay}
+                    {MOVEMENT_STATUS_LABELS[mov.status] ?? mov.statusDisplay}
                   </span>
                 </td>
                 <td className="text-center">
                   <button
                     className="text-primary-600 hover:text-primary-700"
-                    onClick={() => setShowDetailModal(t)}
+                    onClick={() => setShowDetailModal(mov)}
                   >
                     <Eye size={16} />
                   </button>

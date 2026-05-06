@@ -275,6 +275,7 @@ export default function ExchangeRateDisplayPage() {
                       <td className="font-medium">{d.displayName}</td>
                       <td>{DISPLAY_TYPES.find(t => t.value === d.displayType)?.label || d.displayType || '-'}</td>
                       <td className="text-sm">{d.connectionType || 'SERIAL'} {d.comPort || d.ipAddress || ''}</td>
+                      {/* eslint-disable-next-line i18next/no-literal-string */}
                       <td>{d.refreshInterval}s</td>
                       <td>
                         <span className={`badge ${d.isActive ? 'badge-green' : 'badge-gray'}`}>

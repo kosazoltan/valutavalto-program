@@ -122,6 +122,7 @@ export default function ReceiptPreviewModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b px-6 py-4">
           <h2 className="text-xl font-bold text-gray-800">{t('components.bizonylatElonezet2')}</h2>
+          {/* eslint-disable i18next/no-literal-string */}
           <button
             onClick={onClose}
             className="rounded-lg px-3 py-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
@@ -129,6 +130,7 @@ export default function ReceiptPreviewModal({
           >
             ✕
           </button>
+          {/* eslint-enable i18next/no-literal-string */}
         </div>
 
         {/* Receipt content — 80mm thermal printer format */}

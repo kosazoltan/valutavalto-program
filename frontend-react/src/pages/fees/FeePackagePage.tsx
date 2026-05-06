@@ -366,7 +366,7 @@ function FeePackageForm({
         </div>
         <div>
           <label htmlFor="buyFeeValue" className="block text-sm font-medium mb-1">
-            Érték{formData.buyFeeType === 'PERCENT' ? '(%)' : '(Ft)'}
+            {formData.buyFeeType === 'PERCENT' ? t('fees.ertekSzazalek') : t('fees.ertekFt')}
           </label>
           <input
             id="buyFeeValue"
@@ -419,7 +419,7 @@ function FeePackageForm({
         </div>
         <div>
           <label htmlFor="sellFeeValue" className="block text-sm font-medium mb-1">
-            Érték{formData.sellFeeType === 'PERCENT' ? '(%)' : '(Ft)'}
+            {formData.sellFeeType === 'PERCENT' ? t('fees.ertekSzazalek') : t('fees.ertekFt')}
           </label>
           <input
             id="sellFeeValue"

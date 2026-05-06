@@ -382,63 +382,66 @@ export default function RateTemplateEditor() {
 
       {/* Template list */}
       {loading ? (
-        <p>Betöltés...</p>
+        <p>{t('common.loading')}</p>
       ) : templates.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">{t('ratemanagement.nincsArfolyamSablonEbbenAMunkacsoportban')}</div>
       ) : (
         <div className="space-y-2">
-          {templates.map((t) => (
-            <div key={t.id} className="rounded-lg border bg-card shadow-sm">
+          {templates.map((tpl) => (
+            <div key={tpl.id} className="rounded-lg border bg-card shadow-sm">
               <div className="p-4 flex items-center justify-between">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono font-medium">Vétel: {t.baseBuyRate} | Eladás: {t.baseSellRate}</span>
-                    {statusBadge(t.status)}
+                    {/* eslint-disable-next-line i18next/no-literal-string -- interpolated rate display */}
+                    <span className="font-mono font-medium">Vétel: {tpl.baseBuyRate} | Eladás: {tpl.baseSellRate}</span>
+                    {statusBadge(tpl.status)}
                   </div>
+                  {/* eslint-disable i18next/no-literal-string -- interpolated spread display */}
                   <p className="text-sm text-muted-foreground">
-                    Spread: +{t.buySpread} / +{t.sellSpread} | Kerekites: {t.roundingRule}
+                    Spread: +{tpl.buySpread} / +{tpl.sellSpread} | Kerekites: {tpl.roundingRule}
                   </p>
+                  {/* eslint-enable i18next/no-literal-string */}
                 </div>
                 <div className="flex gap-1">
-                  {t.status === 'DRAFT' && (
+                  {tpl.status === 'DRAFT' && (
                     <>
                       <button
                         className="inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"
-                        onClick={() => setEditing(t)}
+                        onClick={() => setEditing(tpl)}
                       >
-                        Szerkesztés
+                        {t('ratemanagement.szerkesztes')}
                       </button>
                       <button
                         className="inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"
-                        onClick={() => t.id && approveTemplate(t.id)}
+                        onClick={() => tpl.id && approveTemplate(tpl.id)}
                       >
                         <CheckCircle className="h-4 w-4 mr-1" />
-                        Jóváhagyás
+                        {t('ratemanagement.jovahagyas')}
                       </button>
                       <button
                         className="inline-flex items-center justify-center rounded-md bg-destructive px-3 py-1.5 text-xs font-medium text-destructive-foreground hover:bg-destructive/90"
-                        onClick={() => t.id && deleteTemplate(t.id)}
+                        onClick={() => tpl.id && deleteTemplate(tpl.id)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </>
                   )}
-                  {t.status === 'APPROVED' && (
+                  {tpl.status === 'APPROVED' && (
                     <button
                       className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                      onClick={() => t.id && publishTemplate(t.id)}
+                      onClick={() => tpl.id && publishTemplate(tpl.id)}
                     >
                       <Send className="h-4 w-4 mr-1" />
-                      Publikálás
+                      {t('ratemanagement.publikalas')}
                     </button>
                   )}
-                  {(t.status === 'PUBLISHED' || t.status === 'APPROVED') && (
+                  {(tpl.status === 'PUBLISHED' || tpl.status === 'APPROVED') && (
                     <button
                       className="inline-flex items-center justify-center rounded-md bg-destructive px-3 py-1.5 text-xs font-medium text-destructive-foreground hover:bg-destructive/90"
-                      onClick={() => t.id && revokeTemplate(t.id)}
+                      onClick={() => tpl.id && revokeTemplate(tpl.id)}
                     >
                       <XCircle className="h-4 w-4 mr-1" />
-                      Visszavonas
+                      {t('ratemanagement.visszavonas')}
                     </button>
                   )}
                 </div>

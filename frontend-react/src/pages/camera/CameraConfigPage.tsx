@@ -238,12 +238,14 @@ export default function CameraConfigPage() {
                     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                       config.enabled ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
                     }`}>
-                      {config.enabled ? 'Aktív' : 'Inaktív'}
+                      {config.enabled ? t('common.active') : t('common.inactive')}
                     </span>
                   </div>
+                  {/* eslint-disable i18next/no-literal-string */}
                   <p className="text-sm text-muted-foreground">
                     {config.resolutionWidth}x{config.resolutionHeight} @ {config.fps} FPS
                   </p>
+                  {/* eslint-enable i18next/no-literal-string */}
                   <p className="text-xs text-muted-foreground">{t('camera.utvonal')}{config.localStoragePath}</p>
                 </div>
                 <div className="flex gap-2">
