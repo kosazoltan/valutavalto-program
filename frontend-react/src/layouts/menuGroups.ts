@@ -106,6 +106,9 @@ export const menuGroups: MenuGroup[] = [
       { path: "/reports", label: "Riportok", icon: FileText },
       { path: "/reports/extended", label: "Kiterjesztett riportok", icon: FileText },
       { path: "/reports/mnb", label: "MNB riportok", icon: FileText },
+      { path: "/reports/handling-fee-decade", label: "Kezelési díj — dekád", icon: FileText },
+      { path: "/reports/bank-transactions", label: "Banki tranzakciók", icon: FileText },
+      { path: "/reports/cashier-turnover", label: "Pénztáros forgalom", icon: FileText },
       { path: "/daily-turnover", label: "Napi forgalom", icon: TrendingUp },
       { path: "/profit", label: "Nyereség (haszon)", icon: TrendingUp },
       { path: "/stock-snapshot", label: "Készlet pillanatképek", icon: FileText },
@@ -119,6 +122,7 @@ export const menuGroups: MenuGroup[] = [
     items: [
       { path: "/police-requests", label: "Rendőrségi megkeresések", icon: Shield },
       { path: "/audit-log", label: "Audit napló", icon: Shield },
+      { path: "/admin/error-monitor", label: "Hiba-monitor", icon: ShieldAlert, canonicalRoles: ["ugyvezeto", "belso_ellenor", "biztonsagi_vezeto"] },
       { path: "/sanction", label: "Szankciós lista (AML)", icon: ShieldAlert },
       { path: "/seal-tracking", label: "Plomba nyilvántartás", icon: Shield },
       { path: "/compliance", label: "Compliance Dashboard", icon: ClipboardCheck },

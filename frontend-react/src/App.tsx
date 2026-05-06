@@ -39,6 +39,7 @@ const ClosingWizardPage = lazy(() => import('./pages/closing/ClosingWizardPage')
 const TransferPage = lazy(() => import('./pages/transfers/TransferPage'))
 // 2026-04-29 v2.3.15 (E-B8 banki workflow skeleton — teljes impl v2.4.0)
 const BankOrderPage = lazy(() => import('./pages/bankorders/BankOrderPage'))
+const ErrorMonitorPage = lazy(() => import('./pages/admin/ErrorMonitorPage'))
 const CustomerListPage = lazy(() => import('./pages/customers/CustomerListPage'))
 const CustomerDetailPage = lazy(() => import('./pages/customers/CustomerDetailPage'))
 const CustomerCreatePage = lazy(() => import('./pages/customers/CustomerCreatePage'))
@@ -65,6 +66,9 @@ const OwnCompanyPage = lazy(() => import('./pages/company/OwnCompanyPage'))
 const ReceiptPage = lazy(() => import('./pages/receipts/ReceiptPage'))
 const HandoverSheetPage = lazy(() => import('./pages/handover/HandoverSheetPage'))
 const ExtendedReportsPage = lazy(() => import('./pages/reports/ExtendedReportsPage'))
+const HandlingFeeDecadePage = lazy(() => import('./pages/reports/HandlingFeeDecadePage'))
+const BankTransactionReportPage = lazy(() => import('./pages/reports/BankTransactionReportPage'))
+const CashierTurnoverReportPage = lazy(() => import('./pages/reports/CashierTurnoverReportPage'))
 const FeePage = lazy(() => import('./pages/fees/FeePage'))
 const BlacklistPage = lazy(() => import('./pages/blacklist/BlacklistPage'))
 const AnonymousReportPage = lazy(() => import('./pages/reports/AnonymousReportPage'))
@@ -463,6 +467,9 @@ export default function App() {
           {/* Reports */}
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/reports/extended" element={<ExtendedReportsPage />} />
+          <Route path="/reports/handling-fee-decade" element={<HandlingFeeDecadePage />} />
+          <Route path="/reports/bank-transactions" element={<BankTransactionReportPage />} />
+          <Route path="/reports/cashier-turnover" element={<CashierTurnoverReportPage />} />
           
           {/* Receipts */}
           <Route path="/receipts" element={<ReceiptPage />} />
@@ -531,6 +538,9 @@ export default function App() {
 
           {/* Audit Log */}
           <Route path="/audit-log" element={<AuditLogPage />} />
+
+          {/* Hiba-monitor (admin/manager/supervisor) */}
+          <Route path="/admin/error-monitor" element={<ErrorMonitorPage />} />
 
           {/* Circulars (Körlevelek) */}
           <Route path="/circulars" element={<CircularPage />} />

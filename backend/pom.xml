@@ -342,6 +342,19 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!--
+                Surefire: a default `mvn test` futasa kihagyja a JUnit 5 `@Tag("performance")`
+                annotaciot tartalmazo teszteket (pl. PerformanceTest, DailyClosingPerformanceTest).
+                Aktivalas: `mvn -Pperf test` vagy `mvn -Dgroups=performance test`.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <excludedGroups>performance</excludedGroups>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
@@ -355,6 +368,27 @@
             <properties>
                 <argLine>-XX:+EnableDynamicAgentLoading -javaagent:C:/Users/KSAZOL~1/.m2/repository/net/bytebuddy/byte-buddy-agent/1.17.8/byte-buddy-agent-1.17.8.jar</argLine>
             </properties>
+        </profile>
+
+        <!--
+            `perf` profile: ujra-engedelyezi a performance-tagged teszteket
+            (override-olja a default `excludedGroups`-ot).
+            Hasznalat: `mvn -Pperf test` vagy `mvn -Pperf test -Dtest=DailyClosingPerformanceTest`
+        -->
+        <profile>
+            <id>perf</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <groups>performance</groups>
+                            <excludedGroups></excludedGroups>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
     </profiles>
 </project>

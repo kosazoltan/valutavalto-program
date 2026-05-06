@@ -8,11 +8,16 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -98,6 +103,64 @@ public class DiagnosticsController {
                 "ok", true,
                 "totalReportedErrors", totalErrors
         ));
+    }
+
+    /**
+     * Admin monitoring dashboard: utolsó N hibajelentés (paginated).
+     *
+     * <p>Csak ADMIN/MANAGER/SUPERVISOR role-nak. A frontend-react
+     * `/admin/error-monitor` oldal hívja.</p>
+     */
+    @GetMapping("/errors")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','SUPERVISOR')")
+    public ResponseEntity<Page<ClientErrorLog>> listErrors(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        int safeSize = Math.min(Math.max(size, 1), 200);
+        Page<ClientErrorLog> result = errorLogRepository
+                .findAllByOrderByCreatedAtDesc(PageRequest.of(page, safeSize));
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Admin monitoring summary — komponens + verzió szerinti hibaeloszlás
+     * az utolsó 24 / 7 / 30 napra.
+     */
+    @GetMapping("/errors/summary")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','SUPERVISOR')")
+    public ResponseEntity<Map<String, Object>> errorSummary() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime last24h = now.minusHours(24);
+        LocalDateTime last7d = now.minusDays(7);
+        LocalDateTime last30d = now.minusDays(30);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("totalAllTime", errorLogRepository.count());
+        response.put("last24h", errorLogRepository.countByCreatedAtAfter(last24h));
+        response.put("last7d", errorLogRepository.countByCreatedAtAfter(last7d));
+        response.put("last30d", errorLogRepository.countByCreatedAtAfter(last30d));
+
+        List<ClientErrorLogRepository.ComponentCount> componentBreakdown7d =
+                errorLogRepository.countByComponentSince(last7d);
+        response.put("componentBreakdown7d", componentBreakdown7d);
+
+        List<ClientErrorLogRepository.VersionCount> versionBreakdown7d =
+                errorLogRepository.countByVersionSince(last7d);
+        response.put("versionBreakdown7d", versionBreakdown7d);
+
+        response.put("generatedAt", now);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Egy konkrét hibajelentés részletei (stack trace + context JSON).
+     */
+    @GetMapping("/errors/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','SUPERVISOR')")
+    public ResponseEntity<ClientErrorLog> getError(@PathVariable Long id) {
+        return errorLogRepository.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     private String extractClientIp(HttpServletRequest req) {
