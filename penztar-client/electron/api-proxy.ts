@@ -33,6 +33,7 @@ export interface ApiProxyResponse {
 }
 
 const DEFAULT_TIMEOUT_MS = 30_000;
+const MAX_RESPONSE_BYTES = 50 * 1024 * 1024; // 50 MB safety cap
 
 export function fetchViaElectronNet(params: ApiProxyRequest): Promise<ApiProxyResponse> {
   const { method, url, body, headers, timeoutMs } = params;
@@ -54,9 +55,11 @@ export function fetchViaElectronNet(params: ApiProxyRequest): Promise<ApiProxyRe
     }
 
     let responseBody = '';
-    let timedOut = false;
+    let responseBytes = 0;
+    let settled = false;
     const timeoutHandle = setTimeout(() => {
-      timedOut = true;
+      if (settled) return;
+      settled = true;
       try { request.abort(); } catch { /* ignore */ }
       reject(new Error(`[api-proxy] Timeout: ${timeout}ms exceeded for ${method} ${url}`));
     }, timeout);
@@ -68,11 +71,21 @@ export function fetchViaElectronNet(params: ApiProxyRequest): Promise<ApiProxyRe
       }
 
       response.on('data', (chunk: Buffer) => {
+        if (settled) return;
+        responseBytes += chunk.length;
+        if (responseBytes > MAX_RESPONSE_BYTES) {
+          settled = true;
+          clearTimeout(timeoutHandle);
+          try { request.abort(); } catch { /* ignore */ }
+          reject(new Error(`[api-proxy] Response too large (>${MAX_RESPONSE_BYTES} bytes) for ${method} ${url}`));
+          return;
+        }
         responseBody += chunk.toString();
       });
 
       response.on('end', () => {
-        if (timedOut) return;
+        if (settled) return;
+        settled = true;
         clearTimeout(timeoutHandle);
         const status = response.statusCode ?? 0;
         resolve({
@@ -86,7 +99,8 @@ export function fetchViaElectronNet(params: ApiProxyRequest): Promise<ApiProxyRe
     });
 
     request.on('error', (err: Error) => {
-      if (timedOut) return;
+      if (settled) return;
+      settled = true;
       clearTimeout(timeoutHandle);
       log.warn('[api-proxy] Network error for', method, url, ':', err.message);
       reject(new Error(`[api-proxy] Network error: ${err.message}`));

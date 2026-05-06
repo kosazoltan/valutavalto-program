@@ -354,6 +354,10 @@ export default function CashierTransactionPage() {
         toast.warning('Ügyfél azonosítás kötelező', `${SIMPLIFIED_IDENTIFICATION_LIMIT.toLocaleString('hu-HU')} Ft feletti tranzakcióhoz ügyfél azonosítás KÖTELEZŐ!`)
         return
       }
+      if (identificationLevel === 'SIMPLIFIED' && (!cd?.birthPlace || !cd?.birthDate)) {
+        toast.warning('Egyszerűsített azonosítás hiányos', '100.000 Ft felett születési hely és születési idő is KÖTELEZŐ!')
+        return
+      }
       if (identificationLevel === 'FULL' && (!cd?.birthPlace || !cd?.birthDate || !cd?.motherName || !cd?.address)) {
         toast.warning('Teljes azonosítás kötelező', '300.000 Ft felett teljes ügyféladatsor szükséges (születési hely/idő, anyja neve, lakcím)!')
         return

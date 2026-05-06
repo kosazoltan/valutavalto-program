@@ -153,7 +153,10 @@ export default function CustomerPanel({
   }, [hufTotal, onCustomerReady, runAmlCheck])
 
   const handleSaveManualCustomer = useCallback(async () => {
-    if (identificationLevel === 'SIMPLIFIED' && (!customerName.trim() || !customerDocNumber.trim())) return
+    if (identificationLevel === 'SIMPLIFIED' && (
+      !customerName.trim() || !customerDocNumber.trim() ||
+      !customerBirthDate || !customerBirthPlace.trim()
+    )) return
     if (identificationLevel === 'FULL' && (
       !customerName.trim() || !customerDocNumber.trim() ||
       !customerBirthPlace.trim() || !customerBirthDate ||
@@ -245,6 +248,18 @@ export default function CustomerPanel({
     onAmlResult?.(null)
   }, [onCustomerReady, onAmlResult])
 
+  // SIMPLE mode: auto-propagate nationality (no save button needed under 100K)
+  useEffect(() => {
+    if (identificationLevel === 'SIMPLE' && !selectedCustomer) {
+      onCustomerReady({
+        name: '',
+        documentType: '',
+        documentNumber: '',
+        nationality: customerNationality,
+      })
+    }
+  }, [identificationLevel, customerNationality, selectedCustomer, onCustomerReady])
+
   // Re-run AML when hufTotal changes
   useEffect(() => {
     if (selectedCustomer?.id && hufTotal > 0) {
@@ -271,7 +286,7 @@ export default function CustomerPanel({
 
   const isFormValid = () => {
     if (identificationLevel === 'SIMPLE') return true
-    if (identificationLevel === 'SIMPLIFIED') return !!(customerName.trim() && customerDocNumber.trim())
+    if (identificationLevel === 'SIMPLIFIED') return !!(customerName.trim() && customerDocNumber.trim() && customerBirthDate && customerBirthPlace.trim())
     // FULL
     return !!(customerName.trim() && customerDocNumber.trim() &&
       customerBirthPlace.trim() && customerBirthDate && customerMotherName.trim() && customerAddress.trim())
