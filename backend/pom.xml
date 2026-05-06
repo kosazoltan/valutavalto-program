@@ -39,6 +39,8 @@
              default-ra ATM-cleanup és future-proof). A SB 4.0.6 BOM default Tomcat verzió
              a Servlet 6.1-kompat (11.0.x), és tartalmazza a 04-29-ig publikált CVE-fix-eket. -->
         <!-- <tomcat.version>10.1.54</tomcat.version> -->
+        <!-- CVE-2026-42198 fix: PostgreSQL JDBC 42.7.10 -> 42.7.11 -->
+        <postgresql.version>42.7.11</postgresql.version>
         <!-- Surefire argLine — ures alapertelmezett, JDK 25 profil felulirja -->
     </properties>
     
