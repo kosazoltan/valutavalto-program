@@ -5,5 +5,5 @@ UPDATE worker
 SET password_hash = '$2a$10$aSYw7zBrwroHxFBJP63V9eQrj3qLv0UdvO1oD6KTDtjfEsvInhabm',
     must_change_password = true,
     updated_at = NOW()
-WHERE UPPER(worker_code) = 'BORSI'
+WHERE UPPER(code) = 'BORSI'
   AND password_hash IS NOT NULL;
