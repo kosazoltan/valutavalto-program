@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '@/services/api/index';
 import { logger } from '../../utils/logger';
+import { useTranslation } from 'react-i18next'
 
 interface RateGroup {
   id: number;
@@ -38,6 +39,7 @@ const discountTypeLabels: Record<string, string> = {
 };
 
 export default function RateGroupPage() {
+  const { t } = useTranslation()
   const [rateGroups, setRateGroups] = useState<RateGroup[]>([]);
   const [discountTiers, setDiscountTiers] = useState<DiscountTier[]>([]);
   const [loading, setLoading] = useState(true);
@@ -144,8 +146,8 @@ export default function RateGroupPage() {
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-3">
         <div>
-          <h1 className="text-lg font-bold">Árfolyamcsoportok</h1>
-          <p className="text-gray-500">Ügyfélcsoportok kedvezményes árfolyamai</p>
+          <h1 className="text-lg font-bold">{t('rates.arfolyamcsoportok')}</h1>
+          <p className="text-gray-500">{t('rates.ugyfelcsoportokKedvezmenyesArfolyamai')}</p>
         </div>
         <button
           type="button"
@@ -155,7 +157,7 @@ export default function RateGroupPage() {
           }}
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
-          + Új csoport
+          {t('rates.ujCsoport')}
         </button>
       </div>
 
@@ -175,14 +177,14 @@ export default function RateGroupPage() {
           onClick={() => setActiveTab('groups')}
           className={`px-4 py-2 rounded ${activeTab === 'groups' ? 'bg-blue-600 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}
         >
-          Csoportok
+          {t('rates.csoportok')}
         </button>
         <button
           type="button"
           onClick={() => setActiveTab('tiers')}
           className={`px-4 py-2 rounded ${activeTab === 'tiers' ? 'bg-blue-600 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}
         >
-          Kedvezményszintek
+          {t('rates.kedvezmenyszintek')}
         </button>
       </div>
 
@@ -191,20 +193,20 @@ export default function RateGroupPage() {
           {loading ? (
             <div className="text-center py-8">Betöltés...</div>
           ) : filteredGroups.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">Nincsenek árfolyamcsoportok</div>
+            <div className="text-center py-8 text-gray-500">{t('rates.nincsenekArfolyamcsoportok')}</div>
           ) : (
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="p-3 text-left">Kód</th>
-                  <th className="p-3 text-left">Név</th>
-                  <th className="p-3 text-left">Kedv. típus</th>
-                  <th className="p-3 text-left">Vétel</th>
-                  <th className="p-3 text-left">Eladás</th>
-                  <th className="p-3 text-left">Prioritás</th>
-                  <th className="p-3 text-left">Ügyfelek</th>
-                  <th className="p-3 text-left">Státusz</th>
-                  <th className="p-3 text-left">Műveletek</th>
+                  <th className="p-3 text-left">{t('common.code')}</th>
+                  <th className="p-3 text-left">{t('common.name')}</th>
+                  <th className="p-3 text-left">{t('rates.kedvTipus')}</th>
+                  <th className="p-3 text-left">{t('cashier.buy')}</th>
+                  <th className="p-3 text-left">{t('cashier.sell')}</th>
+                  <th className="p-3 text-left">{t('rates.prioritas')}</th>
+                  <th className="p-3 text-left">{t('archiving.ugyfelek')}</th>
+                  <th className="p-3 text-left">{t('common.status')}</th>
+                  <th className="p-3 text-left">{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -236,14 +238,14 @@ export default function RateGroupPage() {
                           }}
                           className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
                         >
-                          Szerkesztés
+                          {t('common.edit')}
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDeleteGroup(group.id)}
                           className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
                         >
-                          Törlés
+                          {t('common.delete')}
                         </button>
                       </div>
                     </td>
@@ -258,19 +260,19 @@ export default function RateGroupPage() {
           {loading ? (
             <div className="text-center py-8">Betöltés...</div>
           ) : filteredTiers.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">Nincsenek kedvezményszintek</div>
+            <div className="text-center py-8 text-gray-500">{t('rates.nincsenekKedvezmenyszintek')}</div>
           ) : (
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="p-3 text-left">Név</th>
-                  <th className="p-3 text-left">Valuta</th>
-                  <th className="p-3 text-left">Min összeg</th>
-                  <th className="p-3 text-left">Max összeg</th>
-                  <th className="p-3 text-left">Vétel kedv.</th>
-                  <th className="p-3 text-left">Eladás kedv.</th>
-                  <th className="p-3 text-left">Státusz</th>
-                  <th className="p-3 text-left">Műveletek</th>
+                  <th className="p-3 text-left">{t('common.name')}</th>
+                  <th className="p-3 text-left">{t('common.currency')}</th>
+                  <th className="p-3 text-left">{t('rates.minOsszeg')}</th>
+                  <th className="p-3 text-left">{t('rates.maxOsszeg')}</th>
+                  <th className="p-3 text-left">{t('rates.vetelKedv')}</th>
+                  <th className="p-3 text-left">{t('rates.eladasKedv')}</th>
+                  <th className="p-3 text-left">{t('common.status')}</th>
+                  <th className="p-3 text-left">{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -280,8 +282,8 @@ export default function RateGroupPage() {
                     <td className="p-3">{tier.currencyCode || 'Összes'}</td>
                     <td className="p-3">{tier.minAmount?.toLocaleString()}</td>
                     <td className="p-3">{tier.maxAmount?.toLocaleString() || '∞'}</td>
-                    <td className="p-3">{tier.buyDiscountPoints} pt</td>
-                    <td className="p-3">{tier.sellDiscountPoints} pt</td>
+                    <td className="p-3">{tier.buyDiscountPoints} {t('rates.pt')}</td>
+                    <td className="p-3">{tier.sellDiscountPoints} {t('rates.pt')}</td>
                     <td className="p-3">
                       <span className={`px-2 py-1 text-xs text-white rounded ${tier.isActive ? 'bg-green-500' : 'bg-gray-500'}`}>
                         {tier.isActive ? 'Aktív' : 'Inaktív'}
@@ -293,7 +295,7 @@ export default function RateGroupPage() {
                         onClick={() => handleDeleteTier(tier.id)}
                         className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
                       >
-                        Törlés
+                        {t('common.delete')}
                       </button>
                     </td>
                   </tr>

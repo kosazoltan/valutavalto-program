@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Percent, Plus, Save } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { safeArray } from '../../utils/safeArray'
+import { useTranslation } from 'react-i18next'
 
 interface Workgroup {
   id: string
@@ -20,6 +21,7 @@ interface Discount {
 }
 
 export default function DiscountLevelEditor() {
+  const { t } = useTranslation()
   const [workgroups, setWorkgroups] = useState<Workgroup[]>([])
   const [selectedWorkgroup, setSelectedWorkgroup] = useState('')
   const [discounts, setDiscounts] = useState<Discount[]>([])
@@ -89,7 +91,7 @@ export default function DiscountLevelEditor() {
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <Percent className="h-5 w-5" />
-        <label className="font-medium text-sm">Munkacsoport:</label>
+        <label className="font-medium text-sm">{t('ratemanagement.munkacsoport')}</label>
         <select
           className="border rounded px-3 py-2 text-sm"
           value={selectedWorkgroup}
@@ -105,7 +107,7 @@ export default function DiscountLevelEditor() {
           disabled={discounts.length >= 3}
         >
           <Plus className="h-4 w-4 mr-1" />
-          Uj szint
+          {t('ratemanagement.ujSzint')}
         </button>
       </div>
 
@@ -114,7 +116,7 @@ export default function DiscountLevelEditor() {
           <div className="p-4">
             <div className="grid grid-cols-4 gap-4">
               <div>
-                <label className="text-sm font-medium">Szint</label>
+                <label className="text-sm font-medium">{t('ratemanagement.szint')}</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   type="number"
@@ -125,7 +127,7 @@ export default function DiscountLevelEditor() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Nev</label>
+                <label className="text-sm font-medium">{t('competitors.nev')}</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   value={editing.name}
@@ -134,7 +136,7 @@ export default function DiscountLevelEditor() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Veteli kedvezmeny (%)</label>
+                <label className="text-sm font-medium">{t('ratemanagement.veteliKedvezmeny')}</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   value={editing.buyDiscountPercent}
@@ -142,7 +144,7 @@ export default function DiscountLevelEditor() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Eladasi kedvezmeny (%)</label>
+                <label className="text-sm font-medium">{t('ratemanagement.eladasiKedvezmeny')}</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   value={editing.sellDiscountPercent}
@@ -156,13 +158,13 @@ export default function DiscountLevelEditor() {
                 onClick={saveDiscount}
               >
                 <Save className="h-4 w-4 mr-2" />
-                Mentés
+                {t('common.save')}
               </button>
               <button
                 className="inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
                 onClick={() => setEditing(null)}
               >
-                Mégse
+                {t('common.cancel')}
               </button>
             </div>
           </div>
@@ -172,17 +174,17 @@ export default function DiscountLevelEditor() {
       {loading ? (
         <p>Betöltés...</p>
       ) : discounts.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">Nincs kedvezmény szint (max 3 szint adható hozzá)</div>
+        <div className="text-center py-8 text-muted-foreground">{t('ratemanagement.nincsKedvezmenySzintMax3SzintAdhatoHozza')}</div>
       ) : (
         <div className="space-y-2">
           {discounts.map((d) => (
             <div key={d.id} className="rounded-lg border bg-card shadow-sm">
               <div className="p-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border bg-transparent">Szint {d.level}</span>
+                  <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border bg-transparent">{t('ratemanagement.szint')}{d.level}</span>
                   <span className="font-medium">{d.name}</span>
                   <span className="text-sm text-muted-foreground">
-                    Vétel: -{d.buyDiscountPercent}% | Eladás: -{d.sellDiscountPercent}%
+                    {t('ratemanagement.vetel')}{d.buyDiscountPercent}% | Eladás: -{d.sellDiscountPercent}%
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -195,7 +197,7 @@ export default function DiscountLevelEditor() {
                     className="inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"
                     onClick={() => setEditing(d)}
                   >
-                    Szerkesztés
+                    {t('common.edit')}
                   </button>
                 </div>
               </div>

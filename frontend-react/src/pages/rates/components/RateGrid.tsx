@@ -3,6 +3,7 @@ import { formatDecimal } from '../../../utils/numberFormat'
 import { useGridNavigation } from '../../../hooks/useGridNavigation'
 import type { WorkgroupDetailDTO } from '../../../services/api/index'
 import { fmtAmount, parseNum, type EditableRate } from '../types'
+import { useTranslation } from 'react-i18next'
 
 const EDITABLE_FIELDS = ['buyRate', 'sellRate', 'limit1BuyRate', 'limit1SellRate', 'limit2BuyRate', 'limit2SellRate', 'limit3BuyRate', 'limit3SellRate'] as const
 
@@ -14,6 +15,7 @@ interface RateGridProps {
 }
 
 export default function RateGrid({ rates, selectedWg, updateRate, validationErrors = {} }: RateGridProps) {
+  const { t } = useTranslation()
   const { containerRef, activeCell, getCellProps } = useGridNavigation({
     rows: rates.length,
     cols: EDITABLE_FIELDS.length,
@@ -33,8 +35,8 @@ export default function RateGrid({ rates, selectedWg, updateRate, validationErro
         <table className="w-full text-xs border-collapse">
           <thead className="sticky top-0 z-20">
             <tr className="bg-green-800 text-white text-[10px] leading-none">
-              <th colSpan={2} className="px-1 py-0 text-left border-r border-green-600">Elsz.árf.</th>
-              <th className="px-1 py-0 border-r border-green-600">Valuta</th>
+              <th colSpan={2} className="px-1 py-0 text-left border-r border-green-600">{t('rates.elszArf')}</th>
+              <th className="px-1 py-0 border-r border-green-600">{t('common.currency')}</th>
               <th colSpan={2} className="px-1 py-0 border-r border-green-600 text-center">
                 0 - {fmtAmount(selectedWg?.limit1Boundary)}
               </th>
@@ -44,22 +46,22 @@ export default function RateGrid({ rates, selectedWg, updateRate, validationErro
               <th colSpan={2} className="px-1 py-0 border-r border-green-600 text-center">
                 {fmtAmount(selectedWg?.limit2Boundary)} - {fmtAmount(selectedWg?.limit3Boundary)}
               </th>
-              <th colSpan={2} className="px-1 py-0 text-center border-r border-green-600">Saját hat.</th>
-              <th className="px-1 py-0 text-center w-28">Ellenőrzés</th>
+              <th colSpan={2} className="px-1 py-0 text-center border-r border-green-600">{t('rates.sajatHat')}</th>
+              <th className="px-1 py-0 text-center w-28">{t('rates.ellenorzes')}</th>
             </tr>
             <tr className="bg-green-700 text-white text-[10px] leading-none">
               <th className="px-1 py-0 text-left w-14 border-r border-green-500">MNB</th>
               <th className="px-1 py-0 w-4 border-r border-green-500"></th>
-              <th className="px-1 py-0 w-10 border-r border-green-500 font-bold">Kód</th>
-              <th className="px-1 py-0 w-[72px] text-green-200 border-r border-green-500">Vét</th>
-              <th className="px-1 py-0 w-[72px] text-red-200 border-r border-green-500">Elad</th>
-              <th className="px-1 py-0 w-[72px] text-green-200 border-r border-green-500">V+</th>
+              <th className="px-1 py-0 w-10 border-r border-green-500 font-bold">{t('common.code')}</th>
+              <th className="px-1 py-0 w-[72px] text-green-200 border-r border-green-500">{t('rates.vet')}</th>
+              <th className="px-1 py-0 w-[72px] text-red-200 border-r border-green-500">{t('rates.elad')}</th>
+              <th className="px-1 py-0 w-[72px] text-green-200 border-r border-green-500">{t('rates.v')}</th>
               <th className="px-1 py-0 w-[72px] text-red-200 border-r border-green-500">E-</th>
-              <th className="px-1 py-0 w-[72px] text-green-200 border-r border-green-500">V+</th>
+              <th className="px-1 py-0 w-[72px] text-green-200 border-r border-green-500">{t('rates.v')}</th>
               <th className="px-1 py-0 w-[72px] text-red-200 border-r border-green-500">E-</th>
-              <th className="px-1 py-0 w-[72px] text-green-200 border-r border-green-500">Vmax</th>
-              <th className="px-1 py-0 w-[72px] text-red-200 border-r border-green-500">Emin</th>
-              <th className="px-1 py-0 text-yellow-200">Hiba</th>
+              <th className="px-1 py-0 w-[72px] text-green-200 border-r border-green-500">{t('rates.vmax')}</th>
+              <th className="px-1 py-0 w-[72px] text-red-200 border-r border-green-500">{t('rates.emin')}</th>
+              <th className="px-1 py-0 text-yellow-200">{t('common.error')}</th>
             </tr>
           </thead>
           <tbody className="text-[10.5px] leading-none">

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Activity, AlertTriangle, CheckCircle2, MapPin, XCircle } from 'lucide-react'
 import { api } from '../../services/api/client'
 import { logger } from '../../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 // ============================================================================
 // Foertektar kozponti dashboard - orszagos penztar-allapot + keszlet egy helyen.
@@ -95,6 +96,7 @@ const CRITICAL_THRESHOLDS: Record<string, number> = {
 const HEARTBEAT_STALE_MINUTES = 10
 
 export default function CentralVaultDashboard() {
+    const { t } = useTranslation()
     const [rows, setRows] = useState<BranchSummary[]>([])
     const [loading, setLoading] = useState(true)
     const [err, setErr] = useState<string | null>(null)
@@ -187,9 +189,9 @@ export default function CentralVaultDashboard() {
         <div className="max-w-7xl mx-auto space-y-2">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-lg font-bold text-slate-800">Főértéktári dashboard</h1>
+                    <h1 className="text-lg font-bold text-slate-800">{t('foertektar.foertektariDashboard')}</h1>
                     <p className="text-xs text-slate-600">
-                        Országos pénztár-állapot és készlet — auto-refresh 1 percenként
+                        {t('foertektar.orszagosPenztarAllapotEsKeszletAutoRefresh1Percenkent')}
                         {lastRefresh && <span className="ml-2 text-slate-400">Utolsó: {lastRefresh.toLocaleTimeString('hu-HU')}</span>}
                     </p>
                 </div>
@@ -205,7 +207,7 @@ export default function CentralVaultDashboard() {
 
             {err && (
                 <div className="bg-red-50 border-l-4 border-red-600 p-4 rounded">
-                    <p className="text-red-800 font-medium">Hiba: {err}</p>
+                    <p className="text-red-800 font-medium">{t('foertektar.hiba')}{err}</p>
                 </div>
             )}
 
@@ -223,18 +225,18 @@ export default function CentralVaultDashboard() {
                     <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
                         <h2 className="font-bold text-slate-800 flex items-center gap-2">
                             <MapPin className="w-5 h-5 text-slate-500" /> {region}
-                            <span className="text-sm font-normal text-slate-500">({brs.length} pénztár)</span>
+                            <span className="text-sm font-normal text-slate-500">({brs.length} {t('foertektar.penztar')}</span>
                         </h2>
                     </div>
                     <table className="w-full text-sm">
                         <thead className="bg-slate-50">
                             <tr className="text-left text-xs text-slate-600 uppercase">
-                                <th className="px-4 py-2">Kód</th>
-                                <th className="px-4 py-2">Város</th>
-                                <th className="px-4 py-2">Állapot</th>
-                                <th className="px-4 py-2">Utolsó heartbeat</th>
-                                <th className="px-4 py-2">Készlet (EUR / USD / HUF)</th>
-                                <th className="px-4 py-2">Riasztás</th>
+                                <th className="px-4 py-2">{t('common.code')}</th>
+                                <th className="px-4 py-2">{t('common.city')}</th>
+                                <th className="px-4 py-2">{t('common.status2')}</th>
+                                <th className="px-4 py-2">{t('foertektar.utolsoHeartbeat')}</th>
+                                <th className="px-4 py-2">{t('foertektar.keszletEurUsdHuf')}</th>
+                                <th className="px-4 py-2">{t('foertektar.riasztas')}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -244,11 +246,11 @@ export default function CentralVaultDashboard() {
                                     <td className="px-4 py-2">{r.branch.city || r.branch.name}</td>
                                     <td className="px-4 py-2">
                                         {r.online ? (
-                                            <span className="inline-flex items-center gap-1 text-green-700"><CheckCircle2 className="w-4 h-4" /> Online</span>
+                                            <span className="inline-flex items-center gap-1 text-green-700"><CheckCircle2 className="w-4 h-4" />{t('common.online')}</span>
                                         ) : r.lastSeenMinutes === null ? (
-                                            <span className="inline-flex items-center gap-1 text-slate-500"><XCircle className="w-4 h-4" /> Sosem</span>
+                                            <span className="inline-flex items-center gap-1 text-slate-500"><XCircle className="w-4 h-4" />{t('foertektar.sosem')}</span>
                                         ) : (
-                                            <span className="inline-flex items-center gap-1 text-red-700"><XCircle className="w-4 h-4" /> Offline</span>
+                                            <span className="inline-flex items-center gap-1 text-red-700"><XCircle className="w-4 h-4" />{t('foertektar.offline')}</span>
                                         )}
                                     </td>
                                     <td className="px-4 py-2 text-slate-600">{r.lastSeenMinutes === null ? '—' : r.lastSeenMinutes < 60 ? `${r.lastSeenMinutes} perc` : `${Math.floor(r.lastSeenMinutes / 60)} óra`}</td>

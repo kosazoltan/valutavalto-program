@@ -5,6 +5,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useAuthStore } from '../../stores/authStore'
+import { useTranslation } from 'react-i18next'
 
 interface NavResult {
   success: boolean
@@ -22,6 +23,7 @@ interface NavStatus {
 }
 
 export default function NavIntegrationPage() {
+  const { t } = useTranslation()
   const worker = useAuthStore((state) => state.worker)
   const branchId = worker?.branchId || ''
 
@@ -77,8 +79,8 @@ export default function NavIntegrationPage() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold flex items-center gap-2"><Printer />NAV Pénztárgép Integráció</h1>
-        <button onClick={() => void loadStatus()} className="form-button"><RefreshCw size={16} /> Státusz frissítés</button>
+        <h1 className="text-xl font-bold flex items-center gap-2"><Printer />{t('nav.navPenztargepIntegracio')}</h1>
+        <button onClick={() => void loadStatus()} className="form-button"><RefreshCw size={16} />{t('nav.statuszFrissites')}</button>
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded"><AlertTriangle size={16} className="inline" /> {error}</div>}
@@ -86,39 +88,39 @@ export default function NavIntegrationPage() {
       {/* Device status */}
       {status && (
         <div className="form-panel">
-          <h2 className="font-semibold mb-2">Eszköz állapot</h2>
+          <h2 className="font-semibold mb-2">{t('nav.eszkozAllapot')}</h2>
           <div className="grid grid-cols-4 gap-3 text-sm">
             <div>
-              <span className="text-gray-500">Kapcsolat:</span>{' '}
+              <span className="text-gray-500">{t('nav.kapcsolat')}</span>{' '}
               {status.deviceConnected ? <span className="badge badge-green"><CheckCircle size={10} className="inline" /> Online</span> : <span className="badge badge-red"><XCircle size={10} className="inline" /> Offline</span>}
             </div>
-            <div><span className="text-gray-500">Sorozatszám:</span> {status.serialNumber || '-'}</div>
-            <div><span className="text-gray-500">Firmware:</span> {status.firmwareVersion || '-'}</div>
+            <div><span className="text-gray-500">{t('nav.sorozatszam')}</span> {status.serialNumber || '-'}</div>
+            <div><span className="text-gray-500">{t('nav.firmware')}</span> {status.firmwareVersion || '-'}</div>
             <div>
-              <span className="text-gray-500">Függő:</span>{' '}
+              <span className="text-gray-500">{t('nav.fuggo')}</span>{' '}
               {status.pendingCount > 0 ? (
-                <span className="badge badge-yellow">{status.pendingCount} tranzakció</span>
+                <span className="badge badge-yellow">{status.pendingCount} {t('camera.tranzakcio')}</span>
               ) : (
                 <span className="badge badge-green">0</span>
               )}
             </div>
           </div>
           {status.lastCommunication && (
-            <div className="text-xs text-gray-400 mt-1"><Clock size={10} className="inline" /> Utolsó kommunikáció: {new Date(status.lastCommunication).toLocaleString('hu-HU')}</div>
+            <div className="text-xs text-gray-400 mt-1"><Clock size={10} className="inline" />{t('nav.utolsoKommunikacio')}{new Date(status.lastCommunication).toLocaleString('hu-HU')}</div>
           )}
         </div>
       )}
 
       {/* Send form */}
       <div className="form-panel space-y-3">
-        <h2 className="font-semibold">Tranzakció küldése NAV pénztárgépre</h2>
+        <h2 className="font-semibold">{t('nav.tranzakcioKuldeseNavPenztargepre')}</h2>
         <div className="grid grid-cols-3 gap-3">
           <div>
-            <label className="form-label">Tranzakció ID *</label>
+            <label className="form-label">{t('nav.tranzakcioId')}</label>
             <input className="form-input" value={transactionId} onChange={e => setTransactionId(e.target.value)} placeholder="Tranzakció azonosító" />
           </div>
           <div>
-            <label className="form-label">COM port</label>
+            <label className="form-label">{t('display.comPort')}</label>
             <select className="form-input" value={comPort} onChange={e => setComPort(e.target.value)}>
               {['COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8'].map(p => <option key={p} value={p}>{p}</option>)}
             </select>
@@ -128,7 +130,7 @@ export default function NavIntegrationPage() {
               <Send size={16} /> {sending ? 'Küldés...' : 'Küldés'}
             </button>
             <button onClick={() => void handleRetry()} className="form-button">
-              <RefreshCw size={16} /> Sikertelenek újraküldése
+              <RefreshCw size={16} />{t('nav.sikertelenekUjrakuldese')}
             </button>
           </div>
         </div>
@@ -148,9 +150,9 @@ export default function NavIntegrationPage() {
       {/* History */}
       {history.length > 0 && (
         <div className="form-panel">
-          <h2 className="font-semibold mb-2 flex items-center gap-2"><FileText size={18} /> Küldési előzmények (session)</h2>
+          <h2 className="font-semibold mb-2 flex items-center gap-2"><FileText size={18} />{t('nav.kuldesiElozmenyekSession')}</h2>
           <table className="data-grid w-full">
-            <thead><tr><th>Időpont</th><th>Bizonylatszám</th><th>Státusz</th><th>Hiba</th></tr></thead>
+            <thead><tr><th>{t('audit.idopont')}</th><th>{t('cashier.receiptNumber')}</th><th>{t('common.status')}</th><th>{t('common.error')}</th></tr></thead>
             <tbody>
               {history.map((h) => (
                 <tr key={`${h.timestamp ?? ''}-${h.receiptNumber ?? ''}`}>

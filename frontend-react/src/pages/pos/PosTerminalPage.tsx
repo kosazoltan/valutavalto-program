@@ -5,6 +5,7 @@ import { safeArray } from '@/utils/safeArray'
 import { logger } from '../../utils/logger'
 import { toast } from '../../components/ui/toaster'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { useTranslation } from 'react-i18next'
 
 interface PosTerminalForm {
   terminalId: string
@@ -29,6 +30,7 @@ const emptyForm: PosTerminalForm = {
 }
 
 export default function PosTerminalPage() {
+  const { t } = useTranslation()
   const [terminals, setTerminals] = useState<PosTerminal[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -149,9 +151,9 @@ export default function PosTerminalPage() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold flex items-center gap-2"><CreditCard />POS terminálok</h1>
+        <h1 className="text-xl font-bold flex items-center gap-2"><CreditCard />{t('pos.posTerminalok')}</h1>
         <button onClick={() => { setShowForm(true); setEditingId(null); setForm(emptyForm) }} className="form-button-primary">
-          <Plus size={16} /> Új terminál
+          <Plus size={16} />{t('pos.ujTerminal')}
         </button>
       </div>
 
@@ -179,31 +181,31 @@ export default function PosTerminalPage() {
           <h2 className="font-semibold">{editingId ? 'Terminál szerkesztése' : 'Új terminál'}</h2>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="form-label">Terminál ID *</label>
+              <label className="form-label">{t('pos.terminalId')}</label>
               <input className="form-input" value={form.terminalId} onChange={e => setForm({...form, terminalId: e.target.value})} disabled={!!editingId} />
             </div>
             <div>
-              <label className="form-label">Megnevezés *</label>
+              <label className="form-label">{t('pos.megnevezes')}</label>
               <input className="form-input" value={form.terminalName} onChange={e => setForm({...form, terminalName: e.target.value})} />
             </div>
             <div>
-              <label className="form-label">Kapcsolat típusa</label>
+              <label className="form-label">{t('pos.kapcsolatTipusa')}</label>
               <select className="form-input" value={form.connectionType} onChange={e => setForm({...form, connectionType: e.target.value})}>
-                <option value="SERIAL">Soros port (RS-232)</option>
-                <option value="TCP">TCP/IP hálózat</option>
+                <option value="SERIAL">{t('pos.sorosPortRs232')}</option>
+                <option value="TCP">{t('pos.tcpIpHalozat')}</option>
                 <option value="USB">USB</option>
               </select>
             </div>
             {form.connectionType === 'SERIAL' && (
               <>
                 <div>
-                  <label className="form-label">COM port</label>
+                  <label className="form-label">{t('display.comPort')}</label>
                   <select className="form-input" value={form.comPort} onChange={e => setForm({...form, comPort: e.target.value})}>
                     {['COM1','COM2','COM3','COM4','COM5','COM6','COM7','COM8'].map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="form-label">Baud rate</label>
+                  <label className="form-label">{t('display.baudRate')}</label>
                   <select className="form-input" value={form.baudRate} onChange={e => setForm({...form, baudRate: Number(e.target.value)})}>
                     {[9600, 19200, 38400, 57600, 115200].map(b => <option key={b} value={b}>{b}</option>)}
                   </select>
@@ -213,11 +215,11 @@ export default function PosTerminalPage() {
             {form.connectionType === 'TCP' && (
               <>
                 <div>
-                  <label className="form-label">IP cím</label>
+                  <label className="form-label">{t('common.ipAddress')}</label>
                   <input className="form-input" value={form.ipAddress} onChange={e => setForm({...form, ipAddress: e.target.value})} placeholder="192.168.1.100" />
                 </div>
                 <div>
-                  <label className="form-label">Port</label>
+                  <label className="form-label">{t('display.port')}</label>
                   <input className="form-input" type="number" value={form.port} onChange={e => setForm({...form, port: Number(e.target.value)})} placeholder="8000" />
                 </div>
               </>
@@ -225,7 +227,7 @@ export default function PosTerminalPage() {
           </div>
           <div className="flex gap-2">
             <button onClick={handleSave} disabled={saving} className="form-button-primary">{saving ? 'Mentés...' : 'Mentés'}</button>
-            <button onClick={() => { setShowForm(false); setEditingId(null) }} className="form-button">Mégse</button>
+            <button onClick={() => { setShowForm(false); setEditingId(null) }} className="form-button">{t('common.cancel')}</button>
           </div>
         </div>
       )}
@@ -234,18 +236,18 @@ export default function PosTerminalPage() {
       {loading ? <div>Betöltés...</div> : (
         <div className="form-panel">
           {filtered.length === 0 ? (
-            <div className="text-center text-gray-500 py-8">Nincs POS terminál konfigurálva</div>
+            <div className="text-center text-gray-500 py-8">{t('pos.nincsPosTerminalKonfiguralva')}</div>
           ) : (
             <table className="data-grid w-full">
               <thead>
                 <tr>
-                  <th>Terminál ID</th>
-                  <th>Megnevezés</th>
-                  <th>Fiók</th>
-                  <th>Kapcsolat</th>
-                  <th>Utolsó tranzakció</th>
-                  <th>Státusz</th>
-                  <th>Műveletek</th>
+                  <th>{t('pos.terminalId2')}</th>
+                  <th>{t('display.megnevezes')}</th>
+                  <th>{t('commissions.fiok')}</th>
+                  <th>{t('display.kapcsolat')}</th>
+                  <th>{t('customers.utolsoTranzakcio')}</th>
+                  <th>{t('common.status')}</th>
+                  <th>{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody>

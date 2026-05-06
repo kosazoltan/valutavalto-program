@@ -7,6 +7,7 @@ import { Eye, EyeOff, User, Lock, Building2, Shield, RefreshCw, ChevronDown } fr
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import { useAppMode } from '../../hooks/useAppMode'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Szerver (full mód) whitelist: csak ezek a role-ok léphetnek be böngészőben.
@@ -39,6 +40,7 @@ function readSetupConfig(): { companyCode?: string; workerCode?: string; workerN
 }
 
 export default function LoginPage() {
+  const { t } = useTranslation()
   // v2.3.0: pre-fill a setup wizard altal beallitott kivalasztott dolgozoval
   const setupConfig = readSetupConfig()
   const [companyCode, setCompanyCode] = useState(setupConfig.companyCode || 'EBC')
@@ -335,11 +337,11 @@ export default function LoginPage() {
         <div className="bg-form-bg border border-form-border shadow-lg">
           <div className="header-bar flex items-center gap-2 h-8">
             <Shield size={16} />
-            <span>Szerepkör kiválasztása</span>
+            <span>{t('auth.szerepkorKivalasztasa')}</span>
           </div>
           <div className="p-4">
             <p className="text-sm text-gray-600 mb-3">
-              Több szerepköre is van. Kérjük válassza ki, melyikkel szeretne belépni:
+              {t('auth.tobbSzerepkoreIsVanKerjukValasszaKiMelyikkelSzeretneBelepni')}
             </p>
 
             {error && (
@@ -374,7 +376,7 @@ export default function LoginPage() {
                   useAuthStore.getState().logout()
                 }}
               >
-                Mégsem
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -398,16 +400,16 @@ export default function LoginPage() {
         {/* Title bar */}
         <div className="header-bar flex items-center gap-2 h-8">
           <Lock size={16} />
-          <span>Exclusive Best Change - Bejelentkezés</span>
+          <span>{t('auth.exclusiveBestChangeBejelentkezes')}</span>
         </div>
 
         {/* Content */}
         <div className="p-4">
           {/* Logo/Company info */}
           <div className="text-center mb-4">
-            <div className="text-lg font-bold text-primary">Exclusive Best Change</div>
+            <div className="text-lg font-bold text-primary">{t('auth.exclusiveBestChange')}</div>
             <div className="text-xs text-gray-500">
-              Pénzváltó Rendszer v{import.meta.env.VITE_APP_VERSION ?? __APP_VERSION__}
+              {t('auth.penzvaltoRendszerV')}{import.meta.env.VITE_APP_VERSION ?? __APP_VERSION__}
             </div>
           </div>
 
@@ -455,7 +457,7 @@ export default function LoginPage() {
           {/* Elválasztó */}
           <div className="flex items-center gap-2 my-3">
             <div className="flex-1 border-t border-form-border" />
-            <span className="text-xs text-gray-400">vagy kóddal</span>
+            <span className="text-xs text-gray-400">{t('auth.vagyKoddal')}</span>
             <div className="flex-1 border-t border-form-border" />
           </div>
 
@@ -469,7 +471,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-3">
             {/* Company code field */}
             <div className="form-group-box pt-4">
-              <span className="form-group-box-title">Cég kód</span>
+              <span className="form-group-box-title">{t('auth.companyCode')}</span>
               <div className="flex items-center gap-2">
                 <Building2 size={18} className="text-gray-400" />
                 <input
@@ -485,7 +487,7 @@ export default function LoginPage() {
             {/* Worker code - v2.1.4 dropdown (regio-alapu) + szoveges fallback */}
             <div className="form-group-box pt-4">
               <span className="form-group-box-title">
-                Pénztáros {configuredBranchCode ? `(${configuredBranchCode} régió)` : 'kód'}
+                {t('components.penztaros2')}{configuredBranchCode ? `(${configuredBranchCode} régió)` : 'kód'}
               </span>
               <div className="flex items-center gap-2">
                 <User size={18} className="text-gray-400" />
@@ -499,7 +501,7 @@ export default function LoginPage() {
                         data-testid="login-worker-code"
                         autoFocus
                       >
-                        <option value="">-- Válasszon pénztárost --</option>
+                        <option value="">{t('auth.valasszonPenztarost')}</option>
                         {workers.map((w) => (
                           <option key={w.code} value={w.code}>
                             {w.name}
@@ -535,14 +537,14 @@ export default function LoginPage() {
               )}
               {prefilledWorkerName && workerCode === (setupConfig.workerCode || '') && (
                 <div className="text-xs text-green-600 mt-1">
-                  ✓ A telepitoben kivalasztott dolgozo: <strong>{prefilledWorkerName}</strong>
+                  {t('auth.ATelepitobenKivalasztottDolgozo')}<strong>{prefilledWorkerName}</strong>
                 </div>
               )}
             </div>
 
             {/* Password field */}
             <div className="form-group-box pt-4">
-              <span className="form-group-box-title">Jelszó</span>
+              <span className="form-group-box-title">{t('auth.password')}</span>
               <div className="flex items-center gap-2">
                 <Lock size={18} className="text-gray-400" />
                 <input
@@ -567,7 +569,7 @@ export default function LoginPage() {
                   onClick={() => setShowForgotPassword(true)}
                   className="text-xs text-primary-600 hover:text-primary-700 hover:underline"
                 >
-                  Elfelejtett jelszó?
+                  {t('auth.forgotPassword')}
                 </button>
               </div>
             </div>
@@ -582,7 +584,7 @@ export default function LoginPage() {
                   setPassword('')
                 }}
               >
-                Mégsem
+                {t('common.cancel')}
               </button>
               <button
                 type="submit"
@@ -597,8 +599,8 @@ export default function LoginPage() {
 
           {/* Footer info */}
           <div className="mt-4 pt-3 border-t border-form-border text-xs text-gray-500 text-center">
-            <div>© 2026 Exclusive Best Change Zrt.</div>
-            <div>Minden jog fenntartva.</div>
+            <div>{t('auth.2026ExclusiveBestChangeZrt')}</div>
+            <div>{t('auth.mindenJogFenntartva')}</div>
           </div>
         </div>
       </div>
@@ -607,11 +609,11 @@ export default function LoginPage() {
       {showForgotPassword && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowForgotPassword(false)}>
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-xl font-bold text-secondary-900 mb-4">Elfelejtett jelszó</h2>
+            <h2 className="text-xl font-bold text-secondary-900 mb-4">{t('auth.elfelejtettJelszo')}</h2>
             {!forgotMessage ? (
               <>
                 <p className="text-sm text-secondary-600 mb-4">
-                  Add meg az email címed. Ha regisztrálva van, egy reset token-t kapsz vissza (dev módban itt jelenik meg, élesben email-ben érkezik).
+                  {t('auth.addMegAzEmailCimedHaRegisztralvaVanEgyResetTokenTKapszVisszaDevModbanIttJelenikMegElesbenEmailBenErkezik')}
                 </p>
                 <input
                   type="email"
@@ -626,7 +628,7 @@ export default function LoginPage() {
                     type="button"
                     className="form-button"
                     onClick={() => { setShowForgotPassword(false); setForgotEmail(''); setForgotMessage(null); }}
-                  >Mégse</button>
+                  >{t('common.cancel')}</button>
                   <button
                     type="button"
                     className="form-button-primary"
@@ -663,7 +665,7 @@ export default function LoginPage() {
                 </div>
                 {resetToken && (
                   <>
-                    <label className="block text-sm font-semibold mb-1">Új jelszó (min 8 kar)</label>
+                    <label className="block text-sm font-semibold mb-1">{t('auth.ujJelszoMin8Kar')}</label>
                     <input
                       type="password"
                       value={newPasswordInput}
@@ -676,7 +678,7 @@ export default function LoginPage() {
                         type="button"
                         className="form-button"
                         onClick={() => { setShowForgotPassword(false); setForgotEmail(''); setForgotMessage(null); setResetToken(''); setNewPasswordInput(''); }}
-                      >Mégse</button>
+                      >{t('common.cancel')}</button>
                       <button
                         type="button"
                         className="form-button-primary"

@@ -5,6 +5,7 @@ import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
+import { useTranslation } from 'react-i18next'
 
 interface Branch {
   id: string
@@ -34,6 +35,7 @@ interface BranchForm {
 const emptyForm: BranchForm = { code: '', name: '', city: '', address: '', phone: '', email: '' }
 
 export default function BranchPage() {
+  const { t } = useTranslation()
   const [branches, setBranches] = useState<Branch[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -153,11 +155,11 @@ export default function BranchPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Building2 />
-          Fiókok
+          {t('branches.fiokok')}
         </h1>
         <button onClick={openCreate} className="form-button-primary flex items-center gap-2">
           <Plus size={16} />
-          Új fiók
+          {t('branches.ujFiok')}
         </button>
       </div>
 
@@ -190,7 +192,7 @@ export default function BranchPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="form-label">Kód *</label>
+                  <label className="form-label">{t('common.codeRequired')}</label>
                   <input
                     type="text"
                     className="form-input"
@@ -200,7 +202,7 @@ export default function BranchPage() {
                   />
                 </div>
                 <div>
-                  <label className="form-label">Név *</label>
+                  <label className="form-label">{t('common.nameRequired')}</label>
                   <input
                     type="text"
                     className="form-input"
@@ -210,7 +212,7 @@ export default function BranchPage() {
                 </div>
               </div>
               <div>
-                <label className="form-label">Város</label>
+                <label className="form-label">{t('common.city')}</label>
                 <input
                   type="text"
                   className="form-input"
@@ -219,7 +221,7 @@ export default function BranchPage() {
                 />
               </div>
               <div>
-                <label className="form-label">Cím</label>
+                <label className="form-label">{t('common.address')}</label>
                 <input
                   type="text"
                   className="form-input"
@@ -229,7 +231,7 @@ export default function BranchPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="form-label">Telefon</label>
+                  <label className="form-label">{t('common.phone')}</label>
                   <input
                     type="text"
                     className="form-input"
@@ -238,7 +240,7 @@ export default function BranchPage() {
                   />
                 </div>
                 <div>
-                  <label className="form-label">Email</label>
+                  <label className="form-label">{t('common.email')}</label>
                   <input
                     type="email"
                     className="form-input"
@@ -248,7 +250,7 @@ export default function BranchPage() {
                 </div>
               </div>
               <div className="flex justify-end gap-2 pt-4 border-t">
-                <button onClick={() => setShowForm(false)} className="form-button">Mégse</button>
+                <button onClick={() => setShowForm(false)} className="form-button">{t('common.cancel')}</button>
                 <button
                   onClick={handleSave}
                   disabled={saving}
@@ -267,20 +269,20 @@ export default function BranchPage() {
         <table className="data-grid w-full">
           <thead>
             <tr>
-              <th>Kód</th>
-              <th>Név</th>
-              <th>Város</th>
-              <th>Email</th>
-              <th>Telefon</th>
-              <th>Státusz</th>
-              <th>Értéktár</th>
-              <th>Műveletek</th>
+              <th>{t('common.code')}</th>
+              <th>{t('common.name')}</th>
+              <th>{t('common.city')}</th>
+              <th>{t('common.email')}</th>
+              <th>{t('common.phone')}</th>
+              <th>{t('common.status')}</th>
+              <th>{t('branches.ertektar')}</th>
+              <th>{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-center text-gray-500 py-4">Nincs találat</td>
+                <td colSpan={8} className="text-center text-gray-500 py-4">{t('common.noResult')}</td>
               </tr>
             ) : (
               filtered.map((b) => (
@@ -315,14 +317,14 @@ export default function BranchPage() {
                         className="form-button text-xs flex items-center gap-1"
                       >
                         <Edit size={12} />
-                        Szerkesztés
+                        {t('common.edit')}
                       </button>
                       <button
                         onClick={() => handleDelete(b.id)}
                         className="form-button text-xs text-red-600 flex items-center gap-1"
                       >
                         <Trash2 size={12} />
-                        Törlés
+                        {t('common.delete')}
                       </button>
                     </div>
                   </td>

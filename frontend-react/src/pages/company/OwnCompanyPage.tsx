@@ -3,8 +3,10 @@ import { Building, Plus, Edit, Trash2, Search, X, Save } from 'lucide-react'
 import { ownCompanyApi, OwnCompany } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger';
+import { useTranslation } from 'react-i18next'
 
 export default function OwnCompanyPage() {
+  const { t } = useTranslation()
   const [companies, setCompanies] = useState<OwnCompany[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -97,17 +99,17 @@ export default function OwnCompanyPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Building />
-          Saját Cégek
+          {t('company.sajatCegek')}
         </h1>
         <button onClick={handleCreate} className="form-button-primary flex items-center gap-2">
           <Plus size={16} />
-          Új cég
+          {t('company.ujCeg')}
         </button>
       </div>
 
       <div className="form-panel">
         <div>
-          <label className="form-label">Keresés</label>
+          <label className="form-label">{t('common.search')}</label>
           <div className="relative">
             <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
             <input type="text" className="form-input pl-8" placeholder="Név vagy adószám..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
@@ -123,26 +125,26 @@ export default function OwnCompanyPage() {
               <button onClick={() => { setShowForm(false); setEditingCompany(null) }} className="text-gray-500"><X size={20} /></button>
             </div>
             <div className="space-y-4">
-              <div><label className="form-label">Név *</label><input type="text" className="form-input" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} /></div>
+              <div><label className="form-label">{t('common.nameRequired')}</label><input type="text" className="form-input" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} /></div>
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="form-label">Adószám</label><input type="text" className="form-input" value={formData.taxNumber || ''} onChange={(e) => setFormData({ ...formData, taxNumber: e.target.value })} /></div>
-                <div><label className="form-label">Cégjegyzékszám</label><input type="text" className="form-input" value={formData.registrationNumber || ''} onChange={(e) => setFormData({ ...formData, registrationNumber: e.target.value })} /></div>
+                <div><label className="form-label">{t('common.taxNumber')}</label><input type="text" className="form-input" value={formData.taxNumber || ''} onChange={(e) => setFormData({ ...formData, taxNumber: e.target.value })} /></div>
+                <div><label className="form-label">{t('common.companyRegNumber')}</label><input type="text" className="form-input" value={formData.registrationNumber || ''} onChange={(e) => setFormData({ ...formData, registrationNumber: e.target.value })} /></div>
               </div>
-              <div><label className="form-label">Cím</label><input type="text" className="form-input" value={formData.address || ''} onChange={(e) => setFormData({ ...formData, address: e.target.value })} /></div>
+              <div><label className="form-label">{t('common.address')}</label><input type="text" className="form-input" value={formData.address || ''} onChange={(e) => setFormData({ ...formData, address: e.target.value })} /></div>
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="form-label">Telefon</label><input type="text" className="form-input" value={formData.phone || ''} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} /></div>
-                <div><label className="form-label">Email</label><input type="email" className="form-input" value={formData.email || ''} onChange={(e) => setFormData({ ...formData, email: e.target.value })} /></div>
+                <div><label className="form-label">{t('common.phone')}</label><input type="text" className="form-input" value={formData.phone || ''} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} /></div>
+                <div><label className="form-label">{t('common.email')}</label><input type="email" className="form-input" value={formData.email || ''} onChange={(e) => setFormData({ ...formData, email: e.target.value })} /></div>
               </div>
-              <div><label className="form-label">Számlaszám</label><input type="text" className="form-input" value={formData.bankAccountNumber || ''} onChange={(e) => setFormData({ ...formData, bankAccountNumber: e.target.value })} /></div>
+              <div><label className="form-label">{t('company.szamlaszam')}</label><input type="text" className="form-input" value={formData.bankAccountNumber || ''} onChange={(e) => setFormData({ ...formData, bankAccountNumber: e.target.value })} /></div>
               <div className="grid grid-cols-2 gap-4">
                 <div><label className="form-label">IBAN</label><input type="text" className="form-input" value={formData.iban || ''} onChange={(e) => setFormData({ ...formData, iban: e.target.value })} /></div>
                 <div><label className="form-label">SWIFT</label><input type="text" className="form-input" value={formData.swift || ''} onChange={(e) => setFormData({ ...formData, swift: e.target.value })} /></div>
               </div>
-              <div><label className="form-label">Engedély szám</label><input type="text" className="form-input" value={formData.licenseNumber || ''} onChange={(e) => setFormData({ ...formData, licenseNumber: e.target.value })} /></div>
-              <div><label className="flex items-center gap-2"><input type="checkbox" className="rounded" checked={formData.isActive ?? true} onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })} /><span>Aktív</span></label></div>
+              <div><label className="form-label">{t('company.engedelySzam')}</label><input type="text" className="form-input" value={formData.licenseNumber || ''} onChange={(e) => setFormData({ ...formData, licenseNumber: e.target.value })} /></div>
+              <div><label className="flex items-center gap-2"><input type="checkbox" className="rounded" checked={formData.isActive ?? true} onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })} /><span>{t('common.active')}</span></label></div>
               <div className="flex justify-end gap-2 pt-4 border-t">
-                <button onClick={() => { setShowForm(false); setEditingCompany(null) }} className="form-button">Mégse</button>
-                <button onClick={handleSave} className="form-button-primary flex items-center gap-2"><Save size={16} />Mentés</button>
+                <button onClick={() => { setShowForm(false); setEditingCompany(null) }} className="form-button">{t('common.cancel')}</button>
+                <button onClick={handleSave} className="form-button-primary flex items-center gap-2"><Save size={16} />{t('common.save')}</button>
               </div>
             </div>
           </div>
@@ -152,11 +154,11 @@ export default function OwnCompanyPage() {
       <div className="form-panel">
         <table className="data-grid w-full">
           <thead>
-            <tr><th>Név</th><th>Adószám</th><th>Cégjegyzékszám</th><th>Email</th><th>Telefon</th><th>Státusz</th><th>Műveletek</th></tr>
+            <tr><th>{t('common.name')}</th><th>{t('common.taxNumber')}</th><th>{t('common.companyRegNumber')}</th><th>{t('common.email')}</th><th>{t('common.phone')}</th><th>{t('common.status')}</th><th>{t('common.actions')}</th></tr>
           </thead>
           <tbody>
             {filteredCompanies.length === 0 ? (
-              <tr><td colSpan={7} className="text-center text-gray-500 py-4">Nincs találat</td></tr>
+              <tr><td colSpan={7} className="text-center text-gray-500 py-4">{t('common.noResult')}</td></tr>
             ) : (
               filteredCompanies.map((c) => (
                 <tr key={c.id}>
@@ -168,8 +170,8 @@ export default function OwnCompanyPage() {
                   <td><span className={`badge ${c.isActive ? 'badge-green' : 'badge-red'}`}>{c.isActive ? 'Aktív' : 'Inaktív'}</span></td>
                   <td>
                     <div className="flex gap-2">
-                      <button onClick={() => handleEdit(c)} className="form-button text-xs"><Edit size={12} />Szerkesztés</button>
-                      <button onClick={() => handleDelete(c.id)} className="form-button text-xs text-red-600"><Trash2 size={12} />Törlés</button>
+                      <button onClick={() => handleEdit(c)} className="form-button text-xs"><Edit size={12} />{t('common.edit')}</button>
+                      <button onClick={() => handleDelete(c.id)} className="form-button text-xs text-red-600"><Trash2 size={12} />{t('common.delete')}</button>
                     </div>
                   </td>
                 </tr>

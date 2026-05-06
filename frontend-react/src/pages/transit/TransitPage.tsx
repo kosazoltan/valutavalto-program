@@ -4,10 +4,12 @@ import { Package, ArrowRight, ArrowLeft, RefreshCw, CheckCircle2, Loader2 } from
 import { getErrorMessage } from "../../utils/errorHandling"
 import { toast } from "../../components/ui/toaster"
 import { useAuthStore } from "../../stores/authStore"
+import { useTranslation } from 'react-i18next'
 
 type Tab = "incoming" | "outgoing"
 
 export default function TransitPage() {
+  const { t } = useTranslation()
   const [tab, setTab] = useState<Tab>("incoming")
   const [items, setItems] = useState<TransitItem[]>([])
   const [loading, setLoading] = useState(false)
@@ -74,7 +76,7 @@ export default function TransitPage() {
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <Package size={18} className="text-primary-600" />
-          <h1 className="text-base font-bold text-secondary-900">Úton lévő csomagok</h1>
+          <h1 className="text-base font-bold text-secondary-900">{t('transit.utonLevoCsomagok')}</h1>
           {branchCode && (
             <span className="ml-3 px-2 py-1 bg-secondary-100 rounded text-sm text-secondary-600">
               {branchCode}
@@ -87,7 +89,7 @@ export default function TransitPage() {
           className="flex items-center gap-2 px-3 py-1.5 border border-secondary-300 rounded-lg hover:bg-secondary-50 transition-colors text-sm"
         >
           <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-          Frissítés
+          {t('common.refresh')}
         </button>
       </div>
 
@@ -97,14 +99,14 @@ export default function TransitPage() {
           className={"px-4 py-2 text-sm font-medium border-b-2 transition-colors " + (tab === "incoming" ? "border-primary-600 text-primary-700" : "border-transparent text-secondary-600 hover:text-secondary-800")}
         >
           <ArrowRight size={14} className="inline mr-1" />
-          Bejövő (érkező)
+          {t('transit.bejovoErkezo')}
         </button>
         <button
           onClick={() => setTab("outgoing")}
           className={"px-4 py-2 text-sm font-medium border-b-2 transition-colors " + (tab === "outgoing" ? "border-primary-600 text-primary-700" : "border-transparent text-secondary-600 hover:text-secondary-800")}
         >
           <ArrowLeft size={14} className="inline mr-1" />
-          Kimenő (saját küldés)
+          {t('transit.kimenoSajatKuldes')}
         </button>
       </div>
 
@@ -117,22 +119,22 @@ export default function TransitPage() {
       {items.length === 0 && !loading ? (
         <div className="text-center py-12 text-secondary-500">
           <Package size={40} className="mx-auto mb-2 text-secondary-300" />
-          <p>Nincs {tab === "incoming" ? "érkező" : "kimenő"} úton lévő csomag.</p>
+          <p>{t('rate-management.nincs')}{tab === "incoming" ? "érkező" : "kimenő"} {t('transit.utonLevoCsomag')}</p>
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow-sm border border-secondary-200 overflow-hidden">
           <table className="w-full">
             <thead className="bg-secondary-50 border-b border-secondary-200">
               <tr className="text-left text-xs font-semibold text-secondary-600 uppercase tracking-wider">
-                <th className="px-4 py-2">Bizonylat</th>
-                <th className="px-4 py-2">Típus</th>
-                <th className="px-4 py-2">Feladó</th>
-                <th className="px-4 py-2">Címzett</th>
-                <th className="px-4 py-2 text-right">Összeg</th>
-                <th className="px-4 py-2">Deviza</th>
-                <th className="px-4 py-2">Státusz</th>
-                <th className="px-4 py-2">Indítva</th>
-                <th className="px-4 py-2">Művelet</th>
+                <th className="px-4 py-2">{t('reports.bizonylat')}</th>
+                <th className="px-4 py-2">{t('common.type')}</th>
+                <th className="px-4 py-2">{t('transit.felado')}</th>
+                <th className="px-4 py-2">{t('transit.cimzett')}</th>
+                <th className="px-4 py-2 text-right">{t('common.amount')}</th>
+                <th className="px-4 py-2">{t('common.deviza')}</th>
+                <th className="px-4 py-2">{t('common.status')}</th>
+                <th className="px-4 py-2">{t('transit.inditva')}</th>
+                <th className="px-4 py-2">{t('common.operation')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-secondary-100">
@@ -167,7 +169,7 @@ export default function TransitPage() {
                           className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-medium disabled:opacity-50"
                         >
                           {isAcking ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
-                          Átvétel
+                          {t('transit.atvetel')}
                         </button>
                       ) : (
                         <span className="text-xs text-secondary-400">—</span>
@@ -182,7 +184,7 @@ export default function TransitPage() {
       )}
 
       <p className="mt-4 text-xs text-secondary-500">
-        Automatikus frissítés 30 másodpercenként. Átvétel kattintással validálható — ezzel csökkentjük a csomagveszítés kockázatát.
+        {t('transit.automatikusFrissites30MasodpercenkentAtvetelKattintassalValidalhatoEzzelCsokkentjukACsomagveszitesKockazatat')}
       </p>
     </div>
   )

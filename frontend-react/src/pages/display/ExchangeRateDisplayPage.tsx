@@ -5,6 +5,7 @@ import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '@/utils/safeArray'
+import { useTranslation } from 'react-i18next'
 
 interface DisplayForm {
   displayName: string
@@ -53,6 +54,7 @@ const DISPLAY_TYPES = [
 ]
 
 export default function ExchangeRateDisplayPage() {
+  const { t } = useTranslation()
   const [displays, setDisplays] = useState<ExchangeRateDisplay[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -177,9 +179,9 @@ export default function ExchangeRateDisplayPage() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold flex items-center gap-2"><Monitor />Árfolyam kijelzők</h1>
+        <h1 className="text-xl font-bold flex items-center gap-2"><Monitor />{t('display.arfolyamKijelzok')}</h1>
         <button onClick={() => { setShowForm(true); setEditingId(null); setForm(emptyForm) }} className="form-button-primary">
-          <Plus size={16} /> Új kijelző
+          <Plus size={16} />{t('display.ujKijelzo')}
         </button>
       </div>
 
@@ -193,31 +195,31 @@ export default function ExchangeRateDisplayPage() {
           <h2 className="font-semibold">{editingId ? 'Kijelző szerkesztése' : 'Új kijelző'}</h2>
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="form-label">Kijelző neve *</label>
+              <label className="form-label">{t('display.kijelzoNeve')}</label>
               <input className="form-input" value={form.displayName} onChange={e => setForm({...form, displayName: e.target.value})} />
             </div>
             <div>
-              <label className="form-label">Típus</label>
+              <label className="form-label">{t('common.type')}</label>
               <select className="form-input" value={form.displayType} onChange={e => setForm({...form, displayType: e.target.value})}>
                 {DISPLAY_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="form-label">Kapcsolat</label>
+              <label className="form-label">{t('display.kapcsolat')}</label>
               <select className="form-input" value={form.connectionType} onChange={e => setForm({...form, connectionType: e.target.value})}>
-                <option value="SERIAL">Soros port</option>
-                <option value="TCP">TCP/IP</option>
+                <option value="SERIAL">{t('display.sorosPort')}</option>
+                <option value="TCP">{t('display.tcpIp')}</option>
                 <option value="USB">USB</option>
               </select>
             </div>
             {form.connectionType === 'SERIAL' && (
               <>
-                <div><label className="form-label">COM port</label>
+                <div><label className="form-label">{t('display.comPort')}</label>
                   <select className="form-input" value={form.comPort} onChange={e => setForm({...form, comPort: e.target.value})}>
                     {['COM1','COM2','COM3','COM4','COM5','COM6','COM7','COM8'].map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
-                <div><label className="form-label">Baud rate</label>
+                <div><label className="form-label">{t('display.baudRate')}</label>
                   <select className="form-input" value={form.baudRate} onChange={e => setForm({...form, baudRate: Number(e.target.value)})}>
                     {[9600, 19200, 38400, 57600, 115200].map(b => <option key={b} value={b}>{b}</option>)}
                   </select>
@@ -226,25 +228,25 @@ export default function ExchangeRateDisplayPage() {
             )}
             {form.connectionType === 'TCP' && (
               <>
-                <div><label className="form-label">IP cím</label><input className="form-input" value={form.ipAddress} onChange={e => setForm({...form, ipAddress: e.target.value})} /></div>
-                <div><label className="form-label">Port</label><input className="form-input" type="number" value={form.port} onChange={e => setForm({...form, port: Number(e.target.value)})} /></div>
+                <div><label className="form-label">{t('common.ipAddress')}</label><input className="form-input" value={form.ipAddress} onChange={e => setForm({...form, ipAddress: e.target.value})} /></div>
+                <div><label className="form-label">{t('display.port')}</label><input className="form-input" type="number" value={form.port} onChange={e => setForm({...form, port: Number(e.target.value)})} /></div>
               </>
             )}
-            <div><label className="form-label">Frissítési idő (mp)</label><input className="form-input" type="number" min={5} max={3600} value={form.refreshInterval} onChange={e => setForm({...form, refreshInterval: Number(e.target.value)})} /></div>
-            <div><label className="form-label">Sorok száma</label><input className="form-input" type="number" min={1} max={20} value={form.rowCount} onChange={e => setForm({...form, rowCount: Number(e.target.value)})} /></div>
-            <div><label className="form-label">Oszlopok száma</label><input className="form-input" type="number" min={2} max={6} value={form.columnCount} onChange={e => setForm({...form, columnCount: Number(e.target.value)})} /></div>
-            <div className="col-span-2"><label className="form-label">Devizák (vesszővel elválasztva)</label><input className="form-input" value={form.currencyIds} onChange={e => setForm({...form, currencyIds: e.target.value})} placeholder="EUR,USD,GBP,CHF" /></div>
-            <div><label className="form-label">Fényerő (%)</label><input className="form-input" type="range" min={0} max={100} value={form.brightness} onChange={e => setForm({...form, brightness: Number(e.target.value)})} /><span className="text-sm ml-2">{form.brightness}%</span></div>
+            <div><label className="form-label">{t('display.frissitesiIdoMp')}</label><input className="form-input" type="number" min={5} max={3600} value={form.refreshInterval} onChange={e => setForm({...form, refreshInterval: Number(e.target.value)})} /></div>
+            <div><label className="form-label">{t('display.sorokSzama')}</label><input className="form-input" type="number" min={1} max={20} value={form.rowCount} onChange={e => setForm({...form, rowCount: Number(e.target.value)})} /></div>
+            <div><label className="form-label">{t('display.oszlopokSzama')}</label><input className="form-input" type="number" min={2} max={6} value={form.columnCount} onChange={e => setForm({...form, columnCount: Number(e.target.value)})} /></div>
+            <div className="col-span-2"><label className="form-label">{t('display.devizakVesszovelElvalasztva')}</label><input className="form-input" value={form.currencyIds} onChange={e => setForm({...form, currencyIds: e.target.value})} placeholder="EUR,USD,GBP,CHF" /></div>
+            <div><label className="form-label">{t('display.fenyero')}</label><input className="form-input" type="range" min={0} max={100} value={form.brightness} onChange={e => setForm({...form, brightness: Number(e.target.value)})} /><span className="text-sm ml-2">{form.brightness}%</span></div>
             <div className="col-span-3 flex gap-4">
-              <label className="flex items-center gap-1"><input type="checkbox" checked={form.showBuyRate} onChange={e => setForm({...form, showBuyRate: e.target.checked})} />Vétel</label>
-              <label className="flex items-center gap-1"><input type="checkbox" checked={form.showSellRate} onChange={e => setForm({...form, showSellRate: e.target.checked})} />Eladás</label>
-              <label className="flex items-center gap-1"><input type="checkbox" checked={form.showMiddleRate} onChange={e => setForm({...form, showMiddleRate: e.target.checked})} />Közép</label>
-              <label className="flex items-center gap-1"><input type="checkbox" checked={form.showFlag} onChange={e => setForm({...form, showFlag: e.target.checked})} />Zászló ikon</label>
+              <label className="flex items-center gap-1"><input type="checkbox" checked={form.showBuyRate} onChange={e => setForm({...form, showBuyRate: e.target.checked})} />{t('cashier.buy')}</label>
+              <label className="flex items-center gap-1"><input type="checkbox" checked={form.showSellRate} onChange={e => setForm({...form, showSellRate: e.target.checked})} />{t('cashier.sell')}</label>
+              <label className="flex items-center gap-1"><input type="checkbox" checked={form.showMiddleRate} onChange={e => setForm({...form, showMiddleRate: e.target.checked})} />{t('display.kozep')}</label>
+              <label className="flex items-center gap-1"><input type="checkbox" checked={form.showFlag} onChange={e => setForm({...form, showFlag: e.target.checked})} />{t('display.zaszloIkon')}</label>
             </div>
           </div>
           <div className="flex gap-2">
             <button onClick={handleSave} disabled={saving} className="form-button-primary">{saving ? 'Mentés...' : 'Mentés'}</button>
-            <button onClick={() => { setShowForm(false); setEditingId(null) }} className="form-button">Mégse</button>
+            <button onClick={() => { setShowForm(false); setEditingId(null) }} className="form-button">{t('common.cancel')}</button>
           </div>
         </div>
       )}
@@ -253,17 +255,17 @@ export default function ExchangeRateDisplayPage() {
       {loading ? <div>Betöltés...</div> : (
         <div className="form-panel">
           {safeArray(displays).length === 0 ? (
-            <div className="text-center text-gray-500 py-8">Nincs kijelző konfigurálva</div>
+            <div className="text-center text-gray-500 py-8">{t('display.nincsKijelzoKonfiguralva')}</div>
           ) : (
             <table className="data-grid w-full">
               <thead>
                 <tr>
-                  <th>Megnevezés</th>
-                  <th>Típus</th>
-                  <th>Kapcsolat</th>
-                  <th>Frissítés</th>
-                  <th>Státusz</th>
-                  <th>Műveletek</th>
+                  <th>{t('display.megnevezes')}</th>
+                  <th>{t('common.type')}</th>
+                  <th>{t('display.kapcsolat')}</th>
+                  <th>{t('common.refresh')}</th>
+                  <th>{t('common.status')}</th>
+                  <th>{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -295,11 +297,11 @@ export default function ExchangeRateDisplayPage() {
                       <tr key={`preview-${d.id}`}>
                         <td colSpan={6}>
                           <div className="bg-black text-green-400 font-mono text-sm p-3 rounded">
-                            <div className="text-center mb-1 text-yellow-300">--- KIJELZŐ ELŐNÉZET ---</div>
+                            <div className="text-center mb-1 text-yellow-300">{t('display.kijelzoElonezet')}</div>
                             <div className="grid grid-cols-3 gap-2 text-center">
-                              <div className="font-bold">Deviza</div>
-                              <div className="font-bold">Vétel</div>
-                              <div className="font-bold">Eladás</div>
+                              <div className="font-bold">{t('common.deviza')}</div>
+                              <div className="font-bold">{t('cashier.buy')}</div>
+                              <div className="font-bold">{t('cashier.sell')}</div>
                               {previewData.map((r) => (
                                 <React.Fragment key={r.currency}><div>{r.currency}</div><div>{r.buyRate}</div><div>{r.sellRate}</div></React.Fragment>
                               ))}

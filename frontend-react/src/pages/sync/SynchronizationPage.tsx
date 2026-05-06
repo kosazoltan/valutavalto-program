@@ -5,6 +5,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useAuthStore } from '../../stores/authStore'
+import { useTranslation } from 'react-i18next'
 
 interface SyncLog {
   id: string
@@ -28,6 +29,7 @@ interface SyncStatus {
 }
 
 export default function SynchronizationPage() {
+  const { t } = useTranslation()
   const worker = useAuthStore((state) => state.worker)
   const branchId = worker?.branchId || ''
   const workerId = worker?.id ? String(worker.id) : ''
@@ -129,10 +131,10 @@ export default function SynchronizationPage() {
 
   const getStatusBadge = (s: string) => {
     switch (s) {
-      case 'SUCCESS': return <span className="badge badge-green"><CheckCircle size={10} className="inline" /> Sikeres</span>
-      case 'FAILED': return <span className="badge badge-red"><XCircle size={10} className="inline" /> Sikertelen</span>
-      case 'IN_PROGRESS': return <span className="badge badge-blue"><RefreshCw size={10} className="inline animate-spin" /> Folyamatban</span>
-      case 'PARTIAL': return <span className="badge badge-yellow"><AlertTriangle size={10} className="inline" /> Részleges</span>
+      case 'SUCCESS': return <span className="badge badge-green"><CheckCircle size={10} className="inline" />{t('common.success')}</span>
+      case 'FAILED': return <span className="badge badge-red"><XCircle size={10} className="inline" />{t('darius.sikertelen')}</span>
+      case 'IN_PROGRESS': return <span className="badge badge-blue"><RefreshCw size={10} className="inline animate-spin" />{t('common.inProgress')}</span>
+      case 'PARTIAL': return <span className="badge badge-yellow"><AlertTriangle size={10} className="inline" />{t('sync.reszleges')}</span>
       default: return <span className="badge badge-gray">{s}</span>
     }
   }
@@ -140,7 +142,7 @@ export default function SynchronizationPage() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold flex items-center gap-2"><RefreshCw />Szinkronizáció</h1>
+        <h1 className="text-xl font-bold flex items-center gap-2"><RefreshCw />{t('sync.szinkronizacio')}</h1>
         <div className="flex items-center gap-2">
           <span className={`badge ${status.isOnline ? 'badge-green' : 'badge-red'}`}>
             {status.isOnline ? <><Server size={10} className="inline" /> Online</> : <><XCircle size={10} className="inline" /> Offline</>}
@@ -157,31 +159,31 @@ export default function SynchronizationPage() {
         <div className="form-panel text-center">
           <Upload size={20} className="mx-auto text-blue-500 mb-1" />
           <div className="text-lg font-bold">{status.pendingUpload}</div>
-          <div className="text-sm text-gray-500">Feltöltendő</div>
+          <div className="text-sm text-gray-500">{t('sync.feltoltendo')}</div>
         </div>
         <div className="form-panel text-center">
           <Download size={20} className="mx-auto text-green-500 mb-1" />
           <div className="text-lg font-bold">{status.pendingDownload}</div>
-          <div className="text-sm text-gray-500">Letöltendő</div>
+          <div className="text-sm text-gray-500">{t('sync.letoltendo')}</div>
         </div>
         <div className="form-panel text-center">
           <Clock size={20} className="mx-auto text-gray-500 mb-1" />
           <div className="text-sm font-medium">{status.lastSync ? new Date(status.lastSync).toLocaleString('hu-HU') : 'Nincs adat'}</div>
-          <div className="text-sm text-gray-500">Utolsó szinkron</div>
+          <div className="text-sm text-gray-500">{t('sync.utolsoSzinkron')}</div>
         </div>
         <div className="form-panel text-center">
           <Database size={20} className="mx-auto text-purple-500 mb-1" />
           <div className="text-sm font-medium">{syncLogs.length}</div>
-          <div className="text-sm text-gray-500">Napló bejegyzés</div>
+          <div className="text-sm text-gray-500">{t('sync.naploBejegyzes')}</div>
         </div>
       </div>
 
       {/* Sync controls */}
       <div className="form-panel space-y-3">
-        <h2 className="font-semibold">Szinkronizálás</h2>
+        <h2 className="font-semibold">{t('sync.szinkronizalas')}</h2>
 
         <div>
-          <label className="form-label">Entitások kiválasztása</label>
+          <label className="form-label">{t('sync.entitasokKivalasztasa')}</label>
           <div className="flex flex-wrap gap-2">
             {ENTITY_TYPES.map(et => (
               <label key={et.value} className={`px-3 py-1 rounded-full text-sm cursor-pointer border ${selectedEntities.includes(et.value) ? 'bg-blue-100 border-blue-400 text-blue-700' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
@@ -197,36 +199,36 @@ export default function SynchronizationPage() {
             <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} /> {syncing ? 'Szinkronizálás...' : 'Teljes szinkron'}
           </button>
           <button onClick={() => void handleSync('UPLOAD')} disabled={syncing || !status.isOnline} className="form-button">
-            <Upload size={16} /> Csak feltöltés
+            <Upload size={16} />{t('sync.csakFeltoltes')}
           </button>
           <button onClick={() => void handleSync('DOWNLOAD')} disabled={syncing || !status.isOnline} className="form-button">
-            <Download size={16} /> Csak letöltés
+            <Download size={16} />{t('sync.csakLetoltes')}
           </button>
         </div>
 
         <div className="flex items-center gap-2">
           <label className="flex items-center gap-1 text-sm">
             <input type="checkbox" checked={autoSyncEnabled} onChange={e => setAutoSyncEnabled(e.target.checked)} />
-            Automatikus szinkron (5 percenként)
+            {t('sync.automatikusSzinkron5Percenkent')}
           </label>
         </div>
       </div>
 
       {/* Sync log */}
       <div className="form-panel">
-        <h2 className="font-semibold mb-2">Szinkronizációs napló</h2>
+        <h2 className="font-semibold mb-2">{t('sync.szinkronizaciosNaplo')}</h2>
         {loading ? <div>Betöltés...</div> : syncLogs.length === 0 ? (
-          <div className="text-center text-gray-500 py-4">Nincs szinkronizációs bejegyzés</div>
+          <div className="text-center text-gray-500 py-4">{t('sync.nincsSzinkronizaciosBejegyzes')}</div>
         ) : (
           <table className="data-grid w-full">
             <thead>
               <tr>
-                <th>Időpont</th>
-                <th>Irány</th>
-                <th>Entitások</th>
-                <th>Szinkronizálva</th>
-                <th>Hibás</th>
-                <th>Státusz</th>
+                <th>{t('audit.idopont')}</th>
+                <th>{t('sync.irany')}</th>
+                <th>{t('sync.entitasok')}</th>
+                <th>{t('sync.szinkronizalva')}</th>
+                <th>{t('sync.hibas')}</th>
+                <th>{t('common.status')}</th>
               </tr>
             </thead>
             <tbody>

@@ -29,6 +29,7 @@ import {
   mapCachedRatesToExchangeRates,
   saveAndSyncPendingConversion,
 } from '../../utils/electronTransactions'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Konverziós tranzakció oldal
@@ -41,6 +42,7 @@ import {
  * Ügyfél A valutából B valutába vált, a HUF csak közvetítő számítási alap
  */
 export default function ConversionPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const electronQueueAvailable = isElectronQueueAvailable()
 
@@ -310,7 +312,7 @@ export default function ConversionPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <ArrowRightLeft />
-          Valuta konverzió
+          {t('transactions.valutaKonverzio')}
         </h1>
         <div className="flex gap-2">
           <button
@@ -319,7 +321,7 @@ export default function ConversionPage() {
             className="form-button flex items-center gap-1"
           >
             <X size={16} />
-            Mégsem
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -327,7 +329,7 @@ export default function ConversionPage() {
             className="form-button flex items-center gap-1"
           >
             <RefreshCw size={16} />
-            Újrakezdés
+            {t('transactions.ujrakezdes')}
           </button>
         </div>
       </div>
@@ -353,14 +355,14 @@ export default function ConversionPage() {
           step === 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
         }`}>
           <span className="font-bold">1</span>
-          <span>Forrás valuta</span>
+          <span>{t('transactions.forrasValuta')}</span>
         </div>
         <ArrowRightLeft className="text-gray-400" />
         <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${
           step === 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
         }`}>
           <span className="font-bold">2</span>
-          <span>Cél valuta</span>
+          <span>{t('transactions.celValuta')}</span>
         </div>
       </div>
 
@@ -369,12 +371,12 @@ export default function ConversionPage() {
         <div className={`form-panel ${step === 1 ? 'ring-2 ring-blue-500' : ''}`}>
           <h2 className="font-semibold mb-3 text-green-700 flex items-center gap-2">
             <span className="bg-green-100 px-2 py-1 rounded">VESZEK</span>
-            Forrás valuta (ügyfél elad)
+            {t('transactions.forrasValutaUgyfelElad')}
           </h2>
 
           <div className="space-y-3">
             <div>
-              <label htmlFor="from-currency" className="form-label">Forrás deviza</label>
+              <label htmlFor="from-currency" className="form-label">{t('transactions.forrasDeviza')}</label>
               <select
                 id="from-currency"
                 value={fromCurrencyId ?? ''}
@@ -382,7 +384,7 @@ export default function ConversionPage() {
                 className="form-input w-full"
                 disabled={step === 2}
               >
-                <option value="">-- Válassz valutát --</option>
+                <option value="">{t('cashdesk.valasszValutat')}</option>
                 {currencies.map(c => (
                   <option key={c.id} value={c.id} disabled={c.id === toCurrencyId}>
                     {c.code} - {c.name}
@@ -394,7 +396,7 @@ export default function ConversionPage() {
             {fromRate && (
               <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
                 <div className="flex justify-between">
-                  <span>Vételi árfolyam:</span>
+                  <span>{t('transactions.veteliArfolyam')}</span>
                   <span className="font-mono font-semibold text-green-600">
                     {formatDecimal(fromRate.baseBuyRate, 2, 4)}
                   </span>
@@ -403,7 +405,7 @@ export default function ConversionPage() {
             )}
 
             <div>
-              <label htmlFor="from-amount" className="form-label">Összeg ({fromCurrency?.code || 'valuta'})</label>
+              <label htmlFor="from-amount" className="form-label">{t('transactions.osszeg')}{fromCurrency?.code || 'valuta'})</label>
               <NumberInput
                 id="from-amount"
                 value={fromAmount}
@@ -423,7 +425,7 @@ export default function ConversionPage() {
                 className="form-button-primary w-full"
                 disabled={!fromCurrencyId || !fromAmount}
               >
-                Tovább a cél valutához →
+                {t('transactions.tovabbACelValutahoz')}
               </button>
             )}
           </div>
@@ -433,13 +435,13 @@ export default function ConversionPage() {
         <div className="form-panel bg-gradient-to-b from-blue-50 to-white">
           <h2 className="font-semibold mb-3 flex items-center gap-2">
             <Calculator />
-            Számítás
+            {t('fees.szamitas')}
           </h2>
 
           <div className="space-y-4">
             {/* HUF intermediate value */}
             <div className="text-center p-3 bg-white rounded border">
-              <div className="text-sm text-gray-500 mb-1">HUF érték (köztes)</div>
+              <div className="text-sm text-gray-500 mb-1">{t('transactions.hufErtekKoztes')}</div>
               <div className="text-lg font-bold font-mono text-blue-600">
                 {formatInteger(hufAmount)} Ft
               </div>
@@ -448,7 +450,7 @@ export default function ConversionPage() {
             {/* Conversion rate */}
             {conversionRate > 0 && fromCurrency && toCurrency && (
               <div className="text-center p-3 bg-white rounded border">
-                <div className="text-sm text-gray-500 mb-1">Konverziós árfolyam</div>
+                <div className="text-sm text-gray-500 mb-1">{t('transactions.konverziosArfolyam')}</div>
                 <div className="text-lg font-bold font-mono">
                   1 {fromCurrency.code} = {formatDecimal(conversionRate, 4, 6)} {toCurrency.code}
                 </div>
@@ -476,7 +478,7 @@ export default function ConversionPage() {
             {step === 2 && (
               <div className="space-y-2 pt-2 border-t">
                 <div>
-                  <label htmlFor="customer-name" className="form-label text-sm">Ügyfél neve (opcionális)</label>
+                  <label htmlFor="customer-name" className="form-label text-sm">{t('transactions.ugyfelNeveOpcionalis')}</label>
                   <input
                     id="customer-name"
                     type="text"
@@ -487,7 +489,7 @@ export default function ConversionPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="notes" className="form-label text-sm">Megjegyzés</label>
+                  <label htmlFor="notes" className="form-label text-sm">{t('common.note')}</label>
                   <input
                     id="notes"
                     type="text"
@@ -506,12 +508,12 @@ export default function ConversionPage() {
         <div className={`form-panel ${step === 2 ? 'ring-2 ring-blue-500' : 'opacity-75'}`}>
           <h2 className="font-semibold mb-3 text-blue-700 flex items-center gap-2">
             <span className="bg-blue-100 px-2 py-1 rounded">ELADOK</span>
-            Cél valuta (ügyfél vesz)
+            {t('transactions.celValutaUgyfelVesz')}
           </h2>
 
           <div className="space-y-3">
             <div>
-              <label htmlFor="to-currency" className="form-label">Cél deviza</label>
+              <label htmlFor="to-currency" className="form-label">{t('transactions.celDeviza')}</label>
               <select
                 id="to-currency"
                 value={toCurrencyId ?? ''}
@@ -519,7 +521,7 @@ export default function ConversionPage() {
                 className="form-input w-full"
                 disabled={step === 1}
               >
-                <option value="">-- Válassz valutát --</option>
+                <option value="">{t('cashdesk.valasszValutat')}</option>
                 {currencies.map(c => (
                   <option key={c.id} value={c.id} disabled={c.id === fromCurrencyId}>
                     {c.code} - {c.name}
@@ -531,7 +533,7 @@ export default function ConversionPage() {
             {toRate && (
               <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
                 <div className="flex justify-between">
-                  <span>Eladási árfolyam:</span>
+                  <span>{t('transactions.eladasiArfolyam')}</span>
                   <span className="font-mono font-semibold text-red-600">
                     {formatDecimal(toRate.baseSellRate, 2, 4)}
                   </span>
@@ -540,7 +542,7 @@ export default function ConversionPage() {
             )}
 
             <div>
-              <label htmlFor="to-amount" className="form-label">Kapott összeg ({toCurrency?.code || 'valuta'})</label>
+              <label htmlFor="to-amount" className="form-label">{t('transactions.kapottOsszeg')}{toCurrency?.code || 'valuta'})</label>
               <div className="form-input w-full text-xl text-right bg-gray-50 font-mono font-bold text-blue-600">
                 {toAmount || '0,00'}
               </div>
@@ -553,7 +555,7 @@ export default function ConversionPage() {
                   onClick={() => setStep(1)}
                   className="form-button w-full"
                 >
-                  ← Vissza
+                  {t('transactions.Vissza')}
                 </button>
                 <button
                   type="button"
@@ -562,7 +564,7 @@ export default function ConversionPage() {
                   disabled={loading || !toCurrencyId}
                 >
                   {loading ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
-                  Konverzió végrehajtása
+                  {t('transactions.konverzioVegrehajtasa')}
                 </button>
               </div>
             )}
@@ -575,12 +577,12 @@ export default function ConversionPage() {
         <div className="flex items-start gap-2">
           <AlertCircle size={18} className="flex-shrink-0 mt-0.5" />
           <div>
-            <strong>Konverzió menete:</strong>
+            <strong>{t('transactions.konverzioMenete')}</strong>
             <ul className="list-disc ml-4 mt-1">
-              <li>Válassza ki a forrás valutát (amit az ügyfél elad)</li>
-              <li>Adja meg az összeget</li>
-              <li>Válassza ki a cél valutát (amit az ügyfél kap)</li>
-              <li>A rendszer automatikusan kiszámolja a kapott összeget</li>
+              <li>{t('transactions.valasszaKiAForrasValutatAmitAzUgyfelElad')}</li>
+              <li>{t('transactions.adjaMegAzOsszeget')}</li>
+              <li>{t('transactions.valasszaKiACelValutatAmitAzUgyfelKap')}</li>
+              <li>{t('transactions.aRendszerAutomatikusanKiszamoljaAKapottOsszeget')}</li>
             </ul>
           </div>
         </div>

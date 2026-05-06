@@ -5,6 +5,7 @@ import { transactionApi, type Transaction } from '../../services/api/transaction
 import type { PagedResponse } from '../../services/api/client'
 import { toast } from '../../components/ui/toaster'
 import { isElectron, getElectronAPI } from '../../utils/electron'
+import { useTranslation } from 'react-i18next'
 
 const PAGE_SIZE = 25
 
@@ -37,6 +38,7 @@ function formatNumber(n: number | null | undefined, decimals = 2): string {
 }
 
 export default function TransactionListPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [dateFrom, setDateFrom] = useState('')
@@ -134,7 +136,7 @@ export default function TransactionListPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <FileText />
-          Tranzakciók
+          {t('archiving.tranzakciok')}
         </h1>
         <div className="flex gap-2">
           <button
@@ -143,11 +145,11 @@ export default function TransactionListPage() {
             disabled={loading}
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-            Frissítés
+            {t('common.refresh')}
           </button>
           <Link to="/transactions/new" className="form-button-primary flex items-center gap-1">
             <Plus size={16} />
-            Új tranzakció
+            {t('misc.ujTranzakcio')}
           </Link>
         </div>
       </div>
@@ -156,7 +158,7 @@ export default function TransactionListPage() {
       <div className="form-panel">
         <div className="flex gap-3 items-end">
           <div className="flex-1">
-            <label className="form-label">Keresés (ügyfélnév)</label>
+            <label className="form-label">{t('transactions.keresesUgyfelnev')}</label>
             <div className="flex gap-1">
               <input
                 type="text"
@@ -172,7 +174,7 @@ export default function TransactionListPage() {
             </div>
           </div>
           <div>
-            <label className="form-label">Dátum -tól</label>
+            <label className="form-label">{t('transactions.datumTol')}</label>
             <input
               type="date"
               value={dateFrom}
@@ -181,7 +183,7 @@ export default function TransactionListPage() {
             />
           </div>
           <div>
-            <label className="form-label">Dátum -ig</label>
+            <label className="form-label">{t('transactions.datumIg')}</label>
             <input
               type="date"
               value={dateTo}
@@ -190,17 +192,17 @@ export default function TransactionListPage() {
             />
           </div>
           <div>
-            <label className="form-label">Típus</label>
+            <label className="form-label">{t('common.type')}</label>
             <select
               value={typeFilter}
               onChange={(e) => { setTypeFilter(e.target.value); setPage(0) }}
               className="form-input"
             >
-              <option value="">Mind</option>
-              <option value="BUY">Vétel</option>
-              <option value="SELL">Eladás</option>
-              <option value="REVERSAL">Sztornó</option>
-              <option value="CONVERSION">Átváltás</option>
+              <option value="">{t('common.all')}</option>
+              <option value="BUY">{t('cashier.buy')}</option>
+              <option value="SELL">{t('cashier.sell')}</option>
+              <option value="REVERSAL">{t('cashier.storno')}</option>
+              <option value="CONVERSION">{t('transactions.atvaltas')}</option>
             </select>
           </div>
         </div>
@@ -226,23 +228,23 @@ export default function TransactionListPage() {
           <table className="data-grid w-full">
             <thead>
               <tr>
-                <th>Bizonylat</th>
-                <th>Dátum/Idő</th>
-                <th>Típus</th>
-                <th>Deviza</th>
-                <th className="text-right">Deviza összeg</th>
-                <th className="text-right">Árfolyam</th>
-                <th className="text-right">HUF összeg</th>
-                <th>Ügyfél</th>
-                <th>Státusz</th>
-                <th className="w-24">Műveletek</th>
+                <th>{t('reports.bizonylat')}</th>
+                <th>{t('transactions.datumIdo')}</th>
+                <th>{t('common.type')}</th>
+                <th>{t('common.deviza')}</th>
+                <th className="text-right">{t('stornos.devizaOsszeg')}</th>
+                <th className="text-right">{t('cashier.exchangeRate')}</th>
+                <th className="text-right">{t('stornos.hufOsszeg')}</th>
+                <th>{t('common.customer')}</th>
+                <th>{t('common.status')}</th>
+                <th className="w-24">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {filteredTransactions.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="text-center text-gray-400 py-8">
-                    Nincs találat
+                    {t('common.noResult')}
                   </td>
                 </tr>
               ) : (
@@ -371,7 +373,7 @@ export default function TransactionListPage() {
               </button>
             </div>
             <span>
-              Összesen: <strong className="font-mono">
+              {t('audit.osszesen')}<strong className="font-mono">
                 {formatNumber(filteredTransactions.reduce((sum, tx) => sum + (tx.roundedHufAmount ?? tx.hufAmount), 0), 0)} Ft
               </strong>
             </span>

@@ -5,6 +5,7 @@ import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { useAuthStore } from '../../stores/authStore'
 import { eveningClosingApi } from '../../services/api/index'
+import { useTranslation } from 'react-i18next'
 
 interface EveningClosingPreview {
   branchId: string
@@ -22,6 +23,7 @@ interface EveningClosingPreview {
 }
 
 export default function EveningClosingPage() {
+  const { t } = useTranslation()
   const worker = useAuthStore((state) => state.worker)
   const branchId = worker?.branchId || ''
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
@@ -69,7 +71,7 @@ export default function EveningClosingPage() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold flex items-center gap-2"><Moon />Esti zárás / Csomagkészítés</h1>
+        <h1 className="text-xl font-bold flex items-center gap-2"><Moon />{t('closing.estiZarasCsomagkeszites')}</h1>
         {preview && preview.status !== 'SENT' && preview.status !== 'CONFIRMED' && (
           <button onClick={handleSend} disabled={sending} className="form-button-primary">
             <Send size={16} /> {sending ? 'Küldés...' : 'Esti zárás küldése'}
@@ -80,7 +82,7 @@ export default function EveningClosingPage() {
       {/* Dátum */}
       <div className="form-panel flex gap-3 items-end">
         <div>
-          <label className="form-label">Dátum</label>
+          <label className="form-label">{t('common.date')}</label>
           <div className="flex items-center gap-1">
             <Calendar size={16} className="text-gray-400" />
             <input className="form-input" type="date" value={date} onChange={e => setDate(e.target.value)} />
@@ -104,10 +106,10 @@ export default function EveningClosingPage() {
               preview.status === 'SENT' ? 'badge-blue' :
               preview.status === 'PREVIEW' ? 'badge-yellow' : 'badge-gray'
             }`}>
-              {preview.status === 'CONFIRMED' ? <><CheckCircle size={10} className="inline" /> Jóváhagyva</> :
-               preview.status === 'SENT' ? <><Send size={10} className="inline" /> Elküldve</> :
-               preview.status === 'PREVIEW' ? <><Eye size={10} className="inline" /> Előnézet</> :
-               <><Clock size={10} className="inline" /> Nem indult</>}
+              {preview.status === 'CONFIRMED' ? <><CheckCircle size={10} className="inline" /> {t('closing.jovahagyva')}</> :
+               preview.status === 'SENT' ? <><Send size={10} className="inline" /> {t('closing.elkuldve')}</> :
+               preview.status === 'PREVIEW' ? <><Eye size={10} className="inline" /> {t('closing.elonezet')}</> :
+               <><Clock size={10} className="inline" /> {t('closing.nemIndult')}</>}
             </span>
             <span className="text-sm text-gray-500">{preview.branchName} — {preview.date}</span>
           </div>
@@ -115,7 +117,7 @@ export default function EveningClosingPage() {
           {/* Figyelmeztetések */}
           {preview.warnings.length > 0 && (
             <div className="bg-yellow-50 border border-yellow-200 rounded p-3 space-y-1">
-              <div className="font-semibold flex items-center gap-1 text-yellow-700"><AlertTriangle size={16} /> Figyelmeztetések</div>
+              <div className="font-semibold flex items-center gap-1 text-yellow-700"><AlertTriangle size={16} />{t('closing.figyelmeztetesek')}</div>
               {preview.warnings.map((w) => (
                 <div key={w} className="text-sm text-yellow-600">• {w}</div>
               ))}
@@ -126,25 +128,25 @@ export default function EveningClosingPage() {
           <div className="grid grid-cols-4 gap-3">
             <div className="form-panel text-center">
               <div className="text-lg font-bold">{preview.transactionCount}</div>
-              <div className="text-sm text-gray-500">Tranzakció</div>
+              <div className="text-sm text-gray-500">{t('closing.tranzakcio')}</div>
             </div>
             <div className="form-panel text-center bg-green-50">
               <div className="text-lg font-bold text-green-700">{fmtHuf(preview.totalBuyHuf)}</div>
-              <div className="text-sm text-gray-500">Vétel (HUF)</div>
+              <div className="text-sm text-gray-500">{t('misc.vetelHuf')}</div>
             </div>
             <div className="form-panel text-center bg-blue-50">
               <div className="text-lg font-bold text-blue-700">{fmtHuf(preview.totalSellHuf)}</div>
-              <div className="text-sm text-gray-500">Eladás (HUF)</div>
+              <div className="text-sm text-gray-500">{t('misc.eladasHuf')}</div>
             </div>
             <div className="form-panel text-center">
               <div className="text-lg font-bold text-orange-600">{preview.pendingSyncs}</div>
-              <div className="text-sm text-gray-500">Szinkron. váró</div>
+              <div className="text-sm text-gray-500">{t('closing.szinkronVaro')}</div>
             </div>
           </div>
 
           {/* Készletek */}
           <div className="form-panel">
-            <h2 className="font-semibold mb-2">Záró készlet</h2>
+            <h2 className="font-semibold mb-2">{t('closing.zaroKeszlet')}</h2>
             <div className="grid grid-cols-6 gap-2">
               {(preview.balances || []).map((b) => (
                 <div key={b.currency} className="text-center p-2 bg-gray-50 rounded">
@@ -157,18 +159,18 @@ export default function EveningClosingPage() {
 
           {/* Csomagok */}
           <div className="form-panel">
-            <h2 className="font-semibold mb-2 flex items-center gap-1"><Package size={16} /> Készített csomagok</h2>
+            <h2 className="font-semibold mb-2 flex items-center gap-1"><Package size={16} />{t('closing.keszitettCsomagok')}</h2>
             {(preview.packages || []).length === 0 ? (
-              <div className="text-center text-gray-500 py-4">Nincs csomag</div>
+              <div className="text-center text-gray-500 py-4">{t('closing.nincsCsomag')}</div>
             ) : (
               <table className="data-grid w-full">
                 <thead>
                   <tr>
-                    <th>Csomag ID</th>
-                    <th>Deviza</th>
-                    <th className="text-right">Összeg</th>
-                    <th>Plombaszám</th>
-                    <th>Cél</th>
+                    <th>{t('closing.csomagId')}</th>
+                    <th>{t('common.deviza')}</th>
+                    <th className="text-right">{t('common.amount')}</th>
+                    <th>{t('closing.plombaszam')}</th>
+                    <th>{t('closing.cel')}</th>
                   </tr>
                 </thead>
                 <tbody>

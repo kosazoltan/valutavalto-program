@@ -1,5 +1,6 @@
 import { X } from 'lucide-react'
 import type { BranchListItem } from '../../../services/api/index'
+import { useTranslation } from 'react-i18next'
 
 interface BranchPickerModalProps {
   open: boolean
@@ -28,6 +29,7 @@ export default function BranchPickerModal({
   saving,
   canWriteRateCreation,
 }: BranchPickerModalProps) {
+  const { t } = useTranslation()
   if (!open) return null
 
   return (
@@ -35,7 +37,7 @@ export default function BranchPickerModal({
       <div className="bg-white rounded-lg shadow-xl w-[600px] max-h-[80vh] flex flex-col">
         <div className="flex items-center justify-between px-4 py-2 border-b">
           <h2 className="text-sm font-bold text-gray-800">
-            Irodák kezelése — {selectedWgName}
+            {t('rates.irodakKezelese')}{selectedWgName}
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X size={18} />
@@ -73,16 +75,16 @@ export default function BranchPickerModal({
             </div>
           ))}
           {groupedBranches.length === 0 && (
-            <div className="text-center text-gray-400 py-8 text-sm">Nincs találat</div>
+            <div className="text-center text-gray-400 py-8 text-sm">{t('common.noResult')}</div>
           )}
         </div>
 
         <div className="flex items-center justify-between px-4 py-2 border-t bg-gray-50">
-          <span className="text-xs text-gray-500">{selectedBranchIds.size} iroda kiválasztva</span>
+          <span className="text-xs text-gray-500">{selectedBranchIds.size} {t('rates.irodaKivalasztva')}</span>
           <div className="flex gap-2">
             <button onClick={onClose}
               className="px-3 py-1.5 text-xs border rounded hover:bg-gray-100">
-              Mégse
+              {t('common.cancel')}
             </button>
             <button onClick={onSave} disabled={saving || !canWriteRateCreation}
               className="px-3 py-1.5 text-xs bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded font-bold">

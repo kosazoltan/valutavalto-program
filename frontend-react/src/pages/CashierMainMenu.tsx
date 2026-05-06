@@ -7,6 +7,7 @@ import {
   Building2, List, Users, Calendar, Archive,
   RefreshCw, Settings,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Pénztáros főmenü — konzervatív üzleti megjelenés, MainLayout sidebar-on belül.
@@ -60,6 +61,7 @@ const MENU_ITEMS_ADMIN: MenuItem[] = [
 ]
 
 export default function CashierMainMenu() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
 
   // Szám billentyűk: napi műveletek (1. csoport)
@@ -81,16 +83,16 @@ export default function CashierMainMenu() {
     <div className="space-y-8">
       {/* Page header */}
       <div>
-        <h1 className="text-lg font-bold text-secondary-900">Pénztáros műveletek</h1>
+        <h1 className="text-lg font-bold text-secondary-900">{t('misc.penztarosMuveletek')}</h1>
         <p className="text-sm text-secondary-500 mt-1">
-          Válasszon műveletet a listából, vagy használja a billentyűparancsokat (1-8, F1-F8)
+          {t('misc.valasszonMuveletetAListabolVagyHasznaljaABillentyuparancsokat18F1F8')}
         </p>
       </div>
 
       {/* Napi műveletek */}
       <section>
         <h2 className="text-sm font-semibold text-secondary-400 uppercase tracking-wider mb-3">
-          Napi műveletek
+          {t('misc.napiMuveletek')}
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {MENU_ITEMS_PRIMARY.map((item) => (
@@ -102,7 +104,7 @@ export default function CashierMainMenu() {
       {/* Adminisztráció */}
       <section>
         <h2 className="text-sm font-semibold text-secondary-400 uppercase tracking-wider mb-3">
-          Adminisztráció
+          {t('misc.adminisztracio')}
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {MENU_ITEMS_ADMIN.map((item) => (

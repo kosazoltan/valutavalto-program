@@ -12,8 +12,10 @@ import {
 } from '../../utils/localQueue'
 import { isElectron } from '../../utils/electron'
 import { logger } from '../../utils/logger';
+import { useTranslation } from 'react-i18next'
 
 export default function ReceiptPage() {
+  const { t } = useTranslation()
   const worker = useAuthStore((state) => state.worker)
   const [receipts, setReceipts] = useState<Receipt[]>([])
   const [localDrafts, setLocalDrafts] = useState<PendingReceiptDraft[]>([])
@@ -87,13 +89,13 @@ export default function ReceiptPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <ReceiptIcon />
-          Bizonylatok
+          {t('receipts.bizonylatok')}
         </h1>
       </div>
 
       <div className="form-panel">
         <div>
-          <label className="form-label">Keresés</label>
+          <label className="form-label">{t('common.search')}</label>
           <div className="relative">
             <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
             <input type="text" className="form-input pl-8" placeholder="Bizonylatszám..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
@@ -105,14 +107,14 @@ export default function ReceiptPage() {
         <div className="form-panel">
           <div className="mb-4 flex items-center gap-2 text-amber-800">
             <Clock size={18} />
-            <h2 className="text-lg font-bold">Helyi, függő bizonylatok</h2>
+            <h2 className="text-lg font-bold">{t('receipts.helyiFuggoBizonylatok')}</h2>
           </div>
           <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            Ezek a bizonylatok helyileg végleges szigorú számadású sorszámmal rendelkeznek (NGM 23/2014). A szerver-szinkron folyamatban van — a sorszám NEM fog megváltozni, csak a szerver-oldali audit-napló egészül ki.
+            {t('receipts.ezekABizonylatokHelyilegVeglegesSzigoruSzamadasuSorszammalRendelkeznekNgm232014ASzerverSzinkronFolyamatbanVanASorszamNemFogMegvaltozniCsakASzerverOldaliAuditNaploEgeszulKi')}
           </div>
           <table className="data-grid w-full">
             <thead>
-              <tr><th>Helyi referencia</th><th>Típus</th><th>Létrehozva</th><th>Állapot</th><th>Műveletek</th></tr>
+              <tr><th>{t('receipts.helyiReferencia')}</th><th>{t('common.type')}</th><th>{t('common.createdAt')}</th><th>{t('common.status2')}</th><th>{t('common.actions')}</th></tr>
             </thead>
             <tbody>
               {filteredDrafts.map((draft) => (
@@ -123,8 +125,8 @@ export default function ReceiptPage() {
                   <td><span className="badge badge-yellow">{draft.statusLabel}</span></td>
                   <td>
                     <div className="flex gap-2">
-                      <button onClick={() => setSelectedDraft(draft)} className="form-button text-xs"><Eye size={12} />Előnézet</button>
-                      <button onClick={() => setSelectedDraft(draft)} className="form-button text-xs"><Printer size={12} />Vázlat nyomtatás</button>
+                      <button onClick={() => setSelectedDraft(draft)} className="form-button text-xs"><Eye size={12} />{t('closing.elonezet')}</button>
+                      <button onClick={() => setSelectedDraft(draft)} className="form-button text-xs"><Printer size={12} />{t('receipts.vazlatNyomtatas')}</button>
                     </div>
                   </td>
                 </tr>
@@ -137,11 +139,11 @@ export default function ReceiptPage() {
       <div className="form-panel">
         <table className="data-grid w-full">
           <thead>
-            <tr><th>Bizonylatszám</th><th>NAV bizonylatszám</th><th>Típus</th><th>Kiadás dátuma</th><th>Nyomtatva</th><th>Műveletek</th></tr>
+            <tr><th>{t('cashier.receiptNumber')}</th><th>{t('receipts.navBizonylatszam')}</th><th>{t('common.type')}</th><th>{t('cashier.issueDate')}</th><th>{t('cashier.printed')}</th><th>{t('common.actions')}</th></tr>
           </thead>
           <tbody>
             {filteredReceipts.length === 0 ? (
-              <tr><td colSpan={6} className="text-center text-gray-500 py-4">Nincs találat</td></tr>
+              <tr><td colSpan={6} className="text-center text-gray-500 py-4">{t('common.noResult')}</td></tr>
             ) : (
               filteredReceipts.map((r) => (
                 <tr key={r.id}>
@@ -152,7 +154,7 @@ export default function ReceiptPage() {
                   <td><span className={`badge ${r.isPrinted ? 'badge-green' : 'badge-yellow'}`}>{r.isPrinted ? 'Igen' : 'Nem'}</span></td>
                   <td>
                     <div className="flex gap-2">
-                      <button onClick={() => setSelectedReceipt(r)} className="form-button text-xs"><Eye size={12} />Részletek</button>
+                      <button onClick={() => setSelectedReceipt(r)} className="form-button text-xs"><Eye size={12} />{t('common.details')}</button>
                       {!r.isPrinted && <button onClick={() => handlePrint(r.id)} className="form-button text-xs"><Printer size={12} />Nyomtatás</button>}
                     </div>
                   </td>
@@ -167,18 +169,18 @@ export default function ReceiptPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-4 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold">Bizonylat részletek</h2>
+              <h2 className="text-lg font-bold">{t('receipts.bizonylatReszletek')}</h2>
               <button onClick={() => setSelectedReceipt(null)} className="text-gray-500">X</button>
             </div>
             <div className="space-y-2">
-              <div><strong>Bizonylatszám:</strong> {selectedReceipt.receiptNumber}</div>
-              <div><strong>NAV bizonylatszám:</strong> {selectedReceipt.navReceiptNumber || '-'}</div>
-              <div><strong>Típus:</strong> {selectedReceipt.receiptType}</div>
-              <div><strong>Kiadás dátuma:</strong> {new Date(selectedReceipt.issueDate).toLocaleString('hu-HU')}</div>
-              <div><strong>Nyomtatva:</strong> {selectedReceipt.isPrinted ? 'Igen' : 'Nem'}</div>
+              <div><strong>{t('receipts.bizonylatszam')}</strong> {selectedReceipt.receiptNumber}</div>
+              <div><strong>{t('receipts.navBizonylatszam2')}</strong> {selectedReceipt.navReceiptNumber || '-'}</div>
+              <div><strong>{t('cashdesk.tipus')}</strong> {selectedReceipt.receiptType}</div>
+              <div><strong>{t('receipts.kiadasDatuma')}</strong> {new Date(selectedReceipt.issueDate).toLocaleString('hu-HU')}</div>
+              <div><strong>{t('receipts.nyomtatva')}</strong> {selectedReceipt.isPrinted ? 'Igen' : 'Nem'}</div>
               {selectedReceipt.content && (
                 <div className="mt-4 p-4 bg-gray-50 rounded">
-                  <strong>Tartalom:</strong>
+                  <strong>{t('receipts.tartalom')}</strong>
                   <pre className="mt-2 text-sm">{selectedReceipt.content}</pre>
                 </div>
               )}

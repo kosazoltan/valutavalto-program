@@ -7,6 +7,7 @@ import UserPage from './UserPage'
 import { ownCompanyApi, type OwnCompany } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 /**
  * v2.3.36 (Sourcery #299 P3): Type-safe field whitelist a SettingsPage company
@@ -35,6 +36,7 @@ type EditableOwnCompanyKeys = keyof Pick<OwnCompany,
  * (Exclusive Best Change Zrt. — kosa.zoltan.ebc@gmail.com beruhazo cege).
  */
 export default function SettingsPage() {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState('company')
   const [companyData, setCompanyData] = useState<OwnCompany | null>(null)
   const [companyLoading, setCompanyLoading] = useState(false)
@@ -98,7 +100,7 @@ export default function SettingsPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Settings />
-          Beállítások
+          {t('settings.settings')}
         </h1>
       </div>
 
@@ -130,7 +132,7 @@ export default function SettingsPage() {
         <div className="col-span-4 form-panel">
           {activeTab === 'company' && (
             <div className="space-y-4">
-              <h2 className="section-title">Cégadatok</h2>
+              <h2 className="section-title">{t('settings.company')}</h2>
               {companyLoading && (
                 <div className="flex items-center gap-2 text-gray-500">
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -139,14 +141,14 @@ export default function SettingsPage() {
               )}
               {!companyLoading && !companyData && (
                 <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                  Nincs aktív cégadat-rekord — a Flyway V172 migráció EBC Zrt. seed után automatikusan betöltődik.
+                  {t('settings.nincsAktivCegadatRekordAFlywayV172MigracioEbcZrtSeedUtanAutomatikusanBetoltodik')}
                 </div>
               )}
               {!companyLoading && companyData && (
                 <>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="form-label">Cégnév</label>
+                      <label className="form-label">{t('blacklist.cegnev2')}</label>
                       <input
                         type="text"
                         className="form-input"
@@ -155,7 +157,7 @@ export default function SettingsPage() {
                       />
                     </div>
                     <div>
-                      <label className="form-label">Adószám</label>
+                      <label className="form-label">{t('common.taxNumber')}</label>
                       <input
                         type="text"
                         className="form-input font-mono"
@@ -164,7 +166,7 @@ export default function SettingsPage() {
                       />
                     </div>
                     <div>
-                      <label className="form-label">Cégjegyzékszám</label>
+                      <label className="form-label">{t('common.companyRegNumber')}</label>
                       <input
                         type="text"
                         className="form-input font-mono"
@@ -173,7 +175,7 @@ export default function SettingsPage() {
                       />
                     </div>
                     <div>
-                      <label className="form-label">MNB engedély száma</label>
+                      <label className="form-label">{t('settings.mnbEngedelySzama')}</label>
                       <input
                         type="text"
                         className="form-input font-mono"
@@ -182,7 +184,7 @@ export default function SettingsPage() {
                       />
                     </div>
                     <div className="col-span-2">
-                      <label className="form-label">Székhely</label>
+                      <label className="form-label">{t('settings.szekhely')}</label>
                       <input
                         type="text"
                         className="form-input"
@@ -191,7 +193,7 @@ export default function SettingsPage() {
                       />
                     </div>
                     <div>
-                      <label className="form-label">Telefon</label>
+                      <label className="form-label">{t('common.phone')}</label>
                       <input
                         type="text"
                         className="form-input"
@@ -200,7 +202,7 @@ export default function SettingsPage() {
                       />
                     </div>
                     <div>
-                      <label className="form-label">E-mail</label>
+                      <label className="form-label">{t('customers.eMail')}</label>
                       <input
                         type="email"
                         className="form-input"
@@ -241,152 +243,152 @@ export default function SettingsPage() {
 
           {activeTab === 'printing' && (
             <div className="space-y-4">
-              <h2 className="section-title">Nyomtatási beállítások</h2>
+              <h2 className="section-title">{t('settings.nyomtatasiBeallitasok')}</h2>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="form-label">Bizonylat nyomtató</label>
+                  <label className="form-label">{t('settings.bizonylatNyomtato')}</label>
                   <select className="form-input">
-                    <option>EPSON TM-T88V</option>
-                    <option>Star TSP100</option>
-                    <option>PDF (fájlba)</option>
+                    <option>{t('settings.epsonTmT88v')}</option>
+                    <option>{t('settings.starTsp100')}</option>
+                    <option>{t('settings.pdfFajlba')}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="form-label">Riport nyomtató</label>
+                  <label className="form-label">{t('settings.riportNyomtato')}</label>
                   <select className="form-input">
-                    <option>HP LaserJet Pro</option>
-                    <option>PDF (fájlba)</option>
+                    <option>{t('settings.hpLaserjetPro')}</option>
+                    <option>{t('settings.pdfFajlba')}</option>
                   </select>
                 </div>
               </div>
               <div className="space-y-2">
                 <label className="flex items-center gap-2">
                   <input type="checkbox" className="rounded" defaultChecked />
-                  <span>Automatikus bizonylat nyomtatás</span>
+                  <span>{t('settings.automatikusBizonylatNyomtatas')}</span>
                 </label>
                 <label className="flex items-center gap-2">
                   <input type="checkbox" className="rounded" defaultChecked />
-                  <span>Nyomtatás előnézet megjelenítése</span>
+                  <span>{t('settings.nyomtatasElonezetMegjelenitese')}</span>
                 </label>
                 <label className="flex items-center gap-2">
                   <input type="checkbox" className="rounded" />
-                  <span>Duplikált bizonylat nyomtatása</span>
+                  <span>{t('settings.duplikaltBizonylatNyomtatasa')}</span>
                 </label>
               </div>
               <div className="flex justify-end">
-                <button className="form-button-primary">Mentés</button>
+                <button className="form-button-primary">{t('common.save')}</button>
               </div>
             </div>
           )}
 
           {activeTab === 'database' && (
             <div className="space-y-4">
-              <h2 className="section-title">Adatbázis</h2>
+              <h2 className="section-title">{t('settings.adatbazis')}</h2>
               <div className="bg-green-50 p-3 rounded border border-green-200">
                 <span className="text-green-800">Kapcsolat: OK | PostgreSQL 15.2</span>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="form-label">Szerver</label>
+                  <label className="form-label">{t('settings.szerver')}</label>
                   <input type="text" className="form-input" defaultValue="localhost" disabled />
                 </div>
                 <div>
-                  <label className="form-label">Adatbázis</label>
+                  <label className="form-label">{t('settings.adatbazis')}</label>
                   <input type="text" className="form-input" defaultValue="valutavalto" disabled />
                 </div>
               </div>
               <div className="flex gap-2">
-                <button className="form-button">Biztonsági mentés</button>
-                <button className="form-button">Visszaállítás</button>
-                <button className="form-button text-red-600">Adatok törlése</button>
+                <button className="form-button">{t('settings.biztonsagiMentes')}</button>
+                <button className="form-button">{t('settings.visszaallitas')}</button>
+                <button className="form-button text-red-600">{t('settings.adatokTorlese')}</button>
               </div>
             </div>
           )}
 
           {activeTab === 'notifications' && (
             <div className="space-y-4">
-              <h2 className="section-title">Értesítések</h2>
+              <h2 className="section-title">{t('notifications.ertesitesek')}</h2>
               <div className="space-y-3">
                 <label className="flex items-center justify-between p-3 bg-gray-50 rounded">
-                  <span>Alacsony készlet figyelmeztetés</span>
+                  <span>{t('settings.alacsonyKeszletFigyelmeztetes')}</span>
                   <input type="checkbox" className="rounded" defaultChecked />
                 </label>
                 <label className="flex items-center justify-between p-3 bg-gray-50 rounded">
-                  <span>Napi zárás emlékeztető</span>
+                  <span>{t('settings.napiZarasEmlekezteto')}</span>
                   <input type="checkbox" className="rounded" defaultChecked />
                 </label>
                 <label className="flex items-center justify-between p-3 bg-gray-50 rounded">
-                  <span>MNB árfolyam frissítés</span>
+                  <span>{t('settings.mnbArfolyamFrissites')}</span>
                   <input type="checkbox" className="rounded" defaultChecked />
                 </label>
                 <label className="flex items-center justify-between p-3 bg-gray-50 rounded">
-                  <span>Nagy összegű tranzakció</span>
+                  <span>{t('settings.nagyOsszeguTranzakcio')}</span>
                   <input type="checkbox" className="rounded" />
                 </label>
               </div>
               <div className="flex justify-end">
-                <button className="form-button-primary">Mentés</button>
+                <button className="form-button-primary">{t('common.save')}</button>
               </div>
             </div>
           )}
 
           {activeTab === 'security' && (
             <div className="space-y-4">
-              <h2 className="section-title">Biztonsági beállítások</h2>
+              <h2 className="section-title">{t('settings.biztonsagiBeallitasok')}</h2>
               <div className="space-y-3">
                 <div>
-                  <label className="form-label">Jelszó minimális hossza</label>
+                  <label className="form-label">{t('settings.jelszoMinimalisHossza')}</label>
                   <input type="number" className="form-input w-24" defaultValue={8} />
                 </div>
                 <div>
-                  <label className="form-label">Munkamenet időkorlát (perc)</label>
+                  <label className="form-label">{t('settings.munkamenetIdokorlatPerc')}</label>
                   <input type="number" className="form-input w-24" defaultValue={30} />
                 </div>
                 <label className="flex items-center gap-2">
                   <input type="checkbox" className="rounded" defaultChecked />
-                  <span>Kétfaktoros hitelesítés kötelező</span>
+                  <span>{t('settings.ketfaktorosHitelesitesKotelezo')}</span>
                 </label>
                 <label className="flex items-center gap-2">
                   <input type="checkbox" className="rounded" defaultChecked />
-                  <span>Sikertelen bejelentkezések naplózása</span>
+                  <span>{t('settings.sikertelenBejelentkezesekNaplozasa')}</span>
                 </label>
               </div>
               <div className="flex justify-end">
-                <button className="form-button-primary">Mentés</button>
+                <button className="form-button-primary">{t('common.save')}</button>
               </div>
             </div>
           )}
 
           {activeTab === 'appearance' && (
             <div className="space-y-4">
-              <h2 className="section-title">Megjelenés</h2>
+              <h2 className="section-title">{t('settings.megjelenes')}</h2>
               <div className="space-y-3">
                 <div>
-                  <label className="form-label">Téma</label>
+                  <label className="form-label">{t('settings.tema')}</label>
                   <select className="form-input w-48">
-                    <option>Világos</option>
-                    <option>Sötét</option>
-                    <option>Rendszer beállítás</option>
+                    <option>{t('settings.vilagos')}</option>
+                    <option>{t('settings.sotet')}</option>
+                    <option>{t('settings.rendszerBeallitas')}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="form-label">Nyelv</label>
+                  <label className="form-label">{t('settings.nyelv')}</label>
                   <select className="form-input w-48">
-                    <option>Magyar</option>
-                    <option>English</option>
+                    <option>{t('settings.magyar')}</option>
+                    <option>{t('settings.english')}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="form-label">Dátum formátum</label>
+                  <label className="form-label">{t('settings.datumFormatum')}</label>
                   <select className="form-input w-48">
-                    <option>ÉÉÉÉ-HH-NN</option>
+                    <option>{t('settings.eeeeHhNn')}</option>
                     <option>ÉÉÉÉ.HH.NN</option>
-                    <option>NN/HH/ÉÉÉÉ</option>
+                    <option>{t('settings.nnHhEeee')}</option>
                   </select>
                 </div>
               </div>
               <div className="flex justify-end">
-                <button className="form-button-primary">Mentés</button>
+                <button className="form-button-primary">{t('common.save')}</button>
               </div>
             </div>
           )}

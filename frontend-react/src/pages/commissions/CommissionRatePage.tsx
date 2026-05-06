@@ -5,6 +5,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { safeArray } from '@/utils/safeArray'
+import { useTranslation } from 'react-i18next'
 
 interface RateForm {
   entityType: string
@@ -18,6 +19,7 @@ interface RateForm {
 const emptyForm: RateForm = { entityType: 'BRANCH', entityName: '', currencyCode: '', rate: '', validFrom: new Date().toISOString().slice(0, 10), validTo: '' }
 
 export default function CommissionRatePage() {
+  const { t } = useTranslation()
   const [rates, setRates] = useState<CommissionRate[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -98,8 +100,8 @@ export default function CommissionRatePage() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold flex items-center gap-2"><Percent />Jutalék mértékek</h1>
-        <button onClick={() => { setShowForm(true); setEditingId(null); setForm(emptyForm) }} className="form-button-primary"><Plus size={16} /> Új mérték</button>
+        <h1 className="text-xl font-bold flex items-center gap-2"><Percent />{t('commissions.jutalekMertekek')}</h1>
+        <button onClick={() => { setShowForm(true); setEditingId(null); setForm(emptyForm) }} className="form-button-primary"><Plus size={16} />{t('commissions.ujMertek')}</button>
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>}
@@ -109,38 +111,38 @@ export default function CommissionRatePage() {
           <h2 className="font-semibold">{editingId ? 'Mérték szerkesztése' : 'Új jutalék mérték'}</h2>
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="form-label">Entitás típus</label>
+              <label className="form-label">{t('commissions.entitasTipus')}</label>
               <select className="form-input" value={form.entityType} onChange={e => setForm({ ...form, entityType: e.target.value })}>
-                <option value="BRANCH">Fiók</option>
-                <option value="WORKER">Dolgozó</option>
-                <option value="CUSTOMER">Ügyfél</option>
-                <option value="GLOBAL">Globális</option>
+                <option value="BRANCH">{t('commissions.fiok')}</option>
+                <option value="WORKER">{t('commissions.dolgozo')}</option>
+                <option value="CUSTOMER">{t('common.customer')}</option>
+                <option value="GLOBAL">{t('commissions.globalis')}</option>
               </select>
             </div>
             <div>
-              <label className="form-label">Entitás neve</label>
+              <label className="form-label">{t('commissions.entitasNeve')}</label>
               <input className="form-input" value={form.entityName} onChange={e => setForm({ ...form, entityName: e.target.value })} placeholder="Üres = mindegyik" />
             </div>
             <div>
-              <label className="form-label">Valuta</label>
+              <label className="form-label">{t('common.currency')}</label>
               <input className="form-input" value={form.currencyCode} onChange={e => setForm({ ...form, currencyCode: e.target.value })} placeholder="pl. EUR" />
             </div>
             <div>
-              <label className="form-label">Mérték (%) *</label>
+              <label className="form-label">{t('commissions.mertek')}</label>
               <input className="form-input" type="number" step="0.01" value={form.rate} onChange={e => setForm({ ...form, rate: e.target.value })} />
             </div>
             <div>
-              <label className="form-label">Érvényesség kezdete</label>
+              <label className="form-label">{t('commissions.ervenyessegKezdete')}</label>
               <input className="form-input" type="date" value={form.validFrom} onChange={e => setForm({ ...form, validFrom: e.target.value })} />
             </div>
             <div>
-              <label className="form-label">Érvényesség vége</label>
+              <label className="form-label">{t('commissions.ervenyessegVege')}</label>
               <input className="form-input" type="date" value={form.validTo} onChange={e => setForm({ ...form, validTo: e.target.value })} placeholder="Üres = határozatlan" />
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => void handleSave()} className="form-button-primary">Mentés</button>
-            <button onClick={() => { setShowForm(false); setEditingId(null) }} className="form-button">Mégse</button>
+            <button onClick={() => void handleSave()} className="form-button-primary">{t('common.save')}</button>
+            <button onClick={() => { setShowForm(false); setEditingId(null) }} className="form-button">{t('common.cancel')}</button>
           </div>
         </div>
       )}
@@ -148,28 +150,28 @@ export default function CommissionRatePage() {
       {/* Filters */}
       <div className="form-panel flex gap-3 items-end">
         <div>
-          <label className="form-label">Entitás típus</label>
+          <label className="form-label">{t('commissions.entitasTipus')}</label>
           <select className="form-input" value={filter.entityType} onChange={e => setFilter({ ...filter, entityType: e.target.value })}>
-            <option value="">Mind</option>
+            <option value="">{t('common.all')}</option>
             {entityTypes.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
         <div>
-          <label className="form-label">Valuta</label>
+          <label className="form-label">{t('common.currency')}</label>
           <select className="form-input" value={filter.currencyCode} onChange={e => setFilter({ ...filter, currencyCode: e.target.value })}>
-            <option value="">Mind</option>
+            <option value="">{t('common.all')}</option>
             {currencies.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
-        <span className="text-sm text-gray-500">{filtered.length} találat</span>
+        <span className="text-sm text-gray-500">{filtered.length} {t('commissions.talalat')}</span>
       </div>
 
       <div className="form-panel">
         {loading ? <div>Betöltés...</div> : filtered.length === 0 ? (
-          <div className="text-center text-gray-500 py-4">Nincs jutalék mérték</div>
+          <div className="text-center text-gray-500 py-4">{t('commissions.nincsJutalekMertek')}</div>
         ) : (
           <table className="data-grid w-full">
-            <thead><tr><th>Entitás típus</th><th>Entitás</th><th>Valuta</th><th>Mérték (%)</th><th>Érvényesség</th><th>Műveletek</th></tr></thead>
+            <thead><tr><th>{t('commissions.entitasTipus')}</th><th>{t('archiving.entitas')}</th><th>{t('common.currency')}</th><th>{t('commissions.mertek2')}</th><th>{t('commissions.ervenyesseg')}</th><th>{t('common.actions')}</th></tr></thead>
             <tbody>
               {filtered.map(r => (
                 <tr key={r.id}>

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { permissionApi, roleApi, type Permission, type Role } from '../../services/api/users'
 import { logger } from '../../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 // Role.permissions backend-ben string[] (permission NEV-ek), a matrix edit-hez
 // permission ID-kra kell valtanunk. Ezt a rolePermissionMap tartja.
@@ -17,6 +18,7 @@ import { logger } from '../../utils/logger'
 type RolePermissionMap = Record<string /* roleId */, Set<string> /* permissionIds */>
 
 export default function PermissionMatrixPage() {
+    const { t } = useTranslation()
     const [permissions, setPermissions] = useState<Permission[]>([])
     const [roles, setRoles] = useState<Role[]>([])
     const [rolePermMap, setRolePermMap] = useState<RolePermissionMap>({})
@@ -141,20 +143,20 @@ export default function PermissionMatrixPage() {
                 <div>
                     <h1 className="text-base font-bold text-secondary-900 flex items-center gap-2">
                         <Grid3x3 className="text-primary-600" size={18} />
-                        Jogosultság mátrix
+                        {t('settings.jogosultsagMatrix')}
                     </h1>
                     <p className="text-xs text-secondary-500">
-                        Szerepkor × jogosultsag matrix. Egyszerre szerkesztheto az osszes kombinacio.
+                        {t('settings.szerepkorJogosultsagMatrixEgyszerreSzerkeszthetoAzOsszesKombinacio')}
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
                     <button onClick={load} disabled={loading || saving} className="form-button">
                         <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-                        <span>Frissítés</span>
+                        <span>{t('common.refresh')}</span>
                     </button>
                     {hasChanges && (
                         <button type="button" onClick={handleDiscard} disabled={saving} className="form-button text-orange-600">
-                            Elvetes
+                            {t('settings.elvetes')}
                         </button>
                     )}
                     <button
@@ -207,7 +209,7 @@ export default function PermissionMatrixPage() {
                         <thead className="bg-secondary-50 sticky top-0">
                             <tr>
                                 <th className="text-left px-3 py-2 border-b border-secondary-200 sticky left-0 bg-secondary-50 z-10 min-w-[180px]">
-                                    Szerepkor
+                                    {t('settings.szerepkor')}
                                 </th>
                                 {permissionsByModule.map(([module, perms]) =>
                                     perms.map(p => (
@@ -268,9 +270,9 @@ export default function PermissionMatrixPage() {
 
             {/* Legend */}
             <div className="text-xs text-secondary-500 flex gap-4 flex-wrap">
-                <span><Shield size={10} className="inline text-blue-600" /> Rendszer role (nem torolheto)</span>
-                <span className="text-amber-600">Narancs keret = modositas fuggoben</span>
-                <span>Mentes utan a szerver osszes validalja a permission osszefuggeseket</span>
+                <span><Shield size={10} className="inline text-blue-600" />{t('settings.rendszerRoleNemTorolheto')}</span>
+                <span className="text-amber-600">{t('settings.narancsKeretModositasFuggoben')}</span>
+                <span>{t('settings.mentesUtanASzerverOsszesValidaljaAPermissionOsszefuggeseket')}</span>
             </div>
         </div>
     )

@@ -7,8 +7,10 @@ import {
 import { customerApi, Customer, CustomerCreateRequest } from '../../services/api/transactions'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 export default function CustomerDetailPage() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const [isEditing, setIsEditing] = useState(false)
   const [customer, setCustomer] = useState<Customer | null>(null)
@@ -87,7 +89,7 @@ export default function CustomerDetailPage() {
         <AlertCircle className="inline mr-2" size={16} />
         {error || 'Ügyfél nem található'}
         <div className="mt-4">
-          <Link to="/customers" className="form-button">Vissza</Link>
+          <Link to="/customers" className="form-button">{t('common.back')}</Link>
         </div>
       </div>
     )
@@ -107,7 +109,7 @@ export default function CustomerDetailPage() {
           </Link>
           <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
             <User />
-            Ügyfél adatai
+            {t('customers.ugyfelAdatai')}
             {customer.isVip && <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">VIP</span>}
           </h1>
         </div>
@@ -117,12 +119,12 @@ export default function CustomerDetailPage() {
             className="form-button flex items-center gap-1"
           >
             <Users size={16} />
-            Meghatalmazottak
+            {t('customers.meghatalmazottak')}
           </Link>
           {isEditing ? (
             <>
               <button onClick={() => setIsEditing(false)} className="form-button">
-                Mégse
+                {t('common.cancel')}
               </button>
               <button onClick={() => void handleSave()} disabled={saving} className="form-button-primary flex items-center gap-1">
                 <Save size={16} />
@@ -132,7 +134,7 @@ export default function CustomerDetailPage() {
           ) : (
             <button onClick={() => setIsEditing(true)} className="form-button flex items-center gap-1">
               <Edit size={16} />
-              Szerkesztés
+              {t('common.edit')}
             </button>
           )}
         </div>
@@ -150,38 +152,38 @@ export default function CustomerDetailPage() {
       <div className="grid grid-cols-3 gap-3">
         {/* Basic Info */}
         <div className="form-panel col-span-2">
-          <h2 className="section-title">Alapadatok</h2>
+          <h2 className="section-title">{t('customers.alapadatok')}</h2>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="form-label">Név</label>
+              <label className="form-label">{t('common.name')}</label>
               <input type="text" value={customer.name || ''} onChange={(e) => updateField('name', e.target.value)} disabled={!isEditing} className="form-input" />
             </div>
             <div>
-              <label className="form-label">Születési név</label>
+              <label className="form-label">{t('common.birthName')}</label>
               <input type="text" value={customer.birthName || ''} onChange={(e) => updateField('birthName', e.target.value)} disabled={!isEditing} className="form-input" />
             </div>
             <div>
-              <label className="form-label">Születési dátum</label>
+              <label className="form-label">{t('common.birthDate')}</label>
               <input type="date" value={customer.birthDate || ''} onChange={(e) => updateField('birthDate', e.target.value)} disabled={!isEditing} className="form-input" />
             </div>
             <div>
-              <label className="form-label">Születési hely</label>
+              <label className="form-label">{t('common.birthPlace')}</label>
               <input type="text" value={customer.birthPlace || ''} onChange={(e) => updateField('birthPlace', e.target.value)} disabled={!isEditing} className="form-input" />
             </div>
             <div>
-              <label className="form-label">Anyja neve</label>
+              <label className="form-label">{t('common.motherName')}</label>
               <input type="text" value={customer.motherName || ''} onChange={(e) => updateField('motherName', e.target.value)} disabled={!isEditing} className="form-input" />
             </div>
             <div>
-              <label className="form-label">Állampolgárság</label>
+              <label className="form-label">{t('common.nationality')}</label>
               <input type="text" value={customer.nationality || ''} onChange={(e) => updateField('nationality', e.target.value)} disabled={!isEditing} className="form-input" />
             </div>
             <div>
-              <label className="form-label">Adószám</label>
+              <label className="form-label">{t('common.taxNumber')}</label>
               <input type="text" value={customer.taxNumber || ''} onChange={(e) => updateField('taxNumber', e.target.value)} disabled={!isEditing} className="form-input font-mono" />
             </div>
             <div>
-              <label className="form-label">Megjegyzés</label>
+              <label className="form-label">{t('common.note')}</label>
               <input type="text" value={customer.notes || ''} onChange={(e) => updateField('notes', e.target.value)} disabled={!isEditing} className="form-input" />
             </div>
           </div>
@@ -189,17 +191,17 @@ export default function CustomerDetailPage() {
 
         {/* Stats Card */}
         <div className="form-panel">
-          <h2 className="section-title">Statisztika</h2>
+          <h2 className="section-title">{t('customers.statisztika')}</h2>
           <div className="space-y-3">
             <div className="bg-blue-50 p-3 rounded">
-              <div className="text-sm text-blue-600">Összes tranzakció</div>
+              <div className="text-sm text-blue-600">{t('customers.osszesTranzakcio')}</div>
               <div className="text-lg font-bold text-blue-800">{customer.transactionCount ?? 0}</div>
             </div>
             {customer.lastTransactionDate && (
               <div className="bg-gray-50 p-3 rounded">
                 <div className="text-sm text-gray-600 flex items-center gap-1">
                   <Clock size={14} />
-                  Utolsó tranzakció
+                  {t('customers.utolsoTranzakcio')}
                 </div>
                 <div className="text-lg font-semibold">
                   {new Date(customer.lastTransactionDate).toLocaleDateString('hu-HU')}
@@ -213,25 +215,25 @@ export default function CustomerDetailPage() {
         <div className="form-panel">
           <h2 className="section-title flex items-center gap-2">
             <FileText size={16} />
-            Okmány adatok
+            {t('customers.okmanyAdatok')}
           </h2>
           <div className="space-y-3">
             <div>
-              <label className="form-label">Okmány típusa</label>
+              <label className="form-label">{t('customers.okmanyTipusa')}</label>
               <select value={customer.documentType || ''} onChange={(e) => updateField('documentType', e.target.value)} disabled={!isEditing} className="form-input">
                 <option value="">—</option>
-                <option value="Személyi igazolvány">Személyi igazolvány</option>
-                <option value="Útlevél">Útlevél</option>
-                <option value="Vezetői engedély">Vezetői engedély</option>
-                <option value="Tartózkodási engedély">Tartózkodási engedély</option>
+                <option value="Személyi igazolvány">{t('customers.szemelyiIgazolvany')}</option>
+                <option value="Útlevél">{t('customers.utlevel')}</option>
+                <option value="Vezetői engedély">{t('customers.vezetoiEngedely')}</option>
+                <option value="Tartózkodási engedély">{t('customers.tartozkodasiEngedely')}</option>
               </select>
             </div>
             <div>
-              <label className="form-label">Okmányszám</label>
+              <label className="form-label">{t('common.documentNumber')}</label>
               <input type="text" value={customer.documentNumber || ''} onChange={(e) => updateField('documentNumber', e.target.value)} disabled={!isEditing} className="form-input font-mono" />
             </div>
             <div>
-              <label className="form-label">Érvényesség</label>
+              <label className="form-label">{t('commissions.ervenyesseg')}</label>
               <input type="date" value={customer.documentExpiry || ''} onChange={(e) => updateField('documentExpiry', e.target.value)} disabled={!isEditing} className="form-input" />
             </div>
           </div>
@@ -241,15 +243,15 @@ export default function CustomerDetailPage() {
         <div className="form-panel">
           <h2 className="section-title flex items-center gap-2">
             <Phone size={16} />
-            Elérhetőségek
+            {t('customers.elerhetosegek')}
           </h2>
           <div className="space-y-3">
             <div>
-              <label className="form-label">Telefon</label>
+              <label className="form-label">{t('common.phone')}</label>
               <input type="tel" value={customer.phone || ''} onChange={(e) => updateField('phone', e.target.value)} disabled={!isEditing} className="form-input font-mono" />
             </div>
             <div>
-              <label className="form-label">E-mail</label>
+              <label className="form-label">{t('customers.eMail')}</label>
               <input type="email" value={customer.email || ''} onChange={(e) => updateField('email', e.target.value)} disabled={!isEditing} className="form-input" />
             </div>
           </div>
@@ -259,25 +261,25 @@ export default function CustomerDetailPage() {
         <div className="form-panel">
           <h2 className="section-title flex items-center gap-2">
             <MapPin size={16} />
-            Lakcím
+            {t('common.homeAddress')}
           </h2>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="form-label">Irányítószám</label>
+                <label className="form-label">{t('customers.iranyitoszam')}</label>
                 <input type="text" value={customer.postalCode || ''} onChange={(e) => updateField('postalCode', e.target.value)} disabled={!isEditing} className="form-input" />
               </div>
               <div>
-                <label className="form-label">Város</label>
+                <label className="form-label">{t('common.city')}</label>
                 <input type="text" value={customer.city || ''} onChange={(e) => updateField('city', e.target.value)} disabled={!isEditing} className="form-input" />
               </div>
             </div>
             <div>
-              <label className="form-label">Utca, házszám</label>
+              <label className="form-label">{t('customers.utcaHazszam')}</label>
               <input type="text" value={customer.address || ''} onChange={(e) => updateField('address', e.target.value)} disabled={!isEditing} className="form-input" />
             </div>
             <div>
-              <label className="form-label">Ország</label>
+              <label className="form-label">{t('common.country')}</label>
               <input type="text" value={customer.country || ''} onChange={(e) => updateField('country', e.target.value)} disabled={!isEditing} className="form-input" />
             </div>
           </div>
@@ -289,15 +291,15 @@ export default function CustomerDetailPage() {
         <div className="flex gap-3 text-sm text-gray-500">
           <span className="flex items-center gap-1">
             <Calendar size={14} />
-            Létrehozva: {customer.createdAt ? new Date(customer.createdAt).toLocaleString('hu-HU') : '-'}
+            {t('customers.letrehozva')}{customer.createdAt ? new Date(customer.createdAt).toLocaleString('hu-HU') : '-'}
           </span>
           <span className="flex items-center gap-1">
             <Clock size={14} />
-            Módosítva: {customer.updatedAt ? new Date(customer.updatedAt).toLocaleString('hu-HU') : '-'}
+            {t('customers.modositva')}{customer.updatedAt ? new Date(customer.updatedAt).toLocaleString('hu-HU') : '-'}
           </span>
           <span className="flex items-center gap-1">
             <CreditCard size={14} />
-            ID: {id}
+            {t('customers.id')}{id}
           </span>
         </div>
       </div>

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save, CheckCircle2, XCircle, FileCheck, Ban, AlertTriangle } from 'lucide-react'
 import { vaultStocktakeApi, VaultStocktakeSession, VaultStocktakeItem, StocktakeStatus } from '../../services/api/vaultStocktake'
 import { logger } from '../../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 const STATUS_LABELS: Record<StocktakeStatus, string> = {
     OPEN: 'Nyitva',
@@ -13,6 +14,7 @@ const STATUS_LABELS: Record<StocktakeStatus, string> = {
 }
 
 export default function VaultStocktakeDetailPage() {
+    const { t } = useTranslation()
     const { id } = useParams<{ id: string }>()
     const navigate = useNavigate()
     const [session, setSession] = useState<VaultStocktakeSession | null>(null)
@@ -119,7 +121,7 @@ export default function VaultStocktakeDetailPage() {
                 className="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-800 mb-2"
             >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                Vissza a listahoz
+                {t('vaultStocktake.visszaAListahoz')}
             </button>
 
             <div className="bg-white shadow rounded p-2 mb-2">
@@ -127,7 +129,7 @@ export default function VaultStocktakeDetailPage() {
                     <div>
                         <h1 className="text-base font-bold">{session.sessionName}</h1>
                         <div className="text-xs text-gray-600">
-                            Status: <span className="font-medium">{STATUS_LABELS[session.status]}</span>
+                            {t('vaultStocktake.status')}<span className="font-medium">{STATUS_LABELS[session.status]}</span>
                             {' - '}Inditotta: {session.startedBy}
                             {' - '}{new Date(session.startedAt).toLocaleString('hu-HU')}
                         </div>
@@ -138,7 +140,7 @@ export default function VaultStocktakeDetailPage() {
                                 onClick={handleMoveToReview}
                                 className="flex items-center gap-1 px-3 py-2 bg-purple-600 text-white rounded text-sm hover:bg-purple-700"
                             >
-                                <FileCheck className="w-4 h-4" /> REVIEW-ba
+                                <FileCheck className="w-4 h-4" />{t('vaultStocktake.reviewBa')}
                             </button>
                         )}
                         {canClose && (
@@ -146,7 +148,7 @@ export default function VaultStocktakeDetailPage() {
                                 onClick={handleClose}
                                 className="flex items-center gap-1 px-3 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
                             >
-                                <CheckCircle2 className="w-4 h-4" /> Lezaras
+                                <CheckCircle2 className="w-4 h-4" />{t('vaultStocktake.lezaras')}
                             </button>
                         )}
                         {session.status !== 'CLOSED' && session.status !== 'CANCELLED' && (
@@ -154,7 +156,7 @@ export default function VaultStocktakeDetailPage() {
                                 onClick={handleCancel}
                                 className="flex items-center gap-1 px-3 py-2 bg-red-100 text-red-700 rounded text-sm hover:bg-red-200"
                             >
-                                <Ban className="w-4 h-4" /> Megszakitas
+                                <Ban className="w-4 h-4" />{t('vaultStocktake.megszakitas')}
                             </button>
                         )}
                     </div>
@@ -162,15 +164,15 @@ export default function VaultStocktakeDetailPage() {
 
                 <div className="grid grid-cols-3 gap-4 mt-4">
                     <div className="bg-gray-50 rounded p-3">
-                        <div className="text-xs text-gray-600">Tetel osszesen</div>
+                        <div className="text-xs text-gray-600">{t('vaultStocktake.tetelOsszesen')}</div>
                         <div className="text-lg font-bold">{items.length}</div>
                     </div>
                     <div className="bg-blue-50 rounded p-3">
-                        <div className="text-xs text-blue-700">Felveve</div>
+                        <div className="text-xs text-blue-700">{t('vaultStocktake.felveve')}</div>
                         <div className="text-lg font-bold">{countedItems} / {items.length}</div>
                     </div>
                     <div className="bg-yellow-50 rounded p-3">
-                        <div className="text-xs text-yellow-700">Elteres osszesen (HUF)</div>
+                        <div className="text-xs text-yellow-700">{t('vaultStocktake.elteresOsszesenHuf')}</div>
                         <div className={`text-lg font-bold ${totalDiscrepancy < 0 ? 'text-red-600' : totalDiscrepancy > 0 ? 'text-green-600' : ''}`}>
                             {totalDiscrepancy.toLocaleString('hu-HU')}
                         </div>
@@ -194,13 +196,13 @@ export default function VaultStocktakeDetailPage() {
                 <table className="w-full text-sm">
                     <thead className="bg-gray-100">
                         <tr>
-                            <th className="px-4 py-3 text-left">Valuta</th>
-                            <th className="px-4 py-3 text-right">Cimlet</th>
-                            <th className="px-4 py-3 text-right">Varhato</th>
-                            <th className="px-4 py-3 text-right">Tenyleges</th>
-                            <th className="px-4 py-3 text-right">Elteres</th>
-                            <th className="px-4 py-3 text-right">Elteres HUF</th>
-                            <th className="px-4 py-3">Muvelet</th>
+                            <th className="px-4 py-3 text-left">{t('common.currency')}</th>
+                            <th className="px-4 py-3 text-right">{t('vaultStocktake.cimlet')}</th>
+                            <th className="px-4 py-3 text-right">{t('vaultStocktake.varhato')}</th>
+                            <th className="px-4 py-3 text-right">{t('vaultStocktake.tenyleges')}</th>
+                            <th className="px-4 py-3 text-right">{t('vaultStocktake.elteres')}</th>
+                            <th className="px-4 py-3 text-right">{t('vaultStocktake.elteresHuf')}</th>
+                            <th className="px-4 py-3">{t('vaultStocktake.muvelet')}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -239,7 +241,7 @@ export default function VaultStocktakeDetailPage() {
                                                 className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs"
                                             >
                                                 <Save className="w-3 h-3" />
-                                                Mentes
+                                                {t('vaultStocktake.mentes')}
                                             </button>
                                         )}
                                         {hasDisc && (
@@ -252,7 +254,7 @@ export default function VaultStocktakeDetailPage() {
                         {items.length === 0 && (
                             <tr>
                                 <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                                    Nincs tetel - valoszinuleg nincs banknote_inventory a branch-en.
+                                    {t('vaultStocktake.nincsTetelValoszinulegNincsBanknoteInventoryABranchEn')}
                                 </td>
                             </tr>
                         )}

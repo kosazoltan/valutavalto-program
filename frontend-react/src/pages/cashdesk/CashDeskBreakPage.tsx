@@ -3,8 +3,10 @@ import { Clock, Play, Square } from 'lucide-react'
 import { cashDeskBreakApi, CashDeskBreak, cashDeskApi, CashDesk } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger';
+import { useTranslation } from 'react-i18next'
 
 export default function CashDeskBreakPage() {
+  const { t } = useTranslation()
   const [breaks, setBreaks] = useState<CashDeskBreak[]>([])
   const [cashDesks, setCashDesks] = useState<CashDesk[]>([])
   const [loading, setLoading] = useState(true)
@@ -88,7 +90,7 @@ export default function CashDeskBreakPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Clock />
-          Pénztár Szünetek
+          {t('cashdesk.penztarSzunetek')}
         </h1>
       </div>
 
@@ -100,7 +102,7 @@ export default function CashDeskBreakPage() {
 
       <div className="form-panel space-y-4">
         <div>
-          <label className="form-label">Pénztár</label>
+          <label className="form-label">{t('branch.branch')}</label>
           <select className="form-input" value={selectedCashDeskId} onChange={(e) => setSelectedCashDeskId(e.target.value)}>
             {cashDesks.map(cd => (
               <option key={cd.id} value={cd.id}>{cd.name}</option>
@@ -112,9 +114,9 @@ export default function CashDeskBreakPage() {
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
             <div className="flex justify-between items-center">
               <div>
-                <h3 className="font-bold text-yellow-800">Aktív szünet</h3>
-                <p className="text-sm text-yellow-600">Kezdés: {new Date(activeBreak.breakStart).toLocaleString('hu-HU')}</p>
-                <p className="text-sm text-yellow-600">Típus: {activeBreak.breakType}</p>
+                <h3 className="font-bold text-yellow-800">{t('cashdesk.aktivSzunet')}</h3>
+                <p className="text-sm text-yellow-600">{t('cashdesk.kezdes')}{new Date(activeBreak.breakStart).toLocaleString('hu-HU')}</p>
+                <p className="text-sm text-yellow-600">{t('cashdesk.tipus')}{activeBreak.breakType}</p>
                 {activeBreak.reason && <p className="text-sm text-yellow-600">Ok: {activeBreak.reason}</p>}
               </div>
               <button
@@ -122,7 +124,7 @@ export default function CashDeskBreakPage() {
                 className="form-button-primary flex items-center gap-2"
               >
                 <Square size={16} />
-                Szünet befejezése
+                {t('cashdesk.szunetBefejezese')}
               </button>
             </div>
           </div>
@@ -132,7 +134,7 @@ export default function CashDeskBreakPage() {
             className="form-button-primary flex items-center gap-2"
           >
             <Play size={16} />
-            Szünet indítása
+            {t('cashdesk.szunetInditasa')}
           </button>
         )}
       </div>
@@ -141,16 +143,16 @@ export default function CashDeskBreakPage() {
         <table className="data-grid w-full">
           <thead>
             <tr>
-              <th>Kezdés</th>
-              <th>Vég</th>
-              <th>Típus</th>
-              <th>Ok</th>
-              <th>Műveletek</th>
+              <th>{t('archiving.kezdes')}</th>
+              <th>{t('cashdesk.veg')}</th>
+              <th>{t('common.type')}</th>
+              <th>{t('cashdesk.ok')}</th>
+              <th>{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {breaks.length === 0 ? (
-              <tr><td colSpan={5} className="text-center text-gray-500 py-4">Nincs szünet</td></tr>
+              <tr><td colSpan={5} className="text-center text-gray-500 py-4">{t('cashdesk.nincsSzunet')}</td></tr>
             ) : (
               breaks.map((b) => (
                 <tr key={b.id}>
@@ -164,7 +166,7 @@ export default function CashDeskBreakPage() {
                         onClick={() => handleEndBreak(b.id)}
                         className="form-button text-xs"
                       >
-                        <Square size={12} /> Befejezés
+                        <Square size={12} />{t('archiving.befejezes')}
                       </button>
                     )}
                   </td>

@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { isElectron } from '@/utils/electron';
 import { logger } from '../../utils/logger';
+import { useTranslation } from 'react-i18next'
 
 interface DocumentScannerProps {
   transactionId: string;
@@ -24,6 +25,7 @@ const documentLabels: Record<DocumentType, string> = {
 };
 
 export default function DocumentScanner({ transactionId, onScanned }: DocumentScannerProps) {
+  const { t } = useTranslation()
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -109,7 +111,7 @@ export default function DocumentScanner({ transactionId, onScanned }: DocumentSc
   if (!hasCamera) {
     return (
       <div className="rounded-lg border border-dashed bg-gray-50 p-4 text-center text-sm text-gray-500">
-        Nincs kamera
+        {t('components.nincsKamera')}
       </div>
     );
   }
@@ -117,7 +119,7 @@ export default function DocumentScanner({ transactionId, onScanned }: DocumentSc
   return (
     <div className="space-y-4 rounded-xl border bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-center gap-3">
-        <label className="text-sm font-medium text-gray-700">Dokumentum típus:</label>
+        <label className="text-sm font-medium text-gray-700">{t('components.dokumentumTipus')}</label>
         <select
           value={documentType}
           onChange={(e) => setDocumentType(e.target.value as DocumentType)}
@@ -131,7 +133,7 @@ export default function DocumentScanner({ transactionId, onScanned }: DocumentSc
           onClick={handleCapture}
           className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
         >
-          Fénykép
+          {t('components.fenykep')}
         </button>
         {status && <span className="text-sm text-gray-600">{status}</span>}
       </div>
@@ -143,9 +145,9 @@ export default function DocumentScanner({ transactionId, onScanned }: DocumentSc
       <canvas ref={canvasRef} className="hidden" />
 
       <div>
-        <h4 className="mb-2 text-sm font-semibold text-gray-700">Mentett dokumentumok</h4>
+        <h4 className="mb-2 text-sm font-semibold text-gray-700">{t('components.mentettDokumentumok')}</h4>
         {savedDocs.length === 0 ? (
-          <p className="text-sm text-gray-400">Nincs mentett dokumentum.</p>
+          <p className="text-sm text-gray-400">{t('components.nincsMentettDokumentum')}</p>
         ) : (
           <ul className="space-y-2">
             {savedDocs.map((doc) => (

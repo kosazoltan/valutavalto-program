@@ -5,6 +5,7 @@ import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { asArray } from '../../utils/asArray'
+import { useTranslation } from 'react-i18next'
 
 // Fix 2026-04-24 (Codex PR #183 P2): backend MnbReportDto tenyleges mezoi
 // (NEM periodStart/periodEnd, hanem reportDate + egyeb)
@@ -23,6 +24,7 @@ interface MnbReportItem {
 // (Page<> interface-re nincs szukseg: interceptor unwrap-olja array-ra)
 
 export default function MnbReportPage() {
+  const { t } = useTranslation()
   const [items, setItems] = useState<MnbReportItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -65,7 +67,7 @@ export default function MnbReportPage() {
       <div className="flex items-center justify-between">
         <h1 className="form-title flex items-center gap-2">
           <FileText className="h-6 w-6" />
-          MNB jelentések
+          {t('mnb.mnbJelentesek')}
         </h1>
         <div className="flex items-center gap-2">
           <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
@@ -98,18 +100,18 @@ export default function MnbReportPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Típus</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Riport dátum</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Tranzakció db</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Állapot</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Beküldés</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.type')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('reports.riportDatum')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('reports.tranzakcioDb')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.status2')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('darius.bekuldes')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
               <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">Nincs adat</td></tr>
+              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
             ) : filtered.map(item => (
               <tr key={item.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm">{item.reportType ?? '-'}</td>
@@ -124,7 +126,7 @@ export default function MnbReportPage() {
       </div>
 
       <div className="text-sm text-gray-500">
-        Összesen: {filtered.length} / {items.length}
+        {t('audit.osszesen')}{filtered.length} / {items.length}
       </div>
     </div>
   )

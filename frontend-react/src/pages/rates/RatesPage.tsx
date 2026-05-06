@@ -8,6 +8,7 @@ import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
 import { useAuthStore } from '../../stores/authStore'
 import { useAppMode } from '../../hooks/useAppMode'
+import { useTranslation } from 'react-i18next'
 
 // 2026-04-29 B2 fix: a /rates oldalt a penztaros (mode='penztar') NEM
 // szerkesztheti — csak a foertektar/ugyvezeto az ARFOLYAM/Arfolyam.exe legacy
@@ -41,6 +42,7 @@ function mapExchangeRateToRow(rate: ExchangeRate): RateRow {
 }
 
 export default function RatesPage() {
+  const { t } = useTranslation()
   const [rates, setRates] = useState<RateRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -150,15 +152,15 @@ export default function RatesPage() {
       <div className="flex justify-between items-center gap-3 flex-wrap">
         <h1 className="text-base font-bold text-gray-800 flex items-center gap-2">
           <TrendingUp size={18} />
-          Árfolyamok {!canEdit && <span className="text-xs text-gray-500 font-normal">(nézet)</span>}
+          {t('cashier.rates')}{!canEdit && <span className="text-xs text-gray-500 font-normal">(nézet)</span>}
           {!canEdit && (
             <span className="text-xs text-blue-700 font-normal flex items-center gap-1 ml-2">
-              <Eye size={12} /> csak főértéktár szerkesztheti
+              <Eye size={12} />{t('rates.csakFoertektarSzerkesztheti')}
             </span>
           )}
           {lastRefresh && (
             <span className="text-xs text-gray-500 font-normal flex items-center gap-1 ml-2">
-              <Clock size={12} /> Utolsó frissítés: {lastRefresh}{rates.length > 0 && ` · ${rates.length} valuta`}
+              <Clock size={12} />{t('rates.utolsoFrissites')}{lastRefresh}{rates.length > 0 && ` · ${rates.length} valuta`}
             </span>
           )}
         </h1>
@@ -166,7 +168,7 @@ export default function RatesPage() {
           {canEdit && (
             <button className="form-button flex items-center gap-1 h-7 text-xs">
               <Download size={14} />
-              MNB letöltés
+              {t('rates.mnbLetoltes')}
             </button>
           )}
           <button
@@ -175,7 +177,7 @@ export default function RatesPage() {
             disabled={loading}
           >
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-            Frissítés
+            {t('common.refresh')}
           </button>
         </div>
       </div>
@@ -198,13 +200,13 @@ export default function RatesPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr className="text-xs uppercase text-gray-500">
-                <th className="px-2 py-1.5 text-left w-14">Kód</th>
-                <th className="px-2 py-1.5 text-left">Megnevezés</th>
-                <th className="px-2 py-1.5 text-right w-24">Vételi</th>
-                <th className="px-2 py-1.5 text-right w-24">Eladási</th>
+                <th className="px-2 py-1.5 text-left w-14">{t('common.code')}</th>
+                <th className="px-2 py-1.5 text-left">{t('display.megnevezes')}</th>
+                <th className="px-2 py-1.5 text-right w-24">{t('rates.veteli')}</th>
+                <th className="px-2 py-1.5 text-right w-24">{t('rates.eladasi')}</th>
                 <th className="px-2 py-1.5 text-right w-24">MNB</th>
-                <th className="px-2 py-1.5 text-right w-20">Spread</th>
-                <th className="px-2 py-1.5 text-center w-16">Frissítve</th>
+                <th className="px-2 py-1.5 text-right w-20">{t('ratemanagement.spread2')}</th>
+                <th className="px-2 py-1.5 text-center w-16">{t('stockSnapshot.lastUpdated')}</th>
                 {canEdit && <th className="px-2 py-1.5 text-center w-20">Művelet</th>}
               </tr>
             </thead>
@@ -293,7 +295,7 @@ export default function RatesPage() {
 
       {!loading && rates.length === 0 && !error && (
         <div className="form-panel text-center text-gray-500 py-8">
-          Nincsenek elérhető árfolyamok. Kérjük, hozzon létre árfolyamot az Árfolyamkészítés oldalon.
+          {t('rates.nincsenekElerhetoArfolyamokKerjukHozzonLetreArfolyamotAzArfolyamkeszitesOldalon')}
         </div>
       )}
     </div>

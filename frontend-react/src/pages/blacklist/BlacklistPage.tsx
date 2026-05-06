@@ -4,6 +4,7 @@ import { blacklistApi, ProhibitedPerson, ProhibitedCompany } from '../../service
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { useTranslation } from 'react-i18next'
 
 type Tab = 'persons' | 'companies'
 
@@ -41,6 +42,7 @@ const LIST_TYPES = [
 ]
 
 export default function BlacklistPage() {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<Tab>('persons')
   const [persons, setPersons] = useState<ProhibitedPerson[]>([])
   const [companies, setCompanies] = useState<ProhibitedCompany[]>([])
@@ -225,19 +227,19 @@ export default function BlacklistPage() {
     <div className="space-y-4">
       {/* Header + stat */}
       <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold flex items-center gap-2"><Ban />Tiltólista</h1>
+        <h1 className="text-xl font-bold flex items-center gap-2"><Ban />{t('blacklist.tiltolista')}</h1>
         <div className="flex gap-2">
           <label className="form-button cursor-pointer">
-            <Upload size={16} /> Importálás
+            <Upload size={16} />{t('blacklist.importalas')}
             <input type="file" className="hidden" accept=".csv,.xlsx,.xls" onChange={handleImport} />
           </label>
           {activeTab === 'persons' ? (
             <button onClick={() => { setShowPersonForm(true); setEditingPersonId(null); setPersonForm(emptyPersonForm) }} className="form-button-primary">
-              <Plus size={16} /> Személy hozzáadása
+              <Plus size={16} />{t('blacklist.szemelyHozzaadasa')}
             </button>
           ) : (
             <button onClick={() => { setShowCompanyForm(true); setEditingCompanyId(null); setCompanyForm(emptyCompanyForm) }} className="form-button-primary">
-              <Plus size={16} /> Cég hozzáadása
+              <Plus size={16} />{t('blacklist.cegHozzaadasa')}
             </button>
           )}
         </div>
@@ -247,29 +249,29 @@ export default function BlacklistPage() {
       <div className="grid grid-cols-4 gap-3">
         <div className="form-panel text-center">
           <div className="text-lg font-bold text-red-600">{stats.activePersons}</div>
-          <div className="text-sm text-gray-500">Aktív személy</div>
+          <div className="text-sm text-gray-500">{t('blacklist.aktivSzemely')}</div>
         </div>
         <div className="form-panel text-center">
           <div className="text-lg font-bold">{stats.totalPersons}</div>
-          <div className="text-sm text-gray-500">Összes személy</div>
+          <div className="text-sm text-gray-500">{t('blacklist.osszesSzemely')}</div>
         </div>
         <div className="form-panel text-center">
           <div className="text-lg font-bold text-red-600">{stats.activeCompanies}</div>
-          <div className="text-sm text-gray-500">Aktív cég</div>
+          <div className="text-sm text-gray-500">{t('blacklist.aktivCeg')}</div>
         </div>
         <div className="form-panel text-center">
           <div className="text-lg font-bold">{stats.totalCompanies}</div>
-          <div className="text-sm text-gray-500">Összes cég</div>
+          <div className="text-sm text-gray-500">{t('blacklist.osszesCeg')}</div>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-2 border-b">
         <button onClick={() => setActiveTab('persons')} className={`px-4 py-2 font-medium ${activeTab === 'persons' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500'}`}>
-          <Shield size={14} className="inline mr-1" />Személyek ({filteredPersons.length})
+          <Shield size={14} className="inline mr-1" />{t('blacklist.szemelyek')}{filteredPersons.length})
         </button>
         <button onClick={() => setActiveTab('companies')} className={`px-4 py-2 font-medium ${activeTab === 'companies' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500'}`}>
-          <AlertTriangle size={14} className="inline mr-1" />Cégek ({filteredCompanies.length})
+          <AlertTriangle size={14} className="inline mr-1" />{t('blacklist.cegek')}{filteredCompanies.length})
         </button>
       </div>
 
@@ -288,23 +290,23 @@ export default function BlacklistPage() {
         <div className="form-panel space-y-3 border-2 border-red-200">
           <h2 className="font-semibold">{editingPersonId ? 'Személy szerkesztése' : 'Új személy a tiltólistán'}</h2>
           <div className="grid grid-cols-3 gap-3">
-            <div><label className="form-label">Teljes név *</label><input className="form-input" value={personForm.fullName} onChange={e => setPersonForm({...personForm, fullName: e.target.value})} /></div>
-            <div><label className="form-label">Okmányszám</label><input className="form-input" value={personForm.documentNumber} onChange={e => setPersonForm({...personForm, documentNumber: e.target.value})} /></div>
-            <div><label className="form-label">Személyi szám</label><input className="form-input" value={personForm.identityNumber} onChange={e => setPersonForm({...personForm, identityNumber: e.target.value})} /></div>
-            <div><label className="form-label">Útlevélszám</label><input className="form-input" value={personForm.passportNumber} onChange={e => setPersonForm({...personForm, passportNumber: e.target.value})} /></div>
-            <div><label className="form-label">Születési dátum</label><input className="form-input" type="date" value={personForm.dateOfBirth} onChange={e => setPersonForm({...personForm, dateOfBirth: e.target.value})} /></div>
-            <div><label className="form-label">Állampolgárság</label><input className="form-input" value={personForm.nationality} onChange={e => setPersonForm({...personForm, nationality: e.target.value})} /></div>
+            <div><label className="form-label">{t('blacklist.teljesNev')}</label><input className="form-input" value={personForm.fullName} onChange={e => setPersonForm({...personForm, fullName: e.target.value})} /></div>
+            <div><label className="form-label">{t('common.documentNumber')}</label><input className="form-input" value={personForm.documentNumber} onChange={e => setPersonForm({...personForm, documentNumber: e.target.value})} /></div>
+            <div><label className="form-label">{t('blacklist.szemelyiSzam')}</label><input className="form-input" value={personForm.identityNumber} onChange={e => setPersonForm({...personForm, identityNumber: e.target.value})} /></div>
+            <div><label className="form-label">{t('blacklist.utlevelszam')}</label><input className="form-input" value={personForm.passportNumber} onChange={e => setPersonForm({...personForm, passportNumber: e.target.value})} /></div>
+            <div><label className="form-label">{t('common.birthDate')}</label><input className="form-input" type="date" value={personForm.dateOfBirth} onChange={e => setPersonForm({...personForm, dateOfBirth: e.target.value})} /></div>
+            <div><label className="form-label">{t('common.nationality')}</label><input className="form-input" value={personForm.nationality} onChange={e => setPersonForm({...personForm, nationality: e.target.value})} /></div>
             <div>
-              <label className="form-label">Lista típus</label>
+              <label className="form-label">{t('blacklist.listaTipus')}</label>
               <select className="form-input" value={personForm.listType} onChange={e => setPersonForm({...personForm, listType: e.target.value})}>
                 {LIST_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
-            <div className="col-span-2"><label className="form-label">Indoklás</label><input className="form-input" value={personForm.reason} onChange={e => setPersonForm({...personForm, reason: e.target.value})} /></div>
+            <div className="col-span-2"><label className="form-label">{t('blacklist.indoklas')}</label><input className="form-input" value={personForm.reason} onChange={e => setPersonForm({...personForm, reason: e.target.value})} /></div>
           </div>
           <div className="flex gap-2">
             <button onClick={handleSavePerson} disabled={saving} className="form-button-primary">{saving ? 'Mentés...' : 'Mentés'}</button>
-            <button onClick={() => { setShowPersonForm(false); setEditingPersonId(null) }} className="form-button">Mégse</button>
+            <button onClick={() => { setShowPersonForm(false); setEditingPersonId(null) }} className="form-button">{t('common.cancel')}</button>
           </div>
         </div>
       )}
@@ -314,20 +316,20 @@ export default function BlacklistPage() {
         <div className="form-panel space-y-3 border-2 border-red-200">
           <h2 className="font-semibold">{editingCompanyId ? 'Cég szerkesztése' : 'Új cég a tiltólistán'}</h2>
           <div className="grid grid-cols-3 gap-3">
-            <div><label className="form-label">Cégnév *</label><input className="form-input" value={companyForm.companyName} onChange={e => setCompanyForm({...companyForm, companyName: e.target.value})} /></div>
-            <div><label className="form-label">Adószám</label><input className="form-input" value={companyForm.taxNumber} onChange={e => setCompanyForm({...companyForm, taxNumber: e.target.value})} /></div>
-            <div><label className="form-label">Cégjegyzékszám</label><input className="form-input" value={companyForm.registrationNumber} onChange={e => setCompanyForm({...companyForm, registrationNumber: e.target.value})} /></div>
+            <div><label className="form-label">{t('blacklist.cegnev')}</label><input className="form-input" value={companyForm.companyName} onChange={e => setCompanyForm({...companyForm, companyName: e.target.value})} /></div>
+            <div><label className="form-label">{t('common.taxNumber')}</label><input className="form-input" value={companyForm.taxNumber} onChange={e => setCompanyForm({...companyForm, taxNumber: e.target.value})} /></div>
+            <div><label className="form-label">{t('common.companyRegNumber')}</label><input className="form-input" value={companyForm.registrationNumber} onChange={e => setCompanyForm({...companyForm, registrationNumber: e.target.value})} /></div>
             <div>
-              <label className="form-label">Lista típus</label>
+              <label className="form-label">{t('blacklist.listaTipus')}</label>
               <select className="form-input" value={companyForm.listType} onChange={e => setCompanyForm({...companyForm, listType: e.target.value})}>
                 {LIST_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
-            <div className="col-span-2"><label className="form-label">Indoklás</label><input className="form-input" value={companyForm.reason} onChange={e => setCompanyForm({...companyForm, reason: e.target.value})} /></div>
+            <div className="col-span-2"><label className="form-label">{t('blacklist.indoklas')}</label><input className="form-input" value={companyForm.reason} onChange={e => setCompanyForm({...companyForm, reason: e.target.value})} /></div>
           </div>
           <div className="flex gap-2">
             <button onClick={handleSaveCompany} disabled={saving} className="form-button-primary">{saving ? 'Mentés...' : 'Mentés'}</button>
-            <button onClick={() => { setShowCompanyForm(false); setEditingCompanyId(null) }} className="form-button">Mégse</button>
+            <button onClick={() => { setShowCompanyForm(false); setEditingCompanyId(null) }} className="form-button">{t('common.cancel')}</button>
           </div>
         </div>
       )}
@@ -337,19 +339,19 @@ export default function BlacklistPage() {
         <div className="form-panel">
           {activeTab === 'persons' ? (
             filteredPersons.length === 0 ? (
-              <div className="text-center text-gray-500 py-8">Nincs személy a tiltólistán</div>
+              <div className="text-center text-gray-500 py-8">{t('blacklist.nincsSzemelyATiltolistan')}</div>
             ) : (
               <table className="data-grid w-full">
                 <thead>
                   <tr>
-                    <th>Név</th>
-                    <th>Okmányszám</th>
-                    <th>Születési dátum</th>
-                    <th>Állampolgárság</th>
-                    <th>Lista típus</th>
-                    <th>Forrás</th>
-                    <th>Státusz</th>
-                    <th>Műveletek</th>
+                    <th>{t('common.name')}</th>
+                    <th>{t('common.documentNumber')}</th>
+                    <th>{t('common.birthDate')}</th>
+                    <th>{t('common.nationality')}</th>
+                    <th>{t('blacklist.listaTipus')}</th>
+                    <th>{t('blacklist.forras')}</th>
+                    <th>{t('common.status')}</th>
+                    <th>{t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -375,18 +377,18 @@ export default function BlacklistPage() {
             )
           ) : (
             filteredCompanies.length === 0 ? (
-              <div className="text-center text-gray-500 py-8">Nincs cég a tiltólistán</div>
+              <div className="text-center text-gray-500 py-8">{t('blacklist.nincsCegATiltolistan')}</div>
             ) : (
               <table className="data-grid w-full">
                 <thead>
                   <tr>
-                    <th>Cégnév</th>
-                    <th>Adószám</th>
-                    <th>Cégjegyzékszám</th>
-                    <th>Lista típus</th>
-                    <th>Forrás</th>
-                    <th>Státusz</th>
-                    <th>Műveletek</th>
+                    <th>{t('blacklist.cegnev2')}</th>
+                    <th>{t('common.taxNumber')}</th>
+                    <th>{t('common.companyRegNumber')}</th>
+                    <th>{t('blacklist.listaTipus')}</th>
+                    <th>{t('blacklist.forras')}</th>
+                    <th>{t('common.status')}</th>
+                    <th>{t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>

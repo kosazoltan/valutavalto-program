@@ -19,6 +19,7 @@ import {
     type SanctionRiskLevel,
 } from '../../services/api/sanction'
 import { logger } from '../../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 type Tab = 'screen' | 'list' | 'admin'
 
@@ -35,6 +36,7 @@ const RISK_LABEL: Record<SanctionRiskLevel, string> = {
 }
 
 export default function SanctionPage() {
+    const { t } = useTranslation()
     const [tab, setTab] = useState<Tab>('screen')
     const [status, setStatus] = useState<SanctionStatusResponse | null>(null)
 
@@ -55,15 +57,15 @@ export default function SanctionPage() {
                 <div>
                     <h1 className="text-base font-bold text-secondary-900 flex items-center gap-2">
                         <ShieldAlert className="text-red-600" size={18} />
-                        Szankciós Lista (AML / KYC)
+                        {t('sanction.szankciosListaAmlKyc')}
                     </h1>
                     <p className="text-sm text-secondary-500 mt-1">
-                        ENSZ, EU és OFAC listák — kötelező szűrés minden 300.000 Ft feletti tranzakciónál.
+                        {t('sanction.enszEuEsOfacListakKotelezoSzuresMinden300000FtFelettiTranzakcional')}
                     </p>
                 </div>
                 <button onClick={refreshStatus} className="form-button">
                     <RefreshCw size={16} />
-                    <span>Állapot frissítés</span>
+                    <span>{t('sanction.allapotFrissites')}</span>
                 </button>
             </div>
 
@@ -72,11 +74,11 @@ export default function SanctionPage() {
                 <div className="form-panel p-4 flex items-center gap-6">
                     <Database className="text-blue-600" size={32} />
                     <div className="flex-1">
-                        <div className="text-xs text-secondary-500">Aktív bejegyzések</div>
+                        <div className="text-xs text-secondary-500">{t('sanction.aktivBejegyzesek')}</div>
                         <div className="text-xl font-bold">{status.activeEntryCount.toLocaleString('hu-HU')}</div>
                     </div>
                     <div className="flex-1">
-                        <div className="text-xs text-secondary-500">Utolsó frissítés</div>
+                        <div className="text-xs text-secondary-500">{t('sanction.utolsoFrissites')}</div>
                         <div className="text-xl font-bold">
                             {status.lastUpdateDate ?? <span className="text-amber-600">Nincs adat</span>}
                         </div>
@@ -87,13 +89,13 @@ export default function SanctionPage() {
             {/* Tabs */}
             <div className="flex border-b border-secondary-200">
                 <TabButton active={tab === 'screen'} onClick={() => setTab('screen')} icon={<Search size={14} />}>
-                    Szűrés
+                    {t('common.filter')}
                 </TabButton>
                 <TabButton active={tab === 'list'} onClick={() => setTab('list')} icon={<FileText size={14} />}>
-                    Listázás (SUPERVISOR+)
+                    {t('sanction.listazasSupervisor')}
                 </TabButton>
                 <TabButton active={tab === 'admin'} onClick={() => setTab('admin')} icon={<Upload size={14} />}>
-                    Admin / Import (MANAGER+)
+                    {t('sanction.adminImportManager')}
                 </TabButton>
             </div>
 
@@ -108,6 +110,7 @@ export default function SanctionPage() {
 // ==================== TAB: SCREENING ====================
 
 function ScreeningTab() {
+    const { t } = useTranslation()
     const [name, setName] = useState('')
     const [documentNumber, setDocumentNumber] = useState('')
     const [dateOfBirth, setDateOfBirth] = useState('')
@@ -140,7 +143,7 @@ function ScreeningTab() {
         <div className="space-y-4">
             <form onSubmit={(e) => void handleScreen(e)} className="form-panel p-4 space-y-3">
                 <div>
-                    <label className="form-label">Ügyfél neve (kötelező)</label>
+                    <label className="form-label">{t('sanction.ugyfelNeveKotelezo')}</label>
                     <input
                         type="text"
                         className="form-input w-full"
@@ -153,7 +156,7 @@ function ScreeningTab() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                     <div>
-                        <label className="form-label">Okmányszám (opcionális)</label>
+                        <label className="form-label">{t('sanction.okmanyszamOpcionalis')}</label>
                         <input
                             type="text"
                             className="form-input w-full"
@@ -163,7 +166,7 @@ function ScreeningTab() {
                         />
                     </div>
                     <div>
-                        <label className="form-label">Születési dátum (opcionális)</label>
+                        <label className="form-label">{t('sanction.szuletesiDatumOpcionalis')}</label>
                         <input
                             type="date"
                             className="form-input w-full"
@@ -196,7 +199,7 @@ function ScreeningTab() {
                             <XCircle className="text-red-600" size={24} />
                         )}
                         <div>
-                            <div className="text-xs uppercase tracking-wide">Eredmeny</div>
+                            <div className="text-xs uppercase tracking-wide">{t('sanction.eredmeny')}</div>
                             <div className="text-xl font-bold">{RISK_LABEL[result.riskLevel]}</div>
                         </div>
                         <div className="ml-auto text-sm">
@@ -222,7 +225,7 @@ function ScreeningTab() {
                                     {m.nationality && <div className="text-xs text-secondary-600">Nemzetiseg: {m.nationality}</div>}
                                     {m.documentNumber && <div className="text-xs text-secondary-600">Okmany: {m.documentNumber}</div>}
                                     {m.listReference && (
-                                        <div className="text-xs text-secondary-500 mt-1">Ref: {m.listReference}</div>
+                                        <div className="text-xs text-secondary-500 mt-1">{t('sanction.ref')}{m.listReference}</div>
                                     )}
                                 </div>
                             ))}
@@ -230,8 +233,8 @@ function ScreeningTab() {
                     )}
                     {result.riskLevel !== 'CLEAR' && (
                         <div className="mt-3 p-3 bg-white border border-red-300 rounded text-sm text-red-800">
-                            <strong>FONTOS:</strong> POSSIBLE és CONFIRMED eredménynél supervisor jóváhagyás szükséges
-                            a tranzakció folytatásához (AML workflow). Rögzítve van a screening log-ban.
+                            <strong>{t('sanction.fontos')}</strong>{t('sanction.possibleEsConfirmedEredmenynelSupervisorJovahagyasSzukseges')}
+                            {t('sanction.aTranzakcioFolytatasahozAmlWorkflowRogzitveVanAScreeningLogBan')}
                         </div>
                     )}
                 </div>
@@ -243,6 +246,7 @@ function ScreeningTab() {
 // ==================== TAB: LIST ====================
 
 function ListTab() {
+    const { t } = useTranslation()
     const [entries, setEntries] = useState<SanctionEntry[]>([])
     const [loading, setLoading] = useState(true)
     const [err, setErr] = useState<string | null>(null)
@@ -289,16 +293,16 @@ function ListTab() {
                     disabled={page === 0}
                     className="form-button"
                 >
-                    Elozo
+                    {t('sanction.elozo')}
                 </button>
-                <span className="text-sm text-secondary-600 px-2">Oldal {page + 1}</span>
+                <span className="text-sm text-secondary-600 px-2">{t('audit.oldal')}{page + 1}</span>
                 <button
                     type="button"
                     onClick={() => setPage(p => p + 1)}
                     disabled={entries.length < PAGE_SIZE}
                     className="form-button"
                 >
-                    Kovetkezo
+                    {t('sanction.kovetkezo')}
                 </button>
             </div>
 
@@ -312,12 +316,12 @@ function ListTab() {
                 <table className="data-grid w-full">
                     <thead>
                         <tr>
-                            <th>Nev</th>
-                            <th>Lista</th>
-                            <th>Nemzetiseg</th>
-                            <th>Szul.</th>
-                            <th>Okmany</th>
-                            <th>Aktiv</th>
+                            <th>{t('competitors.nev')}</th>
+                            <th>{t('sanction.lista')}</th>
+                            <th>{t('sanction.nemzetiseg')}</th>
+                            <th>{t('sanction.szul')}</th>
+                            <th>{t('sanction.okmany')}</th>
+                            <th>{t('competitors.aktiv')}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -325,7 +329,7 @@ function ListTab() {
                             <tr><td colSpan={6} className="text-center py-8 text-secondary-400">Betoltes...</td></tr>
                         )}
                         {!loading && filtered.length === 0 && (
-                            <tr><td colSpan={6} className="text-center py-8 text-secondary-400">Nincs adat</td></tr>
+                            <tr><td colSpan={6} className="text-center py-8 text-secondary-400">{t('common.noData')}</td></tr>
                         )}
                         {!loading && filtered.map(e => (
                             <tr key={e.id}>
@@ -351,6 +355,7 @@ function ListTab() {
 // ==================== TAB: ADMIN / IMPORT ====================
 
 function AdminTab({ onImported }: { onImported: () => void }) {
+    const { t } = useTranslation()
     const fileRef = useRef<HTMLInputElement>(null)
     const [importing, setImporting] = useState(false)
     const [result, setResult] = useState<SanctionImportResult | null>(null)
@@ -378,14 +383,14 @@ function AdminTab({ onImported }: { onImported: () => void }) {
     return (
         <div className="space-y-3">
             <div className="form-panel p-4">
-                <h3 className="font-semibold text-secondary-900 mb-2">Uj szankcios lista import (XML)</h3>
+                <h3 className="font-semibold text-secondary-900 mb-2">{t('sanction.ujSzankciosListaImportXml')}</h3>
                 <p className="text-sm text-secondary-600 mb-4">
-                    Tamogatott forrasok:
+                    {t('sanction.tamogatottForrasok')}
                 </p>
                 <ul className="text-sm text-secondary-600 mb-4 list-disc list-inside space-y-1">
-                    <li>ENSZ: <a className="text-blue-600 underline" href="https://scsanctions.un.org/resources/xml/en/consolidated.xml" target="_blank" rel="noreferrer">scsanctions.un.org</a></li>
-                    <li>EU: <a className="text-blue-600 underline" href="https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList_1_1" target="_blank" rel="noreferrer">EU FSF XML</a></li>
-                    <li>OFAC: (keszuloben)</li>
+                    <li>{t('sanction.ensz')}<a className="text-blue-600 underline" href="https://scsanctions.un.org/resources/xml/en/consolidated.xml" target="_blank" rel="noreferrer">{t('sanction.scsanctionsunorg')}</a></li>
+                    <li>{t('sanction.eu')}<a className="text-blue-600 underline" href="https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList_1_1" target="_blank" rel="noreferrer">{t('sanction.euFsfXml')}</a></li>
+                    <li>{t('sanction.ofacKeszuloben')}</li>
                 </ul>
                 <form onSubmit={(e) => void handleImport(e)} className="flex items-center gap-2">
                     <input
@@ -414,9 +419,9 @@ function AdminTab({ onImported }: { onImported: () => void }) {
                 <div className="p-4 rounded-lg bg-green-50 border border-green-200 text-green-800">
                     <div className="flex items-center gap-2 mb-2">
                         <CheckCircle2 size={18} />
-                        <span className="font-semibold">Import sikeres</span>
+                        <span className="font-semibold">{t('sanction.importSikeres')}</span>
                     </div>
-                    <div className="text-sm">Uj/frissitett bejegyzesek: <strong>{result.imported}</strong></div>
+                    <div className="text-sm">{t('sanction.ujFrissitettBejegyzesek')}<strong>{result.imported}</strong></div>
                     <div className="text-sm">{result.message}</div>
                 </div>
             )}

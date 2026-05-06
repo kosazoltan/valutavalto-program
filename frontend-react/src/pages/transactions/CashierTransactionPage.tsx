@@ -25,6 +25,7 @@ import type { CustomerPanelData } from './components/CustomerPanel'
 import { CurrencyAutocomplete } from '../../components/cashier/CurrencyAutocomplete'
 import { useIdentificationLevel } from './hooks/useIdentificationLevel'
 import type { AmlCheckResultDto } from '../../services/api/transactions'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Penztaros Eladas/Vetel kepernyoje — 6 soros valuta tabla.
@@ -63,6 +64,7 @@ const emptyRow = (): TransactionRow => ({
 })
 
 export default function CashierTransactionPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { theme: _theme } = useCompanyTheme()
@@ -577,8 +579,8 @@ export default function CashierTransactionPage() {
         <div className="bg-red-50 dark:bg-red-950/30 border-2 border-red-500 rounded-lg p-2 flex items-center gap-2">
           <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0" />
           <div>
-            <p className="font-bold text-sm text-red-800 dark:text-red-200">Nincs nyitott napi session!</p>
-            <p className="text-xs text-red-700 dark:text-red-300">A tranzakciok rogzitesehez eloszor meg kell nyitni a napot.</p>
+            <p className="font-bold text-sm text-red-800 dark:text-red-200">{t('transactions.nincsNyitottNapiSession')}</p>
+            <p className="text-xs text-red-700 dark:text-red-300">{t('transactions.aTranzakciokRogzitesehezEloszorMegKellNyitniANapot')}</p>
           </div>
         </div>
       )}
@@ -587,9 +589,9 @@ export default function CashierTransactionPage() {
       {showFeeDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-4 w-96 space-y-4">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Kezelési díj / Kedvezmény</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('transactions.kezelesiDijKedvezmeny')}</h3>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kezelési díj (HUF)</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('transactions.kezelesiDijHuf')}</label>
               <input
                 type="number"
                 value={feeInput}
@@ -609,7 +611,7 @@ export default function CashierTransactionPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kedvezmeny (%)</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('transactions.kedvezmeny')}</label>
               <input
                 type="number"
                 value={discountInput}
@@ -637,13 +639,13 @@ export default function CashierTransactionPage() {
                 className="flex-1 py-2.5 rounded-lg text-white font-semibold"
                 style={{ backgroundColor: 'var(--primary)' }}
               >
-                Alkalmaz
+                {t('transactions.alkalmaz')}
               </button>
               <button
                 onClick={() => setShowFeeDialog(false)}
                 className="flex-1 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
-                Megse
+                {t('transactions.megse')}
               </button>
             </div>
           </div>
@@ -659,7 +661,7 @@ export default function CashierTransactionPage() {
           {mode === 'buy' ? 'VÉTEL' : 'ELADÁS'}
         </span>
         <span className="text-xs text-gray-500 dark:text-gray-400">
-          Max {MAX_LINES} valutasor | Tab/Enter = következő | Esc = sor törlés
+          {t('transactions.max')}{MAX_LINES} valutasor | Tab/Enter = következő | Esc = sor törlés
         </span>
       </div>
 
@@ -671,9 +673,9 @@ export default function CashierTransactionPage() {
               <thead>
                 <tr className="bg-gray-100 dark:bg-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-300">
                   <th className="px-2 py-1.5 text-left w-28">VALUTA</th>
-                  <th className="px-2 py-1.5 text-right w-28">ÁRFOLYAM</th>
-                  <th className="px-2 py-1.5 text-right w-32">BANKJEGY DB</th>
-                  <th className="px-2 py-1.5 text-right">FORINT ÉRTÉK</th>
+                  <th className="px-2 py-1.5 text-right w-28">{t('transactions.arfolyam')}</th>
+                  <th className="px-2 py-1.5 text-right w-32">{t('transactions.bankjegyDb')}</th>
+                  <th className="px-2 py-1.5 text-right">{t('transactions.forintErtek')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -732,22 +734,22 @@ export default function CashierTransactionPage() {
             {/* OSSZEGZO */}
             <div className="bg-gray-50 dark:bg-gray-800/80 p-2 space-y-1 border-t border-gray-200 dark:border-gray-700">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">OSSZESEN:</span>
+                <span className="text-gray-600 dark:text-gray-400">{t('transactions.osszesen')}</span>
                 <span className="font-mono font-semibold">{formatNum(subtotal)} HUF</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">KEZELESI DIJ:</span>
+                <span className="text-gray-600 dark:text-gray-400">{t('transactions.kezelesiDij')}</span>
                 <span className="font-mono font-semibold">{formatNum(handlingFee)} HUF</span>
               </div>
               {discount > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600 dark:text-gray-400">KEDVEZMENY ({discount}%):</span>
+                  <span className="text-gray-600 dark:text-gray-400">{t('transactions.kedvezmeny2')}{discount}%):</span>
                   <span className="font-mono font-semibold text-green-600">-{formatNum(discountAmount)} HUF</span>
                 </div>
               )}
               <hr className="border-gray-300 dark:border-gray-600 my-1" />
               <div className="flex justify-between items-center">
-                <span className="text-base font-bold">FIZETENDO:</span>
+                <span className="text-base font-bold">{t('transactions.fizetendo')}</span>
                 <span
                   className="text-2xl font-mono font-black text-white px-3 py-1 rounded shadow"
                   style={{ backgroundColor: 'var(--primary)' }}

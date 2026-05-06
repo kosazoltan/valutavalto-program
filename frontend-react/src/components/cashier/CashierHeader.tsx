@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Shield } from 'lucide-react'
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext'
 import { useAuthStore } from '../../stores/authStore'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Penztar fejlec — minden cashier kepernyoen megjelenik.
@@ -31,6 +32,7 @@ interface CashierHeaderProps {
 }
 
 export function CashierHeader(props: CashierHeaderProps = {}) {
+  const { t } = useTranslation()
   const worker = useAuthStore((s) => s.worker)
   const branchCode = props.branchCode ?? worker?.branchCode ?? MISSING_VALUE_PLACEHOLDER
   const branchName = props.branchName ?? worker?.branchName ?? MISSING_VALUE_PLACEHOLDER
@@ -73,14 +75,14 @@ export function CashierHeader(props: CashierHeaderProps = {}) {
             {theme.name}
           </h1>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Pénztár: {branchCode} | {branchName}
+            {t('components.penztar')}{branchCode} | {branchName}
           </p>
         </div>
       </div>
 
       <div className="text-right">
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Pénztáros: {workerName} (ID: {workerId})
+          {t('components.penztaros')}{workerName} (ID: {workerId})
         </p>
         <p className="text-lg font-mono font-semibold text-gray-900 dark:text-white">
           {dateStr} | {timeStr}

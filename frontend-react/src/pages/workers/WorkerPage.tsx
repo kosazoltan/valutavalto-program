@@ -7,6 +7,7 @@ import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import type { components } from '@valuta/shared-api'
+import { useTranslation } from 'react-i18next'
 
 type WorkerDto = components['schemas']['WorkerDto']
 // Runtime-ban mindig megletszo mezok: a backend JPA entitas @NotNull-lal
@@ -35,6 +36,7 @@ const emptyForm: WorkerForm = {
 }
 
 export default function WorkerPage() {
+  const { t } = useTranslation()
   const [workers, setWorkers] = useState<Worker[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -143,12 +145,12 @@ export default function WorkerPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Users />
-          Dolgozók
+          {t('workers.dolgozok')}
         </h1>
-        <button onClick={() => setShowBulkModal(true)} className="mr-2 flex items-center gap-2 px-3 py-1.5 border border-primary-300 text-primary-700 rounded hover:bg-primary-50 text-sm"><Upload size={14} /> Email import</button>
+        <button onClick={() => setShowBulkModal(true)} className="mr-2 flex items-center gap-2 px-3 py-1.5 border border-primary-300 text-primary-700 rounded hover:bg-primary-50 text-sm"><Upload size={14} />{t('workers.emailImport')}</button>
                 <button onClick={openCreate} className="form-button-primary flex items-center gap-2">
           <Plus size={16} />
-          Új dolgozó
+          {t('workers.ujDolgozo')}
         </button>
       </div>
 
@@ -182,7 +184,7 @@ export default function WorkerPage() {
             </div>
             <div className="space-y-4">
               <div>
-                <label className="form-label">Munkáskód *</label>
+                <label className="form-label">{t('workers.munkaskod')}</label>
                 <input
                   type="text"
                   className="form-input"
@@ -193,7 +195,7 @@ export default function WorkerPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="form-label">Keresztnév *</label>
+                  <label className="form-label">{t('workers.keresztnev')}</label>
                   <input
                     type="text"
                     className="form-input"
@@ -202,7 +204,7 @@ export default function WorkerPage() {
                   />
                 </div>
                 <div>
-                  <label className="form-label">Vezetéknév *</label>
+                  <label className="form-label">{t('workers.vezeteknev')}</label>
                   <input
                     type="text"
                     className="form-input"
@@ -212,7 +214,7 @@ export default function WorkerPage() {
                 </div>
               </div>
               <div>
-                <label className="form-label">Email</label>
+                <label className="form-label">{t('common.email')}</label>
                 <input
                   type="email"
                   className="form-input"
@@ -221,7 +223,7 @@ export default function WorkerPage() {
                 />
               </div>
               <div>
-                <label className="form-label">Telefon</label>
+                <label className="form-label">{t('common.phone')}</label>
                 <input
                   type="text"
                   className="form-input"
@@ -231,7 +233,7 @@ export default function WorkerPage() {
               </div>
               <div className="flex justify-end gap-2 pt-4 border-t">
                 <button onClick={() => setShowForm(false)} className="form-button">
-                  Mégse
+                  {t('common.cancel')}
                 </button>
                 <button
                   onClick={handleSave}
@@ -251,20 +253,20 @@ export default function WorkerPage() {
         <table className="data-grid w-full">
           <thead>
             <tr>
-              <th>Kód</th>
-              <th>Teljes név</th>
-              <th>Email</th>
-              <th>Telefon</th>
-              <th>Fiók</th>
-              <th>Státusz</th>
-              <th>Műveletek</th>
+              <th>{t('common.code')}</th>
+              <th>{t('representatives.teljesNev')}</th>
+              <th>{t('common.email')}</th>
+              <th>{t('common.phone')}</th>
+              <th>{t('commissions.fiok')}</th>
+              <th>{t('common.status')}</th>
+              <th>{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
                 <td colSpan={7} className="text-center text-gray-500 py-4">
-                  Nincs találat
+                  {t('common.noResult')}
                 </td>
               </tr>
             ) : (
@@ -287,7 +289,7 @@ export default function WorkerPage() {
                         className="form-button text-xs flex items-center gap-1"
                       >
                         <Edit size={12} />
-                        Szerkesztés
+                        {t('common.edit')}
                       </button>
                       <button
                         onClick={() => handleToggle(w)}

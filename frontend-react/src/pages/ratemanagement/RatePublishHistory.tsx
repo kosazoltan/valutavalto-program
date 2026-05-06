@@ -3,6 +3,7 @@ import { History, RefreshCw } from 'lucide-react'
 import { api } from '../../services/api/client'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
+import { useTranslation } from 'react-i18next'
 
 interface Publication {
   id: string
@@ -15,6 +16,7 @@ interface Publication {
 }
 
 export default function RatePublishHistory() {
+  const { t } = useTranslation()
   const [publications, setPublications] = useState<Publication[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -40,21 +42,21 @@ export default function RatePublishHistory() {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <History className="h-5 w-5" />
-          Publikálási napló
+          {t('ratemanagement.publikalasiNaplo')}
         </h2>
         <button
           className="inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"
           onClick={fetchHistory}
         >
           <RefreshCw className="h-4 w-4 mr-2" />
-          Frissítés
+          {t('common.refresh')}
         </button>
       </div>
 
       {loading ? (
         <p>Betöltés...</p>
       ) : publications.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">Nincs publikálási előzmény</div>
+        <div className="text-center py-8 text-muted-foreground">{t('ratemanagement.nincsPublikalasiElozmeny')}</div>
       ) : (
         <div className="space-y-2">
           {publications.map((pub) => (
@@ -65,12 +67,12 @@ export default function RatePublishHistory() {
                     <span className="font-medium">
                       {new Date(pub.publishedAt).toLocaleString('hu-HU')}
                     </span>
-                    <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border bg-transparent">{pub.affectedBranches} iroda</span>
+                    <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border bg-transparent">{pub.affectedBranches} {t('ratemanagement.iroda')}</span>
                   </div>
                   {pub.notes && <p className="text-sm text-muted-foreground">{pub.notes}</p>}
                 </div>
                 <div className="text-right text-sm text-muted-foreground">
-                  <p>Publikálta: #{pub.publishedBy}</p>
+                  <p>{t('ratemanagement.publikalta')}{pub.publishedBy}</p>
                   <p className="text-xs">{pub.id.substring(0, 8)}...</p>
                 </div>
               </div>

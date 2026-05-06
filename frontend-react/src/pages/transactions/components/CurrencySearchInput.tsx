@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Search } from 'lucide-react'
 import type { CurrencyRate } from '../hooks/useTransactionRates'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Prediktív devizakereső mező — a Tranzakció adatok panelen.
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export default function CurrencySearchInput({ currencyRates, onSelect }: Props) {
+  const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const [highlightIdx, setHighlightIdx] = useState(0)
@@ -96,7 +98,7 @@ export default function CurrencySearchInput({ currencyRates, onSelect }: Props) 
   return (
     <div ref={containerRef} className="relative mb-3">
       <div className="form-group-box pt-4">
-        <span className="form-group-box-title">Gyors devizakeresés</span>
+        <span className="form-group-box-title">{t('transactions.gyorsDevizakereses')}</span>
         <div className="relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           <input
@@ -146,8 +148,8 @@ export default function CurrencySearchInput({ currencyRates, onSelect }: Props) 
                 <span className="text-gray-600">{currency.name || currency.code}</span>
               </div>
               <div className="text-right font-mono text-xs text-gray-500">
-                <div>V: {currency.buyRate?.toFixed(2)}</div>
-                <div>E: {currency.sellRate?.toFixed(2)}</div>
+                <div>{t('transactions.v')}{currency.buyRate?.toFixed(2)}</div>
+                <div>{t('transactions.e')}{currency.sellRate?.toFixed(2)}</div>
               </div>
             </button>
           ))}
@@ -157,7 +159,7 @@ export default function CurrencySearchInput({ currencyRates, onSelect }: Props) 
       {/* No results */}
       {isOpen && filtered.length === 0 && searchText.trim().length > 0 && (
         <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl p-3 text-sm text-gray-500">
-          Nincs találat: „{searchText}"
+          {t('components.nincsTalalat')}{searchText}"
         </div>
       )}
     </div>

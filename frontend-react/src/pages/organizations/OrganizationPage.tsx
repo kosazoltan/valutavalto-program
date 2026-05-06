@@ -2,8 +2,10 @@ import { useState, useEffect, useMemo } from 'react'
 import { Building, Plus, Edit, Trash2, Search, X, Save } from 'lucide-react'
 import { organizationApi, Organization } from '../../services/api/index'
 import { logger } from '../../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 export default function OrganizationPage() {
+  const { t } = useTranslation()
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -94,11 +96,11 @@ export default function OrganizationPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Building />
-          Szervezetek
+          {t('organizations.szervezetek')}
         </h1>
         <button type="button" onClick={handleCreate} className="form-button-primary flex items-center gap-2">
           <Plus size={16} />
-          Új szervezet
+          {t('organizations.ujSzervezet')}
         </button>
       </div>
 
@@ -110,7 +112,7 @@ export default function OrganizationPage() {
 
       <div className="form-panel">
         <div>
-          <label className="form-label">Keresés</label>
+          <label className="form-label">{t('common.search')}</label>
           <div className="relative">
             <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
             <input type="text" className="form-input pl-8" placeholder="Kód vagy név..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
@@ -126,13 +128,13 @@ export default function OrganizationPage() {
               <button type="button" onClick={() => { setShowForm(false); setEditingOrg(null) }} className="text-gray-500"><X size={20} /></button>
             </div>
             <div className="space-y-4">
-              <div><label className="form-label">Kód *</label><input type="text" className="form-input" value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value })} /></div>
-              <div><label className="form-label">Név *</label><input type="text" className="form-input" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} /></div>
-              <div><label className="form-label">Leírás</label><textarea className="form-input" rows={3} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} /></div>
-              <div><label className="flex items-center gap-2"><input type="checkbox" className="rounded" checked={formData.isActive ?? true} onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })} /><span>Aktív</span></label></div>
+              <div><label className="form-label">{t('common.codeRequired')}</label><input type="text" className="form-input" value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value })} /></div>
+              <div><label className="form-label">{t('common.nameRequired')}</label><input type="text" className="form-input" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} /></div>
+              <div><label className="form-label">{t('common.description')}</label><textarea className="form-input" rows={3} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} /></div>
+              <div><label className="flex items-center gap-2"><input type="checkbox" className="rounded" checked={formData.isActive ?? true} onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })} /><span>{t('common.active')}</span></label></div>
               <div className="flex justify-end gap-2 pt-4 border-t">
-                <button type="button" onClick={() => { setShowForm(false); setEditingOrg(null) }} className="form-button">Mégse</button>
-                <button type="button" onClick={handleSave} className="form-button-primary flex items-center gap-2"><Save size={16} />Mentés</button>
+                <button type="button" onClick={() => { setShowForm(false); setEditingOrg(null) }} className="form-button">{t('common.cancel')}</button>
+                <button type="button" onClick={handleSave} className="form-button-primary flex items-center gap-2"><Save size={16} />{t('common.save')}</button>
               </div>
             </div>
           </div>
@@ -142,11 +144,11 @@ export default function OrganizationPage() {
       <div className="form-panel">
         <table className="data-grid w-full">
           <thead>
-            <tr><th>Kód</th><th>Név</th><th>Szülő</th><th>Státusz</th><th>Műveletek</th></tr>
+            <tr><th>{t('common.code')}</th><th>{t('common.name')}</th><th>{t('organizations.szulo')}</th><th>{t('common.status')}</th><th>{t('common.actions')}</th></tr>
           </thead>
           <tbody>
             {filteredOrganizations.length === 0 ? (
-              <tr><td colSpan={5} className="text-center text-gray-500 py-4">Nincs találat</td></tr>
+              <tr><td colSpan={5} className="text-center text-gray-500 py-4">{t('common.noResult')}</td></tr>
             ) : (
               filteredOrganizations.map((o) => (
                 <tr key={o.id}>
@@ -156,8 +158,8 @@ export default function OrganizationPage() {
                   <td><span className={`badge ${o.isActive ? 'badge-green' : 'badge-red'}`}>{o.isActive ? 'Aktív' : 'Inaktív'}</span></td>
                   <td>
                     <div className="flex gap-2">
-                      <button type="button" onClick={() => handleEdit(o)} className="form-button text-xs"><Edit size={12} />Szerkesztés</button>
-                      <button type="button" onClick={() => handleDelete(o.id)} className="form-button text-xs text-red-600"><Trash2 size={12} />Törlés</button>
+                      <button type="button" onClick={() => handleEdit(o)} className="form-button text-xs"><Edit size={12} />{t('common.edit')}</button>
+                      <button type="button" onClick={() => handleDelete(o.id)} className="form-button text-xs text-red-600"><Trash2 size={12} />{t('common.delete')}</button>
                     </div>
                   </td>
                 </tr>

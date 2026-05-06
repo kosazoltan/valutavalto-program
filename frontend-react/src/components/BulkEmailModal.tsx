@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { X, Upload, Loader2, Check } from "lucide-react"
 import { api } from "../services/api/index"
+import { useTranslation } from 'react-i18next'
 
 interface Props {
   open: boolean
@@ -15,6 +16,7 @@ interface BulkResult {
 }
 
 export default function BulkEmailModal({ open, onClose, onSuccess }: Props) {
+  const { t } = useTranslation()
   const [csvText, setCsvText] = useState("")
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<BulkResult | null>(null)
@@ -67,7 +69,7 @@ export default function BulkEmailModal({ open, onClose, onSuccess }: Props) {
         <div className="flex items-center justify-between p-4 border-b border-secondary-200">
           <div className="flex items-center gap-2">
             <Upload size={20} className="text-primary-600" />
-            <h3 className="text-lg font-bold text-secondary-900">Dolgozoi email-ek tomeges importja</h3>
+            <h3 className="text-lg font-bold text-secondary-900">{t('components.dolgozoiEmailEkTomegesImportja')}</h3>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-secondary-100 rounded">
             <X size={18} />
@@ -76,8 +78,8 @@ export default function BulkEmailModal({ open, onClose, onSuccess }: Props) {
 
         <div className="p-4 space-y-3">
           <p className="text-sm text-secondary-600">
-            Illeszd be az Excel-bol / szoveges forrasbol a dolgozoi kodokat es email cimeket
-            <b> workerCode;email </b> formatumban, soronkent egy. Ures email = torol.
+            {t('components.illeszdBeAzExcelBolSzovegesForrasbolADolgozoiKodokatEsEmailCimeket')}
+            <b>{t('components.workercodeEmail')}</b>{t('components.formatumbanSoronkentEgyUresEmailTorol')}
           </p>
           <pre className="text-xs bg-secondary-50 p-2 rounded border border-secondary-200">
 {`# Pelda format (workerCode;email):
@@ -103,11 +105,11 @@ W014517;barabas.marietta@ebc.hu`}
             <div className="p-3 bg-green-50 border border-green-200 rounded text-sm">
               <div className="flex items-center gap-2 font-semibold text-green-700 mb-1">
                 <Check size={16} />
-                Siker: {result.updated} dolgozo emailje frissitve, {result.skipped} kihagyva.
+                {t('components.siker')}{result.updated} dolgozo emailje frissitve, {result.skipped} kihagyva.
               </div>
               {result.errors.length > 0 && (
                 <div className="mt-2 max-h-40 overflow-y-auto text-xs text-red-600">
-                  <b>Hibak ({result.errors.length}):</b>
+                  <b>{t('components.hibak')}{result.errors.length}):</b>
                   <ul className="list-disc list-inside">
                     {result.errors.slice(0, 20).map((e, i) => <li key={i}>{e}</li>)}
                     {result.errors.length > 20 && <li>...tovabbi {result.errors.length - 20} sor</li>}
@@ -123,7 +125,7 @@ W014517;barabas.marietta@ebc.hu`}
             onClick={onClose}
             className="px-4 py-2 border border-secondary-300 rounded hover:bg-secondary-50 text-sm"
           >
-            Bezaras
+            {t('components.bezaras')}
           </button>
           <button
             onClick={handleSubmit}
@@ -131,7 +133,7 @@ W014517;barabas.marietta@ebc.hu`}
             className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 text-sm font-medium disabled:opacity-50"
           >
             {loading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-            Import
+            {t('components.import')}
           </button>
         </div>
       </div>

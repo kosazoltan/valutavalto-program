@@ -4,6 +4,7 @@ import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
+import { useTranslation } from 'react-i18next'
 
 interface InventoryItem {
   id: string | number
@@ -27,6 +28,7 @@ function formatBalance(value: number | undefined, currencyCode: string | undefin
 }
 
 export default function CashierStocksPage() {
+  const { t } = useTranslation()
   const [items, setItems] = useState<InventoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -92,7 +94,7 @@ export default function CashierStocksPage() {
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="form-title flex items-center gap-2 text-lg">
           <Package className="h-5 w-5" />
-          Pénztári készletek
+          {t('inventory.penztariKeszletek')}
         </h1>
         <div className="flex items-center gap-2 flex-1 max-w-md">
           <div className="relative flex-1">
@@ -126,7 +128,7 @@ export default function CashierStocksPage() {
               <Wallet className="h-6 w-6" />
             </div>
             <div>
-              <div className="text-sm text-primary-700 font-medium">Összesen (HUF készlet)</div>
+              <div className="text-sm text-primary-700 font-medium">{t('inventory.osszesenHufKeszlet')}</div>
               <div className="text-3xl font-bold font-mono text-primary-900">
                 {grandTotalHuf.toLocaleString('hu-HU', { maximumFractionDigits: 0 })} Ft
               </div>
@@ -134,7 +136,7 @@ export default function CashierStocksPage() {
           </div>
           <div className="text-right">
             <div className="text-sm text-primary-700">
-              <strong>{totalBranches}</strong> pénztár
+              <strong>{totalBranches}</strong>{t('inventory.penztar')}
             </div>
             <div className="text-xs text-primary-600">
               {totalNonZero} aktív tétel · {filtered.length} sor
@@ -147,7 +149,7 @@ export default function CashierStocksPage() {
       {loading && branchGroups.length === 0 ? (
         <div className="form-panel text-center text-sm text-gray-500 py-8">Betöltés...</div>
       ) : branchGroups.length === 0 ? (
-        <div className="form-panel text-center text-sm text-gray-500 py-8">Nincs adat</div>
+        <div className="form-panel text-center text-sm text-gray-500 py-8">{t('common.noData')}</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           {branchGroups.map(group => (

@@ -174,7 +174,7 @@ describe('TransactionPage', () => {
     renderTransactionPage()
     const user = userEvent.setup()
 
-    const cancelButton = screen.getByText('Mégsem')
+    const cancelButton = screen.getByText('Mégse')
     await user.click(cancelButton)
 
     expect(mocks.navigate).toHaveBeenCalledWith('/transactions')

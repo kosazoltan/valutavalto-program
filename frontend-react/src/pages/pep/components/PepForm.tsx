@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { PepFormData, PoliticallyExposedPerson } from '../hooks/usePepData'
+import { useTranslation } from 'react-i18next'
 
 interface PepFormProps {
   pep: PoliticallyExposedPerson | null
@@ -8,6 +9,7 @@ interface PepFormProps {
 }
 
 export default function PepForm({ pep, onSubmit, onCancel }: PepFormProps) {
+  const { t } = useTranslation()
   const [formData, setFormData] = useState<PepFormData>({
     customerId: pep?.customerId || '',
     customerName: pep?.customerName || '',
@@ -37,7 +39,7 @@ export default function PepForm({ pep, onSubmit, onCancel }: PepFormProps) {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label htmlFor="customerName" className="block text-sm font-medium mb-1">Ügyfél neve *</label>
+          <label htmlFor="customerName" className="block text-sm font-medium mb-1">{t('pep.ugyfelNeve2')}</label>
           <input
             id="customerName"
             type="text"
@@ -49,7 +51,7 @@ export default function PepForm({ pep, onSubmit, onCancel }: PepFormProps) {
           />
         </div>
         <div>
-          <label htmlFor="documentNumber" className="block text-sm font-medium mb-1">Okmányszám *</label>
+          <label htmlFor="documentNumber" className="block text-sm font-medium mb-1">{t('pep.okmanyszam')}</label>
           <input
             id="documentNumber"
             type="text"
@@ -61,40 +63,40 @@ export default function PepForm({ pep, onSubmit, onCancel }: PepFormProps) {
           />
         </div>
         <div>
-          <label htmlFor="pepCategory" className="block text-sm font-medium mb-1">PEP kategória *</label>
+          <label htmlFor="pepCategory" className="block text-sm font-medium mb-1">{t('pep.pepKategoria')}</label>
           <select
             id="pepCategory"
             value={formData.pepCategory}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, pepCategory: e.target.value })}
             className="w-full p-2 border rounded"
           >
-            <option value="DIRECT">Közvetlen PEP</option>
-            <option value="FAMILY">Családtag</option>
-            <option value="ASSOCIATE">Közeli kapcsolat</option>
+            <option value="DIRECT">{t('pep.kozvetlenPep')}</option>
+            <option value="FAMILY">{t('pep.csaladtag')}</option>
+            <option value="ASSOCIATE">{t('pep.kozeliKapcsolat')}</option>
           </select>
         </div>
         <div>
-          <label htmlFor="positionType" className="block text-sm font-medium mb-1">Pozíció típusa *</label>
+          <label htmlFor="positionType" className="block text-sm font-medium mb-1">{t('pep.pozicioTipusa2')}</label>
           <select
             id="positionType"
             value={formData.positionType}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, positionType: e.target.value })}
             className="w-full p-2 border rounded"
           >
-            <option value="HEAD_OF_STATE">Államfő</option>
-            <option value="GOVERNMENT_MEMBER">Kormánytag</option>
-            <option value="PARLIAMENT_MEMBER">Parlamenti képviselő</option>
-            <option value="SUPREME_COURT_MEMBER">Legfelsőbb bírósági tag</option>
-            <option value="CENTRAL_BANK_MEMBER">Jegybanki vezető</option>
-            <option value="AMBASSADOR">Nagykövet</option>
-            <option value="MILITARY_OFFICER">Magas rangú tiszt</option>
-            <option value="STATE_ENTERPRISE_EXECUTIVE">Állami vállalat vezetője</option>
-            <option value="POLITICAL_PARTY_LEADER">Politikai párt vezetője</option>
-            <option value="INTERNATIONAL_ORG_LEADER">Nemzetközi szervezet vezetője</option>
+            <option value="HEAD_OF_STATE">{t('pep.allamfo')}</option>
+            <option value="GOVERNMENT_MEMBER">{t('pep.kormanytag')}</option>
+            <option value="PARLIAMENT_MEMBER">{t('pep.parlamentiKepviselo')}</option>
+            <option value="SUPREME_COURT_MEMBER">{t('pep.legfelsobbBirosagiTag')}</option>
+            <option value="CENTRAL_BANK_MEMBER">{t('pep.jegybankiVezeto')}</option>
+            <option value="AMBASSADOR">{t('pep.nagykovet')}</option>
+            <option value="MILITARY_OFFICER">{t('pep.magasRanguTiszt')}</option>
+            <option value="STATE_ENTERPRISE_EXECUTIVE">{t('pep.allamiVallalatVezetoje')}</option>
+            <option value="POLITICAL_PARTY_LEADER">{t('pep.politikaiPartVezetoje')}</option>
+            <option value="INTERNATIONAL_ORG_LEADER">{t('pep.nemzetkoziSzervezetVezetoje')}</option>
           </select>
         </div>
         <div className="col-span-2">
-          <label htmlFor="positionDescription" className="block text-sm font-medium mb-1">Pozíció leírása</label>
+          <label htmlFor="positionDescription" className="block text-sm font-medium mb-1">{t('pep.pozicioLeirasa')}</label>
           <input
             id="positionDescription"
             type="text"
@@ -105,7 +107,7 @@ export default function PepForm({ pep, onSubmit, onCancel }: PepFormProps) {
           />
         </div>
         <div>
-          <label htmlFor="country" className="block text-sm font-medium mb-1">Ország *</label>
+          <label htmlFor="country" className="block text-sm font-medium mb-1">{t('pep.orszag')}</label>
           <input
             id="country"
             type="text"
@@ -118,7 +120,7 @@ export default function PepForm({ pep, onSubmit, onCancel }: PepFormProps) {
           />
         </div>
         <div>
-          <label htmlFor="reviewDate" className="block text-sm font-medium mb-1">Felülvizsgálat dátuma</label>
+          <label htmlFor="reviewDate" className="block text-sm font-medium mb-1">{t('pep.felulvizsgalatDatuma')}</label>
           <input
             id="reviewDate"
             type="date"
@@ -128,7 +130,7 @@ export default function PepForm({ pep, onSubmit, onCancel }: PepFormProps) {
           />
         </div>
         <div>
-          <label htmlFor="appointmentStartDate" className="block text-sm font-medium mb-1">Kinevezés kezdete</label>
+          <label htmlFor="appointmentStartDate" className="block text-sm font-medium mb-1">{t('pep.kinevezesKezdete')}</label>
           <input
             id="appointmentStartDate"
             type="date"
@@ -138,7 +140,7 @@ export default function PepForm({ pep, onSubmit, onCancel }: PepFormProps) {
           />
         </div>
         <div>
-          <label htmlFor="appointmentEndDate" className="block text-sm font-medium mb-1">Kinevezés vége</label>
+          <label htmlFor="appointmentEndDate" className="block text-sm font-medium mb-1">{t('pep.kinevezesVege')}</label>
           <input
             id="appointmentEndDate"
             type="date"
@@ -148,7 +150,7 @@ export default function PepForm({ pep, onSubmit, onCancel }: PepFormProps) {
           />
         </div>
         <div className="col-span-2">
-          <label htmlFor="sourceOfWealth" className="block text-sm font-medium mb-1">Vagyon eredete</label>
+          <label htmlFor="sourceOfWealth" className="block text-sm font-medium mb-1">{t('pep.vagyonEredete')}</label>
           <textarea
             id="sourceOfWealth"
             value={formData.sourceOfWealth}
@@ -159,7 +161,7 @@ export default function PepForm({ pep, onSubmit, onCancel }: PepFormProps) {
           />
         </div>
         <div className="col-span-2">
-          <label htmlFor="sourceOfFunds" className="block text-sm font-medium mb-1">Pénzeszközök forrása</label>
+          <label htmlFor="sourceOfFunds" className="block text-sm font-medium mb-1">{t('pep.penzeszkozokForrasa')}</label>
           <textarea
             id="sourceOfFunds"
             value={formData.sourceOfFunds}
@@ -177,7 +179,7 @@ export default function PepForm({ pep, onSubmit, onCancel }: PepFormProps) {
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, requiresEdd: e.target.checked })}
             className="h-4 w-4"
           />
-          <label htmlFor="requiresEdd" className="text-sm font-medium">Fokozott átvilágítás (EDD) szükséges</label>
+          <label htmlFor="requiresEdd" className="text-sm font-medium">{t('pep.fokozottAtvilagitasEddSzukseges')}</label>
         </div>
         <div className="flex items-center gap-2">
           <input
@@ -187,11 +189,11 @@ export default function PepForm({ pep, onSubmit, onCancel }: PepFormProps) {
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, requiresApproval: e.target.checked })}
             className="h-4 w-4"
           />
-          <label htmlFor="requiresApproval" className="text-sm font-medium">Vezetői jóváhagyás szükséges</label>
+          <label htmlFor="requiresApproval" className="text-sm font-medium">{t('pep.vezetoiJovahagyasSzukseges')}</label>
         </div>
         {formData.requiresApproval && (
           <div>
-            <label htmlFor="maxAmountWithoutApproval" className="block text-sm font-medium mb-1">Jóváhagyás nélküli max összeg (Ft)</label>
+            <label htmlFor="maxAmountWithoutApproval" className="block text-sm font-medium mb-1">{t('pep.jovahagyasNelkuliMaxOsszegFt')}</label>
             <input
               id="maxAmountWithoutApproval"
               type="number"
@@ -203,7 +205,7 @@ export default function PepForm({ pep, onSubmit, onCancel }: PepFormProps) {
           </div>
         )}
         <div className="col-span-2">
-          <label htmlFor="notes" className="block text-sm font-medium mb-1">Megjegyzések</label>
+          <label htmlFor="notes" className="block text-sm font-medium mb-1">{t('pep.megjegyzesek')}</label>
           <textarea
             id="notes"
             value={formData.notes}
@@ -221,7 +223,7 @@ export default function PepForm({ pep, onSubmit, onCancel }: PepFormProps) {
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, isActive: e.target.checked })}
             className="h-4 w-4"
           />
-          <label htmlFor="isActive" className="text-sm font-medium">Aktív</label>
+          <label htmlFor="isActive" className="text-sm font-medium">{t('common.active')}</label>
         </div>
       </div>
       <div className="flex justify-end gap-2">
@@ -230,7 +232,7 @@ export default function PepForm({ pep, onSubmit, onCancel }: PepFormProps) {
           onClick={onCancel}
           className="px-4 py-2 border rounded hover:bg-gray-50"
         >
-          Mégse
+          {t('common.cancel')}
         </button>
         <button
           type="submit"

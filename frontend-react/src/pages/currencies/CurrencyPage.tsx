@@ -4,6 +4,7 @@ import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
+import { useTranslation } from 'react-i18next'
 
 interface Currency {
   id: number
@@ -16,6 +17,7 @@ interface Currency {
 }
 
 export default function CurrencyPage() {
+  const { t } = useTranslation()
   const [currencies, setCurrencies] = useState<Currency[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -62,7 +64,7 @@ export default function CurrencyPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Coins />
-          Valuták
+          {t('stockSnapshot.currencies')}
         </h1>
       </div>
 
@@ -87,18 +89,18 @@ export default function CurrencyPage() {
         <table className="data-grid w-full">
           <thead>
             <tr>
-              <th>Kód</th>
-              <th>Név</th>
-              <th>Szimbólum</th>
-              <th>Numerikus kód</th>
-              <th>Tizedeshelyek</th>
-              <th>Státusz</th>
+              <th>{t('common.code')}</th>
+              <th>{t('common.name')}</th>
+              <th>{t('currencies.szimbolum')}</th>
+              <th>{t('currencies.numerikusKod')}</th>
+              <th>{t('currencies.tizedeshelyek')}</th>
+              <th>{t('common.status')}</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-center text-gray-500 py-4">Nincs találat</td>
+                <td colSpan={6} className="text-center text-gray-500 py-4">{t('common.noResult')}</td>
               </tr>
             ) : (
               filtered.map((c) => (

@@ -4,8 +4,10 @@ import { Users, Search, Plus, Edit, Eye, AlertCircle, Loader2 } from 'lucide-rea
 import { customerApi, Customer } from '../../services/api/transactions'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 export default function CustomerListPage() {
+  const { t } = useTranslation()
   const [search, setSearch] = useState('')
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(false)
@@ -49,11 +51,11 @@ export default function CustomerListPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Users />
-          Ügyfelek
+          {t('archiving.ugyfelek')}
         </h1>
         <Link to="/customers/new" className="form-button-primary flex items-center gap-1">
           <Plus size={16} />
-          Új ügyfél
+          {t('misc.ujUgyfel')}
         </Link>
       </div>
 
@@ -98,14 +100,14 @@ export default function CustomerListPage() {
           <table className="data-grid w-full">
             <thead>
               <tr>
-                <th>Név</th>
-                <th>Születési dátum</th>
-                <th>Állampolgárság</th>
-                <th>Okmány típus</th>
-                <th>Okmányszám</th>
-                <th>Telefon</th>
-                <th>Státusz</th>
-                <th className="w-24">Műveletek</th>
+                <th>{t('common.name')}</th>
+                <th>{t('common.birthDate')}</th>
+                <th>{t('common.nationality')}</th>
+                <th>{t('customers.okmanyTipus')}</th>
+                <th>{t('common.documentNumber')}</th>
+                <th>{t('common.phone')}</th>
+                <th>{t('common.status')}</th>
+                <th className="w-24">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -155,7 +157,7 @@ export default function CustomerListPage() {
 
       {/* Footer */}
       <div className="form-panel">
-        <span className="text-sm">{customers.length} ügyfél</span>
+        <span className="text-sm">{customers.length} {t('customers.ugyfel')}</span>
       </div>
     </div>
   )

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { FileText, FileSpreadsheet, Calendar, RefreshCw } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 interface TrbBankFlowLine {
   currencyCode: string
@@ -40,6 +41,7 @@ interface TrbExportData {
 }
 
 export default function TrbExportPage() {
+  const { t } = useTranslation()
   const [date, setDate] = useState(() => {
     const d = new Date()
     d.setDate(d.getDate() - 1)
@@ -90,7 +92,7 @@ export default function TrbExportPage() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">TRB Export — Import felíró</h2>
+        <h2 className="text-xl font-semibold">{t('treasury.trbExportImportFeliro')}</h2>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-gray-500" />
@@ -107,21 +109,21 @@ export default function TrbExportPage() {
             className="flex items-center gap-1.5 rounded bg-gray-100 px-3 py-1.5 text-sm hover:bg-gray-200"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Frissítés
+            {t('common.refresh')}
           </button>
           <button
             onClick={() => downloadFile('txt')}
             className="flex items-center gap-1.5 rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
           >
             <FileText className="h-4 w-4" />
-            TXT letöltés
+            {t('treasury.txtLetoltes')}
           </button>
           <button
             onClick={() => downloadFile('excel')}
             className="flex items-center gap-1.5 rounded bg-green-600 px-3 py-1.5 text-sm text-white hover:bg-green-700"
           >
             <FileSpreadsheet className="h-4 w-4" />
-            Excel letöltés
+            {t('common.exportExcel')}
           </button>
         </div>
       </div>
@@ -129,7 +131,7 @@ export default function TrbExportPage() {
       {error && (
         <div className="rounded border border-red-300 bg-red-50 p-4 text-sm text-red-700">
           {error}
-          <button onClick={fetchPreview} className="ml-3 underline">Újra</button>
+          <button onClick={fetchPreview} className="ml-3 underline">{t('treasury.ujra')}</button>
         </div>
       )}
 
@@ -142,13 +144,13 @@ export default function TrbExportPage() {
           {/* Bankforgalom */}
           {data.bankFlowLines.length > 0 && (
             <div className="mb-3">
-              <h3 className="mb-2 font-medium">Bankforgalom</h3>
+              <h3 className="mb-2 font-medium">{t('treasury.bankforgalom')}</h3>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-gray-50 text-left">
-                    <th className="px-3 py-2">Valutanem</th>
-                    <th className="px-3 py-2 text-right">Felvett</th>
-                    <th className="px-3 py-2 text-right">Kifizetett</th>
+                    <th className="px-3 py-2">{t('treasury.valutanem')}</th>
+                    <th className="px-3 py-2 text-right">{t('treasury.felvett')}</th>
+                    <th className="px-3 py-2 text-right">{t('treasury.kifizetett')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -173,13 +175,13 @@ export default function TrbExportPage() {
 
               {branch.customerTurnoverLines.length > 0 && (
                 <div className="mb-3">
-                  <h4 className="mb-1 text-sm text-gray-600">Ügyfélforgalom</h4>
+                  <h4 className="mb-1 text-sm text-gray-600">{t('treasury.ugyfelforgalom')}</h4>
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b bg-gray-50 text-left">
-                        <th className="px-3 py-1.5">Valutanem</th>
-                        <th className="px-3 py-1.5 text-right">Eladott</th>
-                        <th className="px-3 py-1.5 text-right">Vett</th>
+                        <th className="px-3 py-1.5">{t('treasury.valutanem')}</th>
+                        <th className="px-3 py-1.5 text-right">{t('treasury.eladott')}</th>
+                        <th className="px-3 py-1.5 text-right">{t('treasury.vett')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -197,13 +199,13 @@ export default function TrbExportPage() {
 
               {branch.denominationLines.length > 0 && (
                 <div>
-                  <h4 className="mb-1 text-sm text-gray-600">Pénztárállomány (címlet)</h4>
+                  <h4 className="mb-1 text-sm text-gray-600">{t('treasury.penztarallomanyCimlet')}</h4>
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b bg-gray-50 text-left">
-                        <th className="px-3 py-1.5">Valutanem</th>
-                        <th className="px-3 py-1.5 text-right">Címlet</th>
-                        <th className="px-3 py-1.5 text-right">Darab</th>
+                        <th className="px-3 py-1.5">{t('treasury.valutanem')}</th>
+                        <th className="px-3 py-1.5 text-right">{t('cashdesk.cimlet')}</th>
+                        <th className="px-3 py-1.5 text-right">{t('components.darab')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -223,7 +225,7 @@ export default function TrbExportPage() {
 
           {data.branchReports.length === 0 && data.bankFlowLines.length === 0 && (
             <p className="py-8 text-center text-gray-400">
-              Nincs adat a kiválasztott napra.
+              {t('treasury.nincsAdatAKivalasztottNapra')}
             </p>
           )}
         </div>

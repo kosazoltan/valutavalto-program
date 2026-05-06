@@ -17,6 +17,7 @@ import type { DailyClosingReport, Notification as AppNotification } from '../../
 import { formatMillions, formatInteger, todayISO } from './treasuryUtils'
 import { TableSkeleton } from './LoadingSkeleton'
 import { logger } from '../../utils/logger';
+import { useTranslation } from 'react-i18next'
 
 type TabType = 'reports' | 'circulars'
 
@@ -33,6 +34,7 @@ interface BranchReport {
 }
 
 export default function ReportsCirculars() {
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<TabType>('reports')
   const [dailyReport, setDailyReport] = useState<DailyClosingReport | null>(null)
@@ -120,7 +122,7 @@ export default function ReportsCirculars() {
     <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-secondary-900">Napi Jelentés &amp; Körlevél</h1>
+        <h1 className="text-xl font-bold text-secondary-900">{t('treasury.napiJelentesampKorlevel')}</h1>
         <span className="text-sm text-secondary-500">📅 {todayISO()}</span>
       </div>
 
@@ -135,7 +137,7 @@ export default function ReportsCirculars() {
           }`}
         >
           <FileText size={16} className="inline mr-2" />
-          Napi jelentések
+          {t('treasury.napiJelentesek')}
         </button>
         <button
           onClick={() => setActiveTab('circulars')}
@@ -146,7 +148,7 @@ export default function ReportsCirculars() {
           }`}
         >
           <Bell size={16} className="inline mr-2" />
-          Körlevelek
+          {t('treasury.korlevelek')}
           {circulars.length > 0 && (
             <span className="ml-2 badge badge-blue text-xs">{circulars.length}</span>
           )}
@@ -161,12 +163,12 @@ export default function ReportsCirculars() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-secondary-900 flex items-center gap-2">
                 <FileText size={20} className="text-primary-600" />
-                Beküldési státusz ({submittedCount}/{totalCount} iroda)
+                {t('treasury.bekuldesiStatusz')}{submittedCount}/{totalCount} iroda)
               </h2>
               {submittedCount === totalCount && totalCount > 0 && (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-success-50 border border-success-200 rounded-lg text-sm font-semibold text-success-700">
                   <CheckCircle size={18} />
-                  Minden iroda beküdte
+                  {t('treasury.mindenIrodaBekudte')}
                 </div>
               )}
             </div>
@@ -194,7 +196,7 @@ export default function ReportsCirculars() {
                 </div>
               ))}
               {branchReports.length === 0 && (
-                <p className="text-sm text-secondary-400">Nincs iroda adat</p>
+                <p className="text-sm text-secondary-400">{t('treasury.nincsIrodaAdat')}</p>
               )}
             </div>
           </div>
@@ -202,28 +204,28 @@ export default function ReportsCirculars() {
           {/* Consolidated Report Table */}
           <div className="form-panel">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-secondary-900">Konszolidált napi jelentés</h2>
+              <h2 className="text-lg font-bold text-secondary-900">{t('treasury.konszolidaltNapiJelentes')}</h2>
               <button className="form-button h-8 text-xs">
                 <Download size={16} />
-                <span>Export PDF</span>
+                <span>{t('treasury.exportPdf')}</span>
               </button>
             </div>
             <table className="data-grid w-full">
               <thead>
                 <tr>
-                  <th className="w-48">Iroda</th>
-                  <th className="text-right w-32">Vétel (HUF)</th>
-                  <th className="text-right w-32">Eladás (HUF)</th>
-                  <th className="text-right w-24">Díj</th>
-                  <th className="text-right w-28">Profit</th>
-                  <th className="text-right w-20">Tranz.</th>
+                  <th className="w-48">{t('common.office')}</th>
+                  <th className="text-right w-32">{t('misc.vetelHuf')}</th>
+                  <th className="text-right w-32">{t('misc.eladasHuf')}</th>
+                  <th className="text-right w-24">{t('treasury.dij')}</th>
+                  <th className="text-right w-28">{t('reports.profit')}</th>
+                  <th className="text-right w-20">{t('treasury.tranz')}</th>
                 </tr>
               </thead>
               <tbody>
                 {branchReports.length === 0 && (
                   <tr>
                     <td colSpan={6} className="text-center text-sm text-secondary-400 py-8">
-                      Nincs jelentés adat
+                      {t('treasury.nincsJelentesAdat')}
                     </td>
                   </tr>
                 )}
@@ -250,7 +252,7 @@ export default function ReportsCirculars() {
                 {/* Summary row */}
                 {branchReports.length > 0 && (
                   <tr className="bg-secondary-100 border-t-2 border-secondary-300">
-                    <td className="font-bold text-secondary-900">ÖSSZES (∑)</td>
+                    <td className="font-bold text-secondary-900">{t('treasury.osszes')}</td>
                     <td className="text-right font-mono font-bold text-success-700">
                       {formatMillions(totalBuy)}
                     </td>
@@ -276,7 +278,7 @@ export default function ReportsCirculars() {
           {dailyReport && (
             <div className="form-panel">
               <h2 className="text-lg font-bold text-secondary-900 mb-4">
-                Részletes forgalom — {dailyReport.branchName}
+                {t('treasury.reszletesForgalom')}{dailyReport.branchName}
               </h2>
               <div className="grid grid-cols-4 gap-4">
                 <StatBox label="Vétel (db)" value={formatInteger(dailyReport.buyCount)} />
@@ -286,15 +288,15 @@ export default function ReportsCirculars() {
               </div>
               {dailyReport.currencyTurnovers && dailyReport.currencyTurnovers.length > 0 && (
                 <div className="mt-4">
-                  <h3 className="text-sm font-semibold text-secondary-700 mb-2">Valutánkénti bontás</h3>
+                  <h3 className="text-sm font-semibold text-secondary-700 mb-2">{t('treasury.valutankentiBontas')}</h3>
                   <table className="data-grid w-full">
                     <thead>
                       <tr>
-                        <th>Valuta</th>
-                        <th className="text-right">Vétel db</th>
-                        <th className="text-right">Vétel összeg</th>
-                        <th className="text-right">Eladás db</th>
-                        <th className="text-right">Eladás összeg</th>
+                        <th>{t('common.currency')}</th>
+                        <th className="text-right">{t('darius.vetelDb')}</th>
+                        <th className="text-right">{t('reports.vetelOsszeg')}</th>
+                        <th className="text-right">{t('darius.eladasDb')}</th>
+                        <th className="text-right">{t('reports.eladasOsszeg')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -322,18 +324,18 @@ export default function ReportsCirculars() {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-secondary-900 flex items-center gap-2">
               <Bell size={20} className="text-accent-600" />
-              Körlevelek
+              {t('treasury.korlevelek')}
             </h2>
             <button onClick={() => setShowNewCircular(true)} className="form-button-primary h-8 text-xs">
               <Plus size={16} />
-              <span>Új körlevél</span>
+              <span>{t('treasury.ujKorlevel')}</span>
             </button>
           </div>
 
           <div className="space-y-3">
             {circulars.length === 0 && (
               <div className="form-panel text-center py-8">
-                <p className="text-sm text-secondary-400">Nincs körlevél</p>
+                <p className="text-sm text-secondary-400">{t('treasury.nincsKorlevel')}</p>
               </div>
             )}
             {circulars.map((circular) => {
@@ -353,7 +355,7 @@ export default function ReportsCirculars() {
                         {isUrgent && (
                           <span className="badge badge-red flex items-center gap-1">
                             <AlertTriangle size={12} />
-                            SÜRGŐS
+                            {t('treasury.surgos')}
                           </span>
                         )}
                         <span className="font-bold text-secondary-900">{circular.title}</span>
@@ -368,11 +370,11 @@ export default function ReportsCirculars() {
                       onClick={() => setShowCircularDetail(circular)}
                     >
                       <Eye size={16} />
-                      Részlet
+                      {t('sync.reszlet')}
                     </button>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="text-secondary-600">Státusz:</span>
+                    <span className="text-secondary-600">{t('darius.statusz')}</span>
                     <span className={`font-semibold ${circular.isRead ? 'text-success-700' : 'text-warning-700'}`}>
                       {circular.isRead ? 'Olvasva' : 'Olvasatlan'}
                     </span>
@@ -389,14 +391,14 @@ export default function ReportsCirculars() {
         <ModalOverlay onClose={() => setShowNewCircular(false)}>
           <div className="bg-white rounded-lg shadow-xl p-4 max-w-2xl w-full mx-4">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xl font-bold text-secondary-900">Új körlevél küldése</h2>
+              <h2 className="text-xl font-bold text-secondary-900">{t('treasury.ujKorlevelKuldese')}</h2>
               <button onClick={() => setShowNewCircular(false)} className="text-secondary-400 hover:text-secondary-600">
                 <X size={20} />
               </button>
             </div>
             <form onSubmit={(e) => void handleCircularSubmit(e)} className="space-y-4">
               <div>
-                <label className="form-label">Cím</label>
+                <label className="form-label">{t('common.address')}</label>
                 <input
                   type="text"
                   className="form-input w-full"
@@ -406,7 +408,7 @@ export default function ReportsCirculars() {
                 />
               </div>
               <div>
-                <label className="form-label">Tartalom</label>
+                <label className="form-label">{t('treasury.tartalom')}</label>
                 <textarea
                   className="form-input w-full min-h-[120px]"
                   placeholder="Körlevél szövege..."
@@ -423,7 +425,7 @@ export default function ReportsCirculars() {
                   onChange={(e) => setCircularUrgent(e.target.checked)}
                 />
                 <label htmlFor="urgent-check" className="text-sm font-medium text-secondary-700">
-                  Sürgős körlevél (piros jelöléssel)
+                  {t('treasury.surgosKorlevelPirosJelolessel')}
                 </label>
               </div>
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-secondary-200">
@@ -432,11 +434,11 @@ export default function ReportsCirculars() {
                   className="form-button"
                   onClick={() => setShowNewCircular(false)}
                 >
-                  Mégse
+                  {t('common.cancel')}
                 </button>
                 <button type="submit" className="form-button-primary">
                   <Send size={18} />
-                  <span>Küldés</span>
+                  <span>{t('common.send')}</span>
                 </button>
               </div>
             </form>
@@ -454,7 +456,7 @@ export default function ReportsCirculars() {
                 {showCircularDetail.message}
               </div>
               <div className="flex justify-between text-xs text-secondary-500">
-                <span>Típus: {showCircularDetail.type}</span>
+                <span>{t('cashdesk.tipus')}{showCircularDetail.type}</span>
                 <span>{new Date(showCircularDetail.createdAt).toLocaleString('hu-HU')}</span>
               </div>
             </div>
@@ -462,7 +464,7 @@ export default function ReportsCirculars() {
               onClick={() => setShowCircularDetail(null)}
               className="form-button-primary w-full mt-6"
             >
-              Bezárás
+              {t('common.close')}
             </button>
           </div>
         </ModalOverlay>

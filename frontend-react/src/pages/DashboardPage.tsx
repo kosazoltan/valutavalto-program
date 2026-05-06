@@ -7,6 +7,7 @@ import { useAuthStore } from '../stores/authStore'
 import { useAppMode } from '../hooks/useAppMode'
 import { formatMillions } from './treasury/treasuryUtils'
 import { logger } from '../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 // 2026-04-29 E-B3 fix: a "Árfolyam módosítás" Gyorsművelet-csempe csak a
 // foertektar/ugyvezeto szerepkörnek látható (mode='full'). Az értéktár (és
@@ -43,6 +44,7 @@ interface RecentTransaction {
 const DASHBOARD_CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF']
 
 export default function DashboardPage() {
+  const { t } = useTranslation()
   const [liveRates, setLiveRates] = useState<ExchangeRate[]>([])
   const [ratesLoading, setRatesLoading] = useState(true)
   const [stats, setStats] = useState<DashboardStats>({
@@ -165,8 +167,8 @@ export default function DashboardPage() {
       {/* Page header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-lg font-bold text-secondary-900">Irányítópult</h1>
-          <p className="text-xs text-secondary-500">Áttekintés és gyorsműveletek</p>
+          <h1 className="text-lg font-bold text-secondary-900">{t('misc.iranyitopult')}</h1>
+          <p className="text-xs text-secondary-500">{t('misc.attekintesEsGyorsmuveletek')}</p>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-secondary-600">
           <Clock size={14} />
@@ -212,26 +214,26 @@ export default function DashboardPage() {
           <div className="flex justify-between items-center mb-2">
             <h2 className="text-sm font-bold text-secondary-900 flex items-center gap-1.5">
               <TrendingUp size={16} className="text-success-600" />
-              Aktuális árfolyamok
+              {t('misc.aktualisArfolyamok')}
             </h2>
             <Link to="/rates" className="text-sm font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1">
-              Részletek →
+              {t('misc.reszletek')}
             </Link>
           </div>
           <table className="data-grid w-full">
             <thead>
               <tr>
-                <th>Deviza</th>
-                <th className="text-right">Vétel (HUF)</th>
-                <th className="text-right">Eladás (HUF)</th>
-                <th className="text-right">Változás</th>
+                <th>{t('common.deviza')}</th>
+                <th className="text-right">{t('misc.vetelHuf')}</th>
+                <th className="text-right">{t('misc.eladasHuf')}</th>
+                <th className="text-right">{t('misc.valtozas')}</th>
               </tr>
             </thead>
             <tbody>
               {ratesLoading ? (
                 <tr><td colSpan={4} className="text-center py-4 text-secondary-400">Betöltés...</td></tr>
               ) : liveRates.length === 0 ? (
-                <tr><td colSpan={4} className="text-center py-4 text-secondary-400">Nincs elérhető árfolyam</td></tr>
+                <tr><td colSpan={4} className="text-center py-4 text-secondary-400">{t('misc.nincsElerhetoArfolyam')}</td></tr>
               ) : (
                 liveRates.map((rate) => (
                   <tr key={rate.currencyCode}>
@@ -257,32 +259,32 @@ export default function DashboardPage() {
 
         {/* Quick actions - Compact card */}
         <div className="form-panel">
-          <h2 className="text-sm font-bold text-secondary-900 mb-2">Gyorsműveletek</h2>
+          <h2 className="text-sm font-bold text-secondary-900 mb-2">{t('misc.gyorsmuveletek')}</h2>
           <div className="flex flex-col gap-1.5">
             <Link to="/transactions/new" className="form-button-primary justify-start">
               <ArrowLeftRight size={18} />
-              <span>Új tranzakció</span>
+              <span>{t('misc.ujTranzakcio')}</span>
             </Link>
             <Link to="/customers/new" className="form-button justify-start">
               <Users size={18} />
-              <span>Új ügyfél</span>
+              <span>{t('misc.ujUgyfel')}</span>
             </Link>
             {/* E-B3 fix: Árfolyam módosítás csak foertektar/ugyvezeto-nek (mode='full').
                 Értéktár/pénztár módban csak a /rates "(nézet)" elérhető read-only. */}
             {canEditRates ? (
               <Link to="/rates/creation" className="form-button justify-start">
                 <TrendingUp size={18} />
-                <span>Árfolyam módosítás</span>
+                <span>{t('misc.arfolyamModositas')}</span>
               </Link>
             ) : (
               <Link to="/rates" className="form-button justify-start">
                 <TrendingUp size={18} />
-                <span>Árfolyamok megtekintése</span>
+                <span>{t('misc.arfolyamokMegtekintese')}</span>
               </Link>
             )}
             <Link to="/cashdesk" className="form-button justify-start">
               <Wallet size={18} />
-              <span>Napi zárás</span>
+              <span>{t('misc.napiZaras')}</span>
             </Link>
           </div>
         </div>
@@ -293,22 +295,22 @@ export default function DashboardPage() {
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-sm font-bold text-secondary-900 flex items-center gap-1.5">
             <FileText size={16} className="text-primary-600" />
-            Legutóbbi tranzakciók
+            {t('misc.legutobbiTranzakciok')}
           </h2>
           <Link to="/transactions" className="text-sm font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1">
-            Összes →
+            {t('misc.osszes')}
           </Link>
         </div>
         <table className="data-grid w-full">
           <thead>
             <tr>
-              <th>Idő</th>
-              <th>Típus</th>
-              <th>Deviza</th>
-              <th className="text-right">Összeg</th>
-              <th className="text-right">HUF érték</th>
-              <th>Ügyfél</th>
-              <th>Státusz</th>
+              <th>{t('misc.ido')}</th>
+              <th>{t('common.type')}</th>
+              <th>{t('common.deviza')}</th>
+              <th className="text-right">{t('common.amount')}</th>
+              <th className="text-right">{t('stockSnapshot.hufValue')}</th>
+              <th>{t('common.customer')}</th>
+              <th>{t('common.status')}</th>
             </tr>
           </thead>
           <tbody>
@@ -326,7 +328,7 @@ export default function DashboardPage() {
                   <span className={`font-bold text-currency-${tx.currency.toLowerCase()}`}>{tx.currency}</span>
                 </td>
                 <td className="text-right font-mono font-semibold">{tx.amount.toLocaleString()}</td>
-                <td className="text-right font-mono">{tx.huf.toLocaleString()} Ft</td>
+                <td className="text-right font-mono">{tx.huf.toLocaleString()} {t('components.ft')}</td>
                 <td className="text-secondary-700">{tx.customer}</td>
                 <td>
                   <span className={`badge ${

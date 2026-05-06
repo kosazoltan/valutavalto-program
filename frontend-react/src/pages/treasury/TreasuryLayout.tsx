@@ -16,6 +16,7 @@ import {
 import { useState, useCallback, useMemo } from 'react'
 import { useAuthStore } from '../../stores/authStore'
 import { useAppMode } from '../../hooks/useAppMode'
+import { useTranslation } from 'react-i18next'
 
 /**
  * 2026-04-29 FIX: a /treasury layout korábban hardkódolt 10 tabbal jelent meg
@@ -61,6 +62,7 @@ export const allTreasuryTabs: readonly TreasuryTab[] = [
 ]
 
 export default function TreasuryLayout() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [showHelp, setShowHelp] = useState(false)
   // A `roles` és `activeRole` selector-okkal a useMemo helyesen invalidálódik,
@@ -169,22 +171,22 @@ export default function TreasuryLayout() {
           >
             <h2 className="text-lg font-bold text-secondary-900 mb-4 flex items-center gap-2">
               <Keyboard size={20} className="text-primary-600" />
-              Billentyűparancsok
+              {t('treasury.billentyuparancsok')}
             </h2>
             <div className="space-y-3">
-              <div className="text-sm font-semibold text-secondary-600 uppercase tracking-wider">Navigáció</div>
+              <div className="text-sm font-semibold text-secondary-600 uppercase tracking-wider">{t('treasury.navigacio')}</div>
               {treasuryTabs.map((tab) => (
                 <HotkeyRow key={tab.path} keys={tab.hotkey} desc={tab.label} />
               ))}
               <div className="border-t border-secondary-200 pt-3 mt-3">
-                <div className="text-sm font-semibold text-secondary-600 uppercase tracking-wider mb-3">Általános</div>
+                <div className="text-sm font-semibold text-secondary-600 uppercase tracking-wider mb-3">{t('treasury.altalanos')}</div>
                 <HotkeyRow keys="?" desc="Billentyűparancsok" />
                 <HotkeyRow keys="Esc" desc="Bezárás / Mégse" />
                 <HotkeyRow keys="R" desc="Frissítés (képernyőtől függ)" />
               </div>
             </div>
             <button onClick={closeHelp} className="form-button-primary w-full mt-6">
-              Bezárás
+              {t('common.close')}
             </button>
           </div>
         </div>

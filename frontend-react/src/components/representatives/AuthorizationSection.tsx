@@ -4,6 +4,7 @@ import { authorizedRepresentativeApi, Authorization, AuthorizationCreateRequest 
 import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../ui/toaster'
 import { useAuthStore } from '../../stores/authStore'
+import { useTranslation } from 'react-i18next'
 
 interface Props {
   representativeId: string
@@ -17,6 +18,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 }
 
 export default function AuthorizationSection({ representativeId }: Props) {
+  const { t } = useTranslation()
   const worker = useAuthStore(s => s.worker)
   const workerId = worker?.id ?? 0
 
@@ -93,10 +95,10 @@ export default function AuthorizationSection({ representativeId }: Props) {
     <div className="form-panel">
       <div className="flex justify-between items-center mb-3">
         <h2 className="section-title flex items-center gap-2">
-          <Shield size={16} /> Meghatalmazások
+          <Shield size={16} />{t('components.meghatalmazasok')}
         </h2>
         <button onClick={() => setShowForm(!showForm)} className="form-button flex items-center gap-1">
-          <Plus size={14} /> Új meghatalmazás
+          <Plus size={14} />{t('components.ujMeghatalmazas')}
         </button>
       </div>
 
@@ -110,41 +112,41 @@ export default function AuthorizationSection({ representativeId }: Props) {
         <div className="border rounded p-3 mb-3 bg-gray-50 space-y-2">
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-sm text-gray-600">Művelet típus</label>
+              <label className="text-sm text-gray-600">{t('components.muveletTipus')}</label>
               <select value={form.operationDid} onChange={e => setForm({ ...form, operationDid: e.target.value })} className="form-input w-full">
-                <option value="CURRENCY_EXCHANGE">Valutaváltás</option>
-                <option value="CASH_DEPOSIT">Készpénz befizetés</option>
-                <option value="CASH_WITHDRAWAL">Készpénz kifizetés</option>
-                <option value="ALL_OPERATIONS">Minden művelet</option>
+                <option value="CURRENCY_EXCHANGE">{t('components.valutavaltas')}</option>
+                <option value="CASH_DEPOSIT">{t('components.keszpenzBefizetes')}</option>
+                <option value="CASH_WITHDRAWAL">{t('components.keszpenzKifizetes')}</option>
+                <option value="ALL_OPERATIONS">{t('components.mindenMuvelet')}</option>
               </select>
             </div>
             <div>
-              <label className="text-sm text-gray-600">Kezdő dátum</label>
+              <label className="text-sm text-gray-600">{t('common.startDate')}</label>
               <input type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} className="form-input w-full" />
             </div>
             <div>
-              <label className="text-sm text-gray-600">Lejárati dátum</label>
+              <label className="text-sm text-gray-600">{t('components.lejaratiDatum')}</label>
               <input type="date" value={form.expiryDate || ''} onChange={e => setForm({ ...form, expiryDate: e.target.value || undefined })} className="form-input w-full" />
             </div>
             <div>
-              <label className="text-sm text-gray-600">Összeg limit (Ft)</label>
+              <label className="text-sm text-gray-600">{t('components.osszegLimitFt')}</label>
               <input type="number" value={form.maxAmount || ''} onChange={e => setForm({ ...form, maxAmount: e.target.value ? Number(e.target.value) : undefined })} className="form-input w-full" placeholder="Korlátlan" />
             </div>
             <div>
-              <label className="text-sm text-gray-600">Max tranzakciószám</label>
+              <label className="text-sm text-gray-600">{t('components.maxTranzakcioszam')}</label>
               <input type="number" min={1} value={form.maxTransactionCount || ''} onChange={e => setForm({ ...form, maxTransactionCount: e.target.value ? Number(e.target.value) : undefined })} className="form-input w-full" placeholder="Korlátlan" />
             </div>
             <div>
-              <label className="text-sm text-gray-600">Egyszeri limit (Ft)</label>
+              <label className="text-sm text-gray-600">{t('components.egyszeriLimitFt')}</label>
               <input type="number" value={form.singleTransactionLimit || ''} onChange={e => setForm({ ...form, singleTransactionLimit: e.target.value ? Number(e.target.value) : undefined })} className="form-input w-full" placeholder="Korlátlan" />
             </div>
             <div>
-              <label className="text-sm text-gray-600">Megjegyzés</label>
+              <label className="text-sm text-gray-600">{t('common.note')}</label>
               <input type="text" value={form.notes || ''} onChange={e => setForm({ ...form, notes: e.target.value || undefined })} className="form-input w-full" />
             </div>
           </div>
           <div className="flex justify-end gap-2 mt-2">
-            <button onClick={() => setShowForm(false)} className="form-button">Mégsem</button>
+            <button onClick={() => setShowForm(false)} className="form-button">{t('common.cancel')}</button>
             <button onClick={handleCreate} disabled={submitting} className="form-button-primary">
               {submitting ? 'Mentés...' : 'Létrehozás'}
             </button>
@@ -157,18 +159,18 @@ export default function AuthorizationSection({ representativeId }: Props) {
           <Loader2 size={16} className="animate-spin" /> Betöltés...
         </div>
       ) : authorizations.length === 0 ? (
-        <div className="text-center py-4 text-gray-500 text-sm">Nincs meghatalmazás</div>
+        <div className="text-center py-4 text-gray-500 text-sm">{t('components.nincsMeghatalmazas')}</div>
       ) : (
         <table className="data-grid w-full text-sm">
           <thead>
             <tr>
-              <th>Művelet</th>
-              <th>Státusz</th>
-              <th>Kezdet</th>
-              <th>Lejárat</th>
-              <th>Limit</th>
-              <th>Használat</th>
-              <th className="w-32">Műveletek</th>
+              <th>{t('common.operation')}</th>
+              <th>{t('common.status')}</th>
+              <th>{t('components.kezdet')}</th>
+              <th>{t('components.lejarat')}</th>
+              <th>{t('components.limit')}</th>
+              <th>{t('components.hasznalat')}</th>
+              <th className="w-32">{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>

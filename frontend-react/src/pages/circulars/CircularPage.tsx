@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '@/services/api/index';
 import { safeArray } from '@/utils/safeArray';
+import { useTranslation } from 'react-i18next'
 
 interface Circular {
   id: number;
@@ -51,6 +52,7 @@ const categoryLabels: Record<string, string> = {
 };
 
 export default function CircularPage() {
+  const { t } = useTranslation()
   const [circulars, setCirculars] = useState<Circular[]>([]);
   const [unacknowledged, setUnacknowledged] = useState<Circular[]>([]);
   const [loading, setLoading] = useState(true);
@@ -170,21 +172,21 @@ export default function CircularPage() {
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-3">
         <div>
-          <h1 className="text-lg font-bold">Körlevelek és Szabályzatok</h1>
-          <p className="text-gray-500">Vállalati dokumentumok kezelése</p>
+          <h1 className="text-lg font-bold">{t('circulars.korlevelekEsSzabalyzatok')}</h1>
+          <p className="text-gray-500">{t('circulars.vallalatiDokumentumokKezelese')}</p>
         </div>
         <button
           onClick={() => setShowCreateDialog(true)}
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
-          + Új dokumentum
+          {t('circulars.ujDokumentum')}
         </button>
       </div>
 
       {unacknowledged.length > 0 && (
         <div className="mb-3 p-4 border border-orange-500 rounded bg-orange-50">
           <h3 className="font-semibold text-orange-700 mb-2">
-            Elolvasásra váró dokumentumok ({unacknowledged.length})
+            {t('circulars.elolvasasraVaroDokumentumok')}{unacknowledged.length})
           </h3>
           <div className="space-y-2">
             {unacknowledged.map((circular) => (
@@ -207,13 +209,13 @@ export default function CircularPage() {
                     }}
                     className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
                   >
-                    Megnyitás
+                    {t('circulars.megnyitas')}
                   </button>
                   <button
                     onClick={() => handleAcknowledge(circular.id)}
                     className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
                   >
-                    Értettem
+                    {t('circulars.ertettem')}
                   </button>
                 </div>
               </div>
@@ -251,21 +253,21 @@ export default function CircularPage() {
           <div className="text-center py-8">Betöltés...</div>
         ) : filteredCirculars.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            Nincsenek dokumentumok ebben a kategóriában
+            {t('circulars.nincsenekDokumentumokEbbenAKategoriaban')}
           </div>
         ) : (
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="p-3 text-left">Szám</th>
-                <th className="p-3 text-left">Cím</th>
-                <th className="p-3 text-left">Típus</th>
-                <th className="p-3 text-left">Kategória</th>
-                <th className="p-3 text-left">Verzió</th>
-                <th className="p-3 text-left">Hatályos</th>
-                <th className="p-3 text-left">Visszaigazolás</th>
-                <th className="p-3 text-left">Státusz</th>
-                <th className="p-3 text-left">Műveletek</th>
+                <th className="p-3 text-left">{t('circulars.szam')}</th>
+                <th className="p-3 text-left">{t('common.address')}</th>
+                <th className="p-3 text-left">{t('common.type')}</th>
+                <th className="p-3 text-left">{t('common.category')}</th>
+                <th className="p-3 text-left">{t('circulars.verzio')}</th>
+                <th className="p-3 text-left">{t('circulars.hatalyos')}</th>
+                <th className="p-3 text-left">{t('circulars.visszaigazolas')}</th>
+                <th className="p-3 text-left">{t('common.status')}</th>
+                <th className="p-3 text-left">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -301,14 +303,14 @@ export default function CircularPage() {
                         }}
                         className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
                       >
-                        Megtekint
+                        {t('circulars.megtekint')}
                       </button>
                       {circular.status === 'DRAFT' && (
                         <button
                           onClick={() => handlePublish(circular.id)}
                           className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
                         >
-                          Közzététel
+                          {t('circulars.kozzetetel')}
                         </button>
                       )}
                       {circular.status === 'PUBLISHED' && (
@@ -316,7 +318,7 @@ export default function CircularPage() {
                           onClick={() => handleArchive(circular.id)}
                           className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
                         >
-                          Archiválás
+                          {t('archiving.archivalas')}
                         </button>
                       )}
                     </div>
@@ -331,7 +333,7 @@ export default function CircularPage() {
       {showCreateDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-4 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">Új dokumentum létrehozása</h2>
+            <h2 className="text-xl font-bold mb-4">{t('circulars.ujDokumentumLetrehozasa')}</h2>
             <CreateCircularForm
               onSubmit={handleCreateSubmit}
               onCancel={() => setShowCreateDialog(false)}

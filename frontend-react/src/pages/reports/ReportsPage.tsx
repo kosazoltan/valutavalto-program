@@ -3,6 +3,7 @@ import {
   FileText, Calendar, BarChart3, PieChart, TrendingUp,
   FileSpreadsheet, BookOpen, Sun, Moon, Clock,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 interface ReportLink {
   id: string
@@ -27,6 +28,7 @@ const reportLinks: ReportLink[] = [
 ]
 
 export default function ReportsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
 
   return (
@@ -35,7 +37,7 @@ export default function ReportsPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <FileText />
-          Riportok
+          {t('reports.riportok')}
         </h1>
       </div>
 

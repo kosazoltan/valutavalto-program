@@ -13,6 +13,7 @@ import { toast } from '../../components/ui/toaster'
 import { formatInteger, formatDecimal } from '../../utils/numberFormat'
 import { logger } from '../../utils/logger';
 import { useAuthStore } from '../../stores/authStore';
+import { useTranslation } from 'react-i18next'
 
 interface DenominationQuantityUpdateRequest {
   denominationId: string
@@ -20,6 +21,7 @@ interface DenominationQuantityUpdateRequest {
 }
 
 export default function DenominationPage() {
+  const { t } = useTranslation()
   const selectedCashDeskId = useAuthStore((s: { worker: { branchId: string } | null }) => s.worker?.branchId ?? '')
   const [currencies, setCurrencies] = useState<Currency[]>([])
   const [selectedCurrencyId, setSelectedCurrencyId] = useState<number | null>(null)
@@ -152,7 +154,7 @@ export default function DenominationPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Coins />
-          Pénztár címletezés
+          {t('cashdesk.penztarCimletezes')}
         </h1>
         <div className="flex gap-2">
           <button
@@ -162,7 +164,7 @@ export default function DenominationPage() {
             disabled={loading}
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-            Frissítés
+            {t('common.refresh')}
           </button>
           <button
             type="button"
@@ -171,14 +173,14 @@ export default function DenominationPage() {
             disabled={!selectedCashDeskId}
           >
             <Save size={16} />
-            Mentés
+            {t('common.save')}
           </button>
         </div>
       </div>
 
       {/* Currency Selector */}
       <div className="form-panel">
-        <label htmlFor="currency-select" className="form-label">Valuta kiválasztása</label>
+        <label htmlFor="currency-select" className="form-label">{t('cashdesk.valutaKivalasztasa')}</label>
         <select
           id="currency-select"
           title="Válassz valutát"
@@ -186,7 +188,7 @@ export default function DenominationPage() {
           onChange={(e) => setSelectedCurrencyId(e.target.value ? Number(e.target.value) : null)}
           className="form-input"
         >
-          <option value="">-- Válassz valutát --</option>
+          <option value="">{t('cashdesk.valasszValutat')}</option>
           {currencies.map((curr) => (
             <option key={curr.id} value={curr.id}>
               {curr.code} - {curr.name}
@@ -206,7 +208,7 @@ export default function DenominationPage() {
           </div>
           <div className="flex items-center gap-4">
             <div className="text-sm">
-              <span className="text-gray-600">Összesített egyenleg:</span>
+              <span className="text-gray-600">{t('cashdesk.osszesitettEgyenleg')}</span>
               <span className="ml-2 font-bold text-lg font-mono text-green-600">
                 {formatDecimal(calculatedTotal, 2, 2)} {selectedCurrency.code}
               </span>
@@ -219,16 +221,16 @@ export default function DenominationPage() {
       {selectedCurrencyId && (
         <div className="form-panel p-0">
           <div className="p-3 border-b bg-gray-50">
-            <h3 className="font-semibold">Címletek és mennyiségek</h3>
+            <h3 className="font-semibold">{t('cashdesk.cimletekEsMennyisegek')}</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="data-grid w-full">
               <thead>
                 <tr>
-                  <th className="w-32">Címlet</th>
-                  <th className="w-24">Típus</th>
-                  <th className="w-32">Mennyiség</th>
-                  <th className="text-right w-40">Összeg</th>
+                  <th className="w-32">{t('cashdesk.cimlet')}</th>
+                  <th className="w-24">{t('common.type')}</th>
+                  <th className="w-32">{t('cashdesk.mennyiseg')}</th>
+                  <th className="text-right w-40">{t('common.amount')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -274,7 +276,7 @@ export default function DenominationPage() {
               </tbody>
               <tfoot className="bg-gray-50 font-bold">
                 <tr>
-                  <td colSpan={3} className="text-right pr-4">ÖSSZESEN:</td>
+                  <td colSpan={3} className="text-right pr-4">{t('cashdesk.osszesen2')}</td>
                   <td className="text-right">
                     <span className="font-mono text-lg text-blue-600">
                       {formatDecimal(calculatedTotal, 2, 2)} {selectedCurrency?.code}
@@ -292,7 +294,7 @@ export default function DenominationPage() {
         <div className="form-panel bg-yellow-50 border-yellow-200 flex items-center gap-2">
           <AlertCircle className="text-yellow-600" size={18} />
           <span className="text-sm text-yellow-800">
-            Pénztár kiválasztása szükséges a címletezéshez!
+            {t('cashdesk.penztarKivalasztasaSzuksegesACimletezeshez')}
           </span>
         </div>
       )}

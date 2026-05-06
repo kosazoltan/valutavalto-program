@@ -15,6 +15,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 const STATUS_LABELS: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
   OPEN: { label: 'Nyitott', color: 'bg-blue-100 text-blue-700', icon: Clock },
@@ -33,6 +34,7 @@ function decadeLabel(decade: number): string {
 }
 
 export default function DecadeReportPage() {
+  const { t } = useTranslation()
   const worker = useAuthStore((s) => s.worker)
   const branchId = worker?.branchId || ''
 
@@ -117,7 +119,7 @@ export default function DecadeReportPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <FileSpreadsheet /> Dekád jelentések
+          <FileSpreadsheet />{t('decade.dekadJelentesek')}
         </h1>
       </div>
 
@@ -131,7 +133,7 @@ export default function DecadeReportPage() {
       {/* Filters + Generate */}
       <div className="flex gap-3 items-end flex-wrap">
         <div>
-          <label className="text-xs text-gray-500">Év</label>
+          <label className="text-xs text-gray-500">{t('decade.ev')}</label>
           <input
             type="number"
             value={year}
@@ -143,7 +145,7 @@ export default function DecadeReportPage() {
         </div>
         <div className="border-l pl-3 flex gap-2 items-end">
           <div>
-            <label className="text-xs text-gray-500">Dekád</label>
+            <label className="text-xs text-gray-500">{t('decade.dekad')}</label>
             <select
               value={genDecade}
               onChange={(e) => setGenDecade(Number(e.target.value))}
@@ -151,7 +153,7 @@ export default function DecadeReportPage() {
             >
               <option value={1}>1. dekád (1–10.)</option>
               <option value={2}>2. dekád (11–20.)</option>
-              <option value={3}>3. dekád (21–hó vége)</option>
+              <option value={3}>{t('decade.3Dekad21hoVege')}</option>
             </select>
           </div>
           <button
@@ -159,7 +161,7 @@ export default function DecadeReportPage() {
             disabled={loading || !branchId}
             className="btn-primary text-sm flex items-center gap-1"
           >
-            <FileSpreadsheet size={14} /> Generálás
+            <FileSpreadsheet size={14} />{t('darius.generalas')}
           </button>
         </div>
       </div>
@@ -172,7 +174,7 @@ export default function DecadeReportPage() {
           <div className="col-span-2 space-y-1">
             {reports.length === 0 && (
               <div className="text-gray-400 text-sm py-4 text-center">
-                Nincs dekádjelentés ebben az évben
+                {t('decade.nincsDekadjelentesEbbenAzEvben')}
               </div>
             )}
             {reports.map((r) => (
@@ -199,17 +201,17 @@ export default function DecadeReportPage() {
                     </span>
                     <StatusBadge status={r.status} />
                   </div>
-                  <div className="text-xs text-gray-500">{r.transactionCount} tranzakció</div>
+                  <div className="text-xs text-gray-500">{r.transactionCount} {t('camera.tranzakcio')}</div>
                 </div>
                 <div className="flex gap-4 mt-1 text-xs text-gray-500">
-                  <span>Vétel: {formatNum(r.totalBuyHuf)} Ft</span>
-                  <span>Eladás: {formatNum(r.totalSellHuf)} Ft</span>
+                  <span>{t('darius.vetel')}{formatNum(r.totalBuyHuf)} {t('components.ft')}</span>
+                  <span>{t('darius.eladas')}{formatNum(r.totalSellHuf)} {t('components.ft')}</span>
                   <span
                     className={
                       r.decadeProfitHuf >= 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'
                     }
                   >
-                    Haszon: {formatNum(r.decadeProfitHuf)} Ft
+                    {t('decade.haszon')}{formatNum(r.decadeProfitHuf)} Ft
                   </span>
                 </div>
               </div>
@@ -221,31 +223,31 @@ export default function DecadeReportPage() {
             {selected ? (
               <div className="p-3 border rounded space-y-2">
                 <h3 className="font-medium text-sm">
-                  Részletek — {selected.year}. {decadeLabel(selected.decade)}
+                  {t('darius.reszletek')}{selected.year}. {decadeLabel(selected.decade)}
                 </h3>
                 <div className="text-xs space-y-1">
                   <div>
-                    Státusz: <StatusBadge status={selected.status} />
+                    {t('darius.statusz')}<StatusBadge status={selected.status} />
                   </div>
-                  <div>Tranzakciók: {selected.transactionCount}</div>
-                  <div>Kezelési díj: {formatNum(selected.totalHandlingFee)} Ft</div>
+                  <div>{t('decade.tranzakciok')}{selected.transactionCount}</div>
+                  <div>{t('components.kezelesiDij')}{formatNum(selected.totalHandlingFee)} {t('components.ft')}</div>
                   <div className="flex items-center gap-1">
                     {selected.decadeProfitHuf >= 0 ? (
                       <TrendingUp size={12} className="text-green-500" />
                     ) : (
                       <TrendingDown size={12} className="text-red-500" />
                     )}
-                    Haszon: {formatNum(selected.decadeProfitHuf)} Ft
+                    {t('decade.haszon')}{formatNum(selected.decadeProfitHuf)} Ft
                   </div>
                   <div className="border-t pt-1 mt-1">
-                    <div>Nyitó készletérték: {formatNum(selected.openingInventoryValueHuf)} Ft</div>
-                    <div>Záró készletérték: {formatNum(selected.closingInventoryValueHuf)} Ft</div>
+                    <div>{t('decade.nyitoKeszletertek')}{formatNum(selected.openingInventoryValueHuf)} {t('components.ft')}</div>
+                    <div>{t('decade.zaroKeszletertek')}{formatNum(selected.closingInventoryValueHuf)} {t('components.ft')}</div>
                   </div>
                   <div className="border-t pt-1 mt-1">
-                    <div>Forint nyitó: {formatNum(selected.forintOpening)} Ft</div>
-                    <div>Forint bevétel: {formatNum(selected.forintTotalIncome)} Ft</div>
-                    <div>Forint kiadás: {formatNum(selected.forintTotalExpense)} Ft</div>
-                    <div>Forint záró: {formatNum(selected.forintClosing)} Ft</div>
+                    <div>{t('decade.forintNyito')}{formatNum(selected.forintOpening)} {t('components.ft')}</div>
+                    <div>{t('decade.forintBevetel')}{formatNum(selected.forintTotalIncome)} {t('components.ft')}</div>
+                    <div>{t('decade.forintKiadas')}{formatNum(selected.forintTotalExpense)} {t('components.ft')}</div>
+                    <div>{t('decade.forintZaro')}{formatNum(selected.forintClosing)} {t('components.ft')}</div>
                     <div
                       className={
                         selected.forintControlValid ? 'text-green-600' : 'text-red-600 font-medium'
@@ -253,23 +255,23 @@ export default function DecadeReportPage() {
                     >
                       {selected.forintControlValid ? (
                         <span className="flex items-center gap-1">
-                          <CheckCircle size={12} /> Forint kontroll OK
+                          <CheckCircle size={12} />{t('decade.forintKontrollOk')}
                         </span>
                       ) : (
                         <span className="flex items-center gap-1">
-                          <XCircle size={12} /> Eltérés: {formatNum(selected.forintControlDiff)} Ft
+                          <XCircle size={12} />{t('decade.elteres')}{formatNum(selected.forintControlDiff)} Ft
                         </span>
                       )}
                     </div>
                   </div>
                   <div className="border-t pt-1 mt-1">
-                    <div>Első bizonylat: {selected.firstReceiptNumber || '—'}</div>
-                    <div>Utolsó bizonylat: {selected.lastReceiptNumber || '—'}</div>
-                    <div>Kártyás fizetés: {formatNum(selected.cardPaymentTotal)} Ft</div>
+                    <div>{t('decade.elsoBizonylat')}{selected.firstReceiptNumber || '—'}</div>
+                    <div>{t('decade.utolsoBizonylat')}{selected.lastReceiptNumber || '—'}</div>
+                    <div>{t('decade.kartyasFizetes')}{formatNum(selected.cardPaymentTotal)} {t('components.ft')}</div>
                   </div>
                   {selected.closedAt && (
                     <div className="border-t pt-1 mt-1 text-gray-500">
-                      Lezárva: {new Date(selected.closedAt).toLocaleString('hu-HU')}
+                      {t('decade.lezarva')}{new Date(selected.closedAt).toLocaleString('hu-HU')}
                     </div>
                   )}
                 </div>
@@ -281,7 +283,7 @@ export default function DecadeReportPage() {
                       onClick={() => handleClose(selected.id)}
                       className="btn-primary text-xs flex items-center gap-1"
                     >
-                      <Lock size={12} /> Lezárás
+                      <Lock size={12} />{t('decade.lezaras')}
                     </button>
                   </div>
                 )}
@@ -289,17 +291,17 @@ export default function DecadeReportPage() {
                 {/* Lines */}
                 {selected.lines && selected.lines.length > 0 && (
                   <div className="pt-2 border-t">
-                    <h4 className="text-xs font-medium mb-1">Valuta sorok</h4>
+                    <h4 className="text-xs font-medium mb-1">{t('darius.valutaSorok')}</h4>
                     <div className="max-h-60 overflow-y-auto">
                       <table className="w-full text-[10px]">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th className="text-left p-1">Valuta</th>
-                            <th className="text-right p-1">Vétel db</th>
-                            <th className="text-right p-1">Eladás db</th>
-                            <th className="text-right p-1">Vétel Ft</th>
-                            <th className="text-right p-1">Eladás Ft</th>
-                            <th className="text-right p-1">MNB árfolyam</th>
+                            <th className="text-left p-1">{t('common.currency')}</th>
+                            <th className="text-right p-1">{t('darius.vetelDb')}</th>
+                            <th className="text-right p-1">{t('darius.eladasDb')}</th>
+                            <th className="text-right p-1">{t('darius.vetelFt')}</th>
+                            <th className="text-right p-1">{t('darius.eladasFt')}</th>
+                            <th className="text-right p-1">{t('decade.mnbArfolyam')}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -320,7 +322,7 @@ export default function DecadeReportPage() {
                 )}
               </div>
             ) : (
-              <div className="text-gray-400 text-sm text-center py-8">Válasszon egy jelentést</div>
+              <div className="text-gray-400 text-sm text-center py-8">{t('darius.valasszonEgyJelentest')}</div>
             )}
           </div>
         </div>

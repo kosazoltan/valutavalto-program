@@ -5,6 +5,7 @@ import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { useAuthStore } from '../../stores/authStore'
 import { dailyChecklistApi } from '../../services/api/index'
+import { useTranslation } from 'react-i18next'
 
 interface ChecklistItem {
   itemNumber: number
@@ -32,6 +33,7 @@ interface DailyChecklist {
 }
 
 export default function DailyChecklistPage() {
+  const { t } = useTranslation()
   const worker = useAuthStore((state) => state.worker)
   const branchId = worker?.branchId || ''
   const workerId = worker?.id ? String(worker.id) : ''
@@ -97,11 +99,11 @@ export default function DailyChecklistPage() {
     switch (status) {
       case 'COMPLETED':
       case 'SUBMITTED':
-        return <span className="badge badge-green"><CheckCircle size={10} className="inline" /> Kész</span>
+        return <span className="badge badge-green"><CheckCircle size={10} className="inline" />{t('archiving.kesz')}</span>
       case 'IN_PROGRESS':
-        return <span className="badge badge-blue">Folyamatban</span>
+        return <span className="badge badge-blue">{t('common.inProgress')}</span>
       default:
-        return <span className="badge badge-gray">Nyitott</span>
+        return <span className="badge badge-gray">{t('cashdesk.nyitott')}</span>
     }
   }
 
@@ -113,10 +115,10 @@ export default function DailyChecklistPage() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold flex items-center gap-2"><ClipboardCheck />Napi ellenőrzési lista</h1>
+        <h1 className="text-xl font-bold flex items-center gap-2"><ClipboardCheck />{t('cashdesk.napiEllenorzesiLista')}</h1>
         {checklist && checklist.status !== 'COMPLETED' && checklist.status !== 'SUBMITTED' && (
           <button onClick={handleComplete} className="form-button-primary">
-            <Send size={16} /> Lista lezárása
+            <Send size={16} />{t('cashdesk.listaLezarasa')}
           </button>
         )}
       </div>
@@ -124,7 +126,7 @@ export default function DailyChecklistPage() {
       {/* Dátum és betöltés */}
       <div className="form-panel flex gap-3 items-end">
         <div>
-          <label className="form-label">Dátum</label>
+          <label className="form-label">{t('common.date')}</label>
           <div className="flex items-center gap-1">
             <Calendar size={16} className="text-gray-400" />
             <input className="form-input" type="date" value={date} onChange={e => setDate(e.target.value)} />
@@ -180,13 +182,13 @@ export default function DailyChecklistPage() {
                       <div className="flex items-center gap-2">
                         <span className={`font-medium ${item.isCompleted ? 'line-through text-gray-400' : ''}`}>{item.title}</span>
                         {item.isMandatory && !item.isCompleted && (
-                          <span className="badge badge-red text-xs">Kötelező</span>
+                          <span className="badge badge-red text-xs">{t('cashdesk.kotelezo')}</span>
                         )}
                       </div>
                       {item.description && <div className="text-sm text-gray-500">{item.description}</div>}
                       {item.isCompleted && item.completedAt && (
                         <div className="text-xs text-gray-400 mt-1">
-                          Kész: {new Date(item.completedAt).toLocaleString('hu-HU')} {item.completedBy ? `(${item.completedBy})` : ''}
+                          {t('cashdesk.kesz')}{new Date(item.completedAt).toLocaleString('hu-HU')} {item.completedBy ? `(${item.completedBy})` : ''}
                         </div>
                       )}
                       {item.note && <div className="text-xs text-blue-600 mt-1">Megjegyzés: {item.note}</div>}
@@ -216,7 +218,7 @@ export default function DailyChecklistPage() {
               if (pending.length === 0) return null
               return (
                 <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
-                  <div className="font-semibold flex items-center gap-1 text-yellow-700"><AlertTriangle size={16} /> {pending.length} kötelező pont még nincs kész</div>
+                  <div className="font-semibold flex items-center gap-1 text-yellow-700"><AlertTriangle size={16} /> {pending.length} {t('cashdesk.kotelezoPontMegNincs')}</div>
                   {pending.map(p => (
                     <div key={p.itemNumber} className="text-sm text-yellow-600 ml-5">• {p.title}</div>
                   ))}

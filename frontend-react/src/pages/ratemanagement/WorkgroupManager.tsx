@@ -3,6 +3,7 @@ import { Users, Plus, Save } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
+import { useTranslation } from 'react-i18next'
 
 interface Workgroup {
   id?: string
@@ -13,6 +14,7 @@ interface Workgroup {
 }
 
 export default function WorkgroupManager() {
+  const { t } = useTranslation()
   const [workgroups, setWorkgroups] = useState<Workgroup[]>([])
   const [editing, setEditing] = useState<Workgroup | null>(null)
   const [loading, setLoading] = useState(true)
@@ -53,14 +55,14 @@ export default function WorkgroupManager() {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <Users className="h-5 w-5" />
-          Munkacsoportok
+          {t('ratemanagement.munkacsoportok')}
         </h2>
         <button
           className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           onClick={() => setEditing({ name: '', code: '', active: true })}
         >
           <Plus className="h-4 w-4 mr-1" />
-          Uj munkacsoport
+          {t('ratemanagement.ujMunkacsoport')}
         </button>
       </div>
 
@@ -69,7 +71,7 @@ export default function WorkgroupManager() {
           <div className="p-4">
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="text-sm font-medium">Nev</label>
+                <label className="text-sm font-medium">{t('competitors.nev')}</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   value={editing.name}
@@ -78,7 +80,7 @@ export default function WorkgroupManager() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Kod</label>
+                <label className="text-sm font-medium">{t('ratemanagement.kod')}</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   value={editing.code}
@@ -88,7 +90,7 @@ export default function WorkgroupManager() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Legacy csoport szam</label>
+                <label className="text-sm font-medium">{t('ratemanagement.legacyCsoportSzam')}</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   type="number"
@@ -103,13 +105,13 @@ export default function WorkgroupManager() {
                 onClick={saveWorkgroup}
               >
                 <Save className="h-4 w-4 mr-2" />
-                Mentés
+                {t('common.save')}
               </button>
               <button
                 className="inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
                 onClick={() => setEditing(null)}
               >
-                Mégse
+                {t('common.cancel')}
               </button>
             </div>
           </div>
@@ -127,7 +129,7 @@ export default function WorkgroupManager() {
                   <span className="font-medium">{wg.name}</span>
                   <span className="text-muted-foreground ml-2">({wg.code})</span>
                   {wg.legacyGroupNumber && (
-                    <span className="text-xs text-muted-foreground ml-2">Legacy: #{wg.legacyGroupNumber}</span>
+                    <span className="text-xs text-muted-foreground ml-2">{t('ratemanagement.legacy')}{wg.legacyGroupNumber}</span>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
@@ -140,7 +142,7 @@ export default function WorkgroupManager() {
                     className="inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"
                     onClick={() => setEditing(wg)}
                   >
-                    Szerkesztés
+                    {t('common.edit')}
                   </button>
                 </div>
               </div>

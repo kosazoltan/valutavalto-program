@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { isElectron } from '@/utils/electron';
 import { logger } from '../../utils/logger';
+import { useTranslation } from 'react-i18next'
 
 interface CameraRecorderProps {
   transactionId: string;
@@ -15,6 +16,7 @@ interface CameraRecorderProps {
 }
 
 export default function CameraRecorder({ transactionId, onSaved }: CameraRecorderProps) {
+  const { t } = useTranslation()
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -97,7 +99,7 @@ export default function CameraRecorder({ transactionId, onSaved }: CameraRecorde
   if (!hasCamera) {
     return (
       <div className="rounded-lg border border-dashed bg-gray-50 p-4 text-center text-sm text-gray-500">
-        Nincs kamera csatlakoztatva
+        {t('components.nincsKameraCsatlakoztatva')}
       </div>
     );
   }
@@ -113,14 +115,14 @@ export default function CameraRecorder({ transactionId, onSaved }: CameraRecorde
             onClick={handleStart}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
           >
-            Felvétel indítása
+            {t('components.felvetelInditasa')}
           </button>
         ) : (
           <button
             onClick={handleStop}
             className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
           >
-            Felvétel leállítása
+            {t('components.felvetelLeallitasa')}
           </button>
         )}
         {status && <span className="text-sm text-gray-600">{status}</span>}

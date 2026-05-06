@@ -5,6 +5,7 @@ import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '@/utils/safeArray'
+import { useTranslation } from 'react-i18next'
 
 const FILE_TYPE_ICONS: Record<string, typeof File> = {
   pdf: FileText,
@@ -31,6 +32,7 @@ const DOCUMENT_TYPES = [
 ]
 
 export default function DocumentStoragePage() {
+  const { t } = useTranslation()
   const [documents, setDocuments] = useState<Document[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -157,9 +159,9 @@ export default function DocumentStoragePage() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold flex items-center gap-2"><FolderOpen />Dokumentumtár</h1>
+        <h1 className="text-xl font-bold flex items-center gap-2"><FolderOpen />{t('documents.dokumentumtar')}</h1>
         <div className="flex gap-2 items-center">
-          <span className="text-sm text-gray-500">{filtered.length} dokumentum ({formatFileSize(totalSize)})</span>
+          <span className="text-sm text-gray-500">{filtered.length} {t('documents.dokumentum')}{formatFileSize(totalSize)})</span>
           <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="form-button-primary">
             <Upload size={16} /> {uploading ? 'Feltöltés...' : 'Feltöltés'}
           </button>
@@ -179,8 +181,8 @@ export default function DocumentStoragePage() {
         onDrop={handleDrop}
       >
         <Upload size={32} className="mx-auto text-gray-400 mb-2" />
-        <p className="text-gray-500">Húzza ide a fájlokat vagy kattintson a feltöltés gombra</p>
-        <p className="text-xs text-gray-400 mt-1">PDF, JPG, PNG, XLSX, CSV (max. 10 MB)</p>
+        <p className="text-gray-500">{t('documents.huzzaIdeAFajlokatVagyKattintsonAFeltoltesGombra')}</p>
+        <p className="text-xs text-gray-400 mt-1">{t('documents.pdfJpgPngXlsxCsvMax10Mb')}</p>
       </div>
 
       {/* Filters */}
@@ -197,19 +199,19 @@ export default function DocumentStoragePage() {
       {loading ? <div>Betöltés...</div> : (
         <div className="form-panel">
           {filtered.length === 0 ? (
-            <div className="text-center text-gray-500 py-8">Nincs dokumentum</div>
+            <div className="text-center text-gray-500 py-8">{t('documents.nincsDokumentum')}</div>
           ) : (
             <table className="data-grid w-full">
               <thead>
                 <tr>
                   <th></th>
-                  <th>Fájlnév</th>
-                  <th>Típus</th>
-                  <th>Méret</th>
-                  <th>Feltöltve</th>
-                  <th>Feltöltő</th>
-                  <th>Kapcsolódó</th>
-                  <th>Műveletek</th>
+                  <th>{t('documents.fajlnev')}</th>
+                  <th>{t('common.type')}</th>
+                  <th>{t('documents.meret')}</th>
+                  <th>{t('documents.feltoltve')}</th>
+                  <th>{t('documents.feltolto')}</th>
+                  <th>{t('documents.kapcsolodo')}</th>
+                  <th>{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -246,7 +248,7 @@ export default function DocumentStoragePage() {
           <div className="bg-white rounded-lg p-4 max-w-4xl max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-2">
               <h3 className="font-semibold">{previewName}</h3>
-              <button onClick={() => { setPreviewUrl(null); setPreviewName('') }} className="form-button text-xs">Bezárás</button>
+              <button onClick={() => { setPreviewUrl(null); setPreviewName('') }} className="form-button text-xs">{t('common.close')}</button>
             </div>
             {previewName.toLowerCase().endsWith('.pdf') ? (
               <iframe src={previewUrl} className="w-full h-[70vh]" title="Dokumentum előnézet" />

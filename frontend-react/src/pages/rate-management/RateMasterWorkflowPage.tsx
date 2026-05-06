@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { CheckCircle2, Send, XCircle, RefreshCw, AlertTriangle, FileText, Users, Clock } from 'lucide-react'
 import { exchangeRateMasterApi, type ExchangeRateMaster, type MasterRateStatus, type ExchangeRateDistribution } from '../../services/api/exchangeRateMaster'
 import { logger } from '../../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 // =============================================================================
 // RateMasterWorkflowPage — Foertektari arfolyam-publikalas workflow
@@ -31,6 +32,7 @@ const STATUS_COLORS: Record<MasterRateStatus, string> = {
 }
 
 export default function RateMasterWorkflowPage() {
+    const { t } = useTranslation()
     const [activeTab, setActiveTab] = useState<TabKey>('DRAFT')
     const [rates, setRates] = useState<ExchangeRateMaster[]>([])
     const [loading, setLoading] = useState(true)
@@ -114,9 +116,9 @@ export default function RateMasterWorkflowPage() {
         <div className="max-w-7xl mx-auto space-y-2">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-lg font-bold text-slate-800">Árfolyam publikálás</h1>
+                    <h1 className="text-lg font-bold text-slate-800">{t('rate-management.arfolyamPublikalas')}</h1>
                     <p className="text-xs text-slate-600">
-                        Főértéktári workflow: vázlat → jóváhagyás → publikálás → pénztárak értesítése
+                        {t('rate-management.foertektariWorkflowVazlatJovahagyasPublikalasPenztarakErtesitese')}
                     </p>
                 </div>
                 <button
@@ -126,7 +128,7 @@ export default function RateMasterWorkflowPage() {
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
                 >
                     <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                    Frissítés
+                    {t('common.refresh')}
                 </button>
             </div>
 
@@ -134,7 +136,7 @@ export default function RateMasterWorkflowPage() {
                 <div className="bg-red-50 border-l-4 border-red-600 p-4 rounded flex items-start gap-3">
                     <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5" />
                     <div>
-                        <p className="text-red-800 font-medium">Hiba</p>
+                        <p className="text-red-800 font-medium">{t('common.error')}</p>
                         <p className="text-sm text-red-700">{err}</p>
                     </div>
                 </div>
@@ -164,7 +166,7 @@ export default function RateMasterWorkflowPage() {
             {!loading && rates.length === 0 && (
                 <div className="text-center text-slate-400 py-16">
                     <FileText className="w-12 h-12 mx-auto mb-3 opacity-40" />
-                    <p className="text-lg">Nincs {STATUS_LABELS[activeTab].toLowerCase()} árfolyam</p>
+                    <p className="text-lg">{t('rate-management.nincs')}{STATUS_LABELS[activeTab].toLowerCase()} {t('rate-management.arfolyam')}</p>
                     {activeTab === 'DRAFT' && <p className="text-sm mt-1">Új árfolyamot az Árfolyam készítés menüpontban készíthetsz</p>}
                 </div>
             )}
@@ -174,15 +176,15 @@ export default function RateMasterWorkflowPage() {
                     <table className="w-full text-sm">
                         <thead className="bg-slate-50">
                             <tr className="text-left text-xs text-slate-600 uppercase">
-                                <th className="px-4 py-3">Deviza</th>
-                                <th className="px-4 py-3">Vétel</th>
-                                <th className="px-4 py-3">Eladás</th>
+                                <th className="px-4 py-3">{t('common.deviza')}</th>
+                                <th className="px-4 py-3">{t('cashier.buy')}</th>
+                                <th className="px-4 py-3">{t('cashier.sell')}</th>
                                 <th className="px-4 py-3">MNB</th>
-                                <th className="px-4 py-3">Limit1 (V/E)</th>
-                                <th className="px-4 py-3">Limit2 (V/E)</th>
-                                <th className="px-4 py-3">Létrehozva</th>
-                                <th className="px-4 py-3">Státusz</th>
-                                <th className="px-4 py-3 text-right">Művelet</th>
+                                <th className="px-4 py-3">{t('rate-management.limit1VE')}</th>
+                                <th className="px-4 py-3">{t('rate-management.limit2VE')}</th>
+                                <th className="px-4 py-3">{t('common.createdAt')}</th>
+                                <th className="px-4 py-3">{t('common.status')}</th>
+                                <th className="px-4 py-3 text-right">{t('common.operation')}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -242,7 +244,7 @@ export default function RateMasterWorkflowPage() {
                                                     <button type="button" onClick={() => void handleRevoke(r.id)} disabled={busyId === r.id}
                                                         className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-700 rounded text-xs hover:bg-red-100 disabled:opacity-50">
                                                         <XCircle className="w-3.5 h-3.5" />
-                                                        Visszavon
+                                                        {t('rate-management.visszavon')}
                                                     </button>
                                                 </div>
                                             )}
@@ -253,7 +255,7 @@ export default function RateMasterWorkflowPage() {
                                         return (
                                         <tr key={r.id + '-dist'}>
                                             <td colSpan={9} className="bg-slate-50 px-4 py-3">
-                                                <div className="text-xs font-medium text-slate-700 mb-2">Elosztás státusz ({dists?.length ?? 0} pénztár):</div>
+                                                <div className="text-xs font-medium text-slate-700 mb-2">{t('rate-management.elosztasStatusz')}{dists?.length ?? 0} {t('foertektar.penztar')}</div>
                                                 {!dists && <div className="text-slate-500">Betöltés...</div>}
                                                 {dists && dists.length === 0 && <div className="text-slate-500">Nincs elosztás rekord</div>}
                                                 {dists && dists.length > 0 && (

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '@/services/api/index';
 import { safeArray } from '@/utils/safeArray';
+import { useTranslation } from 'react-i18next'
 
 interface SuspiciousReport {
   id: number;
@@ -48,6 +49,7 @@ const reportTypeLabels: Record<string, string> = {
 };
 
 export default function SuspiciousReportPage() {
+  const { t } = useTranslation()
   const [reports, setReports] = useState<SuspiciousReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('pending');
@@ -136,13 +138,13 @@ export default function SuspiciousReportPage() {
       <div className="flex justify-between items-center mb-3">
         <div>
           <h1 className="text-lg font-bold">Gyanús ügyletek (Pmt.)</h1>
-          <p className="text-gray-500">Pénzmosás elleni bejelentések kezelése</p>
+          <p className="text-gray-500">{t('suspicious.penzmosasElleniBejelentesekKezelese')}</p>
         </div>
         <button
           onClick={() => setShowCreateDialog(true)}
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
-          + Új bejelentés
+          {t('suspicious.ujBejelentes')}
         </button>
       </div>
 
@@ -180,19 +182,19 @@ export default function SuspiciousReportPage() {
           <div className="text-center py-8">Betöltés...</div>
         ) : filteredReports.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            Nincsenek bejelentések ebben a kategóriában
+            {t('suspicious.nincsenekBejelentesekEbbenAKategoriaban')}
           </div>
         ) : (
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="p-3 text-left">Szám</th>
-                <th className="p-3 text-left">Ügyfél</th>
-                <th className="p-3 text-left">Típus</th>
-                <th className="p-3 text-left">Összeg</th>
-                <th className="p-3 text-left">Határidő</th>
-                <th className="p-3 text-left">Státusz</th>
-                <th className="p-3 text-left">Műveletek</th>
+                <th className="p-3 text-left">{t('circulars.szam')}</th>
+                <th className="p-3 text-left">{t('common.customer')}</th>
+                <th className="p-3 text-left">{t('common.type')}</th>
+                <th className="p-3 text-left">{t('common.amount')}</th>
+                <th className="p-3 text-left">{t('suspicious.hatarido')}</th>
+                <th className="p-3 text-left">{t('common.status')}</th>
+                <th className="p-3 text-left">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -208,7 +210,7 @@ export default function SuspiciousReportPage() {
                       </div>
                     </td>
                     <td className="p-3">{reportTypeLabels[report.reportType] || report.reportType}</td>
-                    <td className="p-3">{report.detectedAmount?.toLocaleString()} Ft</td>
+                    <td className="p-3">{report.detectedAmount?.toLocaleString()} {t('components.ft')}</td>
                     <td className="p-3">
                       <div className={daysUntil <= 3 ? 'text-red-500 font-semibold' : ''}>
                         {new Date(report.submissionDeadline).toLocaleDateString('hu-HU')}
@@ -233,14 +235,14 @@ export default function SuspiciousReportPage() {
                           }}
                           className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
                         >
-                          Részletek
+                          {t('common.details')}
                         </button>
                         {report.status === 'DRAFT' && (
                           <button
                             onClick={() => handleSubmitForReview(report.id)}
                             className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
                           >
-                            Jóváhagyásra
+                            {t('suspicious.jovahagyasra')}
                           </button>
                         )}
                         {report.status === 'PENDING_REVIEW' && (
@@ -249,13 +251,13 @@ export default function SuspiciousReportPage() {
                               onClick={() => handleApprove(report.id)}
                               className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
                             >
-                              Jóváhagy
+                              {t('suspicious.jovahagy')}
                             </button>
                             <button
                               onClick={() => handleReject(report.id)}
                               className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
                             >
-                              Elutasít
+                              {t('suspicious.elutasit')}
                             </button>
                           </>
                         )}
@@ -264,7 +266,7 @@ export default function SuspiciousReportPage() {
                             onClick={() => handleSubmitToAuthority(report.id)}
                             className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
                           >
-                            NAV-nak küld
+                            {t('suspicious.navNakKuld')}
                           </button>
                         )}
                       </div>
@@ -280,7 +282,7 @@ export default function SuspiciousReportPage() {
       {showCreateDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-4 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">Új gyanús ügylet bejelentés</h2>
+            <h2 className="text-xl font-bold mb-4">{t('suspicious.ujGyanusUgyletBejelentes')}</h2>
             <CreateReportForm
               onSuccess={() => {
                 setShowCreateDialog(false);
@@ -295,7 +297,7 @@ export default function SuspiciousReportPage() {
       {showDetailDialog && selectedReport && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-4 max-w-3xl w-full max-h-[80vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">Bejelentés részletei - {selectedReport.reportNumber}</h2>
+            <h2 className="text-xl font-bold mb-4">{t('suspicious.bejelentesReszletei')}{selectedReport.reportNumber}</h2>
             <ReportDetail report={selectedReport} onClose={() => setShowDetailDialog(false)} />
           </div>
         </div>

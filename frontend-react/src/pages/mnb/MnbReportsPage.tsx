@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Download, Send, FileText, RefreshCw, AlertTriangle, CheckCircle2, Clock, XCircle, Plus } from 'lucide-react'
 import { mnbReportsApi, type MnbReport, type MnbReportStatus } from '../../services/api/mnbReports'
 import { logger } from '../../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 const STATUS_LABELS: Record<MnbReportStatus, string> = {
     DRAFT: 'Vázlat',
@@ -18,6 +19,7 @@ const STATUS_COLORS: Record<MnbReportStatus, string> = {
 }
 
 export default function MnbReportsPage() {
+    const { t } = useTranslation()
     const [reports, setReports] = useState<MnbReport[]>([])
     const [loading, setLoading] = useState(true)
     const [err, setErr] = useState<string | null>(null)
@@ -108,9 +110,9 @@ export default function MnbReportsPage() {
     return (
         <div className="max-w-7xl mx-auto space-y-2">
             <div>
-                <h1 className="text-lg font-bold text-slate-800">MNB jelentések</h1>
+                <h1 className="text-lg font-bold text-slate-800">{t('mnb.mnbJelentesek')}</h1>
                 <p className="text-xs text-slate-600">
-                    Havi pénzváltó forgalmi jelentés az MNB-nek. Generálás után ellenőrizd, majd kattints "Beküld"-re.
+                    {t('mnb.haviPenzvaltoForgalmiJelentesAzMnbNekGeneralasUtanEllenorizdMajdKattintsBekuldRe')}
                 </p>
             </div>
 
@@ -118,7 +120,7 @@ export default function MnbReportsPage() {
                 <div className="bg-red-50 border-l-4 border-red-600 p-4 rounded flex items-start gap-3">
                     <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5" />
                     <div>
-                        <p className="text-red-800 font-medium">Hiba</p>
+                        <p className="text-red-800 font-medium">{t('common.error')}</p>
                         <p className="text-sm text-red-700 whitespace-pre-wrap">{err}</p>
                     </div>
                 </div>
@@ -127,17 +129,17 @@ export default function MnbReportsPage() {
             {/* Generate new report */}
             <div className="bg-white border border-slate-200 rounded-lg p-4">
                 <h2 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-                    <Plus className="w-5 h-5" /> Új havi riport
+                    <Plus className="w-5 h-5" />{t('mnb.ujHaviRiport')}
                 </h2>
                 <div className="flex items-end gap-3">
                     <div>
-                        <label className="block text-xs text-slate-600 mb-1" htmlFor="year">Év</label>
+                        <label className="block text-xs text-slate-600 mb-1" htmlFor="year">{t('decade.ev')}</label>
                         <select id="year" value={genYear} onChange={(e) => setGenYear(Number(e.target.value))} className="border border-slate-300 rounded px-3 py-2">
                             {years.map((y) => <option key={y} value={y}>{y}</option>)}
                         </select>
                     </div>
                     <div>
-                        <label className="block text-xs text-slate-600 mb-1" htmlFor="month">Hónap</label>
+                        <label className="block text-xs text-slate-600 mb-1" htmlFor="month">{t('monthlyClose.month')}</label>
                         <select id="month" value={genMonth} onChange={(e) => setGenMonth(Number(e.target.value))} className="border border-slate-300 rounded px-3 py-2">
                             {months.map((m) => <option key={m} value={m}>{m.toString().padStart(2, '0')}</option>)}
                         </select>
@@ -150,7 +152,7 @@ export default function MnbReportsPage() {
                     <button type="button" onClick={() => void loadReports()} disabled={loading}
                         className="flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-700 rounded hover:bg-slate-200 disabled:opacity-50">
                         <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                        Frissítés
+                        {t('common.refresh')}
                     </button>
                 </div>
             </div>
@@ -159,7 +161,7 @@ export default function MnbReportsPage() {
             {reports.length === 0 && !loading && (
                 <div className="text-center text-slate-400 py-16">
                     <FileText className="w-12 h-12 mx-auto mb-3 opacity-40" />
-                    <p>Még nincsenek riportok. Generálj egyet fenti form segítségével.</p>
+                    <p>{t('mnb.megNincsenekRiportokGeneraljEgyetFentiFormSegitsegevel')}</p>
                 </div>
             )}
 
@@ -168,12 +170,12 @@ export default function MnbReportsPage() {
                     <table className="w-full text-sm">
                         <thead className="bg-slate-50">
                             <tr className="text-left text-xs text-slate-600 uppercase">
-                                <th className="px-4 py-3">Időszak</th>
-                                <th className="px-4 py-3">Státusz</th>
-                                <th className="px-4 py-3">MNB ref.</th>
-                                <th className="px-4 py-3">Létrehozva</th>
-                                <th className="px-4 py-3">Beküldve</th>
-                                <th className="px-4 py-3 text-right">Művelet</th>
+                                <th className="px-4 py-3">{t('common.period')}</th>
+                                <th className="px-4 py-3">{t('common.status')}</th>
+                                <th className="px-4 py-3">{t('mnb.mnbRef')}</th>
+                                <th className="px-4 py-3">{t('common.createdAt')}</th>
+                                <th className="px-4 py-3">{t('mnb.bekuldve')}</th>
+                                <th className="px-4 py-3 text-right">{t('common.operation')}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -185,7 +187,7 @@ export default function MnbReportsPage() {
                                             {statusIcon(r.status)} {STATUS_LABELS[r.status]}
                                         </span>
                                         {r.retryCount && r.retryCount > 0 && (
-                                            <span className="ml-2 text-xs text-slate-500">×{r.retryCount} retry</span>
+                                            <span className="ml-2 text-xs text-slate-500">×{r.retryCount} {t('mnb.retry')}</span>
                                         )}
                                     </td>
                                     <td className="px-4 py-3 font-mono text-xs text-slate-600">{r.mnbReferenceNumber || '—'}</td>

@@ -3,6 +3,7 @@ import { Camera, RefreshCw, Wifi, WifiOff } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
+import { useTranslation } from 'react-i18next'
 
 const isElectron = () => !!window.electronAPI
 
@@ -14,6 +15,7 @@ interface CameraStatus {
 }
 
 export default function CameraLivePage() {
+  const { t } = useTranslation()
   const [cameras, setCameras] = useState<CameraStatus[]>([])
   const [selectedCamera, setSelectedCamera] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -111,7 +113,7 @@ export default function CameraLivePage() {
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold flex items-center gap-2">
           <Camera className="h-6 w-6" />
-          Élő kamerakép
+          {t('camera.eloKamerakep')}
           {isElectron() && <span className="text-sm font-normal text-muted-foreground">(lokális)</span>}
         </h1>
         <button
@@ -119,18 +121,18 @@ export default function CameraLivePage() {
           onClick={() => void fetchCameraStatus()}
         >
           <RefreshCw className="h-4 w-4 mr-2" />
-          Frissítés
+          {t('common.refresh')}
         </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
         {/* Camera selector */}
         <div className="lg:col-span-1 space-y-3">
-          <h2 className="font-semibold text-sm text-muted-foreground uppercase">Kamerák</h2>
+          <h2 className="font-semibold text-sm text-muted-foreground uppercase">{t('camera.kamerak')}</h2>
           {loading ? (
             <p className="text-muted-foreground">Betöltés...</p>
           ) : cameras.length === 0 ? (
-            <p className="text-muted-foreground">Nincs csatlakoztatott kamera</p>
+            <p className="text-muted-foreground">{t('camera.nincsCsatlakoztatottKamera')}</p>
           ) : (
             cameras.map((cam) => (
               <div
@@ -165,7 +167,7 @@ export default function CameraLivePage() {
                 {selectedCamera ? (
                   <>
                     <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-                    ÉLŐ
+                    {t('camera.elo')}
                   </>
                 ) : (
                   'Válasszon kamerát'
@@ -199,7 +201,7 @@ export default function CameraLivePage() {
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-64 bg-muted rounded-lg">
-                  <p className="text-muted-foreground">Válasszon egy kamerát a listából</p>
+                  <p className="text-muted-foreground">{t('camera.valasszonEgyKameratAListabol')}</p>
                 </div>
               )}
             </div>

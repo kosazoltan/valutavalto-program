@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import ErrorBoundary from './ErrorBoundary'
+import { useTranslation } from 'react-i18next'
 
 const mocks = vi.hoisted(() => ({
   sendErrorReport: vi.fn(),
@@ -13,7 +14,8 @@ vi.mock('./ErrorReporter', () => ({
 // Error-t dobó komponens a teszteléshez (nem használt)
 
 function SafeComponent() {
-  return <div>Safe content</div>
+  const { t } = useTranslation()
+  return <div>{t('components.safeContent')}</div>
 }
 
 describe('ErrorBoundary', () => {

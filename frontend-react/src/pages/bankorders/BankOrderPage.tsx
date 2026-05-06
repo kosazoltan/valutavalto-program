@@ -25,34 +25,36 @@
 
 import { Building2, AlertCircle, Clock } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 export default function BankOrderPage() {
+  const { t } = useTranslation()
   return (
     <div className="space-y-4 p-4">
       <div className="flex items-center gap-2">
         <Building2 className="h-6 w-6 text-blue-600" />
-        <h1 className="text-xl font-bold text-gray-800">Banki rendelés workflow</h1>
+        <h1 className="text-xl font-bold text-gray-800">{t('bankorders.bankiRendelesWorkflow')}</h1>
         <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs rounded font-semibold">
-          v2.4.0 előzetes (skeleton)
+          {t('bankorders.v240ElozetesSkeleton')}
         </span>
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded p-4 text-sm text-blue-800 space-y-2">
         <div className="font-semibold flex items-center gap-2">
           <AlertCircle className="h-4 w-4" />
-          Ez egy előzetes skeleton oldal — a teljes implementáció a v2.4.0-ben érkezik.
+          {t('bankorders.ezEgyElozetesSkeletonOldalATeljesImplementacioAV240BenErkezik')}
         </div>
         <p>
-          Az E-B8 banki workflow 3 fő funkcionalitást fog tartalmazni:
+          {t('bankorders.azEB8BankiWorkflow3FoFunkcionalitastFogTartalmazni')}
         </p>
         <ul className="list-disc ml-6 space-y-1">
-          <li><strong>Banki rendelés (request → approval → execution)</strong> — értéktár valuta-rendelése a banktól, ügyvezetői jóváhagyással</li>
-          <li><strong>Western Union napi keret</strong> — USD napi limit ($10,000) tracking + napi automatikus reset</li>
-          <li><strong>Sürgősségi banki kivét</strong> — automatikus notification ha értéktári készlet alá esik a critical threshold-nak</li>
+          <li><strong>{t('bankorders.bankiRendelesRequestApprovalExecution')}</strong>{t('bankorders.ErtektarValutaRendeleseABanktolUgyvezetoiJovahagyassal')}</li>
+          <li><strong>{t('bankorders.westernUnionNapiKeret')}</strong>{t('bankorders.UsdNapiLimit10000TrackingNapiAutomatikusReset')}</li>
+          <li><strong>{t('bankorders.surgossegiBankiKivet')}</strong>{t('bankorders.AutomatikusNotificationHaErtektariKeszletAlaEsikACriticalThresholdNak')}</li>
         </ul>
         <p className="text-xs italic">
-          Backend implementáció: BankOrderController + `bank_order` entity + V168 Flyway migration.
-          Issue: <a href="https://github.com/kosazoltan/valutavalto-program/issues/279" target="_blank" rel="noopener noreferrer" className="underline">kosazoltan/valutavalto-program#279</a>
+          {t('bankorders.backendImplementacioBankordercontrollerbankOrderEntityV168FlywayMigration')}
+          {t('bankorders.issue')}<a href="https://github.com/kosazoltan/valutavalto-program/issues/279" target="_blank" rel="noopener noreferrer" className="underline">{t('bankorders.kosazoltanValutavaltoProgram279')}</a>
         </p>
       </div>
 
@@ -75,9 +77,9 @@ export default function BankOrderPage() {
       </div>
 
       <div className="bg-gray-50 border border-gray-200 rounded p-4 text-sm text-gray-700">
-        <div className="font-semibold mb-2">Visszatérés:</div>
+        <div className="font-semibold mb-2">{t('bankorders.visszateres')}</div>
         <Link to="/transfers" className="text-blue-600 underline hover:text-blue-800">
-          ← Átadás bank / másik értéktár (jelenlegi workflow)
+          {t('bankorders.AtadasBankMasikErtektarJelenlegiWorkflow')}
         </Link>
       </div>
     </div>

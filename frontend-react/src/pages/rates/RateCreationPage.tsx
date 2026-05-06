@@ -14,10 +14,12 @@ import { logger } from '../../utils/logger'
 import RateGrid from './components/RateGrid'
 import BranchPickerModal from './components/BranchPickerModal'
 import { fmtRate, parseNum, type EditableRate } from './types'
+import { useTranslation } from 'react-i18next'
 
 // ===================== Main Component =====================
 
 export default function RateCreationPage() {
+  const { t } = useTranslation()
   const canWriteRateCreation = useAuthStore((state) => state.isSupervisorOrAbove())
   const [overview, setOverview] = useState<RateOverviewDTO | null>(null)
   const [workgroups, setWorkgroups] = useState<WorkgroupDetailDTO[]>([])
@@ -385,7 +387,7 @@ export default function RateCreationPage() {
 
       {/* === HEADER BAR === */}
       <div className="flex items-center justify-between bg-white px-3 py-1.5 rounded shadow-sm border mb-1">
-        <h1 className="text-sm font-bold text-gray-800">Árfolyamkészítés</h1>
+        <h1 className="text-sm font-bold text-gray-800">{t('rates.arfolyamkeszites')}</h1>
         <div className="flex items-center gap-3 text-xs">
           {overview && (
             <span className="text-gray-400 flex items-center gap-1">
@@ -402,7 +404,7 @@ export default function RateCreationPage() {
             <Redo2 size={13} />
           </button>
           {modifiedCount > 0 && (
-            <span className="text-orange-600 font-medium">{modifiedCount} mod.</span>
+            <span className="text-orange-600 font-medium">{modifiedCount} {t('rates.mod')}</span>
           )}
           <button onClick={() => void loadData()} disabled={loading}
             className="px-2 py-0.5 border rounded text-xs hover:bg-gray-50 flex items-center gap-1">
@@ -447,7 +449,7 @@ export default function RateCreationPage() {
             <div className="flex items-center justify-between mb-1">
               <span className="text-[10px] text-gray-500 uppercase font-bold flex items-center gap-1">
                 <Building2 size={10} />
-                Irodák ({selectedWg?.branches.length ?? 0})
+                {t('rates.irodak')}{selectedWg?.branches.length ?? 0})
               </span>
               <button onClick={() => void openBranchPicker()}
                 disabled={!canWriteRateCreation}
@@ -470,14 +472,14 @@ export default function RateCreationPage() {
                   </div>
                 ))
               ) : (
-                <div className="text-gray-400 italic text-center text-[10px] py-2">Nincs iroda hozzárendelve</div>
+                <div className="text-gray-400 italic text-center text-[10px] py-2">{t('rates.nincsIrodaHozzarendelve')}</div>
               )}
             </div>
           </div>
 
           {/* Limit boundaries - editable */}
           <div className="bg-white rounded border shadow-sm px-2 py-1.5 flex-shrink-0">
-            <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">Határok (Ft)</div>
+            <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">{t('rates.hatarokFt')}</div>
             <div className="space-y-1">
               {([
                 { key: 'l1' as const, label: 'Alsó' },
@@ -515,7 +517,7 @@ export default function RateCreationPage() {
             ) : (
               <Send size={16} />
             )}
-            <span className="text-xs">ÁRFOLYAMOK SZÉTKÜLDÉSE</span>
+            <span className="text-xs">{t('rates.arfolyamokSzetkuldese')}</span>
           </button>
         </div>
       </div>

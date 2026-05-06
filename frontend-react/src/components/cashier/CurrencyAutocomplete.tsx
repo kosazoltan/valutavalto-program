@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import type { ExchangeRate } from '../../services/api/exchange-rates'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Prediktív devizaválasztó — szabad szöveges bevitel autocomplete-tel.
@@ -36,6 +37,7 @@ export function CurrencyAutocomplete({
   disabled = false,
   ...rest
 }: Props) {
+  const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const [highlightIdx, setHighlightIdx] = useState(0)
   const [inputText, setInputText] = useState(value)
@@ -230,7 +232,7 @@ export function CurrencyAutocomplete({
       {/* Empty state */}
       {isOpen && suggestions.length === 0 && inputText.length > 0 && (
         <div className="absolute z-50 mt-1 w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 text-sm text-gray-500">
-          Nincs találat: „{inputText}"
+          {t('components.nincsTalalat')}{inputText}"
         </div>
       )}
     </div>

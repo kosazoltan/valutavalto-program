@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '@/services/api/index';
 import { safeArray } from '@/utils/safeArray';
+import { useTranslation } from 'react-i18next'
 
 interface Reservation {
   id: number;
@@ -37,6 +38,7 @@ const statusLabels: Record<string, string> = {
 };
 
 export default function ReservationPage() {
+  const { t } = useTranslation()
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('active');
@@ -105,12 +107,12 @@ export default function ReservationPage() {
   return (
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-3">
-        <h1 className="text-lg font-bold">Foglalók kezelése</h1>
+        <h1 className="text-lg font-bold">{t('reservations.foglalokKezelese')}</h1>
         <button
           onClick={() => setShowCreateDialog(true)}
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
-          + Új foglaló
+          {t('reservations.ujFoglalo')}
         </button>
       </div>
 
@@ -147,21 +149,21 @@ export default function ReservationPage() {
           <div className="text-center py-8">Betöltés...</div>
         ) : filteredReservations.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            Nincsenek foglalók ebben a kategóriában
+            {t('reservations.nincsenekFoglalokEbbenAKategoriaban')}
           </div>
         ) : (
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="p-3 text-left">Foglaló szám</th>
-                <th className="p-3 text-left">Ügyfél</th>
-                <th className="p-3 text-left">Típus</th>
-                <th className="p-3 text-left">Összeg</th>
-                <th className="p-3 text-left">Árfolyam</th>
-                <th className="p-3 text-left">Letét</th>
-                <th className="p-3 text-left">Lejárat</th>
-                <th className="p-3 text-left">Státusz</th>
-                <th className="p-3 text-left">Műveletek</th>
+                <th className="p-3 text-left">{t('reservations.foglaloSzam')}</th>
+                <th className="p-3 text-left">{t('common.customer')}</th>
+                <th className="p-3 text-left">{t('common.type')}</th>
+                <th className="p-3 text-left">{t('common.amount')}</th>
+                <th className="p-3 text-left">{t('cashier.exchangeRate')}</th>
+                <th className="p-3 text-left">{t('reservations.letet')}</th>
+                <th className="p-3 text-left">{t('components.lejarat')}</th>
+                <th className="p-3 text-left">{t('common.status')}</th>
+                <th className="p-3 text-left">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -175,7 +177,7 @@ export default function ReservationPage() {
                     {reservation.targetAmount} {reservation.targetCurrencyCode}
                   </td>
                   <td className="p-3">{reservation.guaranteedRate?.toFixed(4)}</td>
-                  <td className="p-3">{reservation.depositAmount?.toLocaleString()} Ft</td>
+                  <td className="p-3">{reservation.depositAmount?.toLocaleString()} {t('components.ft')}</td>
                   <td className="p-3">
                     {new Date(reservation.expiryDate).toLocaleString('hu-HU')}
                   </td>
@@ -192,13 +194,13 @@ export default function ReservationPage() {
                             onClick={() => handleConfirm(reservation.id)}
                             className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
                           >
-                            Megerősít
+                            {t('reservations.megerosit')}
                           </button>
                           <button
                             onClick={() => handleCancel(reservation.id)}
                             className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
                           >
-                            Lemond
+                            {t('reservations.lemond')}
                           </button>
                         </>
                       )}
@@ -207,7 +209,7 @@ export default function ReservationPage() {
                           onClick={() => handleFulfill(reservation.id)}
                           className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
                         >
-                          Teljesít
+                          {t('reservations.teljesit')}
                         </button>
                       )}
                     </div>
@@ -222,7 +224,7 @@ export default function ReservationPage() {
       {showCreateDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-4 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">Új foglaló létrehozása</h2>
+            <h2 className="text-xl font-bold mb-4">{t('reservations.ujFoglaloLetrehozasa')}</h2>
             <CreateReservationForm
               onSuccess={() => {
                 setShowCreateDialog(false);

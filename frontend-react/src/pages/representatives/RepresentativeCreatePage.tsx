@@ -4,8 +4,10 @@ import { ArrowLeft, Save, AlertCircle } from 'lucide-react'
 import { authorizedRepresentativeApi, RepresentativeRegistrationRequest } from '../../services/api/transactions'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 export default function RepresentativeCreatePage() {
+  const { t } = useTranslation()
   const { customerId } = useParams<{ customerId: string }>()
   const navigate = useNavigate()
   const [saving, setSaving] = useState(false)
@@ -56,7 +58,7 @@ export default function RepresentativeCreatePage() {
   }
 
   if (!customerId) {
-    return <div className="form-panel text-center py-8 text-gray-500">Ügyfél ID hiányzik</div>
+    return <div className="form-panel text-center py-8 text-gray-500">{t('representatives.ugyfelIdHianyzik')}</div>
   }
 
   return (
@@ -65,7 +67,7 @@ export default function RepresentativeCreatePage() {
         <Link to={`/customers/${customerId}/representatives`} className="toolbar-button">
           <ArrowLeft size={18} />
         </Link>
-        <h1 className="text-xl font-bold text-gray-800">Új meghatalmazott</h1>
+        <h1 className="text-xl font-bold text-gray-800">{t('representatives.ujMeghatalmazott')}</h1>
       </div>
 
       {error && (
@@ -80,71 +82,71 @@ export default function RepresentativeCreatePage() {
       <form onSubmit={(e) => void handleSubmit(e)} className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <div className="form-panel">
-            <h2 className="section-title">Személyes adatok</h2>
+            <h2 className="section-title">{t('representatives.szemelyesAdatok')}</h2>
             <div className="space-y-3">
               <div>
-                <label className="form-label required">Teljes név</label>
+                <label className="form-label required">{t('representatives.teljesNev')}</label>
                 <input type="text" value={form.name} onChange={(e) => update('name', e.target.value)} className="form-input" required />
               </div>
               <div>
-                <label className="form-label">Cím</label>
+                <label className="form-label">{t('common.address')}</label>
                 <input type="text" value={form.address} onChange={(e) => update('address', e.target.value)} className="form-input" />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="form-label">Telefon</label>
+                  <label className="form-label">{t('common.phone')}</label>
                   <input type="tel" value={form.phone} onChange={(e) => update('phone', e.target.value)} className="form-input font-mono" />
                 </div>
                 <div>
-                  <label className="form-label">E-mail</label>
+                  <label className="form-label">{t('customers.eMail')}</label>
                   <input type="email" value={form.email} onChange={(e) => update('email', e.target.value)} className="form-input" />
                 </div>
               </div>
               <div>
-                <label className="form-label">Kapcsolat típusa</label>
+                <label className="form-label">{t('pos.kapcsolatTipusa')}</label>
                 <select value={form.relationshipDid} onChange={(e) => update('relationshipDid', e.target.value)} className="form-input">
                   <option value="">—</option>
-                  <option value="FAMILY">Családtag</option>
-                  <option value="COLLEAGUE">Munkatárs</option>
-                  <option value="FRIEND">Barát</option>
-                  <option value="PROFESSIONAL">Szakmai</option>
-                  <option value="BUSINESS">Üzleti</option>
-                  <option value="OTHER">Egyéb</option>
+                  <option value="FAMILY">{t('pep.csaladtag')}</option>
+                  <option value="COLLEAGUE">{t('representatives.munkatars')}</option>
+                  <option value="FRIEND">{t('representatives.barat')}</option>
+                  <option value="PROFESSIONAL">{t('representatives.szakmai')}</option>
+                  <option value="BUSINESS">{t('representatives.uzleti')}</option>
+                  <option value="OTHER">{t('common.other')}</option>
                 </select>
               </div>
             </div>
           </div>
 
           <div className="form-panel">
-            <h2 className="section-title">Okmány adatok</h2>
+            <h2 className="section-title">{t('customers.okmanyAdatok')}</h2>
             <div className="space-y-3">
               <div>
-                <label className="form-label required">Okmány típusa</label>
+                <label className="form-label required">{t('customers.okmanyTipusa')}</label>
                 <select value={form.documentType} onChange={(e) => update('documentType', e.target.value)} className="form-input" required>
-                  <option>Személyi igazolvány</option>
-                  <option>Útlevél</option>
-                  <option>Vezetői engedély</option>
-                  <option>Tartózkodási engedély</option>
+                  <option>{t('customers.szemelyiIgazolvany')}</option>
+                  <option>{t('customers.utlevel')}</option>
+                  <option>{t('customers.vezetoiEngedely')}</option>
+                  <option>{t('customers.tartozkodasiEngedely')}</option>
                 </select>
               </div>
               <div>
-                <label className="form-label required">Okmányszám</label>
+                <label className="form-label required">{t('common.documentNumber')}</label>
                 <input type="text" value={form.documentNumber} onChange={(e) => update('documentNumber', e.target.value)} className="form-input font-mono" required />
               </div>
               <div>
-                <label className="form-label">Okmány lejárat</label>
+                <label className="form-label">{t('representatives.okmanyLejarat')}</label>
                 <input type="date" value={form.documentValidTo} onChange={(e) => update('documentValidTo', e.target.value)} className="form-input" />
               </div>
             </div>
 
-            <h2 className="section-title mt-4">Érvényesség</h2>
+            <h2 className="section-title mt-4">{t('commissions.ervenyesseg')}</h2>
             <div className="space-y-3">
               <div>
-                <label className="form-label required">Meghatalmazás kezdete</label>
+                <label className="form-label required">{t('representatives.meghatalmazasKezdete')}</label>
                 <input type="date" value={form.authorizationStart} onChange={(e) => update('authorizationStart', e.target.value)} className="form-input" required />
               </div>
               <div>
-                <label className="form-label">Meghatalmazás vége</label>
+                <label className="form-label">{t('representatives.meghatalmazasVege')}</label>
                 <input type="date" value={form.authorizationEnd} onChange={(e) => update('authorizationEnd', e.target.value)} className="form-input" />
               </div>
             </div>
@@ -152,7 +154,7 @@ export default function RepresentativeCreatePage() {
         </div>
 
         <div className="form-panel flex justify-end gap-2">
-          <Link to={`/customers/${customerId}/representatives`} className="form-button">Mégse</Link>
+          <Link to={`/customers/${customerId}/representatives`} className="form-button">{t('common.cancel')}</Link>
           <button type="submit" disabled={saving} className="form-button-primary flex items-center gap-1">
             <Save size={16} />
             {saving ? 'Mentés...' : 'Mentés'}

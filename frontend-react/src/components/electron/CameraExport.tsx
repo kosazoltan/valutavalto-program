@@ -7,8 +7,10 @@
 
 import { useState } from 'react';
 import { isElectron } from '@/utils/electron';
+import { useTranslation } from 'react-i18next'
 
 export default function CameraExport() {
+  const { t } = useTranslation()
   const [dateFrom, setDateFrom] = useState(() => new Date().toISOString().slice(0, 10));
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10));
   const [message, setMessage] = useState('');
@@ -35,10 +37,10 @@ export default function CameraExport() {
 
   return (
     <div className="space-y-3 rounded-xl border bg-white p-4 shadow-sm">
-      <h3 className="text-sm font-semibold text-gray-700">Kamera export USB-re</h3>
+      <h3 className="text-sm font-semibold text-gray-700">{t('components.kameraExportUsbRe')}</h3>
       <div className="flex flex-wrap gap-3">
         <label className="text-sm text-gray-600">
-          Dátumtól
+          {t('components.datumtol')}
           <input
             type="date"
             value={dateFrom}
@@ -47,7 +49,7 @@ export default function CameraExport() {
           />
         </label>
         <label className="text-sm text-gray-600">
-          Dátumig
+          {t('components.datumig')}
           <input
             type="date"
             value={dateTo}
@@ -60,7 +62,7 @@ export default function CameraExport() {
             onClick={handleExport}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
           >
-            Exportálás USB-re
+            {t('components.exportalasUsbRe')}
           </button>
         </div>
       </div>

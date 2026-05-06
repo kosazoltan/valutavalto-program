@@ -3,6 +3,7 @@ import { Download, Shield, CheckCircle, XCircle, Clock, Eye, AlertTriangle, Shie
 import { cameraExportApi, CameraExportRequest, ChainOfCustodyRecord, branchApi, BranchInfo } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
+import { useTranslation } from 'react-i18next'
 
 const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
   REQUESTED: { label: 'Jóváhagyásra vár', color: 'bg-yellow-100 text-yellow-700', icon: Clock },
@@ -17,6 +18,7 @@ function fmtDt(s?: string) { return s ? new Date(s).toLocaleString('hu-HU') : '�
 function fmtSize(b?: number) { return b != null ? (b / 1024 / 1024).toFixed(1) + ' MB' : '—' }
 
 export default function CameraExportPage() {
+  const { t } = useTranslation()
   const [requests, setRequests] = useState<CameraExportRequest[]>([])
   const [pending, setPending] = useState<CameraExportRequest[]>([])
   const [selected, setSelected] = useState<CameraExportRequest | null>(null)
@@ -116,10 +118,10 @@ export default function CameraExportPage() {
     <div className="space-y-3">
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <Shield /> Kamera export & Chain of Custody
+          <Shield />{t('camera.kameraExportChainOfCustody')}
         </h1>
         <button onClick={() => setShowNewForm(!showNewForm)} className="btn-primary text-sm flex items-center gap-1">
-          <Download size={14} /> Új export kérelem
+          <Download size={14} />{t('camera.ujExportKerelem')}
         </button>
       </div>
 
@@ -128,41 +130,41 @@ export default function CameraExportPage() {
       {/* New request form */}
       {showNewForm && (
         <div className="p-3 border rounded bg-gray-50 space-y-2">
-          <h3 className="font-medium text-sm">Új export kérelem</h3>
+          <h3 className="font-medium text-sm">{t('camera.ujExportKerelem')}</h3>
           <div className="grid grid-cols-3 gap-2">
             <div>
-              <label className="text-xs text-gray-500">Iroda *</label>
+              <label className="text-xs text-gray-500">{t('camera.iroda')}</label>
               <select value={form.branchId} onChange={e => { setForm({ ...form, branchId: e.target.value }); loadByBranch(e.target.value) }} className="input-field text-sm w-full">
                 <option value="">Válasszon...</option>
                 {safeArray<BranchInfo>(branches).map(b => <option key={b.id} value={b.id}>{b.code} — {b.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs text-gray-500">Kamera ID</label>
+              <label className="text-xs text-gray-500">{t('camera.kameraId')}</label>
               <input value={form.cameraId} onChange={e => setForm({ ...form, cameraId: e.target.value })} className="input-field text-sm w-full" placeholder="pl. CAM-01" />
             </div>
             <div>
-              <label className="text-xs text-gray-500">Bizonylatszám</label>
+              <label className="text-xs text-gray-500">{t('cashier.receiptNumber')}</label>
               <input value={form.referenceNumber} onChange={e => setForm({ ...form, referenceNumber: e.target.value })} className="input-field text-sm w-full" />
             </div>
           </div>
           <div className="grid grid-cols-3 gap-2">
             <div>
-              <label className="text-xs text-gray-500">Időszak tól *</label>
+              <label className="text-xs text-gray-500">{t('camera.idoszakTol')}</label>
               <input type="datetime-local" value={form.from} onChange={e => setForm({ ...form, from: e.target.value })} className="input-field text-sm w-full" />
             </div>
             <div>
-              <label className="text-xs text-gray-500">Időszak ig *</label>
+              <label className="text-xs text-gray-500">{t('camera.idoszakIg')}</label>
               <input type="datetime-local" value={form.to} onChange={e => setForm({ ...form, to: e.target.value })} className="input-field text-sm w-full" />
             </div>
             <div>
-              <label className="text-xs text-gray-500">Indoklás *</label>
+              <label className="text-xs text-gray-500">{t('camera.indoklas')}</label>
               <input value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} className="input-field text-sm w-full" placeholder="pl. Rendőrségi megkeresés" />
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={handleCreate} className="btn-primary text-xs">Kérelem létrehozása</button>
-            <button onClick={() => setShowNewForm(false)} className="btn-secondary text-xs">Mégsem</button>
+            <button onClick={handleCreate} className="btn-primary text-xs">{t('camera.kerelemLetrehozasa')}</button>
+            <button onClick={() => setShowNewForm(false)} className="btn-secondary text-xs">{t('common.cancel')}</button>
           </div>
         </div>
       )}
@@ -170,17 +172,17 @@ export default function CameraExportPage() {
       {/* Pending approvals */}
       {pending.length > 0 && (
         <div className="p-3 border border-yellow-300 bg-yellow-50 rounded space-y-2">
-          <h3 className="font-medium text-sm flex items-center gap-1"><Clock size={14} /> Jóváhagyásra váró kérelmek ({pending.length})</h3>
+          <h3 className="font-medium text-sm flex items-center gap-1"><Clock size={14} />{t('camera.jovahagyasraVaroKerelmek')}{pending.length})</h3>
           {pending.map(r => (
             <div key={r.id} className="flex justify-between items-center p-2 bg-white rounded border text-sm">
               <div>
                 <span className="font-medium">{fmtDt(r.periodFrom)} — {fmtDt(r.periodTo)}</span>
-                <span className="ml-2 text-gray-500 text-xs">Kérte: {r.requestedBy}</span>
-                <span className="ml-2 text-gray-500 text-xs">Indok: {r.reason}</span>
+                <span className="ml-2 text-gray-500 text-xs">{t('camera.kerte')}{r.requestedBy}</span>
+                <span className="ml-2 text-gray-500 text-xs">{t('camera.indok')}{r.reason}</span>
               </div>
               <div className="flex gap-1">
-                <button onClick={() => handleApprove(r.id)} className="btn-primary text-xs px-2 py-1">Jóváhagyás</button>
-                <button onClick={() => handleReject(r.id)} className="btn-secondary text-xs px-2 py-1">Elutasítás</button>
+                <button onClick={() => handleApprove(r.id)} className="btn-primary text-xs px-2 py-1">{t('common.approve')}</button>
+                <button onClick={() => handleReject(r.id)} className="btn-secondary text-xs px-2 py-1">{t('common.reject')}</button>
               </div>
             </div>
           ))}
@@ -204,7 +206,7 @@ export default function CameraExportPage() {
                 <span className="text-xs text-gray-500">{fmtDt(r.createdAt)}</span>
               </div>
               <div className="text-xs text-gray-500 mt-1">
-                Kérte: {r.requestedBy} · Indok: {r.reason}
+                {t('camera.kerte')}{r.requestedBy} · Indok: {r.reason}
                 {r.referenceNumber && <> · Ref: {r.referenceNumber}</>}
               </div>
             </div>
@@ -216,12 +218,12 @@ export default function CameraExportPage() {
           {selected ? (
             <>
               <div className="p-3 border rounded space-y-2">
-                <h3 className="font-medium text-sm flex items-center gap-1"><FileText size={14} /> Kérelem részletek</h3>
+                <h3 className="font-medium text-sm flex items-center gap-1"><FileText size={14} />{t('camera.kerelemReszletek')}</h3>
                 <div className="text-xs space-y-1">
                   <div><StatusBadge status={selected.status} /></div>
-                  <div>Időszak: {fmtDt(selected.periodFrom)} — {fmtDt(selected.periodTo)}</div>
-                  <div>Kérte: {selected.requestedBy}</div>
-                  <div>Indok: {selected.reason}</div>
+                  <div>{t('camera.idoszak')}{fmtDt(selected.periodFrom)} — {fmtDt(selected.periodTo)}</div>
+                  <div>{t('camera.kerte')}{selected.requestedBy}</div>
+                  <div>{t('camera.indok')}{selected.reason}</div>
                   {selected.approvedBy && <div>Jóváhagyta: {selected.approvedBy} ({fmtDt(selected.approvedAt)})</div>}
                   {selected.rejectionReason && <div className="text-red-600">Elutasítás: {selected.rejectionReason}</div>}
                   {selected.exportPath && <div>Export: {selected.exportPath}</div>}
@@ -233,11 +235,11 @@ export default function CameraExportPage() {
                 <div className="flex gap-2 pt-2 border-t">
                   {selected.status === 'APPROVED' && (
                     <button onClick={() => handleExecute(selected.id)} className="btn-primary text-xs flex items-center gap-1">
-                      <Download size={12} /> Export indítása
+                      <Download size={12} />{t('camera.exportInditasa')}
                     </button>
                   )}
                   <button onClick={handleVerifyChain} className="btn-secondary text-xs flex items-center gap-1">
-                    <ShieldCheck size={12} /> Hash-chain ellenőrzés
+                    <ShieldCheck size={12} />{t('camera.hashChainEllenorzes')}
                   </button>
                 </div>
 
@@ -252,9 +254,9 @@ export default function CameraExportPage() {
 
               {/* Chain of Custody */}
               <div className="p-3 border rounded space-y-2">
-                <h3 className="font-medium text-sm flex items-center gap-1"><Eye size={14} /> Chain of Custody</h3>
+                <h3 className="font-medium text-sm flex items-center gap-1"><Eye size={14} />{t('camera.chainOfCustody')}</h3>
                 {custody.length === 0 ? (
-                  <div className="text-xs text-gray-400">Nincs bejegyzés</div>
+                  <div className="text-xs text-gray-400">{t('camera.nincsBejegyzes')}</div>
                 ) : (
                   <div className="space-y-1 max-h-60 overflow-y-auto">
                     {custody.map(c => (
@@ -271,7 +273,7 @@ export default function CameraExportPage() {
               </div>
             </>
           ) : (
-            <div className="text-gray-400 text-sm text-center py-8">Válasszon egy kérelmet</div>
+            <div className="text-gray-400 text-sm text-center py-8">{t('camera.valasszonEgyKerelmet')}</div>
           )}
         </div>
       </div>

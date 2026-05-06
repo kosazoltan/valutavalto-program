@@ -3,6 +3,7 @@ import { Shield, Search, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { auditLogApi } from '../../services/api/index'
 import type { AuditLog } from '../../services/api/index'
 import { logger } from '../../utils/logger';
+import { useTranslation } from 'react-i18next'
 
 /**
  * AuditLogPage — érzékeny műveletek audit naplója.
@@ -32,6 +33,7 @@ const ACTION_TYPES = [
 ]
 
 export default function AuditLogPage() {
+  const { t } = useTranslation()
   const [logs, setLogs] = useState<AuditLog[]>([])
   const [loading, setLoading] = useState(true)
   const [fromDate, setFromDate] = useState('')
@@ -105,18 +107,18 @@ export default function AuditLogPage() {
     const oldObj = parseJson(oldVal)
     const newObj = parseJson(newVal)
 
-    if (!oldObj && !newObj) return <p className="text-gray-500 text-sm">Nincs részletes adat</p>
+    if (!oldObj && !newObj) return <p className="text-gray-500 text-sm">{t('audit.nincsReszletesAdat')}</p>
 
     return (
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <h4 className="text-sm font-semibold text-red-600 mb-2">Régi érték</h4>
+          <h4 className="text-sm font-semibold text-red-600 mb-2">{t('audit.regiErtek')}</h4>
           <pre className="bg-red-50 p-3 rounded text-xs overflow-auto max-h-60">
             {typeof oldObj === 'object' ? JSON.stringify(oldObj, null, 2) : String(oldObj ?? '—')}
           </pre>
         </div>
         <div>
-          <h4 className="text-sm font-semibold text-green-600 mb-2">Új érték</h4>
+          <h4 className="text-sm font-semibold text-green-600 mb-2">{t('audit.ujErtek')}</h4>
           <pre className="bg-green-50 p-3 rounded text-xs overflow-auto max-h-60">
             {typeof newObj === 'object' ? JSON.stringify(newObj, null, 2) : String(newObj ?? '—')}
           </pre>
@@ -131,10 +133,10 @@ export default function AuditLogPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Shield className="text-primary-600" />
-          Audit Log — Érzékeny Műveletek
+          {t('audit.auditLogErzekenyMuveletek')}
         </h1>
         <span className="text-sm text-gray-500">
-          Összesen: {totalElements} bejegyzés
+          {t('audit.osszesen')}{totalElements} bejegyzés
         </span>
       </div>
 
@@ -142,7 +144,7 @@ export default function AuditLogPage() {
       <div className="form-panel space-y-4">
         <div className="grid grid-cols-5 gap-4">
           <div>
-            <label className="form-label">Kezdő dátum</label>
+            <label className="form-label">{t('common.startDate')}</label>
             <input
               type="date"
               className="form-input"
@@ -151,7 +153,7 @@ export default function AuditLogPage() {
             />
           </div>
           <div>
-            <label className="form-label">Vég dátum</label>
+            <label className="form-label">{t('common.endDate')}</label>
             <input
               type="date"
               className="form-input"
@@ -160,7 +162,7 @@ export default function AuditLogPage() {
             />
           </div>
           <div>
-            <label className="form-label">Akció típus</label>
+            <label className="form-label">{t('audit.akcioTipus')}</label>
             <select
               className="form-input"
               value={actionFilter}
@@ -172,7 +174,7 @@ export default function AuditLogPage() {
             </select>
           </div>
           <div>
-            <label className="form-label">Pénztáros ID</label>
+            <label className="form-label">{t('audit.penztarosId')}</label>
             <input
               type="text"
               className="form-input"
@@ -182,7 +184,7 @@ export default function AuditLogPage() {
             />
           </div>
           <div>
-            <label className="form-label">Iroda ID</label>
+            <label className="form-label">{t('audit.irodaId')}</label>
             <input
               type="text"
               className="form-input"
@@ -209,20 +211,20 @@ export default function AuditLogPage() {
         <table className="data-grid w-full">
           <thead>
             <tr>
-              <th>Időpont</th>
-              <th>Akció</th>
-              <th>Entitás</th>
-              <th>Pénztáros</th>
-              <th>Iroda</th>
-              <th>IP cím</th>
-              <th>Részletek</th>
+              <th>{t('audit.idopont')}</th>
+              <th>{t('audit.akcio')}</th>
+              <th>{t('archiving.entitas')}</th>
+              <th>{t('components.penztaros2')}</th>
+              <th>{t('common.office')}</th>
+              <th>{t('common.ipAddress')}</th>
+              <th>{t('common.details')}</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr><td colSpan={7} className="text-center py-8">Betöltés...</td></tr>
             ) : filteredLogs.length === 0 ? (
-              <tr><td colSpan={7} className="text-center text-gray-500 py-8">Nincs találat</td></tr>
+              <tr><td colSpan={7} className="text-center text-gray-500 py-8">{t('common.noResult')}</td></tr>
             ) : (
               filteredLogs.map((log) => (
                 <tr key={log.id} className="hover:bg-gray-50 cursor-pointer">
@@ -244,7 +246,7 @@ export default function AuditLogPage() {
                       onClick={() => setSelectedLog(log)}
                       className="text-primary-600 hover:text-primary-800 text-sm font-medium"
                     >
-                      Részletek
+                      {t('common.details')}
                     </button>
                   </td>
                 </tr>
@@ -260,17 +262,17 @@ export default function AuditLogPage() {
             disabled={page === 0}
             className="form-button flex items-center gap-1"
           >
-            <ChevronLeft size={16} /> Előző
+            <ChevronLeft size={16} />{t('audit.elozo')}
           </button>
           <span className="text-sm text-gray-600">
-            Oldal {page + 1} / {Math.max(1, Math.ceil(totalElements / 50))}
+            {t('audit.oldal')}{page + 1} / {Math.max(1, Math.ceil(totalElements / 50))}
           </span>
           <button
             onClick={() => setPage(p => p + 1)}
             disabled={(page + 1) * 50 >= totalElements}
             className="form-button flex items-center gap-1"
           >
-            Következő <ChevronRight size={16} />
+            {t('audit.kovetkezo')}<ChevronRight size={16} />
           </button>
         </div>
       </div>
@@ -281,7 +283,7 @@ export default function AuditLogPage() {
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center p-4 border-b">
               <h3 className="text-lg font-bold text-gray-800">
-                Audit Log Részletek
+                {t('audit.auditLogReszletek')}
               </h3>
               <button onClick={() => setSelectedLog(null)} className="text-gray-400 hover:text-gray-600">
                 <X size={20} />
@@ -290,38 +292,38 @@ export default function AuditLogPage() {
             <div className="p-4 space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-gray-500">Akció:</span>
+                  <span className="text-gray-500">{t('audit.akcio2')}</span>
                   <span className={`ml-2 px-2 py-1 rounded text-xs font-medium ${getActionColor(selectedLog.action)}`}>
                     {selectedLog.action}
                   </span>
                 </div>
                 <div>
-                  <span className="text-gray-500">Időpont:</span>
+                  <span className="text-gray-500">{t('audit.idopont2')}</span>
                   <span className="ml-2">{new Date(selectedLog.createdAt).toLocaleString('hu-HU')}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500">Entitás típus:</span>
+                  <span className="text-gray-500">{t('audit.entitasTipus')}</span>
                   <span className="ml-2 font-medium">{selectedLog.entityType}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500">Entitás ID:</span>
+                  <span className="text-gray-500">{t('audit.entitasId')}</span>
                   <span className="ml-2 font-mono text-xs">{selectedLog.entityId}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500">Pénztáros:</span>
+                  <span className="text-gray-500">{t('components.penztaros')}</span>
                   <span className="ml-2">{selectedLog.userName || '—'}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500">Iroda:</span>
+                  <span className="text-gray-500">{t('audit.iroda')}</span>
                   <span className="ml-2">{selectedLog.branchName || '—'}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500">IP cím:</span>
+                  <span className="text-gray-500">{t('audit.ipCim')}</span>
                   <span className="ml-2">{selectedLog.ipAddress || '—'}</span>
                 </div>
                 {selectedLog.reason && (
                   <div className="col-span-2">
-                    <span className="text-gray-500">Indoklás:</span>
+                    <span className="text-gray-500">{t('audit.indoklas')}</span>
                     <span className="ml-2 italic">{selectedLog.reason}</span>
                   </div>
                 )}
@@ -329,7 +331,7 @@ export default function AuditLogPage() {
 
               {/* Régi ↔ Új érték diff */}
               <div className="border-t pt-4">
-                <h4 className="text-sm font-semibold text-gray-700 mb-3">Változások</h4>
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">{t('audit.valtozasok')}</h4>
                 {selectedLog.changes ? (
                   <pre className="bg-gray-50 p-3 rounded text-xs overflow-auto max-h-40">
                     {selectedLog.changes}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '@/services/api/index';
 import { logger } from '../../utils/logger';
+import { useTranslation } from 'react-i18next'
 
 interface FeePackage {
   id: number;
@@ -25,6 +26,7 @@ interface FeePackage {
 }
 
 export default function FeePackagePage() {
+  const { t } = useTranslation()
   const [feePackages, setFeePackages] = useState<FeePackage[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -127,8 +129,8 @@ export default function FeePackagePage() {
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-3">
         <div>
-          <h1 className="text-lg font-bold">Díjcsomagok</h1>
-          <p className="text-gray-500">Tranzakciós díjak és költségek kezelése</p>
+          <h1 className="text-lg font-bold">{t('fees.dijcsomagok')}</h1>
+          <p className="text-gray-500">{t('fees.tranzakciosDijakEsKoltsegekKezelese')}</p>
         </div>
         <button
           type="button"
@@ -138,7 +140,7 @@ export default function FeePackagePage() {
           }}
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
-          + Új díjcsomag
+          {t('fees.ujDijcsomag')}
         </button>
       </div>
 
@@ -156,20 +158,20 @@ export default function FeePackagePage() {
         {loading ? (
           <div className="text-center py-8">Betöltés...</div>
         ) : filteredPackages.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">Nincsenek díjcsomagok</div>
+          <div className="text-center py-8 text-gray-500">{t('fees.nincsenekDijcsomagok')}</div>
         ) : (
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="p-3 text-left">Kód</th>
-                <th className="p-3 text-left">Név</th>
-                <th className="p-3 text-left">Vételi díj</th>
-                <th className="p-3 text-left">Eladási díj</th>
-                <th className="p-3 text-left">Kezelési díj</th>
-                <th className="p-3 text-left">Expressz</th>
-                <th className="p-3 text-left">Ügyfelek</th>
-                <th className="p-3 text-left">Státusz</th>
-                <th className="p-3 text-left">Műveletek</th>
+                <th className="p-3 text-left">{t('common.code')}</th>
+                <th className="p-3 text-left">{t('common.name')}</th>
+                <th className="p-3 text-left">{t('fees.veteliDij')}</th>
+                <th className="p-3 text-left">{t('fees.eladasiDij')}</th>
+                <th className="p-3 text-left">{t('cashier.handlingFee')}</th>
+                <th className="p-3 text-left">{t('fees.expressz')}</th>
+                <th className="p-3 text-left">{t('archiving.ugyfelek')}</th>
+                <th className="p-3 text-left">{t('common.status')}</th>
+                <th className="p-3 text-left">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -180,7 +182,7 @@ export default function FeePackagePage() {
                     <div className="flex items-center gap-2">
                       {pkg.name}
                       {pkg.isDefault && (
-                        <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">Alapért.</span>
+                        <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">{t('fees.alapert')}</span>
                       )}
                     </div>
                   </td>
@@ -190,8 +192,8 @@ export default function FeePackagePage() {
                   <td className="p-3 text-sm">
                     {formatFee(pkg.sellFeeType, pkg.sellFeeValue, pkg.sellFeeMin, pkg.sellFeeMax)}
                   </td>
-                  <td className="p-3">{pkg.handlingFee?.toLocaleString()} Ft</td>
-                  <td className="p-3">{pkg.expressFee?.toLocaleString()} Ft</td>
+                  <td className="p-3">{pkg.handlingFee?.toLocaleString()} {t('components.ft')}</td>
+                  <td className="p-3">{pkg.expressFee?.toLocaleString()} {t('components.ft')}</td>
                   <td className="p-3">{pkg.customerCount || 0}</td>
                   <td className="p-3">
                     <span className={`px-2 py-1 text-xs text-white rounded ${pkg.isActive ? 'bg-green-500' : 'bg-gray-500'}`}>
@@ -207,7 +209,7 @@ export default function FeePackagePage() {
                           className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
                           title="Alapértelmezetté tétel"
                         >
-                          Alapért.
+                          {t('fees.alapert')}
                         </button>
                       )}
                       <button
@@ -218,7 +220,7 @@ export default function FeePackagePage() {
                         }}
                         className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
                       >
-                        Szerkesztés
+                        {t('common.edit')}
                       </button>
                       <button
                         type="button"
@@ -226,7 +228,7 @@ export default function FeePackagePage() {
                         disabled={pkg.isDefault}
                         className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
                       >
-                        Törlés
+                        {t('common.delete')}
                       </button>
                     </div>
                   </td>
@@ -363,7 +365,7 @@ function FeePackageForm({
         </div>
         <div>
           <label htmlFor="buyFeeValue" className="block text-sm font-medium mb-1">
-            Érték {formData.buyFeeType === 'PERCENT' ? '(%)' : '(Ft)'}
+            Érték{formData.buyFeeType === 'PERCENT' ? '(%)' : '(Ft)'}
           </label>
           <input
             id="buyFeeValue"
@@ -416,7 +418,7 @@ function FeePackageForm({
         </div>
         <div>
           <label htmlFor="sellFeeValue" className="block text-sm font-medium mb-1">
-            Érték {formData.sellFeeType === 'PERCENT' ? '(%)' : '(Ft)'}
+            Érték{formData.sellFeeType === 'PERCENT' ? '(%)' : '(Ft)'}
           </label>
           <input
             id="sellFeeValue"

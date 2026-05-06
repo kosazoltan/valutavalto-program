@@ -4,8 +4,10 @@ import { workerCommissionApi, WorkerCommission } from '../../services/api/index'
 import { formatInteger, formatDecimal } from '../../utils/numberFormat'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger';
+import { useTranslation } from 'react-i18next'
 
 export default function WorkerCommissionPage() {
+  const { t } = useTranslation()
   const [commissions, setCommissions] = useState<WorkerCommission[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -79,7 +81,7 @@ export default function WorkerCommissionPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Users />
-          Dolgozói Jutalékok
+          {t('commissions.dolgozoiJutalekok')}
         </h1>
       </div>
 
@@ -92,7 +94,7 @@ export default function WorkerCommissionPage() {
       <div className="form-panel space-y-4">
         <div className="grid grid-cols-4 gap-4">
           <div>
-            <label className="form-label">Kezdő dátum</label>
+            <label className="form-label">{t('common.startDate')}</label>
             <input
               type="date"
               className="form-input"
@@ -101,7 +103,7 @@ export default function WorkerCommissionPage() {
             />
           </div>
           <div>
-            <label className="form-label">Vég dátum</label>
+            <label className="form-label">{t('common.endDate')}</label>
             <input
               type="date"
               className="form-input"
@@ -115,18 +117,18 @@ export default function WorkerCommissionPage() {
               className="form-button-primary flex items-center gap-2"
             >
               <Calendar size={16} />
-              Szűrés
+              {t('common.filter')}
             </button>
             <button
               onClick={handleExportAccountingList}
               className="form-button flex items-center gap-2"
             >
               <Download size={16} />
-              Export
+              {t('commissions.export')}
             </button>
           </div>
           <div>
-            <label className="form-label">Keresés</label>
+            <label className="form-label">{t('common.search')}</label>
             <div className="relative">
               <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
               <input
@@ -145,20 +147,20 @@ export default function WorkerCommissionPage() {
         <table className="data-grid w-full">
           <thead>
             <tr>
-              <th>Dolgozó</th>
-              <th>Fők</th>
-              <th>Időszak</th>
-              <th>Tranzakciók</th>
-              <th>Összeg</th>
-              <th>Jutalék %</th>
-              <th>Jutalék összeg</th>
-              <th>Státusz</th>
+              <th>{t('commissions.dolgozo')}</th>
+              <th>{t('commissions.fok')}</th>
+              <th>{t('common.period')}</th>
+              <th>{t('archiving.tranzakciok')}</th>
+              <th>{t('common.amount')}</th>
+              <th>{t('commissions.jutalek')}</th>
+              <th>{t('commissions.jutalekOsszeg')}</th>
+              <th>{t('common.status')}</th>
             </tr>
           </thead>
           <tbody>
             {filteredCommissions.length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-center text-gray-500 py-4">Nincs találat</td>
+                <td colSpan={8} className="text-center text-gray-500 py-4">{t('common.noResult')}</td>
               </tr>
             ) : (
               filteredCommissions.map((c) => (

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Plus, Save, CheckCircle, Send, XCircle, Trash2 } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { safeArray } from '../../utils/safeArray'
+import { useTranslation } from 'react-i18next'
 
 interface RateTemplate {
   id?: string
@@ -40,6 +41,7 @@ interface CurrencyOption {
 }
 
 export default function RateTemplateEditor() {
+  const { t } = useTranslation()
   const [templates, setTemplates] = useState<RateTemplate[]>([])
   const [workgroups, setWorkgroups] = useState<Workgroup[]>([])
   const [currencies, setCurrencies] = useState<CurrencyOption[]>([])
@@ -175,13 +177,13 @@ export default function RateTemplateEditor() {
   const statusBadge = (status: string) => {
     switch (status) {
       case 'DRAFT':
-        return <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-secondary text-secondary-foreground">Piszkozat</span>
+        return <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-secondary text-secondary-foreground">{t('ratemanagement.piszkozat')}</span>
       case 'APPROVED':
-        return <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-blue-500 text-white">Jovahagyva</span>
+        return <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-blue-500 text-white">{t('ratemanagement.jovahagyva')}</span>
       case 'PUBLISHED':
-        return <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-green-500 text-white">Publikalva</span>
+        return <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-green-500 text-white">{t('ratemanagement.publikalva')}</span>
       case 'REVOKED':
-        return <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-destructive text-destructive-foreground">Visszavonva</span>
+        return <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-destructive text-destructive-foreground">{t('ratemanagement.visszavonva')}</span>
       default:
         return <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-primary text-primary-foreground">{status}</span>
     }
@@ -219,7 +221,7 @@ export default function RateTemplateEditor() {
 
       {/* Workgroup selector */}
       <div className="flex items-center gap-3">
-        <label className="font-medium text-sm">Munkacsoport:</label>
+        <label className="font-medium text-sm">{t('ratemanagement.munkacsoport')}</label>
         <select
           className="border rounded px-3 py-2 text-sm"
           value={selectedWorkgroup}
@@ -234,7 +236,7 @@ export default function RateTemplateEditor() {
           onClick={() => setEditing(newTemplate())}
         >
           <Plus className="h-4 w-4 mr-1" />
-          Uj sablon
+          {t('ratemanagement.ujSablon')}
         </button>
       </div>
 
@@ -247,7 +249,7 @@ export default function RateTemplateEditor() {
           <div className="p-4">
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="text-sm font-medium">Valuta</label>
+                <label className="text-sm font-medium">{t('common.currency')}</label>
                 <select
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   value={editing.currencyId}
@@ -263,7 +265,7 @@ export default function RateTemplateEditor() {
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium">Vételi árfolyam</label>
+                <label className="text-sm font-medium">{t('ratemanagement.veteliArfolyam')}</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   value={editing.baseBuyRate}
@@ -272,7 +274,7 @@ export default function RateTemplateEditor() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Eladási árfolyam</label>
+                <label className="text-sm font-medium">{t('ratemanagement.eladasiArfolyam')}</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   value={editing.baseSellRate}
@@ -281,7 +283,7 @@ export default function RateTemplateEditor() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Vételi felár</label>
+                <label className="text-sm font-medium">{t('ratemanagement.veteliFelar')}</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   value={editing.buySpread}
@@ -289,7 +291,7 @@ export default function RateTemplateEditor() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Eladási felár</label>
+                <label className="text-sm font-medium">{t('ratemanagement.eladasiFelar')}</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   value={editing.sellSpread}
@@ -297,7 +299,7 @@ export default function RateTemplateEditor() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Kerekítés</label>
+                <label className="text-sm font-medium">{t('ratemanagement.kerekites')}</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   type="number"
@@ -306,7 +308,7 @@ export default function RateTemplateEditor() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Hivatalos (MNB) árfolyam</label>
+                <label className="text-sm font-medium">{t('ratemanagement.hivatalosMnbArfolyam')}</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm bg-blue-50 dark:bg-blue-950/30"
                   value={editing.officialRate}
@@ -318,7 +320,7 @@ export default function RateTemplateEditor() {
 
             {/* Limit szintek */}
             <div className="mt-4">
-              <h4 className="text-sm font-medium mb-2">Limit szintek</h4>
+              <h4 className="text-sm font-medium mb-2">{t('ratemanagement.limitSzintek')}</h4>
               <div className="grid grid-cols-3 gap-4">
                 {([1, 2, 3] as const).map(level => {
                   const amountKey = `limit${level}Amount` as keyof RateTemplate
@@ -326,9 +328,9 @@ export default function RateTemplateEditor() {
                   const sellKey = `limit${level}SellRate` as keyof RateTemplate
                   return (
                     <div key={level} className="space-y-2 rounded-md border p-3">
-                      <h5 className="text-xs font-semibold text-muted-foreground uppercase">Limit {level}</h5>
+                      <h5 className="text-xs font-semibold text-muted-foreground uppercase">{t('components.limit')}{level}</h5>
                       <div>
-                        <label className="text-xs text-muted-foreground">Osszeg (Ft)</label>
+                        <label className="text-xs text-muted-foreground">{t('ratemanagement.osszegFt')}</label>
                         <input
                           className="flex h-8 w-full rounded-md border px-2 py-1 text-xs font-mono"
                           value={editing[amountKey] as string}
@@ -338,7 +340,7 @@ export default function RateTemplateEditor() {
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="text-xs text-muted-foreground">Vétel</label>
+                          <label className="text-xs text-muted-foreground">{t('cashier.buy')}</label>
                           <input
                             className="flex h-8 w-full rounded-md border px-2 py-1 text-xs font-mono"
                             value={editing[buyKey] as string}
@@ -346,7 +348,7 @@ export default function RateTemplateEditor() {
                           />
                         </div>
                         <div>
-                          <label className="text-xs text-muted-foreground">Eladás</label>
+                          <label className="text-xs text-muted-foreground">{t('cashier.sell')}</label>
                           <input
                             className="flex h-8 w-full rounded-md border px-2 py-1 text-xs font-mono"
                             value={editing[sellKey] as string}
@@ -365,13 +367,13 @@ export default function RateTemplateEditor() {
                 onClick={saveTemplate}
               >
                 <Save className="h-4 w-4 mr-2" />
-                Mentés
+                {t('common.save')}
               </button>
               <button
                 className="inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
                 onClick={() => setEditing(null)}
               >
-                Mégse
+                {t('common.cancel')}
               </button>
             </div>
           </div>
@@ -382,7 +384,7 @@ export default function RateTemplateEditor() {
       {loading ? (
         <p>Betöltés...</p>
       ) : templates.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">Nincs árfolyam sablon ebben a munkacsoportban</div>
+        <div className="text-center py-8 text-muted-foreground">{t('ratemanagement.nincsArfolyamSablonEbbenAMunkacsoportban')}</div>
       ) : (
         <div className="space-y-2">
           {templates.map((t) => (
@@ -390,7 +392,7 @@ export default function RateTemplateEditor() {
               <div className="p-4 flex items-center justify-between">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono font-medium">Vétel: {t.baseBuyRate} | Eladás: {t.baseSellRate}</span>
+                    <span className="font-mono font-medium">Vétel:{t.baseBuyRate} | Eladás: {t.baseSellRate}</span>
                     {statusBadge(t.status)}
                   </div>
                   <p className="text-sm text-muted-foreground">

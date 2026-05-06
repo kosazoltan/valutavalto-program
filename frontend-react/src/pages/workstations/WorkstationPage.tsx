@@ -4,8 +4,10 @@ import { workstationApi, Workstation, WorkstationCreateRequest } from '../../ser
 import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger';
+import { useTranslation } from 'react-i18next'
 
 export default function WorkstationPage() {
+  const { t } = useTranslation()
   const [workstations, setWorkstations] = useState<Workstation[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -130,17 +132,17 @@ export default function WorkstationPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Monitor />
-          Munkaállomások
+          {t('workstations.munkaallomasok')}
         </h1>
         <button onClick={handleCreate} className="form-button-primary flex items-center gap-2">
           <Plus size={16} />
-          Új munkaállomás
+          {t('workstations.ujMunkaallomas')}
         </button>
       </div>
 
       <div className="form-panel">
         <div>
-          <label className="form-label">Keresés</label>
+          <label className="form-label">{t('common.search')}</label>
           <div className="relative">
             <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
             <input
@@ -167,44 +169,44 @@ export default function WorkstationPage() {
             </div>
             <div className="space-y-4">
               <div>
-                <label className="form-label">Kód *</label>
+                <label className="form-label">{t('common.codeRequired')}</label>
                 <input type="text" className="form-input" value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value })} />
               </div>
               <div>
-                <label className="form-label">Név *</label>
+                <label className="form-label">{t('common.nameRequired')}</label>
                 <input type="text" className="form-input" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
               </div>
               <div>
-                <label className="form-label">Típus *</label>
+                <label className="form-label">{t('circulars.tipus')}</label>
                 <select className="form-input" value={formData.workstationType} onChange={(e) => setFormData({ ...formData, workstationType: e.target.value })}>
-                  <option value="CASHIER">Pénztár</option>
-                  <option value="ADMIN">Admin</option>
+                  <option value="CASHIER">{t('branch.branch')}</option>
+                  <option value="ADMIN">{t('workstations.admin')}</option>
                   <option value="POS">POS</option>
                 </select>
               </div>
               <div>
-                <label className="form-label">Gépnév</label>
+                <label className="form-label">{t('workstations.gepnev')}</label>
                 <input type="text" className="form-input" value={formData.machineName || ''} onChange={(e) => setFormData({ ...formData, machineName: e.target.value })} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="form-label">IP cím</label>
+                  <label className="form-label">{t('common.ipAddress')}</label>
                   <input type="text" className="form-input" value={formData.ipAddress || ''} onChange={(e) => setFormData({ ...formData, ipAddress: e.target.value })} />
                 </div>
                 <div>
-                  <label className="form-label">MAC cím</label>
+                  <label className="form-label">{t('workstations.macCim')}</label>
                   <input type="text" className="form-input" value={formData.macAddress || ''} onChange={(e) => setFormData({ ...formData, macAddress: e.target.value })} />
                 </div>
               </div>
               <div>
                 <label className="flex items-center gap-2">
                   <input type="checkbox" className="rounded" checked={formData.isActive ?? true} onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })} />
-                  <span>Aktív</span>
+                  <span>{t('common.active')}</span>
                 </label>
               </div>
               <div className="flex justify-end gap-2 pt-4 border-t">
-                <button onClick={() => { setShowForm(false); setEditingWorkstation(null) }} className="form-button">Mégse</button>
-                <button onClick={handleSave} className="form-button-primary flex items-center gap-2"><Save size={16} />Mentés</button>
+                <button onClick={() => { setShowForm(false); setEditingWorkstation(null) }} className="form-button">{t('common.cancel')}</button>
+                <button onClick={handleSave} className="form-button-primary flex items-center gap-2"><Save size={16} />{t('common.save')}</button>
               </div>
             </div>
           </div>
@@ -215,19 +217,19 @@ export default function WorkstationPage() {
         <table className="data-grid w-full">
           <thead>
             <tr>
-              <th>Kód</th>
-              <th>Név</th>
-              <th>Típus</th>
-              <th>Gépnév</th>
-              <th>IP cím</th>
-              <th>Online</th>
-              <th>Státusz</th>
-              <th>Műveletek</th>
+              <th>{t('common.code')}</th>
+              <th>{t('common.name')}</th>
+              <th>{t('common.type')}</th>
+              <th>{t('workstations.gepnev')}</th>
+              <th>{t('common.ipAddress')}</th>
+              <th>{t('common.online')}</th>
+              <th>{t('common.status')}</th>
+              <th>{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {filteredWorkstations.length === 0 ? (
-              <tr><td colSpan={8} className="text-center text-gray-500 py-4">Nincs találat</td></tr>
+              <tr><td colSpan={8} className="text-center text-gray-500 py-4">{t('common.noResult')}</td></tr>
             ) : (
               filteredWorkstations.map((w) => (
                 <tr key={w.id}>
@@ -248,8 +250,8 @@ export default function WorkstationPage() {
                   </td>
                   <td>
                     <div className="flex gap-2">
-                      <button onClick={() => handleEdit(w)} className="form-button text-xs"><Edit size={12} />Szerkesztés</button>
-                      <button onClick={() => handleDelete(w.id)} className="form-button text-xs text-red-600"><Trash2 size={12} />Törlés</button>
+                      <button onClick={() => handleEdit(w)} className="form-button text-xs"><Edit size={12} />{t('common.edit')}</button>
+                      <button onClick={() => handleDelete(w.id)} className="form-button text-xs text-red-600"><Trash2 size={12} />{t('common.delete')}</button>
                     </div>
                   </td>
                 </tr>
