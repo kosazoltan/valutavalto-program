@@ -82,7 +82,7 @@ public class GitHubIssueAutoCreator {
             }
             if (isDuplicateRecent(entry)) {
                 log.debug("[GitHubIssueAutoCreator] dedup match - skip issue create for: {}",
-                        entry.getErrorMessage());
+                        entry.getErrorMessage() == null ? "" : entry.getErrorMessage().replace("\r", "").replace("\n", " "));
                 return;
             }
             createIssue(entry);

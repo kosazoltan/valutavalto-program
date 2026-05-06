@@ -77,7 +77,17 @@ function saveQueue(queue: ErrorReportPayload[]): void {
 /**
  * HTTPS POST a backendhez. Send-and-forget — fail-csendben.
  */
+function sanitizePayload(p: ErrorReportPayload): string {
+    const safe: ErrorReportPayload = {
+        ...p,
+        errorMessage: String(p.errorMessage ?? '').slice(0, 2000),
+        stackTrace: p.stackTrace ? String(p.stackTrace).slice(0, 8000) : undefined,
+    };
+    return JSON.stringify(safe);
+}
+
 function postReport(payload: ErrorReportPayload): Promise<boolean> {
+    const body = sanitizePayload(payload);
     return new Promise((resolve) => {
         let settled = false;
         const safeResolve = (v: boolean) => {
@@ -97,7 +107,7 @@ function postReport(payload: ErrorReportPayload): Promise<boolean> {
                 });
             });
             req.on('error', () => { clearTimeout(timer); safeResolve(false); });
-            req.write(JSON.stringify(payload));
+            req.write(body);
             req.end();
         } catch {
             clearTimeout(timer);

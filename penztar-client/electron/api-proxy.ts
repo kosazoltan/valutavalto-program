@@ -35,10 +35,24 @@ export interface ApiProxyResponse {
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_RESPONSE_BYTES = 50 * 1024 * 1024; // 50 MB safety cap
+const ALLOWED_HOSTS = ['excvaluta.com', 'localhost'];
+
+function isAllowedUrl(raw: string): boolean {
+  try {
+    const parsed = new URL(raw);
+    return ALLOWED_HOSTS.some(h => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`));
+  } catch {
+    return false;
+  }
+}
 
 export function fetchViaElectronNet(params: ApiProxyRequest): Promise<ApiProxyResponse> {
   const { method, url, body, headers, timeoutMs } = params;
   const timeout = timeoutMs ?? DEFAULT_TIMEOUT_MS;
+
+  if (!isAllowedUrl(url)) {
+    return Promise.reject(new Error(`[api-proxy] Blocked: URL host not in allowlist: ${url}`));
+  }
 
   const upperMethod = method.toUpperCase();
   const hasBody = body !== undefined && body !== null && body !== '';
@@ -70,8 +84,9 @@ export function fetchViaElectronNet(params: ApiProxyRequest): Promise<ApiProxyRe
     }, timeout);
 
     request.on('response', (response: IncomingMessage) => {
-      const respHeaders: Record<string, string> = {};
+      const respHeaders: Record<string, string> = Object.create(null) as Record<string, string>;
       for (const [key, value] of Object.entries(response.headers)) {
+        if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
         respHeaders[key] = Array.isArray(value) ? value.join(', ') : String(value ?? '');
       }
 

@@ -26,7 +26,7 @@
 
 'use strict';
 
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
@@ -94,20 +94,20 @@ exports.default = async function signWithKeyLocker(configuration) {
 
   // smctl healthcheck (preflight) — ha nincs hálózat vagy hibás credential, korán bukik
   try {
-    execSync('smctl healthcheck', { stdio: 'inherit', env: smctlEnv });
+    execFileSync('smctl', ['healthcheck'], { stdio: 'inherit', env: smctlEnv });
   } catch (err) {
     if (tempCertFile) fs.unlinkSync(tempCertFile);
     throw new Error(`[sign-with-keylocker] smctl healthcheck FAILED. Check SM_* env vars + network. ${err.message}`);
   }
 
-  // Tényleges aláírás
+  // Tényleges aláírás — execFileSync (no shell) to prevent command injection via env vars
   const keypairAlias = process.env.SM_KEYPAIR_ALIAS;
   const timestampServer = process.env.SM_TIMESTAMP_SERVER || 'http://timestamp.digicert.com';
-  const signCmd = `smctl sign --keypair-alias "${keypairAlias}" --input "${filePath}" --tsa-server "${timestampServer}"`;
+  const signArgs = ['sign', '--keypair-alias', keypairAlias, '--input', filePath, '--tsa-server', timestampServer];
 
-  console.log(`[sign-with-keylocker] Running: ${signCmd}`);
+  console.log(`[sign-with-keylocker] Running: smctl ${signArgs.join(' ')}`);
   try {
-    execSync(signCmd, { stdio: 'inherit', env: smctlEnv });
+    execFileSync('smctl', signArgs, { stdio: 'inherit', env: smctlEnv });
   } catch (err) {
     if (tempCertFile) fs.unlinkSync(tempCertFile);
     throw new Error(`[sign-with-keylocker] smctl sign FAILED for ${filePath}. ${err.message}`);

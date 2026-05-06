@@ -419,7 +419,16 @@ export async function performGoogleOAuthFlowWithBackendLogin(config: {
  * Main-process net.request POST JSON helper. Robust net stack (NEM renderer fetch),
  * Windows certificate store + Chromium switches alkalmazva (--disable-http2, etc.).
  */
+const OAUTH_ALLOWED_HOSTS = ['excvaluta.com', 'oauth2.googleapis.com', 'accounts.google.com', 'localhost'];
+
 function postJsonViaElectronNet(url: string, jsonBody: string, timeoutMs: number): Promise<unknown> {
+  try {
+    const parsed = new URL(url);
+    if (!OAUTH_ALLOWED_HOSTS.some(h => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`))) {
+      return Promise.reject(new GoogleOAuthFailedException('INVALID_URL', `Blocked: host not in allowlist: ${parsed.hostname}`));
+    }
+  } catch { return Promise.reject(new GoogleOAuthFailedException('INVALID_URL', `Invalid URL: ${url}`)); }
+
   return new Promise((resolve, reject) => {
     const request = electronNet.request({ method: 'POST', url });
     request.setHeader('Content-Type', 'application/json');

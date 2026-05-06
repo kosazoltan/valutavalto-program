@@ -118,18 +118,18 @@ test('T03 — login form: username, password, submit gomb renderelődik', { tag:
   const passwordInput = page.locator('input[type="password"]')
   const submitButton = page.locator('button[type="submit"], button').filter({ hasText: /Bejelentkezés|Login|Belépés|Submit/i })
 
-  const hasUsername = await usernameInput.isVisible({ timeout: 5000 }).catch(() => false)
-  const hasPassword = await passwordInput.isVisible({ timeout: 5000 }).catch(() => false)
+  const hasUsernameField = await usernameInput.isVisible({ timeout: 5000 }).catch(() => false)
+  const hasPwdField = await passwordInput.isVisible({ timeout: 5000 }).catch(() => false)
   const hasSubmit = await submitButton.first().isVisible({ timeout: 5000 }).catch(() => false)
 
-  console.log(`Username input visible: ${hasUsername}`)
-  console.log(`Password input visible: ${hasPassword}`)
+  console.log(`Username input visible: ${hasUsernameField}`)
+  console.log(`Pwd input visible: ${hasPwdField}`)
   console.log(`Submit button visible: ${hasSubmit}`)
   console.log(`Screenshot: ${ss}`)
   console.log(`Input count: ${await page.locator('input').count()}`)
 
   // At minimum the page must have at least one input after hydration
-  expect(hasUsername || hasPassword, 'No input fields found on login page after CSR hydration').toBe(true)
+  expect(hasUsernameField || hasPwdField, 'No input fields found on login page after CSR hydration').toBe(true)
 })
 
 // ─────────────────────────────────────────────

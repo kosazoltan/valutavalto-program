@@ -71,12 +71,12 @@ public class DiagnosticsController {
         errorLogRepository.save(entry);
 
         log.warn("[client-error] {} v{} {} | user={} | ip={} | msg='{}'",
-                dto.getComponent(),
-                dto.getVersion(),
-                dto.getOsInfo(),
-                dto.getUserIdentifier(),
+                stripCrlf(dto.getComponent()),
+                stripCrlf(dto.getVersion()),
+                stripCrlf(dto.getOsInfo()),
+                stripCrlf(dto.getUserIdentifier()),
                 clientIp,
-                safeTruncate(dto.getErrorMessage(), 200));
+                stripCrlf(safeTruncate(dto.getErrorMessage(), 200)));
 
         // Aszinkron eskala: kritikus mintazatra GitHub Issue auto-create
         gitHubIssueAutoCreator.evaluateAndEscalate(entry);
@@ -114,6 +114,11 @@ public class DiagnosticsController {
         if (s == null) return null;
         if (s.length() <= max) return s;
         return s.substring(0, max);
+    }
+
+    private static String stripCrlf(String s) {
+        if (s == null) return "";
+        return s.replace("\r", "").replace("\n", " ");
     }
 
     /**
