@@ -137,6 +137,18 @@ public class Customer {
     private LocalDate passportExpiry;
 
     /**
+     * Tartózkodási hely (AML teljes azonosítás, 2017. LIII. tv. 7.§)
+     */
+    @Column(length = 500)
+    private String residence;
+
+    /**
+     * Lakcímkártya száma (AML teljes azonosítás)
+     */
+    @Column(name = "address_card_number", length = 30)
+    private String addressCardNumber;
+
+    /**
      * Lakcím
      * Legacy: UGYFELCIM
      */

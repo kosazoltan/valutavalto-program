@@ -28,6 +28,22 @@ export interface ElectronAPI {
     | { ok: false; code: string; message: string }
   >;
 
+  // --- v2.5.25: Altalanos API proxy (MINDEN renderer HTTP hivas main process-en at) ---
+  apiRequest(params: {
+    method: string;
+    url: string;
+    body?: string | null;
+    headers?: Record<string, string>;
+    timeoutMs?: number;
+  }): Promise<{
+    ok: boolean;
+    status: number;
+    statusText: string;
+    headers: Record<string, string>;
+    body: string;
+    isBase64?: boolean;
+  }>;
+
   // --- v2.5.13 Kliens hibajelentes (send-and-forget) ---
   reportError(payload: {
     component?: string;

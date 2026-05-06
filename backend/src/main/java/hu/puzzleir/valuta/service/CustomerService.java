@@ -68,6 +68,8 @@ public class CustomerService {
                 .idCardExpiry(request.getIdCardExpiry())
                 .passportNumber(request.getPassportNumber())
                 .passportExpiry(request.getPassportExpiry())
+                .residence(request.getResidence())
+                .addressCardNumber(request.getAddressCardNumber())
                 .address(request.getAddress())
                 .postalCode(request.getPostalCode())
                 .city(request.getCity())
@@ -108,6 +110,8 @@ public class CustomerService {
         if (request.getIdCardExpiry() != null) customer.setIdCardExpiry(request.getIdCardExpiry());
         if (request.getPassportNumber() != null) customer.setPassportNumber(request.getPassportNumber());
         if (request.getPassportExpiry() != null) customer.setPassportExpiry(request.getPassportExpiry());
+        if (request.getResidence() != null) customer.setResidence(request.getResidence());
+        if (request.getAddressCardNumber() != null) customer.setAddressCardNumber(request.getAddressCardNumber());
         if (request.getAddress() != null) customer.setAddress(request.getAddress());
         if (request.getPostalCode() != null) customer.setPostalCode(request.getPostalCode());
         if (request.getCity() != null) customer.setCity(request.getCity());
@@ -367,6 +371,8 @@ public class CustomerService {
         private LocalDate idCardExpiry;
         private String passportNumber;
         private LocalDate passportExpiry;
+        private String residence;
+        private String addressCardNumber;
         private String address;
         private String postalCode;
         private String city;
@@ -399,6 +405,8 @@ public class CustomerService {
         private LocalDate idCardExpiry;
         private String passportNumber;
         private LocalDate passportExpiry;
+        private String residence;
+        private String addressCardNumber;
         private String address;
         private String postalCode;
         private String city;

@@ -52,6 +52,8 @@ vi.mock('./hooks/useTransactionRates', () => ({
 vi.mock('./hooks/useIdentificationLevel', () => ({
   useIdentificationLevel: () => ({
     identificationLevel: 'SIMPLE',
+    minimumLevel: 'SIMPLE',
+    setIdentificationLevel: () => {},
     requiresSourceVerification: false,
   }),
 }))

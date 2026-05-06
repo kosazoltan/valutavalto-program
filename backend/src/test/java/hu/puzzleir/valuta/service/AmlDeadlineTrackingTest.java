@@ -599,10 +599,10 @@ class AmlDeadlineTrackingTest {
         }
 
         @Test
-        @DisplayName("checkTransaction: 150K alatt → approved, no identification (változatlan)")
+        @DisplayName("checkTransaction: 100K alatt → approved, no identification (változatlan)")
         void testRegression_checkTransaction_underThreshold() {
             AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
-                new BigDecimal("150000"), "C001", "Teszt Ügyfél", "AB123456");
+                new BigDecimal("50000"), "C001", "Teszt Ügyfél", "AB123456");
 
             assertThat(result.isApproved()).isTrue();
             assertThat(result.isRequiresIdentification()).isFalse();

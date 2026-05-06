@@ -133,6 +133,121 @@ export const api = axios.create({
   },
 })
 
+// v2.5.25 ESET MITM VEGLEGES FIX: Electron production-ban MINDEN axios hivas a main process
+// electron.net.request-en megy at (IPC 'api:fetch'). A renderer Chromium fetch ESET/Kaspersky/
+// Bitdefender MITM TLS proxy-val "Network Error"-t dob — a main process net.request a Windows
+// certificate store-t hasznalja, ami ESET-kompatibilis.
+//
+// Implementacio: axios request interceptor, amely az eredeti config-ot az IPC proxy-ra iranyitja,
+// majd a kapott response-t visszaforditja axios-kompatibilis formatumba.
+if (typeof window !== 'undefined' && window.electronAPI?.apiRequest && !import.meta.env.DEV) {
+  api.defaults.adapter = async (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => {
+    const baseUrl = config.baseURL ?? api.defaults.baseURL ?? ''
+    let url = config.url?.startsWith('http')
+      ? config.url
+      : `${baseUrl}${config.url ?? ''}`
+
+    // Codex P1: config.params must be serialized into the URL query string
+    if (config.params && typeof config.params === 'object') {
+      const serializer = config.paramsSerializer
+      let queryString: string
+      if (typeof serializer === 'function') {
+        queryString = serializer(config.params)
+      } else if (serializer && typeof serializer === 'object' && 'serialize' in serializer && typeof serializer.serialize === 'function') {
+        queryString = serializer.serialize(config.params, serializer)
+      } else {
+        const searchParams = new URLSearchParams()
+        for (const [key, value] of Object.entries(config.params as Record<string, unknown>)) {
+          if (value !== undefined && value !== null) {
+            searchParams.append(key, String(value))
+          }
+        }
+        queryString = searchParams.toString()
+      }
+      if (queryString) {
+        url += (url.includes('?') ? '&' : '?') + queryString
+      }
+    }
+
+    const method = (config.method ?? 'GET').toUpperCase()
+
+    const headers: Record<string, string> = {}
+    if (config.headers) {
+      const raw = config.headers
+      if (typeof raw.forEach === 'function') {
+        raw.forEach((value: string, key: string) => {
+          headers[key] = value
+        })
+      } else if (typeof raw === 'object') {
+        for (const [key, value] of Object.entries(raw)) {
+          if (typeof value === 'string') headers[key] = value
+        }
+      }
+    }
+
+    let body: string | null = null
+    if (config.data !== undefined && config.data !== null) {
+      body = typeof config.data === 'string' ? config.data : JSON.stringify(config.data)
+    }
+
+    try {
+      const proxyResponse = await window.electronAPI!.apiRequest({
+        method,
+        url,
+        body,
+        headers,
+        timeoutMs: config.timeout ?? AXIOS_GLOBAL_TIMEOUT_MS,
+      })
+
+      let parsedData: unknown = proxyResponse.body
+      const contentType = proxyResponse.headers['content-type'] ?? ''
+
+      // Codex P1: responseType blob/arraybuffer — reconstruct binary from base64
+      if ((config.responseType === 'blob' || config.responseType === 'arraybuffer') && proxyResponse.isBase64) {
+        const binary = Uint8Array.from(atob(proxyResponse.body), c => c.charCodeAt(0))
+        parsedData = config.responseType === 'blob'
+          ? new Blob([binary], { type: contentType.split(';')[0] || 'application/octet-stream' })
+          : binary.buffer
+      } else if (contentType.includes('json') && typeof proxyResponse.body === 'string') {
+        try { parsedData = JSON.parse(proxyResponse.body) } catch { /* keep raw string */ }
+      }
+
+      const axiosResponse: AxiosResponse = {
+        data: parsedData,
+        status: proxyResponse.status,
+        statusText: proxyResponse.statusText,
+        headers: proxyResponse.headers,
+        config,
+        request: {},
+      }
+
+      if (!proxyResponse.ok) {
+        const error = new AxiosError(
+          `Request failed with status code ${proxyResponse.status}`,
+          proxyResponse.status >= 400 && proxyResponse.status < 500 ? 'ERR_BAD_REQUEST' : 'ERR_BAD_RESPONSE',
+          config,
+          {},
+          axiosResponse,
+        )
+        throw error
+      }
+
+      return axiosResponse
+    } catch (err) {
+      if (err instanceof AxiosError) throw err
+      const error = new AxiosError(
+        (err as Error).message ?? 'Network Error',
+        'ERR_NETWORK',
+        config,
+        {},
+      )
+      throw error
+    }
+  }
+
+  logger.info('[api.client]', 'Electron main-process API proxy AKTIV (ESET MITM fix)')
+}
+
 // v2.5.13: kliens-oldali hibajelentes a backend `/diagnostics/error-report` endpointra.
 // Send-and-forget IPC-n keresztul a main process-be (Electron) -> backend.
 // A diagnostics endpoint ONMAGABA NEM riportolunk (vegtelen-loop elkerulese).
