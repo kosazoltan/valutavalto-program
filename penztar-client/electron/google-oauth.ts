@@ -389,7 +389,11 @@ export async function performGoogleOAuthFlowWithBackendLogin(config: {
       const responseJson = await postJsonViaElectronNet(url, reqBody, 30_000);
       log.info('[google-oauth] Backend google-login sikeres (attempt ' + (attempt + 1) + '/' + MAX_RETRIES + ')');
       return {
-        ...(responseJson as { accessToken: string; refreshToken?: string; user?: any }),
+        ...(responseJson as {
+          accessToken: string;
+          refreshToken?: string;
+          user?: Record<string, unknown>;
+        }),
         email: oauthResult.email,
       };
     } catch (err) {

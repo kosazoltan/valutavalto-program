@@ -127,8 +127,25 @@ public class SecurityConfig {
         return http.build();
     }
     
+    /**
+     * BCrypt password encoder strength=12 (2026-05-06 audit fix).
+     *
+     * <p>A default strength=10 (Spring 6+) megfelel az iparági alapvető szintnek,
+     * de pénzügyi rendszerekhez 2024+ óta strength=12 ajánlott (NIST SP 800-63B
+     * + OWASP ASVS 4.0.3 §2.4.1). A 12-es strength ~4x lassabb hash-elés
+     * (~200ms) csökkenti az offline brute-force támadás kockázatát.</p>
+     *
+     * <p>Hatás:
+     * <ul>
+     *   <li>Új jelszavak: strength=12-vel hashelődnek</li>
+     *   <li>Régi jelszavak (strength=10): továbbra is verifikálhatók, mert a
+     *       BCrypt formátum tartalmazza a strength-et</li>
+     *   <li>Login lassulás: ~150ms helyett ~600ms (egyszer per session, OK)</li>
+     * </ul>
+     * </p>
+     */
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        return new BCryptPasswordEncoder(12);
     }
 }
