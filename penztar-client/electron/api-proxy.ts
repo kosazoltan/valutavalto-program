@@ -1,0 +1,101 @@
+/**
+ * Main-process API proxy — electron.net.request alapú HTTP kliens.
+ *
+ * A renderer Chromium fetch / axios ESET MITM TLS proxy-val rendelkező gépeken
+ * "Network Error"-t dob (Borsi laptop, Fabulya Zsuzsa, Kasza Helga — 2026-05-04/05/06 audit).
+ * A v2.5.21 fix a login-t áttette main process-re, de a role selection, napnyitás és minden
+ * más API hívás továbbra is renderer axios-on ment → Network Error.
+ *
+ * Ez a modul egy általános HTTP proxy-t biztosít: a renderer `window.electronAPI.apiRequest()`
+ * IPC-n hívja, és a main process `electron.net.request`-tel továbbítja a backend felé.
+ * Az `electron.net.request` a Windows certificate store + Chromium network stack-et használja
+ * (--disable-http2, --disable-features=EncryptedClientHello switches alkalmazva a main.ts-ben),
+ * ami ESET/Kaspersky/Bitdefender MITM proxy-val is működik.
+ */
+
+import { net as electronNet } from 'electron';
+import log from 'electron-log/main';
+
+export interface ApiProxyRequest {
+  method: string;
+  url: string;
+  body?: string | null;
+  headers?: Record<string, string>;
+  timeoutMs?: number;
+}
+
+export interface ApiProxyResponse {
+  ok: boolean;
+  status: number;
+  statusText: string;
+  headers: Record<string, string>;
+  body: string;
+}
+
+const DEFAULT_TIMEOUT_MS = 30_000;
+
+export function fetchViaElectronNet(params: ApiProxyRequest): Promise<ApiProxyResponse> {
+  const { method, url, body, headers, timeoutMs } = params;
+  const timeout = timeoutMs ?? DEFAULT_TIMEOUT_MS;
+
+  return new Promise((resolve, reject) => {
+    const request = electronNet.request({ method: method.toUpperCase(), url });
+
+    if (headers) {
+      for (const [key, value] of Object.entries(headers)) {
+        request.setHeader(key, value);
+      }
+    }
+    if (!headers?.['Content-Type'] && !headers?.['content-type']) {
+      request.setHeader('Content-Type', 'application/json');
+    }
+    if (!headers?.['Accept'] && !headers?.['accept']) {
+      request.setHeader('Accept', 'application/json');
+    }
+
+    let responseBody = '';
+    let timedOut = false;
+    const timeoutHandle = setTimeout(() => {
+      timedOut = true;
+      try { request.abort(); } catch { /* ignore */ }
+      reject(new Error(`[api-proxy] Timeout: ${timeout}ms exceeded for ${method} ${url}`));
+    }, timeout);
+
+    request.on('response', (response: { statusCode?: number; statusMessage?: string; headers: Record<string, string | string[]>; on: (event: string, cb: (...args: unknown[]) => void) => void }) => {
+      const respHeaders: Record<string, string> = {};
+      const rawHeaders = response.headers;
+      for (const [key, value] of Object.entries(rawHeaders)) {
+        respHeaders[key] = Array.isArray(value) ? value.join(', ') : String(value ?? '');
+      }
+
+      response.on('data', (chunk: unknown) => {
+        responseBody += String(chunk);
+      });
+
+      response.on('end', () => {
+        if (timedOut) return;
+        clearTimeout(timeoutHandle);
+        const status = response.statusCode ?? 0;
+        resolve({
+          ok: status >= 200 && status < 300,
+          status,
+          statusText: response.statusMessage ?? '',
+          headers: respHeaders,
+          body: responseBody,
+        });
+      });
+    });
+
+    request.on('error', (err: Error) => {
+      if (timedOut) return;
+      clearTimeout(timeoutHandle);
+      log.warn('[api-proxy] Network error for', method, url, ':', err.message);
+      reject(new Error(`[api-proxy] Network error: ${err.message}`));
+    });
+
+    if (body) {
+      request.write(body);
+    }
+    request.end();
+  });
+}
